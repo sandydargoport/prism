@@ -1,0 +1,247 @@
+# ============================================================================
+# PRISM - Family Dashboard
+# Docker Compose Configuration
+# ============================================================================
+#
+# WHAT THIS FILE DOES:
+# This file orchestrates multiple Docker containers that work together to run
+# Prism. Think of it as a recipe that tells Docker how to set up all the
+# "ingredients" (services) your application needs.
+#
+# SERVICES DEFINED:
+# 1. app       - The Prism Next.js application (what you see in the browser)
+# 2. db        - PostgreSQL database (stores all your family's data)
+# 3. redis     - Redis cache (makes the app faster - optional but recommended)
+#
+# HOW TO USE:
+# - Start everything:     docker-compose up -d
+# - Stop everything:      docker-compose down
+# - View logs:            docker-compose logs -f
+# - Rebuild after changes: docker-compose up -d --build
+#
+# CUSTOMIZATION:
+# - Change ports by modifying the "ports" section (e.g., "8080:3000" for port 8080)
+# - Adjust memory limits in the "deploy" section if needed
+#
+# ============================================================================
+
+# Version of Docker Compose file format
+# Version 3.8 supports most modern Docker features
+version: '3.8'
+
+# ============================================================================
+# SERVICES - The individual containers that make up the application
+# ============================================================================
+services:
+
+  # --------------------------------------------------------------------------
+  # APP SERVICE - The main Prism application
+  # --------------------------------------------------------------------------
+  # This runs the Next.js application that serves the dashboard interface.
+  # It's what you interact with when you open the dashboard in a browser.
+  # --------------------------------------------------------------------------
+  app:
+    # Build the Docker image from the Dockerfile in the current directory
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    # Name this container for easy reference in logs and commands
+    container_name: prism-app
+
+    # PORT MAPPING:
+    # Format is "host_port:container_port"
+    # This means: access the app on your computer at localhost:3000
+    # CUSTOMIZE: Change "3000:3000" to "8080:3000" to use port 8080 instead
+    ports:
+      - "3000:3000"
+
+    # ENVIRONMENT VARIABLES:
+    # These configure how the app runs. Sensitive values come from .env file.
+    environment:
+      # Tell Node.js this is a production deployment
+      - NODE_ENV=production
+
+      # Database connection string
+      # Format: postgresql://username:password@hostname:port/database_name
+      # "db" refers to the database service defined below
+      - DATABASE_URL=postgresql://prism:${DB_PASSWORD}@db:5432/prism
+
+      # Redis connection for caching (optional but improves performance)
+      - REDIS_URL=redis://redis:6379
+
+    # Load additional environment variables from .env file
+    # This keeps sensitive data (API keys, passwords) out of this file
+    env_file:
+      - .env
+
+    # VOLUMES - Persistent data storage
+    # These map folders on your computer to folders inside the container
+    # Data in these folders persists even when containers are restarted
+    volumes:
+      # Configuration files - edit these to customize your dashboard
+      - ./config:/app/config
+
+      # Uploaded files (photos, avatars, etc.)
+      - ./uploads:/app/uploads
+
+      # Photo cache - stores downloaded photos from iCloud/OneDrive
+      - photos-cache:/app/cache/photos
+
+    # DEPENDENCIES:
+    # The app won't start until these services are running
+    depends_on:
+      db:
+        # Wait for database to be healthy before starting app
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+    # Automatically restart the container if it crashes
+    # "unless-stopped" means it restarts except when manually stopped
+    restart: unless-stopped
+
+    # HEALTH CHECK:
+    # Docker will periodically check if the app is responding
+    # If it fails, Docker can take action (like restarting the container)
+    healthcheck:
+      # Check if the app responds to HTTP requests
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      # How often to check (every 30 seconds)
+      interval: 30s
+      # How long to wait for a response (10 seconds)
+      timeout: 10s
+      # How many failures before marking unhealthy (3 failures)
+      retries: 3
+      # Wait this long after starting before first check (40 seconds)
+      # This gives the app time to start up
+      start_period: 40s
+
+    # Connect to our private network
+    networks:
+      - prism-network
+
+  # --------------------------------------------------------------------------
+  # DATABASE SERVICE - PostgreSQL
+  # --------------------------------------------------------------------------
+  # PostgreSQL stores all your family's data: events, tasks, chores, etc.
+  # This is a relational database - great for structured data with relationships.
+  # --------------------------------------------------------------------------
+  db:
+    # Use the official PostgreSQL image, Alpine version (smaller, faster)
+    # Version 15 is the latest stable release with great performance
+    image: postgres:15-alpine
+
+    container_name: prism-db
+
+    # DATABASE CONFIGURATION:
+    environment:
+      # Name of the database to create
+      - POSTGRES_DB=prism
+
+      # Username for connecting to the database
+      - POSTGRES_USER=prism
+
+      # Password - pulled from .env file for security
+      # IMPORTANT: Change this in your .env file!
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+
+    # PERSISTENT STORAGE:
+    # Without this, all data would be lost when the container restarts!
+    volumes:
+      # Store database files in a Docker volume
+      - postgres-data:/var/lib/postgresql/data
+
+      # Run initialization scripts on first start
+      # Put .sql files here to set up initial database structure
+      - ./src/lib/db/init:/docker-entrypoint-initdb.d
+
+    # HEALTH CHECK:
+    # Verify the database is accepting connections
+    healthcheck:
+      # pg_isready checks if PostgreSQL is ready to accept connections
+      test: ["CMD-SHELL", "pg_isready -U prism -d prism"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    restart: unless-stopped
+
+    networks:
+      - prism-network
+
+  # --------------------------------------------------------------------------
+  # REDIS SERVICE - Caching Layer (Optional but Recommended)
+  # --------------------------------------------------------------------------
+  # Redis is an in-memory data store used for caching.
+  # It makes the app faster by storing frequently-accessed data in memory.
+  #
+  # WHAT IT CACHES:
+  # - Calendar events (so we don't hit Google/Apple APIs constantly)
+  # - Weather data (refreshed every 30 minutes anyway)
+  # - Session data (keeps you logged in)
+  # --------------------------------------------------------------------------
+  redis:
+    # Use official Redis image, Alpine version
+    image: redis:7-alpine
+
+    container_name: prism-redis
+
+    # PERSISTENT STORAGE:
+    # Save cached data to disk so it survives restarts
+    volumes:
+      - redis-data:/data
+
+    # Redis command with persistence enabled
+    # "appendonly yes" saves every write to disk for durability
+    command: redis-server --appendonly yes
+
+    # HEALTH CHECK:
+    healthcheck:
+      # PING should return PONG if Redis is healthy
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    restart: unless-stopped
+
+    networks:
+      - prism-network
+
+# ============================================================================
+# VOLUMES - Persistent Data Storage
+# ============================================================================
+# Docker volumes store data that persists across container restarts.
+# Without volumes, all data would be lost when containers are recreated!
+#
+# These are managed by Docker and stored in a Docker-specific location.
+# To back up data, use: docker run --rm -v prism_postgres-data:/data -v $(pwd):/backup alpine tar cvf /backup/db-backup.tar /data
+# ============================================================================
+volumes:
+  # PostgreSQL database files
+  postgres-data:
+    name: prism-postgres-data
+
+  # Redis cache data
+  redis-data:
+    name: prism-redis-data
+
+  # Cached photos from iCloud/OneDrive
+  photos-cache:
+    name: prism-photos-cache
+
+# ============================================================================
+# NETWORKS - Container Communication
+# ============================================================================
+# Containers on the same network can communicate using service names as hostnames.
+# For example, the app can connect to "db:5432" instead of an IP address.
+#
+# Using a custom network isolates Prism from other Docker containers you might
+# be running, improving security.
+# ============================================================================
+networks:
+  prism-network:
+    name: prism-network
+    driver: bridge

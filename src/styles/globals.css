@@ -1,0 +1,406 @@
+/**
+ * ============================================================================
+ * PRISM - Global Styles
+ * ============================================================================
+ *
+ * WHAT THIS FILE DOES:
+ * This file contains global CSS styles that apply to the entire application.
+ * It includes:
+ *   1. Tailwind CSS base styles
+ *   2. CSS Custom Properties (variables) for theming
+ *   3. Global typography and reset styles
+ *   4. Dark mode color definitions
+ *
+ * HOW THEMING WORKS:
+ * We use CSS Custom Properties (also called CSS Variables) for colors.
+ * This allows us to change all colors by switching the "dark" class on <html>.
+ *
+ * Example:
+ *   --background: 0 0% 100%;     (white in light mode)
+ *   .dark --background: 0 0% 10%; (near-black in dark mode)
+ *
+ * COLOR FORMAT:
+ * Colors use HSL format WITHOUT the "hsl()" wrapper:
+ *   hue saturation% lightness%
+ *
+ * This lets Tailwind create variations:
+ *   bg-background      -> hsl(var(--background))
+ *   bg-background/50   -> hsl(var(--background) / 0.5)  (50% opacity)
+ *
+ * ============================================================================
+ */
+
+
+/* ============================================================================
+   TAILWIND CSS DIRECTIVES
+   ============================================================================
+   These three directives import Tailwind's styles:
+   - @tailwind base: Normalize CSS, sensible defaults
+   - @tailwind components: Component classes (.btn, .card, etc.)
+   - @tailwind utilities: Utility classes (.flex, .p-4, .text-blue-500)
+   ============================================================================ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+/* ============================================================================
+   CSS CUSTOM PROPERTIES - LIGHT MODE (Default)
+   ============================================================================
+   These variables define all colors used throughout the app.
+   Change these to customize the color scheme!
+
+   HSL COLOR REFERENCE:
+   - Hue: 0-360 (color wheel position: 0=red, 120=green, 240=blue)
+   - Saturation: 0-100% (0=gray, 100=vivid)
+   - Lightness: 0-100% (0=black, 100=white)
+
+   EXAMPLES:
+   - Pure white: 0 0% 100%
+   - Pure black: 0 0% 0%
+   - Blue:       220 90% 50%
+   ============================================================================ */
+
+@layer base {
+  :root {
+    /* ==== BACKGROUND COLORS ====
+       Main backgrounds for the app and UI elements */
+
+    /* Primary background - main app background */
+    --background: 0 0% 100%;        /* White */
+
+    /* Foreground - main text color */
+    --foreground: 222 47% 11%;      /* Near black with slight blue */
+
+
+    /* ==== CARD COLORS ====
+       Used for card components, widgets, and elevated surfaces */
+
+    --card: 0 0% 100%;              /* White */
+    --card-foreground: 222 47% 11%; /* Dark text */
+
+
+    /* ==== POPOVER COLORS ====
+       Dropdown menus, tooltips, and floating elements */
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+
+    /* ==== PRIMARY COLORS ====
+       Main brand color - used for primary buttons, links, focus states
+       CUSTOMIZE: Change this to your family's favorite color! */
+
+    --primary: 222 47% 31%;         /* Deep blue */
+    --primary-foreground: 210 40% 98%;  /* Light text on primary */
+
+
+    /* ==== SECONDARY COLORS ====
+       Less prominent UI elements, secondary buttons */
+
+    --secondary: 210 40% 96%;       /* Very light blue-gray */
+    --secondary-foreground: 222 47% 11%;
+
+
+    /* ==== MUTED COLORS ====
+       Subtle backgrounds, disabled states, placeholder text */
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;  /* Gray text */
+
+
+    /* ==== ACCENT COLORS ====
+       Highlights, hover states, selected items */
+
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+
+
+    /* ==== DESTRUCTIVE COLORS ====
+       Delete buttons, error messages, warnings */
+
+    --destructive: 0 84% 60%;       /* Red */
+    --destructive-foreground: 210 40% 98%;
+
+
+    /* ==== BORDER & INPUT COLORS ====
+       Borders around cards, inputs, and dividers */
+
+    --border: 214 32% 91%;          /* Light gray border */
+    --input: 214 32% 91%;           /* Input field border */
+    --ring: 222 47% 31%;            /* Focus ring (matches primary) */
+
+
+    /* ==== GLOBAL SETTINGS ==== */
+
+    /* Border radius for rounded corners
+       CUSTOMIZE: Increase for more rounded look, decrease for sharper */
+    --radius: 0.5rem;               /* 8px */
+
+
+    /* ==== CHART COLORS ====
+       Used by Recharts for data visualization (solar production, etc.) */
+
+    --chart-1: 220 70% 50%;         /* Blue */
+    --chart-2: 160 60% 45%;         /* Teal */
+    --chart-3: 30 80% 55%;          /* Orange */
+    --chart-4: 280 65% 60%;         /* Purple */
+    --chart-5: 340 75% 55%;         /* Pink */
+  }
+
+
+  /* ==========================================================================
+     CSS CUSTOM PROPERTIES - DARK MODE
+     ==========================================================================
+     These override the light mode values when dark class is on <html>.
+     Dark mode is easier on eyes at night and saves battery on OLED screens.
+     ========================================================================== */
+
+  .dark {
+    /* Darker backgrounds */
+    --background: 222 47% 11%;      /* Very dark blue-gray */
+    --foreground: 210 40% 98%;      /* Light text */
+
+    /* Card backgrounds slightly lighter than main background */
+    --card: 222 47% 15%;
+    --card-foreground: 210 40% 98%;
+
+    /* Popovers with subtle elevation */
+    --popover: 222 47% 15%;
+    --popover-foreground: 210 40% 98%;
+
+    /* Primary stays similar but slightly adjusted for dark */
+    --primary: 210 40% 98%;         /* Light color for contrast */
+    --primary-foreground: 222 47% 11%;
+
+    /* Secondary elements */
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+
+    /* Muted elements */
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+
+    /* Accent colors */
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+
+    /* Destructive (red) - slightly adjusted for dark mode */
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 210 40% 98%;
+
+    /* Borders - subtle in dark mode */
+    --border: 217 33% 25%;
+    --input: 217 33% 25%;
+    --ring: 212 95% 68%;            /* Brighter focus ring */
+
+    /* Chart colors adjusted for dark backgrounds */
+    --chart-1: 220 70% 60%;
+    --chart-2: 160 60% 55%;
+    --chart-3: 30 80% 60%;
+    --chart-4: 280 65% 65%;
+    --chart-5: 340 75% 60%;
+  }
+}
+
+
+/* ============================================================================
+   GLOBAL BASE STYLES
+   ============================================================================
+   Applied to all elements through Tailwind's @layer base directive.
+   These ensure consistent rendering across browsers.
+   ============================================================================ */
+
+@layer base {
+  /* Apply border color to all elements by default */
+  * {
+    @apply border-border;
+  }
+
+  /* Body styles */
+  body {
+    @apply bg-background text-foreground;
+
+    /* Smooth font rendering */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+
+    /* Prevent text size adjustment on mobile */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* ============================================================================
+     FOCUS STYLES - Accessibility
+     ============================================================================
+     Clear focus indicators are essential for keyboard navigation.
+     These styles ensure focused elements are visible for accessibility.
+     ============================================================================ */
+
+  /* Remove default focus outline, add custom ring */
+  *:focus {
+    @apply outline-none;
+  }
+
+  /* Add focus ring to interactive elements */
+  *:focus-visible {
+    @apply ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+
+  /* ============================================================================
+     SCROLLBAR STYLES
+     ============================================================================
+     Custom scrollbar styling for a cleaner look.
+     Works in Chrome, Edge, Safari. Firefox uses different properties.
+     ============================================================================ */
+
+  /* Webkit browsers (Chrome, Safari, Edge) */
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/50;
+  }
+
+  /* Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+  }
+
+
+  /* ============================================================================
+     TOUCH OPTIMIZATION
+     ============================================================================
+     Styles to improve touch interaction on touchscreens.
+     ============================================================================ */
+
+  /* Disable text selection on UI elements (not content) */
+  button,
+  [role="button"],
+  [role="tab"],
+  [role="switch"] {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Faster touch response (remove 300ms delay) */
+  a,
+  button,
+  [role="button"] {
+    touch-action: manipulation;
+  }
+
+  /* Disable tap highlight on mobile (we use custom feedback) */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+
+/* ============================================================================
+   UTILITY CLASSES
+   ============================================================================
+   Custom utility classes that extend Tailwind's built-in utilities.
+   ============================================================================ */
+
+@layer utilities {
+  /* ============================================================================
+     TOUCH-FRIENDLY UTILITIES
+     ============================================================================ */
+
+  /* Minimum touch target size (44x44px - Apple HIG) */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  /* Larger touch target (48x48px - Material Design) */
+  .touch-target-lg {
+    @apply min-h-[48px] min-w-[48px];
+  }
+
+  /* Extra large touch target for primary actions */
+  .touch-target-xl {
+    @apply min-h-[60px] min-w-[60px];
+  }
+
+
+  /* ============================================================================
+     TEXT UTILITIES
+     ============================================================================ */
+
+  /* Text that truncates with ellipsis */
+  .text-truncate {
+    @apply truncate;
+  }
+
+  /* Multi-line text that truncates (line-clamp) */
+  .text-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .text-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+
+  /* ============================================================================
+     LAYOUT UTILITIES
+     ============================================================================ */
+
+  /* Full screen container */
+  .full-screen {
+    @apply min-h-screen w-full;
+  }
+
+  /* Center content */
+  .center {
+    @apply flex items-center justify-center;
+  }
+
+  /* Stack children vertically with gap */
+  .stack {
+    @apply flex flex-col gap-4;
+  }
+
+  /* Row of children with gap */
+  .row {
+    @apply flex flex-row items-center gap-4;
+  }
+
+
+  /* ============================================================================
+     ANIMATION UTILITIES
+     ============================================================================ */
+
+  /* Respect user's reduced motion preference */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-spin,
+    .animate-pulse,
+    .animate-bounce {
+      animation: none;
+    }
+  }
+
+  /* No animations class (for user preference) */
+  .no-animations * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

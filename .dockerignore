@@ -1,0 +1,175 @@
+# ============================================================================
+# PRISM - Docker Ignore Configuration
+# ============================================================================
+#
+# WHAT THIS FILE DOES:
+# Lists files and folders that Docker should NOT copy when building an image.
+# This makes builds faster and images smaller.
+#
+# WHEN DOCKER BUILDS AN IMAGE:
+# 1. Docker copies all files from your project into a "build context"
+# 2. The Dockerfile uses COPY commands to copy files into the image
+# 3. This file tells Docker what NOT to include in step 1
+#
+# WHY IT MATTERS:
+# - Faster builds (less data to copy)
+# - Smaller images (don't include unnecessary files)
+# - Security (don't accidentally include secrets)
+# - Caching (changing ignored files won't invalidate Docker cache)
+#
+# ============================================================================
+
+
+# ============================================================================
+# GIT & VERSION CONTROL
+# ============================================================================
+# Git history and configuration - not needed in production image
+# ============================================================================
+
+.git
+.gitignore
+
+
+# ============================================================================
+# DEPENDENCIES
+# ============================================================================
+# We install fresh dependencies in the Dockerfile
+# Don't copy host's node_modules (might have wrong platform binaries)
+# ============================================================================
+
+node_modules
+
+
+# ============================================================================
+# BUILD OUTPUTS
+# ============================================================================
+# Built files - we rebuild inside Docker to ensure correct environment
+# ============================================================================
+
+.next
+out
+dist
+build
+
+
+# ============================================================================
+# ENVIRONMENT & SECRETS
+# ============================================================================
+# NEVER include secrets in Docker images!
+# They should be passed at runtime via environment variables
+# ============================================================================
+
+.env
+.env.*
+!.env.example
+
+
+# ============================================================================
+# DEVELOPMENT FILES
+# ============================================================================
+# Files only needed during development, not in production
+# ============================================================================
+
+# Development Docker configuration
+Dockerfile.dev
+docker-compose.dev.yml
+docker-compose.test.yml
+
+# Test files and coverage
+tests/
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+
+# Documentation (reduces image size)
+docs/
+*.md
+!README.md
+
+# IDE and editor files
+.vscode
+.idea
+*.sublime-*
+*.swp
+*.swo
+
+
+# ============================================================================
+# CACHE & TEMPORARY FILES
+# ============================================================================
+# Temporary files that shouldn't be in production
+# ============================================================================
+
+.cache
+cache/
+tmp/
+temp/
+*.log
+*.tmp
+*.temp
+
+
+# ============================================================================
+# UPLOADS & USER DATA
+# ============================================================================
+# User uploads are mounted as volumes, not built into image
+# ============================================================================
+
+uploads/
+photos/
+
+
+# ============================================================================
+# CONFIGURATION FILES FOR DEVELOPMENT
+# ============================================================================
+# Some config files are only for local development
+# ============================================================================
+
+# ESLint and Prettier (linting happens in CI, not production)
+.eslintrc*
+.eslintignore
+.prettierrc*
+.prettierignore
+eslint.config.*
+
+# TypeScript config is needed for build, don't exclude it
+# tsconfig.json - KEEP THIS
+
+# Jest configuration (testing only)
+jest.config.*
+jest.setup.*
+
+# Playwright configuration (E2E testing only)
+playwright.config.*
+
+
+# ============================================================================
+# OS-SPECIFIC FILES
+# ============================================================================
+# System files that sneak into projects
+# ============================================================================
+
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+
+# ============================================================================
+# MISC
+# ============================================================================
+
+# GitHub templates and workflows (only for CI, not production)
+.github/
+
+# Scripts directory (might contain development-only scripts)
+# Note: Keep scripts/ if you need them in production
+# scripts/
+
+# Backup files
+*.bak
+*.backup
+
+# Archive files
+*.zip
+*.tar.gz

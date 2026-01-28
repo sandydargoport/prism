@@ -1,0 +1,76 @@
+# ============================================================================
+# PRISM - Family Dashboard
+# Docker Compose Development Override
+# ============================================================================
+#
+# WHAT THIS FILE DOES:
+# This file extends docker-compose.yml with development-specific settings.
+# Use it when developing locally to get features like hot-reloading.
+#
+# HOW TO USE:
+# docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# Or create an alias in your shell:
+# alias prism-dev="docker-compose -f docker-compose.yml -f docker-compose.dev.yml"
+#
+# DIFFERENCES FROM PRODUCTION:
+# - Mounts source code for live reloading
+# - Enables debug logging
+# - Doesn't build the Docker image (runs npm run dev instead)
+# - Database data is still persisted (so you don't lose test data)
+#
+# ============================================================================
+
+version: '3.8'
+
+services:
+  app:
+    # Override the build to just use the base Node image
+    # We'll mount our source code and run npm run dev
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+
+    # Development environment
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://prism:${DB_PASSWORD:-prism_dev_password}@db:5432/prism
+      - REDIS_URL=redis://redis:6379
+
+    # Mount source code for hot reloading
+    # Changes to your code will immediately reflect in the browser
+    volumes:
+      # Mount source code (excluding node_modules)
+      - ./src:/app/src
+      - ./public:/app/public
+      - ./config:/app/config
+
+      # Mount configuration files
+      - ./package.json:/app/package.json
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./next.config.js:/app/next.config.js
+      - ./tailwind.config.js:/app/tailwind.config.js
+      - ./postcss.config.js:/app/postcss.config.js
+
+      # Persist node_modules as a volume (don't sync from host)
+      # This prevents conflicts between host OS and container node_modules
+      - node_modules:/app/node_modules
+
+    # Disable health check in development (app restarts frequently)
+    healthcheck:
+      disable: true
+
+  db:
+    # In development, expose PostgreSQL port for direct access
+    # This lets you use tools like pgAdmin or DBeaver to inspect the database
+    ports:
+      - "5432:5432"
+
+  redis:
+    # In development, expose Redis port for debugging
+    ports:
+      - "6379:6379"
+
+volumes:
+  node_modules:
+    name: prism-node-modules
