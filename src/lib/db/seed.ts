@@ -206,7 +206,7 @@ async function seed() {
   await db.insert(schema.events).values([
     {
       title: 'Soccer Practice',
-      location: 'Northbrook Park',
+      location: 'Community Park',
       startTime: eventDate1,
       endTime: eventEnd1,
       color: '#10B981',
@@ -445,7 +445,7 @@ async function seed() {
     {
       title: 'Car oil change',
       category: 'car',
-      description: 'Honda Odyssey - Valvoline',
+      description: 'Family car - regular oil change',
       schedule: 'quarterly',
       nextDue: nextMonthDate,
       assignedTo: alex.id,
@@ -494,7 +494,7 @@ async function seed() {
     },
     {
       key: 'location',
-      value: { city: 'Northbrook', state: 'IL', country: 'US' },
+      value: { city: 'Springfield', state: 'IL', country: 'US' },
     },
     {
       key: 'security',
@@ -519,11 +519,15 @@ async function seed() {
       name: 'Default Dashboard',
       isDefault: true,
       widgets: [
-        { type: 'clock', position: { x: 0, y: 0, w: 2, h: 1 } },
-        { type: 'weather', position: { x: 2, y: 0, w: 2, h: 1 } },
-        { type: 'calendar', position: { x: 0, y: 1, w: 2, h: 2 } },
-        { type: 'tasks', position: { x: 2, y: 1, w: 2, h: 2 } },
-        { type: 'messages', position: { x: 0, y: 3, w: 4, h: 1 } },
+        { i: 'calendar', x: 0, y: 0, w: 2, h: 2 },
+        { i: 'clock', x: 2, y: 0, w: 1, h: 1 },
+        { i: 'weather', x: 3, y: 0, w: 1, h: 2 },
+        { i: 'tasks', x: 2, y: 1, w: 1, h: 2 },
+        { i: 'messages', x: 0, y: 2, w: 1, h: 2 },
+        { i: 'chores', x: 1, y: 2, w: 1, h: 2 },
+        { i: 'shopping', x: 3, y: 2, w: 1, h: 2 },
+        { i: 'birthdays', x: 0, y: 4, w: 1, h: 2 },
+        { i: 'meals', x: 1, y: 4, w: 2, h: 2 },
       ],
       createdBy: alex.id,
     },

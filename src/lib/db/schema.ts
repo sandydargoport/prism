@@ -59,7 +59,7 @@ export const users = pgTable('users', {
   // Primary key - UUID for security (can't guess sequential IDs)
   id: uuid('id').defaultRandom().primaryKey(),
 
-  // Display name ("Alex", "Jordan", "Emma")
+  // Display name (e.g., "Alex", "Jordan")
   name: varchar('name', { length: 100 }).notNull(),
 
   // Permission level - determines what they can do

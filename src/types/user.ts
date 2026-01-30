@@ -52,7 +52,7 @@ export type UserRole = 'parent' | 'child' | 'guest';
  *
  * PROPERTIES EXPLAINED:
  * - id: Unique identifier (UUID format)
- * - name: Display name ("Alex", "Jordan", "Emma")
+ * - name: Display name (e.g., "Alex", "Jordan")
  * - role: Permission level (parent, child, guest)
  * - color: Hex color for calendar/task display ("#3B82F6")
  * - pin: Hashed PIN for authentication (never store plain text!)

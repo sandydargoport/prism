@@ -46,10 +46,10 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/layout/AppShell';
-import { DashboardLayout, DashboardHeader } from '@/components/layout/DashboardGrid';
+import { DashboardGrid, DashboardLayout, DashboardHeader } from '@/components/layout/DashboardGrid';
 import { GridLayout } from '@/components/layout/GridLayout';
 import { LayoutEditor } from '@/components/layout/LayoutEditor';
 import { useAuth } from '@/components/providers';
@@ -58,13 +58,35 @@ import { AddTaskModal, AddMessageModal, AddChoreModal, AddShoppingItemModal } fr
 import { DEFAULT_TEMPLATE } from '@/lib/constants/layoutTemplates';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 
+class WidgetErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { error: Error | null }
+> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="p-4 bg-destructive/10 text-destructive rounded-lg">
+          <p className="font-bold">Widget Error</p>
+          <p className="text-sm">{this.state.error.message}</p>
+          <pre className="text-xs mt-2 overflow-auto max-h-40">{this.state.error.stack}</pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 
 /**
  * DASHBOARD PROPS
  * ============================================================================
  */
 export interface DashboardProps {
-  /** Location for weather (defaults to Northbrook, IL) */
+  /** Location for weather (defaults to Springfield, IL) */
   weatherLocation?: string;
   /** Additional CSS classes */
   className?: string;
@@ -91,13 +113,18 @@ export interface DashboardProps {
  * ============================================================================
  */
 export function Dashboard({
-  weatherLocation = 'Northbrook, IL',
+  weatherLocation = 'Springfield, IL',
   className,
 }: DashboardProps) {
   // ============================================================================
   // HOOKS
   // ============================================================================
   const router = useRouter();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Auth context - provides activeUser and requireAuth function
   const { activeUser, requireAuth, clearActiveUser } = useAuth();
@@ -112,7 +139,7 @@ export function Dashboard({
 
   // Fetch weather data from API
   // Don't pass location - let the API use the WEATHER_LOCATION env variable
-  // which has the correct format for OpenWeatherMap (e.g., "Northbrook,IL,US")
+  // which has the correct format for OpenWeatherMap (e.g., "Springfield,IL,US")
   const {
     data: weatherData,
     loading: weatherLoading,
@@ -292,6 +319,14 @@ export function Dashboard({
         {/* ================================================================== */}
         {/* WIDGET GRID */}
         {/* ================================================================== */}
+        {!isMounted ? (
+          <DashboardGrid>
+            <div className="col-span-4 flex items-center justify-center h-64 text-muted-foreground">
+              Loading widgets...
+            </div>
+          </DashboardGrid>
+        ) : (
+        <WidgetErrorBoundary>
         <GridLayout
           layout={activeWidgets}
           isEditable={isEditing}
@@ -422,6 +457,8 @@ export function Dashboard({
             },
           }}
         />
+        </WidgetErrorBoundary>
+        )}
 
         {/* ================================================================== */}
         {/* MODALS */}

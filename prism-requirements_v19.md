@@ -10,7 +10,7 @@
 4. **Hearth** - Evokes warmth, home, the heart of the household
 5. **Together** - Simple, meaningful, emphasizes family connection
 
-**Purpose:** Open-source family calendar and dashboard combining best features of Skylight and Dakboard with unique enhancements  
+**Purpose:** Open-source family calendar and dashboard with unique enhancements  
 **Target Audience:** Families wanting a centralized touchscreen display for calendars, tasks, chores, and home information  
 **License:** Open Source (MIT License recommended)
 
@@ -3569,7 +3569,6 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file for
 
 ## 🙏 Acknowledgments
 
-- Inspired by [Skylight Calendar](https://www.skylightframe.com/calendar) and [DAKboard](https://dakboard.com/)
 - Built with ❤️ for families who want to stay connected and organized
 
 ## ⭐ Star History
@@ -3961,7 +3960,6 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file for
 
 ## 🙏 Acknowledgments
 
-- Inspired by [Skylight Calendar](https://www.skylightframe.com/calendar) and [DAKboard](https://dakboard.com/)
 - Built with ❤️ for families who want to stay connected and organized
 
 ## ⭐ Star History
@@ -4199,7 +4197,7 @@ jobs:
 
 ### Sections to Add
 - Demo video or GIF
-- Feature comparison table (vs Skylight/DAKboard)
+- Feature comparison table (vs commercial alternatives)
 - Hardware recommendations
 - Performance benchmarks
 - Sponsor/donation links (optional)
@@ -4262,7 +4260,7 @@ jobs:
 
 ## Summary
 
-This family dashboard combines the best features of Skylight and Dakboard while adding unique capabilities like solar monitoring, bus tracking, and smart home control. Built with TypeScript, React, and Next.js, it's:
+This family dashboard provides unique capabilities like solar monitoring, bus tracking, and smart home control. Built with TypeScript, React, and Next.js, it's:
 
 - **Easy to use** for families (touch-optimized, beautiful UI)
 - **Easy to customize** for non-coders (well-documented, configuration files)

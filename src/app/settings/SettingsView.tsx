@@ -800,7 +800,7 @@ export function SettingsView() {
                   </CardHeader>
                   <CardContent>
                     <Input
-                      defaultValue="Northbrook, IL"
+                      defaultValue="Springfield, IL"
                       placeholder="City, State"
                     />
                   </CardContent>

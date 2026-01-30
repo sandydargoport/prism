@@ -17,7 +17,7 @@
  * USAGE:
  *   // With image
  *   <Avatar>
- *     <AvatarImage src="/avatars/alex.jpg" alt="Alex" />
+ *     <AvatarImage src="/avatars/user.jpg" alt="User" />
  *     <AvatarFallback>E</AvatarFallback>
  *   </Avatar>
  *
@@ -135,7 +135,7 @@ AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName;
  * Get initials from a name
  *
  * @param name - Full name (e.g., "Alex Smith")
- * @returns Initials (e.g., "ES")
+ * @returns Initials (e.g., "AS")
  */
 export function getInitials(name: string): string {
   return name
@@ -156,7 +156,7 @@ export function getInitials(name: string): string {
  * @example
  * <UserAvatar
  *   name="Alex"
- *   imageUrl="/avatars/alex.jpg"
+ *   imageUrl="/avatars/user.jpg"
  *   color="#3B82F6"
  *   size="lg"
  * />

@@ -107,7 +107,7 @@ function getDemoEvents(): CalendarEvent[] {
       endTime: new Date(today.setHours(17, 30)),
       allDay: false,
       color: '#10B981',
-      location: 'Northbrook Park',
+      location: 'Community Park',
       calendarName: "Emma's Calendar",
       calendarId: 'emma',
     },

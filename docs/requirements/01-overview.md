@@ -10,7 +10,7 @@
 4. **Hearth** - Evokes warmth, home, the heart of the household
 5. **Together** - Simple, meaningful, emphasizes family connection
 
-**Purpose:** Open-source family calendar and dashboard combining best features of Skylight and Dakboard with unique enhancements
+**Purpose:** Open-source family calendar and dashboard with unique enhancements
 **Target Audience:** Families wanting a centralized touchscreen display for calendars, tasks, chores, and home information
 **License:** Open Source (MIT License recommended)
 

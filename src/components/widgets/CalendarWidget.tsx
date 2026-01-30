@@ -440,7 +440,7 @@ function getDemoEvents(): CalendarEvent[] {
       startTime: today9am,
       endTime: new Date(today9am.getTime() + 30 * 60000),
       allDay: false,
-      color: '#3B82F6', // Alex's color
+      color: '#3B82F6',
       calendarName: "Alex's Calendar",
       calendarId: 'alex',
     },
@@ -451,18 +451,18 @@ function getDemoEvents(): CalendarEvent[] {
       startTime: today10am,
       endTime: new Date(today10am.getTime() + 60 * 60000),
       allDay: false,
-      color: '#EC4899', // Jordan's color
+      color: '#EC4899',
       calendarName: "Jordan's Calendar",
       calendarId: 'jordan',
     },
     {
       id: '3',
       title: 'Soccer Practice',
-      location: 'Northbrook Park',
+      location: 'Community Park',
       startTime: today4pm,
       endTime: new Date(today4pm.getTime() + 90 * 60000),
       allDay: false,
-      color: '#10B981', // Emma's color
+      color: '#10B981',
       calendarName: "Emma's Calendar",
       calendarId: 'emma',
     },
@@ -482,7 +482,7 @@ function getDemoEvents(): CalendarEvent[] {
       startTime: tomorrow3pm,
       endTime: new Date(tomorrow3pm.getTime() + 45 * 60000),
       allDay: false,
-      color: '#F59E0B', // Sophie's color
+      color: '#F59E0B',
       calendarName: "Sophie's Calendar",
       calendarId: 'sophie',
     },

@@ -67,7 +67,7 @@ interface OpenWeatherForecast {
  */
 function getConfig() {
   const apiKey = process.env.OPENWEATHER_API_KEY;
-  const location = process.env.WEATHER_LOCATION || 'Northbrook,IL,US';
+  const location = process.env.WEATHER_LOCATION || 'Springfield,IL,US';
 
   if (!apiKey) {
     throw new Error('OPENWEATHER_API_KEY is not configured in environment');

@@ -30,7 +30,7 @@
  * ============================================================================
  */
 
-import { Dashboard } from '@/components/dashboard';
+import { DashboardClient } from './DashboardClient';
 
 
 /**
@@ -105,11 +105,7 @@ export default function HomePage() {
         - Implement proper authentication flow
         - Add user preferences from database
       */}
-      <Dashboard
-        // No longer require PIN at startup - anyone can view
-        // Authentication happens when taking actions
-        weatherLocation="Northbrook, IL"
-      />
+      <DashboardClient />
     </main>
   );
 }

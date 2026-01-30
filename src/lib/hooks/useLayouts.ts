@@ -45,7 +45,24 @@ export function useLayouts(): UseLayoutsResult {
       const response = await fetch('/api/layouts');
       if (!response.ok) throw new Error('Failed to fetch layouts');
       const data = await response.json();
-      setLayouts(data.layouts);
+      // Normalize widget format: DB may store {type, position:{x,y,w,h}}
+      // but we need {i, x, y, w, h}
+      const normalized = (data.layouts || []).map((l: Layout) => ({
+        ...l,
+        widgets: (l.widgets || []).map((w: WidgetConfig & { type?: string; position?: { x: number; y: number; w: number; h: number } }) => {
+          if (w.i !== undefined && w.x !== undefined) return w;
+          return {
+            i: w.type || w.i,
+            x: w.position?.x ?? w.x ?? 0,
+            y: w.position?.y ?? w.y ?? 0,
+            w: w.position?.w ?? w.w ?? 1,
+            h: w.position?.h ?? w.h ?? 1,
+            visible: w.visible,
+            settings: w.settings,
+          } as WidgetConfig;
+        }),
+      }));
+      setLayouts(normalized);
     } catch (err) {
       console.error('Error fetching layouts:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch layouts');

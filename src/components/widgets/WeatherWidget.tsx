@@ -81,7 +81,7 @@ export interface WeatherData {
  * ============================================================================
  */
 export interface WeatherWidgetProps {
-  /** Location name (e.g., "Northbrook, IL") */
+  /** Location name (e.g., "Springfield, IL") */
   location?: string;
   /** Use Celsius instead of Fahrenheit */
   useCelsius?: boolean;
@@ -121,7 +121,7 @@ export interface WeatherWidgetProps {
  * ============================================================================
  */
 export function WeatherWidget({
-  location = 'Northbrook, IL',
+  location = 'Springfield, IL',
   useCelsius = false,
   showForecast = true,
   forecastDays = 5,

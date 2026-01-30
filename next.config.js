@@ -47,6 +47,13 @@ const nextConfig = {
   reactStrictMode: true,
 
   // ==========================================================================
+  // TRANSPILE PACKAGES
+  // ==========================================================================
+  // Packages that need to be transpiled by Next.js (e.g., for CSS imports)
+  // ==========================================================================
+  transpilePackages: ['react-grid-layout'],
+
+  // ==========================================================================
   // IMAGE OPTIMIZATION
   // ==========================================================================
   // Next.js automatically optimizes images (resizing, format conversion, lazy
