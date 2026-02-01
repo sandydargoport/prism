@@ -146,8 +146,10 @@ export function WidgetContainer({
         'flex flex-col',
         // Interactive cursor if clickable
         onClick && 'cursor-pointer hover:shadow-md transition-shadow',
-        // Overflow handling
-        'overflow-hidden',
+        // Seasonal accent top border
+        'border-t-2 border-t-seasonal-accent',
+        // Allow header popover dropdowns to overflow
+        'overflow-visible',
         className
       )}
       onClick={onClick}
@@ -158,7 +160,7 @@ export function WidgetContainer({
           <div className="flex items-center gap-2">
             {/* Icon */}
             {icon && (
-              <span className="text-muted-foreground">
+              <span className="text-seasonal-accent">
                 {icon}
               </span>
             )}

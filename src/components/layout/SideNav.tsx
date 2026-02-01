@@ -202,7 +202,7 @@ export function SideNav({ user, onLogout, className }: SideNavProps) {
           {/* Logo/Brand - show K when collapsed, Prism when expanded */}
           <Link
             href="/"
-            className="font-bold text-xl text-primary"
+            className="font-bold text-xl text-seasonal-accent"
           >
             <span className="group-hover:hidden">K</span>
             <span className="hidden group-hover:inline">Prism</span>
