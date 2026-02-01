@@ -92,7 +92,7 @@ export function AppShell({
       {/* SIDE NAVIGATION */}
       {/* Only rendered if hideNav is false */}
       {/* ==================================================================== */}
-      {!hideNav && <SideNav user={user} onLogout={onLogout} />}
+      {!hideNav && <SideNav />}
 
       {/* ==================================================================== */}
       {/* MAIN CONTENT AREA */}

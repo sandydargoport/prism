@@ -28,8 +28,6 @@ import Link from 'next/link';
 import { useCalendarEvents, useCalendarSources } from '@/lib/hooks';
 import {
   format,
-  startOfMonth,
-  endOfMonth,
   startOfWeek,
   endOfWeek,
   addDays,
@@ -38,9 +36,6 @@ import {
   subMonths,
   subWeeks,
   subDays,
-  isSameMonth,
-  isSameDay,
-  isToday,
 } from 'date-fns';
 import {
   ChevronLeft,
@@ -58,6 +53,7 @@ import { Loader2 } from 'lucide-react';
 import type { CalendarEvent } from '@/types/calendar';
 import { AddEventModal } from '@/components/modals';
 import { PageWrapper } from '@/components/layout';
+import { MonthView, WeekView, TwoWeekView, DayViewSideBySide } from '@/components/calendar';
 
 
 /**
@@ -164,38 +160,27 @@ export function CalendarView() {
   // Fetch calendar sources for filtering
   const { calendars: calendarSources } = useCalendarSources();
 
-  // Filter to only enabled calendars that are assigned or family
-  const filterableCalendars = calendarSources.filter(
-    (cal) => cal.enabled && (cal.user || (cal as { isFamily?: boolean }).isFamily)
-  );
+  // Include all enabled calendars
+  const filterableCalendars = calendarSources.filter((cal) => cal.enabled);
 
-  // Get unique calendar groups (Family + users)
-  const calendarGroups = React.useMemo(() => {
-    const groups: Array<{ id: string; name: string; color: string }> = [];
-
-    // Add Family if any family calendars exist
-    const hasFamilyCalendar = filterableCalendars.some(
-      (cal) => (cal as { isFamily?: boolean }).isFamily
-    );
-    if (hasFamilyCalendar) {
-      groups.push({ id: 'FAMILY', name: 'Family', color: '#F59E0B' });
+  // Get calendar groups from API
+  const [calendarGroups, setCalendarGroups] = React.useState<Array<{ id: string; name: string; color: string }>>([]);
+  React.useEffect(() => {
+    async function fetchGroups() {
+      try {
+        const res = await fetch('/api/calendar-groups');
+        if (res.ok) {
+          const data = await res.json();
+          setCalendarGroups((data.groups || []).map((g: { id: string; name: string; color: string }) => ({
+            id: g.id,
+            name: g.name,
+            color: g.color,
+          })));
+        }
+      } catch { /* ignore */ }
     }
-
-    // Add each unique user
-    const seenUsers = new Set<string>();
-    for (const cal of filterableCalendars) {
-      if (cal.user && cal.user.id !== 'FAMILY' && !seenUsers.has(cal.user.id)) {
-        seenUsers.add(cal.user.id);
-        groups.push({
-          id: cal.user.id,
-          name: cal.user.name,
-          color: cal.user.color,
-        });
-      }
-    }
-
-    return groups;
-  }, [filterableCalendars]);
+    fetchGroups();
+  }, [calendarSources]);
 
   // Toggle calendar selection
   const toggleCalendar = (id: string) => {
@@ -254,18 +239,21 @@ export function CalendarView() {
         calendarId: event.calendarId,
       }))
       .filter((event) => {
-        // If "all" is selected, show everything
         if (selectedCalendarIds.has('all')) return true;
-        // If no filters selected, show nothing
         if (selectedCalendarIds.size === 0) return false;
 
-        // Find the calendar source for this event
         const calSource = filterableCalendars.find((c) => c.id === event.calendarId);
         if (!calSource) return false;
 
-        // Check if this calendar's user/family is selected
-        if ((calSource as { isFamily?: boolean }).isFamily && selectedCalendarIds.has('FAMILY')) {
+        // Check groupId first (new system)
+        if (calSource.groupId && selectedCalendarIds.has(calSource.groupId)) {
           return true;
+        }
+
+        // Legacy fallback
+        if ((calSource as { isFamily?: boolean }).isFamily) {
+          const familyGroup = calendarGroups.find((g) => g.name === 'Family');
+          if (familyGroup && selectedCalendarIds.has(familyGroup.id)) return true;
         }
         if (calSource.user && selectedCalendarIds.has(calSource.user.id)) {
           return true;
@@ -439,7 +427,7 @@ export function CalendarView() {
             <button
               onClick={() => toggleCalendar('all')}
               className={cn(
-                'px-3 py-1 rounded-full text-xs font-medium transition-colors',
+                'px-3 py-1.5 rounded-full text-xs font-medium transition-colors leading-none',
                 selectedCalendarIds.has('all')
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-muted text-muted-foreground hover:bg-accent'
@@ -453,7 +441,7 @@ export function CalendarView() {
                 key={group.id}
                 onClick={() => toggleCalendar(group.id)}
                 className={cn(
-                  'px-3 py-1 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5',
+                  'px-3 py-1.5 rounded-full text-xs font-medium transition-colors inline-flex items-center gap-1.5 leading-none',
                   selectedCalendarIds.has(group.id) || selectedCalendarIds.has('all')
                     ? 'text-white'
                     : 'bg-muted text-muted-foreground hover:bg-accent'
@@ -607,441 +595,3 @@ export function CalendarView() {
 }
 
 
-/**
- * MONTH VIEW COMPONENT
- * ============================================================================
- */
-function MonthView({
-  currentDate,
-  events,
-  onEventClick,
-  onDateClick,
-}: {
-  currentDate: Date;
-  events: CalendarEvent[];
-  onEventClick: (event: CalendarEvent) => void;
-  onDateClick: (date: Date) => void;
-}) {
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(currentDate);
-  const calendarStart = startOfWeek(monthStart);
-  const calendarEnd = endOfWeek(monthEnd);
-
-  // Generate all days in the calendar view
-  const days: Date[] = [];
-  let day = calendarStart;
-  while (day <= calendarEnd) {
-    days.push(day);
-    day = addDays(day, 1);
-  }
-
-  // Day names
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-  return (
-    <div className="h-full flex flex-col">
-      {/* Day headers */}
-      <div className="grid grid-cols-7 gap-1 mb-1">
-        {dayNames.map((name) => (
-          <div
-            key={name}
-            className="text-center text-sm font-medium text-muted-foreground py-2"
-          >
-            {name}
-          </div>
-        ))}
-      </div>
-
-      {/* Calendar grid */}
-      <div className="flex-1 grid grid-cols-7 gap-1 auto-rows-fr">
-        {days.map((date, index) => {
-          const dayEvents = events.filter((event) =>
-            isSameDay(event.startTime, date)
-          );
-
-          return (
-            <div
-              key={index}
-              onClick={() => onDateClick(date)}
-              className={cn(
-                'border border-border rounded-md p-1 cursor-pointer',
-                'hover:bg-accent/50 transition-colors',
-                'flex flex-col min-h-0',
-                !isSameMonth(date, currentDate) && 'bg-muted/30 text-muted-foreground',
-                isToday(date) && 'border-primary border-2'
-              )}
-            >
-              {/* Date number */}
-              <div
-                className={cn(
-                  'text-sm font-medium mb-1',
-                  isToday(date) && 'text-primary'
-                )}
-              >
-                {format(date, 'd')}
-              </div>
-
-              {/* Events */}
-              <div className="flex-1 overflow-hidden space-y-0.5">
-                {dayEvents.slice(0, 3).map((event) => (
-                  <button
-                    key={event.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEventClick(event);
-                    }}
-                    className="w-full text-left text-xs px-1 py-0.5 rounded truncate"
-                    style={{ backgroundColor: event.color + '20', color: event.color }}
-                  >
-                    {event.allDay ? event.title : `${format(event.startTime, 'h:mm')} ${event.title}`}
-                  </button>
-                ))}
-                {dayEvents.length > 3 && (
-                  <div className="text-xs text-muted-foreground px-1">
-                    +{dayEvents.length - 3} more
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-
-/**
- * WEEK VIEW COMPONENT
- * ============================================================================
- */
-function WeekView({
-  currentDate,
-  events,
-  onEventClick,
-}: {
-  currentDate: Date;
-  events: CalendarEvent[];
-  onEventClick: (event: CalendarEvent) => void;
-}) {
-  const weekStart = startOfWeek(currentDate);
-
-  // Generate week days
-  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-
-  return (
-    <div className="h-full flex flex-col">
-      {/* Day headers */}
-      <div className="grid grid-cols-7 gap-2 mb-2">
-        {days.map((date) => (
-          <div
-            key={date.toISOString()}
-            className={cn(
-              'text-center py-2 rounded-md',
-              isToday(date) && 'bg-primary text-primary-foreground'
-            )}
-          >
-            <div className="text-sm font-medium">
-              {format(date, 'EEE')}
-            </div>
-            <div className="text-2xl font-bold">
-              {format(date, 'd')}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Events for each day */}
-      <div className="flex-1 grid grid-cols-7 gap-2 overflow-y-auto">
-        {days.map((date) => {
-          const dayEvents = events.filter((event) =>
-            isSameDay(event.startTime, date)
-          );
-
-          return (
-            <div key={date.toISOString()} className="space-y-1">
-              {dayEvents.map((event) => (
-                <button
-                  key={event.id}
-                  onClick={() => onEventClick(event)}
-                  className="w-full text-left p-2 rounded-md hover:opacity-80 transition-opacity"
-                  style={{ backgroundColor: event.color + '20', borderLeft: `3px solid ${event.color}` }}
-                >
-                  <div className="text-xs text-muted-foreground">
-                    {event.allDay ? 'All day' : format(event.startTime, 'h:mm a')}
-                  </div>
-                  <div className="text-sm font-medium truncate">
-                    {event.title}
-                  </div>
-                </button>
-              ))}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-
-/**
- * TWO WEEK VIEW COMPONENT
- * ============================================================================
- * Shows 2 weeks (Sunday-Saturday) in a calendar grid format
- */
-function TwoWeekView({
-  currentDate,
-  events,
-  onEventClick,
-}: {
-  currentDate: Date;
-  events: CalendarEvent[];
-  onEventClick: (event: CalendarEvent) => void;
-}) {
-  const weekStart = startOfWeek(currentDate);
-  const twoWeekEnd = addDays(weekStart, 13); // 14 days total (0-13)
-
-  // Generate all 14 days
-  const days: Date[] = [];
-  let day = weekStart;
-  while (day <= twoWeekEnd) {
-    days.push(day);
-    day = addDays(day, 1);
-  }
-
-  // Day names
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-  return (
-    <div className="h-full flex flex-col">
-      {/* Day headers */}
-      <div className="grid grid-cols-7 gap-1 mb-1">
-        {dayNames.map((name) => (
-          <div
-            key={name}
-            className="text-center text-sm font-medium text-muted-foreground py-2"
-          >
-            {name}
-          </div>
-        ))}
-      </div>
-
-      {/* Calendar grid - 2 rows of 7 days */}
-      <div className="flex-1 grid grid-cols-7 grid-rows-2 gap-1">
-        {days.map((date, index) => {
-          const dayEvents = events.filter((event) =>
-            isSameDay(event.startTime, date)
-          );
-
-          return (
-            <div
-              key={index}
-              className={cn(
-                'border border-border rounded-md p-1 cursor-pointer',
-                'hover:bg-accent/50 transition-colors',
-                'flex flex-col min-h-0 overflow-hidden',
-                isToday(date) && 'border-primary border-2'
-              )}
-            >
-              {/* Date number */}
-              <div
-                className={cn(
-                  'text-sm font-medium mb-1 flex items-center gap-1',
-                  isToday(date) && 'text-primary'
-                )}
-              >
-                <span>{format(date, 'd')}</span>
-                {index < 7 || index === 7 ? (
-                  <span className="text-xs text-muted-foreground">
-                    {format(date, 'MMM')}
-                  </span>
-                ) : null}
-              </div>
-
-              {/* Events */}
-              <div className="flex-1 overflow-hidden space-y-0.5">
-                {dayEvents.slice(0, 4).map((event) => (
-                  <button
-                    key={event.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEventClick(event);
-                    }}
-                    className="w-full text-left text-xs px-1 py-0.5 rounded truncate"
-                    style={{ backgroundColor: event.color + '20', color: event.color }}
-                  >
-                    {event.allDay ? event.title : `${format(event.startTime, 'h:mm')} ${event.title}`}
-                  </button>
-                ))}
-                {dayEvents.length > 4 && (
-                  <div className="text-xs text-muted-foreground px-1">
-                    +{dayEvents.length - 4} more
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-
-/**
- * DAY VIEW SIDE-BY-SIDE COMPONENT
- * ============================================================================
- * Shows each family member's calendar in separate columns,
- * aligned by hour vertically.
- */
-function DayViewSideBySide({
-  currentDate,
-  events,
-  calendarGroups,
-  onEventClick,
-}: {
-  currentDate: Date;
-  events: CalendarEvent[];
-  calendarGroups: Array<{ id: string; name: string; color: string }>;
-  onEventClick: (event: CalendarEvent) => void;
-}) {
-  // Generate hourly time slots (6 AM - 10 PM)
-  const hours = Array.from({ length: 17 }, (_, i) => i + 6);
-
-  const dayEvents = events.filter((event) =>
-    isSameDay(event.startTime, currentDate)
-  );
-
-  const allDayEvents = dayEvents.filter((e) => e.allDay);
-  const timedEvents = dayEvents.filter((e) => !e.allDay);
-
-  // Group events by calendar (person)
-  const getEventsForCalendar = (calendarId: string) => {
-    if (calendarId === 'FAMILY') {
-      // Family events don't have a specific user
-      return timedEvents.filter(
-        (e) => e.calendarName?.toLowerCase().includes('family')
-      );
-    }
-    return timedEvents.filter((e) => {
-      // Match by calendar name containing the person's name
-      const group = calendarGroups.find((g) => g.id === calendarId);
-      if (!group) return false;
-      return e.calendarName?.toLowerCase().includes(group.name.toLowerCase());
-    });
-  };
-
-  const getAllDayEventsForCalendar = (calendarId: string) => {
-    if (calendarId === 'FAMILY') {
-      return allDayEvents.filter(
-        (e) => e.calendarName?.toLowerCase().includes('family')
-      );
-    }
-    const group = calendarGroups.find((g) => g.id === calendarId);
-    if (!group) return [];
-    return allDayEvents.filter(
-      (e) => e.calendarName?.toLowerCase().includes(group.name.toLowerCase())
-    );
-  };
-
-  // If no calendar groups, show a simple message
-  if (calendarGroups.length === 0) {
-    return (
-      <div className="h-full flex items-center justify-center text-muted-foreground">
-        <p>No calendars configured. Add calendar sources in settings.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="h-full flex flex-col">
-      {/* All-day events row */}
-      <div className="flex-shrink-0 border-b border-border">
-        <div className="flex">
-          {/* Time column spacer */}
-          <div className="w-16 flex-shrink-0" />
-
-          {/* Calendar columns */}
-          {calendarGroups.map((group) => {
-            const calAllDay = getAllDayEventsForCalendar(group.id);
-            return (
-              <div
-                key={group.id}
-                className="flex-1 min-w-0 border-l border-border p-1"
-              >
-                {/* Calendar header */}
-                <div
-                  className="text-sm font-medium text-center py-1 mb-1 rounded"
-                  style={{ backgroundColor: group.color + '20', color: group.color }}
-                >
-                  {group.name}
-                </div>
-
-                {/* All-day events for this calendar */}
-                {calAllDay.length > 0 && (
-                  <div className="space-y-0.5">
-                    {calAllDay.map((event) => (
-                      <button
-                        key={event.id}
-                        onClick={() => onEventClick(event)}
-                        className="w-full text-left text-xs px-1 py-0.5 rounded truncate"
-                        style={{ backgroundColor: event.color + '20', borderLeft: `2px solid ${event.color}` }}
-                      >
-                        {event.title}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Hourly schedule */}
-      <div className="flex-1 overflow-y-auto">
-        {hours.map((hour) => (
-          <div key={hour} className="flex border-t border-border min-h-[60px]">
-            {/* Time label */}
-            <div className="w-16 flex-shrink-0 pr-2 text-right text-xs text-muted-foreground pt-1">
-              {format(new Date().setHours(hour, 0), 'h a')}
-            </div>
-
-            {/* Calendar columns */}
-            {calendarGroups.map((group) => {
-              const calEvents = getEventsForCalendar(group.id);
-              const hourEvents = calEvents.filter(
-                (event) => event.startTime.getHours() === hour
-              );
-
-              return (
-                <div
-                  key={group.id}
-                  className="flex-1 min-w-0 border-l border-border relative"
-                >
-                  {hourEvents.map((event) => (
-                    <button
-                      key={event.id}
-                      onClick={() => onEventClick(event)}
-                      className="absolute left-0 right-0 mx-0.5 p-1 rounded text-left text-xs"
-                      style={{
-                        backgroundColor: event.color + '20',
-                        borderLeft: `2px solid ${event.color}`,
-                        top: `${(event.startTime.getMinutes() / 60) * 100}%`,
-                      }}
-                    >
-                      <div className="font-medium truncate">{event.title}</div>
-                      <div className="text-muted-foreground">
-                        {format(event.startTime, 'h:mm a')}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}

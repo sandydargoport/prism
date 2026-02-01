@@ -129,6 +129,11 @@ export function Dashboard({
   // Auth context - provides activeUser and requireAuth function
   const { activeUser, requireAuth, clearActiveUser } = useAuth();
 
+  // Login handler for header avatar
+  const handleLogin = async () => {
+    await requireAuth('Login', 'Select your profile and enter your PIN');
+  };
+
   // Fetch calendar events from API
   // Fetch 30 days to support all view options (3 days, 1 week, 2 weeks, month)
   const {
@@ -202,8 +207,10 @@ export function Dashboard({
 
   // Layouts
   const {
+    layouts: allLayouts,
     activeLayout: savedLayout,
     saveLayout,
+    deleteLayout,
     loading: layoutsLoading,
   } = useLayouts();
 
@@ -296,8 +303,9 @@ export function Dashboard({
             color: activeUser.color,
           } : undefined}
           greeting={getGreeting()}
-          onUserClick={activeUser ? clearActiveUser : undefined}
+          onUserClick={activeUser ? clearActiveUser : handleLogin}
           onSettingsClick={() => router.push('/settings')}
+          onScreensaverClick={() => window.dispatchEvent(new Event('prism:screensaver'))}
           onEditClick={activeUser?.role === 'parent' ? handleEditStart : undefined}
         />
 
@@ -312,7 +320,9 @@ export function Dashboard({
             onSaveAs={handleSaveAs}
             onReset={handleReset}
             onCancel={handleCancel}
+            onDeleteLayout={deleteLayout}
             layoutName={savedLayout?.name}
+            savedLayouts={allLayouts.map(l => ({ id: l.id, name: l.name, widgets: l.widgets }))}
           />
         )}
 
@@ -444,14 +454,30 @@ export function Dashboard({
               onMarkCooked: async (mealId: string) => {
                 const user = await requireAuth("Who cooked this?");
                 if (user) {
-                  markCooked(mealId, user.id);
+                  await markCooked(mealId, user.id);
                 }
               },
-              onAddClick: async () => {
-                const user = await requireAuth("Who's planning a meal?");
-                if (user) {
-                  console.log('Add meal clicked by', user.name);
-                }
+              onUnmarkCooked: async (mealId: string) => {
+                try {
+                  await fetch(`/api/meals/${mealId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cookedBy: null }),
+                  });
+                  refreshMeals();
+                } catch { /* ignore */ }
+              },
+              onAddMeal: async (meal: Record<string, unknown>) => {
+                const user = await requireAuth("Who's planning this meal?");
+                if (!user) return;
+                try {
+                  await fetch('/api/meals', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ...meal, createdBy: user.id }),
+                  });
+                  refreshMeals();
+                } catch { /* ignore */ }
               },
               titleHref: '/meals',
             },

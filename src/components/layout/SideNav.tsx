@@ -41,21 +41,11 @@ import {
   MessageSquare,
   ImageIcon,
   Settings,
-  LogOut,
   Menu,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { UserAvatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/components/providers/AuthProvider';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 
 /**
  * SIDE NAV PROPS
@@ -119,10 +109,9 @@ const navItems: NavItem[] = [
  * />
  * ============================================================================
  */
-export function SideNav({ user, onLogout, className }: SideNavProps) {
+export function SideNav({ className }: SideNavProps) {
   // Get current pathname for active state
   const pathname = usePathname();
-  const { requireAuth, setActiveUser } = useAuth();
 
   // Mobile menu state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -247,81 +236,8 @@ export function SideNav({ user, onLogout, className }: SideNavProps) {
           </ul>
         </nav>
 
-        {/* ================================================================== */}
-        {/* FOOTER WITH USER INFO */}
-        {/* ================================================================== */}
-        <div className="border-t border-border p-4">
-          {/* User section */}
-          {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  className={cn(
-                    'flex items-center gap-3 w-full p-2 rounded-lg',
-                    'hover:bg-accent transition-colors',
-                    'touch-target',
-                    'justify-center group-hover:justify-start'
-                  )}
-                >
-                  <UserAvatar
-                    name={user.name}
-                    imageUrl={user.avatarUrl}
-                    color={user.color}
-                    size="md"
-                  />
-                  <div className="hidden group-hover:flex flex-col items-start flex-1 min-w-0">
-                    <span className="text-sm font-medium truncate w-full">
-                      {user.name}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      View profile
-                    </span>
-                  </div>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem asChild>
-                  <Link href="/settings">
-                    <Settings className="mr-2 h-4 w-4" />
-                    Settings
-                  </Link>
-                </DropdownMenuItem>
-                {onLogout && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={onLogout}>
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Logout
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            // No user logged in - clickable to trigger login
-            <button
-              onClick={async () => {
-                const authedUser = await requireAuth('Login', 'Select your profile and enter your PIN');
-                if (authedUser) {
-                  setActiveUser(authedUser);
-                }
-              }}
-              className={cn(
-                'flex items-center gap-3 w-full p-2 rounded-lg',
-                'hover:bg-accent transition-colors',
-                'touch-target',
-                'justify-center group-hover:justify-start'
-              )}
-            >
-              <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                <LogOut className="h-4 w-4 text-muted-foreground rotate-180" />
-              </div>
-              <span className="hidden group-hover:inline text-sm text-muted-foreground">
-                Login
-              </span>
-            </button>
-          )}
-        </div>
+        {/* Footer spacer */}
+        <div className="border-t border-border p-2" />
       </aside>
     </>
   );
