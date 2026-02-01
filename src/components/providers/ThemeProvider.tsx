@@ -143,6 +143,9 @@ export function ThemeProvider({
     localStorage.setItem(STORAGE_KEY, newTheme);
   };
 
+  // Apply seasonal theme CSS variables globally
+  useSeasonalTheme();
+
   // Prevent flash of wrong theme during SSR
   // Return null or a loading state until mounted
   if (!mounted) {
@@ -152,9 +155,6 @@ export function ThemeProvider({
       </ThemeContext.Provider>
     );
   }
-
-  // Apply seasonal theme CSS variables globally
-  useSeasonalTheme();
 
   return (
     <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme }}>
