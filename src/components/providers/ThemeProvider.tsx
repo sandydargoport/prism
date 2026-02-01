@@ -20,6 +20,7 @@
 
 import * as React from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
+import { useSeasonalTheme } from '@/lib/hooks/useSeasonalTheme';
 
 /**
  * Theme modes
@@ -151,6 +152,9 @@ export function ThemeProvider({
       </ThemeContext.Provider>
     );
   }
+
+  // Apply seasonal theme CSS variables globally
+  useSeasonalTheme();
 
   return (
     <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme }}>
