@@ -146,8 +146,6 @@ export function WidgetContainer({
         'flex flex-col',
         // Interactive cursor if clickable
         onClick && 'cursor-pointer hover:shadow-md transition-shadow',
-        // Seasonal accent top border
-        'border-t-2 border-t-seasonal-accent',
         // Allow header popover dropdowns to overflow
         'overflow-visible',
         className
