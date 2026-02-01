@@ -53,13 +53,13 @@ import { Loader2 } from 'lucide-react';
 import type { CalendarEvent } from '@/types/calendar';
 import { AddEventModal } from '@/components/modals';
 import { PageWrapper } from '@/components/layout';
-import { MonthView, WeekView, TwoWeekView, DayViewSideBySide } from '@/components/calendar';
+import { MonthView, WeekView, TwoWeekView, ThreeMonthView, DayViewSideBySide } from '@/components/calendar';
 
 
 /**
  * VIEW TYPE
  */
-type CalendarViewType = 'day' | 'week' | 'twoWeek' | 'month';
+type CalendarViewType = 'day' | 'week' | 'twoWeek' | 'month' | 'threeMonth';
 
 
 /**
@@ -280,6 +280,9 @@ export function CalendarView() {
       case 'month':
         setCurrentDate(subMonths(currentDate, 1));
         break;
+      case 'threeMonth':
+        setCurrentDate(subMonths(currentDate, 3));
+        break;
     }
   };
 
@@ -296,6 +299,9 @@ export function CalendarView() {
         break;
       case 'month':
         setCurrentDate(addMonths(currentDate, 1));
+        break;
+      case 'threeMonth':
+        setCurrentDate(addMonths(currentDate, 3));
         break;
     }
   };
@@ -314,6 +320,8 @@ export function CalendarView() {
         const twoWeekEnd = endOfWeek(addWeeks(currentDate, 1));
         return `${format(twoWeekStart, 'MMM d')} - ${format(twoWeekEnd, 'MMM d, yyyy')}`;
       case 'month':
+        return format(currentDate, 'MMMM yyyy');
+      case 'threeMonth':
         return format(currentDate, 'MMMM yyyy');
     }
   };
@@ -404,10 +412,19 @@ export function CalendarView() {
                 variant={viewType === 'month' ? 'secondary' : 'ghost'}
                 size="sm"
                 onClick={() => setViewType('month')}
-                className="rounded-l-none"
+                className="rounded-none border-r"
               >
                 <LayoutGrid className="h-4 w-4 mr-1" />
                 Month
+              </Button>
+              <Button
+                variant={viewType === 'threeMonth' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setViewType('threeMonth')}
+                className="rounded-l-none"
+              >
+                <LayoutGrid className="h-4 w-4 mr-1" />
+                3 Mo
               </Button>
             </div>
 
@@ -504,6 +521,18 @@ export function CalendarView() {
             currentDate={currentDate}
             events={events}
             onEventClick={setSelectedEvent}
+          />
+        )}
+
+        {!loading && !error && viewType === 'threeMonth' && (
+          <ThreeMonthView
+            currentDate={currentDate}
+            events={events}
+            onEventClick={setSelectedEvent}
+            onDateClick={(date) => {
+              setCurrentDate(date);
+              setViewType('day');
+            }}
           />
         )}
 
