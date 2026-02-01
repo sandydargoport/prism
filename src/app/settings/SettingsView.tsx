@@ -16,6 +16,7 @@
 
 import * as React from 'react';
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   Settings,
@@ -38,6 +39,9 @@ import {
   LogOut,
   LogIn,
   User,
+  ImageIcon,
+  Cloud,
+  HardDrive,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -45,8 +49,10 @@ import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { UserAvatar } from '@/components/ui/avatar';
-import { useTheme } from '@/components/providers';
+import { useTheme, useAuth } from '@/components/providers';
 import { useCalendarSources } from '@/lib/hooks';
+import { useSeasonalTheme } from '@/lib/hooks/useSeasonalTheme';
+import { MONTH_NAMES, seasonalPalettes, type SeasonalThemeKey } from '@/lib/themes/seasonalThemes';
 import { PageWrapper } from '@/components/layout';
 
 
@@ -88,7 +94,9 @@ const colorOptions = [
  * SETTINGS VIEW COMPONENT
  */
 export function SettingsView() {
-  const [activeSection, setActiveSection] = useState<string>('account');
+  const searchParams = useSearchParams();
+  const initialSection = searchParams.get('section') || 'account';
+  const [activeSection, setActiveSection] = useState<string>(initialSection);
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [familyLoading, setFamilyLoading] = useState(true);
   const [editingMember, setEditingMember] = useState<FamilyMember | null>(null);
@@ -107,6 +115,14 @@ export function SettingsView() {
 
   // Theme from context
   const { theme, setTheme } = useTheme();
+
+  // Family calendar color (persisted in localStorage)
+  const [familyCalendarColor, setFamilyCalendarColor] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('prism-family-calendar-color') || '#F59E0B';
+    }
+    return '#F59E0B';
+  });
 
   // Check authentication status
   useEffect(() => {
@@ -156,6 +172,24 @@ export function SettingsView() {
   const { calendars, loading: calendarsLoading, refresh: refreshCalendars } = useCalendarSources();
   const [syncing, setSyncing] = useState(false);
   const [updatingCalendar, setUpdatingCalendar] = useState<string | null>(null);
+
+  // Calendar groups
+  const [calGroups, setCalGroups] = useState<Array<{ id: string; name: string; color: string; type: string; userId?: string | null; sourceCount?: number }>>([]);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupColor, setNewGroupColor] = useState('#3B82F6');
+
+  useEffect(() => {
+    async function fetchGroups() {
+      try {
+        const res = await fetch('/api/calendar-groups');
+        if (res.ok) {
+          const data = await res.json();
+          setCalGroups(data.groups || []);
+        }
+      } catch { /* ignore */ }
+    }
+    fetchGroups();
+  }, [calendars]);
 
   // Local calendar state for optimistic updates (prevents resorting)
   const [localCalendars, setLocalCalendars] = useState<typeof calendars>([]);
@@ -207,7 +241,7 @@ export function SettingsView() {
 
         if (updates.userId === 'FAMILY') {
           isFamily = true;
-          user = { id: 'FAMILY', name: 'Family', color: '#F59E0B' };
+          user = { id: 'FAMILY', name: 'Family', color: familyCalendarColor };
         } else if (updates.userId === null) {
           isFamily = false;
           user = null;
@@ -311,9 +345,16 @@ export function SettingsView() {
     }
   };
 
-  // Navigate to login (using home page which has PIN pad)
-  const handleLogin = () => {
-    window.location.href = '/';
+  // Auth context for login
+  const { requireAuth: triggerAuth, setActiveUser: setAuthUser } = useAuth();
+
+  // Login via PIN modal
+  const handleLogin = async () => {
+    const user = await triggerAuth('Login', 'Select your profile and enter your PIN');
+    if (user) {
+      setAuthUser(user);
+      setCurrentUser({ id: user.id, name: user.name, role: user.role || 'child', color: user.color || '#3B82F6' });
+    }
   };
 
   // Delete family member
@@ -333,6 +374,7 @@ export function SettingsView() {
     { id: 'account', label: 'Account', icon: User },
     { id: 'family', label: 'Family Members', icon: Users },
     { id: 'calendars', label: 'Calendars', icon: Calendar },
+    { id: 'photos', label: 'Photos', icon: ImageIcon },
     { id: 'display', label: 'Display', icon: Palette },
     { id: 'security', label: 'Security', icon: Shield },
     { id: 'about', label: 'About', icon: Info },
@@ -599,9 +641,20 @@ export function SettingsView() {
                           >
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center gap-3">
-                                <div
-                                  className="w-3 h-3 rounded-full"
-                                  style={{ backgroundColor: cal.color || '#3B82F6' }}
+                                <CalendarColorPicker
+                                  color={cal.color || '#3B82F6'}
+                                  onChange={async (c) => {
+                                    try {
+                                      await fetch(`/api/calendars/${cal.id}`, {
+                                        method: 'PATCH',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ color: c }),
+                                      });
+                                      setLocalCalendars((prev) =>
+                                        prev.map((lc) => lc.id === cal.id ? { ...lc, color: c } : lc)
+                                      );
+                                    } catch { /* ignore */ }
+                                  }}
                                 />
                                 <div>
                                   <div className="font-medium">{cal.dashboardCalendarName}</div>
@@ -638,33 +691,31 @@ export function SettingsView() {
                                 </button>
                               </label>
                             </div>
-                            {/* User Assignment */}
+                            {/* Group Assignment */}
                             <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border">
-                              <span className="text-xs text-muted-foreground">Assign to:</span>
+                              <span className="text-xs text-muted-foreground">Group:</span>
                               <select
-                                value={
-                                  (cal as { isFamily?: boolean }).isFamily || cal.user?.id === 'FAMILY'
-                                    ? 'FAMILY'
-                                    : cal.user?.id || ''
-                                }
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  if (value === 'FAMILY') {
-                                    updateCalendar(cal.id, { userId: 'FAMILY' });
-                                  } else if (value === '') {
-                                    updateCalendar(cal.id, { userId: null });
-                                  } else {
-                                    updateCalendar(cal.id, { userId: value });
-                                  }
+                                value={(cal as { groupId?: string }).groupId || ''}
+                                onChange={async (e) => {
+                                  const groupId = e.target.value || null;
+                                  setUpdatingCalendar(cal.id);
+                                  try {
+                                    await fetch(`/api/calendars/${cal.id}`, {
+                                      method: 'PATCH',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ groupId }),
+                                    });
+                                    refreshCalendars();
+                                  } catch { /* ignore */ }
+                                  setUpdatingCalendar(null);
                                 }}
                                 disabled={updatingCalendar === cal.id}
                                 className="flex-1 text-sm border border-border rounded px-2 py-1 bg-background"
                               >
                                 <option value="">-- Unassigned --</option>
-                                <option value="FAMILY">Family (shared)</option>
-                                {familyMembers.map((member) => (
-                                  <option key={member.id} value={member.id}>
-                                    {member.name}
+                                {calGroups.map((group) => (
+                                  <option key={group.id} value={group.id}>
+                                    {group.name}
                                   </option>
                                 ))}
                               </select>
@@ -739,73 +790,136 @@ export function SettingsView() {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Calendar Groups */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Calendar Groups</CardTitle>
+                    <CardDescription>
+                      Manage calendar groups used for filtering and display colors. User groups are auto-created.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {calGroups.map((group) => (
+                        <div key={group.id} className="flex items-center justify-between p-3 rounded-md border border-border">
+                          <div className="flex items-center gap-3">
+                            <CalendarColorPicker
+                              color={group.color}
+                              onChange={async (c) => {
+                                try {
+                                  await fetch(`/api/calendar-groups/${group.id}`, {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ color: c }),
+                                  });
+                                  setCalGroups((prev) =>
+                                    prev.map((g) => g.id === group.id ? { ...g, color: c } : g)
+                                  );
+                                } catch { /* ignore */ }
+                              }}
+                            />
+                            <span className="font-medium text-sm">{group.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={group.type === 'user' ? 'default' : 'secondary'}>
+                              {group.type === 'user' ? 'User' : 'Custom'}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              {group.sourceCount ?? 0} source{(group.sourceCount ?? 0) !== 1 ? 's' : ''}
+                            </span>
+                            {group.type === 'custom' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-destructive"
+                                onClick={async () => {
+                                  if (!confirm(`Delete group "${group.name}"? Sources will be unassigned.`)) return;
+                                  try {
+                                    await fetch(`/api/calendar-groups/${group.id}`, { method: 'DELETE' });
+                                    setCalGroups((prev) => prev.filter((g) => g.id !== group.id));
+                                    refreshCalendars();
+                                  } catch { /* ignore */ }
+                                }}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Add new custom group */}
+                      <div className="flex items-center gap-2 pt-2 border-t border-border">
+                        <CalendarColorPicker
+                          color={newGroupColor}
+                          onChange={setNewGroupColor}
+                        />
+                        <Input
+                          value={newGroupName}
+                          onChange={(e) => setNewGroupName(e.target.value)}
+                          placeholder="New group name..."
+                          className="flex-1 h-8 text-sm"
+                          onKeyDown={async (e) => {
+                            if (e.key === 'Enter' && newGroupName.trim()) {
+                              try {
+                                const res = await fetch('/api/calendar-groups', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ name: newGroupName.trim(), color: newGroupColor }),
+                                });
+                                if (res.ok) {
+                                  const group = await res.json();
+                                  setCalGroups((prev) => [...prev, group]);
+                                  setNewGroupName('');
+                                  setNewGroupColor('#3B82F6');
+                                }
+                              } catch { /* ignore */ }
+                            }
+                          }}
+                        />
+                        <Button
+                          size="sm"
+                          disabled={!newGroupName.trim()}
+                          onClick={async () => {
+                            if (!newGroupName.trim()) return;
+                            try {
+                              const res = await fetch('/api/calendar-groups', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ name: newGroupName.trim(), color: newGroupColor }),
+                              });
+                              if (res.ok) {
+                                const group = await res.json();
+                                setCalGroups((prev) => [...prev, group]);
+                                setNewGroupName('');
+                                setNewGroupColor('#3B82F6');
+                              }
+                            } catch { /* ignore */ }
+                          }}
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          Add
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
+            )}
+
+            {/* ============================================================ */}
+            {/* PHOTOS SECTION */}
+            {/* ============================================================ */}
+            {activeSection === 'photos' && (
+              <PhotosSettingsSection />
             )}
 
             {/* ============================================================ */}
             {/* DISPLAY SECTION */}
             {/* ============================================================ */}
             {activeSection === 'display' && (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="text-2xl font-bold">Display Settings</h2>
-                  <p className="text-muted-foreground">
-                    Customize how the dashboard looks
-                  </p>
-                </div>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Theme</CardTitle>
-                    <CardDescription>
-                      Choose your preferred color scheme
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex gap-3">
-                      <Button
-                        variant={theme === 'light' ? 'default' : 'outline'}
-                        onClick={() => setTheme('light')}
-                        className="flex-1"
-                      >
-                        <Sun className="h-4 w-4 mr-2" />
-                        Light
-                      </Button>
-                      <Button
-                        variant={theme === 'dark' ? 'default' : 'outline'}
-                        onClick={() => setTheme('dark')}
-                        className="flex-1"
-                      >
-                        <Moon className="h-4 w-4 mr-2" />
-                        Dark
-                      </Button>
-                      <Button
-                        variant={theme === 'system' ? 'default' : 'outline'}
-                        onClick={() => setTheme('system')}
-                        className="flex-1"
-                      >
-                        <Monitor className="h-4 w-4 mr-2" />
-                        System
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Location</CardTitle>
-                    <CardDescription>
-                      Set your location for weather and time
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Input
-                      defaultValue="Springfield, IL"
-                      placeholder="City, State"
-                    />
-                  </CardContent>
-                </Card>
-              </div>
+              <DisplaySection />
             )}
 
             {/* ============================================================ */}
@@ -864,16 +978,41 @@ export function SettingsView() {
             setShowAddMember(false);
             setEditingMember(null);
           }}
-          onSave={(member) => {
+          onSave={async (member) => {
             if (editingMember) {
-              setFamilyMembers((prev) =>
-                prev.map((m) => (m.id === editingMember.id ? { ...m, ...member } : m))
-              );
+              // Save to API
+              try {
+                const res = await fetch(`/api/family/${editingMember.id}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(member),
+                });
+                if (res.ok) {
+                  setFamilyMembers((prev) =>
+                    prev.map((m) => (m.id === editingMember.id ? { ...m, ...member } : m))
+                  );
+                }
+              } catch (err) {
+                console.error('Failed to update member:', err);
+              }
             } else {
-              setFamilyMembers((prev) => [
-                ...prev,
-                { ...member, id: Date.now().toString(), hasPin: false },
-              ]);
+              // Create via API
+              try {
+                const res = await fetch('/api/family', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(member),
+                });
+                if (res.ok) {
+                  const data = await res.json();
+                  setFamilyMembers((prev) => [
+                    ...prev,
+                    { ...member, id: data.id || Date.now().toString(), hasPin: false },
+                  ]);
+                }
+              } catch (err) {
+                console.error('Failed to create member:', err);
+              }
             }
             setShowAddMember(false);
             setEditingMember(null);
@@ -883,6 +1022,171 @@ export function SettingsView() {
       </div>
     </PageWrapper>
   );
+}
+
+
+/**
+ * DISPLAY SECTION COMPONENT
+ */
+function DisplaySection() {
+  const { theme, setTheme } = useTheme();
+  const { seasonalTheme, activeMonth, setSeasonalTheme, palette } = useSeasonalTheme();
+
+  const mode: 'auto' | 'manual' | 'off' =
+    seasonalTheme === 'none' ? 'off' :
+    seasonalTheme === 'auto' ? 'auto' : 'manual';
+
+  const setMode = (m: 'auto' | 'manual' | 'off') => {
+    if (m === 'off') setSeasonalTheme('none');
+    else if (m === 'auto') setSeasonalTheme('auto');
+    else setSeasonalTheme(getCurrentMonthNum());
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold">Display Settings</h2>
+        <p className="text-muted-foreground">
+          Customize how the dashboard looks
+        </p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Theme</CardTitle>
+          <CardDescription>
+            Choose your preferred color scheme
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-3">
+            <Button
+              variant={theme === 'light' ? 'default' : 'outline'}
+              onClick={() => setTheme('light')}
+              className="flex-1"
+            >
+              <Sun className="h-4 w-4 mr-2" />
+              Light
+            </Button>
+            <Button
+              variant={theme === 'dark' ? 'default' : 'outline'}
+              onClick={() => setTheme('dark')}
+              className="flex-1"
+            >
+              <Moon className="h-4 w-4 mr-2" />
+              Dark
+            </Button>
+            <Button
+              variant={theme === 'system' ? 'default' : 'outline'}
+              onClick={() => setTheme('system')}
+              className="flex-1"
+            >
+              <Monitor className="h-4 w-4 mr-2" />
+              System
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Seasonal Theme</CardTitle>
+          <CardDescription>
+            Add seasonal color accents to the dashboard
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Mode selector */}
+          <div className="flex gap-3">
+            {(['auto', 'manual', 'off'] as const).map((m) => (
+              <Button
+                key={m}
+                variant={mode === m ? 'default' : 'outline'}
+                onClick={() => setMode(m)}
+                className="flex-1 capitalize"
+              >
+                {m === 'auto' ? 'Auto' : m === 'manual' ? 'Manual' : 'Off'}
+              </Button>
+            ))}
+          </div>
+
+          {/* Current theme preview */}
+          {palette && (
+            <div className="flex items-center gap-3 p-3 rounded-md border border-border">
+              <div className="flex gap-1.5">
+                <div
+                  className="w-6 h-6 rounded-full"
+                  style={{ backgroundColor: `hsl(${palette.light.accent})` }}
+                  title="Accent"
+                />
+                <div
+                  className="w-6 h-6 rounded-full"
+                  style={{ backgroundColor: `hsl(${palette.light.highlight})` }}
+                  title="Highlight"
+                />
+                <div
+                  className="w-6 h-6 rounded-full border border-border"
+                  style={{ backgroundColor: `hsl(${palette.light.subtle})` }}
+                  title="Subtle"
+                />
+              </div>
+              <span className="text-sm font-medium">
+                {palette.label} — {palette.name}
+              </span>
+            </div>
+          )}
+
+          {/* Month grid for manual mode */}
+          {mode === 'manual' && (
+            <div className="grid grid-cols-4 gap-2">
+              {MONTH_NAMES.map((name, i) => {
+                const month = i + 1;
+                const p = seasonalPalettes[month]!;
+                const selected = seasonalTheme === month;
+                return (
+                  <button
+                    key={month}
+                    onClick={() => setSeasonalTheme(month)}
+                    className={cn(
+                      'flex items-center gap-2 px-3 py-2 rounded-md text-sm border transition-colors',
+                      selected
+                        ? 'border-foreground bg-accent text-accent-foreground'
+                        : 'border-border hover:bg-accent/50'
+                    )}
+                  >
+                    <div
+                      className="w-3 h-3 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: `hsl(${p.light.accent})` }}
+                    />
+                    {name.slice(0, 3)}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Location</CardTitle>
+          <CardDescription>
+            Set your location for weather and time
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Input
+            defaultValue="Springfield, IL"
+            placeholder="City, State"
+          />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function getCurrentMonthNum(): number {
+  return new Date().getMonth() + 1;
 }
 
 
@@ -1259,6 +1563,200 @@ function MemberModal({
           </div>
         </form>
       </div>
+    </div>
+  );
+}
+
+
+// ============================================================================
+// CALENDAR COLOR PICKER
+// ============================================================================
+
+const calendarColorOptions = [
+  '#3B82F6', '#EC4899', '#10B981', '#F59E0B', '#8B5CF6',
+  '#EF4444', '#06B6D4', '#84CC16', '#F97316', '#6366F1',
+  '#14B8A6', '#A855F7', '#F43F5E', '#0EA5E9', '#D946EF',
+  '#FFFFFF', '#9CA3AF', '#6B7280', '#374151', '#000000',
+];
+
+function CalendarColorPicker({ color, onChange }: { color: string; onChange: (color: string) => void }) {
+  const [open, setOpen] = React.useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-5 h-5 rounded-full border-2 border-border hover:scale-110 transition-transform"
+        style={{ backgroundColor: color }}
+        title="Change color"
+      />
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute top-5 left-0 z-20 bg-card border border-border rounded-lg p-2 shadow-lg">
+            <div className="flex gap-1.5 flex-wrap w-[140px]">
+              {calendarColorOptions.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => { onChange(c); setOpen(false); }}
+                  className={cn(
+                    'w-5 h-5 rounded-full border-2 transition-transform hover:scale-110',
+                    color === c ? 'border-foreground scale-110' : 'border-transparent'
+                  )}
+                  style={{ backgroundColor: c }}
+                />
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+
+// ============================================================================
+// PHOTOS SETTINGS SECTION
+// ============================================================================
+
+interface PhotoSource {
+  id: string;
+  type: 'local' | 'onedrive';
+  name: string;
+  onedriveFolderId: string | null;
+  enabled: boolean;
+  lastSynced: string | null;
+  photoCount: number;
+}
+
+function PhotosSettingsSection() {
+  const [sources, setSources] = React.useState<PhotoSource[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [syncing, setSyncing] = React.useState<string | null>(null);
+
+  const fetchSources = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/photo-sources');
+      const data = await res.json();
+      setSources(data.sources || []);
+    } catch (err) {
+      console.error('Error fetching photo sources:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchSources();
+  }, [fetchSources]);
+
+  const handleSync = async (sourceId: string) => {
+    setSyncing(sourceId);
+    try {
+      await fetch(`/api/photo-sources/${sourceId}/sync`, { method: 'POST' });
+      await fetchSources();
+    } catch (err) {
+      console.error('Sync error:', err);
+    } finally {
+      setSyncing(null);
+    }
+  };
+
+  const handleDelete = async (sourceId: string) => {
+    if (!confirm('Delete this source and all its photos?')) return;
+    try {
+      await fetch(`/api/photo-sources/${sourceId}`, { method: 'DELETE' });
+      await fetchSources();
+    } catch (err) {
+      console.error('Delete error:', err);
+    }
+  };
+
+  const connectOneDrive = () => {
+    window.location.href = '/api/auth/microsoft';
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold">Photos</h2>
+        <p className="text-muted-foreground">
+          Manage photo sources for your dashboard slideshow and gallery
+        </p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Photo Sources</CardTitle>
+              <CardDescription>
+                Manage where your photos come from
+              </CardDescription>
+            </div>
+            <Button onClick={connectOneDrive} size="sm" variant="outline" className="gap-1.5">
+              <Plus className="h-4 w-4" />
+              Add Source
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="space-y-3">
+              <div className="h-12 bg-muted animate-pulse rounded" />
+              <div className="h-12 bg-muted animate-pulse rounded" />
+            </div>
+          ) : sources.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">
+              No photo sources configured yet. Click &quot;Add Source&quot; to connect OneDrive.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {sources.map((source) => (
+                <div key={source.id} className="flex items-center justify-between p-3 rounded-lg border">
+                  <div className="flex items-center gap-3">
+                    {source.type === 'onedrive' ? (
+                      <Cloud className="h-5 w-5 text-blue-500" />
+                    ) : (
+                      <HardDrive className="h-5 w-5 text-muted-foreground" />
+                    )}
+                    <div>
+                      <p className="font-medium text-sm">{source.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {source.photoCount} photos
+                        {source.lastSynced && (
+                          <> &middot; Synced {new Date(source.lastSynced).toLocaleDateString()}</>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {source.type === 'onedrive' && source.onedriveFolderId && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleSync(source.id)}
+                        disabled={syncing === source.id}
+                        title="Sync now"
+                      >
+                        <RefreshCw className={cn('h-4 w-4', syncing === source.id && 'animate-spin')} />
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(source.id)}
+                      title="Delete source"
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

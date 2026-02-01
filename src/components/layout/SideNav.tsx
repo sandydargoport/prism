@@ -39,6 +39,7 @@ import {
   ShoppingCart,
   UtensilsCrossed,
   MessageSquare,
+  ImageIcon,
   Settings,
   LogOut,
   Menu,
@@ -47,6 +48,7 @@ import {
 import { cn } from '@/lib/utils';
 import { UserAvatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/components/providers/AuthProvider';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -93,6 +95,7 @@ const navItems: NavItem[] = [
   { label: 'Shopping', href: '/shopping', icon: ShoppingCart },
   { label: 'Meals', href: '/meals', icon: UtensilsCrossed },
   { label: 'Messages', href: '/messages', icon: MessageSquare },
+  { label: 'Photos', href: '/photos', icon: ImageIcon },
   { label: 'Settings', href: '/settings', icon: Settings },
 ];
 
@@ -119,6 +122,7 @@ const navItems: NavItem[] = [
 export function SideNav({ user, onLogout, className }: SideNavProps) {
   // Get current pathname for active state
   const pathname = usePathname();
+  const { requireAuth, setActiveUser } = useAuth();
 
   // Mobile menu state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -226,7 +230,7 @@ export function SideNav({ user, onLogout, className }: SideNavProps) {
                       'touch-target',
                       // Active state
                       active
-                        ? 'bg-primary text-primary-foreground'
+                        ? 'bg-seasonal-accent text-seasonal-accent-foreground'
                         : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
                       // Center icon when collapsed
                       'justify-center group-hover:justify-start'
@@ -294,10 +298,28 @@ export function SideNav({ user, onLogout, className }: SideNavProps) {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            // No user logged in - show placeholder when expanded
-            <div className="hidden group-hover:block text-center text-sm text-muted-foreground">
-              Not logged in
-            </div>
+            // No user logged in - clickable to trigger login
+            <button
+              onClick={async () => {
+                const authedUser = await requireAuth('Login', 'Select your profile and enter your PIN');
+                if (authedUser) {
+                  setActiveUser(authedUser);
+                }
+              }}
+              className={cn(
+                'flex items-center gap-3 w-full p-2 rounded-lg',
+                'hover:bg-accent transition-colors',
+                'touch-target',
+                'justify-center group-hover:justify-start'
+              )}
+            >
+              <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+                <LogOut className="h-4 w-4 text-muted-foreground rotate-180" />
+              </div>
+              <span className="hidden group-hover:inline text-sm text-muted-foreground">
+                Login
+              </span>
+            </button>
           )}
         </div>
       </aside>

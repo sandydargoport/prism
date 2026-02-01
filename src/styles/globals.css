@@ -147,6 +147,13 @@
     --chart-3: 30 80% 55%;          /* Orange */
     --chart-4: 280 65% 60%;         /* Purple */
     --chart-5: 340 75% 55%;         /* Pink */
+
+    /* ==== SEASONAL THEME COLORS ====
+       Overridden at runtime by useSeasonalTheme hook */
+    --seasonal-accent: 222 47% 31%;
+    --seasonal-accent-foreground: 210 40% 98%;
+    --seasonal-highlight: 210 40% 96%;
+    --seasonal-subtle: 210 40% 98%;
   }
 
 
@@ -201,6 +208,12 @@
     --chart-3: 30 80% 60%;
     --chart-4: 280 65% 65%;
     --chart-5: 340 75% 60%;
+
+    /* Seasonal theme defaults for dark mode */
+    --seasonal-accent: 210 40% 98%;
+    --seasonal-accent-foreground: 222 47% 11%;
+    --seasonal-highlight: 217 33% 17%;
+    --seasonal-subtle: 217 33% 17%;
   }
 }
 

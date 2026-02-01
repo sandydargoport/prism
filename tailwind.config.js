@@ -123,6 +123,16 @@ module.exports = {
         },
 
         // ------------------------------------------------
+        // SEASONAL THEME COLORS
+        // ------------------------------------------------
+        seasonal: {
+          accent: 'hsl(var(--seasonal-accent))',
+          'accent-foreground': 'hsl(var(--seasonal-accent-foreground))',
+          highlight: 'hsl(var(--seasonal-highlight))',
+          subtle: 'hsl(var(--seasonal-subtle))',
+        },
+
+        // ------------------------------------------------
         // FAMILY MEMBER COLORS
         // ------------------------------------------------
         // Each family member gets a unique color for their calendar,
