@@ -53,6 +53,7 @@ import { useTheme, useAuth } from '@/components/providers';
 import { useCalendarSources } from '@/lib/hooks';
 import { useSeasonalTheme } from '@/lib/hooks/useSeasonalTheme';
 import { MONTH_NAMES, seasonalPalettes, type SeasonalThemeKey } from '@/lib/themes/seasonalThemes';
+import { useWallpaperSettings } from '@/components/layout/WallpaperBackground';
 import { PageWrapper } from '@/components/layout';
 
 
@@ -1167,6 +1168,8 @@ function DisplaySection() {
         </CardContent>
       </Card>
 
+      <WallpaperSettingsCard />
+
       <Card>
         <CardHeader>
           <CardTitle>Location</CardTitle>
@@ -1187,6 +1190,56 @@ function DisplaySection() {
 
 function getCurrentMonthNum(): number {
   return new Date().getMonth() + 1;
+}
+
+function WallpaperSettingsCard() {
+  const { enabled, setEnabled, interval, setInterval } = useWallpaperSettings();
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Background Wallpaper</CardTitle>
+        <CardDescription>
+          Show a rotating photo behind the dashboard
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">Enable wallpaper</span>
+          <button
+            onClick={() => setEnabled(!enabled)}
+            className={cn(
+              'relative w-10 h-5 rounded-full transition-colors',
+              enabled ? 'bg-primary' : 'bg-muted'
+            )}
+          >
+            <span
+              className={cn(
+                'absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform',
+                enabled ? 'translate-x-5' : 'translate-x-0.5'
+              )}
+            />
+          </button>
+        </div>
+        {enabled && (
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">Rotate every</span>
+            <select
+              value={interval}
+              onChange={(e) => setInterval(Number(e.target.value))}
+              className="border border-border rounded px-2 py-1 text-sm bg-background"
+            >
+              <option value={30}>30 seconds</option>
+              <option value={60}>1 minute</option>
+              <option value={120}>2 minutes</option>
+              <option value={300}>5 minutes</option>
+              <option value={600}>10 minutes</option>
+            </select>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 

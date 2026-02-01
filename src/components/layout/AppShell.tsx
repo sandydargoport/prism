@@ -29,6 +29,7 @@
 
 import * as React from 'react';
 import { SideNav } from './SideNav';
+import { WallpaperBackground } from './WallpaperBackground';
 import { cn } from '@/lib/utils';
 
 /**
@@ -89,6 +90,11 @@ export function AppShell({
   return (
     <div className="relative min-h-screen bg-background">
       {/* ==================================================================== */}
+      {/* WALLPAPER BACKGROUND */}
+      {/* ==================================================================== */}
+      <WallpaperBackground />
+
+      {/* ==================================================================== */}
       {/* SIDE NAVIGATION */}
       {/* Only rendered if hideNav is false */}
       {/* ==================================================================== */}
@@ -101,7 +107,7 @@ export function AppShell({
       <main
         className={cn(
           // Base styles
-          'min-h-screen',
+          'min-h-screen relative z-10',
           // Fixed left margin for collapsed nav (64px = 16 * 4 = md:ml-16)
           // Nav expands as overlay, doesn't push content
           !hideNav && 'md:ml-16',
