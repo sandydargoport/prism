@@ -16,8 +16,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
 import { chores, choreCompletions, users } from '@/lib/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
-import { cookies } from 'next/headers';
-import { validateSession } from '@/lib/auth/session';
+import { requireAuth } from '@/lib/auth';
 import { addDays, addMonths, format } from 'date-fns';
 
 /**
@@ -98,45 +97,12 @@ export async function POST(
     }
 
     // ========================================================================
-    // AUTHENTICATION CHECK
+    // AUTHENTICATION & AUTHORIZATION CHECK
     // ========================================================================
-    const cookieStore = await cookies();
-    const sessionToken = cookieStore.get('prism_session')?.value;
-    const userId = cookieStore.get('prism_user')?.value;
+    const auth = await requireAuth();
+    if (auth instanceof NextResponse) return auth;
 
-    if (!sessionToken || !userId) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
-    // Validate session token
-    const sessionData = await validateSession(sessionToken);
-    if (!sessionData || sessionData.userId !== userId) {
-      return NextResponse.json(
-        { error: 'Invalid or expired session' },
-        { status: 401 }
-      );
-    }
-
-    // Fetch the current user to check their role
-    const [currentUser] = await db
-      .select({ id: users.id, name: users.name, role: users.role })
-      .from(users)
-      .where(eq(users.id, userId));
-
-    if (!currentUser) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 401 }
-      );
-    }
-
-    // ========================================================================
-    // AUTHORIZATION CHECK - Only parents can approve
-    // ========================================================================
-    if (currentUser.role !== 'parent') {
+    if (auth.role !== 'parent') {
       return NextResponse.json(
         { error: 'Only parents can approve chore completions' },
         { status: 403 }
@@ -220,7 +186,7 @@ export async function POST(
     await db
       .update(choreCompletions)
       .set({
-        approvedBy: userId,
+        approvedBy: auth.userId,
         approvedAt: now,
       })
       .where(eq(choreCompletions.id, pendingCompletion.id));
@@ -237,11 +203,16 @@ export async function POST(
       })
       .where(eq(chores.id, choreId));
 
-    // Fetch the completing user's name for the response
+    // Fetch the completing user and approving user names for the response
     const [completingUser] = await db
       .select({ name: users.name, color: users.color })
       .from(users)
       .where(eq(users.id, pendingCompletion.completedBy));
+
+    const [approvingUser] = await db
+      .select({ name: users.name })
+      .from(users)
+      .where(eq(users.id, auth.userId));
 
     return NextResponse.json({
       message: `Chore "${chore.title}" approved!`,
@@ -256,8 +227,8 @@ export async function POST(
         },
         completedAt: pendingCompletion.completedAt.toISOString(),
         approvedBy: {
-          id: currentUser.id,
-          name: currentUser.name,
+          id: auth.userId,
+          name: approvingUser?.name || 'Unknown',
         },
         approvedAt: now.toISOString(),
         pointsAwarded: pendingCompletion.pointsAwarded,

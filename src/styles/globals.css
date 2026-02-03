@@ -417,3 +417,33 @@
     transition: none !important;
   }
 }
+
+/* Allow color picker dropdowns to overflow grid items */
+.react-grid-item {
+  overflow: visible !important;
+}
+
+/* ============================================================================
+   REACT-GRID-LAYOUT RESIZE HANDLES
+   Full-perimeter resize: edges span the full side, corners are 16x16
+   ============================================================================ */
+.react-resizable-handle {
+  position: absolute;
+  z-index: 20;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.react-grid-item:hover > .react-resizable-handle,
+.react-grid-item.resizing > .react-resizable-handle {
+  opacity: 1;
+}
+/* Edge handles - span full side, 6px thick */
+.react-resizable-handle-n { top: -3px; left: 8px; right: 8px; height: 6px; cursor: n-resize; }
+.react-resizable-handle-s { bottom: -3px; left: 8px; right: 8px; height: 6px; cursor: s-resize; }
+.react-resizable-handle-e { right: -3px; top: 8px; bottom: 8px; width: 6px; cursor: e-resize; }
+.react-resizable-handle-w { left: -3px; top: 8px; bottom: 8px; width: 6px; cursor: w-resize; }
+/* Corner handles - 16x16 */
+.react-resizable-handle-ne { top: -3px; right: -3px; width: 16px; height: 16px; cursor: ne-resize; }
+.react-resizable-handle-nw { top: -3px; left: -3px; width: 16px; height: 16px; cursor: nw-resize; }
+.react-resizable-handle-se { bottom: -3px; right: -3px; width: 16px; height: 16px; cursor: se-resize; }
+.react-resizable-handle-sw { bottom: -3px; left: -3px; width: 16px; height: 16px; cursor: sw-resize; }

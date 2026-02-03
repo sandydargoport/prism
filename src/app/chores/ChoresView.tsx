@@ -23,72 +23,26 @@ import * as React from 'react';
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { format, parseISO, isPast, isToday, isTomorrow } from 'date-fns';
+import { isPast, parseISO } from 'date-fns';
 import {
-  Sparkles,
+  ClipboardList,
   Plus,
   Home,
   AlertCircle,
-  Trash2,
-  Edit2,
-  X,
-  CheckCircle2,
   SortAsc,
   Settings,
   Clock,
-  Hourglass,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { UserAvatar } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
 import { PageWrapper } from '@/components/layout';
 import { useAuth } from '@/components/providers';
 import { useChores } from '@/lib/hooks';
-
-/**
- * CHORE INTERFACE
- */
-interface Chore {
-  id: string;
-  title: string;
-  description?: string;
-  category: 'cleaning' | 'laundry' | 'dishes' | 'yard' | 'pets' | 'trash' | 'other';
-  frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'custom';
-  customIntervalDays?: number;
-  lastCompleted?: Date;
-  nextDue?: string;
-  enabled: boolean;
-  requiresApproval: boolean;
-  pointValue: number;
-  assignedTo?: {
-    id: string;
-    name: string;
-    color: string;
-  };
-  createdAt: Date;
-  // Pending approval info
-  pendingApproval?: {
-    completionId: string;
-    completedAt: string;
-    completedBy: {
-      id: string;
-      name: string;
-      color: string;
-    };
-  };
-}
-
-/**
- * FAMILY MEMBER TYPE
- */
-interface FamilyMember {
-  id: string;
-  name: string;
-  color: string;
-}
+import { ChoreItem } from '@/app/chores/ChoreItem';
+import { ChoreModal } from '@/app/chores/ChoreModal';
+import type { Chore, FamilyMember } from '@/types';
 
 
 /**
@@ -330,7 +284,6 @@ export function ChoresView() {
 
   // Chore counts
   const enabledCount = chores.filter((c) => c.enabled).length;
-  const totalCount = chores.length;
   const dueCount = chores.filter(
     (c) => c.enabled && c.nextDue && isPast(parseISO(c.nextDue))
   ).length;
@@ -338,12 +291,9 @@ export function ChoresView() {
   return (
     <PageWrapper>
       <div className="h-screen flex flex-col">
-        {/* ================================================================ */}
         {/* HEADER */}
-      {/* ================================================================== */}
-      <header className="flex-shrink-0 border-b border-border bg-card px-4 py-3">
+      <header className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-4 py-3">
         <div className="flex items-center justify-between">
-          {/* Left: Back and title */}
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" asChild>
               <Link href="/" aria-label="Back to dashboard">
@@ -352,7 +302,7 @@ export function ChoresView() {
             </Button>
 
             <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
+              <ClipboardList className="h-5 w-5 text-primary" />
               <h1 className="text-xl font-bold">Chores</h1>
               <Badge variant="secondary">
                 {enabledCount} active
@@ -365,7 +315,6 @@ export function ChoresView() {
             </div>
           </div>
 
-          {/* Right: Add button, user avatar, settings */}
           <div className="flex items-center gap-2">
             <Button onClick={async () => {
               const user = await requireAuth("Who's adding a chore?");
@@ -375,7 +324,6 @@ export function ChoresView() {
               Add Chore
             </Button>
 
-            {/* User avatar */}
             <button
               onClick={activeUser ? clearActiveUser : () => requireAuth()}
               className="flex items-center gap-2 p-1.5 rounded-full hover:bg-accent transition-colors"
@@ -398,7 +346,6 @@ export function ChoresView() {
               )}
             </button>
 
-            {/* Settings */}
             <Button variant="ghost" size="icon" onClick={() => router.push('/settings')}>
               <Settings className="h-5 w-5" />
             </Button>
@@ -406,12 +353,9 @@ export function ChoresView() {
         </div>
       </header>
 
-      {/* ================================================================== */}
       {/* FILTERS */}
-      {/* ================================================================== */}
-      <div className="flex-shrink-0 border-b border-border bg-card/50 px-4 py-2">
+      <div className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-4 py-2">
         <div className="flex items-center gap-4 flex-wrap">
-          {/* Filter by person */}
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Person:</span>
             <div className="flex gap-1">
@@ -440,7 +384,6 @@ export function ChoresView() {
             </div>
           </div>
 
-          {/* Filter by category */}
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Category:</span>
             <div className="flex gap-1">
@@ -465,7 +408,6 @@ export function ChoresView() {
             </div>
           </div>
 
-          {/* Show disabled */}
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Show disabled:</span>
             <Switch
@@ -474,7 +416,6 @@ export function ChoresView() {
             />
           </div>
 
-          {/* Sort */}
           <div className="flex items-center gap-2 ml-auto">
             <SortAsc className="h-4 w-4 text-muted-foreground" />
             <select
@@ -490,9 +431,7 @@ export function ChoresView() {
         </div>
       </div>
 
-      {/* ================================================================== */}
       {/* CHORE LIST */}
-      {/* ================================================================== */}
       <div className="flex-1 overflow-y-auto p-4">
         {choresLoading ? (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
@@ -514,7 +453,7 @@ export function ChoresView() {
           </div>
         ) : filteredChores.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-            <Sparkles className="h-12 w-12 mb-4 opacity-50" />
+            <ClipboardList className="h-12 w-12 mb-4 opacity-50" />
             <p>No chores found</p>
             <Button
               variant="outline"
@@ -606,376 +545,5 @@ export function ChoresView() {
       )}
       </div>
     </PageWrapper>
-  );
-}
-
-/**
- * CHORE ITEM COMPONENT
- */
-function ChoreItem({
-  chore,
-  onComplete,
-  onToggleEnabled,
-  onEdit,
-  onDelete,
-}: {
-  chore: Chore;
-  onComplete: () => void;
-  onToggleEnabled: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
-  const isOverdue = chore.nextDue && isPast(parseISO(chore.nextDue));
-  const isPendingApproval = !!chore.pendingApproval;
-  const categoryEmoji = getCategoryEmoji(chore.category);
-
-  const formatDueDate = (dateString: string) => {
-    const date = parseISO(dateString);
-    if (isToday(date)) return 'Due today';
-    if (isTomorrow(date)) return 'Due tomorrow';
-    if (isPast(date)) return 'Overdue';
-    return `Due ${format(date, 'MMM d')}`;
-  };
-
-  const formatFrequency = (frequency: string, customDays?: number) => {
-    switch (frequency) {
-      case 'daily': return 'Daily';
-      case 'weekly': return 'Weekly';
-      case 'biweekly': return 'Every 2 weeks';
-      case 'monthly': return 'Monthly';
-      case 'custom': return customDays ? `Every ${customDays} days` : 'Custom';
-      default: return frequency;
-    }
-  };
-
-  return (
-    <div
-      className={cn(
-        'flex items-center gap-4 p-4 rounded-lg border border-border',
-        'hover:bg-accent/30 transition-colors group',
-        !chore.enabled && 'opacity-50 bg-muted/30',
-        isPendingApproval && 'bg-amber-500/10 border-amber-500/30'
-      )}
-    >
-      {/* Complete button - always enabled for parents, shows pending state visually */}
-      <Button
-        size="icon"
-        variant="ghost"
-        onClick={onComplete}
-        disabled={!chore.enabled}
-        className={cn(
-          'flex-shrink-0 h-9 w-9',
-          isOverdue && !isPendingApproval && 'text-destructive hover:text-destructive',
-          isPendingApproval && 'text-amber-500'
-        )}
-        title={isPendingApproval ? 'Approve and complete chore' : 'Mark as complete'}
-      >
-        {isPendingApproval ? (
-          <Hourglass className="h-5 w-5" />
-        ) : (
-          <CheckCircle2 className="h-5 w-5" />
-        )}
-      </Button>
-
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-base">{categoryEmoji}</span>
-          <span className={cn(
-            'font-medium',
-            isPendingApproval && 'text-amber-700 dark:text-amber-400'
-          )}>{chore.title}</span>
-
-          {chore.pointValue > 0 && (
-            <Badge variant="secondary" className="text-xs">
-              +{chore.pointValue} pts
-            </Badge>
-          )}
-
-          {/* Show pending badge if pending approval, otherwise show requires approval */}
-          {isPendingApproval ? (
-            <Badge variant="default" className="text-xs bg-amber-500 hover:bg-amber-500">
-              Pending Approval
-            </Badge>
-          ) : chore.requiresApproval && (
-            <Badge variant="outline" className="text-xs">
-              Requires approval
-            </Badge>
-          )}
-
-          <Badge variant="outline" className="text-xs capitalize">
-            {chore.category}
-          </Badge>
-        </div>
-
-        <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-          {/* Show who completed it if pending approval */}
-          {isPendingApproval && chore.pendingApproval && (
-            <div className="flex items-center gap-1">
-              <UserAvatar
-                name={chore.pendingApproval.completedBy.name}
-                color={chore.pendingApproval.completedBy.color}
-                size="sm"
-                className="h-4 w-4 text-[8px]"
-              />
-              <span className="text-amber-600 dark:text-amber-400">
-                Completed by {chore.pendingApproval.completedBy.name}
-              </span>
-            </div>
-          )}
-
-          {/* Show assigned to only if not pending */}
-          {!isPendingApproval && chore.assignedTo && (
-            <div className="flex items-center gap-1">
-              <UserAvatar
-                name={chore.assignedTo.name}
-                color={chore.assignedTo.color}
-                size="sm"
-                className="h-4 w-4 text-[8px]"
-              />
-              <span>{chore.assignedTo.name}</span>
-            </div>
-          )}
-
-          <span>{formatFrequency(chore.frequency, chore.customIntervalDays)}</span>
-
-          {/* Show due date only if not pending */}
-          {!isPendingApproval && chore.nextDue && (
-            <span className={cn(isOverdue && 'text-destructive font-medium')}>
-              {isOverdue && <AlertCircle className="h-3 w-3 inline mr-1" />}
-              {formatDueDate(chore.nextDue)}
-            </span>
-          )}
-        </div>
-
-        {chore.description && (
-          <p className="text-sm text-muted-foreground mt-1">{chore.description}</p>
-        )}
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center gap-1">
-        <div className="flex items-center gap-1">
-          <span className="text-xs text-muted-foreground mr-1">
-            {chore.enabled ? 'Enabled' : 'Disabled'}
-          </span>
-          <Switch
-            checked={chore.enabled}
-            onCheckedChange={onToggleEnabled}
-          />
-        </div>
-
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onEdit}
-          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-        >
-          <Edit2 className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onDelete}
-          className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-/**
- * GET CATEGORY EMOJI
- */
-function getCategoryEmoji(category: string): string {
-  switch (category) {
-    case 'cleaning': return '🧹';
-    case 'laundry': return '🧺';
-    case 'dishes': return '🍽️';
-    case 'yard': return '🌿';
-    case 'pets': return '🐾';
-    case 'trash': return '🗑️';
-    default: return '✨';
-  }
-}
-
-/**
- * CHORE MODAL COMPONENT
- */
-function ChoreModal({
-  chore,
-  onClose,
-  onSave,
-  familyMembers,
-}: {
-  chore?: Chore;
-  onClose: () => void;
-  onSave: (chore: Omit<Chore, 'id' | 'createdAt'>) => void;
-  familyMembers: FamilyMember[];
-}) {
-  const [title, setTitle] = useState(chore?.title || '');
-  const [description, setDescription] = useState(chore?.description || '');
-  const [category, setCategory] = useState<Chore['category']>(chore?.category || 'cleaning');
-  const [frequency, setFrequency] = useState<Chore['frequency']>(chore?.frequency || 'weekly');
-  const [pointValue, setPointValue] = useState(chore?.pointValue || 5);
-  const [requiresApproval, setRequiresApproval] = useState(chore?.requiresApproval || false);
-  const [assignedTo, setAssignedTo] = useState(chore?.assignedTo?.id || '');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim()) return;
-
-    const selectedMember = familyMembers.find((m) => m.id === assignedTo);
-
-    onSave({
-      title: title.trim(),
-      description: description.trim() || undefined,
-      category,
-      frequency,
-      pointValue,
-      requiresApproval,
-      assignedTo: selectedMember || undefined,
-      enabled: chore?.enabled ?? true,
-      lastCompleted: chore?.lastCompleted,
-      nextDue: chore?.nextDue,
-    });
-  };
-
-  return (
-    <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-      onClick={onClose}
-    >
-      <div
-        className="bg-card rounded-lg p-6 max-w-md w-full mx-4 shadow-lg max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold">
-            {chore ? 'Edit Chore' : 'Add Chore'}
-          </h2>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="text-sm font-medium">Title</label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Chore title..."
-              autoFocus
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium">Description (optional)</label>
-            <Input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Any details..."
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium">Category</label>
-            <div className="flex gap-2 mt-1 flex-wrap">
-              {(['cleaning', 'laundry', 'dishes', 'yard', 'pets', 'trash', 'other'] as const).map((cat) => (
-                <Button
-                  key={cat}
-                  type="button"
-                  variant={category === cat ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setCategory(cat)}
-                  className="capitalize"
-                >
-                  {getCategoryEmoji(cat)} {cat}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium">Frequency</label>
-            <div className="flex gap-2 mt-1 flex-wrap">
-              {(['daily', 'weekly', 'biweekly', 'monthly'] as const).map((freq) => (
-                <Button
-                  key={freq}
-                  type="button"
-                  variant={frequency === freq ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setFrequency(freq)}
-                  className="capitalize"
-                >
-                  {freq}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium">Points</label>
-            <Input
-              type="number"
-              value={pointValue}
-              onChange={(e) => setPointValue(parseInt(e.target.value) || 0)}
-              min="0"
-              max="100"
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Switch
-              checked={requiresApproval}
-              onCheckedChange={setRequiresApproval}
-            />
-            <label className="text-sm font-medium">Requires approval</label>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium">Assign To</label>
-            <div className="flex gap-2 mt-1 flex-wrap">
-              <Button
-                type="button"
-                variant={!assignedTo ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setAssignedTo('')}
-              >
-                Anyone
-              </Button>
-              {familyMembers.map((member) => (
-                <Button
-                  key={member.id}
-                  type="button"
-                  variant={assignedTo === member.id ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setAssignedTo(member.id)}
-                  className="gap-1"
-                >
-                  <div
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: member.color }}
-                  />
-                  {member.name}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={!title.trim()}>
-              {chore ? 'Save Changes' : 'Add Chore'}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
   );
 }

@@ -1,36 +1,17 @@
-/**
- * ============================================================================
- * PRISM - Individual Family Member API Route
- * ============================================================================
- *
- * WHAT THIS FILE DOES:
- * Handles HTTP requests for individual family member operations.
- *
- * ENDPOINT: /api/family/[id]
- * - GET:    Get a single family member
- * - PATCH:  Update a family member
- * - DELETE: Remove a family member
- *
- * ============================================================================
- */
-
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth, requireRole } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 
-
-/**
- * GET /api/family/[id]
- * ============================================================================
- * Gets a single family member by ID.
- * ============================================================================
- */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { id } = await params;
 
@@ -75,34 +56,24 @@ export async function GET(
 }
 
 
-/**
- * PATCH /api/family/[id]
- * ============================================================================
- * Updates a family member.
- *
- * REQUEST BODY:
- * {
- *   name?: string
- *   role?: "parent" | "child" | "guest"
- *   color?: string (hex color)
- *   email?: string
- *   avatarUrl?: string
- *   pin?: string (new PIN, 4-6 digits)
- *   currentPin?: string (required when changing PIN if user has existing PIN)
- * }
- *
- * SECURITY:
- * - When changing PIN, require current PIN first (if one exists)
- * - New PIN is hashed with bcrypt
- * ============================================================================
- */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { id } = await params;
     const body = await request.json();
+
+    // Editing another user or changing roles requires canManageUsers
+    const editingSelf = id === auth.userId;
+    const changingRole = body.role !== undefined;
+    if (!editingSelf || changingRole) {
+      const forbidden = requireRole(auth, 'canManageUsers');
+      if (forbidden) return forbidden;
+    }
 
     // Get current member
     const [currentMember] = await db
@@ -226,24 +197,19 @@ export async function PATCH(
 }
 
 
-/**
- * DELETE /api/family/[id]
- * ============================================================================
- * Removes a family member.
- *
- * SECURITY:
- * - Cannot delete the last parent
- * - Only parents can delete family members (enforce in middleware)
- * ============================================================================
- */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
+  const forbidden = requireRole(auth, 'canManageUsers');
+  if (forbidden) return forbidden;
+
   try {
     const { id } = await params;
 
-    // Get current member
     const [currentMember] = await db
       .select()
       .from(users)

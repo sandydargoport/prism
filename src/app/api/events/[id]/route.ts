@@ -20,6 +20,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { events, calendarSources } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
@@ -41,6 +42,9 @@ export async function GET(
   request: NextRequest,
   { params }: RouteParams
 ) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { id } = await params;
 
@@ -140,6 +144,9 @@ export async function PATCH(
   request: NextRequest,
   { params }: RouteParams
 ) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { id } = await params;
     const body = await request.json();
@@ -341,6 +348,9 @@ export async function DELETE(
   request: NextRequest,
   { params }: RouteParams
 ) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { id } = await params;
 

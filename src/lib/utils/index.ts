@@ -20,5 +20,8 @@
 // Class name utility (for Tailwind CSS)
 export { cn } from './cn';
 
+// API response formatters
+export { formatTaskRow, formatMessageRow, formatMealRow } from './formatters';
+
 // Re-export everything from constants for convenience
 export * from '../constants';

@@ -20,32 +20,11 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { familyMessages, users } from '@/lib/db/schema';
 import { eq, desc, asc, and, gt, isNull, or } from 'drizzle-orm';
-
-
-/**
- * MESSAGE RESPONSE TYPE
- * ============================================================================
- * The shape of message data returned by the API.
- * Includes the author's user information.
- * ============================================================================
- */
-interface MessageResponse {
-  id: string;
-  message: string;
-  pinned: boolean;
-  important: boolean;
-  expiresAt: string | null;
-  createdAt: string;
-  author: {
-    id: string;
-    name: string;
-    color: string;
-    avatarUrl: string | null;
-  };
-}
+import { formatMessageRow } from '@/lib/utils/formatters';
 
 
 /**
@@ -76,6 +55,9 @@ interface MessageResponse {
  * ============================================================================
  */
 export async function GET(request: NextRequest) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { searchParams } = new URL(request.url);
     const authorId = searchParams.get('authorId');
@@ -134,20 +116,7 @@ export async function GET(request: NextRequest) {
       .offset(offset);
 
     // Format response
-    const formattedMessages: MessageResponse[] = results.map((row) => ({
-      id: row.id,
-      message: row.message,
-      pinned: row.pinned,
-      important: row.important,
-      expiresAt: row.expiresAt?.toISOString() || null,
-      createdAt: row.createdAt.toISOString(),
-      author: {
-        id: row.authorId,
-        name: row.authorName,
-        color: row.authorColor,
-        avatarUrl: row.authorAvatar,
-      },
-    }));
+    const formattedMessages = results.map((row) => formatMessageRow(row));
 
     // Get total count
     const allMessages = await db
@@ -200,6 +169,9 @@ export async function GET(request: NextRequest) {
  * ============================================================================
  */
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const body = await request.json();
 
@@ -294,22 +266,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const response: MessageResponse = {
-      id: messageWithAuthor.id,
-      message: messageWithAuthor.message,
-      pinned: messageWithAuthor.pinned,
-      important: messageWithAuthor.important,
-      expiresAt: messageWithAuthor.expiresAt?.toISOString() || null,
-      createdAt: messageWithAuthor.createdAt.toISOString(),
-      author: {
-        id: messageWithAuthor.authorId,
-        name: messageWithAuthor.authorName,
-        color: messageWithAuthor.authorColor,
-        avatarUrl: messageWithAuthor.authorAvatar,
-      },
-    };
-
-    return NextResponse.json(response, { status: 201 });
+    return NextResponse.json(formatMessageRow(messageWithAuthor), { status: 201 });
   } catch (error) {
     console.error('Error creating message:', error);
     return NextResponse.json(

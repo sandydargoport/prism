@@ -12,10 +12,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { meals, users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, aliasedTable } from 'drizzle-orm';
 import { updateMealSchema, validateRequest } from '@/lib/validations';
+import { formatMealRow } from '@/lib/utils/formatters';
+
+const cookedByUser = aliasedTable(users, 'cookedByUser');
 
 /**
  * Route params type
@@ -34,6 +38,9 @@ export async function GET(
   request: NextRequest,
   { params }: RouteParams
 ) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { id } = await params;
 
@@ -51,7 +58,7 @@ export async function GET(
         dayOfWeek: meals.dayOfWeek,
         mealType: meals.mealType,
         cookedAt: meals.cookedAt,
-        cookedBy: meals.cookedBy,
+        cookedById: meals.cookedBy,
         weekOf: meals.weekOf,
         source: meals.source,
         sourceId: meals.sourceId,
@@ -60,9 +67,13 @@ export async function GET(
         createdById: users.id,
         createdByName: users.name,
         createdByColor: users.color,
+        cookedByUserId: cookedByUser.id,
+        cookedByUserName: cookedByUser.name,
+        cookedByUserColor: cookedByUser.color,
       })
       .from(meals)
       .leftJoin(users, eq(meals.createdBy, users.id))
+      .leftJoin(cookedByUser, eq(meals.cookedBy, cookedByUser.id))
       .where(eq(meals.id, id));
 
     if (!mealWithUser) {
@@ -72,31 +83,7 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({
-      id: mealWithUser.id,
-      name: mealWithUser.name,
-      description: mealWithUser.description,
-      recipe: mealWithUser.recipe,
-      recipeUrl: mealWithUser.recipeUrl,
-      prepTime: mealWithUser.prepTime,
-      cookTime: mealWithUser.cookTime,
-      servings: mealWithUser.servings,
-      ingredients: mealWithUser.ingredients,
-      dayOfWeek: mealWithUser.dayOfWeek,
-      mealType: mealWithUser.mealType,
-      cookedAt: mealWithUser.cookedAt?.toISOString() || null,
-      cookedBy: mealWithUser.cookedBy,
-      weekOf: mealWithUser.weekOf,
-      source: mealWithUser.source,
-      sourceId: mealWithUser.sourceId,
-      createdAt: mealWithUser.createdAt.toISOString(),
-      updatedAt: mealWithUser.updatedAt.toISOString(),
-      createdBy: mealWithUser.createdById ? {
-        id: mealWithUser.createdById,
-        name: mealWithUser.createdByName,
-        color: mealWithUser.createdByColor,
-      } : null,
-    });
+    return NextResponse.json(formatMealRow(mealWithUser));
   } catch (error) {
     console.error('Error fetching meal:', error);
     return NextResponse.json(
@@ -125,6 +112,9 @@ export async function PATCH(
   request: NextRequest,
   { params }: RouteParams
 ) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { id } = await params;
     const body = await request.json();
@@ -197,7 +187,7 @@ export async function PATCH(
         dayOfWeek: meals.dayOfWeek,
         mealType: meals.mealType,
         cookedAt: meals.cookedAt,
-        cookedBy: meals.cookedBy,
+        cookedById: meals.cookedBy,
         weekOf: meals.weekOf,
         source: meals.source,
         sourceId: meals.sourceId,
@@ -206,9 +196,13 @@ export async function PATCH(
         createdById: users.id,
         createdByName: users.name,
         createdByColor: users.color,
+        cookedByUserId: cookedByUser.id,
+        cookedByUserName: cookedByUser.name,
+        cookedByUserColor: cookedByUser.color,
       })
       .from(meals)
       .leftJoin(users, eq(meals.createdBy, users.id))
+      .leftJoin(cookedByUser, eq(meals.cookedBy, cookedByUser.id))
       .where(eq(meals.id, id));
 
     if (!updatedMealWithUser) {
@@ -218,31 +212,7 @@ export async function PATCH(
       );
     }
 
-    return NextResponse.json({
-      id: updatedMealWithUser.id,
-      name: updatedMealWithUser.name,
-      description: updatedMealWithUser.description,
-      recipe: updatedMealWithUser.recipe,
-      recipeUrl: updatedMealWithUser.recipeUrl,
-      prepTime: updatedMealWithUser.prepTime,
-      cookTime: updatedMealWithUser.cookTime,
-      servings: updatedMealWithUser.servings,
-      ingredients: updatedMealWithUser.ingredients,
-      dayOfWeek: updatedMealWithUser.dayOfWeek,
-      mealType: updatedMealWithUser.mealType,
-      cookedAt: updatedMealWithUser.cookedAt?.toISOString() || null,
-      cookedBy: updatedMealWithUser.cookedBy,
-      weekOf: updatedMealWithUser.weekOf,
-      source: updatedMealWithUser.source,
-      sourceId: updatedMealWithUser.sourceId,
-      createdAt: updatedMealWithUser.createdAt.toISOString(),
-      updatedAt: updatedMealWithUser.updatedAt.toISOString(),
-      createdBy: updatedMealWithUser.createdById ? {
-        id: updatedMealWithUser.createdById,
-        name: updatedMealWithUser.createdByName,
-        color: updatedMealWithUser.createdByColor,
-      } : null,
-    });
+    return NextResponse.json(formatMealRow(updatedMealWithUser));
   } catch (error) {
     console.error('Error updating meal:', error);
     return NextResponse.json(
@@ -262,6 +232,9 @@ export async function DELETE(
   request: NextRequest,
   { params }: RouteParams
 ) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { id } = await params;
 

@@ -14,8 +14,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
-import { calendarSources, users } from '@/lib/db/schema';
+import { calendarSources, users, calendarGroups } from '@/lib/db/schema';
 import { eq, asc } from 'drizzle-orm';
 
 /**
@@ -23,6 +24,9 @@ import { eq, asc } from 'drizzle-orm';
  * Lists all calendar sources with their sync status
  */
 export async function GET() {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     // Sort by createdAt to maintain stable order regardless of user assignment changes
     const sources = await db
@@ -35,6 +39,7 @@ export async function GET() {
         color: calendarSources.color,
         enabled: calendarSources.enabled,
         isFamily: calendarSources.isFamily,
+        groupId: calendarSources.groupId,
         lastSynced: calendarSources.lastSynced,
         syncErrors: calendarSources.syncErrors,
         createdAt: calendarSources.createdAt,
@@ -42,9 +47,13 @@ export async function GET() {
         userId: calendarSources.userId,
         userName: users.name,
         userColor: users.color,
+        // Group info
+        groupName: calendarGroups.name,
+        groupColor: calendarGroups.color,
       })
       .from(calendarSources)
       .leftJoin(users, eq(calendarSources.userId, users.id))
+      .leftJoin(calendarGroups, eq(calendarSources.groupId, calendarGroups.id))
       .orderBy(asc(calendarSources.createdAt));
 
     const formattedSources = sources.map((source) => ({
@@ -56,6 +65,9 @@ export async function GET() {
       color: source.color || source.userColor,
       enabled: source.enabled,
       isFamily: source.isFamily,
+      groupId: source.groupId,
+      groupName: source.groupName,
+      groupColor: source.groupColor,
       lastSynced: source.lastSynced?.toISOString() || null,
       syncErrors: source.syncErrors,
       createdAt: source.createdAt.toISOString(),
@@ -89,6 +101,9 @@ export async function GET() {
  * Creates a new local calendar source
  */
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const body = await request.json();
 

@@ -24,8 +24,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
-import { events, calendarSources, users } from '@/lib/db/schema';
+import { events, calendarSources, users, calendarGroups } from '@/lib/db/schema';
 import { eq, and, or, gte, lte, asc, isNotNull, isNull } from 'drizzle-orm';
 import { createEventSchema, validateRequest } from '@/lib/validations';
 import { getCached, invalidateCache } from '@/lib/cache/redis';
@@ -85,6 +86,9 @@ interface EventResponse {
  * ============================================================================
  */
 export async function GET(request: NextRequest) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { searchParams } = new URL(request.url);
     const startDateStr = searchParams.get('startDate');
@@ -163,13 +167,18 @@ export async function GET(request: NextRequest) {
         calendarSourceEnabled: calendarSources.enabled,
         calendarSourceIsFamily: calendarSources.isFamily,
         calendarSourceUserId: calendarSources.userId,
+        calendarSourceGroupId: calendarSources.groupId,
         // User data (for color)
         userName: users.name,
         userColor: users.color,
+        // Group data (for color)
+        groupColor: calendarGroups.color,
+        groupName: calendarGroups.name,
       })
       .from(events)
       .leftJoin(calendarSources, eq(events.calendarSourceId, calendarSources.id))
       .leftJoin(users, eq(calendarSources.userId, users.id))
+      .leftJoin(calendarGroups, eq(calendarSources.groupId, calendarGroups.id))
       .where(and(
         ...conditions,
         // Only enabled calendars
@@ -178,10 +187,13 @@ export async function GET(request: NextRequest) {
           // Allow events without a calendar source (local events)
           isNull(events.calendarSourceId)
         ),
-        // Only assigned or family calendars (exclude unassigned)
+        // Include events from enabled calendars (assigned, family, grouped, or with color)
         or(
           isNotNull(calendarSources.userId),
           eq(calendarSources.isFamily, true),
+          isNotNull(calendarSources.groupId),
+          // Include enabled unassigned calendars (they use their source color)
+          eq(calendarSources.enabled, true),
           // Allow events without a calendar source (local events)
           isNull(events.calendarSourceId)
         )
@@ -194,8 +206,11 @@ export async function GET(request: NextRequest) {
     // Color priority: event color > user color > calendar color > default
     const formattedEvents: EventResponse[] = results.map((row) => {
       // Determine the color to use
-      // Priority: event-specific color > assigned user's color > calendar color > family default
+      // Priority: event color > group color > user color > calendar color > default
       let eventColor = row.color;
+      if (!eventColor && row.groupColor) {
+        eventColor = row.groupColor; // Use calendar group color
+      }
       if (!eventColor && row.userColor) {
         eventColor = row.userColor; // Use assigned user's profile color
       }
@@ -291,6 +306,9 @@ export async function GET(request: NextRequest) {
  * ============================================================================
  */
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const body = await request.json();
 

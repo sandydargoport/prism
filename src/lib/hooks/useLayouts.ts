@@ -47,9 +47,8 @@ export function useLayouts(): UseLayoutsResult {
       const data = await response.json();
       // Normalize widget format: DB may store {type, position:{x,y,w,h}}
       // but we need {i, x, y, w, h}
-      const normalized = (data.layouts || []).map((l: Layout) => ({
-        ...l,
-        widgets: (l.widgets || []).map((w: WidgetConfig & { type?: string; position?: { x: number; y: number; w: number; h: number } }) => {
+      const normalized = (data.layouts || []).map((l: Layout) => {
+        let widgets = (l.widgets || []).map((w: WidgetConfig & { type?: string; position?: { x: number; y: number; w: number; h: number } }) => {
           if (w.i !== undefined && w.x !== undefined) return w;
           return {
             i: w.type || w.i,
@@ -60,8 +59,20 @@ export function useLayouts(): UseLayoutsResult {
             visible: w.visible,
             settings: w.settings,
           } as WidgetConfig;
-        }),
-      }));
+        });
+        // Migrate old 4-col layouts to 12-col: if max(x+w) <= 4, scale by 3
+        const maxRight = Math.max(...widgets.map(w => w.x + w.w), 0);
+        if (maxRight > 0 && maxRight <= 4) {
+          widgets = widgets.map(w => ({
+            ...w,
+            x: w.x * 3,
+            y: w.y * 3,
+            w: w.w * 3,
+            h: w.h * 3,
+          }));
+        }
+        return { ...l, widgets };
+      });
       setLayouts(normalized);
     } catch (err) {
       console.error('Error fetching layouts:', err);

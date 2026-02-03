@@ -35,7 +35,7 @@ import {
   Home,
   Calendar,
   CheckSquare,
-  Sparkles,
+  ClipboardList,
   ShoppingCart,
   UtensilsCrossed,
   MessageSquare,
@@ -81,7 +81,7 @@ const navItems: NavItem[] = [
   { label: 'Dashboard', href: '/', icon: Home },
   { label: 'Calendar', href: '/calendar', icon: Calendar },
   { label: 'Tasks', href: '/tasks', icon: CheckSquare },
-  { label: 'Chores', href: '/chores', icon: Sparkles },
+  { label: 'Chores', href: '/chores', icon: ClipboardList },
   { label: 'Shopping', href: '/shopping', icon: ShoppingCart },
   { label: 'Meals', href: '/meals', icon: UtensilsCrossed },
   { label: 'Messages', href: '/messages', icon: MessageSquare },
@@ -167,7 +167,7 @@ export function SideNav({ className }: SideNavProps) {
         className={cn(
           // Base styles
           'group fixed left-0 top-0 z-40 h-screen',
-          'bg-card border-r border-border',
+          'bg-card/85 backdrop-blur-sm border-r border-border',
           'flex flex-col',
           'transition-all duration-300 ease-in-out',
           // Default to collapsed width

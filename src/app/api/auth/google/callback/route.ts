@@ -1,32 +1,22 @@
-/**
- * ============================================================================
- * PRISM - Google OAuth Callback Route
- * ============================================================================
- *
- * Handles the callback from Google after user grants permission.
- * Exchanges the authorization code for tokens and stores them.
- *
- * ============================================================================
- */
-
 import { NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
+import { requireAuth, requireRole } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { calendarSources } from '@/lib/db/schema';
 import {
   exchangeCodeForTokens,
   fetchCalendarList,
 } from '@/lib/integrations/google-calendar';
+import { encrypt } from '@/lib/utils/crypto';
 
-// Hardcoded base URL for OAuth redirects
-// Must match the redirect URI authorized in Google Console
-const BASE_URL = 'http://localhost:3000';
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 
-/**
- * GET /api/auth/google/callback
- * Handles OAuth callback from Google
- */
 export async function GET(request: Request) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
+  const forbidden = requireRole(auth, 'canModifySettings');
+  if (forbidden) return forbidden;
 
   try {
     const { searchParams } = new URL(request.url);
@@ -56,18 +46,17 @@ export async function GET(request: Request) {
       }
     }
 
-    // Exchange code for tokens
     const tokens = await exchangeCodeForTokens(code);
-
-    // Calculate token expiration time
     const tokenExpiresAt = new Date(Date.now() + tokens.expires_in * 1000);
 
-    // Fetch user's calendars
+    // Encrypt tokens before storing
+    const encryptedAccessToken = encrypt(tokens.access_token);
+    const encryptedRefreshToken = tokens.refresh_token ? encrypt(tokens.refresh_token) : null;
+
+    // Fetch calendars using the plaintext token (before we discard it)
     const calendars = await fetchCalendarList(tokens.access_token);
 
-    // Store each calendar as a calendar source
     for (const calendar of calendars) {
-      // Check if we already have this calendar
       const existing = await db.query.calendarSources.findFirst({
         where: (cs, { and, eq }) =>
           and(
@@ -77,19 +66,16 @@ export async function GET(request: Request) {
       });
 
       if (existing) {
-        // Update existing calendar source with new tokens
         await db
           .update(calendarSources)
           .set({
-            accessToken: tokens.access_token,
-            refreshToken: tokens.refresh_token || existing.refreshToken,
+            accessToken: encryptedAccessToken,
+            refreshToken: encryptedRefreshToken || existing.refreshToken,
             tokenExpiresAt,
             updatedAt: new Date(),
           })
           .where(eq(calendarSources.id, existing.id));
       } else {
-        // Create new calendar source - enable ALL calendars by default
-        // Truncate names to 255 chars to prevent database errors
         const calendarName = (calendar.summary || 'Untitled Calendar').slice(0, 255);
 
         await db.insert(calendarSources).values({
@@ -99,9 +85,9 @@ export async function GET(request: Request) {
           dashboardCalendarName: calendarName,
           displayName: calendarName,
           color: calendar.backgroundColor || undefined,
-          enabled: true, // Enable all calendars by default
-          accessToken: tokens.access_token,
-          refreshToken: tokens.refresh_token,
+          enabled: true,
+          accessToken: encryptedAccessToken,
+          refreshToken: encryptedRefreshToken,
           tokenExpiresAt,
         });
       }

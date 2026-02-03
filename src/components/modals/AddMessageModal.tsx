@@ -39,16 +39,7 @@ import {
   UserAvatar,
   Checkbox,
 } from '@/components/ui';
-
-/**
- * Family member for author selection
- */
-interface FamilyMember {
-  id: string;
-  name: string;
-  color: string;
-  avatarUrl?: string | null;
-}
+import type { FamilyMember } from '@/types';
 
 /**
  * Message data returned after creation

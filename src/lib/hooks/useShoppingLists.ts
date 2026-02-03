@@ -12,38 +12,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
-export interface ShoppingItem {
-  id: string;
-  listId: string;
-  name: string;
-  quantity?: number;
-  unit?: string;
-  category?: 'produce' | 'dairy' | 'meat' | 'bakery' | 'frozen' | 'pantry' | 'household' | 'other';
-  checked: boolean;
-  notes?: string;
-  addedBy?: {
-    id: string;
-    name: string;
-    color: string;
-  };
-  createdAt: Date;
-}
-
-export interface ShoppingList {
-  id: string;
-  name: string;
-  description?: string;
-  sortOrder: number;
-  items: ShoppingItem[];
-  /** User ID this list is assigned to (only they can check off items) */
-  assignedTo?: string;
-  createdBy?: {
-    id: string;
-    name: string;
-    color: string;
-  };
-  createdAt: Date;
-}
+// Re-export types from shared types for consumers that import from this hook
+export type { ShoppingItem, ShoppingList } from '@/types';
+import type { ShoppingItem, ShoppingList } from '@/types';
 
 interface UseShoppingListsOptions {
   /** Auto-refresh interval in milliseconds (0 = disabled) */

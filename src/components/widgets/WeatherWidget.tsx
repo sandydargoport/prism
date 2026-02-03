@@ -67,11 +67,19 @@ export interface ForecastDay {
   condition: WeatherCondition;
 }
 
+/** Period forecast (morning/afternoon/evening) */
+export interface ForecastPeriod {
+  label: string;
+  temp: number;
+  condition: WeatherCondition;
+}
+
 /** Complete weather data */
 export interface WeatherData {
   location: string;
   current: CurrentWeather;
   forecast: ForecastDay[];
+  periods?: ForecastPeriod[];
   lastUpdated: Date;
 }
 
@@ -95,6 +103,10 @@ export interface WeatherWidgetProps {
   loading?: boolean;
   /** Error message */
   error?: string | null;
+  /** Grid width in layout units */
+  gridW?: number;
+  /** Grid height in layout units */
+  gridH?: number;
   /** Additional CSS classes */
   className?: string;
 }
@@ -124,14 +136,22 @@ export function WeatherWidget({
   location = 'Springfield, IL',
   useCelsius = false,
   showForecast = true,
-  forecastDays = 5,
+  forecastDays,
   data: externalData,
   loading = false,
   error = null,
+  gridW = 3,
+  gridH = 3,
   className,
 }: WeatherWidgetProps) {
   // Use provided data or demo data
   const weatherData = externalData || getDemoWeatherData(location);
+
+  // Auto-orient: vertical if gridH > gridW, horizontal otherwise
+  const isVertical = gridH > gridW;
+
+  // Dynamic forecast days: scale with available space (1-5)
+  const dynamicForecastDays = forecastDays ?? Math.max(1, Math.min(5, isVertical ? Math.min(3, gridW) : gridW - 1));
 
   // Convert temperature if needed
   const formatTemp = (fahrenheit: number): string => {
@@ -151,7 +171,7 @@ export function WeatherWidget({
       error={error}
       className={className}
     >
-      <div className="flex flex-col h-full">
+      <div className={cn('flex h-full', isVertical ? 'flex-col' : 'flex-col')}>
         {/* CURRENT CONDITIONS */}
         <div className="flex items-center justify-between mb-4">
           {/* Temperature and icon */}
@@ -189,18 +209,55 @@ export function WeatherWidget({
           {weatherData.location}
         </div>
 
-        {/* FORECAST */}
-        {showForecast && (
-          <div className="flex-1 border-t border-border pt-3">
-            <div className="grid grid-cols-5 gap-2 h-full">
-              {weatherData.forecast.slice(0, forecastDays).map((day, index) => (
-                <ForecastDayCard
-                  key={index}
-                  day={day}
-                  formatTemp={formatTemp}
-                />
+        {/* TODAY'S PERIODS (Morning/Afternoon/Evening) */}
+        {weatherData.periods && weatherData.periods.length > 0 && (
+          <div className="border-t border-border pt-2 pb-2 mb-1">
+            <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Today</div>
+            <div className="flex gap-3">
+              {weatherData.periods.map((period, index) => (
+                <div key={index} className="flex items-center gap-1.5">
+                  <WeatherIcon condition={period.condition} className="h-4 w-4 text-muted-foreground" />
+                  <div className="text-xs">
+                    <span className="text-muted-foreground">{period.label}</span>
+                    {' '}
+                    <span className="font-medium">{formatTemp(period.temp)}</span>
+                  </div>
+                </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* FORECAST */}
+        {showForecast && (
+          <div className={cn('flex-1 border-t border-border pt-3')}>
+            {isVertical ? (
+              // Vertical layout: stack forecast days
+              <div className="space-y-2">
+                {weatherData.forecast.slice(0, dynamicForecastDays).map((day, index) => (
+                  <div key={index} className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-muted-foreground w-8">{day.dayName}</span>
+                    <WeatherIcon condition={day.condition} className="h-5 w-5 text-muted-foreground" />
+                    <div className="text-xs">
+                      <span className="font-medium">{formatTemp(day.high)}</span>
+                      <span className="text-muted-foreground mx-1">/</span>
+                      <span className="text-muted-foreground">{formatTemp(day.low)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              // Horizontal layout: grid of forecast columns
+              <div className={`grid gap-2 h-full`} style={{ gridTemplateColumns: `repeat(${dynamicForecastDays}, 1fr)` }}>
+                {weatherData.forecast.slice(0, dynamicForecastDays).map((day, index) => (
+                  <ForecastDayCard
+                    key={index}
+                    day={day}
+                    formatTemp={formatTemp}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

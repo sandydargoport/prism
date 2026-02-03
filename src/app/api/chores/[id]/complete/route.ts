@@ -21,6 +21,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { chores, choreCompletions, users } from '@/lib/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
@@ -92,6 +93,9 @@ export async function POST(
   request: NextRequest,
   { params }: RouteParams
 ) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { id: choreId } = await params;
     const body = await request.json();

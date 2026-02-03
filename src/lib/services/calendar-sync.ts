@@ -1,15 +1,3 @@
-/**
- * ============================================================================
- * PRISM - Calendar Sync Service
- * ============================================================================
- *
- * WHAT THIS FILE DOES:
- * Provides synchronization between external calendar providers and the
- * internal events database.
- *
- * ============================================================================
- */
-
 import { db } from '@/lib/db/client';
 import { calendarSources, events } from '@/lib/db/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
@@ -19,6 +7,7 @@ import {
   convertGoogleEventToInternal,
   type GoogleCalendarEvent,
 } from '@/lib/integrations/google-calendar';
+import { decrypt, encrypt } from '@/lib/utils/crypto';
 
 /**
  * Check if token needs refresh (within 5 minutes of expiry)
@@ -59,24 +48,23 @@ export async function syncGoogleCalendarSource(
     return { synced: 0, errors: ['No access token available'] };
   }
 
-  let accessToken = source.accessToken;
+  let accessToken = decrypt(source.accessToken);
 
-  // Refresh token if needed
   if (tokenNeedsRefresh(source.tokenExpiresAt)) {
     if (!source.refreshToken) {
       return { synced: 0, errors: ['Token expired and no refresh token available'] };
     }
 
     try {
-      const newTokens = await refreshAccessToken(source.refreshToken);
+      const refreshToken = decrypt(source.refreshToken);
+      const newTokens = await refreshAccessToken(refreshToken);
       accessToken = newTokens.access_token;
 
-      // Update tokens in database
       await db
         .update(calendarSources)
         .set({
-          accessToken: newTokens.access_token,
-          refreshToken: newTokens.refresh_token || source.refreshToken,
+          accessToken: encrypt(newTokens.access_token),
+          refreshToken: newTokens.refresh_token ? encrypt(newTokens.refresh_token) : source.refreshToken,
           tokenExpiresAt: new Date(Date.now() + newTokens.expires_in * 1000),
           updatedAt: new Date(),
         })
@@ -86,8 +74,8 @@ export async function syncGoogleCalendarSource(
     }
   }
 
-  // Set default time range (now to 30 days from now)
-  const timeMin = options.timeMin || new Date();
+  // Set default time range (30 days ago to 30 days from now)
+  const timeMin = options.timeMin || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const timeMax = options.timeMax || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
   // Fetch events from Google

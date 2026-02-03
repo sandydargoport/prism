@@ -38,16 +38,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui';
-
-/**
- * Shopping list for selector
- */
-interface ShoppingList {
-  id: string;
-  name: string;
-  icon?: string | null;
-  color?: string | null;
-}
+import type { ShoppingList } from '@/types';
 
 /**
  * Shopping item data returned after creation

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { layouts } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
@@ -11,6 +12,9 @@ export async function POST(
   request: NextRequest,
   { params }: RouteParams
 ) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { id } = await params;
 

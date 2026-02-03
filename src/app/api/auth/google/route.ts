@@ -1,30 +1,18 @@
-/**
- * ============================================================================
- * PRISM - Google OAuth Initiation Route
- * ============================================================================
- *
- * Redirects user to Google's OAuth consent screen.
- *
- * ============================================================================
- */
-
 import { NextResponse } from 'next/server';
+import { requireAuth, requireRole } from '@/lib/auth';
 import { getGoogleAuthUrl } from '@/lib/integrations/google-calendar';
 
-/**
- * GET /api/auth/google
- * Initiates Google OAuth flow
- */
 export async function GET(request: Request) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
+  const forbidden = requireRole(auth, 'canModifySettings');
+  if (forbidden) return forbidden;
+
   try {
-    // Get the user ID from query params (optional, for linking to user)
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
-
-    // Create state parameter to prevent CSRF and pass user info
     const state = userId ? JSON.stringify({ userId }) : undefined;
-
-    // Generate OAuth URL and redirect
     const authUrl = getGoogleAuthUrl(state);
 
     return NextResponse.redirect(authUrl);

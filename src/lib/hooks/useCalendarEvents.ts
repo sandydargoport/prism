@@ -12,7 +12,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { addDays, startOfDay, endOfDay } from 'date-fns';
+import { addDays, subDays, startOfDay, endOfDay } from 'date-fns';
 import type { CalendarEvent } from '@/types/calendar';
 
 interface UseCalendarEventsOptions {
@@ -52,10 +52,11 @@ export function useCalendarEvents(
       setError(null);
 
       const today = startOfDay(new Date());
+      const startDate = startOfDay(subDays(today, 30));
       const endDate = endOfDay(addDays(today, daysToShow));
 
       const response = await fetch(
-        `/api/events?startDate=${today.toISOString()}&endDate=${endDate.toISOString()}`
+        `/api/events?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`
       );
 
       if (!response.ok) {
@@ -99,10 +100,6 @@ export function useCalendarEvents(
       console.error('Error fetching events:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch events');
 
-      // If we have no events and demo fallback is enabled, don't clear existing events
-      if (useDemoFallback && events.length === 0) {
-        // Events will remain empty, widget should show demo data
-      }
     } finally {
       setLoading(false);
     }
@@ -167,6 +164,9 @@ export function useCalendarSources() {
       color: string | null;
       enabled: boolean;
       isFamily: boolean;
+      groupId: string | null;
+      groupName: string | null;
+      groupColor: string | null;
       lastSynced: string | null;
       user: { id: string; name: string; color: string } | null;
     }>

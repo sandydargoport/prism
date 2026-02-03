@@ -144,7 +144,7 @@ export const createMealSchema = z.object({
 });
 
 export const updateMealSchema = createMealSchema.partial().extend({
-  cookedBy: uuidSchema.optional(),
+  cookedBy: uuidSchema.nullable().optional(),
 });
 
 // ============================================================================

@@ -2,9 +2,29 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { usePhotos } from '@/lib/hooks/usePhotos';
+import { useScreenOrientation } from '@/lib/hooks/useScreenOrientation';
 
 const STORAGE_KEY = 'prism-wallpaper-enabled';
 const INTERVAL_KEY = 'prism-wallpaper-interval';
+const AUTO_ORIENTATION_KEY = 'prism-wallpaper-auto-orientation';
+const ORIENTATION_OVERRIDE_KEY = 'prism-orientation-override';
+
+function useOrientationOverride(): 'auto' | 'landscape' | 'portrait' {
+  const [override, setOverride] = useState<'auto' | 'landscape' | 'portrait'>(() => {
+    if (typeof window === 'undefined') return 'auto';
+    return (localStorage.getItem(ORIENTATION_OVERRIDE_KEY) as 'auto' | 'landscape' | 'portrait') || 'auto';
+  });
+
+  useEffect(() => {
+    const handler = () => {
+      setOverride((localStorage.getItem(ORIENTATION_OVERRIDE_KEY) as 'auto' | 'landscape' | 'portrait') || 'auto');
+    };
+    window.addEventListener('storage', handler);
+    return () => window.removeEventListener('storage', handler);
+  }, []);
+
+  return override;
+}
 const DEFAULT_INTERVAL = 60; // seconds
 
 export function useWallpaperSettings() {
@@ -31,9 +51,32 @@ export function useWallpaperSettings() {
   return { enabled, setEnabled, interval, setInterval };
 }
 
+export function useAutoOrientationSetting() {
+  const [enabled, setEnabledState] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem(AUTO_ORIENTATION_KEY) === 'true';
+  });
+
+  const setEnabled = useCallback((v: boolean) => {
+    setEnabledState(v);
+    localStorage.setItem(AUTO_ORIENTATION_KEY, String(v));
+  }, []);
+
+  return { enabled, setEnabled };
+}
+
 export function WallpaperBackground() {
   const { enabled, interval } = useWallpaperSettings();
-  const { photos } = usePhotos({ sort: 'random', limit: 30 });
+  const { enabled: autoOrientation } = useAutoOrientationSetting();
+  const screenOrientation = useScreenOrientation();
+  const orientationOverride = useOrientationOverride();
+  const effectiveOrientation = orientationOverride === 'auto' ? screenOrientation : orientationOverride;
+  const { photos } = usePhotos({
+    sort: 'random',
+    limit: 30,
+    usage: 'wallpaper',
+    orientation: autoOrientation ? effectiveOrientation : undefined,
+  });
   const [currentIndex, setCurrentIndex] = useState(0);
   const [fadingOut, setFadingOut] = useState(false);
 

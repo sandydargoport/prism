@@ -16,6 +16,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { shoppingLists } from '@/lib/db/schema';
 import { asc } from 'drizzle-orm';
@@ -28,6 +29,9 @@ import { createShoppingListSchema, validateRequest } from '@/lib/validations';
  * ============================================================================
  */
 export async function GET(request: NextRequest) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const lists = await db
       .select({
@@ -77,6 +81,9 @@ export async function GET(request: NextRequest) {
  * ============================================================================
  */
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const body = await request.json();
 

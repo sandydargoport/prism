@@ -63,3 +63,7 @@ export type { MealsWidgetProps, Meal } from './MealsWidget';
 // Birthdays Widget
 export { BirthdaysWidget } from './BirthdaysWidget';
 export type { BirthdaysWidgetProps } from './BirthdaysWidget';
+
+// Photos Widget
+export { PhotoWidget } from './PhotoWidget';
+export type { PhotoWidgetProps } from './PhotoWidget';

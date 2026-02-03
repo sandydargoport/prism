@@ -14,6 +14,12 @@
 - Voice assistant integration
 - Automation rules engine
 
+### Punch List (Polish & Refinements)
+- Per-widget and per-modal **text color** manual override (currently auto-detected from background luminance)
+- System-wide **transparency** slider in admin settings for all widgets and modals
+- Per-widget opacity/blur controls independent of color
+- Color picker favorites/recent colors row
+
 ### Community Features
 - Widget marketplace
 - Theme sharing

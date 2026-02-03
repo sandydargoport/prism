@@ -281,7 +281,7 @@ export function CalendarView() {
         setCurrentDate(subMonths(currentDate, 1));
         break;
       case 'threeMonth':
-        setCurrentDate(subMonths(currentDate, 3));
+        setCurrentDate(subMonths(currentDate, 1));
         break;
     }
   };
@@ -301,7 +301,7 @@ export function CalendarView() {
         setCurrentDate(addMonths(currentDate, 1));
         break;
       case 'threeMonth':
-        setCurrentDate(addMonths(currentDate, 3));
+        setCurrentDate(addMonths(currentDate, 1));
         break;
     }
   };
@@ -332,7 +332,7 @@ export function CalendarView() {
         {/* ================================================================ */}
         {/* HEADER */}
         {/* ================================================================ */}
-        <header className="flex-shrink-0 border-b border-border bg-card px-4 py-3">
+        <header className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-4 py-3">
         <div className="flex items-center justify-between mb-2">
           {/* Left: Back button and title */}
           <div className="flex items-center gap-4">
@@ -470,7 +470,7 @@ export function CalendarView() {
                 }
               >
                 <span
-                  className="w-2 h-2 rounded-full"
+                  className="w-2 h-2 rounded-full border border-white/60 dark:border-white/80"
                   style={{ backgroundColor: group.color }}
                 />
                 {group.name}
@@ -531,7 +531,7 @@ export function CalendarView() {
             onEventClick={setSelectedEvent}
             onDateClick={(date) => {
               setCurrentDate(date);
-              setViewType('day');
+              setViewType('month');
             }}
           />
         )}
@@ -553,7 +553,7 @@ export function CalendarView() {
           onClick={() => setSelectedEvent(null)}
         >
           <div
-            className="bg-card rounded-lg p-6 max-w-md w-full mx-4 shadow-lg"
+            className="bg-card rounded-lg p-6 max-w-md w-full mx-4 shadow-lg border border-border"
             onClick={(e) => e.stopPropagation()}
           >
             <div

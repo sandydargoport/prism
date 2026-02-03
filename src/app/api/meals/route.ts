@@ -17,10 +17,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { meals, users } from '@/lib/db/schema';
-import { eq, and, asc } from 'drizzle-orm';
+import { eq, and, asc, aliasedTable } from 'drizzle-orm';
 import { createMealSchema, validateRequest } from '@/lib/validations';
+import { formatMealRow } from '@/lib/utils/formatters';
+
+const cookedByUser = aliasedTable(users, 'cookedByUser');
 
 /**
  * GET /api/meals
@@ -29,6 +33,9 @@ import { createMealSchema, validateRequest } from '@/lib/validations';
  * ============================================================================
  */
 export async function GET(request: NextRequest) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { searchParams } = new URL(request.url);
     const weekOf = searchParams.get('weekOf');
@@ -56,9 +63,13 @@ export async function GET(request: NextRequest) {
         createdById: users.id,
         createdByName: users.name,
         createdByColor: users.color,
+        cookedByUserId: cookedByUser.id,
+        cookedByUserName: cookedByUser.name,
+        cookedByUserColor: cookedByUser.color,
       })
       .from(meals)
       .leftJoin(users, eq(meals.createdBy, users.id))
+      .leftJoin(cookedByUser, eq(meals.cookedBy, cookedByUser.id))
       .orderBy(asc(meals.weekOf), asc(meals.dayOfWeek), asc(meals.name));
 
     // Apply filters
@@ -72,30 +83,7 @@ export async function GET(request: NextRequest) {
       : await query;
 
     // Format response
-    const formattedMeals = results.map(meal => ({
-      id: meal.id,
-      name: meal.name,
-      description: meal.description,
-      recipe: meal.recipe,
-      recipeUrl: meal.recipeUrl,
-      prepTime: meal.prepTime,
-      cookTime: meal.cookTime,
-      servings: meal.servings,
-      ingredients: meal.ingredients,
-      dayOfWeek: meal.dayOfWeek,
-      mealType: meal.mealType,
-      cookedAt: meal.cookedAt?.toISOString() || null,
-      cookedBy: meal.cookedById,
-      weekOf: meal.weekOf,
-      source: meal.source,
-      sourceId: meal.sourceId,
-      createdAt: meal.createdAt.toISOString(),
-      createdBy: meal.createdById ? {
-        id: meal.createdById,
-        name: meal.createdByName,
-        color: meal.createdByColor,
-      } : null,
-    }));
+    const formattedMeals = results.map(meal => formatMealRow(meal));
 
     return NextResponse.json({ meals: formattedMeals });
   } catch (error) {
@@ -124,6 +112,9 @@ export async function GET(request: NextRequest) {
  * ============================================================================
  */
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const body = await request.json();
 

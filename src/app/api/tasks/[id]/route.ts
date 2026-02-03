@@ -24,60 +24,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
 import { tasks, users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
-import { cookies } from 'next/headers';
-import { validateSession } from '@/lib/auth/session';
-
-/**
- * Helper function to authenticate and get user info
- */
-async function authenticateRequest(): Promise<{
-  user: { id: string; role: string; name: string } | null;
-  error: NextResponse | null;
-}> {
-  const cookieStore = await cookies();
-  const sessionToken = cookieStore.get('prism_session')?.value;
-  const userId = cookieStore.get('prism_user')?.value;
-
-  if (!sessionToken || !userId) {
-    return {
-      user: null,
-      error: NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      ),
-    };
-  }
-
-  // Validate session token
-  const sessionData = await validateSession(sessionToken);
-  if (!sessionData || sessionData.userId !== userId) {
-    return {
-      user: null,
-      error: NextResponse.json(
-        { error: 'Invalid or expired session' },
-        { status: 401 }
-      ),
-    };
-  }
-
-  // Fetch the current user
-  const [currentUser] = await db
-    .select({ id: users.id, role: users.role, name: users.name })
-    .from(users)
-    .where(eq(users.id, userId));
-
-  if (!currentUser) {
-    return {
-      user: null,
-      error: NextResponse.json(
-        { error: 'User not found' },
-        { status: 401 }
-      ),
-    };
-  }
-
-  return { user: currentUser, error: null };
-}
+import { requireAuth } from '@/lib/auth';
+import { formatTaskRow } from '@/lib/utils/formatters';
 
 
 /**
@@ -113,6 +61,9 @@ export async function GET(
   request: NextRequest,
   { params }: RouteParams
 ) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { id } = await params;
 
@@ -155,27 +106,7 @@ export async function GET(
     }
 
     // Format and return response
-    return NextResponse.json({
-      id: taskWithUser.id,
-      title: taskWithUser.title,
-      description: taskWithUser.description,
-      dueDate: taskWithUser.dueDate?.toISOString() || null,
-      priority: taskWithUser.priority,
-      category: taskWithUser.category,
-      completed: taskWithUser.completed,
-      completedAt: taskWithUser.completedAt?.toISOString() || null,
-      source: taskWithUser.source,
-      createdAt: taskWithUser.createdAt.toISOString(),
-      updatedAt: taskWithUser.updatedAt.toISOString(),
-      assignedTo: taskWithUser.assignedUserId
-        ? {
-            id: taskWithUser.assignedUserId,
-            name: taskWithUser.assignedUserName!,
-            color: taskWithUser.assignedUserColor!,
-            avatarUrl: taskWithUser.assignedUserAvatar,
-          }
-        : null,
-    });
+    return NextResponse.json(formatTaskRow(taskWithUser));
   } catch (error) {
     console.error('Error fetching task:', error);
     return NextResponse.json(
@@ -224,6 +155,9 @@ export async function PATCH(
   request: NextRequest,
   { params }: RouteParams
 ) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { id } = await params;
     const body = await request.json();
@@ -249,11 +183,8 @@ export async function PATCH(
     // AUTHORIZATION CHECK - Children can only toggle their own tasks
     // ========================================================================
     if ('completed' in body) {
-      const { user, error } = await authenticateRequest();
-      if (error) return error;
-
-      const isChild = user!.role === 'child';
-      const isOwner = existingTask.createdBy === user!.id || existingTask.assignedTo === user!.id;
+      const isChild = auth.role === 'child';
+      const isOwner = existingTask.createdBy === auth.userId || existingTask.assignedTo === auth.userId;
 
       if (isChild && !isOwner) {
         return NextResponse.json(
@@ -369,27 +300,7 @@ export async function PATCH(
       );
     }
 
-    return NextResponse.json({
-      id: updatedTaskWithUser.id,
-      title: updatedTaskWithUser.title,
-      description: updatedTaskWithUser.description,
-      dueDate: updatedTaskWithUser.dueDate?.toISOString() || null,
-      priority: updatedTaskWithUser.priority,
-      category: updatedTaskWithUser.category,
-      completed: updatedTaskWithUser.completed,
-      completedAt: updatedTaskWithUser.completedAt?.toISOString() || null,
-      source: updatedTaskWithUser.source,
-      createdAt: updatedTaskWithUser.createdAt.toISOString(),
-      updatedAt: updatedTaskWithUser.updatedAt.toISOString(),
-      assignedTo: updatedTaskWithUser.assignedUserId
-        ? {
-            id: updatedTaskWithUser.assignedUserId,
-            name: updatedTaskWithUser.assignedUserName!,
-            color: updatedTaskWithUser.assignedUserColor!,
-            avatarUrl: updatedTaskWithUser.assignedUserAvatar,
-          }
-        : null,
-    });
+    return NextResponse.json(formatTaskRow(updatedTaskWithUser));
   } catch (error) {
     console.error('Error updating task:', error);
     return NextResponse.json(
@@ -427,44 +338,11 @@ export async function DELETE(
   request: NextRequest,
   { params }: RouteParams
 ) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { id } = await params;
-
-    // ========================================================================
-    // AUTHENTICATION CHECK
-    // ========================================================================
-    const cookieStore = await cookies();
-    const sessionToken = cookieStore.get('prism_session')?.value;
-    const userId = cookieStore.get('prism_user')?.value;
-
-    if (!sessionToken || !userId) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
-    // Validate session token
-    const sessionData = await validateSession(sessionToken);
-    if (!sessionData || sessionData.userId !== userId) {
-      return NextResponse.json(
-        { error: 'Invalid or expired session' },
-        { status: 401 }
-      );
-    }
-
-    // Fetch the current user to check their role
-    const [currentUser] = await db
-      .select({ id: users.id, role: users.role })
-      .from(users)
-      .where(eq(users.id, userId));
-
-    if (!currentUser) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 401 }
-      );
-    }
 
     // ========================================================================
     // CHECK IF TASK EXISTS AND GET OWNERSHIP INFO
@@ -489,9 +367,9 @@ export async function DELETE(
     // ========================================================================
     // AUTHORIZATION CHECK
     // ========================================================================
-    const isParent = currentUser.role === 'parent';
+    const isParent = auth.role === 'parent';
     // A child can delete a task if they created it OR if it's assigned to them
-    const isOwner = existingTask.createdBy === userId || existingTask.assignedTo === userId;
+    const isOwner = existingTask.createdBy === auth.userId || existingTask.assignedTo === auth.userId;
 
     if (!isParent && !isOwner) {
       return NextResponse.json(

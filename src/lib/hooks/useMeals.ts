@@ -12,32 +12,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
-export interface Meal {
-  id: string;
-  name: string;
-  description?: string;
-  recipe?: string;
-  recipeUrl?: string;
-  prepTime?: number;
-  cookTime?: number;
-  servings?: number;
-  ingredients?: string;
-  weekOf: string;
-  dayOfWeek: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
-  mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
-  cookedAt?: Date;
-  cookedBy?: {
-    id: string;
-    name: string;
-    color: string;
-  };
-  createdBy?: {
-    id: string;
-    name: string;
-    color: string;
-  };
-  createdAt: Date;
-}
+// Re-export Meal type from shared types for consumers that import from this hook
+export type { Meal } from '@/types';
+import type { Meal } from '@/types';
 
 interface UseMealsOptions {
   /** Filter by week (YYYY-MM-DD format) */

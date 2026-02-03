@@ -16,6 +16,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { birthdays, calendarSources } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
@@ -137,6 +138,9 @@ async function getAccessToken(source: {
  * POST /api/birthdays/sync
  */
 export async function POST() {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     // Find all enabled Google calendar sources
     const sources = await db.query.calendarSources.findMany({

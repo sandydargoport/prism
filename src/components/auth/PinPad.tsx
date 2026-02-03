@@ -46,21 +46,9 @@ import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/avatar';
 
 
-/**
- * FAMILY MEMBER TYPE
- * ============================================================================
- * Represents a family member who can authenticate.
- * ============================================================================
- */
-export interface FamilyMember {
-  id: string;
-  name: string;
-  color: string;
-  avatarUrl?: string;
-  /** PIN hash - in real app, this would never be on client */
-  pinHash?: string;
-  role: 'parent' | 'child' | 'guest';
-}
+// FamilyMember type imported from shared types
+import type { FamilyMember } from '@/types';
+export type { FamilyMember };
 
 
 /**

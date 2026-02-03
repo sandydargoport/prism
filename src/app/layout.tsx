@@ -47,6 +47,12 @@ import { Inter } from 'next/font/google';
 // Providers (theme, auth, etc.)
 import { Providers } from '@/components/providers';
 
+// Error boundary
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+
+// Screensaver (idle detection photo slideshow)
+import { Screensaver } from '@/components/screensaver/Screensaver';
+
 
 /**
  * FONT CONFIGURATION
@@ -255,9 +261,12 @@ export default function RootLayout({
           PROVIDERS
           Wrap children with application providers (theme, auth, etc.)
         */}
-        <Providers>
-          {children}
-        </Providers>
+        <ErrorBoundary>
+          <Providers>
+            {children}
+            <Screensaver />
+          </Providers>
+        </ErrorBoundary>
       </body>
     </html>
   );

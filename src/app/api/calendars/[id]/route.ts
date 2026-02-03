@@ -15,6 +15,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { calendarSources, events } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
@@ -28,6 +29,9 @@ interface RouteParams {
  * Gets a single calendar source with sync status
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   const { id } = await params;
 
   if (!id) {
@@ -86,6 +90,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  * }
  */
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   const { id } = await params;
 
   if (!id) {
@@ -129,6 +136,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       if (body.isFamily) {
         updates.userId = null;
       }
+    }
+
+    // Handle groupId assignment
+    if ('groupId' in body) {
+      updates.groupId = body.groupId || null;
     }
 
     if (body.color) {
@@ -179,6 +191,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
  * Removes a calendar source and all its events
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   const { id } = await params;
 
   if (!id) {

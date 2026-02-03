@@ -42,6 +42,60 @@ import * as React from 'react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui';
+import { isLightColor } from '@/lib/utils/color';
+
+/**
+ * WIDGET ALIGNMENT
+ */
+export type HAlign = 'left' | 'center' | 'right';
+export type VAlign = 'top' | 'middle' | 'bottom';
+
+export interface WidgetAlignment {
+  horizontal: HAlign;
+  vertical: VAlign;
+}
+
+const ALIGNMENT_STORAGE_KEY = 'prism-widget-alignments';
+
+export function useWidgetAlignments() {
+  const [alignments, setAlignmentsState] = React.useState<Record<string, WidgetAlignment>>(() => {
+    if (typeof window === 'undefined') return {};
+    try {
+      const stored = localStorage.getItem(ALIGNMENT_STORAGE_KEY);
+      return stored ? JSON.parse(stored) : {};
+    } catch { return {}; }
+  });
+
+  const setAlignment = React.useCallback((widgetId: string, alignment: WidgetAlignment) => {
+    setAlignmentsState((prev) => {
+      const next = { ...prev, [widgetId]: alignment };
+      localStorage.setItem(ALIGNMENT_STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  return { alignments, setAlignment };
+}
+
+// Context for passing alignment to WidgetContainer without threading through every widget
+const WidgetAlignmentContext = React.createContext<Record<string, WidgetAlignment>>({});
+export const WidgetAlignmentProvider = WidgetAlignmentContext.Provider;
+
+// Context for current widget ID so WidgetContainer can self-lookup
+const WidgetIdContext = React.createContext<string | null>(null);
+export const WidgetIdProvider = WidgetIdContext.Provider;
+
+const hAlignClass: Record<HAlign, string> = {
+  left: 'text-left',
+  center: 'text-center',
+  right: 'text-right',
+};
+
+const vAlignClass: Record<VAlign, string> = {
+  top: 'justify-start',
+  middle: 'justify-center',
+  bottom: 'justify-end',
+};
 
 
 /**
@@ -77,6 +131,12 @@ export interface WidgetContainerProps {
   size?: WidgetSize;
   /** Whether to show the header */
   showHeader?: boolean;
+  /** Custom background color (hex). Auto-detects text color from luminance. */
+  backgroundColor?: string;
+  /** Widget ID for per-widget alignment lookup */
+  widgetId?: string;
+  /** Text alignment override */
+  alignment?: WidgetAlignment;
   /** Additional CSS classes */
   className?: string;
   /** Click handler for the entire widget */
@@ -121,11 +181,20 @@ export function WidgetContainer({
   children,
   loading = false,
   error = null,
+  backgroundColor,
   size = 'medium',
   showHeader = true,
+  widgetId,
+  alignment: alignmentProp,
   className,
   onClick,
 }: WidgetContainerProps) {
+  // Resolve alignment from prop, context, or default
+  const contextAlignments = React.useContext(WidgetAlignmentContext);
+  const contextWidgetId = React.useContext(WidgetIdContext);
+  const resolvedId = widgetId || contextWidgetId;
+  const alignment = alignmentProp || (resolvedId ? contextAlignments[resolvedId] : undefined);
+
   // Size classes for the grid
   const sizeClasses: Record<WidgetSize, string> = {
     small: 'col-span-1 row-span-1',
@@ -148,9 +217,13 @@ export function WidgetContainer({
         onClick && 'cursor-pointer hover:shadow-md transition-shadow',
         // Allow header popover dropdowns to overflow
         'overflow-visible',
+        // Auto text color based on background luminance
+        // Future: per-widget text color manual override could replace this
+        backgroundColor && (isLightColor(backgroundColor) ? 'text-black' : 'text-white'),
         className
       )}
       onClick={onClick}
+      style={backgroundColor ? { backgroundColor } : undefined}
     >
       {/* WIDGET HEADER */}
       {showHeader && title && (
@@ -188,11 +261,14 @@ export function WidgetContainer({
       <CardContent
         className={cn(
           // Fill remaining space
-          'flex-1',
+          'flex-1 flex flex-col',
           // Overflow handling
           'overflow-hidden',
           // Remove padding if no header
-          !showHeader && 'pt-4'
+          !showHeader && 'pt-4',
+          // Per-widget alignment
+          alignment && hAlignClass[alignment.horizontal],
+          alignment && vAlignClass[alignment.vertical],
         )}
       >
         {/* Loading State */}

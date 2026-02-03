@@ -18,8 +18,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
 import { familyMessages, users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
-import { cookies } from 'next/headers';
-import { validateSession } from '@/lib/auth/session';
+import { requireAuth } from '@/lib/auth';
+import { formatMessageRow } from '@/lib/utils/formatters';
 
 
 interface RouteParams {
@@ -37,6 +37,9 @@ export async function GET(
   request: NextRequest,
   { params }: RouteParams
 ) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { id } = await params;
 
@@ -64,20 +67,7 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({
-      id: messageWithAuthor.id,
-      message: messageWithAuthor.message,
-      pinned: messageWithAuthor.pinned,
-      important: messageWithAuthor.important,
-      expiresAt: messageWithAuthor.expiresAt?.toISOString() || null,
-      createdAt: messageWithAuthor.createdAt.toISOString(),
-      author: {
-        id: messageWithAuthor.authorId,
-        name: messageWithAuthor.authorName,
-        color: messageWithAuthor.authorColor,
-        avatarUrl: messageWithAuthor.authorAvatar,
-      },
-    });
+    return NextResponse.json(formatMessageRow(messageWithAuthor));
   } catch (error) {
     console.error('Error fetching message:', error);
     return NextResponse.json(
@@ -109,6 +99,9 @@ export async function PATCH(
   request: NextRequest,
   { params }: RouteParams
 ) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { id } = await params;
     const body = await request.json();
@@ -201,20 +194,7 @@ export async function PATCH(
       );
     }
 
-    return NextResponse.json({
-      id: updatedMessage.id,
-      message: updatedMessage.message,
-      pinned: updatedMessage.pinned,
-      important: updatedMessage.important,
-      expiresAt: updatedMessage.expiresAt?.toISOString() || null,
-      createdAt: updatedMessage.createdAt.toISOString(),
-      author: {
-        id: updatedMessage.authorId,
-        name: updatedMessage.authorName,
-        color: updatedMessage.authorColor,
-        avatarUrl: updatedMessage.authorAvatar,
-      },
-    });
+    return NextResponse.json(formatMessageRow(updatedMessage));
   } catch (error) {
     console.error('Error updating message:', error);
     return NextResponse.json(
@@ -246,44 +226,11 @@ export async function DELETE(
   request: NextRequest,
   { params }: RouteParams
 ) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { id } = await params;
-
-    // ========================================================================
-    // AUTHENTICATION CHECK
-    // ========================================================================
-    const cookieStore = await cookies();
-    const sessionToken = cookieStore.get('prism_session')?.value;
-    const userId = cookieStore.get('prism_user')?.value;
-
-    if (!sessionToken || !userId) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
-    // Validate session token
-    const sessionData = await validateSession(sessionToken);
-    if (!sessionData || sessionData.userId !== userId) {
-      return NextResponse.json(
-        { error: 'Invalid or expired session' },
-        { status: 401 }
-      );
-    }
-
-    // Fetch the current user to check their role
-    const [currentUser] = await db
-      .select({ id: users.id, role: users.role })
-      .from(users)
-      .where(eq(users.id, userId));
-
-    if (!currentUser) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 401 }
-      );
-    }
 
     // ========================================================================
     // CHECK IF MESSAGE EXISTS AND GET OWNERSHIP INFO
@@ -307,8 +254,8 @@ export async function DELETE(
     // ========================================================================
     // AUTHORIZATION CHECK
     // ========================================================================
-    const isParent = currentUser.role === 'parent';
-    const isAuthor = existingMessage.authorId === userId;
+    const isParent = auth.role === 'parent';
+    const isAuthor = existingMessage.authorId === auth.userId;
 
     if (!isParent && !isAuthor) {
       return NextResponse.json(

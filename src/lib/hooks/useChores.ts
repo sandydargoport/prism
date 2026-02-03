@@ -12,35 +12,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
-export interface Chore {
-  id: string;
-  title: string;
-  description?: string;
-  category: 'cleaning' | 'laundry' | 'dishes' | 'yard' | 'pets' | 'trash' | 'other';
-  frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'custom';
-  customIntervalDays?: number;
-  lastCompleted?: Date;
-  nextDue?: string;
-  enabled: boolean;
-  requiresApproval: boolean;
-  pointValue: number;
-  assignedTo?: {
-    id: string;
-    name: string;
-    color: string;
-  };
-  createdAt: Date;
-  // Pending approval info - populated when chore has been completed but not yet approved
-  pendingApproval?: {
-    completionId: string;
-    completedAt: string;
-    completedBy: {
-      id: string;
-      name: string;
-      color: string;
-    };
-  };
-}
+// Re-export Chore type from shared types for consumers that import from this hook
+export type { Chore } from '@/types';
+import type { Chore } from '@/types';
 
 export interface ChoreCompletion {
   id: string;

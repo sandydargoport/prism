@@ -44,40 +44,9 @@ import {
  * SHOPPING ITEM TYPE
  * ============================================================================
  */
-export interface ShoppingItem {
-  id: string;
-  listId: string;
-  name: string;
-  quantity?: number;
-  unit?: string;
-  category?: 'produce' | 'dairy' | 'meat' | 'bakery' | 'frozen' | 'pantry' | 'household' | 'other';
-  checked: boolean;
-  notes?: string;
-  addedBy?: {
-    id: string;
-    name: string;
-    color: string;
-  };
-  createdAt: Date;
-}
-
-/**
- * SHOPPING LIST TYPE
- * ============================================================================
- */
-export interface ShoppingList {
-  id: string;
-  name: string;
-  description?: string;
-  sortOrder: number;
-  items: ShoppingItem[];
-  createdBy?: {
-    id: string;
-    name: string;
-    color: string;
-  };
-  createdAt: Date;
-}
+// Shopping types imported from shared types
+import type { ShoppingItem, ShoppingList } from '@/types';
+export type { ShoppingItem, ShoppingList };
 
 /**
  * SHOPPING WIDGET PROPS

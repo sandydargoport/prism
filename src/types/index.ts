@@ -15,3 +15,9 @@
 
 // User types and permissions
 export * from './user';
+
+// Shared domain model types
+export * from './models';
+
+// Calendar types
+export * from './calendar';

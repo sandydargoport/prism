@@ -32,7 +32,7 @@
 import * as React from 'react';
 import { useState } from 'react';
 import { format, isToday, isTomorrow, isPast, parseISO } from 'date-fns';
-import { Sparkles, Plus, AlertCircle, CheckCircle, Clock, Hourglass } from 'lucide-react';
+import { ClipboardList, Plus, AlertCircle, CheckCircle, Clock, Hourglass } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { WidgetContainer, WidgetEmpty } from './WidgetContainer';
 import { Button, Badge, ScrollArea, UserAvatar } from '@/components/ui';
@@ -43,35 +43,9 @@ import { Button, Badge, ScrollArea, UserAvatar } from '@/components/ui';
  * Represents a single chore item.
  * ============================================================================
  */
-export interface Chore {
-  id: string;
-  title: string;
-  description?: string;
-  category: 'cleaning' | 'laundry' | 'dishes' | 'yard' | 'pets' | 'trash' | 'other';
-  frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'custom';
-  customIntervalDays?: number;
-  lastCompleted?: Date;
-  nextDue?: string;
-  enabled: boolean;
-  requiresApproval: boolean;
-  pointValue: number;
-  assignedTo?: {
-    id: string;
-    name: string;
-    color: string;
-  };
-  createdAt: Date;
-  // Pending approval info - populated when chore has been completed but not yet approved
-  pendingApproval?: {
-    completionId: string;
-    completedAt: string;
-    completedBy: {
-      id: string;
-      name: string;
-      color: string;
-    };
-  };
-}
+// Chore type imported from shared types
+import type { Chore } from '@/types';
+export type { Chore };
 
 /**
  * CHORES WIDGET PROPS
@@ -183,7 +157,7 @@ export function ChoresWidget({
     <WidgetContainer
       title="Chores"
       titleHref={titleHref}
-      icon={<Sparkles className="h-4 w-4" />}
+      icon={<ClipboardList className="h-4 w-4" />}
       size="medium"
       loading={loading}
       error={error}
@@ -206,7 +180,7 @@ export function ChoresWidget({
     >
       {displayChores.length === 0 ? (
         <WidgetEmpty
-          icon={<Sparkles className="h-8 w-8" />}
+          icon={<ClipboardList className="h-8 w-8" />}
           message="No chores due today"
           action={
             onAddClick && (

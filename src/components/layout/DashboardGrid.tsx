@@ -191,6 +191,8 @@ export interface DashboardHeaderProps {
   onUserClick?: () => void;
   /** Callback when edit layout button is clicked (parents only) */
   onEditClick?: () => void;
+  /** Callback when screensaver button is clicked */
+  onScreensaverClick?: () => void;
 }
 
 
@@ -221,9 +223,10 @@ export function DashboardHeader({
   onSettingsClick,
   onUserClick,
   onEditClick,
+  onScreensaverClick,
 }: DashboardHeaderProps) {
   return (
-    <header className="flex-shrink-0 border-b border-border bg-card px-4 py-3">
+    <header className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-4 py-3">
       <div className="flex items-center justify-between">
         {/* Left side: Logo and greeting */}
         <div className="flex items-center gap-4">
@@ -282,6 +285,18 @@ export function DashboardHeader({
               aria-label="Edit layout"
             >
               <GridEditIcon />
+            </button>
+          )}
+
+          {/* Screensaver button */}
+          {onScreensaverClick && (
+            <button
+              onMouseDown={(e) => { e.stopPropagation(); }}
+              onClick={(e) => { e.stopPropagation(); onScreensaverClick(); }}
+              className="p-2 rounded-md hover:bg-accent transition-colors"
+              aria-label="Start screensaver"
+            >
+              <ScreensaverIcon />
             </button>
           )}
 
@@ -345,6 +360,30 @@ function GridEditIcon() {
       <rect x="14" y="3" width="7" height="7" />
       <rect x="3" y="14" width="7" height="7" />
       <rect x="14" y="14" width="7" height="7" />
+    </svg>
+  );
+}
+
+/**
+ * Screensaver icon (monitor with play triangle)
+ */
+function ScreensaverIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="2" y="3" width="20" height="14" rx="2" />
+      <line x1="8" y1="21" x2="16" y2="21" />
+      <line x1="12" y1="17" x2="12" y2="21" />
+      <polygon points="10,7 10,13 15,10" fill="currentColor" stroke="none" />
     </svg>
   );
 }

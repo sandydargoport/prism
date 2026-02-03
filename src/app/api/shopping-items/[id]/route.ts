@@ -15,8 +15,7 @@ import { db } from '@/lib/db/client';
 import { shoppingItems, shoppingLists, users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { updateShoppingItemSchema, validateRequest } from '@/lib/validations';
-import { cookies } from 'next/headers';
-import { validateSession } from '@/lib/auth/session';
+import { requireAuth } from '@/lib/auth';
 
 /**
  * Route params type
@@ -47,6 +46,9 @@ export async function PATCH(
   request: NextRequest,
   { params }: RouteParams
 ) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { id } = await params;
     const body = await request.json();
@@ -88,42 +90,8 @@ export async function PATCH(
 
       // If list is assigned to someone, check authorization
       if (list?.assignedTo) {
-        const cookieStore = await cookies();
-        const sessionToken = cookieStore.get('prism_session')?.value;
-        const userId = cookieStore.get('prism_user')?.value;
-
-        if (!sessionToken || !userId) {
-          return NextResponse.json(
-            { error: 'Authentication required' },
-            { status: 401 }
-          );
-        }
-
-        // Validate session token
-        const sessionData = await validateSession(sessionToken);
-        if (!sessionData || sessionData.userId !== userId) {
-          return NextResponse.json(
-            { error: 'Invalid or expired session' },
-            { status: 401 }
-          );
-        }
-
-        // Get user role
-        const [currentUser] = await db
-          .select({ id: users.id, role: users.role })
-          .from(users)
-          .where(eq(users.id, userId));
-
-        if (!currentUser) {
-          return NextResponse.json(
-            { error: 'User not found' },
-            { status: 401 }
-          );
-        }
-
-        // Only the assigned user or parents can check items on assigned lists
-        const isParent = currentUser.role === 'parent';
-        const isListOwner = list.assignedTo === userId;
+        const isParent = auth.role === 'parent';
+        const isListOwner = list.assignedTo === auth.userId;
 
         if (!isParent && !isListOwner) {
           return NextResponse.json(
@@ -200,6 +168,9 @@ export async function DELETE(
   request: NextRequest,
   { params }: RouteParams
 ) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { id } = await params;
 

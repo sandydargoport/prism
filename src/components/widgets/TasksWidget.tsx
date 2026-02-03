@@ -45,21 +45,9 @@ import { Button, Checkbox, Badge, ScrollArea, UserAvatar } from '@/components/ui
  * Represents a single task item.
  * ============================================================================
  */
-export interface Task {
-  id: string;
-  title: string;
-  description?: string;
-  completed: boolean;
-  dueDate?: Date;
-  priority: 'high' | 'medium' | 'low';
-  assignedTo?: {
-    id: string;
-    name: string;
-    color: string;
-    avatarUrl?: string;
-  };
-  category?: string;
-}
+// Task type imported from shared types
+import type { Task } from '@/types';
+export type { Task };
 
 
 /**

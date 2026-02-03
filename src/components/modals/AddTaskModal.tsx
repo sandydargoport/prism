@@ -40,16 +40,7 @@ import {
   SelectValue,
   UserAvatar,
 } from '@/components/ui';
-
-/**
- * Family member for assignment dropdown
- */
-interface FamilyMember {
-  id: string;
-  name: string;
-  color: string;
-  avatarUrl?: string | null;
-}
+import type { FamilyMember } from '@/types';
 
 /**
  * Task data returned after creation

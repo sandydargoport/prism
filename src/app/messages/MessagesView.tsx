@@ -41,16 +41,7 @@ import { useMessages } from '@/lib/hooks';
 import { useAuth } from '@/components/providers';
 import { AddMessageModal } from '@/components/modals/AddMessageModal';
 import type { FamilyMessage } from '@/components/widgets/MessagesWidget';
-
-
-/**
- * FAMILY MEMBER TYPE
- */
-interface FamilyMember {
-  id: string;
-  name: string;
-  color: string;
-}
+import type { FamilyMember } from '@/types';
 
 
 /**
@@ -131,7 +122,7 @@ export function MessagesView() {
         {/* ================================================================ */}
         {/* HEADER */}
         {/* ================================================================ */}
-        <header className="flex-shrink-0 border-b border-border bg-card px-4 py-3">
+        <header className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-4 py-3">
           <div className="flex items-center justify-between">
             {/* Left: Back and title */}
             <div className="flex items-center gap-4">
@@ -199,7 +190,7 @@ export function MessagesView() {
         {/* FILTERS */}
         {/* ================================================================== */}
         {authors.length > 1 && (
-          <div className="flex-shrink-0 border-b border-border bg-card/50 px-4 py-2">
+          <div className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-4 py-2">
             <div className="flex items-center gap-4 flex-wrap">
               {/* Filter by author */}
               <div className="flex items-center gap-2">
@@ -322,10 +313,10 @@ function MessageCard({
   return (
     <div
       className={cn(
-        'p-4 rounded-lg border border-border',
-        'hover:bg-accent/30 transition-colors',
+        'p-4 rounded-lg border border-border bg-card/85 backdrop-blur-sm',
+        'hover:border-seasonal-accent hover:ring-2 hover:ring-seasonal-accent/50 transition-all',
         'group',
-        message.important && 'bg-destructive/10 border-destructive/20'
+        message.important && 'bg-red-100/85 dark:bg-red-950/85 border-destructive/20'
       )}
     >
       {/* Header: Author and badges */}

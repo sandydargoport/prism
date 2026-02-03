@@ -9,7 +9,16 @@ import {
   ShoppingWidget,
   MealsWidget,
   BirthdaysWidget,
+  PhotoWidget,
 } from '@/components/widgets';
+
+export interface WidgetProps {
+  className?: string;
+  gridW?: number;
+  gridH?: number;
+  backgroundColor?: string;
+  [key: string]: unknown;
+}
 
 export interface WidgetRegistryEntry {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -20,6 +29,8 @@ export interface WidgetRegistryEntry {
   minH: number;
   defaultW: number;
   defaultH: number;
+  maxW?: number;
+  maxH?: number;
 }
 
 export const WIDGET_REGISTRY: Record<string, WidgetRegistryEntry> = {
@@ -27,82 +38,91 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistryEntry> = {
     component: ClockWidget,
     label: 'Clock',
     icon: 'Clock',
-    minW: 1,
-    minH: 1,
-    defaultW: 1,
-    defaultH: 1,
+    minW: 2,
+    minH: 2,
+    defaultW: 3,
+    defaultH: 3,
   },
   weather: {
     component: WeatherWidget,
     label: 'Weather',
     icon: 'Cloud',
-    minW: 1,
-    minH: 1,
-    defaultW: 1,
-    defaultH: 2,
+    minW: 2,
+    minH: 2,
+    defaultW: 3,
+    defaultH: 6,
   },
   calendar: {
     component: CalendarWidget,
     label: 'Calendar',
     icon: 'Calendar',
-    minW: 1,
-    minH: 1,
-    defaultW: 2,
-    defaultH: 2,
+    minW: 3,
+    minH: 4,
+    defaultW: 6,
+    defaultH: 6,
   },
   tasks: {
     component: TasksWidget,
     label: 'Tasks',
     icon: 'CheckSquare',
-    minW: 1,
-    minH: 1,
-    defaultW: 1,
-    defaultH: 2,
+    minW: 2,
+    minH: 3,
+    defaultW: 3,
+    defaultH: 6,
   },
   messages: {
     component: MessagesWidget,
     label: 'Messages',
     icon: 'MessageSquare',
-    minW: 1,
-    minH: 1,
-    defaultW: 1,
-    defaultH: 2,
+    minW: 2,
+    minH: 3,
+    defaultW: 3,
+    defaultH: 6,
   },
   chores: {
     component: ChoresWidget,
     label: 'Chores',
     icon: 'ListChecks',
-    minW: 1,
-    minH: 1,
-    defaultW: 1,
-    defaultH: 2,
+    minW: 2,
+    minH: 3,
+    defaultW: 3,
+    defaultH: 6,
   },
   shopping: {
     component: ShoppingWidget,
     label: 'Shopping',
     icon: 'ShoppingCart',
-    minW: 1,
-    minH: 1,
-    defaultW: 1,
-    defaultH: 2,
+    minW: 2,
+    minH: 3,
+    defaultW: 3,
+    defaultH: 6,
   },
   meals: {
     component: MealsWidget,
     label: 'Meals',
     icon: 'UtensilsCrossed',
-    minW: 1,
-    minH: 1,
-    defaultW: 2,
-    defaultH: 2,
+    minW: 3,
+    minH: 3,
+    defaultW: 6,
+    defaultH: 6,
   },
   birthdays: {
     component: BirthdaysWidget,
     label: 'Birthdays',
     icon: 'Cake',
-    minW: 1,
-    minH: 1,
-    defaultW: 1,
-    defaultH: 2,
+    minW: 2,
+    minH: 3,
+    defaultW: 3,
+    defaultH: 6,
+  },
+  photos: {
+    component: PhotoWidget,
+    label: 'Photos',
+    icon: 'Image',
+    minW: 2,
+    minH: 2,
+    defaultW: 4,
+    defaultH: 4,
   },
 };
 

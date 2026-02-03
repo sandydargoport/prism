@@ -22,57 +22,24 @@ import * as React from 'react';
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { format, isToday, isTomorrow, isPast, addDays } from 'date-fns';
 import {
   CheckSquare,
   Plus,
   SortAsc,
   Home,
   AlertCircle,
-  Trash2,
-  Edit2,
-  X,
   Settings,
   Clock,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { UserAvatar } from '@/components/ui/avatar';
 import { PageWrapper } from '@/components/layout';
 import { useAuth } from '@/components/providers';
 import { useTasks } from '@/lib/hooks';
-
-
-/**
- * TASK INTERFACE
- */
-interface Task {
-  id: string;
-  title: string;
-  description?: string;
-  completed: boolean;
-  dueDate?: Date;
-  priority: 'high' | 'medium' | 'low';
-  category?: string;
-  assignedTo?: {
-    id: string;
-    name: string;
-    color: string;
-  };
-}
-
-
-/**
- * FAMILY MEMBER TYPE
- */
-interface FamilyMember {
-  id: string;
-  name: string;
-  color: string;
-}
+import { TaskItem } from '@/app/tasks/TaskItem';
+import { TaskModal } from '@/app/tasks/TaskModal';
+import type { Task, FamilyMember } from '@/types';
 
 
 
@@ -136,7 +103,6 @@ export function TasksView() {
   const filteredTasks = useMemo(() => {
     let result = [...tasks];
 
-    // Apply filters
     if (filterPerson) {
       result = result.filter((task) => task.assignedTo?.id === filterPerson);
     }
@@ -149,17 +115,16 @@ export function TasksView() {
       result = result.filter((task) => task.completed === filterCompleted);
     }
 
-    // Apply sorting
     result.sort((a, b) => {
       switch (sortBy) {
         case 'dueDate':
           if (!a.dueDate && !b.dueDate) return 0;
           if (!a.dueDate) return 1;
           if (!b.dueDate) return -1;
-          return a.dueDate.getTime() - b.dueDate.getTime();
+          return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
         case 'priority':
-          const priorityOrder = { high: 0, medium: 1, low: 2 };
-          return priorityOrder[a.priority] - priorityOrder[b.priority];
+          const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+          return (priorityOrder[a.priority ?? 'low'] ?? 2) - (priorityOrder[b.priority ?? 'low'] ?? 2);
         case 'title':
           return a.title.localeCompare(b.title);
         default:
@@ -175,11 +140,9 @@ export function TasksView() {
     const task = tasks.find((t) => t.id === taskId);
     if (!task) return;
 
-    // Require authentication
     const user = await requireAuth("Who's completing this task?");
     if (!user) return;
 
-    // Check ownership - parents can complete any task, others can only complete their own or unassigned tasks
     const isParent = user.role === 'parent';
     const isAssignedToUser = !task.assignedTo || task.assignedTo.id === user.id;
 
@@ -201,7 +164,6 @@ export function TasksView() {
     const user = await requireAuth("Who's editing this task?");
     if (!user) return;
 
-    // Only parents can edit tasks
     if (user.role !== 'parent') {
       alert('Only parents can edit tasks.');
       return;
@@ -215,7 +177,6 @@ export function TasksView() {
     const user = await requireAuth("Who's deleting this task?");
     if (!user) return;
 
-    // Only parents can delete tasks
     if (user.role !== 'parent') {
       alert('Only parents can delete tasks.');
       return;
@@ -234,7 +195,6 @@ export function TasksView() {
         throw new Error('Failed to delete task');
       }
 
-      // Refresh to get updated state
       refreshTasks();
     } catch (error) {
       console.error('Error deleting task:', error);
@@ -249,12 +209,9 @@ export function TasksView() {
   return (
     <PageWrapper>
       <div className="h-screen flex flex-col">
-        {/* ================================================================ */}
         {/* HEADER */}
-        {/* ================================================================ */}
-        <header className="flex-shrink-0 border-b border-border bg-card px-4 py-3">
+        <header className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-4 py-3">
         <div className="flex items-center justify-between">
-          {/* Left: Back and title */}
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" asChild>
               <Link href="/" aria-label="Back to dashboard">
@@ -271,7 +228,6 @@ export function TasksView() {
             </div>
           </div>
 
-          {/* Right: Add button, user avatar, settings */}
           <div className="flex items-center gap-2">
             <Button onClick={async () => {
               const user = await requireAuth("Who's adding a task?");
@@ -281,7 +237,6 @@ export function TasksView() {
               Add Task
             </Button>
 
-            {/* User avatar */}
             <button
               onClick={activeUser ? clearActiveUser : () => requireAuth()}
               className="flex items-center gap-2 p-1.5 rounded-full hover:bg-accent transition-colors"
@@ -304,7 +259,6 @@ export function TasksView() {
               )}
             </button>
 
-            {/* Settings */}
             <Button variant="ghost" size="icon" onClick={() => router.push('/settings')}>
               <Settings className="h-5 w-5" />
             </Button>
@@ -312,12 +266,9 @@ export function TasksView() {
         </div>
       </header>
 
-      {/* ================================================================== */}
       {/* FILTERS */}
-      {/* ================================================================== */}
-      <div className="flex-shrink-0 border-b border-border bg-card/50 px-4 py-2">
+      <div className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-4 py-2">
         <div className="flex items-center gap-4 flex-wrap">
-          {/* Filter by person */}
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Person:</span>
             <div className="flex gap-1">
@@ -346,7 +297,6 @@ export function TasksView() {
             </div>
           </div>
 
-          {/* Filter by priority */}
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Priority:</span>
             <div className="flex gap-1">
@@ -371,7 +321,6 @@ export function TasksView() {
             </div>
           </div>
 
-          {/* Filter by completion */}
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Status:</span>
             <div className="flex gap-1">
@@ -399,7 +348,6 @@ export function TasksView() {
             </div>
           </div>
 
-          {/* Sort */}
           <div className="flex items-center gap-2 ml-auto">
             <SortAsc className="h-4 w-4 text-muted-foreground" />
             <select
@@ -415,9 +363,7 @@ export function TasksView() {
         </div>
       </div>
 
-      {/* ================================================================== */}
       {/* TASK LIST */}
-      {/* ================================================================== */}
       <div className="flex-1 overflow-y-auto p-4">
         {tasksLoading ? (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
@@ -465,7 +411,7 @@ export function TasksView() {
         )}
       </div>
 
-      {/* Add Task Modal (simplified) */}
+      {/* Add Task Modal */}
       {showAddModal && (
         <TaskModal
           onClose={() => setShowAddModal(false)}
@@ -528,250 +474,5 @@ export function TasksView() {
       )}
       </div>
     </PageWrapper>
-  );
-}
-
-
-/**
- * TASK ITEM COMPONENT
- */
-function TaskItem({
-  task,
-  onToggle,
-  onEdit,
-  onDelete,
-}: {
-  task: Task;
-  onToggle: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
-  const isOverdue = task.dueDate && isPast(task.dueDate) && !task.completed;
-
-  const formatDueDate = (date: Date) => {
-    if (isToday(date)) return 'Today';
-    if (isTomorrow(date)) return 'Tomorrow';
-    return format(date, 'MMM d');
-  };
-
-  return (
-    <div
-      className={cn(
-        'flex items-center gap-4 p-4 rounded-lg border border-border',
-        'hover:bg-accent/30 transition-colors',
-        task.completed && 'opacity-60 bg-muted/30'
-      )}
-    >
-      {/* Checkbox */}
-      <Checkbox
-        checked={task.completed}
-        onCheckedChange={onToggle}
-        className="flex-shrink-0"
-        style={task.assignedTo ? { borderColor: task.assignedTo.color } : undefined}
-      />
-
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span
-            className={cn(
-              'font-medium',
-              task.completed && 'line-through text-muted-foreground'
-            )}
-          >
-            {task.title}
-          </span>
-
-          {task.priority === 'high' && (
-            <Badge variant="destructive" className="text-xs">
-              High
-            </Badge>
-          )}
-
-          {task.category && (
-            <Badge variant="outline" className="text-xs">
-              {task.category}
-            </Badge>
-          )}
-        </div>
-
-        <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-          {task.assignedTo && (
-            <div className="flex items-center gap-1">
-              <UserAvatar
-                name={task.assignedTo.name}
-                color={task.assignedTo.color}
-                size="sm"
-                className="h-4 w-4 text-[8px]"
-              />
-              <span>{task.assignedTo.name}</span>
-            </div>
-          )}
-
-          {task.dueDate && (
-            <span className={cn(isOverdue && 'text-destructive font-medium')}>
-              {isOverdue && <AlertCircle className="h-3 w-3 inline mr-1" />}
-              {formatDueDate(task.dueDate)}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onEdit}
-          className="h-8 w-8"
-        >
-          <Edit2 className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onDelete}
-          className="h-8 w-8 text-destructive"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-
-/**
- * TASK MODAL COMPONENT
- */
-function TaskModal({
-  task,
-  onClose,
-  onSave,
-  familyMembers,
-}: {
-  task?: Task;
-  onClose: () => void;
-  onSave: (task: Omit<Task, 'id'>) => void;
-  familyMembers: FamilyMember[];
-}) {
-  const [title, setTitle] = useState(task?.title || '');
-  const [priority, setPriority] = useState<'high' | 'medium' | 'low'>(task?.priority || 'medium');
-  const [assignedTo, setAssignedTo] = useState(task?.assignedTo?.id || '');
-  const [category, setCategory] = useState(task?.category || '');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim()) return;
-
-    const selectedMember = familyMembers.find((m) => m.id === assignedTo);
-
-    onSave({
-      title: title.trim(),
-      priority,
-      category: category.trim() || undefined,
-      assignedTo: selectedMember || undefined,
-      completed: task?.completed || false,
-      dueDate: task?.dueDate,
-    });
-  };
-
-  return (
-    <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-      onClick={onClose}
-    >
-      <div
-        className="bg-card rounded-lg p-6 max-w-md w-full mx-4 shadow-lg"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold">
-            {task ? 'Edit Task' : 'Add Task'}
-          </h2>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="text-sm font-medium">Title</label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Task title..."
-              autoFocus
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium">Priority</label>
-            <div className="flex gap-2 mt-1">
-              {(['high', 'medium', 'low'] as const).map((p) => (
-                <Button
-                  key={p}
-                  type="button"
-                  variant={priority === p ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setPriority(p)}
-                  className="capitalize"
-                >
-                  {p}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium">Assign To</label>
-            <div className="flex gap-2 mt-1 flex-wrap">
-              <Button
-                type="button"
-                variant={!assignedTo ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setAssignedTo('')}
-              >
-                Anyone
-              </Button>
-              {familyMembers.map((member) => (
-                <Button
-                  key={member.id}
-                  type="button"
-                  variant={assignedTo === member.id ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setAssignedTo(member.id)}
-                  className="gap-1"
-                >
-                  <div
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: member.color }}
-                  />
-                  {member.name}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium">Category</label>
-            <Input
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              placeholder="e.g., Errands, School, Home..."
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={!title.trim()}>
-              {task ? 'Save Changes' : 'Add Task'}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
   );
 }

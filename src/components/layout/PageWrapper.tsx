@@ -26,6 +26,7 @@
 import * as React from 'react';
 import { AppShell } from './AppShell';
 import { useAuth } from '@/components/providers';
+import { cn } from '@/lib/utils';
 
 /**
  * PAGE WRAPPER PROPS
@@ -71,7 +72,7 @@ export function PageWrapper({
       } : undefined}
       onLogout={activeUser ? clearActiveUser : undefined}
       hideNav={hideNav}
-      className={className}
+      className={cn(className)}
     >
       {children}
     </AppShell>

@@ -13,6 +13,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth';
 import {
   syncAllGoogleCalendars,
   syncGoogleCalendarSource,
@@ -32,6 +33,9 @@ import {
  * If calendarId is not provided, syncs all enabled calendars.
  */
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const body = await request.json().catch(() => ({}));
 

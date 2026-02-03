@@ -1,48 +1,3 @@
-/**
- * ============================================================================
- * PRISM - Main Dashboard Component
- * ============================================================================
- *
- * WHAT THIS FILE DOES:
- * This is the heart of Prism - the main dashboard that displays all widgets
- * in a responsive grid layout. It's what you see when you look at your
- * family dashboard on the wall.
- *
- * WHY A SEPARATE COMPONENT?
- * The page.tsx is a Server Component by default in Next.js 14, but our
- * dashboard needs client-side interactivity (real-time clock updates,
- * state management, etc.). By creating this as a Client Component and
- * importing it into the page, we get the best of both worlds.
- *
- * WIDGET LAYOUT:
- * The dashboard uses a responsive 4-column grid optimized for 1920x1080.
- * Widgets can span multiple columns and rows:
- *
- *   +------------------+--------+--------+
- *   |                  |        |        |
- *   |    CALENDAR      | CLOCK  | WEATHER|
- *   |    (2x2)         | (1x1)  | (1x2)  |
- *   |                  +--------+        |
- *   |                  |        |        |
- *   +--------+---------+ TASKS  +--------+
- *   |        |         | (1x2)  |        |
- *   |MESSAGES| (more)  |        | (more) |
- *   | (1x1)  |         |        |        |
- *   +--------+---------+--------+--------+
- *
- * FEATURES:
- * - Real-time clock updates
- * - Demo data for all widgets (API integration comes later)
- * - Touch-optimized interactions
- * - Responsive layout
- *
- * USAGE:
- *   <Dashboard />
- *   <Dashboard currentUser={user} onWidgetClick={handleClick} />
- *
- * ============================================================================
- */
-
 'use client';
 
 import * as React from 'react';
@@ -53,72 +8,23 @@ import { DashboardGrid, DashboardLayout, DashboardHeader } from '@/components/la
 import { GridLayout } from '@/components/layout/GridLayout';
 import { LayoutEditor } from '@/components/layout/LayoutEditor';
 import { useAuth } from '@/components/providers';
-import { useCalendarEvents, useWeather, useMessages, useTasks, useChores, useShoppingLists, useMeals, useBirthdays, useLayouts } from '@/lib/hooks';
 import { AddTaskModal, AddMessageModal, AddChoreModal, AddShoppingItemModal } from '@/components/modals';
 import { DEFAULT_TEMPLATE } from '@/lib/constants/layoutTemplates';
+import { ScreensaverEditor } from '@/components/screensaver/ScreensaverEditor';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
+import { WidgetErrorBoundary } from '@/components/dashboard/WidgetErrorBoundary';
+import { getGreeting } from '@/components/dashboard/greetings';
+import { useDashboardData } from './useDashboardData';
 
-class WidgetErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { error: Error | null }
-> {
-  state = { error: null as Error | null };
-  static getDerivedStateFromError(error: Error) {
-    return { error };
-  }
-  render() {
-    if (this.state.error) {
-      return (
-        <div className="p-4 bg-destructive/10 text-destructive rounded-lg">
-          <p className="font-bold">Widget Error</p>
-          <p className="text-sm">{this.state.error.message}</p>
-          <pre className="text-xs mt-2 overflow-auto max-h-40">{this.state.error.stack}</pre>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
-
-/**
- * DASHBOARD PROPS
- * ============================================================================
- */
 export interface DashboardProps {
-  /** Location for weather (defaults to Springfield, IL) */
   weatherLocation?: string;
-  /** Additional CSS classes */
   className?: string;
 }
 
-
-/**
- * DASHBOARD COMPONENT
- * ============================================================================
- * The main dashboard displaying all family widgets.
- *
- * AUTHENTICATION FLOW:
- * If requireAuth is true and no user is logged in, shows the PIN pad.
- * Once authenticated, shows the full dashboard with all widgets.
- *
- * @example Basic usage
- * <Dashboard />
- *
- * @example With authentication
- * <Dashboard requireAuth />
- *
- * @example With pre-authenticated user
- * <Dashboard currentUser={loggedInUser} />
- * ============================================================================
- */
 export function Dashboard({
   weatherLocation = 'Springfield, IL',
   className,
 }: DashboardProps) {
-  // ============================================================================
-  // HOOKS
-  // ============================================================================
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
 
@@ -126,97 +32,13 @@ export function Dashboard({
     setIsMounted(true);
   }, []);
 
-  // Auth context - provides activeUser and requireAuth function
   const { activeUser, requireAuth, clearActiveUser } = useAuth();
 
-  // Login handler for header avatar
   const handleLogin = async () => {
     await requireAuth('Login', 'Select your profile and enter your PIN');
   };
 
-  // Fetch calendar events from API
-  // Fetch 30 days to support all view options (3 days, 1 week, 2 weeks, month)
-  const {
-    events: calendarEvents,
-    loading: calendarLoading,
-    error: calendarError,
-  } = useCalendarEvents({ daysToShow: 30 });
-
-  // Fetch weather data from API
-  // Don't pass location - let the API use the WEATHER_LOCATION env variable
-  // which has the correct format for OpenWeatherMap (e.g., "Springfield,IL,US")
-  const {
-    data: weatherData,
-    loading: weatherLoading,
-    error: weatherError,
-  } = useWeather({});
-
-  // Fetch messages from API
-  const {
-    messages,
-    loading: messagesLoading,
-    error: messagesError,
-    refresh: refreshMessages,
-    deleteMessage,
-  } = useMessages({ limit: 10 });
-
-  // Fetch tasks from API (include completed to show them crossed out)
-  const {
-    tasks,
-    loading: tasksLoading,
-    error: tasksError,
-    refresh: refreshTasks,
-    toggleTask,
-  } = useTasks({ showCompleted: true, limit: 20 });
-
-  // Fetch chores from API
-  const {
-    chores,
-    loading: choresLoading,
-    error: choresError,
-    refresh: refreshChores,
-    completeChore,
-    approveChore,
-  } = useChores({ showDisabled: false });
-
-  // Fetch shopping lists from API
-  const {
-    lists: shoppingLists,
-    loading: shoppingLoading,
-    error: shoppingError,
-    refresh: refreshShopping,
-    toggleItem: toggleShoppingItem,
-  } = useShoppingLists({});
-
-  // Fetch meals from API (current week)
-  const {
-    meals,
-    loading: mealsLoading,
-    error: mealsError,
-    refresh: refreshMeals,
-    markCooked,
-  } = useMeals({});
-
-  // Fetch birthdays & milestones
-  const {
-    birthdays: birthdaysList,
-    loading: birthdaysLoading,
-    error: birthdaysError,
-    syncFromGoogle: syncBirthdays,
-  } = useBirthdays({ limit: 8 });
-
-  // Layouts
-  const {
-    layouts: allLayouts,
-    activeLayout: savedLayout,
-    saveLayout,
-    deleteLayout,
-    loading: layoutsLoading,
-  } = useLayouts();
-
-  // ============================================================================
-  // STATE
-  // ============================================================================
+  const data = useDashboardData();
 
   const [showAddMessage, setShowAddMessage] = useState(false);
   const [showAddTask, setShowAddTask] = useState(false);
@@ -225,24 +47,24 @@ export function Dashboard({
   const [isEditing, setIsEditing] = useState(false);
   const [editingWidgets, setEditingWidgets] = useState<WidgetConfig[]>([]);
   const preEditWidgetsRef = useRef<WidgetConfig[]>([]);
+  const [editingScreensaver, setEditingScreensaver] = useState(false);
 
-  // Determine active widgets: editing state > saved layout > default template
   const activeWidgets = isEditing
     ? editingWidgets
-    : savedLayout?.widgets ?? DEFAULT_TEMPLATE.widgets;
+    : data.layouts.savedLayout?.widgets ?? DEFAULT_TEMPLATE.widgets;
 
   const handleEditStart = useCallback(() => {
-    const current = savedLayout?.widgets ?? DEFAULT_TEMPLATE.widgets;
+    const current = data.layouts.savedLayout?.widgets ?? DEFAULT_TEMPLATE.widgets;
     preEditWidgetsRef.current = current;
     setEditingWidgets(current);
     setIsEditing(true);
-  }, [savedLayout]);
+  }, [data.layouts.savedLayout]);
 
   const handleSave = useCallback(async (name?: string) => {
     try {
-      await saveLayout({
-        ...(savedLayout ? { id: savedLayout.id } : {}),
-        name: name || savedLayout?.name || 'My Layout',
+      await data.layouts.saveLayout({
+        ...(data.layouts.savedLayout ? { id: data.layouts.savedLayout.id } : {}),
+        name: name || data.layouts.savedLayout?.name || 'My Layout',
         widgets: editingWidgets,
         isDefault: true,
       });
@@ -250,13 +72,13 @@ export function Dashboard({
     } catch (err) {
       console.error('Failed to save layout:', err);
     }
-  }, [savedLayout, editingWidgets, saveLayout]);
+  }, [data.layouts.savedLayout, editingWidgets, data.layouts.saveLayout]);
 
   const handleSaveAs = useCallback(async () => {
     const name = window.prompt('Layout name:', 'New Layout');
     if (!name) return;
     try {
-      await saveLayout({
+      await data.layouts.saveLayout({
         name,
         widgets: editingWidgets,
         isDefault: true,
@@ -265,7 +87,7 @@ export function Dashboard({
     } catch (err) {
       console.error('Failed to save layout:', err);
     }
-  }, [editingWidgets, saveLayout]);
+  }, [editingWidgets, data.layouts.saveLayout]);
 
   const handleReset = useCallback(() => {
     setEditingWidgets(DEFAULT_TEMPLATE.widgets);
@@ -275,11 +97,6 @@ export function Dashboard({
     setEditingWidgets(preEditWidgetsRef.current);
     setIsEditing(false);
   }, []);
-
-
-  // ============================================================================
-  // RENDER DASHBOARD
-  // ============================================================================
 
   return (
     <AppShell
@@ -292,10 +109,6 @@ export function Dashboard({
       onLogout={activeUser ? clearActiveUser : undefined}
     >
       <DashboardLayout className={className}>
-        {/* ==================================================================== */}
-        {/* HEADER */}
-        {/* Shows greeting and current user info */}
-        {/* ==================================================================== */}
         <DashboardHeader
           user={activeUser ? {
             name: activeUser.name,
@@ -309,9 +122,6 @@ export function Dashboard({
           onEditClick={activeUser?.role === 'parent' ? handleEditStart : undefined}
         />
 
-        {/* ================================================================== */}
-        {/* LAYOUT EDITOR TOOLBAR (when editing) */}
-        {/* ================================================================== */}
         {isEditing && (
           <LayoutEditor
             widgets={editingWidgets}
@@ -319,17 +129,18 @@ export function Dashboard({
             onSave={handleSave}
             onSaveAs={handleSaveAs}
             onReset={handleReset}
-            onCancel={handleCancel}
-            onDeleteLayout={deleteLayout}
-            layoutName={savedLayout?.name}
-            savedLayouts={allLayouts.map(l => ({ id: l.id, name: l.name, widgets: l.widgets }))}
+            onCancel={() => { setEditingScreensaver(false); handleCancel(); }}
+            onDeleteLayout={data.layouts.deleteLayout}
+            layoutName={data.layouts.savedLayout?.name}
+            savedLayouts={data.layouts.allLayouts.map(l => ({ id: l.id, name: l.name, widgets: l.widgets }))}
+            editingScreensaver={editingScreensaver}
+            onToggleScreensaverEdit={() => setEditingScreensaver(!editingScreensaver)}
           />
         )}
 
-        {/* ================================================================== */}
-        {/* WIDGET GRID */}
-        {/* ================================================================== */}
-        {!isMounted ? (
+        {editingScreensaver && isEditing ? (
+          <ScreensaverEditor />
+        ) : !isMounted ? (
           <DashboardGrid>
             <div className="col-span-4 flex items-center justify-center h-64 text-muted-foreground">
               Loading widgets...
@@ -345,30 +156,28 @@ export function Dashboard({
             clock: {},
             weather: {
               location: weatherLocation,
-              data: weatherData || undefined,
-              loading: weatherLoading,
-              error: weatherError,
+              data: data.weather.data || undefined,
+              loading: data.weather.loading,
+              error: data.weather.error,
             },
             calendar: {
-              events: calendarEvents.length > 0 ? calendarEvents : undefined,
-              loading: calendarLoading,
-              error: calendarError,
+              events: data.calendar.events.length > 0 ? data.calendar.events : undefined,
+              loading: data.calendar.loading,
+              error: data.calendar.error,
               initialView: '3days',
               maxEventsPerDay: 4,
-              onEventClick: (event: unknown) => {
-                console.log('Event clicked:', event);
-              },
+              onEventClick: (_event: unknown) => {},
               titleHref: '/calendar',
             },
             tasks: {
-              tasks,
+              tasks: data.tasks.tasks,
               maxTasks: 6,
-              loading: tasksLoading,
-              error: tasksError,
+              loading: data.tasks.loading,
+              error: data.tasks.error,
               onTaskToggle: async (taskId: string, completed: boolean) => {
                 const user = await requireAuth("Who's completing this task?");
                 if (user) {
-                  toggleTask(taskId, completed);
+                  data.tasks.toggleTask(taskId, completed);
                 }
               },
               onAddClick: async () => {
@@ -380,42 +189,40 @@ export function Dashboard({
               titleHref: '/tasks',
             },
             messages: {
-              messages,
+              messages: data.messages.messages,
               maxMessages: 5,
-              loading: messagesLoading,
-              error: messagesError,
+              loading: data.messages.loading,
+              error: data.messages.error,
               onAddClick: async () => {
                 const user = await requireAuth("Who's posting?");
                 if (user) {
                   setShowAddMessage(true);
                 }
               },
-              onMessageClick: (message: unknown) => {
-                console.log('Message clicked:', message);
-              },
+              onMessageClick: (_message: unknown) => {},
               onDeleteClick: async (messageId: string) => {
                 const user = await requireAuth("Who's deleting this?");
                 if (user) {
-                  deleteMessage(messageId);
+                  data.messages.deleteMessage(messageId);
                 }
               },
             },
             chores: {
-              chores,
+              chores: data.chores.chores,
               maxChores: 6,
-              loading: choresLoading,
-              error: choresError,
+              loading: data.chores.loading,
+              error: data.chores.error,
               onChoreComplete: async (choreId: string) => {
                 const user = await requireAuth("Who's completing this chore?");
                 if (!user) return;
                 try {
-                  const chore = chores.find(c => c.id === choreId);
+                  const chore = data.chores.chores.find(c => c.id === choreId);
                   if (chore?.pendingApproval && user.role === 'parent') {
-                    await approveChore(choreId, chore.pendingApproval.completionId);
+                    await data.chores.approveChore(choreId, chore.pendingApproval.completionId);
                   } else {
-                    await completeChore(choreId, { completedBy: user.id });
+                    await data.chores.completeChore(choreId, { completedBy: user.id });
                   }
-                  refreshChores();
+                  data.chores.refresh();
                 } catch (err) {
                   console.error('Failed to complete chore:', err);
                 }
@@ -429,10 +236,10 @@ export function Dashboard({
               titleHref: '/chores',
             },
             shopping: {
-              lists: shoppingLists,
-              loading: shoppingLoading,
-              error: shoppingError,
-              onItemToggle: (itemId: string, checked: boolean) => toggleShoppingItem(itemId, checked),
+              lists: data.shopping.lists,
+              loading: data.shopping.loading,
+              error: data.shopping.error,
+              onItemToggle: (itemId: string, checked: boolean) => data.shopping.toggleItem(itemId, checked),
               onAddClick: async () => {
                 const user = await requireAuth("Who's adding an item?");
                 if (user) {
@@ -442,19 +249,19 @@ export function Dashboard({
               titleHref: '/shopping',
             },
             birthdays: {
-              birthdays: birthdaysList,
-              loading: birthdaysLoading,
-              error: birthdaysError,
-              onSyncClick: syncBirthdays,
+              birthdays: data.birthdays.birthdays,
+              loading: data.birthdays.loading,
+              error: data.birthdays.error,
+              onSyncClick: data.birthdays.syncFromGoogle,
             },
             meals: {
-              meals,
-              loading: mealsLoading,
-              error: mealsError,
+              meals: data.meals.meals,
+              loading: data.meals.loading,
+              error: data.meals.error,
               onMarkCooked: async (mealId: string) => {
                 const user = await requireAuth("Who cooked this?");
                 if (user) {
-                  await markCooked(mealId, user.id);
+                  await data.meals.markCooked(mealId, user.id);
                 }
               },
               onUnmarkCooked: async (mealId: string) => {
@@ -464,7 +271,7 @@ export function Dashboard({
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ cookedBy: null }),
                   });
-                  refreshMeals();
+                  data.meals.refresh();
                 } catch { /* ignore */ }
               },
               onAddMeal: async (meal: Record<string, unknown>) => {
@@ -476,7 +283,7 @@ export function Dashboard({
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ...meal, createdBy: user.id }),
                   });
-                  refreshMeals();
+                  data.meals.refresh();
                 } catch { /* ignore */ }
               },
               titleHref: '/meals',
@@ -486,16 +293,10 @@ export function Dashboard({
         </WidgetErrorBoundary>
         )}
 
-        {/* ================================================================== */}
-        {/* MODALS */}
-        {/* ================================================================== */}
         <AddTaskModal
           open={showAddTask}
           onOpenChange={setShowAddTask}
-          onTaskCreated={(task) => {
-            console.log('Task created:', task);
-            refreshTasks();
-          }}
+          onTaskCreated={() => { data.tasks.refresh(); }}
         />
 
         <AddMessageModal
@@ -507,147 +308,21 @@ export function Dashboard({
             color: activeUser.color,
             avatarUrl: activeUser.avatarUrl,
           } : undefined}
-          onMessageCreated={(message) => {
-            console.log('Message posted:', message);
-            refreshMessages();
-          }}
+          onMessageCreated={() => { data.messages.refresh(); }}
         />
 
         <AddChoreModal
           open={showAddChore}
           onOpenChange={setShowAddChore}
-          onChoreCreated={(chore) => {
-            console.log('Chore created:', chore);
-            refreshChores();
-          }}
+          onChoreCreated={() => { data.chores.refresh(); }}
         />
 
         <AddShoppingItemModal
           open={showAddShopping}
           onOpenChange={setShowAddShopping}
-          onItemCreated={(item) => {
-            console.log('Shopping item created:', item);
-            refreshShopping();
-          }}
+          onItemCreated={() => { data.shopping.refresh(); }}
         />
       </DashboardLayout>
     </AppShell>
   );
-}
-
-
-/**
- * WHIMSICAL GREETINGS
- * ============================================================================
- * Arrays of playful greetings for each time of day.
- * Mix of casual, regal, and pop culture inspired.
- * ============================================================================
- */
-const morningGreetings = [
-  'Rise and shine',
-  'Top of the morning',
-  'Wakey wakey',
-  'Hello sunshine',
-  'Look who\'s up',
-  'Morning, superstar',
-  'Ready to conquer today',
-  'Coffee time',
-  'Bright-eyed and bushy-tailed',
-  'Good morrow',
-  'The early bird catches',
-  'Carpe diem',
-  'You\'re up before the sun',
-  'Morning glory',
-  'Another day, another adventure',
-];
-
-const afternoonGreetings = [
-  'Hey there',
-  'Afternoon delight',
-  'Halfway through',
-  'Still crushing it',
-  'Keep on keepin\' on',
-  'How goes the day',
-  'Afternoon vibes',
-  'Making things happen',
-  'Good day',
-  'Well met',
-  'The game is afoot',
-  'Onwards and upwards',
-  'May the force be with you',
-  'Adventure awaits',
-  'What a time to be alive',
-];
-
-const eveningGreetings = [
-  'Good evening',
-  'Evening, friend',
-  'Winding down',
-  'Home stretch',
-  'Almost done',
-  'Evening already',
-  'Hope today was good',
-  'Settling in',
-  'As the sun sets',
-  'Time flies',
-  'What a day',
-  'Made it through another one',
-  'Twilight time',
-  'The stars are coming out',
-];
-
-const nightGreetings = [
-  'Burning the midnight oil',
-  'Night owl mode',
-  'Still awake',
-  'The world is quiet',
-  'Sweet dreams soon',
-  'Starlight hours',
-  'Late night crew',
-  'The witching hour approaches',
-  'While the world sleeps',
-  'To sleep, perchance to dream',
-  'Goodnight, moon',
-  'The night is young',
-  'What brings you here at this hour',
-];
-
-/**
- * GET GREETING
- * ============================================================================
- * Returns a whimsical greeting based on the time of day.
- * Randomly selects from a pool of greetings for variety.
- *
- * TIME RANGES:
- * - Morning: 5 AM - 12 PM
- * - Afternoon: 12 PM - 5 PM
- * - Evening: 5 PM - 9 PM
- * - Night: 9 PM - 5 AM
- * ============================================================================
- */
-function getGreeting(): string {
-  const hour = new Date().getHours();
-
-  // Use a seed based on the day so it doesn't change on every render
-  const daySeed = new Date().toDateString();
-  const pseudoRandom = (arr: string[]): string => {
-    if (arr.length === 0) return 'Hello';
-    let hash = 0;
-    for (let i = 0; i < daySeed.length; i++) {
-      hash = ((hash << 5) - hash) + daySeed.charCodeAt(i);
-      hash = hash & hash;
-    }
-    return arr[Math.abs(hash) % arr.length]!;
-  };
-
-  if (hour >= 5 && hour < 12) {
-    return pseudoRandom(morningGreetings);
-  }
-  if (hour >= 12 && hour < 17) {
-    return pseudoRandom(afternoonGreetings);
-  }
-  if (hour >= 17 && hour < 21) {
-    return pseudoRandom(eveningGreetings);
-  }
-  return pseudoRandom(nightGreetings);
 }

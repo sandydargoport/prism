@@ -19,6 +19,7 @@ import type {
   WeatherCondition,
   CurrentWeather,
   ForecastDay,
+  ForecastPeriod,
 } from '@/components/widgets/WeatherWidget';
 
 /**
@@ -160,10 +161,11 @@ export async function fetchCurrentWeather(
 }
 
 /**
- * Fetch 5-day forecast
+ * Fetch 5-day forecast (returns raw data too for period extraction)
  */
-export async function fetchForecast(location?: string): Promise<{
+async function fetchForecastRaw(location?: string): Promise<{
   forecast: ForecastDay[];
+  raw: OpenWeatherForecast['list'];
   locationName: string;
 }> {
   const config = getConfig();
@@ -243,8 +245,59 @@ export async function fetchForecast(location?: string): Promise<{
 
   return {
     forecast,
+    raw: data.list,
     locationName: `${data.city.name}, ${data.city.country}`,
   };
+}
+
+/**
+ * Fetch 5-day forecast (public API)
+ */
+export async function fetchForecast(location?: string): Promise<{
+  forecast: ForecastDay[];
+  locationName: string;
+}> {
+  const result = await fetchForecastRaw(location);
+  return { forecast: result.forecast, locationName: result.locationName };
+}
+
+/**
+ * Extract today's period forecasts (Morning/Afternoon/Evening)
+ * from the 3-hour forecast data.
+ */
+function extractPeriods(forecastList: OpenWeatherForecast['list']): ForecastPeriod[] {
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  const periods: ForecastPeriod[] = [];
+
+  // Morning: 6am-12pm, Afternoon: 12pm-6pm, Evening: 6pm-12am
+  const periodDefs = [
+    { label: 'Morn', minHour: 6, maxHour: 12 },
+    { label: 'Aft', minHour: 12, maxHour: 18 },
+    { label: 'Eve', minHour: 18, maxHour: 24 },
+  ];
+
+  for (const def of periodDefs) {
+    const matching = forecastList.filter((item) => {
+      const d = new Date(item.dt * 1000);
+      const dateStr = d.toISOString().split('T')[0];
+      const hour = d.getHours();
+      return dateStr === todayStr && hour >= def.minHour && hour < def.maxHour;
+    });
+
+    if (matching.length > 0) {
+      // Average temperature for the period
+      const avgTemp = matching.reduce((sum, m) => sum + m.main.temp, 0) / matching.length;
+      const condId = matching[0]!.weather[0]?.id || 800;
+      periods.push({
+        label: def.label,
+        temp: kelvinToFahrenheit(avgTemp),
+        condition: mapCondition(condId),
+      });
+    }
+  }
+
+  return periods;
 }
 
 /**
@@ -253,8 +306,10 @@ export async function fetchForecast(location?: string): Promise<{
 export async function fetchWeatherData(location?: string): Promise<WeatherData> {
   const [currentData, forecastData] = await Promise.all([
     fetchCurrentWeather(location),
-    fetchForecast(location),
+    fetchForecastRaw(location),
   ]);
+
+  const periods = extractPeriods(forecastData.raw);
 
   return {
     location: currentData.locationName,
@@ -267,6 +322,7 @@ export async function fetchWeatherData(location?: string): Promise<WeatherData> 
       description: currentData.description,
     },
     forecast: forecastData.forecast,
+    periods,
     lastUpdated: new Date(),
   };
 }
