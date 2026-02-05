@@ -18,7 +18,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
 import { familyMessages, users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, requireRole } from '@/lib/auth';
 import { formatMessageRow } from '@/lib/utils/formatters';
 
 
@@ -91,8 +91,7 @@ export async function GET(
  *   expiresAt?: string | null - Update or clear expiration
  * }
  *
- * NOTE: Only the message author or parents can edit messages.
- * This authorization check should be added when auth is implemented.
+ * Only the message author or parents can edit messages.
  * ============================================================================
  */
 export async function PATCH(
@@ -106,9 +105,9 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
 
-    // Check if message exists
+    // Check if message exists and get author for ownership check
     const [existingMessage] = await db
-      .select({ id: familyMessages.id })
+      .select({ id: familyMessages.id, authorId: familyMessages.authorId })
       .from(familyMessages)
       .where(eq(familyMessages.id, id));
 
@@ -117,6 +116,13 @@ export async function PATCH(
         { error: 'Message not found' },
         { status: 404 }
       );
+    }
+
+    // Only the author or users with canDeleteAnyMessage (parents) can edit
+    const isAuthor = existingMessage.authorId === auth.userId;
+    if (!isAuthor) {
+      const forbidden = requireRole(auth, 'canDeleteAnyMessage');
+      if (forbidden) return forbidden;
     }
 
     // Build update object
@@ -254,14 +260,10 @@ export async function DELETE(
     // ========================================================================
     // AUTHORIZATION CHECK
     // ========================================================================
-    const isParent = auth.role === 'parent';
     const isAuthor = existingMessage.authorId === auth.userId;
-
-    if (!isParent && !isAuthor) {
-      return NextResponse.json(
-        { error: 'You do not have permission to delete this message' },
-        { status: 403 }
-      );
+    if (!isAuthor) {
+      const forbidden = requireRole(auth, 'canDeleteAnyMessage');
+      if (forbidden) return forbidden;
     }
 
     // Delete the message

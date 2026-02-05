@@ -182,6 +182,10 @@ export async function POST(request: NextRequest) {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
 
+  const { rateLimitGuard } = await import('@/lib/cache/rateLimit');
+  const limited = await rateLimitGuard(auth.userId, 'chores', 30, 60);
+  if (limited) return limited;
+
   try {
     const body = await request.json();
 

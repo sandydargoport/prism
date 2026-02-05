@@ -5,6 +5,8 @@ import { photos, photoSources } from '@/lib/db/schema';
 import { eq, desc, sql, and, like } from 'drizzle-orm';
 import { savePhoto } from '@/lib/services/photo-storage';
 import { PHOTO_MAX_SIZE_MB, PHOTO_ALLOWED_TYPES } from '@/lib/constants';
+import { validateMagicBytes } from '@/lib/utils/validateFileType';
+import { rateLimitGuard } from '@/lib/cache/rateLimit';
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth();
@@ -67,6 +69,9 @@ export async function POST(request: NextRequest) {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
 
+  const limited = await rateLimitGuard(auth.userId, 'photo-upload', 20, 60);
+  if (limited) return limited;
+
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
@@ -102,6 +107,12 @@ export async function POST(request: NextRequest) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
+
+    const detectedType = validateMagicBytes(buffer, PHOTO_ALLOWED_TYPES);
+    if (!detectedType) {
+      return NextResponse.json({ error: 'File content does not match an allowed image type' }, { status: 400 });
+    }
+
     const ext = file.name.split('.').pop() || 'jpg';
     const filename = `${crypto.randomUUID()}.${ext}`;
 

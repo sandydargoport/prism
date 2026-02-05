@@ -16,7 +16,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
 import { chores, choreCompletions, users } from '@/lib/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, requireRole } from '@/lib/auth';
 import { addDays, addMonths, addYears, format } from 'date-fns';
 import { invalidateCache } from '@/lib/cache/redis';
 
@@ -112,12 +112,8 @@ export async function POST(
     const auth = await requireAuth();
     if (auth instanceof NextResponse) return auth;
 
-    if (auth.role !== 'parent') {
-      return NextResponse.json(
-        { error: 'Only parents can approve chore completions' },
-        { status: 403 }
-      );
-    }
+    const forbidden = requireRole(auth, 'canApproveChores');
+    if (forbidden) return forbidden;
 
     // ========================================================================
     // VERIFY CHORE EXISTS
@@ -188,30 +184,28 @@ export async function POST(
       );
     }
 
-    // ========================================================================
-    // APPROVE THE COMPLETION
-    // ========================================================================
+    // Approve completion + update chore atomically
     const now = new Date();
-
-    await db
-      .update(choreCompletions)
-      .set({
-        approvedBy: auth.userId,
-        approvedAt: now,
-      })
-      .where(eq(choreCompletions.id, pendingCompletion.id));
-
-    // Update the chore's lastCompleted timestamp and calculate nextDue
     const nextDue = calculateNextDue(chore.frequency, chore.customIntervalDays);
 
-    await db
-      .update(chores)
-      .set({
-        lastCompleted: pendingCompletion.completedAt,
-        nextDue: nextDue,
-        updatedAt: now,
-      })
-      .where(eq(chores.id, choreId));
+    await db.transaction(async (tx) => {
+      await tx
+        .update(choreCompletions)
+        .set({
+          approvedBy: auth.userId,
+          approvedAt: now,
+        })
+        .where(eq(choreCompletions.id, pendingCompletion.id));
+
+      await tx
+        .update(chores)
+        .set({
+          lastCompleted: pendingCompletion.completedAt,
+          nextDue: nextDue,
+          updatedAt: now,
+        })
+        .where(eq(chores.id, choreId));
+    });
 
     // Fetch the completing user and approving user names for the response
     const [completingUser] = await db

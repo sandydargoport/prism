@@ -24,7 +24,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
 import { tasks, users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, requireRole } from '@/lib/auth';
 import { formatTaskRow } from '@/lib/utils/formatters';
 
 
@@ -367,15 +367,10 @@ export async function DELETE(
     // ========================================================================
     // AUTHORIZATION CHECK
     // ========================================================================
-    const isParent = auth.role === 'parent';
-    // A child can delete a task if they created it OR if it's assigned to them
     const isOwner = existingTask.createdBy === auth.userId || existingTask.assignedTo === auth.userId;
-
-    if (!isParent && !isOwner) {
-      return NextResponse.json(
-        { error: 'You do not have permission to delete this task' },
-        { status: 403 }
-      );
+    if (!isOwner) {
+      const forbidden = requireRole(auth, 'canDeleteTasks');
+      if (forbidden) return forbidden;
     }
 
     // Delete the task

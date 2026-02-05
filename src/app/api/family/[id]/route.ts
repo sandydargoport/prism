@@ -225,28 +225,29 @@ export async function DELETE(
       );
     }
 
-    // Check if this is the last parent
-    if (currentMember.role === 'parent') {
-      const parentCount = await db
-        .select({ count: users.id })
-        .from(users)
-        .where(eq(users.role, 'parent'));
+    // Check parent count + delete atomically to prevent race condition
+    await db.transaction(async (tx) => {
+      if (currentMember.role === 'parent') {
+        const parentCount = await tx
+          .select({ count: users.id })
+          .from(users)
+          .where(eq(users.role, 'parent'));
 
-      if (parentCount.length <= 1) {
-        return NextResponse.json(
-          { error: 'Cannot delete the last parent' },
-          { status: 400 }
-        );
+        if (parentCount.length <= 1) {
+          throw new Error('Cannot delete the last parent');
+        }
       }
-    }
 
-    // Delete the member
-    await db.delete(users).where(eq(users.id, id));
+      await tx.delete(users).where(eq(users.id, id));
+    });
 
     await invalidateCache('family:*');
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Cannot delete the last parent') {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error('Error deleting family member:', error);
     return NextResponse.json(
       { error: 'Failed to delete family member' },

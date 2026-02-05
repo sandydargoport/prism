@@ -6,6 +6,8 @@ import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { saveAvatar, deleteAvatar, getAvatarPath } from '@/lib/services/avatar-storage';
 import { invalidateCache } from '@/lib/cache/redis';
+import { validateMagicBytes } from '@/lib/utils/validateFileType';
+import { rateLimitGuard } from '@/lib/cache/rateLimit';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -25,6 +27,9 @@ export async function POST(
     if (forbidden) return forbidden;
   }
 
+  const limited = await rateLimitGuard(auth.userId, 'avatar-upload', 10, 60);
+  if (limited) return limited;
+
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
@@ -42,6 +47,12 @@ export async function POST(
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
+
+    const detectedType = validateMagicBytes(buffer, ALLOWED_TYPES);
+    if (!detectedType) {
+      return NextResponse.json({ error: 'File content does not match an allowed image type' }, { status: 400 });
+    }
+
     await saveAvatar(buffer, id);
 
     const avatarUrl = `/api/family/${id}/avatar`;

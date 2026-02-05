@@ -28,6 +28,7 @@ import { eq, and, isNull } from 'drizzle-orm';
 import { completeChoreSchema, validateRequest } from '@/lib/validations';
 import { addDays, addMonths, addYears, format } from 'date-fns';
 import { invalidateCache } from '@/lib/cache/redis';
+import { rateLimitGuard } from '@/lib/cache/rateLimit';
 
 /**
  * Calculate the next due date based on frequency
@@ -105,6 +106,9 @@ export async function POST(
 ) {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
+
+  const limited = await rateLimitGuard(auth.userId, 'chore-complete', 20, 60);
+  if (limited) return limited;
 
   try {
     const { id: choreId } = await params;
@@ -222,44 +226,39 @@ export async function POST(
     // The chore's `requiresApproval` flag is specifically for child completions
     const needsApproval = isChild; // Only children need approval
 
-    // Create completion record
-    const [completion] = await db
-      .insert(choreCompletions)
-      .values({
-        choreId,
-        completedBy,
-        completedAt: new Date(),
-        photoUrl: photoUrl || null,
-        notes: notes || null,
-        pointsAwarded: chore.pointValue,
-        // Auto-approve only if no approval needed
-        approvedBy: needsApproval ? null : completedBy,
-        approvedAt: needsApproval ? null : new Date(),
-      })
-      .returning();
-
-    if (!completion) {
-      return NextResponse.json(
-        { error: 'Failed to create completion record' },
-        { status: 500 }
-      );
-    }
-
-    // If auto-approved (parent completing a chore),
-    // update the chore's lastCompleted timestamp and calculate nextDue
-    if (!needsApproval) {
-      // Calculate next due date based on frequency
-      const nextDue = calculateNextDue(chore.frequency, chore.customIntervalDays);
-
-      await db
-        .update(chores)
-        .set({
-          lastCompleted: completion.completedAt,
-          nextDue: nextDue,
-          updatedAt: new Date(),
+    // Create completion + conditionally update chore atomically
+    const completion = await db.transaction(async (tx) => {
+      const [comp] = await tx
+        .insert(choreCompletions)
+        .values({
+          choreId,
+          completedBy,
+          completedAt: new Date(),
+          photoUrl: photoUrl || null,
+          notes: notes || null,
+          pointsAwarded: chore.pointValue,
+          approvedBy: needsApproval ? null : completedBy,
+          approvedAt: needsApproval ? null : new Date(),
         })
-        .where(eq(chores.id, choreId));
-    }
+        .returning();
+
+      if (!comp) throw new Error('Failed to create completion record');
+
+      // If auto-approved (parent completing), update chore's lastCompleted and nextDue
+      if (!needsApproval) {
+        const nextDue = calculateNextDue(chore.frequency, chore.customIntervalDays);
+        await tx
+          .update(chores)
+          .set({
+            lastCompleted: comp.completedAt,
+            nextDue: nextDue,
+            updatedAt: new Date(),
+          })
+          .where(eq(chores.id, choreId));
+      }
+
+      return comp;
+    });
 
     // Generate appropriate message
     let message: string;

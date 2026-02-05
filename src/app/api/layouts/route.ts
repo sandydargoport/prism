@@ -56,31 +56,29 @@ export async function POST(request: NextRequest) {
 
     const { name, isDefault, displayId, widgets, createdBy } = validation.data;
 
-    // If setting as default, unset other defaults
-    if (isDefault) {
-      await db
-        .update(layouts)
-        .set({ isDefault: false, updatedAt: new Date() })
-        .where(eq(layouts.isDefault, true));
-    }
+    // Unset defaults + insert atomically to prevent inconsistent state
+    const newLayout = await db.transaction(async (tx) => {
+      if (isDefault) {
+        await tx
+          .update(layouts)
+          .set({ isDefault: false, updatedAt: new Date() })
+          .where(eq(layouts.isDefault, true));
+      }
 
-    const [newLayout] = await db
-      .insert(layouts)
-      .values({
-        name,
-        isDefault: isDefault || false,
-        displayId: displayId || null,
-        widgets,
-        createdBy: createdBy || null,
-      })
-      .returning();
+      const [layout] = await tx
+        .insert(layouts)
+        .values({
+          name,
+          isDefault: isDefault || false,
+          displayId: displayId || null,
+          widgets,
+          createdBy: createdBy || null,
+        })
+        .returning();
 
-    if (!newLayout) {
-      return NextResponse.json(
-        { error: 'Failed to create layout' },
-        { status: 500 }
-      );
-    }
+      if (!layout) throw new Error('Failed to create layout');
+      return layout;
+    });
 
     return NextResponse.json(newLayout, { status: 201 });
   } catch (error) {
