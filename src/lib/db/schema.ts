@@ -10,6 +10,7 @@ import {
   jsonb,
   date,
   index,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -59,7 +60,9 @@ export const calendarGroups = pgTable('calendar_groups', {
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+}, (table) => ({
+  typeIdx: index('calendar_groups_type_idx').on(table.type),
+}));
 
 
 export const calendarSources = pgTable('calendar_sources', {
@@ -100,6 +103,7 @@ export const calendarSources = pgTable('calendar_sources', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
   userIdIdx: index('calendar_sources_user_id_idx').on(table.userId),
+  enabledIdx: index('calendar_sources_enabled_idx').on(table.enabled),
 }));
 
 
@@ -124,7 +128,7 @@ export const events = pgTable('events', {
   recurrenceRule: text('recurrence_rule'), // iCal RRULE format
 
   // Who created this event (for locally-created events)
-  createdBy: uuid('created_by').references(() => users.id),
+  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
 
   // Display color (inherits from calendar if not set)
   color: varchar('color', { length: 7 }),
@@ -147,7 +151,7 @@ export const tasks = pgTable('tasks', {
   title: varchar('title', { length: 255 }).notNull(),
   description: text('description'),
 
-  assignedTo: uuid('assigned_to').references(() => users.id),
+  assignedTo: uuid('assigned_to').references(() => users.id, { onDelete: 'set null' }),
 
   dueDate: timestamp('due_date'),
 
@@ -158,19 +162,20 @@ export const tasks = pgTable('tasks', {
 
   completed: boolean('completed').default(false).notNull(),
   completedAt: timestamp('completed_at'),
-  completedBy: uuid('completed_by').references(() => users.id),
+  completedBy: uuid('completed_by').references(() => users.id, { onDelete: 'set null' }),
 
   // Source tracking (for sync)
   source: varchar('source', { length: 50 }).default('internal').notNull(),
   sourceId: varchar('source_id', { length: 255 }),
   lastSynced: timestamp('last_synced'),
 
-  createdBy: uuid('created_by').references(() => users.id),
+  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
   assignedToIdx: index('tasks_assigned_to_idx').on(table.assignedTo),
   dueDateIdx: index('tasks_due_date_idx').on(table.dueDate),
+  completedIdx: index('tasks_completed_idx').on(table.completed),
 }));
 
 
@@ -184,10 +189,10 @@ export const chores = pgTable('chores', {
     .$type<'cleaning' | 'laundry' | 'dishes' | 'yard' | 'pets' | 'trash' | 'other'>(),
 
   // Null = anyone can do it
-  assignedTo: uuid('assigned_to').references(() => users.id),
+  assignedTo: uuid('assigned_to').references(() => users.id, { onDelete: 'set null' }),
 
   frequency: varchar('frequency', { length: 20 }).notNull()
-    .$type<'daily' | 'weekly' | 'biweekly' | 'monthly' | 'custom'>(),
+    .$type<'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'semi-annually' | 'annually' | 'custom'>(),
 
   // For custom frequencies: number of days between occurrences
   customIntervalDays: integer('custom_interval_days'),
@@ -201,7 +206,7 @@ export const chores = pgTable('chores', {
 
   enabled: boolean('enabled').default(true).notNull(),
 
-  createdBy: uuid('created_by').references(() => users.id),
+  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
@@ -218,12 +223,12 @@ export const choreCompletions = pgTable('chore_completions', {
     .notNull(),
 
   completedBy: uuid('completed_by')
-    .references(() => users.id)
+    .references(() => users.id, { onDelete: 'cascade' })
     .notNull(),
 
   completedAt: timestamp('completed_at').defaultNow().notNull(),
 
-  approvedBy: uuid('approved_by').references(() => users.id),
+  approvedBy: uuid('approved_by').references(() => users.id, { onDelete: 'set null' }),
   approvedAt: timestamp('approved_at'),
 
   // Points awarded (might differ from chore default)
@@ -235,6 +240,8 @@ export const choreCompletions = pgTable('chore_completions', {
 }, (table) => ({
   choreIdIdx: index('chore_completions_chore_id_idx').on(table.choreId),
   completedAtIdx: index('chore_completions_completed_at_idx').on(table.completedAt),
+  approvedByIdx: index('chore_completions_approved_by_idx').on(table.approvedBy),
+  choreApprovedByIdx: index('chore_completions_chore_approved_by_idx').on(table.choreId, table.approvedBy),
 }));
 
 
@@ -252,9 +259,9 @@ export const shoppingLists = pgTable('shopping_lists', {
   sortOrder: integer('sort_order').default(0).notNull(),
 
   // Null means anyone can check off items (family list)
-  assignedTo: uuid('assigned_to').references(() => users.id),
+  assignedTo: uuid('assigned_to').references(() => users.id, { onDelete: 'set null' }),
 
-  createdBy: uuid('created_by').references(() => users.id),
+  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -281,7 +288,7 @@ export const shoppingItems = pgTable('shopping_items', {
   recurring: boolean('recurring').default(false).notNull(),
   recurrenceInterval: varchar('recurrence_interval', { length: 20 }), // "weekly", "monthly"
 
-  addedBy: uuid('added_by').references(() => users.id),
+  addedBy: uuid('added_by').references(() => users.id, { onDelete: 'set null' }),
 
   notes: text('notes'),
 
@@ -290,6 +297,7 @@ export const shoppingItems = pgTable('shopping_items', {
 }, (table) => ({
   listIdIdx: index('shopping_items_list_id_idx').on(table.listId),
   categoryIdx: index('shopping_items_category_idx').on(table.category),
+  checkedIdx: index('shopping_items_checked_idx').on(table.checked),
 }));
 
 
@@ -318,13 +326,13 @@ export const meals = pgTable('meals', {
     .$type<'breakfast' | 'lunch' | 'dinner' | 'snack'>(),
 
   cookedAt: timestamp('cooked_at'),
-  cookedBy: uuid('cooked_by').references(() => users.id),
+  cookedBy: uuid('cooked_by').references(() => users.id, { onDelete: 'set null' }),
 
   // Source tracking (for Paprika sync)
   source: varchar('source', { length: 50 }).default('internal').notNull(),
   sourceId: varchar('source_id', { length: 255 }),
 
-  createdBy: uuid('created_by').references(() => users.id),
+  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
@@ -339,7 +347,7 @@ export const familyMessages = pgTable('family_messages', {
   message: text('message').notNull(),
 
   authorId: uuid('author_id')
-    .references(() => users.id)
+    .references(() => users.id, { onDelete: 'cascade' })
     .notNull(),
 
   pinned: boolean('pinned').default(false).notNull(),
@@ -352,6 +360,7 @@ export const familyMessages = pgTable('family_messages', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => ({
   createdAtIdx: index('family_messages_created_at_idx').on(table.createdAt),
+  expiresAtIdx: index('family_messages_expires_at_idx').on(table.expiresAt),
 }));
 
 
@@ -371,11 +380,11 @@ export const maintenanceReminders = pgTable('maintenance_reminders', {
   lastCompleted: timestamp('last_completed'),
   nextDue: date('next_due').notNull(),
 
-  assignedTo: uuid('assigned_to').references(() => users.id),
+  assignedTo: uuid('assigned_to').references(() => users.id, { onDelete: 'set null' }),
 
   notes: text('notes'),
 
-  createdBy: uuid('created_by').references(() => users.id),
+  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
@@ -391,7 +400,7 @@ export const maintenanceCompletions = pgTable('maintenance_completions', {
     .notNull(),
 
   completedAt: timestamp('completed_at').defaultNow().notNull(),
-  completedBy: uuid('completed_by').references(() => users.id),
+  completedBy: uuid('completed_by').references(() => users.id, { onDelete: 'set null' }),
 
   cost: decimal('cost', { precision: 10, scale: 2 }),
   vendor: varchar('vendor', { length: 255 }),
@@ -410,7 +419,7 @@ export const birthdays = pgTable('birthdays', {
   eventType: varchar('event_type', { length: 20 }).default('birthday').notNull(),
 
   // Link to family member (if applicable)
-  userId: uuid('user_id').references(() => users.id),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
 
   giftIdeas: text('gift_ideas'),
 
@@ -421,7 +430,9 @@ export const birthdays = pgTable('birthdays', {
   googleCalendarSource: varchar('google_calendar_source', { length: 50 }),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+}, (table) => ({
+  nameEventTypeIdx: uniqueIndex('birthdays_name_event_type_idx').on(table.name, table.eventType),
+}));
 
 
 export const settings = pgTable('settings', {
@@ -449,7 +460,7 @@ export const layouts = pgTable('layouts', {
   // Widget configuration (JSON array of widget objects)
   widgets: jsonb('widgets').notNull(),
 
-  createdBy: uuid('created_by').references(() => users.id),
+  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

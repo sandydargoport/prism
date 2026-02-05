@@ -172,23 +172,8 @@ export function DashboardLayout({
 
 /**
  * DASHBOARD HEADER PROPS
- * ============================================================================
  */
 export interface DashboardHeaderProps {
-  /** Current user info (if logged in) */
-  user?: {
-    name: string;
-    avatarUrl?: string;
-    color?: string;
-  };
-  /** Greeting text (e.g., "Good morning") */
-  greeting?: string;
-  /** Show settings button */
-  showSettings?: boolean;
-  /** Callback when settings button is clicked */
-  onSettingsClick?: () => void;
-  /** Callback when user avatar is clicked (for logout/switch user) */
-  onUserClick?: () => void;
   /** Callback when edit layout button is clicked (parents only) */
   onEditClick?: () => void;
   /** Callback when screensaver button is clicked */
@@ -217,128 +202,39 @@ export interface DashboardHeaderProps {
  * ============================================================================
  */
 export function DashboardHeader({
-  user,
-  greeting,
-  showSettings = true,
-  onSettingsClick,
-  onUserClick,
   onEditClick,
   onScreensaverClick,
 }: DashboardHeaderProps) {
   return (
-    <header className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-4 py-3">
-      <div className="flex items-center justify-between">
-        {/* Left side: Logo and greeting */}
-        <div className="flex items-center gap-4">
-          {/* App name / Logo */}
-          <span className="text-xl font-bold text-primary">Prism</span>
-
-          {/* Greeting */}
-          {greeting && (
-            <span className="text-muted-foreground">
-              {greeting}
-              {user && (
-                <span className="font-medium text-foreground">, {user.name}</span>
-              )}
-              {!user && (
-                <span className="font-medium text-foreground">, family</span>
-              )}
-            </span>
-          )}
-        </div>
-
-        {/* Right side: User and settings */}
-        <div className="flex items-center gap-2">
-          {/* User avatar - show guest icon when not logged in */}
+    <header className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-4 py-2">
+      <div className="flex items-center justify-end gap-2">
+        {/* Edit layout button */}
+        {onEditClick && (
           <button
-            onClick={onUserClick}
-            className="flex items-center gap-2 p-1.5 rounded-full hover:bg-accent transition-colors"
-            aria-label={user ? 'Switch user' : 'Log in'}
+            onClick={onEditClick}
+            className="p-2 rounded-md hover:bg-accent transition-colors"
+            aria-label="Edit layout"
           >
-            {user ? (
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium text-white"
-                style={{ backgroundColor: user.color || '#6B7280' }}
-              >
-                {user.avatarUrl ? (
-                  <img
-                    src={user.avatarUrl}
-                    alt={user.name}
-                    className="w-full h-full rounded-full object-cover"
-                  />
-                ) : (
-                  user.name.charAt(0).toUpperCase()
-                )}
-              </div>
-            ) : (
-              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-muted border-2 border-dashed border-muted-foreground/50">
-                <GuestIcon />
-              </div>
-            )}
+            <GridEditIcon />
           </button>
+        )}
 
-          {/* Edit layout button */}
-          {onEditClick && (
-            <button
-              onClick={onEditClick}
-              className="p-2 rounded-md hover:bg-accent transition-colors"
-              aria-label="Edit layout"
-            >
-              <GridEditIcon />
-            </button>
-          )}
+        {/* Screensaver button */}
+        {onScreensaverClick && (
+          <button
+            onMouseDown={(e) => { e.stopPropagation(); }}
+            onClick={(e) => { e.stopPropagation(); onScreensaverClick(); }}
+            className="p-2 rounded-md hover:bg-accent transition-colors"
+            aria-label="Start screensaver"
+          >
+            <ScreensaverIcon />
+          </button>
+        )}
 
-          {/* Screensaver button */}
-          {onScreensaverClick && (
-            <button
-              onMouseDown={(e) => { e.stopPropagation(); }}
-              onClick={(e) => { e.stopPropagation(); onScreensaverClick(); }}
-              className="p-2 rounded-md hover:bg-accent transition-colors"
-              aria-label="Start screensaver"
-            >
-              <ScreensaverIcon />
-            </button>
-          )}
-
-          {/* Settings button */}
-          {showSettings && (
-            <button
-              onClick={onSettingsClick}
-              className="p-2 rounded-md hover:bg-accent transition-colors"
-              aria-label="Settings"
-            >
-              <SettingsIcon />
-            </button>
-          )}
-        </div>
       </div>
     </header>
   );
 }
-
-/**
- * Guest icon for when no user is logged in
- */
-function GuestIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="text-muted-foreground"
-    >
-      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
-    </svg>
-  );
-}
-
 
 /**
  * Grid edit icon for layout customization
@@ -388,24 +284,3 @@ function ScreensaverIcon() {
   );
 }
 
-/**
- * Simple settings icon (inline SVG to avoid importing lucide for just this)
- */
-function SettingsIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-    </svg>
-  );
-}

@@ -48,7 +48,12 @@ export async function syncGoogleCalendarSource(
     return { synced: 0, errors: ['No access token available'] };
   }
 
-  let accessToken = decrypt(source.accessToken);
+  let accessToken: string;
+  try {
+    accessToken = decrypt(source.accessToken);
+  } catch (error) {
+    return { synced: 0, errors: [`Failed to decrypt access token (may need re-authentication): ${error instanceof Error ? error.message : String(error)}`] };
+  }
 
   if (tokenNeedsRefresh(source.tokenExpiresAt)) {
     if (!source.refreshToken) {
@@ -101,6 +106,7 @@ export async function syncGoogleCalendarSource(
   }
 
   // Process each event
+  console.log(`[Sync] Processing ${googleEvents.length} events from Google for source ${sourceId}`);
   for (const googleEvent of googleEvents) {
     try {
       const internalEvent = convertGoogleEventToInternal(googleEvent, sourceId);
@@ -113,8 +119,11 @@ export async function syncGoogleCalendarSource(
         ),
       });
 
+      console.log(`[Sync] Event "${googleEvent.summary}" (${googleEvent.id}): existing=${existing?.id || 'NOT FOUND'}`);
+
       if (existing) {
         // Update existing event
+        console.log(`[Sync] Updating event ${existing.id}: "${internalEvent.title}"`);
         await db
           .update(events)
           .set({
@@ -132,6 +141,7 @@ export async function syncGoogleCalendarSource(
           .where(eq(events.id, existing.id));
       } else {
         // Insert new event
+        console.log(`[Sync] Inserting new event: "${internalEvent.title}" (${googleEvent.id})`);
         await db.insert(events).values({
           calendarSourceId: sourceId,
           externalEventId: internalEvent.externalEventId,
@@ -151,6 +161,34 @@ export async function syncGoogleCalendarSource(
     } catch (error) {
       errors.push(`Failed to sync event ${googleEvent.id}: ${error}`);
     }
+  }
+
+  // Delete events that exist in Prism but were removed from Google
+  // (Google is source of truth for synced events)
+  const googleEventIds = new Set(googleEvents.map((e) => e.id));
+
+  // Find Prism events for this source that have an external_event_id
+  // but are no longer in Google (within the sync date range)
+  const prismEventsToCheck = await db.query.events.findMany({
+    where: and(
+      eq(events.calendarSourceId, sourceId),
+      gte(events.startTime, timeMin),
+      lte(events.startTime, timeMax)
+    ),
+  });
+
+  let deleted = 0;
+  for (const prismEvent of prismEventsToCheck) {
+    // Only delete if it has an external_event_id (was synced) but is no longer in Google
+    if (prismEvent.externalEventId && !googleEventIds.has(prismEvent.externalEventId)) {
+      console.log(`[Sync] Deleting event "${prismEvent.title}" (${prismEvent.id}) - no longer in Google`);
+      await db.delete(events).where(eq(events.id, prismEvent.id));
+      deleted++;
+    }
+  }
+
+  if (deleted > 0) {
+    console.log(`[Sync] Deleted ${deleted} events that were removed from Google`);
   }
 
   // Update last synced timestamp
@@ -186,11 +224,19 @@ export async function syncAllGoogleCalendars(
     ),
   });
 
-  // Sync each source
+  // Sync each source (catch errors per-source so one bad calendar doesn't crash all)
   for (const source of sources) {
-    const result = await syncGoogleCalendarSource(source.id, options);
-    total += result.synced;
-    allErrors.push(...result.errors);
+    try {
+      console.log(`[Sync] Starting sync for calendar: ${source.dashboardCalendarName} (${source.id})`);
+      const result = await syncGoogleCalendarSource(source.id, options);
+      total += result.synced;
+      allErrors.push(...result.errors);
+      console.log(`[Sync] Completed sync for ${source.dashboardCalendarName}: ${result.synced} events`);
+    } catch (error) {
+      const errorMsg = `Failed to sync calendar "${source.dashboardCalendarName}": ${error instanceof Error ? error.message : String(error)}`;
+      console.error(`[Sync] ${errorMsg}`);
+      allErrors.push(errorMsg);
+    }
   }
 
   return { total, errors: allErrors };

@@ -190,6 +190,23 @@ export function UserAvatar({
   className,
 }: UserAvatarProps) {
   const initials = getInitials(name);
+  const isEmoji = imageUrl?.startsWith('emoji:');
+
+  if (isEmoji) {
+    const emoji = imageUrl!.slice(6);
+    return (
+      <div
+        className={cn(
+          sizeClasses[size],
+          'rounded-full flex items-center justify-center shrink-0',
+          className
+        )}
+        style={color ? { backgroundColor: color } : { backgroundColor: 'hsl(var(--muted))' }}
+      >
+        <span className="leading-none">{emoji}</span>
+      </div>
+    );
+  }
 
   return (
     <Avatar className={cn(sizeClasses[size], className)}>

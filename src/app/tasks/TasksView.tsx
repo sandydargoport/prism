@@ -21,25 +21,22 @@
 import * as React from 'react';
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import {
   CheckSquare,
   Plus,
   SortAsc,
   Home,
   AlertCircle,
-  Settings,
   Clock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { UserAvatar } from '@/components/ui/avatar';
 import { PageWrapper } from '@/components/layout';
-import { useAuth } from '@/components/providers';
+import { useAuth, useFamily } from '@/components/providers';
 import { useTasks } from '@/lib/hooks';
 import { TaskItem } from '@/app/tasks/TaskItem';
 import { TaskModal } from '@/app/tasks/TaskModal';
-import type { Task, FamilyMember } from '@/types';
+import type { Task } from '@/types';
 
 
 
@@ -47,8 +44,8 @@ import type { Task, FamilyMember } from '@/types';
  * TASKS VIEW COMPONENT
  */
 export function TasksView() {
-  const router = useRouter();
-  const { activeUser, requireAuth, clearActiveUser } = useAuth();
+
+  const { requireAuth } = useAuth();
 
   // Fetch tasks from API using the hook
   const {
@@ -59,9 +56,11 @@ export function TasksView() {
     toggleTask: apiToggleTask,
   } = useTasks({ showCompleted: true, limit: 100 });
 
+  // Family members from context
+  const { members: familyMembers } = useFamily();
+
   // Local state
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [filterPerson, setFilterPerson] = useState<string | null>(null);
   const [filterPriority, setFilterPriority] = useState<string | null>(null);
   const [filterCompleted, setFilterCompleted] = useState<boolean | null>(false);
@@ -78,26 +77,6 @@ export function TasksView() {
       })));
     }
   }, [apiTasks]);
-
-  // Fetch family members from API
-  useEffect(() => {
-    async function fetchFamilyMembers() {
-      try {
-        const response = await fetch('/api/family');
-        if (response.ok) {
-          const data = await response.json();
-          setFamilyMembers(data.members.map((m: { id: string; name: string; color: string }) => ({
-            id: m.id,
-            name: m.name,
-            color: m.color,
-          })));
-        }
-      } catch (error) {
-        console.error('Failed to fetch family members:', error);
-      }
-    }
-    fetchFamilyMembers();
-  }, []);
 
   // Filter and sort tasks
   const filteredTasks = useMemo(() => {
@@ -228,41 +207,13 @@ export function TasksView() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button onClick={async () => {
+          <Button onClick={async () => {
               const user = await requireAuth("Who's adding a task?");
               if (user) setShowAddModal(true);
             }}>
               <Plus className="h-4 w-4 mr-1" />
               Add Task
             </Button>
-
-            <button
-              onClick={activeUser ? clearActiveUser : () => requireAuth()}
-              className="flex items-center gap-2 p-1.5 rounded-full hover:bg-accent transition-colors"
-              aria-label={activeUser ? 'Log out' : 'Log in'}
-            >
-              {activeUser ? (
-                <UserAvatar
-                  name={activeUser.name}
-                  color={activeUser.color}
-                  size="sm"
-                  className="h-8 w-8"
-                />
-              ) : (
-                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-muted border-2 border-dashed border-muted-foreground/50">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground">
-                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-                    <circle cx="12" cy="7" r="4" />
-                  </svg>
-                </div>
-              )}
-            </button>
-
-            <Button variant="ghost" size="icon" onClick={() => router.push('/settings')}>
-              <Settings className="h-5 w-5" />
-            </Button>
-          </div>
         </div>
       </header>
 
@@ -353,7 +304,7 @@ export function TasksView() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as 'dueDate' | 'priority' | 'title')}
-              className="text-sm bg-transparent border border-border rounded px-2 py-1"
+              className="text-sm bg-card text-foreground border border-border rounded px-2 py-1 [&>option]:bg-card [&>option]:text-foreground"
             >
               <option value="dueDate">Due Date</option>
               <option value="priority">Priority</option>

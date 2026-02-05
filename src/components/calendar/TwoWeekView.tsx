@@ -70,7 +70,7 @@ export function TwoWeekView({
               className={cn(
                 'border border-border rounded-md p-1 cursor-pointer bg-card/85 backdrop-blur-sm',
                 'flex flex-col min-h-0 overflow-hidden',
-                isPast && 'bg-muted/60 dark:bg-muted/40',
+                isPast && 'bg-gray-200 text-gray-600 dark:bg-muted/40 dark:text-muted-foreground',
                 isToday(date) && 'border-primary border-2'
               )}
             >

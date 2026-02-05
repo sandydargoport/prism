@@ -18,12 +18,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, getDisplayAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { chores, users, choreCompletions } from '@/lib/db/schema';
 import { eq, and, desc, isNull, or, lte } from 'drizzle-orm';
 import { createChoreSchema, validateRequest } from '@/lib/validations';
 import { format } from 'date-fns';
+import { getCached, invalidateCache } from '@/lib/cache/redis';
 
 /**
  * GET /api/chores
@@ -32,127 +33,124 @@ import { format } from 'date-fns';
  * ============================================================================
  */
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth();
-  if (auth instanceof NextResponse) return auth;
+  const auth = await getDisplayAuth();
+  if (!auth) {
+    return NextResponse.json({ chores: [] });
+  }
 
   try {
     const { searchParams } = new URL(request.url);
     const assignedTo = searchParams.get('assignedTo');
     const enabledOnly = searchParams.get('enabled') !== 'false';
 
-    // Build base query
-    const query = db
-      .select({
-        id: chores.id,
-        title: chores.title,
-        description: chores.description,
-        category: chores.category,
-        frequency: chores.frequency,
-        customIntervalDays: chores.customIntervalDays,
-        lastCompleted: chores.lastCompleted,
-        nextDue: chores.nextDue,
-        pointValue: chores.pointValue,
-        requiresApproval: chores.requiresApproval,
-        enabled: chores.enabled,
-        createdAt: chores.createdAt,
-        assignedToId: chores.assignedTo,
-        assignedToName: users.name,
-        assignedToColor: users.color,
-      })
-      .from(chores)
-      .leftJoin(users, eq(chores.assignedTo, users.id))
-      .orderBy(desc(chores.createdAt));
+    const cacheKey = `chores:${assignedTo || 'all'}:${enabledOnly}`;
 
-    // Apply filters
-    const conditions = [];
-    if (assignedTo) {
-      conditions.push(eq(chores.assignedTo, assignedTo));
-    }
-    if (enabledOnly) {
-      conditions.push(eq(chores.enabled, true));
-    }
+    const data = await getCached(cacheKey, async () => {
+      // Build base query
+      const query = db
+        .select({
+          id: chores.id,
+          title: chores.title,
+          description: chores.description,
+          category: chores.category,
+          frequency: chores.frequency,
+          customIntervalDays: chores.customIntervalDays,
+          lastCompleted: chores.lastCompleted,
+          nextDue: chores.nextDue,
+          pointValue: chores.pointValue,
+          requiresApproval: chores.requiresApproval,
+          enabled: chores.enabled,
+          createdAt: chores.createdAt,
+          assignedToId: chores.assignedTo,
+          assignedToName: users.name,
+          assignedToColor: users.color,
+        })
+        .from(chores)
+        .leftJoin(users, eq(chores.assignedTo, users.id))
+        .orderBy(desc(chores.createdAt));
 
-    // Only show chores that are due (nextDue is null or today/earlier)
-    // This hides chores that were completed today until their next due date
-    const today = format(new Date(), 'yyyy-MM-dd');
-    conditions.push(
-      or(
-        isNull(chores.nextDue),
-        lte(chores.nextDue, today)
-      )
-    );
+      // Apply filters
+      const conditions = [];
+      if (assignedTo) {
+        conditions.push(eq(chores.assignedTo, assignedTo));
+      }
+      if (enabledOnly) {
+        conditions.push(eq(chores.enabled, true));
+      }
 
-    const results = await query.where(and(...conditions));
+      const today = format(new Date(), 'yyyy-MM-dd');
+      conditions.push(
+        or(
+          isNull(chores.nextDue),
+          lte(chores.nextDue, today)
+        )
+      );
 
-    // Fetch ALL pending completions (completed but not yet approved) for all chores
-    // No date filter - show all pending regardless of when they were completed
-    const pendingCompletions = await db
-      .select({
-        choreId: choreCompletions.choreId,
-        completionId: choreCompletions.id,
-        completedAt: choreCompletions.completedAt,
-        completedById: choreCompletions.completedBy,
-        completedByName: users.name,
-        completedByColor: users.color,
-      })
-      .from(choreCompletions)
-      .innerJoin(users, eq(choreCompletions.completedBy, users.id))
-      .where(isNull(choreCompletions.approvedBy));
+      const results = await query.where(and(...conditions));
 
-    // Create a map of chore ID to pending completion info
-    const pendingMap = new Map<string, {
-      completionId: string;
-      completedAt: Date;
-      completedBy: {
-        id: string;
-        name: string;
-        color: string;
-      };
-    }>();
+      const pendingCompletions = await db
+        .select({
+          choreId: choreCompletions.choreId,
+          completionId: choreCompletions.id,
+          completedAt: choreCompletions.completedAt,
+          completedById: choreCompletions.completedBy,
+          completedByName: users.name,
+          completedByColor: users.color,
+        })
+        .from(choreCompletions)
+        .innerJoin(users, eq(choreCompletions.completedBy, users.id))
+        .where(isNull(choreCompletions.approvedBy));
 
-    for (const pc of pendingCompletions) {
-      pendingMap.set(pc.choreId, {
-        completionId: pc.completionId,
-        completedAt: pc.completedAt,
-        completedBy: {
-          id: pc.completedById,
-          name: pc.completedByName,
-          color: pc.completedByColor,
-        },
+      const pendingMap = new Map<string, {
+        completionId: string;
+        completedAt: string;
+        completedBy: { id: string; name: string; color: string };
+      }>();
+
+      for (const pc of pendingCompletions) {
+        pendingMap.set(pc.choreId, {
+          completionId: pc.completionId,
+          completedAt: pc.completedAt.toISOString(),
+          completedBy: {
+            id: pc.completedById,
+            name: pc.completedByName,
+            color: pc.completedByColor,
+          },
+        });
+      }
+
+      const formattedChores = results.map(row => {
+        const pendingCompletion = pendingMap.get(row.id);
+        return {
+          id: row.id,
+          title: row.title,
+          description: row.description,
+          category: row.category,
+          frequency: row.frequency,
+          customIntervalDays: row.customIntervalDays,
+          lastCompleted: row.lastCompleted?.toISOString() || null,
+          nextDue: row.nextDue || null,
+          pointValue: row.pointValue,
+          requiresApproval: row.requiresApproval,
+          enabled: row.enabled,
+          createdAt: row.createdAt.toISOString(),
+          assignedTo: row.assignedToId ? {
+            id: row.assignedToId,
+            name: row.assignedToName,
+            color: row.assignedToColor,
+          } : null,
+          pendingApproval: pendingCompletion ? {
+            completionId: pendingCompletion.completionId,
+            completedAt: pendingCompletion.completedAt,
+            completedBy: pendingCompletion.completedBy,
+          } : null,
+        };
       });
-    }
 
-    // Format response with pending completion status
-    const formattedChores = results.map(row => {
-      const pendingCompletion = pendingMap.get(row.id);
-      return {
-        id: row.id,
-        title: row.title,
-        description: row.description,
-        category: row.category,
-        frequency: row.frequency,
-        customIntervalDays: row.customIntervalDays,
-        lastCompleted: row.lastCompleted?.toISOString() || null,
-        nextDue: row.nextDue || null,
-        pointValue: row.pointValue,
-        requiresApproval: row.requiresApproval,
-        enabled: row.enabled,
-        createdAt: row.createdAt.toISOString(),
-        assignedTo: row.assignedToId ? {
-          id: row.assignedToId,
-          name: row.assignedToName,
-          color: row.assignedToColor,
-        } : null,
-        // New fields for pending approval tracking
-        pendingApproval: pendingCompletion ? {
-          completionId: pendingCompletion.completionId,
-          completedAt: pendingCompletion.completedAt.toISOString(),
-          completedBy: pendingCompletion.completedBy,
-        } : null,
-      };
-    });
+      return { chores: formattedChores };
+    }, 60);
 
-    return NextResponse.json({ chores: formattedChores });
+    return NextResponse.json(data);
   } catch (error) {
     console.error('Error fetching chores:', error);
     return NextResponse.json(
@@ -231,11 +229,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    await invalidateCache('chores:*');
+
     return NextResponse.json(newChore, { status: 201 });
   } catch (error) {
     console.error('Error creating chore:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to create chore' },
+      { error: `Failed to create chore: ${errorMessage}` },
       { status: 500 }
     );
   }

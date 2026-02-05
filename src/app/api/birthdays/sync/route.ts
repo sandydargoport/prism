@@ -19,7 +19,7 @@ import { NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { birthdays, calendarSources } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import {
   fetchCalendarEvents,
   refreshAccessToken,
@@ -226,55 +226,40 @@ export async function POST() {
       }
     }
 
-    // Parse and upsert events
-    let synced = 0;
+    // Parse all events into upsert-ready rows
     const errors: string[] = [];
+    const rows: { name: string; birthDate: string; eventType: string; googleCalendarSource: string }[] = [];
 
     for (const event of allEvents) {
       const parsed = parseCalendarEvent(event);
       if (!parsed) continue;
 
+      const [, month, day] = parsed.birthDate.split('-');
+      const birthDate = parsed.year
+        ? `${parsed.year}-${month}-${day}`
+        : `1904-${month}-${day}`;
+
+      const calSource = calendarSourceLabel[event.id] || 'google';
+      rows.push({ name: parsed.name, birthDate, eventType: parsed.eventType, googleCalendarSource: calSource });
+    }
+
+    // Batch upsert using ON CONFLICT on (name, event_type) unique index
+    let synced = 0;
+    if (rows.length > 0) {
       try {
-        // Build the birth date: use parsed year if found, otherwise use
-        // 1904 as a sentinel meaning "no year known" (the API ignores years < 1900)
-        const [, month, day] = parsed.birthDate.split('-');
-        const birthDate = parsed.year
-          ? `${parsed.year}-${month}-${day}`
-          : `1904-${month}-${day}`;
-
-        // Check if this person already exists (by name + eventType)
-        const existing = await db.query.birthdays.findFirst({
-          where: and(
-            eq(birthdays.name, parsed.name),
-            eq(birthdays.eventType, parsed.eventType)
-          ),
-        });
-
-        const calSource = calendarSourceLabel[event.id] || 'google';
-
-        if (existing) {
-          // Update existing
-          await db
-            .update(birthdays)
-            .set({
-              birthDate,
-              eventType: parsed.eventType,
-              googleCalendarSource: calSource,
-            })
-            .where(eq(birthdays.id, existing.id));
-        } else {
-          // Insert new
-          await db.insert(birthdays).values({
-            name: parsed.name,
-            birthDate,
-            eventType: parsed.eventType,
-            googleCalendarSource: calSource,
+        await db
+          .insert(birthdays)
+          .values(rows)
+          .onConflictDoUpdate({
+            target: [birthdays.name, birthdays.eventType],
+            set: {
+              birthDate: sql`excluded.birth_date`,
+              googleCalendarSource: sql`excluded.google_calendar_source`,
+            },
           });
-        }
-
-        synced++;
+        synced = rows.length;
       } catch (err) {
-        errors.push(`Failed to sync "${parsed.name}": ${err}`);
+        errors.push(`Batch upsert failed: ${err}`);
       }
     }
 

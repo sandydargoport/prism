@@ -4,7 +4,8 @@ import * as React from 'react';
 import { useState } from 'react';
 import { WidgetPicker } from './WidgetPicker';
 import { LAYOUT_TEMPLATES } from '@/lib/constants/layoutTemplates';
-import { WIDGET_REGISTRY } from '@/components/widgets/widgetRegistry';
+import { SCREENSAVER_TEMPLATES } from '@/lib/constants/screensaverTemplates';
+import { WIDGET_REGISTRY, SCREENSAVER_WIDGETS } from '@/components/widgets/widgetRegistry';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 
 export interface SavedLayout {
@@ -25,6 +26,15 @@ export interface LayoutEditorProps {
   savedLayouts?: SavedLayout[];
   editingScreensaver?: boolean;
   onToggleScreensaverEdit?: () => void;
+  screensaverWidgets?: WidgetConfig[];
+  onScreensaverWidgetToggle?: (widgetType: string, visible: boolean) => void;
+  onScreensaverSave?: () => void;
+  onScreensaverSaveAs?: () => void;
+  onScreensaverReset?: () => void;
+  onSelectScreensaverTemplate?: (templateWidgets: WidgetConfig[]) => void;
+  screensaverPresets?: Array<{ name: string; widgets: WidgetConfig[] }>;
+  onSelectScreensaverPreset?: (widgets: WidgetConfig[]) => void;
+  onDeleteScreensaverPreset?: (name: string) => void;
 }
 
 export function LayoutEditor({
@@ -39,6 +49,15 @@ export function LayoutEditor({
   savedLayouts = [],
   editingScreensaver = false,
   onToggleScreensaverEdit,
+  screensaverWidgets,
+  onScreensaverWidgetToggle,
+  onScreensaverSave,
+  onScreensaverSaveAs,
+  onScreensaverReset,
+  onSelectScreensaverTemplate,
+  screensaverPresets = [],
+  onSelectScreensaverPreset,
+  onDeleteScreensaverPreset,
 }: LayoutEditorProps) {
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
 
@@ -53,7 +72,6 @@ export function LayoutEditor({
     } else if (visible) {
       const reg = WIDGET_REGISTRY[widgetType];
       if (!reg) return;
-      // Find next available position
       const maxY = Math.max(0, ...widgets.map(w => w.y + w.h));
       onWidgetsChange([
         ...widgets,
@@ -82,13 +100,28 @@ export function LayoutEditor({
     setShowTemplatePicker(false);
   };
 
+  const handleSelectSsTemplate = (templateKey: string) => {
+    const template = SCREENSAVER_TEMPLATES[templateKey];
+    if (template && onSelectScreensaverTemplate) {
+      onSelectScreensaverTemplate(template.widgets);
+    }
+    setShowTemplatePicker(false);
+  };
+
+  const handleSelectSsPreset = (preset: { name: string; widgets: WidgetConfig[] }) => {
+    if (onSelectScreensaverPreset) {
+      onSelectScreensaverPreset(preset.widgets);
+    }
+    setShowTemplatePicker(false);
+  };
+
   return (
     <div className="bg-card/85 backdrop-blur-sm border-b border-border px-4 py-3 space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <EditIcon />
           <span className="text-sm font-medium">
-            Editing: {layoutName || 'Untitled Layout'}
+            {editingScreensaver ? 'Screensaver Designer' : `Dashboard Designer: ${layoutName || 'Untitled Layout'}`}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -101,33 +134,64 @@ export function LayoutEditor({
                   : 'bg-muted hover:bg-accent'
               }`}
             >
-              {editingScreensaver ? '← Dashboard' : 'Screensaver'}
+              {editingScreensaver ? '\u2190 Dashboard Designer' : 'Screensaver Designer'}
             </button>
           )}
-          <button
-            onClick={() => setShowTemplatePicker(!showTemplatePicker)}
-            className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
-          >
-            Templates
-          </button>
-          <button
-            onClick={onReset}
-            className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
-          >
-            Reset
-          </button>
-          <button
-            onClick={onSaveAs}
-            className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
-          >
-            Save As
-          </button>
-          <button
-            onClick={() => onSave()}
-            className="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            Save
-          </button>
+          {editingScreensaver ? (
+            <>
+              <button
+                onClick={() => setShowTemplatePicker(!showTemplatePicker)}
+                className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
+              >
+                Templates
+              </button>
+              <button
+                onClick={onScreensaverReset}
+                className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
+              >
+                Reset
+              </button>
+              <button
+                onClick={onScreensaverSaveAs}
+                className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
+              >
+                Save As
+              </button>
+              <button
+                onClick={onScreensaverSave}
+                className="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                Save
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setShowTemplatePicker(!showTemplatePicker)}
+                className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
+              >
+                Templates
+              </button>
+              <button
+                onClick={onReset}
+                className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
+              >
+                Reset
+              </button>
+              <button
+                onClick={onSaveAs}
+                className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
+              >
+                Save As
+              </button>
+              <button
+                onClick={() => onSave()}
+                className="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                Save
+              </button>
+            </>
+          )}
           <button
             onClick={onCancel}
             className="px-3 py-1.5 text-sm rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
@@ -137,11 +201,66 @@ export function LayoutEditor({
         </div>
       </div>
 
-      {/* Widget visibility toggles */}
-      <WidgetPicker widgets={widgets} onToggle={handleToggleWidget} />
+      {editingScreensaver && screensaverWidgets && onScreensaverWidgetToggle ? (
+        <WidgetPicker widgets={screensaverWidgets} onToggle={onScreensaverWidgetToggle} widgetList={SCREENSAVER_WIDGETS} />
+      ) : !editingScreensaver ? (
+        <WidgetPicker widgets={widgets} onToggle={handleToggleWidget} />
+      ) : null}
 
-      {/* Template selector dropdown */}
-      {showTemplatePicker && (
+      {/* Template selector dropdown — screensaver mode */}
+      {showTemplatePicker && editingScreensaver && (
+        <div className="space-y-3 pt-2 border-t border-border">
+          <div>
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Built-in Templates</div>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(SCREENSAVER_TEMPLATES).map(([key, template]) => (
+                <button
+                  key={key}
+                  onClick={() => handleSelectSsTemplate(key)}
+                  className="px-3 py-2 rounded-md bg-muted hover:bg-accent transition-colors text-left"
+                >
+                  <div className="text-sm font-medium">{template.name}</div>
+                  <div className="text-xs text-muted-foreground">{template.description}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+          {screensaverPresets.length > 0 && (
+            <div>
+              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Saved Presets</div>
+              <div className="flex flex-wrap gap-2">
+                {screensaverPresets.map(preset => (
+                  <div key={preset.name} className="flex items-center gap-1">
+                    <button
+                      onClick={() => handleSelectSsPreset(preset)}
+                      className="px-3 py-2 rounded-md bg-muted hover:bg-accent transition-colors text-left"
+                    >
+                      <div className="text-sm font-medium">{preset.name}</div>
+                      <div className="text-xs text-muted-foreground">{preset.widgets.filter(w => w.visible !== false).length} widgets</div>
+                    </button>
+                    {onDeleteScreensaverPreset && (
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Delete preset "${preset.name}"?`)) {
+                            onDeleteScreensaverPreset(preset.name);
+                          }
+                        }}
+                        className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        title="Delete preset"
+                      >
+                        <TrashIcon />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Template selector dropdown — dashboard mode */}
+      {showTemplatePicker && !editingScreensaver && (
         <div className="space-y-3 pt-2 border-t border-border">
           <div>
             <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Built-in Templates</div>

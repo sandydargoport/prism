@@ -14,7 +14,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, getDisplayAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { calendarSources, users, calendarGroups } from '@/lib/db/schema';
 import { eq, asc } from 'drizzle-orm';
@@ -24,8 +24,10 @@ import { eq, asc } from 'drizzle-orm';
  * Lists all calendar sources with their sync status
  */
 export async function GET() {
-  const auth = await requireAuth();
-  if (auth instanceof NextResponse) return auth;
+  const auth = await getDisplayAuth();
+  if (!auth) {
+    return NextResponse.json({ calendars: [], total: 0 });
+  }
 
   try {
     // Sort by createdAt to maintain stable order regardless of user assignment changes

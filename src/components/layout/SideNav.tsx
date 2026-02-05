@@ -61,6 +61,8 @@ export interface SideNavProps {
   } | null;
   /** Callback when logout is clicked */
   onLogout?: () => void;
+  /** Callback when login is clicked (when no user) */
+  onLogin?: () => void;
   /** Additional CSS classes */
   className?: string;
 }
@@ -109,7 +111,7 @@ const navItems: NavItem[] = [
  * />
  * ============================================================================
  */
-export function SideNav({ className }: SideNavProps) {
+export function SideNav({ user, onLogout, onLogin, className }: SideNavProps) {
   // Get current pathname for active state
   const pathname = usePathname();
 
@@ -131,10 +133,7 @@ export function SideNav({ className }: SideNavProps) {
 
   return (
     <>
-      {/* ====================================================================== */}
       {/* MOBILE HAMBURGER BUTTON */}
-      {/* Shows on small screens to open the mobile menu */}
-      {/* ====================================================================== */}
       <Button
         variant="ghost"
         size="icon"
@@ -148,10 +147,7 @@ export function SideNav({ className }: SideNavProps) {
         )}
       </Button>
 
-      {/* ====================================================================== */}
       {/* MOBILE OVERLAY */}
-      {/* Dark overlay behind mobile menu */}
-      {/* ====================================================================== */}
       {mobileMenuOpen && (
         <div
           className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 md:hidden"
@@ -159,48 +155,34 @@ export function SideNav({ className }: SideNavProps) {
         />
       )}
 
-      {/* ====================================================================== */}
       {/* SIDE NAVIGATION */}
-      {/* Main navigation component - expands as overlay on hover */}
-      {/* ====================================================================== */}
       <aside
         className={cn(
-          // Base styles
           'group fixed left-0 top-0 z-40 h-screen',
           'bg-card/85 backdrop-blur-sm border-r border-border',
           'flex flex-col',
           'transition-all duration-300 ease-in-out',
-          // Default to collapsed width
           'w-16',
-          // On hover, expand to full width (as overlay, doesn't push content)
           'hover:w-60',
-          // Shadow when expanded to show it's overlaying
           'hover:shadow-xl',
-          // Mobile: slide in from left
           'max-md:transform',
           mobileMenuOpen ? 'max-md:translate-x-0' : 'max-md:-translate-x-full',
-          // When mobile menu is open, use full width for easier touch
           'max-md:w-60',
           className
         )}
       >
-        {/* ================================================================== */}
         {/* HEADER WITH LOGO */}
-        {/* ================================================================== */}
         <div className="flex items-center h-16 px-4 border-b border-border justify-center group-hover:justify-start">
-          {/* Logo/Brand - show K when collapsed, Prism when expanded */}
           <Link
             href="/"
             className="font-bold text-xl text-seasonal-accent"
           >
-            <span className="group-hover:hidden">K</span>
+            <span className="group-hover:hidden">P</span>
             <span className="hidden group-hover:inline">Prism</span>
           </Link>
         </div>
 
-        {/* ================================================================== */}
         {/* NAVIGATION LINKS */}
-        {/* ================================================================== */}
         <nav className="flex-1 overflow-y-auto py-4">
           <ul className="space-y-1 px-2">
             {navItems.map((item) => {
@@ -212,16 +194,13 @@ export function SideNav({ className }: SideNavProps) {
                   <Link
                     href={item.href}
                     className={cn(
-                      // Base styles
                       'flex items-center gap-3 px-3 py-2.5 rounded-lg',
                       'text-sm font-medium',
                       'transition-colors duration-200',
                       'touch-target',
-                      // Active state
                       active
                         ? 'bg-seasonal-accent text-seasonal-accent-foreground'
                         : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-                      // Center icon when collapsed
                       'justify-center group-hover:justify-start'
                     )}
                   >
@@ -236,8 +215,68 @@ export function SideNav({ className }: SideNavProps) {
           </ul>
         </nav>
 
-        {/* Footer spacer */}
-        <div className="border-t border-border p-2" />
+        {/* USER AVATAR AT BOTTOM */}
+        <div className="border-t border-border p-2">
+          <button
+            onClick={user ? onLogout : onLogin}
+            className={cn(
+              'flex items-center gap-3 px-3 py-2.5 rounded-lg w-full',
+              'text-sm font-medium',
+              'transition-colors duration-200',
+              'touch-target',
+              'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+              'justify-center group-hover:justify-start'
+            )}
+            aria-label={user ? 'Log out' : 'Log in'}
+          >
+            {user ? (
+              <>
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium text-white flex-shrink-0"
+                  style={{ backgroundColor: user.color || '#6B7280' }}
+                >
+                  {user.avatarUrl?.startsWith('emoji:') ? (
+                    <span className="text-lg">{user.avatarUrl.slice(6)}</span>
+                  ) : user.avatarUrl ? (
+                    <img
+                      src={user.avatarUrl}
+                      alt={user.name}
+                      className="w-full h-full rounded-full object-cover"
+                    />
+                  ) : (
+                    user.name.charAt(0).toUpperCase()
+                  )}
+                </div>
+                <span className="hidden group-hover:inline whitespace-nowrap truncate">
+                  {user.name}
+                </span>
+              </>
+            ) : (
+              <>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-muted border-2 border-dashed border-muted-foreground/50 flex-shrink-0">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-muted-foreground"
+                  >
+                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                </div>
+                <span className="hidden group-hover:inline whitespace-nowrap text-muted-foreground">
+                  Log in
+                </span>
+              </>
+            )}
+          </button>
+        </div>
       </aside>
     </>
   );

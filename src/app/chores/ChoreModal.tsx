@@ -107,7 +107,7 @@ export function ChoreModal({
           <div>
             <label className="text-sm font-medium">Frequency</label>
             <div className="flex gap-2 mt-1 flex-wrap">
-              {(['daily', 'weekly', 'biweekly', 'monthly'] as const).map((freq) => (
+              {(['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'semi-annually', 'annually'] as const).map((freq) => (
                 <Button
                   key={freq}
                   type="button"
@@ -116,7 +116,7 @@ export function ChoreModal({
                   onClick={() => setFrequency(freq)}
                   className="capitalize"
                 >
-                  {freq}
+                  {freq === 'semi-annually' ? 'Semi-Annual' : freq}
                 </Button>
               ))}
             </div>

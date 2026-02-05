@@ -187,6 +187,10 @@ Desktop.ini
 # The actual data is stored in Docker volumes, not these directories
 docker-data/
 
+# User data (photos, uploads) — personal content, not part of the codebase
+data/
+uploads/
+
 
 # ============================================================================
 # MISCELLANEOUS

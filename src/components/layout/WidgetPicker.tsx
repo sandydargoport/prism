@@ -7,18 +7,24 @@ import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 export interface WidgetPickerProps {
   widgets: WidgetConfig[];
   onToggle: (widgetType: string, visible: boolean) => void;
+  widgetList?: Array<{ id: string; label: string }>;
 }
 
-export function WidgetPicker({ widgets, onToggle }: WidgetPickerProps) {
+export function WidgetPicker({ widgets, onToggle, widgetList }: WidgetPickerProps) {
   const visibleSet = new Set(
     widgets.filter(w => w.visible !== false).map(w => w.i)
   );
 
+  const items = widgetList
+    ? widgetList.map(w => ({ type: w.id, label: w.label }))
+    : ALL_WIDGET_TYPES.map(type => {
+        const reg = WIDGET_REGISTRY[type];
+        return reg ? { type, label: reg.label } : null;
+      }).filter(Boolean) as Array<{ type: string; label: string }>;
+
   return (
     <div className="flex flex-wrap gap-2">
-      {ALL_WIDGET_TYPES.map(type => {
-        const reg = WIDGET_REGISTRY[type];
-        if (!reg) return null;
+      {items.map(({ type, label }) => {
         const isVisible = visibleSet.has(type);
         return (
           <button
@@ -30,7 +36,7 @@ export function WidgetPicker({ widgets, onToggle }: WidgetPickerProps) {
                 : 'bg-muted text-muted-foreground hover:bg-accent'
             }`}
           >
-            {reg.label}
+            {label}
           </button>
         );
       })}

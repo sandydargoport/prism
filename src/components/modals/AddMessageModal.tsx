@@ -39,7 +39,7 @@ import {
   UserAvatar,
   Checkbox,
 } from '@/components/ui';
-import type { FamilyMember } from '@/types';
+import { useFamily } from '@/components/providers';
 
 /**
  * Message data returned after creation
@@ -98,21 +98,11 @@ export function AddMessageModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Family members for dropdown (only used if no currentUser)
-  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
-  const [loadingMembers, setLoadingMembers] = useState(true);
+  // Family members from context
+  const { members: familyMembers, loading: loadingMembers } = useFamily();
 
   // Determine if author is locked (currentUser provided)
   const isAuthorLocked = !!currentUser;
-
-  // Fetch family members when modal opens (only if not locked)
-  useEffect(() => {
-    if (open && !isAuthorLocked) {
-      fetchFamilyMembers();
-    } else if (open && isAuthorLocked) {
-      setLoadingMembers(false);
-    }
-  }, [open, isAuthorLocked]);
 
   // Reset form when modal closes or currentUser changes
   useEffect(() => {
@@ -132,30 +122,13 @@ export function AddMessageModal({
     }
   }, [currentUser]);
 
-  async function fetchFamilyMembers() {
-    try {
-      setLoadingMembers(true);
-      const response = await fetch('/api/family');
-      if (response.ok) {
-        const data = await response.json();
-        const members = data.members.map((m: { id: string; name: string; color: string; avatarUrl?: string | null }) => ({
-          id: m.id,
-          name: m.name,
-          color: m.color,
-          avatarUrl: m.avatarUrl,
-        }));
-        setFamilyMembers(members);
-        // Auto-select first member if none selected
-        if (!authorId && members.length > 0) {
-          setAuthorId(members[0].id);
-        }
-      }
-    } catch (err) {
-      console.error('Failed to fetch family members:', err);
-    } finally {
-      setLoadingMembers(false);
+  // Auto-select first member if none selected and members are loaded
+  useEffect(() => {
+    const firstMember = familyMembers[0];
+    if (!authorId && !isAuthorLocked && firstMember) {
+      setAuthorId(firstMember.id);
     }
-  }
+  }, [authorId, isAuthorLocked, familyMembers]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

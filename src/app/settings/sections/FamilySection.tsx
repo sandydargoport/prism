@@ -1,25 +1,38 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Plus, Edit2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { UserAvatar } from '@/components/ui/avatar';
+import { useAuth, useFamily } from '@/components/providers';
 import { MemberModal } from '../components/MemberModal';
+import type { MemberModalSaveData } from '../components/MemberModal';
 import type { FamilyMember } from '../components/PinEditModal';
 
-export function FamilySection({
-  familyMembers,
-  setFamilyMembers,
-}: {
-  familyMembers: FamilyMember[];
-  setFamilyMembers: React.Dispatch<React.SetStateAction<FamilyMember[]>>;
-}) {
+async function uploadAvatarFile(memberId: string, file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(`/api/family/${memberId}/avatar`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || 'Failed to upload avatar');
+  }
+  const data = await res.json();
+  return data.avatarUrl;
+}
+
+export function FamilySection() {
+  const { activeUser, setActiveUser } = useAuth();
+  const { members: familyMembers, refresh: refreshFamily } = useFamily();
   const [editingMember, setEditingMember] = useState<FamilyMember | null>(null);
   const [showAddMember, setShowAddMember] = useState(false);
 
-  const deleteMember = (id: string) => {
+  const deleteMember = async (id: string) => {
     const member = familyMembers.find((m) => m.id === id);
     if (member?.role === 'parent') {
       const parentCount = familyMembers.filter((m) => m.role === 'parent').length;
@@ -28,7 +41,78 @@ export function FamilySection({
         return;
       }
     }
-    setFamilyMembers((prev) => prev.filter((m) => m.id !== id));
+    try {
+      const res = await fetch(`/api/family/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        await refreshFamily();
+      }
+    } catch (err) {
+      console.error('Failed to delete member:', err);
+    }
+  };
+
+  const handleSave = async (data: MemberModalSaveData) => {
+    if (editingMember) {
+      try {
+        const { avatarFile, ...memberData } = data;
+
+        // Upload avatar file if provided
+        let avatarUrl = memberData.avatarUrl;
+        if (avatarFile) {
+          avatarUrl = await uploadAvatarFile(editingMember.id, avatarFile);
+        }
+
+        const res = await fetch(`/api/family/${editingMember.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...memberData, avatarUrl }),
+        });
+        if (res.ok) {
+          await refreshFamily();
+          // Update SideNav if this is the logged-in user
+          if (activeUser && activeUser.id === editingMember.id) {
+            setActiveUser({
+              ...activeUser,
+              name: memberData.name,
+              color: memberData.color,
+              avatarUrl: avatarUrl ?? undefined,
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Failed to update member:', err);
+      }
+    } else {
+      try {
+        const { avatarFile, ...memberData } = data;
+
+        const res = await fetch('/api/family', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(memberData),
+        });
+        if (res.ok) {
+          const responseData = await res.json();
+          const newId = responseData.id || Date.now().toString();
+
+          // Upload avatar file if provided (now we have the ID)
+          let avatarUrl = memberData.avatarUrl;
+          if (avatarFile) {
+            try {
+              avatarUrl = await uploadAvatarFile(newId, avatarFile);
+            } catch (err) {
+              console.error('Failed to upload avatar for new member:', err);
+            }
+          }
+
+          await refreshFamily();
+        }
+      } catch (err) {
+        console.error('Failed to create member:', err);
+      }
+    }
+    setShowAddMember(false);
+    setEditingMember(null);
   };
 
   return (
@@ -54,6 +138,7 @@ export function FamilySection({
                 <UserAvatar
                   name={member.name}
                   color={member.color}
+                  imageUrl={member.avatarUrl}
                   size="lg"
                   className="h-12 w-12"
                 />
@@ -103,43 +188,7 @@ export function FamilySection({
             setShowAddMember(false);
             setEditingMember(null);
           }}
-          onSave={async (member) => {
-            if (editingMember) {
-              try {
-                const res = await fetch(`/api/family/${editingMember.id}`, {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(member),
-                });
-                if (res.ok) {
-                  setFamilyMembers((prev) =>
-                    prev.map((m) => (m.id === editingMember.id ? { ...m, ...member } : m))
-                  );
-                }
-              } catch (err) {
-                console.error('Failed to update member:', err);
-              }
-            } else {
-              try {
-                const res = await fetch('/api/family', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(member),
-                });
-                if (res.ok) {
-                  const data = await res.json();
-                  setFamilyMembers((prev) => [
-                    ...prev,
-                    { ...member, id: data.id || Date.now().toString(), hasPin: false },
-                  ]);
-                }
-              } catch (err) {
-                console.error('Failed to create member:', err);
-              }
-            }
-            setShowAddMember(false);
-            setEditingMember(null);
-          }}
+          onSave={handleSave}
         />
       )}
     </div>

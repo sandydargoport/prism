@@ -60,7 +60,7 @@ export function PageWrapper({
   className,
 }: PageWrapperProps) {
   // Get auth state from context
-  const { activeUser, clearActiveUser } = useAuth();
+  const { activeUser, requireAuth, clearActiveUser } = useAuth();
 
   return (
     <AppShell
@@ -71,6 +71,7 @@ export function PageWrapper({
         color: activeUser.color,
       } : undefined}
       onLogout={activeUser ? clearActiveUser : undefined}
+      onLogin={() => requireAuth('Login', 'Select your profile')}
       hideNav={hideNav}
       className={cn(className)}
     >

@@ -25,6 +25,8 @@ import { db } from '@/lib/db/client';
 import { events, calendarSources } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { invalidateCache } from '@/lib/cache/redis';
+import { updateCalendarEvent, deleteCalendarEvent, refreshAccessToken } from '@/lib/integrations/google-calendar';
+import { decrypt, encrypt } from '@/lib/utils/crypto';
 
 
 interface RouteParams {
@@ -151,9 +153,19 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
 
-    // Check if event exists
+    // Check if event exists and get calendar source info
     const [existingEvent] = await db
-      .select({ id: events.id })
+      .select({
+        id: events.id,
+        externalEventId: events.externalEventId,
+        calendarSourceId: events.calendarSourceId,
+        title: events.title,
+        description: events.description,
+        location: events.location,
+        startTime: events.startTime,
+        endTime: events.endTime,
+        allDay: events.allDay,
+      })
       .from(events)
       .where(eq(events.id, id));
 
@@ -250,6 +262,83 @@ export async function PATCH(
         }
       }
       updateData.calendarSourceId = body.calendarSourceId || null;
+    }
+
+    // If event is linked to a Google Calendar, push updates to Google
+    if (existingEvent.calendarSourceId && existingEvent.externalEventId) {
+      const [calendarSource] = await db
+        .select()
+        .from(calendarSources)
+        .where(eq(calendarSources.id, existingEvent.calendarSourceId));
+
+      if (calendarSource?.provider === 'google' && calendarSource.accessToken) {
+        try {
+          let accessToken = decrypt(calendarSource.accessToken);
+
+          // Check if token needs refresh
+          if (calendarSource.tokenExpiresAt && calendarSource.tokenExpiresAt <= new Date()) {
+            if (!calendarSource.refreshToken) {
+              return NextResponse.json(
+                { error: 'Google Calendar token expired. Please re-authenticate.' },
+                { status: 401 }
+              );
+            }
+            const refreshToken = decrypt(calendarSource.refreshToken);
+            const newTokens = await refreshAccessToken(refreshToken);
+            accessToken = newTokens.access_token;
+
+            // Update stored tokens
+            await db
+              .update(calendarSources)
+              .set({
+                accessToken: encrypt(newTokens.access_token),
+                refreshToken: newTokens.refresh_token ? encrypt(newTokens.refresh_token) : calendarSource.refreshToken,
+                tokenExpiresAt: new Date(Date.now() + newTokens.expires_in * 1000),
+                updatedAt: new Date(),
+              })
+              .where(eq(calendarSources.id, existingEvent.calendarSourceId));
+          }
+
+          // Build Google Calendar update payload
+          const googleUpdate: Record<string, unknown> = {};
+          const newTitle = updateData.title as string | undefined;
+          const newDesc = updateData.description as string | null | undefined;
+          const newLoc = updateData.location as string | null | undefined;
+          const newStart = updateData.startTime as Date | undefined;
+          const newEnd = updateData.endTime as Date | undefined;
+          const newAllDay = updateData.allDay as boolean | undefined;
+
+          if (newTitle !== undefined) googleUpdate.summary = newTitle;
+          if (newDesc !== undefined) googleUpdate.description = newDesc || undefined;
+          if (newLoc !== undefined) googleUpdate.location = newLoc || undefined;
+
+          // Handle date/time updates
+          const finalAllDay = newAllDay !== undefined ? newAllDay : existingEvent.allDay;
+          const finalStart = newStart || existingEvent.startTime;
+          const finalEnd = newEnd || existingEvent.endTime;
+
+          if (newStart !== undefined || newEnd !== undefined || newAllDay !== undefined) {
+            if (finalAllDay) {
+              googleUpdate.start = { date: finalStart.toISOString().split('T')[0] };
+              googleUpdate.end = { date: finalEnd.toISOString().split('T')[0] };
+            } else {
+              googleUpdate.start = { dateTime: finalStart.toISOString() };
+              googleUpdate.end = { dateTime: finalEnd.toISOString() };
+            }
+          }
+
+          // Update on Google Calendar
+          await updateCalendarEvent(
+            accessToken,
+            calendarSource.sourceCalendarId,
+            existingEvent.externalEventId,
+            googleUpdate
+          );
+        } catch (error) {
+          console.error('Failed to update event on Google Calendar:', error);
+          // Continue with local update even if Google fails
+        }
+      }
     }
 
     // Execute update
@@ -360,6 +449,7 @@ export async function DELETE(
         id: events.id,
         title: events.title,
         externalEventId: events.externalEventId,
+        calendarSourceId: events.calendarSourceId,
       })
       .from(events)
       .where(eq(events.id, id));
@@ -371,7 +461,51 @@ export async function DELETE(
       );
     }
 
-    // Delete the event
+    // If event is linked to a Google Calendar, delete from Google too
+    if (existingEvent.calendarSourceId && existingEvent.externalEventId) {
+      const [calendarSource] = await db
+        .select()
+        .from(calendarSources)
+        .where(eq(calendarSources.id, existingEvent.calendarSourceId));
+
+      if (calendarSource?.provider === 'google' && calendarSource.accessToken) {
+        try {
+          let accessToken = decrypt(calendarSource.accessToken);
+
+          // Check if token needs refresh
+          if (calendarSource.tokenExpiresAt && calendarSource.tokenExpiresAt <= new Date()) {
+            if (calendarSource.refreshToken) {
+              const refreshToken = decrypt(calendarSource.refreshToken);
+              const newTokens = await refreshAccessToken(refreshToken);
+              accessToken = newTokens.access_token;
+
+              // Update stored tokens
+              await db
+                .update(calendarSources)
+                .set({
+                  accessToken: encrypt(newTokens.access_token),
+                  refreshToken: newTokens.refresh_token ? encrypt(newTokens.refresh_token) : calendarSource.refreshToken,
+                  tokenExpiresAt: new Date(Date.now() + newTokens.expires_in * 1000),
+                  updatedAt: new Date(),
+                })
+                .where(eq(calendarSources.id, existingEvent.calendarSourceId));
+            }
+          }
+
+          // Delete from Google Calendar
+          await deleteCalendarEvent(
+            accessToken,
+            calendarSource.sourceCalendarId,
+            existingEvent.externalEventId
+          );
+        } catch (error) {
+          console.error('Failed to delete event from Google Calendar:', error);
+          // Continue with local delete even if Google fails
+        }
+      }
+    }
+
+    // Delete the event locally
     await db
       .delete(events)
       .where(eq(events.id, id));

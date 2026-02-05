@@ -43,7 +43,7 @@ interface UseShoppingListsResult {
  */
 export function useShoppingLists(options: UseShoppingListsOptions = {}): UseShoppingListsResult {
   const {
-    refreshInterval = 60 * 1000,
+    refreshInterval = 5 * 60 * 1000,
   } = options;
 
   const [lists, setLists] = useState<ShoppingList[]>([]);
@@ -57,7 +57,7 @@ export function useShoppingLists(options: UseShoppingListsOptions = {}): UseShop
     try {
       setError(null);
 
-      const response = await fetch('/api/shopping-lists');
+      const response = await fetch('/api/shopping-lists?includeItems=true');
 
       if (!response.ok) {
         throw new Error('Failed to fetch shopping lists');
@@ -65,65 +65,55 @@ export function useShoppingLists(options: UseShoppingListsOptions = {}): UseShop
 
       const data = await response.json();
 
-      // For each list, fetch its items
-      const listsWithItems = await Promise.all(
-        data.lists.map(async (list: {
+      const listsWithItems = data.lists.map((list: {
+        id: string;
+        name: string;
+        description: string | null;
+        sortOrder: number;
+        assignedTo: string | null;
+        createdBy: {
           id: string;
           name: string;
-          description: string | null;
-          sortOrder: number;
-          assignedTo: string | null;
-          createdBy: {
+          color: string;
+        } | null;
+        createdAt: string;
+        items: Array<{
+          id: string;
+          listId: string;
+          name: string;
+          quantity: number | null;
+          unit: string | null;
+          category: 'produce' | 'dairy' | 'meat' | 'bakery' | 'frozen' | 'pantry' | 'household' | 'other' | null;
+          checked: boolean;
+          notes: string | null;
+          addedBy: {
             id: string;
             name: string;
             color: string;
           } | null;
           createdAt: string;
-        }) => {
-          // Fetch items for this list
-          const itemsResponse = await fetch(`/api/shopping-items?listId=${list.id}`);
-          const itemsData = await itemsResponse.json();
-
-          const items: ShoppingItem[] = itemsData.items.map((item: {
-            id: string;
-            listId: string;
-            name: string;
-            quantity: number | null;
-            unit: string | null;
-            category: 'produce' | 'dairy' | 'meat' | 'bakery' | 'frozen' | 'pantry' | 'household' | 'other' | null;
-            checked: boolean;
-            notes: string | null;
-            addedBy: {
-              id: string;
-              name: string;
-              color: string;
-            } | null;
-            createdAt: string;
-          }) => ({
-            id: item.id,
-            listId: item.listId,
-            name: item.name,
-            quantity: item.quantity || undefined,
-            unit: item.unit || undefined,
-            category: item.category || undefined,
-            checked: item.checked,
-            notes: item.notes || undefined,
-            addedBy: item.addedBy || undefined,
-            createdAt: new Date(item.createdAt),
-          }));
-
-          return {
-            id: list.id,
-            name: list.name,
-            description: list.description || undefined,
-            sortOrder: list.sortOrder,
-            items,
-            assignedTo: list.assignedTo || undefined,
-            createdBy: list.createdBy || undefined,
-            createdAt: new Date(list.createdAt),
-          };
-        })
-      );
+        }>;
+      }) => ({
+        id: list.id,
+        name: list.name,
+        description: list.description || undefined,
+        sortOrder: list.sortOrder,
+        items: (list.items || []).map((item) => ({
+          id: item.id,
+          listId: item.listId,
+          name: item.name,
+          quantity: item.quantity || undefined,
+          unit: item.unit || undefined,
+          category: item.category || undefined,
+          checked: item.checked,
+          notes: item.notes || undefined,
+          addedBy: item.addedBy || undefined,
+          createdAt: new Date(item.createdAt),
+        })),
+        assignedTo: list.assignedTo || undefined,
+        createdBy: list.createdBy || undefined,
+        createdAt: new Date(list.createdAt),
+      }));
 
       setLists(listsWithItems);
     } catch (err) {
@@ -253,12 +243,27 @@ export function useShoppingLists(options: UseShoppingListsOptions = {}): UseShop
     fetchLists();
   }, [fetchLists]);
 
-  // Set up refresh interval
+  // Set up refresh interval with visibility-based pause
   useEffect(() => {
     if (refreshInterval <= 0) return;
 
-    const interval = setInterval(fetchLists, refreshInterval);
-    return () => clearInterval(interval);
+    let interval = setInterval(fetchLists, refreshInterval);
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        clearInterval(interval);
+      } else {
+        fetchLists();
+        interval = setInterval(fetchLists, refreshInterval);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [refreshInterval, fetchLists]);
 
   return {

@@ -37,7 +37,7 @@ interface UseMealsResult {
 export function useMeals(options: UseMealsOptions = {}): UseMealsResult {
   const {
     weekOf,
-    refreshInterval = 60 * 1000,
+    refreshInterval = 5 * 60 * 1000,
   } = options;
 
   const [meals, setMeals] = useState<Meal[]>([]);
@@ -152,12 +152,27 @@ export function useMeals(options: UseMealsOptions = {}): UseMealsResult {
     fetchMeals();
   }, [fetchMeals]);
 
-  // Set up refresh interval
+  // Set up refresh interval with visibility-based pause
   useEffect(() => {
     if (refreshInterval <= 0) return;
 
-    const interval = setInterval(fetchMeals, refreshInterval);
-    return () => clearInterval(interval);
+    let interval = setInterval(fetchMeals, refreshInterval);
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        clearInterval(interval);
+      } else {
+        fetchMeals();
+        interval = setInterval(fetchMeals, refreshInterval);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [refreshInterval, fetchMeals]);
 
   return {

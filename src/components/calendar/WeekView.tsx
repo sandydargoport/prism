@@ -36,7 +36,7 @@ export function WeekView({
             key={date.toISOString()}
             className={cn(
               'text-center py-2 rounded-md bg-card/85 backdrop-blur-sm',
-              isPast && 'bg-muted/60 dark:bg-muted/40',
+              isPast && 'bg-gray-200 text-gray-600 dark:bg-muted/40 dark:text-muted-foreground',
               isToday(date) && 'bg-primary text-primary-foreground'
             )}
           >
@@ -65,7 +65,7 @@ export function WeekView({
           const isPastDay = isBefore(date, startOfDay(new Date())) && !isToday(date);
 
           return (
-            <div key={date.toISOString()} className={cn("space-y-1 bg-card/85 backdrop-blur-sm rounded-md p-1", isPastDay && "bg-muted/60 dark:bg-muted/40")}>
+            <div key={date.toISOString()} className={cn("space-y-1 bg-card/85 backdrop-blur-sm rounded-md p-1", isPastDay && "bg-gray-200 dark:bg-muted/40")}>
               {sorted.map((event) => (
                 <button
                   key={event.id}

@@ -4,16 +4,12 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { UserAvatar } from '@/components/ui/avatar';
+import { useFamily } from '@/components/providers';
 import { PinEditModal } from '../components/PinEditModal';
 import type { FamilyMember } from '../components/PinEditModal';
 
-export function SecuritySection({
-  familyMembers,
-  setFamilyMembers,
-}: {
-  familyMembers: FamilyMember[];
-  setFamilyMembers: React.Dispatch<React.SetStateAction<FamilyMember[]>>;
-}) {
+export function SecuritySection() {
+  const { members: familyMembers, refresh: refreshFamily } = useFamily();
   const [editingPinMember, setEditingPinMember] = useState<FamilyMember | null>(null);
 
   return (
@@ -106,12 +102,8 @@ export function SecuritySection({
         <PinEditModal
           member={editingPinMember}
           onClose={() => setEditingPinMember(null)}
-          onSaved={(hasPin) => {
-            setFamilyMembers((prev) =>
-              prev.map((m) =>
-                m.id === editingPinMember.id ? { ...m, hasPin } : m
-              )
-            );
+          onSaved={() => {
+            refreshFamily();
             setEditingPinMember(null);
           }}
         />

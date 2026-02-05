@@ -17,12 +17,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, getDisplayAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { meals, users } from '@/lib/db/schema';
 import { eq, and, asc, aliasedTable } from 'drizzle-orm';
 import { createMealSchema, validateRequest } from '@/lib/validations';
 import { formatMealRow } from '@/lib/utils/formatters';
+import { getCached, invalidateCache } from '@/lib/cache/redis';
 
 const cookedByUser = aliasedTable(users, 'cookedByUser');
 
@@ -33,59 +34,63 @@ const cookedByUser = aliasedTable(users, 'cookedByUser');
  * ============================================================================
  */
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth();
-  if (auth instanceof NextResponse) return auth;
+  const auth = await getDisplayAuth();
+  if (!auth) {
+    return NextResponse.json({ meals: [] });
+  }
 
   try {
     const { searchParams } = new URL(request.url);
     const weekOf = searchParams.get('weekOf');
 
-    // Build query
-    const query = db
-      .select({
-        id: meals.id,
-        name: meals.name,
-        description: meals.description,
-        recipe: meals.recipe,
-        recipeUrl: meals.recipeUrl,
-        prepTime: meals.prepTime,
-        cookTime: meals.cookTime,
-        servings: meals.servings,
-        ingredients: meals.ingredients,
-        dayOfWeek: meals.dayOfWeek,
-        mealType: meals.mealType,
-        cookedAt: meals.cookedAt,
-        cookedById: meals.cookedBy,
-        weekOf: meals.weekOf,
-        source: meals.source,
-        sourceId: meals.sourceId,
-        createdAt: meals.createdAt,
-        createdById: users.id,
-        createdByName: users.name,
-        createdByColor: users.color,
-        cookedByUserId: cookedByUser.id,
-        cookedByUserName: cookedByUser.name,
-        cookedByUserColor: cookedByUser.color,
-      })
-      .from(meals)
-      .leftJoin(users, eq(meals.createdBy, users.id))
-      .leftJoin(cookedByUser, eq(meals.cookedBy, cookedByUser.id))
-      .orderBy(asc(meals.weekOf), asc(meals.dayOfWeek), asc(meals.name));
+    const cacheKey = `meals:${weekOf || 'all'}`;
 
-    // Apply filters
-    const conditions = [];
-    if (weekOf) {
-      conditions.push(eq(meals.weekOf, weekOf));
-    }
+    const data = await getCached(cacheKey, async () => {
+      const query = db
+        .select({
+          id: meals.id,
+          name: meals.name,
+          description: meals.description,
+          recipe: meals.recipe,
+          recipeUrl: meals.recipeUrl,
+          prepTime: meals.prepTime,
+          cookTime: meals.cookTime,
+          servings: meals.servings,
+          ingredients: meals.ingredients,
+          dayOfWeek: meals.dayOfWeek,
+          mealType: meals.mealType,
+          cookedAt: meals.cookedAt,
+          cookedById: meals.cookedBy,
+          weekOf: meals.weekOf,
+          source: meals.source,
+          sourceId: meals.sourceId,
+          createdAt: meals.createdAt,
+          createdById: users.id,
+          createdByName: users.name,
+          createdByColor: users.color,
+          cookedByUserId: cookedByUser.id,
+          cookedByUserName: cookedByUser.name,
+          cookedByUserColor: cookedByUser.color,
+        })
+        .from(meals)
+        .leftJoin(users, eq(meals.createdBy, users.id))
+        .leftJoin(cookedByUser, eq(meals.cookedBy, cookedByUser.id))
+        .orderBy(asc(meals.weekOf), asc(meals.dayOfWeek), asc(meals.name));
 
-    const results = conditions.length > 0
-      ? await query.where(and(...conditions))
-      : await query;
+      const conditions = [];
+      if (weekOf) {
+        conditions.push(eq(meals.weekOf, weekOf));
+      }
 
-    // Format response
-    const formattedMeals = results.map(meal => formatMealRow(meal));
+      const results = conditions.length > 0
+        ? await query.where(and(...conditions))
+        : await query;
 
-    return NextResponse.json({ meals: formattedMeals });
+      const formattedMeals = results.map(meal => formatMealRow(meal));
+      return { meals: formattedMeals };
+    }, 300);
+
+    return NextResponse.json(data);
   } catch (error) {
     console.error('Error fetching meals:', error);
     return NextResponse.json(
@@ -172,6 +177,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    await invalidateCache('meals:*');
+
     return NextResponse.json({
       id: newMeal.id,
       name: newMeal.name,
@@ -193,8 +200,9 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
   } catch (error) {
     console.error('Error creating meal:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to create meal' },
+      { error: `Failed to create meal: ${errorMessage}` },
       { status: 500 }
     );
   }

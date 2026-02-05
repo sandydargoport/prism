@@ -34,7 +34,7 @@ interface UseMessagesResult {
 export function useMessages(
   options: UseMessagesOptions = {}
 ): UseMessagesResult {
-  const { limit = 20, refreshInterval = 60 * 1000 } = options;
+  const { limit = 20, refreshInterval = 2 * 60 * 1000 } = options;
 
   const [messages, setMessages] = useState<FamilyMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -123,12 +123,27 @@ export function useMessages(
     fetchMessages();
   }, [fetchMessages]);
 
-  // Set up refresh interval
+  // Set up refresh interval with visibility-based pause
   useEffect(() => {
     if (refreshInterval <= 0) return;
 
-    const interval = setInterval(fetchMessages, refreshInterval);
-    return () => clearInterval(interval);
+    let interval = setInterval(fetchMessages, refreshInterval);
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        clearInterval(interval);
+      } else {
+        fetchMessages();
+        interval = setInterval(fetchMessages, refreshInterval);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [refreshInterval, fetchMessages]);
 
   return {

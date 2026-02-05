@@ -127,3 +127,16 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistryEntry> = {
 };
 
 export const ALL_WIDGET_TYPES = Object.keys(WIDGET_REGISTRY);
+
+export const SCREENSAVER_WIDGETS = [
+  { id: 'clock', label: 'Clock' },
+  { id: 'weather', label: 'Weather' },
+  { id: 'messages', label: 'Messages' },
+  { id: 'calendar', label: 'Calendar' },
+  { id: 'birthdays', label: 'Birthdays' },
+  { id: 'tasks', label: 'Tasks' },
+  { id: 'chores', label: 'Chores' },
+  { id: 'shopping', label: 'Shopping' },
+  { id: 'meals', label: 'Meals' },
+  { id: 'photos', label: 'Photos' },
+];

@@ -60,7 +60,7 @@ export function useChores(options: UseChoresOptions = {}): UseChoresResult {
   const {
     assignedTo,
     showDisabled = false,
-    refreshInterval = 60 * 1000,
+    refreshInterval = 5 * 60 * 1000,
   } = options;
 
   const [chores, setChores] = useState<Chore[]>([]);
@@ -213,12 +213,27 @@ export function useChores(options: UseChoresOptions = {}): UseChoresResult {
     fetchChores();
   }, [fetchChores]);
 
-  // Set up refresh interval
+  // Set up refresh interval with visibility-based pause
   useEffect(() => {
     if (refreshInterval <= 0) return;
 
-    const interval = setInterval(fetchChores, refreshInterval);
-    return () => clearInterval(interval);
+    let interval = setInterval(fetchChores, refreshInterval);
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        clearInterval(interval);
+      } else {
+        fetchChores();
+        interval = setInterval(fetchChores, refreshInterval);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [refreshInterval, fetchChores]);
 
   return {

@@ -4,8 +4,6 @@
 
 Prism is an open-source family dashboard that brings everyone together. Sync calendars, manage chores, plan meals, track tasks, and stay connected—all on one beautiful touchscreen display.
 
-**Prism** (noun): Your circle of friends, neighbors, and acquaintances. In "prism and kin," it represents both family and community coming together.
-
 ## Features
 
 ### Smart Calendar Management
@@ -48,7 +46,6 @@ Prism is an open-source family dashboard that brings everyone together. Sync cal
 
 ### Prerequisites
 - [Docker Desktop](https://www.docker.com/products/docker-desktop) installed
-- 30 minutes for setup
 
 ### Installation
 
@@ -91,11 +88,12 @@ npm run format
 
 ## Tech Stack
 
-- **Frontend:** React 18, Next.js 14, TypeScript
-- **Styling:** Tailwind CSS
-- **Database:** PostgreSQL 15
-- **ORM:** Drizzle ORM
-- **Deployment:** Docker
+- **Frontend:** React 18, Next.js 15, TypeScript
+- **Styling:** Tailwind CSS + shadcn/ui
+- **Database:** PostgreSQL 15 + Drizzle ORM
+- **Cache:** Redis
+- **Layout:** react-grid-layout v2
+- **Deployment:** Docker Compose
 
 ## Project Structure
 
@@ -112,7 +110,6 @@ prism/
 │   ├── lib/                 # Utilities and helpers
 │   │   ├── db/              # Database client and schema
 │   │   └── utils/           # Utility functions
-│   ├── hooks/               # Custom React hooks
 │   ├── types/               # TypeScript type definitions
 │   └── styles/              # Global styles
 ├── public/                  # Static assets
@@ -121,13 +118,9 @@ prism/
 └── Dockerfile               # Container build instructions
 ```
 
-## Documentation
-
-Every file in this codebase includes extensive documentation with educational comments. The code is designed to teach as you read it.
-
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the AGPL-3.0 License - see the [LICENSE](LICENSE) file for details.
 
 ## Contributing
 

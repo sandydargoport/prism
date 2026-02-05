@@ -44,9 +44,8 @@ import { Delete, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/avatar';
+import { useFamily } from '@/components/providers';
 
-
-// FamilyMember type imported from shared types
 import type { FamilyMember } from '@/types';
 export type { FamilyMember };
 
@@ -129,12 +128,12 @@ export function PinPad({
   // STATE
   // ============================================================================
 
-  // Family members - fetch from API or use provided
-  const [fetchedMembers, setFetchedMembers] = useState<FamilyMember[]>([]);
-  const [loadingMembers, setLoadingMembers] = useState(!providedMembers);
+  // Family members from context or provided
+  const { members: contextMembers, loading: contextLoading } = useFamily();
+  const loadingMembers = !providedMembers && contextLoading;
 
-  // Use provided members or fetched members
-  const familyMembers = providedMembers || (fetchedMembers.length > 0 ? fetchedMembers : getDemoFamilyMembers());
+  // Use provided members or context members
+  const familyMembers = providedMembers || (contextMembers.length > 0 ? contextMembers : getDemoFamilyMembers());
 
   // Selected family member (internal state if not controlled)
   const [internalSelectedMember, setInternalSelectedMember] = useState<FamilyMember | null>(null);
@@ -151,45 +150,6 @@ export function PinPad({
 
   // Loading state during PIN verification
   const [isVerifying, setIsVerifying] = useState(false);
-
-  // ============================================================================
-  // FETCH FAMILY MEMBERS FROM API
-  // ============================================================================
-
-  useEffect(() => {
-    if (providedMembers) return; // Don't fetch if provided
-
-    async function fetchFamilyMembers() {
-      try {
-        const response = await fetch('/api/family');
-        if (response.ok) {
-          const data = await response.json();
-          const members: FamilyMember[] = data.members.map((m: {
-            id: string;
-            name: string;
-            role: string;
-            color: string;
-            avatarUrl?: string;
-          }) => ({
-            id: m.id,
-            name: m.name,
-            role: m.role as 'parent' | 'child' | 'guest',
-            color: m.color,
-            avatarUrl: m.avatarUrl,
-          }));
-          setFetchedMembers(members);
-        }
-      } catch (error) {
-        console.error('Failed to fetch family members:', error);
-        // Fall back to demo data
-      } finally {
-        setLoadingMembers(false);
-      }
-    }
-
-    fetchFamilyMembers();
-  }, [providedMembers]);
-
 
   // ============================================================================
   // HANDLERS

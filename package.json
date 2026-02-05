@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Prism - Your family's digital home. An open-source family dashboard for calendars, tasks, chores, and more.",
   "private": true,
-  "license": "MIT",
+  "license": "AGPL-3.0",
   "author": {
     "name": "Prism Community"
   },

@@ -48,6 +48,8 @@ export interface AppShellProps {
   } | null;
   /** Callback when logout is clicked */
   onLogout?: () => void;
+  /** Callback when login is clicked */
+  onLogin?: () => void;
   /** Hide the side nav (for login/auth pages) */
   hideNav?: boolean;
   /** Additional CSS classes for main content area */
@@ -84,6 +86,7 @@ export function AppShell({
   children,
   user,
   onLogout,
+  onLogin,
   hideNav = false,
   className,
 }: AppShellProps) {
@@ -98,7 +101,7 @@ export function AppShell({
       {/* SIDE NAVIGATION */}
       {/* Only rendered if hideNav is false */}
       {/* ==================================================================== */}
-      {!hideNav && <SideNav />}
+      {!hideNav && <SideNav user={user} onLogout={onLogout} onLogin={onLogin} />}
 
       {/* ==================================================================== */}
       {/* MAIN CONTENT AREA */}

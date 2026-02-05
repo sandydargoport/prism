@@ -17,13 +17,14 @@ import { db } from '@/lib/db/client';
 import { chores, choreCompletions, users } from '@/lib/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 import { requireAuth } from '@/lib/auth';
-import { addDays, addMonths, format } from 'date-fns';
+import { addDays, addMonths, addYears, format } from 'date-fns';
+import { invalidateCache } from '@/lib/cache/redis';
 
 /**
  * Calculate the next due date based on frequency
  */
 function calculateNextDue(
-  frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'custom',
+  frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'semi-annually' | 'annually' | 'custom',
   customIntervalDays?: number | null
 ): string {
   const now = new Date();
@@ -41,6 +42,15 @@ function calculateNextDue(
       break;
     case 'monthly':
       nextDate = addMonths(now, 1);
+      break;
+    case 'quarterly':
+      nextDate = addMonths(now, 3);
+      break;
+    case 'semi-annually':
+      nextDate = addMonths(now, 6);
+      break;
+    case 'annually':
+      nextDate = addYears(now, 1);
       break;
     case 'custom':
       nextDate = addDays(now, customIntervalDays || 1);
@@ -213,6 +223,8 @@ export async function POST(
       .select({ name: users.name })
       .from(users)
       .where(eq(users.id, auth.userId));
+
+    await invalidateCache('chores:*');
 
     return NextResponse.json({
       message: `Chore "${chore.title}" approved!`,

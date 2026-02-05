@@ -4,6 +4,7 @@ import { db } from '@/lib/db/client';
 import { users } from '@/lib/db/schema';
 import { desc } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
+import { getCached, invalidateCache } from '@/lib/cache/redis';
 
 interface FamilyMemberResponse {
   id: string;
@@ -16,49 +17,48 @@ interface FamilyMemberResponse {
   createdAt: string;
 }
 
+// No auth required — PinPad needs the member list to show the login screen
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth();
-  if (auth instanceof NextResponse) return auth;
-
   try {
     const { searchParams } = new URL(request.url);
     const role = searchParams.get('role');
+    const cacheKey = role ? `family:role:${role}` : 'family:all';
 
-    const query = db
-      .select({
-        id: users.id,
-        name: users.name,
-        role: users.role,
-        color: users.color,
-        email: users.email,
-        avatarUrl: users.avatarUrl,
-        pin: users.pin,
-        createdAt: users.createdAt,
-      })
-      .from(users);
+    const data = await getCached(cacheKey, async () => {
+      const results = await db
+        .select({
+          id: users.id,
+          name: users.name,
+          role: users.role,
+          color: users.color,
+          email: users.email,
+          avatarUrl: users.avatarUrl,
+          pin: users.pin,
+          createdAt: users.createdAt,
+        })
+        .from(users)
+        .orderBy(desc(users.createdAt));
 
-    const results = await query.orderBy(desc(users.createdAt));
+      let filteredResults = results;
+      if (role && ['parent', 'child', 'guest'].includes(role)) {
+        filteredResults = results.filter((user) => user.role === role);
+      }
 
-    let filteredResults = results;
-    if (role && ['parent', 'child', 'guest'].includes(role)) {
-      filteredResults = results.filter((user) => user.role === role);
-    }
+      const members: FamilyMemberResponse[] = filteredResults.map((user) => ({
+        id: user.id,
+        name: user.name,
+        role: user.role as 'parent' | 'child' | 'guest',
+        color: user.color,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+        hasPin: !!user.pin,
+        createdAt: user.createdAt.toISOString(),
+      }));
 
-    const members: FamilyMemberResponse[] = filteredResults.map((user) => ({
-      id: user.id,
-      name: user.name,
-      role: user.role as 'parent' | 'child' | 'guest',
-      color: user.color,
-      email: user.email,
-      avatarUrl: user.avatarUrl,
-      hasPin: !!user.pin,
-      createdAt: user.createdAt.toISOString(),
-    }));
+      return { members, total: members.length };
+    }, 600);
 
-    return NextResponse.json({
-      members,
-      total: members.length,
-    });
+    return NextResponse.json(data);
   } catch (error) {
     console.error('Error fetching family members:', error);
     return NextResponse.json(
@@ -150,6 +150,8 @@ export async function POST(request: NextRequest) {
       hasPin: !!hashedPin,
       createdAt: newMember.createdAt.toISOString(),
     };
+
+    await invalidateCache('family:*');
 
     return NextResponse.json(response, { status: 201 });
   } catch (error) {

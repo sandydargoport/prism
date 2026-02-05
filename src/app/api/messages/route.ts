@@ -20,10 +20,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, getDisplayAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { familyMessages, users } from '@/lib/db/schema';
-import { eq, desc, asc, and, gt, isNull, or } from 'drizzle-orm';
+import { eq, desc, asc, and, gt, isNull, or, sql } from 'drizzle-orm';
 import { formatMessageRow } from '@/lib/utils/formatters';
 
 
@@ -55,8 +55,10 @@ import { formatMessageRow } from '@/lib/utils/formatters';
  * ============================================================================
  */
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth();
-  if (auth instanceof NextResponse) return auth;
+  const auth = await getDisplayAuth();
+  if (!auth) {
+    return NextResponse.json({ messages: [], total: 0, limit: 20, offset: 0 });
+  }
 
   try {
     const { searchParams } = new URL(request.url);
@@ -119,14 +121,14 @@ export async function GET(request: NextRequest) {
     const formattedMessages = results.map((row) => formatMessageRow(row));
 
     // Get total count
-    const allMessages = await db
-      .select({ id: familyMessages.id })
+    const countResult = await db
+      .select({ count: sql<number>`count(*)` })
       .from(familyMessages)
       .where(conditions.length > 0 ? and(...conditions) : undefined);
 
     return NextResponse.json({
       messages: formattedMessages,
-      total: allMessages.length,
+      total: Number(countResult[0]?.count ?? 0),
       limit,
       offset,
     });

@@ -16,10 +16,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, getDisplayAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
-import { shoppingLists } from '@/lib/db/schema';
-import { asc } from 'drizzle-orm';
+import { shoppingLists, shoppingItems, users } from '@/lib/db/schema';
+import { asc, eq } from 'drizzle-orm';
 import { createShoppingListSchema, validateRequest } from '@/lib/validations';
 
 /**
@@ -29,10 +29,15 @@ import { createShoppingListSchema, validateRequest } from '@/lib/validations';
  * ============================================================================
  */
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth();
-  if (auth instanceof NextResponse) return auth;
+  const auth = await getDisplayAuth();
+  if (!auth) {
+    return NextResponse.json({ lists: [] });
+  }
 
   try {
+    const { searchParams } = new URL(request.url);
+    const includeItems = searchParams.get('includeItems') === 'true';
+
     const lists = await db
       .select({
         id: shoppingLists.id,
@@ -46,6 +51,49 @@ export async function GET(request: NextRequest) {
       .from(shoppingLists)
       .orderBy(asc(shoppingLists.sortOrder), asc(shoppingLists.name));
 
+    if (!includeItems) {
+      const formattedLists = lists.map(list => ({
+        id: list.id,
+        name: list.name,
+        icon: list.icon,
+        color: list.color,
+        sortOrder: list.sortOrder,
+        assignedTo: list.assignedTo,
+        createdAt: list.createdAt.toISOString(),
+      }));
+      return NextResponse.json({ lists: formattedLists });
+    }
+
+    // Fetch all items in a single query, joined with addedBy user
+    const allItems = await db
+      .select({
+        id: shoppingItems.id,
+        name: shoppingItems.name,
+        quantity: shoppingItems.quantity,
+        unit: shoppingItems.unit,
+        category: shoppingItems.category,
+        checked: shoppingItems.checked,
+        recurring: shoppingItems.recurring,
+        recurrenceInterval: shoppingItems.recurrenceInterval,
+        notes: shoppingItems.notes,
+        listId: shoppingItems.listId,
+        createdAt: shoppingItems.createdAt,
+        addedById: users.id,
+        addedByName: users.name,
+        addedByColor: users.color,
+      })
+      .from(shoppingItems)
+      .leftJoin(users, eq(shoppingItems.addedBy, users.id))
+      .orderBy(asc(shoppingItems.category), asc(shoppingItems.name));
+
+    // Group items by listId
+    const itemsByList = new Map<string, typeof allItems>();
+    for (const item of allItems) {
+      const listItems = itemsByList.get(item.listId) || [];
+      listItems.push(item);
+      itemsByList.set(item.listId, listItems);
+    }
+
     const formattedLists = lists.map(list => ({
       id: list.id,
       name: list.name,
@@ -54,6 +102,24 @@ export async function GET(request: NextRequest) {
       sortOrder: list.sortOrder,
       assignedTo: list.assignedTo,
       createdAt: list.createdAt.toISOString(),
+      items: (itemsByList.get(list.id) || []).map(item => ({
+        id: item.id,
+        name: item.name,
+        quantity: item.quantity,
+        unit: item.unit,
+        category: item.category,
+        checked: item.checked,
+        recurring: item.recurring,
+        recurrenceInterval: item.recurrenceInterval,
+        notes: item.notes,
+        listId: item.listId,
+        createdAt: item.createdAt.toISOString(),
+        addedBy: item.addedById ? {
+          id: item.addedById,
+          name: item.addedByName,
+          color: item.addedByColor,
+        } : null,
+      })),
     }));
 
     return NextResponse.json({ lists: formattedLists });
@@ -129,8 +195,9 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
   } catch (error) {
     console.error('Error creating shopping list:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to create shopping list' },
+      { error: `Failed to create shopping list: ${errorMessage}` },
       { status: 500 }
     );
   }

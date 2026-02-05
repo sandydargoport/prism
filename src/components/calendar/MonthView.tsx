@@ -78,7 +78,7 @@ export function MonthView({
                 'border border-border rounded-md p-1 cursor-pointer bg-card/85 backdrop-blur-sm',
                 'flex flex-col min-h-0',
                 !isSameMonth(date, currentDate) && 'opacity-50 text-muted-foreground',
-                isPast && isSameMonth(date, currentDate) && 'bg-muted/60 dark:bg-muted/40',
+                isPast && isSameMonth(date, currentDate) && 'bg-gray-200 text-gray-600 dark:bg-muted/40 dark:text-muted-foreground',
                 isToday(date) && 'border-primary border-2'
               )}
             >

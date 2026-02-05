@@ -41,6 +41,9 @@ import {
   clearLoginAttempts,
 } from '@/lib/auth/session';
 
+// Determine if cookies should be secure based on BASE_URL scheme
+const isSecure = process.env.BASE_URL?.startsWith('https://') ?? process.env.NODE_ENV === 'production';
+
 
 /**
  * POST /api/auth/login
@@ -148,7 +151,7 @@ export async function POST(request: NextRequest) {
 
       cookieStore.set('prism_session', session.token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: isSecure,
         sameSite: 'lax',
         expires: session.expiresAt,
         path: '/',
@@ -156,7 +159,7 @@ export async function POST(request: NextRequest) {
 
       cookieStore.set('prism_user', user.id, {
         httpOnly: false,
-        secure: process.env.NODE_ENV === 'production',
+        secure: isSecure,
         sameSite: 'lax',
         expires: session.expiresAt,
         path: '/',
@@ -220,7 +223,7 @@ export async function POST(request: NextRequest) {
     // Session token - httpOnly for security
     cookieStore.set('prism_session', session.token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isSecure,
       sameSite: 'lax',
       expires: session.expiresAt,
       path: '/',
@@ -229,7 +232,7 @@ export async function POST(request: NextRequest) {
     // User ID - accessible to JavaScript for UI purposes
     cookieStore.set('prism_user', user.id, {
       httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isSecure,
       sameSite: 'lax',
       expires: session.expiresAt,
       path: '/',

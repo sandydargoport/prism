@@ -575,16 +575,40 @@ export function CalendarView() {
             <p className="text-xs text-muted-foreground">
               {selectedEvent.calendarName}
             </p>
-            <div className="flex justify-end gap-2 mt-6">
-              <Button variant="outline" onClick={() => setSelectedEvent(null)}>
-                Close
+            <div className="flex justify-between mt-6">
+              <Button
+                variant="destructive"
+                onClick={async () => {
+                  if (!confirm('Are you sure you want to delete this event?')) return;
+                  try {
+                    const response = await fetch(`/api/events/${selectedEvent.id}`, {
+                      method: 'DELETE',
+                    });
+                    if (!response.ok) {
+                      const error = await response.json();
+                      alert(error.error || 'Failed to delete event');
+                      return;
+                    }
+                    setSelectedEvent(null);
+                    refreshEvents();
+                  } catch (err) {
+                    alert('Failed to delete event');
+                  }
+                }}
+              >
+                Delete
               </Button>
-              <Button onClick={() => {
-                setEditingEvent(selectedEvent);
-                setSelectedEvent(null);
-              }}>
-                Edit
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setSelectedEvent(null)}>
+                  Close
+                </Button>
+                <Button onClick={() => {
+                  setEditingEvent(selectedEvent);
+                  setSelectedEvent(null);
+                }}>
+                  Edit
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -611,6 +635,7 @@ export function CalendarView() {
           recurring: false,
           recurrenceRule: undefined,
           reminderMinutes: undefined,
+          calendarSourceId: editingEvent.calendarId !== 'local' ? editingEvent.calendarId : undefined,
         } : undefined}
         onEventCreated={() => {
           refreshEvents();

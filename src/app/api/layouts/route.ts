@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, getDisplayAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { layouts } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { createLayoutSchema, validateRequest } from '@/lib/validations';
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth();
-  if (auth instanceof NextResponse) return auth;
+  const auth = await getDisplayAuth();
+  if (!auth) {
+    return NextResponse.json({ layouts: [] });
+  }
 
   try {
     const { searchParams } = new URL(request.url);

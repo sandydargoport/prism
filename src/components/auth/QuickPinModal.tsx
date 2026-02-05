@@ -29,6 +29,7 @@ import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/avatar';
+import { useFamily } from '@/components/providers';
 
 /**
  * FAMILY MEMBER TYPE
@@ -73,9 +74,15 @@ export function QuickPinModal({
   preSelectedMember,
   lockToMember = false,
 }: QuickPinModalProps) {
-  // Family members
-  const [members, setMembers] = useState<QuickPinMember[]>([]);
-  const [loadingMembers, setLoadingMembers] = useState(true);
+  // Family members from context
+  const { members: contextMembers, loading: loadingMembers } = useFamily();
+  const members: QuickPinMember[] = contextMembers.filter(m => m.role).map(m => ({
+    id: m.id,
+    name: m.name,
+    color: m.color,
+    avatarUrl: m.avatarUrl ?? undefined,
+    role: m.role as 'parent' | 'child' | 'guest',
+  }));
 
   // Selected member
   const [selectedMember, setSelectedMember] = useState<QuickPinMember | null>(
@@ -89,41 +96,6 @@ export function QuickPinModal({
   const [isShaking, setIsShaking] = useState(false);
 
   const pinLength = 4;
-
-  // Fetch family members
-  useEffect(() => {
-    if (!open) return;
-
-    async function fetchMembers() {
-      try {
-        const response = await fetch('/api/family');
-        if (response.ok) {
-          const data = await response.json();
-          setMembers(
-            data.members.map((m: {
-              id: string;
-              name: string;
-              role: string;
-              color: string;
-              avatarUrl?: string;
-            }) => ({
-              id: m.id,
-              name: m.name,
-              role: m.role as 'parent' | 'child' | 'guest',
-              color: m.color,
-              avatarUrl: m.avatarUrl,
-            }))
-          );
-        }
-      } catch (error) {
-        console.error('Failed to fetch family members:', error);
-      } finally {
-        setLoadingMembers(false);
-      }
-    }
-
-    fetchMembers();
-  }, [open]);
 
   // Reset state when modal closes
   useEffect(() => {

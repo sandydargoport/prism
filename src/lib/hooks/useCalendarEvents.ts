@@ -22,6 +22,8 @@ interface UseCalendarEventsOptions {
   refreshInterval?: number;
   /** Start with demo data before API loads */
   useDemoFallback?: boolean;
+  /** Auto-sync interval in minutes (0 = disabled, default = 10) */
+  autoSyncMinutes?: number;
 }
 
 interface UseCalendarEventsResult {
@@ -38,11 +40,12 @@ interface UseCalendarEventsResult {
 export function useCalendarEvents(
   options: UseCalendarEventsOptions = {}
 ): UseCalendarEventsResult {
-  const { daysToShow = 7, refreshInterval = 5 * 60 * 1000, useDemoFallback = true } = options;
+  const { daysToShow = 7, refreshInterval = 5 * 60 * 1000, useDemoFallback = true, autoSyncMinutes = 10 } = options;
 
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastSyncCheck, setLastSyncCheck] = useState<Date | null>(null);
 
   /**
    * Fetch events from the API
@@ -56,7 +59,7 @@ export function useCalendarEvents(
       const endDate = endOfDay(addDays(today, daysToShow));
 
       const response = await fetch(
-        `/api/events?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`
+        `/api/events?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}&limit=500`
       );
 
       if (!response.ok) {
@@ -141,6 +144,48 @@ export function useCalendarEvents(
     const interval = setInterval(fetchEvents, refreshInterval);
     return () => clearInterval(interval);
   }, [refreshInterval, fetchEvents]);
+
+  // Auto-sync: Check if calendars need syncing and trigger if stale
+  useEffect(() => {
+    if (autoSyncMinutes <= 0) return;
+
+    const checkAndSync = async () => {
+      try {
+        // Fetch calendar sources to check last sync times
+        const response = await fetch('/api/calendars');
+        if (!response.ok) return;
+
+        const data = await response.json();
+        const calendars = data.calendars || [];
+
+        // Check if any enabled Google calendar needs syncing
+        const syncThreshold = new Date(Date.now() - autoSyncMinutes * 60 * 1000);
+        const needsSync = calendars.some(
+          (cal: { provider: string; enabled: boolean; lastSynced: string | null }) =>
+            cal.provider === 'google' &&
+            cal.enabled &&
+            (!cal.lastSynced || new Date(cal.lastSynced) < syncThreshold)
+        );
+
+        if (needsSync) {
+          console.log('[AutoSync] Calendars stale, triggering background sync...');
+          await syncCalendars();
+          console.log('[AutoSync] Background sync complete');
+        }
+
+        setLastSyncCheck(new Date());
+      } catch (err) {
+        console.error('[AutoSync] Error checking sync status:', err);
+      }
+    };
+
+    // Check on mount
+    checkAndSync();
+
+    // Check periodically (every autoSyncMinutes)
+    const interval = setInterval(checkAndSync, autoSyncMinutes * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [autoSyncMinutes, syncCalendars]);
 
   return {
     events,

@@ -15,6 +15,7 @@
 import * as React from 'react';
 import { ThemeProvider } from './ThemeProvider';
 import { AuthProvider } from './AuthProvider';
+import { FamilyProvider } from './FamilyProvider';
 
 interface ProvidersProps {
   children: React.ReactNode;
@@ -30,9 +31,11 @@ interface ProvidersProps {
 export function Providers({ children }: ProvidersProps) {
   return (
     <ThemeProvider defaultTheme="system">
-      <AuthProvider>
-        {children}
-      </AuthProvider>
+      <FamilyProvider>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+      </FamilyProvider>
     </ThemeProvider>
   );
 }

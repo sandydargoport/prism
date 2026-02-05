@@ -21,7 +21,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
   ShoppingCart,
@@ -34,11 +34,11 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useShoppingLists } from '@/lib/hooks';
 import { PageWrapper } from '@/components/layout';
-import { useAuth } from '@/components/providers';
+import { useAuth, useFamily } from '@/components/providers';
 import { ShoppingItemRow } from '@/app/shopping/ShoppingItemRow';
 import { ItemModal } from '@/app/shopping/ItemModal';
 import { ListModal } from '@/app/shopping/ListModal';
-import type { ShoppingItem, ShoppingList, FamilyMember } from '@/types';
+import type { ShoppingItem, ShoppingList } from '@/types';
 
 export function getCategoryEmoji(category: string): string {
   switch (category) {
@@ -72,14 +72,8 @@ export function ShoppingView() {
     deleteItem: apiDeleteItem
   } = useShoppingLists({});
 
-  // Fetch family members for assignment dropdown
-  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
-  useEffect(() => {
-    fetch('/api/family')
-      .then(res => res.json())
-      .then(data => setFamilyMembers(data.members || []))
-      .catch(err => console.error('Failed to fetch family members:', err));
-  }, []);
+  // Family members from context
+  const { members: familyMembers } = useFamily();
 
   const lists = apiLists;
 
@@ -313,10 +307,11 @@ export function ShoppingView() {
       {showAddItemModal && activeList && (
         <ItemModal
           listId={activeList.id}
+          lists={lists}
           onClose={() => setShowAddItemModal(false)}
           onSave={async (item) => {
             try {
-              await apiAddItem(activeList.id, {
+              await apiAddItem(item.listId, {
                 name: item.name,
                 quantity: item.quantity ?? undefined,
                 unit: item.unit ?? undefined,
@@ -324,6 +319,10 @@ export function ShoppingView() {
                 notes: item.notes ?? undefined,
               });
               setShowAddItemModal(false);
+              // If added to a different list, switch to that list
+              if (item.listId !== activeList.id) {
+                setActiveListId(item.listId);
+              }
             } catch (error) {
               console.error('Failed to add item:', error);
               alert('Failed to add item. Please try again.');
@@ -385,7 +384,10 @@ export function ShoppingView() {
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify(listData),
                 });
-                if (!response.ok) throw new Error('Failed to update list');
+                if (!response.ok) {
+                  const data = await response.json().catch(() => ({}));
+                  throw new Error(data.error || 'Failed to update list');
+                }
               } else {
                 // Create new list
                 const response = await fetch('/api/shopping-lists', {
@@ -393,7 +395,10 @@ export function ShoppingView() {
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify(listData),
                 });
-                if (!response.ok) throw new Error('Failed to create list');
+                if (!response.ok) {
+                  const data = await response.json().catch(() => ({}));
+                  throw new Error(data.error || 'Failed to create list');
+                }
                 const newList = await response.json();
                 setActiveListId(newList.id);
               }
@@ -402,7 +407,7 @@ export function ShoppingView() {
               refreshLists();
             } catch (error) {
               console.error('Failed to save list:', error);
-              alert('Failed to save list. Please try again.');
+              alert(error instanceof Error ? error.message : 'Failed to save list. Please try again.');
             }
           }}
         />

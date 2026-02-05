@@ -33,11 +33,19 @@ import {
  * If calendarId is not provided, syncs all enabled calendars.
  */
 export async function POST(request: NextRequest) {
+  console.log('[Sync API] POST /api/calendars/sync called');
+
   const auth = await requireAuth();
-  if (auth instanceof NextResponse) return auth;
+  if (auth instanceof NextResponse) {
+    console.log('[Sync API] Authentication failed');
+    return auth;
+  }
+
+  console.log('[Sync API] Authenticated as:', auth.userId, 'role:', auth.role);
 
   try {
     const body = await request.json().catch(() => ({}));
+    console.log('[Sync API] Request body:', body);
 
     const options: { timeMin?: Date; timeMax?: Date } = {};
 

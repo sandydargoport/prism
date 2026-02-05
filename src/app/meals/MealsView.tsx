@@ -125,14 +125,19 @@ export function MealsView() {
     const user = await requireAuth("Who's planning this meal?");
     if (!user) return;
     try {
-      await fetch('/api/meals', {
+      const response = await fetch('/api/meals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...meal, createdBy: user.id }),
       });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to create meal');
+      }
       await fetchMeals();
     } catch (err) {
       console.error('Failed to add meal:', err);
+      alert(err instanceof Error ? err.message : 'Failed to add meal');
     }
   };
 

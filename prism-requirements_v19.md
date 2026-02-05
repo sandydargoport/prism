@@ -3323,7 +3323,7 @@ describe('Date Utilities', () => {
 
 ### Repository Setup
 
-**Repository Name:** `prism` 
+**Repository Name:** `prism`
 **Visibility:** Public (open source)  
 **License:** MIT License  
 **Topics:** family-dashboard, home-automation, calendar, react, nextjs, typescript, docker, prism
@@ -3389,7 +3389,7 @@ prism/
 
 Prism is an open-source family dashboard that brings everyone together. Sync calendars, manage chores, plan meals, track tasks, and stay connected—all on one beautiful touchscreen display.
 
-**Prism** (noun): Your circle of friends, neighbors, and acquaintances. In "prism and kin," it represents both family and community coming together.
+**Prism** (noun): A lens that brings all the colors of family life into one focused view — calendars, chores, meals, and messages unified on a single display.
 
 ![Prism Dashboard](docs/screenshots/main-dashboard.png)
 
@@ -5069,7 +5069,7 @@ Could improve: Centralized error boundary at app level.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              PRISM ARCHITECTURE                               │
+│                             PRISM ARCHITECTURE                               │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  ┌──────────────────────────────────────────────────────────────────────┐   │

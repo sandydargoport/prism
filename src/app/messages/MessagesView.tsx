@@ -21,7 +21,6 @@
 import * as React from 'react';
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { formatDistanceToNow, format } from 'date-fns';
 import {
   MessageSquare,
@@ -30,7 +29,6 @@ import {
   Pin,
   AlertTriangle,
   Trash2,
-  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -48,8 +46,8 @@ import type { FamilyMember } from '@/types';
  * MESSAGES VIEW COMPONENT
  */
 export function MessagesView() {
-  const router = useRouter();
-  const { activeUser, requireAuth, clearActiveUser } = useAuth();
+
+  const { activeUser, requireAuth } = useAuth();
 
   // State
   const { messages, loading, error, refresh, deleteMessage } = useMessages();
@@ -145,44 +143,13 @@ export function MessagesView() {
               </div>
             </div>
 
-            {/* Right: Add button, user avatar, settings */}
-            <div className="flex items-center gap-2">
-              <Button onClick={async () => {
+            <Button onClick={async () => {
                 const user = await requireAuth("Who's posting?");
                 if (user) setShowAddModal(true);
               }}>
                 <Plus className="h-4 w-4 mr-1" />
                 Add Message
               </Button>
-
-              {/* User avatar */}
-              <button
-                onClick={activeUser ? clearActiveUser : () => requireAuth()}
-                className="flex items-center gap-2 p-1.5 rounded-full hover:bg-accent transition-colors"
-                aria-label={activeUser ? 'Log out' : 'Log in'}
-              >
-                {activeUser ? (
-                  <UserAvatar
-                    name={activeUser.name}
-                    color={activeUser.color}
-                    size="sm"
-                    className="h-8 w-8"
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center bg-muted border-2 border-dashed border-muted-foreground/50">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground">
-                      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-                      <circle cx="12" cy="7" r="4" />
-                    </svg>
-                  </div>
-                )}
-              </button>
-
-              {/* Settings */}
-              <Button variant="ghost" size="icon" onClick={() => router.push('/settings')}>
-                <Settings className="h-5 w-5" />
-              </Button>
-            </div>
           </div>
         </header>
 

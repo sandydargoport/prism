@@ -16,7 +16,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
+import { optionalAuth } from '@/lib/auth';
 import { fetchWeatherData } from '@/lib/integrations/openweather';
 import { getCached } from '@/lib/cache/redis';
 
@@ -28,8 +28,8 @@ const WEATHER_CACHE_TTL = 30 * 60;
  * Fetches weather data for a location (cached for 30 minutes)
  */
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth();
-  if (auth instanceof NextResponse) return auth;
+  // Weather is available to everyone - no auth required for read-only
+  const _auth = await optionalAuth();
 
   try {
     const { searchParams } = new URL(request.url);

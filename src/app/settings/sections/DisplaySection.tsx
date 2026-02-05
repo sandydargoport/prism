@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect, useCallback } from 'react';
 import { Sun, Moon, Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,7 @@ import { MONTH_NAMES, seasonalPalettes } from '@/lib/themes/seasonalThemes';
 import { useWallpaperSettings, useAutoOrientationSetting } from '@/components/layout/WallpaperBackground';
 import { useScreenOrientation } from '@/lib/hooks/useScreenOrientation';
 import { useOrientationOverride } from '../SettingsView';
+import { useFamily } from '@/components/providers/FamilyProvider';
 
 function getCurrentMonthNum(): number {
   return new Date().getMonth() + 1;
@@ -38,6 +40,8 @@ export function DisplaySection() {
           Customize how the dashboard looks
         </p>
       </div>
+
+      <DisplayUserCard />
 
       <Card>
         <CardHeader>
@@ -171,6 +175,77 @@ export function DisplaySection() {
 
       <OrientationCard />
     </div>
+  );
+}
+
+function DisplayUserCard() {
+  const { members } = useFamily();
+  const [displayUserId, setDisplayUserId] = useState<string>('');
+  const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  const parentMembers = members.filter(m => m.role === 'parent');
+
+  const fetchSetting = useCallback(async () => {
+    try {
+      const res = await fetch('/api/settings');
+      if (res.ok) {
+        const data = await res.json();
+        setDisplayUserId((data.settings?.displayUserId as string) || '');
+      }
+    } catch { /* ignore */ }
+    setLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    fetchSetting();
+  }, [fetchSetting]);
+
+  const handleChange = async (value: string) => {
+    setDisplayUserId(value);
+    setSaving(true);
+    try {
+      await fetch('/api/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          key: 'displayUserId',
+          value: value || null,
+        }),
+      });
+    } catch { /* ignore */ }
+    setSaving(false);
+  };
+
+  if (!loaded) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Default Display User</CardTitle>
+        <CardDescription>
+          When no one is logged in, the dashboard shows data as this user would see it (read-only).
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <select
+          value={displayUserId}
+          onChange={(e) => handleChange(e.target.value)}
+          disabled={saving}
+          className="w-full border border-border rounded px-3 py-2 text-sm bg-background"
+        >
+          <option value="">None (empty dashboard when logged out)</option>
+          {parentMembers.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
+          ))}
+        </select>
+        {saving && (
+          <p className="text-xs text-muted-foreground">Saving...</p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

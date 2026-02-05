@@ -99,7 +99,7 @@ function MiniMonth({
                   className={cn(
                     'flex flex-col rounded text-xs cursor-pointer overflow-hidden p-0.5',
                     !inMonth && 'text-muted-foreground/40',
-                    isPast && inMonth && 'bg-muted/40 dark:bg-muted/30',
+                    isPast && inMonth && 'bg-gray-200 text-gray-600 dark:bg-muted/30 dark:text-muted-foreground',
                     today && 'bg-seasonal-highlight/20',
                   )}
                 >

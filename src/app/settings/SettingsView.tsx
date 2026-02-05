@@ -19,8 +19,6 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { PageWrapper } from '@/components/layout';
-import type { FamilyMember } from './components/PinEditModal';
-
 import { AccountSection } from './sections/AccountSection';
 import { FamilySection } from './sections/FamilySection';
 import { CalendarsSection } from './sections/CalendarsSection';
@@ -111,31 +109,6 @@ export function SettingsView() {
   const searchParams = useSearchParams();
   const initialSection = searchParams.get('section') || 'account';
   const [activeSection, setActiveSection] = useState<string>(initialSection);
-  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
-  const [familyLoading, setFamilyLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchFamilyMembers() {
-      try {
-        const response = await fetch('/api/family');
-        if (response.ok) {
-          const data = await response.json();
-          setFamilyMembers(data.members.map((m: { id: string; name: string; role: string; color: string; hasPin: boolean }) => ({
-            id: m.id,
-            name: m.name,
-            role: m.role as 'parent' | 'child' | 'guest',
-            color: m.color,
-            hasPin: m.hasPin,
-          })));
-        }
-      } catch (error) {
-        console.error('Failed to fetch family members:', error);
-      } finally {
-        setFamilyLoading(false);
-      }
-    }
-    fetchFamilyMembers();
-  }, []);
 
   const sections = [
     { id: 'account', label: 'Account', icon: User },
@@ -190,17 +163,11 @@ export function SettingsView() {
           <div className="flex-1 overflow-y-auto p-6">
             <div className="max-w-2xl">
               {activeSection === 'account' && <AccountSection />}
-              {activeSection === 'family' && (
-                <FamilySection familyMembers={familyMembers} setFamilyMembers={setFamilyMembers} />
-              )}
-              {activeSection === 'calendars' && (
-                <CalendarsSection familyMembers={familyMembers} />
-              )}
+              {activeSection === 'family' && <FamilySection />}
+              {activeSection === 'calendars' && <CalendarsSection />}
               {activeSection === 'photos' && <PhotosSettingsSection />}
               {activeSection === 'display' && <DisplaySection />}
-              {activeSection === 'security' && (
-                <SecuritySection familyMembers={familyMembers} setFamilyMembers={setFamilyMembers} />
-              )}
+              {activeSection === 'security' && <SecuritySection />}
               {activeSection === 'about' && (
                 <div className="space-y-6">
                   <div>
@@ -218,7 +185,7 @@ export function SettingsView() {
                         tasks, messages, and more. All on one beautiful dashboard.
                       </p>
                       <div className="mt-6 text-xs text-muted-foreground">
-                        <p>Open Source under MIT License</p>
+                        <p>Open Source under AGPL-3.0 License</p>
                         <a
                           href="https://github.com/yourusername/prism"
                           className="text-primary hover:underline"

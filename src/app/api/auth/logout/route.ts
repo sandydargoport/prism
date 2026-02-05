@@ -22,6 +22,9 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { invalidateSession } from '@/lib/auth/session';
 
+// Determine if cookies should be secure based on BASE_URL scheme
+const isSecure = process.env.BASE_URL?.startsWith('https://') ?? process.env.NODE_ENV === 'production';
+
 
 /**
  * POST /api/auth/logout
@@ -57,7 +60,7 @@ export async function POST() {
     // Setting maxAge: 0 immediately expires the cookie
     cookieStore.set('prism_session', '', {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isSecure,
       sameSite: 'lax',
       maxAge: 0, // Expire immediately
       path: '/',
@@ -66,7 +69,7 @@ export async function POST() {
     // Clear the user ID cookie
     cookieStore.set('prism_user', '', {
       httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isSecure,
       sameSite: 'lax',
       maxAge: 0,
       path: '/',

@@ -33,7 +33,7 @@ import {
   Label,
   Switch,
 } from '@/components/ui';
-import type { FamilyMember } from '@/types';
+import { useFamily } from '@/components/providers';
 
 /**
  * Chore data returned after creation
@@ -127,16 +127,8 @@ export function AddChoreModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Family members for assignment
-  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
-  const [loadingMembers, setLoadingMembers] = useState(true);
-
-  // Fetch family members when modal opens
-  useEffect(() => {
-    if (open) {
-      fetchFamilyMembers();
-    }
-  }, [open]);
+  // Family members from context
+  const { members: familyMembers, loading: loadingMembers } = useFamily();
 
   // Populate form when editing
   useEffect(() => {
@@ -166,28 +158,6 @@ export function AddChoreModal({
       setError(null);
     }
   }, [open]);
-
-  async function fetchFamilyMembers() {
-    try {
-      setLoadingMembers(true);
-      const response = await fetch('/api/family');
-      if (response.ok) {
-        const data = await response.json();
-        setFamilyMembers(
-          data.members.map((m: { id: string; name: string; color: string; avatarUrl?: string | null }) => ({
-            id: m.id,
-            name: m.name,
-            color: m.color,
-            avatarUrl: m.avatarUrl,
-          }))
-        );
-      }
-    } catch (err) {
-      console.error('Failed to fetch family members:', err);
-    } finally {
-      setLoadingMembers(false);
-    }
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

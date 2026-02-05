@@ -32,7 +32,7 @@
 | 21 | [21-data-architecture.md](21-data-architecture.md) | DB schema, API integrations (Google, Apple, MS, Enphase, Sonos, Weather) | 1740–2268 | Done |
 | 22 | [22-project-structure.md](22-project-structure.md) | Directory structure | 2271–2459 | Done |
 | 23 | [23-config.md](23-config.md) | Environment variables, user settings JSON | 2463–2593 | Done |
-| 24 | [24-code-standards.md](24-code-standards.md) | Code documentation standards | 2596–2689 | Partial |
+| 24 | [24-code-standards.md](24-code-standards.md) | Code standards and comment philosophy | 2596–2689 | Done |
 | 25 | [25-dev-workflow.md](25-dev-workflow.md) | Setup instructions, Docker, deployment | 2693–2844 | Done |
 | 26 | [26-nonfunctional.md](26-nonfunctional.md) | Performance, security, reliability, usability requirements | 2848–2921 | Partial |
 | 27 | [27-deployment-guide.md](27-deployment-guide.md) | Non-coder deployment guide, setup wizard | 2923–3178 | Done |

@@ -19,9 +19,10 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
+import { useCalendarSources } from '@/lib/hooks';
 import {
   Dialog,
   DialogContent,
@@ -73,6 +74,7 @@ export interface EventToEdit {
   recurrenceRule?: string;
   color?: string;
   reminderMinutes?: number;
+  calendarSourceId?: string;
 }
 
 /**
@@ -90,19 +92,6 @@ export interface AddEventModalProps {
   /** Pre-fill start date when creating */
   defaultDate?: Date;
 }
-
-/**
- * Color options for events
- */
-const COLOR_OPTIONS = [
-  { value: '#3B82F6', label: 'Blue' },
-  { value: '#EC4899', label: 'Pink' },
-  { value: '#10B981', label: 'Green' },
-  { value: '#F59E0B', label: 'Orange' },
-  { value: '#8B5CF6', label: 'Purple' },
-  { value: '#EF4444', label: 'Red' },
-  { value: '#14B8A6', label: 'Teal' },
-];
 
 /**
  * Reminder options (minutes before event)
@@ -172,6 +161,16 @@ export function AddEventModal({
 }: AddEventModalProps) {
   const isEditMode = !!event;
 
+  // Fetch available calendars
+  const { calendars } = useCalendarSources();
+
+  // Filter to only show calendars that support writing (Google calendars with write access)
+  const writableCalendars = useMemo(() => {
+    return calendars.filter(
+      (cal) => cal.enabled && (cal.provider === 'google' || cal.provider === 'local')
+    );
+  }, [calendars]);
+
   // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -181,8 +180,8 @@ export function AddEventModal({
   const [allDay, setAllDay] = useState(false);
   const [recurring, setRecurring] = useState(false);
   const [recurrenceRule, setRecurrenceRule] = useState('');
-  const [color, setColor] = useState(COLOR_OPTIONS[0]?.value || '#3B82F6');
   const [reminderMinutes, setReminderMinutes] = useState<number | ''>('');
+  const [calendarSourceId, setCalendarSourceId] = useState<string>('local');
 
   // Loading/error state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -199,8 +198,9 @@ export function AddEventModal({
       setAllDay(event.allDay || false);
       setRecurring(event.recurring || false);
       setRecurrenceRule(event.recurrenceRule || '');
-      setColor(event.color || COLOR_OPTIONS[0]?.value || '#3B82F6');
       setReminderMinutes(event.reminderMinutes ?? '');
+      // Set calendar source - use 'local' if no calendarSourceId
+      setCalendarSourceId(event.calendarSourceId || 'local');
     } else if (open && defaultDate) {
       // Pre-fill with default date
       const start = new Date(defaultDate);
@@ -223,8 +223,8 @@ export function AddEventModal({
       setAllDay(false);
       setRecurring(false);
       setRecurrenceRule('');
-      setColor(COLOR_OPTIONS[0]?.value || '#3B82F6');
       setReminderMinutes('');
+      setCalendarSourceId('local');
       setError(null);
     }
   }, [open]);
@@ -254,8 +254,8 @@ export function AddEventModal({
         allDay,
         recurring,
         recurrenceRule: recurring && recurrenceRule.trim() ? recurrenceRule.trim() : undefined,
-        color,
         reminderMinutes: reminderMinutes !== '' ? Number(reminderMinutes) : undefined,
+        calendarSourceId: calendarSourceId !== 'local' ? calendarSourceId : undefined,
       };
 
       const url = isEditMode ? `/api/events/${event.id}` : '/api/events';
@@ -309,6 +309,43 @@ export function AddEventModal({
               autoFocus
               required
             />
+          </div>
+
+          {/* Calendar Selection */}
+          <div className="space-y-2">
+            <Label htmlFor="event-calendar">Calendar</Label>
+            <Select value={calendarSourceId} onValueChange={setCalendarSourceId}>
+              <SelectTrigger id="event-calendar">
+                <SelectValue placeholder="Select a calendar" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="local">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-gray-400" />
+                    Local Only
+                  </div>
+                </SelectItem>
+                {writableCalendars.map((cal) => (
+                  <SelectItem key={cal.id} value={cal.id}>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: cal.color || '#3B82F6' }}
+                      />
+                      {cal.displayName || cal.dashboardCalendarName}
+                      {cal.provider === 'google' && (
+                        <span className="text-xs text-muted-foreground">(Google)</span>
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {calendarSourceId !== 'local' && (
+              <p className="text-xs text-muted-foreground">
+                Event will be synced to the selected Google Calendar
+              </p>
+            )}
           </div>
 
           {/* Description */}
@@ -370,41 +407,18 @@ export function AddEventModal({
             </Label>
           </div>
 
-          {/* Color */}
-          <div className="space-y-2">
-            <Label htmlFor="event-color">Color</Label>
-            <Select value={color} onValueChange={setColor}>
-              <SelectTrigger id="event-color">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {COLOR_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-4 h-4 rounded-full border border-border"
-                        style={{ backgroundColor: option.value }}
-                      />
-                      {option.label}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           {/* Reminder */}
           <div className="space-y-2">
             <Label htmlFor="event-reminder">Reminder (optional)</Label>
             <Select
-              value={reminderMinutes !== '' ? String(reminderMinutes) : ''}
-              onValueChange={(value) => setReminderMinutes(value ? Number(value) : '')}
+              value={reminderMinutes !== '' ? String(reminderMinutes) : 'none'}
+              onValueChange={(value) => setReminderMinutes(value === 'none' ? '' : Number(value))}
             >
               <SelectTrigger id="event-reminder">
                 <SelectValue placeholder="No reminder" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No reminder</SelectItem>
+                <SelectItem value="none">No reminder</SelectItem>
                 {REMINDER_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={String(option.value)}>
                     {option.label}

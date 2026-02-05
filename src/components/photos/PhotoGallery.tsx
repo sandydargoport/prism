@@ -13,17 +13,27 @@ interface PhotoGalleryProps {
 }
 
 function usageBadge(usage: Photo['usage']): string {
-  switch (usage) {
-    case 'wallpaper': return 'W';
-    case 'gallery': return 'G';
-    case 'screensaver': return 'S';
-    case 'all': return 'A';
-    case 'none': return '—';
-    default: return '—';
-  }
+  if (!usage) return '—';
+  const tags = usage.split(',').filter(Boolean);
+  if (tags.length === 0) return '—';
+
+  // Build badge from first letter of each tag
+  const letters: string[] = [];
+  if (tags.includes('wallpaper')) letters.push('W');
+  if (tags.includes('gallery')) letters.push('G');
+  if (tags.includes('screensaver')) letters.push('S');
+
+  return letters.length > 0 ? letters.join('') : '—';
 }
 
 const qualityColors = { green: 'bg-green-500', yellow: 'bg-yellow-500', red: 'bg-red-500' };
+
+function orientationBadge(width: number | null, height: number | null): string {
+  if (!width || !height) return '?';
+  if (width > height) return 'L';
+  if (height > width) return 'P';
+  return 'S'; // square
+}
 
 export function PhotoGallery({
   photos,
@@ -53,6 +63,10 @@ export function PhotoGallery({
             {/* Usage badge */}
             <span className="absolute bottom-1.5 left-1.5 px-1 py-0.5 text-[10px] font-bold leading-none rounded bg-black/50 text-white/80">
               {usageBadge(photo.usage)}
+            </span>
+            {/* Orientation badge */}
+            <span className="absolute bottom-1.5 right-1.5 px-1 py-0.5 text-[10px] font-bold leading-none rounded bg-black/50 text-white/80">
+              {orientationBadge(photo.width, photo.height)}
             </span>
           </div>
         ))}

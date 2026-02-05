@@ -9,6 +9,8 @@ export interface WidgetConfig {
   w: number;
   h: number;
   visible?: boolean;
+  backgroundColor?: string;
+  backgroundOpacity?: number;
   settings?: Record<string, unknown>;
 }
 
@@ -59,6 +61,14 @@ export function useLayouts(): UseLayoutsResult {
             visible: w.visible,
             settings: w.settings,
           } as WidgetConfig;
+        });
+        // Migrate settings.backgroundColor/backgroundOpacity to top-level fields
+        widgets = widgets.map(w => {
+          if (w.settings?.backgroundColor && !w.backgroundColor) {
+            const { backgroundColor, backgroundOpacity, ...rest } = w.settings as Record<string, unknown> & { backgroundColor?: string; backgroundOpacity?: number };
+            return { ...w, backgroundColor, backgroundOpacity: backgroundOpacity ?? w.backgroundOpacity, settings: Object.keys(rest).length > 0 ? rest : undefined };
+          }
+          return w;
         });
         // Migrate old 4-col layouts to 12-col: if max(x+w) <= 4, scale by 3
         const maxRight = Math.max(...widgets.map(w => w.x + w.w), 0);

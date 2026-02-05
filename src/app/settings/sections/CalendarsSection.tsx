@@ -8,10 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useCalendarSources } from '@/lib/hooks';
+import { useFamily } from '@/components/providers';
 import { CalendarColorPicker } from '../components/CalendarColorPicker';
-import type { FamilyMember } from '../components/PinEditModal';
 
-export function CalendarsSection({ familyMembers }: { familyMembers: FamilyMember[] }) {
+export function CalendarsSection() {
+  const { members: familyMembers } = useFamily();
   const { calendars, loading: calendarsLoading, refresh: refreshCalendars } = useCalendarSources();
   const [syncing, setSyncing] = useState(false);
   const [updatingCalendar, setUpdatingCalendar] = useState<string | null>(null);
@@ -138,12 +139,31 @@ export function CalendarsSection({ familyMembers }: { familyMembers: FamilyMembe
   const handleSyncCalendars = async () => {
     setSyncing(true);
     try {
-      const response = await fetch('/api/calendars/sync', { method: 'POST' });
+      console.log('[Settings] Starting calendar sync...');
+      const response = await fetch('/api/calendars/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+      const data = await response.json();
+      console.log('[Settings] Sync response:', response.status, data);
+
       if (response.ok) {
+        let message = `Sync complete: ${data.synced ?? data.total ?? 0} events synced`;
+        if (data.errors && data.errors.length > 0) {
+          message += `\n\nWarnings (${data.errors.length}):\n${data.errors.slice(0, 5).join('\n')}`;
+          if (data.errors.length > 5) {
+            message += `\n...and ${data.errors.length - 5} more`;
+          }
+        }
+        alert(message);
         refreshCalendars();
+      } else {
+        alert(`Sync failed: ${data.error || data.message || 'Unknown error'}\n${data.errors?.join('\n') || ''}`);
       }
     } catch (error) {
       console.error('Failed to sync calendars:', error);
+      alert(`Sync error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setSyncing(false);
     }

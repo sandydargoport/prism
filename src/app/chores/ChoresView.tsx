@@ -22,7 +22,6 @@
 import * as React from 'react';
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { isPast, parseISO } from 'date-fns';
 import {
   ClipboardList,
@@ -30,27 +29,25 @@ import {
   Home,
   AlertCircle,
   SortAsc,
-  Settings,
   Clock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { UserAvatar } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
 import { PageWrapper } from '@/components/layout';
-import { useAuth } from '@/components/providers';
+import { useAuth, useFamily } from '@/components/providers';
 import { useChores } from '@/lib/hooks';
 import { ChoreItem } from '@/app/chores/ChoreItem';
 import { ChoreModal } from '@/app/chores/ChoreModal';
-import type { Chore, FamilyMember } from '@/types';
+import type { Chore } from '@/types';
 
 
 /**
  * CHORES VIEW COMPONENT
  */
 export function ChoresView() {
-  const router = useRouter();
-  const { activeUser, requireAuth, clearActiveUser } = useAuth();
+
+  const { requireAuth } = useAuth();
 
   // Fetch chores from API using the hook
   const {
@@ -61,9 +58,11 @@ export function ChoresView() {
     approveChore: apiApproveChore,
   } = useChores({ showDisabled: true });
 
+  // Family members from context
+  const { members: familyMembers } = useFamily();
+
   // Local state for UI transformations
   const [chores, setChores] = useState<Chore[]>([]);
-  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [filterPerson, setFilterPerson] = useState<string | null>(null);
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [showDisabled, setShowDisabled] = useState(false);
@@ -83,26 +82,6 @@ export function ChoresView() {
       })));
     }
   }, [apiChores]);
-
-  // Fetch family members from API
-  useEffect(() => {
-    async function fetchFamilyMembers() {
-      try {
-        const response = await fetch('/api/family');
-        if (response.ok) {
-          const data = await response.json();
-          setFamilyMembers(data.members.map((m: { id: string; name: string; color: string }) => ({
-            id: m.id,
-            name: m.name,
-            color: m.color,
-          })));
-        }
-      } catch (error) {
-        console.error('Failed to fetch family members:', error);
-      }
-    }
-    fetchFamilyMembers();
-  }, []);
 
   // Filter and sort chores
   const filteredChores = useMemo(() => {
@@ -132,8 +111,8 @@ export function ChoresView() {
         case 'category':
           return a.category.localeCompare(b.category);
         case 'frequency':
-          const frequencyOrder = { daily: 0, weekly: 1, biweekly: 2, monthly: 3, custom: 4 };
-          return frequencyOrder[a.frequency] - frequencyOrder[b.frequency];
+          const frequencyOrder: Record<string, number> = { daily: 0, weekly: 1, biweekly: 2, monthly: 3, quarterly: 4, 'semi-annually': 5, annually: 6, custom: 7 };
+          return (frequencyOrder[a.frequency] ?? 99) - (frequencyOrder[b.frequency] ?? 99);
         default:
           return 0;
       }
@@ -315,41 +294,13 @@ export function ChoresView() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button onClick={async () => {
+          <Button onClick={async () => {
               const user = await requireAuth("Who's adding a chore?");
               if (user) setShowAddModal(true);
             }}>
               <Plus className="h-4 w-4 mr-1" />
               Add Chore
             </Button>
-
-            <button
-              onClick={activeUser ? clearActiveUser : () => requireAuth()}
-              className="flex items-center gap-2 p-1.5 rounded-full hover:bg-accent transition-colors"
-              aria-label={activeUser ? 'Log out' : 'Log in'}
-            >
-              {activeUser ? (
-                <UserAvatar
-                  name={activeUser.name}
-                  color={activeUser.color}
-                  size="sm"
-                  className="h-8 w-8"
-                />
-              ) : (
-                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-muted border-2 border-dashed border-muted-foreground/50">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground">
-                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-                    <circle cx="12" cy="7" r="4" />
-                  </svg>
-                </div>
-              )}
-            </button>
-
-            <Button variant="ghost" size="icon" onClick={() => router.push('/settings')}>
-              <Settings className="h-5 w-5" />
-            </Button>
-          </div>
         </div>
       </header>
 
@@ -421,7 +372,7 @@ export function ChoresView() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as 'nextDue' | 'category' | 'frequency')}
-              className="text-sm bg-transparent border border-border rounded px-2 py-1"
+              className="text-sm bg-card text-foreground border border-border rounded px-2 py-1 [&>option]:bg-card [&>option]:text-foreground"
             >
               <option value="nextDue">Next Due</option>
               <option value="category">Category</option>
@@ -499,12 +450,15 @@ export function ChoresView() {
                   assignedTo: chore.assignedTo?.id,
                 }),
               });
-              if (!response.ok) throw new Error('Failed to create chore');
+              if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(data.error || 'Failed to create chore');
+              }
               refreshChores();
               setShowAddModal(false);
             } catch (error) {
               console.error('Error creating chore:', error);
-              alert('Failed to create chore');
+              alert(error instanceof Error ? error.message : 'Failed to create chore');
             }
           }}
           familyMembers={familyMembers}

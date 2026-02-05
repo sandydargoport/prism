@@ -1,0 +1,18 @@
+export const AVATAR_PRESETS = [
+  { id: 'lion', emoji: '\u{1F981}' },
+  { id: 'bear', emoji: '\u{1F43B}' },
+  { id: 'fox', emoji: '\u{1F98A}' },
+  { id: 'cat', emoji: '\u{1F431}' },
+  { id: 'dog', emoji: '\u{1F436}' },
+  { id: 'panda', emoji: '\u{1F43C}' },
+  { id: 'penguin', emoji: '\u{1F427}' },
+  { id: 'owl', emoji: '\u{1F989}' },
+  { id: 'unicorn', emoji: '\u{1F984}' },
+  { id: 'dragon', emoji: '\u{1F409}' },
+  { id: 'robot', emoji: '\u{1F916}' },
+  { id: 'alien', emoji: '\u{1F47D}' },
+  { id: 'astronaut', emoji: '\u{1F9D1}\u200D\u{1F680}' },
+  { id: 'ninja', emoji: '\u{1F977}' },
+  { id: 'superhero', emoji: '\u{1F9B8}' },
+  { id: 'wizard', emoji: '\u{1F9D9}' },
+] as const;

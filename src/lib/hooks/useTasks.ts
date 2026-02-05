@@ -40,7 +40,7 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksResult {
     userId,
     showCompleted = false,
     limit = 50,
-    refreshInterval = 60 * 1000,
+    refreshInterval = 5 * 60 * 1000,
   } = options;
 
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -147,12 +147,27 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksResult {
     fetchTasks();
   }, [fetchTasks]);
 
-  // Set up refresh interval
+  // Set up refresh interval with visibility-based pause
   useEffect(() => {
     if (refreshInterval <= 0) return;
 
-    const interval = setInterval(fetchTasks, refreshInterval);
-    return () => clearInterval(interval);
+    let interval = setInterval(fetchTasks, refreshInterval);
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        clearInterval(interval);
+      } else {
+        fetchTasks();
+        interval = setInterval(fetchTasks, refreshInterval);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [refreshInterval, fetchTasks]);
 
   return {
