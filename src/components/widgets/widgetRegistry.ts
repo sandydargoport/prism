@@ -1,16 +1,16 @@
-import { ComponentType } from 'react';
-import {
-  ClockWidget,
-  WeatherWidget,
-  CalendarWidget,
-  TasksWidget,
-  MessagesWidget,
-  ChoresWidget,
-  ShoppingWidget,
-  MealsWidget,
-  BirthdaysWidget,
-  PhotoWidget,
-} from '@/components/widgets';
+import { ComponentType, lazy } from 'react';
+import { ClockWidget } from './ClockWidget';
+import { WeatherWidget } from './WeatherWidget';
+import { CalendarWidget } from './CalendarWidget';
+
+// Lazy-load non-default widgets to reduce initial bundle size
+const TasksWidget = lazy(() => import('./TasksWidget').then(m => ({ default: m.TasksWidget })));
+const MessagesWidget = lazy(() => import('./MessagesWidget').then(m => ({ default: m.MessagesWidget })));
+const ChoresWidget = lazy(() => import('./ChoresWidget').then(m => ({ default: m.ChoresWidget })));
+const ShoppingWidget = lazy(() => import('./ShoppingWidget').then(m => ({ default: m.ShoppingWidget })));
+const MealsWidget = lazy(() => import('./MealsWidget').then(m => ({ default: m.MealsWidget })));
+const BirthdaysWidget = lazy(() => import('./BirthdaysWidget').then(m => ({ default: m.BirthdaysWidget })));
+const PhotoWidget = lazy(() => import('./PhotoWidget').then(m => ({ default: m.PhotoWidget })));
 
 export interface WidgetProps {
   className?: string;
