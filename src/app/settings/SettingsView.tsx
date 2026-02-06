@@ -15,6 +15,7 @@ import {
   Calendar,
   User,
   ImageIcon,
+  ListTodo,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,7 @@ import { CalendarsSection } from './sections/CalendarsSection';
 import { DisplaySection } from './sections/DisplaySection';
 import { SecuritySection } from './sections/SecuritySection';
 import { PhotosSettingsSection } from './sections/PhotosSettingsSection';
+import { TaskIntegrationsSection } from './sections/TaskIntegrationsSection';
 
 
 // ============================================================================
@@ -115,6 +117,7 @@ export function SettingsView() {
     { id: 'account', label: 'Account', icon: User },
     { id: 'family', label: 'Family Members', icon: Users },
     { id: 'calendars', label: 'Calendars', icon: Calendar },
+    { id: 'tasks', label: 'Task Integrations', icon: ListTodo },
     { id: 'photos', label: 'Photos', icon: ImageIcon },
     { id: 'display', label: 'Display', icon: Palette },
     { id: 'security', label: 'Security', icon: Shield },
@@ -166,6 +169,7 @@ export function SettingsView() {
               {activeSection === 'account' && <AccountSection />}
               {activeSection === 'family' && <FamilySection />}
               {activeSection === 'calendars' && <CalendarsSection />}
+              {activeSection === 'tasks' && <TaskIntegrationsSection />}
               {activeSection === 'photos' && <PhotosSettingsSection />}
               {activeSection === 'display' && <DisplaySection />}
               {activeSection === 'security' && <SecuritySection />}
