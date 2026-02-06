@@ -127,142 +127,195 @@ Mark tasks complete with `[x]` as you finish them.
 
 ---
 
-## Phase 10: Photo Slideshow & Gallery
+## Phase 10: External Integrations
+
+> Provider-agnostic architecture for syncing with external task and recipe apps.
+
+### Task 10.1: Task Integration Architecture
+- **Schema:** `task_sources` table (userId, provider, externalListId, prismListId, tokens, lastSyncAt)
+- **Schema:** Extend `tasks` table with sourceId, externalId, externalUpdatedAt
+- **File to Create:** `src/lib/integrations/tasks/types.ts` (provider adapter interface)
+- **Acceptance:** Database supports multi-provider task sync
+
+### Task 10.2: Microsoft To-Do Integration
+- **File to Create:** `src/lib/integrations/tasks/microsoft-todo.ts`
+- **Features:** Extend existing MS OAuth for Tasks.ReadWrite scope, list-level sync, bidirectional sync
+- **Acceptance:** Can sync selected MS To-Do lists with Prism tasks
+
+### Task 10.3: Todoist Integration
+- **File to Create:** `src/lib/integrations/tasks/todoist.ts`
+- **Features:** OAuth, project/list mapping, bidirectional sync
+- **Acceptance:** Can sync Todoist projects with Prism tasks
+
+### Task 10.4: Task Sync Settings UI
+- **File to Create:** `src/app/settings/sections/TaskIntegrationsSection.tsx`
+- **Features:** Connect providers, select lists to sync, per-user configuration
+- **Acceptance:** Family members can each connect their own task provider
+
+### Task 10.5: Recipe System Schema
+- **Schema:** `recipes` table (name, url, sourceType, ingredients JSON, instructions, prepTime, cookTime, servings, tags, imageUrl)
+- **Schema:** Extend `meals` table with recipeId FK
+- **Acceptance:** Database supports recipe storage and meal linking
+
+### Task 10.6: Recipe Management
+- **File to Create:** `src/app/api/recipes/route.ts`, `src/app/api/recipes/[id]/route.ts`
+- **File to Create:** `src/lib/hooks/useRecipes.ts`
+- **Features:** CRUD for recipes, link to meals, search/filter
+- **Acceptance:** Can create, edit, delete, and browse recipes
+
+### Task 10.7: Recipe URL Scraping
+- **File to Create:** `src/lib/utils/recipeParser.ts`
+- **Features:** Fetch URL, parse schema.org Recipe markup, extract title/ingredients/instructions/image
+- **Acceptance:** Paste a recipe URL and auto-populate recipe fields
+
+### Task 10.8: Paprika Import
+- **File to Create:** `src/lib/integrations/recipes/paprika-import.ts`
+- **Features:** Parse Paprika HTML export or .paprikarecipes format, bulk import
+- **Acceptance:** Can upload Paprika export and import all recipes
+
+### Task 10.9: Recipe UI
+- **File to Create:** `src/app/recipes/page.tsx`, `src/app/recipes/RecipesView.tsx`
+- **Features:** Recipe browser, search, add from URL, manual entry, link to meal planning
+- **Acceptance:** Full recipe management page integrated with meals
+
+---
+
+## Phase 11: Photo Slideshow & Gallery
 
 > **Ref:** `docs/requirements/09-photos.md`, `docs/requirements/21-data-architecture.md` (iCloud/OneDrive APIs)
 
-### Task 10.1: Photo Sources Integration
+### Task 11.1: Photo Sources Integration
 - **Files:** `src/lib/integrations/icloud-photos.ts`, `src/lib/integrations/google-photos.ts`
 - **Features:** Authenticate with iCloud/Google Photos, list albums, fetch photos
 - **Acceptance:** Can connect to photo sources and retrieve photo metadata
 
-### Task 10.2: Photo Cache/Storage System
+### Task 11.2: Photo Cache/Storage System
 - **File to Create:** `src/lib/cache/photos.ts`
 - **File to Create:** `src/app/api/photos/route.ts`
 - **Features:** Local photo cache, download and resize, cache management
 - **Acceptance:** Photos are cached locally for fast slideshow display
 
-### Task 10.3: Slideshow Widget
+### Task 11.3: Slideshow Widget
 - **File to Create:** `src/components/widgets/PhotoWidget.tsx`
 - **Features:** Transition effects (fade, slide, zoom), configurable duration, shuffle/chronological, favorites
 - **Acceptance:** Widget cycles through photos with smooth transitions
 
-### Task 10.4: Screensaver/Idle Mode
+### Task 11.4: Screensaver/Idle Mode
 - **File to Modify:** `src/lib/hooks/useIdleDetection.ts`
 - **Features:** Full-screen slideshow on idle, wake on touch/motion, configurable timeout
 - **Acceptance:** Dashboard enters photo screensaver after idle timeout
 
-### Task 10.5: Photo Upload
+### Task 11.5: Photo Upload
 - **File to Create:** `src/app/api/photos/upload/route.ts`
 - **Features:** Drag-and-drop upload, mobile upload via QR code link
 - **Acceptance:** Parents can upload photos directly
 
 ---
 
-## Phase 11: Away/Travel Mode
+## Phase 12: Away/Travel Mode
 
 > **Ref:** `docs/requirements/12-away-mode.md`
 
-### Task 11.1: Away Mode State & API
+### Task 12.1: Away Mode State & API
 - **File to Create:** `src/app/api/away-mode/route.ts`
 - **File to Create:** `src/lib/hooks/useAwayMode.ts`
 - **Features:** Toggle away mode, scheduled activation, PIN to exit
 - **Acceptance:** Away mode state persists and is queryable
 
-### Task 11.2: Privacy Screen
+### Task 12.2: Privacy Screen
 - **File to Modify:** `src/components/dashboard/Dashboard.tsx`
 - **Features:** Hide calendars, tasks, chores, messages, locations; show only clock, weather, photos
 - **Acceptance:** Sensitive information hidden when away mode active
 
-### Task 11.3: Away Mode Exit
+### Task 12.3: Away Mode Exit
 - **Features:** PIN entry to disable, auto-disable on schedule end
 - **Acceptance:** Only parents can exit away mode via PIN
 
 ---
 
-## Phase 12: Seasonal Themes & Animations
+## Phase 13: Seasonal Themes & Animations
 
 > **Ref:** `docs/requirements/13-themes.md`, `docs/requirements/18-animations.md`
 
-### Task 12.1: Monthly Theme CSS/Assets
+### Task 13.1: Monthly Theme CSS/Assets
 - **Files to Create:** `src/styles/themes/seasonal/january.css` through `december.css`
 - **Features:** 12 monthly color schemes, background images, icon sets
 - **Acceptance:** Each month has distinct visual theme
 
-### Task 12.2: Theme Auto-Switching
+### Task 13.2: Theme Auto-Switching
 - **File to Modify:** `src/components/themes/ThemeProvider.tsx`
 - **Features:** Auto-switch on 1st of month, manual override, theme intensity control (subtle/full)
 - **Acceptance:** Themes switch automatically and can be overridden
 
-### Task 12.3: Achievement Animations
+### Task 13.3: Achievement Animations
 - **File to Create:** `src/components/animations/AchievementAnimation.tsx`
 - **Features:** Chore completion confetti, all-chores-done trophy, birthday balloons, solar milestones
 - **Acceptance:** Animations trigger on relevant events
 
-### Task 12.4: Monthly Transition Animations
+### Task 13.4: Monthly Transition Animations
 - **File to Create:** `src/components/animations/MonthlyTransition.tsx`
 - **Features:** January confetti, February hearts, September falling leaves, December snowflakes, etc.
 - **Acceptance:** Transition animation plays once on theme change
 
 ---
 
-## Phase 13: Solar Panel Monitoring
+## Phase 14: Solar Panel Monitoring
 
 > **Ref:** `docs/requirements/15-solar.md`, `docs/requirements/21-data-architecture.md` (Enphase API)
 
-### Task 13.1: Enphase Enlighten API Integration
+### Task 14.1: Enphase Enlighten API Integration
 - **File to Create:** `src/lib/integrations/enphase.ts`
 - **Features:** Authenticate, get system summary, current production, energy stats
 - **Acceptance:** Can fetch real-time and historical solar data
 
-### Task 13.2: Solar Widget
+### Task 14.2: Solar Widget
 - **File to Create:** `src/components/widgets/SolarWidget.tsx`
 - **Features:** Current production (kW), today's kWh, week/month/YTD totals, system status
 - **Acceptance:** Widget displays real-time solar production data
 
-### Task 13.3: Solar Details Page
+### Task 14.3: Solar Details Page
 - **File to Create:** `src/app/solar/page.tsx`
 - **Features:** Production graph (Recharts), weather correlation, savings calculator, environmental impact (CO2, trees)
 - **Acceptance:** Detailed solar analytics page with charts
 
 ---
 
-## Phase 14: Sonos/Music Control
+## Phase 15: Sonos/Music Control
 
 > **Ref:** `docs/requirements/16-sonos.md`, `docs/requirements/21-data-architecture.md` (Sonos API)
 
-### Task 14.1: Sonos API Integration
+### Task 15.1: Sonos API Integration
 - **File to Create:** `src/lib/integrations/sonos.ts`
 - **Features:** OAuth auth, discover speakers, get groups, playback state, play/pause/skip/volume
 - **Acceptance:** Can control Sonos speakers from dashboard
 
-### Task 14.2: Now Playing Widget
+### Task 15.2: Now Playing Widget
 - **File to Create:** `src/components/widgets/MusicWidget.tsx`
 - **Features:** Album art, artist/song/source, playback controls, per-room volume
 - **Acceptance:** Widget shows what's playing and allows control
 
-### Task 14.3: Music Control Page
+### Task 15.3: Music Control Page
 - **File to Create:** `src/app/music/page.tsx`
 - **Features:** Room selection, speaker grouping/ungrouping, favorites, browse sources
 - **Acceptance:** Full music control page with multi-room support
 
 ---
 
-## Phase 15: Babysitter Info Screen
+## Phase 16: Babysitter Info Screen
 
 > **Ref:** `docs/requirements/17-babysitter.md`
 
-### Task 15.1: Babysitter Data API
+### Task 16.1: Babysitter Data API
 - **File to Create:** `src/app/api/babysitter/route.ts`
 - **Features:** CRUD for emergency contacts, house info, kids info, house rules
 - **Acceptance:** Can store and retrieve babysitter info
 
-### Task 15.2: Babysitter Display
+### Task 16.2: Babysitter Display
 - **File to Create:** `src/app/babysitter/page.tsx`
 - **Features:** Emergency contacts, WiFi QR code, bedtimes, dietary info, house rules
 - **Acceptance:** Clean, readable babysitter info screen
 
-### Task 15.3: Babysitter Mode & Access Control
+### Task 16.3: Babysitter Mode & Access Control
 - **Features:** Quick access button on main screen, no auth required by default, optional PIN for sensitive info, printable PDF export
 - **Acceptance:** Babysitter can access info without logging in
 
@@ -272,36 +325,36 @@ Mark tasks complete with `[x]` as you finish them.
 
 > These features are documented in `docs/requirements/19-location-bus-smarthome.md` and `docs/requirements/29-future-roadmap.md`
 
-### Phase 16: Family Location Map
+### Phase 17: Family Location Map
 - Apple Find My / Life360 integration
 - Interactive map with family member locations
 - Geofencing alerts
 - Privacy controls (opt-in, limited history)
 
-### Phase 17: Bus Tracking
+### Phase 18: Bus Tracking
 - FirstView app integration (reverse engineering required)
 - Bus ETA widget
 - Proximity alerts
 - Route display on map
 
-### Phase 18: Smart Home Control
+### Phase 19: Smart Home Control
 - Homebridge / Home Assistant integration
 - Device control (lights, switches, outlets)
 - Temperature/humidity monitoring
 - Scene triggering
 
-### Phase 19: Voice Assistant Integration
+### Phase 20: Voice Assistant Integration
 - Alexa skill for shopping list
 - Voice-to-text for messages
 - "Alexa, enable away mode"
 
-### Phase 20: Mobile Companion App
+### Phase 21: Mobile Companion App
 - React Native or PWA
 - Push notifications
 - Quick actions (add items, check chores)
 - Location sharing
 
-### Phase 21: Template Gallery
+### Phase 22: Template Gallery
 - Clean up existing pre-built templates (dashboard + screensaver) for better default layouts
 - `shared_templates` DB table (layout JSON, name, description, thumbnail, author, type: dashboard/screensaver, created_at, likes)
 - Browse/preview page with grid of template cards showing mini-preview of widget positions
