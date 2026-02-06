@@ -250,6 +250,10 @@ export async function PATCH(
       updateData.category = body.category?.trim() || null;
     }
 
+    if ('listId' in body) {
+      updateData.listId = body.listId || null;
+    }
+
     if ('completed' in body) {
       updateData.completed = Boolean(body.completed);
 

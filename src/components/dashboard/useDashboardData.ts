@@ -1,4 +1,8 @@
+import { useEffect, useCallback, useRef } from 'react';
 import { useCalendarEvents, useWeather, useMessages, useTasks, useChores, useShoppingLists, useMeals, useBirthdays, useLayouts, useGoals, usePoints } from '@/lib/hooks';
+
+const AUTO_SYNC_STALE_MINUTES = 5;
+const AUTO_SYNC_INTERVAL_MS = 5 * 60 * 1000;
 
 export function useDashboardData() {
   const {
@@ -82,6 +86,53 @@ export function useDashboardData() {
     deleteLayout,
     loading: layoutsLoading,
   } = useLayouts();
+
+  // Auto-sync task sources when dashboard is visible
+  const lastAutoSyncRef = useRef<number>(0);
+
+  const autoSyncTasks = useCallback(async () => {
+    const now = Date.now();
+    if (now - lastAutoSyncRef.current < AUTO_SYNC_INTERVAL_MS) return;
+
+    try {
+      const res = await fetch(`/api/task-sources/sync-all?staleMinutes=${AUTO_SYNC_STALE_MINUTES}`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.synced > 0) {
+          refreshTasks();
+        }
+        lastAutoSyncRef.current = now;
+      }
+    } catch {
+      // Silently fail auto-sync
+    }
+  }, [refreshTasks]);
+
+  // Auto-sync on mount and periodically
+  useEffect(() => {
+    autoSyncTasks();
+
+    const interval = setInterval(() => {
+      if (!document.hidden) {
+        autoSyncTasks();
+      }
+    }, AUTO_SYNC_INTERVAL_MS);
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        autoSyncTasks();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [autoSyncTasks]);
 
   return {
     calendar: { events: calendarEvents, loading: calendarLoading, error: calendarError },

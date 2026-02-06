@@ -1,12 +1,30 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { IDLE_TIMEOUT } from '@/lib/constants';
 
-export function useIdleDetection(timeout = IDLE_TIMEOUT) {
+const STORAGE_KEY = 'prism-screensaver-timeout';
+const DEFAULT_TIMEOUT = 120;
+
+function getStoredTimeout(): number {
+  if (typeof window === 'undefined') return DEFAULT_TIMEOUT;
+  const stored = localStorage.getItem(STORAGE_KEY);
+  return stored !== null ? Number(stored) : DEFAULT_TIMEOUT;
+}
+
+export function useIdleDetection(initialTimeout?: number) {
+  const [timeout, setTimeoutValue] = useState(() => initialTimeout ?? getStoredTimeout());
   const [isIdle, setIsIdle] = useState(false);
   const forcedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Listen for timeout changes from settings
+  useEffect(() => {
+    const handler = (e: CustomEvent<number>) => {
+      setTimeoutValue(e.detail);
+    };
+    window.addEventListener('prism:screensaver-timeout-change', handler as EventListener);
+    return () => window.removeEventListener('prism:screensaver-timeout-change', handler as EventListener);
+  }, []);
 
   // Reset idle timer on user activity (restarts countdown)
   const resetTimer = useCallback(() => {

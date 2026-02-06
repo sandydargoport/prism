@@ -1,9 +1,13 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useAuth, useFamily } from '@/components/providers';
 import { useTasks } from '@/lib/hooks';
+import { useTaskLists } from '@/lib/hooks/useTaskLists';
 import type { Task } from '@/types';
+
+const AUTO_SYNC_STALE_MINUTES = 5; // Sync if last sync > 5 min ago
+const AUTO_SYNC_INTERVAL_MS = 5 * 60 * 1000; // Background sync every 5 min
 
 export function useTasksViewData() {
   const { requireAuth } = useAuth();
@@ -16,15 +20,80 @@ export function useTasksViewData() {
     toggleTask: apiToggleTask,
   } = useTasks({ showCompleted: true, limit: 100 });
 
+  const { lists: taskLists, loading: listsLoading } = useTaskLists();
   const { members: familyMembers } = useFamily();
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filterPerson, setFilterPerson] = useState<string | null>(null);
   const [filterPriority, setFilterPriority] = useState<string | null>(null);
   const [filterCompleted, setFilterCompleted] = useState<boolean | null>(false);
+  const [filterList, setFilterList] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'dueDate' | 'priority' | 'title'>('dueDate');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [autoSyncing, setAutoSyncing] = useState(false);
+  const lastAutoSyncRef = useRef<number>(0);
+
+  // Auto-sync function
+  const autoSync = useCallback(async (force = false) => {
+    // Don't sync if already syncing or synced recently
+    const now = Date.now();
+    if (!force && now - lastAutoSyncRef.current < AUTO_SYNC_INTERVAL_MS) {
+      return;
+    }
+
+    setAutoSyncing(true);
+    try {
+      const res = await fetch(`/api/task-sources/sync-all?staleMinutes=${AUTO_SYNC_STALE_MINUTES}`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.synced > 0) {
+          // Refresh tasks if any syncs happened
+          refreshTasks();
+        }
+        lastAutoSyncRef.current = now;
+      }
+    } catch {
+      // Silently fail auto-sync
+    } finally {
+      setAutoSyncing(false);
+    }
+  }, [refreshTasks]);
+
+  // Auto-sync on mount
+  useEffect(() => {
+    autoSync();
+  }, [autoSync]);
+
+  // Background sync interval with visibility-based pause
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    const startInterval = () => {
+      interval = setInterval(() => {
+        if (!document.hidden) {
+          autoSync();
+        }
+      }, AUTO_SYNC_INTERVAL_MS);
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        // Sync when tab becomes visible if stale
+        autoSync();
+      }
+    };
+
+    startInterval();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [autoSync]);
 
   useEffect(() => {
     if (apiTasks.length > 0) {
@@ -46,6 +115,13 @@ export function useTasksViewData() {
     if (filterCompleted !== null) {
       result = result.filter((task) => task.completed === filterCompleted);
     }
+    if (filterList !== null) {
+      if (filterList === 'none') {
+        result = result.filter((task) => !(task as Task & { listId?: string }).listId);
+      } else {
+        result = result.filter((task) => (task as Task & { listId?: string }).listId === filterList);
+      }
+    }
     result.sort((a, b) => {
       switch (sortBy) {
         case 'dueDate':
@@ -64,7 +140,7 @@ export function useTasksViewData() {
       }
     });
     return result;
-  }, [tasks, filterPerson, filterPriority, filterCompleted, sortBy]);
+  }, [tasks, filterPerson, filterPriority, filterCompleted, filterList, sortBy]);
 
   const toggleTask = async (taskId: string) => {
     const task = tasks.find((t) => t.id === taskId);
@@ -116,15 +192,18 @@ export function useTasksViewData() {
   const totalCount = tasks.length;
 
   return {
-    loading, error, refreshTasks, familyMembers,
+    loading: loading || listsLoading, error, refreshTasks, familyMembers,
     filterPerson, setFilterPerson,
     filterPriority, setFilterPriority,
     filterCompleted, setFilterCompleted,
+    filterList, setFilterList,
     sortBy, setSortBy,
     showAddModal, setShowAddModal,
     editingTask, setEditingTask,
     filteredTasks,
     toggleTask, editTask, deleteTask, handleAddClick,
     completedCount, totalCount,
+    taskLists,
+    autoSyncing,
   };
 }

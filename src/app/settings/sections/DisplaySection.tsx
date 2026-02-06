@@ -13,6 +13,7 @@ import { useWallpaperSettings, useAutoOrientationSetting } from '@/components/la
 import { useScreenOrientation } from '@/lib/hooks/useScreenOrientation';
 import { useOrientationOverride } from '../SettingsView';
 import { useFamily } from '@/components/providers/FamilyProvider';
+import { useScreensaverTimeout } from '@/lib/hooks/useScreensaverTimeout';
 
 function getCurrentMonthNum(): number {
   return new Date().getMonth() + 1;
@@ -158,6 +159,8 @@ export function DisplaySection() {
 
       <WallpaperSettingsCard />
 
+      <ScreensaverTimeoutCard />
+
       <Card>
         <CardHeader>
           <CardTitle>Location</CardTitle>
@@ -244,6 +247,38 @@ function DisplayUserCard() {
         {saving && (
           <p className="text-xs text-muted-foreground">Saving...</p>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ScreensaverTimeoutCard() {
+  const { timeout, setTimeout } = useScreensaverTimeout();
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Screensaver</CardTitle>
+        <CardDescription>
+          Activate screensaver mode after a period of inactivity
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">Activate after</span>
+          <select
+            value={timeout}
+            onChange={(e) => setTimeout(Number(e.target.value))}
+            className="border border-border rounded px-2 py-1 text-sm bg-background"
+          >
+            <option value={30}>30 seconds</option>
+            <option value={60}>1 minute</option>
+            <option value={120}>2 minutes</option>
+            <option value={600}>10 minutes</option>
+            <option value={3600}>1 hour</option>
+            <option value={0}>Never</option>
+          </select>
+        </div>
       </CardContent>
     </Card>
   );

@@ -4,7 +4,6 @@ import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import {
   Settings,
   Users,
@@ -17,6 +16,7 @@ import {
   ImageIcon,
   ListTodo,
 } from 'lucide-react';
+import { PrismIcon } from '@/components/ui/PrismIcon';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -182,15 +182,9 @@ export function SettingsView() {
                     </p>
                   </div>
                   <Card>
-                    <CardContent className="p-6 relative">
-                      <Image
-                        src="/logo-prism.png"
-                        alt="Prism Logo"
-                        width={180}
-                        height={180}
-                        className="absolute top-4 left-4 h-36 w-auto"
-                      />
-                      <div className="text-center pt-8">
+                    <CardContent className="p-6">
+                      <div className="flex flex-col items-center text-center">
+                        <PrismIcon size={96} className="mb-4 drop-shadow-lg" />
                         <h3 className="text-4xl font-bold text-primary mb-2">Prism</h3>
                         <p className="text-muted-foreground mb-4">Version 0.9.0</p>
                         <p className="text-sm text-muted-foreground max-w-md mx-auto">

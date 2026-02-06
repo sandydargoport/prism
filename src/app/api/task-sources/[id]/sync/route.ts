@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
 import { taskSources, tasks } from '@/lib/db/schema';
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq, and, or, isNull } from 'drizzle-orm';
 import { requireAuth, requireRole } from '@/lib/auth';
 import { invalidateCache } from '@/lib/cache/redis';
 import { getTaskProvider } from '@/lib/integrations/tasks';
+import { decrypt, encrypt } from '@/lib/utils/crypto';
 import type {
   TaskProviderTokens,
   ExternalTask,
@@ -72,7 +73,7 @@ export async function POST(
       );
     }
 
-    // 3. Prepare tokens
+    // 3. Prepare tokens (decrypt from storage)
     if (!source.accessToken) {
       return NextResponse.json(
         { error: 'No access token configured. Please reconnect the provider.' },
@@ -81,8 +82,8 @@ export async function POST(
     }
 
     let tokens: TaskProviderTokens = {
-      accessToken: source.accessToken,
-      refreshToken: source.refreshToken || undefined,
+      accessToken: decrypt(source.accessToken),
+      refreshToken: source.refreshToken ? decrypt(source.refreshToken) : undefined,
       expiresAt: source.tokenExpiresAt || undefined,
     };
 
@@ -92,12 +93,12 @@ export async function POST(
         const newTokens = await provider.refreshTokens(tokens);
         if (newTokens) {
           tokens = newTokens;
-          // Update tokens in database
+          // Update tokens in database (encrypt before storage)
           await db
             .update(taskSources)
             .set({
-              accessToken: newTokens.accessToken,
-              refreshToken: newTokens.refreshToken || source.refreshToken,
+              accessToken: encrypt(newTokens.accessToken),
+              refreshToken: newTokens.refreshToken ? encrypt(newTokens.refreshToken) : source.refreshToken,
               tokenExpiresAt: newTokens.expiresAt,
               updatedAt: new Date(),
             })
@@ -194,11 +195,16 @@ async function performSync(
     // Fetch remote tasks
     const remoteTasks = await provider.fetchTasks(tokens, externalListId);
 
-    // Fetch local tasks linked to this source
+    // Fetch local tasks linked to this source OR belonging to this list (for new tasks)
     const localTasks = await db
       .select()
       .from(tasks)
-      .where(eq(tasks.taskSourceId, sourceId));
+      .where(
+        or(
+          eq(tasks.taskSourceId, sourceId),
+          and(eq(tasks.listId, taskListId), isNull(tasks.taskSourceId))
+        )
+      );
 
     // Create maps for quick lookup
     const remoteById = new Map(remoteTasks.map(t => [t.id, t]));
@@ -306,10 +312,11 @@ async function performSync(
             priority: localTask.priority,
           });
 
-          // Update local task with external ID
+          // Update local task with external ID and link to this source
           await db
             .update(tasks)
             .set({
+              taskSourceId: sourceId,
               externalId: created.id,
               externalUpdatedAt: created.updatedAt,
               lastSynced: new Date(),

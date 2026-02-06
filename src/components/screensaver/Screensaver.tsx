@@ -453,9 +453,20 @@ function ScreensaverBirthdays() {
 
 function ScreensaverTasks() {
   const [taskList, setTaskList] = useState<Array<{ id: string; title: string; priority: string | null }>>([]);
+  const lastSyncRef = useRef<number>(0);
 
   useEffect(() => {
-    async function fetchTasks() {
+    async function syncAndFetch() {
+      // Auto-sync task sources if stale (>5 min since last sync)
+      const now = Date.now();
+      if (now - lastSyncRef.current >= 5 * 60 * 1000) {
+        try {
+          await fetch('/api/task-sources/sync-all?staleMinutes=5', { method: 'POST' });
+          lastSyncRef.current = now;
+        } catch { /* optional */ }
+      }
+
+      // Fetch tasks
       try {
         const res = await fetch('/api/tasks?completed=false&limit=5');
         if (res.ok) {
@@ -464,8 +475,8 @@ function ScreensaverTasks() {
         }
       } catch { /* optional */ }
     }
-    fetchTasks();
-    const interval = setInterval(fetchTasks, 5 * 60 * 1000);
+    syncAndFetch();
+    const interval = setInterval(syncAndFetch, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 

@@ -140,6 +140,7 @@ export async function POST(request: NextRequest) {
         priority: data.priority || null,
         category: data.category?.trim() || null,
         createdBy: data.createdBy || null,
+        listId: data.listId || null,
         completed: false,
       })
       .returning();

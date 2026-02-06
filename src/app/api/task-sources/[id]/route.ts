@@ -86,6 +86,10 @@ export async function PATCH(
       updateData.syncEnabled = Boolean(body.syncEnabled);
     }
 
+    if ('externalListId' in body) {
+      updateData.externalListId = body.externalListId || null;
+    }
+
     if ('externalListName' in body) {
       updateData.externalListName = body.externalListName || null;
     }

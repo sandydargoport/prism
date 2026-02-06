@@ -8,6 +8,7 @@ import {
   Home,
   AlertCircle,
   Clock,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,12 +23,15 @@ export function TasksView() {
     filterPerson, setFilterPerson,
     filterPriority, setFilterPriority,
     filterCompleted, setFilterCompleted,
+    filterList, setFilterList,
     sortBy, setSortBy,
     showAddModal, setShowAddModal,
     editingTask, setEditingTask,
     filteredTasks,
     toggleTask, editTask, deleteTask, handleAddClick,
     completedCount, totalCount,
+    taskLists,
+    autoSyncing,
   } = useTasksViewData();
 
   return (
@@ -43,6 +47,9 @@ export function TasksView() {
                 <CheckSquare className="h-5 w-5 text-primary" />
                 <h1 className="text-xl font-bold">Tasks</h1>
                 <Badge variant="secondary">{completedCount}/{totalCount}</Badge>
+                {autoSyncing && (
+                  <RefreshCw className="h-4 w-4 text-muted-foreground animate-spin" />
+                )}
               </div>
             </div>
             <Button onClick={handleAddClick}>
@@ -84,6 +91,22 @@ export function TasksView() {
                 <Button variant={filterCompleted === true ? 'secondary' : 'ghost'} size="sm" onClick={() => setFilterCompleted(true)}>Completed</Button>
               </div>
             </div>
+            {taskLists.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">List:</span>
+                <div className="flex gap-1 flex-wrap">
+                  <Button variant={filterList === null ? 'secondary' : 'ghost'} size="sm" onClick={() => setFilterList(null)}>All</Button>
+                  <Button variant={filterList === 'none' ? 'secondary' : 'ghost'} size="sm" onClick={() => setFilterList('none')}>None</Button>
+                  {taskLists.map((list) => (
+                    <Button key={list.id} variant={filterList === list.id ? 'secondary' : 'ghost'} size="sm"
+                      onClick={() => setFilterList(list.id)} className="gap-1">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: list.color || '#6B7280' }} />
+                      {list.name}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="flex items-center gap-2 ml-auto">
               <SortAsc className="h-4 w-4 text-muted-foreground" />
               <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
@@ -117,7 +140,8 @@ export function TasksView() {
                 <TaskItem key={task.id} task={task}
                   onToggle={() => toggleTask(task.id)}
                   onEdit={() => editTask(task)}
-                  onDelete={() => deleteTask(task.id)} />
+                  onDelete={() => deleteTask(task.id)}
+                  taskLists={taskLists} />
               ))}
             </div>
           )}
@@ -134,6 +158,7 @@ export function TasksView() {
                   body: JSON.stringify({
                     title: task.title, description: task.description, priority: task.priority,
                     category: task.category, assignedTo: task.assignedTo?.id, dueDate: task.dueDate?.toISOString(),
+                    listId: task.listId,
                   }),
                 });
                 if (!response.ok) throw new Error('Failed to create task');
@@ -145,6 +170,8 @@ export function TasksView() {
               }
             }}
             familyMembers={familyMembers}
+            taskLists={taskLists}
+            defaultListId={filterList}
           />
         )}
 
@@ -161,6 +188,7 @@ export function TasksView() {
                     title: updatedTask.title, description: updatedTask.description, priority: updatedTask.priority,
                     category: updatedTask.category, assignedTo: updatedTask.assignedTo?.id,
                     dueDate: updatedTask.dueDate?.toISOString(), completed: updatedTask.completed,
+                    listId: updatedTask.listId,
                   }),
                 });
                 if (!response.ok) throw new Error('Failed to update task');
@@ -172,6 +200,7 @@ export function TasksView() {
               }
             }}
             familyMembers={familyMembers}
+            taskLists={taskLists}
           />
         )}
       </div>

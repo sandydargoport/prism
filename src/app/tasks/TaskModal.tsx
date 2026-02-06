@@ -7,21 +7,32 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { Task, FamilyMember } from '@/types';
 
+interface TaskList {
+  id: string;
+  name: string;
+  color?: string | null;
+}
+
 export function TaskModal({
   task,
   onClose,
   onSave,
   familyMembers,
+  taskLists = [],
+  defaultListId,
 }: {
   task?: Task;
   onClose: () => void;
-  onSave: (task: Omit<Task, 'id'>) => void;
+  onSave: (task: Omit<Task, 'id'> & { listId?: string }) => void;
   familyMembers: FamilyMember[];
+  taskLists?: TaskList[];
+  defaultListId?: string | null;
 }) {
   const [title, setTitle] = useState(task?.title || '');
   const [priority, setPriority] = useState<'high' | 'medium' | 'low'>(task?.priority || 'medium');
   const [assignedTo, setAssignedTo] = useState(task?.assignedTo?.id || '');
   const [category, setCategory] = useState(task?.category || '');
+  const [listId, setListId] = useState((task as Task & { listId?: string })?.listId || defaultListId || '');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +47,7 @@ export function TaskModal({
       assignedTo: selectedMember || undefined,
       completed: task?.completed || false,
       dueDate: task?.dueDate,
+      listId: listId || undefined,
     });
   };
 
@@ -124,6 +136,38 @@ export function TaskModal({
               placeholder="e.g., Errands, School, Home..."
             />
           </div>
+
+          {taskLists.length > 0 && (
+            <div>
+              <label className="text-sm font-medium">List</label>
+              <div className="flex gap-2 mt-1 flex-wrap">
+                <Button
+                  type="button"
+                  variant={!listId ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setListId('')}
+                >
+                  No List
+                </Button>
+                {taskLists.map((list) => (
+                  <Button
+                    key={list.id}
+                    type="button"
+                    variant={listId === list.id ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setListId(list.id)}
+                    className="gap-1"
+                  >
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: list.color || '#6B7280' }}
+                    />
+                    {list.name}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>

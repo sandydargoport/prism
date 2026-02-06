@@ -137,8 +137,8 @@ export const metadata: Metadata = {
 
   // Icons configuration
   icons: {
-    icon: '/icons/icon.png',
-    apple: '/icons/icon.png',
+    icon: '/icons/icon.svg',
+    apple: '/icons/icon.svg',
   },
 
   // Open Graph metadata (for social sharing on Facebook, LinkedIn, etc.)

@@ -77,6 +77,8 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksResult {
           dueDate: string | null;
           priority: 'high' | 'medium' | 'low' | null;
           category: string | null;
+          listId: string | null;
+          taskSourceId: string | null;
           assignedTo: {
             id: string;
             name: string;
@@ -91,6 +93,8 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksResult {
           dueDate: task.dueDate ? new Date(task.dueDate) : undefined,
           priority: task.priority || 'medium',
           category: task.category || undefined,
+          listId: task.listId || undefined,
+          taskSourceId: task.taskSourceId || undefined,
           assignedTo: task.assignedTo
             ? {
                 id: task.assignedTo.id,

@@ -58,6 +58,7 @@ export const createTaskSchema = z.object({
   priority: z.enum(['high', 'medium', 'low']).optional(),
   category: z.string().max(100).optional(),
   createdBy: uuidSchema.optional(),
+  listId: uuidSchema.optional().nullable(),
 });
 
 export const updateTaskSchema = createTaskSchema.partial().extend({

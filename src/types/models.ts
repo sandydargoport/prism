@@ -17,6 +17,8 @@ export interface Task {
   category?: string;
   completedAt?: string | null;
   source?: string;
+  listId?: string | null;
+  taskSourceId?: string | null;
   assignedTo?: {
     id: string;
     name: string;

@@ -9,17 +9,26 @@ import { Badge } from '@/components/ui/badge';
 import { UserAvatar } from '@/components/ui/avatar';
 import type { Task } from '@/types';
 
+interface TaskList {
+  id: string;
+  name: string;
+  color?: string | null;
+}
+
 export function TaskItem({
   task,
   onToggle,
   onEdit,
   onDelete,
+  taskLists = [],
 }: {
   task: Task;
   onToggle: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  taskLists?: TaskList[];
 }) {
+  const taskList = taskLists.find(l => l.id === task.listId);
   const isOverdue = task.dueDate && isPast(task.dueDate) && !task.completed;
 
   const formatDueDate = (date: Date | string) => {
@@ -31,7 +40,7 @@ export function TaskItem({
   return (
     <div
       className={cn(
-        'flex items-center gap-4 p-4 rounded-lg border border-border bg-card/85 backdrop-blur-sm',
+        'group flex items-center gap-4 p-4 rounded-lg border border-border bg-card/85 backdrop-blur-sm',
         'hover:border-seasonal-accent hover:ring-2 hover:ring-seasonal-accent/50 transition-all',
         task.completed && 'opacity-60'
       )}
@@ -91,13 +100,24 @@ export function TaskItem({
         </div>
       </div>
 
+      {/* List Tag */}
+      {taskList && (
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 text-xs text-muted-foreground">
+          <div
+            className="w-2 h-2 rounded-full"
+            style={{ backgroundColor: taskList.color || '#6B7280' }}
+          />
+          <span>{taskList.name}</span>
+        </div>
+      )}
+
       {/* Actions */}
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex items-center gap-1 opacity-50 group-hover:opacity-100 transition-opacity">
         <Button
           variant="ghost"
           size="icon"
           onClick={onEdit}
-          className="h-8 w-8"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
         >
           <Edit2 className="h-4 w-4" />
         </Button>
@@ -105,7 +125,7 @@ export function TaskItem({
           variant="ghost"
           size="icon"
           onClick={onDelete}
-          className="h-8 w-8 text-destructive"
+          className="h-8 w-8 text-muted-foreground hover:text-destructive"
         >
           <Trash2 className="h-4 w-4" />
         </Button>
