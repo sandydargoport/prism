@@ -66,7 +66,7 @@ function parseServings(yield_: string | number | undefined): number | undefined 
   if (typeof yield_ === 'number') return yield_;
 
   const match = yield_.match(/(\d+)/);
-  return match ? parseInt(match[1], 10) : undefined;
+  return match?.[1] ? parseInt(match[1], 10) : undefined;
 }
 
 /**
@@ -147,8 +147,11 @@ function findRecipeJsonLd(html: string): SchemaOrgRecipe | null {
   let match;
 
   while ((match = jsonLdRegex.exec(html)) !== null) {
+    const jsonContent = match[1];
+    if (!jsonContent) continue;
+
     try {
-      const data = JSON.parse(match[1]);
+      const data = JSON.parse(jsonContent);
 
       // Could be a single object or an array
       const items = Array.isArray(data) ? data : [data];
