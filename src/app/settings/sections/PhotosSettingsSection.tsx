@@ -1,12 +1,14 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, RefreshCw, Trash2, Cloud, HardDrive } from 'lucide-react';
+import { Plus, RefreshCw, Trash2, Cloud, HardDrive, Pin, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { useDisplayContextFilters, useTargetResolution } from '../SettingsView';
+import { usePinnedPhoto } from '@/components/layout/WallpaperBackground';
+import { usePhotos } from '@/lib/hooks/usePhotos';
 
 interface PhotoSource {
   id: string;
@@ -86,6 +88,8 @@ export function PhotosSettingsSection() {
           Manage photo sources, display contexts, and resolution settings
         </p>
       </div>
+
+      <PinnedPhotosCard />
 
       <Card>
         <CardHeader>
@@ -229,5 +233,138 @@ export function PhotosSettingsSection() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function PinnedPhotosCard() {
+  const { pinnedId: pinnedWallpaper, setPinnedId: setPinnedWallpaper } = usePinnedPhoto('wallpaper');
+  const { pinnedId: pinnedScreensaver, setPinnedId: setPinnedScreensaver } = usePinnedPhoto('screensaver');
+  const { photos, loading } = usePhotos({ limit: 50 });
+  const [selectingFor, setSelectingFor] = React.useState<'wallpaper' | 'screensaver' | null>(null);
+
+  const pinnedWallpaperPhoto = photos.find(p => p.id === pinnedWallpaper);
+  const pinnedScreensaverPhoto = photos.find(p => p.id === pinnedScreensaver);
+
+  const handleSelect = (photoId: string) => {
+    if (selectingFor === 'wallpaper') {
+      setPinnedWallpaper(photoId);
+    } else if (selectingFor === 'screensaver') {
+      setPinnedScreensaver(photoId);
+    }
+    setSelectingFor(null);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Pin className="h-4 w-4" />
+          Pinned Photos
+        </CardTitle>
+        <CardDescription>
+          Pin a specific photo instead of random rotation
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Wallpaper Pin */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Dashboard Wallpaper</span>
+            {pinnedWallpaper ? (
+              <Button variant="ghost" size="sm" onClick={() => setPinnedWallpaper(null)} className="h-7 gap-1 text-xs">
+                <X className="h-3 w-3" /> Clear
+              </Button>
+            ) : null}
+          </div>
+          {pinnedWallpaperPhoto ? (
+            <div className="flex items-center gap-3 p-2 rounded-md border">
+              <div
+                className="w-16 h-10 rounded bg-cover bg-center flex-shrink-0"
+                style={{ backgroundImage: `url(/api/photos/${pinnedWallpaperPhoto.id}/file)` }}
+              />
+              <span className="text-sm truncate flex-1">{pinnedWallpaperPhoto.originalFilename}</span>
+              <Button variant="outline" size="sm" onClick={() => setSelectingFor('wallpaper')} className="text-xs">
+                Change
+              </Button>
+            </div>
+          ) : (
+            <Button variant="outline" onClick={() => setSelectingFor('wallpaper')} className="w-full justify-start gap-2">
+              <Pin className="h-4 w-4" />
+              Select a photo (uses random rotation)
+            </Button>
+          )}
+        </div>
+
+        {/* Screensaver Pin */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Screensaver Background</span>
+            {pinnedScreensaver ? (
+              <Button variant="ghost" size="sm" onClick={() => setPinnedScreensaver(null)} className="h-7 gap-1 text-xs">
+                <X className="h-3 w-3" /> Clear
+              </Button>
+            ) : null}
+          </div>
+          {pinnedScreensaverPhoto ? (
+            <div className="flex items-center gap-3 p-2 rounded-md border">
+              <div
+                className="w-16 h-10 rounded bg-cover bg-center flex-shrink-0"
+                style={{ backgroundImage: `url(/api/photos/${pinnedScreensaverPhoto.id}/file)` }}
+              />
+              <span className="text-sm truncate flex-1">{pinnedScreensaverPhoto.originalFilename}</span>
+              <Button variant="outline" size="sm" onClick={() => setSelectingFor('screensaver')} className="text-xs">
+                Change
+              </Button>
+            </div>
+          ) : (
+            <Button variant="outline" onClick={() => setSelectingFor('screensaver')} className="w-full justify-start gap-2">
+              <Pin className="h-4 w-4" />
+              Select a photo (uses random rotation)
+            </Button>
+          )}
+        </div>
+
+        {/* Photo picker modal */}
+        {selectingFor && (
+          <div className="mt-4 pt-4 border-t">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-medium">
+                Select photo for {selectingFor === 'wallpaper' ? 'wallpaper' : 'screensaver'}
+              </span>
+              <Button variant="ghost" size="sm" onClick={() => setSelectingFor(null)} className="h-7">
+                Cancel
+              </Button>
+            </div>
+            {loading ? (
+              <div className="h-32 flex items-center justify-center text-muted-foreground">
+                Loading photos...
+              </div>
+            ) : photos.length === 0 ? (
+              <div className="h-32 flex items-center justify-center text-muted-foreground">
+                No photos available
+              </div>
+            ) : (
+              <div className="grid grid-cols-4 gap-2 max-h-64 overflow-y-auto">
+                {photos.map(photo => (
+                  <button
+                    key={photo.id}
+                    onClick={() => handleSelect(photo.id)}
+                    className={cn(
+                      'aspect-video rounded bg-cover bg-center border-2 transition-all hover:opacity-80',
+                      (selectingFor === 'wallpaper' && photo.id === pinnedWallpaper) ||
+                      (selectingFor === 'screensaver' && photo.id === pinnedScreensaver)
+                        ? 'border-primary ring-2 ring-primary/50'
+                        : 'border-transparent hover:border-primary/50'
+                    )}
+                    style={{ backgroundImage: `url(/api/photos/${photo.id}/file)` }}
+                    title={photo.originalFilename}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

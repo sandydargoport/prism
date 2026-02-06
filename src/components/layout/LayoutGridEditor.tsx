@@ -65,10 +65,10 @@ function ColorPickerButton({ bgColor, onClick }: { bgColor?: string; onClick: (e
   return (
     <button
       onClick={onClick}
-      className="w-6 h-6 rounded-full shadow-md"
+      className="w-3 h-3 rounded-full shadow-md"
       style={{
         backgroundColor: bgColor || 'transparent',
-        boxShadow: '0 0 0 2px rgba(0,0,0,0.6), 0 0 0 4px rgba(255,255,255,0.8), 0 0 0 5px rgba(0,0,0,0.3)',
+        boxShadow: '0 0 0 1px rgba(0,0,0,0.6), 0 0 0 2px rgba(255,255,255,0.8), 0 0 0 2.5px rgba(0,0,0,0.3)',
       }}
       title="Widget settings"
     />
@@ -123,8 +123,14 @@ export function LayoutGridEditor({
         if (right > maxX) maxX = right;
       }
     });
-    return { totalRows: maxY + 4, totalCols: Math.max(maxX, cols) };
-  }, [layout, visibleRows, cols]);
+    // Ensure grid extends to show all screen size guides
+    const maxScreenRows = Math.max(...SCREEN_SAFE_ZONES[screenGuideOrientation].map(z => z.rows));
+    const maxScreenCols = Math.max(...SCREEN_SAFE_ZONES[screenGuideOrientation].map(z => z.cols));
+    return {
+      totalRows: Math.max(maxY + 4, maxScreenRows + 2),
+      totalCols: Math.max(maxX, cols, maxScreenCols + 2),
+    };
+  }, [layout, visibleRows, cols, screenGuideOrientation]);
 
   const handleScrollTo = useCallback((targetRow: number) => {
     if (scrollContainerRef.current) {

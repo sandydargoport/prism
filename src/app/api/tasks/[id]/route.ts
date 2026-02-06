@@ -26,6 +26,7 @@ import { tasks, users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { requireAuth, requireRole } from '@/lib/auth';
 import { formatTaskRow } from '@/lib/utils/formatters';
+import { invalidateCache } from '@/lib/cache/redis';
 
 
 /**
@@ -300,6 +301,8 @@ export async function PATCH(
       );
     }
 
+    await invalidateCache('tasks:*');
+
     return NextResponse.json(formatTaskRow(updatedTaskWithUser));
   } catch (error) {
     console.error('Error updating task:', error);
@@ -377,6 +380,8 @@ export async function DELETE(
     await db
       .delete(tasks)
       .where(eq(tasks.id, id));
+
+    await invalidateCache('tasks:*');
 
     // Return success response with deleted task info
     return NextResponse.json({

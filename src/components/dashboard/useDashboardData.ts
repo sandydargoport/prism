@@ -1,4 +1,4 @@
-import { useCalendarEvents, useWeather, useMessages, useTasks, useChores, useShoppingLists, useMeals, useBirthdays, useLayouts } from '@/lib/hooks';
+import { useCalendarEvents, useWeather, useMessages, useTasks, useChores, useShoppingLists, useMeals, useBirthdays, useLayouts, useGoals, usePoints } from '@/lib/hooks';
 
 export function useDashboardData() {
   const {
@@ -62,6 +62,20 @@ export function useDashboardData() {
   } = useBirthdays({ limit: 8 });
 
   const {
+    goals: goalsList,
+    progress: goalsProgress,
+    goalChildren,
+    loading: goalsLoading,
+    error: goalsError,
+  } = useGoals();
+
+  const {
+    points: pointsList,
+    loading: pointsLoading,
+    error: pointsError,
+  } = usePoints();
+
+  const {
     layouts: allLayouts,
     activeLayout: savedLayout,
     saveLayout,
@@ -78,6 +92,7 @@ export function useDashboardData() {
     shopping: { lists: shoppingLists, loading: shoppingLoading, error: shoppingError, refresh: refreshShopping, toggleItem: toggleShoppingItem },
     meals: { meals, loading: mealsLoading, error: mealsError, refresh: refreshMeals, markCooked },
     birthdays: { birthdays: birthdaysList, loading: birthdaysLoading, error: birthdaysError, syncFromGoogle: syncBirthdays },
+    points: { points: pointsList, goals: goalsList, progress: goalsProgress, goalChildren, loading: pointsLoading || goalsLoading, error: pointsError || goalsError },
     layouts: { allLayouts, savedLayout, saveLayout, deleteLayout, loading: layoutsLoading },
   };
 }

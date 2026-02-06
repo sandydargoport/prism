@@ -5,6 +5,7 @@ import { tasks, users } from '@/lib/db/schema';
 import { eq, desc, asc, and, lte, gte, sql } from 'drizzle-orm';
 import { formatTaskRow } from '@/lib/utils/formatters';
 import { createTaskSchema } from '@/lib/validations';
+import { invalidateCache } from '@/lib/cache/redis';
 
 
 export async function GET(request: NextRequest) {
@@ -179,6 +180,8 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    await invalidateCache('tasks:*');
 
     return NextResponse.json(formatTaskRow(taskWithUser), { status: 201 });
   } catch (error) {

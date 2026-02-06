@@ -218,6 +218,7 @@ export async function PATCH(
     }
 
     await invalidateCache('chores:*');
+    await invalidateCache('points:*');
 
     return NextResponse.json({
       id: updatedChoreWithUser.id,
@@ -286,6 +287,7 @@ export async function DELETE(
       .where(eq(chores.id, id));
 
     await invalidateCache('chores:*');
+    await invalidateCache('points:*');
 
     return NextResponse.json({
       message: 'Chore deleted successfully',

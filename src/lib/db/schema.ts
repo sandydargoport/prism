@@ -197,6 +197,12 @@ export const chores = pgTable('chores', {
   // For custom frequencies: number of days between occurrences
   customIntervalDays: integer('custom_interval_days'),
 
+  // Start day override: 0=Sunday, 1=Monday, ..., 6=Saturday
+  // For weekly: which day of the week the chore resets
+  // For monthly: 1-28 (day of month)
+  // For annually: MM-DD string (e.g., "03-15" for March 15)
+  startDay: varchar('start_day', { length: 10 }),
+
   lastCompleted: timestamp('last_completed'),
   nextDue: date('next_due'),
 
@@ -623,6 +629,63 @@ export const familyMessagesRelations = relations(familyMessages, ({ one }) => ({
 }));
 
 
+export const goals = pgTable('goals', {
+  id: uuid('id').defaultRandom().primaryKey(),
+
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+
+  pointCost: integer('point_cost').notNull(),
+
+  emoji: varchar('emoji', { length: 10 }),
+
+  // Priority order (1 = highest). Points fill goals in ascending priority order.
+  priority: integer('priority').notNull().default(0),
+
+  // Recurring goals reset each period; non-recurring accumulate until manually reset.
+  recurring: boolean('recurring').notNull().default(false),
+
+  // 'weekly' | 'monthly' | 'yearly' — only used when recurring = true
+  recurrencePeriod: varchar('recurrence_period', { length: 20 })
+    .$type<'weekly' | 'monthly' | 'yearly'>(),
+
+  active: boolean('active').default(true).notNull(),
+
+  // For non-recurring goals: when the parent last reset the goal after full achievement.
+  // Progress is only counted from completions after this timestamp.
+  lastResetAt: timestamp('last_reset_at').defaultNow().notNull(),
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  activeIdx: index('goals_active_idx').on(table.active),
+  activePriorityIdx: index('goals_active_priority_idx').on(table.active, table.priority),
+}));
+
+
+export const goalAchievements = pgTable('goal_achievements', {
+  id: uuid('id').defaultRandom().primaryKey(),
+
+  goalId: uuid('goal_id')
+    .references(() => goals.id, { onDelete: 'cascade' })
+    .notNull(),
+
+  userId: uuid('user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
+
+  // For recurring: period start date. For non-recurring: lastResetAt date.
+  periodStart: date('period_start').notNull(),
+
+  achievedAt: timestamp('achieved_at').defaultNow().notNull(),
+}, (table) => ({
+  goalUserPeriodIdx: uniqueIndex('goal_achievements_goal_user_period_idx')
+    .on(table.goalId, table.userId, table.periodStart),
+  userIdIdx: index('goal_achievements_user_id_idx').on(table.userId),
+  goalIdIdx: index('goal_achievements_goal_id_idx').on(table.goalId),
+}));
+
+
 export const photoSources = pgTable('photo_sources', {
   id: uuid('id').defaultRandom().primaryKey(),
 
@@ -696,5 +759,20 @@ export const photosRelations = relations(photos, ({ one }) => ({
   source: one(photoSources, {
     fields: [photos.sourceId],
     references: [photoSources.id],
+  }),
+}));
+
+export const goalsRelations = relations(goals, ({ many }) => ({
+  achievements: many(goalAchievements),
+}));
+
+export const goalAchievementsRelations = relations(goalAchievements, ({ one }) => ({
+  goal: one(goals, {
+    fields: [goalAchievements.goalId],
+    references: [goals.id],
+  }),
+  user: one(users, {
+    fields: [goalAchievements.userId],
+    references: [users.id],
   }),
 }));

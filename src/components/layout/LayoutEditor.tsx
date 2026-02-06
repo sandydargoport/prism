@@ -37,6 +37,45 @@ export interface LayoutEditorProps {
   onDeleteScreensaverPreset?: (name: string) => void;
 }
 
+const EXPORT_VERSION = 1;
+
+interface ExportWidget {
+  i: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  backgroundColor?: string;
+  backgroundOpacity?: number;
+  minW?: number;
+  minH?: number;
+}
+
+interface LayoutExport {
+  type: 'prism-layout';
+  version: number;
+  mode: 'dashboard' | 'screensaver';
+  name: string;
+  widgets: ExportWidget[];
+}
+
+function validateImport(data: unknown): LayoutExport | null {
+  if (!data || typeof data !== 'object') return null;
+  const obj = data as Record<string, unknown>;
+  if (obj.type !== 'prism-layout') return null;
+  if (typeof obj.version !== 'number') return null;
+  if (obj.mode !== 'dashboard' && obj.mode !== 'screensaver') return null;
+  if (!Array.isArray(obj.widgets)) return null;
+  for (const w of obj.widgets) {
+    if (!w || typeof w !== 'object') return null;
+    const wObj = w as Record<string, unknown>;
+    if (typeof wObj.i !== 'string' || typeof wObj.x !== 'number' ||
+        typeof wObj.y !== 'number' || typeof wObj.w !== 'number' ||
+        typeof wObj.h !== 'number') return null;
+  }
+  return obj as unknown as LayoutExport;
+}
+
 export function LayoutEditor({
   widgets,
   onWidgetsChange,
@@ -60,6 +99,10 @@ export function LayoutEditor({
   onDeleteScreensaverPreset,
 }: LayoutEditorProps) {
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [importError, setImportError] = useState('');
+  const [exportFeedback, setExportFeedback] = useState('');
 
   const handleToggleWidget = (widgetType: string, visible: boolean) => {
     const exists = widgets.find(w => w.i === widgetType);
@@ -115,6 +158,83 @@ export function LayoutEditor({
     setShowTemplatePicker(false);
   };
 
+  const handleExport = () => {
+    const currentWidgets = editingScreensaver ? (screensaverWidgets || []) : widgets;
+    const mode = editingScreensaver ? 'screensaver' : 'dashboard';
+    const exportData: LayoutExport = {
+      type: 'prism-layout',
+      version: EXPORT_VERSION,
+      mode,
+      name: layoutName || (editingScreensaver ? 'Screensaver' : 'Dashboard'),
+      widgets: currentWidgets
+        .filter(w => w.visible !== false)
+        .map(widget => {
+          const reg = WIDGET_REGISTRY[widget.i];
+          const exported: ExportWidget = {
+            i: widget.i,
+            x: widget.x,
+            y: widget.y,
+            w: widget.w,
+            h: widget.h,
+          };
+          if (widget.backgroundColor) exported.backgroundColor = widget.backgroundColor;
+          if (widget.backgroundOpacity !== undefined && widget.backgroundOpacity !== 1) {
+            exported.backgroundOpacity = widget.backgroundOpacity;
+          }
+          if (reg?.minW) exported.minW = reg.minW;
+          if (reg?.minH) exported.minH = reg.minH;
+          return exported;
+        }),
+    };
+    navigator.clipboard.writeText(JSON.stringify(exportData, null, 2)).then(() => {
+      setExportFeedback('Copied!');
+      setTimeout(() => setExportFeedback(''), 2000);
+    }).catch(() => {
+      setExportFeedback('Failed');
+      setTimeout(() => setExportFeedback(''), 2000);
+    });
+  };
+
+  const handleImportOpen = () => {
+    setImportText('');
+    setImportError('');
+    setShowImportDialog(true);
+  };
+
+  const handleImportApply = () => {
+    try {
+      const parsed = JSON.parse(importText);
+      const validated = validateImport(parsed);
+      if (!validated) {
+        setImportError('Invalid layout format. Expected a Prism layout export.');
+        return;
+      }
+      const expectedMode = editingScreensaver ? 'screensaver' : 'dashboard';
+      if (validated.mode !== expectedMode) {
+        setImportError(`This is a ${validated.mode} layout, but you're editing the ${expectedMode}. Switch modes first.`);
+        return;
+      }
+      const importedWidgets = validated.widgets.map(w => ({
+        i: w.i,
+        x: w.x,
+        y: w.y,
+        w: w.w,
+        h: w.h,
+        visible: true,
+        ...(w.backgroundColor && { backgroundColor: w.backgroundColor }),
+        ...(w.backgroundOpacity !== undefined && { backgroundOpacity: w.backgroundOpacity }),
+      }));
+      if (editingScreensaver && onSelectScreensaverPreset) {
+        onSelectScreensaverPreset(importedWidgets);
+      } else {
+        onWidgetsChange(importedWidgets);
+      }
+      setShowImportDialog(false);
+    } catch {
+      setImportError('Invalid JSON. Please paste a valid layout export.');
+    }
+  };
+
   return (
     <div className="bg-card/85 backdrop-blur-sm border-b border-border px-4 py-3 space-y-3">
       <div className="flex items-center justify-between">
@@ -152,6 +272,18 @@ export function LayoutEditor({
                 Reset
               </button>
               <button
+                onClick={handleExport}
+                className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
+              >
+                {exportFeedback || 'Export'}
+              </button>
+              <button
+                onClick={handleImportOpen}
+                className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
+              >
+                Import
+              </button>
+              <button
                 onClick={onScreensaverSaveAs}
                 className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
               >
@@ -177,6 +309,18 @@ export function LayoutEditor({
                 className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
               >
                 Reset
+              </button>
+              <button
+                onClick={handleExport}
+                className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
+              >
+                {exportFeedback || 'Export'}
+              </button>
+              <button
+                onClick={handleImportOpen}
+                className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
+              >
+                Import
               </button>
               <button
                 onClick={onSaveAs}
@@ -206,6 +350,39 @@ export function LayoutEditor({
       ) : !editingScreensaver ? (
         <WidgetPicker widgets={widgets} onToggle={handleToggleWidget} />
       ) : null}
+
+      {/* Import dialog */}
+      {showImportDialog && (
+        <div className="pt-2 border-t border-border space-y-2">
+          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Import Layout
+          </div>
+          <textarea
+            className="w-full h-32 text-xs font-mono bg-muted text-foreground border border-border rounded-md p-2 resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+            placeholder='Paste exported layout JSON here...'
+            value={importText}
+            onChange={(e) => { setImportText(e.target.value); setImportError(''); }}
+          />
+          {importError && (
+            <p className="text-xs text-destructive">{importError}</p>
+          )}
+          <div className="flex gap-2">
+            <button
+              onClick={handleImportApply}
+              disabled={!importText.trim()}
+              className="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            >
+              Apply
+            </button>
+            <button
+              onClick={() => setShowImportDialog(false)}
+              className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Template selector dropdown — screensaver mode */}
       {showTemplatePicker && editingScreensaver && (

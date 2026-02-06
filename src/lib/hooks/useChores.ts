@@ -33,6 +33,7 @@ export interface ChoreCompletion {
   approvedAt?: Date;
   pointsAwarded: number;
   notes?: string;
+  requiresApproval?: boolean;
 }
 
 interface UseChoresOptions {
@@ -172,6 +173,7 @@ export function useChores(options: UseChoresOptions = {}): UseChoresResult {
           approvedAt: completion.approvedAt ? new Date(completion.approvedAt) : undefined,
           pointsAwarded: completion.pointsAwarded,
           notes: completion.notes || undefined,
+          requiresApproval: completion.requiresApproval || false,
         };
       } catch (err) {
         console.error('Error completing chore:', err);

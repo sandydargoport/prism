@@ -179,6 +179,7 @@ export async function PATCH(
     }
 
     await invalidateCache('family:*');
+    await invalidateCache('calendar-groups:*');
 
     return NextResponse.json({
       id: updatedMember.id,

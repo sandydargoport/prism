@@ -23,7 +23,6 @@ export interface BirthdaysWidgetProps {
   loading?: boolean;
   error?: string | null;
   maxItems?: number;
-  onSyncClick?: () => void;
   titleHref?: string;
 }
 
@@ -56,7 +55,6 @@ export function BirthdaysWidget({
   loading = false,
   error = null,
   maxItems = 8,
-  onSyncClick,
   titleHref,
 }: BirthdaysWidgetProps) {
   const items = birthdays.slice(0, maxItems);
@@ -68,17 +66,6 @@ export function BirthdaysWidget({
       loading={loading}
       error={error}
       titleHref={titleHref}
-      actions={
-        onSyncClick ? (
-          <button
-            onClick={onSyncClick}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-            title="Sync from Google Calendar"
-          >
-            ↻
-          </button>
-        ) : undefined
-      }
     >
       {items.length === 0 ? (
         <WidgetEmpty

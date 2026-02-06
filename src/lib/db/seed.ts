@@ -483,6 +483,41 @@ async function seed() {
   console.log('  Created 2 birthdays');
 
   // ============================================================================
+  // GOALS
+  // ============================================================================
+  console.log('Creating goals...');
+
+  await db.insert(schema.goals).values([
+    {
+      name: 'Weekly Allowance',
+      description: 'Earn your weekly spending money',
+      pointCost: 50,
+      emoji: '💰',
+      priority: 1,
+      recurring: true,
+      recurrencePeriod: 'weekly',
+    },
+    {
+      name: 'Ice Cream Trip',
+      description: 'Family trip to the ice cream shop',
+      pointCost: 100,
+      emoji: '🍦',
+      priority: 2,
+      recurring: false,
+    },
+    {
+      name: 'Movie Night',
+      description: 'Pick the movie for family movie night',
+      pointCost: 75,
+      emoji: '🎬',
+      priority: 3,
+      recurring: false,
+    },
+  ]);
+
+  console.log('  Created 3 goals');
+
+  // ============================================================================
   // SETTINGS
   // ============================================================================
   console.log('Creating default settings...');

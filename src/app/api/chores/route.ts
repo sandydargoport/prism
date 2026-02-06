@@ -46,7 +46,42 @@ export async function GET(request: NextRequest) {
     const cacheKey = `chores:${assignedTo || 'all'}:${enabledOnly}`;
 
     const data = await getCached(cacheKey, async () => {
-      // Build base query
+      // First, get all pending completions
+      const pendingCompletions = await db
+        .select({
+          choreId: choreCompletions.choreId,
+          completionId: choreCompletions.id,
+          completedAt: choreCompletions.completedAt,
+          completedById: choreCompletions.completedBy,
+          completedByName: users.name,
+          completedByColor: users.color,
+        })
+        .from(choreCompletions)
+        .innerJoin(users, eq(choreCompletions.completedBy, users.id))
+        .where(isNull(choreCompletions.approvedBy));
+
+      const pendingMap = new Map<string, {
+        completionId: string;
+        completedAt: string;
+        completedBy: { id: string; name: string; color: string };
+      }>();
+
+      const choreIdsWithPending = new Set<string>();
+
+      for (const pc of pendingCompletions) {
+        choreIdsWithPending.add(pc.choreId);
+        pendingMap.set(pc.choreId, {
+          completionId: pc.completionId,
+          completedAt: pc.completedAt.toISOString(),
+          completedBy: {
+            id: pc.completedById,
+            name: pc.completedByName,
+            color: pc.completedByColor,
+          },
+        });
+      }
+
+      // Build base query for all matching chores
       const query = db
         .select({
           id: chores.id,
@@ -55,6 +90,7 @@ export async function GET(request: NextRequest) {
           category: chores.category,
           frequency: chores.frequency,
           customIntervalDays: chores.customIntervalDays,
+          startDay: chores.startDay,
           lastCompleted: chores.lastCompleted,
           nextDue: chores.nextDue,
           pointValue: chores.pointValue,
@@ -78,48 +114,19 @@ export async function GET(request: NextRequest) {
         conditions.push(eq(chores.enabled, true));
       }
 
-      const today = format(new Date(), 'yyyy-MM-dd');
-      conditions.push(
-        or(
-          isNull(chores.nextDue),
-          lte(chores.nextDue, today)
-        )
-      );
-
       const results = await query.where(and(...conditions));
 
-      const pendingCompletions = await db
-        .select({
-          choreId: choreCompletions.choreId,
-          completionId: choreCompletions.id,
-          completedAt: choreCompletions.completedAt,
-          completedById: choreCompletions.completedBy,
-          completedByName: users.name,
-          completedByColor: users.color,
-        })
-        .from(choreCompletions)
-        .innerJoin(users, eq(choreCompletions.completedBy, users.id))
-        .where(isNull(choreCompletions.approvedBy));
+      // Filter to show chores that are either:
+      // 1. Due today or earlier (nextDue <= today or no nextDue)
+      // 2. Have a pending completion awaiting approval
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const filteredResults = results.filter(row => {
+        const isDue = !row.nextDue || row.nextDue <= today;
+        const hasPending = choreIdsWithPending.has(row.id);
+        return isDue || hasPending;
+      });
 
-      const pendingMap = new Map<string, {
-        completionId: string;
-        completedAt: string;
-        completedBy: { id: string; name: string; color: string };
-      }>();
-
-      for (const pc of pendingCompletions) {
-        pendingMap.set(pc.choreId, {
-          completionId: pc.completionId,
-          completedAt: pc.completedAt.toISOString(),
-          completedBy: {
-            id: pc.completedById,
-            name: pc.completedByName,
-            color: pc.completedByColor,
-          },
-        });
-      }
-
-      const formattedChores = results.map(row => {
+      const formattedChores = filteredResults.map(row => {
         const pendingCompletion = pendingMap.get(row.id);
         return {
           id: row.id,
@@ -128,6 +135,7 @@ export async function GET(request: NextRequest) {
           category: row.category,
           frequency: row.frequency,
           customIntervalDays: row.customIntervalDays,
+          startDay: row.startDay || null,
           lastCompleted: row.lastCompleted?.toISOString() || null,
           nextDue: row.nextDue || null,
           pointValue: row.pointValue,

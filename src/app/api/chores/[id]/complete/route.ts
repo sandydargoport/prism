@@ -26,47 +26,128 @@ import { db } from '@/lib/db/client';
 import { chores, choreCompletions, users } from '@/lib/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 import { completeChoreSchema, validateRequest } from '@/lib/validations';
-import { addDays, addMonths, addYears, format } from 'date-fns';
+import {
+  addDays,
+  addWeeks,
+  addMonths,
+  addYears,
+  format,
+  nextSunday,
+  nextMonday,
+  nextTuesday,
+  nextWednesday,
+  nextThursday,
+  nextFriday,
+  nextSaturday,
+  startOfMonth,
+  setDate,
+  getDate,
+  setMonth,
+  setYear,
+  getMonth,
+  getYear,
+  isBefore,
+  startOfDay,
+} from 'date-fns';
 import { invalidateCache } from '@/lib/cache/redis';
 import { rateLimitGuard } from '@/lib/cache/rateLimit';
 
+const dayFunctions = [nextSunday, nextMonday, nextTuesday, nextWednesday, nextThursday, nextFriday, nextSaturday];
+
 /**
- * Calculate the next due date based on frequency
+ * Calculate the next due date based on frequency and optional startDay override.
+ * - weekly: next occurrence of startDay (0=Sun, 1=Mon, ..., 6=Sat), default Sunday
+ * - monthly: next occurrence of day-of-month (1-28), default 1st
+ * - annually: next occurrence of MM-DD, default same month-day next year
+ * - daily/custom: just add the interval
  */
 function calculateNextDue(
   frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'semi-annually' | 'annually' | 'custom',
-  customIntervalDays?: number | null
+  customIntervalDays?: number | null,
+  startDay?: string | null
 ): string {
   const now = new Date();
+  const today = startOfDay(now);
   let nextDate: Date;
 
   switch (frequency) {
     case 'daily':
-      nextDate = addDays(now, 1);
+      nextDate = addDays(today, 1);
       break;
-    case 'weekly':
-      nextDate = addDays(now, 7);
+
+    case 'weekly': {
+      // startDay: 0=Sunday, 1=Monday, ..., 6=Saturday (default 0)
+      const targetDay = startDay ? parseInt(startDay, 10) : 0;
+      const dayFn = dayFunctions[targetDay] || nextSunday;
+      nextDate = dayFn(today);
       break;
-    case 'biweekly':
-      nextDate = addDays(now, 14);
+    }
+
+    case 'biweekly': {
+      // For biweekly, use startDay for the target day, then add 2 weeks from last occurrence
+      const targetDay = startDay ? parseInt(startDay, 10) : 0;
+      const dayFn = dayFunctions[targetDay] || nextSunday;
+      const nextWeekDay = dayFn(today);
+      // Add one more week to make it biweekly
+      nextDate = addWeeks(nextWeekDay, 1);
       break;
-    case 'monthly':
-      nextDate = addMonths(now, 1);
+    }
+
+    case 'monthly': {
+      // startDay: day of month (1-28), default 1
+      const targetDom = startDay ? Math.min(28, Math.max(1, parseInt(startDay, 10))) : 1;
+      const currentDom = getDate(today);
+      if (currentDom < targetDom) {
+        // Still this month
+        nextDate = setDate(today, targetDom);
+      } else {
+        // Next month
+        nextDate = setDate(addMonths(today, 1), targetDom);
+      }
       break;
-    case 'quarterly':
-      nextDate = addMonths(now, 3);
+    }
+
+    case 'quarterly': {
+      // Next quarter's first day, or use startDay as day-of-month
+      const targetDom = startDay ? Math.min(28, Math.max(1, parseInt(startDay, 10))) : 1;
+      const nextQ = addMonths(startOfMonth(today), 3);
+      nextDate = setDate(nextQ, targetDom);
       break;
-    case 'semi-annually':
-      nextDate = addMonths(now, 6);
+    }
+
+    case 'semi-annually': {
+      const targetDom = startDay ? Math.min(28, Math.max(1, parseInt(startDay, 10))) : 1;
+      const next6 = addMonths(startOfMonth(today), 6);
+      nextDate = setDate(next6, targetDom);
       break;
-    case 'annually':
-      nextDate = addYears(now, 1);
+    }
+
+    case 'annually': {
+      // startDay: "MM-DD" format, e.g., "03-15" for March 15
+      let targetMonth = getMonth(today);
+      let targetDom = getDate(today);
+
+      if (startDay && startDay.includes('-')) {
+        const [mm, dd] = startDay.split('-');
+        targetMonth = Math.max(0, Math.min(11, parseInt(mm!, 10) - 1));
+        targetDom = Math.max(1, Math.min(28, parseInt(dd!, 10)));
+      }
+
+      let candidate = setDate(setMonth(today, targetMonth), targetDom);
+      if (isBefore(candidate, addDays(today, 1))) {
+        // Already passed this year, go to next year
+        candidate = setYear(candidate, getYear(today) + 1);
+      }
+      nextDate = candidate;
       break;
+    }
+
     case 'custom':
-      nextDate = addDays(now, customIntervalDays || 1);
+      nextDate = addDays(today, customIntervalDays || 1);
       break;
+
     default:
-      nextDate = addDays(now, 1);
+      nextDate = addDays(today, 1);
   }
 
   return format(nextDate, 'yyyy-MM-dd');
@@ -124,6 +205,7 @@ export async function POST(
         enabled: chores.enabled,
         frequency: chores.frequency,
         customIntervalDays: chores.customIntervalDays,
+        startDay: chores.startDay,
       })
       .from(chores)
       .where(eq(chores.id, choreId));
@@ -246,7 +328,7 @@ export async function POST(
 
       // If auto-approved (parent completing), update chore's lastCompleted and nextDue
       if (!needsApproval) {
-        const nextDue = calculateNextDue(chore.frequency, chore.customIntervalDays);
+        const nextDue = calculateNextDue(chore.frequency, chore.customIntervalDays, chore.startDay);
         await tx
           .update(chores)
           .set({
@@ -270,6 +352,7 @@ export async function POST(
     }
 
     await invalidateCache('chores:*');
+    await invalidateCache('goals:*');
 
     return NextResponse.json({
       id: completion.id,

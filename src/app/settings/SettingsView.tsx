@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   Settings,
   Users,
@@ -177,23 +178,32 @@ export function SettingsView() {
                     </p>
                   </div>
                   <Card>
-                    <CardContent className="p-6 text-center">
-                      <h3 className="text-3xl font-bold text-primary mb-2">Prism</h3>
-                      <p className="text-muted-foreground mb-4">Version 1.0.0</p>
-                      <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                        Prism brings your family together with a shared calendar,
-                        tasks, messages, and more. All on one beautiful dashboard.
-                      </p>
-                      <div className="mt-6 text-xs text-muted-foreground">
-                        <p>Open Source under AGPL-3.0 License</p>
-                        <a
-                          href="https://github.com/yourusername/prism"
-                          className="text-primary hover:underline"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          View on GitHub
-                        </a>
+                    <CardContent className="p-6 relative">
+                      <Image
+                        src="/logo-prism.png"
+                        alt="Prism Logo"
+                        width={180}
+                        height={180}
+                        className="absolute top-4 left-4 h-36 w-auto"
+                      />
+                      <div className="text-center pt-8">
+                        <h3 className="text-4xl font-bold text-primary mb-2">Prism</h3>
+                        <p className="text-muted-foreground mb-4">Version 0.9.0</p>
+                        <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                          Prism brings your family together with a shared calendar,
+                          tasks, messages, and more. All on one beautiful dashboard.
+                        </p>
+                        <div className="mt-6 text-xs text-muted-foreground">
+                          <p>Open Source under AGPL-3.0 License</p>
+                          <a
+                            href="https://github.com/yourusername/prism"
+                            className="text-primary hover:underline"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            View on GitHub
+                          </a>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

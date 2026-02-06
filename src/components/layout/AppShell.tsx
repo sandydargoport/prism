@@ -52,6 +52,8 @@ export interface AppShellProps {
   onLogin?: () => void;
   /** Hide the side nav (for login/auth pages) */
   hideNav?: boolean;
+  /** Show wallpaper background (only for dashboard/screensaver) */
+  showWallpaper?: boolean;
   /** Additional CSS classes for main content area */
   className?: string;
 }
@@ -88,14 +90,15 @@ export function AppShell({
   onLogout,
   onLogin,
   hideNav = false,
+  showWallpaper = false,
   className,
 }: AppShellProps) {
   return (
     <div className="relative min-h-screen bg-background">
       {/* ==================================================================== */}
-      {/* WALLPAPER BACKGROUND */}
+      {/* WALLPAPER BACKGROUND (only on dashboard/screensaver) */}
       {/* ==================================================================== */}
-      <WallpaperBackground />
+      {showWallpaper && <WallpaperBackground />}
 
       {/* ==================================================================== */}
       {/* SIDE NAVIGATION */}

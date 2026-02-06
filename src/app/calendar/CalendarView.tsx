@@ -151,7 +151,7 @@ export function CalendarView() {
               onDateClick={(date) => { setCurrentDate(date); setViewType('month'); }} />
           )}
           {!loading && !error && viewType === 'day' && (
-            <DayViewSideBySide currentDate={currentDate} events={events} calendarGroups={calendarGroups} onEventClick={setSelectedEvent} />
+            <DayViewSideBySide currentDate={currentDate} events={events} calendarGroups={calendarGroups} selectedCalendarIds={selectedCalendarIds} onEventClick={setSelectedEvent} />
           )}
         </div>
 

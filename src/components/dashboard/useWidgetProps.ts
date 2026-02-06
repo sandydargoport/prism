@@ -74,15 +74,46 @@ export function buildWidgetProps(
         const user = await requireAuth("Who's completing this chore?");
         if (!user) return;
         try {
-          const chore = data.chores.chores.find((c: { id: string }) => c.id === choreId);
-          if (chore?.pendingApproval && user.role === 'parent') {
+          const chore = data.chores.chores.find((c: { id: string; pendingApproval?: { completionId: string; completedBy: { name: string } }; assignedTo?: { id: string; name: string }; pointValue: number; title: string }) => c.id === choreId);
+          if (!chore) return;
+
+          // Parent approving a pending completion
+          if (chore.pendingApproval && user.role === 'parent') {
             await data.chores.approveChore(choreId, chore.pendingApproval.completionId);
+            alert(`Approved! ${chore.pendingApproval.completedBy.name} earned ${chore.pointValue} points for "${chore.title}".`);
+            data.chores.refresh();
+            return;
+          }
+
+          // Determine who should get credit
+          let completedById = user.id;
+          const isParent = user.role === 'parent';
+
+          // If parent is completing a chore assigned to someone else, ask who did it
+          if (isParent && chore.assignedTo && chore.assignedTo.id !== user.id) {
+            const assigneeName = chore.assignedTo.name;
+            const choice = confirm(
+              `This chore is assigned to ${assigneeName}.\n\n` +
+              `Click OK to record ${assigneeName} as completing it (they'll get the points).\n\n` +
+              `Click Cancel to cancel.`
+            );
+            if (choice) {
+              completedById = chore.assignedTo.id;
+            } else {
+              return; // Cancel the action entirely
+            }
+          }
+
+          const result = await data.chores.completeChore(choreId, { completedBy: completedById });
+          if (result?.requiresApproval) {
+            alert(`Great job! "${chore.title}" is now pending parental approval.`);
           } else {
-            await data.chores.completeChore(choreId, { completedBy: user.id });
+            alert(`Chore completed! ${chore.pointValue} points awarded.`);
           }
           data.chores.refresh();
         } catch (err) {
           console.error('Failed to complete chore:', err);
+          alert('Failed to complete chore. Please try again.');
         }
       },
       onAddClick: async () => {
@@ -106,7 +137,14 @@ export function buildWidgetProps(
       birthdays: data.birthdays.birthdays,
       loading: data.birthdays.loading,
       error: data.birthdays.error,
-      onSyncClick: data.birthdays.syncFromGoogle,
+    },
+    points: {
+      goals: data.points.goals,
+      progress: data.points.progress,
+      goalChildren: data.points.goalChildren,
+      loading: data.points.loading,
+      error: data.points.error,
+      titleHref: '/goals',
     },
     meals: {
       meals: data.meals.meals,

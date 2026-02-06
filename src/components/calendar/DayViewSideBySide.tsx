@@ -10,6 +10,7 @@ export interface DayViewSideBySideProps {
   currentDate: Date;
   events: CalendarEvent[];
   calendarGroups: Array<{ id: string; name: string; color: string }>;
+  selectedCalendarIds?: Set<string>;
   onEventClick: (event: CalendarEvent) => void;
 }
 
@@ -17,6 +18,7 @@ export function DayViewSideBySide({
   currentDate,
   events,
   calendarGroups,
+  selectedCalendarIds,
   onEventClick,
 }: DayViewSideBySideProps) {
   const hours = Array.from({ length: 17 }, (_, i) => i + 6);
@@ -28,39 +30,47 @@ export function DayViewSideBySide({
   const allDayEvents = dayEvents.filter((e) => e.allDay);
   const timedEvents = dayEvents.filter((e) => !e.allDay);
 
-  const getEventsForCalendar = (calendarId: string) => {
-    if (calendarId === 'FAMILY') {
-      return timedEvents.filter(
-        (e) => e.calendarName?.toLowerCase().includes('family')
-      );
+  // If there are no calendar groups configured, show all events in a single column
+  const showAllInOne = calendarGroups.length === 0;
+
+  // Filter groups to only show selected ones (hide columns when filtered out)
+  const filteredGroups = selectedCalendarIds && !selectedCalendarIds.has('all')
+    ? calendarGroups.filter((g) => selectedCalendarIds.has(g.id))
+    : calendarGroups;
+
+  // For single-column mode or when no groups are selected, create a synthetic group
+  const displayGroups = showAllInOne || filteredGroups.length === 0
+    ? [{ id: 'all', name: 'All Events', color: '#3B82F6' }]
+    : filteredGroups;
+
+  const getEventsForGroup = (groupId: string) => {
+    if (showAllInOne || groupId === 'all') {
+      return timedEvents;
     }
+    // Match events by their color to the group color, or by calendarName containing group name
+    const group = calendarGroups.find((g) => g.id === groupId);
+    if (!group) return [];
     return timedEvents.filter((e) => {
-      const group = calendarGroups.find((g) => g.id === calendarId);
-      if (!group) return false;
-      return e.calendarName?.toLowerCase().includes(group.name.toLowerCase());
+      // Primary: match by event color to group color
+      if (e.color === group.color) return true;
+      // Fallback: match by calendar name containing group name
+      if (e.calendarName?.toLowerCase().includes(group.name.toLowerCase())) return true;
+      return false;
     });
   };
 
-  const getAllDayEventsForCalendar = (calendarId: string) => {
-    if (calendarId === 'FAMILY') {
-      return allDayEvents.filter(
-        (e) => e.calendarName?.toLowerCase().includes('family')
-      );
+  const getAllDayEventsForGroup = (groupId: string) => {
+    if (showAllInOne || groupId === 'all') {
+      return allDayEvents;
     }
-    const group = calendarGroups.find((g) => g.id === calendarId);
+    const group = calendarGroups.find((g) => g.id === groupId);
     if (!group) return [];
-    return allDayEvents.filter(
-      (e) => e.calendarName?.toLowerCase().includes(group.name.toLowerCase())
-    );
+    return allDayEvents.filter((e) => {
+      if (e.color === group.color) return true;
+      if (e.calendarName?.toLowerCase().includes(group.name.toLowerCase())) return true;
+      return false;
+    });
   };
-
-  if (calendarGroups.length === 0) {
-    return (
-      <div className="h-full flex items-center justify-center text-muted-foreground">
-        <p>No calendars configured. Add calendar sources in settings.</p>
-      </div>
-    );
-  }
 
   return (
     <div className="h-full flex flex-col">
@@ -68,8 +78,8 @@ export function DayViewSideBySide({
       <div className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm rounded-t-md">
         <div className="flex">
           <div className="w-16 flex-shrink-0" />
-          {calendarGroups.map((group) => {
-            const calAllDay = getAllDayEventsForCalendar(group.id);
+          {displayGroups.map((group) => {
+            const calAllDay = getAllDayEventsForGroup(group.id);
             return (
               <div
                 key={group.id}
@@ -108,8 +118,8 @@ export function DayViewSideBySide({
             <div className="w-16 flex-shrink-0 pr-2 text-right text-xs text-muted-foreground pt-1">
               {format(new Date().setHours(hour, 0), 'h a')}
             </div>
-            {calendarGroups.map((group) => {
-              const calEvents = getEventsForCalendar(group.id);
+            {displayGroups.map((group) => {
+              const calEvents = getEventsForGroup(group.id);
               const hourEvents = calEvents.filter(
                 (event) => event.startTime.getHours() === hour
               );

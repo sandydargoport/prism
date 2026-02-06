@@ -11,6 +11,7 @@ const ShoppingWidget = lazy(() => import('./ShoppingWidget').then(m => ({ defaul
 const MealsWidget = lazy(() => import('./MealsWidget').then(m => ({ default: m.MealsWidget })));
 const BirthdaysWidget = lazy(() => import('./BirthdaysWidget').then(m => ({ default: m.BirthdaysWidget })));
 const PhotoWidget = lazy(() => import('./PhotoWidget').then(m => ({ default: m.PhotoWidget })));
+const PointsWidget = lazy(() => import('./PointsWidget').then(m => ({ default: m.PointsWidget })));
 
 export interface WidgetProps {
   className?: string;
@@ -123,6 +124,15 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistryEntry> = {
     minH: 2,
     defaultW: 4,
     defaultH: 4,
+  },
+  points: {
+    component: PointsWidget,
+    label: 'Points',
+    icon: 'Trophy',
+    minW: 2,
+    minH: 3,
+    defaultW: 3,
+    defaultH: 5,
   },
 };
 

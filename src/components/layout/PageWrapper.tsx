@@ -37,6 +37,8 @@ export interface PageWrapperProps {
   children: React.ReactNode;
   /** Hide the side nav (for special pages) */
   hideNav?: boolean;
+  /** Show wallpaper background (default false - only for dashboard/screensaver) */
+  showWallpaper?: boolean;
   /** Additional CSS classes */
   className?: string;
 }
@@ -57,6 +59,7 @@ export interface PageWrapperProps {
 export function PageWrapper({
   children,
   hideNav = false,
+  showWallpaper = false,
   className,
 }: PageWrapperProps) {
   // Get auth state from context
@@ -73,6 +76,7 @@ export function PageWrapper({
       onLogout={activeUser ? clearActiveUser : undefined}
       onLogin={() => requireAuth('Login', 'Select your profile')}
       hideNav={hideNav}
+      showWallpaper={showWallpaper}
       className={cn(className)}
     >
       {children}

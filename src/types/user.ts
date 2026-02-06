@@ -43,6 +43,7 @@ export const PERMISSIONS: Record<UserRole, RolePermissions> = {
     canCompleteChores: true,
     canApproveChores: true,
     canAssignChores: true,
+    canManageGoals: true,
     canModifySettings: true,
     canManageUsers: true,
     canAccessSmartHome: true,
@@ -67,6 +68,7 @@ export const PERMISSIONS: Record<UserRole, RolePermissions> = {
     canCompleteChores: true,
     canApproveChores: false,
     canAssignChores: false,
+    canManageGoals: false,
     canModifySettings: false,
     canManageUsers: false,
     canAccessSmartHome: false,
@@ -91,6 +93,7 @@ export const PERMISSIONS: Record<UserRole, RolePermissions> = {
     canCompleteChores: false,
     canApproveChores: false,
     canAssignChores: false,
+    canManageGoals: false,
     canModifySettings: false,
     canManageUsers: false,
     canAccessSmartHome: false,
@@ -116,6 +119,7 @@ export interface RolePermissions {
   canCompleteChores: boolean;
   canApproveChores: boolean;
   canAssignChores: boolean;
+  canManageGoals: boolean;
   canModifySettings: boolean;
   canManageUsers: boolean;
   canAccessSmartHome: boolean;

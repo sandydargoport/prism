@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useIdleDetection } from '@/lib/hooks/useIdleDetection';
 import { usePhotos } from '@/lib/hooks/usePhotos';
-import { useAutoOrientationSetting } from '@/components/layout/WallpaperBackground';
+import { useAutoOrientationSetting, usePinnedPhoto } from '@/components/layout/WallpaperBackground';
 import { useScreenOrientation } from '@/lib/hooks/useScreenOrientation';
 import { useMessages } from '@/lib/hooks/useMessages';
 import { format, isToday, isTomorrow, startOfDay } from 'date-fns';
@@ -74,6 +74,7 @@ export function deleteScreensaverPreset(name: string) {
 export function Screensaver() {
   const { isIdle } = useIdleDetection();
   const { enabled: autoOrientation } = useAutoOrientationSetting();
+  const { pinnedId } = usePinnedPhoto('screensaver');
   const screenOrientation = useScreenOrientation();
   const orientationOverride = typeof window !== 'undefined'
     ? (localStorage.getItem('prism-orientation-override') as 'landscape' | 'portrait' | null) || null
@@ -89,8 +90,9 @@ export function Screensaver() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [fadingOut, setFadingOut] = useState(false);
 
+  // Only rotate if no pinned photo
   useEffect(() => {
-    if (!isIdle || photos.length <= 1) return;
+    if (!isIdle || photos.length <= 1 || pinnedId) return;
     const timer = setInterval(() => {
       setFadingOut(true);
       setTimeout(() => {
@@ -99,7 +101,7 @@ export function Screensaver() {
       }, 1000);
     }, 15000);
     return () => clearInterval(timer);
-  }, [isIdle, photos.length]);
+  }, [isIdle, photos.length, pinnedId]);
 
   useEffect(() => {
     if (isIdle) {
@@ -112,8 +114,12 @@ export function Screensaver() {
 
   if (!isIdle) return null;
 
-  const photo = photos[currentIndex];
-  const src = photo ? `/api/photos/${photo.id}/file` : '';
+  // Use pinned photo if set, otherwise use rotating photos
+  const src = pinnedId
+    ? `/api/photos/${pinnedId}/file`
+    : photos[currentIndex]
+      ? `/api/photos/${photos[currentIndex]!.id}/file`
+      : '';
 
   return (
     <div

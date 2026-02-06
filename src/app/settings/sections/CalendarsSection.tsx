@@ -148,8 +148,27 @@ export function CalendarsSection() {
       const data = await response.json();
       console.log('[Settings] Sync response:', response.status, data);
 
+      // Also sync birthdays from Google Calendar
+      let birthdaysSynced = 0;
+      try {
+        const birthdayResponse = await fetch('/api/birthdays/sync', {
+          method: 'POST',
+          credentials: 'include',
+        });
+        if (birthdayResponse.ok) {
+          const birthdayData = await birthdayResponse.json();
+          birthdaysSynced = birthdayData.synced || 0;
+          console.log('[Settings] Birthday sync response:', birthdayData);
+        }
+      } catch (birthdayError) {
+        console.warn('Birthday sync failed:', birthdayError);
+      }
+
       if (response.ok) {
         let message = `Sync complete: ${data.synced ?? data.total ?? 0} events synced`;
+        if (birthdaysSynced > 0) {
+          message += `, ${birthdaysSynced} birthdays synced`;
+        }
         if (data.errors && data.errors.length > 0) {
           message += `\n\nWarnings (${data.errors.length}):\n${data.errors.slice(0, 5).join('\n')}`;
           if (data.errors.length > 5) {

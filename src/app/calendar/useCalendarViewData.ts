@@ -73,14 +73,16 @@ export function useCalendarViewData() {
     });
   }, [calendarGroups]);
 
+  // Only expand 'all' on initial load (when calendarGroups first populates)
+  const [initializedCalendars, setInitializedCalendars] = useState(false);
   useEffect(() => {
-    if (calendarGroups.length > 0 && selectedCalendarIds.size === 1 && selectedCalendarIds.has('all')) {
+    if (!initializedCalendars && calendarGroups.length > 0) {
       const all = new Set(['all']);
       calendarGroups.forEach((g) => all.add(g.id));
       setSelectedCalendarIds(all);
+      setInitializedCalendars(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [calendarGroups]);
+  }, [calendarGroups, initializedCalendars]);
 
   const { events: apiEvents, loading, error, refresh: refreshEvents } = useCalendarEvents({ daysToShow: 60 });
 

@@ -16,6 +16,7 @@ import { shoppingItems, shoppingLists, users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { updateShoppingItemSchema, validateRequest } from '@/lib/validations';
 import { requireAuth } from '@/lib/auth';
+import { invalidateCache } from '@/lib/cache/redis';
 
 /**
  * Route params type
@@ -135,6 +136,8 @@ export async function PATCH(
       );
     }
 
+    await invalidateCache('shopping-lists:*');
+
     return NextResponse.json({
       id: updatedItem.id,
       listId: updatedItem.listId,
@@ -191,6 +194,8 @@ export async function DELETE(
     await db
       .delete(shoppingItems)
       .where(eq(shoppingItems.id, id));
+
+    await invalidateCache('shopping-lists:*');
 
     return NextResponse.json({
       message: 'Shopping item deleted successfully',

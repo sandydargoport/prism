@@ -1,10 +1,22 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { isPast, parseISO } from 'date-fns';
 import { useAuth, useFamily } from '@/components/providers';
 import { useChores } from '@/lib/hooks';
 import type { Chore } from '@/types';
+
+export interface ChoreCompletion {
+  id: string;
+  choreId: string;
+  choreTitle: string;
+  choreCategory: string;
+  completedAt: string;
+  pointsAwarded: number;
+  completedBy: { id: string; name: string; color: string };
+  approvedBy: { id: string; name: string; color: string } | null;
+  approvedAt: string | null;
+}
 
 export function useChoresViewData() {
   const { requireAuth } = useAuth();
@@ -23,9 +35,33 @@ export function useChoresViewData() {
   const [filterPerson, setFilterPerson] = useState<string | null>(null);
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [showDisabled, setShowDisabled] = useState(false);
+  const [showCompletions, setShowCompletions] = useState(false);
+  const [completions, setCompletions] = useState<ChoreCompletion[]>([]);
+  const [completionsLoading, setCompletionsLoading] = useState(false);
   const [sortBy, setSortBy] = useState<'nextDue' | 'category' | 'frequency'>('nextDue');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingChore, setEditingChore] = useState<Chore | null>(null);
+
+  const fetchCompletions = useCallback(async () => {
+    setCompletionsLoading(true);
+    try {
+      const res = await fetch('/api/chores/completions?days=14&limit=50');
+      if (res.ok) {
+        const data = await res.json();
+        setCompletions(data.completions || []);
+      }
+    } catch (err) {
+      console.error('Error fetching completions:', err);
+    } finally {
+      setCompletionsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (showCompletions && completions.length === 0) {
+      fetchCompletions();
+    }
+  }, [showCompletions, completions.length, fetchCompletions]);
 
   useEffect(() => {
     if (apiChores.length > 0) {
@@ -80,15 +116,36 @@ export function useChoresViewData() {
       return;
     }
     try {
+      // Parent approving a pending completion
       if (isParent && chore.pendingApproval) {
         await apiApproveChore(choreId, chore.pendingApproval.completionId);
+        alert(`Approved! ${chore.pendingApproval.completedBy.name} earned ${chore.pointValue} points for "${chore.title}".`);
         refreshChores();
         return;
       }
+
+      // Determine who should get credit for completing the chore
+      let completedById = user.id;
+
+      // If parent is completing a chore assigned to a child, ask who actually did it
+      if (isParent && chore.assignedTo && chore.assignedTo.id !== user.id) {
+        const assigneeName = chore.assignedTo.name;
+        const choice = confirm(
+          `This chore is assigned to ${assigneeName}.\n\n` +
+          `Click OK to record ${assigneeName} as completing it (they'll get the points).\n\n` +
+          `Click Cancel to cancel.`
+        );
+        if (choice) {
+          completedById = chore.assignedTo.id;
+        } else {
+          return; // Cancel the action entirely
+        }
+      }
+
       const response = await fetch(`/api/chores/${choreId}/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ completedBy: user.id }),
+        body: JSON.stringify({ completedBy: completedById }),
       });
       if (!response.ok) {
         const data = await response.json();
@@ -96,8 +153,11 @@ export function useChoresViewData() {
         throw new Error(data.error || 'Failed to complete chore');
       }
       const result = await response.json();
-      if (result.requiresApproval && user.role === 'child') {
-        alert(`Great job! "${chore.title}" is now pending parental approval.`);
+      if (result.requiresApproval) {
+        const completerName = familyMembers.find(m => m.id === completedById)?.name || 'They';
+        alert(`Great job! "${chore.title}" is now pending parental approval for ${completerName}.`);
+      } else {
+        alert(`Chore completed! ${chore.pointValue} points awarded.`);
       }
       refreshChores();
     } catch (err) {
@@ -151,11 +211,18 @@ export function useChoresViewData() {
     (c) => c.enabled && c.nextDue && isPast(parseISO(c.nextDue))
   ).length;
 
+  const handleRefreshChores = useCallback(async () => {
+    await refreshChores();
+    if (showCompletions) fetchCompletions();
+  }, [refreshChores, showCompletions, fetchCompletions]);
+
   return {
-    loading, error, refreshChores, familyMembers,
+    loading, error, refreshChores: handleRefreshChores, familyMembers,
     filterPerson, setFilterPerson,
     filterCategory, setFilterCategory,
     showDisabled, setShowDisabled,
+    showCompletions, setShowCompletions,
+    completions, completionsLoading,
     sortBy, setSortBy,
     showAddModal, setShowAddModal,
     editingChore, setEditingChore,

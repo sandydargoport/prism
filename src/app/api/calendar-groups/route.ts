@@ -20,20 +20,35 @@ export async function GET() {
       // Auto-seed: ensure every user has a group, plus one "Family" group
       await seedDefaultGroups();
 
+      // Get groups with user names joined for type='user' groups
       const groups = await db
         .select({
           id: calendarGroups.id,
-          name: calendarGroups.name,
+          storedName: calendarGroups.name,
           color: calendarGroups.color,
           type: calendarGroups.type,
           userId: calendarGroups.userId,
           sortOrder: calendarGroups.sortOrder,
           sourceCount: sql<number>`(SELECT count(*)::int FROM calendar_sources WHERE calendar_sources.group_id = ${calendarGroups.id})`,
+          userName: users.name,
+          userColor: users.color,
         })
         .from(calendarGroups)
+        .leftJoin(users, eq(calendarGroups.userId, users.id))
         .orderBy(asc(calendarGroups.sortOrder), asc(calendarGroups.name));
 
-      return { groups };
+      // For user-type groups, use the current user name and color
+      const processedGroups = groups.map(g => ({
+        id: g.id,
+        name: g.type === 'user' && g.userName ? g.userName : g.storedName,
+        color: g.type === 'user' && g.userColor ? g.userColor : g.color,
+        type: g.type,
+        userId: g.userId,
+        sortOrder: g.sortOrder,
+        sourceCount: g.sourceCount,
+      }));
+
+      return { groups: processedGroups };
     }, 600);
 
     return NextResponse.json(data);

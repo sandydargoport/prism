@@ -93,14 +93,31 @@ export function Dashboard({
   }, [data]);
 
   const renderSsWidget = useCallback((w: WidgetConfig) => {
-    return renderScreensaverPreview(w);
-  }, []);
+    // Use actual widgets with real data in the screensaver designer
+    const reg = WIDGET_REGISTRY[w.i];
+    if (!reg) {
+      return renderScreensaverPreview(w);
+    }
+    const Component = reg.component;
+    const props = { ...widgetProps[w.i] || {}, gridW: w.w, gridH: w.h };
+    return (
+      <WidgetBoundary name={w.i}>
+        <Suspense fallback={<div className="flex items-center justify-center h-full text-white/50 text-sm">Loading...</div>}>
+          <div className="h-full w-full [&_*]:!bg-transparent [&_.bg-card]:!bg-white/10 [&_.border-border]:!border-white/20">
+            <Component {...props} />
+          </div>
+        </Suspense>
+      </WidgetBoundary>
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
 
   return (
     <AppShell
       user={activeUser ? { id: activeUser.id, name: activeUser.name, avatarUrl: activeUser.avatarUrl, color: activeUser.color } : undefined}
       onLogout={activeUser ? clearActiveUser : undefined}
       onLogin={handleLogin}
+      showWallpaper
     >
       <DashboardLayout className={className}>
         <DashboardHeader

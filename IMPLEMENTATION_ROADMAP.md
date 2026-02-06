@@ -325,6 +325,14 @@ Mark tasks complete with `[x]` as you finish them.
 - Quick actions (add items, check chores)
 - Location sharing
 
+### Phase 21: Template Gallery
+- `shared_templates` DB table (layout JSON, name, description, thumbnail, author, type: dashboard/screensaver, created_at, likes)
+- Browse/preview page with grid of template cards showing mini-preview of widget positions
+- One-click "Apply" to import a template into your dashboard or screensaver
+- "Share" button in layout editor to publish current layout to the gallery
+- Category filtering (minimal, family board, kitchen, info-heavy, etc.)
+- Prerequisites: layout import/export (already implemented in Phase 5)
+
 ---
 
 ## Completion Checklist (V1.0 — Phases 1–7)

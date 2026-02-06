@@ -25,6 +25,7 @@ import {
   refreshAccessToken,
   type GoogleCalendarEvent,
 } from '@/lib/integrations/google-calendar';
+import { decrypt, encrypt } from '@/lib/utils/crypto';
 
 /** The special Google Contacts birthday calendar ID */
 const BIRTHDAYS_CALENDAR_ID = 'addressbook#contacts@group.v.calendar.google.com';
@@ -100,6 +101,7 @@ function parseCalendarEvent(event: GoogleCalendarEvent): ParsedEvent | null {
 
 /**
  * Get a valid access token for a calendar source, refreshing if needed
+ * Tokens are stored encrypted, so we decrypt before returning
  */
 async function getAccessToken(source: {
   id: string;
@@ -109,27 +111,34 @@ async function getAccessToken(source: {
 }): Promise<string | null> {
   if (!source.accessToken) return null;
 
-  // Check if token needs refresh
-  const fiveMinutesFromNow = new Date(Date.now() + 5 * 60 * 1000);
-  if (source.tokenExpiresAt && source.tokenExpiresAt > fiveMinutesFromNow) {
-    return source.accessToken;
-  }
-
-  if (!source.refreshToken) return null;
-
   try {
-    const newTokens = await refreshAccessToken(source.refreshToken);
+    // Check if token needs refresh
+    const fiveMinutesFromNow = new Date(Date.now() + 5 * 60 * 1000);
+    if (source.tokenExpiresAt && source.tokenExpiresAt > fiveMinutesFromNow) {
+      // Token still valid - decrypt and return
+      return decrypt(source.accessToken);
+    }
+
+    if (!source.refreshToken) return null;
+
+    // Token expired - refresh it
+    const decryptedRefreshToken = decrypt(source.refreshToken);
+    const newTokens = await refreshAccessToken(decryptedRefreshToken);
+
+    // Store new tokens encrypted
     await db
       .update(calendarSources)
       .set({
-        accessToken: newTokens.access_token,
-        refreshToken: newTokens.refresh_token || source.refreshToken,
+        accessToken: encrypt(newTokens.access_token),
+        refreshToken: newTokens.refresh_token ? encrypt(newTokens.refresh_token) : source.refreshToken,
         tokenExpiresAt: new Date(Date.now() + newTokens.expires_in * 1000),
         updatedAt: new Date(),
       })
       .where(eq(calendarSources.id, source.id));
+
     return newTokens.access_token;
-  } catch {
+  } catch (err) {
+    console.error('[BirthdaySync] Error getting access token:', err);
     return null;
   }
 }
@@ -180,8 +189,10 @@ export async function POST() {
 
     const allEvents: GoogleCalendarEvent[] = [];
     const calendarSourceLabel: Record<string, string> = {};
-    const timeMin = new Date();
-    const timeMax = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+    // Look back 30 days and forward 400 days to catch all birthday occurrences
+    const timeMin = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const timeMax = new Date(Date.now() + 400 * 24 * 60 * 60 * 1000);
+    console.log('[BirthdaySync] Date range:', timeMin.toISOString(), 'to', timeMax.toISOString());
 
     // 1. Fetch from Birthdays calendar
     try {
@@ -207,9 +218,17 @@ export async function POST() {
         s.dashboardCalendarName?.toLowerCase().includes('friends')
     );
 
+    console.log('[BirthdaySync] Looking for Friends & Family calendar...');
+    console.log('[BirthdaySync] Found source:', friendsFamilySource ? {
+      id: friendsFamilySource.id,
+      displayName: friendsFamilySource.displayName,
+      sourceCalendarId: friendsFamilySource.sourceCalendarId,
+    } : 'NOT FOUND');
+
     if (friendsFamilySource) {
       try {
         const token = await getAccessToken(friendsFamilySource) || accessToken;
+        console.log('[BirthdaySync] Fetching events from Friends & Family, calendarId:', friendsFamilySource.sourceCalendarId);
         const ffEvents = await fetchCalendarEvents(token, friendsFamilySource.sourceCalendarId, {
           timeMin,
           timeMax,
@@ -217,22 +236,30 @@ export async function POST() {
           singleEvents: true,
           orderBy: 'startTime',
         });
+        console.log('[BirthdaySync] Found', ffEvents.length, 'events in Friends & Family');
         for (const ev of ffEvents) {
+          console.log('[BirthdaySync] Event:', ev.summary, '| Start:', ev.start?.date || ev.start?.dateTime);
           allEvents.push(ev);
           calendarSourceLabel[ev.id] = 'friends_family';
         }
       } catch (err) {
-        console.warn('Could not fetch from Friends & Family calendar:', err);
+        console.error('[BirthdaySync] Error fetching Friends & Family:', err);
       }
+    } else {
+      console.log('[BirthdaySync] No Friends & Family calendar found in sources');
     }
 
     // Parse all events into upsert-ready rows
     const errors: string[] = [];
     const rows: { name: string; birthDate: string; eventType: string; googleCalendarSource: string }[] = [];
 
+    console.log('[BirthdaySync] Parsing', allEvents.length, 'total events...');
     for (const event of allEvents) {
       const parsed = parseCalendarEvent(event);
-      if (!parsed) continue;
+      if (!parsed) {
+        console.log('[BirthdaySync] Could not parse event:', event.summary);
+        continue;
+      }
 
       const [, month, day] = parsed.birthDate.split('-');
       const birthDate = parsed.year
@@ -240,28 +267,38 @@ export async function POST() {
         : `1904-${month}-${day}`;
 
       const calSource = calendarSourceLabel[event.id] || 'google';
+      console.log('[BirthdaySync] Parsed:', parsed.name, parsed.eventType, birthDate);
       rows.push({ name: parsed.name, birthDate, eventType: parsed.eventType, googleCalendarSource: calSource });
     }
+    console.log('[BirthdaySync] Total rows to upsert:', rows.length);
 
-    // Batch upsert using ON CONFLICT on (name, event_type) unique index
+    // Upsert each row individually for better error tracking
     let synced = 0;
-    if (rows.length > 0) {
+    console.log('[BirthdaySync] Upserting', rows.length, 'rows...');
+    for (const row of rows) {
       try {
         await db
           .insert(birthdays)
-          .values(rows)
+          .values({
+            name: row.name,
+            birthDate: row.birthDate,
+            eventType: row.eventType,
+            googleCalendarSource: row.googleCalendarSource,
+          })
           .onConflictDoUpdate({
             target: [birthdays.name, birthdays.eventType],
             set: {
-              birthDate: sql`excluded.birth_date`,
-              googleCalendarSource: sql`excluded.google_calendar_source`,
+              birthDate: row.birthDate,
+              googleCalendarSource: row.googleCalendarSource,
             },
           });
-        synced = rows.length;
+        synced++;
       } catch (err) {
-        errors.push(`Batch upsert failed: ${err}`);
+        console.error('[BirthdaySync] Failed to upsert:', row.name, row.eventType, err);
+        errors.push(`Failed to upsert ${row.name}: ${err}`);
       }
     }
+    console.log('[BirthdaySync] Upserted', synced, 'of', rows.length, 'rows');
 
     return NextResponse.json({
       synced,

@@ -8,6 +8,8 @@ const STORAGE_KEY = 'prism-wallpaper-enabled';
 const INTERVAL_KEY = 'prism-wallpaper-interval';
 const AUTO_ORIENTATION_KEY = 'prism-wallpaper-auto-orientation';
 const ORIENTATION_OVERRIDE_KEY = 'prism-orientation-override';
+const PINNED_WALLPAPER_KEY = 'prism-pinned-wallpaper';
+const PINNED_SCREENSAVER_KEY = 'prism-pinned-screensaver';
 
 function useOrientationOverride(): 'auto' | 'landscape' | 'portrait' {
   const [override, setOverride] = useState<'auto' | 'landscape' | 'portrait'>(() => {
@@ -65,9 +67,43 @@ export function useAutoOrientationSetting() {
   return { enabled, setEnabled };
 }
 
+export function usePinnedPhoto(context: 'wallpaper' | 'screensaver') {
+  const storageKey = context === 'wallpaper' ? PINNED_WALLPAPER_KEY : PINNED_SCREENSAVER_KEY;
+
+  const [pinnedId, setPinnedIdState] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem(storageKey);
+  });
+
+  const setPinnedId = useCallback((id: string | null) => {
+    setPinnedIdState(id);
+    if (id) {
+      localStorage.setItem(storageKey, id);
+    } else {
+      localStorage.removeItem(storageKey);
+    }
+    // Dispatch storage event so other components can react
+    window.dispatchEvent(new StorageEvent('storage', { key: storageKey }));
+  }, [storageKey]);
+
+  // Listen for changes from other tabs/components
+  useEffect(() => {
+    const handler = (e: StorageEvent) => {
+      if (e.key === storageKey) {
+        setPinnedIdState(e.newValue);
+      }
+    };
+    window.addEventListener('storage', handler);
+    return () => window.removeEventListener('storage', handler);
+  }, [storageKey]);
+
+  return { pinnedId, setPinnedId };
+}
+
 export function WallpaperBackground() {
   const { enabled, interval } = useWallpaperSettings();
   const { enabled: autoOrientation } = useAutoOrientationSetting();
+  const { pinnedId } = usePinnedPhoto('wallpaper');
   const screenOrientation = useScreenOrientation();
   const orientationOverride = useOrientationOverride();
   const effectiveOrientation = orientationOverride === 'auto' ? screenOrientation : orientationOverride;
@@ -80,9 +116,9 @@ export function WallpaperBackground() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [fadingOut, setFadingOut] = useState(false);
 
-  // Rotate photos
+  // Rotate photos (only if no pinned photo)
   useEffect(() => {
-    if (!enabled || photos.length <= 1) return;
+    if (!enabled || photos.length <= 1 || pinnedId) return;
     const timer = window.setInterval(() => {
       setFadingOut(true);
       // After fade out, switch image and fade back in
@@ -92,14 +128,18 @@ export function WallpaperBackground() {
       }, 1000);
     }, interval * 1000);
     return () => window.clearInterval(timer);
-  }, [enabled, photos.length, interval]);
+  }, [enabled, photos.length, interval, pinnedId]);
 
-  if (!enabled || photos.length === 0) return null;
+  if (!enabled) return null;
 
-  const photo = photos[currentIndex];
-  if (!photo) return null;
+  // Use pinned photo if set, otherwise use rotating photos
+  const src = pinnedId
+    ? `/api/photos/${pinnedId}/file`
+    : photos[currentIndex]
+      ? `/api/photos/${photos[currentIndex]!.id}/file`
+      : null;
 
-  const src = `/api/photos/${photo.id}/file`;
+  if (!src) return null;
 
   return (
     <div className="fixed inset-0 z-0 pointer-events-none">

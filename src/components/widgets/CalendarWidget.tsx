@@ -281,12 +281,18 @@ export function CalendarWidget({
       )}
 
       {effectiveView === 'day' && (
-        <DayViewSideBySide
-          currentDate={currentDate}
-          events={events}
-          calendarGroups={calendarGroups}
-          onEventClick={handleEventClick}
-        />
+        <>
+          <div className="text-center text-sm font-medium text-foreground mb-2">
+            {formatDayHeader(currentDate)}
+          </div>
+          <DayViewSideBySide
+            currentDate={currentDate}
+            events={events}
+            calendarGroups={calendarGroups}
+            selectedCalendarIds={selectedCalendarIds}
+            onEventClick={handleEventClick}
+          />
+        </>
       )}
     </WidgetContainer>
   );
@@ -383,7 +389,8 @@ function EventRow({
 }
 
 function formatDayHeader(date: Date): string {
-  if (isToday(date)) return 'Today';
-  if (isTomorrow(date)) return 'Tomorrow';
-  return format(date, 'EEEE, MMM d');
+  const dayName = format(date, 'EEEE, MMMM d, yyyy');
+  if (isToday(date)) return `Today — ${dayName}`;
+  if (isTomorrow(date)) return `Tomorrow — ${dayName}`;
+  return dayName;
 }

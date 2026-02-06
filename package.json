@@ -1,6 +1,6 @@
 {
   "name": "prism",
-  "version": "1.0.0",
+  "version": "0.9.0",
   "description": "Prism - Your family's digital home. An open-source family dashboard for calendars, tasks, chores, and more.",
   "private": true,
   "license": "AGPL-3.0",
@@ -40,6 +40,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx src/lib/db/seed.ts",
+    "db:clear": "tsx src/lib/db/clear.ts",
     "docker:build": "docker-compose build",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",

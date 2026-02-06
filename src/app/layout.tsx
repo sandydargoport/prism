@@ -137,10 +137,8 @@ export const metadata: Metadata = {
 
   // Icons configuration
   icons: {
-    // Standard favicon
-    icon: '/icons/favicon.ico',
-    // Apple touch icon (when added to iPhone home screen)
-    apple: '/icons/apple-touch-icon.png',
+    icon: '/icons/icon.png',
+    apple: '/icons/icon.png',
   },
 
   // Open Graph metadata (for social sharing on Facebook, LinkedIn, etc.)

@@ -23,6 +23,7 @@ import { db } from '@/lib/db/client';
 import { shoppingItems, users } from '@/lib/db/schema';
 import { eq, and, asc } from 'drizzle-orm';
 import { createShoppingItemSchema, validateRequest } from '@/lib/validations';
+import { invalidateCache } from '@/lib/cache/redis';
 
 /**
  * GET /api/shopping-items
@@ -177,6 +178,8 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    await invalidateCache('shopping-lists:*');
 
     return NextResponse.json({
       id: newItem.id,

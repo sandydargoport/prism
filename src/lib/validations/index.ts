@@ -202,6 +202,23 @@ export const createBirthdaySchema = z.object({
 });
 
 // ============================================================================
+// GOAL SCHEMAS
+// ============================================================================
+
+export const createGoalSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(255),
+  description: z.string().max(2000).optional(),
+  pointCost: z.number().int().min(1, 'Point cost must be at least 1').max(10000),
+  emoji: z.string().max(10).optional(),
+  priority: z.number().int().min(0).optional(),
+  recurring: z.boolean().optional().default(false),
+  recurrencePeriod: z.enum(['weekly', 'monthly', 'yearly']).optional(),
+  active: z.boolean().optional().default(true),
+});
+
+export const updateGoalSchema = createGoalSchema.partial();
+
+// ============================================================================
 // LAYOUT SCHEMAS
 // ============================================================================
 
@@ -212,6 +229,8 @@ const widgetConfigSchema = z.object({
   w: z.number().int().min(1),
   h: z.number().int().min(1),
   visible: z.boolean().optional().default(true),
+  backgroundColor: z.string().optional(),
+  backgroundOpacity: z.number().min(0).max(1).optional(),
   settings: z.record(z.unknown()).optional(),
 });
 
