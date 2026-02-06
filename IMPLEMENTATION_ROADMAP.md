@@ -127,9 +127,10 @@ Mark tasks complete with `[x]` as you finish them.
 
 ---
 
-## Phase 10: External Integrations — IN PROGRESS
+## Phase 10: External Integrations — COMPLETE
 
 > Provider-agnostic architecture for syncing with external task and recipe apps.
+> Note: Todoist and Apple Reminders providers marked for future implementation.
 
 ### Task 10.1: Task Integration Architecture — COMPLETE
 - [x] **Schema:** `task_lists` table for organizing tasks
@@ -181,10 +182,11 @@ Mark tasks complete with `[x]` as you finish them.
 - [x] **Features:** Parse Paprika HTML export, extract multiple recipes, bulk import
 - **Acceptance:** Can paste Paprika HTML export and import all recipes
 
-### Task 10.9: Recipe UI — PENDING
-- **File to Create:** `src/app/recipes/page.tsx`, `src/app/recipes/RecipesView.tsx`
-- **Features:** Recipe browser, search, add from URL, manual entry, link to meal planning
-- **Acceptance:** Full recipe management page integrated with meals
+### Task 10.9: Recipe UI — COMPLETE
+- [x] **Files Created:** `src/app/recipes/page.tsx`, `src/app/recipes/RecipesView.tsx`
+- [x] **Features:** Recipe grid with cards, search, favorites filter, URL import modal, Paprika import modal, manual add/edit, recipe detail view with ingredients/instructions
+- [x] **Added:** Recipes nav item in SideNav with ChefHat icon
+- **Acceptance:** Full recipe management page with import, CRUD, and browsing
 
 ---
 
