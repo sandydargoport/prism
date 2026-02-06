@@ -140,18 +140,25 @@ export function TaskIntegrationsSection() {
   const handleSyncNow = async (sourceId: string) => {
     setSyncing(sourceId);
     try {
-      // TODO: Implement actual sync endpoint
-      // For now, just update the lastSyncAt timestamp
-      const res = await fetch(`/api/task-sources/${sourceId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lastSyncAt: new Date().toISOString() }),
+      const res = await fetch(`/api/task-sources/${sourceId}/sync`, {
+        method: 'POST',
       });
+
+      const data = await res.json();
+
       if (res.ok) {
+        await fetchSources();
+        const msg = `Sync complete: ${data.created} created, ${data.updated} updated, ${data.deleted} deleted`;
+        if (data.errors?.length > 0) {
+          alert(`${msg}\n\nErrors:\n${data.errors.join('\n')}`);
+        }
+      } else {
+        alert(`Sync failed: ${data.error || 'Unknown error'}`);
         await fetchSources();
       }
     } catch (error) {
       console.error('Failed to sync:', error);
+      alert('Sync failed: Network error');
     } finally {
       setSyncing(null);
     }
