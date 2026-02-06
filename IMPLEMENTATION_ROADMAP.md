@@ -114,40 +114,16 @@ Mark tasks complete with `[x]` as you finish them.
 
 ---
 
-## Phase 9: Layout Customization & Dashboard Editing
+## Phase 9: Layout Customization & Dashboard Editing — COMPLETE
 
 > **Ref:** `docs/requirements/14-layouts.md`, `docs/requirements/21-data-architecture.md` (layouts table)
-> **Prerequisite:** DB `layouts` table already exists in schema
 
-### Task 9.1: Create Layout API Routes
-- **File to Create:** `src/app/api/layouts/route.ts`
-- **File to Create:** `src/app/api/layouts/[id]/route.ts`
-- **Features:** CRUD for saved layouts, set default, per-display support
-- **Pattern:** Follow existing API route patterns (tasks, chores)
-- **Acceptance:** Can create, read, update, delete layout configurations
-
-### Task 9.2: Create useLayouts Hook
-- **File to Create:** `src/lib/hooks/useLayouts.ts`
-- **Features:** Fetch layouts, save layout, load layout, reset to default
-- **Pattern:** Follow useTasks hook
-- **Acceptance:** Hook manages layout state, persists to API
-
-### Task 9.3: Integrate react-grid-layout
-- **File to Modify:** `package.json` (add dependency)
-- **File to Create:** `src/components/layout/GridLayout.tsx`
-- **Features:** Drag-and-drop widget positioning, resize handles, grid snap
-- **Acceptance:** Widgets can be dragged and resized on dashboard
-
-### Task 9.4: Create Layout Editor UI
-- **File to Create:** `src/components/layout/LayoutEditor.tsx`
-- **File to Create:** `src/components/layout/WidgetPicker.tsx`
-- **Features:** Edit mode toggle, save/load/reset buttons, widget add/remove panel
-- **Acceptance:** Parents can enter edit mode, rearrange widgets, save custom layouts
-
-### Task 9.5: Pre-built Layout Templates
-- **File to Create:** `src/lib/constants/layoutTemplates.ts`
-- **Features:** Family Central (default), Task Master, Photo Frame, Command Center, Clean & Simple
-- **Acceptance:** Users can select from pre-built templates
+- [x] Task 9.1: Layout API Routes (`/api/layouts`, `/api/layouts/[id]`)
+- [x] Task 9.2: useLayouts Hook
+- [x] Task 9.3: react-grid-layout Integration
+- [x] Task 9.4: Layout Editor UI (LayoutEditor, LayoutGridEditor, widget picker)
+- [x] Task 9.5: Pre-built Layout Templates (dashboard + screensaver)
+- [x] Task 9.6: Layout Import/Export (JSON clipboard)
 
 ---
 
@@ -326,6 +302,7 @@ Mark tasks complete with `[x]` as you finish them.
 - Location sharing
 
 ### Phase 21: Template Gallery
+- Clean up existing pre-built templates (dashboard + screensaver) for better default layouts
 - `shared_templates` DB table (layout JSON, name, description, thumbnail, author, type: dashboard/screensaver, created_at, likes)
 - Browse/preview page with grid of template cards showing mini-preview of widget positions
 - One-click "Apply" to import a template into your dashboard or screensaver
