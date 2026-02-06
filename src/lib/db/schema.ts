@@ -145,11 +145,67 @@ export const events = pgTable('events', {
 }));
 
 
+export const taskLists = pgTable('task_lists', {
+  id: uuid('id').defaultRandom().primaryKey(),
+
+  name: varchar('name', { length: 255 }).notNull(),
+
+  color: varchar('color', { length: 7 }),
+
+  // Sort order for display
+  sortOrder: integer('sort_order').default(0).notNull(),
+
+  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+
+export const taskSources = pgTable('task_sources', {
+  id: uuid('id').defaultRandom().primaryKey(),
+
+  // Which user connected this source
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+
+  // Provider: "microsoft_todo", "todoist", "apple_reminders", etc.
+  provider: varchar('provider', { length: 50 }).notNull(),
+
+  // External list ID in the provider's system
+  externalListId: varchar('external_list_id', { length: 255 }).notNull(),
+
+  // External list name (for display/debugging)
+  externalListName: varchar('external_list_name', { length: 255 }),
+
+  // Which Prism task list this syncs to
+  taskListId: uuid('task_list_id').references(() => taskLists.id, { onDelete: 'cascade' }).notNull(),
+
+  // Sync enabled/disabled
+  syncEnabled: boolean('sync_enabled').default(true).notNull(),
+
+  // OAuth tokens (encrypted in application layer)
+  accessToken: text('access_token'),
+  refreshToken: text('refresh_token'),
+  tokenExpiresAt: timestamp('token_expires_at'),
+
+  lastSyncAt: timestamp('last_sync_at'),
+  lastSyncError: text('last_sync_error'),
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  userProviderIdx: index('task_sources_user_provider_idx').on(table.userId, table.provider),
+  taskListIdx: index('task_sources_task_list_idx').on(table.taskListId),
+}));
+
+
 export const tasks = pgTable('tasks', {
   id: uuid('id').defaultRandom().primaryKey(),
 
   title: varchar('title', { length: 255 }).notNull(),
   description: text('description'),
+
+  // Which list this task belongs to (null = default/inbox)
+  listId: uuid('list_id').references(() => taskLists.id, { onDelete: 'cascade' }),
 
   assignedTo: uuid('assigned_to').references(() => users.id, { onDelete: 'set null' }),
 
@@ -164,18 +220,22 @@ export const tasks = pgTable('tasks', {
   completedAt: timestamp('completed_at'),
   completedBy: uuid('completed_by').references(() => users.id, { onDelete: 'set null' }),
 
-  // Source tracking (for sync)
-  source: varchar('source', { length: 50 }).default('internal').notNull(),
-  sourceId: varchar('source_id', { length: 255 }),
+  // External sync tracking
+  taskSourceId: uuid('task_source_id').references(() => taskSources.id, { onDelete: 'set null' }),
+  externalId: varchar('external_id', { length: 255 }),
+  externalUpdatedAt: timestamp('external_updated_at'),
   lastSynced: timestamp('last_synced'),
 
   createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
+  listIdIdx: index('tasks_list_id_idx').on(table.listId),
   assignedToIdx: index('tasks_assigned_to_idx').on(table.assignedTo),
   dueDateIdx: index('tasks_due_date_idx').on(table.dueDate),
   completedIdx: index('tasks_completed_idx').on(table.completed),
+  taskSourceIdx: index('tasks_task_source_idx').on(table.taskSourceId),
+  externalIdIdx: index('tasks_external_id_idx').on(table.externalId),
 }));
 
 
@@ -307,6 +367,58 @@ export const shoppingItems = pgTable('shopping_items', {
 }));
 
 
+export const recipes = pgTable('recipes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+
+  // Source URL (for scraped recipes)
+  url: text('url'),
+
+  // Where did this recipe come from?
+  sourceType: varchar('source_type', { length: 50 }).default('manual').notNull()
+    .$type<'manual' | 'url_import' | 'paprika_import'>(),
+
+  // Structured ingredients (JSON array of {name, amount, unit, notes})
+  ingredients: jsonb('ingredients').default([]).notNull(),
+
+  // Instructions (can be plain text or JSON array of steps)
+  instructions: text('instructions'),
+
+  prepTime: integer('prep_time'), // minutes
+  cookTime: integer('cook_time'), // minutes
+  servings: integer('servings'),
+
+  // Categorization
+  tags: jsonb('tags').default([]).notNull(), // ["quick", "vegetarian", "kid-friendly"]
+  cuisine: varchar('cuisine', { length: 100 }), // "Italian", "Mexican", etc.
+  category: varchar('category', { length: 100 }), // "Main Dish", "Dessert", etc.
+
+  // Image (URL or local path)
+  imageUrl: text('image_url'),
+
+  // Ratings and notes
+  rating: integer('rating'), // 1-5 stars
+  notes: text('notes'),
+
+  // How often we've made this
+  timesMade: integer('times_made').default(0).notNull(),
+  lastMadeAt: timestamp('last_made_at'),
+
+  // Favorite for quick access
+  isFavorite: boolean('is_favorite').default(false).notNull(),
+
+  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  nameIdx: index('recipes_name_idx').on(table.name),
+  favoriteIdx: index('recipes_favorite_idx').on(table.isFavorite),
+  sourceTypeIdx: index('recipes_source_type_idx').on(table.sourceType),
+}));
+
+
 export const meals = pgTable('meals', {
   id: uuid('id').defaultRandom().primaryKey(),
 
@@ -314,6 +426,10 @@ export const meals = pgTable('meals', {
 
   description: text('description'),
 
+  // Link to a saved recipe (optional - can also have inline recipe data)
+  recipeId: uuid('recipe_id').references(() => recipes.id, { onDelete: 'set null' }),
+
+  // Inline recipe data (for quick entries or when not using saved recipes)
   recipe: text('recipe'),
   recipeUrl: text('recipe_url'),
 
@@ -493,12 +609,14 @@ export const apiCredentials = pgTable('api_credentials', {
 
 export const usersRelations = relations(users, ({ many }) => ({
   calendarSources: many(calendarSources),
+  taskSources: many(taskSources),
   tasks: many(tasks),
   chores: many(chores),
   choreCompletions: many(choreCompletions),
   shoppingLists: many(shoppingLists),
   shoppingItems: many(shoppingItems),
   meals: many(meals),
+  recipes: many(recipes),
   maintenanceReminders: many(maintenanceReminders),
   maintenanceCompletions: many(maintenanceCompletions),
   familyMessages: many(familyMessages),
@@ -523,13 +641,50 @@ export const eventsRelations = relations(events, ({ one }) => ({
   }),
 }));
 
+export const taskListsRelations = relations(taskLists, ({ one, many }) => ({
+  tasks: many(tasks),
+  taskSources: many(taskSources),
+  createdByUser: one(users, {
+    fields: [taskLists.createdBy],
+    references: [users.id],
+  }),
+}));
+
+export const taskSourcesRelations = relations(taskSources, ({ one, many }) => ({
+  user: one(users, {
+    fields: [taskSources.userId],
+    references: [users.id],
+  }),
+  taskList: one(taskLists, {
+    fields: [taskSources.taskListId],
+    references: [taskLists.id],
+  }),
+  tasks: many(tasks),
+}));
+
 export const tasksRelations = relations(tasks, ({ one }) => ({
+  list: one(taskLists, {
+    fields: [tasks.listId],
+    references: [taskLists.id],
+  }),
+  taskSource: one(taskSources, {
+    fields: [tasks.taskSourceId],
+    references: [taskSources.id],
+  }),
   assignedToUser: one(users, {
     fields: [tasks.assignedTo],
     references: [users.id],
   }),
   completedByUser: one(users, {
     fields: [tasks.completedBy],
+    references: [users.id],
+  }),
+}));
+
+export const recipesRelations = relations(recipes, ({ one, many }) => ({
+  meals: many(meals),
+  createdByUser: one(users, {
+    fields: [recipes.createdBy],
     references: [users.id],
   }),
 }));
@@ -581,6 +736,10 @@ export const shoppingItemsRelations = relations(shoppingItems, ({ one }) => ({
 }));
 
 export const mealsRelations = relations(meals, ({ one }) => ({
+  recipe: one(recipes, {
+    fields: [meals.recipeId],
+    references: [recipes.id],
+  }),
   cookedByUser: one(users, {
     fields: [meals.cookedBy],
     references: [users.id],

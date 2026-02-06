@@ -20,7 +20,8 @@ export function formatTaskRow(row: {
   category: string | null;
   completed: boolean;
   completedAt: Date | null;
-  source: string;
+  listId?: string | null;
+  taskSourceId?: string | null;
   createdAt: Date;
   updatedAt: Date;
   assignedUserId: string | null;
@@ -37,7 +38,8 @@ export function formatTaskRow(row: {
     category: row.category,
     completed: row.completed,
     completedAt: row.completedAt?.toISOString() || null,
-    source: row.source,
+    listId: row.listId || null,
+    taskSourceId: row.taskSourceId || null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     assignedTo: row.assignedUserId

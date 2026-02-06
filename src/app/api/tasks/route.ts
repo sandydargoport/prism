@@ -70,7 +70,8 @@ export async function GET(request: NextRequest) {
         category: tasks.category,
         completed: tasks.completed,
         completedAt: tasks.completedAt,
-        source: tasks.source,
+        listId: tasks.listId,
+        taskSourceId: tasks.taskSourceId,
         createdAt: tasks.createdAt,
         updatedAt: tasks.updatedAt,
         assignedUserId: users.id,
@@ -139,7 +140,6 @@ export async function POST(request: NextRequest) {
         priority: data.priority || null,
         category: data.category?.trim() || null,
         createdBy: data.createdBy || null,
-        source: 'internal',
         completed: false,
       })
       .returning();
@@ -162,7 +162,8 @@ export async function POST(request: NextRequest) {
         category: tasks.category,
         completed: tasks.completed,
         completedAt: tasks.completedAt,
-        source: tasks.source,
+        listId: tasks.listId,
+        taskSourceId: tasks.taskSourceId,
         createdAt: tasks.createdAt,
         updatedAt: tasks.updatedAt,
         assignedUserId: users.id,
