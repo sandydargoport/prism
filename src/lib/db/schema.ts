@@ -12,7 +12,7 @@ import {
   index,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 
 
 export const users = pgTable('users', {
@@ -86,6 +86,10 @@ export const calendarSources = pgTable('calendar_sources', {
 
   enabled: boolean('enabled').default(true).notNull(),
 
+  // Whether this calendar appears in the "Add Event" modal for creating events
+  // Subscription/read-only calendars should have this set to false
+  showInEventModal: boolean('show_in_event_modal').default(true).notNull(),
+
   // Whether this is a family-shared calendar (vs personal or unassigned)
   isFamily: boolean('is_family').default(false).notNull(),
 
@@ -142,6 +146,10 @@ export const events = pgTable('events', {
 }, (table) => ({
   startTimeIdx: index('events_start_time_idx').on(table.startTime),
   calendarSourceIdx: index('events_calendar_source_idx').on(table.calendarSourceId),
+  // Unique constraint to prevent duplicate synced events
+  sourceExternalUnique: uniqueIndex('events_source_external_unique')
+    .on(table.calendarSourceId, table.externalEventId)
+    .where(sql`${table.externalEventId} IS NOT NULL`),
 }));
 
 
@@ -311,6 +319,43 @@ export const choreCompletions = pgTable('chore_completions', {
 }));
 
 
+export const shoppingListSources = pgTable('shopping_list_sources', {
+  id: uuid('id').defaultRandom().primaryKey(),
+
+  // Which user connected this source
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+
+  // Provider: "microsoft_todo", "todoist", etc.
+  provider: varchar('provider', { length: 50 }).notNull(),
+
+  // External list ID in the provider's system
+  externalListId: varchar('external_list_id', { length: 255 }).notNull(),
+
+  // External list name (for display/debugging)
+  externalListName: varchar('external_list_name', { length: 255 }),
+
+  // Which Prism shopping list this syncs to
+  shoppingListId: uuid('shopping_list_id').references(() => shoppingLists.id, { onDelete: 'cascade' }).notNull(),
+
+  // Sync enabled/disabled
+  syncEnabled: boolean('sync_enabled').default(true).notNull(),
+
+  // OAuth tokens (encrypted in application layer)
+  accessToken: text('access_token'),
+  refreshToken: text('refresh_token'),
+  tokenExpiresAt: timestamp('token_expires_at'),
+
+  lastSyncAt: timestamp('last_sync_at'),
+  lastSyncError: text('last_sync_error'),
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  userProviderIdx: index('shopping_list_sources_user_provider_idx').on(table.userId, table.provider),
+  shoppingListIdx: index('shopping_list_sources_shopping_list_idx').on(table.shoppingListId),
+}));
+
+
 export const shoppingLists = pgTable('shopping_lists', {
   id: uuid('id').defaultRandom().primaryKey(),
 
@@ -321,6 +366,10 @@ export const shoppingLists = pgTable('shopping_lists', {
   icon: varchar('icon', { length: 50 }),
 
   color: varchar('color', { length: 7 }),
+
+  // List type: 'grocery' | 'hardware' | 'other' - determines layout style
+  listType: varchar('list_type', { length: 20 }).default('grocery').notNull()
+    .$type<'grocery' | 'hardware' | 'other'>(),
 
   sortOrder: integer('sort_order').default(0).notNull(),
 
@@ -358,12 +407,20 @@ export const shoppingItems = pgTable('shopping_items', {
 
   notes: text('notes'),
 
+  // External sync tracking
+  shoppingListSourceId: uuid('shopping_list_source_id').references(() => shoppingListSources.id, { onDelete: 'set null' }),
+  externalId: varchar('external_id', { length: 255 }),
+  externalUpdatedAt: timestamp('external_updated_at'),
+  lastSynced: timestamp('last_synced'),
+
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
   listIdIdx: index('shopping_items_list_id_idx').on(table.listId),
   categoryIdx: index('shopping_items_category_idx').on(table.category),
   checkedIdx: index('shopping_items_checked_idx').on(table.checked),
+  shoppingListSourceIdx: index('shopping_items_source_idx').on(table.shoppingListSourceId),
+  externalIdIdx: index('shopping_items_external_id_idx').on(table.externalId),
 }));
 
 
@@ -610,6 +667,7 @@ export const apiCredentials = pgTable('api_credentials', {
 export const usersRelations = relations(users, ({ many }) => ({
   calendarSources: many(calendarSources),
   taskSources: many(taskSources),
+  shoppingListSources: many(shoppingListSources),
   tasks: many(tasks),
   chores: many(chores),
   choreCompletions: many(choreCompletions),
@@ -712,6 +770,18 @@ export const choreCompletionsRelations = relations(choreCompletions, ({ one }) =
   }),
 }));
 
+export const shoppingListSourcesRelations = relations(shoppingListSources, ({ one, many }) => ({
+  user: one(users, {
+    fields: [shoppingListSources.userId],
+    references: [users.id],
+  }),
+  shoppingList: one(shoppingLists, {
+    fields: [shoppingListSources.shoppingListId],
+    references: [shoppingLists.id],
+  }),
+  items: many(shoppingItems),
+}));
+
 export const shoppingListsRelations = relations(shoppingLists, ({ one, many }) => ({
   createdByUser: one(users, {
     fields: [shoppingLists.createdBy],
@@ -722,6 +792,7 @@ export const shoppingListsRelations = relations(shoppingLists, ({ one, many }) =
     references: [users.id],
   }),
   items: many(shoppingItems),
+  sources: many(shoppingListSources),
 }));
 
 export const shoppingItemsRelations = relations(shoppingItems, ({ one }) => ({
@@ -732,6 +803,10 @@ export const shoppingItemsRelations = relations(shoppingItems, ({ one }) => ({
   addedByUser: one(users, {
     fields: [shoppingItems.addedBy],
     references: [users.id],
+  }),
+  shoppingListSource: one(shoppingListSources, {
+    fields: [shoppingItems.shoppingListSourceId],
+    references: [shoppingListSources.id],
   }),
 }));
 

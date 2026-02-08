@@ -9,11 +9,12 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { useTheme } from '@/components/providers';
 import { useSeasonalTheme } from '@/lib/hooks/useSeasonalTheme';
 import { MONTH_NAMES, seasonalPalettes } from '@/lib/themes/seasonalThemes';
-import { useWallpaperSettings, useAutoOrientationSetting } from '@/components/layout/WallpaperBackground';
+import { useWallpaperSettings, useAutoOrientationSetting, useScreensaverInterval } from '@/components/layout/WallpaperBackground';
 import { useScreenOrientation } from '@/lib/hooks/useScreenOrientation';
 import { useOrientationOverride } from '../SettingsView';
 import { useFamily } from '@/components/providers/FamilyProvider';
 import { useScreensaverTimeout } from '@/lib/hooks/useScreensaverTimeout';
+import { useHiddenHours } from '@/lib/hooks/useHiddenHours';
 
 function getCurrentMonthNum(): number {
   return new Date().getMonth() + 1;
@@ -161,6 +162,8 @@ export function DisplaySection() {
 
       <ScreensaverTimeoutCard />
 
+      <CalendarHoursCard />
+
       <Card>
         <CardHeader>
           <CardTitle>Location</CardTitle>
@@ -254,6 +257,7 @@ function DisplayUserCard() {
 
 function ScreensaverTimeoutCard() {
   const { timeout, setTimeout } = useScreensaverTimeout();
+  const { interval: photoInterval, setInterval: setPhotoInterval } = useScreensaverInterval();
 
   return (
     <Card>
@@ -263,7 +267,7 @@ function ScreensaverTimeoutCard() {
           Activate screensaver mode after a period of inactivity
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground">Activate after</span>
           <select
@@ -277,6 +281,24 @@ function ScreensaverTimeoutCard() {
             <option value={600}>10 minutes</option>
             <option value={3600}>1 hour</option>
             <option value={0}>Never</option>
+          </select>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">Rotate photos every</span>
+          <select
+            value={photoInterval}
+            onChange={(e) => setPhotoInterval(Number(e.target.value))}
+            className="border border-border rounded px-2 py-1 text-sm bg-background"
+          >
+            <option value={5}>5 seconds</option>
+            <option value={10}>10 seconds</option>
+            <option value={15}>15 seconds</option>
+            <option value={30}>30 seconds</option>
+            <option value={60}>1 minute</option>
+            <option value={300}>5 minutes</option>
+            <option value={600}>10 minutes</option>
+            <option value={3600}>1 hour</option>
+            <option value={0}>Never (static)</option>
           </select>
         </div>
       </CardContent>
@@ -328,6 +350,8 @@ function WallpaperSettingsCard() {
                 <option value={120}>2 minutes</option>
                 <option value={300}>5 minutes</option>
                 <option value={600}>10 minutes</option>
+                <option value={3600}>1 hour</option>
+                <option value={0}>Never (static)</option>
               </select>
             </div>
             <div className="flex items-center justify-between">
@@ -396,6 +420,67 @@ function OrientationCard() {
               {opt}
             </button>
           ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function CalendarHoursCard() {
+  const { settings, loaded, setSettings } = useHiddenHours();
+
+  const hours = Array.from({ length: 24 }, (_, i) => i);
+  const formatHour = (h: number) => {
+    if (h === 0) return '12 AM';
+    if (h === 12) return '12 PM';
+    if (h < 12) return `${h} AM`;
+    return `${h - 12} PM`;
+  };
+
+  if (!loaded) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Calendar Hours</CardTitle>
+        <CardDescription>
+          Hide a time range from day and week calendar views. When hidden, the remaining hours
+          auto-resize to fill the available space. Toggle visibility with the clock button in calendar views.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">Hide hours from</span>
+          <select
+            value={settings.startHour}
+            onChange={(e) => setSettings({ startHour: Number(e.target.value) })}
+            className="border border-border rounded px-2 py-1 text-sm bg-background"
+          >
+            {hours.map((h) => (
+              <option key={h} value={h}>
+                {formatHour(h)}
+              </option>
+            ))}
+          </select>
+          <span className="text-sm text-muted-foreground">to</span>
+          <select
+            value={settings.endHour}
+            onChange={(e) => setSettings({ endHour: Number(e.target.value) })}
+            className="border border-border rounded px-2 py-1 text-sm bg-background"
+          >
+            {hours.map((h) => (
+              <option key={h} value={h}>
+                {formatHour(h)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="text-xs text-muted-foreground">
+          Hiding {formatHour(settings.startHour)} to {formatHour(settings.endHour)} ({
+            settings.startHour <= settings.endHour
+              ? settings.endHour - settings.startHour
+              : 24 - settings.startHour + settings.endHour
+          } hours)
         </div>
       </CardContent>
     </Card>

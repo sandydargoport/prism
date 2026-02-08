@@ -120,6 +120,11 @@ export function useCalendarEvents(
         },
       });
 
+      // Silently ignore auth errors (401/403) - sync requires login
+      if (response.status === 401 || response.status === 403) {
+        return;
+      }
+
       if (!response.ok) {
         throw new Error('Failed to sync calendars');
       }
@@ -208,6 +213,7 @@ export function useCalendarSources() {
       displayName: string | null;
       color: string | null;
       enabled: boolean;
+      showInEventModal: boolean;
       isFamily: boolean;
       groupId: string | null;
       groupName: string | null;

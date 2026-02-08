@@ -15,6 +15,7 @@ import {
   User,
   ImageIcon,
   ListTodo,
+  ShoppingCart,
 } from 'lucide-react';
 import { PrismIcon } from '@/components/ui/PrismIcon';
 import { cn } from '@/lib/utils';
@@ -28,6 +29,7 @@ import { DisplaySection } from './sections/DisplaySection';
 import { SecuritySection } from './sections/SecuritySection';
 import { PhotosSettingsSection } from './sections/PhotosSettingsSection';
 import { TaskIntegrationsSection } from './sections/TaskIntegrationsSection';
+import { ShoppingIntegrationsSection } from './sections/ShoppingIntegrationsSection';
 
 
 // ============================================================================
@@ -118,6 +120,7 @@ export function SettingsView() {
     { id: 'family', label: 'Family Members', icon: Users },
     { id: 'calendars', label: 'Calendars', icon: Calendar },
     { id: 'tasks', label: 'Task Integrations', icon: ListTodo },
+    { id: 'shopping', label: 'Shopping Integrations', icon: ShoppingCart },
     { id: 'photos', label: 'Photos', icon: ImageIcon },
     { id: 'display', label: 'Display', icon: Palette },
     { id: 'security', label: 'Security', icon: Shield },
@@ -170,6 +173,7 @@ export function SettingsView() {
               {activeSection === 'family' && <FamilySection />}
               {activeSection === 'calendars' && <CalendarsSection />}
               {activeSection === 'tasks' && <TaskIntegrationsSection />}
+              {activeSection === 'shopping' && <ShoppingIntegrationsSection />}
               {activeSection === 'photos' && <PhotosSettingsSection />}
               {activeSection === 'display' && <DisplaySection />}
               {activeSection === 'security' && <SecuritySection />}

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireRole } from '@/lib/auth';
 import { db } from '@/lib/db/client';
-import { users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { users, calendarGroups } from '@/lib/db/schema';
+import { eq, and } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { invalidateCache } from '@/lib/cache/redis';
 
@@ -176,6 +176,17 @@ export async function PATCH(
         { error: 'Failed to update family member' },
         { status: 500 }
       );
+    }
+
+    // Sync calendar group color if user color was updated
+    if (updates.color) {
+      await db
+        .update(calendarGroups)
+        .set({ color: updates.color, updatedAt: new Date() })
+        .where(and(
+          eq(calendarGroups.userId, id),
+          eq(calendarGroups.type, 'user')
+        ));
     }
 
     await invalidateCache('family:*');

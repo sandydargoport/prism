@@ -82,6 +82,7 @@ export interface ShoppingList {
   description?: string;
   icon?: string | null;
   color?: string | null;
+  listType?: 'grocery' | 'hardware' | 'other';
   sortOrder: number;
   assignedTo?: string;
   items: ShoppingItem[];

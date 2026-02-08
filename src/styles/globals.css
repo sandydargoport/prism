@@ -231,6 +231,39 @@
     @apply border-border;
   }
 
+  /* HTML base font size - responsive by device type */
+  html {
+    font-size: 16px; /* Default browser size for phones */
+  }
+
+  /* Desktop with mouse: slightly larger for comfortable reading distance */
+  @media (pointer: fine) {
+    html {
+      font-size: 18px;
+    }
+  }
+
+  /* Small tablets (768px-1023px) with touch: larger for finger interaction */
+  @media (min-width: 768px) and (pointer: coarse) {
+    html {
+      font-size: 20px;
+    }
+  }
+
+  /* Large tablets like iPad Pro (1024px+) with touch: even larger */
+  @media (min-width: 1024px) and (pointer: coarse) {
+    html {
+      font-size: 22px;
+    }
+  }
+
+  /* Very large touch displays (1400px+): dashboard/kiosk mode */
+  @media (min-width: 1400px) and (pointer: coarse) {
+    html {
+      font-size: 24px;
+    }
+  }
+
   /* Body styles */
   body {
     @apply bg-background text-foreground;
@@ -418,6 +451,89 @@
   }
 }
 
+/* Shopping celebration animations */
+@keyframes cart-ride {
+  0% {
+    left: -150px;
+    top: 50%;
+    transform: translateY(-50%) rotate(-5deg);
+  }
+  20% {
+    transform: translateY(-50%) rotate(5deg);
+  }
+  40% {
+    transform: translateY(-50%) rotate(-5deg);
+  }
+  60% {
+    transform: translateY(-50%) rotate(5deg);
+  }
+  80% {
+    transform: translateY(-50%) rotate(-3deg);
+  }
+  100% {
+    left: 110%;
+    top: 50%;
+    transform: translateY(-50%) rotate(0deg);
+  }
+}
+
+@keyframes exhaust {
+  0% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-40px) scale(0.5);
+  }
+}
+
+@keyframes confetti-fall {
+  0% {
+    top: -10%;
+    opacity: 1;
+    transform: rotate(0deg) translateX(0);
+  }
+  100% {
+    top: 110%;
+    opacity: 0.5;
+    transform: rotate(720deg) translateX(50px);
+  }
+}
+
+@keyframes bounce-in {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.3);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  70% {
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.animate-cart-ride {
+  animation: cart-ride 2.5s ease-in-out forwards;
+}
+
+.animate-exhaust {
+  animation: exhaust 0.4s ease-out infinite;
+}
+
+.animate-confetti-fall {
+  animation: confetti-fall 2.5s ease-out forwards;
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.6s ease-out forwards;
+}
+
 /* Allow color picker dropdowns to overflow grid items */
 .react-grid-item {
   overflow: visible !important;
@@ -425,25 +541,88 @@
 
 /* ============================================================================
    REACT-GRID-LAYOUT RESIZE HANDLES
-   Full-perimeter resize: edges span the full side, corners are 16x16
+   Touch-friendly resize handles for desktop and tablet editing
    ============================================================================ */
 .react-resizable-handle {
   position: absolute;
   z-index: 20;
   opacity: 0;
   transition: opacity 0.15s;
+  /* Make handles visible on touch devices */
+  @media (pointer: coarse) {
+    opacity: 0.7;
+  }
 }
 .react-grid-item:hover > .react-resizable-handle,
-.react-grid-item.resizing > .react-resizable-handle {
+.react-grid-item.resizing > .react-resizable-handle,
+.react-grid-item:active > .react-resizable-handle {
   opacity: 1;
 }
-/* Edge handles - span full side, 6px thick */
-.react-resizable-handle-n { top: -3px; left: 8px; right: 8px; height: 6px; cursor: n-resize; }
-.react-resizable-handle-s { bottom: -3px; left: 8px; right: 8px; height: 6px; cursor: s-resize; }
-.react-resizable-handle-e { right: -3px; top: 8px; bottom: 8px; width: 6px; cursor: e-resize; }
-.react-resizable-handle-w { left: -3px; top: 8px; bottom: 8px; width: 6px; cursor: w-resize; }
-/* Corner handles - 16x16 */
-.react-resizable-handle-ne { top: -3px; right: -3px; width: 16px; height: 16px; cursor: ne-resize; }
-.react-resizable-handle-nw { top: -3px; left: -3px; width: 16px; height: 16px; cursor: nw-resize; }
-.react-resizable-handle-se { bottom: -3px; right: -3px; width: 16px; height: 16px; cursor: se-resize; }
-.react-resizable-handle-sw { bottom: -3px; left: -3px; width: 16px; height: 16px; cursor: sw-resize; }
+/* Edge handles - larger for touch (20px thick with visual indicator) */
+.react-resizable-handle-n { top: -10px; left: 24px; right: 24px; height: 20px; cursor: n-resize; }
+.react-resizable-handle-s { bottom: -10px; left: 24px; right: 24px; height: 20px; cursor: s-resize; }
+.react-resizable-handle-e { right: -10px; top: 24px; bottom: 24px; width: 20px; cursor: e-resize; }
+.react-resizable-handle-w { left: -10px; top: 24px; bottom: 24px; width: 20px; cursor: w-resize; }
+/* Corner handles - 32x32 for easy touch targeting */
+.react-resizable-handle-ne { top: -12px; right: -12px; width: 32px; height: 32px; cursor: ne-resize; }
+.react-resizable-handle-nw { top: -12px; left: -12px; width: 32px; height: 32px; cursor: nw-resize; }
+.react-resizable-handle-se { bottom: -12px; right: -12px; width: 32px; height: 32px; cursor: se-resize; }
+.react-resizable-handle-sw { bottom: -12px; left: -12px; width: 32px; height: 32px; cursor: sw-resize; }
+/* Visual indicators for touch devices */
+@media (pointer: coarse) {
+  .react-resizable-handle::after {
+    content: '';
+    position: absolute;
+    background: hsl(var(--primary));
+    border-radius: 4px;
+  }
+  .react-resizable-handle-n::after,
+  .react-resizable-handle-s::after {
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 4px;
+    top: 8px;
+  }
+  .react-resizable-handle-e::after,
+  .react-resizable-handle-w::after {
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 40px;
+    left: 8px;
+  }
+  .react-resizable-handle-ne::after,
+  .react-resizable-handle-nw::after,
+  .react-resizable-handle-se::after,
+  .react-resizable-handle-sw::after {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* ============================================================================
+   PWA SAFE AREA UTILITIES
+   ============================================================================
+   For iOS PWA with notch/home indicator, adds padding for safe areas.
+   ============================================================================ */
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-area-left {
+  padding-left: env(safe-area-inset-left, 0px);
+}
+
+.safe-area-right {
+  padding-right: env(safe-area-inset-right, 0px);
+}

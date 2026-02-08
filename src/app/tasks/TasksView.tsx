@@ -16,8 +16,10 @@ import { PageWrapper } from '@/components/layout';
 import { TaskItem } from '@/app/tasks/TaskItem';
 import { TaskModal } from '@/app/tasks/TaskModal';
 import { useTasksViewData } from './useTasksViewData';
+import { useAuth } from '@/components/providers';
 
 export function TasksView() {
+  const { requireAuth } = useAuth();
   const {
     loading, error, refreshTasks, familyMembers,
     filterPerson, setFilterPerson,
@@ -34,13 +36,19 @@ export function TasksView() {
     autoSyncing,
   } = useTasksViewData();
 
+  const handleAddWithAuth = async () => {
+    const user = await requireAuth('Add Task', 'Please log in to add a task');
+    if (!user) return;
+    handleAddClick();
+  };
+
   return (
     <PageWrapper>
       <div className="h-screen flex flex-col">
-        <header className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-4 py-3">
+        <header className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-4 py-3 safe-area-top">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" asChild>
+              <Button variant="ghost" size="icon" asChild className="hidden md:inline-flex">
                 <Link href="/" aria-label="Back to dashboard"><Home className="h-5 w-5" /></Link>
               </Button>
               <div className="flex items-center gap-2">
@@ -52,13 +60,14 @@ export function TasksView() {
                 )}
               </div>
             </div>
-            <Button onClick={handleAddClick}>
-              <Plus className="h-4 w-4 mr-1" />Add Task
+            <Button onClick={handleAddWithAuth} size="sm">
+              <Plus className="h-4 w-4 mr-1" />
+              Add Task
             </Button>
           </div>
         </header>
 
-        <div className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-4 py-2">
+        <div className="hidden md:block flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-4 py-2">
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Person:</span>
@@ -132,7 +141,7 @@ export function TasksView() {
           ) : filteredTasks.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
               <CheckSquare className="h-12 w-12 mb-4 opacity-50" /><p>No tasks found</p>
-              <Button variant="outline" size="sm" className="mt-4" onClick={() => setShowAddModal(true)}>Add your first task</Button>
+              <Button variant="outline" size="sm" className="mt-4" onClick={handleAddWithAuth}>Add your first task</Button>
             </div>
           ) : (
             <div className="space-y-2 max-w-4xl mx-auto">

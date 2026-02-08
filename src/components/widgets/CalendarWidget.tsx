@@ -29,7 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui';
 import { useCalendarEvents, useCalendarFilter } from '@/lib/hooks';
-import { MonthView, WeekView, TwoWeekView, DayViewSideBySide, CalendarFilterPopover } from '@/components/calendar';
+import { MonthView, WeekView, TwoWeekView, DayViewSideBySide } from '@/components/calendar';
 import type { CalendarEvent } from '@/types/calendar';
 export type { CalendarEvent };
 
@@ -202,15 +202,48 @@ export function CalendarWidget({
           </SelectContent>
         </Select>
       )}
-
-      {/* Filter */}
-      <CalendarFilterPopover
-        calendarGroups={calendarGroups}
-        selectedCalendarIds={selectedCalendarIds}
-        onToggle={toggleCalendar}
-      />
     </div>
   );
+
+  // Calendar filter chips (shown below header when calendars exist)
+  const calendarChips = calendarGroups.length > 0 ? (
+    <div className="flex items-center gap-1 flex-wrap px-3 pb-2 -mt-1">
+      <button
+        onClick={() => toggleCalendar('all')}
+        className={cn(
+          'px-2 py-1 rounded-full text-[10px] font-medium transition-colors leading-none',
+          selectedCalendarIds.has('all')
+            ? 'bg-primary text-primary-foreground'
+            : 'bg-muted text-muted-foreground hover:bg-accent'
+        )}
+      >
+        All
+      </button>
+      {calendarGroups.map((group) => (
+        <button
+          key={group.id}
+          onClick={() => toggleCalendar(group.id)}
+          className={cn(
+            'px-2 py-1 rounded-full text-[10px] font-medium transition-colors inline-flex items-center gap-1 leading-none',
+            selectedCalendarIds.has(group.id) || selectedCalendarIds.has('all')
+              ? 'text-white'
+              : 'bg-muted text-muted-foreground hover:bg-accent'
+          )}
+          style={
+            selectedCalendarIds.has(group.id) || selectedCalendarIds.has('all')
+              ? { backgroundColor: group.color }
+              : undefined
+          }
+        >
+          <span
+            className="w-1.5 h-1.5 rounded-full"
+            style={{ backgroundColor: group.color }}
+          />
+          {group.name}
+        </button>
+      ))}
+    </div>
+  ) : null;
 
   return (
     <WidgetContainer
@@ -223,6 +256,7 @@ export function CalendarWidget({
       actions={headerActions}
       className={className}
     >
+      {calendarChips}
       {viewUnavailable && (
         <div className="text-[10px] text-muted-foreground text-center py-1 bg-muted/50 rounded mb-1">
           Resize widget for {VIEW_OPTIONS.find(v => v.value === viewType)?.label} view

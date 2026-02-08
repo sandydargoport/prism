@@ -135,10 +135,13 @@ export const metadata: Metadata = {
     follow: true,
   },
 
+  // PWA manifest
+  manifest: '/manifest.json',
+
   // Icons configuration
   icons: {
-    icon: '/icons/icon.svg',
-    apple: '/icons/icon.svg',
+    icon: '/icons/icon-192.png',
+    apple: '/icons/icon-512.png',
   },
 
   // Open Graph metadata (for social sharing on Facebook, LinkedIn, etc.)

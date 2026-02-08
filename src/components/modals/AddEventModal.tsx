@@ -23,6 +23,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 import { useCalendarSources } from '@/lib/hooks';
+import { useAuth } from '@/components/providers';
 import {
   Dialog,
   DialogContent,
@@ -161,13 +162,22 @@ export function AddEventModal({
 }: AddEventModalProps) {
   const isEditMode = !!event;
 
+  // Get active user for default color
+  const { activeUser } = useAuth();
+  const defaultEventColor = activeUser?.color || '#3B82F6';
+
   // Fetch available calendars
   const { calendars } = useCalendarSources();
 
-  // Filter to only show calendars that support writing (Google calendars with write access)
+  // Filter to only show calendars that:
+  // 1. Are enabled
+  // 2. Support writing (Google or local)
+  // 3. Have showInEventModal enabled (not hidden in settings)
   const writableCalendars = useMemo(() => {
     return calendars.filter(
-      (cal) => cal.enabled && (cal.provider === 'google' || cal.provider === 'local')
+      (cal) => cal.enabled &&
+               (cal.provider === 'google' || cal.provider === 'local') &&
+               cal.showInEventModal !== false
     );
   }, [calendars]);
 
@@ -182,6 +192,7 @@ export function AddEventModal({
   const [recurrenceRule, setRecurrenceRule] = useState('');
   const [reminderMinutes, setReminderMinutes] = useState<number | ''>('');
   const [calendarSourceId, setCalendarSourceId] = useState<string>('local');
+  const [eventColor, setEventColor] = useState<string>('');
 
   // Loading/error state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -201,6 +212,8 @@ export function AddEventModal({
       setReminderMinutes(event.reminderMinutes ?? '');
       // Set calendar source - use 'local' if no calendarSourceId
       setCalendarSourceId(event.calendarSourceId || 'local');
+      // Set color from event or use user's default
+      setEventColor(event.color || defaultEventColor);
     } else if (open && defaultDate) {
       // Pre-fill with default date
       const start = new Date(defaultDate);
@@ -209,8 +222,13 @@ export function AddEventModal({
       end.setHours(10, 0, 0, 0); // Default to 10:00 AM (1 hour)
       setStartTime(formatDateTimeLocal(start));
       setEndTime(formatDateTimeLocal(end));
+      // Default to user's profile color for new events
+      setEventColor(defaultEventColor);
+    } else if (open) {
+      // New event without default date - still set the default color
+      setEventColor(defaultEventColor);
     }
-  }, [open, event, defaultDate]);
+  }, [open, event, defaultDate, defaultEventColor]);
 
   // Reset form when modal closes
   useEffect(() => {
@@ -225,6 +243,7 @@ export function AddEventModal({
       setRecurrenceRule('');
       setReminderMinutes('');
       setCalendarSourceId('local');
+      setEventColor('');
       setError(null);
     }
   }, [open]);
@@ -256,6 +275,7 @@ export function AddEventModal({
         recurrenceRule: recurring && recurrenceRule.trim() ? recurrenceRule.trim() : undefined,
         reminderMinutes: reminderMinutes !== '' ? Number(reminderMinutes) : undefined,
         calendarSourceId: calendarSourceId !== 'local' ? calendarSourceId : undefined,
+        color: eventColor || undefined,
       };
 
       const url = isEditMode ? `/api/events/${event.id}` : '/api/events';
@@ -346,6 +366,48 @@ export function AddEventModal({
                 Event will be synced to the selected Google Calendar
               </p>
             )}
+          </div>
+
+          {/* Event Color */}
+          <div className="space-y-2">
+            <Label htmlFor="event-color">Event Color</Label>
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                id="event-color"
+                value={eventColor || defaultEventColor}
+                onChange={(e) => setEventColor(e.target.value)}
+                className="w-10 h-10 rounded-md border border-border cursor-pointer"
+              />
+              <div className="flex gap-1 flex-wrap">
+                {['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#6B7280'].map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => setEventColor(color)}
+                    className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${
+                      (eventColor || defaultEventColor) === color ? 'border-foreground scale-110' : 'border-transparent'
+                    }`}
+                    style={{ backgroundColor: color }}
+                    title={color}
+                  />
+                ))}
+                {activeUser?.color && !['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#6B7280'].includes(activeUser.color) && (
+                  <button
+                    type="button"
+                    onClick={() => setEventColor(activeUser.color!)}
+                    className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${
+                      (eventColor || defaultEventColor) === activeUser.color ? 'border-foreground scale-110' : 'border-transparent'
+                    }`}
+                    style={{ backgroundColor: activeUser.color }}
+                    title={`Your color (${activeUser.color})`}
+                  />
+                )}
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Defaults to your profile color
+            </p>
           </div>
 
           {/* Description */}

@@ -120,11 +120,11 @@ export function MessagesView() {
         {/* ================================================================ */}
         {/* HEADER */}
         {/* ================================================================ */}
-        <header className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-4 py-3">
+        <header className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-4 py-3 safe-area-top">
           <div className="flex items-center justify-between">
             {/* Left: Back and title */}
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" asChild>
+              <Button variant="ghost" size="icon" asChild className="hidden md:inline-flex">
                 <Link href="/" aria-label="Back to dashboard">
                   <Home className="h-5 w-5" />
                 </Link>
@@ -143,21 +143,25 @@ export function MessagesView() {
               </div>
             </div>
 
-            <Button onClick={async () => {
+            <Button
+              onClick={async () => {
                 const user = await requireAuth("Who's posting?");
                 if (user) setShowAddModal(true);
-              }}>
-                <Plus className="h-4 w-4 mr-1" />
-                Add Message
-              </Button>
+              }}
+              size="icon"
+              className="rounded-full h-10 w-10"
+            >
+              <Plus className="h-5 w-5" />
+              <span className="sr-only">Add Message</span>
+            </Button>
           </div>
         </header>
 
         {/* ================================================================== */}
-        {/* FILTERS */}
+        {/* FILTERS - hidden on mobile */}
         {/* ================================================================== */}
         {authors.length > 1 && (
-          <div className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-4 py-2">
+          <div className="hidden md:block flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-4 py-2">
             <div className="flex items-center gap-4 flex-wrap">
               {/* Filter by author */}
               <div className="flex items-center gap-2">

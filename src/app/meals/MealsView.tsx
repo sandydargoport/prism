@@ -15,6 +15,8 @@ import {
   Undo2,
   Clock,
   ExternalLink,
+  ChefHat,
+  Search,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -22,10 +24,14 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { UserAvatar } from '@/components/ui/avatar';
 import { PageWrapper } from '@/components/layout';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useMealsViewData } from './useMealsViewData';
+import { useRecipes, type Recipe } from '@/lib/hooks/useRecipes';
+import { useAuth } from '@/components/providers';
 import type { Meal } from '@/types';
 
 export function MealsView() {
+  const { requireAuth } = useAuth();
   const {
     today, currentWeek, weekOfString, loading,
     showAddModal, setShowAddModal,
@@ -37,18 +43,28 @@ export function MealsView() {
     totalMeals, cookedMeals,
   } = useMealsViewData();
 
+  const { recipes } = useRecipes({ limit: 100 });
+
+  const handleAddWithAuth = async (day?: Meal['dayOfWeek']) => {
+    const user = await requireAuth('Add Meal', 'Please log in to add a meal');
+    if (!user) return;
+    if (day) setSelectedDay(day);
+    setShowAddModal(true);
+  };
+
   return (
     <PageWrapper>
       <div className="h-screen flex flex-col">
-        <header className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-4 py-3">
+        <header className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-4 py-3 safe-area-top">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <UtensilsCrossed className="h-5 w-5 text-primary" />
               <h1 className="text-xl font-bold">Meal Planner</h1>
               <Badge variant="secondary">{cookedMeals}/{totalMeals} cooked</Badge>
             </div>
-            <Button onClick={() => setShowAddModal(true)}>
-              <Plus className="h-4 w-4 mr-1" />Add Meal
+            <Button onClick={() => handleAddWithAuth()} size="sm">
+              <Plus className="h-4 w-4 mr-1" />
+              Add Meal
             </Button>
           </div>
         </header>
@@ -82,7 +98,7 @@ export function MealsView() {
                 const isPast = isBefore(dayDate, startOfDay(new Date())) && !isDayToday;
                 return (
                   <DayRow key={day} day={day} date={dayDate} meals={dayMeals} isToday={isDayToday} isPast={isPast}
-                    onAddMeal={() => { setSelectedDay(day); setShowAddModal(true); }}
+                    onAddMeal={() => handleAddWithAuth(day)}
                     onMarkCooked={markCooked} onUnmarkCooked={unmarkCooked}
                     onEdit={setEditingMeal} onDelete={deleteMeal} onDropMeal={handleDropMeal} />
                 );
@@ -92,12 +108,12 @@ export function MealsView() {
         </div>
 
         {showAddModal && (
-          <MealModal weekOf={weekOfString} defaultDay={selectedDay || 'monday'}
+          <MealModal weekOf={weekOfString} defaultDay={selectedDay || 'monday'} recipes={recipes}
             onClose={() => { setShowAddModal(false); setSelectedDay(null); }}
             onSave={(meal) => { addMeal(meal); setShowAddModal(false); setSelectedDay(null); }} />
         )}
         {editingMeal && (
-          <MealModal weekOf={weekOfString} meal={editingMeal}
+          <MealModal weekOf={weekOfString} meal={editingMeal} recipes={recipes}
             onClose={() => setEditingMeal(null)}
             onSave={(updates) => { editMeal(editingMeal.id, updates); setEditingMeal(null); }} />
         )}
@@ -209,8 +225,8 @@ function getMealTypeEmoji(mealType: string): string {
 }
 
 
-function MealModal({ weekOf, meal, defaultDay, onClose, onSave }: {
-  weekOf: string; meal?: Meal; defaultDay?: Meal['dayOfWeek'];
+function MealModal({ weekOf, meal, defaultDay, recipes, onClose, onSave }: {
+  weekOf: string; meal?: Meal; defaultDay?: Meal['dayOfWeek']; recipes: Recipe[];
   onClose: () => void; onSave: (meal: Record<string, unknown>) => void;
 }) {
   const [name, setName] = useState(meal?.name || '');
@@ -220,6 +236,30 @@ function MealModal({ weekOf, meal, defaultDay, onClose, onSave }: {
   const [prepTime, setPrepTime] = useState(meal?.prepTime?.toString() || '');
   const [cookTime, setCookTime] = useState(meal?.cookTime?.toString() || '');
   const [recipeUrl, setRecipeUrl] = useState(meal?.recipeUrl || '');
+  const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
+  const [showRecipePicker, setShowRecipePicker] = useState(false);
+  const [recipeSearch, setRecipeSearch] = useState('');
+
+  const filteredRecipes = React.useMemo(() => {
+    if (!recipeSearch.trim()) return recipes.slice(0, 20);
+    const search = recipeSearch.toLowerCase();
+    return recipes.filter(r =>
+      r.name.toLowerCase().includes(search) ||
+      r.cuisine?.toLowerCase().includes(search) ||
+      r.category?.toLowerCase().includes(search)
+    ).slice(0, 20);
+  }, [recipes, recipeSearch]);
+
+  const selectRecipe = (recipe: Recipe) => {
+    setSelectedRecipeId(recipe.id);
+    setName(recipe.name);
+    setDescription(recipe.description || '');
+    setPrepTime(recipe.prepTime?.toString() || '');
+    setCookTime(recipe.cookTime?.toString() || '');
+    setRecipeUrl(recipe.url || '');
+    setShowRecipePicker(false);
+    setRecipeSearch('');
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -227,19 +267,96 @@ function MealModal({ weekOf, meal, defaultDay, onClose, onSave }: {
     onSave({
       name: name.trim(), description: description.trim() || undefined, weekOf, dayOfWeek, mealType,
       prepTime: prepTime ? parseInt(prepTime) : undefined, cookTime: cookTime ? parseInt(cookTime) : undefined,
-      recipeUrl: recipeUrl.trim() || undefined,
+      recipeUrl: recipeUrl.trim() || undefined, recipeId: selectedRecipeId || undefined,
     });
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 pb-20 md:pb-0" onClick={onClose}>
       <div className="bg-card rounded-lg p-6 max-w-md w-full mx-4 shadow-lg border border-border max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold">{meal ? 'Edit Meal' : 'Add Meal'}</h2>
           <Button variant="ghost" size="icon" onClick={onClose}><X className="h-4 w-4" /></Button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div><label className="text-sm font-medium">Name</label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Meal name..." autoFocus /></div>
+          {/* Recipe Picker */}
+          {recipes.length > 0 && (
+            <div>
+              <label className="text-sm font-medium flex items-center gap-2">
+                <ChefHat className="h-4 w-4" />
+                From Recipe (optional)
+              </label>
+              {showRecipePicker ? (
+                <div className="mt-1 border border-border rounded-md bg-background">
+                  <div className="p-2 border-b border-border">
+                    <div className="relative">
+                      <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        value={recipeSearch}
+                        onChange={(e) => setRecipeSearch(e.target.value)}
+                        placeholder="Search recipes..."
+                        className="pl-8 h-8"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+                  <ScrollArea className="h-48">
+                    <div className="p-1">
+                      {filteredRecipes.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-4">No recipes found</p>
+                      ) : (
+                        filteredRecipes.map((recipe) => (
+                          <button
+                            key={recipe.id}
+                            type="button"
+                            onClick={() => selectRecipe(recipe)}
+                            className="w-full text-left px-3 py-2 rounded-md hover:bg-accent text-sm flex items-center gap-2"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium truncate">{recipe.name}</div>
+                              {(recipe.cuisine || recipe.category) && (
+                                <div className="text-xs text-muted-foreground truncate">
+                                  {[recipe.cuisine, recipe.category].filter(Boolean).join(' • ')}
+                                </div>
+                              )}
+                            </div>
+                            {(recipe.prepTime || recipe.cookTime) && (
+                              <div className="text-xs text-muted-foreground flex items-center gap-1 shrink-0">
+                                <Clock className="h-3 w-3" />
+                                {(recipe.prepTime || 0) + (recipe.cookTime || 0)}m
+                              </div>
+                            )}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </ScrollArea>
+                  <div className="p-2 border-t border-border">
+                    <Button type="button" variant="ghost" size="sm" className="w-full" onClick={() => setShowRecipePicker(false)}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full mt-1 justify-start"
+                  onClick={() => setShowRecipePicker(true)}
+                >
+                  {selectedRecipeId ? (
+                    <span className="flex items-center gap-2">
+                      <ChefHat className="h-4 w-4 text-primary" />
+                      {recipes.find(r => r.id === selectedRecipeId)?.name || 'Selected recipe'}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">Choose a recipe...</span>
+                  )}
+                </Button>
+              )}
+            </div>
+          )}
+          <div><label className="text-sm font-medium">Name</label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Meal name..." autoFocus={recipes.length === 0} /></div>
           <div><label className="text-sm font-medium">Description (optional)</label><Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Any details..." /></div>
           <div>
             <label className="text-sm font-medium">Day</label>

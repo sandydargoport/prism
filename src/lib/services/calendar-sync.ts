@@ -1,6 +1,6 @@
 import { db } from '@/lib/db/client';
 import { calendarSources, events } from '@/lib/db/schema';
-import { eq, and, gte, lte } from 'drizzle-orm';
+import { eq, and, gte, lte, sql } from 'drizzle-orm';
 import {
   fetchCalendarEvents,
   refreshAccessToken,
@@ -105,44 +105,16 @@ export async function syncGoogleCalendarSource(
     return { synced: 0, errors: [`Failed to fetch events: ${error}`] };
   }
 
-  // Process each event
+  // Process each event using upsert to prevent duplicates
   console.log(`[Sync] Processing ${googleEvents.length} events from Google for source ${sourceId}`);
   for (const googleEvent of googleEvents) {
     try {
       const internalEvent = convertGoogleEventToInternal(googleEvent, sourceId);
 
-      // Check if event already exists
-      const existing = await db.query.events.findFirst({
-        where: and(
-          eq(events.calendarSourceId, sourceId),
-          eq(events.externalEventId, googleEvent.id)
-        ),
-      });
-
-      console.log(`[Sync] Event "${googleEvent.summary}" (${googleEvent.id}): existing=${existing?.id || 'NOT FOUND'}`);
-
-      if (existing) {
-        // Update existing event
-        console.log(`[Sync] Updating event ${existing.id}: "${internalEvent.title}"`);
-        await db
-          .update(events)
-          .set({
-            title: internalEvent.title,
-            description: internalEvent.description,
-            location: internalEvent.location,
-            startTime: internalEvent.startTime,
-            endTime: internalEvent.endTime,
-            allDay: internalEvent.allDay,
-            recurring: internalEvent.recurring,
-            recurrenceRule: internalEvent.recurrenceRule,
-            lastSynced: new Date(),
-            updatedAt: new Date(),
-          })
-          .where(eq(events.id, existing.id));
-      } else {
-        // Insert new event
-        console.log(`[Sync] Inserting new event: "${internalEvent.title}" (${googleEvent.id})`);
-        await db.insert(events).values({
+      // Use upsert (ON CONFLICT) to prevent race condition duplicates
+      await db
+        .insert(events)
+        .values({
           calendarSourceId: sourceId,
           externalEventId: internalEvent.externalEventId,
           title: internalEvent.title,
@@ -154,8 +126,22 @@ export async function syncGoogleCalendarSource(
           recurring: internalEvent.recurring,
           recurrenceRule: internalEvent.recurrenceRule,
           lastSynced: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: [events.calendarSourceId, events.externalEventId],
+          set: {
+            title: internalEvent.title,
+            description: internalEvent.description,
+            location: internalEvent.location,
+            startTime: internalEvent.startTime,
+            endTime: internalEvent.endTime,
+            allDay: internalEvent.allDay,
+            recurring: internalEvent.recurring,
+            recurrenceRule: internalEvent.recurrenceRule,
+            lastSynced: new Date(),
+            updatedAt: new Date(),
+          },
         });
-      }
 
       synced++;
     } catch (error) {

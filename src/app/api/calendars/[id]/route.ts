@@ -143,6 +143,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       updates.groupId = body.groupId || null;
     }
 
+    // Handle showInEventModal flag
+    if (typeof body.showInEventModal === 'boolean') {
+      updates.showInEventModal = body.showInEventModal;
+    }
+
     if (body.color) {
       if (!/^#[0-9A-Fa-f]{6}$/.test(body.color)) {
         return NextResponse.json(

@@ -52,34 +52,40 @@ export async function GET(request: Request) {
   const forbidden = requireRole(auth, 'canManageIntegrations');
   if (forbidden) return forbidden;
 
+  // Parse state outside try block so it's available in catch
+  const { searchParams } = new URL(request.url);
+  const state = searchParams.get('state');
+
+  let taskListId: string | null = null;
+  let shoppingListId: string | null = null;
+  let returnSection = 'tasks';
+  if (state) {
+    try {
+      const parsed = JSON.parse(state);
+      taskListId = parsed.taskListId || null;
+      shoppingListId = parsed.shoppingListId || null;
+      returnSection = parsed.returnSection || 'tasks';
+    } catch {
+      // Ignore parse errors
+    }
+  }
+
   try {
-    const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const error = searchParams.get('error');
-    const state = searchParams.get('state');
 
     if (error) {
       const errorDescription = searchParams.get('error_description');
       console.error('Microsoft Tasks OAuth error:', error, errorDescription);
       return NextResponse.redirect(
-        `${BASE_URL}/settings?section=tasks&error=microsoft_auth_denied`
+        `${BASE_URL}/settings?section=${returnSection}&error=microsoft_auth_denied`
       );
     }
 
     if (!code) {
       return NextResponse.redirect(
-        `${BASE_URL}/settings?section=tasks&error=missing_code`
+        `${BASE_URL}/settings?section=${returnSection}&error=missing_code`
       );
-    }
-
-    let taskListId: string | null = null;
-    if (state) {
-      try {
-        const parsed = JSON.parse(state);
-        taskListId = parsed.taskListId || null;
-      } catch {
-        // Ignore parse errors
-      }
     }
 
     // Exchange code for tokens
@@ -100,10 +106,12 @@ export async function GET(request: Request) {
       );
     }
 
-    // Use taskListId in key if provided, otherwise use 'new' for new connections
-    const tempKey = taskListId
-      ? `ms-todo-temp:${auth.userId}:${taskListId}`
-      : `ms-todo-temp:${auth.userId}:new`;
+    // Use appropriate key based on whether this is for tasks or shopping
+    const listId = shoppingListId || taskListId;
+    const keyType = shoppingListId ? 'shopping' : 'task';
+    const tempKey = listId
+      ? `ms-todo-temp:${auth.userId}:${keyType}:${listId}`
+      : `ms-todo-temp:${auth.userId}:${keyType}:new`;
 
     await redis.setEx(
       tempKey,
@@ -117,15 +125,20 @@ export async function GET(request: Request) {
     );
 
     // Redirect to settings with flag to show MS list picker
-    const redirectUrl = taskListId
-      ? `${BASE_URL}/settings?section=tasks&selectMsList=true&taskListId=${taskListId}`
-      : `${BASE_URL}/settings?section=tasks&selectMsList=true&newConnection=true`;
+    let redirectUrl: string;
+    if (shoppingListId) {
+      redirectUrl = `${BASE_URL}/settings?section=shopping&selectMsList=true&shoppingListId=${shoppingListId}`;
+    } else if (taskListId) {
+      redirectUrl = `${BASE_URL}/settings?section=tasks&selectMsList=true&taskListId=${taskListId}`;
+    } else {
+      redirectUrl = `${BASE_URL}/settings?section=${returnSection}&selectMsList=true&newConnection=true`;
+    }
 
     return NextResponse.redirect(redirectUrl);
   } catch (error) {
     console.error('Microsoft Tasks OAuth callback error:', error);
     return NextResponse.redirect(
-      `${BASE_URL}/settings?section=tasks&error=microsoft_auth_failed`
+      `${BASE_URL}/settings?section=${returnSection}&error=microsoft_auth_failed`
     );
   }
 }

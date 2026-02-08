@@ -20,6 +20,28 @@
  * ============================================================================
  */
 
+const withPWA = require('next-pwa')({
+  dest: 'public',
+  disable: process.env.NODE_ENV === 'development',
+  register: true,
+  skipWaiting: true,
+  // Don't cache API routes
+  runtimeCaching: [
+    {
+      urlPattern: /^https:\/\/.*\/api\/.*/i,
+      handler: 'NetworkFirst',
+      options: {
+        cacheName: 'api-cache',
+        expiration: {
+          maxEntries: 100,
+          maxAgeSeconds: 60 * 5, // 5 minutes
+        },
+        networkTimeoutSeconds: 10,
+      },
+    },
+  ],
+});
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // ==========================================================================
@@ -190,4 +212,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+module.exports = withPWA(nextConfig);

@@ -14,9 +14,19 @@ import {
   isToday,
   isBefore,
   startOfDay,
+  getMonth,
 } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useOrientation } from '@/lib/hooks/useOrientation';
 import type { CalendarEvent } from '@/types/calendar';
+import { seasonalPalettes } from '@/lib/themes/seasonalThemes';
+
+// Get the accent color for a month (1-12)
+function getMonthColor(month: Date): string {
+  const monthNum = getMonth(month) + 1; // getMonth returns 0-11
+  const palette = seasonalPalettes[monthNum];
+  return palette ? `hsl(${palette.light.accent})` : '#3B82F6';
+}
 
 export interface ThreeMonthViewProps {
   currentDate: Date;
@@ -44,6 +54,7 @@ function MiniMonth({
   const monthEnd = endOfMonth(month);
   const calendarStart = startOfWeek(monthStart);
   const calendarEnd = endOfWeek(monthEnd);
+  const monthColor = getMonthColor(month);
 
   const days: Date[] = [];
   let day = calendarStart;
@@ -60,10 +71,13 @@ function MiniMonth({
   return (
     <div className={cn(
       'flex flex-col flex-1 bg-card/85 backdrop-blur-sm rounded-lg overflow-hidden',
-      isCenter && 'ring-1 ring-primary/20'
+      isCenter && 'ring-2 ring-primary/30'
     )}>
-      {/* Month header */}
-      <div className="text-center py-2 font-semibold text-sm flex-shrink-0">
+      {/* Month header with themed color */}
+      <div
+        className="text-center py-3 font-bold text-base flex-shrink-0 text-white shadow-sm"
+        style={{ backgroundColor: monthColor }}
+      >
         {format(month, 'MMMM yyyy')}
       </div>
 
@@ -148,9 +162,14 @@ export function ThreeMonthView({
 }: ThreeMonthViewProps) {
   const prevMonth = subMonths(currentDate, 1);
   const nextMonth = addMonths(currentDate, 1);
+  const orientation = useOrientation();
+  const isPortrait = orientation === 'portrait';
 
   return (
-    <div className="h-full flex flex-col md:flex-row gap-2">
+    <div className={cn(
+      "h-full gap-2 overflow-y-auto pb-4 md:pb-20",
+      isPortrait ? "flex flex-col" : "flex flex-row"
+    )}>
       <MiniMonth month={prevMonth} events={events} onEventClick={onEventClick} onDateClick={onDateClick} isCenter={false} />
       <MiniMonth month={currentDate} events={events} onEventClick={onEventClick} onDateClick={onDateClick} isCenter={true} />
       <MiniMonth month={nextMonth} events={events} onEventClick={onEventClick} onDateClick={onDateClick} isCenter={false} />

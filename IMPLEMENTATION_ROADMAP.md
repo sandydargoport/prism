@@ -358,11 +358,27 @@ Mark tasks complete with `[x]` as you finish them.
 - Voice-to-text for messages
 - "Alexa, enable away mode"
 
-### Phase 21: Mobile Companion App
-- React Native or PWA
-- Push notifications
-- Quick actions (add items, check chores)
-- Location sharing
+### Phase 21: Mobile Companion PWA
+> Lightweight companion app for data entry while away from the dashboard (shopping, messages, tasks)
+> Dashboard and screensaver NOT needed — focus on list-based CRUD pages
+
+- **PWA Foundation**
+  - `manifest.json` with app name, icons, theme colors
+  - Service worker via `next-pwa` for offline caching
+  - Installable on iOS/Android home screens
+- **Mobile Navigation**
+  - Bottom nav bar (thumb-friendly) instead of sidebar
+  - Hide dashboard/screensaver links on mobile
+  - Quick-access pages: Shopping, Messages, Tasks, Chores, Recipes, Meals
+- **Touch Optimizations**
+  - Larger tap targets for checkboxes/buttons
+  - Swipe gestures (swipe to check off, swipe to delete)
+  - Pull-to-refresh on lists
+- **Offline Support**
+  - Cache shopping lists, tasks for offline access
+  - Queue mutations when offline, sync when back online
+- **Push Notifications** (future)
+  - Chore reminders, message alerts
 
 ### Phase 22: Template Gallery
 - Clean up existing pre-built templates (dashboard + screensaver) for better default layouts

@@ -44,8 +44,8 @@ interface SchemaOrgRecipe {
  * Parse ISO 8601 duration to minutes.
  * Examples: "PT30M" = 30, "PT1H30M" = 90, "PT2H" = 120
  */
-function parseDuration(duration: string | undefined): number | undefined {
-  if (!duration) return undefined;
+function parseDuration(duration: unknown): number | undefined {
+  if (!duration || typeof duration !== 'string') return undefined;
 
   const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/i);
   if (!match) return undefined;
@@ -61,9 +61,10 @@ function parseDuration(duration: string | undefined): number | undefined {
  * Extract servings from recipeYield.
  * Examples: "4 servings" = 4, "Makes 6" = 6, "8" = 8
  */
-function parseServings(yield_: string | number | undefined): number | undefined {
-  if (yield_ === undefined) return undefined;
+function parseServings(yield_: unknown): number | undefined {
+  if (yield_ === undefined || yield_ === null) return undefined;
   if (typeof yield_ === 'number') return yield_;
+  if (typeof yield_ !== 'string') return undefined;
 
   const match = yield_.match(/(\d+)/);
   return match?.[1] ? parseInt(match[1], 10) : undefined;
@@ -72,13 +73,18 @@ function parseServings(yield_: string | number | undefined): number | undefined 
 /**
  * Extract image URL from various schema.org formats.
  */
-function parseImage(image: SchemaOrgRecipe['image']): string | undefined {
+function parseImage(image: unknown): string | undefined {
   if (!image) return undefined;
   if (typeof image === 'string') return image;
   if (Array.isArray(image)) {
     const first = image[0];
     if (typeof first === 'string') return first;
-    if (first && typeof first === 'object' && 'url' in first) return first.url;
+    if (first && typeof first === 'object' && 'url' in first && typeof (first as { url: unknown }).url === 'string') {
+      return (first as { url: string }).url;
+    }
+  }
+  if (typeof image === 'object' && 'url' in image && typeof (image as { url: unknown }).url === 'string') {
+    return (image as { url: string }).url;
   }
   return undefined;
 }
@@ -86,9 +92,7 @@ function parseImage(image: SchemaOrgRecipe['image']): string | undefined {
 /**
  * Parse instructions from various formats into a single string.
  */
-function parseInstructions(
-  instructions: SchemaOrgRecipe['recipeInstructions']
-): string | undefined {
+function parseInstructions(instructions: unknown): string | undefined {
   if (!instructions) return undefined;
 
   if (typeof instructions === 'string') {
@@ -102,8 +106,10 @@ function parseInstructions(
           return `${index + 1}. ${step}`;
         }
         if (step && typeof step === 'object') {
-          const text = step.text || step.name || '';
-          return `${index + 1}. ${text}`;
+          const obj = step as { text?: unknown; name?: unknown };
+          const text = (typeof obj.text === 'string' ? obj.text : '') ||
+                       (typeof obj.name === 'string' ? obj.name : '');
+          return text ? `${index + 1}. ${text}` : '';
         }
         return '';
       })
@@ -117,15 +123,19 @@ function parseInstructions(
 /**
  * Parse author from various formats.
  */
-function parseAuthor(author: SchemaOrgRecipe['author']): string | undefined {
+function parseAuthor(author: unknown): string | undefined {
   if (!author) return undefined;
   if (typeof author === 'string') return author;
   if (Array.isArray(author)) {
     const first = author[0];
-    return first?.name;
+    if (first && typeof first === 'object' && 'name' in first) {
+      const name = (first as { name: unknown }).name;
+      return typeof name === 'string' ? name : undefined;
+    }
   }
   if (typeof author === 'object' && 'name' in author) {
-    return author.name;
+    const name = (author as { name: unknown }).name;
+    return typeof name === 'string' ? name : undefined;
   }
   return undefined;
 }
@@ -133,9 +143,11 @@ function parseAuthor(author: SchemaOrgRecipe['author']): string | undefined {
 /**
  * Extract first value from string or array.
  */
-function firstValue(value: string | string[] | undefined): string | undefined {
+function firstValue(value: unknown): string | undefined {
   if (!value) return undefined;
-  return Array.isArray(value) ? value[0] : value;
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value) && typeof value[0] === 'string') return value[0];
+  return undefined;
 }
 
 /**

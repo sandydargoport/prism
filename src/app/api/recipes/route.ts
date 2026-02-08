@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
 import { recipes, users } from '@/lib/db/schema';
 import { eq, desc, ilike, or, sql } from 'drizzle-orm';
-import { requireAuth, requireRole } from '@/lib/auth';
+import { requireAuth, requireRole, getDisplayAuth } from '@/lib/auth';
 import { invalidateCache, getCached } from '@/lib/cache/redis';
 
 async function fetchRecipes(
@@ -20,6 +20,9 @@ async function fetchRecipes(
       description: recipes.description,
       url: recipes.url,
       sourceType: recipes.sourceType,
+      ingredients: recipes.ingredients,
+      instructions: recipes.instructions,
+      notes: recipes.notes,
       prepTime: recipes.prepTime,
       cookTime: recipes.cookTime,
       servings: recipes.servings,
@@ -90,8 +93,10 @@ async function fetchRecipes(
 }
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth();
-  if (auth instanceof NextResponse) return auth;
+  const auth = await getDisplayAuth();
+  if (!auth) {
+    return NextResponse.json({ recipes: [], total: 0 });
+  }
 
   try {
     const { searchParams } = new URL(request.url);

@@ -144,10 +144,10 @@ export function GoalsView() {
     <PageWrapper>
       <div className="h-screen flex flex-col">
         {/* Header */}
-        <header className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-4 py-3">
+        <header className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-4 py-3 safe-area-top">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" asChild>
+              <Button variant="ghost" size="icon" asChild className="hidden md:inline-flex">
                 <Link href="/" aria-label="Back to dashboard"><Home className="h-5 w-5" /></Link>
               </Button>
               <div className="flex items-center gap-2">
@@ -156,8 +156,9 @@ export function GoalsView() {
               </div>
             </div>
             {isParent && (
-              <Button onClick={openAddModal}>
-                <Plus className="h-4 w-4 mr-1" />Add Goal
+              <Button onClick={openAddModal} size="sm">
+                <Plus className="h-4 w-4 mr-1" />
+                Add Goal
               </Button>
             )}
           </div>

@@ -109,52 +109,32 @@ export function PhotoLightbox({
         className="max-w-full max-h-[calc(100vh-100px)] object-contain"
       />
 
-      {/* Bottom bar */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-black/60 backdrop-blur-sm rounded-xl px-4 py-2.5">
-        <button
-          onClick={() => {
-            if (confirm('Delete this photo?')) {
-              onDelete(photo.id);
-              onClose();
-            }
-          }}
-          className="p-1.5 rounded-full hover:bg-white/10 text-white"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
-
-        <div className="w-px h-6 bg-white/20" />
-
-        {/* Resolution info */}
-        <div className="flex items-center gap-1.5">
-          <span className={`w-2 h-2 rounded-full ${qualityColors[quality]}`} />
-          <span className="text-white/80 text-xs">{dims}</span>
-        </div>
-
-        {/* Orientation */}
-        {orient && (
-          <>
-            <div className="w-px h-6 bg-white/20" />
-            <span className="text-white/60 text-xs capitalize">{orient}</span>
-          </>
-        )}
-
-        <div className="w-px h-6 bg-white/20" />
-
-        {/* Usage multi-select chips */}
+      {/* Bottom bar - responsive layout */}
+      <div className="absolute bottom-4 left-4 right-4 flex flex-col items-center gap-3 z-20">
+        {/* Usage tags row - large touch-friendly buttons */}
         {onUpdateUsage && (
-          <div className="flex flex-col items-center gap-1">
-            <div className="flex items-center gap-1">
+          <div className="flex flex-col items-center gap-3 bg-black/70 backdrop-blur-sm rounded-2xl px-6 py-4">
+            <span className="text-white/60 text-sm font-medium">Tag for:</span>
+            <div className="flex items-center gap-3">
               {usageTags.map((opt) => {
                 const active = activeTags.includes(opt.value);
                 return (
                   <button
                     key={opt.value}
-                    onClick={() => toggleTag(opt.value)}
-                    className={`px-2 py-0.5 text-xs rounded transition-colors ${
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      toggleTag(opt.value);
+                    }}
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      toggleTag(opt.value);
+                    }}
+                    className={`px-6 py-4 text-base font-semibold rounded-xl transition-all min-w-[120px] border-2 ${
                       active
-                        ? autoOrientationEnabled ? 'bg-white/15 text-white/70 font-medium' : 'bg-white/25 text-white font-medium'
-                        : 'text-white/50 hover:text-white/80 hover:bg-white/10'
+                        ? 'bg-primary text-primary-foreground border-primary shadow-lg'
+                        : 'bg-white/10 text-white/70 border-white/20 hover:bg-white/20 hover:text-white hover:border-white/40'
                     }`}
                   >
                     {opt.label}
@@ -163,16 +143,47 @@ export function PhotoLightbox({
               })}
             </div>
             {autoOrientationEnabled && (
-              <span className="text-[10px] text-white/40">Auto-orientation active</span>
+              <span className="text-xs text-white/40">Auto-orientation active</span>
             )}
           </div>
         )}
 
-        <div className="w-px h-6 bg-white/20" />
+        {/* Info row */}
+        <div className="flex items-center gap-4 bg-black/60 backdrop-blur-sm rounded-xl px-4 py-2.5">
+          <button
+            onClick={() => {
+              if (confirm('Delete this photo?')) {
+                onDelete(photo.id);
+                onClose();
+              }
+            }}
+            className="p-2 rounded-full hover:bg-white/10 text-white"
+          >
+            <Trash2 className="w-5 h-5" />
+          </button>
 
-        <span className="text-white/50 text-xs">
-          {currentIndex + 1} / {photos.length}
-        </span>
+          <div className="w-px h-6 bg-white/20" />
+
+          {/* Resolution info */}
+          <div className="flex items-center gap-1.5">
+            <span className={`w-2.5 h-2.5 rounded-full ${qualityColors[quality]}`} />
+            <span className="text-white/80 text-sm">{dims}</span>
+          </div>
+
+          {/* Orientation */}
+          {orient && (
+            <>
+              <div className="w-px h-6 bg-white/20" />
+              <span className="text-white/60 text-sm capitalize">{orient}</span>
+            </>
+          )}
+
+          <div className="w-px h-6 bg-white/20" />
+
+          <span className="text-white/50 text-sm">
+            {currentIndex + 1} / {photos.length}
+          </span>
+        </div>
       </div>
     </div>
   );

@@ -478,21 +478,18 @@ export function LayoutGridEditor({
     );
   }
 
-  // Display mode (non-editable)
+  // Display mode (non-editable) - prevent scrolling beyond screen bounds
   return (
     <div
       ref={containerRef as React.RefObject<HTMLDivElement>}
-      className={`relative overflow-auto ${className || ''}`}
-      style={{ minHeight: '100%', maxHeight: '100vh' }}
+      className={`relative overflow-hidden ${className || ''}`}
+      style={{ height: '100%', maxHeight: '100vh' }}
     >
       {mounted && width > 0 ? (
-        <div style={{
-          minHeight: totalRows * (cellSize + margin) + 2 * containerPadding,
-          minWidth: totalCols * (cellSize + margin) + 2 * containerPadding,
-        }}>
+        <div style={{ height: '100%' }}>
           <RGL
             className="layout"
-            width={Math.max(width, totalCols * (cellSize + margin) + 2 * containerPadding)}
+            width={width}
             layouts={{ lg: rglLayout }}
             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480 }}
             cols={{ lg: cols, md: 9, sm: 6, xs: 3 }}

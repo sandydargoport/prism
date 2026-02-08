@@ -48,6 +48,7 @@ docker exec prism-db psql -U prism -d prism -c "SELECT ..."
 ### Database
 - Drizzle ORM. Use the `db` proxy from `src/lib/db/client.ts`.
 - Schema in `src/lib/db/schema.ts`.
+- After schema changes, push to DB: rebuild Docker, then either expose DB port and run `npx drizzle-kit push` locally, or apply SQL directly via `docker exec prism-db psql -U prism -d prism -c "SQL..."` (production image doesn't include drizzle-kit).
 
 ### Redis
 - Single shared client from `src/lib/cache/getRedisClient.ts`. Both cache (`redis.ts`) and session (`session.ts`) import from here.

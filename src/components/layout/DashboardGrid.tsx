@@ -154,8 +154,7 @@ export function DashboardLayout({
       className={cn(
         // Full viewport
         'min-h-screen w-full',
-        // Background
-        'bg-background',
+        // Transparent background to allow wallpaper to show through
         // Flex column for header + content
         'flex flex-col',
         className

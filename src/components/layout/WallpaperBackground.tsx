@@ -10,6 +10,7 @@ const AUTO_ORIENTATION_KEY = 'prism-wallpaper-auto-orientation';
 const ORIENTATION_OVERRIDE_KEY = 'prism-orientation-override';
 const PINNED_WALLPAPER_KEY = 'prism-pinned-wallpaper';
 const PINNED_SCREENSAVER_KEY = 'prism-pinned-screensaver';
+const SCREENSAVER_INTERVAL_KEY = 'prism-screensaver-interval';
 
 function useOrientationOverride(): 'auto' | 'landscape' | 'portrait' {
   const [override, setOverride] = useState<'auto' | 'landscape' | 'portrait'>(() => {
@@ -28,6 +29,7 @@ function useOrientationOverride(): 'auto' | 'landscape' | 'portrait' {
   return override;
 }
 const DEFAULT_INTERVAL = 60; // seconds
+const DEFAULT_SCREENSAVER_INTERVAL = 15; // seconds
 
 export function useWallpaperSettings() {
   const [enabled, setEnabledState] = useState(() => {
@@ -65,6 +67,35 @@ export function useAutoOrientationSetting() {
   }, []);
 
   return { enabled, setEnabled };
+}
+
+export function useScreensaverInterval() {
+  const [interval, setIntervalState] = useState(() => {
+    if (typeof window === 'undefined') return DEFAULT_SCREENSAVER_INTERVAL;
+    const stored = Number(localStorage.getItem(SCREENSAVER_INTERVAL_KEY));
+    return stored > 0 ? stored : DEFAULT_SCREENSAVER_INTERVAL;
+  });
+
+  const setInterval = useCallback((v: number) => {
+    setIntervalState(v);
+    localStorage.setItem(SCREENSAVER_INTERVAL_KEY, String(v));
+    // Dispatch storage event so screensaver can react
+    window.dispatchEvent(new StorageEvent('storage', { key: SCREENSAVER_INTERVAL_KEY }));
+  }, []);
+
+  // Listen for changes from settings
+  useEffect(() => {
+    const handler = (e: StorageEvent) => {
+      if (e.key === SCREENSAVER_INTERVAL_KEY) {
+        const val = Number(e.newValue);
+        if (val > 0) setIntervalState(val);
+      }
+    };
+    window.addEventListener('storage', handler);
+    return () => window.removeEventListener('storage', handler);
+  }, []);
+
+  return { interval, setInterval };
 }
 
 export function usePinnedPhoto(context: 'wallpaper' | 'screensaver') {
@@ -116,9 +147,9 @@ export function WallpaperBackground() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [fadingOut, setFadingOut] = useState(false);
 
-  // Rotate photos (only if no pinned photo)
+  // Rotate photos (only if no pinned photo and interval is not "never")
   useEffect(() => {
-    if (!enabled || photos.length <= 1 || pinnedId) return;
+    if (!enabled || photos.length <= 1 || pinnedId || interval === 0) return;
     const timer = window.setInterval(() => {
       setFadingOut(true);
       // After fade out, switch image and fade back in

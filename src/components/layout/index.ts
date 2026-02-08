@@ -31,3 +31,5 @@ export type { AppShellProps } from './AppShell';
 
 export { PageWrapper } from './PageWrapper';
 export type { PageWrapperProps } from './PageWrapper';
+
+export { MobileNav } from './MobileNav';

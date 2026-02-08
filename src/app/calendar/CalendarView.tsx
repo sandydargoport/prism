@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import {
@@ -19,8 +20,11 @@ import { AddEventModal } from '@/components/modals';
 import { PageWrapper } from '@/components/layout';
 import { MonthView, WeekView, TwoWeekView, ThreeMonthView, DayViewSideBySide } from '@/components/calendar';
 import { useCalendarViewData } from './useCalendarViewData';
+import { useIsMobile, useSwipeNavigation } from '@/lib/hooks';
+import { useAuth } from '@/components/providers';
 
 export function CalendarView() {
+  const { requireAuth } = useAuth();
   const {
     currentDate, setCurrentDate,
     viewType, setViewType,
@@ -33,6 +37,28 @@ export function CalendarView() {
     events, loading, error, refreshEvents,
     goToToday, goToPrevious, goToNext, getDateRangeTitle,
   } = useCalendarViewData();
+
+  const isMobile = useIsMobile();
+
+  // Swipe navigation for touch devices
+  const swipeRef = useSwipeNavigation<HTMLDivElement>({
+    onSwipeLeft: goToNext,
+    onSwipeRight: goToPrevious,
+    threshold: 50,
+  });
+
+  const handleAddWithAuth = async () => {
+    const user = await requireAuth('Add Event', 'Please log in to add an event');
+    if (!user) return;
+    setShowAddEvent(true);
+  };
+
+  // Force day view on mobile
+  useEffect(() => {
+    if (isMobile && viewType !== 'day') {
+      setViewType('day');
+    }
+  }, [isMobile, viewType, setViewType]);
 
   return (
     <PageWrapper>
@@ -61,7 +87,8 @@ export function CalendarView() {
                   <ChevronRight className="h-5 w-5" />
                 </Button>
               </div>
-              <div className="flex items-center border rounded-md">
+              {/* View switcher - hidden on mobile (mobile always shows day/agenda view) */}
+              <div className="hidden md:flex items-center border rounded-md">
                 <Button variant={viewType === 'day' ? 'secondary' : 'ghost'} size="sm" onClick={() => setViewType('day')} className="rounded-r-none">
                   <CalendarDays className="h-4 w-4 mr-1" />Day
                 </Button>
@@ -78,7 +105,7 @@ export function CalendarView() {
                   <LayoutGrid className="h-4 w-4 mr-1" />3 Mo
                 </Button>
               </div>
-              <Button size="sm" onClick={() => setShowAddEvent(true)}>
+              <Button size="sm" onClick={handleAddWithAuth}>
                 <Plus className="h-4 w-4 mr-1" />Add Event
               </Button>
             </div>
@@ -125,7 +152,7 @@ export function CalendarView() {
           )}
         </header>
 
-        <div className="flex-1 overflow-hidden p-4">
+        <div ref={swipeRef} className="flex-1 overflow-hidden p-4">
           {loading && (
             <div className="h-full flex items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />

@@ -4,6 +4,9 @@ import {
   format,
   isSameDay,
 } from 'date-fns';
+import { Clock } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useHiddenHours } from '@/lib/hooks/useHiddenHours';
 import type { CalendarEvent } from '@/types/calendar';
 
 export interface DayViewSideBySideProps {
@@ -21,7 +24,11 @@ export function DayViewSideBySide({
   selectedCalendarIds,
   onEventClick,
 }: DayViewSideBySideProps) {
-  const hours = Array.from({ length: 17 }, (_, i) => i + 6);
+  // Hidden hours hook
+  const { settings: hiddenSettings, toggleHidden, getVisibleHours } = useHiddenHours();
+
+  // Get visible hours (filtered if hidden mode is enabled)
+  const hours = getVisibleHours();
 
   const dayEvents = events.filter((event) =>
     isSameDay(event.startTime, currentDate)
@@ -77,7 +84,21 @@ export function DayViewSideBySide({
       {/* All-day events row */}
       <div className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm rounded-t-md">
         <div className="flex">
-          <div className="w-16 flex-shrink-0" />
+          {/* Time column header with toggle button */}
+          <div className="w-16 flex-shrink-0 flex items-center justify-center">
+            <button
+              onClick={toggleHidden}
+              className={cn(
+                'p-1.5 rounded-full transition-colors',
+                hiddenSettings.enabled
+                  ? 'bg-primary text-primary-foreground'
+                  : 'hover:bg-accent text-muted-foreground'
+              )}
+              title={hiddenSettings.enabled ? 'Show all hours' : 'Hide time block'}
+            >
+              <Clock className="h-4 w-4" />
+            </button>
+          </div>
           {displayGroups.map((group) => {
             const calAllDay = getAllDayEventsForGroup(group.id);
             return (
@@ -111,70 +132,76 @@ export function DayViewSideBySide({
         </div>
       </div>
 
-      {/* Hourly schedule */}
-      <div className="flex-1 overflow-y-auto bg-card/85 backdrop-blur-sm rounded-b-md">
-        {hours.map((hour) => (
-          <div key={hour} className="flex border-t border-border min-h-[60px]">
-            <div className="w-16 flex-shrink-0 pr-2 text-right text-xs text-muted-foreground pt-1">
+      {/* Hourly schedule - scales to fit available space */}
+      <div className="flex-1 flex bg-card/85 backdrop-blur-sm rounded-b-md min-h-0">
+        {/* Time column */}
+        <div className="w-16 flex-shrink-0 grid min-h-0" style={{ gridTemplateRows: `repeat(${hours.length}, 1fr)` }}>
+          {hours.map((hour) => (
+            <div key={hour} className="pr-2 text-right text-xs text-muted-foreground border-t border-border flex items-start pt-0.5 min-h-0">
               {format(new Date().setHours(hour, 0), 'h a')}
             </div>
-            {displayGroups.map((group) => {
-              const calEvents = getEventsForGroup(group.id);
-              const hourEvents = calEvents.filter(
-                (event) => event.startTime.getHours() === hour
-              );
+          ))}
+        </div>
+        {/* Group columns */}
+        {displayGroups.map((group) => {
+          const calEvents = getEventsForGroup(group.id);
 
-              // Sort by start time, then longest duration first
-              const sorted = [...hourEvents].sort((a, b) => {
-                const timeDiff = a.startTime.getTime() - b.startTime.getTime();
-                if (timeDiff !== 0) return timeDiff;
-                const aDur = (a.endTime?.getTime() ?? a.startTime.getTime()) - a.startTime.getTime();
-                const bDur = (b.endTime?.getTime() ?? b.startTime.getTime()) - b.startTime.getTime();
-                return bDur - aDur;
-              });
+          // Sort by start time, then longest duration first
+          const sortEvents = (hourEvents: CalendarEvent[]) => [...hourEvents].sort((a, b) => {
+            const timeDiff = a.startTime.getTime() - b.startTime.getTime();
+            if (timeDiff !== 0) return timeDiff;
+            const aDur = (a.endTime?.getTime() ?? a.startTime.getTime()) - a.startTime.getTime();
+            const bDur = (b.endTime?.getTime() ?? b.startTime.getTime()) - b.startTime.getTime();
+            return bDur - aDur;
+          });
 
-              // Detect overlaps: if event B starts before event A ends
-              const getOverlapIndex = (event: CalendarEvent, idx: number) => {
-                for (let i = 0; i < idx; i++) {
-                  const prev = sorted[i]!;
-                  const prevEnd = prev.endTime ?? new Date(prev.startTime.getTime() + 3600000);
-                  if (event.startTime < prevEnd) return 1; // overlapping
-                }
-                return 0;
-              };
+          // Detect overlaps: if event B starts before event A ends
+          const getOverlapIndex = (event: CalendarEvent, idx: number, sorted: CalendarEvent[]) => {
+            for (let i = 0; i < idx; i++) {
+              const prev = sorted[i]!;
+              const prevEnd = prev.endTime ?? new Date(prev.startTime.getTime() + 3600000);
+              if (event.startTime < prevEnd) return 1; // overlapping
+            }
+            return 0;
+          };
 
-              return (
-                <div
-                  key={group.id}
-                  className="flex-1 min-w-0 border-l border-border relative"
-                >
-                  {sorted.map((event, idx) => {
-                    const overlapIdx = getOverlapIndex(event, idx);
-                    return (
-                      <button
-                        key={event.id}
-                        onClick={() => onEventClick(event)}
-                        className="absolute p-1 rounded text-left text-xs z-10 hover:opacity-80 hover:ring-2 hover:ring-seasonal-accent/50 transition-all"
-                        style={{
-                          backgroundColor: event.color + '20',
-                          borderLeft: `2px solid ${event.color}`,
-                          top: `${(event.startTime.getMinutes() / 60) * 100}%`,
-                          left: overlapIdx > 0 ? '50%' : '2px',
-                          width: overlapIdx > 0 ? 'calc(50% - 4px)' : 'calc(100% - 4px)',
-                        }}
-                      >
-                        <div className="font-medium truncate">{event.title}</div>
-                        <div className="text-muted-foreground">
-                          {format(event.startTime, 'h:mm a')}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
-        ))}
+          return (
+            <div
+              key={group.id}
+              className="flex-1 min-w-0 border-l border-border grid min-h-0"
+              style={{ gridTemplateRows: `repeat(${hours.length}, 1fr)` }}
+            >
+              {hours.map((hour) => {
+                const hourEvents = calEvents.filter((event) => event.startTime.getHours() === hour);
+                const sorted = sortEvents(hourEvents);
+
+                return (
+                  <div key={hour} className="border-t border-border relative min-h-0">
+                    {sorted.map((event, idx) => {
+                      const overlapIdx = getOverlapIndex(event, idx, sorted);
+                      return (
+                        <button
+                          key={event.id}
+                          onClick={() => onEventClick(event)}
+                          className="absolute p-0.5 rounded text-left text-xs z-10 hover:opacity-80 hover:ring-2 hover:ring-seasonal-accent/50 transition-all"
+                          style={{
+                            backgroundColor: event.color + '20',
+                            borderLeft: `2px solid ${event.color}`,
+                            top: `${(event.startTime.getMinutes() / 60) * 100}%`,
+                            left: overlapIdx > 0 ? '50%' : '2px',
+                            width: overlapIdx > 0 ? 'calc(50% - 4px)' : 'calc(100% - 4px)',
+                          }}
+                        >
+                          <div className="font-medium truncate text-[11px]">{event.title}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

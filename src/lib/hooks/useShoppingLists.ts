@@ -69,6 +69,7 @@ export function useShoppingLists(options: UseShoppingListsOptions = {}): UseShop
         id: string;
         name: string;
         description: string | null;
+        listType: 'grocery' | 'hardware' | 'other' | null;
         sortOrder: number;
         assignedTo: string | null;
         createdBy: {
@@ -97,6 +98,7 @@ export function useShoppingLists(options: UseShoppingListsOptions = {}): UseShop
         id: list.id,
         name: list.name,
         description: list.description || undefined,
+        listType: list.listType || 'grocery',
         sortOrder: list.sortOrder,
         items: (list.items || []).map((item) => ({
           id: item.id,

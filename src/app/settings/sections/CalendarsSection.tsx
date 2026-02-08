@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { RefreshCw, ExternalLink, Plus, Trash2 } from 'lucide-react';
+import { RefreshCw, ExternalLink, Plus, Trash2, Pencil, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,10 @@ export function CalendarsSection() {
   const [calGroups, setCalGroups] = useState<Array<{ id: string; name: string; color: string; type: string; userId?: string | null; sourceCount?: number }>>([]);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupColor, setNewGroupColor] = useState('#3B82F6');
+
+  // State for editing calendar display names
+  const [editingCalendarId, setEditingCalendarId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
 
   const familyCalendarColor = typeof window !== 'undefined'
     ? localStorage.getItem('prism-family-calendar-color') || '#F59E0B'
@@ -272,10 +276,96 @@ export function CalendarsSection() {
                           } catch { /* ignore */ }
                         }}
                       />
-                      <div>
-                        <div className="font-medium">{cal.dashboardCalendarName}</div>
+                      <div className="flex-1 min-w-0">
+                        {editingCalendarId === cal.id ? (
+                          <div className="flex items-center gap-1">
+                            <Input
+                              value={editingName}
+                              onChange={(e) => setEditingName(e.target.value)}
+                              className="h-7 text-sm"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  // Save the new name
+                                  (async () => {
+                                    if (editingName.trim() && editingName.trim() !== cal.dashboardCalendarName) {
+                                      setUpdatingCalendar(cal.id);
+                                      try {
+                                        await fetch(`/api/calendars/${cal.id}`, {
+                                          method: 'PATCH',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ dashboardCalendarName: editingName.trim() }),
+                                        });
+                                        setLocalCalendars((prev) =>
+                                          prev.map((lc) => lc.id === cal.id ? { ...lc, dashboardCalendarName: editingName.trim() } : lc)
+                                        );
+                                      } catch { /* ignore */ }
+                                      setUpdatingCalendar(null);
+                                    }
+                                    setEditingCalendarId(null);
+                                  })();
+                                } else if (e.key === 'Escape') {
+                                  setEditingCalendarId(null);
+                                }
+                              }}
+                            />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={async () => {
+                                if (editingName.trim() && editingName.trim() !== cal.dashboardCalendarName) {
+                                  setUpdatingCalendar(cal.id);
+                                  try {
+                                    await fetch(`/api/calendars/${cal.id}`, {
+                                      method: 'PATCH',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ dashboardCalendarName: editingName.trim() }),
+                                    });
+                                    setLocalCalendars((prev) =>
+                                      prev.map((lc) => lc.id === cal.id ? { ...lc, dashboardCalendarName: editingName.trim() } : lc)
+                                    );
+                                  } catch { /* ignore */ }
+                                  setUpdatingCalendar(null);
+                                }
+                                setEditingCalendarId(null);
+                              }}
+                            >
+                              <Check className="h-4 w-4 text-green-600" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => setEditingCalendarId(null)}
+                            >
+                              <X className="h-4 w-4 text-red-600" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <div className="font-medium">{cal.dashboardCalendarName}</div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 opacity-50 hover:opacity-100"
+                              onClick={() => {
+                                setEditingCalendarId(cal.id);
+                                setEditingName(cal.dashboardCalendarName);
+                              }}
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
                         <div className="text-xs text-muted-foreground">
                           {cal.provider === 'google' ? 'Google Calendar' : cal.provider}
+                          {cal.displayName && cal.displayName !== cal.dashboardCalendarName && (
+                            <span className="ml-2 text-muted-foreground/60">
+                              (Source: {cal.displayName})
+                            </span>
+                          )}
                           {cal.lastSynced && (
                             <span className="ml-2">
                               Synced: {new Date(cal.lastSynced).toLocaleString()}
@@ -353,6 +443,64 @@ export function CalendarsSection() {
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
+                  {/* Show in Event Modal toggle - only for writable calendars */}
+                  {(() => {
+                    // Detect subscription/read-only calendars by common patterns
+                    const name = cal.dashboardCalendarName.toLowerCase();
+                    const isSubscription = cal.provider !== 'local' && (
+                      name.includes('birthday') ||
+                      name.includes('holiday') ||
+                      name.includes('contacts') ||
+                      name.startsWith('subscribe') ||
+                      name.includes('phases of the moon') ||
+                      name.includes('week numbers')
+                    );
+                    const isWritable = cal.provider === 'local' || (cal.provider === 'google' && !isSubscription);
+
+                    return (
+                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
+                        <div className="flex items-center gap-2">
+                          <span className={cn("text-xs", isWritable ? "text-muted-foreground" : "text-muted-foreground/50")}>
+                            Show in "Add Event" modal
+                          </span>
+                          {isSubscription && (
+                            <Badge variant="outline" className="text-[10px] px-1 py-0 opacity-60">Read-only</Badge>
+                          )}
+                        </div>
+                        <button
+                          onClick={async () => {
+                            if (!isWritable) return;
+                            const newValue = !(cal as { showInEventModal?: boolean }).showInEventModal;
+                            setUpdatingCalendar(cal.id);
+                            try {
+                              await fetch(`/api/calendars/${cal.id}`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ showInEventModal: newValue }),
+                              });
+                              setLocalCalendars((prev) =>
+                                prev.map((lc) => lc.id === cal.id ? { ...lc, showInEventModal: newValue } : lc)
+                              );
+                            } catch { /* ignore */ }
+                            setUpdatingCalendar(null);
+                          }}
+                          disabled={updatingCalendar === cal.id || !isWritable}
+                          className={cn(
+                            "relative w-10 h-5 rounded-full transition-colors",
+                            (cal as { showInEventModal?: boolean }).showInEventModal !== false && isWritable ? "bg-primary" : "bg-muted",
+                            (updatingCalendar === cal.id || !isWritable) && "opacity-50 cursor-not-allowed"
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform",
+                              (cal as { showInEventModal?: boolean }).showInEventModal !== false && isWritable ? "translate-x-5" : "translate-x-0.5"
+                            )}
+                          />
+                        </button>
+                      </div>
+                    );
+                  })()}
                 </div>
               ))}
             </div>

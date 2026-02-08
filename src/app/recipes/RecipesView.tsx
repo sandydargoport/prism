@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
   ChefHat,
@@ -20,6 +20,11 @@ import {
   Check,
   Home,
   Filter,
+  ShoppingCart,
+  Minus,
+  ChevronDown,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -37,13 +42,18 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { PageWrapper } from '@/components/layout';
 import { useRecipes, type Recipe } from '@/lib/hooks/useRecipes';
+import { useShoppingLists } from '@/lib/hooks/useShoppingLists';
+import { useAuth } from '@/components/providers';
 
 type ViewMode = 'all' | 'favorites';
 
 export function RecipesView() {
+  const { requireAuth } = useAuth();
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('all');
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+  const [filterCuisine, setFilterCuisine] = useState<string | null>(null);
+  const [filterCategory, setFilterCategory] = useState<string | null>(null);
 
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
@@ -51,21 +61,75 @@ export function RecipesView() {
   const [showImportPaprikaModal, setShowImportPaprikaModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
 
-  const { recipes, loading, error, deleteRecipe, toggleFavorite, markAsMade, importFromUrl, importFromPaprika, createRecipe, updateRecipe } = useRecipes({
+  const handleAddWithAuth = async () => {
+    const user = await requireAuth('Add Recipe', 'Please log in to add a recipe');
+    if (!user) return;
+    setShowAddModal(true);
+  };
+
+  const handleImportUrlWithAuth = async () => {
+    const user = await requireAuth('Import Recipe', 'Please log in to import a recipe');
+    if (!user) return;
+    setShowImportUrlModal(true);
+  };
+
+  const handleImportPaprikaWithAuth = async () => {
+    const user = await requireAuth('Import Recipes', 'Please log in to import recipes');
+    if (!user) return;
+    setShowImportPaprikaModal(true);
+  };
+
+  const { recipes, loading, error, deleteRecipe, toggleFavorite, importFromUrl, importFromPaprika, createRecipe, updateRecipe } = useRecipes({
     favorite: viewMode === 'favorites' ? true : undefined,
   });
 
+  const { lists: shoppingLists, addItem: addShoppingItem } = useShoppingLists();
+
+  // Keep selectedRecipe in sync with recipes array (for favorite toggle, etc.)
+  useEffect(() => {
+    if (selectedRecipe) {
+      const updated = recipes.find((r) => r.id === selectedRecipe.id);
+      if (updated && updated.isFavorite !== selectedRecipe.isFavorite) {
+        setSelectedRecipe(updated);
+      }
+    }
+  }, [recipes, selectedRecipe]);
+
+  // Get unique cuisines and categories for filters
+  const cuisines = useMemo(() => {
+    const unique = new Set(recipes.map(r => r.cuisine).filter(Boolean));
+    return Array.from(unique).sort() as string[];
+  }, [recipes]);
+
+  const categories = useMemo(() => {
+    const unique = new Set(recipes.map(r => r.category).filter(Boolean));
+    return Array.from(unique).sort() as string[];
+  }, [recipes]);
+
   const filteredRecipes = useMemo(() => {
-    if (!search.trim()) return recipes;
-    const searchLower = search.toLowerCase();
-    return recipes.filter(
-      (r) =>
-        r.name.toLowerCase().includes(searchLower) ||
-        r.description?.toLowerCase().includes(searchLower) ||
-        r.cuisine?.toLowerCase().includes(searchLower) ||
-        r.category?.toLowerCase().includes(searchLower)
-    );
-  }, [recipes, search]);
+    let result = recipes;
+
+    if (search.trim()) {
+      const searchLower = search.toLowerCase();
+      result = result.filter(
+        (r) =>
+          r.name.toLowerCase().includes(searchLower) ||
+          r.description?.toLowerCase().includes(searchLower) ||
+          r.cuisine?.toLowerCase().includes(searchLower) ||
+          r.category?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    if (filterCuisine) {
+      result = result.filter((r) => r.cuisine === filterCuisine);
+    }
+
+    if (filterCategory) {
+      result = result.filter((r) => r.category === filterCategory);
+    }
+
+    return result;
+  }, [recipes, search, filterCuisine, filterCategory]);
 
   const handleDelete = async (recipe: Recipe) => {
     if (!confirm(`Delete "${recipe.name}"? This cannot be undone.`)) return;
@@ -74,14 +138,6 @@ export function RecipesView() {
       setSelectedRecipe(null);
     } catch (err) {
       alert('Failed to delete recipe');
-    }
-  };
-
-  const handleMarkAsMade = async (recipe: Recipe) => {
-    try {
-      await markAsMade(recipe.id);
-    } catch (err) {
-      alert('Failed to update recipe');
     }
   };
 
@@ -104,15 +160,15 @@ export function RecipesView() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => setShowImportUrlModal(true)}>
+              <Button variant="outline" onClick={handleImportUrlWithAuth}>
                 <Link2 className="h-4 w-4 mr-1" />
                 Import URL
               </Button>
-              <Button variant="outline" onClick={() => setShowImportPaprikaModal(true)}>
+              <Button variant="outline" onClick={handleImportPaprikaWithAuth}>
                 <FileUp className="h-4 w-4 mr-1" />
                 Import Paprika
               </Button>
-              <Button onClick={() => setShowAddModal(true)}>
+              <Button onClick={handleAddWithAuth}>
                 <Plus className="h-4 w-4 mr-1" />
                 Add Recipe
               </Button>
@@ -122,8 +178,8 @@ export function RecipesView() {
 
         {/* Filters */}
         <div className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-4 py-3">
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1 max-w-md">
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="relative flex-1 max-w-md min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 value={search}
@@ -149,6 +205,46 @@ export function RecipesView() {
                 Favorites
               </Button>
             </div>
+            {cuisines.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Cuisine:</span>
+                <select
+                  value={filterCuisine || ''}
+                  onChange={(e) => setFilterCuisine(e.target.value || null)}
+                  className="text-sm bg-card text-foreground border border-border rounded px-2 py-1"
+                >
+                  <option value="">All</option>
+                  {cuisines.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {categories.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Category:</span>
+                <select
+                  value={filterCategory || ''}
+                  onChange={(e) => setFilterCategory(e.target.value || null)}
+                  className="text-sm bg-card text-foreground border border-border rounded px-2 py-1"
+                >
+                  <option value="">All</option>
+                  {categories.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {(filterCuisine || filterCategory) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setFilterCuisine(null); setFilterCategory(null); }}
+              >
+                <X className="h-3 w-3 mr-1" />
+                Clear filters
+              </Button>
+            )}
           </div>
         </div>
 
@@ -183,13 +279,18 @@ export function RecipesView() {
       {selectedRecipe && (
         <RecipeDetailModal
           recipe={selectedRecipe}
+          shoppingLists={shoppingLists.map((l) => ({ id: l.id, name: l.name }))}
           onClose={() => setSelectedRecipe(null)}
           onEdit={() => {
             setShowEditModal(true);
           }}
           onDelete={() => handleDelete(selectedRecipe)}
           onToggleFavorite={() => toggleFavorite(selectedRecipe.id)}
-          onMarkAsMade={() => handleMarkAsMade(selectedRecipe)}
+          onAddToShoppingList={async (listId, ingredients) => {
+            for (const ing of ingredients) {
+              await addShoppingItem(listId, { name: ing.text });
+            }
+          }}
         />
       )}
 
@@ -322,31 +423,124 @@ function RecipeCard({ recipe, onClick, onToggleFavorite }: RecipeCardProps) {
   );
 }
 
+interface ShoppingListOption {
+  id: string;
+  name: string;
+}
+
 interface RecipeDetailModalProps {
   recipe: Recipe;
+  shoppingLists: ShoppingListOption[];
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onToggleFavorite: () => void;
-  onMarkAsMade: () => void;
+  onAddToShoppingList: (listId: string, ingredients: Array<{ text: string }>) => Promise<void>;
 }
 
 function RecipeDetailModal({
   recipe,
+  shoppingLists,
   onClose,
   onEdit,
   onDelete,
   onToggleFavorite,
-  onMarkAsMade,
+  onAddToShoppingList,
 }: RecipeDetailModalProps) {
+  const [desiredServings, setDesiredServings] = useState(recipe.servings || 1);
+  const [showListPicker, setShowListPicker] = useState(false);
+  const [addingToList, setAddingToList] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
+  const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
+
+  const handleClose = () => {
+    setCheckedIngredients(new Set());
+    onClose();
+  };
+
+  const toggleIngredient = (index: number) => {
+    setCheckedIngredients((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  };
+
+  const scaleFactor = recipe.servings ? desiredServings / recipe.servings : 1;
+
+  // Scale ingredient text by adjusting numbers
+  const scaleIngredient = (text: string): string => {
+    if (scaleFactor === 1) return text;
+    // Match numbers (including fractions like 1/2, decimals like 1.5)
+    return text.replace(/(\d+\/\d+|\d+\.?\d*)/g, (match) => {
+      if (match.includes('/')) {
+        const parts = match.split('/').map(Number);
+        const num = parts[0] ?? 0;
+        const denom = parts[1] ?? 1;
+        const scaled = (num / denom) * scaleFactor;
+        // Return as fraction if close to common fractions, otherwise decimal
+        if (Math.abs(scaled - 0.25) < 0.01) return '1/4';
+        if (Math.abs(scaled - 0.33) < 0.01) return '1/3';
+        if (Math.abs(scaled - 0.5) < 0.01) return '1/2';
+        if (Math.abs(scaled - 0.67) < 0.01) return '2/3';
+        if (Math.abs(scaled - 0.75) < 0.01) return '3/4';
+        return scaled % 1 === 0 ? scaled.toString() : scaled.toFixed(1);
+      }
+      const scaled = parseFloat(match) * scaleFactor;
+      return scaled % 1 === 0 ? scaled.toString() : scaled.toFixed(1);
+    });
+  };
+
+  const handleAddToList = async (listId: string) => {
+    if (!recipe.ingredients || recipe.ingredients.length === 0) return;
+    setAddingToList(true);
+    try {
+      // Scale ingredients before adding
+      const scaledIngredients = recipe.ingredients.map((ing) => ({
+        text: scaleIngredient(ing.text),
+      }));
+      await onAddToShoppingList(listId, scaledIngredients);
+      setShowListPicker(false);
+      alert(`Added ${scaledIngredients.length} ingredients to shopping list!`);
+    } catch {
+      alert('Failed to add ingredients to shopping list');
+    } finally {
+      setAddingToList(false);
+    }
+  };
+
   return (
-    <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+    <Dialog open onOpenChange={handleClose}>
+      <DialogContent className={cn(
+        'overflow-y-auto',
+        isMaximized
+          ? 'max-w-[95vw] max-h-[95vh] w-[95vw] h-[95vh]'
+          : 'max-w-2xl max-h-[90vh]'
+      )}>
         <DialogHeader>
-          <div className="flex items-start justify-between">
-            <DialogTitle className="text-xl pr-8">{recipe.name}</DialogTitle>
-            <div className="flex items-center gap-1">
-              <button onClick={onToggleFavorite}>
+          <div className="flex items-start justify-between pr-8">
+            <DialogTitle className="text-xl">{recipe.name}</DialogTitle>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsMaximized(!isMaximized)}
+                className="text-muted-foreground hover:text-foreground transition-colors p-1"
+                title={isMaximized ? 'Restore' : 'Maximize'}
+              >
+                {isMaximized ? (
+                  <Minimize2 className="h-5 w-5" />
+                ) : (
+                  <Maximize2 className="h-5 w-5" />
+                )}
+              </button>
+              <button
+                onClick={onToggleFavorite}
+                className="p-1"
+                title={recipe.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+              >
                 <Heart
                   className={cn(
                     'h-5 w-5 transition-colors',
@@ -375,7 +569,7 @@ function RecipeDetailModal({
             <p className="text-muted-foreground">{recipe.description}</p>
           )}
 
-          <div className="flex flex-wrap gap-4 text-sm">
+          <div className="flex flex-wrap gap-4 text-sm items-center">
             {recipe.prepTime && (
               <div>
                 <span className="text-muted-foreground">Prep:</span>{' '}
@@ -389,9 +583,33 @@ function RecipeDetailModal({
               </div>
             )}
             {recipe.servings && (
-              <div>
-                <span className="text-muted-foreground">Servings:</span>{' '}
-                {recipe.servings}
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">Servings:</span>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => setDesiredServings(Math.max(1, desiredServings - 1))}
+                    disabled={desiredServings <= 1}
+                  >
+                    <Minus className="h-3 w-3" />
+                  </Button>
+                  <span className="w-8 text-center font-medium">{desiredServings}</span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => setDesiredServings(desiredServings + 1)}
+                  >
+                    <Plus className="h-3 w-3" />
+                  </Button>
+                </div>
+                {scaleFactor !== 1 && (
+                  <span className="text-xs text-muted-foreground">
+                    (scaled {scaleFactor > 1 ? 'up' : 'down'})
+                  </span>
+                )}
               </div>
             )}
             {recipe.timesMade > 0 && (
@@ -402,14 +620,50 @@ function RecipeDetailModal({
             )}
           </div>
 
-          {recipe.ingredients.length > 0 && (
+          {recipe.ingredients && recipe.ingredients.length > 0 && (
             <div>
-              <h4 className="font-semibold mb-2">Ingredients</h4>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-semibold">Ingredients</h4>
+                {shoppingLists.length > 0 && recipe.ingredients.length > 0 && (
+                  <div className="relative">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowListPicker(!showListPicker)}
+                      disabled={addingToList}
+                    >
+                      <ShoppingCart className="h-3 w-3 mr-1" />
+                      Add to Shopping List
+                      <ChevronDown className="h-3 w-3 ml-1" />
+                    </Button>
+                    {showListPicker && (
+                      <div className="absolute right-0 top-full mt-1 bg-card border border-border rounded-md shadow-lg z-10 min-w-[150px]">
+                        {shoppingLists.map((list) => (
+                          <button
+                            key={list.id}
+                            onClick={() => handleAddToList(list.id)}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-accent first:rounded-t-md last:rounded-b-md"
+                          >
+                            {list.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
               <ul className="space-y-1">
                 {recipe.ingredients.map((ing, i) => (
-                  <li key={i} className="text-sm flex items-start gap-2">
+                  <li
+                    key={i}
+                    onClick={() => toggleIngredient(i)}
+                    className={cn(
+                      'text-sm flex items-start gap-2 cursor-pointer select-none hover:bg-accent/50 rounded px-1 -mx-1 transition-colors',
+                      checkedIngredients.has(i) && 'line-through text-muted-foreground'
+                    )}
+                  >
                     <span className="text-muted-foreground">•</span>
-                    {ing.text}
+                    {scaleIngredient(ing.text)}
                   </li>
                 ))}
               </ul>
@@ -446,10 +700,6 @@ function RecipeDetailModal({
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
-          <Button variant="outline" onClick={onMarkAsMade}>
-            <Check className="h-4 w-4 mr-1" />
-            Mark as Made
-          </Button>
           <div className="flex gap-2 ml-auto">
             <Button variant="ghost" onClick={onDelete}>
               <Trash2 className="h-4 w-4 mr-1" />
@@ -459,7 +709,7 @@ function RecipeDetailModal({
               <Edit2 className="h-4 w-4 mr-1" />
               Edit
             </Button>
-            <Button onClick={onClose}>Close</Button>
+            <Button onClick={handleClose}>Close</Button>
           </div>
         </DialogFooter>
       </DialogContent>

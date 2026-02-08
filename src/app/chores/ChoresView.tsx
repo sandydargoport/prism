@@ -21,9 +21,11 @@ import { PageWrapper } from '@/components/layout';
 import { ChoreItem, getCategoryEmoji } from '@/app/chores/ChoreItem';
 import { ChoreModal } from '@/app/chores/ChoreModal';
 import { useChoresViewData } from './useChoresViewData';
+import { useAuth } from '@/components/providers';
 import { cn } from '@/lib/utils';
 
 export function ChoresView() {
+  const { requireAuth } = useAuth();
   const {
     loading, error, refreshChores, familyMembers,
     filterPerson, setFilterPerson,
@@ -39,13 +41,19 @@ export function ChoresView() {
     enabledCount, dueCount,
   } = useChoresViewData();
 
+  const handleAddWithAuth = async () => {
+    const user = await requireAuth('Add Chore', 'Please log in to add a chore');
+    if (!user) return;
+    setShowAddModal(true);
+  };
+
   return (
     <PageWrapper>
       <div className="h-screen flex flex-col">
-        <header className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-4 py-3">
+        <header className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-4 py-3 safe-area-top">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" asChild>
+              <Button variant="ghost" size="icon" asChild className="hidden md:inline-flex">
                 <Link href="/" aria-label="Back to dashboard"><Home className="h-5 w-5" /></Link>
               </Button>
               <div className="flex items-center gap-2">
@@ -58,19 +66,22 @@ export function ChoresView() {
             <div className="flex items-center gap-2">
               <Button
                 variant={showCompletions ? 'secondary' : 'outline'}
-                size="sm"
+                size="icon"
                 onClick={() => setShowCompletions(!showCompletions)}
+                className="h-10 w-10"
               >
-                <History className="h-4 w-4 mr-1" />History
+                <History className="h-5 w-5" />
+                <span className="sr-only">History</span>
               </Button>
-              <Button onClick={() => setShowAddModal(true)}>
-                <Plus className="h-4 w-4 mr-1" />Add Chore
+              <Button onClick={handleAddWithAuth} size="sm">
+                <Plus className="h-4 w-4 mr-1" />
+                Add Chore
               </Button>
             </div>
           </div>
         </header>
 
-        <div className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-4 py-2">
+        <div className="hidden md:block flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-4 py-2">
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Person:</span>
@@ -196,7 +207,7 @@ export function ChoresView() {
           ) : filteredChores.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
               <ClipboardList className="h-12 w-12 mb-4 opacity-50" /><p>No chores found</p>
-              <Button variant="outline" size="sm" className="mt-4" onClick={() => setShowAddModal(true)}>Add your first chore</Button>
+              <Button variant="outline" size="sm" className="mt-4" onClick={handleAddWithAuth}>Add your first chore</Button>
             </div>
           ) : (
             <div className="space-y-2 max-w-4xl mx-auto">

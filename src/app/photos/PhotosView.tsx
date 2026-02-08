@@ -11,11 +11,19 @@ import { PhotoUpload } from '@/components/photos/PhotoUpload';
 import { PhotoLightbox } from '@/components/photos/PhotoLightbox';
 import { PageWrapper } from '@/components/layout';
 import { useAutoOrientationSetting } from '@/components/layout/WallpaperBackground';
+import { useAuth } from '@/components/providers';
 
 export function PhotosView() {
+  const { requireAuth } = useAuth();
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [showUpload, setShowUpload] = useState(false);
   const { enabled: autoOrientationEnabled } = useAutoOrientationSetting();
+
+  const handleUploadWithAuth = async () => {
+    const user = await requireAuth('Upload Photo', 'Please log in to upload photos');
+    if (!user) return;
+    setShowUpload(!showUpload);
+  };
 
   // Filter state — multi-select for orientation and usage
   const [orientationFilters, setOrientationFilters] = useState<Set<PhotoOrientation>>(new Set());
@@ -83,7 +91,7 @@ export function PhotosView() {
               )}
             </div>
             <button
-              onClick={() => setShowUpload(!showUpload)}
+              onClick={handleUploadWithAuth}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90 transition-colors"
             >
               <Upload className="h-4 w-4" />

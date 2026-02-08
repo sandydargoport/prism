@@ -58,6 +58,7 @@ export async function GET(
       name: list.name,
       icon: list.icon,
       color: list.color,
+      listType: list.listType,
       sortOrder: list.sortOrder,
       assignedTo: list.assignedTo,
       createdAt: list.createdAt.toISOString(),
@@ -116,6 +117,7 @@ export async function PATCH(
     if ('description' in validation.data) updateData.description = validation.data.description || null;
     if ('icon' in validation.data) updateData.icon = validation.data.icon || null;
     if ('color' in validation.data) updateData.color = validation.data.color || null;
+    if ('listType' in validation.data) updateData.listType = validation.data.listType || 'grocery';
     if ('sortOrder' in validation.data) updateData.sortOrder = validation.data.sortOrder || null;
     if ('assignedTo' in validation.data) updateData.assignedTo = validation.data.assignedTo || null;
 
@@ -143,6 +145,7 @@ export async function PATCH(
       name: updatedList.name,
       icon: updatedList.icon,
       color: updatedList.color,
+      listType: updatedList.listType,
       sortOrder: updatedList.sortOrder,
       assignedTo: updatedList.assignedTo,
       createdAt: updatedList.createdAt.toISOString(),

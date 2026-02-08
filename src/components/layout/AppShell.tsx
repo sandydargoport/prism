@@ -29,8 +29,12 @@
 
 import * as React from 'react';
 import { SideNav } from './SideNav';
+import { MobileNav } from './MobileNav';
+import { PortraitNav } from './PortraitNav';
 import { WallpaperBackground } from './WallpaperBackground';
 import { cn } from '@/lib/utils';
+import { useOrientation } from '@/lib/hooks/useOrientation';
+import { useIsMobile } from '@/lib/hooks/useIsMobile';
 
 /**
  * APP SHELL PROPS
@@ -93,35 +97,47 @@ export function AppShell({
   showWallpaper = false,
   className,
 }: AppShellProps) {
+  const orientation = useOrientation();
+  const isMobile = useIsMobile();
+
+  // Determine which nav to show:
+  // - Mobile (small screens): MobileNav (simplified)
+  // - Larger screens in landscape: SideNav
+  // - Larger screens in portrait: PortraitNav (bottom drawer)
+  const showSideNav = !isMobile && orientation === 'landscape';
+  const showPortraitNav = !isMobile && orientation === 'portrait';
+  const showMobileNav = isMobile;
+
   return (
-    <div className="relative min-h-screen bg-background">
-      {/* ==================================================================== */}
+    <div className={cn('relative min-h-screen', !showWallpaper && 'bg-background')}>
       {/* WALLPAPER BACKGROUND (only on dashboard/screensaver) */}
-      {/* ==================================================================== */}
       {showWallpaper && <WallpaperBackground />}
 
-      {/* ==================================================================== */}
-      {/* SIDE NAVIGATION */}
-      {/* Only rendered if hideNav is false */}
-      {/* ==================================================================== */}
-      {!hideNav && <SideNav user={user} onLogout={onLogout} onLogin={onLogin} />}
+      {/* SIDE NAVIGATION - landscape mode on larger screens */}
+      {!hideNav && showSideNav && (
+        <SideNav user={user} onLogout={onLogout} onLogin={onLogin} />
+      )}
 
-      {/* ==================================================================== */}
       {/* MAIN CONTENT AREA */}
-      {/* Fixed margin for collapsed nav - nav expands as overlay on hover */}
-      {/* ==================================================================== */}
       <main
         className={cn(
-          // Base styles
           'min-h-screen relative z-10',
-          // Fixed left margin for collapsed nav (64px = 16 * 4 = md:ml-16)
-          // Nav expands as overlay, doesn't push content
-          !hideNav && 'md:ml-16',
+          // Left margin only when SideNav is visible (landscape on larger screens)
+          !hideNav && showSideNav && 'ml-16',
+          // Bottom padding when bottom nav is visible (portrait or mobile)
+          !hideNav && showPortraitNav && 'pb-24',
+          !hideNav && showMobileNav && 'pb-16',
           className
         )}
       >
         {children}
       </main>
+
+      {/* PORTRAIT BOTTOM NAVIGATION - portrait mode on larger screens */}
+      {!hideNav && showPortraitNav && <PortraitNav user={user} onLogin={onLogin} onLogout={onLogout} />}
+
+      {/* MOBILE BOTTOM NAVIGATION - small screens only */}
+      {!hideNav && showMobileNav && <MobileNav user={user} onLogin={onLogin} onLogout={onLogout} />}
     </div>
   );
 }

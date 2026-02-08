@@ -7,7 +7,10 @@ import { microsoftTodoProvider } from '@/lib/integrations/tasks/microsoft-todo';
  * GET /api/task-sources/microsoft-lists
  *
  * Fetches available MS To-Do lists using temporary tokens stored after OAuth.
- * Query params: taskListId (the Prism list ID used in OAuth state)
+ * Query params:
+ *   - taskListId: Prism task list ID (for task integrations)
+ *   - shoppingListId: Prism shopping list ID (for shopping integrations)
+ *   - newConnection: true if creating new connection without pre-selected list
  */
 export async function GET(request: NextRequest) {
   const auth = await requireAuth();
@@ -18,11 +21,12 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const taskListId = searchParams.get('taskListId');
+  const shoppingListId = searchParams.get('shoppingListId');
   const newConnection = searchParams.get('newConnection') === 'true';
 
-  if (!taskListId && !newConnection) {
+  if (!taskListId && !shoppingListId && !newConnection) {
     return NextResponse.json(
-      { error: 'taskListId or newConnection is required' },
+      { error: 'taskListId, shoppingListId, or newConnection is required' },
       { status: 400 }
     );
   }
@@ -35,10 +39,26 @@ export async function GET(request: NextRequest) {
         { status: 503 }
       );
     }
-    const tempKey = newConnection
-      ? `ms-todo-temp:${auth.userId}:new`
-      : `ms-todo-temp:${auth.userId}:${taskListId}`;
-    const stored = await redis.get(tempKey);
+
+    // Determine the temp key based on what type of connection this is
+    let tempKey: string;
+    if (shoppingListId) {
+      tempKey = `ms-todo-temp:${auth.userId}:shopping:${shoppingListId}`;
+    } else if (taskListId) {
+      tempKey = `ms-todo-temp:${auth.userId}:task:${taskListId}`;
+    } else {
+      // For new connections, try shopping first then task (based on returnSection)
+      tempKey = `ms-todo-temp:${auth.userId}:task:new`;
+    }
+    let stored = await redis.get(tempKey);
+
+    // Fallback for old key format (backwards compatibility)
+    if (!stored && taskListId) {
+      stored = await redis.get(`ms-todo-temp:${auth.userId}:${taskListId}`);
+    }
+    if (!stored && newConnection) {
+      stored = await redis.get(`ms-todo-temp:${auth.userId}:new`);
+    }
 
     if (!stored) {
       return NextResponse.json(

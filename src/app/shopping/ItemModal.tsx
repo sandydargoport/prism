@@ -12,12 +12,14 @@ export function ItemModal({
   listId,
   item,
   lists,
+  defaultCategory,
   onClose,
   onSave,
 }: {
   listId: string;
   item?: ShoppingItem;
   lists?: ShoppingList[];
+  defaultCategory?: ShoppingItem['category'];
   onClose: () => void;
   onSave: (item: Omit<ShoppingItem, 'id' | 'createdAt'>) => void | Promise<void>;
 }) {
@@ -25,7 +27,7 @@ export function ItemModal({
   const [selectedListId, setSelectedListId] = useState(listId);
   const [quantity, setQuantity] = useState(item?.quantity?.toString() || '');
   const [unit, setUnit] = useState(item?.unit || '');
-  const [category, setCategory] = useState<ShoppingItem['category']>(item?.category || 'other');
+  const [category, setCategory] = useState<ShoppingItem['category']>(item?.category || defaultCategory || 'other');
   const [notes, setNotes] = useState(item?.notes || '');
   const [saving, setSaving] = useState(false);
 
@@ -55,11 +57,11 @@ export function ItemModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 pb-20 md:pb-0"
       onClick={onClose}
     >
       <div
-        className="bg-card rounded-lg p-6 max-w-md w-full mx-4 shadow-lg border border-border"
+        className="bg-card rounded-lg p-6 max-w-md w-full mx-4 shadow-lg border border-border max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">

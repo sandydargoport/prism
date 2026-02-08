@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useIdleDetection } from '@/lib/hooks/useIdleDetection';
 import { usePhotos } from '@/lib/hooks/usePhotos';
-import { useAutoOrientationSetting, usePinnedPhoto } from '@/components/layout/WallpaperBackground';
+import { useAutoOrientationSetting, usePinnedPhoto, useScreensaverInterval } from '@/components/layout/WallpaperBackground';
 import { useScreenOrientation } from '@/lib/hooks/useScreenOrientation';
 import { useMessages } from '@/lib/hooks/useMessages';
 import { format, isToday, isTomorrow, startOfDay } from 'date-fns';
@@ -75,6 +75,7 @@ export function Screensaver() {
   const { isIdle } = useIdleDetection();
   const { enabled: autoOrientation } = useAutoOrientationSetting();
   const { pinnedId } = usePinnedPhoto('screensaver');
+  const { interval: screensaverInterval } = useScreensaverInterval();
   const screenOrientation = useScreenOrientation();
   const orientationOverride = typeof window !== 'undefined'
     ? (localStorage.getItem('prism-orientation-override') as 'landscape' | 'portrait' | null) || null
@@ -90,18 +91,18 @@ export function Screensaver() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [fadingOut, setFadingOut] = useState(false);
 
-  // Only rotate if no pinned photo
+  // Only rotate if no pinned photo and interval is not "never" (0)
   useEffect(() => {
-    if (!isIdle || photos.length <= 1 || pinnedId) return;
+    if (!isIdle || photos.length <= 1 || pinnedId || screensaverInterval === 0) return;
     const timer = setInterval(() => {
       setFadingOut(true);
       setTimeout(() => {
         setCurrentIndex((i) => (i + 1) % photos.length);
         setFadingOut(false);
       }, 1000);
-    }, 15000);
+    }, screensaverInterval * 1000);
     return () => clearInterval(timer);
-  }, [isIdle, photos.length, pinnedId]);
+  }, [isIdle, photos.length, pinnedId, screensaverInterval]);
 
   useEffect(() => {
     if (isIdle) {

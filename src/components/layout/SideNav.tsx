@@ -28,7 +28,6 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -43,11 +42,8 @@ import {
   ImageIcon,
   Settings,
   Trophy,
-  Menu,
-  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { PrismIcon } from '@/components/ui/PrismIcon';
 
 /**
@@ -120,14 +116,6 @@ export function SideNav({ user, onLogout, onLogin, className }: SideNavProps) {
   // Get current pathname for active state
   const pathname = usePathname();
 
-  // Mobile menu state
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  // Close mobile menu when route changes
-  useEffect(() => {
-    setMobileMenuOpen(false);
-  }, [pathname]);
-
   // Check if a nav item is active
   const isActive = (href: string) => {
     if (href === '/') {
@@ -138,29 +126,7 @@ export function SideNav({ user, onLogout, onLogin, className }: SideNavProps) {
 
   return (
     <>
-      {/* MOBILE HAMBURGER BUTTON */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="fixed top-4 left-4 z-50 md:hidden"
-        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-      >
-        {mobileMenuOpen ? (
-          <X className="h-6 w-6" />
-        ) : (
-          <Menu className="h-6 w-6" />
-        )}
-      </Button>
-
-      {/* MOBILE OVERLAY */}
-      {mobileMenuOpen && (
-        <div
-          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 md:hidden"
-          onClick={() => setMobileMenuOpen(false)}
-        />
-      )}
-
-      {/* SIDE NAVIGATION */}
+      {/* SIDE NAVIGATION - visibility controlled by AppShell based on orientation */}
       <aside
         className={cn(
           'group fixed left-0 top-0 z-40 h-screen',
@@ -170,9 +136,6 @@ export function SideNav({ user, onLogout, onLogin, className }: SideNavProps) {
           'w-16',
           'hover:w-60',
           'hover:shadow-xl',
-          'max-md:transform',
-          mobileMenuOpen ? 'max-md:translate-x-0' : 'max-md:-translate-x-full',
-          'max-md:w-60',
           className
         )}
       >

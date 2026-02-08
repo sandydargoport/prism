@@ -100,6 +100,7 @@ export const createShoppingListSchema = z.object({
   description: z.string().max(1000).optional(),
   icon: z.string().max(50).optional(),
   color: hexColorSchema.optional(),
+  listType: z.enum(['grocery', 'hardware', 'other']).optional(),
   sortOrder: z.number().int().optional(),
   // Who this list is assigned to (only they can check off items)
   // Null/undefined means anyone can check off items (family list)
@@ -132,6 +133,7 @@ export const createMealSchema = z.object({
   description: z.string().max(5000).optional(),
   recipe: z.string().max(20000).optional(),
   recipeUrl: z.string().url().optional(),
+  recipeId: uuidSchema.optional(),
   prepTime: z.number().int().min(0).optional(),
   cookTime: z.number().int().min(0).optional(),
   servings: z.number().int().min(1).optional(),

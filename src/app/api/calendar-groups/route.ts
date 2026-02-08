@@ -37,11 +37,12 @@ export async function GET() {
         .leftJoin(users, eq(calendarGroups.userId, users.id))
         .orderBy(asc(calendarGroups.sortOrder), asc(calendarGroups.name));
 
-      // For user-type groups, use the current user name and color
+      // For user-type groups, use the current user name but preserve the stored color
+      // (allows users to customize calendar colors independently of their profile color)
       const processedGroups = groups.map(g => ({
         id: g.id,
         name: g.type === 'user' && g.userName ? g.userName : g.storedName,
-        color: g.type === 'user' && g.userColor ? g.userColor : g.color,
+        color: g.color,
         type: g.type,
         userId: g.userId,
         sortOrder: g.sortOrder,

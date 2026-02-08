@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
         name: shoppingLists.name,
         icon: shoppingLists.icon,
         color: shoppingLists.color,
+        listType: shoppingLists.listType,
         sortOrder: shoppingLists.sortOrder,
         assignedTo: shoppingLists.assignedTo,
         createdAt: shoppingLists.createdAt,
@@ -57,6 +58,7 @@ export async function GET(request: NextRequest) {
         name: list.name,
         icon: list.icon,
         color: list.color,
+        listType: list.listType,
         sortOrder: list.sortOrder,
         assignedTo: list.assignedTo,
         createdAt: list.createdAt.toISOString(),
@@ -99,6 +101,7 @@ export async function GET(request: NextRequest) {
       name: list.name,
       icon: list.icon,
       color: list.color,
+      listType: list.listType,
       sortOrder: list.sortOrder,
       assignedTo: list.assignedTo,
       createdAt: list.createdAt.toISOString(),
@@ -162,7 +165,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { name, icon, color, sortOrder, description, assignedTo, createdBy } = validation.data;
+    const { name, icon, color, listType, sortOrder, description, assignedTo, createdBy } = validation.data;
 
     // Insert the list
     const [newList] = await db
@@ -172,6 +175,7 @@ export async function POST(request: NextRequest) {
         description: description || null,
         icon: icon || null,
         color: color || null,
+        listType: listType || 'grocery',
         sortOrder: sortOrder ?? 0,
         assignedTo: assignedTo || null,
         createdBy: createdBy || null,
@@ -190,6 +194,7 @@ export async function POST(request: NextRequest) {
       name: newList.name,
       icon: newList.icon,
       color: newList.color,
+      listType: newList.listType,
       sortOrder: newList.sortOrder,
       createdAt: newList.createdAt.toISOString(),
     }, { status: 201 });
