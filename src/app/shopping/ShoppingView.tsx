@@ -385,7 +385,7 @@ export function ShoppingView() {
     try {
       await apiAddItem(activeList.id, {
         name,
-        category: 'general',
+        category: 'other',
       });
       setInlineInputs(prev => ({ ...prev, [`list${colNum}`]: '' }));
     } catch (err) {

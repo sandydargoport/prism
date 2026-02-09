@@ -12,15 +12,12 @@ interface Confetti {
 export function ShoppingCelebration({ show, onComplete }: { show: boolean; onComplete?: () => void }) {
   const [confetti, setConfetti] = useState<Confetti[]>([]);
   const [visible, setVisible] = useState(false);
-  const [showText, setShowText] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const textTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (show && !visible) {
       // Start the animation
       setVisible(true);
-      setShowText(true);
 
       // Generate confetti particles
       const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8'];
@@ -35,11 +32,6 @@ export function ShoppingCelebration({ show, onComplete }: { show: boolean; onCom
       }
       setConfetti(particles);
 
-      // Hide text after 2 seconds
-      textTimerRef.current = setTimeout(() => {
-        setShowText(false);
-      }, 2000);
-
       // End animation after 3 seconds and notify parent
       timerRef.current = setTimeout(() => {
         setVisible(false);
@@ -51,7 +43,6 @@ export function ShoppingCelebration({ show, onComplete }: { show: boolean; onCom
     // Cleanup on unmount
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
-      if (textTimerRef.current) clearTimeout(textTimerRef.current);
     };
   }, [show, visible, onComplete]);
 
@@ -138,15 +129,6 @@ export function ShoppingCelebration({ show, onComplete }: { show: boolean; onCom
           }}
         />
       ))}
-
-      {/* Celebration text - fades out after 2 seconds */}
-      {showText && (
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-bounce-in">
-          <div className="text-4xl font-bold text-primary drop-shadow-lg bg-background/80 px-6 py-3 rounded-xl">
-            🎉 All Done! 🎉
-          </div>
-        </div>
-      )}
     </div>
   );
 }
