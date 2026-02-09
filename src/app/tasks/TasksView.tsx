@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import { format, isPast, differenceInDays, formatDistanceToNow } from 'date-fns';
 import {
   CheckSquare,
   Plus,
@@ -11,8 +12,10 @@ import {
   Clock,
   RefreshCw,
   Users,
+  CalendarDays,
 } from 'lucide-react';
 import { UserAvatar } from '@/components/ui/avatar';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PageWrapper } from '@/components/layout';
@@ -184,42 +187,95 @@ export function TasksView() {
               <Button variant="outline" size="sm" className="mt-4" onClick={handleAddWithAuth}>Add your first task</Button>
             </div>
           ) : groupByUser && tasksByUser ? (
-            <div className="space-y-6 max-w-4xl mx-auto">
-              {tasksByUser.map(({ user, tasks }) => (
-                <div key={user?.id || 'unassigned'} className="space-y-2">
+            <div className={cn(
+              'grid gap-2 h-full',
+              tasksByUser.length <= 2 ? 'grid-cols-1 md:grid-cols-2' :
+              tasksByUser.length <= 4 ? 'grid-cols-2' :
+              'grid-cols-2 md:grid-cols-3'
+            )}>
+              {tasksByUser.map(({ user, tasks }) => {
+                const userColor = user?.color || '#6B7280';
+                const completedCount = tasks.filter((t) => t.completed).length;
+                return (
                   <div
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg border-l-4"
-                    style={{
-                      borderLeftColor: user?.color || '#6B7280',
-                      backgroundColor: (user?.color || '#6B7280') + '10',
-                    }}
+                    key={user?.id || 'unassigned'}
+                    className="flex flex-col border-2 rounded-lg overflow-hidden bg-card/90 backdrop-blur-sm"
+                    style={{ borderColor: userColor }}
                   >
-                    {user ? (
-                      <UserAvatar name={user.name} color={user.color} size="sm" className="h-6 w-6" />
-                    ) : (
-                      <CheckSquare className="h-5 w-5 text-muted-foreground" />
-                    )}
-                    <h3 className="font-semibold" style={{ color: user?.color || '#6B7280' }}>
-                      {user?.name || 'Unassigned'}
-                    </h3>
-                    <Badge variant="outline" className="ml-auto">
-                      {tasks.filter((t) => t.completed).length}/{tasks.length} done
-                    </Badge>
+                    {/* User header */}
+                    <div
+                      className="flex items-center gap-2 px-3 py-2 shrink-0"
+                      style={{ backgroundColor: userColor + '20' }}
+                    >
+                      {user ? (
+                        <UserAvatar name={user.name} color={user.color} size="sm" className="h-7 w-7" />
+                      ) : (
+                        <CheckSquare className="h-5 w-5 text-muted-foreground" />
+                      )}
+                      <h3 className="font-bold text-lg" style={{ color: userColor }}>
+                        {user?.name || 'Unassigned'}
+                      </h3>
+                      <Badge variant="outline" className="ml-auto">
+                        {completedCount}/{tasks.length}
+                      </Badge>
+                    </div>
+                    {/* Scrollable tasks list */}
+                    <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                      {tasks.map((task) => {
+                        const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+                        const isOverdue = dueDate && !task.completed && isPast(dueDate);
+                        const daysUntil = dueDate ? differenceInDays(dueDate, new Date()) : null;
+
+                        return (
+                          <div
+                            key={task.id}
+                            className={cn(
+                              'p-2 rounded-md border cursor-pointer hover:bg-muted/50 transition-colors',
+                              task.completed ? 'opacity-60' : '',
+                              isOverdue ? 'border-red-500/50 bg-red-50/50 dark:bg-red-950/20' : 'border-border'
+                            )}
+                            onClick={() => toggleTask(task.id)}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <p className={cn(
+                                  'font-medium text-sm truncate',
+                                  task.completed && 'line-through text-muted-foreground'
+                                )}>
+                                  {task.title}
+                                </p>
+                                {dueDate && (
+                                  <div className={cn(
+                                    'flex items-center gap-1 text-xs mt-0.5',
+                                    isOverdue ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
+                                  )}>
+                                    <CalendarDays className="h-3 w-3" />
+                                    {isOverdue ? (
+                                      <span>Due {formatDistanceToNow(dueDate, { addSuffix: true })}</span>
+                                    ) : daysUntil === 0 ? (
+                                      <span>Due today</span>
+                                    ) : daysUntil === 1 ? (
+                                      <span>Due tomorrow</span>
+                                    ) : (
+                                      <span>Due {format(dueDate, 'MMM d')}</span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              {task.priority === 'high' && (
+                                <Badge variant="destructive" className="text-xs shrink-0">!</Badge>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {tasks.length === 0 && (
+                        <p className="text-center text-muted-foreground text-sm py-4">No tasks</p>
+                      )}
+                    </div>
                   </div>
-                  <div className="space-y-2 pl-2">
-                    {tasks.map((task) => (
-                      <TaskItem
-                        key={task.id}
-                        task={task}
-                        onToggle={() => toggleTask(task.id)}
-                        onEdit={() => editTask(task)}
-                        onDelete={() => deleteTask(task.id)}
-                        taskLists={taskLists}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="space-y-2 max-w-4xl mx-auto">

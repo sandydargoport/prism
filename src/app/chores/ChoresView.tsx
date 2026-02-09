@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { format, parseISO, formatDistanceToNow } from 'date-fns';
+import { format, parseISO, formatDistanceToNow, isPast, differenceInDays } from 'date-fns';
 import { useState, useMemo } from 'react';
 import {
   ClipboardList,
@@ -14,7 +14,9 @@ import {
   CheckCircle2,
   ShieldCheck,
   Users,
+  CalendarDays,
 } from 'lucide-react';
+import { useOrientation } from '@/lib/hooks/useOrientation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -249,42 +251,90 @@ export function ChoresView() {
               <Button variant="outline" size="sm" className="mt-4" onClick={handleAddWithAuth}>Add your first chore</Button>
             </div>
           ) : groupByUser && choresByUser ? (
-            <div className="space-y-6 max-w-4xl mx-auto">
-              {choresByUser.map(({ user, chores }) => (
-                <div key={user?.id || 'unassigned'} className="space-y-2">
+            <div className={cn(
+              'grid gap-2 h-full',
+              choresByUser.length <= 2 ? 'grid-cols-1 md:grid-cols-2' :
+              choresByUser.length <= 4 ? 'grid-cols-2' :
+              'grid-cols-2 md:grid-cols-3'
+            )}>
+              {choresByUser.map(({ user, chores }) => {
+                const userColor = user?.color || '#6B7280';
+                return (
                   <div
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg border-l-4"
-                    style={{
-                      borderLeftColor: user?.color || '#6B7280',
-                      backgroundColor: (user?.color || '#6B7280') + '10',
-                    }}
+                    key={user?.id || 'unassigned'}
+                    className="flex flex-col border-2 rounded-lg overflow-hidden bg-card/90 backdrop-blur-sm"
+                    style={{ borderColor: userColor }}
                   >
-                    {user ? (
-                      <UserAvatar name={user.name} color={user.color} size="sm" className="h-6 w-6" />
-                    ) : (
-                      <ClipboardList className="h-5 w-5 text-muted-foreground" />
-                    )}
-                    <h3 className="font-semibold" style={{ color: user?.color || '#6B7280' }}>
-                      {user?.name || 'Unassigned'}
-                    </h3>
-                    <Badge variant="outline" className="ml-auto">
-                      {chores.length} chore{chores.length !== 1 ? 's' : ''}
-                    </Badge>
+                    {/* User header */}
+                    <div
+                      className="flex items-center gap-2 px-3 py-2 shrink-0"
+                      style={{ backgroundColor: userColor + '20' }}
+                    >
+                      {user ? (
+                        <UserAvatar name={user.name} color={user.color} size="sm" className="h-7 w-7" />
+                      ) : (
+                        <ClipboardList className="h-5 w-5 text-muted-foreground" />
+                      )}
+                      <h3 className="font-bold text-lg" style={{ color: userColor }}>
+                        {user?.name || 'Unassigned'}
+                      </h3>
+                      <Badge variant="outline" className="ml-auto">
+                        {chores.length}
+                      </Badge>
+                    </div>
+                    {/* Scrollable chores list */}
+                    <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                      {chores.map((chore) => {
+                        const nextDue = chore.nextDue ? new Date(chore.nextDue) : null;
+                        const isOverdue = nextDue && isPast(nextDue);
+                        const daysUntil = nextDue ? differenceInDays(nextDue, new Date()) : null;
+
+                        return (
+                          <div
+                            key={chore.id}
+                            className={cn(
+                              'p-2 rounded-md border cursor-pointer hover:bg-muted/50 transition-colors',
+                              isOverdue ? 'border-red-500/50 bg-red-50/50 dark:bg-red-950/20' : 'border-border'
+                            )}
+                            onClick={() => completeChore(chore.id)}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm truncate">{chore.title}</p>
+                                {nextDue && (
+                                  <div className={cn(
+                                    'flex items-center gap-1 text-xs mt-0.5',
+                                    isOverdue ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
+                                  )}>
+                                    <CalendarDays className="h-3 w-3" />
+                                    {isOverdue ? (
+                                      <span>Due {formatDistanceToNow(nextDue, { addSuffix: true })}</span>
+                                    ) : daysUntil === 0 ? (
+                                      <span>Due today</span>
+                                    ) : daysUntil === 1 ? (
+                                      <span>Due tomorrow</span>
+                                    ) : (
+                                      <span>Due {format(nextDue, 'MMM d')}</span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              {chore.pointValue > 0 && (
+                                <Badge variant="secondary" className="text-xs shrink-0">
+                                  {chore.pointValue} pts
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {chores.length === 0 && (
+                        <p className="text-center text-muted-foreground text-sm py-4">No chores</p>
+                      )}
+                    </div>
                   </div>
-                  <div className="space-y-2 pl-2">
-                    {chores.map((chore) => (
-                      <ChoreItem
-                        key={chore.id}
-                        chore={chore}
-                        onComplete={() => completeChore(chore.id)}
-                        onToggleEnabled={() => toggleEnabled(chore.id)}
-                        onEdit={() => editChore(chore)}
-                        onDelete={() => deleteChore(chore.id)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="space-y-2 max-w-4xl mx-auto">
