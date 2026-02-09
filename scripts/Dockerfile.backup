@@ -1,0 +1,16 @@
+# Prism Backup Container
+# PostgreSQL client + rclone for off-site sync
+
+FROM postgres:15-alpine
+
+# Install rclone for cloud storage sync
+RUN apk add --no-cache rclone
+
+# Copy scripts
+COPY backup.sh /scripts/backup.sh
+COPY backup-scheduler.sh /scripts/backup-scheduler.sh
+COPY restore.sh /scripts/restore.sh
+
+RUN chmod +x /scripts/*.sh
+
+ENTRYPOINT ["/bin/sh", "/scripts/backup-scheduler.sh"]

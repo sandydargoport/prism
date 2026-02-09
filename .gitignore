@@ -191,6 +191,9 @@ docker-data/
 data/
 uploads/
 
+# Database backups (contain actual data, potentially large)
+backups/
+
 
 # ============================================================================
 # MISCELLANEOUS
