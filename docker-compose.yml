@@ -78,13 +78,11 @@ services:
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - BACKUP_HOUR=3
       - RETENTION_DAYS=7
-      # Off-site backup (optional) - configure rclone first, then set:
-      # - RCLONE_REMOTE=onedrive:Prism/backups
-      # - RCLONE_RETENTION_DAYS=30
+      - RCLONE_REMOTE=onedrive:Prism/backups
+      - RCLONE_RETENTION_DAYS=30
     volumes:
       - ./backups:/backups
-      # Mount rclone config if using off-site backup:
-      # - ./config/rclone.conf:/root/.config/rclone/rclone.conf:ro
+      - ./config/rclone.conf:/root/.config/rclone/rclone.conf:ro
     depends_on:
       db:
         condition: service_healthy

@@ -194,6 +194,9 @@ uploads/
 # Database backups (contain actual data, potentially large)
 backups/
 
+# Rclone config (contains OAuth tokens)
+config/rclone.conf
+
 
 # ============================================================================
 # MISCELLANEOUS
