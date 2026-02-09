@@ -534,6 +534,47 @@
   animation: bounce-in 0.6s ease-out forwards;
 }
 
+/* Plane celebration animation */
+@keyframes plane-fly {
+  0% {
+    transform: translate(-150%, 30vh);
+  }
+  100% {
+    transform: translate(120vw, 20vh);
+  }
+}
+
+@keyframes spin-fast {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes rope-wave {
+  0%, 100% { d: path("M0 10 Q10 5 20 10 Q30 15 40 10"); }
+  50% { d: path("M0 10 Q10 15 20 10 Q30 5 40 10"); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-plane-fly {
+  animation: plane-fly 4s linear forwards;
+}
+
+.animate-spin-fast {
+  animation: spin-fast 0.1s linear infinite;
+}
+
+.animate-rope-wave {
+  animation: rope-wave 0.5s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
 /* Allow color picker dropdowns to overflow grid items */
 .react-grid-item {
   overflow: visible !important;
@@ -625,4 +666,15 @@
 
 .safe-area-right {
   padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* Combined padding + safe area utilities for content areas above bottom nav */
+.pb-mobile-nav {
+  /* MobileNav height (64px) + safe area */
+  padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+}
+
+.pb-portrait-nav {
+  /* PortraitNav height (80px) + safe area */
+  padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
 }

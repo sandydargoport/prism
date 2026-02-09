@@ -303,10 +303,12 @@ export function QuickPinModal({
               ))}
             </div>
 
-            {/* Error */}
-            {error && (
-              <p className="text-sm text-destructive mb-3">{error}</p>
-            )}
+            {/* Error/Status message - fixed height to prevent layout shift */}
+            <div className="h-6 mb-3 flex items-center justify-center">
+              {error && (
+                <p className="text-sm text-destructive">{error}</p>
+              )}
+            </div>
 
             {/* Number pad */}
             <div className="grid grid-cols-3 gap-2 max-w-[200px] mx-auto">
@@ -355,10 +357,12 @@ export function QuickPinModal({
               )}
             </div>
 
-            {/* Loading */}
-            {isVerifying && (
-              <p className="text-sm text-muted-foreground mt-3">Verifying...</p>
-            )}
+            {/* Loading - fixed height to prevent layout shift */}
+            <div className="h-6 mt-3 flex items-center justify-center">
+              {isVerifying && (
+                <p className="text-sm text-muted-foreground">Verifying...</p>
+              )}
+            </div>
           </div>
         )}
       </div>

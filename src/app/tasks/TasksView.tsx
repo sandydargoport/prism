@@ -13,7 +13,9 @@ import {
   RefreshCw,
   Users,
   CalendarDays,
+  Settings,
 } from 'lucide-react';
+import { PlaneCelebration } from '@/components/ui/PlaneCelebration';
 import { UserAvatar } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -42,8 +44,11 @@ export function TasksView() {
     autoSyncing,
   } = useTasksViewData();
 
-  // Group by user toggle
-  const [groupByUser, setGroupByUser] = useState(false);
+  // Group by user toggle (default to true)
+  const [groupByUser, setGroupByUser] = useState(true);
+
+  // Celebration state
+  const [celebratingUser, setCelebratingUser] = useState<{ id: string; name: string } | null>(null);
 
   // Group tasks by assigned user
   const tasksByUser = useMemo(() => {
@@ -231,10 +236,20 @@ export function TasksView() {
                             key={task.id}
                             className={cn(
                               'p-2 rounded-md border cursor-pointer hover:bg-muted/50 transition-colors',
-                              task.completed ? 'opacity-60' : '',
-                              isOverdue ? 'border-red-500/50 bg-red-50/50 dark:bg-red-950/20' : 'border-border'
+                              task.completed ? 'opacity-60 bg-green-50/50 dark:bg-green-950/20 border-green-500/30' : '',
+                              isOverdue ? 'border-red-500/50 bg-red-50/50 dark:bg-red-950/20' : !task.completed ? 'border-border' : ''
                             )}
-                            onClick={() => toggleTask(task.id)}
+                            onClick={async () => {
+                              await toggleTask(task.id);
+                              // Check if all tasks for this user are now completed
+                              if (user && !task.completed) {
+                                const otherTasks = tasks.filter((t) => t.id !== task.id);
+                                const allOthersCompleted = otherTasks.every((t) => t.completed);
+                                if (allOthersCompleted) {
+                                  setCelebratingUser({ id: user.id, name: user.name });
+                                }
+                              }
+                            }}
                           >
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex-1 min-w-0">
@@ -244,7 +259,7 @@ export function TasksView() {
                                 )}>
                                   {task.title}
                                 </p>
-                                {dueDate && (
+                                {dueDate && !task.completed && (
                                   <div className={cn(
                                     'flex items-center gap-1 text-xs mt-0.5',
                                     isOverdue ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
@@ -262,9 +277,22 @@ export function TasksView() {
                                   </div>
                                 )}
                               </div>
-                              {task.priority === 'high' && (
-                                <Badge variant="destructive" className="text-xs shrink-0">!</Badge>
-                              )}
+                              <div className="flex items-center gap-1 shrink-0">
+                                {task.priority === 'high' && (
+                                  <Badge variant="destructive" className="text-xs">!</Badge>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 opacity-50 hover:opacity-100"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    editTask(task);
+                                  }}
+                                >
+                                  <Settings className="h-3 w-3" />
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         );
@@ -346,6 +374,12 @@ export function TasksView() {
             taskLists={taskLists}
           />
         )}
+
+        <PlaneCelebration
+          show={!!celebratingUser}
+          userName={celebratingUser?.name || ''}
+          onComplete={() => setCelebratingUser(null)}
+        />
       </div>
     </PageWrapper>
   );

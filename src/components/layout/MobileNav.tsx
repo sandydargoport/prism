@@ -123,7 +123,11 @@ export function MobileNav({ user, onLogin, onLogout }: MobileNavProps) {
             <button
               onClick={() => {
                 setShowMore(false);
-                user ? onLogout?.() : onLogin?.();
+                if (user) {
+                  onLogout?.();
+                } else {
+                  onLogin?.();
+                }
               }}
               className="flex flex-col items-center gap-1 py-3 px-2 rounded-lg transition-colors text-muted-foreground hover:bg-accent"
             >

@@ -190,6 +190,11 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
 
+  // Viewport fit cover for iOS safe area handling
+  // This allows content to extend into the safe area (notch, home indicator)
+  // Use env(safe-area-inset-*) in CSS to add proper padding
+  viewportFit: 'cover',
+
   // Theme color for browser chrome (status bar, etc.)
   // This changes based on system theme
   themeColor: [

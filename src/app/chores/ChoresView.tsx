@@ -15,8 +15,10 @@ import {
   ShieldCheck,
   Users,
   CalendarDays,
+  Settings,
 } from 'lucide-react';
 import { useOrientation } from '@/lib/hooks/useOrientation';
+import { PlaneCelebration } from '@/components/ui/PlaneCelebration';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -45,8 +47,11 @@ export function ChoresView() {
     enabledCount, dueCount,
   } = useChoresViewData();
 
-  // Group by user toggle
-  const [groupByUser, setGroupByUser] = useState(false);
+  // Group by user toggle (default to true)
+  const [groupByUser, setGroupByUser] = useState(true);
+
+  // Celebration state
+  const [celebratingUser, setCelebratingUser] = useState<{ id: string; name: string } | null>(null);
 
   // Group chores by assigned user
   const choresByUser = useMemo(() => {
@@ -96,12 +101,11 @@ export function ChoresView() {
             <div className="flex items-center gap-2">
               <Button
                 variant={showCompletions ? 'secondary' : 'outline'}
-                size="icon"
+                size="sm"
                 onClick={() => setShowCompletions(!showCompletions)}
-                className="h-10 w-10"
               >
-                <History className="h-5 w-5" />
-                <span className="sr-only">History</span>
+                <History className="h-4 w-4 mr-1" />
+                History
               </Button>
               <Button onClick={handleAddWithAuth} size="sm">
                 <Plus className="h-4 w-4 mr-1" />
@@ -288,20 +292,38 @@ export function ChoresView() {
                         const nextDue = chore.nextDue ? new Date(chore.nextDue) : null;
                         const isOverdue = nextDue && isPast(nextDue);
                         const daysUntil = nextDue ? differenceInDays(nextDue, new Date()) : null;
+                        const isCompletedToday = chore.lastCompleted &&
+                          new Date(chore.lastCompleted) > new Date(Date.now() - 24 * 60 * 60 * 1000);
 
                         return (
                           <div
                             key={chore.id}
                             className={cn(
                               'p-2 rounded-md border cursor-pointer hover:bg-muted/50 transition-colors',
+                              isCompletedToday ? 'opacity-60 bg-green-50/50 dark:bg-green-950/20 border-green-500/30' :
                               isOverdue ? 'border-red-500/50 bg-red-50/50 dark:bg-red-950/20' : 'border-border'
                             )}
-                            onClick={() => completeChore(chore.id)}
+                            onClick={async () => {
+                              await completeChore(chore.id);
+                              // Check if all chores for this user are now completed
+                              if (user) {
+                                const otherChores = chores.filter((c) => c.id !== chore.id);
+                                const allOthersCompleted = otherChores.every((c) =>
+                                  c.lastCompleted && new Date(c.lastCompleted) > new Date(Date.now() - 24 * 60 * 60 * 1000)
+                                );
+                                if (allOthersCompleted && !isCompletedToday) {
+                                  setCelebratingUser({ id: user.id, name: user.name });
+                                }
+                              }
+                            }}
                           >
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm truncate">{chore.title}</p>
-                                {nextDue && (
+                                <p className={cn(
+                                  'font-medium text-sm truncate',
+                                  isCompletedToday && 'line-through'
+                                )}>{chore.title}</p>
+                                {nextDue && !isCompletedToday && (
                                   <div className={cn(
                                     'flex items-center gap-1 text-xs mt-0.5',
                                     isOverdue ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
@@ -319,11 +341,24 @@ export function ChoresView() {
                                   </div>
                                 )}
                               </div>
-                              {chore.pointValue > 0 && (
-                                <Badge variant="secondary" className="text-xs shrink-0">
-                                  {chore.pointValue} pts
-                                </Badge>
-                              )}
+                              <div className="flex items-center gap-1 shrink-0">
+                                {chore.pointValue > 0 && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    {chore.pointValue} pts
+                                  </Badge>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 opacity-50 hover:opacity-100"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    editChore(chore);
+                                  }}
+                                >
+                                  <Settings className="h-3 w-3" />
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         );
@@ -405,6 +440,12 @@ export function ChoresView() {
             familyMembers={familyMembers}
           />
         )}
+
+        <PlaneCelebration
+          show={!!celebratingUser}
+          userName={celebratingUser?.name || ''}
+          onComplete={() => setCelebratingUser(null)}
+        />
       </div>
     </PageWrapper>
   );
