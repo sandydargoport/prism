@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { cn } from '@/lib/utils';
 
 interface Confetti {
   id: number;
@@ -12,25 +11,15 @@ interface Confetti {
 
 export function ShoppingCelebration({ show, onComplete }: { show: boolean; onComplete?: () => void }) {
   const [confetti, setConfetti] = useState<Confetti[]>([]);
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [showText, setShowText] = useState(true);
-  const onCompleteRef = useRef(onComplete);
-
-  // Keep ref updated without triggering effect
-  useEffect(() => {
-    onCompleteRef.current = onComplete;
-  }, [onComplete]);
-
-  // Track the last show value to detect rising edge
-  const prevShowRef = useRef(false);
+  const [visible, setVisible] = useState(false);
+  const [showText, setShowText] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const textTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Only trigger on rising edge: show went from false to true
-    const risingEdge = show && !prevShowRef.current;
-    prevShowRef.current = show;
-
-    if (risingEdge && !isAnimating) {
-      setIsAnimating(true);
+    if (show && !visible) {
+      // Start the animation
+      setVisible(true);
       setShowText(true);
 
       // Generate confetti particles
@@ -47,25 +36,38 @@ export function ShoppingCelebration({ show, onComplete }: { show: boolean; onCom
       setConfetti(particles);
 
       // Hide text after 2 seconds
-      const textTimer = setTimeout(() => {
+      textTimerRef.current = setTimeout(() => {
         setShowText(false);
       }, 2000);
 
-      // End animation after 3 seconds
-      const timer = setTimeout(() => {
-        setIsAnimating(false);
+      // End animation after 3 seconds and notify parent
+      timerRef.current = setTimeout(() => {
+        setVisible(false);
         setConfetti([]);
-        onCompleteRef.current?.();
+        onComplete?.();
       }, 3000);
-
-      return () => {
-        clearTimeout(textTimer);
-        clearTimeout(timer);
-      };
     }
-  }, [show, isAnimating]);
 
-  if (!isAnimating) return null;
+    // Cleanup on unmount
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (textTimerRef.current) clearTimeout(textTimerRef.current);
+    };
+  }, [show, visible, onComplete]);
+
+  // Reset visibility when show goes back to false (so we can trigger again)
+  useEffect(() => {
+    if (!show) {
+      // Allow re-triggering after parent resets
+      // Small delay to ensure timers complete first
+      const resetTimer = setTimeout(() => {
+        if (!show) setVisible(false);
+      }, 100);
+      return () => clearTimeout(resetTimer);
+    }
+  }, [show]);
+
+  if (!visible) return null;
 
   return (
     <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">

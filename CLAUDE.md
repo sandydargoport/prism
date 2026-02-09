@@ -73,3 +73,24 @@ docker exec prism-db psql -U prism -d prism -c "SELECT ..."
 ## Layout System
 
 Widget configs use the format `{i, x, y, w, h}` (NOT `{type, position: {x,y,w,h}}`). The `useLayouts` hook normalizes legacy formats but new code should always use the correct format.
+
+## Documentation
+
+After completing features or significant bug fixes, update the docs:
+
+### Bug Fixes
+- Add to `docs/CHANGELOG.md` under "Bug Fixes" section
+
+### New Features
+- Add to `docs/CHANGELOG.md` under "Features" section
+- Update relevant `docs/features/*.md` file
+- Update `docs/REQUIREMENTS.md` if adding new requirements
+- Update MEMORY.md with a brief summary (located at `C:\Users\User\.claude\projects\C--projects-prism\memory\MEMORY.md`)
+
+### Quick Command
+Use `/update-docs` to run the documentation update skill.
+
+### Documentation Files
+- `docs/CHANGELOG.md` — Version-based changelog
+- `docs/REQUIREMENTS.md` — Product requirements
+- `docs/features/` — Feature-specific docs (CALENDAR.md, GOALS.md, MOBILE.md, RECIPES.md, SHOPPING.md, TASKS.md)

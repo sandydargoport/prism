@@ -50,16 +50,16 @@ export function getCategoryEmoji(category: string): string {
   }
 }
 
-function getCategoryColor(category: string, index: number): string {
-  const colors = [
-    '#22C55E', // produce - green
-    '#F59E0B', // bakery - amber
-    '#EF4444', // meat - red
-    '#3B82F6', // dairy - blue
-    '#8B5CF6', // frozen - purple
-    '#F97316', // pantry - orange
-  ];
-  return colors[index % colors.length] || '#3B82F6';
+function getCategoryColor(category: string): string {
+  const colorMap: Record<string, string> = {
+    produce: '#22C55E', // green
+    bakery: '#F59E0B',  // amber
+    meat: '#EF4444',    // red
+    dairy: '#3B82F6',   // blue
+    frozen: '#8B5CF6',  // purple
+    pantry: '#F97316',  // orange
+  };
+  return colorMap[category] || '#3B82F6';
 }
 
 export function ShoppingView() {
@@ -374,6 +374,26 @@ export function ShoppingView() {
     handleInlineAdd(category);
   };
 
+  // Handle non-grocery inline item add
+  const handleNonGroceryInlineAdd = async (colNum: 1 | 2) => {
+    const name = inlineInputs[`list${colNum}`]?.trim();
+    if (!name || !activeList) return;
+
+    const user = await requireAuth("Who's adding an item?");
+    if (!user) return;
+
+    try {
+      await apiAddItem(activeList.id, {
+        name,
+        category: 'general',
+      });
+      setInlineInputs(prev => ({ ...prev, [`list${colNum}`]: '' }));
+    } catch (err) {
+      console.error('Failed to add item:', err);
+      alert('Failed to add item. Please try again.');
+    }
+  };
+
   // Handle new list creation
   const handleNewList = async () => {
     const user = await requireAuth("Who's creating a list?");
@@ -523,8 +543,8 @@ export function ShoppingView() {
                 'grid gap-2',
                 isPortrait ? 'grid-cols-2' : 'grid-cols-3'
               )}>
-                {groceryCategoryItems.map(({ category, items }, index) => {
-                  const categoryColor = getCategoryColor(category, index);
+                {groceryCategoryItems.map(({ category, items }) => {
+                  const categoryColor = getCategoryColor(category);
                   const categoryExtraRows = extraRows[category] || 0;
                   const totalEmptyLines = BASE_EMPTY_LINES + categoryExtraRows;
                   const emptyLinesNeeded = Math.max(0, totalEmptyLines - items.length);
@@ -543,8 +563,8 @@ export function ShoppingView() {
                       onTouchEnd={handleTouchEnd}
                       className={cn(
                         'border-2 rounded-lg overflow-hidden bg-card/90 backdrop-blur-sm',
-                        'flex flex-col cursor-grab active:cursor-grabbing transition-opacity touch-none',
-                        isDragging && 'opacity-50'
+                        'flex flex-col cursor-grab active:cursor-grabbing transition-all touch-none',
+                        isDragging && 'opacity-50 scale-95 ring-4 ring-primary/50'
                       )}
                       style={{ borderColor: categoryColor }}
                     >
@@ -701,8 +721,8 @@ export function ShoppingView() {
                       onTouchEnd={handleColumnTouchEnd}
                       className={cn(
                         'border-2 rounded-lg overflow-hidden bg-card/90 backdrop-blur-sm flex flex-col',
-                        'cursor-grab active:cursor-grabbing transition-opacity touch-none',
-                        isDragging && 'opacity-50'
+                        'cursor-grab active:cursor-grabbing transition-all touch-none',
+                        isDragging && 'opacity-50 scale-95 ring-4 ring-primary/50'
                       )}
                       style={{ borderColor: columnColor }}
                     >
@@ -749,6 +769,27 @@ export function ShoppingView() {
                             />
                           </div>
                         ))}
+
+                        {/* Inline input row */}
+                        <div
+                          className="border-b border-muted-foreground/30 py-1 px-2"
+                          style={{ borderColor: columnColor + '40' }}
+                        >
+                          <Input
+                            ref={(el) => { inputRefs.current[`list${colNum}`] = el; }}
+                            value={inlineInputs[`list${colNum}`] || ''}
+                            onChange={(e) => setInlineInputs(prev => ({ ...prev, [`list${colNum}`]: e.target.value }))}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleNonGroceryInlineAdd(colNum);
+                              }
+                            }}
+                            onBlur={() => handleNonGroceryInlineAdd(colNum)}
+                            placeholder="Add item..."
+                            className="h-7 border-none bg-transparent shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/50"
+                          />
+                        </div>
 
                         {/* Empty underlined rows */}
                         {Array.from({ length: emptyLinesNeeded }).map((_, i) => (
