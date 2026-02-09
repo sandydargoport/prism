@@ -552,45 +552,107 @@ export function ShoppingView() {
               )}
             </div>
           ) : (
-            /* Simple 2-column list layout for non-grocery lists */
-            <div className="max-w-4xl mx-auto">
+            /* Non-grocery layout - 2 columns matching grocery card style */
+            <div className="max-w-7xl mx-auto">
               <div className="grid grid-cols-2 gap-2">
-                {/* Left column */}
-                <div className="border rounded-lg overflow-hidden bg-card/90 backdrop-blur-sm p-2 space-y-1">
-                  {Object.values(filteredItems).flat().filter((_, i) => i % 2 === 0).map((item) => (
-                    <div key={(item as ShoppingItem).id} className="border-b border-muted-foreground/20 last:border-b-0">
-                      <ShoppingItemRow
-                        item={item as ShoppingItem}
-                        onToggle={() => toggleItem((item as ShoppingItem).id)}
-                        onEdit={() => handleEditItem(item as ShoppingItem)}
-                        onDelete={() => handleDeleteItem((item as ShoppingItem).id)}
-                      />
+                {[1, 2].map((colNum) => {
+                  const allItems = Object.values(filteredItems).flat() as ShoppingItem[];
+                  const columnItems = allItems.filter((_, i) => i % 2 === (colNum - 1));
+                  const columnColor = colNum === 1 ? '#3B82F6' : '#8B5CF6';
+                  const columnExtraRows = extraRows[`list${colNum}`] || 0;
+                  const totalEmptyLines = BASE_EMPTY_LINES + columnExtraRows;
+                  const emptyLinesNeeded = Math.max(0, totalEmptyLines - columnItems.length);
+
+                  return (
+                    <div
+                      key={colNum}
+                      className="border-2 rounded-lg overflow-hidden bg-card/90 backdrop-blur-sm flex flex-col"
+                      style={{ borderColor: columnColor }}
+                    >
+                      {/* Column header */}
+                      <div
+                        className="px-2 py-1 flex items-center gap-1"
+                        style={{ backgroundColor: columnColor + '20' }}
+                      >
+                        <span className="text-xl">📋</span>
+                        <h3
+                          className="text-base font-bold"
+                          style={{ color: columnColor }}
+                        >
+                          List {colNum}
+                        </h3>
+                        <Badge variant="outline" className="ml-auto text-xs">
+                          {columnItems.length}
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-1"
+                          onClick={() => handleAddItem()}
+                          style={{ color: columnColor }}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      {/* Items with notebook lines */}
+                      <div className="flex-1 p-1">
+                        {columnItems.map((item) => (
+                          <div
+                            key={item.id}
+                            className="border-b border-muted-foreground/30"
+                            style={{ borderColor: columnColor + '40' }}
+                          >
+                            <ShoppingItemRow
+                              item={item}
+                              onToggle={() => toggleItem(item.id)}
+                              onEdit={() => handleEditItem(item)}
+                              onDelete={() => handleDeleteItem(item.id)}
+                            />
+                          </div>
+                        ))}
+
+                        {/* Empty underlined rows */}
+                        {Array.from({ length: emptyLinesNeeded }).map((_, i) => (
+                          <div
+                            key={`empty-${i}`}
+                            className="h-7 border-b border-muted-foreground/30"
+                            style={{ borderColor: columnColor + '40' }}
+                          />
+                        ))}
+
+                        {/* Add/remove rows buttons */}
+                        <div className="flex items-center justify-center gap-1 pt-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-xs text-muted-foreground"
+                            onClick={() => addExtraRows(`list${colNum}`, -1)}
+                          >
+                            -1
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-xs text-muted-foreground"
+                            onClick={() => addExtraRows(`list${colNum}`, 1)}
+                          >
+                            +1
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-xs text-muted-foreground"
+                            onClick={() => addExtraRows(`list${colNum}`, 5)}
+                          >
+                            +5
+                          </Button>
+                          <ChevronsDown className="h-3 w-3 text-muted-foreground/50" />
+                        </div>
+                      </div>
                     </div>
-                  ))}
-                  {/* Add item button */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full border-dashed border text-muted-foreground"
-                    onClick={() => handleAddItem()}
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add item
-                  </Button>
-                </div>
-                {/* Right column */}
-                <div className="border rounded-lg overflow-hidden bg-card/90 backdrop-blur-sm p-2 space-y-1">
-                  {Object.values(filteredItems).flat().filter((_, i) => i % 2 === 1).map((item) => (
-                    <div key={(item as ShoppingItem).id} className="border-b border-muted-foreground/20 last:border-b-0">
-                      <ShoppingItemRow
-                        item={item as ShoppingItem}
-                        onToggle={() => toggleItem((item as ShoppingItem).id)}
-                        onEdit={() => handleEditItem(item as ShoppingItem)}
-                        onDelete={() => handleDeleteItem((item as ShoppingItem).id)}
-                      />
-                    </div>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
             </div>
           )}
