@@ -220,6 +220,26 @@ export async function parseRecipeFromUrl(url: string): Promise<ParsedRecipe | nu
     throw new Error('Only HTTP/HTTPS URLs are supported');
   }
 
+  // Block internal/private IP ranges to prevent SSRF attacks
+  const hostname = parsedUrl.hostname.toLowerCase();
+  const blockedPatterns = [
+    /^localhost$/i,
+    /^127\.\d+\.\d+\.\d+$/,           // 127.0.0.0/8 loopback
+    /^10\.\d+\.\d+\.\d+$/,            // 10.0.0.0/8 private
+    /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/, // 172.16.0.0/12 private
+    /^192\.168\.\d+\.\d+$/,           // 192.168.0.0/16 private
+    /^169\.254\.\d+\.\d+$/,           // 169.254.0.0/16 link-local
+    /^0\.0\.0\.0$/,                   // 0.0.0.0
+    /^\[::1\]$/,                      // IPv6 loopback
+    /^\[fe80:/i,                      // IPv6 link-local
+    /^\[fc00:/i,                      // IPv6 unique local
+    /^\[fd00:/i,                      // IPv6 unique local
+  ];
+
+  if (blockedPatterns.some((pattern) => pattern.test(hostname))) {
+    throw new Error('URL points to a blocked address');
+  }
+
   // Fetch the page
   const response = await fetch(url, {
     headers: {

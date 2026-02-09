@@ -145,6 +145,7 @@ export const events = pgTable('events', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
   startTimeIdx: index('events_start_time_idx').on(table.startTime),
+  endTimeIdx: index('events_end_time_idx').on(table.endTime),
   calendarSourceIdx: index('events_calendar_source_idx').on(table.calendarSourceId),
   // Unique constraint to prevent duplicate synced events
   sourceExternalUnique: uniqueIndex('events_source_external_unique')
@@ -378,6 +379,7 @@ export const shoppingLists = pgTable('shopping_lists', {
 
   createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 
@@ -537,6 +539,7 @@ export const familyMessages = pgTable('family_messages', {
   expiresAt: timestamp('expires_at'),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
   createdAtIdx: index('family_messages_created_at_idx').on(table.createdAt),
   expiresAtIdx: index('family_messages_expires_at_idx').on(table.expiresAt),
