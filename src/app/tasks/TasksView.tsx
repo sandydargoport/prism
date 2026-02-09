@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
   CheckSquare,
@@ -9,7 +10,9 @@ import {
   AlertCircle,
   Clock,
   RefreshCw,
+  Users,
 } from 'lucide-react';
+import { UserAvatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PageWrapper } from '@/components/layout';
@@ -35,6 +38,32 @@ export function TasksView() {
     taskLists,
     autoSyncing,
   } = useTasksViewData();
+
+  // Group by user toggle
+  const [groupByUser, setGroupByUser] = useState(false);
+
+  // Group tasks by assigned user
+  const tasksByUser = useMemo(() => {
+    if (!groupByUser) return null;
+
+    const groups: { user: { id: string; name: string; color: string } | null; tasks: typeof filteredTasks }[] = [];
+
+    // Group by each family member
+    familyMembers.forEach((member) => {
+      const userTasks = filteredTasks.filter((t) => t.assignedTo?.id === member.id);
+      if (userTasks.length > 0) {
+        groups.push({ user: member, tasks: userTasks });
+      }
+    });
+
+    // Unassigned tasks
+    const unassigned = filteredTasks.filter((t) => !t.assignedTo);
+    if (unassigned.length > 0) {
+      groups.push({ user: null, tasks: unassigned });
+    }
+
+    return groups;
+  }, [groupByUser, filteredTasks, familyMembers]);
 
   const handleAddWithAuth = async () => {
     const user = await requireAuth('Add Task', 'Please log in to add a task');
@@ -116,6 +145,17 @@ export function TasksView() {
                 </div>
               </div>
             )}
+            <div className="flex items-center gap-2">
+              <Button
+                variant={groupByUser ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setGroupByUser(!groupByUser)}
+                className="gap-1"
+              >
+                <Users className="h-4 w-4" />
+                Group by Person
+              </Button>
+            </div>
             <div className="flex items-center gap-2 ml-auto">
               <SortAsc className="h-4 w-4 text-muted-foreground" />
               <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
@@ -142,6 +182,44 @@ export function TasksView() {
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
               <CheckSquare className="h-12 w-12 mb-4 opacity-50" /><p>No tasks found</p>
               <Button variant="outline" size="sm" className="mt-4" onClick={handleAddWithAuth}>Add your first task</Button>
+            </div>
+          ) : groupByUser && tasksByUser ? (
+            <div className="space-y-6 max-w-4xl mx-auto">
+              {tasksByUser.map(({ user, tasks }) => (
+                <div key={user?.id || 'unassigned'} className="space-y-2">
+                  <div
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg border-l-4"
+                    style={{
+                      borderLeftColor: user?.color || '#6B7280',
+                      backgroundColor: (user?.color || '#6B7280') + '10',
+                    }}
+                  >
+                    {user ? (
+                      <UserAvatar name={user.name} color={user.color} size="sm" className="h-6 w-6" />
+                    ) : (
+                      <CheckSquare className="h-5 w-5 text-muted-foreground" />
+                    )}
+                    <h3 className="font-semibold" style={{ color: user?.color || '#6B7280' }}>
+                      {user?.name || 'Unassigned'}
+                    </h3>
+                    <Badge variant="outline" className="ml-auto">
+                      {tasks.filter((t) => t.completed).length}/{tasks.length} done
+                    </Badge>
+                  </div>
+                  <div className="space-y-2 pl-2">
+                    {tasks.map((task) => (
+                      <TaskItem
+                        key={task.id}
+                        task={task}
+                        onToggle={() => toggleTask(task.id)}
+                        onEdit={() => editTask(task)}
+                        onDelete={() => deleteTask(task.id)}
+                        taskLists={taskLists}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <div className="space-y-2 max-w-4xl mx-auto">

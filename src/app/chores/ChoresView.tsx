@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { format, parseISO, formatDistanceToNow } from 'date-fns';
+import { useState, useMemo } from 'react';
 import {
   ClipboardList,
   Plus,
@@ -12,6 +13,7 @@ import {
   History,
   CheckCircle2,
   ShieldCheck,
+  Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -40,6 +42,32 @@ export function ChoresView() {
     completeChore, toggleEnabled, deleteChore, editChore,
     enabledCount, dueCount,
   } = useChoresViewData();
+
+  // Group by user toggle
+  const [groupByUser, setGroupByUser] = useState(false);
+
+  // Group chores by assigned user
+  const choresByUser = useMemo(() => {
+    if (!groupByUser) return null;
+
+    const groups: { user: { id: string; name: string; color: string } | null; chores: typeof filteredChores }[] = [];
+
+    // Group by each family member
+    familyMembers.forEach((member) => {
+      const userChores = filteredChores.filter((c) => c.assignedTo?.id === member.id);
+      if (userChores.length > 0) {
+        groups.push({ user: member, chores: userChores });
+      }
+    });
+
+    // Unassigned chores
+    const unassigned = filteredChores.filter((c) => !c.assignedTo);
+    if (unassigned.length > 0) {
+      groups.push({ user: null, chores: unassigned });
+    }
+
+    return groups;
+  }, [groupByUser, filteredChores, familyMembers]);
 
   const handleAddWithAuth = async () => {
     const user = await requireAuth('Add Chore', 'Please log in to add a chore');
@@ -109,6 +137,17 @@ export function ChoresView() {
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Show disabled:</span>
               <Switch checked={showDisabled} onCheckedChange={setShowDisabled} />
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant={groupByUser ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setGroupByUser(!groupByUser)}
+                className="gap-1"
+              >
+                <Users className="h-4 w-4" />
+                Group by Person
+              </Button>
             </div>
             <div className="flex items-center gap-2 ml-auto">
               <SortAsc className="h-4 w-4 text-muted-foreground" />
@@ -208,6 +247,44 @@ export function ChoresView() {
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
               <ClipboardList className="h-12 w-12 mb-4 opacity-50" /><p>No chores found</p>
               <Button variant="outline" size="sm" className="mt-4" onClick={handleAddWithAuth}>Add your first chore</Button>
+            </div>
+          ) : groupByUser && choresByUser ? (
+            <div className="space-y-6 max-w-4xl mx-auto">
+              {choresByUser.map(({ user, chores }) => (
+                <div key={user?.id || 'unassigned'} className="space-y-2">
+                  <div
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg border-l-4"
+                    style={{
+                      borderLeftColor: user?.color || '#6B7280',
+                      backgroundColor: (user?.color || '#6B7280') + '10',
+                    }}
+                  >
+                    {user ? (
+                      <UserAvatar name={user.name} color={user.color} size="sm" className="h-6 w-6" />
+                    ) : (
+                      <ClipboardList className="h-5 w-5 text-muted-foreground" />
+                    )}
+                    <h3 className="font-semibold" style={{ color: user?.color || '#6B7280' }}>
+                      {user?.name || 'Unassigned'}
+                    </h3>
+                    <Badge variant="outline" className="ml-auto">
+                      {chores.length} chore{chores.length !== 1 ? 's' : ''}
+                    </Badge>
+                  </div>
+                  <div className="space-y-2 pl-2">
+                    {chores.map((chore) => (
+                      <ChoreItem
+                        key={chore.id}
+                        chore={chore}
+                        onComplete={() => completeChore(chore.id)}
+                        onToggleEnabled={() => toggleEnabled(chore.id)}
+                        onEdit={() => editChore(chore)}
+                        onDelete={() => deleteChore(chore.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <div className="space-y-2 max-w-4xl mx-auto">
