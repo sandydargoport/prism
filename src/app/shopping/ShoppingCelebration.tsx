@@ -21,8 +21,15 @@ export function ShoppingCelebration({ show, onComplete }: { show: boolean; onCom
     onCompleteRef.current = onComplete;
   }, [onComplete]);
 
+  // Track the last show value to detect rising edge
+  const prevShowRef = useRef(false);
+
   useEffect(() => {
-    if (show && !isAnimating) {
+    // Only trigger on rising edge: show went from false to true
+    const risingEdge = show && !prevShowRef.current;
+    prevShowRef.current = show;
+
+    if (risingEdge && !isAnimating) {
       setIsAnimating(true);
       setShowText(true);
 

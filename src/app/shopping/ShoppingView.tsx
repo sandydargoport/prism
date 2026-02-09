@@ -84,6 +84,14 @@ export function ShoppingView() {
   const [categoryOrder, setCategoryOrder] = useState<GroceryCategory[]>(DEFAULT_GROCERY_CATEGORIES);
   const [draggedCategory, setDraggedCategory] = useState<GroceryCategory | null>(null);
 
+  // Non-grocery column order (persisted in localStorage)
+  const NON_GROCERY_ORDER_KEY = 'prism:non-grocery-column-order';
+  const [columnOrder, setColumnOrder] = useState<[1, 2] | [2, 1]>([1, 2]);
+  const [draggedColumn, setDraggedColumn] = useState<1 | 2 | null>(null);
+
+  // Touch drag state
+  const touchStartRef = useRef<{ x: number; y: number; element: HTMLElement | null }>({ x: 0, y: 0, element: null });
+
   // Load category order from localStorage on mount
   useEffect(() => {
     try {
@@ -92,6 +100,14 @@ export function ShoppingView() {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length === DEFAULT_GROCERY_CATEGORIES.length) {
           setCategoryOrder(parsed as GroceryCategory[]);
+        }
+      }
+      // Load non-grocery column order
+      const savedColumns = localStorage.getItem(NON_GROCERY_ORDER_KEY);
+      if (savedColumns) {
+        const parsed = JSON.parse(savedColumns);
+        if (Array.isArray(parsed) && parsed.length === 2) {
+          setColumnOrder(parsed as [1, 2] | [2, 1]);
         }
       }
     } catch {
@@ -109,7 +125,17 @@ export function ShoppingView() {
     }
   }, []);
 
-  // Drag and drop handlers for category reordering
+  // Save non-grocery column order
+  const saveColumnOrder = useCallback((order: [1, 2] | [2, 1]) => {
+    setColumnOrder(order);
+    try {
+      localStorage.setItem(NON_GROCERY_ORDER_KEY, JSON.stringify(order));
+    } catch {
+      // Ignore storage errors
+    }
+  }, []);
+
+  // Drag and drop handlers for category reordering (mouse)
   const handleDragStart = useCallback((category: GroceryCategory) => {
     setDraggedCategory(category);
   }, []);
@@ -131,6 +157,100 @@ export function ShoppingView() {
 
   const handleDragEnd = useCallback(() => {
     setDraggedCategory(null);
+  }, []);
+
+  // Touch handlers for category reordering
+  const handleTouchStart = useCallback((e: React.TouchEvent, category: GroceryCategory) => {
+    const touch = e.touches[0];
+    if (!touch) return;
+    touchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      element: e.currentTarget as HTMLElement,
+    };
+    setDraggedCategory(category);
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!draggedCategory) return;
+    const touch = e.touches[0];
+    if (!touch) return;
+
+    // Find which category we're over
+    const elements = document.elementsFromPoint(touch.clientX, touch.clientY);
+    for (const el of elements) {
+      const categoryAttr = el.getAttribute('data-category');
+      if (categoryAttr && categoryAttr !== draggedCategory) {
+        const targetCategory = categoryAttr as GroceryCategory;
+        const newOrder = [...categoryOrder];
+        const draggedIndex = newOrder.indexOf(draggedCategory);
+        const targetIndex = newOrder.indexOf(targetCategory);
+
+        if (draggedIndex !== -1 && targetIndex !== -1 && draggedIndex !== targetIndex) {
+          newOrder.splice(draggedIndex, 1);
+          newOrder.splice(targetIndex, 0, draggedCategory);
+          saveCategoryOrder(newOrder);
+        }
+        break;
+      }
+    }
+  }, [draggedCategory, categoryOrder, saveCategoryOrder]);
+
+  const handleTouchEnd = useCallback(() => {
+    setDraggedCategory(null);
+    touchStartRef.current = { x: 0, y: 0, element: null };
+  }, []);
+
+  // Non-grocery column drag handlers (mouse)
+  const handleColumnDragStart = useCallback((col: 1 | 2) => {
+    setDraggedColumn(col);
+  }, []);
+
+  const handleColumnDragOver = useCallback((e: React.DragEvent, targetCol: 1 | 2) => {
+    e.preventDefault();
+    if (!draggedColumn || draggedColumn === targetCol) return;
+    // Swap columns - simply reverse the order
+    saveColumnOrder(columnOrder[0] === 1 ? [2, 1] : [1, 2]);
+  }, [draggedColumn, columnOrder, saveColumnOrder]);
+
+  const handleColumnDragEnd = useCallback(() => {
+    setDraggedColumn(null);
+  }, []);
+
+  // Touch handlers for non-grocery column reordering
+  const handleColumnTouchStart = useCallback((e: React.TouchEvent, col: 1 | 2) => {
+    const touch = e.touches[0];
+    if (!touch) return;
+    touchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      element: e.currentTarget as HTMLElement,
+    };
+    setDraggedColumn(col);
+  }, []);
+
+  const handleColumnTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!draggedColumn) return;
+    const touch = e.touches[0];
+    if (!touch) return;
+
+    const elements = document.elementsFromPoint(touch.clientX, touch.clientY);
+    for (const el of elements) {
+      const colAttr = el.getAttribute('data-column');
+      if (colAttr) {
+        const targetCol = parseInt(colAttr, 10) as 1 | 2;
+        if (targetCol !== draggedColumn) {
+          // Swap columns - simply reverse the order
+          saveColumnOrder(columnOrder[0] === 1 ? [2, 1] : [1, 2]);
+        }
+        break;
+      }
+    }
+  }, [draggedColumn, columnOrder, saveColumnOrder]);
+
+  const handleColumnTouchEnd = useCallback(() => {
+    setDraggedColumn(null);
+    touchStartRef.current = { x: 0, y: 0, element: null };
   }, []);
 
   // Track inline input values for each category
@@ -413,13 +533,17 @@ export function ShoppingView() {
                   return (
                     <div
                       key={category}
+                      data-category={category}
                       draggable
                       onDragStart={() => handleDragStart(category)}
                       onDragOver={(e) => handleDragOver(e, category)}
                       onDragEnd={handleDragEnd}
+                      onTouchStart={(e) => handleTouchStart(e, category)}
+                      onTouchMove={handleTouchMove}
+                      onTouchEnd={handleTouchEnd}
                       className={cn(
                         'border-2 rounded-lg overflow-hidden bg-card/90 backdrop-blur-sm',
-                        'flex flex-col cursor-grab active:cursor-grabbing transition-opacity',
+                        'flex flex-col cursor-grab active:cursor-grabbing transition-opacity touch-none',
                         isDragging && 'opacity-50'
                       )}
                       style={{ borderColor: categoryColor }}
@@ -555,25 +679,39 @@ export function ShoppingView() {
             /* Non-grocery layout - 2 columns matching grocery card style */
             <div className="max-w-7xl mx-auto">
               <div className="grid grid-cols-2 gap-2">
-                {[1, 2].map((colNum) => {
+                {columnOrder.map((colNum) => {
                   const allItems = Object.values(filteredItems).flat() as ShoppingItem[];
                   const columnItems = allItems.filter((_, i) => i % 2 === (colNum - 1));
                   const columnColor = colNum === 1 ? '#3B82F6' : '#8B5CF6';
                   const columnExtraRows = extraRows[`list${colNum}`] || 0;
                   const totalEmptyLines = BASE_EMPTY_LINES + columnExtraRows;
                   const emptyLinesNeeded = Math.max(0, totalEmptyLines - columnItems.length);
+                  const isDragging = draggedColumn === colNum;
 
                   return (
                     <div
                       key={colNum}
-                      className="border-2 rounded-lg overflow-hidden bg-card/90 backdrop-blur-sm flex flex-col"
+                      data-column={colNum}
+                      draggable
+                      onDragStart={() => handleColumnDragStart(colNum)}
+                      onDragOver={(e) => handleColumnDragOver(e, colNum)}
+                      onDragEnd={handleColumnDragEnd}
+                      onTouchStart={(e) => handleColumnTouchStart(e, colNum)}
+                      onTouchMove={handleColumnTouchMove}
+                      onTouchEnd={handleColumnTouchEnd}
+                      className={cn(
+                        'border-2 rounded-lg overflow-hidden bg-card/90 backdrop-blur-sm flex flex-col',
+                        'cursor-grab active:cursor-grabbing transition-opacity touch-none',
+                        isDragging && 'opacity-50'
+                      )}
                       style={{ borderColor: columnColor }}
                     >
                       {/* Column header */}
                       <div
-                        className="px-2 py-1 flex items-center gap-1"
+                        className="px-2 py-1 flex items-center gap-1 select-none"
                         style={{ backgroundColor: columnColor + '20' }}
                       >
+                        <GripVertical className="h-4 w-4 text-muted-foreground/50 shrink-0" />
                         <span className="text-xl">📋</span>
                         <h3
                           className="text-base font-bold"
