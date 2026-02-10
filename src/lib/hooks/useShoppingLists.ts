@@ -11,6 +11,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useVisibilityPolling } from './useVisibilityPolling';
 
 // Re-export types from shared types for consumers that import from this hook
 export type { ShoppingItem, ShoppingList } from '@/types';
@@ -246,27 +247,7 @@ export function useShoppingLists(options: UseShoppingListsOptions = {}): UseShop
   }, [fetchLists]);
 
   // Set up refresh interval with visibility-based pause
-  useEffect(() => {
-    if (refreshInterval <= 0) return;
-
-    let interval = setInterval(fetchLists, refreshInterval);
-
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        clearInterval(interval);
-      } else {
-        fetchLists();
-        interval = setInterval(fetchLists, refreshInterval);
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [refreshInterval, fetchLists]);
+  useVisibilityPolling(fetchLists, refreshInterval);
 
   return {
     lists,

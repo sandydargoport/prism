@@ -11,6 +11,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useVisibilityPolling } from './useVisibilityPolling';
 import type { Task } from '@/components/widgets/TasksWidget';
 
 interface UseTasksOptions {
@@ -152,27 +153,7 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksResult {
   }, [fetchTasks]);
 
   // Set up refresh interval with visibility-based pause
-  useEffect(() => {
-    if (refreshInterval <= 0) return;
-
-    let interval = setInterval(fetchTasks, refreshInterval);
-
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        clearInterval(interval);
-      } else {
-        fetchTasks();
-        interval = setInterval(fetchTasks, refreshInterval);
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [refreshInterval, fetchTasks]);
+  useVisibilityPolling(fetchTasks, refreshInterval);
 
   return {
     tasks,

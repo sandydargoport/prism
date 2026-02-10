@@ -11,6 +11,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useVisibilityPolling } from './useVisibilityPolling';
 import type { FamilyMessage } from '@/components/widgets/MessagesWidget';
 
 interface UseMessagesOptions {
@@ -124,27 +125,7 @@ export function useMessages(
   }, [fetchMessages]);
 
   // Set up refresh interval with visibility-based pause
-  useEffect(() => {
-    if (refreshInterval <= 0) return;
-
-    let interval = setInterval(fetchMessages, refreshInterval);
-
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        clearInterval(interval);
-      } else {
-        fetchMessages();
-        interval = setInterval(fetchMessages, refreshInterval);
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [refreshInterval, fetchMessages]);
+  useVisibilityPolling(fetchMessages, refreshInterval);
 
   return {
     messages,

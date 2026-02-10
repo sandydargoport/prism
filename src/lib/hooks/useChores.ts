@@ -11,6 +11,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useVisibilityPolling } from './useVisibilityPolling';
 
 // Re-export Chore type from shared types for consumers that import from this hook
 export type { Chore } from '@/types';
@@ -216,27 +217,7 @@ export function useChores(options: UseChoresOptions = {}): UseChoresResult {
   }, [fetchChores]);
 
   // Set up refresh interval with visibility-based pause
-  useEffect(() => {
-    if (refreshInterval <= 0) return;
-
-    let interval = setInterval(fetchChores, refreshInterval);
-
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        clearInterval(interval);
-      } else {
-        fetchChores();
-        interval = setInterval(fetchChores, refreshInterval);
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [refreshInterval, fetchChores]);
+  useVisibilityPolling(fetchChores, refreshInterval);
 
   return {
     chores,

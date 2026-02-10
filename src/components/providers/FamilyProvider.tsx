@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useState, useEffect, useCallback, createContext, useContext } from 'react';
+import { useVisibilityPolling } from '@/lib/hooks/useVisibilityPolling';
 import type { FamilyMember } from '@/types';
 
 interface FamilyContextValue {
@@ -67,26 +68,7 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
   }, [fetchMembers]);
 
   // Refresh every 10 minutes with visibility-based pause
-  useEffect(() => {
-    const interval = 10 * 60 * 1000;
-    let timer = setInterval(fetchMembers, interval);
-
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        clearInterval(timer);
-      } else {
-        fetchMembers();
-        timer = setInterval(fetchMembers, interval);
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      clearInterval(timer);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [fetchMembers]);
+  useVisibilityPolling(fetchMembers, 10 * 60 * 1000);
 
   return (
     <FamilyContext.Provider value={{ members, loading, error, refresh: fetchMembers }}>

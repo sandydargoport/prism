@@ -11,6 +11,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useVisibilityPolling } from './useVisibilityPolling';
 
 // Re-export Meal type from shared types for consumers that import from this hook
 export type { Meal } from '@/types';
@@ -153,27 +154,7 @@ export function useMeals(options: UseMealsOptions = {}): UseMealsResult {
   }, [fetchMeals]);
 
   // Set up refresh interval with visibility-based pause
-  useEffect(() => {
-    if (refreshInterval <= 0) return;
-
-    let interval = setInterval(fetchMeals, refreshInterval);
-
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        clearInterval(interval);
-      } else {
-        fetchMeals();
-        interval = setInterval(fetchMeals, refreshInterval);
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [refreshInterval, fetchMeals]);
+  useVisibilityPolling(fetchMeals, refreshInterval);
 
   return {
     meals,

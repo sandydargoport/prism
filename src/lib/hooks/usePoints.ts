@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useVisibilityPolling } from './useVisibilityPolling';
 
 export interface PointSummary {
   userId: string;
@@ -42,23 +43,7 @@ export function usePoints(refreshInterval = 2 * 60 * 1000): UsePointsResult {
 
   useEffect(() => { fetchPoints(); }, [fetchPoints]);
 
-  useEffect(() => {
-    if (refreshInterval <= 0) return;
-    let interval = setInterval(fetchPoints, refreshInterval);
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        clearInterval(interval);
-      } else {
-        fetchPoints();
-        interval = setInterval(fetchPoints, refreshInterval);
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [refreshInterval, fetchPoints]);
+  useVisibilityPolling(fetchPoints, refreshInterval);
 
   return { points, loading, error, refresh: fetchPoints };
 }

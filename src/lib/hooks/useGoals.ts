@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useVisibilityPolling } from './useVisibilityPolling';
 
 export interface Goal {
   id: string;
@@ -158,23 +159,7 @@ export function useGoals(refreshInterval = 2 * 60 * 1000): UseGoalsResult {
 
   useEffect(() => { fetchGoals(); }, [fetchGoals]);
 
-  useEffect(() => {
-    if (refreshInterval <= 0) return;
-    let interval = setInterval(fetchGoals, refreshInterval);
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        clearInterval(interval);
-      } else {
-        fetchGoals();
-        interval = setInterval(fetchGoals, refreshInterval);
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [refreshInterval, fetchGoals]);
+  useVisibilityPolling(fetchGoals, refreshInterval);
 
   return {
     goals, progress, goalChildren, loading, error,

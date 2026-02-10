@@ -20,7 +20,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, getDisplayAuth } from '@/lib/auth';
+import { getDisplayAuth } from '@/lib/auth';
+import { withAuth } from '@/lib/api/withAuth';
 import { db } from '@/lib/db/client';
 import { familyMessages, users } from '@/lib/db/schema';
 import { eq, desc, asc, and, gt, isNull, or, sql } from 'drizzle-orm';
@@ -171,14 +172,8 @@ export async function GET(request: NextRequest) {
  * ============================================================================
  */
 export async function POST(request: NextRequest) {
-  const auth = await requireAuth();
-  if (auth instanceof NextResponse) return auth;
-
-  const { rateLimitGuard } = await import('@/lib/cache/rateLimit');
-  const limited = await rateLimitGuard(auth.userId, 'messages', 30, 60);
-  if (limited) return limited;
-
-  try {
+  return withAuth(async () => {
+    try {
     const body = await request.json();
 
     // Validate required fields
@@ -273,11 +268,12 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(formatMessageRow(messageWithAuthor), { status: 201 });
-  } catch (error) {
-    console.error('Error creating message:', error);
-    return NextResponse.json(
-      { error: 'Failed to create message' },
-      { status: 500 }
-    );
-  }
+    } catch (error) {
+      console.error('Error creating message:', error);
+      return NextResponse.json(
+        { error: 'Failed to create message' },
+        { status: 500 }
+      );
+    }
+  }, { rateLimit: { feature: 'messages', limit: 30, windowSeconds: 60 } });
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, getDisplayAuth } from '@/lib/auth';
+import { getDisplayAuth } from '@/lib/auth';
+import { withAuth } from '@/lib/api/withAuth';
 import { db } from '@/lib/db/client';
 import { tasks, users } from '@/lib/db/schema';
 import { eq, desc, asc, and, lte, gte, sql } from 'drizzle-orm';
@@ -110,87 +111,82 @@ export async function GET(request: NextRequest) {
 
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAuth();
-  if (auth instanceof NextResponse) return auth;
+  return withAuth(async (auth) => {
+    try {
+      const body = await request.json();
 
-  const { rateLimitGuard } = await import('@/lib/cache/rateLimit');
-  const limited = await rateLimitGuard(auth.userId, 'tasks', 30, 60);
-  if (limited) return limited;
+      const parsed = createTaskSchema.safeParse(body);
+      if (!parsed.success) {
+        return NextResponse.json(
+          { error: 'Validation failed', details: parsed.error.flatten().fieldErrors },
+          { status: 400 }
+        );
+      }
 
-  try {
-    const body = await request.json();
+      const data = parsed.data;
 
-    const parsed = createTaskSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: 'Validation failed', details: parsed.error.flatten().fieldErrors },
-        { status: 400 }
-      );
-    }
+      const [newTask] = await db
+        .insert(tasks)
+        .values({
+          title: data.title.trim(),
+          description: data.description?.trim() || null,
+          assignedTo: data.assignedTo || null,
+          dueDate: data.dueDate ? new Date(data.dueDate) : null,
+          priority: data.priority || null,
+          category: data.category?.trim() || null,
+          createdBy: data.createdBy || auth.userId,
+          listId: data.listId || null,
+          completed: false,
+        })
+        .returning();
 
-    const data = parsed.data;
+      if (!newTask) {
+        return NextResponse.json(
+          { error: 'Failed to create task' },
+          { status: 500 }
+        );
+      }
 
-    const [newTask] = await db
-      .insert(tasks)
-      .values({
-        title: data.title.trim(),
-        description: data.description?.trim() || null,
-        assignedTo: data.assignedTo || null,
-        dueDate: data.dueDate ? new Date(data.dueDate) : null,
-        priority: data.priority || null,
-        category: data.category?.trim() || null,
-        createdBy: data.createdBy || null,
-        listId: data.listId || null,
-        completed: false,
-      })
-      .returning();
+      // Fetch the complete task with user data
+      const [taskWithUser] = await db
+        .select({
+          id: tasks.id,
+          title: tasks.title,
+          description: tasks.description,
+          dueDate: tasks.dueDate,
+          priority: tasks.priority,
+          category: tasks.category,
+          completed: tasks.completed,
+          completedAt: tasks.completedAt,
+          listId: tasks.listId,
+          taskSourceId: tasks.taskSourceId,
+          createdAt: tasks.createdAt,
+          updatedAt: tasks.updatedAt,
+          assignedUserId: users.id,
+          assignedUserName: users.name,
+          assignedUserColor: users.color,
+          assignedUserAvatar: users.avatarUrl,
+        })
+        .from(tasks)
+        .leftJoin(users, eq(tasks.assignedTo, users.id))
+        .where(eq(tasks.id, newTask.id));
 
-    if (!newTask) {
+      if (!taskWithUser) {
+        return NextResponse.json(
+          { error: 'Task created but could not be retrieved' },
+          { status: 500 }
+        );
+      }
+
+      await invalidateCache('tasks:*');
+
+      return NextResponse.json(formatTaskRow(taskWithUser), { status: 201 });
+    } catch (error) {
+      console.error('Error creating task:', error);
       return NextResponse.json(
         { error: 'Failed to create task' },
         { status: 500 }
       );
     }
-
-    // Fetch the complete task with user data
-    const [taskWithUser] = await db
-      .select({
-        id: tasks.id,
-        title: tasks.title,
-        description: tasks.description,
-        dueDate: tasks.dueDate,
-        priority: tasks.priority,
-        category: tasks.category,
-        completed: tasks.completed,
-        completedAt: tasks.completedAt,
-        listId: tasks.listId,
-        taskSourceId: tasks.taskSourceId,
-        createdAt: tasks.createdAt,
-        updatedAt: tasks.updatedAt,
-        assignedUserId: users.id,
-        assignedUserName: users.name,
-        assignedUserColor: users.color,
-        assignedUserAvatar: users.avatarUrl,
-      })
-      .from(tasks)
-      .leftJoin(users, eq(tasks.assignedTo, users.id))
-      .where(eq(tasks.id, newTask.id));
-
-    if (!taskWithUser) {
-      return NextResponse.json(
-        { error: 'Task created but could not be retrieved' },
-        { status: 500 }
-      );
-    }
-
-    await invalidateCache('tasks:*');
-
-    return NextResponse.json(formatTaskRow(taskWithUser), { status: 201 });
-  } catch (error) {
-    console.error('Error creating task:', error);
-    return NextResponse.json(
-      { error: 'Failed to create task' },
-      { status: 500 }
-    );
-  }
+  }, { rateLimit: { feature: 'tasks', limit: 30, windowSeconds: 60 } });
 }
