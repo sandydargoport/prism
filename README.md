@@ -23,7 +23,7 @@ Prism is an open-source family dashboard that brings everyone together. Sync cal
 
 ```bash
 # Clone and configure
-git clone https://github.com/yourusername/prism.git
+git clone https://github.com/sandydargoport/prism.git
 cd prism
 cp .env.example .env
 # Edit .env with your API keys (see .env.example for instructions)
