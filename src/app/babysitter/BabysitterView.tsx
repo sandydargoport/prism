@@ -10,13 +10,16 @@ import {
   AlertTriangle,
   Lock,
   Printer,
+  Wifi,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PageWrapper } from '@/components/layout';
 import { useBabysitterInfo, type BabysitterInfoItem, type BabysitterSection } from '@/lib/hooks/useBabysitterInfo';
+import { useWifiConfig } from '@/lib/hooks/useWifiConfig';
 import { QuickPinModal } from '@/components/auth/QuickPinModal';
+import { WifiQRCode } from '@/components/ui/WifiQRCode';
 import { cn } from '@/lib/utils';
 
 interface EmergencyContact {
@@ -54,6 +57,7 @@ const SECTION_CONFIG: Record<BabysitterSection, { label: string; icon: React.Rea
 
 export function BabysitterView() {
   const { items, loading, error } = useBabysitterInfo();
+  const { config: wifiConfig, qrString, hasConfig: hasWifiConfig, loading: wifiLoading } = useWifiConfig();
   const [showPinModal, setShowPinModal] = useState(false);
   const [unlockedItems, setUnlockedItems] = useState<Set<string>>(new Set());
 
@@ -123,6 +127,26 @@ export function BabysitterView() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:gap-4">
+          {/* WiFi QR Code */}
+          {hasWifiConfig && qrString && (
+            <Card className="print:break-inside-avoid">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Wifi className="h-5 w-5" />
+                  WiFi
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <WifiQRCode
+                  ssid={wifiConfig.ssid}
+                  qrString={qrString}
+                  size={120}
+                  showLabel={true}
+                />
+              </CardContent>
+            </Card>
+          )}
+
           {sections.map((section) => {
             const sectionItems = getItemsBySection(section);
             if (sectionItems.length === 0) return null;

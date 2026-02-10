@@ -12,6 +12,9 @@ import {
   Lock,
   GripVertical,
   AlertCircle,
+  Wifi,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -35,6 +38,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useBabysitterInfo, type BabysitterSection, type BabysitterInfoItem } from '@/lib/hooks/useBabysitterInfo';
+import { useWifiConfig } from '@/lib/hooks/useWifiConfig';
+import { WifiQRCode } from '@/components/ui/WifiQRCode';
 
 const SECTION_CONFIG: Record<BabysitterSection, { label: string; singular: string; icon: React.ReactNode; description: string }> = {
   emergency_contact: {
@@ -68,6 +73,31 @@ export function BabysitterInfoSection() {
     includeSensitive: true,
   });
 
+  // WiFi config
+  const {
+    config: wifiConfig,
+    loading: wifiLoading,
+    saving: wifiSaving,
+    saveConfig: saveWifiConfig,
+    qrString,
+    hasConfig: hasWifiConfig,
+  } = useWifiConfig();
+
+  const [wifiSsid, setWifiSsid] = useState('');
+  const [wifiPassword, setWifiPassword] = useState('');
+  const [wifiSecurityType, setWifiSecurityType] = useState<'WPA' | 'WEP' | 'nopass'>('WPA');
+  const [showWifiPassword, setShowWifiPassword] = useState(false);
+  const [wifiEditing, setWifiEditing] = useState(false);
+
+  // Initialize WiFi form when config loads
+  useState(() => {
+    if (wifiConfig.ssid) {
+      setWifiSsid(wifiConfig.ssid);
+      setWifiPassword(wifiConfig.password);
+      setWifiSecurityType(wifiConfig.securityType);
+    }
+  });
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingItem, setEditingItem] = useState<BabysitterInfoItem | null>(null);
   const [selectedSection, setSelectedSection] = useState<BabysitterSection>('emergency_contact');
@@ -77,6 +107,23 @@ export function BabysitterInfoSection() {
   // Form state
   const [formContent, setFormContent] = useState<Record<string, string>>({});
   const [formSensitive, setFormSensitive] = useState(false);
+
+  const handleWifiSave = async () => {
+    await saveWifiConfig({
+      ssid: wifiSsid,
+      password: wifiPassword,
+      securityType: wifiSecurityType,
+      hidden: false,
+    });
+    setWifiEditing(false);
+  };
+
+  const startWifiEdit = () => {
+    setWifiSsid(wifiConfig.ssid);
+    setWifiPassword(wifiConfig.password);
+    setWifiSecurityType(wifiConfig.securityType);
+    setWifiEditing(true);
+  };
 
   const openAddModal = (section: BabysitterSection) => {
     setEditingItem(null);
@@ -145,6 +192,111 @@ export function BabysitterInfoSection() {
 
   return (
     <div className="space-y-6">
+      {/* WiFi QR Code Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Wifi className="h-5 w-5" />
+            WiFi QR Code
+          </CardTitle>
+          <CardDescription>
+            Babysitters can scan this to connect to your WiFi
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {wifiLoading ? (
+            <div className="flex items-center justify-center h-32">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+            </div>
+          ) : wifiEditing || !hasWifiConfig ? (
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="wifi-ssid">Network Name (SSID)</Label>
+                  <Input
+                    id="wifi-ssid"
+                    value={wifiSsid}
+                    onChange={(e) => setWifiSsid(e.target.value)}
+                    placeholder="MyHomeWifi"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="wifi-password">Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="wifi-password"
+                      type={showWifiPassword ? 'text' : 'password'}
+                      value={wifiPassword}
+                      onChange={(e) => setWifiPassword(e.target.value)}
+                      placeholder="••••••••"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3"
+                      onClick={() => setShowWifiPassword(!showWifiPassword)}
+                    >
+                      {showWifiPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Security Type</Label>
+                <Select
+                  value={wifiSecurityType}
+                  onValueChange={(v) => setWifiSecurityType(v as 'WPA' | 'WEP' | 'nopass')}
+                >
+                  <SelectTrigger className="w-48">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="WPA">WPA/WPA2 (most common)</SelectItem>
+                    <SelectItem value="WEP">WEP</SelectItem>
+                    <SelectItem value="nopass">No password</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleWifiSave} disabled={wifiSaving || !wifiSsid}>
+                  {wifiSaving ? 'Saving...' : 'Save WiFi Settings'}
+                </Button>
+                {hasWifiConfig && (
+                  <Button variant="outline" onClick={() => setWifiEditing(false)}>
+                    Cancel
+                  </Button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+              {qrString && (
+                <WifiQRCode ssid={wifiConfig.ssid} qrString={qrString} size={150} />
+              )}
+              <div className="flex-1 space-y-2">
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Network:</span>{' '}
+                  <strong>{wifiConfig.ssid}</strong>
+                </div>
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Security:</span>{' '}
+                  {wifiConfig.securityType === 'nopass' ? 'Open (no password)' : wifiConfig.securityType}
+                </div>
+                <Button variant="outline" size="sm" onClick={startWifiEdit}>
+                  <Pencil className="h-4 w-4 mr-1" />
+                  Edit
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Babysitter Information</CardTitle>
