@@ -185,7 +185,10 @@ export function BackupSection() {
 
                   {/* Restore button */}
                   {confirmRestore === backup.filename ? (
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-2 p-2 bg-amber-50 dark:bg-amber-950/30 rounded-lg">
+                      <span className="text-xs text-amber-700 dark:text-amber-400 max-w-48">
+                        This will overwrite all current data. Changes since {backup.createdAtFormatted} will be lost.
+                      </span>
                       <Button
                         variant="destructive"
                         size="sm"
@@ -195,7 +198,7 @@ export function BackupSection() {
                         {restoring === backup.filename ? (
                           <RefreshCw className="h-4 w-4 animate-spin" />
                         ) : (
-                          'Confirm'
+                          'Restore'
                         )}
                       </Button>
                       <Button
