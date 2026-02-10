@@ -197,7 +197,7 @@ export function SettingsView() {
                         <p className="text-muted-foreground mb-4">Version 0.9.0</p>
                         <p className="text-sm text-muted-foreground max-w-md mx-auto">
                           Prism brings your family together with a shared calendar,
-                          tasks, messages, and more. All on one beautiful dashboard.
+                          tasks, messages, and more—all in one place.
                         </p>
                         <div className="mt-6 text-xs text-muted-foreground">
                           <p>Open Source under AGPL-3.0 License</p>

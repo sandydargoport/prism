@@ -104,7 +104,7 @@ export const metadata: Metadata = {
 
   // Description for search engines and social sharing
   description:
-    'Prism is your family\'s digital home. Sync calendars, manage chores, plan meals, track tasks, and stay connected—all on one beautiful touchscreen display.',
+    'Prism is your family\'s digital home. Sync calendars, manage chores, plan meals, track tasks, and stay connected—all on one shared display.',
 
   // Keywords for SEO
   keywords: [

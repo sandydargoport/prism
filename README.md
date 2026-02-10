@@ -4,7 +4,7 @@
 
 > Your family's digital home
 
-Prism is an open-source family dashboard that brings everyone together. Sync calendars, manage chores, plan meals, track tasks, and stay connected—all on one beautiful touchscreen display.
+Prism is an open-source family dashboard that brings everyone together. Sync calendars, manage chores, plan meals, track tasks, and stay connected—all on one shared display.
 
 ![Dashboard Preview](docs/images/dashboard-preview.png)
 
