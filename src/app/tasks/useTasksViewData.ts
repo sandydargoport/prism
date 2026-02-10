@@ -142,22 +142,24 @@ export function useTasksViewData() {
     return result;
   }, [tasks, filterPerson, filterPriority, filterCompleted, filterList, sortBy]);
 
-  const toggleTask = async (taskId: string) => {
+  const toggleTask = async (taskId: string): Promise<boolean> => {
     const task = tasks.find((t) => t.id === taskId);
-    if (!task) return;
+    if (!task) return false;
     const user = await requireAuth("Who's completing this task?");
-    if (!user) return;
+    if (!user) return false;
     const isParent = user.role === 'parent';
     const isAssignedToUser = !task.assignedTo || task.assignedTo.id === user.id;
     if (!isParent && !isAssignedToUser) {
       alert(`This task is assigned to ${task.assignedTo?.name}. Only they can mark it complete.`);
-      return;
+      return false;
     }
     try {
       await apiToggleTask(taskId, !task.completed);
+      return true;
     } catch (err) {
       console.error('Error toggling task:', err);
       alert('Failed to update task');
+      return false;
     }
   };
 

@@ -22,6 +22,7 @@ import {
   ImageIcon,
   Settings,
   Trophy,
+  Baby,
   User,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -54,6 +55,7 @@ const navItems: NavItem[] = [
   { label: 'Recipes', href: '/recipes', icon: ChefHat },
   { label: 'Messages', href: '/messages', icon: MessageSquare },
   { label: 'Photos', href: '/photos', icon: ImageIcon },
+  { label: 'Babysitter', href: '/babysitter', icon: Baby },
   { label: 'Settings', href: '/settings', icon: Settings },
 ];
 

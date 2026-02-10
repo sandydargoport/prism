@@ -1,91 +1,36 @@
-/**
- *
- * A lightweight modal for quick user authentication when taking actions.
- * Instead of requiring login upfront, this prompts for PIN when needed.
- *
- * USE CASES:
- * - Posting a message ("Who's posting?")
- * - Completing a chore ("Who completed this?")
- * - Adding a task ("Who's adding this?")
- *
- * FEATURES:
- * - Shows family member avatars
- * - PIN entry after selection
- * - Remembers last authenticated user for quick re-auth
- * - Can be dismissed (cancel action)
- *
- */
-
 'use client';
 
-import * as React from 'react';
 import { useState, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { X, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/avatar';
 import { useFamily } from '@/components/providers';
 
-/**
- * FAMILY MEMBER TYPE
- */
-export interface QuickPinMember {
-  id: string;
-  name: string;
-  color: string;
-  avatarUrl?: string;
-  role: 'parent' | 'child' | 'guest';
-}
-
-/**
- * QUICK PIN MODAL PROPS
- */
-export interface QuickPinModalProps {
-  /** Whether the modal is open */
+interface ExitBabysitterModeModalProps {
   open: boolean;
-  /** Callback when modal is closed */
   onOpenChange: (open: boolean) => void;
-  /** Title shown at top of modal */
-  title?: string;
-  /** Description text */
-  description?: string;
-  /** Callback when authentication succeeds */
-  onAuthenticated: (user: QuickPinMember) => void;
-  /** Pre-selected member (skip member selection) */
-  preSelectedMember?: QuickPinMember | null;
-  /** Lock to pre-selected member (cannot switch users) */
-  lockToMember?: boolean;
+  onSuccess: () => void;
 }
 
-/**
- * QUICK PIN MODAL COMPONENT
- */
-export function QuickPinModal({
+export function ExitBabysitterModeModal({
   open,
   onOpenChange,
-  title = "Who's there?",
-  description = "Select your profile to continue",
-  onAuthenticated,
-  preSelectedMember,
-  lockToMember = false,
-}: QuickPinModalProps) {
-  // Family members from context
+  onSuccess,
+}: ExitBabysitterModeModalProps) {
   const { members: contextMembers, loading: loadingMembers } = useFamily();
-  const members: QuickPinMember[] = contextMembers.filter(m => m.role).map(m => ({
-    id: m.id,
-    name: m.name,
-    color: m.color,
-    avatarUrl: m.avatarUrl ?? undefined,
-    role: m.role as 'parent' | 'child' | 'guest',
-  }));
 
-  // Selected member
-  const [selectedMember, setSelectedMember] = useState<QuickPinMember | null>(
-    preSelectedMember || null
-  );
+  // Filter to parents only
+  const parents = contextMembers
+    .filter((m) => m.role === 'parent')
+    .map((m) => ({
+      id: m.id,
+      name: m.name,
+      color: m.color,
+      avatarUrl: m.avatarUrl ?? undefined,
+    }));
 
-  // PIN entry
+  const [selectedParent, setSelectedParent] = useState<typeof parents[0] | null>(null);
   const [pin, setPin] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -96,13 +41,12 @@ export function QuickPinModal({
   // Reset state when modal closes
   useEffect(() => {
     if (!open) {
-      setSelectedMember(preSelectedMember || null);
+      setSelectedParent(null);
       setPin([]);
       setError(null);
     }
-  }, [open, preSelectedMember]);
+  }, [open]);
 
-  // Handle key press
   const handleKeyPress = useCallback((digit: string) => {
     if (isVerifying) return;
     setError(null);
@@ -112,7 +56,6 @@ export function QuickPinModal({
     });
   }, [isVerifying]);
 
-  // Handle backspace
   const handleBackspace = useCallback(() => {
     if (isVerifying) return;
     setPin((prev) => prev.slice(0, -1));
@@ -121,7 +64,7 @@ export function QuickPinModal({
 
   // Keyboard support
   useEffect(() => {
-    if (!open || !selectedMember) return;
+    if (!open || !selectedParent) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isVerifying) return;
@@ -139,11 +82,11 @@ export function QuickPinModal({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [open, selectedMember, isVerifying, handleKeyPress, handleBackspace, onOpenChange]);
+  }, [open, selectedParent, isVerifying, handleKeyPress, handleBackspace, onOpenChange]);
 
   // Auto-submit when PIN is complete
   useEffect(() => {
-    if (pin.length !== pinLength || !selectedMember) return;
+    if (pin.length !== pinLength || !selectedParent) return;
 
     const verifyPin = async () => {
       setIsVerifying(true);
@@ -154,21 +97,20 @@ export function QuickPinModal({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            userId: selectedMember.id,
+            userId: selectedParent.id,
             pin: enteredPin,
           }),
         });
 
         if (response.ok) {
-          onAuthenticated(selectedMember);
-          onOpenChange(false);
+          onSuccess();
         } else {
           setError('Incorrect PIN');
           setIsShaking(true);
           setTimeout(() => setIsShaking(false), 500);
           setPin([]);
         }
-      } catch (err) {
+      } catch {
         setError('Authentication failed');
         setIsShaking(true);
         setTimeout(() => setIsShaking(false), 500);
@@ -179,23 +121,28 @@ export function QuickPinModal({
     };
 
     verifyPin();
-  }, [pin, selectedMember, onAuthenticated, onOpenChange]);
+  }, [pin, selectedParent, onSuccess]);
 
   if (!open) return null;
 
-  // Use portal to escape any stacking context (e.g., backdrop-blur in parent)
-  return createPortal(
+  return (
     <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10001]"
-      onClick={() => onOpenChange(false)}
+      className="fixed inset-0 bg-black/70 flex items-center justify-center z-[10000]"
+      onClick={(e) => {
+        e.stopPropagation();
+        onOpenChange(false);
+      }}
     >
       <div
-        className="bg-card rounded-2xl p-6 max-w-sm w-full mx-4 shadow-lg"
+        className="bg-card rounded-2xl p-6 max-w-sm w-full mx-4 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">{title}</h2>
+          <div className="flex items-center gap-2">
+            <Lock className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold">Exit Babysitter Mode</h2>
+          </div>
           <Button
             variant="ghost"
             size="icon"
@@ -206,20 +153,26 @@ export function QuickPinModal({
         </div>
 
         {/* Content */}
-        {!selectedMember ? (
-          // Member selection
+        {!selectedParent ? (
+          // Parent selection
           <div className="text-center">
-            <p className="text-sm text-muted-foreground mb-4">{description}</p>
+            <p className="text-sm text-muted-foreground mb-4">
+              Select a parent to unlock
+            </p>
             {loadingMembers ? (
               <div className="flex justify-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
               </div>
+            ) : parents.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4">
+                No parents configured
+              </p>
             ) : (
               <div className="grid grid-cols-2 gap-3">
-                {members.map((member) => (
+                {parents.map((parent) => (
                   <button
-                    key={member.id}
-                    onClick={() => setSelectedMember(member)}
+                    key={parent.id}
+                    onClick={() => setSelectedParent(parent)}
                     className={cn(
                       'flex flex-col items-center p-3 rounded-xl',
                       'hover:bg-accent/50 active:bg-accent transition-colors',
@@ -227,13 +180,13 @@ export function QuickPinModal({
                     )}
                   >
                     <UserAvatar
-                      name={member.name}
-                      color={member.color}
-                      imageUrl={member.avatarUrl}
+                      name={parent.name}
+                      color={parent.color}
+                      imageUrl={parent.avatarUrl}
                       size="lg"
                       className="h-14 w-14 mb-2"
                     />
-                    <span className="text-sm font-medium">{member.name}</span>
+                    <span className="text-sm font-medium">{parent.name}</span>
                   </button>
                 ))}
               </div>
@@ -242,41 +195,25 @@ export function QuickPinModal({
         ) : (
           // PIN entry
           <div className="text-center">
-            {/* Selected member */}
-            {lockToMember ? (
-              // Locked - show member but no switch option
-              <div className="flex flex-col items-center mx-auto mb-4">
-                <UserAvatar
-                  name={selectedMember.name}
-                  color={selectedMember.color}
-                  imageUrl={selectedMember.avatarUrl}
-                  size="lg"
-                  className="h-16 w-16 mb-1 ring-2 ring-primary"
-                />
-                <span className="font-medium">{selectedMember.name}</span>
-                <span className="text-xs text-muted-foreground">Enter your PIN</span>
-              </div>
-            ) : (
-              // Not locked - allow switching
-              <button
-                onClick={() => {
-                  setSelectedMember(null);
-                  setPin([]);
-                  setError(null);
-                }}
-                className="group flex flex-col items-center mx-auto mb-4"
-              >
-                <UserAvatar
-                  name={selectedMember.name}
-                  color={selectedMember.color}
-                  imageUrl={selectedMember.avatarUrl}
-                  size="lg"
-                  className="h-16 w-16 mb-1 group-hover:ring-2 ring-primary transition-all"
-                />
-                <span className="font-medium">{selectedMember.name}</span>
-                <span className="text-xs text-muted-foreground">Tap to switch</span>
-              </button>
-            )}
+            {/* Selected parent */}
+            <button
+              onClick={() => {
+                setSelectedParent(null);
+                setPin([]);
+                setError(null);
+              }}
+              className="group flex flex-col items-center mx-auto mb-4"
+            >
+              <UserAvatar
+                name={selectedParent.name}
+                color={selectedParent.color}
+                imageUrl={selectedParent.avatarUrl}
+                size="lg"
+                className="h-16 w-16 mb-1 group-hover:ring-2 ring-primary transition-all"
+              />
+              <span className="font-medium">{selectedParent.name}</span>
+              <span className="text-xs text-muted-foreground">Tap to switch</span>
+            </button>
 
             {/* PIN dots */}
             <div
@@ -300,11 +237,9 @@ export function QuickPinModal({
               ))}
             </div>
 
-            {/* Error/Status message - fixed height to prevent layout shift */}
+            {/* Error/Status message */}
             <div className="h-6 mb-3 flex items-center justify-center">
-              {error && (
-                <p className="text-sm text-destructive">{error}</p>
-              )}
+              {error && <p className="text-sm text-destructive">{error}</p>}
             </div>
 
             {/* Number pad */}
@@ -354,7 +289,7 @@ export function QuickPinModal({
               )}
             </div>
 
-            {/* Loading - fixed height to prevent layout shift */}
+            {/* Loading indicator */}
             <div className="h-6 mt-3 flex items-center justify-center">
               {isVerifying && (
                 <p className="text-sm text-muted-foreground">Verifying...</p>
@@ -363,7 +298,6 @@ export function QuickPinModal({
           </div>
         )}
       </div>
-    </div>,
-    document.body
+    </div>
   );
 }

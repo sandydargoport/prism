@@ -629,6 +629,29 @@ export const settings = pgTable('settings', {
 });
 
 
+export const babysitterInfo = pgTable('babysitter_info', {
+  id: uuid('id').defaultRandom().primaryKey(),
+
+  // Section type: 'emergency_contact' | 'house_info' | 'child_info' | 'house_rule'
+  section: varchar('section', { length: 50 }).notNull()
+    .$type<'emergency_contact' | 'house_info' | 'child_info' | 'house_rule'>(),
+
+  sortOrder: integer('sort_order').default(0).notNull(),
+
+  // Content varies by section type (JSON object)
+  content: jsonb('content').notNull(),
+
+  // Sensitive items require PIN to view on public babysitter page
+  isSensitive: boolean('is_sensitive').default(false).notNull(),
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  sectionIdx: index('babysitter_info_section_idx').on(table.section),
+  sortOrderIdx: index('babysitter_info_sort_order_idx').on(table.sortOrder),
+}));
+
+
 export const layouts = pgTable('layouts', {
   id: uuid('id').defaultRandom().primaryKey(),
 

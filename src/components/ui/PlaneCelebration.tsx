@@ -34,8 +34,8 @@ export function PlaneCelebration({
         clearTimeout(timerRef.current);
       }
 
-      // End animation after 4 seconds
-      timerRef.current = setTimeout(handleAnimationEnd, 4000);
+      // End animation after 5 seconds (matches CSS animation duration)
+      timerRef.current = setTimeout(handleAnimationEnd, 5000);
     }
 
     return () => {

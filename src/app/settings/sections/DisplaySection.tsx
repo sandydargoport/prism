@@ -14,6 +14,7 @@ import { useScreenOrientation } from '@/lib/hooks/useScreenOrientation';
 import { useOrientationOverride } from '../SettingsView';
 import { useFamily } from '@/components/providers/FamilyProvider';
 import { useScreensaverTimeout } from '@/lib/hooks/useScreensaverTimeout';
+import { useAwayModeTimeout } from '@/lib/hooks/useAwayModeTimeout';
 import { useHiddenHours } from '@/lib/hooks/useHiddenHours';
 
 function getCurrentMonthNum(): number {
@@ -162,6 +163,8 @@ export function DisplaySection() {
 
       <ScreensaverTimeoutCard />
 
+      <AwayModeTimeoutCard />
+
       <CalendarHoursCard />
 
       <Card>
@@ -301,6 +304,45 @@ function ScreensaverTimeoutCard() {
             <option value={0}>Never (static)</option>
           </select>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AwayModeTimeoutCard() {
+  const { timeout, setTimeout } = useAwayModeTimeout();
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Away Mode Auto-Activation</CardTitle>
+        <CardDescription>
+          Automatically enable Away Mode after extended inactivity to hide sensitive information
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">Activate after</span>
+          <select
+            value={timeout}
+            onChange={(e) => setTimeout(Number(e.target.value))}
+            className="border border-border rounded px-2 py-1 text-sm bg-background"
+          >
+            <option value={0}>Never (manual only)</option>
+            <option value={4}>4 hours</option>
+            <option value={8}>8 hours</option>
+            <option value={12}>12 hours</option>
+            <option value={24}>1 day</option>
+            <option value={48}>2 days</option>
+            <option value={72}>3 days</option>
+            <option value={168}>1 week</option>
+          </select>
+          <span className="text-sm text-muted-foreground">of no interaction</span>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          When enabled, the screensaver will run normally, but after the specified time with no
+          touch/keyboard input, Away Mode will automatically activate for privacy.
+        </p>
       </CardContent>
     </Card>
   );

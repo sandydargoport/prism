@@ -240,9 +240,9 @@ export function TasksView() {
                               isOverdue ? 'border-red-500/50 bg-red-50/50 dark:bg-red-950/20' : !task.completed ? 'border-border' : ''
                             )}
                             onClick={async () => {
-                              await toggleTask(task.id);
-                              // Check if all tasks for this user are now completed
-                              if (user && !task.completed) {
+                              const success = await toggleTask(task.id);
+                              // Only celebrate if task was actually completed
+                              if (success && user && !task.completed) {
                                 const otherTasks = tasks.filter((t) => t.id !== task.id);
                                 const allOthersCompleted = otherTasks.every((t) => t.completed);
                                 if (allOthersCompleted) {

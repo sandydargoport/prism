@@ -534,13 +534,22 @@
   animation: bounce-in 0.6s ease-out forwards;
 }
 
-/* Plane celebration animation */
+/* Plane celebration animation - slow down in middle */
 @keyframes plane-fly {
   0% {
     transform: translate(-150%, 30vh);
   }
+  /* Approaching center - slowing down */
+  40% {
+    transform: translate(30vw, 28vh);
+  }
+  /* Center - slowest point */
+  60% {
+    transform: translate(55vw, 26vh);
+  }
+  /* Leaving center - speeding up */
   100% {
-    transform: translate(120vw, 20vh);
+    transform: translate(120vw, 22vh);
   }
 }
 
@@ -560,7 +569,7 @@
 }
 
 .animate-plane-fly {
-  animation: plane-fly 4s linear forwards;
+  animation: plane-fly 5s ease-in-out forwards;
 }
 
 .animate-spin-fast {

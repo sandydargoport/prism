@@ -48,6 +48,12 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 // Screensaver (idle detection photo slideshow)
 import { Screensaver } from '@/components/screensaver/Screensaver';
 
+// Away Mode overlay
+import { AwayModeOverlay } from '@/components/away-mode';
+
+// Babysitter Mode overlay
+import { BabysitterModeOverlay } from '@/components/babysitter-mode';
+
 
 /**
  * FONT CONFIGURATION
@@ -257,6 +263,8 @@ export default function RootLayout({
         <ErrorBoundary>
           <Providers>
             {children}
+            <BabysitterModeOverlay />
+            <AwayModeOverlay />
             <Screensaver />
           </Providers>
         </ErrorBoundary>

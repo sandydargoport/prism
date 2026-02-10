@@ -389,6 +389,30 @@ Mark tasks complete with `[x]` as you finish them.
 - Category filtering (minimal, family board, kitchen, info-heavy, etc.)
 - Prerequisites: layout import/export (already implemented in Phase 5)
 
+### Phase 23: Home Assistant Addon
+> Package Prism as a Home Assistant addon for easy installation via the HA Supervisor. Positions Prism as a complement to Home Assistant rather than a competitor — HA handles device control, Prism handles family organization.
+
+- **Addon Packaging**
+  - Create `config.yaml` / `addon.yaml` for HA addon metadata
+  - Dockerfile configured for HA addon environment (S6 overlay, `/data` persistence)
+  - Expose Prism on Ingress (HA's reverse proxy) or dedicated port
+  - Use HA's PostgreSQL addon or bundle SQLite for simpler installs
+  - Redis optional (in-memory fallback) for lightweight deployments
+- **HA Integration Points**
+  - Read HA entities (sensors, switches) via HA REST API or WebSocket
+  - Display HA data in Prism widgets (temperature, door status, presence)
+  - Trigger HA automations from Prism (scenes, scripts)
+  - Sync Prism away mode with HA presence detection
+- **Distribution**
+  - Publish to community addon repository (like HACS but for addons)
+  - Documentation for manual install via "Add addon repository" URL
+  - Logo/branding assets for HA addon store listing
+- **Benefits**
+  - One-click install for HA users
+  - Automatic updates via HA Supervisor
+  - Shared networking with other HA addons
+  - Larger potential user base in HA community
+
 ---
 
 ## Completion Checklist (V1.0 — Phases 1–7)

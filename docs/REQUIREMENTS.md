@@ -14,6 +14,8 @@
 - [Mobile PWA](#mobile-pwa)
 - [External Integrations](#external-integrations)
 - [Security & Authentication](#security--authentication)
+- [Away Mode & Babysitter Info](#away-mode--babysitter-info)
+- [Infrastructure](#infrastructure)
 
 ---
 
@@ -25,7 +27,7 @@
 - **Database**: PostgreSQL with Drizzle ORM
 - **Cache**: Redis for sessions and API caching
 - **Layout**: react-grid-layout for dashboard customization
-- **Deployment**: Docker Compose (prism-app, prism-db, prism-redis)
+- **Deployment**: Docker Compose (prism-app, prism-db, prism-redis, prism-backup)
 
 ### Authentication
 - PIN-based login with bcrypt hashing
@@ -119,6 +121,13 @@
 - `/api/chores/completions` endpoint
 - History toggle in ChoresView
 - Shows who completed, when, points, approval status
+
+### Group by Person View
+- Grid layout dividing screen by user with independent scrolling per section
+- Default view for both Chores and Tasks pages
+- Edit button on items to open edit modal
+- Plane celebration animation when user completes all their items
+  - Prop plane with trailing banner displays "Way to go, {userName}!"
 
 ---
 
@@ -284,4 +293,107 @@
 ### Permissions
 - `canApproveChores`, `canDeleteAnyMessage`, `canDeleteTasks`
 - `canManageGoals`, `canManageRecipes`, `canManageIntegrations`
+- `canToggleAwayMode` (parent only)
 - Role-based defaults (parent has all, child has limited, guest has minimal)
+
+---
+
+## Away Mode & Babysitter Info
+
+### Away Mode
+Privacy screen that hides sensitive information when family is away.
+
+**Features**:
+- Hides calendar, tasks, chores, messages from view
+- Shows only clock, weather, and photo slideshow
+- Parent PIN required to exit
+- Toggle via moon icon in dashboard header
+- Persists across page refreshes (server-side state in settings table)
+
+**Components**:
+- `AwayModeOverlay`: Full-screen overlay (z-index 9998, below screensaver)
+- `ExitAwayModeModal`: Parent-only PIN prompt
+- `AwayModeToggle`: Dashboard header button
+
+**API**:
+- `GET /api/away-mode`: Returns current state (no auth required)
+- `POST /api/away-mode`: Toggle state (requires parent + `canToggleAwayMode`)
+
+### Babysitter Mode
+Full-screen overlay that displays babysitter info prominently.
+
+**Features**:
+- Shows all babysitter info sections (emergency contacts, house info, children, rules)
+- Clock and weather in header bar
+- Blue/purple gradient background
+- Tap anywhere to show exit prompt
+- Parent PIN required to exit
+- Toggle via baby icon in dashboard header
+
+**Components**:
+- `BabysitterModeOverlay`: Full-screen overlay (z-index 9997, below away mode)
+- `ExitBabysitterModeModal`: Parent-only PIN prompt
+- `BabysitterModeToggle`: Dashboard header button
+
+**API**:
+- `GET /api/babysitter-mode`: Returns current state (no auth required)
+- `POST /api/babysitter-mode`: Toggle state (requires parent + `canToggleAwayMode`)
+
+**Z-Index Layering**:
+- Screensaver: 9999
+- Away Mode: 9998
+- Babysitter Mode: 9997
+- PIN Modal: 10001
+- Exit Modals: 10000
+
+### Babysitter Info
+Public information page for babysitters and caregivers.
+
+**Access**:
+- `/babysitter` page viewable without authentication
+- Sensitive items require parent PIN to view
+- Print-friendly layout via print button
+
+**Section Types**:
+- **Emergency Contacts**: Name, relationship, phone (with call links), primary flag
+- **House Information**: Label/value pairs (WiFi password, address, etc.)
+- **Children**: Name, age, allergies, medications, bedtime, notes
+- **House Rules**: Rule text with importance level (high/medium/low)
+
+**Features**:
+- Sensitive items can be PIN-protected
+- Per-section item ordering
+- Settings page for CRUD operations
+- Print button for clean printable layout
+
+**Database**:
+- `babysitter_info` table with section, sortOrder, content (jsonb), isSensitive
+
+**API**:
+- `GET /api/babysitter-info`: List all items (sensitive content filtered unless `?includeSensitive=true`)
+- `POST /api/babysitter-info`: Create item (parent + `canModifySettings`)
+- `PATCH /api/babysitter-info/[id]`: Update item
+- `DELETE /api/babysitter-info/[id]`: Delete item
+- `POST /api/babysitter-info/reorder`: Reorder items within section
+
+---
+
+## Infrastructure
+
+### Automated Backups
+- `prism-backup` container with pg_dump + rclone
+- Daily backups at 3 AM + immediate backup on container start
+- 7-day local retention with automatic cleanup
+- Optional off-site sync to OneDrive/S3/etc via rclone
+
+### Backup Scripts
+- `scripts/backup.sh`: Creates compressed database dump
+- `scripts/backup-scheduler.sh`: Manages backup schedule
+- `scripts/restore.sh`: Restores from backup with safety confirmation
+
+### Disaster Recovery
+Key files to back up separately (not in database):
+- `.env`: DB_PASSWORD, ENCRYPTION_KEY, OAuth secrets
+- `config/rclone.conf`: OneDrive OAuth tokens
+- `uploads/`: User-uploaded files (avatars, photos)
+- `data/photos/`: Synced photos

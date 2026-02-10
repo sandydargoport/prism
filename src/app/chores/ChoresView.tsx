@@ -304,9 +304,9 @@ export function ChoresView() {
                               isOverdue ? 'border-red-500/50 bg-red-50/50 dark:bg-red-950/20' : 'border-border'
                             )}
                             onClick={async () => {
-                              await completeChore(chore.id);
-                              // Check if all chores for this user are now completed
-                              if (user) {
+                              const success = await completeChore(chore.id);
+                              // Only celebrate if chore was actually completed
+                              if (success && user) {
                                 const otherChores = chores.filter((c) => c.id !== chore.id);
                                 const allOthersCompleted = otherChores.every((c) =>
                                   c.lastCompleted && new Date(c.lastCompleted) > new Date(Date.now() - 24 * 60 * 60 * 1000)

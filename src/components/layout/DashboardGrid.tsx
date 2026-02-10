@@ -31,6 +31,8 @@
 
 import * as React from 'react';
 import { cn } from '@/lib/utils';
+import { AwayModeToggle } from '@/components/away-mode';
+import { BabysitterModeToggle } from '@/components/babysitter-mode';
 
 
 /**
@@ -205,6 +207,12 @@ export function DashboardHeader({
             <GridEditIcon />
           </button>
         )}
+
+        {/* Babysitter mode button */}
+        <BabysitterModeToggle />
+
+        {/* Away mode button */}
+        <AwayModeToggle />
 
         {/* Screensaver button */}
         {onScreensaverClick && (

@@ -37,6 +37,7 @@ import {
   ImageIcon,
   Settings,
   Trophy,
+  Baby,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PrismIcon } from '@/components/ui/PrismIcon';
@@ -81,6 +82,7 @@ const navItems: NavItem[] = [
   { label: 'Recipes', href: '/recipes', icon: ChefHat },
   { label: 'Messages', href: '/messages', icon: MessageSquare },
   { label: 'Photos', href: '/photos', icon: ImageIcon },
+  { label: 'Babysitter', href: '/babysitter', icon: Baby },
   { label: 'Settings', href: '/settings', icon: Settings },
 ];
 

@@ -104,16 +104,16 @@ export function useChoresViewData() {
     return result;
   }, [chores, filterPerson, filterCategory, showDisabled, sortBy]);
 
-  const completeChore = async (choreId: string) => {
+  const completeChore = async (choreId: string): Promise<boolean> => {
     const chore = chores.find((c) => c.id === choreId);
-    if (!chore) return;
+    if (!chore) return false;
     const user = await requireAuth("Who's completing this chore?");
-    if (!user) return;
+    if (!user) return false;
     const isParent = user.role === 'parent';
     const isAssignedToUser = !chore.assignedTo || chore.assignedTo.id === user.id;
     if (!isParent && !isAssignedToUser) {
       alert(`This chore is assigned to ${chore.assignedTo?.name}. Only they can mark it complete.`);
-      return;
+      return false;
     }
     try {
       // Parent approving a pending completion
@@ -121,7 +121,7 @@ export function useChoresViewData() {
         await apiApproveChore(choreId, chore.pendingApproval.completionId);
         alert(`Approved! ${chore.pendingApproval.completedBy.name} earned ${chore.pointValue} points for "${chore.title}".`);
         refreshChores();
-        return;
+        return true;
       }
 
       // Determine who should get credit for completing the chore
@@ -138,7 +138,7 @@ export function useChoresViewData() {
         if (choice) {
           completedById = chore.assignedTo.id;
         } else {
-          return; // Cancel the action entirely
+          return false; // Cancel the action entirely
         }
       }
 
@@ -149,7 +149,7 @@ export function useChoresViewData() {
       });
       if (!response.ok) {
         const data = await response.json();
-        if (data.alreadyPending) { alert(data.message); return; }
+        if (data.alreadyPending) { alert(data.message); return false; }
         throw new Error(data.error || 'Failed to complete chore');
       }
       const result = await response.json();
@@ -160,9 +160,11 @@ export function useChoresViewData() {
         alert(`Chore completed! ${chore.pointValue} points awarded.`);
       }
       refreshChores();
+      return true;
     } catch (err) {
       console.error('Error completing chore:', err);
       alert(err instanceof Error ? err.message : 'Failed to complete chore');
+      return false;
     }
   };
 
