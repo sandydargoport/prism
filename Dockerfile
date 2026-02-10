@@ -96,6 +96,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Install postgresql-client for backup/restore functionality
+RUN apk add --no-cache postgresql-client
+
 # Create a non-root user and group
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs

@@ -17,6 +17,7 @@ import {
   ListTodo,
   ShoppingCart,
   Baby,
+  Database,
 } from 'lucide-react';
 import { PrismIcon } from '@/components/ui/PrismIcon';
 import { cn } from '@/lib/utils';
@@ -32,6 +33,7 @@ import { PhotosSettingsSection } from './sections/PhotosSettingsSection';
 import { TaskIntegrationsSection } from './sections/TaskIntegrationsSection';
 import { ShoppingIntegrationsSection } from './sections/ShoppingIntegrationsSection';
 import { BabysitterInfoSection } from './sections/BabysitterInfoSection';
+import { BackupSection } from './sections/BackupSection';
 
 
 // Exported hooks (consumed by other components)
@@ -123,6 +125,7 @@ export function SettingsView() {
     { id: 'babysitter', label: 'Babysitter Info', icon: Baby },
     { id: 'display', label: 'Display', icon: Palette },
     { id: 'security', label: 'Security', icon: Shield },
+    { id: 'backups', label: 'Backups', icon: Database },
     { id: 'about', label: 'About', icon: Info },
   ];
 
@@ -177,6 +180,7 @@ export function SettingsView() {
               {activeSection === 'babysitter' && <BabysitterInfoSection />}
               {activeSection === 'display' && <DisplaySection />}
               {activeSection === 'security' && <SecuritySection />}
+              {activeSection === 'backups' && <BackupSection />}
               {activeSection === 'about' && (
                 <div className="space-y-6">
                   <div>

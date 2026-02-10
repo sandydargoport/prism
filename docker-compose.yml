@@ -17,6 +17,7 @@ services:
     volumes:
       - ./config:/app/config
       - ./uploads:/app/uploads
+      - ./backups:/app/backups
       - photos-cache:/app/cache/photos
       - ./data/photos:/app/data/photos
     depends_on:
