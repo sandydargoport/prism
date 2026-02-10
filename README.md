@@ -1,5 +1,7 @@
 # Prism
 
+[![Test Install](https://github.com/sandydargoport/prism/actions/workflows/test-install.yml/badge.svg)](https://github.com/sandydargoport/prism/actions/workflows/test-install.yml)
+
 > Your family's digital home
 
 Prism is an open-source family dashboard that brings everyone together. Sync calendars, manage chores, plan meals, track tasks, and stay connected—all on one beautiful touchscreen display.
@@ -21,18 +23,38 @@ Prism is an open-source family dashboard that brings everyone together. Sync cal
 
 ## Quick Start
 
+### Option 1: One-Line Install (Recommended)
+
 ```bash
-# Clone and configure
+git clone https://github.com/sandydargoport/prism.git && cd prism && ./scripts/install.sh
+```
+
+This will:
+- Auto-generate secure database passwords and encryption keys
+- Build and start all containers
+- Seed a demo family (PIN: `1234` for parent, `0000` for child)
+
+### Option 2: Manual Setup
+
+```bash
 git clone https://github.com/sandydargoport/prism.git
 cd prism
 cp .env.example .env
-# Edit .env with your API keys (see .env.example for instructions)
+# Edit .env with your passwords and API keys
 
-# Start with Docker
 docker-compose up -d
-
-# Open http://localhost:3000
 ```
+
+Then open **http://localhost:3000**
+
+### Adding Integrations
+
+After install, edit `.env` to enable:
+- **Google Calendar** — Sync family calendars
+- **Microsoft To Do** — Sync tasks and shopping lists
+- **OpenWeatherMap** — Weather widget (free tier)
+
+See `.env.example` for step-by-step API key instructions.
 
 ## Architecture
 

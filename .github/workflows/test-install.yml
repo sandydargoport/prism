@@ -1,0 +1,113 @@
+name: Test Fresh Install
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  test-install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Make scripts executable
+        run: chmod +x scripts/*.sh
+
+      - name: Run fresh install
+        run: |
+          # Run install script (non-interactive)
+          ./scripts/install.sh
+
+      - name: Wait for services
+        run: |
+          echo "Waiting for services to be ready..."
+          sleep 10
+
+          # Wait for health endpoint
+          for i in {1..30}; do
+            if curl -sf http://localhost:3000/api/health; then
+              echo "Health check passed!"
+              break
+            fi
+            echo "Attempt $i/30..."
+            sleep 2
+          done
+
+      - name: Verify containers
+        run: |
+          echo "Running containers:"
+          docker ps
+
+          # Check all expected containers
+          docker ps | grep prism-app || (echo "prism-app not running!" && exit 1)
+          docker ps | grep prism-db || (echo "prism-db not running!" && exit 1)
+          docker ps | grep prism-redis || (echo "prism-redis not running!" && exit 1)
+
+      - name: Test health endpoint
+        run: |
+          curl -sf http://localhost:3000/api/health || exit 1
+          echo "Health endpoint OK"
+
+      - name: Test page loads
+        run: |
+          RESPONSE=$(curl -sf http://localhost:3000)
+          if [[ "$RESPONSE" != *"Prism"* ]]; then
+            echo "Page doesn't contain expected content"
+            exit 1
+          fi
+          echo "Page loads correctly"
+
+      - name: Check database
+        run: |
+          docker exec prism-db psql -U prism -d prism -c "SELECT COUNT(*) FROM users;"
+
+      - name: Show logs on failure
+        if: failure()
+        run: |
+          echo "=== App Logs ==="
+          docker logs prism-app --tail 100
+          echo ""
+          echo "=== DB Logs ==="
+          docker logs prism-db --tail 50
+          echo ""
+          echo "=== Redis Logs ==="
+          docker logs prism-redis --tail 50
+
+  build-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run type-check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+        env:
+          # Provide dummy values for build
+          DATABASE_URL: postgresql://prism:test@localhost:5432/prism
+          REDIS_URL: redis://localhost:6379

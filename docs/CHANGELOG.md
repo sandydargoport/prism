@@ -2,6 +2,44 @@
 
 All notable changes to Prism are documented in this file.
 
+## [0.9.2] - 2026-02-10
+
+### Added
+- **Away Mode**: Privacy screen that hides sensitive info (calendar, tasks, chores, messages)
+  - Shows only clock, weather, and photo slideshow
+  - Parent PIN required to exit
+  - Toggle via moon icon in dashboard header
+  - Auto-activation after extended inactivity (configurable: 4 hours to 1 week)
+- **Babysitter Mode**: Full-screen overlay showing babysitter info
+  - Displays emergency contacts, house info, children details, house rules
+  - Clock and weather in header
+  - Blue/purple gradient background
+  - Parent PIN required to exit
+  - Toggle via baby icon in dashboard header
+- **Babysitter Info**: Public info page for caregivers (`/babysitter`)
+  - Emergency contacts with call links
+  - House information (WiFi, address, etc.)
+  - Children details (allergies, bedtimes, medications)
+  - House rules with importance levels
+  - Sensitive items can be PIN-protected
+  - Print-friendly layout
+- New nav item: "Babysitter" in sidebar and portrait nav
+- New settings section: "Babysitter Info" for managing content
+- New settings: "Away Mode Auto-Activation" timeout in Display settings
+
+### Database
+- Added `babysitter_info` table with section, sortOrder, content (jsonb), isSensitive fields
+
+### Changed
+- Plane celebration animation simplified: 5s duration, slows in middle for text visibility, no loop
+
+### Fixed
+- Plane celebration no longer triggers when login is cancelled (only celebrates on successful completion)
+- PIN modal z-index issue - now uses React portal to escape stacking contexts created by backdrop-blur
+- "Add Childre" typo in babysitter info settings (now correctly shows "Add Child")
+- Away Mode and Babysitter Mode now activate immediately (previously required page refresh)
+- Babysitter nav item now visible in portrait mode on iPad
+
 ## [0.9.1] - 2026-02-09
 
 ### Added
