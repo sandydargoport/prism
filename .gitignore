@@ -232,3 +232,6 @@ screenshots/
 *.zip
 *.tar.gz
 *.rar
+
+# Claude Code session data
+.claude/

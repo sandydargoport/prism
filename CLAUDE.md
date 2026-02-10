@@ -85,12 +85,8 @@ After completing features or significant bug fixes, update the docs:
 - Add to `docs/CHANGELOG.md` under "Features" section
 - Update relevant `docs/features/*.md` file
 - Update `docs/REQUIREMENTS.md` if adding new requirements
-- Update MEMORY.md with a brief summary (located at `C:\Users\User\.claude\projects\C--projects-prism\memory\MEMORY.md`)
-
-### Quick Command
-Use `/update-docs` to run the documentation update skill.
 
 ### Documentation Files
 - `docs/CHANGELOG.md` — Version-based changelog
 - `docs/REQUIREMENTS.md` — Product requirements
-- `docs/features/` — Feature-specific docs (CALENDAR.md, GOALS.md, MOBILE.md, RECIPES.md, SHOPPING.md, TASKS.md)
+- `docs/features/` — Feature-specific docs
