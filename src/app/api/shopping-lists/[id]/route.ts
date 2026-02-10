@@ -1,14 +1,10 @@
 /**
- * ============================================================================
- * PRISM - Individual Shopping List API Route
- * ============================================================================
  *
  * ENDPOINT: /api/shopping-lists/[id]
  * - GET:    Get a specific shopping list by ID
  * - PATCH:  Update a specific shopping list
  * - DELETE: Delete a specific shopping list
  *
- * ============================================================================
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -27,9 +23,7 @@ interface RouteParams {
 
 /**
  * GET /api/shopping-lists/[id]
- * ============================================================================
  * Retrieves a single shopping list by its ID.
- * ============================================================================
  */
 export async function GET(
   request: NextRequest,
@@ -74,9 +68,7 @@ export async function GET(
 
 /**
  * PATCH /api/shopping-lists/[id]
- * ============================================================================
  * Updates a specific shopping list.
- * ============================================================================
  */
 export async function PATCH(
   request: NextRequest,
@@ -161,9 +153,7 @@ export async function PATCH(
 
 /**
  * DELETE /api/shopping-lists/[id]
- * ============================================================================
  * Deletes a specific shopping list and all its items (CASCADE).
- * ============================================================================
  */
 export async function DELETE(
   request: NextRequest,

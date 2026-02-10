@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Full Meals Page
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * The full meal planning page with weekly view and meal management.
  * This is the expanded version of the meals widget.
  *
@@ -16,7 +12,6 @@
  * - Prep/cook time tracking
  * - Ingredient lists
  *
- * ============================================================================
  */
 
 import { Suspense } from 'react';

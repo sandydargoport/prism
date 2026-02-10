@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Scroll Area Component
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Provides a custom scrollable container with styled scrollbars.
  * Used when content might overflow its container (task lists, messages, etc.).
  *
@@ -24,7 +20,6 @@
  *     <div>Long content that scrolls...</div>
  *   </ScrollArea>
  *
- * ============================================================================
  */
 
 'use client';
@@ -36,7 +31,6 @@ import { cn } from '@/lib/utils';
 
 /**
  * SCROLL AREA
- * ============================================================================
  * The main scrollable container.
  * Content that exceeds the container height will be scrollable.
  *
@@ -46,7 +40,6 @@ import { cn } from '@/lib/utils';
  *     {items.map(item => <Item key={item.id} />)}
  *   </div>
  * </ScrollArea>
- * ============================================================================
  */
 const ScrollArea = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.Root>,
@@ -89,7 +82,6 @@ ScrollArea.displayName = ScrollAreaPrimitive.Root.displayName;
 
 /**
  * SCROLL BAR
- * ============================================================================
  * The custom styled scrollbar.
  * Can be vertical or horizontal.
  *
@@ -98,7 +90,6 @@ ScrollArea.displayName = ScrollAreaPrimitive.Root.displayName;
  * - Expands on hover
  * - Subtle colors that don't distract
  * - Rounded thumb
- * ============================================================================
  */
 const ScrollBar = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.ScrollAreaScrollbar>,

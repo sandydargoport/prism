@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Page Wrapper Component
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * A client component wrapper that adds the AppShell to pages.
  * This allows pages to easily integrate the side navigation.
  *
@@ -18,7 +14,6 @@
  *     );
  *   }
  *
- * ============================================================================
  */
 
 'use client';
@@ -30,7 +25,6 @@ import { cn } from '@/lib/utils';
 
 /**
  * PAGE WRAPPER PROPS
- * ============================================================================
  */
 export interface PageWrapperProps {
   /** Page content */
@@ -45,7 +39,6 @@ export interface PageWrapperProps {
 
 /**
  * PAGE WRAPPER COMPONENT
- * ============================================================================
  * Wraps page content with the AppShell.
  *
  * Uses the AuthProvider context to get current user state.
@@ -54,7 +47,6 @@ export interface PageWrapperProps {
  * <PageWrapper>
  *   <CalendarView />
  * </PageWrapper>
- * ============================================================================
  */
 export function PageWrapper({
   children,

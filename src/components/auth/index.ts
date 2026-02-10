@@ -1,15 +1,10 @@
 /**
- * ============================================================================
- * PRISM - Auth Components Index
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Re-exports all authentication-related components from a single entry point.
  *
  * USAGE:
  *   import { PinPad, FamilyMember } from '@/components/auth';
  *
- * ============================================================================
  */
 
 // PIN Pad Authentication

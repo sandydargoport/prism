@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - App Shell Component
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Provides the main application shell that wraps all pages.
  * Includes the side navigation and adjusts the main content area accordingly.
  *
@@ -22,7 +18,6 @@
  *     <YourPageContent />
  *   </AppShell>
  *
- * ============================================================================
  */
 
 'use client';
@@ -38,7 +33,6 @@ import { useIsMobile } from '@/lib/hooks/useIsMobile';
 
 /**
  * APP SHELL PROPS
- * ============================================================================
  */
 export interface AppShellProps {
   /** Page content */
@@ -64,7 +58,6 @@ export interface AppShellProps {
 
 /**
  * APP SHELL COMPONENT
- * ============================================================================
  * The main application layout component.
  *
  * RESPONSIVE BEHAVIOR:
@@ -86,7 +79,6 @@ export interface AppShellProps {
  * <AppShell hideNav>
  *   <LoginPage />
  * </AppShell>
- * ============================================================================
  */
 export function AppShell({
   children,

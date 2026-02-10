@@ -1,7 +1,4 @@
 /**
- * ============================================================================
- * PRISM - Label Component
- * ============================================================================
  *
  * A form label component built on Radix UI Label.
  * Used to label form inputs accessibly.
@@ -10,7 +7,6 @@
  *   <Label htmlFor="email">Email</Label>
  *   <Input id="email" type="email" />
  *
- * ============================================================================
  */
 
 'use client';

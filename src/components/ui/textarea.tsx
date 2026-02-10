@@ -1,7 +1,4 @@
 /**
- * ============================================================================
- * PRISM - Textarea Component
- * ============================================================================
  *
  * A multi-line text input component.
  * Used for descriptions, notes, and longer text input.
@@ -10,7 +7,6 @@
  *   <Textarea placeholder="Enter description..." />
  *   <Textarea value={text} onChange={(e) => setText(e.target.value)} />
  *
- * ============================================================================
  */
 
 import * as React from 'react';

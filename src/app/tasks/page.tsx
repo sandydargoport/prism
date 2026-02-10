@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Full Tasks Page
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * The full task management page with filtering, sorting, and full CRUD.
  * This is the expanded version of the tasks widget.
  *
@@ -16,7 +12,6 @@
  * - Mark tasks complete/incomplete
  * - Delete tasks
  *
- * ============================================================================
  */
 
 import { Suspense } from 'react';

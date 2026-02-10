@@ -1,7 +1,4 @@
 /**
- * ============================================================================
- * PRISM - Birthday Sync from Google Calendar
- * ============================================================================
  *
  * ENDPOINT: POST /api/birthdays/sync
  *
@@ -12,7 +9,6 @@
  * Parses event titles to extract name, type, and year, then upserts
  * into the birthdays table.
  *
- * ============================================================================
  */
 
 import { NextResponse } from 'next/server';

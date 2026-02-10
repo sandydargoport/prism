@@ -1,14 +1,10 @@
 /**
- * ============================================================================
- * PRISM - Modals Index
- * ============================================================================
  *
  * Re-exports all modal components from a single entry point.
  *
  * USAGE:
  *   import { AddTaskModal, AddMessageModal } from '@/components/modals';
  *
- * ============================================================================
  */
 
 export { AddTaskModal } from './AddTaskModal';

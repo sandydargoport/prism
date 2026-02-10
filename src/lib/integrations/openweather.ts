@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - OpenWeatherMap Integration
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Provides OpenWeatherMap API integration for weather data.
  *
  * FEATURES:
@@ -11,7 +7,6 @@
  * - 5-day forecast
  * - Location geocoding
  *
- * ============================================================================
  */
 
 import type {

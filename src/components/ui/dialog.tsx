@@ -1,7 +1,4 @@
 /**
- * ============================================================================
- * PRISM - Dialog Component
- * ============================================================================
  *
  * A modal dialog component built on Radix UI Dialog.
  * Used for forms, confirmations, and focused content.
@@ -17,7 +14,6 @@
  *     </DialogContent>
  *   </Dialog>
  *
- * ============================================================================
  */
 
 'use client';

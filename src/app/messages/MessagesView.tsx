@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Messages View Component
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * The main interactive messages view with all family messages.
  *
  * FEATURES:
@@ -13,7 +9,6 @@
  * - Delete messages
  * - Add new message button
  *
- * ============================================================================
  */
 
 'use client';

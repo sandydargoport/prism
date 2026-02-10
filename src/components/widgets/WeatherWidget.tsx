@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Weather Widget
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Displays current weather conditions and forecast.
  * Shows temperature, conditions, and a multi-day forecast.
  *
@@ -23,7 +19,6 @@
  *   <WeatherWidget />
  *   <WeatherWidget location="Chicago, IL" />
  *
- * ============================================================================
  */
 
 'use client';
@@ -36,7 +31,6 @@ import { WidgetContainer } from './WidgetContainer';
 
 /**
  * WEATHER DATA TYPES
- * ============================================================================
  */
 
 /** Weather condition types */
@@ -86,7 +80,6 @@ export interface WeatherData {
 
 /**
  * WEATHER WIDGET PROPS
- * ============================================================================
  */
 export interface WeatherWidgetProps {
   /** Location name (e.g., "Springfield, IL") */
@@ -114,7 +107,6 @@ export interface WeatherWidgetProps {
 
 /**
  * WEATHER WIDGET COMPONENT
- * ============================================================================
  * Displays weather information with current conditions and forecast.
  *
  * NOTE: This version shows demo data. In production, you would:
@@ -130,7 +122,6 @@ export interface WeatherWidgetProps {
  *
  * @example Celsius
  * <WeatherWidget useCelsius />
- * ============================================================================
  */
 export function WeatherWidget({
   location = 'Springfield, IL',
@@ -268,9 +259,7 @@ export function WeatherWidget({
 
 /**
  * FORECAST DAY CARD
- * ============================================================================
  * Displays a single day in the forecast.
- * ============================================================================
  */
 function ForecastDayCard({
   day,
@@ -303,9 +292,7 @@ function ForecastDayCard({
 
 /**
  * WEATHER ICON
- * ============================================================================
  * Returns the appropriate icon for a weather condition.
- * ============================================================================
  */
 function WeatherIcon({
   condition,
@@ -329,10 +316,8 @@ function WeatherIcon({
 
 /**
  * GET DEMO WEATHER DATA
- * ============================================================================
  * Returns realistic demo data for development/testing.
  * In production, this would be fetched from the weather API.
- * ============================================================================
  */
 function getDemoWeatherData(location: string): WeatherData {
   const today = new Date();

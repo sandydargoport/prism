@@ -1,11 +1,7 @@
 /**
- * ============================================================================
- * PRISM - API Response Formatters
- * ============================================================================
  * Shared transformation functions for converting database query rows
  * into API response objects. Used by route handlers to avoid duplicating
  * formatting logic across GET, POST, and PATCH endpoints.
- * ============================================================================
  */
 
 /**

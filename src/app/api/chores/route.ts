@@ -1,7 +1,4 @@
 /**
- * ============================================================================
- * PRISM - Chores API Route
- * ============================================================================
  *
  * ENDPOINT: /api/chores
  * - GET:  List all chores (with optional filters)
@@ -14,7 +11,6 @@
  * EXAMPLE:
  * GET /api/chores?assignedTo=user-uuid&enabled=true
  *
- * ============================================================================
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -28,9 +24,7 @@ import { getCached, invalidateCache } from '@/lib/cache/redis';
 
 /**
  * GET /api/chores
- * ============================================================================
  * Lists all chores with optional filtering.
- * ============================================================================
  */
 export async function GET(request: NextRequest) {
   const auth = await getDisplayAuth();
@@ -170,7 +164,6 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/chores
- * ============================================================================
  * Creates a new chore.
  *
  * REQUEST BODY:
@@ -184,7 +177,6 @@ export async function GET(request: NextRequest) {
  *   requiresApproval?: boolean (default: false)
  *   createdBy?: string (user UUID)
  * }
- * ============================================================================
  */
 export async function POST(request: NextRequest) {
   const auth = await requireAuth();

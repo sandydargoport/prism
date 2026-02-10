@@ -1,7 +1,4 @@
 /**
- * ============================================================================
- * PRISM - Shopping Lists API Route
- * ============================================================================
  *
  * ENDPOINT: /api/shopping-lists
  * - GET:  List all shopping lists
@@ -12,7 +9,6 @@
  * - "Hardware Store"
  * - "Costco"
  *
- * ============================================================================
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -24,9 +20,7 @@ import { createShoppingListSchema, validateRequest } from '@/lib/validations';
 
 /**
  * GET /api/shopping-lists
- * ============================================================================
  * Lists all shopping lists, ordered by sortOrder.
- * ============================================================================
  */
 export async function GET(request: NextRequest) {
   const auth = await getDisplayAuth();
@@ -137,7 +131,6 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/shopping-lists
- * ============================================================================
  * Creates a new shopping list.
  *
  * REQUEST BODY:
@@ -147,7 +140,6 @@ export async function GET(request: NextRequest) {
  *   color?: string (hex color)
  *   sortOrder?: number
  * }
- * ============================================================================
  */
 export async function POST(request: NextRequest) {
   const auth = await requireAuth();

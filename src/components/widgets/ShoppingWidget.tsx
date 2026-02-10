@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Shopping Widget
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Displays shopping lists with items that can be checked off.
  *
  * FEATURES:
@@ -22,7 +18,6 @@
  *   <ShoppingWidget />
  *   <ShoppingWidget listId="grocery" />
  *
- * ============================================================================
  */
 
 'use client';
@@ -42,7 +37,6 @@ import {
 
 /**
  * SHOPPING ITEM TYPE
- * ============================================================================
  */
 // Shopping types imported from shared types
 import type { ShoppingItem, ShoppingList } from '@/types';
@@ -50,7 +44,6 @@ export type { ShoppingItem, ShoppingList };
 
 /**
  * SHOPPING WIDGET PROPS
- * ============================================================================
  */
 export interface ShoppingWidgetProps {
   /** Shopping lists to display (if provided externally) */
@@ -75,7 +68,6 @@ export interface ShoppingWidgetProps {
 
 /**
  * SHOPPING WIDGET COMPONENT
- * ============================================================================
  * Displays a shopping list with checkable items.
  *
  * @example Basic usage
@@ -89,7 +81,6 @@ export interface ShoppingWidgetProps {
  *   onItemToggle={(id, checked) => updateItem(id, checked)}
  *   onAddClick={() => openAddItemDialog()}
  * />
- * ============================================================================
  */
 export function ShoppingWidget({
   lists: externalLists,
@@ -238,9 +229,7 @@ export function ShoppingWidget({
 
 /**
  * SHOPPING ITEM ROW
- * ============================================================================
  * A single shopping item with checkbox and details.
- * ============================================================================
  */
 function ShoppingItemRow({
   item,
@@ -310,9 +299,7 @@ function ShoppingItemRow({
 
 /**
  * GET CATEGORY EMOJI
- * ============================================================================
  * Returns an emoji for the item category.
- * ============================================================================
  */
 function getCategoryEmoji(category?: string): string | null {
   switch (category) {

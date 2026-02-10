@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Widgets Index
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Re-exports all widget components from a single entry point.
  *
  * USAGE:
@@ -15,7 +11,6 @@
  *     MessagesWidget,
  *   } from '@/components/widgets';
  *
- * ============================================================================
  */
 
 // Widget Container

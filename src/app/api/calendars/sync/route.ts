@@ -1,15 +1,10 @@
 /**
- * ============================================================================
- * PRISM - Calendar Sync API Route
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Triggers synchronization of calendar events from external sources.
  *
  * ENDPOINT: /api/calendars/sync
  * - POST: Trigger sync for all calendars or a specific calendar
  *
- * ============================================================================
  */
 
 import { NextRequest, NextResponse } from 'next/server';

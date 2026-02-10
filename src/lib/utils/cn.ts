@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Class Name Utility (cn)
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Provides a utility function for conditionally joining class names together.
  * This is essential for building dynamic Tailwind CSS classes.
  *
@@ -44,7 +40,6 @@
  *   // Arrays
  *   cn(['p-4', 'bg-white'], isActive && 'ring-2')
  *
- * ============================================================================
  */
 
 import { clsx, type ClassValue } from 'clsx';
@@ -88,9 +83,7 @@ export function cn(...inputs: ClassValue[]): string {
 
 
 /**
- * ============================================================================
  * UNDERSTANDING THE LIBRARIES
- * ============================================================================
  *
  * CLSX:
  * A tiny utility for constructing className strings conditionally.
@@ -115,5 +108,4 @@ export function cn(...inputs: ClassValue[]): string {
  * - 'text-red-500 text-blue-500' => 'text-blue-500'
  * - 'hover:bg-red-500 hover:bg-blue-500' => 'hover:bg-blue-500'
  *
- * ============================================================================
  */

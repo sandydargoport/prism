@@ -1,7 +1,4 @@
 /**
- * ============================================================================
- * PRISM - Individual Maintenance Reminder API Route
- * ============================================================================
  *
  * ENDPOINT: /api/maintenance/[id]
  * - GET:    Get a specific maintenance reminder by ID
@@ -11,7 +8,6 @@
  * ENDPOINT: /api/maintenance/[id]/complete
  * - POST:   Mark maintenance as completed
  *
- * ============================================================================
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -30,9 +26,7 @@ interface RouteParams {
 
 /**
  * GET /api/maintenance/[id]
- * ============================================================================
  * Retrieves a single maintenance reminder by its ID.
- * ============================================================================
  */
 export async function GET(
   request: NextRequest,
@@ -101,9 +95,7 @@ export async function GET(
 
 /**
  * PATCH /api/maintenance/[id]
- * ============================================================================
  * Updates a specific maintenance reminder.
- * ============================================================================
  */
 export async function PATCH(
   request: NextRequest,
@@ -215,9 +207,7 @@ export async function PATCH(
 
 /**
  * DELETE /api/maintenance/[id]
- * ============================================================================
  * Deletes a specific maintenance reminder.
- * ============================================================================
  */
 export async function DELETE(
   request: NextRequest,

@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Clock Widget
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Displays the current time and date on the dashboard.
  * This is one of the most essential widgets - always visible at a glance.
  *
@@ -25,7 +21,6 @@
  *   <ClockWidget showSeconds />
  *   <ClockWidget format24Hour />
  *
- * ============================================================================
  */
 
 'use client';
@@ -40,7 +35,6 @@ import { WidgetContainer } from './WidgetContainer';
 
 /**
  * CLOCK WIDGET PROPS
- * ============================================================================
  */
 export interface ClockWidgetProps {
   /** Show seconds in the time display */
@@ -58,7 +52,6 @@ export interface ClockWidgetProps {
 
 /**
  * CLOCK WIDGET COMPONENT
- * ============================================================================
  * Displays the current time and date.
  *
  * HOW IT WORKS:
@@ -79,7 +72,6 @@ export interface ClockWidgetProps {
  *
  * @example Compact (no date)
  * <ClockWidget showDate={false} />
- * ============================================================================
  */
 export function ClockWidget({
   showSeconds = false,
@@ -176,7 +168,6 @@ export function ClockWidget({
 
 /**
  * USE CURRENT TIME HOOK
- * ============================================================================
  * Custom hook for getting the current time with auto-update.
  * Can be used in other components that need real-time time.
  *
@@ -188,7 +179,6 @@ export function ClockWidget({
  *   const time = useCurrentTime(60000); // Update every minute
  *   return <div>{format(time, 'h:mm a')}</div>;
  * }
- * ============================================================================
  */
 export function useCurrentTime(updateInterval = 1000): Date {
   const [time, setTime] = useState<Date>(new Date());
@@ -209,7 +199,6 @@ export function useCurrentTime(updateInterval = 1000): Date {
 
 /**
  * FORMAT TIME
- * ============================================================================
  * Utility function to format time consistently throughout the app.
  *
  * @param date - Date to format
@@ -220,7 +209,6 @@ export function useCurrentTime(updateInterval = 1000): Date {
  * formatTime(new Date()) // "2:30 PM"
  * formatTime(new Date(), { format24Hour: true }) // "14:30"
  * formatTime(new Date(), { showSeconds: true }) // "2:30:45 PM"
- * ============================================================================
  */
 export function formatTime(
   date: Date,

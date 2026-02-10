@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Database Clear Script
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Clears user-created data from the database while preserving the schema.
  * Use this to reset the database to a fresh state.
  *
@@ -15,7 +11,6 @@
  * Always backup your database first:
  *   docker exec prism-db pg_dump -U prism prism > backup.sql
  *
- * ============================================================================
  */
 
 import { drizzle } from 'drizzle-orm/postgres-js';

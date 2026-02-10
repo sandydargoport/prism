@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Database Client
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Creates and exports the database client used throughout the application.
  * This is the single connection point to PostgreSQL.
  *
@@ -28,7 +24,6 @@
  * subsequent queries. This is much more efficient than creating a new
  * connection for each query.
  *
- * ============================================================================
  */
 
 import { drizzle } from 'drizzle-orm/postgres-js';
@@ -38,10 +33,8 @@ import * as schema from './schema';
 
 /**
  * LAZY DATABASE CONNECTION
- * ============================================================================
  * We use lazy initialization to avoid errors during Next.js build time.
  * The database connection is only established when first accessed at runtime.
- * ============================================================================
  */
 let _client: ReturnType<typeof postgres> | null = null;
 let _db: ReturnType<typeof drizzle<typeof schema>> | null = null;
@@ -90,7 +83,6 @@ function getClient(): ReturnType<typeof postgres> {
 
 /**
  * DRIZZLE ORM CLIENT
- * ============================================================================
  * Wraps the postgres client with Drizzle ORM for type-safe queries.
  *
  * With Drizzle, instead of writing:
@@ -104,7 +96,6 @@ function getClient(): ReturnType<typeof postgres> {
  * - Autocomplete for table and column names
  * - Compile-time error checking
  * - SQL injection protection (queries are parameterized)
- * ============================================================================
  */
 export const db = new Proxy({} as ReturnType<typeof drizzle<typeof schema>>, {
   get(_target, prop) {
@@ -121,12 +112,10 @@ export const db = new Proxy({} as ReturnType<typeof drizzle<typeof schema>>, {
 
 /**
  * DATABASE HEALTH CHECK
- * ============================================================================
  * Verifies the database connection is working.
  * Call this during startup to fail fast if the database is unreachable.
  *
  * @returns true if connection is healthy, throws error otherwise
- * ============================================================================
  */
 export async function checkDatabaseConnection(): Promise<boolean> {
   try {
@@ -145,10 +134,8 @@ export async function checkDatabaseConnection(): Promise<boolean> {
 
 /**
  * CLOSE DATABASE CONNECTION
- * ============================================================================
  * Gracefully closes all database connections.
  * Call this when shutting down the application.
- * ============================================================================
  */
 export async function closeDatabase(): Promise<void> {
   if (_client) {
@@ -161,8 +148,6 @@ export async function closeDatabase(): Promise<void> {
 
 /**
  * EXPORT TYPES
- * ============================================================================
  * Export types for use in other files.
- * ============================================================================
  */
 export type Database = typeof db;

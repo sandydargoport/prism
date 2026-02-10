@@ -1,7 +1,4 @@
 /**
- * ============================================================================
- * PRISM - Maintenance Completion API Route
- * ============================================================================
  *
  * ENDPOINT: /api/maintenance/[id]/complete
  * - POST: Mark maintenance as completed
@@ -9,7 +6,6 @@
  * This creates a completion record and updates the reminder's nextDue date
  * based on the schedule (monthly, quarterly, annually, or custom).
  *
- * ============================================================================
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -61,7 +57,6 @@ function calculateNextDue(schedule: string, customIntervalDays: number | null): 
 
 /**
  * POST /api/maintenance/[id]/complete
- * ============================================================================
  * Records a maintenance completion and updates the next due date.
  *
  * REQUEST BODY:
@@ -71,7 +66,6 @@ function calculateNextDue(schedule: string, customIntervalDays: number | null): 
  *   vendor?: string (who did the work)
  *   notes?: string
  * }
- * ============================================================================
  */
 export async function POST(
   request: NextRequest,

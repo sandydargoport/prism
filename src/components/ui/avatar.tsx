@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Avatar Component
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Displays user profile pictures with fallback initials.
  * Used throughout the app to identify family members.
  *
@@ -28,7 +24,6 @@
  *     </AvatarFallback>
  *   </Avatar>
  *
- * ============================================================================
  */
 
 'use client';
@@ -40,10 +35,8 @@ import { cn } from '@/lib/utils';
 
 /**
  * AVATAR
- * ============================================================================
  * The root container for the avatar.
  * Sets the size and shape.
- * ============================================================================
  */
 const Avatar = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Root>,
@@ -68,10 +61,8 @@ Avatar.displayName = AvatarPrimitive.Root.displayName;
 
 /**
  * AVATAR IMAGE
- * ============================================================================
  * The profile picture.
  * Automatically shows/hides based on load status.
- * ============================================================================
  */
 const AvatarImage = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Image>,
@@ -94,7 +85,6 @@ AvatarImage.displayName = AvatarPrimitive.Image.displayName;
 
 /**
  * AVATAR FALLBACK
- * ============================================================================
  * Shown when there's no image or it fails to load.
  * Usually displays initials or an icon.
  *
@@ -102,7 +92,6 @@ AvatarImage.displayName = AvatarPrimitive.Image.displayName;
  * - Hidden while image is loading
  * - Shows after a short delay if image fails
  * - This prevents flickering during normal image loads
- * ============================================================================
  */
 const AvatarFallback = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Fallback>,
@@ -127,9 +116,7 @@ const AvatarFallback = React.forwardRef<
 AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName;
 
 
-// ============================================================================
 // HELPER COMPONENTS
-// ============================================================================
 
 /**
  * Get initials from a name
@@ -149,7 +136,6 @@ export function getInitials(name: string): string {
 
 /**
  * USER AVATAR
- * ============================================================================
  * A convenience component that handles the common case of showing
  * a user's avatar with their image or initials.
  *
@@ -160,7 +146,6 @@ export function getInitials(name: string): string {
  *   color="#3B82F6"
  *   size="lg"
  * />
- * ============================================================================
  */
 interface UserAvatarProps {
   /** User's name (used for fallback initials and alt text) */

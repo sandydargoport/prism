@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Badge Component
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Provides small status indicators and labels.
  * Used for showing categories, statuses, counts, etc.
  *
@@ -24,7 +20,6 @@
  *   <Badge variant="destructive">Overdue</Badge>
  *   <Badge variant="outline">Category</Badge>
  *
- * ============================================================================
  */
 
 import * as React from 'react';
@@ -34,9 +29,7 @@ import { cn } from '@/lib/utils';
 
 /**
  * BADGE VARIANTS
- * ============================================================================
  * Defines the visual styles for different badge types.
- * ============================================================================
  */
 const badgeVariants = cva(
   // BASE CLASSES - Applied to all badges
@@ -91,7 +84,6 @@ const badgeVariants = cva(
 
 /**
  * BADGE PROPS
- * ============================================================================
  */
 export interface BadgeProps
   extends React.HTMLAttributes<HTMLDivElement>,
@@ -100,7 +92,6 @@ export interface BadgeProps
 
 /**
  * BADGE COMPONENT
- * ============================================================================
  * A small label for displaying status, category, or count.
  *
  * @example Basic usage
@@ -114,7 +105,6 @@ export interface BadgeProps
  * @example Status badges
  * <Badge variant="success">Completed</Badge>
  * <Badge variant="outline">Pending</Badge>
- * ============================================================================
  */
 function Badge({ className, variant, ...props }: BadgeProps) {
   return (

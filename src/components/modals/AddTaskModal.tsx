@@ -1,7 +1,4 @@
 /**
- * ============================================================================
- * PRISM - Add Task Modal
- * ============================================================================
  *
  * A modal dialog for creating new tasks.
  * Includes form fields for title, description, assignee, due date, and priority.
@@ -13,7 +10,6 @@
  *     onTaskCreated={(task) => console.log('Created:', task)}
  *   />
  *
- * ============================================================================
  */
 
 'use client';

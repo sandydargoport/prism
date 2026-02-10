@@ -1,7 +1,4 @@
 /**
- * ============================================================================
- * PRISM - Add Shopping Item Modal
- * ============================================================================
  *
  * A modal dialog for creating and editing shopping list items.
  * Includes form fields for name, quantity, unit, category, and notes.
@@ -14,7 +11,6 @@
  *     onItemCreated={(item) => console.log('Created:', item)}
  *   />
  *
- * ============================================================================
  */
 
 'use client';

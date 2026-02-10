@@ -1,7 +1,4 @@
 /**
- * ============================================================================
- * PRISM - Meals API Route
- * ============================================================================
  *
  * ENDPOINT: /api/meals
  * - GET:  List meals (filtered by week)
@@ -13,7 +10,6 @@
  * EXAMPLE:
  * GET /api/meals?weekOf=2024-01-28
  *
- * ============================================================================
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -29,9 +25,7 @@ const cookedByUser = aliasedTable(users, 'cookedByUser');
 
 /**
  * GET /api/meals
- * ============================================================================
  * Lists meals with optional filtering by week.
- * ============================================================================
  */
 export async function GET(request: NextRequest) {
   const auth = await getDisplayAuth();
@@ -102,7 +96,6 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/meals
- * ============================================================================
  * Creates a new meal.
  *
  * REQUEST BODY:
@@ -114,7 +107,6 @@ export async function GET(request: NextRequest) {
  *   weekOf: string (required, YYYY-MM-DD format)
  *   createdBy?: string (user UUID)
  * }
- * ============================================================================
  */
 export async function POST(request: NextRequest) {
   const auth = await requireAuth();

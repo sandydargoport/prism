@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Theme Provider
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Manages dark/light mode theming throughout the application.
  * Persists user preference to localStorage and respects system preference.
  *
@@ -13,7 +9,6 @@
  * 3. Applies "dark" class to <html> element when dark mode is active
  * 4. Provides context for components to read/change theme
  *
- * ============================================================================
  */
 
 'use client';
@@ -65,14 +60,12 @@ interface ThemeProviderProps {
 
 /**
  * THEME PROVIDER COMPONENT
- * ============================================================================
  * Wrap your app with this provider to enable theming.
  *
  * @example
  * <ThemeProvider defaultTheme="system">
  *   <App />
  * </ThemeProvider>
- * ============================================================================
  */
 export function ThemeProvider({
   children,
@@ -165,13 +158,11 @@ export function ThemeProvider({
 
 /**
  * USE THEME HOOK
- * ============================================================================
  * Access the current theme and setTheme function from any component.
  *
  * @example
  * const { theme, setTheme, resolvedTheme } = useTheme();
  * setTheme('dark'); // Switch to dark mode
- * ============================================================================
  */
 export function useTheme(): ThemeContextValue {
   const context = useContext(ThemeContext);

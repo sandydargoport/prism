@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Health Check API Endpoint
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Provides a simple health check endpoint for monitoring the application.
  * External tools (Docker, load balancers, monitoring systems) call this
  * endpoint to verify the application is running and responding.
@@ -30,7 +26,6 @@
  *   - version: Application version (from package.json)
  *   - uptime: How long the server has been running (seconds)
  *
- * ============================================================================
  */
 
 import { NextResponse } from 'next/server';
@@ -38,7 +33,6 @@ import { NextResponse } from 'next/server';
 
 /**
  * GET /api/health
- * ============================================================================
  * Returns the health status of the application.
  *
  * This endpoint is used by:
@@ -56,7 +50,6 @@ import { NextResponse } from 'next/server';
  * - Check Redis connection
  * - Check external API connectivity
  * - Return more detailed diagnostics
- * ============================================================================
  */
 export async function GET() {
   // In the future, we'll add checks for:
@@ -106,7 +99,6 @@ export async function GET() {
 
 /**
  * OPTIONS /api/health
- * ============================================================================
  * Handle CORS preflight requests.
  *
  * When a browser makes a cross-origin request, it first sends an OPTIONS
@@ -115,7 +107,6 @@ export async function GET() {
  *
  * For health checks, this is usually not needed (server-to-server),
  * but we include it for completeness.
- * ============================================================================
  */
 export async function OPTIONS() {
   return new NextResponse(null, {

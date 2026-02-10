@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Individual Task API Route
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Handles HTTP requests for a specific task by ID.
  * Operations: get, update, delete a single task.
  *
@@ -17,7 +13,6 @@
  * It captures the task ID from the URL:
  * - /api/tasks/abc123 → params.id = "abc123"
  *
- * ============================================================================
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -31,10 +26,8 @@ import { invalidateCache } from '@/lib/cache/redis';
 
 /**
  * ROUTE PARAMS TYPE
- * ============================================================================
  * Next.js 14 App Router provides route params as a Promise.
  * This type defines the expected shape of our dynamic route params.
- * ============================================================================
  */
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -43,7 +36,6 @@ interface RouteParams {
 
 /**
  * GET /api/tasks/[id]
- * ============================================================================
  * Retrieves a single task by its ID.
  *
  * URL PARAMS:
@@ -56,7 +48,6 @@ interface RouteParams {
  *
  * EXAMPLE:
  * GET /api/tasks/550e8400-e29b-41d4-a716-446655440000
- * ============================================================================
  */
 export async function GET(
   request: NextRequest,
@@ -121,7 +112,6 @@ export async function GET(
 
 /**
  * PATCH /api/tasks/[id]
- * ============================================================================
  * Updates a specific task.
  *
  * WHY PATCH INSTEAD OF PUT?
@@ -151,7 +141,6 @@ export async function GET(
  * EXAMPLE:
  * PATCH /api/tasks/abc123
  * { "completed": true, "completedBy": "user-uuid" }
- * ============================================================================
  */
 export async function PATCH(
   request: NextRequest,
@@ -181,9 +170,7 @@ export async function PATCH(
       );
     }
 
-    // ========================================================================
     // AUTHORIZATION CHECK - Children can only toggle their own tasks
-    // ========================================================================
     if ('completed' in body) {
       const isChild = auth.role === 'child';
       const isOwner = existingTask.createdBy === auth.userId || existingTask.assignedTo === auth.userId;
@@ -322,7 +309,6 @@ export async function PATCH(
 
 /**
  * DELETE /api/tasks/[id]
- * ============================================================================
  * Deletes a specific task.
  *
  * AUTHORIZATION:
@@ -341,7 +327,6 @@ export async function PATCH(
  *
  * EXAMPLE:
  * DELETE /api/tasks/abc123
- * ============================================================================
  */
 export async function DELETE(
   request: NextRequest,
@@ -353,9 +338,7 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    // ========================================================================
     // CHECK IF TASK EXISTS AND GET OWNERSHIP INFO
-    // ========================================================================
     const [existingTask] = await db
       .select({
         id: tasks.id,
@@ -373,9 +356,7 @@ export async function DELETE(
       );
     }
 
-    // ========================================================================
     // AUTHORIZATION CHECK
-    // ========================================================================
     const isOwner = existingTask.createdBy === auth.userId || existingTask.assignedTo === auth.userId;
     if (!isOwner) {
       const forbidden = requireRole(auth, 'canDeleteTasks');

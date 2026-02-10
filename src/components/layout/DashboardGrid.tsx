@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Dashboard Grid Layout
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Provides the main grid layout for organizing widgets on the dashboard.
  * Widgets are arranged in a responsive CSS grid.
  *
@@ -29,7 +25,6 @@
  *     <TasksWidget />
  *   </DashboardGrid>
  *
- * ============================================================================
  */
 
 'use client';
@@ -40,7 +35,6 @@ import { cn } from '@/lib/utils';
 
 /**
  * DASHBOARD GRID PROPS
- * ============================================================================
  */
 export interface DashboardGridProps {
   /** Widget components to arrange in the grid */
@@ -56,7 +50,6 @@ export interface DashboardGridProps {
 
 /**
  * DASHBOARD GRID COMPONENT
- * ============================================================================
  * The main container that arranges widgets in a responsive grid.
  *
  * RESPONSIVE BEHAVIOR:
@@ -80,7 +73,6 @@ export interface DashboardGridProps {
  * <DashboardGrid columns={3}>
  *   {widgets}
  * </DashboardGrid>
- * ============================================================================
  */
 export function DashboardGrid({
   children,
@@ -119,7 +111,6 @@ export function DashboardGrid({
 
 /**
  * DASHBOARD LAYOUT
- * ============================================================================
  * Full-page layout component that includes the dashboard grid
  * along with any header/navigation elements.
  *
@@ -140,7 +131,6 @@ export function DashboardGrid({
  *     <WeatherWidget />
  *   </DashboardGrid>
  * </DashboardLayout>
- * ============================================================================
  */
 export function DashboardLayout({
   children,
@@ -182,7 +172,6 @@ export interface DashboardHeaderProps {
 
 /**
  * DASHBOARD HEADER
- * ============================================================================
  * Optional header bar for the dashboard.
  * Shows app name, greeting, user info, and quick actions.
  *
@@ -198,7 +187,6 @@ export interface DashboardHeaderProps {
  *   greeting="Good morning"
  *   onUserClick={() => logout()}
  * />
- * ============================================================================
  */
 export function DashboardHeader({
   onEditClick,

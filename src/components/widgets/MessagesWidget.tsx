@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Family Messages Widget
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Displays the family message board - a place for quick notes and updates.
  * Think of it as a digital sticky note board for the family.
  *
@@ -24,7 +20,6 @@
  *   <MessagesWidget maxMessages={5} />
  *   <MessagesWidget onAddClick={() => openAddMessageDialog()} />
  *
- * ============================================================================
  */
 
 'use client';
@@ -39,9 +34,7 @@ import { Button, ScrollArea, UserAvatar } from '@/components/ui';
 
 /**
  * FAMILY MESSAGE TYPE
- * ============================================================================
  * Represents a single message on the board.
- * ============================================================================
  */
 export interface FamilyMessage {
   id: string;
@@ -60,7 +53,6 @@ export interface FamilyMessage {
 
 /**
  * MESSAGES WIDGET PROPS
- * ============================================================================
  */
 export interface MessagesWidgetProps {
   /** Messages to display (if provided externally) */
@@ -84,7 +76,6 @@ export interface MessagesWidgetProps {
 
 /**
  * MESSAGES WIDGET COMPONENT
- * ============================================================================
  * Displays the family message board.
  *
  * @example Basic usage
@@ -92,7 +83,6 @@ export interface MessagesWidgetProps {
  *
  * @example With add callback
  * <MessagesWidget onAddClick={() => openMessageDialog()} />
- * ============================================================================
  */
 export function MessagesWidget({
   messages: externalMessages,
@@ -181,9 +171,7 @@ export function MessagesWidget({
 
 /**
  * MESSAGE ITEM
- * ============================================================================
  * A single message with author info and timestamp.
- * ============================================================================
  */
 function MessageItem({
   message,

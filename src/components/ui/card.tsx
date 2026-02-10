@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Card Component
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Provides card components for containing and organizing content.
  * Cards are the primary container for widgets on the dashboard.
  *
@@ -29,7 +25,6 @@
  * - Consistent padding throughout
  * - Works in both light and dark modes
  *
- * ============================================================================
  */
 
 import * as React from 'react';
@@ -38,14 +33,12 @@ import { cn } from '@/lib/utils';
 
 /**
  * CARD
- * ============================================================================
  * The main container component. Provides background, border, and shadow.
  *
  * @example
  * <Card>
  *   <CardContent>Simple card with just content</CardContent>
  * </Card>
- * ============================================================================
  */
 const Card = React.forwardRef<
   HTMLDivElement,
@@ -72,7 +65,6 @@ Card.displayName = 'Card';
 
 /**
  * CARD HEADER
- * ============================================================================
  * Container for the card's title and description.
  * Includes consistent padding and spacing.
  *
@@ -81,7 +73,6 @@ Card.displayName = 'Card';
  *   <CardTitle>Weather</CardTitle>
  *   <CardDescription>Current conditions</CardDescription>
  * </CardHeader>
- * ============================================================================
  */
 const CardHeader = React.forwardRef<
   HTMLDivElement,
@@ -104,13 +95,11 @@ CardHeader.displayName = 'CardHeader';
 
 /**
  * CARD TITLE
- * ============================================================================
  * The main heading for the card.
  * Uses semantic heading element for accessibility.
  *
  * @example
  * <CardTitle>Today's Tasks</CardTitle>
- * ============================================================================
  */
 const CardTitle = React.forwardRef<
   HTMLHeadingElement,
@@ -131,13 +120,11 @@ CardTitle.displayName = 'CardTitle';
 
 /**
  * CARD DESCRIPTION
- * ============================================================================
  * Secondary text below the title.
  * Uses muted color for visual hierarchy.
  *
  * @example
  * <CardDescription>5 tasks remaining</CardDescription>
- * ============================================================================
  */
 const CardDescription = React.forwardRef<
   HTMLParagraphElement,
@@ -158,7 +145,6 @@ CardDescription.displayName = 'CardDescription';
 
 /**
  * CARD CONTENT
- * ============================================================================
  * Main content area of the card.
  * Most of your content goes here.
  *
@@ -166,7 +152,6 @@ CardDescription.displayName = 'CardDescription';
  * <CardContent>
  *   <p>Your content here...</p>
  * </CardContent>
- * ============================================================================
  */
 const CardContent = React.forwardRef<
   HTMLDivElement,
@@ -187,7 +172,6 @@ CardContent.displayName = 'CardContent';
 
 /**
  * CARD FOOTER
- * ============================================================================
  * Bottom section for actions or metadata.
  * Items are aligned horizontally by default.
  *
@@ -196,7 +180,6 @@ CardContent.displayName = 'CardContent';
  *   <Button>Save</Button>
  *   <Button variant="outline">Cancel</Button>
  * </CardFooter>
- * ============================================================================
  */
 const CardFooter = React.forwardRef<
   HTMLDivElement,

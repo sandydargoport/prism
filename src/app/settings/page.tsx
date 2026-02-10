@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Settings Page
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * The settings page for configuring Prism.
  *
  * SECTIONS:
@@ -13,7 +9,6 @@
  * - Security: PIN management, session settings
  * - About: Version info, help links
  *
- * ============================================================================
  */
 
 import { Suspense } from 'react';

@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Button Component
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Provides a reusable, accessible button component with multiple variants.
  * This is one of the most-used components in any application.
  *
@@ -26,7 +22,6 @@
  *   <Button variant="destructive">Delete</Button>
  *   <Button size="lg" disabled>Loading...</Button>
  *
- * ============================================================================
  */
 
 import * as React from 'react';
@@ -37,7 +32,6 @@ import { cn } from '@/lib/utils';
 
 /**
  * BUTTON VARIANTS
- * ============================================================================
  * Uses class-variance-authority (cva) to manage variant styles.
  *
  * cva creates a function that returns the right classes based on props.
@@ -45,7 +39,6 @@ import { cn } from '@/lib/utils';
  *
  * STRUCTURE:
  * cva(baseClasses, { variants: { variantName: { value: classes } } })
- * ============================================================================
  */
 const buttonVariants = cva(
   // BASE CLASSES - Applied to ALL buttons
@@ -131,12 +124,10 @@ const buttonVariants = cva(
 
 /**
  * BUTTON PROPS
- * ============================================================================
  * Combines:
  * - Standard HTML button attributes
  * - Our custom variant props
  * - asChild prop for composition
- * ============================================================================
  */
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
@@ -156,7 +147,6 @@ export interface ButtonProps
 
 /**
  * BUTTON COMPONENT
- * ============================================================================
  * The main button component used throughout the application.
  *
  * FEATURES:
@@ -183,7 +173,6 @@ export interface ButtonProps
  * <Button>
  *   <PlusIcon /> Add Item
  * </Button>
- * ============================================================================
  */
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {

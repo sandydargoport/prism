@@ -1,7 +1,4 @@
 /**
- * ============================================================================
- * PRISM - Shopping Items API Route
- * ============================================================================
  *
  * ENDPOINT: /api/shopping-items
  * - GET:  List shopping items (filtered by listId)
@@ -14,7 +11,6 @@
  * EXAMPLE:
  * GET /api/shopping-items?listId=abc123&checked=false
  *
- * ============================================================================
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -27,9 +23,7 @@ import { invalidateCache } from '@/lib/cache/redis';
 
 /**
  * GET /api/shopping-items
- * ============================================================================
  * Lists shopping items with optional filtering.
- * ============================================================================
  */
 export async function GET(request: NextRequest) {
   const auth = await requireAuth();
@@ -107,7 +101,6 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/shopping-items
- * ============================================================================
  * Creates a new shopping item.
  *
  * REQUEST BODY:
@@ -122,7 +115,6 @@ export async function GET(request: NextRequest) {
  *   addedBy?: string (user UUID)
  *   notes?: string
  * }
- * ============================================================================
  */
 export async function POST(request: NextRequest) {
   const auth = await requireAuth();

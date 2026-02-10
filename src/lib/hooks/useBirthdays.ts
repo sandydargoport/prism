@@ -1,12 +1,8 @@
 /**
- * ============================================================================
- * PRISM - useBirthdays Hook
- * ============================================================================
  *
  * Provides a React hook for fetching upcoming birthdays, anniversaries,
  * and milestones for the dashboard widget.
  *
- * ============================================================================
  */
 
 'use client';

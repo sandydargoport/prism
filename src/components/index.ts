@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Components Index
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Central export point for all components in the application.
  * This allows clean imports from a single location.
  *
@@ -15,7 +11,6 @@
  *   import { Button } from '@/components/ui';
  *   import { ClockWidget } from '@/components/widgets';
  *
- * ============================================================================
  */
 
 // UI Components (buttons, inputs, cards, etc.)

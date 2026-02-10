@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Quick PIN Modal
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * A lightweight modal for quick user authentication when taking actions.
  * Instead of requiring login upfront, this prompts for PIN when needed.
  *
@@ -18,7 +14,6 @@
  * - Remembers last authenticated user for quick re-auth
  * - Can be dismissed (cancel action)
  *
- * ============================================================================
  */
 
 'use client';

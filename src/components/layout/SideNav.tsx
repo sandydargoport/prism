@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Side Navigation Component
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Provides a persistent side navigation bar that appears on all pages.
  * The nav includes links to all main sections and user profile controls.
  *
@@ -22,7 +18,6 @@
  *     onLogout={() => handleLogout()}
  *   />
  *
- * ============================================================================
  */
 
 'use client';
@@ -48,7 +43,6 @@ import { PrismIcon } from '@/components/ui/PrismIcon';
 
 /**
  * SIDE NAV PROPS
- * ============================================================================
  */
 export interface SideNavProps {
   /** Current user information */
@@ -68,9 +62,7 @@ export interface SideNavProps {
 
 /**
  * NAV ITEM CONFIGURATION
- * ============================================================================
  * Defines all navigation items with their icons, labels, and routes.
- * ============================================================================
  */
 interface NavItem {
   label: string;
@@ -94,7 +86,6 @@ const navItems: NavItem[] = [
 
 /**
  * SIDE NAV COMPONENT
- * ============================================================================
  * The main side navigation component.
  *
  * RESPONSIVE BEHAVIOR:
@@ -110,7 +101,6 @@ const navItems: NavItem[] = [
  *   user={currentUser}
  *   onLogout={() => setCurrentUser(null)}
  * />
- * ============================================================================
  */
 export function SideNav({ user, onLogout, onLogin, className }: SideNavProps) {
   // Get current pathname for active state

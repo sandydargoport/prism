@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Full Chores Page
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * The full chore management page with filtering, sorting, and full CRUD.
  * This is the expanded version of the chores widget.
  *
@@ -17,7 +13,6 @@
  * - Enable/disable chores
  * - Delete chores
  *
- * ============================================================================
  */
 
 import { Suspense } from 'react';

@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Widget Container Component
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Provides a standardized container for dashboard widgets.
  * All widgets (Clock, Weather, Calendar, Tasks, etc.) use this as their shell.
  *
@@ -33,7 +29,6 @@
  *     <TaskList tasks={tasks} />
  *   </WidgetContainer>
  *
- * ============================================================================
  */
 
 'use client';
@@ -100,17 +95,14 @@ const vAlignClass: Record<VAlign, string> = {
 
 /**
  * WIDGET SIZE
- * ============================================================================
  * Widgets can be different sizes on the dashboard grid.
  * These map to grid column/row spans.
- * ============================================================================
  */
 export type WidgetSize = 'small' | 'medium' | 'large' | 'wide' | 'tall';
 
 
 /**
  * WIDGET CONTAINER PROPS
- * ============================================================================
  */
 export interface WidgetContainerProps {
   /** Widget title (shown in header) */
@@ -146,7 +138,6 @@ export interface WidgetContainerProps {
 
 /**
  * WIDGET CONTAINER COMPONENT
- * ============================================================================
  * The main container component for all dashboard widgets.
  *
  * @example Basic widget
@@ -171,7 +162,6 @@ export interface WidgetContainerProps {
  * <WidgetContainer title="Weather" loading={true}>
  *   <WeatherContent />
  * </WidgetContainer>
- * ============================================================================
  */
 export function WidgetContainer({
   title,
@@ -291,10 +281,8 @@ export function WidgetContainer({
 
 /**
  * WIDGET LOADING
- * ============================================================================
  * Loading indicator shown while widget data is being fetched.
  * Uses a skeleton/shimmer effect for a polished feel.
- * ============================================================================
  */
 function WidgetLoading() {
   return (
@@ -312,10 +300,8 @@ function WidgetLoading() {
 
 /**
  * WIDGET ERROR
- * ============================================================================
  * Error state shown when widget fails to load.
  * Shows a friendly message and suggests retry.
- * ============================================================================
  */
 function WidgetError({ message }: { message: string }) {
   return (
@@ -329,7 +315,6 @@ function WidgetError({ message }: { message: string }) {
 
 /**
  * WIDGET EMPTY
- * ============================================================================
  * Empty state shown when widget has no data.
  * Can be used inside widgets for their empty states.
  *
@@ -343,7 +328,6 @@ function WidgetError({ message }: { message: string }) {
  * ) : (
  *   <TaskList tasks={tasks} />
  * )}
- * ============================================================================
  */
 export function WidgetEmpty({
   icon,

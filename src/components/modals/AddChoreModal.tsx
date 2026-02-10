@@ -1,7 +1,4 @@
 /**
- * ============================================================================
- * PRISM - Add Chore Modal
- * ============================================================================
  *
  * A modal dialog for creating and editing chores.
  * Includes form fields for title, category, frequency, points, and assignment.
@@ -13,7 +10,6 @@
  *     onChoreCreated={(chore) => console.log('Created:', chore)}
  *   />
  *
- * ============================================================================
  */
 
 'use client';

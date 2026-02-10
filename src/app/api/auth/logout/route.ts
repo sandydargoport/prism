@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Logout API Route
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Handles user logout by clearing session cookies.
  *
  * ENDPOINT: POST /api/auth/logout
@@ -15,7 +11,6 @@
  * - Follows REST conventions (GET should be idempotent)
  * - Allows for additional logout logic (e.g., logging, cleanup)
  *
- * ============================================================================
  */
 
 import { NextResponse } from 'next/server';
@@ -28,7 +23,6 @@ const isSecure = process.env.BASE_URL?.startsWith('https://') ?? process.env.NOD
 
 /**
  * POST /api/auth/logout
- * ============================================================================
  * Logs out the current user by clearing session cookies.
  *
  * RESPONSE:
@@ -41,7 +35,6 @@ const isSecure = process.env.BASE_URL?.startsWith('https://') ?? process.env.NOD
  * NOTE:
  * This endpoint invalidates the session in Redis and clears cookies.
  * The session cannot be used again after logout.
- * ============================================================================
  */
 export async function POST() {
   try {

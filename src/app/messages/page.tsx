@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Full Messages Page
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * The full messages page with all family messages.
  * This is the expanded version of the messages widget.
  *
@@ -14,7 +10,6 @@
  * - Add new messages
  * - Delete messages
  *
- * ============================================================================
  */
 
 import { Suspense } from 'react';

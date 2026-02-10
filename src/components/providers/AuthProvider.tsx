@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Authentication Provider
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Provides authentication state and utilities across the entire app.
  * Implements the "view freely, authenticate to act" model.
  *
@@ -24,7 +20,6 @@
  *     // ... proceed with action using user.id
  *   };
  *
- * ============================================================================
  */
 
 'use client';

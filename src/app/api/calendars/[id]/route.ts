@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Individual Calendar Source API Route
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Handles HTTP requests for individual calendar sources.
  *
  * ENDPOINT: /api/calendars/[id]
@@ -11,7 +7,6 @@
  * - PATCH:  Update calendar source (enable/disable, rename, etc.)
  * - DELETE: Remove calendar source
  *
- * ============================================================================
  */
 
 import { NextRequest, NextResponse } from 'next/server';

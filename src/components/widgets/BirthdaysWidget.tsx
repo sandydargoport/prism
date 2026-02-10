@@ -1,14 +1,10 @@
 /**
- * ============================================================================
- * PRISM - Birthdays & Milestones Widget
- * ============================================================================
  *
  * Train platform / arrivals board style widget showing upcoming birthdays,
  * anniversaries, and milestones sourced from Google Calendar.
  *
  * Columns: Event | Type | Yrs | Days Until | Date
  *
- * ============================================================================
  */
 
 'use client';

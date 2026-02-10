@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Switch Component
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Provides an accessible toggle switch for on/off states.
  * Used for enabling/disabling chores, settings toggles, etc.
  *
@@ -29,7 +25,6 @@
  *     <label htmlFor="notifications">Enable notifications</label>
  *   </div>
  *
- * ============================================================================
  */
 
 'use client';
@@ -40,7 +35,6 @@ import { cn } from '@/lib/utils';
 
 /**
  * SWITCH COMPONENT
- * ============================================================================
  * An accessible toggle switch built on Radix UI primitives.
  *
  * STATES:
@@ -62,7 +56,6 @@ import { cn } from '@/lib/utils';
  *   <Switch id="wifi" />
  *   <label htmlFor="wifi">Enable WiFi</label>
  * </div>
- * ============================================================================
  */
 const Switch = React.forwardRef<
   React.ElementRef<typeof SwitchPrimitives.Root>,

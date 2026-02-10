@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Root Layout
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * This is the root layout that wraps every page in the application.
  * Think of it as the HTML "shell" that contains all your pages.
  *
@@ -31,7 +27,6 @@
  * - Updating site metadata
  * - Adding global UI elements (navigation that appears on every page)
  *
- * ============================================================================
  */
 
 // Import global styles (including Tailwind CSS)
@@ -56,7 +51,6 @@ import { Screensaver } from '@/components/screensaver/Screensaver';
 
 /**
  * FONT CONFIGURATION
- * ============================================================================
  * We use Inter, a highly readable sans-serif font designed for screens.
  *
  * Configuration options:
@@ -69,7 +63,6 @@ import { Screensaver } from '@/components/screensaver/Screensaver';
  * - Excellent readability at all sizes
  * - Open source and free to use
  * - Supports many languages
- * ============================================================================
  */
 const inter = Inter({
   subsets: ['latin'],
@@ -80,7 +73,6 @@ const inter = Inter({
 
 /**
  * METADATA
- * ============================================================================
  * Defines information about the website shown in browser tabs, search results,
  * and when sharing links on social media.
  *
@@ -94,7 +86,6 @@ const inter = Inter({
  * - authors: Who created this site
  * - manifest: Links to PWA manifest for "Add to Home Screen"
  * - icons: Favicon and app icons
- * ============================================================================
  */
 export const metadata: Metadata = {
   // Title configuration
@@ -164,7 +155,6 @@ export const metadata: Metadata = {
 
 /**
  * VIEWPORT CONFIGURATION
- * ============================================================================
  * Controls how the page is displayed on different devices.
  *
  * These settings are important for:
@@ -176,7 +166,6 @@ export const metadata: Metadata = {
  * - Primary display is a 1920x1080 touchscreen
  * - We disable user scaling to prevent accidental zoom
  * - Theme color affects browser chrome on mobile
- * ============================================================================
  */
 export const viewport: Viewport = {
   // Width equals device width (responsive)
@@ -206,7 +195,6 @@ export const viewport: Viewport = {
 
 /**
  * ROOT LAYOUT COMPONENT
- * ============================================================================
  * The main layout component that wraps all pages.
  *
  * PROPS:
@@ -223,7 +211,6 @@ export const viewport: Viewport = {
  * - This is a Server Component (runs on the server)
  * - Can't use hooks or browser APIs directly
  * - For client-side features, wrap in a Client Component
- * ============================================================================
  */
 export default function RootLayout({
   children,

@@ -1,7 +1,4 @@
 /**
- * ============================================================================
- * PRISM - Maintenance Reminders API Route
- * ============================================================================
  *
  * ENDPOINT: /api/maintenance
  * - GET:  List maintenance reminders
@@ -12,7 +9,6 @@
  * - HVAC filter replacement (monthly)
  * - Lawn mower blade sharpening (annually)
  *
- * ============================================================================
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -24,13 +20,11 @@ import { createMaintenanceSchema, validateRequest } from '@/lib/validations';
 
 /**
  * GET /api/maintenance
- * ============================================================================
  * Lists maintenance reminders with optional filtering.
  *
  * QUERY PARAMETERS:
  * - category: Filter by category (car, home, appliance, yard, other)
  * - upcoming: "true" to show only upcoming/overdue items
- * ============================================================================
  */
 export async function GET(request: NextRequest) {
   const auth = await requireAuth();
@@ -109,7 +103,6 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/maintenance
- * ============================================================================
  * Creates a new maintenance reminder.
  *
  * REQUEST BODY:
@@ -124,7 +117,6 @@ export async function GET(request: NextRequest) {
  *   notes?: string
  *   createdBy?: string (user UUID)
  * }
- * ============================================================================
  */
 export async function POST(request: NextRequest) {
   const auth = await requireAuth();

@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Individual Message API Route
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Handles HTTP requests for a specific family message by ID.
  *
  * ENDPOINT: /api/messages/[id]
@@ -11,7 +7,6 @@
  * - PATCH:  Update a message (pin, mark important, edit text)
  * - DELETE: Delete a message
  *
- * ============================================================================
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -29,9 +24,7 @@ interface RouteParams {
 
 /**
  * GET /api/messages/[id]
- * ============================================================================
  * Retrieves a single message by ID.
- * ============================================================================
  */
 export async function GET(
   request: NextRequest,
@@ -80,7 +73,6 @@ export async function GET(
 
 /**
  * PATCH /api/messages/[id]
- * ============================================================================
  * Updates a specific message.
  *
  * REQUEST BODY (all fields optional):
@@ -92,7 +84,6 @@ export async function GET(
  * }
  *
  * Only the message author or parents can edit messages.
- * ============================================================================
  */
 export async function PATCH(
   request: NextRequest,
@@ -213,7 +204,6 @@ export async function PATCH(
 
 /**
  * DELETE /api/messages/[id]
- * ============================================================================
  * Deletes a specific message.
  *
  * AUTHORIZATION:
@@ -226,7 +216,6 @@ export async function PATCH(
  * - 403: Not authorized to delete this message
  * - 404: Message not found
  * - 500: Server error
- * ============================================================================
  */
 export async function DELETE(
   request: NextRequest,
@@ -238,9 +227,7 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    // ========================================================================
     // CHECK IF MESSAGE EXISTS AND GET OWNERSHIP INFO
-    // ========================================================================
     const [existingMessage] = await db
       .select({
         id: familyMessages.id,
@@ -257,9 +244,7 @@ export async function DELETE(
       );
     }
 
-    // ========================================================================
     // AUTHORIZATION CHECK
-    // ========================================================================
     const isAuthor = existingMessage.authorId === auth.userId;
     if (!isAuthor) {
       const forbidden = requireRole(auth, 'canDeleteAnyMessage');

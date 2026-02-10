@@ -1,7 +1,4 @@
 /**
- * ============================================================================
- * PRISM - Chore Approval API Route
- * ============================================================================
  *
  * ENDPOINT: /api/chores/[id]/approve
  * - POST: Approve a pending chore completion (parent only)
@@ -9,7 +6,6 @@
  * This endpoint allows parents to approve chore completions that are
  * pending approval. Only users with the 'parent' role can approve.
  *
- * ============================================================================
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -128,7 +124,6 @@ interface RouteParams {
 
 /**
  * POST /api/chores/[id]/approve
- * ============================================================================
  * Approves a pending chore completion.
  *
  * AUTHORIZATION:
@@ -145,7 +140,6 @@ interface RouteParams {
  * - 403: Not authorized (not a parent)
  * - 404: Chore not found or no pending completion
  * - 500: Server error
- * ============================================================================
  */
 export async function POST(
   request: NextRequest,
@@ -163,18 +157,14 @@ export async function POST(
       // Body is optional, ignore parse errors
     }
 
-    // ========================================================================
     // AUTHENTICATION & AUTHORIZATION CHECK
-    // ========================================================================
     const auth = await requireAuth();
     if (auth instanceof NextResponse) return auth;
 
     const forbidden = requireRole(auth, 'canApproveChores');
     if (forbidden) return forbidden;
 
-    // ========================================================================
     // VERIFY CHORE EXISTS
-    // ========================================================================
     const [chore] = await db
       .select({
         id: chores.id,
@@ -194,9 +184,7 @@ export async function POST(
       );
     }
 
-    // ========================================================================
     // FIND PENDING COMPLETION
-    // ========================================================================
     let pendingCompletionQuery = db
       .select({
         id: choreCompletions.id,

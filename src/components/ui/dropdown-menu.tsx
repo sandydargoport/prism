@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Dropdown Menu Component
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Provides an accessible dropdown menu for actions and selections.
  * Used for context menus, action menus, and multi-option selections.
  *
@@ -22,7 +18,6 @@
  *     </DropdownMenuContent>
  *   </DropdownMenu>
  *
- * ============================================================================
  */
 
 'use client';

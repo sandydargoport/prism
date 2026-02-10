@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Family Messages API Route
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Handles HTTP requests for family message board operations.
  * Messages are short notes that family members can post for everyone to see.
  *
@@ -16,7 +12,6 @@
  * - "Swim practice canceled today"
  * - "Dinner is in the fridge"
  *
- * ============================================================================
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -30,7 +25,6 @@ import { formatMessageRow } from '@/lib/utils/formatters';
 
 /**
  * GET /api/messages
- * ============================================================================
  * Lists all family messages.
  *
  * QUERY PARAMETERS:
@@ -53,7 +47,6 @@ import { formatMessageRow } from '@/lib/utils/formatters';
  *   limit: number,
  *   offset: number
  * }
- * ============================================================================
  */
 export async function GET(request: NextRequest) {
   const auth = await getDisplayAuth();
@@ -145,7 +138,6 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/messages
- * ============================================================================
  * Creates a new family message.
  *
  * REQUEST BODY:
@@ -169,7 +161,6 @@ export async function GET(request: NextRequest) {
  *   "authorId": "user-uuid",
  *   "important": true
  * }
- * ============================================================================
  */
 export async function POST(request: NextRequest) {
   return withAuth(async () => {

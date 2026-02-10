@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Utilities Index
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Re-exports all utility functions from a single entry point.
  * This makes imports cleaner throughout the application.
  *
@@ -14,7 +10,6 @@
  * YOU CAN WRITE:
  *   import { cn, formatDate } from '@/lib/utils';
  *
- * ============================================================================
  */
 
 // Class name utility (for Tailwind CSS)

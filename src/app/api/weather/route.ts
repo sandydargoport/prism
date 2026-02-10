@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Weather API Route
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Provides weather data from OpenWeatherMap API.
  *
  * ENDPOINT: /api/weather
@@ -12,7 +8,6 @@
  * QUERY PARAMETERS:
  * - location: Location string (e.g., "Chicago,IL,US")
  *
- * ============================================================================
  */
 
 import { NextRequest, NextResponse } from 'next/server';

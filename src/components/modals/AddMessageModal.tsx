@@ -1,7 +1,4 @@
 /**
- * ============================================================================
- * PRISM - Add Message Modal
- * ============================================================================
  *
  * A modal dialog for posting new family messages.
  * Messages are short notes for the family message board.
@@ -13,7 +10,6 @@
  *     onMessageCreated={(msg) => console.log('Posted:', msg)}
  *   />
  *
- * ============================================================================
  */
 
 'use client';

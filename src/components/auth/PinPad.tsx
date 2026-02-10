@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - PIN Pad Authentication Component
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Provides a touch-friendly PIN pad for family member authentication.
  * This is the primary way users identify themselves on the family dashboard.
  *
@@ -33,7 +29,6 @@
  *   <PinPad onSuccess={(user) => setCurrentUser(user)} />
  *   <PinPad familyMembers={members} onSuccess={handleLogin} />
  *
- * ============================================================================
  */
 
 'use client';
@@ -52,7 +47,6 @@ export type { FamilyMember };
 
 /**
  * PIN PAD PROPS
- * ============================================================================
  */
 export interface PinPadProps {
   /** Family members who can authenticate */
@@ -80,7 +74,6 @@ export interface PinPadProps {
 
 /**
  * PIN PAD COMPONENT
- * ============================================================================
  * A touch-friendly PIN entry interface for family authentication.
  *
  * COMPONENT ARCHITECTURE:
@@ -110,7 +103,6 @@ export interface PinPadProps {
  *   }}
  *   onError={(err) => toast.error(err)}
  * />
- * ============================================================================
  */
 export function PinPad({
   familyMembers: providedMembers,
@@ -124,9 +116,7 @@ export function PinPad({
   onCancel,
   className,
 }: PinPadProps) {
-  // ============================================================================
   // STATE
-  // ============================================================================
 
   // Family members from context or provided
   const { members: contextMembers, loading: contextLoading } = useFamily();
@@ -151,9 +141,7 @@ export function PinPad({
   // Loading state during PIN verification
   const [isVerifying, setIsVerifying] = useState(false);
 
-  // ============================================================================
   // HANDLERS
-  // ============================================================================
 
   /**
    * Handle family member selection
@@ -207,9 +195,7 @@ export function PinPad({
   }, []);
 
 
-  // ============================================================================
   // KEYBOARD SUPPORT
-  // ============================================================================
 
   /**
    * Handle keyboard input for PIN entry
@@ -244,9 +230,7 @@ export function PinPad({
   }, [selectedMember, isVerifying, handleKeyPress, handleBackspace, pin.length, pinLength]);
 
 
-  // ============================================================================
   // PIN VERIFICATION
-  // ============================================================================
 
   /**
    * Auto-submit when PIN reaches full length
@@ -296,9 +280,7 @@ export function PinPad({
   }, [pin, pinLength, selectedMember, onPinSubmit, onSuccess, onError, triggerShake]);
 
 
-  // ============================================================================
   // RENDER
-  // ============================================================================
 
   return (
     <div
@@ -406,9 +388,7 @@ export function PinPad({
 
 /**
  * MEMBER SELECTION COMPONENT
- * ============================================================================
  * Displays a grid of family member avatars for selection.
- * ============================================================================
  */
 function MemberSelection({
   members,
@@ -451,10 +431,8 @@ function MemberSelection({
 
 /**
  * PIN DISPLAY COMPONENT
- * ============================================================================
  * Shows dots indicating PIN entry progress.
  * Filled dots = entered digits, empty dots = remaining positions.
- * ============================================================================
  */
 function PinDisplay({
   length,
@@ -495,7 +473,6 @@ function PinDisplay({
 
 /**
  * NUMBER PAD COMPONENT
- * ============================================================================
  * The actual numeric keypad with 0-9, backspace, and clear.
  *
  * LAYOUT:
@@ -509,7 +486,6 @@ function PinDisplay({
  * - Adequate spacing between buttons
  * - Visual feedback on press (active state)
  * - Large, clear text
- * ============================================================================
  */
 function NumberPad({
   onKeyPress,
@@ -584,9 +560,7 @@ function NumberPad({
 
 /**
  * NUMBER KEY COMPONENT
- * ============================================================================
  * A single key on the number pad.
- * ============================================================================
  */
 function NumberKey({
   children,
@@ -635,9 +609,7 @@ function NumberKey({
 
 /**
  * GET DEMO FAMILY MEMBERS
- * ============================================================================
  * Returns demo family member data for development/testing.
- * ============================================================================
  */
 function getDemoFamilyMembers(): FamilyMember[] {
   return [

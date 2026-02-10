@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Google Calendar Integration
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Provides Google Calendar API integration for syncing calendar events.
  *
  * FEATURES:
@@ -12,7 +8,6 @@
  * - Fetch and sync events
  * - Create, update, delete events
  *
- * ============================================================================
  */
 
 /**

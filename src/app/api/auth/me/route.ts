@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Current User API Route
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Returns the currently authenticated user's information.
  * This is useful for:
  * - Verifying if a user is logged in
@@ -12,7 +8,6 @@
  *
  * ENDPOINT: GET /api/auth/me
  *
- * ============================================================================
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -25,7 +20,6 @@ import { validateSession } from '@/lib/auth/session';
 
 /**
  * GET /api/auth/me
- * ============================================================================
  * Returns the currently logged-in user.
  *
  * AUTHENTICATION:
@@ -49,7 +43,6 @@ import { validateSession } from '@/lib/auth/session';
  * 1. Valid and not expired
  * 2. Associated with an existing user
  * 3. Not invalidated by logout
- * ============================================================================
  */
 export async function GET(request: NextRequest) {
   try {

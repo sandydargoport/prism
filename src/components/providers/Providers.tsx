@@ -1,13 +1,8 @@
 /**
- * ============================================================================
- * PRISM - Combined Providers Component
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Wraps all application providers in a single client component.
  * This is needed because the root layout is a Server Component.
  *
- * ============================================================================
  */
 
 'use client';
@@ -23,10 +18,8 @@ interface ProvidersProps {
 
 /**
  * PROVIDERS COMPONENT
- * ============================================================================
  * Wraps the application with all necessary providers.
  * AuthProvider must be inside ThemeProvider since QuickPinModal uses styled components.
- * ============================================================================
  */
 export function Providers({ children }: ProvidersProps) {
   return (

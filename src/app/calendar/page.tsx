@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Full Calendar Page
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * The full-screen calendar view with multiple display options.
  * This is the expanded version of the calendar widget.
  *
@@ -20,7 +16,6 @@
  * - Event details (tap on event)
  * - Navigation (previous/next period)
  *
- * ============================================================================
  */
 
 import { Suspense } from 'react';
@@ -38,10 +33,8 @@ export const metadata = {
 
 /**
  * CALENDAR PAGE COMPONENT
- * ============================================================================
  * Server component that renders the calendar page.
  * The CalendarView is a client component for interactivity.
- * ============================================================================
  */
 export default function CalendarPage() {
   return (
@@ -56,9 +49,7 @@ export default function CalendarPage() {
 
 /**
  * CALENDAR SKELETON
- * ============================================================================
  * Loading placeholder while the calendar component loads.
- * ============================================================================
  */
 function CalendarSkeleton() {
   return (

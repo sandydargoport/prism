@@ -1,16 +1,11 @@
 /**
- * ============================================================================
- * PRISM - Calendar Sources API Route
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Handles HTTP requests for calendar sources (connections to external calendars).
  *
  * ENDPOINT: /api/calendars
  * - GET:  List all calendar sources
  * - POST: Add a new calendar source (for local calendars)
  *
- * ============================================================================
  */
 
 import { NextRequest, NextResponse } from 'next/server';

@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - PIN Login API Route
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Handles PIN-based authentication for family members.
  * Verifies the user's PIN and creates a session.
  *
@@ -25,7 +21,6 @@
  * - Short session expiry for children
  * - Only guests can login without a PIN
  *
- * ============================================================================
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -47,7 +42,6 @@ const isSecure = process.env.BASE_URL?.startsWith('https://') ?? process.env.NOD
 
 /**
  * POST /api/auth/login
- * ============================================================================
  * Authenticates a user with their PIN.
  *
  * REQUEST BODY:
@@ -71,7 +65,6 @@ const isSecure = process.env.BASE_URL?.startsWith('https://') ?? process.env.NOD
  * COOKIES SET:
  * - prism_session: Session token (httpOnly, secure in production)
  * - prism_user: User ID (for quick access, not httpOnly)
- * ============================================================================
  */
 export async function POST(request: NextRequest) {
   try {

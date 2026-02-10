@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Home Page (Dashboard)
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * This is the main dashboard page - the home screen that displays when you
  * access Prism. It shows widgets for calendar, tasks, weather, and more.
  *
@@ -27,7 +23,6 @@
  * NOTE: The AppShell (with side navigation) is now integrated into the
  * Dashboard component itself, so auth state can control nav visibility.
  *
- * ============================================================================
  */
 
 import { DashboardClient } from './DashboardClient';
@@ -35,13 +30,11 @@ import { DashboardClient } from './DashboardClient';
 
 /**
  * PAGE METADATA
- * ============================================================================
  * This overrides the default metadata from layout.tsx for this specific page.
  * The 'title' here becomes: "Dashboard | Prism" (using the template)
  *
  * In Next.js 14, metadata is handled on the server before sending HTML.
  * This ensures search engines and social media previews get the right info.
- * ============================================================================
  */
 export const metadata = {
   title: 'Dashboard',
@@ -51,7 +44,6 @@ export const metadata = {
 
 /**
  * HOME PAGE COMPONENT
- * ============================================================================
  * The main dashboard page component.
  *
  * CURRENT FEATURES:
@@ -72,12 +64,9 @@ export const metadata = {
  * - Full screen layout optimized for 1920x1080 touchscreen
  * - Responsive grid that adapts to smaller screens
  * - Dark mode support via CSS variables
- * ============================================================================
  */
 export default function HomePage() {
-  // ==========================================================================
   // FUTURE: Server-side data fetching
-  // ==========================================================================
   // In a production app, you would fetch initial data here:
   //
   // const weatherData = await fetchWeather();
@@ -86,13 +75,11 @@ export default function HomePage() {
   //
   // Then pass them as props to Dashboard for hydration.
   // This improves initial load time since data arrives with the HTML.
-  // ==========================================================================
 
   return (
     <main className="min-h-screen bg-background">
       {/*
         DASHBOARD COMPONENT
-        ====================
         The main interactive dashboard with all widgets.
 
         Props:

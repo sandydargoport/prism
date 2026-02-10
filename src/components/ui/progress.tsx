@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Progress Component
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Provides an accessible progress bar for showing completion percentage.
  * Used for shopping list progress, chore completion tracking, etc.
  *
@@ -22,7 +18,6 @@
  *   <Progress value={75} className="h-2" />  // Custom height
  *   <Progress value={100} />  // Fully complete
  *
- * ============================================================================
  */
 
 'use client';
@@ -33,7 +28,6 @@ import { cn } from '@/lib/utils';
 
 /**
  * PROGRESS COMPONENT
- * ============================================================================
  * An accessible progress bar built on Radix UI primitives.
  *
  * PROPS:
@@ -53,7 +47,6 @@ import { cn } from '@/lib/utils';
  * const total = 10;
  * const progress = (checked / total) * 100;
  * <Progress value={progress} />
- * ============================================================================
  */
 const Progress = React.forwardRef<
   React.ElementRef<typeof ProgressPrimitive.Root>,

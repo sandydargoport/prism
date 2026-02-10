@@ -1,7 +1,4 @@
 /**
- * ============================================================================
- * PRISM - Select Component
- * ============================================================================
  *
  * A dropdown select component built on Radix UI Select.
  * Used for choosing from a list of options.
@@ -17,7 +14,6 @@
  *     </SelectContent>
  *   </Select>
  *
- * ============================================================================
  */
 
 'use client';

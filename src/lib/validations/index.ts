@@ -1,25 +1,17 @@
 /**
- * ============================================================================
- * PRISM - API Validation Schemas
- * ============================================================================
  * Zod schemas for validating API request bodies.
  * Use these in API routes to ensure type-safe input.
- * ============================================================================
  */
 
 import { z } from 'zod';
 
-// ============================================================================
 // COMMON SCHEMAS
-// ============================================================================
 
 export const uuidSchema = z.string().uuid();
 export const hexColorSchema = z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid hex color');
 export const isoDateSchema = z.string().datetime();
 
-// ============================================================================
 // EVENT SCHEMAS
-// ============================================================================
 
 const eventBaseSchema = z.object({
   title: z.string().min(1, 'Title is required').max(255),
@@ -46,9 +38,7 @@ export const createEventSchema = eventBaseSchema.refine(
 
 export const updateEventSchema = eventBaseSchema.partial();
 
-// ============================================================================
 // TASK SCHEMAS
-// ============================================================================
 
 export const createTaskSchema = z.object({
   title: z.string().min(1, 'Title is required').max(255),
@@ -65,9 +55,7 @@ export const updateTaskSchema = createTaskSchema.partial().extend({
   completed: z.boolean().optional(),
 });
 
-// ============================================================================
 // CHORE SCHEMAS
-// ============================================================================
 
 export const createChoreSchema = z.object({
   title: z.string().min(1, 'Title is required').max(255),
@@ -91,9 +79,7 @@ export const completeChoreSchema = z.object({
   notes: z.string().max(1000).optional(),
 });
 
-// ============================================================================
 // SHOPPING SCHEMAS
-// ============================================================================
 
 export const createShoppingListSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
@@ -124,9 +110,7 @@ export const updateShoppingItemSchema = createShoppingItemSchema.partial().exten
   checked: z.boolean().optional(),
 });
 
-// ============================================================================
 // MEAL SCHEMAS
-// ============================================================================
 
 export const createMealSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
@@ -150,9 +134,7 @@ export const updateMealSchema = createMealSchema.partial().extend({
   cookedBy: uuidSchema.nullable().optional(),
 });
 
-// ============================================================================
 // MESSAGE SCHEMAS
-// ============================================================================
 
 export const createMessageSchema = z.object({
   message: z.string().min(1, 'Message is required').max(1000),
@@ -169,9 +151,7 @@ export const updateMessageSchema = z.object({
   expiresAt: isoDateSchema.nullable().optional(),
 });
 
-// ============================================================================
 // MAINTENANCE SCHEMAS
-// ============================================================================
 
 export const createMaintenanceSchema = z.object({
   title: z.string().min(1, 'Title is required').max(255),
@@ -192,9 +172,7 @@ export const completeMaintenanceSchema = z.object({
   notes: z.string().max(2000).optional(),
 });
 
-// ============================================================================
 // BIRTHDAY SCHEMAS
-// ============================================================================
 
 export const createBirthdaySchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
@@ -204,9 +182,7 @@ export const createBirthdaySchema = z.object({
   sendCardDaysBefore: z.number().int().min(0).max(30).optional().default(7),
 });
 
-// ============================================================================
 // GOAL SCHEMAS
-// ============================================================================
 
 export const createGoalSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
@@ -221,9 +197,7 @@ export const createGoalSchema = z.object({
 
 export const updateGoalSchema = createGoalSchema.partial();
 
-// ============================================================================
 // LAYOUT SCHEMAS
-// ============================================================================
 
 const widgetConfigSchema = z.object({
   i: z.string(),
@@ -247,9 +221,7 @@ export const createLayoutSchema = z.object({
 
 export const updateLayoutSchema = createLayoutSchema.partial();
 
-// ============================================================================
 // HELPER FUNCTION
-// ============================================================================
 
 /**
  * Validates request body and returns parsed data or error response

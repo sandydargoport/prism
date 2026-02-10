@@ -1,7 +1,4 @@
 /**
- * ============================================================================
- * PRISM - Birthdays API Route
- * ============================================================================
  *
  * ENDPOINT: /api/birthdays
  * - GET:  List birthdays
@@ -13,7 +10,6 @@
  * EXAMPLE:
  * GET /api/birthdays?upcoming=true
  *
- * ============================================================================
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -25,9 +21,7 @@ import { createBirthdaySchema, validateRequest } from '@/lib/validations';
 
 /**
  * GET /api/birthdays
- * ============================================================================
  * Lists birthdays with optional filtering.
- * ============================================================================
  */
 export async function GET(request: NextRequest) {
   const auth = await getDisplayAuth();
@@ -132,7 +126,6 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/birthdays
- * ============================================================================
  * Creates a new birthday.
  *
  * REQUEST BODY:
@@ -143,7 +136,6 @@ export async function GET(request: NextRequest) {
  *   giftIdeas?: string
  *   sendCardDaysBefore?: number (default: 7)
  * }
- * ============================================================================
  */
 export async function POST(request: NextRequest) {
   const auth = await requireAuth();

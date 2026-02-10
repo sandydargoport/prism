@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Tasks Widget
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Displays a list of tasks/to-dos for the family.
  * Shows tasks organized by person or priority.
  *
@@ -25,7 +21,6 @@
  *   <TasksWidget userId="alex" />
  *   <TasksWidget showCompleted={false} />
  *
- * ============================================================================
  */
 
 'use client';
@@ -41,9 +36,7 @@ import { Button, Checkbox, Badge, ScrollArea, UserAvatar } from '@/components/ui
 
 /**
  * TASK TYPE
- * ============================================================================
  * Represents a single task item.
- * ============================================================================
  */
 // Task type imported from shared types
 import type { Task } from '@/types';
@@ -52,7 +45,6 @@ export type { Task };
 
 /**
  * TASKS WIDGET PROPS
- * ============================================================================
  */
 export interface TasksWidgetProps {
   /** Tasks to display (if provided externally) */
@@ -80,7 +72,6 @@ export interface TasksWidgetProps {
 
 /**
  * TASKS WIDGET COMPONENT
- * ============================================================================
  * Displays a list of tasks with completion checkboxes.
  *
  * @example Basic usage
@@ -94,7 +85,6 @@ export interface TasksWidgetProps {
  *   onTaskToggle={(id, done) => updateTask(id, done)}
  *   onAddClick={() => openAddTaskDialog()}
  * />
- * ============================================================================
  */
 export function TasksWidget({
   tasks: externalTasks,
@@ -217,9 +207,7 @@ export function TasksWidget({
 
 /**
  * TASK ITEM
- * ============================================================================
  * A single task row with checkbox, title, and metadata.
- * ============================================================================
  */
 function TaskItem({
   task,
@@ -319,9 +307,7 @@ function TaskItem({
 
 /**
  * FORMAT DUE DATE
- * ============================================================================
  * Formats a due date in a human-friendly way.
- * ============================================================================
  */
 function formatDueDate(date: Date): string {
   if (isToday(date)) return 'Today';

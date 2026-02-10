@@ -1,14 +1,10 @@
 /**
- * ============================================================================
- * PRISM - Individual Birthday API Route
- * ============================================================================
  *
  * ENDPOINT: /api/birthdays/[id]
  * - GET:    Get a specific birthday by ID
  * - PATCH:  Update a specific birthday
  * - DELETE: Delete a specific birthday
  *
- * ============================================================================
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -27,9 +23,7 @@ interface RouteParams {
 
 /**
  * GET /api/birthdays/[id]
- * ============================================================================
  * Retrieves a single birthday by its ID.
- * ============================================================================
  */
 export async function GET(
   request: NextRequest,
@@ -103,7 +97,6 @@ export async function GET(
 
 /**
  * PATCH /api/birthdays/[id]
- * ============================================================================
  * Updates a specific birthday.
  *
  * REQUEST BODY (all fields optional):
@@ -114,7 +107,6 @@ export async function GET(
  *   giftIdeas?: string | null
  *   sendCardDaysBefore?: number
  * }
- * ============================================================================
  */
 export async function PATCH(
   request: NextRequest,
@@ -226,9 +218,7 @@ export async function PATCH(
 
 /**
  * DELETE /api/birthdays/[id]
- * ============================================================================
  * Deletes a specific birthday.
- * ============================================================================
  */
 export async function DELETE(
   request: NextRequest,

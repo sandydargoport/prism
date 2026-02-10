@@ -1,15 +1,10 @@
 /**
- * ============================================================================
- * PRISM - Database Seed Script
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Populates the database with sample data for development and testing.
  *
  * HOW TO RUN:
  * npm run db:seed
  *
- * ============================================================================
  */
 
 import { drizzle } from 'drizzle-orm/postgres-js';
@@ -29,9 +24,7 @@ const db = drizzle(client, { schema });
 async function seed() {
   console.log('Seeding database...\n');
 
-  // ============================================================================
   // USERS (Family Members)
-  // ============================================================================
   console.log('Creating family members...');
 
   // Hash PINs (using "1234" as default PIN for all users in demo)
@@ -80,9 +73,7 @@ async function seed() {
 
   console.log(`  Created ${4} family members`);
 
-  // ============================================================================
   // TASKS
-  // ============================================================================
   console.log('Creating tasks...');
 
   const today = new Date();
@@ -151,9 +142,7 @@ async function seed() {
 
   console.log('  Created 6 tasks');
 
-  // ============================================================================
   // FAMILY MESSAGES
-  // ============================================================================
   console.log('Creating family messages...');
 
   await db.insert(schema.familyMessages).values([
@@ -182,9 +171,7 @@ async function seed() {
 
   console.log('  Created 4 family messages');
 
-  // ============================================================================
   // EVENTS
-  // ============================================================================
   console.log('Creating calendar events...');
 
   const eventDate1 = new Date(today);
@@ -232,9 +219,7 @@ async function seed() {
 
   console.log('  Created 3 events');
 
-  // ============================================================================
   // CHORES
-  // ============================================================================
   console.log('Creating chores...');
 
   const choresResult = await db
@@ -302,9 +287,7 @@ async function seed() {
 
   console.log('  Created 2 chore completions');
 
-  // ============================================================================
   // SHOPPING LISTS
-  // ============================================================================
   console.log('Creating shopping lists...');
 
   const shoppingListsResult = await db
@@ -381,9 +364,7 @@ async function seed() {
 
   console.log('  Created 6 shopping items');
 
-  // ============================================================================
   // MEALS
-  // ============================================================================
   console.log('Creating meal plans...');
 
   const weekStart = new Date(today);
@@ -423,9 +404,7 @@ async function seed() {
 
   console.log('  Created 4 meal plans');
 
-  // ============================================================================
   // MAINTENANCE REMINDERS
-  // ============================================================================
   console.log('Creating maintenance reminders...');
 
   const nextMonth = new Date(today);
@@ -462,9 +441,7 @@ async function seed() {
 
   console.log('  Created 3 maintenance reminders');
 
-  // ============================================================================
   // BIRTHDAYS
-  // ============================================================================
   console.log('Creating birthdays...');
 
   await db.insert(schema.birthdays).values([
@@ -482,9 +459,7 @@ async function seed() {
 
   console.log('  Created 2 birthdays');
 
-  // ============================================================================
   // GOALS
-  // ============================================================================
   console.log('Creating goals...');
 
   await db.insert(schema.goals).values([
@@ -517,9 +492,7 @@ async function seed() {
 
   console.log('  Created 3 goals');
 
-  // ============================================================================
   // SETTINGS
-  // ============================================================================
   console.log('Creating default settings...');
 
   await db.insert(schema.settings).values([
@@ -544,9 +517,7 @@ async function seed() {
 
   console.log('  Created 3 settings');
 
-  // ============================================================================
   // LAYOUTS
-  // ============================================================================
   console.log('Creating default layout...');
 
   await db.insert(schema.layouts).values([
@@ -570,9 +541,7 @@ async function seed() {
 
   console.log('  Created 1 layout');
 
-  // ============================================================================
   // DONE
-  // ============================================================================
   console.log('\nDatabase seeded successfully!');
   console.log('\nDefault PIN for all users: 1234');
 

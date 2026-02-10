@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Chores Widget
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Displays a list of household chores with completion tracking.
  *
  * FEATURES:
@@ -24,7 +20,6 @@
  *   <ChoresWidget userId="alex" />
  *   <ChoresWidget showDisabled={false} />
  *
- * ============================================================================
  */
 
 'use client';
@@ -39,9 +34,7 @@ import { Button, Badge, ScrollArea, UserAvatar } from '@/components/ui';
 
 /**
  * CHORE TYPE
- * ============================================================================
  * Represents a single chore item.
- * ============================================================================
  */
 // Chore type imported from shared types
 import type { Chore } from '@/types';
@@ -49,7 +42,6 @@ export type { Chore };
 
 /**
  * CHORES WIDGET PROPS
- * ============================================================================
  */
 export interface ChoresWidgetProps {
   /** Chores to display (if provided externally) */
@@ -76,7 +68,6 @@ export interface ChoresWidgetProps {
 
 /**
  * CHORES WIDGET COMPONENT
- * ============================================================================
  * Displays a list of chores with completion tracking.
  *
  * @example Basic usage
@@ -90,7 +81,6 @@ export interface ChoresWidgetProps {
  *   onChoreComplete={(id) => handleComplete(id)}
  *   onAddClick={() => openAddChoreDialog()}
  * />
- * ============================================================================
  */
 export function ChoresWidget({
   chores: externalChores,
@@ -217,9 +207,7 @@ export function ChoresWidget({
 
 /**
  * CHORE ITEM
- * ============================================================================
  * A single chore row with completion button, title, and metadata.
- * ============================================================================
  */
 function ChoreItem({
   chore,
@@ -363,9 +351,7 @@ function ChoreItem({
 
 /**
  * FORMAT DUE DATE
- * ============================================================================
  * Formats a due date in a human-friendly way.
- * ============================================================================
  */
 function formatDueDate(dateString: string): string {
   const date = parseISO(dateString);
@@ -377,9 +363,7 @@ function formatDueDate(dateString: string): string {
 
 /**
  * FORMAT FREQUENCY
- * ============================================================================
  * Formats chore frequency in a human-friendly way.
- * ============================================================================
  */
 function formatFrequency(frequency: string, customIntervalDays?: number): string {
   switch (frequency) {
@@ -400,9 +384,7 @@ function formatFrequency(frequency: string, customIntervalDays?: number): string
 
 /**
  * GET CATEGORY EMOJI
- * ============================================================================
  * Returns an emoji for the chore category.
- * ============================================================================
  */
 function getCategoryEmoji(category: string): string {
   switch (category) {

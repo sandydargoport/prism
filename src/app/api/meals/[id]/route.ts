@@ -1,14 +1,10 @@
 /**
- * ============================================================================
- * PRISM - Individual Meal API Route
- * ============================================================================
  *
  * ENDPOINT: /api/meals/[id]
  * - GET:    Get a specific meal by ID
  * - PATCH:  Update a specific meal (including marking as cooked)
  * - DELETE: Delete a specific meal
  *
- * ============================================================================
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -31,9 +27,7 @@ interface RouteParams {
 
 /**
  * GET /api/meals/[id]
- * ============================================================================
  * Retrieves a single meal by its ID.
- * ============================================================================
  */
 export async function GET(
   request: NextRequest,
@@ -96,7 +90,6 @@ export async function GET(
 
 /**
  * PATCH /api/meals/[id]
- * ============================================================================
  * Updates a specific meal.
  *
  * REQUEST BODY (all fields optional):
@@ -107,7 +100,6 @@ export async function GET(
  *   notes?: string | null
  *   cooked?: boolean  // Mark as cooked/uncooked
  * }
- * ============================================================================
  */
 export async function PATCH(
   request: NextRequest,
@@ -227,9 +219,7 @@ export async function PATCH(
 
 /**
  * DELETE /api/meals/[id]
- * ============================================================================
  * Deletes a specific meal.
- * ============================================================================
  */
 export async function DELETE(
   request: NextRequest,

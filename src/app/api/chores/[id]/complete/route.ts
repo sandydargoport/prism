@@ -1,7 +1,4 @@
 /**
- * ============================================================================
- * PRISM - Chore Completion API Route
- * ============================================================================
  *
  * ENDPOINT: /api/chores/[id]/complete
  * - POST: Mark a chore as completed
@@ -17,7 +14,6 @@
  *   - Completion is auto-approved
  *   - Points are immediately awarded
  *
- * ============================================================================
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -162,7 +158,6 @@ interface RouteParams {
 
 /**
  * POST /api/chores/[id]/complete
- * ============================================================================
  * Records a chore completion.
  *
  * REQUEST BODY:
@@ -179,7 +174,6 @@ interface RouteParams {
  *   "photoUrl": "https://...",
  *   "notes": "Took out all three bins"
  * }
- * ============================================================================
  */
 export async function POST(
   request: NextRequest,
@@ -253,9 +247,7 @@ export async function POST(
       );
     }
 
-    // ========================================================================
     // AUTHORIZATION CHECK - Children can only complete their own assigned chores
-    // ========================================================================
     const isChild = completingUser.role === 'child';
 
     // Fetch chore assignment to check ownership
@@ -271,9 +263,7 @@ export async function POST(
       );
     }
 
-    // ========================================================================
     // CHECK FOR EXISTING PENDING COMPLETION
-    // ========================================================================
     // Prevent children from creating duplicate completions while one is pending
     const [existingPendingCompletion] = await db
       .select({

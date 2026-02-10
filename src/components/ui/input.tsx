@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Input Component
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Provides a styled text input component for forms.
  * Used for entering text, numbers, dates, etc.
  *
@@ -18,7 +14,6 @@
  *   <Input type="email" value={email} onChange={handleChange} />
  *   <Input type="password" />
  *
- * ============================================================================
  */
 
 import * as React from 'react';
@@ -27,17 +22,14 @@ import { cn } from '@/lib/utils';
 
 /**
  * INPUT PROPS
- * ============================================================================
  * Extends standard HTML input attributes.
  * No additional props needed - we just style the native input.
- * ============================================================================
  */
 export type InputProps = React.InputHTMLAttributes<HTMLInputElement>;
 
 
 /**
  * INPUT COMPONENT
- * ============================================================================
  * A styled text input that works with all standard input types.
  *
  * STYLING NOTES:
@@ -61,7 +53,6 @@ export type InputProps = React.InputHTMLAttributes<HTMLInputElement>;
  *   Email
  *   <Input type="email" />
  * </label>
- * ============================================================================
  */
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, ...props }, ref) => {

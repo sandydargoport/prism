@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Full Shopping Page
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * The full shopping list management page with multiple lists and items.
  * This is the expanded version of the shopping widget.
  *
@@ -16,7 +12,6 @@
  * - Sort by category
  * - Progress tracking
  *
- * ============================================================================
  */
 
 import { Suspense } from 'react';

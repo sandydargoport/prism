@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Checkbox Component
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Provides an accessible checkbox component for binary choices.
  * Used for task completion, chore tracking, shopping list items, etc.
  *
@@ -29,7 +25,6 @@
  *     <label htmlFor="task1">Complete the task</label>
  *   </div>
  *
- * ============================================================================
  */
 
 'use client';
@@ -42,7 +37,6 @@ import { cn } from '@/lib/utils';
 
 /**
  * CHECKBOX COMPONENT
- * ============================================================================
  * An accessible checkbox built on Radix UI primitives.
  *
  * RADIX UI:
@@ -69,7 +63,6 @@ import { cn } from '@/lib/utils';
  *   <Checkbox id="terms" />
  *   <label htmlFor="terms">Accept terms</label>
  * </div>
- * ============================================================================
  */
 const Checkbox = React.forwardRef<
   React.ElementRef<typeof CheckboxPrimitive.Root>,

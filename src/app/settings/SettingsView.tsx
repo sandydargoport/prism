@@ -32,9 +32,7 @@ import { TaskIntegrationsSection } from './sections/TaskIntegrationsSection';
 import { ShoppingIntegrationsSection } from './sections/ShoppingIntegrationsSection';
 
 
-// ============================================================================
 // Exported hooks (consumed by other components)
-// ============================================================================
 
 const DISPLAY_CONTEXTS_STORAGE_KEY = 'prism-display-contexts';
 const TARGET_RESOLUTION_STORAGE_KEY = 'prism-target-resolution';
@@ -106,9 +104,7 @@ export function useTargetResolution() {
 }
 
 
-// ============================================================================
 // Main Settings View
-// ============================================================================
 
 export function SettingsView() {
   const searchParams = useSearchParams();

@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Calendar Events API Route
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Handles HTTP requests for calendar events.
  * Events can be synced from external sources (Google, Apple) or created locally.
  *
@@ -20,7 +16,6 @@
  *
  * For synced events, we store the externalEventId to track changes.
  *
- * ============================================================================
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -39,9 +34,7 @@ const EVENTS_CACHE_TTL = 5 * 60;
 
 /**
  * EVENT RESPONSE TYPE
- * ============================================================================
  * The shape of event data returned by the API.
- * ============================================================================
  */
 interface EventResponse {
   id: string;
@@ -68,7 +61,6 @@ interface EventResponse {
 
 /**
  * GET /api/events
- * ============================================================================
  * Lists calendar events within a date range.
  *
  * QUERY PARAMETERS:
@@ -85,7 +77,6 @@ interface EventResponse {
  * NOTE:
  * Always filter by date range to avoid returning huge datasets.
  * The calendar widget typically shows 3-7 days at a time.
- * ============================================================================
  */
 export async function GET(request: NextRequest) {
   const auth = await getDisplayAuth();
@@ -279,7 +270,6 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/events
- * ============================================================================
  * Creates a new calendar event.
  *
  * REQUEST BODY:
@@ -314,7 +304,6 @@ export async function GET(request: NextRequest) {
  *   "recurring": true,
  *   "recurrenceRule": "FREQ=WEEKLY;BYDAY=WE"
  * }
- * ============================================================================
  */
 export async function POST(request: NextRequest) {
   const auth = await requireAuth();

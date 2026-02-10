@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - Individual Event API Route
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Handles HTTP requests for a specific calendar event by ID.
  *
  * ENDPOINT: /api/events/[id]
@@ -16,7 +12,6 @@
  * changes should be pushed back to the source calendar. This is handled
  * by the sync service (not implemented in this route).
  *
- * ============================================================================
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -36,9 +31,7 @@ interface RouteParams {
 
 /**
  * GET /api/events/[id]
- * ============================================================================
  * Retrieves a single event by ID.
- * ============================================================================
  */
 export async function GET(
   request: NextRequest,
@@ -118,7 +111,6 @@ export async function GET(
 
 /**
  * PATCH /api/events/[id]
- * ============================================================================
  * Updates a specific event.
  *
  * REQUEST BODY (all fields optional):
@@ -140,7 +132,6 @@ export async function GET(
  * If this event has an externalEventId (synced from external calendar),
  * the changes should be pushed to the external calendar.
  * This would be handled by a separate sync service.
- * ============================================================================
  */
 export async function PATCH(
   request: NextRequest,
@@ -417,7 +408,6 @@ export async function PATCH(
 
 /**
  * DELETE /api/events/[id]
- * ============================================================================
  * Deletes a specific event.
  *
  * SYNC NOTE:
@@ -431,7 +421,6 @@ export async function PATCH(
  *
  * This simple implementation deletes the single event record.
  * Recurring event handling would be more complex in production.
- * ============================================================================
  */
 export async function DELETE(
   request: NextRequest,

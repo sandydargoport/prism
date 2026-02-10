@@ -1,13 +1,9 @@
 /**
- * ============================================================================
- * PRISM - Individual Shopping Item API Route
- * ============================================================================
  *
  * ENDPOINT: /api/shopping-items/[id]
  * - PATCH:  Update a shopping item (including toggling checked status)
  * - DELETE: Delete a shopping item
  *
- * ============================================================================
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -27,7 +23,6 @@ interface RouteParams {
 
 /**
  * PATCH /api/shopping-items/[id]
- * ============================================================================
  * Updates a shopping item (commonly used to toggle checked status).
  *
  * REQUEST BODY (all fields optional):
@@ -41,7 +36,6 @@ interface RouteParams {
  *   recurrenceInterval?: "weekly" | "monthly"
  *   notes?: string
  * }
- * ============================================================================
  */
 export async function PATCH(
   request: NextRequest,
@@ -79,9 +73,7 @@ export async function PATCH(
       );
     }
 
-    // ========================================================================
     // AUTHORIZATION CHECK - Only list owner can check off items on their list
-    // ========================================================================
     if ('checked' in validation.data) {
       // Get list ownership info
       const [list] = await db
@@ -163,9 +155,7 @@ export async function PATCH(
 
 /**
  * DELETE /api/shopping-items/[id]
- * ============================================================================
  * Deletes a shopping item.
- * ============================================================================
  */
 export async function DELETE(
   request: NextRequest,

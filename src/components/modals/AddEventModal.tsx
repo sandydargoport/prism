@@ -1,7 +1,4 @@
 /**
- * ============================================================================
- * PRISM - Add Event Modal
- * ============================================================================
  *
  * A modal dialog for creating and editing calendar events.
  * Includes form fields for title, date/time, location, and settings.
@@ -13,7 +10,6 @@
  *     onEventCreated={(event) => console.log('Created:', event)}
  *   />
  *
- * ============================================================================
  */
 
 'use client';

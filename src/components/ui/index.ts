@@ -1,9 +1,5 @@
 /**
- * ============================================================================
- * PRISM - UI Components Index
- * ============================================================================
  *
- * WHAT THIS FILE DOES:
  * Re-exports all UI components from a single entry point.
  * This makes imports cleaner throughout the application.
  *
@@ -15,7 +11,6 @@
  * YOU CAN WRITE:
  *   import { Button, Card, CardContent, Input } from '@/components/ui';
  *
- * ============================================================================
  */
 
 // Button

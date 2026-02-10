@@ -1,14 +1,10 @@
 /**
- * ============================================================================
- * PRISM - Individual Chore API Route
- * ============================================================================
  *
  * ENDPOINT: /api/chores/[id]
  * - GET:    Get a specific chore by ID
  * - PATCH:  Update a specific chore
  * - DELETE: Delete a specific chore
  *
- * ============================================================================
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -28,9 +24,7 @@ interface RouteParams {
 
 /**
  * GET /api/chores/[id]
- * ============================================================================
  * Retrieves a single chore by its ID.
- * ============================================================================
  */
 export async function GET(
   request: NextRequest,
@@ -117,7 +111,6 @@ export async function GET(
 
 /**
  * PATCH /api/chores/[id]
- * ============================================================================
  * Updates a specific chore.
  *
  * REQUEST BODY (all fields optional):
@@ -131,7 +124,6 @@ export async function GET(
  *   requiresApproval?: boolean
  *   enabled?: boolean
  * }
- * ============================================================================
  */
 export async function PATCH(
   request: NextRequest,
@@ -254,9 +246,7 @@ export async function PATCH(
 
 /**
  * DELETE /api/chores/[id]
- * ============================================================================
  * Deletes a specific chore.
- * ============================================================================
  */
 export async function DELETE(
   request: NextRequest,
