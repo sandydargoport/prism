@@ -86,6 +86,8 @@ Prism is designed for people who:
 
 If you're looking for a plug-and-play commercial solution, Prism might not be for you. But if you're the kind of person who runs a home server or likes tinkering with self-hosted tools, you'll feel right at home.
 
+For remote access outside your home network, consider [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) or similar solutions.
+
 ---
 
 ## Why I Built This With AI

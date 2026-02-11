@@ -3,12 +3,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
 import {
-  Cloud, CloudRain, CloudSnow, Sun, CloudSun, Droplets, Wind,
+  Cloud, CloudRain, CloudSnow, Sun, CloudSun, Droplets, Wind, Wifi,
   Phone, Home, User, ScrollText, AlertTriangle, Lock,
 } from 'lucide-react';
 import { useBabysitterMode } from '@/lib/hooks/useBabysitterMode';
 import { useBabysitterInfo, type BabysitterSection, type BabysitterInfoItem } from '@/lib/hooks/useBabysitterInfo';
+import { useWifiConfig } from '@/lib/hooks/useWifiConfig';
 import { ExitBabysitterModeModal } from './ExitBabysitterModeModal';
+import { WifiQRCode } from '@/components/ui/WifiQRCode';
 import { cn } from '@/lib/utils';
 
 interface EmergencyContact {
@@ -40,6 +42,7 @@ interface HouseRule {
 export function BabysitterModeOverlay() {
   const { isActive, toggle } = useBabysitterMode();
   const { items } = useBabysitterInfo({ includeSensitive: true });
+  const { config: wifiConfig, qrString, hasConfig: hasWifiConfig } = useWifiConfig();
   const [visible, setVisible] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
 
@@ -99,6 +102,24 @@ export function BabysitterModeOverlay() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl mx-auto">
+            {/* WiFi QR Code */}
+            {hasWifiConfig && qrString && (
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-white mb-3">
+                  <Wifi className="h-5 w-5" />
+                  WiFi
+                </h2>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <WifiQRCode
+                    ssid={wifiConfig.ssid}
+                    qrString={qrString}
+                    size={120}
+                    showLabel={true}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Emergency Contacts */}
             <SectionCard
               title="Emergency Contacts"
