@@ -1,179 +1,165 @@
 # Prism
 
+**A subscription-free, self-hosted family dashboard that integrates with the tools you already use without becoming yet another system of record.**
+
+![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)
 [![Test Install](https://github.com/sandydargoport/prism/actions/workflows/test-install.yml/badge.svg)](https://github.com/sandydargoport/prism/actions/workflows/test-install.yml)
 
-> Your family's digital home
+Prism is a configurable family dashboard designed for large wall-mounted screens and handheld tablets. It connects to existing services you already use—Google Calendar, Microsoft To Do, OneDrive, and more—and displays the information your family actually needs. Built for people who value privacy, hate subscriptions, and are comfortable with Docker.
 
-Prism is an open-source family dashboard that brings everyone together. Sync calendars, manage chores, plan meals, track tasks, and stay connected—all on one shared display.
-
-![Dashboard Preview](docs/images/dashboard-preview.png)
-
-## Features
-
-| Category | Features |
-|----------|----------|
-| **Calendar** | Google Calendar & iCal sync, day/week/month views, color-coded by member |
-| **Chores** | Points system, parent approval workflow, recurring schedules |
-| **Tasks** | Built-in lists + Microsoft To Do sync, assignments, due dates |
-| **Shopping** | Category-organized lists, check-off mode, Microsoft To Do sync |
-| **Meals** | Weekly planning, recipe import from URLs, Paprika integration |
-| **Goals** | Waterfall point tracking, recurring rewards, family leaderboard |
-| **Photos** | OneDrive sync, screensaver mode, auto-rotate by orientation |
-| **Messages** | Family message board, pinned messages, auto-expiring notes |
-
-## Quick Start
-
-### Option 1: One-Line Install (Recommended)
+## Getting Started
 
 ```bash
-git clone https://github.com/sandydargoport/prism.git && cd prism && ./scripts/install.sh
-```
-
-This will:
-- Auto-generate secure database passwords and encryption keys
-- Build and start all containers
-- Seed a demo family (PIN: `1234` for parent, `0000` for child)
-
-### Option 2: Manual Setup
-
-```bash
+# Clone the repository
 git clone https://github.com/sandydargoport/prism.git
 cd prism
-cp .env.example .env
-# Edit .env with your passwords and API keys
 
+# One-line install (generates secrets, starts containers, seeds demo data)
+./scripts/install.sh
+
+# Or manual setup
+cp .env.example .env
+# Edit .env with your API keys and preferences
 docker-compose up -d
 ```
 
-Then open **http://localhost:3000**
+Open **http://localhost:3000** and log in with PIN `1234` (parent) or `0000` (child).
 
-### Adding Integrations
+## What Prism Does
 
-After install, edit `.env` to enable:
-- **Google Calendar** — Sync family calendars
-- **Microsoft To Do** — Sync tasks and shopping lists
-- **OpenWeatherMap** — Weather widget (free tier)
+Prism is a configurable family dashboard designed for large wall-mounted screens and handheld tablets. It connects to existing services you already use and displays the information your family actually needs.
 
-See `.env.example` for step-by-step API key instructions.
+### Dashboard Widgets
 
-## Architecture
+Build your home view with drag-and-drop widgets:
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      Browser / Kiosk                        │
-├─────────────────────────────────────────────────────────────┤
-│                   Next.js 15 (App Router)                   │
-│  ┌──────────────┐ ┌──────────────┐ ┌──────────────────────┐ │
-│  │   React UI   │ │  API Routes  │ │   Server Components  │ │
-│  │  (Widgets)   │ │   (/api/*)   │ │                      │ │
-│  └──────────────┘ └──────────────┘ └──────────────────────┘ │
-├─────────────────────────────────────────────────────────────┤
-│                     Data Layer                              │
-│  ┌──────────────┐ ┌──────────────┐ ┌──────────────────────┐ │
-│  │  PostgreSQL  │ │    Redis     │ │   External APIs      │ │
-│  │  (Drizzle)   │ │   (Cache)    │ │ (Google, Microsoft)  │ │
-│  └──────────────┘ └──────────────┘ └──────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-```
+- **Calendar** - Day/week/month views syncing with Google Calendar & iCal
+- **Weather** - Current conditions and forecasts via OpenWeatherMap
+- **Photos** - Rotating family photo slideshow from OneDrive
+- **Tasks** - To-do lists with due dates, syncs with Microsoft To Do
+- **Shopping** - Grocery lists organized by category with check-off mode
+- **Chores** - Assigned chores with points, pending approvals, and completion tracking
+- **Meals** - Weekly meal planning grid with recipe linking
+- **Messages** - Family message board with pinned and expiring messages
+- **Points** - Per-child point totals and goal progress
+- **Clock** - Simple digital clock with date
 
-**Key Design Decisions:**
-- **PIN-based auth** — Optimized for shared family tablets, not username/password
-- **Server-side RBAC** — All permissions enforced on API routes, never trust the client
-- **Encrypted OAuth tokens** — AES-256-GCM encryption at rest for all external service tokens
-- **Visibility-based polling** — Pauses API calls when tab is hidden to save resources
-- **Automated backups** — Daily PostgreSQL dumps with optional off-site sync (OneDrive, S3)
+Widgets are resizable and rearrangeable. Your layout persists per device and can be exported/imported as JSON.
 
-## Tech Stack
+### Full-Page Modules
 
-| Layer | Technology |
-|-------|------------|
-| Frontend | React 18, Next.js 15, TypeScript |
-| Styling | Tailwind CSS, shadcn/ui |
-| Database | PostgreSQL 15, Drizzle ORM |
-| Cache | Redis 7 |
-| Layout | react-grid-layout v2 |
-| Testing | Playwright (E2E) |
-| Deployment | Docker Compose |
+Beyond the dashboard, Prism includes dedicated pages for:
 
-## Development
+- **Calendar** - Full calendar with multiple view modes, event creation, and configurable hidden hours
+- **Recipes** - Recipe library with URL import (schema.org), Paprika import, and favorites
+- **Shopping** - Multiple lists with drag-to-reorder categories and shopping mode
+- **Chores** - Chore management with group-by-person view and approval workflow
+- **Tasks** - Task lists with Microsoft To Do sync
+- **Meals** - Weekly meal planning with recipe linking
+- **Goals** - Family goals with point allocation and recurring rewards
+- **Photos** - Photo gallery with tagging for wallpaper/screensaver use
+- **Babysitter** - Public info page for caregivers (emergency contacts, WiFi QR code, house rules)
 
-```bash
-# Install dependencies
-npm install
+### Display Modes
 
-# Start dev server
-npm run dev
+- **Screensaver** - Photo slideshow after idle timeout with configurable templates
+- **Away Mode** - Privacy screen showing only photos and clock, auto-activates after extended inactivity
+- **Babysitter Mode** - Shows caregiver information overlay
 
-# Type checking
-npm run type-check
+### Integrations
 
-# Linting
-npm run lint
+- **Google Calendar** - Events (read-only via iCal or OAuth)
+- **Microsoft To Do** - Tasks and shopping lists (bidirectional sync)
+- **OneDrive** - Photos for slideshow and wallpaper
+- **OpenWeatherMap** - Weather data
+- **Paprika** - Recipe import
 
-# E2E tests
-npm run test:e2e
+The goal isn't to replace your existing tools. It's to bring them together in one place that works for your family's rhythms.
 
-# Database commands
-npm run db:push      # Push schema changes
-npm run db:seed      # Seed sample data
-npm run db:studio    # Open Drizzle Studio
-```
+## Built for Self-Hosters
 
-## Project Structure
+Prism is designed for people who:
+- Want control over their family's data
+- Are comfortable with Docker or basic server setup
+- Prefer one-time effort over ongoing subscriptions
+- Value privacy and local-first architecture
 
-```
-prism/
-├── src/
-│   ├── app/              # Next.js App Router pages & API routes
-│   ├── components/       # React components (ui/, widgets/, modals/)
-│   ├── lib/              # Core logic
-│   │   ├── api/          # API utilities (withAuth wrapper)
-│   │   ├── cache/        # Redis caching & rate limiting
-│   │   ├── db/           # Database schema & client
-│   │   ├── hooks/        # Custom React hooks
-│   │   ├── integrations/ # External API clients
-│   │   └── utils/        # Helpers (formatters, validators)
-│   └── types/            # TypeScript definitions
-├── e2e/                  # Playwright E2E tests
-├── scripts/              # Utility scripts (backup, restore)
-├── docker-compose.yml    # Production orchestration
-└── Dockerfile            # Multi-stage build
-```
-
-## Security
-
-- **Authentication:** PIN-based with bcrypt hashing, Redis-backed sessions
-- **Authorization:** Role-based (parent/child/guest) with 25+ granular permissions
-- **Rate Limiting:** Per-user limits on mutations via Redis
-- **File Uploads:** Magic byte validation (JPEG/PNG/WebP only)
-- **SSRF Protection:** Internal IP blocklist on URL imports
-- **Secrets:** OAuth tokens encrypted at rest, .env for local config
-
-## Deployment
-
-The default Docker Compose setup includes:
-- `prism-app` — Next.js application
-- `prism-db` — PostgreSQL database
-- `prism-redis` — Redis cache
-- `prism-backup` — Automated daily backups with optional cloud sync
-
-For production, ensure:
-1. Strong `DB_PASSWORD` and `ENCRYPTION_KEY` in `.env`
-2. Configure off-site backups (see `scripts/README.md`)
-3. Set up HTTPS via reverse proxy (nginx, Caddy, Traefik)
-
-## License
-
-AGPL-3.0 — See [LICENSE](LICENSE) for details.
-
-## Contributing
-
-Contributions welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Run `npm run lint` and `npm run type-check`
-4. Submit a pull request
+If you're looking for a plug-and-play commercial solution, Prism might not be for you. But if you're the kind of person who runs a home server or likes tinkering with self-hosted tools, you'll feel right at home.
 
 ---
 
-**Built for families who want to stay connected and organized.**
+## Why I Built This With AI
+
+I've always wished I had the skillset to translate what I hold in my mind into something I can build with my hands. I need to understand foundational concepts before building on them. Without that foundation, everything feels unstable.
+
+But despite that desire, I've never achieved fluency in software development. I've tried repeatedly, but it hasn't stuck. When I saw people building impressive projects in hours with Claude Code, I wanted to test it with something more substantial. I wanted a full application with real requirements, not just a toy project.
+
+Initially, I thought I'd use this as a learning opportunity. I would have Claude heavily comment the code so I could eventually make changes myself. That quickly created bloated code, and I had to make a choice: prioritize a working solution or the educational experience. I chose the former. There are no shortcuts to learning software development, and I've accepted that I probably don't have the necessary dedication to master that craft right now.
+
+I admire the configurability of DAKboard and the great UI simplicity of Skylight, but the former feels like a solo project turned paid software, and the latter feels incongruent with my sense of home. Neither path appealed to me. Instead, I made Prism open-source, hoping others could benefit from it and perhaps contribute integrations that matter to their own needs.
+
+I see solutions through necessity. Prism exists because I needed it to exist, and AI gave me the tools to build it.
+
+## How It Was Built
+
+This project was built entirely with [Claude Code](https://claude.ai/code). I directed the implementation by defining requirements, designing user experience, prioritizing features, and making architectural decisions. Claude Code handled the actual coding.
+
+**Reverse-engineering competitors:**
+I used Playwright to systematically crawl DAKboard and Skylight, capturing screenshots and analyzing their features, layouts, and interaction patterns. Browser dev tools helped me understand how they handled integrations and real-time updates. This became source material for defining what Prism should do.
+
+**Tech stack:**
+- React + TypeScript frontend
+- Node.js backend
+- Docker for deployment
+- React-grid-layout for dashboard widgets
+- PIN-based auth optimized for shared family devices
+
+**Important:** I cannot be responsible for security vulnerabilities or code quality issues. Use at your own risk. That said, I use this in my own home and will continue to maintain it as I encounter problems.
+
+## Why Prism Exists
+
+I didn't want to pay yet another monthly subscription. I tried several open-source projects, but they were all built for different purposes. Magic Mirror didn't support photo displays. I found another open-source Skylight alternative that looked promising but had minimal features implemented. I explored a Home Assistant setup, but it felt like I was forcing something to work in a way it didn't want to.
+
+What I wanted was a system built for my use case, not a solution poorly adapted or force-fit into something it wasn't meant to be. I didn't want to ask my spouse to use different tools, and I didn't want to change my own workflow. I wanted a solution that worked for me rather than the other way around.
+
+So I built Prism.
+
+## Features I'm Excited About
+
+Some features exist because I needed them:
+- **Recipe viewer** - Not another recipe app, but a way to view recipes on a large kitchen screen without repeatedly unlocking my phone
+- **Calendar parsing** - Handles the integrations that matter most to families (school calendars, work calendars, shared family events)
+- **Drag-and-drop layout** - Build your dashboard the way you want it, resize and arrange widgets to fit your screen
+- **Chores with approval workflow** - Kids mark chores complete, parents approve and award points
+- **Screensaver modes** - Photo slideshow, away mode for privacy, babysitter mode for caregivers
+
+Some features are still on the roadmap:
+- **Bus tracking integration** - Reverse-engineering my kids' bus tracking app so departure times appear on Prism
+- **Additional integrations** - Google Photos, Todoist, Home Assistant, and other services people actually use
+- **Multi-household support** - For shared custody situations
+- **Voice control** - "Hey Prism, what's for dinner?"
+- **Offline support** - Service workers so the dashboard works even when internet is down
+
+The architecture makes adding integrations relatively straightforward. If you contribute one that matters to you, we all benefit. Some ideas I'm less certain about (direct smart home control, music widgets) might be better handled by integrating with existing solutions like Home Assistant.
+
+## Contributing
+
+I built this for my family, but I'm sharing it because others might find it useful. If you do:
+- ⭐ Star the repo
+- 🐛 Report issues you encounter
+- 💡 Suggest features that would help your family
+- 🔧 Submit PRs for improvements
+
+## License
+
+Prism is free and open-source under the AGPL-3.0 license. It works as a PWA, so the same interface runs on wall-mounted displays, tablets, and mobile devices.
+
+See [LICENSE](LICENSE) for details.
+
+## Acknowledgments
+
+Built with Claude Code. Inspired by frustration with existing solutions. Made better by the self-hosting community.
+
+---
+
+**Note:** This is a hobby project by someone who works in AI and product management, not a professional software developer. I use it daily and will maintain it for my own needs, which hopefully benefits others too. If you find it useful, let me know!

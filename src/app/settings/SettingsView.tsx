@@ -185,30 +185,45 @@ export function SettingsView() {
                 <div className="space-y-6">
                   <div>
                     <h2 className="text-2xl font-bold">About Prism</h2>
-                    <p className="text-muted-foreground">
-                      Your family&apos;s digital home
-                    </p>
                   </div>
                   <Card>
                     <CardContent className="p-6">
-                      <div className="flex flex-col items-center text-center">
+                      <div className="flex flex-col items-center">
                         <PrismIcon size={96} className="mb-4 drop-shadow-lg" />
-                        <h3 className="text-4xl font-bold text-primary mb-2">Prism</h3>
-                        <p className="text-muted-foreground mb-4">Version 0.9.0</p>
-                        <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                          Prism brings your family together with a shared calendar,
-                          tasks, messages, and more—all in one place.
-                        </p>
-                        <div className="mt-6 text-xs text-muted-foreground">
-                          <p>Open Source under AGPL-3.0 License</p>
-                          <a
-                            href="https://github.com/yourusername/prism"
-                            className="text-primary hover:underline"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            View on GitHub
-                          </a>
+                        <h3 className="text-4xl font-bold text-primary mb-6">Prism</h3>
+                        <div className="text-sm text-muted-foreground max-w-lg space-y-4 text-left">
+                          <p>
+                            Prism is a subscription-free, self-hosted family dashboard that pulls together
+                            your calendars, tasks, and photos from the services you already use.
+                          </p>
+                          <p>
+                            Prism is free and open-source under the AGPL-3.0 license. If you find it useful,
+                            please star the repo and share it with others who might benefit.
+                          </p>
+                          <div className="space-y-1 pt-2">
+                            <p>
+                              <strong>GitHub:</strong>{' '}
+                              <a href="https://github.com/sandydargoport/prism" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">
+                                github.com/sandydargoport/prism
+                              </a>
+                            </p>
+                            <p>
+                              <strong>Report issues or request features:</strong>{' '}
+                              <a href="https://github.com/sandydargoport/prism/issues" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">
+                                github.com/sandydargoport/prism/issues
+                              </a>
+                            </p>
+                            <p>
+                              <strong>See what&apos;s being worked on:</strong>{' '}
+                              <a href="https://github.com/sandydargoport/prism/projects" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">
+                                github.com/sandydargoport/prism/projects
+                              </a>
+                            </p>
+                            <p><strong>Version:</strong> 0.9.2</p>
+                          </div>
+                          <p className="pt-2 text-xs">
+                            Built with Claude Code. Currently in beta.
+                          </p>
                         </div>
                       </div>
                     </CardContent>
