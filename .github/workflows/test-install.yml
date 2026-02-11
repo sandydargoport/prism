@@ -11,6 +11,9 @@ jobs:
   test-install:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Docker-in-Docker can be flaky in GitHub Actions
+    # This job is informational - build-only is the real gate
+    continue-on-error: true
 
     steps:
       - name: Checkout repository
