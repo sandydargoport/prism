@@ -96,3 +96,14 @@ screenshots/
 *.rar
 .claude/
 docs/MARKETING.md
+
+# Internal dev docs (keep locally, not tracked)
+CLAUDE.md
+LESSONS_LEARNED.md
+IMPLEMENTATION_ROADMAP.md
+DOCKER_ADMIN.md
+prism-requirements_v19.md
+docs/requirements/
+docs/REQUIREMENTS.md
+docs/SIDE_NAVIGATION.md
+nul

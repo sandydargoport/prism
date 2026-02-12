@@ -2,6 +2,23 @@
 
 All notable changes to Prism are documented in this file.
 
+## [0.9.3] - 2026-02-11
+
+### Added
+- **Outline Color**: Widget designer now supports border/outline color in addition to background color
+  - Same color palette as background picker
+  - Persists with layout save (stored in JSONB, no migration needed)
+
+### Improved
+- **Widget Designer Touch Support**: All resize handles now meet Apple's 44px minimum touch target
+  - Edge handles: 20px → 44px thick; corner handles: 32px → 48px
+  - Visual indicators always visible in edit mode (not just on hover)
+  - Larger visual dots (18px with white ring) and bars (56×6px)
+- **Color Picker Touch Fix**: Picker no longer closes immediately on touch devices
+  - Replaced `onMouseLeave` with click-outside-to-dismiss pattern
+  - Larger color button (12px → 20px) and swatches (20px → 28px)
+  - Wider picker panel (180px → 200px)
+
 ## [0.9.2] - 2026-02-10
 
 ### Added
@@ -187,4 +204,4 @@ All notable changes to Prism are documented in this file.
 - Polling intervals reduced (60s→300s/120s)
 
 ### Changed
-- Brand renamed from "Prism" to "Prism"
+- Brand rename to "Prism"

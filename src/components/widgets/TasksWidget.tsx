@@ -18,7 +18,7 @@
  *
  * USAGE:
  *   <TasksWidget />
- *   <TasksWidget userId="alex" />
+ *   <TasksWidget userId="user1" />
  *   <TasksWidget showCompleted={false} />
  *
  */
@@ -78,7 +78,7 @@ export interface TasksWidgetProps {
  * <TasksWidget />
  *
  * @example Filter by user
- * <TasksWidget userId="alex" />
+ * <TasksWidget userId="user1" />
  *
  * @example With callbacks
  * <TasksWidget

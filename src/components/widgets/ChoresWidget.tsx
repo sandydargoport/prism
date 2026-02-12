@@ -17,7 +17,7 @@
  *
  * USAGE:
  *   <ChoresWidget />
- *   <ChoresWidget userId="alex" />
+ *   <ChoresWidget userId="user1" />
  *   <ChoresWidget showDisabled={false} />
  *
  */
@@ -74,7 +74,7 @@ export interface ChoresWidgetProps {
  * <ChoresWidget />
  *
  * @example Filter by user
- * <ChoresWidget userId="alex" />
+ * <ChoresWidget userId="user1" />
  *
  * @example With callbacks
  * <ChoresWidget
