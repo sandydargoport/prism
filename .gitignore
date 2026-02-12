@@ -96,6 +96,7 @@ screenshots/
 *.rar
 .claude/
 docs/MARKETING.md
+docker-compose.override.yml
 
 # Internal dev docs (keep locally, not tracked)
 CLAUDE.md
