@@ -212,7 +212,7 @@ export function SideNav({ user, onLogout, onLogin, className }: SideNavProps) {
               </>
             ) : (
               <>
-                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-muted border-2 border-dashed border-muted-foreground/50 flex-shrink-0">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-red-500/10 border-2 border-dashed border-red-500 flex-shrink-0">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="16"
@@ -223,13 +223,13 @@ export function SideNav({ user, onLogout, onLogin, className }: SideNavProps) {
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className="text-muted-foreground"
+                    className="text-red-500"
                   >
                     <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
                     <circle cx="12" cy="7" r="4" />
                   </svg>
                 </div>
-                <span className="hidden group-hover:inline whitespace-nowrap text-muted-foreground">
+                <span className="hidden group-hover:inline whitespace-nowrap text-red-500">
                   Log in
                 </span>
               </>

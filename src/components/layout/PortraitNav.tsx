@@ -119,8 +119,8 @@ export function PortraitNav({ user, onLogin, onLogout }: PortraitNavProps) {
             </>
           ) : (
             <>
-              <User className="h-7 w-7" />
-              <span className="text-xs font-medium">Login</span>
+              <User className="h-7 w-7 text-red-500" />
+              <span className="text-xs font-medium text-red-500">Login</span>
             </>
           )}
         </button>

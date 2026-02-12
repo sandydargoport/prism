@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useMemo, useRef, useState, useCallback } from 'react';
+import { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import { ResponsiveGridLayout as RGL, useContainerWidth, getCompactor } from 'react-grid-layout';
 import type { LayoutItem, Layout } from 'react-grid-layout';
 import { isLightColor } from '@/lib/utils/color';
@@ -65,7 +65,7 @@ function ColorPickerButton({ bgColor, onClick }: { bgColor?: string; onClick: (e
   return (
     <button
       onClick={onClick}
-      className="w-3 h-3 rounded-full shadow-md"
+      className="w-5 h-5 rounded-full shadow-md"
       style={{
         backgroundColor: bgColor || 'transparent',
         boxShadow: '0 0 0 1px rgba(0,0,0,0.6), 0 0 0 2px rgba(255,255,255,0.8), 0 0 0 2.5px rgba(0,0,0,0.3)',
@@ -197,13 +197,14 @@ export function LayoutGridEditor({
     };
   }, [onLayoutChange]);
 
-  const updateWidgetColor = useCallback((widgetId: string, updates: { backgroundColor?: string | null; backgroundOpacity?: number }) => {
+  const updateWidgetColor = useCallback((widgetId: string, updates: { backgroundColor?: string | null; backgroundOpacity?: number; outlineColor?: string | null }) => {
     const updated = layoutRef.current.map(w => {
       if (w.i === widgetId) {
         return {
           ...w,
           backgroundColor: updates.backgroundColor === null ? undefined : (updates.backgroundColor ?? w.backgroundColor),
           backgroundOpacity: updates.backgroundOpacity ?? w.backgroundOpacity,
+          outlineColor: updates.outlineColor === null ? undefined : (updates.outlineColor ?? w.outlineColor),
         };
       }
       return w;
@@ -211,10 +212,17 @@ export function LayoutGridEditor({
     onLayoutChange(updated);
   }, [onLayoutChange]);
 
-  const getWidgetStyle = (widget: WidgetConfig) => {
-    if (!widget.backgroundColor) return undefined;
-    const opacity = widget.backgroundOpacity ?? 1;
-    return { backgroundColor: widget.backgroundColor, borderRadius: '0.5rem', opacity };
+  const getWidgetStyle = (widget: WidgetConfig): React.CSSProperties | undefined => {
+    if (!widget.backgroundColor && !widget.outlineColor) return undefined;
+    const style: React.CSSProperties = { borderRadius: '0.5rem' };
+    if (widget.backgroundColor) {
+      style.backgroundColor = widget.backgroundColor;
+      style.opacity = widget.backgroundOpacity ?? 1;
+    }
+    if (widget.outlineColor) {
+      style.border = `2px solid ${widget.outlineColor}`;
+    }
+    return style;
   };
 
   const getTextClass = (widget: WidgetConfig, fallback: string) => {
@@ -222,29 +230,63 @@ export function LayoutGridEditor({
     return isLightColor(widget.backgroundColor) ? 'text-black' : 'text-white';
   };
 
+  const colorPickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!colorPickerWidget) return;
+    const handler = (e: MouseEvent | TouchEvent) => {
+      if (colorPickerRef.current && !colorPickerRef.current.contains(e.target as Node)) {
+        setColorPickerWidget(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    document.addEventListener('touchstart', handler);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('touchstart', handler);
+    };
+  }, [colorPickerWidget]);
+
   const renderColorPicker = (widget: WidgetConfig) => {
     const bgColor = widget.backgroundColor;
+    const olColor = widget.outlineColor;
     const bgOpacity = widget.backgroundOpacity ?? 1;
     const isOpen = colorPickerWidget === widget.i;
 
     return (
-      <div className="absolute top-1 left-1 z-20" onMouseLeave={() => { if (isOpen) setColorPickerWidget(null); }}>
+      <div className="absolute top-1 left-1 z-20" ref={isOpen ? colorPickerRef : undefined}>
         <ColorPickerButton
           bgColor={bgColor}
           onClick={(e) => { e.stopPropagation(); setColorPickerWidget(isOpen ? null : widget.i); }}
         />
         {isOpen && (
-          <div className="absolute top-8 left-0 bg-card border border-border rounded-lg p-2 shadow-xl z-30 w-[180px] space-y-2" onClick={(e) => e.stopPropagation()}>
+          <div className="absolute top-8 left-0 bg-card border border-border rounded-lg p-2 shadow-xl z-30 w-[200px] space-y-2" onClick={(e) => e.stopPropagation()}>
             <div>
-              <div className="text-[10px] text-muted-foreground mb-1">Color</div>
+              <div className="text-[10px] text-muted-foreground mb-1">Background</div>
               <div className="grid grid-cols-4 gap-1">
                 {COLOR_OPTIONS.map((c, idx) => (
                   <button
                     key={idx}
                     onClick={() => updateWidgetColor(widget.i, { backgroundColor: c })}
-                    className={`w-5 h-5 rounded-full border transition-transform hover:scale-110 ${
+                    className={`w-7 h-7 rounded-full border transition-transform hover:scale-110 ${
                       c === null ? 'bg-gradient-to-br from-white to-gray-400 border-gray-300' : 'border-gray-400'
                     } ${bgColor === c || (!bgColor && c === null) ? 'ring-2 ring-primary ring-offset-1' : ''}`}
+                    style={c ? { backgroundColor: c } : undefined}
+                    title={c === null ? 'None' : c}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="border-t border-border pt-1.5">
+              <div className="text-[10px] text-muted-foreground mb-1">Outline</div>
+              <div className="grid grid-cols-4 gap-1">
+                {COLOR_OPTIONS.map((c, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => updateWidgetColor(widget.i, { outlineColor: c })}
+                    className={`w-7 h-7 rounded-full border transition-transform hover:scale-110 ${
+                      c === null ? 'bg-gradient-to-br from-white to-gray-400 border-gray-300' : 'border-gray-400'
+                    } ${olColor === c || (!olColor && c === null) ? 'ring-2 ring-primary ring-offset-1' : ''}`}
                     style={c ? { backgroundColor: c } : undefined}
                     title={c === null ? 'None' : c}
                   />
@@ -366,7 +408,7 @@ export function LayoutGridEditor({
           style={{ maxHeight: visibleRows * (cellSize + margin) + 2 * containerPadding }}
         >
           <div
-            className="relative"
+            className="relative editing-mode"
             style={{
               minHeight: totalRows * (cellSize + margin) + 2 * containerPadding,
               minWidth: totalCols * (cellSize + margin) + 2 * containerPadding,

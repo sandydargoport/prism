@@ -36,8 +36,9 @@ import {
   clearLoginAttempts,
 } from '@/lib/auth/session';
 
-// Determine if cookies should be secure based on BASE_URL scheme
-const isSecure = process.env.BASE_URL?.startsWith('https://') ?? process.env.NODE_ENV === 'production';
+// Determine if cookies should be secure based on APP_URL/BASE_URL scheme
+const appUrl = process.env.APP_URL || process.env.BASE_URL;
+const isSecure = appUrl ? appUrl.startsWith('https://') : process.env.NODE_ENV === 'production';
 
 
 /**
