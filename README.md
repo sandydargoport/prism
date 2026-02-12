@@ -7,6 +7,23 @@
 
 Prism is a configurable family dashboard designed for large wall-mounted screens and handheld tablets. It connects to existing services you already use—Google Calendar, Microsoft To Do, OneDrive, and more—and displays the information your family actually needs. Built for people who value privacy, hate subscriptions, and are comfortable with Docker.
 
+## Demo
+
+<table>
+  <tr>
+    <td align="center"><b>Dashboard & Login</b><br><img src="docs/demos/dashboard-overview.gif" width="400" alt="Dashboard overview with PIN login"></td>
+    <td align="center"><b>Light & Dark Mode</b><br><img src="docs/demos/light-dark-toggle.gif" width="400" alt="Light and dark mode toggle"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Grocery Shopping</b><br><img src="docs/demos/grocery-shopping.gif" width="400" alt="Grocery list check-off with celebration"></td>
+    <td align="center"><b>Recipe View</b><br><img src="docs/demos/recipe-view.gif" width="400" alt="Recipe browsing with ingredient check-off"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Away Mode</b><br><img src="docs/demos/away-mode.gif" width="400" alt="Away mode overlay with clock and photos"></td>
+    <td align="center"><b>Babysitter Mode</b><br><img src="docs/demos/babysitter-mode.gif" width="400" alt="Babysitter mode with emergency contacts and house rules"></td>
+  </tr>
+</table>
+
 ## Getting Started
 
 ```bash

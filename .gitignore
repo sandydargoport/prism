@@ -40,6 +40,7 @@ coverage/
 test-results/
 playwright-report/
 playwright/.cache/
+e2e/demos/videos/
 
 # OS files
 .DS_Store
