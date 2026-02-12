@@ -158,14 +158,16 @@ fi
 
 success "Prism is running!"
 
-# Seed database if it's a fresh install
-log "Checking if database needs seeding..."
-FAMILY_COUNT=$(docker exec prism-db psql -U prism -d prism -t -c "SELECT COUNT(*) FROM users;" 2>/dev/null | tr -d ' ' || echo "0")
+# Verify database was seeded (init scripts handle this automatically)
+log "Verifying database setup..."
+FAMILY_COUNT=$(docker exec prism-db psql -U prism -d prism -t -c "SELECT COUNT(*) FROM users;" 2>/dev/null | tr -d ' ' || echo "error")
 
-if [ "$FAMILY_COUNT" = "0" ]; then
-    log "Seeding database with sample data..."
-    docker exec prism-app npm run db:seed 2>/dev/null || warn "Seeding failed (might need manual setup)"
-    success "Database seeded with demo family"
+if [ "$FAMILY_COUNT" = "error" ]; then
+    warn "Could not verify database. Check logs with: docker logs prism-app"
+elif [ "$FAMILY_COUNT" = "0" ]; then
+    warn "Database tables exist but no seed data found. You can seed manually via Settings > Admin."
+else
+    success "Database ready with $FAMILY_COUNT family members"
 fi
 
 # Final message

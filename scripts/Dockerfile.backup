@@ -11,6 +11,7 @@ COPY backup.sh /scripts/backup.sh
 COPY backup-scheduler.sh /scripts/backup-scheduler.sh
 COPY restore.sh /scripts/restore.sh
 
-RUN chmod +x /scripts/*.sh
+# Fix Windows line endings and make executable
+RUN sed -i 's/\r$//' /scripts/*.sh && chmod +x /scripts/*.sh
 
 ENTRYPOINT ["/bin/sh", "/scripts/backup-scheduler.sh"]
