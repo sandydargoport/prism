@@ -117,8 +117,6 @@ Initially, I thought I'd use this as a learning opportunity. I would have Claude
 
 I admire the configurability of DAKboard and the great UI simplicity of Skylight, but the former feels like a solo project turned paid software, and the latter feels incongruent with my sense of home. Neither path appealed to me. Instead, I made Prism open-source, hoping others could benefit from it and perhaps contribute integrations that matter to their own needs.
 
-I see solutions through necessity. Prism exists because I needed it to exist, and AI gave me the tools to build it.
-
 ## How It Was Built
 
 This project was built entirely with [Claude Code](https://claude.ai/code). I directed the implementation by defining requirements, designing user experience, prioritizing features, and making architectural decisions. Claude Code handled the actual coding.
