@@ -9,7 +9,7 @@ Prism is a configurable family dashboard designed for large wall-mounted screens
 
 ## Demo
 
-*Prism is built for wall-mounted displays first, tablets and phones second. Large-format screenshots coming soon — the demos below were captured on laptop, iPad, and iPhone.*
+*Prism is built for wall-mounted displays and tablets, with a mobile PWA as a companion for on-the-go. Large-format screenshots coming soon — the demos below were captured on laptop, iPad, and iPhone.*
 
 <table>
   <tr>
