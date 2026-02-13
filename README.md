@@ -118,10 +118,11 @@ For remote access outside your home network, consider [Cloudflare Tunnel](https:
 
 ---
 
-<details>
-<summary><h2>Behind the Project</h2></summary>
+> **Everything above is all you need to get started.** The section below is optional background on why and how Prism was built.
 
-*The sections below cover why and how Prism was built. If you're just here to use it, everything you need is above.*
+<details>
+<summary><strong>Behind the Project (click to expand)</strong></summary>
+<br>
 
 ### Why I Built This With AI
 
