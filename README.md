@@ -22,6 +22,17 @@ Prism is a configurable family dashboard designed for large wall-mounted screens
     <td align="center"><b>Away Mode</b><br><img src="docs/demos/away-mode.gif" width="400" alt="Away mode overlay with clock and photos"></td>
     <td align="center"><b>Babysitter Mode</b><br><img src="docs/demos/babysitter-mode.gif" width="400" alt="Babysitter mode with emergency contacts and house rules"></td>
   </tr>
+  <tr>
+    <td align="center"><b>iPad — Dashboard</b><br><img src="docs/demos/ipad-dashboard.gif" width="400" alt="iPad dashboard and layout designer"></td>
+    <td align="center"><b>iPad — Calendar Views</b><br><img src="docs/demos/ipad-calendar.gif" width="400" alt="iPad calendar day, week, two-week, month, and three-month views"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>iPad — Tasks, Chores & Meals</b><br><img src="docs/demos/ipad-features.gif" width="400" alt="iPad tasks, chores, meal planner, and recipe cook mode"></td>
+    <td align="center"><b>iPad — Settings</b><br><img src="docs/demos/ipad-settings.gif" width="400" alt="iPad settings for display, photos, and security"></td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2"><b>iPhone — Mobile View</b><br><img src="docs/demos/iphone-mobile.gif" width="300" alt="iPhone shopping list and messages"></td>
+  </tr>
 </table>
 
 ## Getting Started
@@ -107,7 +118,12 @@ For remote access outside your home network, consider [Cloudflare Tunnel](https:
 
 ---
 
-## Why I Built This With AI
+<details>
+<summary><h2>Behind the Project</h2></summary>
+
+*The sections below cover why and how Prism was built. If you're just here to use it, everything you need is above.*
+
+### Why I Built This With AI
 
 I've always wished I had the skillset to translate what I hold in my mind into something I can build with my hands. I need to understand foundational concepts before building on them. Without that foundation, everything feels unstable.
 
@@ -117,9 +133,7 @@ Initially, I thought I'd use this as a learning opportunity. I would have Claude
 
 I admire the configurability of DAKboard and the great UI simplicity of Skylight, but the former feels like a solo project turned paid software, and the latter feels incongruent with my sense of home. Neither path appealed to me. Instead, I made Prism open-source, hoping others could benefit from it and perhaps contribute integrations that matter to their own needs.
 
-I see solutions through necessity. Prism exists because I needed it to exist, and AI gave me the tools to build it.
-
-## How It Was Built
+### How It Was Built
 
 This project was built entirely with [Claude Code](https://claude.ai/code). I directed the implementation by defining requirements, designing user experience, prioritizing features, and making architectural decisions. Claude Code handled the actual coding.
 
@@ -135,7 +149,7 @@ I used Playwright to systematically crawl DAKboard and Skylight, capturing scree
 
 **Important:** I cannot be responsible for security vulnerabilities or code quality issues. Use at your own risk. That said, I use this in my own home and will continue to maintain it as I encounter problems.
 
-## Why Prism Exists
+### Why Prism Exists
 
 I didn't want to pay yet another monthly subscription. I tried several open-source projects, but they were all built for different purposes. Magic Mirror didn't support photo displays. I found another open-source Skylight alternative that looked promising but had minimal features implemented. I explored a Home Assistant setup, but it felt like I was forcing something to work in a way it didn't want to.
 
@@ -143,7 +157,7 @@ What I wanted was a system built for my use case, not a solution poorly adapted 
 
 So I built Prism.
 
-## Features I'm Excited About
+### Features I'm Excited About
 
 Some features exist because I needed them:
 - **Recipe viewer** - Not another recipe app, but a way to view recipes on a large kitchen screen without repeatedly unlocking my phone
@@ -160,6 +174,8 @@ Some features are still on the roadmap:
 - **Offline support** - Service workers so the dashboard works even when internet is down
 
 The architecture makes adding integrations relatively straightforward. If you contribute one that matters to you, we all benefit. Some ideas I'm less certain about (direct smart home control, music widgets) might be better handled by integrating with existing solutions like Home Assistant.
+
+</details>
 
 ## Contributing
 
