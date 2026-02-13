@@ -9,6 +9,8 @@ Prism is a configurable family dashboard designed for large wall-mounted screens
 
 ## Demo
 
+*Prism is built for wall-mounted displays first, tablets and phones second. Large-format screenshots coming soon — the demos below were captured on laptop, iPad, and iPhone.*
+
 <table>
   <tr>
     <td align="center"><b>Dashboard & Login</b><br><img src="docs/demos/dashboard-overview.gif" width="400" alt="Dashboard overview with PIN login"></td>
@@ -22,16 +24,21 @@ Prism is a configurable family dashboard designed for large wall-mounted screens
     <td align="center"><b>Away Mode</b><br><img src="docs/demos/away-mode.gif" width="400" alt="Away mode overlay with clock and photos"></td>
     <td align="center"><b>Babysitter Mode</b><br><img src="docs/demos/babysitter-mode.gif" width="400" alt="Babysitter mode with emergency contacts and house rules"></td>
   </tr>
+</table>
+
+**iPad & iPhone** *(installable as a PWA for on-the-go access)*
+
+<table>
   <tr>
-    <td align="center"><b>iPad — Dashboard</b><br><img src="docs/demos/ipad-dashboard.gif" width="400" alt="iPad dashboard and layout designer"></td>
-    <td align="center"><b>iPad — Calendar Views</b><br><img src="docs/demos/ipad-calendar.gif" width="400" alt="iPad calendar day, week, two-week, month, and three-month views"></td>
+    <td align="center"><b>Dashboard & Designer</b><br><img src="docs/demos/ipad-dashboard.gif" width="400" alt="iPad dashboard and layout designer"></td>
+    <td align="center"><b>Calendar Views</b><br><img src="docs/demos/ipad-calendar.gif" width="400" alt="iPad calendar day, week, two-week, month, and three-month views"></td>
   </tr>
   <tr>
-    <td align="center"><b>iPad — Tasks, Chores & Meals</b><br><img src="docs/demos/ipad-features.gif" width="400" alt="iPad tasks, chores, meal planner, and recipe cook mode"></td>
-    <td align="center"><b>iPad — Settings</b><br><img src="docs/demos/ipad-settings.gif" width="400" alt="iPad settings for display, photos, and security"></td>
+    <td align="center"><b>Tasks, Chores & Meals</b><br><img src="docs/demos/ipad-features.gif" width="400" alt="iPad tasks, chores, meal planner, and recipe cook mode"></td>
+    <td align="center"><b>Settings</b><br><img src="docs/demos/ipad-settings.gif" width="400" alt="iPad settings for display, photos, and security"></td>
   </tr>
   <tr>
-    <td align="center" colspan="2"><b>iPhone — Mobile View</b><br><img src="docs/demos/iphone-mobile.gif" width="300" alt="iPhone shopping list and messages"></td>
+    <td align="center" colspan="2"><b>iPhone</b><br><img src="docs/demos/iphone-mobile.gif" width="300" alt="iPhone shopping list and messages"></td>
   </tr>
 </table>
 
