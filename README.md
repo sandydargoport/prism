@@ -135,9 +135,9 @@ For remote access outside your home network, consider [Cloudflare Tunnel](https:
 
 I've always wished I had the skillset to translate what I hold in my mind into something I can build with my hands. I need to understand foundational concepts before building on them. Without that foundation, everything feels unstable.
 
-But despite that desire, I've never achieved fluency in software development. I've tried repeatedly, but it hasn't stuck. When I saw people building impressive projects in hours with Claude Code, I wanted to test it with something more substantial. I wanted a full application with real requirements, not just a toy project.
+But software development isn’t where I’ve invested my time, despite repeated attempts. I've tried repeatedly, but it hasn't stuck. When I saw people building impressive projects in hours with Claude Code, I wanted to test it with something more substantial. I wanted a full application with real requirements, not just a toy project.
 
-Initially, I thought I'd use this as a learning opportunity. I would have Claude heavily comment the code so I could eventually make changes myself. That quickly created bloated code, and I had to make a choice: prioritize a working solution or the educational experience. I chose the former. There are no shortcuts to learning software development, and I've accepted that I probably don't have the necessary dedication to master that craft right now.
+Initially, I thought I'd use this as a learning opportunity. I would have Claude heavily comment the code so I could eventually make changes myself. That quickly created bloated code, and I had to make a choice: prioritize a working solution or the educational experience. I chose the former. There are no shortcuts to learning software development, and that’s not where my energy is right now.
 
 I admire the configurability of DAKboard and the great UI simplicity of Skylight, but the former feels like a solo project turned paid software, and the latter feels incongruent with my sense of home. Neither path appealed to me. Instead, I made Prism open-source, hoping others could benefit from it and perhaps contribute integrations that matter to their own needs.
 
