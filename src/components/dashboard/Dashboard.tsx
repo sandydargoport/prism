@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Suspense, useState, useCallback, useEffect, useMemo } from 'react';
+import { Suspense, useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { DashboardGrid, DashboardLayout, DashboardHeader } from '@/components/layout/DashboardGrid';
 import { LayoutGridEditor, SCREENSAVER_THEME } from '@/components/layout/LayoutGridEditor';
@@ -58,6 +58,24 @@ export function Dashboard({
   const [showAddShopping, setShowAddShopping] = useState(false);
 
   const layout = useDashboardLayout(data.layouts);
+
+  // Grid control state shared between LayoutEditor toolbar and LayoutGridEditor
+  const [screenGuideOrientation, setScreenGuideOrientation] = useState<'landscape' | 'portrait'>('landscape');
+  const [enabledSizes, setEnabledSizes] = useState<string[]>(['15"', '24"', '27"', '32"']);
+  const [gridScrollY, setGridScrollY] = useState(0);
+  const [gridVisibleRows, setGridVisibleRows] = useState(12);
+  const scrollToGridRef = useRef<((row: number) => void) | null>(null);
+
+  const handleScrollInfo = useCallback((info: { scrollY: number; visibleRows: number }) => {
+    setGridScrollY(info.scrollY);
+    setGridVisibleRows(info.visibleRows);
+  }, []);
+
+  const handleToggleSize = useCallback((size: string) => {
+    setEnabledSizes(prev =>
+      prev.includes(size) ? prev.filter(s => s !== size) : [...prev, size]
+    );
+  }, []);
 
   const widgetProps = buildWidgetProps(data, requireAuth, {
     setShowAddTask, setShowAddMessage, setShowAddChore, setShowAddShopping,
@@ -147,6 +165,13 @@ export function Dashboard({
             screensaverPresets={layout.ssPresets}
             onSelectScreensaverPreset={layout.handleSelectSsPreset}
             onDeleteScreensaverPreset={layout.handleDeleteSsPreset}
+            screenGuideOrientation={screenGuideOrientation}
+            onScreenGuideOrientationChange={setScreenGuideOrientation}
+            enabledSizes={enabledSizes}
+            onToggleSize={handleToggleSize}
+            gridScrollY={gridScrollY}
+            gridVisibleRows={gridVisibleRows}
+            scrollToGridRef={scrollToGridRef}
           />
         )}
 
@@ -162,6 +187,10 @@ export function Dashboard({
             theme={SCREENSAVER_THEME}
             gridHelperText="Drag widgets to reposition &bull; Scroll to see more"
             className="mx-4"
+            screenGuideOrientation={screenGuideOrientation}
+            enabledSizes={enabledSizes}
+            onScrollInfo={handleScrollInfo}
+            scrollToRef={scrollToGridRef}
           />
         ) : !isMounted ? (
           <DashboardGrid>
@@ -177,6 +206,10 @@ export function Dashboard({
               widgetConstraints={dashboardConstraints}
               margin={8}
               headerOffset={140}
+              screenGuideOrientation={screenGuideOrientation}
+              enabledSizes={enabledSizes}
+              onScrollInfo={handleScrollInfo}
+              scrollToRef={scrollToGridRef}
             />
           </WidgetErrorBoundary>
         )}

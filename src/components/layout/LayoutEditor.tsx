@@ -1,12 +1,20 @@
 'use client';
 
 import * as React from 'react';
-import { useState } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { WidgetPicker } from './WidgetPicker';
 import { LAYOUT_TEMPLATES } from '@/lib/constants/layoutTemplates';
 import { SCREENSAVER_TEMPLATES } from '@/lib/constants/screensaverTemplates';
 import { WIDGET_REGISTRY, SCREENSAVER_WIDGETS } from '@/components/widgets/widgetRegistry';
+import { CommunityGallery } from './CommunityGallery';
+import { TemplateSidebar } from './TemplateSidebar';
+import { LayoutPreview } from './LayoutPreview';
+import { LayoutMinimap, SCREEN_SAFE_ZONES } from './LayoutMinimap';
+import { CoordinateEditor } from './CoordinateEditor';
+import { validateCommunityLayout } from '@/lib/community/validateLayout';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
+
+const ALL_SIZES = ['15"', '24"', '27"', '32"'];
 
 export interface SavedLayout {
   id: string;
@@ -35,9 +43,16 @@ export interface LayoutEditorProps {
   screensaverPresets?: Array<{ name: string; widgets: WidgetConfig[] }>;
   onSelectScreensaverPreset?: (widgets: WidgetConfig[]) => void;
   onDeleteScreensaverPreset?: (name: string) => void;
+  screenGuideOrientation?: 'landscape' | 'portrait';
+  onScreenGuideOrientationChange?: (o: 'landscape' | 'portrait') => void;
+  enabledSizes?: string[];
+  onToggleSize?: (size: string) => void;
+  gridScrollY?: number;
+  gridVisibleRows?: number;
+  scrollToGridRef?: React.MutableRefObject<((row: number) => void) | null>;
 }
 
-const EXPORT_VERSION = 1;
+const EXPORT_VERSION = 2;
 
 interface ExportWidget {
   i: string;
@@ -51,15 +66,20 @@ interface ExportWidget {
   minH?: number;
 }
 
-interface LayoutExport {
+interface LayoutExportV2 {
   type: 'prism-layout';
   version: number;
   mode: 'dashboard' | 'screensaver';
   name: string;
+  description: string;
+  author: string;
+  tags: string[];
+  screenSizes: string[];
+  orientation: 'landscape' | 'portrait';
   widgets: ExportWidget[];
 }
 
-function validateImport(data: unknown): LayoutExport | null {
+function validateImport(data: unknown): LayoutExportV2 | null {
   if (!data || typeof data !== 'object') return null;
   const obj = data as Record<string, unknown>;
   if (obj.type !== 'prism-layout') return null;
@@ -73,7 +93,7 @@ function validateImport(data: unknown): LayoutExport | null {
         typeof wObj.y !== 'number' || typeof wObj.w !== 'number' ||
         typeof wObj.h !== 'number') return null;
   }
-  return obj as unknown as LayoutExport;
+  return obj as unknown as LayoutExportV2;
 }
 
 export function LayoutEditor({
@@ -97,12 +117,80 @@ export function LayoutEditor({
   screensaverPresets = [],
   onSelectScreensaverPreset,
   onDeleteScreensaverPreset,
+  screenGuideOrientation = 'landscape',
+  onScreenGuideOrientationChange,
+  enabledSizes = ALL_SIZES,
+  onToggleSize,
+  gridScrollY = 0,
+  gridVisibleRows = 12,
+  scrollToGridRef,
 }: LayoutEditorProps) {
-  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [showCommunity, setShowCommunity] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [importText, setImportText] = useState('');
   const [importError, setImportError] = useState('');
   const [exportFeedback, setExportFeedback] = useState('');
+  const [saveFeedback, setSaveFeedback] = useState('');
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
+  const [saveDropdownOpen, setSaveDropdownOpen] = useState(false);
+  const saveRef = useRef<HTMLDivElement>(null);
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [shareForm, setShareForm] = useState({
+    name: '',
+    description: '',
+    author: '',
+    screenSizes: [] as string[],
+    orientation: 'landscape' as 'landscape' | 'portrait',
+    tags: '',
+  });
+  const [shareErrors, setShareErrors] = useState<string[]>([]);
+  const [focusedWidget, setFocusedWidget] = useState<string | null>(null);
+
+  const currentWidgets = editingScreensaver ? (screensaverWidgets || []) : widgets;
+  const visibleWidgets = currentWidgets.filter(w => w.visible !== false);
+
+  // Validation for preview panel
+  const validation = useMemo(() => {
+    const layoutData = {
+      type: 'prism-layout' as const,
+      version: 2,
+      mode: editingScreensaver ? 'screensaver' as const : 'dashboard' as const,
+      name: '',
+      description: '',
+      author: '',
+      tags: [],
+      screenSizes: [],
+      orientation: 'landscape' as const,
+      widgets: visibleWidgets,
+    };
+    return validateCommunityLayout(layoutData);
+  }, [visibleWidgets, editingScreensaver]);
+  const mode = editingScreensaver ? 'screensaver' : 'dashboard';
+  const saveLabel = editingScreensaver ? 'Save Screensaver' : `Save: ${layoutName || 'Untitled'}`;
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    if (!moreOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        setMoreOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [moreOpen]);
+
+  useEffect(() => {
+    if (!saveDropdownOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (saveRef.current && !saveRef.current.contains(e.target as Node)) {
+        setSaveDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [saveDropdownOpen]);
 
   const handleToggleWidget = (widgetType: string, visible: boolean) => {
     const exists = widgets.find(w => w.i === widgetType);
@@ -135,12 +223,10 @@ export function LayoutEditor({
     if (template) {
       onWidgetsChange(template.widgets.map(w => ({ ...w, visible: true })));
     }
-    setShowTemplatePicker(false);
   };
 
   const handleSelectSavedLayout = (layout: SavedLayout) => {
     onWidgetsChange(layout.widgets.map(w => ({ ...w, visible: w.visible !== false })));
-    setShowTemplatePicker(false);
   };
 
   const handleSelectSsTemplate = (templateKey: string) => {
@@ -148,24 +234,33 @@ export function LayoutEditor({
     if (template && onSelectScreensaverTemplate) {
       onSelectScreensaverTemplate(template.widgets);
     }
-    setShowTemplatePicker(false);
   };
 
   const handleSelectSsPreset = (preset: { name: string; widgets: WidgetConfig[] }) => {
     if (onSelectScreensaverPreset) {
       onSelectScreensaverPreset(preset.widgets);
     }
-    setShowTemplatePicker(false);
   };
 
-  const handleExport = () => {
-    const currentWidgets = editingScreensaver ? (screensaverWidgets || []) : widgets;
-    const mode = editingScreensaver ? 'screensaver' : 'dashboard';
-    const exportData: LayoutExport = {
+  const handleApplyCommunityLayout = useCallback((newWidgets: WidgetConfig[]) => {
+    if (editingScreensaver && onSelectScreensaverPreset) {
+      onSelectScreensaverPreset(newWidgets);
+    } else {
+      onWidgetsChange(newWidgets);
+    }
+  }, [editingScreensaver, onSelectScreensaverPreset, onWidgetsChange]);
+
+  const buildExportData = useCallback((): LayoutExportV2 => {
+    return {
       type: 'prism-layout',
       version: EXPORT_VERSION,
       mode,
       name: layoutName || (editingScreensaver ? 'Screensaver' : 'Dashboard'),
+      description: '',
+      author: '',
+      tags: [],
+      screenSizes: [],
+      orientation: 'landscape',
       widgets: currentWidgets
         .filter(w => w.visible !== false)
         .map(widget => {
@@ -186,6 +281,14 @@ export function LayoutEditor({
           return exported;
         }),
     };
+  }, [mode, layoutName, editingScreensaver, currentWidgets]);
+
+  const handleExport = () => {
+    const exportData = buildExportData();
+    const result = validateCommunityLayout(exportData);
+    if (result.warnings.length > 0) {
+      console.warn('Layout export warnings:', result.warnings);
+    }
     navigator.clipboard.writeText(JSON.stringify(exportData, null, 2)).then(() => {
       setExportFeedback('Copied!');
       setTimeout(() => setExportFeedback(''), 2000);
@@ -193,12 +296,14 @@ export function LayoutEditor({
       setExportFeedback('Failed');
       setTimeout(() => setExportFeedback(''), 2000);
     });
+    setMoreOpen(false);
   };
 
   const handleImportOpen = () => {
     setImportText('');
     setImportError('');
     setShowImportDialog(true);
+    setMoreOpen(false);
   };
 
   const handleImportApply = () => {
@@ -235,107 +340,169 @@ export function LayoutEditor({
     }
   };
 
+  const handleSave = () => {
+    if (editingScreensaver) {
+      onScreensaverSave?.();
+    } else {
+      onSave();
+    }
+    setSaveFeedback('Saved!');
+    setTimeout(() => setSaveFeedback(''), 2000);
+  };
+
+  const handleShareOpen = () => {
+    setShareForm({
+      name: layoutName || '',
+      description: '',
+      author: '',
+      screenSizes: [],
+      orientation: 'landscape',
+      tags: '',
+    });
+    setShareErrors([]);
+    setShowShareDialog(true);
+    setMoreOpen(false);
+  };
+
+  const handleShareSubmit = () => {
+    const exportData = buildExportData();
+    const submissionData = {
+      ...exportData,
+      name: shareForm.name,
+      description: shareForm.description,
+      author: shareForm.author,
+      screenSizes: shareForm.screenSizes,
+      orientation: shareForm.orientation,
+      tags: shareForm.tags.split(',').map(t => t.trim()).filter(Boolean),
+    };
+
+    const result = validateCommunityLayout(submissionData, { communitySubmission: true });
+    if (!result.valid) {
+      setShareErrors(result.errors);
+      return;
+    }
+
+    const title = encodeURIComponent(`Community Layout: ${shareForm.name}`);
+    const body = encodeURIComponent(
+      '```json\n' + JSON.stringify(submissionData, null, 2) + '\n```\n\n' +
+      `**Author:** ${shareForm.author}\n` +
+      `**Screen Sizes:** ${shareForm.screenSizes.join(', ')}\n` +
+      `**Orientation:** ${shareForm.orientation}\n`
+    );
+    const url = `https://github.com/sandydargoport/prism/issues/new?labels=layout-submission&title=${title}&body=${body}`;
+    window.open(url, '_blank');
+    setShowShareDialog(false);
+  };
+
+  const btnClass = "px-3 py-1.5 text-sm rounded-md whitespace-nowrap bg-muted hover:bg-accent transition-colors";
+  const moreItemClass = "w-full text-left px-3 py-1.5 text-sm hover:bg-accent transition-colors";
+
   return (
     <div className="bg-card/85 backdrop-blur-sm border-b border-border px-4 py-3 space-y-3">
-      <div className="flex items-center justify-between">
+      {/* Header toolbar — stays fixed */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <EditIcon />
           <span className="text-sm font-medium">
-            {editingScreensaver ? 'Screensaver Designer' : `Dashboard Designer: ${layoutName || 'Untitled Layout'}`}
+            {editingScreensaver ? 'Screensaver Designer' : `Dashboard Designer: ${layoutName || 'Untitled'}`}
           </span>
         </div>
         <div className="flex items-center gap-2">
+          {/* Screensaver toggle */}
           {onToggleScreensaverEdit && (
             <button
               onClick={onToggleScreensaverEdit}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+              className={`px-3 py-1.5 text-sm rounded-md whitespace-nowrap transition-colors ${
                 editingScreensaver
                   ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                   : 'bg-muted hover:bg-accent'
               }`}
             >
-              {editingScreensaver ? '\u2190 Dashboard Designer' : 'Screensaver Designer'}
+              {editingScreensaver ? '\u2190 Dashboard' : 'Screensaver'}
             </button>
           )}
-          {editingScreensaver ? (
-            <>
-              <button
-                onClick={() => setShowTemplatePicker(!showTemplatePicker)}
-                className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
+
+          {/* Save split button: Save | dropdown with Save As */}
+          <div className="relative flex" ref={saveRef}>
+            <button
+              onClick={handleSave}
+              className="px-3 py-1.5 text-sm rounded-l-md whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              {saveFeedback || saveLabel}
+            </button>
+            <button
+              onClick={() => setSaveDropdownOpen(prev => !prev)}
+              className="px-1.5 py-1.5 rounded-r-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors border-l border-primary-foreground/20"
+              aria-label="Save options"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="10"
+                height="10"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={`transition-transform ${saveDropdownOpen ? 'rotate-180' : ''}`}
               >
-                Templates
-              </button>
-              <button
-                onClick={onScreensaverReset}
-                className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+            {saveDropdownOpen && (
+              <div className="absolute right-0 top-full mt-1 z-50 min-w-[120px] bg-popover border border-border rounded-md shadow-md py-1">
+                <button
+                  onClick={() => { (editingScreensaver ? onScreensaverSaveAs : onSaveAs)?.(); setSaveDropdownOpen(false); }}
+                  className={moreItemClass}
+                >
+                  Save As...
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* More dropdown */}
+          <div className="relative" ref={moreRef}>
+            <button
+              onClick={() => setMoreOpen(prev => !prev)}
+              className={btnClass + ' flex items-center gap-1'}
+            >
+              More
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="10"
+                height="10"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={`transition-transform ${moreOpen ? 'rotate-180' : ''}`}
               >
-                Reset
-              </button>
-              <button
-                onClick={handleExport}
-                className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
-              >
-                {exportFeedback || 'Export'}
-              </button>
-              <button
-                onClick={handleImportOpen}
-                className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
-              >
-                Import
-              </button>
-              <button
-                onClick={onScreensaverSaveAs}
-                className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
-              >
-                Save As
-              </button>
-              <button
-                onClick={onScreensaverSave}
-                className="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-              >
-                Save
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={() => setShowTemplatePicker(!showTemplatePicker)}
-                className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
-              >
-                Templates
-              </button>
-              <button
-                onClick={onReset}
-                className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
-              >
-                Reset
-              </button>
-              <button
-                onClick={handleExport}
-                className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
-              >
-                {exportFeedback || 'Export'}
-              </button>
-              <button
-                onClick={handleImportOpen}
-                className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
-              >
-                Import
-              </button>
-              <button
-                onClick={onSaveAs}
-                className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
-              >
-                Save As
-              </button>
-              <button
-                onClick={() => onSave()}
-                className="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-              >
-                Save
-              </button>
-            </>
-          )}
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+            {moreOpen && (
+              <div className="absolute right-0 top-full mt-1 z-50 min-w-[140px] bg-popover border border-border rounded-md shadow-md py-1">
+                <button onClick={editingScreensaver ? onScreensaverReset : onReset} className={moreItemClass}>
+                  Reset
+                </button>
+                <button onClick={handleExport} className={moreItemClass}>
+                  {exportFeedback || 'Export'}
+                </button>
+                <button onClick={handleImportOpen} className={moreItemClass}>
+                  Import
+                </button>
+                <button onClick={handleShareOpen} className={moreItemClass}>
+                  Share
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Cancel */}
           <button
             onClick={onCancel}
             className="px-3 py-1.5 text-sm rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
@@ -345,157 +512,317 @@ export function LayoutEditor({
         </div>
       </div>
 
-      {editingScreensaver && screensaverWidgets && onScreensaverWidgetToggle ? (
-        <WidgetPicker widgets={screensaverWidgets} onToggle={onScreensaverWidgetToggle} widgetList={SCREENSAVER_WIDGETS} />
-      ) : !editingScreensaver ? (
-        <WidgetPicker widgets={widgets} onToggle={handleToggleWidget} />
-      ) : null}
+      {/* Controls row: templates + widget picker */}
+      <div className="pt-2 border-t border-border flex items-center gap-3 flex-wrap">
+        <TemplateSidebar
+          editingScreensaver={editingScreensaver}
+          savedLayouts={savedLayouts}
+          screensaverPresets={screensaverPresets}
+          onSelectTemplate={handleSelectTemplate}
+          onSelectSavedLayout={handleSelectSavedLayout}
+          onSelectSsTemplate={handleSelectSsTemplate}
+          onSelectSsPreset={handleSelectSsPreset}
+          onDeleteLayout={onDeleteLayout}
+          onDeleteScreensaverPreset={onDeleteScreensaverPreset}
+          onToggleCommunity={() => setShowCommunity(prev => !prev)}
+        />
+        <div className="h-4 w-px bg-border" />
+        {editingScreensaver && screensaverWidgets && onScreensaverWidgetToggle ? (
+          <WidgetPicker widgets={screensaverWidgets} onToggle={onScreensaverWidgetToggle} widgetList={SCREENSAVER_WIDGETS} />
+        ) : !editingScreensaver ? (
+          <WidgetPicker widgets={widgets} onToggle={handleToggleWidget} />
+        ) : null}
+      </div>
 
-      {/* Import dialog */}
-      {showImportDialog && (
-        <div className="pt-2 border-t border-border space-y-2">
-          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Import Layout
-          </div>
-          <textarea
-            className="w-full h-32 text-xs font-mono bg-muted text-foreground border border-border rounded-md p-2 resize-none focus:outline-none focus:ring-2 focus:ring-primary"
-            placeholder='Paste exported layout JSON here...'
-            value={importText}
-            onChange={(e) => { setImportText(e.target.value); setImportError(''); }}
+      {/* Coordinate tables + layout preview + scroll minimap — single compact row */}
+      <div className="pt-2 border-t border-border flex gap-8 items-start">
+        {/* Coordinate tables */}
+        <div className="min-w-0 flex-shrink-0">
+          <CoordinateEditor
+            widgets={currentWidgets}
+            onWidgetsChange={editingScreensaver && onSelectScreensaverPreset
+              ? onSelectScreensaverPreset
+              : onWidgetsChange
+            }
+            mode={mode}
+            onFocusedWidgetChange={setFocusedWidget}
           />
-          {importError && (
-            <p className="text-xs text-destructive">{importError}</p>
-          )}
-          <div className="flex gap-2">
-            <button
-              onClick={handleImportApply}
-              disabled={!importText.trim()}
-              className="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-            >
-              Apply
-            </button>
-            <button
-              onClick={() => setShowImportDialog(false)}
-              className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
         </div>
-      )}
 
-      {/* Template selector dropdown — screensaver mode */}
-      {showTemplatePicker && editingScreensaver && (
-        <div className="space-y-3 pt-2 border-t border-border">
-          <div>
-            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Built-in Templates</div>
-            <div className="flex flex-wrap gap-2">
-              {Object.entries(SCREENSAVER_TEMPLATES).map(([key, template]) => (
-                <button
-                  key={key}
-                  onClick={() => handleSelectSsTemplate(key)}
-                  className="px-3 py-2 rounded-md bg-muted hover:bg-accent transition-colors text-left"
-                >
-                  <div className="text-sm font-medium">{template.name}</div>
-                  <div className="text-xs text-muted-foreground">{template.description}</div>
-                </button>
+        {/* Layout preview (x/y map) */}
+        <div className="flex-shrink-0">
+          {(() => {
+            const previewW = 380;
+            const previewH = 260;
+            const maxRow = Math.max(12, ...visibleWidgets.map(w => w.y + w.h));
+            const scaleY = previewH / maxRow;
+            const step = maxRow > 20 ? 4 : maxRow > 14 ? 3 : 2;
+            const rowLabels = Array.from({ length: Math.floor(maxRow / step) + 1 }, (_, i) => i * step).filter(r => r <= maxRow);
+            return (
+              <div className="flex gap-0.5">
+                <div className="relative flex-shrink-0" style={{ width: 16, height: previewH, marginTop: 14 }}>
+                  {rowLabels.map(row => (
+                    <span
+                      key={row}
+                      className="absolute right-0.5 text-[8px] text-muted-foreground leading-none"
+                      style={{ top: row * scaleY - 4 }}
+                    >
+                      {row}
+                    </span>
+                  ))}
+                </div>
+                <div>
+                  <div className="flex justify-between px-0.5" style={{ width: previewW, height: 14 }}>
+                    {Array.from({ length: 13 }, (_, i) => (
+                      <span key={i} className="text-[8px] text-muted-foreground">{i}</span>
+                    ))}
+                  </div>
+                  <LayoutPreview
+                    widgets={visibleWidgets.map(w => ({ i: w.i, x: w.x, y: w.y, w: w.w, h: w.h }))}
+                    width={previewW}
+                    height={previewH}
+                    highlightWidget={focusedWidget ?? undefined}
+                    showLabels={true}
+                    showGrid={true}
+                  />
+                </div>
+              </div>
+            );
+          })()}
+          {validation.errors.length > 0 && (
+            <div className="bg-destructive/10 border border-destructive/30 rounded-md p-1.5 mt-1">
+              <p className="text-[10px] font-medium text-destructive mb-0.5">
+                {validation.errors.length} issue{validation.errors.length > 1 ? 's' : ''}
+              </p>
+              {validation.errors.slice(0, 2).map((err, i) => (
+                <p key={i} className="text-[9px] text-destructive/80 leading-tight">{err}</p>
+              ))}
+              {validation.errors.length > 2 && (
+                <p className="text-[9px] text-destructive/60">+{validation.errors.length - 2} more</p>
+              )}
+            </div>
+          )}
+          {validation.warnings.length > 0 && validation.errors.length === 0 && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-md p-1.5 mt-1">
+              {validation.warnings.slice(0, 2).map((w, i) => (
+                <p key={i} className="text-[9px] text-amber-600 leading-tight">{w}</p>
               ))}
             </div>
-          </div>
-          {screensaverPresets.length > 0 && (
-            <div>
-              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Saved Presets</div>
-              <div className="flex flex-wrap gap-2">
-                {screensaverPresets.map(preset => (
-                  <div key={preset.name} className="flex items-center gap-1">
-                    <button
-                      onClick={() => handleSelectSsPreset(preset)}
-                      className="px-3 py-2 rounded-md bg-muted hover:bg-accent transition-colors text-left"
-                    >
-                      <div className="text-sm font-medium">{preset.name}</div>
-                      <div className="text-xs text-muted-foreground">{preset.widgets.filter(w => w.visible !== false).length} widgets</div>
-                    </button>
-                    {onDeleteScreensaverPreset && (
-                      <button
-                        onClick={() => {
-                          if (window.confirm(`Delete preset "${preset.name}"?`)) {
-                            onDeleteScreensaverPreset(preset.name);
-                          }
-                        }}
-                        className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                        title="Delete preset"
-                      >
-                        <TrashIcon />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
           )}
         </div>
-      )}
 
-      {/* Template selector dropdown — dashboard mode */}
-      {showTemplatePicker && !editingScreensaver && (
-        <div className="space-y-3 pt-2 border-t border-border">
-          <div>
-            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Built-in Templates</div>
-            <div className="flex flex-wrap gap-2">
-              {Object.entries(LAYOUT_TEMPLATES).map(([key, template]) => (
-                <button
-                  key={key}
-                  onClick={() => handleSelectTemplate(key)}
-                  className="px-3 py-2 rounded-md bg-muted hover:bg-accent transition-colors text-left"
-                >
-                  <div className="text-sm font-medium">{template.name}</div>
-                  <div className="text-xs text-muted-foreground">{template.description}</div>
-                </button>
-              ))}
+        {/* Scroll minimap + screen guide controls */}
+        <div className="flex-shrink-0">
+          {/* Label row matching LayoutPreview's column labels height */}
+          <div className="flex items-center gap-2 justify-center" style={{ height: 14 }}>
+            <span className="text-[8px] text-muted-foreground">Screen Guides</span>
+          </div>
+          <LayoutMinimap
+            layout={currentWidgets}
+            cols={12}
+            visibleRows={gridVisibleRows}
+            scrollY={gridScrollY}
+            onScrollTo={(row) => scrollToGridRef?.current?.(row)}
+            orientation={screenGuideOrientation}
+            enabledSizes={enabledSizes}
+            maxWidth={280}
+            maxHeight={260}
+          />
+          {/* Controls below minimap */}
+          <div className="mt-2 space-y-1.5">
+            <div className="flex items-center gap-1.5 justify-center">
+              <button
+                onClick={() => onScreenGuideOrientationChange?.(screenGuideOrientation === 'landscape' ? 'portrait' : 'landscape')}
+                className="text-[10px] px-2 py-0.5 rounded border border-border text-muted-foreground hover:bg-accent/50"
+              >
+                {screenGuideOrientation === 'landscape' ? '\u2B1C Landscape' : '\u25AF Portrait'}
+              </button>
+              {ALL_SIZES.map(size => {
+                const zone = SCREEN_SAFE_ZONES[screenGuideOrientation].find((z: { name: string }) => z.name === size);
+                const isEnabled = enabledSizes.includes(size);
+                return (
+                  <button
+                    key={size}
+                    onClick={() => onToggleSize?.(size)}
+                    className={`text-[10px] px-1.5 py-0.5 rounded transition-colors ${
+                      isEnabled ? 'text-white' : 'text-muted-foreground/50 line-through'
+                    }`}
+                    style={{
+                      backgroundColor: isEnabled ? zone?.color : 'transparent',
+                      border: `1px solid ${zone?.color || '#666'}`,
+                    }}
+                  >
+                    {size}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[9px] text-muted-foreground text-center">Click to navigate</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Scrollable content area */}
+      <div className="max-h-[80vh] overflow-auto">
+        {/* Community gallery */}
+        {showCommunity && (
+          <div className="pt-2 border-t border-border">
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Community Layouts</div>
+            <CommunityGallery mode={mode} onApplyLayout={handleApplyCommunityLayout} />
+          </div>
+        )}
+
+        {/* Import dialog */}
+        {showImportDialog && (
+          <div className="pt-2 border-t border-border space-y-2">
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Import Layout
+            </div>
+            <textarea
+              className="w-full h-32 text-xs font-mono bg-muted text-foreground border border-border rounded-md p-2 resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder='Paste exported layout JSON here...'
+              value={importText}
+              onChange={(e) => { setImportText(e.target.value); setImportError(''); }}
+            />
+            {importError && (
+              <p className="text-xs text-destructive">{importError}</p>
+            )}
+            <div className="flex gap-2">
+              <button
+                onClick={handleImportApply}
+                disabled={!importText.trim()}
+                className="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                Apply
+              </button>
+              <button
+                onClick={() => setShowImportDialog(false)}
+                className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
+              >
+                Cancel
+              </button>
             </div>
           </div>
-          {savedLayouts.length > 0 && (
-            <div>
-              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Saved Layouts</div>
-              <div className="flex flex-wrap gap-2">
-                {savedLayouts.map(layout => (
-                  <div key={layout.id} className="flex items-center gap-1">
-                    <button
-                      onClick={() => handleSelectSavedLayout(layout)}
-                      className="px-3 py-2 rounded-md bg-muted hover:bg-accent transition-colors text-left"
-                    >
-                      <div className="text-sm font-medium">{layout.name}</div>
-                      <div className="text-xs text-muted-foreground">{layout.widgets.length} widgets</div>
-                    </button>
-                    {onDeleteLayout && (
-                      <button
-                        onClick={() => {
-                          if (window.confirm(`Delete layout "${layout.name}"?`)) {
-                            onDeleteLayout(layout.id);
-                          }
-                        }}
-                        className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                        title="Delete layout"
-                      >
-                        <TrashIcon />
-                      </button>
-                    )}
-                  </div>
-                ))}
+        )}
+
+        {/* Share to Community dialog */}
+        {showShareDialog && (
+          <div className="pt-2 border-t border-border space-y-3">
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Share to Community
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Submit your layout to the Prism community gallery. This opens a GitHub Issue with your layout data.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-muted-foreground">Layout Name *</label>
+                <input
+                  type="text"
+                  value={shareForm.name}
+                  onChange={e => setShareForm(f => ({ ...f, name: e.target.value }))}
+                  className="w-full px-2 py-1 text-sm bg-muted border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                  maxLength={100}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Author Name *</label>
+                <input
+                  type="text"
+                  value={shareForm.author}
+                  onChange={e => setShareForm(f => ({ ...f, author: e.target.value }))}
+                  className="w-full px-2 py-1 text-sm bg-muted border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                  maxLength={50}
+                />
               </div>
             </div>
-          )}
-        </div>
-      )}
+            <div>
+              <label className="text-xs text-muted-foreground">Description *</label>
+              <input
+                type="text"
+                value={shareForm.description}
+                onChange={e => setShareForm(f => ({ ...f, description: e.target.value }))}
+                className="w-full px-2 py-1 text-sm bg-muted border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+            <div className="flex items-center gap-4">
+              <div>
+                <label className="text-xs text-muted-foreground block mb-1">Screen Sizes *</label>
+                <div className="flex gap-1">
+                  {['15"', '24"', '27"', '32"'].map(size => (
+                    <button
+                      key={size}
+                      onClick={() => setShareForm(f => ({
+                        ...f,
+                        screenSizes: f.screenSizes.includes(size)
+                          ? f.screenSizes.filter(s => s !== size)
+                          : [...f.screenSizes, size],
+                      }))}
+                      className={`px-2 py-0.5 text-xs rounded-full border transition-colors ${
+                        shareForm.screenSizes.includes(size)
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-muted border-border hover:bg-accent'
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground block mb-1">Orientation *</label>
+                <div className="flex gap-1">
+                  {(['landscape', 'portrait'] as const).map(orient => (
+                    <button
+                      key={orient}
+                      onClick={() => setShareForm(f => ({ ...f, orientation: orient }))}
+                      className={`px-2 py-0.5 text-xs rounded-full border transition-colors ${
+                        shareForm.orientation === orient
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-muted border-border hover:bg-accent'
+                      }`}
+                    >
+                      {orient}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Tags (comma-separated)</label>
+              <input
+                type="text"
+                value={shareForm.tags}
+                onChange={e => setShareForm(f => ({ ...f, tags: e.target.value }))}
+                placeholder="e.g. family, minimal, kitchen"
+                className="w-full px-2 py-1 text-sm bg-muted border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+            {shareErrors.length > 0 && (
+              <div className="bg-destructive/10 border border-destructive/30 rounded-md p-2">
+                {shareErrors.map((err, i) => (
+                  <p key={i} className="text-xs text-destructive">{err}</p>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <button
+                onClick={handleShareSubmit}
+                className="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                Open GitHub Issue
+              </button>
+              <button
+                onClick={() => setShowShareDialog(false)}
+                className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
-  );
-}
-
-function TrashIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-    </svg>
   );
 }
 

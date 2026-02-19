@@ -59,6 +59,10 @@ export interface LayoutGridEditorProps {
   theme?: EditorTheme;
   gridHelperText?: string;
   className?: string;
+  screenGuideOrientation?: 'landscape' | 'portrait';
+  enabledSizes?: string[];
+  onScrollInfo?: (info: { scrollY: number; visibleRows: number }) => void;
+  scrollToRef?: React.MutableRefObject<((row: number) => void) | null>;
 }
 
 function ColorPickerButton({ bgColor, onClick }: { bgColor?: string; onClick: (e: React.MouseEvent) => void }) {
@@ -87,14 +91,21 @@ export function LayoutGridEditor({
   theme = DASHBOARD_THEME,
   gridHelperText,
   className,
+  screenGuideOrientation: screenGuideOrientationProp,
+  enabledSizes: enabledSizesProp,
+  onScrollInfo,
+  scrollToRef,
 }: LayoutGridEditorProps) {
   const { width, containerRef, mounted } = useContainerWidth();
   const [colorPickerWidget, setColorPickerWidget] = useState<string | null>(null);
   const [scrollY, setScrollY] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [screenGuideOrientation, setScreenGuideOrientation] = useState<'landscape' | 'portrait'>('landscape');
-  const [enabledSizes, setEnabledSizes] = useState<string[]>(ALL_SIZES);
+  const [screenGuideOrientationInternal, setScreenGuideOrientationInternal] = useState<'landscape' | 'portrait'>('landscape');
+  const [enabledSizesInternal, setEnabledSizesInternal] = useState<string[]>(ALL_SIZES);
   const [showPanel, setShowPanel] = useState(true);
+
+  const screenGuideOrientation = screenGuideOrientationProp ?? screenGuideOrientationInternal;
+  const enabledSizes = enabledSizesProp ?? enabledSizesInternal;
 
   const cols = 12;
   const containerPadding = 12;
@@ -139,6 +150,17 @@ export function LayoutGridEditor({
     }
   }, [cellSize, margin]);
 
+  // Expose scrollTo via ref
+  useEffect(() => {
+    if (scrollToRef) scrollToRef.current = handleScrollTo;
+    return () => { if (scrollToRef) scrollToRef.current = null; };
+  }, [scrollToRef, handleScrollTo]);
+
+  // Report scroll info to parent
+  useEffect(() => {
+    onScrollInfo?.({ scrollY, visibleRows });
+  }, [scrollY, visibleRows, onScrollInfo]);
+
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const target = e.target as HTMLDivElement;
     const scrolledRows = Math.floor(target.scrollTop / (cellSize + margin));
@@ -146,7 +168,7 @@ export function LayoutGridEditor({
   }, [cellSize, margin]);
 
   const toggleSize = useCallback((size: string) => {
-    setEnabledSizes(prev =>
+    setEnabledSizesInternal(prev =>
       prev.includes(size) ? prev.filter(s => s !== size) : [...prev, size]
     );
   }, []);
@@ -400,11 +422,11 @@ export function LayoutGridEditor({
 
   if (isEditable) {
     return (
-      <div className={`flex gap-2 ${className || ''}`}>
+      <div className={className || ''}>
         <div
           ref={combinedRef}
           onScroll={handleScroll}
-          className={`flex-1 overflow-auto ${theme.gridBg}`}
+          className={`overflow-auto ${theme.gridBg}`}
           style={{ maxHeight: visibleRows * (cellSize + margin) + 2 * containerPadding }}
         >
           <div
@@ -457,64 +479,6 @@ export function LayoutGridEditor({
               </div>
             )}
           </div>
-        </div>
-
-        <div className="flex-shrink-0 flex items-start gap-1">
-          <button
-            onClick={() => setShowPanel(!showPanel)}
-            className="text-[9px] px-1.5 py-1 rounded border border-border text-muted-foreground hover:bg-accent/50"
-            title={showPanel ? 'Hide panel' : 'Show panel'}
-          >
-            {showPanel ? '\u25B6' : '\u25C0'}
-          </button>
-
-          {showPanel && (
-            <div className="space-y-3 p-2 bg-card/80 rounded border border-border">
-              <button
-                onClick={() => setScreenGuideOrientation(o => o === 'landscape' ? 'portrait' : 'landscape')}
-                className="text-[9px] px-2 py-1 rounded border border-border text-muted-foreground hover:bg-accent/50 w-full"
-              >
-                {screenGuideOrientation === 'landscape' ? '\u2B1C Landscape' : '\u25AF Portrait'}
-              </button>
-
-              <div className="space-y-1">
-                <div className="text-[9px] text-muted-foreground text-center">Screen Sizes</div>
-                <div className="flex flex-wrap gap-1 justify-center">
-                  {ALL_SIZES.map(size => {
-                    const zone = SCREEN_SAFE_ZONES[screenGuideOrientation].find(z => z.name === size);
-                    const isEnabled = enabledSizes.includes(size);
-                    return (
-                      <button
-                        key={size}
-                        onClick={() => toggleSize(size)}
-                        className={`text-[9px] px-1.5 py-0.5 rounded transition-colors ${
-                          isEnabled ? 'text-white' : 'text-muted-foreground/50 line-through'
-                        }`}
-                        style={{
-                          backgroundColor: isEnabled ? zone?.color : 'transparent',
-                          border: `1px solid ${zone?.color || '#666'}`,
-                        }}
-                      >
-                        {size}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="border-t border-border pt-2">
-                <LayoutMinimap
-                  layout={layout}
-                  cols={cols}
-                  visibleRows={visibleRows}
-                  scrollY={scrollY}
-                  onScrollTo={handleScrollTo}
-                  orientation={screenGuideOrientation}
-                  enabledSizes={enabledSizes}
-                />
-              </div>
-            </div>
-          )}
         </div>
       </div>
     );

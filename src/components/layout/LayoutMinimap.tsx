@@ -20,6 +20,8 @@ interface LayoutMinimapProps {
   onScrollTo: (y: number) => void;
   orientation: 'landscape' | 'portrait';
   enabledSizes: string[];
+  maxWidth?: number;
+  maxHeight?: number;
   className?: string;
 }
 
@@ -51,6 +53,8 @@ export function LayoutMinimap({
   onScrollTo,
   orientation,
   enabledSizes,
+  maxWidth = 160,
+  maxHeight = 120,
   className = '',
 }: LayoutMinimapProps) {
   // Calculate the total grid bounds
@@ -83,11 +87,9 @@ export function LayoutMinimap({
   }, [orientation, enabledSizes, bounds.maxY]);
 
   // Calculate minimap scale
-  const minimapHeight = 120;
-  const minimapWidth = 160;
   const scale = Math.min(
-    minimapWidth / cols,
-    minimapHeight / bounds.maxY
+    maxWidth / cols,
+    maxHeight / bounds.maxY
   );
 
   const actualWidth = cols * scale;
