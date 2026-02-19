@@ -133,7 +133,7 @@ For remote access outside your home network, consider [Cloudflare Tunnel](https:
 
 ### Why I Built This With AI
 
-I always long chased the skillset to translate what I hold in my mind into something I can build with my hands. I need to understand foundational concepts before building on them. Without that foundation, everything feels unstable.
+I have long chased the skillset to translate what I hold in my mind into something I can build with my hands. I need to understand foundational concepts before building on them. Without that foundation, everything feels unstable.
 
 Software development isn’t where I’ve invested my time, despite repeated attempts. When I saw people building impressive projects in hours with Claude Code, I wanted to test it with something more substantial. I wanted a full application with real requirements, not just a toy project.
 
