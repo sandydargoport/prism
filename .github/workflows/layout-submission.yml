@@ -146,7 +146,7 @@ jobs:
         id: run-validator
         run: |
           # Validate the submitted layout using a quick inline check
-          node -e "
+          npx tsx -e "
             const { validateCommunityLayout } = require('./src/lib/community/validateLayout');
             const fs = require('fs');
             const layout = JSON.parse(fs.readFileSync('/tmp/submission.json', 'utf-8'));
