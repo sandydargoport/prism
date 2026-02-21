@@ -1,0 +1,42 @@
+{
+  "type": "prism-layout",
+  "version": 2,
+  "mode": "dashboard",
+  "name": "Surface Landscape",
+  "description": "Laptop Landscape",
+  "author": "Sandy Dargoport",
+  "tags": [],
+  "screenSizes": [
+    "2560x1440"
+  ],
+  "orientation": "landscape",
+  "widgets": [
+    {
+      "i": "clock",
+      "x": 9,
+      "y": 0,
+      "w": 3,
+      "h": 3,
+      "minW": 2,
+      "minH": 2
+    },
+    {
+      "i": "weather",
+      "x": 9,
+      "y": 3,
+      "w": 3,
+      "h": 4,
+      "minW": 2,
+      "minH": 2
+    },
+    {
+      "i": "tasks",
+      "x": 0,
+      "y": 0,
+      "w": 3,
+      "h": 7,
+      "minW": 2,
+      "minH": 3
+    }
+  ]
+}
