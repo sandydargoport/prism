@@ -205,7 +205,7 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const layout = JSON.parse(steps.validate.outputs.layout);
+            const layout = JSON.parse(fs.readFileSync('/tmp/submission.json', 'utf-8'));
             const index = JSON.parse(fs.readFileSync('./community/layouts/index.json', 'utf-8'));
 
             // Generate ID from name
