@@ -1,0 +1,19 @@
+{
+  "type": "prism-layout",
+  "version": 2,
+  "mode": "dashboard",
+  "name": "Calendar Focus",
+  "description": "Large calendar with compact info sidebar",
+  "author": "Prism",
+  "tags": ["calendar", "minimal"],
+  "screenSizes": ["24\"", "27\"", "32\""],
+  "orientation": "landscape",
+  "widgets": [
+    { "i": "calendar", "x": 0, "y": 0, "w": 9, "h": 16 },
+    { "i": "clock", "x": 9, "y": 0, "w": 3, "h": 4 },
+    { "i": "weather", "x": 9, "y": 4, "w": 3, "h": 4 },
+    { "i": "tasks", "x": 9, "y": 8, "w": 3, "h": 6 },
+    { "i": "birthdays", "x": 9, "y": 14, "w": 3, "h": 4 },
+    { "i": "messages", "x": 0, "y": 16, "w": 6, "h": 4 }
+  ]
+}

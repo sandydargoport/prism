@@ -1,0 +1,20 @@
+{
+  "type": "prism-layout",
+  "version": 2,
+  "mode": "dashboard",
+  "name": "Family Central",
+  "description": "Balanced layout with calendar, tasks, and family features",
+  "author": "Prism",
+  "tags": ["balanced", "family"],
+  "screenSizes": ["24\"", "27\"", "32\""],
+  "orientation": "landscape",
+  "widgets": [
+    { "i": "calendar", "x": 0, "y": 0, "w": 7, "h": 12 },
+    { "i": "clock", "x": 7, "y": 0, "w": 5, "h": 4 },
+    { "i": "weather", "x": 7, "y": 4, "w": 5, "h": 4 },
+    { "i": "tasks", "x": 8, "y": 8, "w": 4, "h": 8 },
+    { "i": "messages", "x": 0, "y": 12, "w": 4, "h": 8 },
+    { "i": "chores", "x": 4, "y": 12, "w": 4, "h": 8 },
+    { "i": "birthdays", "x": 8, "y": 16, "w": 4, "h": 4 }
+  ]
+}

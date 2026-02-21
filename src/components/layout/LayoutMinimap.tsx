@@ -27,16 +27,18 @@ interface LayoutMinimapProps {
 
 // Screen-safe boundaries for common screen sizes
 // rows = approximate visible rows, cols = effective usable columns
+// Landscape: 15" laptop has limited viewport; 24"-32" desktops are progressively larger
+// Column values represent comfortable widget placement area (not hard limits)
 const SCREEN_SAFE_ZONES = {
   landscape: [
-    { name: '15"', rows: 7, cols: 11, color: '#3B82F6' },    // Blue - laptop
-    { name: '24"', rows: 8, cols: 12, color: '#EF4444' },    // Red - small monitor
-    { name: '27"', rows: 10, cols: 12, color: '#F59E0B' },   // Amber - standard monitor
-    { name: '32"', rows: 12, cols: 12, color: '#22C55E' }, // Green - large 4K monitor
+    { name: '15"', rows: 7,  cols: 9,  color: '#3B82F6' },   // Blue  - laptop (1366×768)
+    { name: '24"', rows: 9,  cols: 10, color: '#EF4444' },   // Red   - small monitor (1920×1080)
+    { name: '27"', rows: 11, cols: 11, color: '#F59E0B' },   // Amber - standard monitor (2560×1440)
+    { name: '32"', rows: 13, cols: 12, color: '#22C55E' },   // Green - large monitor (3840×2160)
   ],
   portrait: [
-    { name: '15"', rows: 12, cols: 8, color: '#3B82F6' },
-    { name: '24"', rows: 14, cols: 9, color: '#EF4444' },
+    { name: '15"', rows: 12, cols: 8,  color: '#3B82F6' },
+    { name: '24"', rows: 14, cols: 9,  color: '#EF4444' },
     { name: '27"', rows: 18, cols: 10, color: '#F59E0B' },
     { name: '32"', rows: 22, cols: 12, color: '#22C55E' },
   ],

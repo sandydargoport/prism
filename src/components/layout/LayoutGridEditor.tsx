@@ -5,7 +5,8 @@ import { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import { ResponsiveGridLayout as RGL, useContainerWidth, getCompactor } from 'react-grid-layout';
 import type { LayoutItem, Layout } from 'react-grid-layout';
 import { isLightColor } from '@/lib/utils/color';
-import { LayoutMinimap, SCREEN_SAFE_ZONES } from '@/components/layout/LayoutMinimap';
+import { LayoutMinimap } from '@/components/layout/LayoutMinimap';
+import { useScreenSafeZones } from '@/lib/hooks/useScreenSafeZones';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -18,8 +19,6 @@ const COLOR_OPTIONS = [
   '#EF4444', '#06B6D4', '#84CC16', '#F97316', '#6366F1',
   '#FFFFFF', '#9CA3AF', '#6B7280', '#374151', '#000000',
 ];
-
-const ALL_SIZES = ['15"', '24"', '27"', '32"'];
 
 export interface EditorTheme {
   gridBg: string;
@@ -61,8 +60,8 @@ export interface LayoutGridEditorProps {
   className?: string;
   screenGuideOrientation?: 'landscape' | 'portrait';
   enabledSizes?: string[];
-  onScrollInfo?: (info: { scrollY: number; visibleRows: number }) => void;
-  scrollToRef?: React.MutableRefObject<((row: number) => void) | null>;
+  onScrollInfo?: (info: { scrollY: number; visibleRows: number; scrollX: number; visibleCols: number; totalRows: number; totalCols: number }) => void;
+  scrollToRef?: React.MutableRefObject<((row: number, col?: number) => void) | null>;
 }
 
 function ColorPickerButton({ bgColor, onClick }: { bgColor?: string; onClick: (e: React.MouseEvent) => void }) {
@@ -96,12 +95,14 @@ export function LayoutGridEditor({
   onScrollInfo,
   scrollToRef,
 }: LayoutGridEditorProps) {
+  const { zones: SAFE_ZONES, allSizeNames } = useScreenSafeZones();
   const { width, containerRef, mounted } = useContainerWidth();
   const [colorPickerWidget, setColorPickerWidget] = useState<string | null>(null);
   const [scrollY, setScrollY] = useState(0);
+  const [scrollX, setScrollX] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [screenGuideOrientationInternal, setScreenGuideOrientationInternal] = useState<'landscape' | 'portrait'>('landscape');
-  const [enabledSizesInternal, setEnabledSizesInternal] = useState<string[]>(ALL_SIZES);
+  const [enabledSizesInternal, setEnabledSizesInternal] = useState<string[]>(allSizeNames);
   const [showPanel, setShowPanel] = useState(true);
 
   const screenGuideOrientation = screenGuideOrientationProp ?? screenGuideOrientationInternal;
@@ -123,6 +124,11 @@ export function LayoutGridEditor({
     return Math.max(minVisibleRows, Math.floor((availableHeight + margin) / (cellSize + margin)));
   }, [cellSize, margin, headerOffset, minVisibleRows]);
 
+  const visibleCols = useMemo(() => {
+    if (width <= 0) return cols;
+    return Math.floor((width - 2 * containerPadding + margin) / (cellSize + margin));
+  }, [width, cellSize, margin]);
+
   const { totalRows, totalCols } = useMemo(() => {
     let maxY = visibleRows;
     let maxX = cols;
@@ -135,18 +141,21 @@ export function LayoutGridEditor({
       }
     });
     // Ensure grid extends to show all screen size guides
-    const maxScreenRows = Math.max(...SCREEN_SAFE_ZONES[screenGuideOrientation].map(z => z.rows));
-    const maxScreenCols = Math.max(...SCREEN_SAFE_ZONES[screenGuideOrientation].map(z => z.cols));
+    const maxScreenRows = Math.max(...SAFE_ZONES[screenGuideOrientation].map(z => z.rows));
     return {
-      totalRows: Math.max(maxY + 4, maxScreenRows + 2),
-      totalCols: Math.max(maxX, cols, maxScreenCols + 2),
+      totalRows: Math.max(maxY + 4, maxScreenRows + 4),
+      totalCols: Math.max(maxX, cols),
     };
-  }, [layout, visibleRows, cols, screenGuideOrientation]);
+  }, [layout, visibleRows, cols, screenGuideOrientation, SAFE_ZONES]);
 
-  const handleScrollTo = useCallback((targetRow: number) => {
+  const handleScrollTo = useCallback((targetRow: number, targetCol?: number) => {
     if (scrollContainerRef.current) {
       const scrollTop = targetRow * (cellSize + margin);
-      scrollContainerRef.current.scrollTo({ top: scrollTop, behavior: 'smooth' });
+      const opts: ScrollToOptions = { top: scrollTop, behavior: 'smooth' };
+      if (targetCol != null) {
+        opts.left = targetCol * (cellSize + margin);
+      }
+      scrollContainerRef.current.scrollTo(opts);
     }
   }, [cellSize, margin]);
 
@@ -158,13 +167,15 @@ export function LayoutGridEditor({
 
   // Report scroll info to parent
   useEffect(() => {
-    onScrollInfo?.({ scrollY, visibleRows });
-  }, [scrollY, visibleRows, onScrollInfo]);
+    onScrollInfo?.({ scrollY, visibleRows, scrollX, visibleCols, totalRows, totalCols });
+  }, [scrollY, visibleRows, scrollX, visibleCols, totalRows, totalCols, onScrollInfo]);
 
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const target = e.target as HTMLDivElement;
     const scrolledRows = Math.floor(target.scrollTop / (cellSize + margin));
+    const scrolledCols = Math.floor(target.scrollLeft / (cellSize + margin));
     setScrollY(scrolledRows);
+    setScrollX(scrolledCols);
   }, [cellSize, margin]);
 
   const toggleSize = useCallback((size: string) => {
@@ -365,53 +376,47 @@ export function LayoutGridEditor({
 
   const screenGuideLines = useMemo(() => {
     if (!isEditable || !mounted || width <= 0) return null;
-    const safeZones = SCREEN_SAFE_ZONES[screenGuideOrientation].filter(z => enabledSizes.includes(z.name));
+    const safeZones = SAFE_ZONES[screenGuideOrientation].filter(z => enabledSizes.includes(z.name));
     const patternH = cellSize + margin;
     const patternW = cellSize + margin;
 
+    const gridW = totalCols * patternW + containerPadding;
+    const gridH = totalRows * patternH + containerPadding;
+
     return (
-      <div className="absolute inset-0 pointer-events-none z-[5]" style={{ left: containerPadding, top: containerPadding }}>
-        {safeZones.map(zone => (
-          <div
-            key={`row-${zone.name}`}
-            className="absolute left-0 right-0"
-            style={{
-              top: zone.rows * patternH - margin / 2,
-              borderTop: `2px dashed ${zone.color}`,
-              opacity: 0.6,
-              marginRight: containerPadding,
-            }}
-          >
-            <span
-              className="absolute right-0 text-[10px] px-1 py-0.5 rounded-bl font-medium"
-              style={{ backgroundColor: zone.color, color: 'white', top: 0, transform: 'translateY(-100%)' }}
+      <div
+        className="absolute pointer-events-none z-[5]"
+        style={{ left: containerPadding, top: containerPadding, width: gridW, height: gridH }}
+      >
+        {safeZones.map(zone => {
+          const rectW = zone.cols * patternW - margin;
+          const rectH = zone.rows * patternH - margin;
+          return (
+            <div
+              key={`rect-${zone.name}`}
+              className="absolute"
+              style={{
+                left: 0,
+                top: 0,
+                width: rectW,
+                height: rectH,
+                border: `2px dashed ${zone.color}`,
+                boxSizing: 'border-box',
+                opacity: 0.6,
+              }}
             >
-              {zone.name}
-            </span>
-          </div>
-        ))}
-        {safeZones.filter(z => z.cols < cols).map(zone => (
-          <div
-            key={`col-${zone.name}`}
-            className="absolute top-0 bottom-0"
-            style={{
-              left: zone.cols * patternW - margin / 2,
-              borderLeft: `2px dashed ${zone.color}`,
-              opacity: 0.6,
-              marginBottom: containerPadding,
-            }}
-          >
-            <span
-              className="absolute bottom-2 text-[10px] px-1 py-0.5 rounded-tr font-medium"
-              style={{ backgroundColor: zone.color, color: 'white', left: 2 }}
-            >
-              {zone.name}
-            </span>
-          </div>
-        ))}
+              <span
+                className="absolute text-[10px] px-1 py-0.5 rounded-tl font-medium"
+                style={{ backgroundColor: zone.color, color: 'white', bottom: 2, right: 2 }}
+              >
+                {zone.name}
+              </span>
+            </div>
+          );
+        })}
       </div>
     );
-  }, [isEditable, mounted, width, cellSize, margin, screenGuideOrientation, enabledSizes, cols]);
+  }, [isEditable, mounted, width, cellSize, margin, screenGuideOrientation, enabledSizes, cols, totalRows, totalCols, containerPadding, SAFE_ZONES]);
 
   const combinedRef = useCallback((node: HTMLDivElement | null) => {
     (scrollContainerRef as React.MutableRefObject<HTMLDivElement | null>).current = node;

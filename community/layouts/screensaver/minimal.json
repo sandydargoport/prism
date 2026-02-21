@@ -1,0 +1,15 @@
+{
+  "type": "prism-layout",
+  "version": 2,
+  "mode": "screensaver",
+  "name": "Minimal",
+  "description": "Clock and weather, top-right corner",
+  "author": "Prism",
+  "tags": ["minimal", "clean"],
+  "screenSizes": ["15\"", "24\"", "27\"", "32\""],
+  "orientation": "landscape",
+  "widgets": [
+    { "i": "clock", "x": 8, "y": 0, "w": 4, "h": 3 },
+    { "i": "weather", "x": 8, "y": 3, "w": 4, "h": 2 }
+  ]
+}

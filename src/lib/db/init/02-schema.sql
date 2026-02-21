@@ -414,7 +414,7 @@ CREATE INDEX IF NOT EXISTS chores_assigned_to_idx ON chores USING btree (assigne
 CREATE INDEX IF NOT EXISTS events_start_time_idx ON events USING btree (start_time);
 CREATE INDEX IF NOT EXISTS events_end_time_idx ON events USING btree (end_time);
 CREATE INDEX IF NOT EXISTS events_calendar_source_idx ON events USING btree (calendar_source_id);
-CREATE UNIQUE INDEX IF NOT EXISTS events_source_external_unique ON events USING btree (calendar_source_id, external_event_id) WHERE (external_event_id IS NOT NULL);
+CREATE UNIQUE INDEX IF NOT EXISTS events_source_external_unique ON events USING btree (calendar_source_id, external_event_id);
 CREATE INDEX IF NOT EXISTS family_messages_created_at_idx ON family_messages USING btree (created_at);
 CREATE INDEX IF NOT EXISTS family_messages_expires_at_idx ON family_messages USING btree (expires_at);
 CREATE UNIQUE INDEX IF NOT EXISTS goal_achievements_goal_user_period_idx ON goal_achievements USING btree (goal_id, user_id, period_start);

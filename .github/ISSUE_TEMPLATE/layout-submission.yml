@@ -1,0 +1,46 @@
+name: Community Layout Submission
+description: Submit a layout to the Prism community gallery
+title: "Community Layout: "
+labels: ["layout-submission"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Submit a Layout to the Community Gallery
+
+        Paste your layout JSON below. You can generate this using the **Share to Community** button in Prism's layout editor.
+
+        All submissions are automatically validated. If validation passes, your layout will be added to the gallery automatically.
+
+  - type: textarea
+    id: layout-json
+    attributes:
+      label: Layout JSON
+      description: Paste the complete layout JSON here
+      placeholder: |
+        {
+          "type": "prism-layout",
+          "version": 2,
+          "mode": "dashboard",
+          ...
+        }
+      render: json
+    validations:
+      required: true
+
+  - type: input
+    id: author-name
+    attributes:
+      label: Author Name
+      description: How should you be credited? (1-50 characters)
+      placeholder: "Your Name"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Terms
+      options:
+        - label: I confirm this is my original layout and I agree to share it under the AGPL-3.0 license
+          required: true

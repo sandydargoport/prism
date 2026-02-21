@@ -1,0 +1,20 @@
+{
+  "type": "prism-layout",
+  "version": 2,
+  "mode": "screensaver",
+  "name": "Command Center",
+  "description": "Full grid with all common widgets",
+  "author": "Prism",
+  "tags": ["comprehensive", "overview"],
+  "screenSizes": ["27\"", "32\""],
+  "orientation": "landscape",
+  "widgets": [
+    { "i": "calendar", "x": 0, "y": 0, "w": 4, "h": 6 },
+    { "i": "tasks", "x": 4, "y": 0, "w": 4, "h": 4 },
+    { "i": "messages", "x": 8, "y": 0, "w": 4, "h": 4 },
+    { "i": "chores", "x": 4, "y": 4, "w": 4, "h": 4 },
+    { "i": "birthdays", "x": 8, "y": 4, "w": 4, "h": 4 },
+    { "i": "weather", "x": 0, "y": 6, "w": 4, "h": 2 },
+    { "i": "clock", "x": 0, "y": 8, "w": 4, "h": 3 }
+  ]
+}

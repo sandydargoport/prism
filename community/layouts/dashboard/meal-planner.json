@@ -1,0 +1,19 @@
+{
+  "type": "prism-layout",
+  "version": 2,
+  "mode": "dashboard",
+  "name": "Meal Planner",
+  "description": "Focus on meals and shopping",
+  "author": "Prism",
+  "tags": ["meals", "kitchen"],
+  "screenSizes": ["24\"", "27\"", "32\""],
+  "orientation": "landscape",
+  "widgets": [
+    { "i": "meals", "x": 0, "y": 0, "w": 8, "h": 10 },
+    { "i": "clock", "x": 8, "y": 0, "w": 4, "h": 4 },
+    { "i": "weather", "x": 8, "y": 4, "w": 4, "h": 3 },
+    { "i": "calendar", "x": 8, "y": 7, "w": 4, "h": 4 },
+    { "i": "shopping", "x": 0, "y": 10, "w": 6, "h": 8 },
+    { "i": "tasks", "x": 6, "y": 11, "w": 6, "h": 7 }
+  ]
+}

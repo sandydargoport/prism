@@ -123,6 +123,16 @@ If you're looking for a plug-and-play commercial solution, Prism might not be fo
 
 For remote access outside your home network, consider [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) or similar solutions.
 
+## Updating
+
+```bash
+cd prism
+git pull
+docker compose up -d --build
+```
+
+Your database, settings, and uploaded files are stored in Docker volumes and are preserved across rebuilds. If an update includes a database migration, it will be noted in the release.
+
 ---
 
 > **Everything above is all you need to get started.** The section below is optional background on why and how Prism was built.

@@ -9,12 +9,10 @@ import { WIDGET_REGISTRY, SCREENSAVER_WIDGETS } from '@/components/widgets/widge
 import { CommunityGallery } from './CommunityGallery';
 import { TemplateSidebar } from './TemplateSidebar';
 import { LayoutPreview } from './LayoutPreview';
-import { LayoutMinimap, SCREEN_SAFE_ZONES } from './LayoutMinimap';
 import { CoordinateEditor } from './CoordinateEditor';
 import { validateCommunityLayout } from '@/lib/community/validateLayout';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
-
-const ALL_SIZES = ['15"', '24"', '27"', '32"'];
+import { useScreenSafeZones } from '@/lib/hooks/useScreenSafeZones';
 
 export interface SavedLayout {
   id: string;
@@ -49,7 +47,11 @@ export interface LayoutEditorProps {
   onToggleSize?: (size: string) => void;
   gridScrollY?: number;
   gridVisibleRows?: number;
-  scrollToGridRef?: React.MutableRefObject<((row: number) => void) | null>;
+  gridScrollX?: number;
+  gridVisibleCols?: number;
+  gridTotalRows?: number;
+  gridTotalCols?: number;
+  scrollToGridRef?: React.MutableRefObject<((row: number, col?: number) => void) | null>;
 }
 
 const EXPORT_VERSION = 2;
@@ -119,12 +121,19 @@ export function LayoutEditor({
   onDeleteScreensaverPreset,
   screenGuideOrientation = 'landscape',
   onScreenGuideOrientationChange,
-  enabledSizes = ALL_SIZES,
+  enabledSizes = [],
   onToggleSize,
   gridScrollY = 0,
   gridVisibleRows = 12,
+  gridScrollX = 0,
+  gridVisibleCols = 12,
+  gridTotalRows = 24,
+  gridTotalCols = 12,
   scrollToGridRef,
 }: LayoutEditorProps) {
+  const { zones, allSizeNames } = useScreenSafeZones();
+  const effectiveEnabledSizes = enabledSizes.length > 0 ? enabledSizes : allSizeNames;
+
   const [showCommunity, setShowCommunity] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [importText, setImportText] = useState('');
@@ -512,10 +521,22 @@ export function LayoutEditor({
         </div>
       </div>
 
-      {/* Controls row: templates + widget picker */}
+      {/* Controls row: orientation + templates + widget picker */}
       <div className="pt-2 border-t border-border flex items-center gap-3 flex-wrap">
+        <button
+          onClick={() => onScreenGuideOrientationChange?.(screenGuideOrientation === 'landscape' ? 'portrait' : 'landscape')}
+          className={`px-3 py-1.5 text-xs rounded-md border transition-colors ${
+            screenGuideOrientation === 'landscape'
+              ? 'bg-muted border-border hover:bg-accent'
+              : 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/20'
+          }`}
+        >
+          {screenGuideOrientation === 'landscape' ? '\u2B1C Landscape' : '\u25AF Portrait'}
+        </button>
+        <div className="h-4 w-px bg-border" />
         <TemplateSidebar
           editingScreensaver={editingScreensaver}
+          orientation={screenGuideOrientation}
           savedLayouts={savedLayouts}
           screensaverPresets={screensaverPresets}
           onSelectTemplate={handleSelectTemplate}
@@ -549,46 +570,47 @@ export function LayoutEditor({
           />
         </div>
 
-        {/* Layout preview (x/y map) */}
-        <div className="flex-shrink-0">
-          {(() => {
-            const previewW = 380;
-            const previewH = 260;
-            const maxRow = Math.max(12, ...visibleWidgets.map(w => w.y + w.h));
-            const scaleY = previewH / maxRow;
-            const step = maxRow > 20 ? 4 : maxRow > 14 ? 3 : 2;
-            const rowLabels = Array.from({ length: Math.floor(maxRow / step) + 1 }, (_, i) => i * step).filter(r => r <= maxRow);
-            return (
-              <div className="flex gap-0.5">
-                <div className="relative flex-shrink-0" style={{ width: 16, height: previewH, marginTop: 14 }}>
-                  {rowLabels.map(row => (
-                    <span
-                      key={row}
-                      className="absolute right-0.5 text-[8px] text-muted-foreground leading-none"
-                      style={{ top: row * scaleY - 4 }}
-                    >
-                      {row}
-                    </span>
-                  ))}
-                </div>
-                <div>
-                  <div className="flex justify-between px-0.5" style={{ width: previewW, height: 14 }}>
-                    {Array.from({ length: 13 }, (_, i) => (
-                      <span key={i} className="text-[8px] text-muted-foreground">{i}</span>
-                    ))}
-                  </div>
-                  <LayoutPreview
-                    widgets={visibleWidgets.map(w => ({ i: w.i, x: w.x, y: w.y, w: w.w, h: w.h }))}
-                    width={previewW}
-                    height={previewH}
-                    highlightWidget={focusedWidget ?? undefined}
-                    showLabels={true}
-                    showGrid={true}
-                  />
-                </div>
-              </div>
-            );
-          })()}
+        {/* Layout preview + screen outline selectors (vertical, right of preview) */}
+        <div className="flex-shrink-0 flex gap-2 items-start">
+          <LayoutPreview
+            widgets={visibleWidgets.map(w => ({ i: w.i, x: w.x, y: w.y, w: w.w, h: w.h }))}
+            width={250}
+            height={250}
+            highlightWidget={focusedWidget ?? undefined}
+            showLabels={true}
+            showGrid={true}
+            visibleRows={gridVisibleRows}
+            scrollY={gridScrollY}
+            visibleCols={gridVisibleCols}
+            scrollX={gridScrollX}
+            onScrollTo={(row, col) => scrollToGridRef?.current?.(row, col)}
+            screenGuideOrientation={screenGuideOrientation}
+            enabledSizes={effectiveEnabledSizes}
+            safeZones={zones}
+          />
+          {/* Screen size guide controls — vertical */}
+          <div className="flex flex-col gap-1">
+            {allSizeNames.map(size => {
+              const zone = zones[screenGuideOrientation].find(z => z.name === size);
+              const isEnabled = effectiveEnabledSizes.includes(size);
+              return (
+                <button
+                  key={size}
+                  onClick={() => onToggleSize?.(size)}
+                  className={`text-[10px] px-1.5 py-0.5 rounded transition-colors whitespace-nowrap ${
+                    isEnabled ? 'text-white' : 'text-muted-foreground/50 line-through'
+                  }`}
+                  style={{
+                    backgroundColor: isEnabled ? zone?.color : 'transparent',
+                    border: `1px solid ${zone?.color || '#666'}`,
+                  }}
+                >
+                  {size}
+                </button>
+              );
+            })}
+            <span className="text-[8px] text-muted-foreground mt-1 leading-tight">Click map<br/>to scroll</span>
+          </div>
           {validation.errors.length > 0 && (
             <div className="bg-destructive/10 border border-destructive/30 rounded-md p-1.5 mt-1">
               <p className="text-[10px] font-medium text-destructive mb-0.5">
@@ -609,56 +631,6 @@ export function LayoutEditor({
               ))}
             </div>
           )}
-        </div>
-
-        {/* Scroll minimap + screen guide controls */}
-        <div className="flex-shrink-0">
-          {/* Label row matching LayoutPreview's column labels height */}
-          <div className="flex items-center gap-2 justify-center" style={{ height: 14 }}>
-            <span className="text-[8px] text-muted-foreground">Screen Guides</span>
-          </div>
-          <LayoutMinimap
-            layout={currentWidgets}
-            cols={12}
-            visibleRows={gridVisibleRows}
-            scrollY={gridScrollY}
-            onScrollTo={(row) => scrollToGridRef?.current?.(row)}
-            orientation={screenGuideOrientation}
-            enabledSizes={enabledSizes}
-            maxWidth={280}
-            maxHeight={260}
-          />
-          {/* Controls below minimap */}
-          <div className="mt-2 space-y-1.5">
-            <div className="flex items-center gap-1.5 justify-center">
-              <button
-                onClick={() => onScreenGuideOrientationChange?.(screenGuideOrientation === 'landscape' ? 'portrait' : 'landscape')}
-                className="text-[10px] px-2 py-0.5 rounded border border-border text-muted-foreground hover:bg-accent/50"
-              >
-                {screenGuideOrientation === 'landscape' ? '\u2B1C Landscape' : '\u25AF Portrait'}
-              </button>
-              {ALL_SIZES.map(size => {
-                const zone = SCREEN_SAFE_ZONES[screenGuideOrientation].find((z: { name: string }) => z.name === size);
-                const isEnabled = enabledSizes.includes(size);
-                return (
-                  <button
-                    key={size}
-                    onClick={() => onToggleSize?.(size)}
-                    className={`text-[10px] px-1.5 py-0.5 rounded transition-colors ${
-                      isEnabled ? 'text-white' : 'text-muted-foreground/50 line-through'
-                    }`}
-                    style={{
-                      backgroundColor: isEnabled ? zone?.color : 'transparent',
-                      border: `1px solid ${zone?.color || '#666'}`,
-                    }}
-                  >
-                    {size}
-                  </button>
-                );
-              })}
-            </div>
-            <p className="text-[9px] text-muted-foreground text-center">Click to navigate</p>
-          </div>
         </div>
       </div>
 
@@ -747,9 +719,9 @@ export function LayoutEditor({
             </div>
             <div className="flex items-center gap-4">
               <div>
-                <label className="text-xs text-muted-foreground block mb-1">Screen Sizes *</label>
-                <div className="flex gap-1">
-                  {['15"', '24"', '27"', '32"'].map(size => (
+                <label className="text-xs text-muted-foreground block mb-1">Target Resolutions *</label>
+                <div className="flex gap-1 flex-wrap">
+                  {['1920x1080', '2560x1440', '3840x2160', '2560x1600', '2048x1536', '1366x768'].map(size => (
                     <button
                       key={size}
                       onClick={() => setShareForm(f => ({

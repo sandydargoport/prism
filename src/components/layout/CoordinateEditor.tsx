@@ -105,7 +105,6 @@ export function CoordinateEditor({ widgets, onWidgetsChange, mode, onFocusedWidg
     <table className="text-sm flex-1">
       <thead>
         <tr className="text-xs text-muted-foreground border-b border-border">
-          <th className="text-left py-1 px-1 w-6">On</th>
           <th className="text-left py-1 px-1">Widget</th>
           <th className="text-center py-1 px-0.5 w-11">X</th>
           <th className="text-center py-1 px-0.5 w-11">Y</th>
@@ -130,23 +129,18 @@ export function CoordinateEditor({ widgets, onWidgetsChange, mode, onFocusedWidg
                 } ${errors ? 'bg-destructive/5' : ''}`}
               >
                 <td className="py-1 px-1">
-                  <input
-                    type="checkbox"
-                    checked={isVisible}
-                    onChange={e => handleToggleVisible(widgetId, e.target.checked)}
-                    className="rounded"
-                  />
-                </td>
-                <td className="py-1 px-1">
-                  <div className="flex items-center gap-1">
-                    <div
-                      className="w-2 h-2 rounded-sm flex-shrink-0"
-                      style={{ backgroundColor: color }}
-                    />
-                    <span className={`text-xs truncate ${isVisible ? '' : 'text-muted-foreground'}`}>
-                      {reg?.label || widgetId}
-                    </span>
-                  </div>
+                  <button
+                    onClick={() => handleToggleVisible(widgetId, !isVisible)}
+                    className={`w-full text-left text-[10px] px-1.5 py-0.5 rounded transition-colors whitespace-nowrap ${
+                      isVisible ? 'text-white' : 'text-muted-foreground/50 line-through'
+                    }`}
+                    style={{
+                      backgroundColor: isVisible ? color : 'transparent',
+                      border: `1px solid ${color}`,
+                    }}
+                  >
+                    {reg?.label || widgetId}
+                  </button>
                 </td>
                 <td className="py-1 px-0.5">
                   <CoordInput
@@ -199,7 +193,7 @@ export function CoordinateEditor({ widgets, onWidgetsChange, mode, onFocusedWidg
               </tr>
               {errors && isVisible && (
                 <tr>
-                  <td colSpan={6} className="px-2 pb-1">
+                  <td colSpan={5} className="px-2 pb-1">
                     {errors.map((err, i) => (
                       <p key={i} className="text-xs text-destructive">{err}</p>
                     ))}

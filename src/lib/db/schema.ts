@@ -149,8 +149,7 @@ export const events = pgTable('events', {
   calendarSourceIdx: index('events_calendar_source_idx').on(table.calendarSourceId),
   // Unique constraint to prevent duplicate synced events
   sourceExternalUnique: uniqueIndex('events_source_external_unique')
-    .on(table.calendarSourceId, table.externalEventId)
-    .where(sql`${table.externalEventId} IS NOT NULL`),
+    .on(table.calendarSourceId, table.externalEventId),
 }));
 
 

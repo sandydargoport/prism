@@ -1,0 +1,17 @@
+{
+  "type": "prism-layout",
+  "version": 2,
+  "mode": "screensaver",
+  "name": "Kitchen Display",
+  "description": "Meals spanning the top, shopping list below, clock + weather on the right",
+  "author": "Prism",
+  "tags": ["kitchen", "meals"],
+  "screenSizes": ["24\"", "27\"", "32\""],
+  "orientation": "landscape",
+  "widgets": [
+    { "i": "meals", "x": 0, "y": 0, "w": 8, "h": 4 },
+    { "i": "shopping", "x": 0, "y": 4, "w": 5, "h": 5 },
+    { "i": "weather", "x": 8, "y": 0, "w": 4, "h": 2 },
+    { "i": "clock", "x": 8, "y": 2, "w": 4, "h": 3 }
+  ]
+}

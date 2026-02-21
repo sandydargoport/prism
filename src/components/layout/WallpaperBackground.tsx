@@ -114,7 +114,7 @@ export function usePinnedPhoto(context: 'wallpaper' | 'screensaver') {
       localStorage.removeItem(storageKey);
     }
     // Dispatch storage event so other components can react
-    window.dispatchEvent(new StorageEvent('storage', { key: storageKey }));
+    window.dispatchEvent(new StorageEvent('storage', { key: storageKey, newValue: id }));
   }, [storageKey]);
 
   // Listen for changes from other tabs/components

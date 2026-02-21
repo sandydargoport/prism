@@ -1,0 +1,17 @@
+{
+  "type": "prism-layout",
+  "version": 2,
+  "mode": "dashboard",
+  "name": "Minimal",
+  "description": "Clean and simple - just the essentials",
+  "author": "Prism",
+  "tags": ["minimal", "clean"],
+  "screenSizes": ["15\"", "24\"", "27\"", "32\""],
+  "orientation": "landscape",
+  "widgets": [
+    { "i": "clock", "x": 0, "y": 0, "w": 6, "h": 6 },
+    { "i": "weather", "x": 6, "y": 0, "w": 6, "h": 6 },
+    { "i": "calendar", "x": 0, "y": 6, "w": 8, "h": 10 },
+    { "i": "tasks", "x": 8, "y": 6, "w": 4, "h": 10 }
+  ]
+}

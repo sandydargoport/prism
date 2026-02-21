@@ -7,6 +7,7 @@ import { DashboardGrid, DashboardLayout, DashboardHeader } from '@/components/la
 import { LayoutGridEditor, SCREENSAVER_THEME } from '@/components/layout/LayoutGridEditor';
 import { LayoutEditor } from '@/components/layout/LayoutEditor';
 import { useAuth } from '@/components/providers';
+import { useScreenSafeZones } from '@/lib/hooks/useScreenSafeZones';
 import { AddTaskModal, AddMessageModal, AddChoreModal, AddShoppingItemModal } from '@/components/modals';
 import { WIDGET_REGISTRY } from '@/components/widgets/widgetRegistry';
 import { renderScreensaverPreview } from '@/components/screensaver/ScreensaverWidgetPreview';
@@ -60,15 +61,35 @@ export function Dashboard({
   const layout = useDashboardLayout(data.layouts);
 
   // Grid control state shared between LayoutEditor toolbar and LayoutGridEditor
-  const [screenGuideOrientation, setScreenGuideOrientation] = useState<'landscape' | 'portrait'>('landscape');
-  const [enabledSizes, setEnabledSizes] = useState<string[]>(['15"', '24"', '27"', '32"']);
+  const { allSizeNames } = useScreenSafeZones();
+  const [screenGuideOrientation, setScreenGuideOrientationState] = useState<'landscape' | 'portrait'>(() => {
+    if (typeof window === 'undefined') return 'landscape';
+    try {
+      const stored = localStorage.getItem('prism:layout-designer-orientation');
+      if (stored === 'portrait' || stored === 'landscape') return stored;
+    } catch { /* ignore */ }
+    return 'landscape';
+  });
+  const setScreenGuideOrientation = useCallback((o: 'landscape' | 'portrait') => {
+    setScreenGuideOrientationState(o);
+    try { localStorage.setItem('prism:layout-designer-orientation', o); } catch { /* ignore */ }
+  }, []);
+  const [enabledSizes, setEnabledSizes] = useState<string[]>(allSizeNames);
   const [gridScrollY, setGridScrollY] = useState(0);
   const [gridVisibleRows, setGridVisibleRows] = useState(12);
-  const scrollToGridRef = useRef<((row: number) => void) | null>(null);
+  const [gridScrollX, setGridScrollX] = useState(0);
+  const [gridVisibleCols, setGridVisibleCols] = useState(12);
+  const [gridTotalRows, setGridTotalRows] = useState(24);
+  const [gridTotalCols, setGridTotalCols] = useState(12);
+  const scrollToGridRef = useRef<((row: number, col?: number) => void) | null>(null);
 
-  const handleScrollInfo = useCallback((info: { scrollY: number; visibleRows: number }) => {
+  const handleScrollInfo = useCallback((info: { scrollY: number; visibleRows: number; scrollX: number; visibleCols: number; totalRows: number; totalCols: number }) => {
     setGridScrollY(info.scrollY);
     setGridVisibleRows(info.visibleRows);
+    setGridScrollX(info.scrollX);
+    setGridVisibleCols(info.visibleCols);
+    setGridTotalRows(info.totalRows);
+    setGridTotalCols(info.totalCols);
   }, []);
 
   const handleToggleSize = useCallback((size: string) => {
@@ -171,6 +192,10 @@ export function Dashboard({
             onToggleSize={handleToggleSize}
             gridScrollY={gridScrollY}
             gridVisibleRows={gridVisibleRows}
+            gridScrollX={gridScrollX}
+            gridVisibleCols={gridVisibleCols}
+            gridTotalRows={gridTotalRows}
+            gridTotalCols={gridTotalCols}
             scrollToGridRef={scrollToGridRef}
           />
         )}

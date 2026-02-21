@@ -1,0 +1,255 @@
+name: Process Layout Submission
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  validate-and-add:
+    if: contains(github.event.issue.labels.*.name, 'layout-submission')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check submission limits
+        uses: actions/github-script@v7
+        id: check-limits
+        with:
+          script: |
+            const author = context.payload.issue.user.login;
+
+            // Check account age (must be at least 7 days old)
+            const userResp = await github.rest.users.getByUsername({ username: author });
+            const createdAt = new Date(userResp.data.created_at);
+            const daysSinceCreation = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
+
+            if (daysSinceCreation < 7) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: '❌ **Account too new.** GitHub accounts must be at least 7 days old to submit layouts. Please try again later.'
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                state: 'closed'
+              });
+              core.setFailed('Account too new');
+              return;
+            }
+
+            // Check daily submission limit (max 12 per day)
+            const today = new Date().toISOString().split('T')[0];
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'layout-submission',
+              creator: author,
+              since: `${today}T00:00:00Z`,
+              state: 'all',
+              per_page: 20
+            });
+
+            if (issues.data.length > 12) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: '❌ **Daily limit reached.** You can submit up to 12 layouts per day. Please try again tomorrow.'
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                state: 'closed'
+              });
+              core.setFailed('Daily limit reached');
+              return;
+            }
+
+            core.setOutput('passed', 'true');
+
+      - name: Extract and validate layout
+        if: steps.check-limits.outputs.passed == 'true'
+        uses: actions/github-script@v7
+        id: validate
+        with:
+          script: |
+            const body = context.payload.issue.body || '';
+
+            // Extract JSON from the layout-json textarea
+            const jsonMatch = body.match(/```json\s*([\s\S]*?)```/) || body.match(/\{[\s\S]*"type"\s*:\s*"prism-layout"[\s\S]*\}/);
+            if (!jsonMatch) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: '❌ **No layout JSON found.** Please use the Share to Community button in Prism to generate valid layout JSON.'
+              });
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: ['needs-fix']
+              });
+              core.setFailed('No JSON found');
+              return;
+            }
+
+            let layoutJson;
+            try {
+              const raw = jsonMatch[1] || jsonMatch[0];
+              layoutJson = JSON.parse(raw);
+            } catch (e) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: '❌ **Invalid JSON.** The layout JSON could not be parsed. Please re-export from Prism.'
+              });
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: ['needs-fix']
+              });
+              core.setFailed('Invalid JSON');
+              return;
+            }
+
+            // Write extracted JSON for validation
+            const fs = require('fs');
+            fs.writeFileSync('/tmp/submission.json', JSON.stringify(layoutJson, null, 2));
+            core.setOutput('layout', JSON.stringify(layoutJson));
+            core.setOutput('passed', 'true');
+
+      - name: Run validator
+        if: steps.validate.outputs.passed == 'true'
+        id: run-validator
+        run: |
+          # Validate the submitted layout using a quick inline check
+          node -e "
+            const { validateCommunityLayout } = require('./src/lib/community/validateLayout');
+            const fs = require('fs');
+            const layout = JSON.parse(fs.readFileSync('/tmp/submission.json', 'utf-8'));
+            const index = JSON.parse(fs.readFileSync('./community/layouts/index.json', 'utf-8'));
+
+            // Load existing widget sets for duplicate detection
+            const existingWidgetSets = [];
+            for (const entry of index.layouts) {
+              try {
+                const data = JSON.parse(fs.readFileSync('./community/layouts/' + entry.file, 'utf-8'));
+                existingWidgetSets.push(data.widgets || []);
+              } catch { existingWidgetSets.push([]); }
+            }
+
+            const result = validateCommunityLayout(layout, {
+              communitySubmission: true,
+              existingLayouts: index.layouts,
+              existingWidgetSets,
+            });
+
+            if (!result.valid) {
+              console.log('ERRORS=' + JSON.stringify(result.errors));
+              process.exit(1);
+            }
+            console.log('VALID');
+          " 2>&1 || echo "VALIDATION_FAILED=true" >> $GITHUB_ENV
+
+      - name: Comment validation failure
+        if: env.VALIDATION_FAILED == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '❌ **Layout validation failed.** Please fix the issues and update the layout JSON in this issue.\n\nUse the layout editor in Prism to ensure your layout is valid before submitting.'
+            });
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['needs-fix']
+            });
+
+      - name: Add layout and create PR
+        if: steps.validate.outputs.passed == 'true' && env.VALIDATION_FAILED != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const layout = JSON.parse(steps.validate.outputs.layout);
+            const index = JSON.parse(fs.readFileSync('./community/layouts/index.json', 'utf-8'));
+
+            // Generate ID from name
+            const id = layout.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+            const mode = layout.mode || 'dashboard';
+            const fileName = `${mode}/${id}.json`;
+            const filePath = `community/layouts/${fileName}`;
+
+            // Add to index
+            index.layouts.push({
+              id,
+              file: fileName,
+              name: layout.name,
+              description: layout.description || '',
+              author: layout.author || 'Community',
+              mode,
+              tags: layout.tags || [],
+              screenSizes: layout.screenSizes || [],
+              orientation: layout.orientation || 'landscape',
+              widgetCount: (layout.widgets || []).length,
+              createdAt: new Date().toISOString().split('T')[0],
+            });
+
+            // Write files
+            fs.writeFileSync(filePath, JSON.stringify(layout, null, 2) + '\n');
+            fs.writeFileSync('community/layouts/index.json', JSON.stringify(index, null, 2) + '\n');
+
+            // Create branch and commit
+            const branch = `layout/${id}-${context.issue.number}`;
+            const { execSync } = require('child_process');
+            execSync(`git config user.name "github-actions[bot]"`);
+            execSync(`git config user.email "github-actions[bot]@users.noreply.github.com"`);
+            execSync(`git checkout -b ${branch}`);
+            execSync(`git add ${filePath} community/layouts/index.json`);
+            execSync(`git commit -m "Add community layout: ${layout.name}\n\nFrom #${context.issue.number}"`);
+            execSync(`git push origin ${branch}`);
+
+            // Create PR
+            const pr = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Add community layout: ${layout.name}`,
+              body: `Adds community layout "${layout.name}" by ${layout.author}.\n\nCloses #${context.issue.number}\n\n🤖 Auto-generated from layout submission.`,
+              head: branch,
+              base: 'master',
+            });
+
+            // Comment on issue
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `✅ **Layout validated successfully!** A PR has been created: ${pr.data.html_url}\n\nYour layout will be available in the community gallery once the PR is merged.`
+            });

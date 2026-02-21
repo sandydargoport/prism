@@ -16,6 +16,8 @@ import { useFamily } from '@/components/providers/FamilyProvider';
 import { useScreensaverTimeout } from '@/lib/hooks/useScreensaverTimeout';
 import { useAwayModeTimeout } from '@/lib/hooks/useAwayModeTimeout';
 import { useHiddenHours } from '@/lib/hooks/useHiddenHours';
+import { useScreenSafeZones, DEFAULT_SCREENS, RESOLUTION_PRESETS, computeZones } from '@/lib/hooks/useScreenSafeZones';
+import type { ScreenZoneConfig } from '@/lib/hooks/useScreenSafeZones';
 
 function getCurrentMonthNum(): number {
   return new Date().getMonth() + 1;
@@ -183,6 +185,8 @@ export function DisplaySection() {
       </Card>
 
       <OrientationCard />
+
+      <ScreenSafeZonesCard />
     </div>
   );
 }
@@ -524,6 +528,145 @@ function CalendarHoursCard() {
               : 24 - settings.startHour + settings.endHour
           } hours)
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+const PRESET_COLORS = ['#3B82F6', '#EF4444', '#F59E0B', '#22C55E', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316'];
+
+function ScreenSafeZonesCard() {
+  const { screens, setScreens, resetToDefaults } = useScreenSafeZones();
+
+  const updateScreen = (idx: number, patch: Partial<ScreenZoneConfig>) => {
+    setScreens(screens.map((s, i) => i === idx ? { ...s, ...patch } : s));
+  };
+
+  const removeScreen = (idx: number) => {
+    setScreens(screens.filter((_, i) => i !== idx));
+  };
+
+  const addScreen = (width = 1920, height = 1080, name = 'New') => {
+    const usedColors = screens.map(s => s.color);
+    const nextColor = PRESET_COLORS.find(c => !usedColors.includes(c)) || '#6B7280';
+    // Avoid duplicate names
+    const existing = screens.some(s => s.name === name);
+    const label = existing ? `${name} (2)` : name;
+    setScreens([...screens, { name: label, width, height, color: nextColor }]);
+  };
+
+  const useMyScreen = () => {
+    if (typeof window === 'undefined') return;
+    const w = window.screen.width;
+    const h = window.screen.height;
+    addScreen(w, h, `My Screen ${w}x${h}`);
+  };
+
+  // Compute grid values for display
+  const landscapeZones = computeZones(screens, 'landscape');
+  const portraitZones = computeZones(screens, 'portrait');
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Screen Safe Zones</CardTitle>
+        <CardDescription>
+          Define visible-area guides for different screen resolutions in the layout designer.
+          Each zone draws a dashed rectangle on the grid showing how much content fits on that screen.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-xs text-muted-foreground">
+          The grid is responsive — columns and rows are computed from each screen&apos;s resolution
+          and RGL breakpoints. Enter resolutions and the grid size is computed automatically.
+        </p>
+
+        <div className="space-y-2">
+          <div className="grid grid-cols-[auto_1fr_5rem_5rem_8rem_2rem] gap-2 items-center text-xs text-muted-foreground font-medium px-1">
+            <span>Color</span>
+            <span>Label</span>
+            <span>Width</span>
+            <span>Height</span>
+            <span>Grid (L / P)</span>
+            <span />
+          </div>
+          {screens.map((screen, idx) => {
+            const lz = landscapeZones[idx];
+            const pz = portraitZones[idx];
+            return (
+              <div key={idx} className="grid grid-cols-[auto_1fr_5rem_5rem_8rem_2rem] gap-2 items-center">
+                <input
+                  type="color"
+                  value={screen.color}
+                  onChange={(e) => updateScreen(idx, { color: e.target.value })}
+                  className="w-7 h-7 rounded border border-border cursor-pointer bg-transparent"
+                />
+                <Input
+                  value={screen.name}
+                  onChange={(e) => updateScreen(idx, { name: e.target.value })}
+                  className="h-8 text-sm"
+                />
+                <Input
+                  type="number"
+                  min={320}
+                  max={7680}
+                  value={screen.width}
+                  onChange={(e) => updateScreen(idx, { width: parseInt(e.target.value) || 320 })}
+                  className="h-8 text-sm"
+                />
+                <Input
+                  type="number"
+                  min={320}
+                  max={4320}
+                  value={screen.height}
+                  onChange={(e) => updateScreen(idx, { height: parseInt(e.target.value) || 320 })}
+                  className="h-8 text-sm"
+                />
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {lz ? `${lz.cols}×${lz.rows}` : '–'} / {pz ? `${pz.cols}×${pz.rows}` : '–'}
+                </span>
+                <button
+                  onClick={() => removeScreen(idx)}
+                  className="text-muted-foreground hover:text-destructive transition-colors text-lg leading-none"
+                  title="Remove"
+                >
+                  &times;
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-muted-foreground mr-1">Presets:</span>
+            {RESOLUTION_PRESETS.map((p) => (
+              <button
+                key={p.label}
+                onClick={() => addScreen(p.width, p.height, p.label)}
+                className="px-2 py-0.5 text-xs rounded border border-border hover:bg-accent/50 transition-colors"
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => addScreen()}>
+              + Add Zone
+            </Button>
+            <Button variant="outline" size="sm" onClick={useMyScreen}>
+              Use my screen ({typeof window !== 'undefined' ? `${window.screen.width}×${window.screen.height}` : '–'})
+            </Button>
+            <Button variant="ghost" size="sm" onClick={resetToDefaults} className="text-muted-foreground">
+              Reset to Defaults
+            </Button>
+          </div>
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          Enter screen resolutions in CSS pixels. Grid columns and rows are computed from the resolution and RGL breakpoints. Changes apply immediately in the layout designer.
+        </p>
       </CardContent>
     </Card>
   );
