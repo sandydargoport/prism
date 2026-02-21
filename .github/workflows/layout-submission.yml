@@ -168,7 +168,7 @@ jobs:
             });
 
             if (!result.valid) {
-              console.log('ERRORS=' + JSON.stringify(result.errors));
+              fs.writeFileSync('/tmp/validation-errors.json', JSON.stringify(result.errors));
               process.exit(1);
             }
             console.log('VALID');
@@ -179,11 +179,18 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const fs = require('fs');
+            let errorList = '';
+            try {
+              const errors = JSON.parse(fs.readFileSync('/tmp/validation-errors.json', 'utf-8'));
+              errorList = '\n\n**Issues found:**\n' + errors.map(e => `- ${e}`).join('\n');
+            } catch { /* no detailed errors available */ }
+
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: '❌ **Layout validation failed.** Please fix the issues and update the layout JSON in this issue.\n\nUse the layout editor in Prism to ensure your layout is valid before submitting.'
+              body: `❌ **Layout validation failed.** Please fix the issues and update the layout JSON in this issue.${errorList}\n\nUse the layout editor in Prism to ensure your layout is valid before submitting.`
             });
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
