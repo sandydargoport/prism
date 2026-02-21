@@ -233,15 +233,16 @@ jobs:
             fs.writeFileSync(filePath, JSON.stringify(layout, null, 2) + '\n');
             fs.writeFileSync('community/layouts/index.json', JSON.stringify(index, null, 2) + '\n');
 
-            // Create branch and commit
+            // Create branch and commit (force-push in case branch exists from a prior attempt)
             const branch = `layout/${id}-${context.issue.number}`;
             const { execSync } = require('child_process');
             execSync(`git config user.name "github-actions[bot]"`);
             execSync(`git config user.email "github-actions[bot]@users.noreply.github.com"`);
+            try { execSync(`git branch -D ${branch}`); } catch { /* branch may not exist locally */ }
             execSync(`git checkout -b ${branch}`);
             execSync(`git add ${filePath} community/layouts/index.json`);
             execSync(`git commit -m "Add community layout: ${layout.name}\n\nFrom #${context.issue.number}"`);
-            execSync(`git push origin ${branch}`);
+            execSync(`git push --force origin ${branch}`);
 
             // Create PR
             const pr = await github.rest.pulls.create({
