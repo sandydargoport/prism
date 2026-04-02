@@ -268,36 +268,35 @@ export async function DELETE(
   try {
     const { id: choreId } = await params;
 
-    // Fetch chore schedule so we can restore due-state correctly after undo
-    const [chore] = await db
-      .select({
-        id: chores.id,
-        frequency: chores.frequency,
-        customIntervalDays: chores.customIntervalDays,
-        startDay: chores.startDay,
-      })
-      .from(chores)
-      .where(eq(chores.id, choreId))
-      .limit(1);
+    const undoResult = await db.transaction(async (tx) => {
+      // Fetch chore schedule inside transaction so all reads/writes are atomic
+      const [chore] = await tx
+        .select({
+          id: chores.id,
+          frequency: chores.frequency,
+          customIntervalDays: chores.customIntervalDays,
+          startDay: chores.startDay,
+        })
+        .from(chores)
+        .where(eq(chores.id, choreId))
+        .limit(1);
 
-    if (!chore) {
-      return NextResponse.json({ error: 'Chore not found' }, { status: 404 });
-    }
+      if (!chore) {
+        return { status: 'chore_not_found' as const };
+      }
 
-    // Find the most recent completion
-    const [latest] = await db
-      .select({ id: choreCompletions.id })
-      .from(choreCompletions)
-      .where(eq(choreCompletions.choreId, choreId))
-      .orderBy(desc(choreCompletions.completedAt))
-      .limit(1);
+      // Find the most recent completion to undo
+      const [latest] = await tx
+        .select({ id: choreCompletions.id })
+        .from(choreCompletions)
+        .where(eq(choreCompletions.choreId, choreId))
+        .orderBy(desc(choreCompletions.completedAt))
+        .limit(1);
 
-    if (!latest) {
-      return NextResponse.json({ error: 'No completion to undo' }, { status: 404 });
-    }
+      if (!latest) {
+        return { status: 'no_completion' as const };
+      }
 
-    // Delete completion and recalculate chore state
-    await db.transaction(async (tx) => {
       await tx.delete(choreCompletions).where(eq(choreCompletions.id, latest.id));
 
       // Find the new most recent completion (if any)
@@ -325,7 +324,17 @@ export async function DELETE(
           updatedAt: new Date(),
         })
         .where(eq(chores.id, choreId));
+
+      return { status: 'ok' as const };
     });
+
+    if (undoResult.status === 'chore_not_found') {
+      return NextResponse.json({ error: 'Chore not found' }, { status: 404 });
+    }
+
+    if (undoResult.status === 'no_completion') {
+      return NextResponse.json({ error: 'No completion to undo' }, { status: 404 });
+    }
 
     await invalidateCache('chores:*');
     await invalidateCache('goals:*');
