@@ -268,6 +268,22 @@ export async function DELETE(
   try {
     const { id: choreId } = await params;
 
+    // Fetch chore schedule so we can restore due-state correctly after undo
+    const [chore] = await db
+      .select({
+        id: chores.id,
+        frequency: chores.frequency,
+        customIntervalDays: chores.customIntervalDays,
+        startDay: chores.startDay,
+      })
+      .from(chores)
+      .where(eq(chores.id, choreId))
+      .limit(1);
+
+    if (!chore) {
+      return NextResponse.json({ error: 'Chore not found' }, { status: 404 });
+    }
+
     // Find the most recent completion
     const [latest] = await db
       .select({ id: choreCompletions.id })
@@ -292,10 +308,20 @@ export async function DELETE(
         .orderBy(desc(choreCompletions.completedAt))
         .limit(1);
 
+      const restoredNextDue = prevCompletion
+        ? calculateNextDue(
+          chore.frequency,
+          chore.customIntervalDays,
+          chore.startDay,
+          prevCompletion.completedAt
+        )
+        : null;
+
       await tx
         .update(chores)
         .set({
           lastCompleted: prevCompletion?.completedAt || null,
+          nextDue: restoredNextDue,
           updatedAt: new Date(),
         })
         .where(eq(chores.id, choreId));
