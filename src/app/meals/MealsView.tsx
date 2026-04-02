@@ -43,9 +43,12 @@ function getMealTypeEmoji(mealType: string): string {
   }
 }
 
+const ALL_DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
+
 export function MealsView() {
   const { requireAuth } = useAuth();
   const {
+    weekStartsOn,
     today, currentWeek, weekOfString, loading,
     showAddModal, setShowAddModal,
     selectedDay, setSelectedDay,
@@ -59,6 +62,7 @@ export function MealsView() {
 
   const { recipes } = useRecipes({ limit: 100 });
   const [filterMealTypes, setFilterMealTypes] = useState<Set<Meal['mealType']>>(new Set());
+  const orderedDays = [...ALL_DAYS.slice(weekStartsOn), ...ALL_DAYS.slice(0, weekStartsOn)] as readonly Meal['dayOfWeek'][];
 
   const handleAddWithAuth = async (day?: Meal['dayOfWeek']) => {
     const user = await requireAuth('Add Meal', 'Please log in to add a meal');
@@ -128,7 +132,7 @@ export function MealsView() {
             </div>
           ) : (
             <div className="max-w-6xl mx-auto space-y-3">
-              {(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const).map((day, index) => {
+              {orderedDays.map((day, index) => {
                 const dayDate = addDays(currentWeek, index);
                 const allDayMeals = mealsByDay[day] || [];
                 const dayMeals = filterMealTypes.size > 0 ? allDayMeals.filter(m => filterMealTypes.has(m.mealType)) : allDayMeals;
@@ -146,12 +150,12 @@ export function MealsView() {
         </div>
 
         {showAddModal && (
-          <MealModal weekOf={weekOfString} defaultDay={selectedDay || 'monday'} recipes={recipes}
+          <MealModal weekOf={weekOfString} defaultDay={selectedDay || orderedDays[0]} dayOptions={orderedDays} recipes={recipes}
             onClose={() => { setShowAddModal(false); setSelectedDay(null); }}
             onSave={(meal) => { addMeal(meal); setShowAddModal(false); setSelectedDay(null); }} />
         )}
         {editingMeal && (
-          <MealModal weekOf={weekOfString} meal={editingMeal} recipes={recipes}
+          <MealModal weekOf={weekOfString} meal={editingMeal} dayOptions={orderedDays} recipes={recipes}
             onClose={() => setEditingMeal(null)}
             onSave={(updates) => { editMeal(editingMeal.id, updates); setEditingMeal(null); }} />
         )}
@@ -302,13 +306,13 @@ function MealCard({ meal, onMarkCooked, onUnmarkCooked, onEdit, onDelete, onDrop
 }
 
 
-function MealModal({ weekOf, meal, defaultDay, recipes, onClose, onSave }: {
-  weekOf: string; meal?: Meal; defaultDay?: Meal['dayOfWeek']; recipes: Recipe[];
+function MealModal({ weekOf, meal, defaultDay, dayOptions, recipes, onClose, onSave }: {
+  weekOf: string; meal?: Meal; defaultDay?: Meal['dayOfWeek']; dayOptions: readonly Meal['dayOfWeek'][]; recipes: Recipe[];
   onClose: () => void; onSave: (meal: Record<string, unknown>) => void;
 }) {
   const [name, setName] = useState(meal?.name || '');
   const [description, setDescription] = useState(meal?.description || '');
-  const [dayOfWeek, setDayOfWeek] = useState<Meal['dayOfWeek']>(meal?.dayOfWeek || defaultDay || 'monday');
+  const [dayOfWeek, setDayOfWeek] = useState<Meal['dayOfWeek']>(meal?.dayOfWeek || defaultDay || dayOptions[0] || 'sunday');
   const [mealType, setMealType] = useState<Meal['mealType']>(meal?.mealType || 'dinner');
   const [prepTime, setPrepTime] = useState(meal?.prepTime?.toString() || '');
   const [cookTime, setCookTime] = useState(meal?.cookTime?.toString() || '');
@@ -436,13 +440,13 @@ function MealModal({ weekOf, meal, defaultDay, recipes, onClose, onSave }: {
           <div><label className="text-sm font-medium">Name</label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Meal name..." autoFocus={recipes.length === 0} /></div>
           <div><label className="text-sm font-medium">Description (optional)</label><Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Any details..." /></div>
           <div>
-            <label className="text-sm font-medium">Day</label>
-            <div className="grid grid-cols-4 gap-2 mt-1">
-              {(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const).map((d) => (
+              <label className="text-sm font-medium">Day</label>
+              <div className="grid grid-cols-4 gap-2 mt-1">
+              {dayOptions.map((d) => (
                 <Button key={d} type="button" variant={dayOfWeek === d ? 'default' : 'outline'} size="sm" onClick={() => setDayOfWeek(d)} className="capitalize text-xs">{d.slice(0, 3)}</Button>
               ))}
+              </div>
             </div>
-          </div>
           <div>
             <label className="text-sm font-medium">Meal Type</label>
             <div className="flex gap-2 mt-1 flex-wrap">
