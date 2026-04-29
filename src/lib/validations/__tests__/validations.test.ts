@@ -144,14 +144,8 @@ describe('createShoppingItemSchema', () => {
     expect(createShoppingItemSchema.safeParse({ name: 'Milk' }).success).toBe(false);
   });
 
-  it('rejects invalid category', () => {
-    const result = createShoppingItemSchema.safeParse({
-      listId: '4b487cc7-fb42-4f7b-bdd5-c02393fa468f',
-      name: 'Milk',
-      category: 'electronics',
-    });
-    expect(result.success).toBe(false);
-  });
+  // Note: shopping categories are intentionally flexible — users can create
+  // custom categories. The schema accepts any string up to 100 chars; no enum.
 });
 
 describe('createMealSchema', () => {

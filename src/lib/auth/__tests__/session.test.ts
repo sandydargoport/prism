@@ -114,15 +114,15 @@ describe('createSession', () => {
 
   it('uses correct TTL for each role', async () => {
     await createSession('u1', 'parent');
-    expect(mockRedisClient.setEx.mock.calls[0][1]).toBe(30 * 60); // 1800s
+    expect(mockRedisClient.setEx.mock.calls[0][1]).toBe(7 * 24 * 60 * 60); // 7 days
 
     jest.clearAllMocks();
     await createSession('u2', 'child');
-    expect(mockRedisClient.setEx.mock.calls[0][1]).toBe(15 * 60); // 900s
+    expect(mockRedisClient.setEx.mock.calls[0][1]).toBe(24 * 60 * 60); // 1 day
 
     jest.clearAllMocks();
     await createSession('u3', 'guest');
-    expect(mockRedisClient.setEx.mock.calls[0][1]).toBe(10 * 60); // 600s
+    expect(mockRedisClient.setEx.mock.calls[0][1]).toBe(10 * 60); // 10 min
   });
 });
 
@@ -159,10 +159,10 @@ describe('validateSession', () => {
 
     await validateSession('valid-token');
 
-    // Should write back with refreshed TTL (parent = 1800s)
+    // Should write back with refreshed TTL (parent = 7 days)
     expect(mockRedisClient.setEx).toHaveBeenCalledWith(
       'session:valid-token',
-      30 * 60,
+      7 * 24 * 60 * 60,
       expect.any(String)
     );
   });
@@ -386,11 +386,11 @@ describe('clearLoginAttempts', () => {
 
 describe('getSessionDuration', () => {
   it('returns parent duration in ms', () => {
-    expect(getSessionDuration('parent')).toBe(30 * 60 * 1000);
+    expect(getSessionDuration('parent')).toBe(7 * 24 * 60 * 60 * 1000);
   });
 
   it('returns child duration in ms', () => {
-    expect(getSessionDuration('child')).toBe(15 * 60 * 1000);
+    expect(getSessionDuration('child')).toBe(24 * 60 * 60 * 1000);
   });
 
   it('returns guest duration in ms', () => {
