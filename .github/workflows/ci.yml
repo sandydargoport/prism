@@ -37,6 +37,13 @@ jobs:
     name: Unit tests (jest)
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      # Some module-level imports read these — locally a `.env` file supplies
+      # them; in CI we provide throwaway values so import-time crashes don't
+      # take out the whole worker.
+      SESSION_SECRET: ci_test_session_secret_padding32
+      PIN_ENCRYPTION_KEY: ci_test_pin_encryption_key_pad32
+      ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
     steps:
       - uses: actions/checkout@v4
 
@@ -55,6 +62,14 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies (migrate.js needs the postgres module)
+        run: npm ci
 
       - name: Run migration replay script
         run: bash scripts/test-migration-replay.sh
