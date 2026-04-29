@@ -54,7 +54,10 @@ jobs:
 
       - run: npm ci
 
-      - run: npm test -- --ci
+      # Integration tests (src/lib/db/__tests__/integration.test.ts) require
+      # a real Postgres + seeded schema — they belong in a separate job, not
+      # the pure unit run.
+      - run: npm test -- --ci --testPathIgnorePatterns="integration\\.test\\.ts$"
 
   migration-replay:
     name: Migration replay (modality TODO #3)

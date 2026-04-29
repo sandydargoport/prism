@@ -7,14 +7,18 @@ import { execSync } from 'node:child_process';
  * The `getFirstParent` helper in `e2e/helpers/auth.ts` reads /api/family,
  * which returns role-stripped data for unauthenticated callers — so the
  * `m.role === 'parent'` filter finds nothing and the helper throws.
- * Going through docker exec sidesteps that and matches the pattern used
- * in e2e/visual-regression.spec.ts.
+ *
+ * Two execution paths because dev and CI hold the DB differently:
+ *   - Local (Windows dev): postgres lives in the `prism-db` Docker container;
+ *     `psql` may not be installed on the host. Reach in via `docker exec`.
+ *   - CI: postgres is a GitHub Actions service container exposed on
+ *     localhost:5432; the runner has `psql`. Use DATABASE_URL directly.
  */
 function getSeededParentId(): string {
-  const out = execSync(
-    `docker exec prism-db psql -U prism -d prism -At -c "SELECT id FROM users WHERE role = 'parent' ORDER BY created_at LIMIT 1"`,
-    { encoding: 'utf-8' },
-  ).trim();
+  const cmd = process.env.DATABASE_URL
+    ? `psql "${process.env.DATABASE_URL}" -At -c "SELECT id FROM users WHERE role = 'parent' ORDER BY created_at LIMIT 1"`
+    : `docker exec prism-db psql -U prism -d prism -At -c "SELECT id FROM users WHERE role = 'parent' ORDER BY created_at LIMIT 1"`;
+  const out = execSync(cmd, { encoding: 'utf-8' }).trim();
   if (!out) throw new Error('No seeded parent in DB — did seeds run?');
   return out;
 }
