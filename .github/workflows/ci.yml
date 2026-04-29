@@ -1,0 +1,140 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  typecheck-lint:
+    name: Type-check & lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - run: npm ci
+
+      - run: npm run type-check
+
+      - run: npm run lint
+
+  unit:
+    name: Unit tests (jest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - run: npm ci
+
+      - run: npm test -- --ci
+
+  migration-replay:
+    name: Migration replay (modality TODO #3)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run migration replay script
+        run: bash scripts/test-migration-replay.sh
+
+  e2e-modality:
+    name: E2E modality suite (reverse-proxy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: prism
+          POSTGRES_PASSWORD: ci_test_password
+          POSTGRES_DB: prism
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U prism"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://prism:ci_test_password@localhost:5432/prism
+      REDIS_URL: redis://localhost:6379
+      PORT: '3000'
+      APP_URL: http://localhost:3000
+      # Throwaway test-only values — the CI runner is ephemeral and never
+      # accepts external connections. Real production secrets live in .env.
+      SESSION_SECRET: ci_test_session_secret_padding32
+      PIN_ENCRYPTION_KEY: ci_test_pin_encryption_key_pad32
+      ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      # Gate flags consumed by playwright specs that are unsafe to run against
+      # a real deployment (would lock out the parent account on PIN failure).
+      E2E_HAS_TEST_DB: '1'
+      E2E_PIN: '1234'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Apply base schema
+        env:
+          PGPASSWORD: ci_test_password
+        run: psql -h localhost -U prism -d prism -v ON_ERROR_STOP=1 -f src/lib/db/init/02-schema.sql
+
+      - name: Apply migrations
+        run: node scripts/migrate.js
+
+      - name: Seed database
+        run: npm run db:seed
+
+      - name: Run e2e modality suite
+        run: npx playwright test e2e/reverse-proxy.spec.ts --reporter=list
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
