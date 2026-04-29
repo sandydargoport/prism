@@ -1,7 +1,7 @@
 # Prism
 
 > [!IMPORTANT]
-> **Upgrading from before April 11, 2026?** Database migrations now run automatically on container startup. Run `git pull && docker-compose up -d --build` and your database will update itself — no manual steps required.
+> **Upgrading from before April 11, 2026?** Database migrations now run automatically on container startup. Run `git pull && docker-compose up -d --build` and your database will update itself. No manual steps required.
 
 **A subscription-free, self-hosted family dashboard that integrates with the tools you already use without becoming yet another system of record.**
 
@@ -16,9 +16,9 @@ Prism is a configurable family dashboard designed for large wall-mounted screens
 
 ## What's New in v1.4.0
 
-> **Travel Map — Trips** · **Globe always-on trip visualization** · **OneDrive folder picker** · **GPS photo backfill**
+> **Travel Map: Trips** · **Globe always-on trip visualization** · **OneDrive folder picker** · **GPS photo backfill**
 
-The Travel Map now supports multi-stop **trips** in three styles: Route (numbered stops connected by a polyline), Loop (route that closes back to the start), and Hub (home base with day-trip spokes). All trips are always visible on the globe as faint colored dots and lines — selecting a trip brings it to full detail. National parks can be added as stops directly within a trip.
+The Travel Map now supports multi-stop **trips** in three styles: Route (numbered stops connected by a polyline), Loop (route that closes back to the start), and Hub (home base with day-trip spokes). All trips are always visible on the globe as faint colored dots and lines. Selecting a trip brings it to full detail. National parks can be added as stops directly within a trip.
 
 See the [full changelog](docs/CHANGELOG.md) for details on every release.
 
@@ -103,7 +103,7 @@ cp .env.example .env
 docker-compose up -d
 ```
 
-> **Raspberry Pi**: Tested on Pi 4 (4GB+). Works with the pre-built ARM64 image — no compilation needed.
+> **Raspberry Pi**: Tested on Pi 4 (4GB+). Works with the pre-built ARM64 image. No compilation needed.
 
 Open **<http://localhost:3000>** and log in with PIN `1234` (parent) or `0000` (child).
 
@@ -154,13 +154,13 @@ Beyond the dashboard, Prism includes dedicated pages for:
 
 ### Integrations
 
-- **Google Calendar** - Bidirectional sync via OAuth — create, edit, and delete events in Prism and changes push back to Google Calendar; iCal supported for read-only calendar sources
+- **Google Calendar** - Bidirectional sync via OAuth: create, edit, and delete events in Prism and changes push back to Google Calendar; iCal supported for read-only calendar sources
 - **Microsoft To Do** - Tasks, shopping lists, and wish lists (bidirectional sync)
 - **OneDrive** - Photos for slideshow and wallpaper
 - **OpenWeatherMap** - Weather data
 - **Gmail + FirstView** - School bus arrival tracking via geofence email notifications
 - **Open Food Facts** - Product lookup for barcode scanning (no API key required)
-- **USB HID barcode scanners** - Plug-and-play on desktop — scanner acts as a keyboard, items added instantly
+- **USB HID barcode scanners** - Plug-and-play on desktop: scanner acts as a keyboard, items added instantly
 - **Paprika** - Recipe import
 
 The goal isn't to replace your existing tools. It's to bring them together in one place that works for your family's rhythms.
@@ -208,7 +208,7 @@ git checkout master
 docker compose up -d --build
 ```
 
-Switching branches rebuilds the app but preserves your data. Feature branches may have rough edges — use at your own risk.
+Switching branches rebuilds the app but preserves your data. Feature branches may have rough edges. Use at your own risk.
 
 ---
 
@@ -223,7 +223,7 @@ I wanted a family dashboard that connected to the tools we already use and didn�
 
 I looked at open-source alternatives like MagicMirror², Homarr, Home Assistant, and many others, but they were all built for somewhat different use cases. Browsing the forums, I found a small group of people who wanted the same thing and had nothing that quite fit.
 
-The integrations reflect the tools my family actually uses — Microsoft To Do for tasks and shopping, Google Calendar for scheduling, OneDrive for photos, OpenWeatherMap for weather. I have limited experience with other ecosystems, so if there’s a service you’d like to see supported, open an issue or submit a PR. I did look into Apple Notes integration since my spouse uses it, but the reverse engineering required more ongoing maintenance than I was willing to take on.
+The integrations reflect the tools my family actually uses: Microsoft To Do for tasks and shopping, Google Calendar for scheduling, OneDrive for photos, OpenWeatherMap for weather. I have limited experience with other ecosystems, so if there’s a service you’d like to see supported, open an issue or submit a PR. I did look into Apple Notes integration since my spouse uses it, but the reverse engineering required more ongoing maintenance than I was willing to take on.
 
 I’m not a software developer, but I work in a technical field where AI tools are increasingly central to how work gets done. I pay for a Claude Code subscription and justify that cost as staying current in my field. I spent around two months on this, from research through testing and iteration. I hope you find it useful. If something is missing or broken, open an issue or submit a PR.
 
@@ -251,8 +251,8 @@ Rather than reviewing code myself - which I’m not well-positioned to do - I us
 
 Some features exist because I needed them:
 
-- **Travel globe** - An interactive 3D globe for tracking trips as a family. Drop pins for places you've visited or want to visit, add the stops and national parks within each trip, and browse everything in the Places tab with filters for status, bucket list, and whether a trip includes a national park. Uses OpenFreeMap tiles — no API key required.
-- **Barcode scanner** - Point your phone camera at a grocery item and it appears on your shopping list. Warns you if the item is already on a list, lets you pick which list to add it to, and suggests a category. USB barcode scanners work on desktop too — plug in and scan, no configuration needed. Product lookup via Open Food Facts, no API key required.
+- **Travel globe** - An interactive 3D globe for tracking trips as a family. Drop pins for places you've visited or want to visit, add the stops and national parks within each trip, and browse everything in the Places tab with filters for status, bucket list, and whether a trip includes a national park. Uses OpenFreeMap tiles. No API key required.
+- **Barcode scanner** - Point your phone camera at a grocery item and it appears on your shopping list. Warns you if the item is already on a list, lets you pick which list to add it to, and suggests a category. USB barcode scanners work on desktop too: plug in and scan, no configuration needed. Product lookup via Open Food Facts, no API key required.
 - **Recipe viewer** - Not another recipe app, but a way to view recipes on a large kitchen screen without repeatedly unlocking my phone
 - **Calendar parsing** - Handles the integrations that matter most to families (school calendars, work calendars, shared family events)
 - **Drag-and-drop layout** - Build your dashboard the way you want it, resize and arrange widgets to fit your screen
@@ -283,7 +283,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ## License
 
-Prism is open-source under the [PolyForm Noncommercial 1.0.0](LICENSE) license — free for personal and non-commercial use. It works as a PWA, so the same interface runs on wall-mounted displays, tablets, and mobile devices.
+Prism is open-source under the [PolyForm Noncommercial 1.0.0](LICENSE) license. Free for personal and non-commercial use. It works as a PWA, so the same interface runs on wall-mounted displays, tablets, and mobile devices.
 
 See [LICENSE](LICENSE) for details.
 
