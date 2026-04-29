@@ -4,29 +4,16 @@
  * Tests OAuth URL generation, token exchange, token refresh,
  * photo listing with pagination, MIME type filtering, and error handling.
  *
- * TODO: rewrite for async credentialStore-based API. The onedrive module
- * was refactored from .env-based config to `getMicrosoftCredentials()`
- * (DB-stored OAuth tokens), making every exported function async. The
- * tests below still call them synchronously without `await`, producing
- * unhandled promise rejections that crash the jest worker. Skipping the
- * whole suite until it's rewritten — see follow-up issue.
+ * The onedrive module reads OAuth credentials via `getMicrosoftCredentials()`
+ * from credentialStore (which queries the DB / decrypts secrets). We mock
+ * that whole module so tests don't touch the database.
  */
 
-const originalEnv = process.env;
+jest.mock('@/lib/integrations/credentialStore', () => ({
+  getMicrosoftCredentials: jest.fn(),
+}));
 
-beforeAll(() => {
-  process.env = {
-    ...originalEnv,
-    MICROSOFT_CLIENT_ID: 'test-client-id',
-    MICROSOFT_CLIENT_SECRET: 'test-client-secret',
-    MICROSOFT_REDIRECT_URI: 'http://localhost:3000/api/auth/onedrive/callback',
-  };
-});
-
-afterAll(() => {
-  process.env = originalEnv;
-});
-
+import { getMicrosoftCredentials } from '@/lib/integrations/credentialStore';
 import {
   getMicrosoftAuthUrl,
   exchangeCodeForTokens,
@@ -36,9 +23,26 @@ import {
   downloadPhoto,
 } from '../onedrive';
 
-describe.skip('getMicrosoftAuthUrl', () => {
-  it('generates URL with required OAuth parameters', () => {
-    const url = getMicrosoftAuthUrl();
+const mockGetCreds = getMicrosoftCredentials as jest.MockedFunction<typeof getMicrosoftCredentials>;
+
+const TEST_CREDS = {
+  clientId: 'test-client-id',
+  clientSecret: 'test-client-secret',
+  redirectUri: 'http://localhost:3000/api/auth/onedrive/callback',
+  tasksRedirectUri: 'http://localhost:3000/api/auth/microsoft/callback',
+};
+
+beforeEach(() => {
+  mockGetCreds.mockResolvedValue(TEST_CREDS);
+});
+
+afterEach(() => {
+  jest.clearAllMocks();
+});
+
+describe('getMicrosoftAuthUrl', () => {
+  it('generates URL with required OAuth parameters', async () => {
+    const url = await getMicrosoftAuthUrl();
 
     expect(url).toContain('https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize');
     expect(url).toContain('client_id=test-client-id');
@@ -47,33 +51,29 @@ describe.skip('getMicrosoftAuthUrl', () => {
     expect(url).toContain('scope=');
   });
 
-  it('includes state parameter when provided', () => {
-    const url = getMicrosoftAuthUrl('my-state-value');
+  it('includes state parameter when provided', async () => {
+    const url = await getMicrosoftAuthUrl('my-state-value');
     expect(url).toContain('state=my-state-value');
   });
 
-  it('does not include state parameter when not provided', () => {
-    const url = getMicrosoftAuthUrl();
+  it('does not include state parameter when not provided', async () => {
+    const url = await getMicrosoftAuthUrl();
     expect(url).not.toContain('state=');
   });
 
-  it('includes required scopes', () => {
-    const url = getMicrosoftAuthUrl();
+  it('includes required scopes', async () => {
+    const url = await getMicrosoftAuthUrl();
     expect(url).toContain('Files.Read');
     expect(url).toContain('offline_access');
   });
 
-  it('throws when config is missing', () => {
-    const saved = process.env.MICROSOFT_CLIENT_ID;
-    delete process.env.MICROSOFT_CLIENT_ID;
-
-    expect(() => getMicrosoftAuthUrl()).toThrow('Missing Microsoft OAuth configuration');
-
-    process.env.MICROSOFT_CLIENT_ID = saved;
+  it('throws when credentials are missing', async () => {
+    mockGetCreds.mockResolvedValueOnce(null);
+    await expect(getMicrosoftAuthUrl()).rejects.toThrow('Missing Microsoft OAuth configuration');
   });
 });
 
-describe.skip('exchangeCodeForTokens', () => {
+describe('exchangeCodeForTokens', () => {
   it('sends authorization code to token endpoint', async () => {
     const mockTokens = {
       access_token: 'new-access-token',
@@ -113,7 +113,7 @@ describe.skip('exchangeCodeForTokens', () => {
   });
 });
 
-describe.skip('refreshAccessToken', () => {
+describe('refreshAccessToken', () => {
   it('sends refresh token to token endpoint', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
@@ -144,7 +144,7 @@ describe.skip('refreshAccessToken', () => {
   });
 });
 
-describe.skip('listFolders', () => {
+describe('listFolders', () => {
   it('fetches root folders when no parentId given', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
@@ -198,7 +198,7 @@ describe.skip('listFolders', () => {
   });
 });
 
-describe.skip('listPhotosInFolder', () => {
+describe('listPhotosInFolder', () => {
   it('filters to only image MIME types', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
@@ -280,7 +280,7 @@ describe.skip('listPhotosInFolder', () => {
   });
 });
 
-describe.skip('downloadPhoto', () => {
+describe('downloadPhoto', () => {
   it('returns Buffer from photo content', async () => {
     const testData = new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0]);
     global.fetch = jest.fn().mockResolvedValue({
