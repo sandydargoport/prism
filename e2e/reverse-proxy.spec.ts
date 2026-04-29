@@ -1,5 +1,23 @@
 import { test, expect, APIResponse } from '@playwright/test';
-import { getFirstParent, FamilyMember } from './helpers/auth';
+import { execSync } from 'node:child_process';
+
+/**
+ * Query the seeded parent's id directly from the DB.
+ *
+ * The `getFirstParent` helper in `e2e/helpers/auth.ts` reads /api/family,
+ * which returns role-stripped data for unauthenticated callers — so the
+ * `m.role === 'parent'` filter finds nothing and the helper throws.
+ * Going through docker exec sidesteps that and matches the pattern used
+ * in e2e/visual-regression.spec.ts.
+ */
+function getSeededParentId(): string {
+  const out = execSync(
+    `docker exec prism-db psql -U prism -d prism -At -c "SELECT id FROM users WHERE role = 'parent' ORDER BY created_at LIMIT 1"`,
+    { encoding: 'utf-8' },
+  ).trim();
+  if (!out) throw new Error('No seeded parent in DB — did seeds run?');
+  return out;
+}
 
 /**
  * Reverse-proxy cookie security tests.
@@ -17,8 +35,17 @@ import { getFirstParent, FamilyMember } from './helpers/auth';
  * Note: this is the lightweight version (modality TODO #1, path A). It tests
  * the app's *honoring* of `x-forwarded-proto` — which is where the bug lives.
  * A heavier version with a real nginx fixture is the future TODO #1 path B.
+ *
+ * TEST-ENVIRONMENT DEPENDENCY:
+ * - These tests POST real PINs to `/api/auth/login` against the seeded parent.
+ *   On a live deployment the PIN is unknown, so a run hammers the account with
+ *   `1234`, trips Redis-backed lockout, and locks the user out for 5+ minutes.
+ * - Gate behind `E2E_HAS_TEST_DB=1` (and optionally `E2E_PIN=...`), matching
+ *   the pattern in `visual-regression.spec.ts`. Without the flag every test
+ *   here is skipped — by design.
  */
 
+const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
 const PIN = process.env.E2E_PIN || '1234';
 
 function setCookies(response: APIResponse): string[] {
@@ -33,17 +60,18 @@ function findCookie(cookies: string[], name: string): string | undefined {
 }
 
 test.describe('Reverse-proxy cookie security', () => {
-  let parent: FamilyMember;
+  let parentId: string;
 
-  test.beforeAll(async ({ browser }) => {
-    const page = await browser.newPage();
-    parent = await getFirstParent(page);
-    await page.close();
+  test.beforeAll(() => {
+    if (HAS_TEST_DB) {
+      parentId = getSeededParentId();
+    }
   });
 
   test('login: x-forwarded-proto=https sets Secure; HttpOnly on session cookie', async ({ request }) => {
+    test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
     const response = await request.post('/api/auth/login', {
-      data: { userId: parent.id, pin: PIN },
+      data: { userId: parentId, pin: PIN },
       headers: { 'x-forwarded-proto': 'https' },
     });
     expect(response.ok()).toBe(true);
@@ -55,8 +83,9 @@ test.describe('Reverse-proxy cookie security', () => {
   });
 
   test('login: x-forwarded-proto=http omits Secure', async ({ request }) => {
+    test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
     const response = await request.post('/api/auth/login', {
-      data: { userId: parent.id, pin: PIN },
+      data: { userId: parentId, pin: PIN },
       headers: { 'x-forwarded-proto': 'http' },
     });
     expect(response.ok()).toBe(true);
@@ -67,8 +96,9 @@ test.describe('Reverse-proxy cookie security', () => {
   });
 
   test('verify-pin: x-forwarded-proto=https sets Secure; HttpOnly', async ({ request }) => {
+    test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
     const response = await request.post('/api/auth/verify-pin', {
-      data: { userId: parent.id, pin: PIN },
+      data: { userId: parentId, pin: PIN },
       headers: { 'x-forwarded-proto': 'https' },
     });
     expect(response.ok()).toBe(true);
@@ -86,10 +116,12 @@ test.describe('Reverse-proxy cookie security', () => {
   });
 
   test('logout: x-forwarded-proto=https sets Secure; HttpOnly on cleared cookie', async ({ request }) => {
+    test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
     // Need a session first so logout has something to clear.
-    await request.post('/api/auth/login', {
-      data: { userId: parent.id, pin: PIN },
+    const loginResponse = await request.post('/api/auth/login', {
+      data: { userId: parentId, pin: PIN },
     });
+    expect(loginResponse.ok(), 'precondition: login must succeed').toBe(true);
 
     const response = await request.post('/api/auth/logout', {
       headers: { 'x-forwarded-proto': 'https' },
