@@ -118,7 +118,7 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/dompurify": "^3.0.5",
     "@types/jest": "^29.5.14",
-    "@types/node": "^22.10.2",
+    "@types/node": "^24.12.2",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@types/sharp": "^0.31.1",
@@ -137,6 +137,6 @@
     "typescript": "^5.7.2"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=24.0.0"
   }
 }
