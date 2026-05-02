@@ -6,6 +6,7 @@ All notable changes to Prism are documented in this file.
 
 ### Added
 - **Voice API foundation (`/api/v1/voice/*`)**: New versioned, token-authenticated API surface for voice and home-automation integrations. First endpoint: `GET /api/v1/voice/calendar/today` returns today's events with a pre-formatted natural-language `spoken` field (`"Today you have Soccer Practice at 4 PM."`) so callers don't need their own templating. Reuses the existing `apiTokens` Bearer-token system; per-token rate-limited at 60 req/min. Documented in `docs/voice-api.md`. Phase 1 of the Alexa + HA distribution plan — additional intents (shopping/add, chore/complete, calendar/upcoming, etc.) coming in follow-ups.
+- **Voice token scope (`voice`)**: `withAuth` now supports a `tokenScope` option that rejects session-cookie callers and requires an API token whose scopes include either the named scope or `*`. The Voice API uses `tokenScope: 'voice'` so a leaked browser session cannot reach it, and Voice tokens issued with `scopes: ['voice']` are confined to `/api/v1/voice/*` (vs. the legacy `['*']` default which grants full account access). Token-creation validator now restricts scopes to the known set `['*', 'voice']`.
 
 ## [1.7.2] – 2026-05-02
 

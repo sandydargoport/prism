@@ -287,10 +287,20 @@ export const calendarNotesQuerySchema = z.object({
 
 // API TOKEN SCHEMAS
 
+/**
+ * Known token scopes. `*` grants full account access (the legacy default).
+ * `voice` is restricted to the `/api/v1/voice/*` namespace. New scopes
+ * should be added here AND enforced by `withAuth({ tokenScope: ... })`
+ * on the endpoints they cover.
+ */
+export const TOKEN_SCOPES = ['*', 'voice'] as const;
+export type TokenScope = (typeof TOKEN_SCOPES)[number];
+
 export const createApiTokenSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
   scopes: z
-    .array(z.string().min(1).max(100))
+    .array(z.enum(TOKEN_SCOPES))
+    .min(1, 'At least one scope is required')
     .optional()
     .default(['*']),
 });

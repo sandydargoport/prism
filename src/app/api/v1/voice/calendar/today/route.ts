@@ -51,6 +51,7 @@ export async function GET() {
       return voiceError('Sorry, I had trouble reading your calendar.', 500);
     }
   }, {
+    tokenScope: 'voice',
     rateLimit: { feature: 'voice-api', limit: 60, windowSeconds: 60 },
   });
 }

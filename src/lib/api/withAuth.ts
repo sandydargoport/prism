@@ -12,6 +12,13 @@ export interface AuthResult {
 interface WithAuthOptions {
   /** Required permission (checked via requireRole for session auth; checked against token scopes for API tokens) */
   permission?: keyof RolePermissions;
+  /**
+   * Required token scope. When set, the request MUST be authenticated via an
+   * API token whose scopes include either `*` or the named scope. Session
+   * cookies are rejected. Use this for endpoints that are intentionally
+   * machine-to-machine only (e.g. the Voice API).
+   */
+  tokenScope?: string;
   /** Rate limit configuration */
   rateLimit?: {
     /** Feature name for rate limit key */
@@ -53,6 +60,22 @@ export async function withAuth<T>(
   // Check authentication
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
+
+  // Check required token scope (rejects session-cookie callers)
+  if (options?.tokenScope) {
+    if (auth.scopes === undefined) {
+      return NextResponse.json(
+        { error: { code: 'UNAUTHORIZED', message: 'API token required for this endpoint' } },
+        { status: 401 }
+      );
+    }
+    if (!tokenHasScope(auth.scopes, options.tokenScope)) {
+      return NextResponse.json(
+        { error: { code: 'FORBIDDEN', message: `Token scope must include '${options.tokenScope}' or '*'` } },
+        { status: 403 }
+      );
+    }
+  }
 
   // Check permission if specified
   if (options?.permission) {

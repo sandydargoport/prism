@@ -4,12 +4,25 @@ The Voice API is a versioned, token-authenticated surface designed for voice and
 
 ## Auth
 
-Every endpoint accepts:
+Every Voice API endpoint requires `Authorization: Bearer <token>` where the token's scopes include either `voice` or `*`. **Session cookies are rejected** — this is intentionally a machine-to-machine surface, so a stolen browser session can't reach voice endpoints.
 
-- `Authorization: Bearer <token>` — long-lived API token issued via `POST /api/auth/tokens` (parent-only). **Recommended for external integrations.**
-- A valid `prism_session` cookie — also works, useful for browser-based debugging.
+Tokens are issued via `POST /api/auth/tokens` (parent-only), SHA-256 hashed at rest, and never re-displayed after creation. The recommended scope for voice integrations is `['voice']` so a token leak cannot read or modify anything outside `/api/v1/voice/*`.
 
-Tokens are SHA-256 hashed at rest and never re-displayed after creation.
+```bash
+curl -X POST http://localhost:3000/api/auth/tokens \
+  -H "Cookie: prism_session=<your-parent-session>" \
+  -H "Content-Type: application/json" \
+  -d '{ "name": "Alexa skill", "scopes": ["voice"] }'
+```
+
+The response includes `token` — store it immediately, it is not retrievable later.
+
+### Known scopes
+
+| Scope | Grants |
+|---|---|
+| `voice` | Read + write across `/api/v1/voice/*` only |
+| `*` | Full account access (legacy default; avoid for new tokens) |
 
 ## Response shape
 
@@ -68,16 +81,14 @@ Returns events whose `startTime` falls within today (server local time).
 - `"Today you have Standup at 9 AM and Lunch at 12:30 PM."`
 - `"Today you have A at 8 AM, B at 10 AM, and C at 2 PM."` (Oxford comma)
 
-## Issuing a token
+## Security model for write operations
 
-```bash
-curl -X POST http://localhost:3000/api/auth/tokens \
-  -H "Cookie: prism_session=<your-parent-session>" \
-  -H "Content-Type: application/json" \
-  -d '{ "name": "Alexa skill" }'
-```
+Voice cannot escalate privileges. Specifically:
 
-The response includes `token` — store it immediately, it is not retrievable later.
+- **Chore completions inherit the chore's `assignedTo`** as the completer — voice does not let one family member claim another's points.
+- **Ambiguous chore names require disambiguation.** If a fuzzy name match returns multiple chores assigned to different family members (e.g. both Emma and Sophie have "Feed the dog"), the endpoint returns `ok: false` with a `spoken` prompt asking for the assignee (*"Multiple chores match 'feed the dog' — which family member?"*) and `data.candidates: [...]`. The caller resends with `assignee` in the body. A single match completes immediately.
+- **Chores with `requiresApproval: true` create *pending* completions** when completed via voice, just like the in-app flow. The `spoken` response makes this explicit (e.g. *"Marked feed the dog complete. A parent will need to approve in the app."*).
+- **Approval is in-app only**, behind the Parent PIN. Voice has no way to approve a pending chore — there is no way to verify the speaker is a parent.
 
 ## Roadmap
 

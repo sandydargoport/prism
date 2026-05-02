@@ -125,4 +125,49 @@ describe('withAuth', () => {
 
     expect(result).toBe(expected);
   });
+
+  describe('tokenScope', () => {
+    it('rejects session-cookie auth with 401', async () => {
+      // Session auth has no `scopes` field — that's how we detect it
+      mockRequireAuth.mockResolvedValue(parentAuth);
+      const handler = jest.fn();
+
+      const result = await withAuth(handler, { tokenScope: 'voice' });
+
+      expect(result).toBeInstanceOf(NextResponse);
+      expect((result as NextResponse).status).toBe(401);
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('rejects API token without the required scope (403)', async () => {
+      mockRequireAuth.mockResolvedValue({ ...parentAuth, scopes: ['other'] });
+      const handler = jest.fn();
+
+      const result = await withAuth(handler, { tokenScope: 'voice' });
+
+      expect(result).toBeInstanceOf(NextResponse);
+      expect((result as NextResponse).status).toBe(403);
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('accepts API token with the named scope', async () => {
+      const tokenAuth: AuthResult = { ...parentAuth, scopes: ['voice'] };
+      mockRequireAuth.mockResolvedValue(tokenAuth);
+      const handler = jest.fn().mockResolvedValue(NextResponse.json({ ok: true }));
+
+      await withAuth(handler, { tokenScope: 'voice' });
+
+      expect(handler).toHaveBeenCalledWith(tokenAuth);
+    });
+
+    it('accepts API token with the wildcard scope', async () => {
+      const tokenAuth: AuthResult = { ...parentAuth, scopes: ['*'] };
+      mockRequireAuth.mockResolvedValue(tokenAuth);
+      const handler = jest.fn().mockResolvedValue(NextResponse.json({ ok: true }));
+
+      await withAuth(handler, { tokenScope: 'voice' });
+
+      expect(handler).toHaveBeenCalledWith(tokenAuth);
+    });
+  });
 });
