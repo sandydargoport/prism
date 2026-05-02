@@ -4,6 +4,9 @@ All notable changes to Prism are documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Voice API foundation (`/api/v1/voice/*`)**: New versioned, token-authenticated API surface for voice and home-automation integrations. First endpoint: `GET /api/v1/voice/calendar/today` returns today's events with a pre-formatted natural-language `spoken` field (`"Today you have Soccer Practice at 4 PM."`) so callers don't need their own templating. Reuses the existing `apiTokens` Bearer-token system; per-token rate-limited at 60 req/min. Documented in `docs/voice-api.md`. Phase 1 of the Alexa + HA distribution plan — additional intents (shopping/add, chore/complete, calendar/upcoming, etc.) coming in follow-ups.
+
 ## [1.7.2] – 2026-05-02
 
 > Same-day patch follow-up: forecast past-day filter across all weather providers + a developer-experience fix for `npx jest`.
