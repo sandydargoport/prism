@@ -118,6 +118,8 @@ export type WidgetSize = 'small' | 'medium' | 'large' | 'wide' | 'tall';
 export interface WidgetContainerProps {
   /** Widget title (shown in header) */
   title?: string;
+  /** Stable widget identifier for tests/analytics. Falls back to title. */
+  widgetType?: string;
   /** URL to navigate to when title is clicked */
   titleHref?: string;
   /** Icon to show before title */
@@ -186,6 +188,7 @@ export function WidgetContainer({
   size = 'medium',
   showHeader = true,
   widgetId,
+  widgetType,
   alignment: alignmentProp,
   className,
   onClick,
@@ -230,6 +233,7 @@ export function WidgetContainer({
         className
       )}
       onClick={onClick}
+      data-widget={widgetType ?? title}
       style={{
         // Grid rows: auto for header (if present), 1fr for content
         gridTemplateRows: showHeader && title ? 'auto 1fr' : '1fr',

@@ -67,9 +67,9 @@ function getSeededParentName(): string {
 // screenshot (rendered as solid colored rectangles in the diff).
 function dynamicMasks(page: Page) {
   return [
-    page.locator('[role="region"]', { hasText: /^Clock$/ }),
-    page.locator('[role="region"]', { hasText: /^Weather$/ }),
-    page.locator('[role="region"]', { hasText: /^Photos?$/ }),
+    page.locator('[data-widget="Clock"]'),
+    page.locator('[data-widget="Weather"]'),
+    page.locator('[data-widget="Photo"]'),
   ];
 }
 

@@ -224,6 +224,7 @@ export const WeatherWidget = React.memo(function WeatherWidget({
 
   return (
     <WidgetContainer
+      widgetType="Weather"
       icon={<Cloud className="h-4 w-4" />}
       size="medium"
       loading={loading}

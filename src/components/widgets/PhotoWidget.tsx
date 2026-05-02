@@ -24,6 +24,7 @@ export const PhotoWidget = React.memo(function PhotoWidget({ className }: PhotoW
 
   return (
     <WidgetContainer
+      widgetType="Photo"
       loading={loading}
       error={error}
       showHeader={false}
