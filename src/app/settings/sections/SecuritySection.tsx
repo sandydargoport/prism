@@ -13,9 +13,22 @@ import type { FamilyMember } from '../components/PinEditModal';
 interface ApiToken {
   id: string;
   name: string;
+  scopes: string[];
   lastUsedAt: string | null;
   createdAt: string;
 }
+
+type TokenScopeChoice = 'voice' | '*';
+
+const SCOPE_LABELS: Record<TokenScopeChoice, string> = {
+  voice: 'Voice API only (recommended)',
+  '*': 'Full access (legacy)',
+};
+
+const SCOPE_DESCRIPTIONS: Record<TokenScopeChoice, string> = {
+  voice: 'Limited to /api/v1/voice/* — for Alexa skills, Home Assistant, voice agents.',
+  '*': 'Grants parent-level access to every endpoint. Use only for tools that need full control.',
+};
 
 export function SecuritySection() {
   const { members: familyMembers, refresh: refreshFamily } = useFamily();
@@ -24,6 +37,7 @@ export function SecuritySection() {
   // API Tokens state
   const [tokens, setTokens] = useState<ApiToken[]>([]);
   const [newTokenName, setNewTokenName] = useState('');
+  const [newTokenScope, setNewTokenScope] = useState<TokenScopeChoice>('voice');
   const [createdToken, setCreatedToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -52,7 +66,10 @@ export function SecuritySection() {
       const res = await fetch('/api/auth/tokens', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newTokenName.trim() }),
+        body: JSON.stringify({
+          name: newTokenName.trim(),
+          scopes: [newTokenScope],
+        }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -156,29 +173,42 @@ export function SecuritySection() {
         <CardHeader>
           <CardTitle>API Tokens</CardTitle>
           <CardDescription>
-            Generate long-lived tokens for external integrations like Home Assistant, Node-RED, or custom scripts. Tokens grant parent-level access.
+            Generate long-lived tokens for external integrations like Alexa skills, Home Assistant, Node-RED, or custom scripts. Pick the smallest scope that works — a leaked Voice token can&apos;t reach the rest of your data.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Create new token */}
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <Label htmlFor="token-name" className="sr-only">Token name</Label>
-              <Input
-                id="token-name"
-                placeholder="Token name (e.g. Home Assistant)"
-                value={newTokenName}
-                onChange={(e) => setNewTokenName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleCreateToken()}
-                maxLength={100}
-              />
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <Label htmlFor="token-name" className="sr-only">Token name</Label>
+                <Input
+                  id="token-name"
+                  placeholder="Token name (e.g. Alexa skill)"
+                  value={newTokenName}
+                  onChange={(e) => setNewTokenName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleCreateToken()}
+                  maxLength={100}
+                />
+              </div>
+              <select
+                className="border border-border rounded-md px-3 py-2 bg-background text-sm"
+                value={newTokenScope}
+                onChange={(e) => setNewTokenScope(e.target.value as TokenScopeChoice)}
+                aria-label="Token scope"
+              >
+                {(['voice', '*'] as const).map((scope) => (
+                  <option key={scope} value={scope}>{SCOPE_LABELS[scope]}</option>
+                ))}
+              </select>
+              <Button
+                onClick={handleCreateToken}
+                disabled={!newTokenName.trim() || creating}
+              >
+                {creating ? 'Creating...' : 'Generate Token'}
+              </Button>
             </div>
-            <Button
-              onClick={handleCreateToken}
-              disabled={!newTokenName.trim() || creating}
-            >
-              {creating ? 'Creating...' : 'Generate Token'}
-            </Button>
+            <p className="text-xs text-muted-foreground">{SCOPE_DESCRIPTIONS[newTokenScope]}</p>
           </div>
 
           {/* Show newly created token */}
@@ -215,7 +245,16 @@ export function SecuritySection() {
                   className="flex items-center justify-between p-3 rounded-md border border-border"
                 >
                   <div>
-                    <div className="font-medium">{token.name}</div>
+                    <div className="font-medium flex items-center gap-2">
+                      {token.name}
+                      <span className={`text-xs px-1.5 py-0.5 rounded font-mono ${
+                        token.scopes.includes('*')
+                          ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400'
+                          : 'bg-blue-500/15 text-blue-700 dark:text-blue-400'
+                      }`}>
+                        {token.scopes.join(', ')}
+                      </span>
+                    </div>
                     <div className="text-xs text-muted-foreground">
                       Created {formatDate(token.createdAt)}
                       {token.lastUsedAt && (
