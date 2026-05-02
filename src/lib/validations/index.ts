@@ -305,6 +305,24 @@ export const createApiTokenSchema = z.object({
     .default(['*']),
 });
 
+// VOICE API SCHEMAS
+
+export const voiceShoppingAddSchema = z.object({
+  item: z.string().min(1, 'Item name is required').max(255),
+  list: z.string().min(1).max(100).optional(),
+  quantity: z.number().int().positive().optional(),
+  unit: z.string().min(1).max(50).optional(),
+});
+
+export const voiceChoreCompleteSchema = z.object({
+  chore: z.string().min(1, 'Chore name is required').max(255),
+  assignee: z.string().min(1).max(100).optional(),
+});
+
+export const voiceMessagePostSchema = z.object({
+  message: z.string().min(1, 'Message is required').max(2000),
+});
+
 // LAYOUT SCHEMAS
 
 const widgetConfigSchema = z.object({
