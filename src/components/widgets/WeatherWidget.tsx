@@ -604,12 +604,20 @@ function PrecipitationChart({ minutely }: { minutely: MinutelyData[] }) {
     x: PAD_LEFT + (min / 60) * chartW,
   }));
 
+  const RAIN_THRESHOLD = 0.1;
+  const firstRainMinute = minutely.findIndex((m) => m.precipIntensity >= RAIN_THRESHOLD);
+  const rainMessage =
+    firstRainMinute <= 0 ? 'Raining now' : `Rain expected in ${firstRainMinute} min`;
+
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-        <CloudRain className="h-3 w-3 text-blue-400" />
-        Rain next hour
-      </span>
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+          <CloudRain className="h-3 w-3 text-blue-400" />
+          Rain next hour
+        </span>
+        <span className="text-[10px] text-blue-400 font-medium">{rainMessage}</span>
+      </div>
       <div ref={containerRef} className="w-full">
         <svg width={width} height={totalH} style={{ display: 'block' }}>
           <defs>
