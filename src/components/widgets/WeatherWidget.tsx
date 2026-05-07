@@ -249,8 +249,8 @@ export const WeatherWidget = React.memo(function WeatherWidget({
 
   const hasDays = weatherData.forecast.length > 0;
 
-  // Show precipitation chart when rain is imminent (any minute > 0.01 mm/hr) and data is available
-  const hasImminentRain = (weatherData.minutely ?? []).some((m) => m.precipIntensity > 0.01);
+  // Show precipitation chart only for real rain (≥ 0.1 mm/hr); 0.01 caught drizzle/trace amounts
+  const hasImminentRain = (weatherData.minutely ?? []).some((m) => m.precipIntensity >= 0.1);
   const showPrecipChart = hasImminentRain && !!weatherData.minutely?.length;
   const showSunArc = !!weatherData.sunrise && !!weatherData.sunset && !showPrecipChart;
 
@@ -574,7 +574,6 @@ function PrecipitationChart({ minutely }: { minutely: MinutelyData[] }) {
     return () => ro.disconnect();
   }, []);
 
-  // Layout — no left padding needed since labels are inside the chart
   const PAD_LEFT  = 4;
   const PAD_RIGHT = 4;
   const PAD_TOP   = 4;
@@ -584,32 +583,21 @@ function PrecipitationChart({ minutely }: { minutely: MinutelyData[] }) {
   const chartW    = Math.max(1, width - PAD_LEFT - PAD_RIGHT);
   const baseY     = PAD_TOP + CHART_H;
 
-  // Linear scale: 0–5 mm/hr maps to baseY..PAD_TOP (heavy rain clips to top, common events fill chart)
+  // 5 mm/hr = top of chart; heavy rain clips, common events fill lower zones
   const MAX_MM = 5;
-  const intensityToY = (mm: number) =>
-    baseY - (Math.min(mm, MAX_MM) / MAX_MM) * CHART_H;
 
-  // Three equal zones — dotted lines are the boundaries, labels go in the middle of each zone
-  const ZONE_H       = CHART_H / 3;
-  const HEAVY_LINE_Y = PAD_TOP + ZONE_H;
-  const MED_LINE_Y   = PAD_TOP + ZONE_H * 2;
-
-  // Vertical center of each zone
+  // Three equal intensity zones
+  const ZONE_H        = CHART_H / 3;
+  const HEAVY_LINE_Y  = PAD_TOP + ZONE_H;
+  const MED_LINE_Y    = PAD_TOP + ZONE_H * 2;
   const HEAVY_LABEL_Y = PAD_TOP + ZONE_H * 0.5;
   const MED_LABEL_Y   = PAD_TOP + ZONE_H * 1.5;
   const LIGHT_LABEL_Y = PAD_TOP + ZONE_H * 2.5;
 
-  // Convert minutely data to SVG points
+  // One bar per minute — tight packing with a 0.5 px gap
   const n = minutely.length;
-  const pts = minutely.map((m, i) => ({
-    x: PAD_LEFT + (i / Math.max(n - 1, 1)) * chartW,
-    y: intensityToY(m.precipIntensity),
-  }));
-
-  const linePath = catmullRomPath(pts);
-  const areaPath =
-    linePath +
-    ` L ${(PAD_LEFT + chartW).toFixed(1)} ${baseY} L ${PAD_LEFT} ${baseY} Z`;
+  const slotW = chartW / Math.max(n, 60);
+  const barW  = Math.max(slotW - 0.5, 0.5);
 
   const xTicks = [10, 20, 30, 40, 50].map((min) => ({
     min,
@@ -625,19 +613,19 @@ function PrecipitationChart({ minutely }: { minutely: MinutelyData[] }) {
       <div ref={containerRef} className="w-full">
         <svg width={width} height={totalH} style={{ display: 'block' }}>
           <defs>
-            <linearGradient id="precip-area-gradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%"   stopColor="#60A5FA" stopOpacity="0.55" />
-              <stop offset="100%" stopColor="#60A5FA" stopOpacity="0.08" />
+            <linearGradient id="precip-bar-gradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"   stopColor="#3B82F6" stopOpacity="0.95" />
+              <stop offset="100%" stopColor="#93C5FD" stopOpacity="0.55" />
             </linearGradient>
           </defs>
 
-          {/* Zone boundary lines (between labels) */}
+          {/* Zone boundary lines */}
           <line x1={PAD_LEFT} y1={HEAVY_LINE_Y} x2={PAD_LEFT + chartW} y2={HEAVY_LINE_Y}
             stroke="currentColor" strokeOpacity={0.25} strokeWidth={0.75} strokeDasharray="3 3" />
           <line x1={PAD_LEFT} y1={MED_LINE_Y} x2={PAD_LEFT + chartW} y2={MED_LINE_Y}
             stroke="currentColor" strokeOpacity={0.25} strokeWidth={0.75} strokeDasharray="3 3" />
 
-          {/* Zone labels — vertically centered in their zone, inside the chart */}
+          {/* Zone labels */}
           <text x={PAD_LEFT + 4} y={HEAVY_LABEL_Y} textAnchor="start" fontSize={7.5}
             fill="currentColor" fillOpacity={0.5} dominantBaseline="middle">HEAVY</text>
           <text x={PAD_LEFT + 4} y={MED_LABEL_Y} textAnchor="start" fontSize={7.5}
@@ -645,12 +633,24 @@ function PrecipitationChart({ minutely }: { minutely: MinutelyData[] }) {
           <text x={PAD_LEFT + 4} y={LIGHT_LABEL_Y} textAnchor="start" fontSize={7.5}
             fill="currentColor" fillOpacity={0.5} dominantBaseline="middle">LIGHT</text>
 
-          {/* Filled area */}
-          <path d={areaPath} fill="url(#precip-area-gradient)" />
-
-          {/* Top stroke */}
-          <path d={linePath} fill="none" stroke="#60A5FA" strokeWidth={1.5}
-            strokeLinecap="round" strokeLinejoin="round" />
+          {/* Bars — one per minute, skip trace amounts */}
+          {minutely.map((m, i) => {
+            const intensity = Math.min(m.precipIntensity, MAX_MM);
+            if (intensity <= 0) return null;
+            const barH = (intensity / MAX_MM) * CHART_H;
+            const barX = PAD_LEFT + i * slotW;
+            return (
+              <rect
+                key={i}
+                x={barX}
+                y={baseY - barH}
+                width={barW}
+                height={barH}
+                fill="url(#precip-bar-gradient)"
+                rx={barW > 2 ? 1 : 0}
+              />
+            );
+          })}
 
           {/* Baseline */}
           <line x1={PAD_LEFT} y1={baseY} x2={PAD_LEFT + chartW} y2={baseY}
@@ -665,33 +665,6 @@ function PrecipitationChart({ minutely }: { minutely: MinutelyData[] }) {
       </div>
     </div>
   );
-}
-
-/** Catmull-Rom spline → cubic bezier SVG path.  Produces a smooth curve that
- *  passes through every data point without wild oscillations. */
-function catmullRomPath(pts: { x: number; y: number }[]): string {
-  if (pts.length === 0) return '';
-  if (pts.length === 1) return `M ${pts[0]!.x} ${pts[0]!.y}`;
-
-  const d: string[] = [`M ${pts[0]!.x.toFixed(1)} ${pts[0]!.y.toFixed(1)}`];
-
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[Math.max(0, i - 1)]!;
-    const p1 = pts[i]!;
-    const p2 = pts[i + 1]!;
-    const p3 = pts[Math.min(pts.length - 1, i + 2)]!;
-
-    const cp1x = p1.x + (p2.x - p0.x) / 6;
-    const cp1y = p1.y + (p2.y - p0.y) / 6;
-    const cp2x = p2.x - (p3.x - p1.x) / 6;
-    const cp2y = p2.y - (p3.y - p1.y) / 6;
-
-    d.push(
-      `C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)} ${cp2x.toFixed(1)} ${cp2y.toFixed(1)} ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`
-    );
-  }
-
-  return d.join(' ');
 }
 
 
