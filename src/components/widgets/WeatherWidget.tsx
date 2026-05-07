@@ -606,8 +606,19 @@ function PrecipitationChart({ minutely }: { minutely: MinutelyData[] }) {
 
   const RAIN_THRESHOLD = 0.1;
   const firstRainMinute = minutely.findIndex((m) => m.precipIntensity >= RAIN_THRESHOLD);
-  const rainMessage =
-    firstRainMinute <= 0 ? 'Raining now' : `Rain expected in ${firstRainMinute} min`;
+  const currentlyRaining = firstRainMinute === 0;
+
+  const rainMessage = (() => {
+    if (currentlyRaining) {
+      const stopMinute = minutely.findIndex((m, i) => i > 0 && m.precipIntensity < RAIN_THRESHOLD);
+      if (stopMinute === -1) return 'Raining through the hour';
+      const resumeMinute = minutely.findIndex((m, i) => i > stopMinute && m.precipIntensity >= RAIN_THRESHOLD);
+      return resumeMinute === -1
+        ? `Stops in ${stopMinute} min`
+        : `Stops in ${stopMinute} min · returns in ${resumeMinute} min`;
+    }
+    return firstRainMinute > 0 ? `Rain expected in ${firstRainMinute} min` : 'Rain starting now';
+  })();
 
   return (
     <div className="flex flex-col gap-1">
