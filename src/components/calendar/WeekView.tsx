@@ -65,8 +65,13 @@ export function WeekView({
   // Hidden hours hook
   const { settings: hiddenSettings, toggleHidden, getVisibleHours } = useHiddenHours();
 
+  const weekEnd = addDays(weekStart, 7);
+  const timedWeekEvents = events.filter(
+    (event) => !event.allDay && event.startTime >= weekStart && event.startTime < weekEnd
+  );
+
   // Get visible hours (filtered if hidden mode is enabled)
-  const hours = getVisibleHours();
+  const hours = getVisibleHours(timedWeekEvents, { from: weekStart, to: weekEnd });
 
   // Get all-day events for a day (multi-day events span across days)
   const getAllDayEvents = (date: Date) => {

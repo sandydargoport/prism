@@ -663,38 +663,72 @@ function CalendarHoursCard() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground">Hide hours from</span>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <span className="text-sm text-muted-foreground">Mode</span>
           <select
-            value={settings.startHour}
-            onChange={(e) => setSettings({ startHour: Number(e.target.value) })}
+            value={settings.mode}
+            onChange={(e) => setSettings({ mode: e.target.value as 'manual' | 'auto-fit' })}
             className="border border-border rounded px-2 py-1 text-sm bg-background"
           >
-            {hours.map((h) => (
-              <option key={h} value={h}>
-                {formatHour(h)}
-              </option>
-            ))}
-          </select>
-          <span className="text-sm text-muted-foreground">to</span>
-          <select
-            value={settings.endHour}
-            onChange={(e) => setSettings({ endHour: Number(e.target.value) })}
-            className="border border-border rounded px-2 py-1 text-sm bg-background"
-          >
-            {hours.map((h) => (
-              <option key={h} value={h}>
-                {formatHour(h)}
-              </option>
-            ))}
+            <option value="manual">Manual</option>
+            <option value="auto-fit">Auto-fit</option>
           </select>
         </div>
+
+        {settings.mode === 'manual' ? (
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">Hide hours from</span>
+            <select
+              value={settings.startHour}
+              onChange={(e) => setSettings({ startHour: Number(e.target.value) })}
+              className="border border-border rounded px-2 py-1 text-sm bg-background"
+            >
+              {hours.map((h) => (
+                <option key={h} value={h}>
+                  {formatHour(h)}
+                </option>
+              ))}
+            </select>
+            <span className="text-sm text-muted-foreground">to</span>
+            <select
+              value={settings.endHour}
+              onChange={(e) => setSettings({ endHour: Number(e.target.value) })}
+              className="border border-border rounded px-2 py-1 text-sm bg-background"
+            >
+              {hours.map((h) => (
+                <option key={h} value={h}>
+                  {formatHour(h)}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">Buffer</span>
+            <select
+              value={settings.bufferHours}
+              onChange={(e) => setSettings({ bufferHours: Number(e.target.value) })}
+              className="border border-border rounded px-2 py-1 text-sm bg-background"
+            >
+              {[0, 1, 2, 3, 4].map((h) => (
+                <option key={h} value={h}>
+                  {h} {h === 1 ? 'hour' : 'hours'}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div className="text-xs text-muted-foreground">
-          Hiding {formatHour(settings.startHour)} to {formatHour(settings.endHour)} ({
-            settings.startHour <= settings.endHour
-              ? settings.endHour - settings.startHour
-              : 24 - settings.startHour + settings.endHour
-          } hours)
+          {settings.mode === 'manual' ? (
+            <>Hiding {formatHour(settings.startHour)} to {formatHour(settings.endHour)} ({
+              settings.startHour <= settings.endHour
+                ? settings.endHour - settings.startHour
+                : 24 - settings.startHour + settings.endHour
+            } hours)</>
+          ) : (
+            <>Auto-fit trims dead hours around your timed events in day/week views with a {settings.bufferHours}-hour buffer.</>
+          )}
         </div>
       </CardContent>
     </Card>

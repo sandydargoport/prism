@@ -16,8 +16,10 @@ describe('useHiddenHours', () => {
     const { result } = renderHook(() => useHiddenHours());
 
     expect(result.current.settings).toEqual({
+      mode: 'manual',
       startHour: 0,
       endHour: 6,
+      bufferHours: 1,
       enabled: false,
     });
     expect(result.current.loaded).toBe(true);
@@ -25,8 +27,10 @@ describe('useHiddenHours', () => {
 
   it('loads settings from localStorage', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      mode: 'auto-fit',
       startHour: 22,
       endHour: 6,
+      bufferHours: 2,
       enabled: true,
     }));
 
@@ -34,6 +38,8 @@ describe('useHiddenHours', () => {
 
     expect(result.current.settings.startHour).toBe(22);
     expect(result.current.settings.endHour).toBe(6);
+    expect(result.current.settings.bufferHours).toBe(2);
+    expect(result.current.settings.mode).toBe('auto-fit');
     expect(result.current.settings.enabled).toBe(true);
   });
 
@@ -43,8 +49,10 @@ describe('useHiddenHours', () => {
     const { result } = renderHook(() => useHiddenHours());
 
     expect(result.current.settings).toEqual({
+      mode: 'manual',
       startHour: 0,
       endHour: 6,
+      bufferHours: 1,
       enabled: false,
     });
   });

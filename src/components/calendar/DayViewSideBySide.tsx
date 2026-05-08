@@ -5,6 +5,7 @@ import {
   isSameDay,
   isBefore,
   startOfDay,
+  addDays,
 } from 'date-fns';
 import { Clock } from 'lucide-react';
 import { NoteEditor } from './NoteEditor';
@@ -76,8 +77,6 @@ export function DayViewSideBySide({
   const currentMinuteSnapped = Math.floor(now.getMinutes() / 15) * 25;
 
   // Get visible hours (filtered if hidden mode is enabled)
-  const hours = getVisibleHours();
-
   const dayStart = startOfDay(currentDate);
   const dayEvents = events.filter((event) =>
     event.allDay
@@ -87,6 +86,8 @@ export function DayViewSideBySide({
 
   const allDayEvents = dayEvents.filter((e) => e.allDay);
   const timedEvents = dayEvents.filter((e) => !e.allDay);
+
+  const hours = getVisibleHours(timedEvents, { from: dayStart, to: addDays(dayStart, 1) });
 
   // If there are no calendar groups configured or merged view is on, show all events in a single column
   const showAllInOne = calendarGroups.length === 0 || mergedView;
