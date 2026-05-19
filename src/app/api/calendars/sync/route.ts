@@ -18,6 +18,8 @@ import {
   syncGoogleCalendarSource,
   syncAllIcalCalendars,
   syncIcalCalendarSource,
+  syncAllCalDAVCalendars,
+  syncCalDAVCalendarSource,
 } from '@/lib/services/calendar-sync';
 
 /**
@@ -75,17 +77,20 @@ export async function POST(request: NextRequest) {
       }
       const syncResult = source.provider === 'ical'
         ? await syncIcalCalendarSource(body.calendarId, options)
-        : await syncGoogleCalendarSource(body.calendarId, options);
+        : source.provider === 'caldav'
+          ? await syncCalDAVCalendarSource(body.calendarId, options)
+          : await syncGoogleCalendarSource(body.calendarId, options);
       result = { synced: syncResult.synced, errors: syncResult.errors };
     } else {
       // Sync all calendars across all supported providers
-      const [google, ical] = await Promise.all([
+      const [google, ical, caldav] = await Promise.all([
         syncAllGoogleCalendars(options),
         syncAllIcalCalendars(options),
+        syncAllCalDAVCalendars(options),
       ]);
       result = {
-        total: google.total + ical.total,
-        errors: [...google.errors, ...ical.errors],
+        total: google.total + ical.total + caldav.total,
+        errors: [...google.errors, ...ical.errors, ...caldav.errors],
       };
     }
 

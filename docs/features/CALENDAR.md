@@ -33,7 +33,23 @@ iCloud doesn't speak OAuth or expose a public REST API, so Prism rides the same 
 
 From iCloud.com it's the same idea: *Calendar → ⓘ next to the calendar → Public Calendar → Copy Link*.
 
-Caveats: this is a one-way feed (changes you make in Prism don't push back to iCloud — there's no UI to "edit" these events because the feed is read-only), and the calendar has to be marked Public on iCloud's side. Apple Reminders, iCloud Photos, and other Apple services don't have an equivalent open path, so they aren't currently supported.
+Caveats: this is a one-way feed (changes you make in Prism don't push back to iCloud — there's no UI to "edit" these events because the feed is read-only), and the calendar has to be marked Public on iCloud's side.
+
+### Apple iCloud (CalDAV — private calendars + Reminders) — *alpha*
+
+For calendars you don't want to mark Public — or to sync **Reminders** as tasks — Prism supports iCloud over CalDAV. This is the same protocol the macOS/iOS Calendar app uses.
+
+1. Generate an app-specific password at [appleid.apple.com](https://appleid.apple.com) → *Sign-In and Security → App-Specific Passwords → Generate*.
+2. In Prism: *Settings → Connected Accounts → CalDAV → Connect CalDAV server*.
+3. Enter:
+   - **Server URL:** `https://caldav.icloud.com`
+   - **Username:** your iCloud email
+   - **Password:** the app-specific password from step 1 (not your Apple ID password)
+4. Click *Test Connection*, then *Find Calendars*, pick which calendars and Reminders lists to sync, and *Connect*.
+
+The same flow works for **Nextcloud** (`https://your-server/remote.php/dav`), **Radicale**, **Baikal** (`https://your-server/dav.php`), and **Synology Calendar** (`https://your-nas:5001/caldav/`).
+
+Caveats: this path is currently **read-only** — events and tasks pulled from CalDAV appear in the dashboard but can't be edited from Prism (two-way write is on the roadmap). App-specific passwords are stored encrypted in the Prism database and never leave your server. Apple Reminders sync into Prism's Tasks list with the same priorities and due dates the iOS app uses.
 
 ### Per-calendar customization
 

@@ -4,6 +4,9 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+### Added — Integrations
+- **CalDAV / Apple iCloud (alpha, read-only)**: Connect any CalDAV server — Apple iCloud (`https://caldav.icloud.com`), Nextcloud, Radicale, Baikal, Synology — from *Settings → Connected Accounts → CalDAV*. Username + app-specific password, encrypted at rest. Discovery picks calendars + Reminders lists; events sync into the same `events` table as Google/iCal, VTODO items into `tasks`. Two-way write (create / update / delete) is on the roadmap. Apple Reminders sync as tasks with the original priorities and due dates. New API surface: `POST /api/caldav/{test,discover,connect}`. Documented in `docs/features/CALENDAR.md`.
+
 ### Changed — Auth
 - **Sign-in toast fires for every blocked mutation**: When a signed-out viewer edits a field, ticks a chore, adds a shopping item, or otherwise attempts any `/api/*` mutation, the call returned 401 and the UI silently failed to update — no signal that auth was the cause. A global `window.fetch` interceptor in `AuthProvider` now catches mutation 401s and toasts "Sign in to make changes — Enter your PIN to save edits." Debounced 2.5s so a save burst fires one toast, not ten. Suppressed while the PIN modal is already open (so `requireAuth`'s own toast doesn't double up). Limited to `/api/*` paths and POST/PUT/PATCH/DELETE so third-party fetches and the initial session-check GET aren't affected. Mirrors the dashboard edit-button behavior we added in 1.8.1.
 

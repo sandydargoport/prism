@@ -5,11 +5,12 @@ import { useSearchParams } from 'next/navigation';
 import { toast } from '@/components/ui/use-toast';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
-import { AlertTriangle, RefreshCw, Mail, HardDrive, Globe, Wand2 } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Mail, HardDrive, Globe, Wand2, Server } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
+import { CalDAVConnectDialog } from '@/app/settings/components/CalDAVConnectDialog';
 
 interface IntegrationStatus {
   google: {
@@ -55,6 +56,7 @@ export function ConnectedAccountsSection() {
   const [status, setStatus] = useState<IntegrationStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
+  const [caldavDialogOpen, setCaldavDialogOpen] = useState(false);
 
   const fetchStatus = async () => {
     try {
@@ -442,6 +444,37 @@ export function ConnectedAccountsSection() {
           )}
         </CardContent>
       </Card>
+
+      {/* CalDAV Card (Apple iCloud, Nextcloud, Radicale, Baikal, Synology) */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Server className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <CardTitle className="text-lg">CalDAV</CardTitle>
+                <CardDescription>Apple iCloud, Nextcloud, Radicale, Baikal, Synology &middot; Calendars + Reminders</CardDescription>
+              </div>
+            </div>
+            <Badge variant="outline" className="border-amber-500 text-amber-600">Alpha</Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-3">
+            Connect via username + app-specific password. Read-only sync of events and tasks. Two-way write support is planned.
+          </p>
+          <Button onClick={() => setCaldavDialogOpen(true)} variant="outline" className="w-full justify-start">
+            <Server className="h-4 w-4 mr-3" />
+            Connect CalDAV server
+          </Button>
+        </CardContent>
+      </Card>
+
+      <CalDAVConnectDialog
+        open={caldavDialogOpen}
+        onOpenChange={setCaldavDialogOpen}
+        onConnected={fetchStatus}
+      />
 
       <ConfirmDialog {...confirmDialogProps} />
     </div>

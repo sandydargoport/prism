@@ -1,6 +1,11 @@
 import { db } from '@/lib/db/client';
-import { calendarSources, events } from '@/lib/db/schema';
+import { calendarSources, events, tasks } from '@/lib/db/schema';
 import { eq, and, gte, lte, sql } from 'drizzle-orm';
+import {
+  fetchCalDAVEvents,
+  fetchCalDAVTasks,
+  type CalDAVConnectionConfig,
+} from '@/lib/integrations/caldav';
 import {
   fetchCalendarEvents,
   fetchCalendarList,
@@ -687,4 +692,232 @@ export async function getCalendarSourcesWithStatus() {
       },
     },
   });
+}
+
+// ─── CalDAV sync ───────────────────────────────────────────────────────────
+//
+// Read-only sync from any CalDAV server (Apple iCloud, Nextcloud, Radicale,
+// Baikal, Synology). Two-way write (createCalendarObject) isn't wired up yet
+// — that lives in a follow-up branch. Events from CalDAV land in the same
+// `events` table as Google + iCal; VTODO items land in `tasks`.
+
+/**
+ * Sync events from a single CalDAV calendar source.
+ */
+export async function syncCalDAVCalendarSource(
+  sourceId: string,
+  options: { timeMin?: Date; timeMax?: Date } = {}
+): Promise<{ synced: number; errors: string[] }> {
+  const errors: string[] = [];
+  let synced = 0;
+
+  const source = await db.query.calendarSources.findFirst({
+    where: eq(calendarSources.id, sourceId),
+  });
+
+  if (!source || source.provider !== 'caldav') {
+    return { synced: 0, errors: ['Not a CalDAV source'] };
+  }
+
+  if (!source.accessToken) {
+    return { synced: 0, errors: ['No credentials available'] };
+  }
+
+  let password: string;
+  try {
+    password = decrypt(source.accessToken);
+  } catch {
+    return { synced: 0, errors: ['Failed to decrypt credentials — may need to reconnect'] };
+  }
+
+  const config = source.syncErrors as CalDAVConnectionConfig | null;
+  if (!config?.serverUrl || !config?.username) {
+    return { synced: 0, errors: ['Missing CalDAV connection config'] };
+  }
+
+  const timeMin = options.timeMin || new Date(Date.now() - DEFAULT_TIME_MIN_MS);
+  const timeMax = options.timeMax || new Date(Date.now() + DEFAULT_TIME_MAX_MS);
+
+  try {
+    const caldavEvents = await fetchCalDAVEvents(
+      config.serverUrl,
+      config.username,
+      password,
+      source.sourceCalendarId,
+      timeMin,
+      timeMax,
+    );
+
+    for (const event of caldavEvents) {
+      const existing = await db.query.events.findFirst({
+        where: and(
+          eq(events.calendarSourceId, sourceId),
+          eq(events.externalEventId, event.uid),
+        ),
+      });
+
+      const eventData = {
+        title: event.title,
+        description: event.description,
+        location: event.location,
+        startTime: event.startTime,
+        endTime: event.endTime,
+        allDay: event.allDay,
+        color: event.color || source.color,
+        recurring: event.recurring,
+        recurrenceRule: event.recurrenceRule,
+        calendarSourceId: sourceId,
+        externalEventId: event.uid,
+        updatedAt: new Date(),
+      };
+
+      if (existing) {
+        await db.update(events).set(eventData).where(eq(events.id, existing.id));
+      } else {
+        await db.insert(events).values(eventData);
+      }
+
+      synced++;
+    }
+
+    // Drop events that no longer exist upstream (within the sync window only —
+    // matches the behavior of the Google + iCal paths in this file).
+    const upstreamUids = new Set(caldavEvents.map((e) => e.uid));
+    const localEvents = await db.query.events.findMany({
+      where: and(
+        eq(events.calendarSourceId, sourceId),
+        gte(events.startTime, timeMin),
+        lte(events.startTime, timeMax),
+      ),
+    });
+
+    for (const local of localEvents) {
+      if (local.externalEventId && !upstreamUids.has(local.externalEventId)) {
+        await db.delete(events).where(eq(events.id, local.id));
+      }
+    }
+
+    await db
+      .update(calendarSources)
+      .set({ lastSynced: new Date(), syncErrors: config })
+      .where(eq(calendarSources.id, sourceId));
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    errors.push(`CalDAV sync failed: ${msg}`);
+
+    await db
+      .update(calendarSources)
+      .set({
+        syncErrors: { ...config, lastError: msg, lastErrorAt: new Date().toISOString() },
+      })
+      .where(eq(calendarSources.id, sourceId));
+  }
+
+  return { synced, errors };
+}
+
+/**
+ * Sync tasks (VTODO) from a CalDAV calendar source into Prism tasks.
+ */
+export async function syncCalDAVTasks(
+  sourceId: string,
+): Promise<{ synced: number; errors: string[] }> {
+  const errors: string[] = [];
+  let synced = 0;
+
+  const source = await db.query.calendarSources.findFirst({
+    where: eq(calendarSources.id, sourceId),
+  });
+
+  if (!source || source.provider !== 'caldav') {
+    return { synced: 0, errors: ['Not a CalDAV source'] };
+  }
+  if (!source.accessToken) {
+    return { synced: 0, errors: ['No credentials available'] };
+  }
+
+  let password: string;
+  try {
+    password = decrypt(source.accessToken);
+  } catch {
+    return { synced: 0, errors: ['Failed to decrypt credentials'] };
+  }
+
+  const config = source.syncErrors as CalDAVConnectionConfig | null;
+  if (!config?.serverUrl || !config?.username) {
+    return { synced: 0, errors: ['Missing CalDAV connection config'] };
+  }
+
+  try {
+    const caldavTasks = await fetchCalDAVTasks(
+      config.serverUrl,
+      config.username,
+      password,
+      source.sourceCalendarId,
+    );
+
+    for (const task of caldavTasks) {
+      const externalId = `caldav:${source.id}:${task.uid}`;
+
+      const existing = await db.query.tasks.findFirst({
+        where: eq(tasks.externalId, externalId),
+      });
+
+      const taskData = {
+        title: task.title,
+        description: task.description,
+        dueDate: task.dueDate || null,
+        completed: task.completed,
+        completedAt: task.completedAt,
+        priority: (task.priority || 'medium') as 'high' | 'medium' | 'low',
+        category: task.categories[0] || null,
+        externalId,
+        externalUpdatedAt: new Date(),
+        lastSynced: new Date(),
+        updatedAt: new Date(),
+      };
+
+      if (existing) {
+        await db.update(tasks).set(taskData).where(eq(tasks.id, existing.id));
+      } else {
+        await db.insert(tasks).values(taskData);
+      }
+
+      synced++;
+    }
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    errors.push(`CalDAV task sync failed: ${msg}`);
+  }
+
+  return { synced, errors };
+}
+
+/**
+ * Sync all enabled CalDAV calendar sources (events + tasks).
+ */
+export async function syncAllCalDAVCalendars(
+  options: { timeMin?: Date; timeMax?: Date } = {}
+): Promise<{ total: number; errors: string[] }> {
+  const allErrors: string[] = [];
+  let total = 0;
+
+  const sources = await db.query.calendarSources.findMany({
+    where: and(
+      eq(calendarSources.provider, 'caldav'),
+      eq(calendarSources.enabled, true),
+    ),
+  });
+
+  for (const source of sources) {
+    const eventResult = await syncCalDAVCalendarSource(source.id, options);
+    total += eventResult.synced;
+    allErrors.push(...eventResult.errors);
+
+    const taskResult = await syncCalDAVTasks(source.id);
+    total += taskResult.synced;
+    allErrors.push(...taskResult.errors);
+  }
+
+  return { total, errors: allErrors };
 }

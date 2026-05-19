@@ -1,0 +1,262 @@
+'use client';
+
+import { useState } from 'react';
+import { CheckCircle2, AlertCircle, Loader2, Server } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
+
+interface DiscoveredCalendar {
+  href: string;
+  displayName: string;
+  color: string | null;
+  description: string | null;
+}
+
+export function CalDAVConnectDialog({
+  open,
+  onOpenChange,
+  onConnected,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConnected?: () => void;
+}) {
+  const [step, setStep] = useState<'credentials' | 'calendars' | 'done'>('credentials');
+  const [serverUrl, setServerUrl] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; error?: string } | null>(null);
+  const [discovering, setDiscovering] = useState(false);
+  const [calendars, setCalendars] = useState<DiscoveredCalendar[]>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [connecting, setConnecting] = useState(false);
+  const [connectedCount, setConnectedCount] = useState(0);
+
+  const reset = () => {
+    setStep('credentials');
+    setServerUrl('');
+    setUsername('');
+    setPassword('');
+    setTesting(false);
+    setTestResult(null);
+    setDiscovering(false);
+    setCalendars([]);
+    setSelected(new Set());
+    setConnecting(false);
+    setConnectedCount(0);
+  };
+
+  const handleTest = async () => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const res = await fetch('/api/caldav/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serverUrl, username, password }),
+      });
+      const data = await res.json();
+      setTestResult(data);
+    } catch {
+      setTestResult({ success: false, error: 'Request failed' });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const handleDiscover = async () => {
+    setDiscovering(true);
+    try {
+      const res = await fetch('/api/caldav/discover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serverUrl, username, password }),
+      });
+      const data = await res.json();
+      if (data.calendars) {
+        setCalendars(data.calendars);
+        setSelected(new Set(data.calendars.map((c: DiscoveredCalendar) => c.href)));
+        setStep('calendars');
+      }
+    } catch {
+      setTestResult({ success: false, error: 'Failed to discover calendars' });
+    } finally {
+      setDiscovering(false);
+    }
+  };
+
+  const handleConnect = async () => {
+    setConnecting(true);
+    try {
+      const selectedCalendars = calendars.filter(c => selected.has(c.href));
+      const res = await fetch('/api/caldav/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          serverUrl,
+          username,
+          password,
+          calendars: selectedCalendars,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setConnectedCount(data.sourceIds?.length || selectedCalendars.length);
+        setStep('done');
+        onConnected?.();
+      }
+    } catch {
+      // Error handling
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  const toggleCalendar = (href: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(href)) next.delete(href);
+      else next.add(href);
+      return next;
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Server className="h-5 w-5" />
+            {step === 'credentials' && 'Connect CalDAV Server'}
+            {step === 'calendars' && 'Select Calendars'}
+            {step === 'done' && 'Connected!'}
+          </DialogTitle>
+          <DialogDescription>
+            {step === 'credentials' && 'Works with Apple iCloud, Nextcloud, Radicale, Baikal, Synology, and other CalDAV servers.'}
+            {step === 'calendars' && 'Choose which calendars to sync with Prism.'}
+            {step === 'done' && `${connectedCount} calendar(s) connected and syncing.`}
+          </DialogDescription>
+        </DialogHeader>
+
+        {step === 'credentials' && (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="caldav-url">Server URL</Label>
+              <Input
+                id="caldav-url"
+                value={serverUrl}
+                onChange={e => setServerUrl(e.target.value)}
+                placeholder="https://cloud.example.com/remote.php/dav"
+              />
+              <div className="text-xs text-muted-foreground space-y-0.5">
+                <p><strong>Apple iCloud:</strong> https://caldav.icloud.com (use your iCloud email + an app-specific password from appleid.apple.com)</p>
+                <p><strong>Nextcloud:</strong> https://your-server/remote.php/dav</p>
+                <p><strong>Radicale:</strong> https://your-server/</p>
+                <p><strong>Baikal:</strong> https://your-server/dav.php</p>
+                <p><strong>Synology:</strong> https://your-nas:5001/caldav/</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="caldav-user">Username</Label>
+              <Input
+                id="caldav-user"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                placeholder="username"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="caldav-pass">Password or App Token</Label>
+              <Input
+                id="caldav-pass"
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="password or app-specific token"
+              />
+            </div>
+
+            {testResult && (
+              <div className={cn(
+                'flex items-center gap-2 p-3 rounded-lg text-sm',
+                testResult.success
+                  ? 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400'
+                  : 'bg-destructive/10 text-destructive'
+              )}>
+                {testResult.success ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertCircle className="h-4 w-4 shrink-0" />}
+                {testResult.success ? 'Connection successful!' : testResult.error}
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={handleTest} disabled={!serverUrl || !username || !password || testing}>
+                {testing ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Testing...</> : 'Test Connection'}
+              </Button>
+              <Button
+                onClick={handleDiscover}
+                disabled={!testResult?.success || discovering}
+              >
+                {discovering ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Discovering...</> : 'Find Calendars'}
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
+
+        {step === 'calendars' && (
+          <div className="space-y-4">
+            <div className="space-y-2 max-h-64 overflow-auto">
+              {calendars.map(cal => (
+                <label
+                  key={cal.href}
+                  className="flex items-center gap-3 p-2 rounded-lg border border-border hover:bg-accent cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected.has(cal.href)}
+                    onChange={() => toggleCalendar(cal.href)}
+                    className="rounded"
+                  />
+                  <div
+                    className="w-3 h-3 rounded-full shrink-0"
+                    style={{ backgroundColor: cal.color || '#6366f1' }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{cal.displayName}</p>
+                    {cal.description && <p className="text-xs text-muted-foreground truncate">{cal.description}</p>}
+                  </div>
+                </label>
+              ))}
+              {calendars.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">No calendars found on this server.</p>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setStep('credentials')}>Back</Button>
+              <Button onClick={handleConnect} disabled={selected.size === 0 || connecting}>
+                {connecting ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Connecting...</> : `Connect ${selected.size} Calendar${selected.size !== 1 ? 's' : ''}`}
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
+
+        {step === 'done' && (
+          <DialogFooter>
+            <Button onClick={() => { reset(); onOpenChange(false); }}>Done</Button>
+          </DialogFooter>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
