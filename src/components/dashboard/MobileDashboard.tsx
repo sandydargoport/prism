@@ -22,7 +22,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { cn } from '@/lib/utils';
-import { useDashboardData } from './useDashboardData';
+import type { useDashboardData } from './useDashboardData';
 import { useMobileCardOrder, loadHiddenCards } from './useMobileCardOrder';
 import { useBusTracking } from '@/lib/hooks/useBusTracking';
 import {
@@ -66,8 +66,11 @@ function SortableCard({ id, children }: { id: string; children: React.ReactNode 
   );
 }
 
-export const MobileDashboard = memo(function MobileDashboard() {
-  const data = useDashboardData();
+export interface MobileDashboardProps {
+  data: ReturnType<typeof useDashboardData>;
+}
+
+export const MobileDashboard = memo(function MobileDashboard({ data }: MobileDashboardProps) {
   const { order, setOrder } = useMobileCardOrder();
   const { routes: busRoutes } = useBusTracking();
   const [hiddenCards] = useState(loadHiddenCards);

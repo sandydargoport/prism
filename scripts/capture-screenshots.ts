@@ -246,7 +246,7 @@ const SCREENSHOTS: CaptureSpec[] = [
     name: 'weekend',
     url: '/weekend',
     description: 'Weekend Ideas activity board',
-    settleMs: 1000,
+    settleMs: 3000,
   },
 
   // ─── Messages ──────────────────────────────────────────────
@@ -294,7 +294,7 @@ async function waitForContentReady(page: Page, settleMs = 3500): Promise<void> {
       () => {
         const text = document.body.innerText.trim();
         if (!text || text === 'Prism') return false;
-        if (/Loading[\s\w]*\.\.\./i.test(text)) return false;
+        if (/Loading[\s\w]*(\.\.\.|…)/i.test(text)) return false;
         // Skeleton placeholders (animate-pulse) and spinners (animate-spin)
         // are both indicators that content is still loading.
         const loaders = document.querySelectorAll(

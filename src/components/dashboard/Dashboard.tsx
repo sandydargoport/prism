@@ -316,7 +316,7 @@ export function Dashboard({
         onLogout={activeUser ? clearActiveUser : undefined}
         onLogin={handleLogin}
       >
-        <MobileDashboard />
+        <MobileDashboard data={data} />
       </AppShell>
     );
   }

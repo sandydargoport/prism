@@ -2,6 +2,14 @@
 
 All notable changes to Prism are documented in this file.
 
+## Unreleased
+
+### Bug Fixes
+- **Mobile dashboard data never populated**: Cards stayed on "No tasks" / "No upcoming events" / "Lists are clear" even though `/api/*` returned real data. Both `Dashboard.tsx` and `MobileDashboard.tsx` were independently calling `useDashboardData()`, causing every domain hook to fire twice in parallel against the same URL. The duplicate inside StrictMode's dev double-mount left MobileDashboard's `useFetch` permanently stuck at `loading:true, data:[]`. Fix: lift the data hook to a single call in `Dashboard.tsx` and pass it to `MobileDashboard` as a prop — halves the network traffic on dashboard load and eliminates the race.
+
+### Internal
+- **Screenshot capture: detect Unicode ellipsis in loading states**: `waitForContentReady` regex now matches both `...` and `…` so the weekend page (which renders "Loading…") no longer gets captured mid-fetch. Bumped `weekend` `settleMs` 1000 → 3000 as a safety margin.
+
 ## [1.8.0] – 2026-05-17
 
 > Send-to-Kroger cart push (every Kroger banner, OAuth per-user, SKU picker with normalized unit prices and per-item caching), recipe import from pasted OCR text with section-aware ingredients and ½×–4× scaling pills, server-side calendar sync cron with a ±90/365-day window, mobile PWA becomes agenda-only, plus the foundation Voice API for the upcoming Alexa / Home Assistant integration. Same `git pull && docker-compose up -d --build` upgrade.
