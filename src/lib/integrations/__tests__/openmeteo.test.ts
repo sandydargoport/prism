@@ -279,9 +279,28 @@ describe('openmeteo.fetchWeatherData', () => {
 
   it('parses hourly times as wall-clock-in-location', async () => {
     // Same regression as the sunrise test, applied to the hourly forecast.
-    const today = localDate(0, 'America/Chicago');
+    // Build the fixture hours relative to `now` in Chicago so the (now-1h, now+12h]
+    // filter window always includes them — otherwise the test is time-of-day
+    // sensitive and fails on CI runs that happen too late in the day.
+    const chicagoNow = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Chicago',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(new Date());
+    const part = (type: string) => chicagoNow.find((p) => p.type === type)!.value;
+    const baseHour = Number(part('hour'));
+    const ymd = `${part('year')}-${part('month')}-${part('day')}`;
+    const h1 = String(baseHour).padStart(2, '0');
+    const h2 = String((baseHour + 1) % 24).padStart(2, '0');
+    const h3 = String((baseHour + 2) % 24).padStart(2, '0');
+    const fixtureHours = [`${h1}:00`, `${h2}:00`, `${h3}:00`];
+
     const response = buildResponse('America/Chicago');
-    response.hourly.time = [`${today}T09:00`, `${today}T10:00`, `${today}T11:00`];
+    response.hourly.time = fixtureHours.map((h) => `${ymd}T${h}`);
     response.hourly.temperature_2m = [70, 71, 72];
     response.hourly.precipitation_probability = [0, 0, 0];
     response.hourly.precipitation = [0, 0, 0];
@@ -295,9 +314,9 @@ describe('openmeteo.fetchWeatherData', () => {
     const { fetchWeatherData } = await import('../openmeteo');
     const result = await fetchWeatherData();
 
-    // Hourly is filtered to a 12-hour window around `now`, so at least one of
-    // the three fixture hours should survive. Whichever does, its wall-clock
-    // in America/Chicago must read back as one of "09:00" / "10:00" / "11:00".
+    // All three fixture hours straddle `now` so the (now-1h, now+12h] window
+    // catches them. Each surviving hour's wall-clock in Chicago must match
+    // one of the three we planted.
     expect(result.hourly && result.hourly.length).toBeGreaterThan(0);
     if (result.hourly && result.hourly.length > 0) {
       const formatter = new Intl.DateTimeFormat('en-US', {
@@ -307,7 +326,7 @@ describe('openmeteo.fetchWeatherData', () => {
         hour12: false,
       });
       const wallClocks = result.hourly.map((h) => formatter.format(h.time));
-      expect(wallClocks.every((wc) => ['09:00', '10:00', '11:00'].includes(wc))).toBe(true);
+      expect(wallClocks.every((wc) => fixtureHours.includes(wc))).toBe(true);
     }
   });
 
