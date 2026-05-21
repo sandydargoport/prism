@@ -54,7 +54,7 @@ const ALL_CARDS: { id: string; label: string }[] = [
   { id: 'photos', label: 'Photos' },
 ];
 
-export function MobileFab({ user, onLogin, onLogout, uiHidden }: MobileFabProps) {
+export function MobileFab({ user, onLogin, onLogout, onSwitchUser, uiHidden }: MobileFabProps) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [showCards, setShowCards] = useState(false);
