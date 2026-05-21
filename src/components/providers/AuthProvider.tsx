@@ -28,6 +28,7 @@ import * as React from 'react';
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { QuickPinModal, type QuickPinMember } from '@/components/auth';
 import { useVisibilityPolling } from '@/lib/hooks/useVisibilityPolling';
+import { usePinRequired } from '@/lib/hooks/usePinRequired';
 import { toast } from '@/components/ui/use-toast';
 
 /**
@@ -77,6 +78,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [authResolver, setAuthResolver] = useState<{
     resolve: (user: QuickPinMember | null) => void;
   } | null>(null);
+
+  // PIN-required setting
+  const { pinRequired } = usePinRequired();
 
   // Select-only picker state (for user switching behind auth proxy)
   const [showSelectOnlyPicker, setShowSelectOnlyPicker] = useState(false);
@@ -262,10 +266,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         open={showModal}
         onOpenChange={handleModalClose}
         title={modalTitle}
-        description={modalDescription}
+        description={pinRequired ? modalDescription : 'Select your profile to continue'}
         onAuthenticated={handleAuthenticated}
         preSelectedMember={activeUser}
         lockToMember={!!activeUser}
+        selectOnly={!pinRequired}
       />
       <QuickPinModal
         open={showSelectOnlyPicker}

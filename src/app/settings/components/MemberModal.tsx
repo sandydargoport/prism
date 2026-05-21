@@ -26,6 +26,7 @@ export interface MemberModalSaveData {
   color: string;
   avatarUrl?: string | null;
   avatarFile?: File | null;
+  pin?: string;
 }
 
 export function MemberModal({
@@ -43,6 +44,8 @@ export function MemberModal({
   const [avatarUrl, setAvatarUrl] = useState<string | null>(member?.avatarUrl || null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [pin, setPin] = useState('');
+  const [pinError, setPinError] = useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -90,12 +93,18 @@ export function MemberModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
+    if (pin && !/^\d{4,6}$/.test(pin)) {
+      setPinError('PIN must be 4–6 digits');
+      return;
+    }
+    setPinError(null);
     onSave({
       name: name.trim(),
       role,
       color,
       avatarUrl: avatarFile ? null : avatarUrl,
       avatarFile,
+      pin: pin || undefined,
     });
   };
 
@@ -233,6 +242,23 @@ export function MemberModal({
               ))}
             </div>
           </div>
+
+          {!member && (
+            <div>
+              <label className="text-sm font-medium">PIN <span className="text-muted-foreground font-normal">(optional)</span></label>
+              <Input
+                type="password"
+                inputMode="numeric"
+                pattern="\d{4,6}"
+                maxLength={6}
+                value={pin}
+                onChange={(e) => { setPin(e.target.value.replace(/\D/g, '')); setPinError(null); }}
+                placeholder="4–6 digits"
+                className="mt-1"
+              />
+              {pinError && <p className="text-sm text-destructive mt-1">{pinError}</p>}
+            </div>
+          )}
 
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>

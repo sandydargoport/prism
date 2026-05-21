@@ -119,7 +119,7 @@ export function FamilySection() {
         const res = await fetch('/api/family', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(memberData),
+          body: JSON.stringify({ ...memberData, pin: data.pin }),
         });
         if (res.ok) {
           const responseData = await res.json();

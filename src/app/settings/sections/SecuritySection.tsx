@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { UserAvatar } from '@/components/ui/avatar';
 import { useFamily } from '@/components/providers';
+import { Switch } from '@/components/ui/switch';
+import { usePinRequired } from '@/lib/hooks/usePinRequired';
 import { PinEditModal } from '../components/PinEditModal';
 import type { FamilyMember } from '../components/PinEditModal';
 
@@ -33,6 +35,7 @@ const SCOPE_DESCRIPTIONS: Record<TokenScopeChoice, string> = {
 export function SecuritySection() {
   const { members: familyMembers, refresh: refreshFamily } = useFamily();
   const [editingPinMember, setEditingPinMember] = useState<FamilyMember | null>(null);
+  const { pinRequired, setPinRequired, loaded: pinSettingLoaded } = usePinRequired();
 
   // API Tokens state
   const [tokens, setTokens] = useState<ApiToken[]>([]);
@@ -166,6 +169,33 @@ export function SecuritySection() {
               </Button>
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Account Switching</CardTitle>
+          <CardDescription>
+            Control whether a PIN is required when switching between family members.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="font-medium text-sm">Require PIN to switch accounts</div>
+              <div className="text-sm text-muted-foreground mt-0.5">
+                {pinRequired
+                  ? 'Family members must enter their PIN when switching accounts.'
+                  : 'Anyone can switch to any account without a PIN. Suitable when the app is behind Cloudflare Access or similar.'}
+              </div>
+            </div>
+            <Switch
+              checked={pinRequired}
+              onCheckedChange={setPinRequired}
+              disabled={!pinSettingLoaded}
+              className="ml-4 shrink-0 data-[state=checked]:bg-blue-500"
+            />
+          </div>
         </CardContent>
       </Card>
 
