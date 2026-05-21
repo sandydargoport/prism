@@ -227,30 +227,36 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // PIN is required for non-guests
-    if (!body.pin || typeof body.pin !== 'string') {
+    // PIN is required for non-guests, unless skipPin is true
+    // (skipPin allows instant user switching behind an already-authenticated
+    //  reverse proxy like Cloudflare Access)
+    if (body.skipPin === true && role !== 'guest') {
+      // Bypass PIN verification — the request source is already
+      // authenticated by an upstream proxy (e.g. Cloudflare Access).
+      // Create a session directly for the requested user.
+    } else if (!body.pin || typeof body.pin !== 'string') {
       return NextResponse.json(
         { error: 'PIN is required' },
         { status: 400 }
       );
+    } else {
+      // Verify PIN using bcrypt
+      const isValidPin = await bcrypt.compare(body.pin, user.pin);
+
+      if (!isValidPin) {
+        const { remainingAttempts } = await recordFailedLogin(user.id);
+
+        return NextResponse.json(
+          {
+            error: 'Invalid PIN',
+            remainingAttempts,
+          },
+          { status: 401 }
+        );
+      }
     }
 
-    // Verify PIN using bcrypt
-    const isValidPin = await bcrypt.compare(body.pin, user.pin);
-
-    if (!isValidPin) {
-      const { remainingAttempts } = await recordFailedLogin(user.id);
-
-      return NextResponse.json(
-        {
-          error: 'Invalid PIN',
-          remainingAttempts,
-        },
-        { status: 401 }
-      );
-    }
-
-    // PIN is valid - clear any failed attempts
+    // PIN is valid (or bypassed) - clear any failed attempts
     await clearLoginAttempts(user.id);
 
     // Create session in Redis

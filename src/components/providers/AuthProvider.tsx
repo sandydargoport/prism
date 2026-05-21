@@ -40,6 +40,8 @@ interface AuthContextType {
   setActiveUser: (user: QuickPinMember | null) => void;
   /** Require authentication before proceeding - returns user or null if cancelled */
   requireAuth: (title?: string, description?: string) => Promise<QuickPinMember | null>;
+  /** Open a user-switching picker (no PIN needed — for reverse-proxy setups) */
+  switchUser: () => Promise<QuickPinMember | null>;
   /** Clear the active user (logout) */
   clearActiveUser: () => void;
   /** Whether auth modal is currently showing */
@@ -66,13 +68,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [sessionChecked, setSessionChecked] = useState(false);
   const sessionCheckPromiseRef = React.useRef<Promise<QuickPinMember | null> | null>(null);
 
-  // Modal state
+  // Modal state (PIN-based requireAuth)
   const [showModal, setShowModal] = useState(false);
   const [modalTitle, setModalTitle] = useState("Who's there?");
   const [modalDescription, setModalDescription] = useState('Enter your PIN to continue');
 
   // Promise resolver for requireAuth
   const [authResolver, setAuthResolver] = useState<{
+    resolve: (user: QuickPinMember | null) => void;
+  } | null>(null);
+
+  // Select-only picker state (for user switching behind auth proxy)
+  const [showSelectOnlyPicker, setShowSelectOnlyPicker] = useState(false);
+  const [selectOnlyResolver, setSelectOnlyResolver] = useState<{
     resolve: (user: QuickPinMember | null) => void;
   } | null>(null);
 
@@ -176,8 +184,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       authResolver.resolve(user);
       setAuthResolver(null);
     }
+    if (selectOnlyResolver) {
+      selectOnlyResolver.resolve(user);
+      setSelectOnlyResolver(null);
+    }
     setShowModal(false);
-  }, [authResolver]);
+    setShowSelectOnlyPicker(false);
+  }, [authResolver, selectOnlyResolver]);
 
   /**
    * Handle modal close (cancelled)
@@ -193,6 +206,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [authResolver]);
 
   /**
+   * Handle select-only picker close (cancelled)
+   */
+  const handleSelectOnlyClose = useCallback((open: boolean) => {
+    if (!open) {
+      if (selectOnlyResolver) {
+        selectOnlyResolver.resolve(null);
+        setSelectOnlyResolver(null);
+      }
+      setShowSelectOnlyPicker(false);
+    }
+  }, [selectOnlyResolver]);
+
+  /**
    * Clear active user (logout)
    */
   const clearActiveUser = useCallback(async () => {
@@ -204,10 +230,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setActiveUser(null);
   }, []);
 
+  /**
+   * Open a select-only user picker for switching between family members
+   * without needing a PIN. Useful behind Cloudflare Access or similar.
+   */
+  const switchUser = useCallback(async (): Promise<QuickPinMember | null> => {
+    // Wait for session check to complete if still loading
+    if (!sessionChecked && sessionCheckPromiseRef.current) {
+      await sessionCheckPromiseRef.current;
+    }
+
+    return new Promise((resolve) => {
+      setShowSelectOnlyPicker(true);
+      setSelectOnlyResolver({ resolve });
+    });
+  }, [sessionChecked]);
+
   const value: AuthContextType = {
     activeUser,
     setActiveUser,
     requireAuth,
+    switchUser,
     clearActiveUser,
     isAuthenticating: showModal,
   };
@@ -223,6 +266,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
         onAuthenticated={handleAuthenticated}
         preSelectedMember={activeUser}
         lockToMember={!!activeUser}
+      />
+      <QuickPinModal
+        open={showSelectOnlyPicker}
+        onOpenChange={handleSelectOnlyClose}
+        title="Switch user"
+        description="Select a family member"
+        onAuthenticated={handleAuthenticated}
+        selectOnly
       />
     </AuthContext.Provider>
   );

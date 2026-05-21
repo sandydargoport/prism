@@ -47,6 +47,8 @@ export interface SideNavProps {
   onLogout?: () => void;
   /** Callback when login is clicked (when no user) */
   onLogin?: () => void;
+  /** Callback when user wants to switch between family members */
+  onSwitchUser?: () => void;
   /** Whether auto-hide has hidden the UI */
   uiHidden?: boolean;
   /** Additional CSS classes */
@@ -71,7 +73,7 @@ export interface SideNavProps {
  *   onLogout={() => setCurrentUser(null)}
  * />
  */
-export function SideNav({ user, onLogout, onLogin, uiHidden, className }: SideNavProps) {
+export function SideNav({ user, onLogout, onLogin, onSwitchUser, uiHidden, className }: SideNavProps) {
   // Get current pathname for active state
   const pathname = usePathname();
   const { filterNavItems } = useHiddenPages();
@@ -193,7 +195,7 @@ export function SideNav({ user, onLogout, onLogin, uiHidden, className }: SideNa
         {/* USER AVATAR AT BOTTOM */}
         <div className="p-2">
           <button
-            onClick={user ? onLogout : onLogin}
+            onClick={user ? onSwitchUser || onLogout : onLogin}
             className={cn(
               'flex items-center gap-3 px-3 py-1.5 [@media(pointer:coarse)]:py-2.5 rounded-lg w-full',
               'text-sm font-medium',
@@ -202,7 +204,7 @@ export function SideNav({ user, onLogout, onLogin, uiHidden, className }: SideNa
               'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
               expanded ? 'justify-start' : 'justify-center'
             )}
-            aria-label={user ? 'Log out' : 'Log in'}
+            aria-label={user ? 'Switch user' : 'Log in'}
           >
             {user ? (
               <>

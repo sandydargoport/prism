@@ -76,7 +76,7 @@ export function Dashboard({
 }: DashboardProps) {
   const router = useRouter();
 
-  const { activeUser, requireAuth, clearActiveUser } = useAuth();
+  const { activeUser, requireAuth, clearActiveUser, switchUser } = useAuth();
   const { confirm: confirmAction, dialogProps: confirmDialogProps } = useConfirmDialog();
 
   // Read cached visible widget IDs from localStorage for prioritized loading
@@ -315,6 +315,7 @@ export function Dashboard({
         user={activeUser ? { id: activeUser.id, name: activeUser.name, avatarUrl: activeUser.avatarUrl, color: activeUser.color } : undefined}
         onLogout={activeUser ? clearActiveUser : undefined}
         onLogin={handleLogin}
+        onSwitchUser={() => switchUser()}
       >
         <MobileDashboard data={data} />
       </AppShell>
@@ -326,6 +327,7 @@ export function Dashboard({
       user={activeUser ? { id: activeUser.id, name: activeUser.name, avatarUrl: activeUser.avatarUrl, color: activeUser.color } : undefined}
       onLogout={activeUser ? clearActiveUser : undefined}
       onLogin={handleLogin}
+      onSwitchUser={() => switchUser()}
       showWallpaper
     >
       <DashboardLayout className={className}>

@@ -50,6 +50,8 @@ export interface AppShellProps {
   onLogout?: () => void;
   /** Callback when login is clicked */
   onLogin?: () => void;
+  /** Callback when user wants to switch between family members */
+  onSwitchUser?: () => void;
   /** Hide the side nav (for login/auth pages) */
   hideNav?: boolean;
   /** Show wallpaper background (only for dashboard/screensaver) */
@@ -87,6 +89,7 @@ export function AppShell({
   user,
   onLogout,
   onLogin,
+  onSwitchUser,
   hideNav = false,
   showWallpaper = false,
   className,
@@ -127,7 +130,7 @@ export function AppShell({
 
       {/* SIDE NAVIGATION - landscape mode on larger screens */}
       {!hideNav && showSideNav && (
-        <SideNav user={user} onLogout={onLogout} onLogin={onLogin} uiHidden={uiHidden || measureHideNav} />
+        <SideNav user={user} onLogout={onLogout} onLogin={onLogin} onSwitchUser={onSwitchUser} uiHidden={uiHidden || measureHideNav} />
       )}
 
       {/* MAIN CONTENT AREA */}
@@ -148,12 +151,12 @@ export function AppShell({
 
       {/* PORTRAIT BOTTOM NAVIGATION - portrait mode on larger screens */}
       {!hideNav && showPortraitNav && (
-        <PortraitNav user={user} onLogin={onLogin} onLogout={onLogout} uiHidden={uiHidden || measureHideNav} />
+        <PortraitNav user={user} onLogin={onLogin} onLogout={onLogout} onSwitchUser={onSwitchUser} uiHidden={uiHidden || measureHideNav} />
       )}
 
       {/* MOBILE FAB - small screens only */}
       {!hideNav && showMobileNav && (
-        <MobileFab user={user} onLogin={onLogin} onLogout={onLogout} uiHidden={uiHidden || measureHideNav} />
+        <MobileFab user={user} onLogin={onLogin} onLogout={onLogout} onSwitchUser={onSwitchUser} uiHidden={uiHidden || measureHideNav} />
       )}
     </div>
   );

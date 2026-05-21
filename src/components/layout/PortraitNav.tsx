@@ -25,10 +25,11 @@ export interface PortraitNavProps {
   } | null;
   onLogin?: () => void;
   onLogout?: () => void;
+  onSwitchUser?: () => void;
   uiHidden?: boolean;
 }
 
-export function PortraitNav({ user, onLogin, onLogout, uiHidden }: PortraitNavProps) {
+export function PortraitNav({ user, onLogin, onLogout, onSwitchUser, uiHidden }: PortraitNavProps) {
   const pathname = usePathname();
   const { filterNavItems } = useHiddenPages();
   const navItems = filterNavItems(ALL_NAV_ITEMS);
@@ -65,12 +66,12 @@ export function PortraitNav({ user, onLogin, onLogout, uiHidden }: PortraitNavPr
 
         {/* User/Login button */}
         <button
-          onClick={user ? onLogout : onLogin}
+          onClick={user ? onSwitchUser || onLogout : onLogin}
           className={cn(
             'flex flex-col items-center gap-1 py-2 px-4 min-w-[72px] shrink-0 transition-colors',
             'text-muted-foreground hover:text-foreground'
           )}
-          aria-label={user ? 'Log out' : 'Log in'}
+          aria-label={user ? 'Switch user' : 'Log in'}
         >
           {user ? (
             <>

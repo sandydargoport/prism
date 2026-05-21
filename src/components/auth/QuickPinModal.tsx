@@ -57,6 +57,9 @@ export interface QuickPinModalProps {
   preSelectedMember?: QuickPinMember | null;
   /** Lock to pre-selected member (cannot switch users) */
   lockToMember?: boolean;
+  /** Skip PIN entry entirely — switch users instantly.
+   *  Useful when behind Cloudflare Access or another auth proxy. */
+  selectOnly?: boolean;
 }
 
 /**
@@ -70,6 +73,7 @@ export function QuickPinModal({
   onAuthenticated,
   preSelectedMember,
   lockToMember = false,
+  selectOnly = false,
 }: QuickPinModalProps) {
   // Family members from context
   const { members: contextMembers, loading: loadingMembers } = useFamily();
@@ -103,6 +107,43 @@ export function QuickPinModal({
       setError(null);
     }
   }, [open, preSelectedMember]);
+
+  // Select-only mode: instant switch on member click
+  const selectOnlySwitch = useCallback(async (member: QuickPinMember) => {
+    setIsVerifying(true);
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...(member.id ? { userId: member.id } : { memberIndex: member.loginIndex }),
+          skipPin: true,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const authenticatedMember: QuickPinMember = {
+          id: data.user.id,
+          name: data.user.name,
+          role: data.user.role as 'parent' | 'child' | 'guest',
+          color: data.user.color,
+          avatarUrl: data.user.avatarUrl ?? undefined,
+          loginIndex: member.loginIndex,
+        };
+        onAuthenticated(authenticatedMember);
+        onOpenChange(false);
+        window.dispatchEvent(new Event('prism:auth-changed'));
+      } else {
+        // If skipPin fails, fall back to PIN mode
+        setSelectedMember(member);
+      }
+    } catch (err) {
+      setSelectedMember(member);
+    } finally {
+      setIsVerifying(false);
+    }
+  }, [onAuthenticated, onOpenChange]);
 
   // Handle key press
   const handleKeyPress = useCallback((digit: string) => {
@@ -347,7 +388,7 @@ export function QuickPinModal({
                 {members.map((member) => (
                   <button
                     key={member.id || member.loginIndex}
-                    onClick={() => setSelectedMember(member)}
+                    onClick={() => selectOnly ? selectOnlySwitch(member) : setSelectedMember(member)}
                     className={cn(
                       'flex flex-col items-center p-3 rounded-xl',
                       'hover:bg-accent/50 active:bg-accent transition-colors',

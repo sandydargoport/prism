@@ -33,6 +33,7 @@ export interface MobileFabProps {
   } | null;
   onLogin?: () => void;
   onLogout?: () => void;
+  onSwitchUser?: () => void;
   uiHidden?: boolean;
 }
 
@@ -146,10 +147,10 @@ export function MobileFab({ user, onLogin, onLogout, uiHidden }: MobileFabProps)
       ) : (
         <User className="h-5 w-5 text-red-500" />
       ),
-      label: user ? 'Logout' : 'Login',
+      label: user ? 'Switch' : 'Login',
       onClick: () => {
         setIsOpen(false);
-        if (user) onLogout?.();
+        if (user) onSwitchUser?.();
         else onLogin?.();
       },
     },
