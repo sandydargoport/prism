@@ -157,14 +157,23 @@ export function CalDAVConnectDialog({
                 id="caldav-url"
                 value={serverUrl}
                 onChange={e => setServerUrl(e.target.value)}
-                placeholder="https://cloud.example.com/remote.php/dav"
+                placeholder="https://caldav.icloud.com"
               />
               <div className="text-xs text-muted-foreground space-y-0.5">
-                <p><strong>Apple iCloud:</strong> https://caldav.icloud.com (use your iCloud email + an app-specific password from appleid.apple.com)</p>
-                <p><strong>Nextcloud:</strong> https://your-server/remote.php/dav</p>
-                <p><strong>Radicale:</strong> https://your-server/</p>
-                <p><strong>Baikal:</strong> https://your-server/dav.php</p>
-                <p><strong>Synology:</strong> https://your-nas:5001/caldav/</p>
+                <p className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setServerUrl('https://caldav.icloud.com')}
+                    className="text-primary hover:underline font-medium"
+                  >
+                    Use Apple iCloud
+                  </button>
+                </p>
+                <p><strong>Apple iCloud:</strong> <code>https://caldav.icloud.com</code> — username is your Apple ID email; password is a 16-char app-specific password from <a href="https://appleid.apple.com" target="_blank" rel="noreferrer" className="text-primary hover:underline">appleid.apple.com</a> (Sign-In and Security → App-Specific Passwords), <em>not</em> your real Apple ID password.</p>
+                <p><strong>Nextcloud:</strong> <code>https://your-server/remote.php/dav</code></p>
+                <p><strong>Radicale:</strong> <code>https://your-server/</code></p>
+                <p><strong>Baikal:</strong> <code>https://your-server/dav.php</code></p>
+                <p><strong>Synology:</strong> <code>https://your-nas:5001/caldav/</code></p>
               </div>
             </div>
             <div className="space-y-2">
@@ -173,18 +182,23 @@ export function CalDAVConnectDialog({
                 id="caldav-user"
                 value={username}
                 onChange={e => setUsername(e.target.value)}
-                placeholder="username"
+                placeholder="you@icloud.com"
+                autoComplete="username"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="caldav-pass">Password or App Token</Label>
+              <Label htmlFor="caldav-pass">Password</Label>
               <Input
                 id="caldav-pass"
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                placeholder="password or app-specific token"
+                placeholder="xxxx-xxxx-xxxx-xxxx for iCloud"
+                autoComplete="current-password"
               />
+              <p className="text-xs text-muted-foreground">
+                For Apple iCloud: paste the 16-character app-specific password including the hyphens. Other providers: your normal account password (or whatever app-token they require).
+              </p>
             </div>
 
             {testResult && (
