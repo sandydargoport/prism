@@ -42,6 +42,7 @@ export function CalDAVConnectDialog({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [connecting, setConnecting] = useState(false);
   const [connectedCount, setConnectedCount] = useState(0);
+  const [connectError, setConnectError] = useState<string | null>(null);
 
   const reset = () => {
     setStep('credentials');
@@ -98,6 +99,7 @@ export function CalDAVConnectDialog({
 
   const handleConnect = async () => {
     setConnecting(true);
+    setConnectError(null);
     try {
       const selectedCalendars = calendars.filter(c => selected.has(c.href));
       const res = await fetch('/api/caldav/connect', {
@@ -110,14 +112,19 @@ export function CalDAVConnectDialog({
           calendars: selectedCalendars,
         }),
       });
-      const data = await res.json();
-      if (data.success) {
+      // Try to parse JSON either way — the API returns { error } on failure.
+      let data: { success?: boolean; sourceIds?: string[]; error?: string } = {};
+      try { data = await res.json(); } catch { /* non-JSON response */ }
+
+      if (res.ok && data.success) {
         setConnectedCount(data.sourceIds?.length || selectedCalendars.length);
         setStep('done');
         onConnected?.();
+      } else {
+        setConnectError(data.error || `Connect failed (HTTP ${res.status})`);
       }
-    } catch {
-      // Error handling
+    } catch (err) {
+      setConnectError(err instanceof Error ? err.message : 'Network error');
     } finally {
       setConnecting(false);
     }
@@ -255,6 +262,13 @@ export function CalDAVConnectDialog({
                 <p className="text-sm text-muted-foreground text-center py-4">No calendars found on this server.</p>
               )}
             </div>
+
+            {connectError && (
+              <div className="flex items-start gap-2 p-3 rounded-lg text-sm bg-destructive/10 text-destructive">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                <div className="flex-1">{connectError}</div>
+              </div>
+            )}
 
             <DialogFooter>
               <Button variant="outline" onClick={() => setStep('credentials')}>Back</Button>
