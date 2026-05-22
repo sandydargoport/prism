@@ -7,6 +7,7 @@ import { encrypt } from '@/lib/utils/crypto';
 import { invalidateCache } from '@/lib/cache/redis';
 import { logActivity } from '@/lib/services/auditLog';
 import { testCalDAVConnection } from '@/lib/integrations/caldav';
+import { syncCalDAVCalendarSource, syncCalDAVTasks } from '@/lib/services/calendar-sync';
 
 /**
  * POST /api/caldav/connect
@@ -80,9 +81,29 @@ export async function POST(request: NextRequest) {
       summary: `Connected ${created.length} CalDAV calendar(s) from ${serverUrl}`,
     });
 
+    // Fire-and-forget initial sync so the user sees events / tasks within
+    // seconds of connecting instead of waiting up to 10 minutes for the
+    // periodic cron. Errors logged server-side; the response returns 201
+    // immediately regardless.
+    (async () => {
+      for (const sourceId of created) {
+        try {
+          await syncCalDAVCalendarSource(sourceId);
+          await syncCalDAVTasks(sourceId);
+        } catch (err) {
+          console.error(`Initial CalDAV sync failed for source ${sourceId}:`,
+            err instanceof Error ? err.message : err);
+        }
+      }
+      // Invalidate event/task caches AFTER sync completes so the dashboard
+      // picks up the new rows on its next poll.
+      await invalidateCache('events:*').catch(() => {});
+      await invalidateCache('tasks:*').catch(() => {});
+    })();
+
     return NextResponse.json({
       success: true,
-      message: `Connected ${created.length} calendar(s)`,
+      message: `Connected ${created.length} calendar(s) — syncing in background`,
       sourceIds: created,
     }, { status: 201 });
   } catch (error) {
