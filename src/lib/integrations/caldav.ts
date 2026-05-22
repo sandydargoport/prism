@@ -109,13 +109,29 @@ export async function discoverCalendars(
       return {
         href: cal.url,
         displayName: String(cal.displayName || 'Unnamed Calendar'),
-        color: String((cal as Record<string, unknown>).calendarColor || '') || null,
+        color: normalizeCalDAVColor((cal as Record<string, unknown>).calendarColor),
         description: cal.description ? String(cal.description) : null,
         ctag: (cal as Record<string, unknown>).ctag ? String((cal as Record<string, unknown>).ctag) : null,
         supportsEvents: !components || components.includes('VEVENT'),
         supportsTasks: !!components && components.includes('VTODO'),
       };
     });
+}
+
+/**
+ * Coerce a CalDAV-reported color string to the #RRGGBB form our schema
+ * stores (varchar(7)). Apple iCloud returns colors as `#RRGGBBAA` with an
+ * alpha channel appended — that's 9 chars and overflows the column. Strip
+ * the alpha when present, accept #RRGGBB and #RGB as-is, drop anything
+ * that doesn't parse so callers can fall back to their default color.
+ */
+function normalizeCalDAVColor(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const s = raw.trim();
+  if (/^#[0-9a-fA-F]{8}$/.test(s)) return s.slice(0, 7); // #RRGGBBAA → #RRGGBB
+  if (/^#[0-9a-fA-F]{6}$/.test(s)) return s;
+  if (/^#[0-9a-fA-F]{3}$/.test(s)) return s;
+  return null;
 }
 
 /**
