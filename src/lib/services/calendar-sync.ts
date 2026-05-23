@@ -1,6 +1,6 @@
 import { db } from '@/lib/db/client';
 import { calendarSources, events, tasks, taskLists } from '@/lib/db/schema';
-import { eq, and, gte, lte, sql } from 'drizzle-orm';
+import { eq, and, gte, lte, sql, inArray } from 'drizzle-orm';
 import {
   fetchCalDAVEvents,
   fetchCalDAVTasks,
@@ -887,8 +887,22 @@ export async function syncCalDAVTasks(
         ));
     }
 
+    // Apple iCloud injects metadata VTODOs into reminder lists whose data
+    // has migrated to the CloudKit-only Reminders system. Those don't
+    // represent real tasks — they're nag messages telling the user where
+    // their data went. Skip them so Prism doesn't show them as real tasks.
+    const APPLE_PLACEHOLDER_TITLES = new Set([
+      'Where are my reminders?',
+      'The creator of this list has upgraded these reminders.',
+    ]);
+
+    const seenExternalIds = new Set<string>();
+
     for (const task of caldavTasks) {
+      if (APPLE_PLACEHOLDER_TITLES.has(task.title.trim())) continue;
+
       const externalId = `caldav:${source.id}:${task.uid}`;
+      seenExternalIds.add(externalId);
 
       const existing = await db.query.tasks.findFirst({
         where: eq(tasks.externalId, externalId),
@@ -916,6 +930,18 @@ export async function syncCalDAVTasks(
       }
 
       synced++;
+    }
+
+    // Mirror upstream deletions: any caldav-prefixed task for this source
+    // that wasn't in the fetch round-trips out of Prism too. Also catches
+    // existing placeholder rows that pre-date the title filter above.
+    const allLocal = await db.query.tasks.findMany({
+      where: sql`${tasks.externalId} LIKE ${`caldav:${source.id}:%`}`,
+      columns: { id: true, externalId: true },
+    });
+    const stale = allLocal.filter(t => t.externalId && !seenExternalIds.has(t.externalId));
+    if (stale.length > 0) {
+      await db.delete(tasks).where(inArray(tasks.id, stale.map(t => t.id)));
     }
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
