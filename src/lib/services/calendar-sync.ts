@@ -1,5 +1,5 @@
 import { db } from '@/lib/db/client';
-import { calendarSources, events, tasks } from '@/lib/db/schema';
+import { calendarSources, events, tasks, taskLists } from '@/lib/db/schema';
 import { eq, and, gte, lte, sql } from 'drizzle-orm';
 import {
   fetchCalDAVEvents,
@@ -856,6 +856,37 @@ export async function syncCalDAVTasks(
       source.sourceCalendarId,
     );
 
+    // Each CalDAV source maps to one Prism task list. Find the list_id
+    // already in use by any existing task for this source (self-heals
+    // sources synced before this code path existed); otherwise create a
+    // new task_list named after the calendar.
+    const existingTaskForSource = await db.query.tasks.findFirst({
+      where: sql`${tasks.externalId} LIKE ${`caldav:${source.id}:%`}`,
+      columns: { listId: true },
+    });
+    let taskListId = existingTaskForSource?.listId ?? null;
+    if (!taskListId) {
+      const [newList] = await db
+        .insert(taskLists)
+        .values({
+          name: source.displayName || 'CalDAV Reminders',
+          color: source.color || '#6366f1',
+        })
+        .returning();
+      if (newList) taskListId = newList.id;
+    }
+
+    // Back-fill list_id on any pre-existing tasks for this source that
+    // were inserted before the task-list wiring landed.
+    if (taskListId) {
+      await db.update(tasks)
+        .set({ listId: taskListId })
+        .where(and(
+          sql`${tasks.externalId} LIKE ${`caldav:${source.id}:%`}`,
+          sql`${tasks.listId} IS NULL`,
+        ));
+    }
+
     for (const task of caldavTasks) {
       const externalId = `caldav:${source.id}:${task.uid}`;
 
@@ -871,6 +902,7 @@ export async function syncCalDAVTasks(
         completedAt: task.completedAt,
         priority: (task.priority || 'medium') as 'high' | 'medium' | 'low',
         category: task.categories[0] || null,
+        listId: taskListId,
         externalId,
         externalUpdatedAt: new Date(),
         lastSynced: new Date(),
