@@ -89,6 +89,10 @@ ALLOWLIST=(
   # Library docs the comments reference
   "date-fns.org"
   "rclone.org"
+  # Apple iCloud DAV endpoints (CalDAV calendars + CardDAV contacts)
+  "caldav.icloud.com"
+  "contacts.icloud.com"
+  "appleid.apple.com"
   # Common public-suffix anchors that show up via vendor doc URLs
   "google.com"
   "microsoft.com"
