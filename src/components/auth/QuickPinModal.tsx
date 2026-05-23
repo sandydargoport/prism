@@ -205,19 +205,20 @@ export function QuickPinModal({
       onClick={() => onOpenChange(false)}
     >
       <div
-        className="bg-card rounded-2xl p-4 max-w-sm w-full mx-4 shadow-lg"
+        className="bg-card rounded-2xl p-3 max-w-[20rem] w-full mx-4 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between mb-3 pb-3 border-b border-border">
+        <div className="flex items-center justify-between mb-2 pb-2 border-b border-border">
           <div>
-            <h2 className="text-lg font-semibold">{title}</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
+            <h2 className="text-base font-semibold leading-tight">{title}</h2>
+            <p className="text-xs text-muted-foreground">{description}</p>
           </div>
           <Button
             variant="ghost"
             size="icon"
             onClick={() => onOpenChange(false)}
+            className="h-7 w-7"
           >
             <X className="h-4 w-4" />
           </Button>
@@ -233,47 +234,47 @@ export function QuickPinModal({
           )}>
             {/* Avatar section — invisible placeholder when no member yet, so height is stable */}
             {!selectedMember ? (
-              <div className="flex flex-col items-center mx-auto mb-2 invisible" aria-hidden>
-                <div className="h-16 w-16 rounded-full mb-1" />
-                <span className="font-medium">name</span>
-                <span className="text-xs">subtitle</span>
+              <div className="flex flex-col items-center mx-auto mb-1.5 invisible" aria-hidden>
+                <div className="h-12 w-12 rounded-full" />
+                <span className="text-sm font-medium">name</span>
+                <span className="text-[10px]">subtitle</span>
               </div>
             ) : lockToMember ? (
-              <div className="flex flex-col items-center mx-auto mb-2">
+              <div className="flex flex-col items-center mx-auto mb-1.5">
                 <UserAvatar
                   name={selectedMember.name}
                   color={selectedMember.color}
                   imageUrl={selectedMember.avatarUrl}
                   size="lg"
-                  className="h-16 w-16 mb-1 ring-2 ring-primary"
+                  className="h-12 w-12 ring-2 ring-primary"
                 />
-                <span className="font-medium">{selectedMember.name}</span>
-                <span className="text-xs text-muted-foreground">Enter your PIN</span>
+                <span className="text-sm font-medium mt-0.5">{selectedMember.name}</span>
+                <span className="text-[10px] text-muted-foreground">Enter your PIN</span>
               </div>
             ) : (
               <button
                 onClick={() => { setSelectedMember(null); setPin([]); setError(null); }}
-                className="group flex flex-col items-center mx-auto mb-2"
+                className="group flex flex-col items-center mx-auto mb-1.5"
               >
                 <UserAvatar
                   name={selectedMember.name}
                   color={selectedMember.color}
                   imageUrl={selectedMember.avatarUrl}
                   size="lg"
-                  className="h-16 w-16 mb-1 group-hover:ring-2 ring-primary transition-all"
+                  className="h-12 w-12 group-hover:ring-2 ring-primary transition-all"
                 />
-                <span className="font-medium">{selectedMember.name}</span>
-                <span className="text-xs text-muted-foreground">Tap to switch</span>
+                <span className="text-sm font-medium mt-0.5">{selectedMember.name}</span>
+                <span className="text-[10px] text-muted-foreground">Tap to switch</span>
               </button>
             )}
 
             {/* PIN dots */}
-            <div className={cn('flex gap-2 justify-center mb-2', isShaking && 'animate-shake')}>
+            <div className={cn('flex gap-1.5 justify-center mb-1', isShaking && 'animate-shake')}>
               {Array.from({ length: pinLength }, (_, i) => (
                 <div
                   key={i}
                   className={cn(
-                    'w-3 h-3 rounded-full transition-all duration-150',
+                    'w-2.5 h-2.5 rounded-full transition-all duration-150',
                     i < pin.length
                       ? error ? 'bg-destructive scale-110' : 'bg-primary scale-110'
                       : 'bg-muted border-2 border-border'
@@ -283,12 +284,12 @@ export function QuickPinModal({
             </div>
 
             {/* Error message */}
-            <div className="h-5 mb-1 flex items-center justify-center">
-              {error && <p className="text-sm text-destructive">{error}</p>}
+            <div className="h-4 flex items-center justify-center">
+              {error && <p className="text-xs text-destructive">{error}</p>}
             </div>
 
             {/* Number pad */}
-            <div className="grid grid-cols-3 gap-2 max-w-[260px] mx-auto">
+            <div className="grid grid-cols-3 gap-1.5 max-w-[200px] mx-auto">
               {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del'].map((key, idx) => {
                 if (key === '') return <div key={idx} />;
                 if (key === 'del') {
@@ -298,9 +299,9 @@ export function QuickPinModal({
                       onClick={handleBackspace}
                       disabled={isVerifying}
                       className={cn(
-                        'w-16 h-16 rounded-full mx-auto flex items-center justify-center',
+                        'w-12 h-12 rounded-full mx-auto flex items-center justify-center',
                         'bg-muted hover:bg-muted/80 active:bg-accent active:scale-95',
-                        'transition-all duration-100 text-muted-foreground text-sm',
+                        'transition-all duration-100 text-muted-foreground text-xs',
                         isVerifying && 'opacity-50'
                       )}
                     >
@@ -314,10 +315,10 @@ export function QuickPinModal({
                     onClick={() => handleKeyPress(key)}
                     disabled={isVerifying}
                     className={cn(
-                      'w-16 h-16 rounded-full mx-auto flex items-center justify-center',
+                      'w-12 h-12 rounded-full mx-auto flex items-center justify-center',
                       'bg-secondary hover:bg-secondary/80',
                       'active:bg-primary active:text-primary-foreground active:scale-95',
-                      'transition-all duration-100 text-lg font-semibold',
+                      'transition-all duration-100 text-base font-semibold',
                       isVerifying && 'opacity-50'
                     )}
                   >
@@ -328,8 +329,8 @@ export function QuickPinModal({
             </div>
 
             {/* Loading */}
-            <div className="h-6 mt-3 flex items-center justify-center">
-              {isVerifying && <p className="text-sm text-muted-foreground">Verifying...</p>}
+            <div className="h-4 mt-1.5 flex items-center justify-center">
+              {isVerifying && <p className="text-xs text-muted-foreground">Verifying...</p>}
             </div>
           </div>
 
@@ -343,13 +344,13 @@ export function QuickPinModal({
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-1.5">
                 {members.map((member) => (
                   <button
                     key={member.id || member.loginIndex}
                     onClick={() => setSelectedMember(member)}
                     className={cn(
-                      'flex flex-col items-center p-2 rounded-xl',
+                      'flex flex-col items-center p-1.5 rounded-xl',
                       'hover:bg-accent/50 active:bg-accent transition-colors',
                       'touch-action-manipulation'
                     )}
@@ -359,9 +360,9 @@ export function QuickPinModal({
                       color={member.color}
                       imageUrl={member.avatarUrl}
                       size="lg"
-                      className="h-14 w-14 mb-2"
+                      className="h-12 w-12 mb-1"
                     />
-                    <span className="text-sm font-medium">{member.name}</span>
+                    <span className="text-xs font-medium">{member.name}</span>
                   </button>
                 ))}
               </div>
