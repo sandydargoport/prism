@@ -14,9 +14,10 @@
 import { NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
-import { birthdays, calendarSources } from '@/lib/db/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { calendarSources } from '@/lib/db/schema';
+import { eq, and } from 'drizzle-orm';
 import { logError } from '@/lib/utils/logError';
+import { upsertBirthday } from '@/lib/services/birthday-merge';
 import {
   fetchCalendarEvents,
   refreshAccessToken,
@@ -250,25 +251,20 @@ export async function POST() {
       const calSource = calendarSourceLabel[event.id] || 'google';
       rows.push({ name: parsed.name, birthDate, eventType: parsed.eventType, googleCalendarSource: calSource });
     }
-    // Upsert each row individually for better error tracking
+    // upsertBirthday handles the prefix-aware merge so that a calendar
+    // event titled "Julia's birthday" (which the regex strips down to
+    // "Julia") collapses onto an iCloud contact with FN "Julia O'Brien"
+    // when both share a birth month/day, instead of becoming a separate
+    // row. See src/lib/services/birthday-merge.ts.
     let synced = 0;
     for (const row of rows) {
       try {
-        await db
-          .insert(birthdays)
-          .values({
-            name: row.name,
-            birthDate: row.birthDate,
-            eventType: row.eventType,
-            googleCalendarSource: row.googleCalendarSource,
-          })
-          .onConflictDoUpdate({
-            target: [birthdays.name, birthdays.eventType],
-            set: {
-              birthDate: row.birthDate,
-              googleCalendarSource: row.googleCalendarSource,
-            },
-          });
+        await upsertBirthday({
+          name: row.name,
+          birthDate: row.birthDate,
+          eventType: row.eventType as 'birthday' | 'anniversary' | 'milestone',
+          source: row.googleCalendarSource,
+        });
         synced++;
       } catch (err) {
         console.error('[BirthdaySync] Failed to upsert:', row.name, row.eventType, err);

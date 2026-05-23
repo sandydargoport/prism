@@ -8,10 +8,11 @@
  */
 
 import { db } from '@/lib/db/client';
-import { birthdays, calendarSources } from '@/lib/db/schema';
+import { calendarSources } from '@/lib/db/schema';
 import { and, eq, sql } from 'drizzle-orm';
 import { decrypt } from '@/lib/utils/crypto';
 import { fetchCardDAVBirthdays } from '@/lib/integrations/carddav';
+import { upsertBirthday } from './birthday-merge';
 
 interface SyncResult {
   synced: number;
@@ -55,27 +56,21 @@ export async function syncCardDAVBirthdays(): Promise<SyncResult> {
     return result;
   }
 
-  // Upsert each (name, birthdate) pair. The unique index on
-  // (name, eventType) means a duplicate from Google + CardDAV converges
-  // onto one row — the CardDAV value wins on conflict, which matches the
-  // user's mental model of "iCloud is my source of truth for contacts."
+  // upsertBirthday handles three cases per contact:
+  //   - exact name match → refresh fields
+  //   - prefix match (e.g. existing "Julia" with our new "Julia O'Brien" or
+  //     vice versa, same month/day) → merge, keeping the longer name and the
+  //     non-1904 year. Avoids the cross-source dupes we used to accumulate
+  //     when Google Calendar carried a first name and CardDAV the full name.
+  //   - no match → insert new
   for (const c of contacts) {
     try {
-      await db
-        .insert(birthdays)
-        .values({
-          name: c.name,
-          birthDate: c.birthDate,
-          eventType: 'birthday',
-          googleCalendarSource: 'caldav_contacts',
-        })
-        .onConflictDoUpdate({
-          target: [birthdays.name, birthdays.eventType],
-          set: {
-            birthDate: c.birthDate,
-            googleCalendarSource: 'caldav_contacts',
-          },
-        });
+      await upsertBirthday({
+        name: c.name,
+        birthDate: c.birthDate,
+        eventType: 'birthday',
+        source: 'caldav_contacts',
+      });
       result.synced++;
     } catch (err) {
       result.errors.push(`Upsert failed for "${c.name}": ${err instanceof Error ? err.message : err}`);
