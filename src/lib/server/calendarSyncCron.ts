@@ -12,7 +12,7 @@
  * extended quiet periods, events silently went stale.
  */
 
-import { syncAllGoogleCalendars, syncAllIcalCalendars } from '@/lib/services/calendar-sync';
+import { syncAllGoogleCalendars, syncAllIcalCalendars, syncAllCalDAVCalendars } from '@/lib/services/calendar-sync';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 
 const INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
@@ -20,22 +20,26 @@ const INITIAL_DELAY_MS = 60 * 1000;  // wait 1 min after boot
 
 async function runOnce() {
   try {
-    const [google, ical] = await Promise.all([
+    const [google, ical, caldav] = await Promise.all([
       syncAllGoogleCalendars(),
       syncAllIcalCalendars(),
+      syncAllCalDAVCalendars(),
     ]);
-    const total = google.total + ical.total;
-    const errors = [...google.errors, ...ical.errors];
+    const total = google.total + ical.total + caldav.total;
+    const errors = [...google.errors, ...ical.errors, ...caldav.errors];
 
     await invalidateEntity('events');
+    // CalDAV sources also sync VTODO into the tasks table; invalidate that
+    // cache too so the Tasks page picks up new / updated reminders.
+    await invalidateEntity('tasks');
 
     if (errors.length > 0) {
       console.warn(
-        `[calendar-cron] synced ${total} events with ${errors.length} errors:`,
+        `[calendar-cron] synced ${total} events/tasks with ${errors.length} errors:`,
         errors.slice(0, 3),
       );
     } else {
-      console.log(`[calendar-cron] synced ${total} events`);
+      console.log(`[calendar-cron] synced ${total} events/tasks`);
     }
   } catch (err) {
     // Never let a transient sync failure crash the cron loop.
