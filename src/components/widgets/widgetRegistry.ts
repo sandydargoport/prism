@@ -44,7 +44,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistryEntry> = {
     label: 'Clock',
     icon: 'Clock',
     minW: 8,
-    minH: 8,
+    minH: 4,
     defaultW: 12,
     defaultH: 12,
   },
