@@ -57,10 +57,16 @@ export async function GET() {
       .from(photoSources)
       .where(eq(photoSources.type, 'onedrive'));
 
-    // Gmail: check api_credentials with service='gmail-bus'
+    // Gmail: check api_credentials with service='gmail-bus'. We deliberately
+    // don't surface expiresAt here. Gmail access tokens have a 1-hour TTL but
+    // bus-tracking-sync.ts auto-refreshes them on the next sync tick via the
+    // stored refresh token, so a "past expires_at" is not a user-actionable
+    // problem. When the refresh truly fails (TokenRevokedError), the sync
+    // path deletes the credential row outright — at which point this query
+    // returns null and `connected: false` flips the UI to "Connect Gmail".
     const gmailCred = await db.query.apiCredentials.findFirst({
       where: (c, { eq: eqFn }) => eqFn(c.service, 'gmail-bus'),
-      columns: { expiresAt: true, updatedAt: true },
+      columns: { id: true },
     });
 
     return NextResponse.json({
@@ -82,7 +88,6 @@ export async function GET() {
       },
       gmail: {
         connected: !!gmailCred,
-        expiresAt: gmailCred?.expiresAt?.toISOString() || null,
       },
     });
   } catch (error) {

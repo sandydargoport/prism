@@ -31,7 +31,6 @@ interface IntegrationStatus {
   };
   gmail: {
     connected: boolean;
-    expiresAt: string | null;
   };
 }
 
@@ -414,12 +413,6 @@ export function ConnectedAccountsSection() {
         <CardContent>
           {status?.gmail.connected ? (
             <div className="space-y-3">
-              {status.gmail.expiresAt && new Date(status.gmail.expiresAt) < new Date() && (
-                <div className="flex items-center gap-3 p-3 rounded-md border border-orange-500/50 bg-orange-50 dark:bg-orange-950/30">
-                  <AlertTriangle className="h-5 w-5 text-orange-500 shrink-0" />
-                  <p className="text-sm text-orange-700 dark:text-orange-400">Token expired — reconnect to resume bus tracking.</p>
-                </div>
-              )}
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={handleConnectGmail}>
                   <RefreshCw className="h-4 w-4 mr-2" />

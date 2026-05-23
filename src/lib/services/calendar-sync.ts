@@ -868,53 +868,6 @@ export async function syncCalDAVTasks(
       source.sourceCalendarId,
     );
 
-    // Each CalDAV source maps to one Prism task list. Lookup order:
-    //   1. config.taskListId — durable mapping written back into syncErrors
-    //      JSON on first create. Survives task purges; one source = one list.
-    //   2. existing task row's listId — back-compat for sources synced
-    //      before (1) existed.
-    //   3. create a fresh task_list, then persist its id into config so
-    //      future ticks hit branch (1) instead of creating more dupes.
-    //
-    // Before (1) existed, every cron tick that swept stale tasks lost the
-    // source→list link and synthesized a new task_list, accumulating one
-    // orphan list per source per tick.
-    let taskListId: string | null = config.taskListId ?? null;
-    if (!taskListId) {
-      const existingTaskForSource = await db.query.tasks.findFirst({
-        where: sql`${tasks.externalId} LIKE ${`caldav:${source.id}:%`}`,
-        columns: { listId: true },
-      });
-      taskListId = existingTaskForSource?.listId ?? null;
-    }
-    if (!taskListId) {
-      const [newList] = await db
-        .insert(taskLists)
-        .values({
-          name: source.displayName || 'CalDAV Reminders',
-          color: source.color || '#6366f1',
-        })
-        .returning();
-      if (newList) {
-        taskListId = newList.id;
-        // Persist the mapping so the next tick takes branch (1).
-        await db.update(calendarSources)
-          .set({ syncErrors: { ...config, taskListId: newList.id } })
-          .where(eq(calendarSources.id, source.id));
-      }
-    }
-
-    // Back-fill list_id on any pre-existing tasks for this source that
-    // were inserted before the task-list wiring landed.
-    if (taskListId) {
-      await db.update(tasks)
-        .set({ listId: taskListId })
-        .where(and(
-          sql`${tasks.externalId} LIKE ${`caldav:${source.id}:%`}`,
-          sql`${tasks.listId} IS NULL`,
-        ));
-    }
-
     // Apple iCloud injects metadata VTODOs into reminder lists whose data
     // has migrated to the CloudKit-only Reminders system. Those don't
     // represent real tasks — they're nag messages telling the user where
@@ -924,11 +877,52 @@ export async function syncCalDAVTasks(
       'The creator of this list has upgraded these reminders.',
     ]);
 
+    const realTasks = caldavTasks.filter(
+      t => !APPLE_PLACEHOLDER_TITLES.has(t.title.trim())
+    );
+
+    // Lazy task-list creation: if a CalDAV source returns only Apple's
+    // placeholder VTODOs (the common case for modern iCloud Reminders, whose
+    // real data lives in CloudKit and isn't reachable over CalDAV), don't
+    // pollute Settings with an empty task_list that the user can't populate.
+    // Only materialize a Prism task_list once we actually have real content
+    // to put in it, or once we already created one on a prior sync.
+    let taskListId: string | null = config.taskListId ?? null;
+    if (!taskListId && realTasks.length > 0) {
+      const existingTaskForSource = await db.query.tasks.findFirst({
+        where: sql`${tasks.externalId} LIKE ${`caldav:${source.id}:%`}`,
+        columns: { listId: true },
+      });
+      taskListId = existingTaskForSource?.listId ?? null;
+    }
+    if (!taskListId && realTasks.length > 0) {
+      const [newList] = await db
+        .insert(taskLists)
+        .values({
+          name: source.displayName || 'CalDAV Reminders',
+          color: source.color || '#6366f1',
+        })
+        .returning();
+      if (newList) {
+        taskListId = newList.id;
+        await db.update(calendarSources)
+          .set({ syncErrors: { ...config, taskListId: newList.id } })
+          .where(eq(calendarSources.id, source.id));
+      }
+    }
+
+    if (taskListId) {
+      await db.update(tasks)
+        .set({ listId: taskListId })
+        .where(and(
+          sql`${tasks.externalId} LIKE ${`caldav:${source.id}:%`}`,
+          sql`${tasks.listId} IS NULL`,
+        ));
+    }
+
     const seenExternalIds = new Set<string>();
 
-    for (const task of caldavTasks) {
-      if (APPLE_PLACEHOLDER_TITLES.has(task.title.trim())) continue;
-
+    for (const task of realTasks) {
       const externalId = `caldav:${source.id}:${task.uid}`;
       seenExternalIds.add(externalId);
 
