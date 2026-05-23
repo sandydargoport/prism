@@ -3,8 +3,17 @@ import { hexToRgba, isLightColor } from '@/lib/utils/color';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 
 /**
- * Compute inline CSSProperties for a widget's background, outline, and text color.
- * Used by both CssGridDisplay and the editor.
+ * Compute inline CSSProperties for a widget's background, outline, and text
+ * color. Used by both CssGridDisplay and the editor.
+ *
+ * NOTE: `textScale` (zoom) is intentionally NOT included here anymore — it
+ * lives in `getWidgetContentStyle` so it can be applied on the inner content
+ * wrapper, NOT the grid-cell wrapper. Applying `zoom` to a CSS grid cell
+ * sporadically fails to propagate into the rendered subtree on the
+ * dashboard render path (visible bug: dashboard weather widget ignored
+ * its textScale even though the screensaver's identical code path
+ * honored it). Moving the zoom inward isolates it from the grid layout
+ * algorithm and makes scaling deterministic across both views.
  */
 export function getWidgetStyle(w: WidgetConfig): CSSProperties | undefined {
   if (!w.backgroundColor && !w.outlineColor && !w.textColor) return undefined;
@@ -37,13 +46,20 @@ export function getWidgetStyle(w: WidgetConfig): CSSProperties | undefined {
       : w.textColor;
   }
 
-  if (w.textScale && w.textScale !== 1) {
-    // Use zoom instead of fontSize because Tailwind text classes use rem (root-relative),
-    // which ignores parent em/font-size. Zoom scales everything proportionally.
-    (style as Record<string, unknown>).zoom = w.textScale;
-  }
-
   return style;
+}
+
+/**
+ * Style applied to the INSIDE wrapper of a widget cell (not the grid
+ * cell itself). Currently just `zoom: textScale` — see getWidgetStyle for
+ * the reason this is separated out.
+ */
+export function getWidgetContentStyle(w: WidgetConfig): CSSProperties | undefined {
+  if (!w.textScale || w.textScale === 1) return undefined;
+  // Tailwind text classes use rem (root-relative), which ignores parent
+  // em/font-size — `zoom` scales everything (rem text, SVG dimensions,
+  // layout boxes) proportionally without changing the cell's grid slot.
+  return { zoom: w.textScale } as CSSProperties;
 }
 
 /**

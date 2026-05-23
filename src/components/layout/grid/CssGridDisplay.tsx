@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { WidgetBgOverrideProvider } from '@/components/widgets/WidgetContainer';
-import { getWidgetStyle, getTextColorClass } from './gridWidgetStyles';
+import { getWidgetStyle, getWidgetContentStyle, getTextColorClass } from './gridWidgetStyles';
 import { useSquareCells } from './useSquareCells';
 import { GRID_COLS } from '@/lib/constants/grid';
 import type { CssGridDisplayProps } from './gridEditorTypes';
@@ -60,6 +60,7 @@ export function CssGridDisplay({
       >
         {visibleWidgets.map(w => {
           const widgetStyle = getWidgetStyle(w);
+          const contentStyle = getWidgetContentStyle(w);
           const textClass = getTextColorClass(w);
           const hasCustomBg = !!w.backgroundColor;
 
@@ -75,7 +76,7 @@ export function CssGridDisplay({
               }}
             >
               <WidgetBgOverrideProvider value={{ hasCustomBg, textColor: w.textColor, textOpacity: w.textOpacity, gridLineOpacity: w.gridLineOpacity, cellBackgroundColor: w.cellBackgroundColor, cellBackgroundOpacity: w.cellBackgroundOpacity }}>
-                <div className="h-full w-full overflow-hidden">
+                <div className="h-full w-full overflow-hidden" style={contentStyle}>
                   {renderWidget(w)}
                 </div>
               </WidgetBgOverrideProvider>
