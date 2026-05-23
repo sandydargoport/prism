@@ -28,22 +28,32 @@ export function CoordinateEditor({ widgets, onWidgetsChange, mode, onFocusedWidg
     ? SCREENSAVER_WIDGETS.map(w => w.id)
     : ALL_WIDGET_TYPES;
 
-  // Split into visible and hidden
+  // Split into visible and hidden, both sorted alphabetically by label so
+  // the "Add widget" picker and the "currently visible" table follow the
+  // same ordering. Previously `visibleIds` followed WIDGET_REGISTRY's
+  // insertion order, which put newer widgets (Birthdays, Bus Tracker) at
+  // arbitrary positions that didn't match the alpha-sorted hidden list.
+  const byLabel = (a: string, b: string) => {
+    const aLabel = WIDGET_REGISTRY[a]?.label || a;
+    const bLabel = WIDGET_REGISTRY[b]?.label || b;
+    return aLabel.localeCompare(bLabel);
+  };
+
   const visibleIds = useMemo(() =>
-    allWidgetIds.filter(id => {
-      const w = widgets.find(w => w.i === id);
-      return w && w.visible !== false;
-    }),
+    allWidgetIds
+      .filter(id => {
+        const w = widgets.find(w => w.i === id);
+        return w && w.visible !== false;
+      })
+      .sort(byLabel),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   [allWidgetIds, widgets]);
 
   const hiddenIds = useMemo(() =>
     allWidgetIds
       .filter(id => !visibleIds.includes(id))
-      .sort((a, b) => {
-        const aLabel = WIDGET_REGISTRY[a]?.label || a;
-        const bLabel = WIDGET_REGISTRY[b]?.label || b;
-        return aLabel.localeCompare(bLabel);
-      }),
+      .sort(byLabel),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   [allWidgetIds, visibleIds]);
 
   // Close add dropdown on outside click
