@@ -735,6 +735,13 @@ export async function syncCalDAVCalendarSource(
     return { synced: 0, errors: ['Missing CalDAV connection config'] };
   }
 
+  // Skip event sync for sources whose discovery flagged them as VTODO-only.
+  // (undefined === legacy row from before flags were stored, so default to
+  // running the sync — back-compatible.)
+  if (config.supportsEvents === false) {
+    return { synced: 0, errors: [] };
+  }
+
   const timeMin = options.timeMin || new Date(Date.now() - DEFAULT_TIME_MIN_MS);
   const timeMax = options.timeMax || new Date(Date.now() + DEFAULT_TIME_MAX_MS);
 
@@ -846,6 +853,11 @@ export async function syncCalDAVTasks(
   const config = source.syncErrors as CalDAVConnectionConfig | null;
   if (!config?.serverUrl || !config?.username) {
     return { synced: 0, errors: ['Missing CalDAV connection config'] };
+  }
+
+  // Skip task sync for sources whose discovery flagged them as VEVENT-only.
+  if (config.supportsTasks === false) {
+    return { synced: 0, errors: [] };
   }
 
   try {

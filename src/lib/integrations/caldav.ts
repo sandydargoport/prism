@@ -46,6 +46,14 @@ export interface CalDAVConnectionConfig {
   serverUrl: string;
   username: string;
   authMethod: 'basic';
+  /** True when the source calendar advertises VEVENT support. Persisted at
+   *  connect time so sync + UI can route this source correctly (a Reminders
+   *  list won't appear in the Calendar UI, an event-only calendar won't
+   *  spawn a task list). Undefined on legacy rows from before this field
+   *  was stored — treat as "true" for backward compatibility. */
+  supportsEvents?: boolean;
+  /** True when the source calendar advertises VTODO support. */
+  supportsTasks?: boolean;
 }
 
 /**

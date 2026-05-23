@@ -10,6 +10,8 @@ export interface TaskList {
   createdBy?: string | null;
   createdAt: string;
   updatedAt: string;
+  /** When set, this list is auto-populated by an external provider sync. */
+  linkedProvider?: 'caldav' | null;
 }
 
 interface CreateTaskListInput {

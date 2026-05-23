@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
-import { taskLists } from '@/lib/db/schema';
-import { eq, asc } from 'drizzle-orm';
+import { taskLists, tasks } from '@/lib/db/schema';
+import { eq, asc, sql } from 'drizzle-orm';
 import { requireAuth, requireRole } from '@/lib/auth';
 import { getCached } from '@/lib/cache/redis';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
@@ -15,7 +15,26 @@ export async function GET() {
     const lists = await getCached(
       'task-lists:all',
       async () => db
-        .select()
+        .select({
+          id: taskLists.id,
+          name: taskLists.name,
+          color: taskLists.color,
+          sortOrder: taskLists.sortOrder,
+          createdBy: taskLists.createdBy,
+          createdAt: taskLists.createdAt,
+          updatedAt: taskLists.updatedAt,
+          // Derived: which external system populated this list, if any.
+          // 'caldav' when at least one task in the list has a caldav-prefixed
+          // externalId; null for purely Prism-internal lists. Lets the
+          // settings UI badge "From: Apple iCloud" on auto-created lists
+          // without requiring a join client-side.
+          linkedProvider: sql<string | null>`(
+            SELECT 'caldav' FROM ${tasks}
+            WHERE ${tasks.listId} = ${taskLists.id}
+              AND ${tasks.externalId} LIKE 'caldav:%'
+            LIMIT 1
+          )`,
+        })
         .from(taskLists)
         .orderBy(asc(taskLists.sortOrder), asc(taskLists.name)),
       300

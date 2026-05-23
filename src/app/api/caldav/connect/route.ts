@@ -40,16 +40,28 @@ export async function POST(request: NextRequest) {
     }
 
     const encryptedPassword = encrypt(password);
-    const caldavConfig = {
-      serverUrl,
-      username,
-      authMethod: 'basic',
-    };
 
     const created: string[] = [];
 
     for (const cal of calendars) {
-      const { href, displayName, color } = cal as { href: string; displayName: string; color?: string };
+      const { href, displayName, color, supportsEvents, supportsTasks } = cal as {
+        href: string;
+        displayName: string;
+        color?: string;
+        supportsEvents?: boolean;
+        supportsTasks?: boolean;
+      };
+
+      // Store supports flags inline with the CalDAV connection config so
+      // sync + UI can route this source correctly. Default both to true when
+      // discovery didn't tell us — old behavior of "sync both" preserved.
+      const caldavConfig = {
+        serverUrl,
+        username,
+        authMethod: 'basic',
+        supportsEvents: supportsEvents !== false,
+        supportsTasks: supportsTasks !== false,
+      };
 
       const [source] = await db
         .insert(calendarSources)

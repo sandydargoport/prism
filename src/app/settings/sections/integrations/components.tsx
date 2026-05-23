@@ -7,6 +7,7 @@ import {
   AlertCircle,
   Link2,
   ExternalLink,
+  Cloud,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -508,6 +509,19 @@ export function EntityListCard<T extends { id: string; name: string }>({
                             </svg>
                           )}
                           <span>Synced with: {connectedSource.externalListName || config?.providers[connectedSource.provider]?.name || 'External'}</span>
+                        </div>
+                      )}
+                      {/* CalDAV-backed entities don't have a task_source row
+                          (the CalDAV calendar_source owns the credentials),
+                          so they wouldn't otherwise show a "synced with"
+                          label. Fall back to entity.linkedProvider so the
+                          user can see "this list is auto-populated from
+                          Apple iCloud" without needing to wire CalDAV into
+                          task_sources. */}
+                      {!connectedSource && (entity as T & { linkedProvider?: string }).linkedProvider === 'caldav' && (
+                        <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                          <Cloud className="h-3 w-3" />
+                          <span>From Apple iCloud (read-only)</span>
                         </div>
                       )}
                     </div>

@@ -20,6 +20,8 @@ interface DiscoveredCalendar {
   displayName: string;
   color: string | null;
   description: string | null;
+  supportsEvents: boolean;
+  supportsTasks: boolean;
 }
 
 export function CalDAVConnectDialog({
