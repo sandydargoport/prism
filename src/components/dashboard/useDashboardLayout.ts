@@ -20,6 +20,7 @@ interface LayoutsData {
   saveLayout: (data: Partial<Layout> & { name: string; widgets: WidgetConfig[] }) => Promise<unknown>;
   deleteLayout: (id: string) => Promise<void>;
   allLayouts: Layout[];
+  loading: boolean;
 }
 
 export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
@@ -77,9 +78,18 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     }
   }, [activeLayout, activeUser]);
 
+  // While layouts are still fetching, render NOTHING rather than falling
+  // back to DEFAULT_TEMPLATE — for any established user whose saved layout
+  // doesn't exactly match the template, that fallback shows a stale set of
+  // widgets for a fraction of a second before swapping to the real one, and
+  // the swap reads as "Prism flashed a different dashboard at me." A blank
+  // frame for the same fraction-second is less disorienting than a wrong
+  // one. We only fall back to DEFAULT_TEMPLATE once loading completes AND
+  // no saved layout exists (genuine first-run / blank-slate install).
   const activeWidgets = isEditing
     ? editingWidgets
-    : activeLayout?.widgets ?? DEFAULT_TEMPLATE.widgets;
+    : activeLayout?.widgets
+      ?? (layouts.loading ? [] : DEFAULT_TEMPLATE.widgets);
 
   const handleEditStart = useCallback(() => {
     // Auth gate: only logged-in parents can edit. Signed-out users get a
