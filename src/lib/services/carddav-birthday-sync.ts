@@ -58,7 +58,7 @@ export async function syncCardDAVBirthdays(): Promise<SyncResult> {
 
   // upsertBirthday handles three cases per contact:
   //   - exact name match → refresh fields
-  //   - prefix match (e.g. existing "Julia" with our new "Julia O'Brien" or
+  //   - prefix match (e.g. existing "Alex" with our new "Alex Doe" or
   //     vice versa, same month/day) → merge, keeping the longer name and the
   //     non-1904 year. Avoids the cross-source dupes we used to accumulate
   //     when Google Calendar carried a first name and CardDAV the full name.

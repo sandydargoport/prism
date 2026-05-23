@@ -252,8 +252,8 @@ export async function POST() {
       rows.push({ name: parsed.name, birthDate, eventType: parsed.eventType, googleCalendarSource: calSource });
     }
     // upsertBirthday handles the prefix-aware merge so that a calendar
-    // event titled "Julia's birthday" (which the regex strips down to
-    // "Julia") collapses onto an iCloud contact with FN "Julia O'Brien"
+    // event titled "Alex's birthday" (which the regex strips down to
+    // "Alex") collapses onto an iCloud contact with FN "Alex Doe"
     // when both share a birth month/day, instead of becoming a separate
     // row. See src/lib/services/birthday-merge.ts.
     let synced = 0;

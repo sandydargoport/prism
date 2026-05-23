@@ -1,15 +1,15 @@
 /**
  * Cross-source birthday dedup. Same person commonly arrives twice — once
- * from a Google Calendar event titled "Julia's birthday" (regex-parsed,
- * carries just the first name) and once from a vCard with FN "Julia O'Brien"
+ * from a Google Calendar event titled "Alex's birthday" (regex-parsed,
+ * carries just the first name) and once from a vCard with FN "Alex Doe"
  * (CardDAV sync, carries the full name). The (name, eventType) unique index
  * doesn't catch these because the names differ.
  *
  * The heuristic that doesn't false-positive across distinct people:
  *   - same birth month + day
- *   - one name is a TOKEN-PREFIX of the other (e.g. "Julia" ⊂ "Julia O'Brien"
- *     but "Lara Katz" ⊄ "Lara Tal" — different people who happen to share
- *     a January 15 birthday)
+ *   - one name is a TOKEN-PREFIX of the other (e.g. "Alex" ⊂ "Alex Doe"
+ *     but "Jordan Doe" ⊄ "Jordan Smith" — two distinct contacts who
+ *     happen to share a birth day)
  *
  * When that holds, we keep the longer name and prefer the non-1904 year
  * (1904 is the year-omitted sentinel from CardDAV / Google Contacts).
@@ -34,7 +34,7 @@ function normalize(s: string): string {
   return s.replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
 }
 
-/** Token-prefix: "julia" is prefix of "julia obrien", "lara katz" is NOT prefix of "lara tal". */
+/** Token-prefix: "alex" is prefix of "alex doe", "jordan doe" is NOT prefix of "jordan smith". */
 function isTokenPrefix(short: string, long: string): boolean {
   const a = normalize(short).split(' ');
   const b = normalize(long).split(' ');
