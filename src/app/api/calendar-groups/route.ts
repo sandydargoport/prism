@@ -32,7 +32,20 @@ export async function GET() {
           userId: calendarGroups.userId,
           sortOrder: calendarGroups.sortOrder,
           userSortOrder: users.sortOrder,
-          sourceCount: sql<number>`(SELECT count(*)::int FROM calendar_sources WHERE calendar_sources.group_id = ${calendarGroups.id})`,
+          // Count only sources that actually carry events — CalDAV reminder
+          // lists (supportsEvents=false) are hidden from the Calendar UI so
+          // including them here would make the badge show "3 sources" while
+          // the user can only see 2. The IS DISTINCT FROM 'false' check
+          // treats missing/null flags as truthy for backward compatibility
+          // with non-CalDAV providers and legacy rows.
+          sourceCount: sql<number>`(
+            SELECT count(*)::int FROM calendar_sources
+            WHERE calendar_sources.group_id = ${calendarGroups.id}
+              AND (
+                calendar_sources.provider != 'caldav'
+                OR (calendar_sources.sync_errors->>'supportsEvents') IS DISTINCT FROM 'false'
+              )
+          )`,
           userName: users.name,
           userColor: users.color,
         })

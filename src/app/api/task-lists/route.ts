@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
-import { taskLists, tasks } from '@/lib/db/schema';
+import { taskLists, tasks, calendarSources } from '@/lib/db/schema';
 import { eq, asc, sql } from 'drizzle-orm';
 import { requireAuth, requireRole } from '@/lib/auth';
 import { getCached } from '@/lib/cache/redis';
@@ -24,15 +24,26 @@ export async function GET() {
           createdAt: taskLists.createdAt,
           updatedAt: taskLists.updatedAt,
           // Derived: which external system populated this list, if any.
-          // 'caldav' when at least one task in the list has a caldav-prefixed
-          // externalId; null for purely Prism-internal lists. Lets the
-          // settings UI badge "From: Apple iCloud" on auto-created lists
-          // without requiring a join client-side.
+          // 'caldav' when either:
+          //   (a) at least one task in the list has a caldav-prefixed externalId, OR
+          //   (b) a calendar_source's syncErrors JSON has taskListId pointing here.
+          // Checking (b) catches CalDAV-backed lists whose only tasks were
+          // Apple's placeholder VTODOs (now filtered out by sync) — those
+          // lists are empty but still legitimately CalDAV-sourced.
           linkedProvider: sql<string | null>`(
-            SELECT 'caldav' FROM ${tasks}
-            WHERE ${tasks.listId} = ${taskLists.id}
-              AND ${tasks.externalId} LIKE 'caldav:%'
-            LIMIT 1
+            CASE
+              WHEN EXISTS (
+                SELECT 1 FROM ${tasks}
+                WHERE ${tasks.listId} = ${taskLists.id}
+                  AND ${tasks.externalId} LIKE 'caldav:%'
+              ) THEN 'caldav'
+              WHEN EXISTS (
+                SELECT 1 FROM ${calendarSources}
+                WHERE ${calendarSources.provider} = 'caldav'
+                  AND ${calendarSources.syncErrors}->>'taskListId' = ${taskLists.id}::text
+              ) THEN 'caldav'
+              ELSE NULL
+            END
           )`,
         })
         .from(taskLists)
