@@ -290,19 +290,39 @@ export async function fetchCalDAVTasks(
     throw new Error(`Calendar not found: ${calendarHref}`);
   }
 
-  // Fetch all objects (tsdav doesn't filter by component type in time range for VTODOs)
-  const objects = await client.fetchCalendarObjects({ calendar });
+  // Fetch all objects (tsdav doesn't filter by component type in time range for VTODOs).
+  // Apple iCloud requires an explicit VTODO comp-filter to return reminders —
+  // without it the response is empty even for Reminders-list calendars.
+  const objects = await client.fetchCalendarObjects({
+    calendar,
+    filters: [{
+      'comp-filter': {
+        _attributes: { name: 'VCALENDAR' },
+        'comp-filter': {
+          _attributes: { name: 'VTODO' },
+        },
+      },
+    }],
+  });
+
+  console.log(`[caldav-tasks] ${calendarHref}: fetched ${objects.length} object(s)`);
 
   const tasks: CalDAVTask[] = [];
+  let parsedCount = 0;
 
   for (const obj of objects) {
     try {
       const parsed = parseVTodoObject(obj);
-      if (parsed) tasks.push(parsed);
+      if (parsed) {
+        tasks.push(parsed);
+        parsedCount++;
+      }
     } catch (error) {
       console.error('Failed to parse CalDAV task:', error instanceof Error ? error.message : error);
     }
   }
+
+  console.log(`[caldav-tasks] ${calendarHref}: parsed ${parsedCount} VTODO(s) into tasks`);
 
   return tasks;
 }
