@@ -99,21 +99,40 @@ function parseVCardBirthday(data: string | undefined): ContactBirthday | null {
 function normalizeBday(raw: string): string | null {
   const s = raw.trim();
 
+  let year: string | null = null;
+  let month: string | null = null;
+  let day: string | null = null;
+
   // YYYY-MM-DD (vCard 4.0 + ical.js normalized form)
   let m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  if (m) { year = m[1]!; month = m[2]!; day = m[3]!; }
 
   // YYYYMMDD (vCard 3.0 basic)
-  m = s.match(/^(\d{4})(\d{2})(\d{2})$/);
-  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  if (!year) {
+    m = s.match(/^(\d{4})(\d{2})(\d{2})$/);
+    if (m) { year = m[1]!; month = m[2]!; day = m[3]!; }
+  }
 
-  // --MMDD or --MM-DD (year omitted, common for "I don't track year")
-  m = s.match(/^--(\d{2})-?(\d{2})$/);
-  if (m) return `1904-${m[1]}-${m[2]}`;
+  // --MMDD or --MM-DD (vCard 4.0 explicit year-omitted form)
+  if (!year) {
+    m = s.match(/^--(\d{2})-?(\d{2})$/);
+    if (m) { year = '1904'; month = m[1]!; day = m[2]!; }
+  }
 
   // ISO datetime — strip the time portion
-  m = s.match(/^(\d{4})-(\d{2})-(\d{2})T/);
-  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  if (!year) {
+    m = s.match(/^(\d{4})-(\d{2})-(\d{2})T/);
+    if (m) { year = m[1]!; month = m[2]!; day = m[3]!; }
+  }
 
-  return null;
+  if (!year || !month || !day) return null;
+
+  // Apple iCloud Contacts stores "no birth year given" as the literal year
+  // 1604 in CardDAV vCards — a long-standing iOS idiosyncrasy rather than a
+  // standard. Map it back to our year-omitted sentinel (1904) so the
+  // birthdays widget treats it the same as Google Contacts' year-less rows
+  // (no age displayed) instead of rendering "age 421".
+  if (year === '1604') year = '1904';
+
+  return `${year}-${month}-${day}`;
 }
