@@ -311,6 +311,13 @@ export function TaskIntegrationsSection() {
               >
                 Change
               </Button>
+            ) : (list as { linkedProvider?: string }).linkedProvider === 'caldav' ? (
+              // CalDAV-backed lists are already sourced from the CalDAV
+              // calendar_source — the "From Apple iCloud" badge under the
+              // name says so. Hide the Connect button (it would just dump
+              // the user into a provider picker that doesn't include
+              // CalDAV / Apple as a target).
+              null
             ) : (
               <Button
                 variant="outline"

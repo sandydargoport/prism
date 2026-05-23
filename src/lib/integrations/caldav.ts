@@ -54,6 +54,10 @@ export interface CalDAVConnectionConfig {
   supportsEvents?: boolean;
   /** True when the source calendar advertises VTODO support. */
   supportsTasks?: boolean;
+  /** Durable mapping from this CalDAV source to a Prism task_lists row.
+   *  Written on first task-list creation so subsequent syncs reuse the
+   *  same list instead of creating orphans every tick. */
+  taskListId?: string;
 }
 
 /**

@@ -868,15 +868,25 @@ export async function syncCalDAVTasks(
       source.sourceCalendarId,
     );
 
-    // Each CalDAV source maps to one Prism task list. Find the list_id
-    // already in use by any existing task for this source (self-heals
-    // sources synced before this code path existed); otherwise create a
-    // new task_list named after the calendar.
-    const existingTaskForSource = await db.query.tasks.findFirst({
-      where: sql`${tasks.externalId} LIKE ${`caldav:${source.id}:%`}`,
-      columns: { listId: true },
-    });
-    let taskListId = existingTaskForSource?.listId ?? null;
+    // Each CalDAV source maps to one Prism task list. Lookup order:
+    //   1. config.taskListId — durable mapping written back into syncErrors
+    //      JSON on first create. Survives task purges; one source = one list.
+    //   2. existing task row's listId — back-compat for sources synced
+    //      before (1) existed.
+    //   3. create a fresh task_list, then persist its id into config so
+    //      future ticks hit branch (1) instead of creating more dupes.
+    //
+    // Before (1) existed, every cron tick that swept stale tasks lost the
+    // source→list link and synthesized a new task_list, accumulating one
+    // orphan list per source per tick.
+    let taskListId: string | null = config.taskListId ?? null;
+    if (!taskListId) {
+      const existingTaskForSource = await db.query.tasks.findFirst({
+        where: sql`${tasks.externalId} LIKE ${`caldav:${source.id}:%`}`,
+        columns: { listId: true },
+      });
+      taskListId = existingTaskForSource?.listId ?? null;
+    }
     if (!taskListId) {
       const [newList] = await db
         .insert(taskLists)
@@ -885,7 +895,13 @@ export async function syncCalDAVTasks(
           color: source.color || '#6366f1',
         })
         .returning();
-      if (newList) taskListId = newList.id;
+      if (newList) {
+        taskListId = newList.id;
+        // Persist the mapping so the next tick takes branch (1).
+        await db.update(calendarSources)
+          .set({ syncErrors: { ...config, taskListId: newList.id } })
+          .where(eq(calendarSources.id, source.id));
+      }
     }
 
     // Back-fill list_id on any pre-existing tasks for this source that
