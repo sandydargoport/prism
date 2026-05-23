@@ -45,6 +45,7 @@ export function CalDAVConnectDialog({
   const [connecting, setConnecting] = useState(false);
   const [connectedCount, setConnectedCount] = useState(0);
   const [connectError, setConnectError] = useState<string | null>(null);
+  const [syncContactBirthdays, setSyncContactBirthdays] = useState(false);
 
   const reset = () => {
     setStep('credentials');
@@ -58,6 +59,7 @@ export function CalDAVConnectDialog({
     setSelected(new Set());
     setConnecting(false);
     setConnectedCount(0);
+    setSyncContactBirthdays(false);
   };
 
   const handleTest = async () => {
@@ -112,6 +114,7 @@ export function CalDAVConnectDialog({
           username,
           password,
           calendars: selectedCalendars,
+          syncContactBirthdays,
         }),
       });
       // Try to parse JSON either way — the API returns { error } on failure.
@@ -264,6 +267,21 @@ export function CalDAVConnectDialog({
                 <p className="text-sm text-muted-foreground text-center py-4">No calendars found on this server.</p>
               )}
             </div>
+
+            <label className="flex items-start gap-3 p-3 rounded-lg border border-border hover:bg-accent cursor-pointer">
+              <input
+                type="checkbox"
+                checked={syncContactBirthdays}
+                onChange={e => setSyncContactBirthdays(e.target.checked)}
+                className="mt-0.5 rounded"
+              />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium">Also import birthdays from contacts</p>
+                <p className="text-xs text-muted-foreground">
+                  Pulls BDAY fields from your address book via CardDAV (using the same login) and adds them to the birthdays widget. Reminders and notes are not supported by Apple over CalDAV — this is birthdays only.
+                </p>
+              </div>
+            </label>
 
             {connectError && (
               <div className="flex items-start gap-2 p-3 rounded-lg text-sm bg-destructive/10 text-destructive">

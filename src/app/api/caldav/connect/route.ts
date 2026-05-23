@@ -8,6 +8,7 @@ import { invalidateCache } from '@/lib/cache/redis';
 import { logActivity } from '@/lib/services/auditLog';
 import { testCalDAVConnection } from '@/lib/integrations/caldav';
 import { syncCalDAVCalendarSource, syncCalDAVTasks } from '@/lib/services/calendar-sync';
+import { syncCardDAVBirthdays } from '@/lib/services/carddav-birthday-sync';
 
 /**
  * POST /api/caldav/connect
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest) {
   if (forbidden) return forbidden;
 
   try {
-    const { serverUrl, username, password, calendars } = await request.json();
+    const { serverUrl, username, password, calendars, syncContactBirthdays } = await request.json();
 
     if (!serverUrl || !username || !password || !Array.isArray(calendars) || calendars.length === 0) {
       return NextResponse.json(
@@ -43,7 +44,8 @@ export async function POST(request: NextRequest) {
 
     const created: string[] = [];
 
-    for (const cal of calendars) {
+    for (let i = 0; i < calendars.length; i++) {
+      const cal = calendars[i];
       const { href, displayName, color, supportsEvents, supportsTasks } = cal as {
         href: string;
         displayName: string;
@@ -55,13 +57,20 @@ export async function POST(request: NextRequest) {
       // Store supports flags inline with the CalDAV connection config so
       // sync + UI can route this source correctly. Default both to true when
       // discovery didn't tell us — old behavior of "sync both" preserved.
-      const caldavConfig = {
+      // Anchor contactBirthdaysEnabled on the first inserted row only — the
+      // CardDAV sync only needs one anchor row to read credentials from,
+      // and multiplying it across N calendars would mean N independent
+      // sync attempts on the same address book.
+      const caldavConfig: Record<string, unknown> = {
         serverUrl,
         username,
         authMethod: 'basic',
         supportsEvents: supportsEvents !== false,
         supportsTasks: supportsTasks !== false,
       };
+      if (i === 0 && syncContactBirthdays) {
+        caldavConfig.contactBirthdaysEnabled = true;
+      }
 
       const [source] = await db
         .insert(calendarSources)
@@ -106,6 +115,16 @@ export async function POST(request: NextRequest) {
           console.error(`Initial CalDAV sync failed for source ${sourceId}:`,
             err instanceof Error ? err.message : err);
         }
+      }
+      if (syncContactBirthdays) {
+        try {
+          const r = await syncCardDAVBirthdays();
+          if (r.errors.length) console.error('Initial CardDAV birthday sync errors:', r.errors);
+        } catch (err) {
+          console.error('Initial CardDAV birthday sync failed:',
+            err instanceof Error ? err.message : err);
+        }
+        await invalidateCache('birthdays:*').catch(() => {});
       }
       // Invalidate event/task caches AFTER sync completes so the dashboard
       // picks up the new rows on its next poll.

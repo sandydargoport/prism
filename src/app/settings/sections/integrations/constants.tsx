@@ -53,15 +53,6 @@ export const TASK_CONFIG: IntegrationConfig = {
   providers: {
     microsoft_todo: { name: 'Microsoft To-Do', icon: MS_TODO_ICON, color: '#0078D4' },
     google_tasks: { name: 'Google Tasks', icon: GOOGLE_TASKS_ICON, color: '#4285F4' },
-    todoist: {
-      name: 'Todoist',
-      icon: (
-        <svg className="h-5 w-5" viewBox="0 0 24 24" fill="#E44332">
-          <path d="M21 7.5L12 2 3 7.5v9l9 5.5 9-5.5v-9zM12 4l7 4.3v7.4l-7 4.3-7-4.3V8.3L12 4z" />
-        </svg>
-      ),
-      color: '#E44332',
-    },
   },
   errorMessages: {
     ...SHARED_ERROR_MESSAGES,
