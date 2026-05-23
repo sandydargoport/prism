@@ -159,11 +159,14 @@ export async function fetchCalDAVEvents(
     throw new Error(`Calendar not found: ${calendarHref}`);
   }
 
+  // tsdav's timeRange expects standard ISO8601 (with hyphens + colons);
+  // formatICalDate strips those for basic-format iCal DTSTART use only,
+  // so pass toISOString() directly here.
   const objects = await client.fetchCalendarObjects({
     calendar,
     timeRange: {
-      start: formatICalDate(timeMin),
-      end: formatICalDate(timeMax),
+      start: timeMin.toISOString(),
+      end: timeMax.toISOString(),
     },
   });
 
