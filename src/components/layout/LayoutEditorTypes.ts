@@ -19,7 +19,7 @@ export interface LayoutEditorProps {
   widgets: WidgetConfig[];
   onWidgetsChange: (widgets: WidgetConfig[]) => void;
   onSave: (name?: string) => void | Promise<void>;
-  onSaveAs: (defaultName?: string) => void;
+  onSaveAs: (opts?: string | { id: string } | { name: string }) => void;
   onReset: () => void;
   onCancel: () => void;
   onDeleteLayout?: (id: string) => void;

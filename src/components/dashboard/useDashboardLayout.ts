@@ -128,16 +128,42 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     }
   }, [activeLayout, editingWidgets, ssLayout, layouts]);
 
-  const handleSaveAs = useCallback(async (defaultName?: string) => {
-    const name = window.prompt('Layout name:', defaultName || 'New Layout');
-    if (!name) return;
-    await layouts.saveLayout({
-      name,
-      widgets: editingWidgets,
-      isDefault: true,
-      screensaverWidgets: ssLayout,
-      orientation: activeLayout?.orientation || 'landscape',
-    });
+  // Save-As supports two modes:
+  //   - { id }: overwrite an existing dashboard. Preserves the target's
+  //     name, slug, and isDefault — only widgets + screensaver are swapped.
+  //     The dialog shows a confirm step before this fires.
+  //   - { name }: create a new dashboard with the given name. Same behavior
+  //     as the previous prompt() flow, just driven by a real dialog input.
+  // Legacy callers passing a bare string (e.g. the Apply Community Layout
+  // path) still get the new-dashboard branch via the string overload.
+  const handleSaveAs = useCallback(async (
+    opts?: string | { id: string } | { name: string },
+  ) => {
+    if (!opts) return;
+    if (typeof opts === 'string') opts = { name: opts };
+
+    if ('id' in opts) {
+      const target = layouts.allLayouts.find(l => l.id === opts.id);
+      if (!target) return;
+      await layouts.saveLayout({
+        id: target.id,
+        name: target.name,
+        widgets: editingWidgets,
+        isDefault: target.isDefault,
+        screensaverWidgets: ssLayout,
+        orientation: target.orientation || 'landscape',
+      });
+    } else {
+      const name = opts.name.trim();
+      if (!name) return;
+      await layouts.saveLayout({
+        name,
+        widgets: editingWidgets,
+        isDefault: false,
+        screensaverWidgets: ssLayout,
+        orientation: activeLayout?.orientation || 'landscape',
+      });
+    }
     setIsEditing(false);
   }, [editingWidgets, ssLayout, activeLayout, layouts]);
 

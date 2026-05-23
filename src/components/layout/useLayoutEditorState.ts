@@ -49,6 +49,7 @@ export function useLayoutEditorState({
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showSaveAsDialog, setShowSaveAsDialog] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [renameValue, setRenameValue] = useState('');
   const [saveFeedback, setSaveFeedback] = useState('');
@@ -155,6 +156,7 @@ export function useLayoutEditorState({
     showImportDialog, setShowImportDialog,
     showShareDialog, setShowShareDialog,
     showCreateDialog, setShowCreateDialog,
+    showSaveAsDialog, setShowSaveAsDialog,
     showRenameDialog, setShowRenameDialog,
     renameValue, setRenameValue,
     saveFeedback,

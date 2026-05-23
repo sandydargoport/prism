@@ -7,7 +7,7 @@ import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { useScreenSafeZones } from '@/lib/hooks/useScreenSafeZones';
 import { LayoutEditorShareDialog } from './LayoutEditorShareDialog';
 import { LayoutEditorImportDialog } from './LayoutEditorImportExport';
-import { CreateDashboardDialog } from './LayoutEditorDashboardManager';
+import { CreateDashboardDialog, SaveAsDialog } from './LayoutEditorDashboardManager';
 import { RenameDashboardDialog } from './LayoutEditorRenameDashboard';
 import { LayoutEditorMeasureBar } from './LayoutEditorMeasureBar';
 import { LayoutEditorToolbarLeft } from './LayoutEditorToolbarLeft';
@@ -187,7 +187,7 @@ export function LayoutEditor({
             onToggleMeasureMode={toggleMeasureMode}
             onToggleScreensaverEdit={onToggleScreensaverEdit}
             onSave={state.handleSave}
-            onSaveAs={() => { onSaveAs?.(); setActivePopover(null); }}
+            onSaveAs={() => { state.setShowSaveAsDialog(true); setActivePopover(null); }}
             onReset={onReset}
             onScreensaverReset={onScreensaverReset}
             onCancel={onCancel}
@@ -204,6 +204,15 @@ export function LayoutEditor({
         open={state.showCreateDialog}
         onClose={() => state.setShowCreateDialog(false)}
         onCreate={(name, startFrom) => { onCreateDashboard?.(name, startFrom); state.setShowCreateDialog(false); }}
+      />
+
+      <SaveAsDialog
+        open={state.showSaveAsDialog}
+        onClose={() => state.setShowSaveAsDialog(false)}
+        allDashboards={allDashboards}
+        currentDashboardId={currentDashboardId}
+        onOverwrite={(id) => onSaveAs?.({ id })}
+        onCreateNew={(name) => onSaveAs?.({ name })}
       />
 
       <RenameDashboardDialog
