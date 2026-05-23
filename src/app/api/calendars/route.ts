@@ -41,6 +41,7 @@ export async function GET() {
         groupId: calendarSources.groupId,
         lastSynced: calendarSources.lastSynced,
         syncErrors: calendarSources.syncErrors,
+        providerConfig: calendarSources.providerConfig,
         createdAt: calendarSources.createdAt,
         // User info
         userId: calendarSources.userId,
@@ -70,6 +71,7 @@ export async function GET() {
       groupColor: source.groupColor,
       lastSynced: source.lastSynced?.toISOString() || null,
       syncErrors: source.syncErrors,
+      providerConfig: source.providerConfig,
       createdAt: source.createdAt.toISOString(),
       // For family calendars, return a virtual "Family" user
       user: source.isFamily

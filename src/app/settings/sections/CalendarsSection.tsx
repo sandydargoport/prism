@@ -298,7 +298,7 @@ export function CalendarsSection() {
                 // Calendar settings card otherwise.
                 .filter((cal) => {
                   if (cal.provider !== 'caldav') return true;
-                  const cfg = cal.syncErrors as { supportsEvents?: boolean } | null;
+                  const cfg = cal.providerConfig as { supportsEvents?: boolean } | null;
                   return cfg?.supportsEvents !== false;
                 })
                 .map((cal) => (

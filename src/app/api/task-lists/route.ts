@@ -26,7 +26,7 @@ export async function GET() {
           // Derived: which external system populated this list, if any.
           // 'caldav' when either:
           //   (a) at least one task in the list has a caldav-prefixed externalId, OR
-          //   (b) a calendar_source's syncErrors JSON has taskListId pointing here.
+          //   (b) a calendar_source's providerConfig has taskListId pointing here.
           // Checking (b) catches CalDAV-backed lists whose only tasks were
           // Apple's placeholder VTODOs (now filtered out by sync) — those
           // lists are empty but still legitimately CalDAV-sourced.
@@ -40,7 +40,7 @@ export async function GET() {
               WHEN EXISTS (
                 SELECT 1 FROM ${calendarSources}
                 WHERE ${calendarSources.provider} = 'caldav'
-                  AND ${calendarSources.syncErrors}->>'taskListId' = ${taskLists.id}::text
+                  AND ${calendarSources.providerConfig}->>'taskListId' = ${taskLists.id}::text
               ) THEN 'caldav'
               ELSE NULL
             END

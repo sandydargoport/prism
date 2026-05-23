@@ -1,10 +1,10 @@
 /**
  * Pull birthdays out of CardDAV contacts and upsert into the birthdays
  * table. Credentials are reused from any existing CalDAV calendar_source
- * row whose syncErrors carries `contactBirthdaysEnabled: true` — the user
- * opts in by checking a box in the CalDAV connect dialog. One row's creds
- * are enough; we don't multi-tenant this. (If the user ever wants per-iCloud-
- * account isolation, this is the place to fan out.)
+ * row whose providerConfig carries `contactBirthdaysEnabled: true` — the
+ * user opts in by checking a box in the CalDAV connect dialog. One row's
+ * creds are enough; we don't multi-tenant this. (If the user ever wants
+ * per-iCloud-account isolation, this is the place to fan out.)
  */
 
 import { db } from '@/lib/db/client';
@@ -25,13 +25,13 @@ export async function syncCardDAVBirthdays(): Promise<SyncResult> {
   const enabledSource = await db.query.calendarSources.findFirst({
     where: and(
       eq(calendarSources.provider, 'caldav'),
-      sql`(${calendarSources.syncErrors}->>'contactBirthdaysEnabled')::boolean = true`,
+      sql`(${calendarSources.providerConfig}->>'contactBirthdaysEnabled')::boolean = true`,
     ),
   });
 
   if (!enabledSource) return result;
 
-  const cfg = (enabledSource.syncErrors as Record<string, unknown> | null) ?? {};
+  const cfg = (enabledSource.providerConfig as Record<string, unknown> | null) ?? {};
   const serverUrl = String(cfg.serverUrl || '');
   const username = String(cfg.username || '');
   if (!serverUrl || !username || !enabledSource.accessToken) {

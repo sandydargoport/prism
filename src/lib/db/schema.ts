@@ -107,7 +107,17 @@ export const calendarSources = pgTable('calendar_sources', {
   icalUrl: text('ical_url'),
 
   lastSynced: timestamp('last_synced'),
+  // syncErrors carries actual error state ({ needsReauth, lastError, timestamp })
+  // for Google + similar OAuth flows. Historically also stored CalDAV
+  // connection config (server URL, username, supportsEvents/Tasks,
+  // taskListId, contactBirthdaysEnabled) which was semantically muddy.
+  // Migrated to providerConfig in v1.8.4. See feat/caldav-followups.
   syncErrors: jsonb('sync_errors'),
+  // Stable per-provider configuration: serverUrl + username for CalDAV,
+  // supportsEvents/supportsTasks/taskListId/contactBirthdaysEnabled flags,
+  // anything else that's "what this source is" rather than "what went
+  // wrong recently". Read at sync time; never mutated by error handlers.
+  providerConfig: jsonb('provider_config'),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

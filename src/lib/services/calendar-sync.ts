@@ -730,7 +730,7 @@ export async function syncCalDAVCalendarSource(
     return { synced: 0, errors: ['Failed to decrypt credentials — may need to reconnect'] };
   }
 
-  const config = source.syncErrors as CalDAVConnectionConfig | null;
+  const config = source.providerConfig as CalDAVConnectionConfig | null;
   if (!config?.serverUrl || !config?.username) {
     return { synced: 0, errors: ['Missing CalDAV connection config'] };
   }
@@ -850,7 +850,7 @@ export async function syncCalDAVTasks(
     return { synced: 0, errors: ['Failed to decrypt credentials'] };
   }
 
-  const config = source.syncErrors as CalDAVConnectionConfig | null;
+  const config = source.providerConfig as CalDAVConnectionConfig | null;
   if (!config?.serverUrl || !config?.username) {
     return { synced: 0, errors: ['Missing CalDAV connection config'] };
   }
@@ -906,7 +906,7 @@ export async function syncCalDAVTasks(
       if (newList) {
         taskListId = newList.id;
         await db.update(calendarSources)
-          .set({ syncErrors: { ...config, taskListId: newList.id } })
+          .set({ providerConfig: { ...config, taskListId: newList.id } })
           .where(eq(calendarSources.id, source.id));
       }
     }

@@ -61,6 +61,9 @@ export async function POST(request: NextRequest) {
       // CardDAV sync only needs one anchor row to read credentials from,
       // and multiplying it across N calendars would mean N independent
       // sync attempts on the same address book.
+      //
+      // providerConfig is the new home for connection-shape data; syncErrors
+      // is reserved for error state. See migration 0011.
       const caldavConfig: Record<string, unknown> = {
         serverUrl,
         username,
@@ -81,7 +84,7 @@ export async function POST(request: NextRequest) {
           displayName: displayName,
           color: color || '#6366f1',
           accessToken: encryptedPassword,
-          syncErrors: caldavConfig,
+          providerConfig: caldavConfig,
           enabled: true,
           showInEventModal: false, // Read-only
         })
