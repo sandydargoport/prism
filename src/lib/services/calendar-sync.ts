@@ -1001,3 +1001,95 @@ export async function syncAllCalDAVCalendars(
 
   return { total, errors: allErrors };
 }
+
+/**
+ * Two-way write helpers — push event mutations from Prism back to the
+ * remote CalDAV calendar. Each function loads the source's credentials
+ * (provider_config + accessToken), decrypts the password, and delegates
+ * to the low-level write functions in @/lib/integrations/caldav.
+ *
+ * These functions do NOT touch the local `events` table — the calling
+ * route is responsible for mirroring the change locally so the user
+ * sees their edit immediately. This split keeps the local + remote
+ * writes from drifting on partial failures (e.g. CalDAV server times
+ * out after we already wrote locally).
+ */
+
+async function loadCalDAVAuth(sourceId: string): Promise<{
+  serverUrl: string;
+  username: string;
+  password: string;
+  sourceCalendarId: string;
+} | { error: string }> {
+  const source = await db.query.calendarSources.findFirst({
+    where: eq(calendarSources.id, sourceId),
+  });
+  if (!source || source.provider !== 'caldav') {
+    return { error: 'Not a CalDAV source' };
+  }
+  if (!source.accessToken) return { error: 'No credentials available' };
+  const config = source.providerConfig as CalDAVConnectionConfig | null;
+  if (!config?.serverUrl || !config?.username) {
+    return { error: 'Missing CalDAV connection config' };
+  }
+  let password: string;
+  try {
+    password = decrypt(source.accessToken);
+  } catch {
+    return { error: 'Failed to decrypt credentials' };
+  }
+  return {
+    serverUrl: config.serverUrl,
+    username: config.username,
+    password,
+    sourceCalendarId: source.sourceCalendarId,
+  };
+}
+
+export async function pushCalDAVEventCreate(
+  sourceId: string,
+  ev: { uid: string; title: string; description?: string | null; location?: string | null; startTime: Date; endTime: Date; allDay?: boolean },
+): Promise<{ ok: true; href: string } | { ok: false; error: string }> {
+  const auth = await loadCalDAVAuth(sourceId);
+  if ('error' in auth) return { ok: false, error: auth.error };
+  try {
+    const { createCalDAVEvent } = await import('@/lib/integrations/caldav');
+    const { href } = await createCalDAVEvent(auth.serverUrl, auth.username, auth.password, auth.sourceCalendarId, ev);
+    return { ok: true, href };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+export async function pushCalDAVEventUpdate(
+  sourceId: string,
+  calendarObjectHref: string,
+  etag: string | undefined,
+  ev: { uid: string; title: string; description?: string | null; location?: string | null; startTime: Date; endTime: Date; allDay?: boolean },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const auth = await loadCalDAVAuth(sourceId);
+  if ('error' in auth) return { ok: false, error: auth.error };
+  try {
+    const { updateCalDAVEvent } = await import('@/lib/integrations/caldav');
+    await updateCalDAVEvent(auth.serverUrl, auth.username, auth.password, calendarObjectHref, etag, ev);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+export async function pushCalDAVEventDelete(
+  sourceId: string,
+  calendarObjectHref: string,
+  etag?: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const auth = await loadCalDAVAuth(sourceId);
+  if ('error' in auth) return { ok: false, error: auth.error };
+  try {
+    const { deleteCalDAVEvent } = await import('@/lib/integrations/caldav');
+    await deleteCalDAVEvent(auth.serverUrl, auth.username, auth.password, calendarObjectHref, etag);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}

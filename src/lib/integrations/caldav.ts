@@ -394,3 +394,154 @@ function isAllDay(vevent: ICAL.Component): boolean {
 function formatICalDate(date: Date): string {
   return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
 }
+
+/**
+ * Two-way write: create / update / delete events back to the CalDAV
+ * server. Wraps tsdav's createCalendarObject / updateCalendarObject /
+ * deleteCalendarObject. iCal serialization uses ical.js so we share
+ * the same parser/serializer the read path already pulls in.
+ *
+ * NOTE on scope: only single (non-recurring) VEVENTs are supported here.
+ * Recurrence + exceptions are intentionally deferred — they need
+ * EXDATE / RRULE-edits / split-occurrence semantics that don't fit a
+ * naive iCal roundtrip and would need a proper RRULE-aware UI on the
+ * Prism side first (issue #59).
+ */
+
+export interface CalDAVEventWrite {
+  uid: string;
+  title: string;
+  description?: string | null;
+  location?: string | null;
+  startTime: Date;
+  endTime: Date;
+  allDay?: boolean;
+}
+
+/** Serialize a single VEVENT into a complete VCALENDAR string. */
+function buildVEventICalString(ev: CalDAVEventWrite): string {
+  const vcalendar = new ICAL.Component(['vcalendar', [], []]);
+  vcalendar.updatePropertyWithValue('prodid', '-//Prism//CalDAV write//EN');
+  vcalendar.updatePropertyWithValue('version', '2.0');
+
+  const vevent = new ICAL.Component('vevent');
+  vevent.updatePropertyWithValue('uid', ev.uid);
+  vevent.updatePropertyWithValue('summary', ev.title);
+  if (ev.description) vevent.updatePropertyWithValue('description', ev.description);
+  if (ev.location) vevent.updatePropertyWithValue('location', ev.location);
+
+  const dtstamp = ICAL.Time.now();
+  dtstamp.zone = ICAL.Timezone.utcTimezone;
+  vevent.updatePropertyWithValue('dtstamp', dtstamp);
+
+  const start = ICAL.Time.fromJSDate(ev.startTime, !ev.allDay);
+  const end = ICAL.Time.fromJSDate(ev.endTime, !ev.allDay);
+  if (ev.allDay) {
+    start.isDate = true;
+    end.isDate = true;
+  }
+  vevent.updatePropertyWithValue('dtstart', start);
+  vevent.updatePropertyWithValue('dtend', end);
+
+  vcalendar.addSubcomponent(vevent);
+  return vcalendar.toString();
+}
+
+/**
+ * Push a new VEVENT to the given CalDAV calendar. Returns the href the
+ * server assigned so callers can store it for later update / delete.
+ */
+export async function createCalDAVEvent(
+  serverUrl: string,
+  username: string,
+  password: string,
+  calendarHref: string,
+  ev: CalDAVEventWrite,
+): Promise<{ href: string }> {
+  const client = await createDAVClient({
+    serverUrl,
+    credentials: { username, password },
+    authMethod: 'Basic',
+    defaultAccountType: 'caldav',
+  });
+
+  const calendars = await client.fetchCalendars();
+  const calendar = calendars.find((c: DAVCalendar) => c.url === calendarHref);
+  if (!calendar) throw new Error(`Calendar not found: ${calendarHref}`);
+
+  const iCalString = buildVEventICalString(ev);
+  const filename = `${ev.uid}.ics`;
+  const response = await client.createCalendarObject({ calendar, iCalString, filename });
+
+  if (!response.ok) {
+    throw new Error(`CalDAV create failed: ${response.status} ${response.statusText}`);
+  }
+
+  // tsdav returns the raw fetch Response; the Location header carries the
+  // server-assigned href. Fall back to the constructed href if absent.
+  const loc = response.headers.get('Location') || response.headers.get('location');
+  const href = loc || new URL(filename, calendarHref).toString();
+  return { href };
+}
+
+/**
+ * Replace the VEVENT body for an existing CalDAV calendar object. The
+ * server identifies the target by its href (path on the calendar).
+ */
+export async function updateCalDAVEvent(
+  serverUrl: string,
+  username: string,
+  password: string,
+  calendarObjectHref: string,
+  etag: string | undefined,
+  ev: CalDAVEventWrite,
+): Promise<void> {
+  const client = await createDAVClient({
+    serverUrl,
+    credentials: { username, password },
+    authMethod: 'Basic',
+    defaultAccountType: 'caldav',
+  });
+
+  const iCalString = buildVEventICalString(ev);
+  const response = await client.updateCalendarObject({
+    calendarObject: {
+      url: calendarObjectHref,
+      etag: etag ?? '',
+      data: iCalString,
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`CalDAV update failed: ${response.status} ${response.statusText}`);
+  }
+}
+
+/**
+ * Delete a CalDAV calendar object by href. ETag is optional but lets the
+ * server reject the delete if the object changed since the caller read it.
+ */
+export async function deleteCalDAVEvent(
+  serverUrl: string,
+  username: string,
+  password: string,
+  calendarObjectHref: string,
+  etag?: string,
+): Promise<void> {
+  const client = await createDAVClient({
+    serverUrl,
+    credentials: { username, password },
+    authMethod: 'Basic',
+    defaultAccountType: 'caldav',
+  });
+
+  const response = await client.deleteCalendarObject({
+    calendarObject: {
+      url: calendarObjectHref,
+      etag: etag ?? '',
+      data: '',
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`CalDAV delete failed: ${response.status} ${response.statusText}`);
+  }
+}
