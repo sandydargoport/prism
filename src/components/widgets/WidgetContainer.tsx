@@ -249,14 +249,34 @@ export function WidgetContainer({
           // Grid lines / borders use the dedicated gridLineOpacity control
           const borderOpacity = overrideGridLineOpacity < 1 ? overrideGridLineOpacity : 1;
           const borderHslVal = borderOpacity < 1 ? `${hsl} / ${borderOpacity}` : hsl;
+          // When the user picks a custom text color, the inner background
+          // tokens (bg-card, bg-background, bg-accent, bg-popover) used to
+          // stay at the default theme luminance — so picking white text
+          // turned every calendar card and "Today" / "Schedule" / arrow
+          // button into white-on-white. Flip the inner BG tokens to the
+          // opposite luminance so contrast holds for any chosen text color.
+          // Light text → dark inner BGs (10–25% opacity for layering);
+          // dark text → light inner BGs.
+          const textIsLight = isLightColor(overrideTextColor);
+          const cardBgHsl = textIsLight ? '0 0% 0% / 0.55' : '0 0% 100% / 0.85';
+          const popoverBgHsl = textIsLight ? '0 0% 8% / 0.95' : '0 0% 100% / 0.95';
+          const accentBgHsl = textIsLight ? '0 0% 100% / 0.12' : '0 0% 0% / 0.08';
+          const bgHsl = textIsLight ? '0 0% 0% / 0.4' : '0 0% 100% / 0.7';
           return {
             color: overrideTextColor,
-            // Override Tailwind CSS custom properties — text stays fully opaque
+            // Text tokens — track the user's chosen color
             '--foreground': fullHslVal,
             '--card-foreground': fullHslVal,
+            '--popover-foreground': fullHslVal,
             '--muted-foreground': mutedHslVal,
             '--seasonal-accent': fullHslVal,
-            // Border/grid lines use the opacity control so they can be faded on busy backgrounds
+            // Inner BG tokens — flip to opposite luminance so cards /
+            // buttons / popovers stay visible against the chosen text color
+            '--card': cardBgHsl,
+            '--popover': popoverBgHsl,
+            '--accent': accentBgHsl,
+            '--background': bgHsl,
+            // Border tokens — track text color but at the configured opacity
             '--input': borderHslVal,
             '--border': borderHslVal,
           } as React.CSSProperties;
