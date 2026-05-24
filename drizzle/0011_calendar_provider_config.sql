@@ -12,29 +12,23 @@
 -- The migration:
 --   1. Add the new column.
 --   2. Copy the config-shaped keys out of sync_errors into provider_config
---      for every existing CalDAV row.
+--      for every existing CalDAV row that hasn't already been migrated.
 --   3. Strip those keys back out of sync_errors so the column carries
 --      only error state going forward.
 --
--- Backward compat: reads that check `sync_errors->>'serverUrl'` etc.
--- still work after the migration runs because the migration is the same
--- transaction that updates application code to read from provider_config.
--- (See PR feat/caldav-followups.)
+-- Idempotency: both UPDATEs guard against re-running over already-migrated
+-- rows. The first version of this migration (shipped briefly before this
+-- amendment) lacked the guards and, when applied twice in a row, blanked
+-- out provider_config because the second run pulled from an already-empty
+-- sync_errors. Fixed by gating on `provider_config IS NULL` and on the
+-- presence of at least one of the config keys in sync_errors.
 
 ALTER TABLE calendar_sources
   ADD COLUMN IF NOT EXISTS provider_config jsonb;
 
 -- Copy CalDAV config out of sync_errors → provider_config.
 UPDATE calendar_sources
-SET provider_config = jsonb_build_object(
-  'serverUrl',                sync_errors->'serverUrl',
-  'username',                 sync_errors->'username',
-  'authMethod',               sync_errors->'authMethod',
-  'supportsEvents',           sync_errors->'supportsEvents',
-  'supportsTasks',            sync_errors->'supportsTasks',
-  'taskListId',               sync_errors->'taskListId',
-  'contactBirthdaysEnabled',  sync_errors->'contactBirthdaysEnabled'
-) - 'serverUrl' || jsonb_strip_nulls(
+SET provider_config = jsonb_strip_nulls(
   jsonb_build_object(
     'serverUrl',                sync_errors->'serverUrl',
     'username',                 sync_errors->'username',
@@ -46,11 +40,18 @@ SET provider_config = jsonb_build_object(
   )
 )
 WHERE provider = 'caldav'
-  AND sync_errors IS NOT NULL;
+  AND provider_config IS NULL
+  AND sync_errors IS NOT NULL
+  AND (
+    sync_errors ? 'serverUrl' OR sync_errors ? 'username' OR
+    sync_errors ? 'supportsEvents' OR sync_errors ? 'supportsTasks' OR
+    sync_errors ? 'taskListId' OR sync_errors ? 'contactBirthdaysEnabled'
+  );
 
 -- Remove the migrated keys from sync_errors so the column carries only
 -- error state. (PostgreSQL doesn't have a multi-key jsonb subtraction,
--- so chain `-` operators.)
+-- so chain `-` operators.) Idempotent: stripping keys that are already
+-- absent is a no-op.
 UPDATE calendar_sources
 SET sync_errors = sync_errors
   - 'serverUrl'
@@ -61,4 +62,10 @@ SET sync_errors = sync_errors
   - 'taskListId'
   - 'contactBirthdaysEnabled'
 WHERE provider = 'caldav'
-  AND sync_errors IS NOT NULL;
+  AND sync_errors IS NOT NULL
+  AND (
+    sync_errors ? 'serverUrl' OR sync_errors ? 'username' OR
+    sync_errors ? 'authMethod' OR sync_errors ? 'supportsEvents' OR
+    sync_errors ? 'supportsTasks' OR sync_errors ? 'taskListId' OR
+    sync_errors ? 'contactBirthdaysEnabled'
+  );
