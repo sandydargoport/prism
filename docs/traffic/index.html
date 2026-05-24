@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prism — Traffic Stats</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #0d1117; color: #e6edf3; padding: 2rem; }
+    h1 { font-size: 1.4rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .sub { color: #8b949e; font-size: 0.85rem; margin-bottom: 2rem; }
+    .stats { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 2.5rem; }
+    .stat { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1rem 1.5rem; min-width: 140px; }
+    .stat-label { color: #8b949e; font-size: 0.75rem; text-transform: uppercase; letter-spacing: .05em; }
+    .stat-value { font-size: 2rem; font-weight: 700; margin-top: 0.2rem; }
+    .chart-wrap { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem; }
+    .chart-title { font-size: 0.85rem; font-weight: 600; color: #8b949e; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: .05em; }
+    canvas { max-height: 220px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th { text-align: left; color: #8b949e; font-weight: 500; padding: 0.4rem 0.75rem; border-bottom: 1px solid #30363d; }
+    td { padding: 0.4rem 0.75rem; border-bottom: 1px solid #21262d; }
+    tr:last-child td { border-bottom: none; }
+    .badge { display: inline-block; background: #1f6feb33; color: #58a6ff; border-radius: 4px; padding: 0.1rem 0.45rem; font-size: 0.75rem; }
+  </style>
+</head>
+<body>
+  <h1>Prism — Repository Traffic</h1>
+  <p class="sub" id="updated">Loading…</p>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-label">Total Views</div><div class="stat-value" id="totalViews">—</div></div>
+    <div class="stat"><div class="stat-label">Unique Visitors</div><div class="stat-value" id="totalUniques">—</div></div>
+    <div class="stat"><div class="stat-label">Days Tracked</div><div class="stat-value" id="daysTracked">—</div></div>
+    <div class="stat"><div class="stat-label">Total Clones</div><div class="stat-value" id="totalClones">—</div></div>
+  </div>
+
+  <div class="chart-wrap">
+    <div class="chart-title">Daily Views</div>
+    <canvas id="viewsChart"></canvas>
+  </div>
+
+  <div class="chart-wrap">
+    <div class="chart-title">Top Referrers (last 14 days)</div>
+    <table id="referrersTable">
+      <thead><tr><th>Source</th><th>Views</th><th>Unique</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    async function main() {
+      const res = await fetch('history.json');
+      const data = await res.json();
+
+      // Summary stats
+      const viewDates = Object.keys(data.views).sort();
+      const totalViews   = Object.values(data.views).reduce((s, d) => s + d.count,   0);
+      const totalUniques = Object.values(data.views).reduce((s, d) => s + d.uniques, 0);
+      const totalClones  = Object.values(data.clones || {}).reduce((s, d) => s + d.count, 0);
+
+      document.getElementById('totalViews').textContent   = totalViews.toLocaleString();
+      document.getElementById('totalUniques').textContent = totalUniques.toLocaleString();
+      document.getElementById('daysTracked').textContent  = viewDates.length;
+      document.getElementById('totalClones').textContent  = totalClones.toLocaleString();
+      document.getElementById('updated').textContent      = `Updated ${new Date(data.updated_at).toLocaleString()}`;
+
+      // Views chart
+      new Chart(document.getElementById('viewsChart'), {
+        type: 'bar',
+        data: {
+          labels: viewDates,
+          datasets: [
+            {
+              label: 'Total Views',
+              data: viewDates.map(d => data.views[d].count),
+              backgroundColor: '#1f6feb88',
+              borderColor: '#58a6ff',
+              borderWidth: 1,
+            },
+            {
+              label: 'Unique Visitors',
+              data: viewDates.map(d => data.views[d].uniques),
+              backgroundColor: '#2ea04388',
+              borderColor: '#3fb950',
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { labels: { color: '#e6edf3', font: { size: 12 } } } },
+          scales: {
+            x: { ticks: { color: '#8b949e', maxTicksLimit: 20 }, grid: { color: '#21262d' } },
+            y: { ticks: { color: '#8b949e' }, grid: { color: '#21262d' }, beginAtZero: true },
+          },
+        },
+      });
+
+      // Referrers table
+      const tbody = document.querySelector('#referrersTable tbody');
+      (data.referrers || []).forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r.referrer}</td><td><span class="badge">${r.count}</span></td><td>${r.uniques}</td>`;
+        tbody.appendChild(tr);
+      });
+      if (!data.referrers?.length) {
+        tbody.innerHTML = '<tr><td colspan="3" style="color:#8b949e">No referrer data yet</td></tr>';
+      }
+    }
+    main().catch(e => { document.getElementById('updated').textContent = 'Failed to load history.json'; console.error(e); });
+  </script>
+</body>
+</html>

@@ -111,6 +111,7 @@ nav:
       - Public demo (self-hosting recipe): demo-deployment.md
   - Releases:
       - Changelog: CHANGELOG.md
+  - Repo Traffic: traffic/index.html
 
 # Files present in docs/ but intentionally not in the rendered nav
 # (kept in-repo for engineering reference, not user docs).
