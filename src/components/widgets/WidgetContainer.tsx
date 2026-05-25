@@ -240,85 +240,78 @@ export function WidgetContainer({
         ...(stripCardBg
           ? { backgroundColor: 'transparent' }
           : backgroundColor ? { backgroundColor } : {}),
-        ...(overrideTextColor ? (() => {
-          const hsl = hexToHslValues(overrideTextColor);
-          // Text always renders at full opacity for readability
-          const fullHslVal = hsl;
-          // Muted text gets 60% opacity to preserve visual hierarchy
-          const mutedHslVal = `${hsl} / 0.6`;
-          // Grid lines / borders use the dedicated gridLineOpacity control
-          const borderOpacity = overrideGridLineOpacity < 1 ? overrideGridLineOpacity : 1;
-          const borderHslVal = borderOpacity < 1 ? `${hsl} / ${borderOpacity}` : hsl;
-
-          // INNER BG TOKENS — two paths:
+        ...((() => {
+          // Two override surfaces, applied INDEPENDENTLY:
           //
-          // (A) Widget has its own backgroundColor set (solid hex, not
-          //     transparent/frosted) → inner tokens INHERIT that color so
-          //     grid cells, hour column, date row, toolbar buttons, day-
-          //     overflow popover, etc. all read as the same surface as the
-          //     widget itself. No "cards floating on a different fill" look.
-          //     Hover (--accent) gets a subtle text-color tint for a hover
-          //     affordance that doesn't change the underlying surface.
+          //   (1) Widget has its own backgroundColor — inner BG tokens
+          //       (--card, --muted, --secondary, --background, --popover)
+          //       inherit it so grid cells, hour column, date row,
+          //       toolbar buttons all read as the same surface as the
+          //       widget chrome. Fires WHETHER OR NOT textColor is also
+          //       overridden (the user's case in this PR: they set a BG
+          //       but kept default text and were still seeing white
+          //       inner surfaces because the override block used to be
+          //       gated on textColor).
           //
-          // (B) No widget backgroundColor (transparent / frosted / unset)
-          //     → fall back to opposite-luminance values so the widget
-          //     remains readable over whatever wallpaper / theme is behind
-          //     it. This was the original behavior; keeping it as the
-          //     fallback covers transparent-widget cases where there's no
-          //     "widget fill" to inherit.
+          //   (2) Widget has a custom textColor — text tokens track that
+          //       color; if no widget backgroundColor (transparent /
+          //       frosted), inner BG tokens auto-flip to opposite
+          //       luminance so the widget stays readable over wallpaper.
+          //
+          // The two paths compose: BG override sets inner surface, text
+          // override sets foreground colors. Hover (--accent) gets a
+          // faint text-color tint when one is set, falls back to a
+          // theme-anchored low-alpha when neither is.
           const hasSolidWidgetBg =
             !!backgroundColor &&
             backgroundColor !== 'transparent' &&
             backgroundColor !== 'frosted';
 
-          let cardBgHsl: string;
-          let popoverBgHsl: string;
-          let accentBgHsl: string;
-          let bgHsl: string;
-          let mutedBgHsl: string;
-          let secondaryBgHsl: string;
+          if (!overrideTextColor && !hasSolidWidgetBg) return {};
 
-          if (hasSolidWidgetBg) {
-            const widgetHsl = hexToHslValues(backgroundColor!);
-            cardBgHsl = widgetHsl;
-            popoverBgHsl = widgetHsl;
-            mutedBgHsl = widgetHsl;
-            secondaryBgHsl = widgetHsl;
-            bgHsl = widgetHsl;
-            // Hover state — faint tint of the text color so hover targets
-            // remain detectable on the same-surface fill.
-            accentBgHsl = `${hsl} / 0.12`;
-          } else {
-            const textIsLight = isLightColor(overrideTextColor);
-            cardBgHsl = textIsLight ? '0 0% 0% / 0.55' : '0 0% 100% / 0.85';
-            popoverBgHsl = textIsLight ? '0 0% 8% / 0.95' : '0 0% 100% / 0.95';
-            accentBgHsl = textIsLight ? '0 0% 100% / 0.12' : '0 0% 0% / 0.08';
-            bgHsl = textIsLight ? '0 0% 0% / 0.4' : '0 0% 100% / 0.7';
-            mutedBgHsl = textIsLight ? '0 0% 100% / 0.08' : '0 0% 0% / 0.06';
-            secondaryBgHsl = textIsLight ? '0 0% 100% / 0.15' : '0 0% 0% / 0.1';
+          const styles: Record<string, string> = {};
+
+          // ---- Text-color side ----
+          let textHsl: string | null = null;
+          let textIsLight = false;
+          if (overrideTextColor) {
+            textHsl = hexToHslValues(overrideTextColor);
+            textIsLight = isLightColor(overrideTextColor);
+            const mutedHslVal = `${textHsl} / 0.6`;
+            const borderOpacity = overrideGridLineOpacity < 1 ? overrideGridLineOpacity : 1;
+            const borderHslVal = borderOpacity < 1 ? `${textHsl} / ${borderOpacity}` : textHsl;
+            styles.color = overrideTextColor;
+            styles['--foreground'] = textHsl;
+            styles['--card-foreground'] = textHsl;
+            styles['--popover-foreground'] = textHsl;
+            styles['--muted-foreground'] = mutedHslVal;
+            styles['--secondary-foreground'] = textHsl;
+            styles['--seasonal-accent'] = textHsl;
+            styles['--input'] = borderHslVal;
+            styles['--border'] = borderHslVal;
           }
 
-          return {
-            color: overrideTextColor,
-            // Text tokens — track the user's chosen color
-            '--foreground': fullHslVal,
-            '--card-foreground': fullHslVal,
-            '--popover-foreground': fullHslVal,
-            '--muted-foreground': mutedHslVal,
-            '--secondary-foreground': fullHslVal,
-            '--seasonal-accent': fullHslVal,
-            // Inner BG tokens — see (A)/(B) above
-            '--card': cardBgHsl,
-            '--popover': popoverBgHsl,
-            '--accent': accentBgHsl,
-            '--muted': mutedBgHsl,
-            '--secondary': secondaryBgHsl,
-            '--background': bgHsl,
-            // Border tokens — track text color but at the configured opacity
-            '--input': borderHslVal,
-            '--border': borderHslVal,
-          } as React.CSSProperties;
-        })() : {}),
+          // ---- Inner-BG side ----
+          if (hasSolidWidgetBg) {
+            const widgetHsl = hexToHslValues(backgroundColor!);
+            styles['--card'] = widgetHsl;
+            styles['--popover'] = widgetHsl;
+            styles['--muted'] = widgetHsl;
+            styles['--secondary'] = widgetHsl;
+            styles['--background'] = widgetHsl;
+            styles['--accent'] = textHsl ? `${textHsl} / 0.12` : `${widgetHsl} / 0.6`;
+          } else if (overrideTextColor) {
+            // Auto-flip fallback (transparent / frosted widget with text-color override)
+            styles['--card'] = textIsLight ? '0 0% 0% / 0.55' : '0 0% 100% / 0.85';
+            styles['--popover'] = textIsLight ? '0 0% 8% / 0.95' : '0 0% 100% / 0.95';
+            styles['--accent'] = textIsLight ? '0 0% 100% / 0.12' : '0 0% 0% / 0.08';
+            styles['--background'] = textIsLight ? '0 0% 0% / 0.4' : '0 0% 100% / 0.7';
+            styles['--muted'] = textIsLight ? '0 0% 100% / 0.08' : '0 0% 0% / 0.06';
+            styles['--secondary'] = textIsLight ? '0 0% 100% / 0.15' : '0 0% 0% / 0.1';
+          }
+
+          return styles as unknown as React.CSSProperties;
+        })()),
       }}
     >
       {/* WIDGET HEADER */}
