@@ -262,6 +262,13 @@ export function WidgetContainer({
           const popoverBgHsl = textIsLight ? '0 0% 8% / 0.95' : '0 0% 100% / 0.95';
           const accentBgHsl = textIsLight ? '0 0% 100% / 0.12' : '0 0% 0% / 0.08';
           const bgHsl = textIsLight ? '0 0% 0% / 0.4' : '0 0% 100% / 0.7';
+          // Calendar grid uses --muted for the hour column + past-hour
+          // shading + day-overflow popover, and --secondary in a handful
+          // of toolbar states. Both stayed at default theme luminance
+          // before this addition, which made the hour column / past
+          // cells invisible against the chosen text color.
+          const mutedBgHsl = textIsLight ? '0 0% 100% / 0.08' : '0 0% 0% / 0.06';
+          const secondaryBgHsl = textIsLight ? '0 0% 100% / 0.15' : '0 0% 0% / 0.1';
           return {
             color: overrideTextColor,
             // Text tokens — track the user's chosen color
@@ -269,12 +276,15 @@ export function WidgetContainer({
             '--card-foreground': fullHslVal,
             '--popover-foreground': fullHslVal,
             '--muted-foreground': mutedHslVal,
+            '--secondary-foreground': fullHslVal,
             '--seasonal-accent': fullHslVal,
             // Inner BG tokens — flip to opposite luminance so cards /
             // buttons / popovers stay visible against the chosen text color
             '--card': cardBgHsl,
             '--popover': popoverBgHsl,
             '--accent': accentBgHsl,
+            '--muted': mutedBgHsl,
+            '--secondary': secondaryBgHsl,
             '--background': bgHsl,
             // Border tokens — track text color but at the configured opacity
             '--input': borderHslVal,
