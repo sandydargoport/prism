@@ -30,7 +30,11 @@
 
   <div class="stats">
     <div class="stat"><div class="stat-label">Total Views</div><div class="stat-value" id="totalViews">—</div></div>
-    <div class="stat"><div class="stat-label">Unique Visitors</div><div class="stat-value" id="totalUniques">—</div></div>
+    <div class="stat"><div class="stat-label">Visitor-Days</div><div class="stat-value" id="totalUniques">—</div></div>
+    <div class="stat" title="Estimate: sum of GitHub's 14-day rolling window uniques sampled at non-overlapping intervals. Approximates total unique visitors since tracking began. A visitor spanning two windows may double-count.">
+      <div class="stat-label">Est. Unique Visitors</div>
+      <div class="stat-value" id="cumUniqueEstimate">—</div>
+    </div>
     <div class="stat"><div class="stat-label">Days Tracked</div><div class="stat-value" id="daysTracked">—</div></div>
     <div class="stat"><div class="stat-label">Total Clones</div><div class="stat-value" id="totalClones">—</div></div>
   </div>
@@ -83,6 +87,38 @@
       document.getElementById('daysTracked').textContent  = viewDates.length;
       document.getElementById('totalClones').textContent  = totalClones.toLocaleString();
       document.getElementById('updated').textContent      = `Updated ${new Date(data.updated_at).toLocaleString()}`;
+
+      // Cumulative-unique estimate — the metric that actually uses our
+      // historical archive (the thing that differentiates us from
+      // GitHub's built-in Insights, which only shows last 14 days).
+      //
+      // Algorithm: walk window_uniques chronologically. Each entry is
+      // GitHub's 14-day rolling deduped count snapshotted on that day,
+      // so it represents uniques across that day's PRIOR 14 days. Pick
+      // anchor samples at non-overlapping 14-day intervals (anchor +14d,
+      // +28d, ...) and sum across the anchors. This approximates
+      // "unique visitors since tracking began." Imperfect — a visitor
+      // returning across a window boundary can double-count — but it's
+      // the only honest estimate we can compute without per-visitor IDs.
+      // Falls back to "—" until we have at least one window snapshot.
+      const windowUniques = data.window_uniques || {};
+      const windowDates = Object.keys(windowUniques).sort();
+      let cumEstimate = 0;
+      let lastAnchorIdx = -1;
+      for (let i = 0; i < windowDates.length; i++) {
+        if (lastAnchorIdx < 0) {
+          cumEstimate += windowUniques[windowDates[i]] || 0;
+          lastAnchorIdx = i;
+          continue;
+        }
+        const daysSinceAnchor = (new Date(windowDates[i]) - new Date(windowDates[lastAnchorIdx])) / 86400000;
+        if (daysSinceAnchor >= 14) {
+          cumEstimate += windowUniques[windowDates[i]] || 0;
+          lastAnchorIdx = i;
+        }
+      }
+      document.getElementById('cumUniqueEstimate').textContent =
+        windowDates.length > 0 ? `~${cumEstimate.toLocaleString()}` : '—';
 
       // Views chart — three datasets:
       //   - Total Views (bar, blue): raw view count per day
