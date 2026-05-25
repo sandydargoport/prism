@@ -57,14 +57,27 @@ jobs:
               'clones': {},
               'referrers': [],
               'referrer_history': {},
+              'window_uniques': {},
               'updated_at': None,
           })
           history.setdefault('referrer_history', {})
+          history.setdefault('window_uniques', {})
 
           # Merge views — keyed by YYYY-MM-DD, newer run wins
-          for day in load_api('/tmp/views.json').get('views', []):
+          views_api = load_api('/tmp/views.json')
+          for day in views_api.get('views', []):
               date = day['timestamp'][:10]
               history['views'][date] = {'count': day['count'], 'uniques': day['uniques']}
+
+          # Capture today's TOP-LEVEL uniques — GitHub's 14-day rolling
+          # deduplicated visitor count. Distinct from the per-day uniques
+          # above (which double-count a returning visitor across days).
+          # Stored keyed by the day the snapshot was taken so the viewer
+          # can chart the rolling-window value over time and show
+          # day-to-day deltas as "new this period."
+          today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+          if 'uniques' in views_api:
+              history['window_uniques'][today] = views_api['uniques']
 
           # Merge clones
           for day in load_api('/tmp/clones.json').get('clones', []):
@@ -81,7 +94,6 @@ jobs:
           if not isinstance(referrers_now, list):
               referrers_now = []
           history['referrers'] = referrers_now
-          today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
           if referrers_now:  # don't overwrite a good snapshot with [] from a 4xx
               history['referrer_history'][today] = referrers_now
 

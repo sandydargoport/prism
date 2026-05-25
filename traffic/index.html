@@ -48,6 +48,14 @@
     </table>
   </div>
 
+  <div class="chart-wrap" id="newReferrersWrap" style="display:none">
+    <div class="chart-title">First-Time Referrer Sources</div>
+    <table id="newReferrersTable">
+      <thead><tr><th>Source</th><th>First Seen</th><th>Views on First Day</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
   <script>
     async function main() {
       // history.json lives on the orphan `traffic-data` branch (see
@@ -76,7 +84,24 @@
       document.getElementById('totalClones').textContent  = totalClones.toLocaleString();
       document.getElementById('updated').textContent      = `Updated ${new Date(data.updated_at).toLocaleString()}`;
 
-      // Views chart
+      // Views chart — three datasets:
+      //   - Total Views (bar, blue): raw view count per day
+      //   - Unique Visitors (bar, green): GitHub's per-day unique count
+      //   - New This Period (line, amber): day-over-day increment in the
+      //     14-day rolling-window unique count. Positive = visitors GitHub
+      //     hadn't seen in the prior 14 days (effectively "new" relative to
+      //     the rolling window). Empty before window_uniques tracking
+      //     starts capturing data, then fills in over time.
+      const windowUniques = data.window_uniques || {};
+      const windowDates = Object.keys(windowUniques).sort();
+      const newThisPeriodSeries = viewDates.map(d => {
+        if (!(d in windowUniques)) return null;
+        const idx = windowDates.indexOf(d);
+        if (idx <= 0) return null;
+        const prev = windowUniques[windowDates[idx - 1]];
+        const cur  = windowUniques[d];
+        return Math.max(0, cur - prev);
+      });
       new Chart(document.getElementById('viewsChart'), {
         type: 'bar',
         data: {
@@ -95,6 +120,16 @@
               backgroundColor: '#2ea04388',
               borderColor: '#3fb950',
               borderWidth: 1,
+            },
+            {
+              type: 'line',
+              label: 'New This Period (14d window Δ)',
+              data: newThisPeriodSeries,
+              borderColor: '#d29922',
+              backgroundColor: '#d2992233',
+              tension: 0.3,
+              spanGaps: false,
+              pointRadius: 3,
             },
           ],
         },
@@ -117,6 +152,34 @@
       });
       if (!data.referrers?.length) {
         tbody.innerHTML = '<tr><td colspan="3" style="color:#8b949e">No referrer data yet</td></tr>';
+      }
+
+      // First-time referrers — walk referrer_history chronologically, track
+      // the set of ever-seen sources, and surface ones that newly appeared
+      // on each day. Useful for spotting fresh channels (HN, Reddit post,
+      // someone blogged about us, etc.) instead of just the rolling top-10.
+      const refHistory = data.referrer_history || {};
+      const refDates = Object.keys(refHistory).sort();
+      const seenSources = new Set();
+      const newSources = [];
+      for (const date of refDates) {
+        const todays = refHistory[date] || [];
+        for (const r of todays) {
+          if (!seenSources.has(r.referrer)) {
+            seenSources.add(r.referrer);
+            newSources.push({ referrer: r.referrer, firstSeen: date, count: r.count });
+          }
+        }
+      }
+      if (newSources.length > 0) {
+        document.getElementById('newReferrersWrap').style.display = '';
+        const ntbody = document.querySelector('#newReferrersTable tbody');
+        // Most recent first — that's the "what's new" reading order.
+        newSources.reverse().forEach(r => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${r.referrer}</td><td>${r.firstSeen}</td><td><span class="badge">${r.count}</span></td>`;
+          ntbody.appendChild(tr);
+        });
       }
     }
     main().catch(e => { document.getElementById('updated').textContent = 'Failed to load history.json'; console.error(e); });
