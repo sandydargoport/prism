@@ -98,10 +98,10 @@ export function CalendarWidgetControls({
           >
             Today
           </Button>
-          <Button variant="ghost" size="icon" onClick={goToPrevious} aria-label="Previous" className="h-8 w-8">
+          <Button variant="outline" size="icon" onClick={goToPrevious} aria-label="Previous" className="h-8 w-8">
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={goToNext} aria-label="Next" className="h-8 w-8">
+          <Button variant="outline" size="icon" onClick={goToNext} aria-label="Next" className="h-8 w-8">
             <ChevronRight className="h-4 w-4" />
           </Button>
         </>

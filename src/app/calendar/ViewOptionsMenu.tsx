@@ -142,15 +142,19 @@ export function ViewOptionsMenu({
     <Popover>
       <PopoverTrigger asChild>
         <Button
-          variant={nonDefaultCount > 0 ? 'secondary' : 'ghost'}
+          variant="outline"
           size="sm"
           aria-label="View options"
           title="View options"
           className={cn('gap-1.5 h-9', triggerClassName)}
         >
-          <Settings2 className={cn('h-4 w-4', nonDefaultCount > 0 && 'text-primary')} />
+          <Settings2 className="h-4 w-4" />
           <span className="hidden sm:inline">View</span>
           {nonDefaultCount > 0 && (
+            // Count circle is the ONLY visual indicator that filters are
+            // active — the button's outer fill stays the same regardless,
+            // so it sits uniformly alongside the View popover + Today
+            // button in the toolbar.
             <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
               {nonDefaultCount}
             </span>

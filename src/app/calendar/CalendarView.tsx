@@ -347,11 +347,11 @@ export function CalendarView() {
             {isMobile ? null : (
               <>
                 <Button variant="outline" size="sm" onClick={goToToday} className="h-9">Today</Button>
-                <div className="flex items-center">
-                  <Button variant="ghost" size="icon" onClick={goToPrevious} aria-label="Previous" className="h-9 w-9">
+                <div className="flex items-center gap-1">
+                  <Button variant="outline" size="icon" onClick={goToPrevious} aria-label="Previous" className="h-9 w-9">
                     <ChevronLeft className="h-5 w-5" />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={goToNext} aria-label="Next" className="h-9 w-9">
+                  <Button variant="outline" size="icon" onClick={goToNext} aria-label="Next" className="h-9 w-9">
                     <ChevronRight className="h-5 w-5" />
                   </Button>
                 </div>
