@@ -11,6 +11,15 @@
 #                                    entry missing) on a fresh-install DB,
 #                                    and verifying the next migrate run
 #                                    recovers cleanly.
+#   C) Data preservation on replay — inserting realistic provider-shaped data
+#                                    into tables a DML migration touches, then
+#                                    forcing the migration to re-run (via
+#                                    __prism_migrations DELETE), and verifying
+#                                    the data round-trip is byte-identical.
+#                                    Scenario B catches "errors on replay" but
+#                                    can miss "succeeds but corrupts" — that
+#                                    bit 0011 (provider_config columns wiped
+#                                    to all-nulls on second run). C catches it.
 #
 # A "legacy install with only extensions" path does NOT exist in production —
 # every install that ever ran the app already has the original schema in
@@ -135,6 +144,69 @@ log "And replay still a no-op..."
 run_migrate
 
 log "Scenario B: PASS"
+
+# ----------------------------------------------------------------------------
+# Scenario C: data preservation on migration replay
+# ----------------------------------------------------------------------------
+# Insert one row per touched table BEFORE forcing a replay, then snapshot
+# the row's contents, replay, and diff. A migration that ALTER-only does
+# DDL trivially passes; a migration that does DML (e.g. JSONB key shuffles
+# like 0011) must hold the data invariant.
+#
+# Each added DML migration should append a row + snapshot pair here.
+# ----------------------------------------------------------------------------
+reset_pg
+log "=== Scenario C: data preservation on migration replay ==="
+start_pg
+
+log "Bring DB up to date..."
+run_migrate
+
+log "Seed a realistic CalDAV calendar_source row (touched by 0011)..."
+# Uses provider_config + a non-config sync_errors entry (lastError) to
+# mirror the production shape post-migration. If 0011 re-runs and
+# accidentally pulls from an empty sync_errors, it'd overwrite
+# provider_config with nulls and the diff at the end would fail.
+psql_exec "
+INSERT INTO calendar_sources (
+  provider, source_calendar_id, dashboard_calendar_name, display_name,
+  color, access_token, enabled, show_in_event_modal,
+  sync_errors, provider_config
+) VALUES (
+  'caldav',
+  'https://caldav.example.com/calendars/test/',
+  'Test',
+  'Test',
+  '#3B82F6',
+  'fake-encrypted',
+  true,
+  false,
+  '{\"lastError\": \"prior issue\", \"lastErrorAt\": \"2026-01-01T00:00:00Z\"}'::jsonb,
+  '{\"username\": \"test@example.com\", \"serverUrl\": \"https://caldav.example.com\", \"authMethod\": \"basic\", \"supportsEvents\": true, \"supportsTasks\": false}'::jsonb
+);
+"
+
+log "Snapshot provider_config + sync_errors before replay..."
+BEFORE=$(docker exec "$CONTAINER_NAME" psql -U prism -d prism -t -A -c \
+  "SELECT provider_config::text || '|' || sync_errors::text FROM calendar_sources WHERE display_name = 'Test'")
+
+log "Force a replay of every migration (clear tracking, intact schema + data)..."
+psql_exec "DELETE FROM public.__prism_migrations;"
+
+run_migrate
+
+log "Snapshot after replay + diff..."
+AFTER=$(docker exec "$CONTAINER_NAME" psql -U prism -d prism -t -A -c \
+  "SELECT provider_config::text || '|' || sync_errors::text FROM calendar_sources WHERE display_name = 'Test'")
+
+if [ "$BEFORE" != "$AFTER" ]; then
+  echo "ERROR: replay corrupted calendar_sources data" >&2
+  echo "  BEFORE: $BEFORE" >&2
+  echo "  AFTER:  $AFTER" >&2
+  exit 1
+fi
+
+log "Scenario C: PASS"
 
 # ----------------------------------------------------------------------------
 echo
