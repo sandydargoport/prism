@@ -50,7 +50,18 @@
 
   <script>
     async function main() {
-      const res = await fetch('history.json');
+      // history.json lives on the orphan `traffic-data` branch (see
+      // .github/workflows/traffic.yml — the daily workflow can't push
+      // to master because of branch protection). Falls back to a local
+      // copy when opened from a clone of the repo.
+      const TRAFFIC_DATA_URL = 'https://raw.githubusercontent.com/sandydargoport/prism/traffic-data/traffic/history.json';
+      let res;
+      try {
+        res = await fetch(TRAFFIC_DATA_URL, { cache: 'no-store' });
+        if (!res.ok) throw new Error('remote fetch failed');
+      } catch {
+        res = await fetch('history.json');
+      }
       const data = await res.json();
 
       // Summary stats
