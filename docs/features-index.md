@@ -14,7 +14,7 @@ A unified family calendar that reads from Google Calendar, Apple iCloud (CalDAV)
 
 Recurring chore tracking with per-child assignments, completion approval by a parent, and points earned per chore. Includes a redemption flow (kids spend points on goals). The whole "weekly allowance / responsibility" pattern, built-in.
 
-→ Full docs: [Chores](features/CHORES.md) · [Goals](features/GOALS.md)
+→ Full docs: [Goals & Chores](features/GOALS.md)
 
 ## Tasks
 
