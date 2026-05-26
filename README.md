@@ -9,8 +9,6 @@
 
 Prism is a configurable family dashboard designed for large wall-mounted screens and handheld tablets. **Unlike Skylight, there's no $80/yr subscription. Unlike Dakboard, your data never leaves your house.** It connects to Google Calendar, Microsoft To Do, OneDrive, Apple iCloud (CalDAV), Kroger / Mariano's, and more, and surfaces the information your family actually needs in one place. Built for people who value privacy, hate subscriptions, and are comfortable with Docker.
 
-**Looking for a comparison?** See [Prism vs. Skylight, Dakboard, and MagicMirror²](https://sandydargoport.github.io/prism/alternatives/).
-
 **📖 Full documentation: <https://sandydargoport.github.io/prism/>**
 
 ---

@@ -83,9 +83,6 @@ extra:
 
 nav:
   - Home: index.md
-  - Compare:
-      - "vs. Skylight / Dakboard / MagicMirror²": alternatives.md
-      - "Features at a glance": features-index.md
   - Screenshots: screenshots.md
   - Get Started:
       - Install: getting-started/install.md
@@ -117,10 +114,17 @@ nav:
       - Changelog: CHANGELOG.md
   - Repo Traffic: traffic/index.html
 
-# Files present in docs/ but intentionally not in the rendered nav
-# (kept in-repo for engineering reference, not user docs).
+# Files present in docs/ but intentionally not in the rendered nav.
+# Two reasons something might be here:
+#   - Engineering reference (the *-review*, code-review-modalities, etc.)
+#   - SEO-only landing pages we want indexed by Google/LLM crawlers but
+#     not surfaced to users browsing the docs (alternatives, features-index).
+#     They stay in the build → sitemap.xml → are crawlable, but don't
+#     appear in the side nav.
 not_in_nav: |
   /arch-review-v4.md
   /calendar-cards-design.md
   /code-review-modalities.md
   /api-auth-levels.md
+  /alternatives.md
+  /features-index.md

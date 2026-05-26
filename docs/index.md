@@ -9,7 +9,6 @@ hide:
 **A free, open-source alternative to Skylight Calendar and Dakboard.** Touch-friendly shared display for your kitchen, hallway, or wall: calendar, chores, tasks, photos, weather, recipes, meal planning, shopping lists, and more — all under your roof, no subscription, no cloud.
 
 [Install Prism](getting-started/install.md){ .md-button .md-button--primary }
-[How does it compare?](alternatives.md){ .md-button }
 [View on GitHub](https://github.com/sandydargoport/prism){ .md-button }
 
 ---
