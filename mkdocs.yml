@@ -1,5 +1,5 @@
-site_name: Prism — self-hosted family dashboard
-site_description: Free, open-source alternative to Skylight Calendar and Dakboard. Self-hosted, no subscription, no cloud. Calendar, chores, tasks, photos, weather — one display, one household.
+site_name: Prism
+site_description: A subscription-free, self-hosted family dashboard.
 site_url: https://sandydargoport.github.io/prism/
 repo_url: https://github.com/sandydargoport/prism
 repo_name: sandydargoport/prism

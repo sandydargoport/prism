@@ -61,6 +61,10 @@
   </div>
 
   <script>
+    function setStatus(msg) {
+      const el = document.getElementById('updated');
+      if (el) el.textContent = msg;
+    }
     async function main() {
       // history.json lives on the orphan `traffic-data` branch (see
       // .github/workflows/traffic.yml — the daily workflow can't push
@@ -69,10 +73,17 @@
       const TRAFFIC_DATA_URL = 'https://raw.githubusercontent.com/sandydargoport/prism/traffic-data/traffic/history.json';
       let res;
       try {
+        setStatus('Fetching traffic data…');
         res = await fetch(TRAFFIC_DATA_URL, { cache: 'no-store' });
-        if (!res.ok) throw new Error('remote fetch failed');
-      } catch {
-        res = await fetch('history.json');
+        if (!res.ok) throw new Error(`remote fetch ${res.status}`);
+      } catch (e) {
+        try {
+          setStatus('Remote fetch failed, trying local copy…');
+          res = await fetch('history.json');
+          if (!res.ok) throw new Error(`local fetch ${res.status}`);
+        } catch (e2) {
+          throw new Error(`Could not load history.json: ${e2.message || e2}`);
+        }
       }
       const data = await res.json();
 
@@ -218,7 +229,10 @@
         });
       }
     }
-    main().catch(e => { document.getElementById('updated').textContent = 'Failed to load history.json'; console.error(e); });
+    main().catch(e => {
+      setStatus(`Failed to load: ${e.message || e}`);
+      console.error('[traffic page]', e);
+    });
   </script>
 </body>
 </html>
