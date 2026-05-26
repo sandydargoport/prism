@@ -1,13 +1,15 @@
 # Prism
 
-**A subscription-free, self-hosted family dashboard that integrates with the tools you already use without becoming yet another system of record.**
+**Self-hosted family dashboard — a free, open-source alternative to Skylight Calendar and Dakboard.** Touch-friendly shared display for your kitchen, hallway, or wall: calendar, chores, tasks, photos, weather, recipes, meal planning, shopping lists, and more — all in one place, all under your roof, no subscription.
 
 [![License](https://img.shields.io/badge/license-PolyForm%20NC%201.0-blue.svg)](LICENSE)
 [![Test Install](https://github.com/sandydargoport/prism/actions/workflows/test-install.yml/badge.svg)](https://github.com/sandydargoport/prism/actions/workflows/test-install.yml)
 [![Docker](https://img.shields.io/badge/docker-ghcr.io-blue?logo=docker)](https://github.com/sandydargoport/prism/pkgs/container/prism)
 ![Platforms](https://img.shields.io/badge/platforms-amd64%20%7C%20arm64-green)
 
-Prism is a configurable family dashboard designed for large wall-mounted screens and handheld tablets. It connects to Google Calendar, Microsoft To Do, OneDrive, Kroger / Mariano's, and more, and surfaces the information your family actually needs in one place. Built for people who value privacy, hate subscriptions, and are comfortable with Docker.
+Prism is a configurable family dashboard designed for large wall-mounted screens and handheld tablets. **Unlike Skylight, there's no $80/yr subscription. Unlike Dakboard, your data never leaves your house.** It connects to Google Calendar, Microsoft To Do, OneDrive, Apple iCloud (CalDAV), Kroger / Mariano's, and more, and surfaces the information your family actually needs in one place. Built for people who value privacy, hate subscriptions, and are comfortable with Docker.
+
+**Looking for a comparison?** See [Prism vs. Skylight, Dakboard, and MagicMirror²](https://sandydargoport.github.io/prism/alternatives/).
 
 **📖 Full documentation: <https://sandydargoport.github.io/prism/>**
 
