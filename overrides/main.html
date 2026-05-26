@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{# Open Graph + Twitter card meta tags. Material doesn't add og:image by
+   default without the social plugin (which requires Cairo/Pango in the
+   docs build env). This static override does the minimum: every page
+   gets the same OG image and Twitter summary_large_image card. Per-page
+   social cards (where each page's title gets rendered into a generated
+   image) is a bigger lift; deferred. #}
+
+{% block extrahead %}
+  {{ super() }}
+  {% set og_image_url = config.site_url ~ "assets/og-image.png" %}
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="{{ page.title|default(config.site_name) }}">
+  <meta property="og:description" content="{{ page.meta.description|default(config.site_description) }}">
+  <meta property="og:url" content="{{ page.canonical_url }}">
+  <meta property="og:image" content="{{ og_image_url }}">
+  <meta property="og:image:width" content="1440">
+  <meta property="og:image:height" content="900">
+  <meta property="og:site_name" content="{{ config.site_name }}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ page.title|default(config.site_name) }}">
+  <meta name="twitter:description" content="{{ page.meta.description|default(config.site_description) }}">
+  <meta name="twitter:image" content="{{ og_image_url }}">
+{% endblock %}
