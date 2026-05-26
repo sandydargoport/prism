@@ -139,8 +139,7 @@
       //     hadn't seen in the prior 14 days (effectively "new" relative to
       //     the rolling window). Empty before window_uniques tracking
       //     starts capturing data, then fills in over time.
-      const windowUniques = data.window_uniques || {};
-      const windowDates = Object.keys(windowUniques).sort();
+      // windowUniques + windowDates already declared above (cumulative-est calc).
       const newThisPeriodSeries = viewDates.map(d => {
         if (!(d in windowUniques)) return null;
         const idx = windowDates.indexOf(d);
