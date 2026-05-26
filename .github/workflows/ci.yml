@@ -41,6 +41,22 @@ jobs:
       - name: Version sync (package.json ↔ CHANGELOG)
         run: bash scripts/check-version-sync.sh
 
+      # Syntax-check JS that doesn't flow through the TS/Next.js pipeline.
+      # Caught nothing today, but had this been in place yesterday it would
+      # have caught the duplicate `const windowUniques` in traffic/index.html
+      # before merging — the bug that left the live page stuck on "Loading…"
+      # for ~12 hours (PR #88).
+      - name: Syntax check (standalone JS + inline HTML scripts)
+        run: |
+          # Standalone scripts under scripts/
+          find scripts -maxdepth 2 -type f \( -name '*.js' -o -name '*.mjs' \) \
+            -not -name 'check-inline-js.sh' \
+            -print0 | xargs -0 -n1 node --check
+          # Inline <script> blocks in static HTML
+          bash scripts/check-inline-js.sh \
+            traffic/index.html \
+            docs/traffic/index.html
+
   unit:
     name: Unit tests (jest)
     runs-on: ubuntu-latest
