@@ -466,6 +466,7 @@ CREATE TABLE IF NOT EXISTS public.photo_sources (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     type character varying(20) NOT NULL,
     name character varying(255) NOT NULL,
+    priority integer DEFAULT 100 NOT NULL,
     onedrive_folder_id character varying(255),
     access_token text,
     refresh_token text,
@@ -504,7 +505,8 @@ CREATE TABLE IF NOT EXISTS public.photos (
     created_at timestamp without time zone DEFAULT now() NOT NULL,
     latitude numeric(9,6),
     longitude numeric(10,6),
-    is_external boolean DEFAULT false NOT NULL
+    is_external boolean DEFAULT false NOT NULL,
+    dedupe_key character varying(120)
 );
 
 
@@ -1533,6 +1535,13 @@ CREATE INDEX IF NOT EXISTS meals_week_of_idx ON public.meals USING btree (week_o
 --
 
 CREATE INDEX IF NOT EXISTS photos_favorite_idx ON public.photos USING btree (favorite);
+
+
+--
+-- Name: photos_dedupe_key_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX IF NOT EXISTS photos_dedupe_key_idx ON public.photos USING btree (dedupe_key);
 
 
 --
