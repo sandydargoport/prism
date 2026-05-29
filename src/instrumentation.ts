@@ -16,5 +16,8 @@ export async function register() {
     // redis client, node:crypto).
     const { startCalendarSyncCron } = await import('./lib/server/calendarSyncCron');
     startCalendarSyncCron();
+
+    const { startPhotoSyncCron } = await import('./lib/server/photoSyncCron');
+    startPhotoSyncCron();
   }
 }

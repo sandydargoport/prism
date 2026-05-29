@@ -30,6 +30,33 @@ function generateFilename(originalName: string): string {
   return `${crypto.randomUUID()}.${ext}`;
 }
 
+/**
+ * Cross-source dedup key: `${takenAt-to-the-second}_${width}x${height}`.
+ * Two photos with an identical key are treated as the same shot pulled
+ * from different sources (e.g. the same picture backed up to both OneDrive
+ * and iCloud). Returns null when capture time OR dimensions are missing —
+ * those photos are never deduped (better to show a possible duplicate than
+ * to wrongly suppress a unique photo).
+ *
+ * Dimensions are intentionally part of the key: a cropped edit keeps the
+ * original capture timestamp but changes dimensions, so this is what lets
+ * an edit and its original both display instead of one suppressing the
+ * other. Which copy wins an ACTUAL dedup conflict (same key) is decided by
+ * photo_sources.priority at read time, not here.
+ */
+export function computeDedupeKey(
+  takenAt: Date | null,
+  width: number | null,
+  height: number | null,
+): string | null {
+  if (!takenAt || width == null || height == null) return null;
+  // Truncate to the second — sub-second jitter between a service's copies
+  // shouldn't split the same shot into two keys.
+  const ts = new Date(takenAt);
+  ts.setMilliseconds(0);
+  return `${ts.toISOString()}_${width}x${height}`;
+}
+
 export async function syncOneDriveSource(sourceId: string) {
   // Fetch the source
   const source = await db.query.photoSources.findFirst({
@@ -90,13 +117,15 @@ export async function syncOneDriveSource(sourceId: string) {
         // Metadata-only: GPS known from OneDrive facet — no download needed.
         // filename stores the item ID so the file endpoint can proxy on demand.
         // usage='' keeps these out of screensaver/wallpaper rotation.
+        const mdWidth = remotePhoto.image?.width ?? null;
+        const mdHeight = remotePhoto.image?.height ?? null;
         await db.insert(photos).values({
           sourceId,
           filename: remotePhoto.id,
           originalFilename: remotePhoto.name,
           mimeType,
-          width: remotePhoto.image?.width ?? null,
-          height: remotePhoto.image?.height ?? null,
+          width: mdWidth,
+          height: mdHeight,
           sizeBytes: remotePhoto.size ?? null,
           takenAt,
           externalId: remotePhoto.id,
@@ -105,6 +134,7 @@ export async function syncOneDriveSource(sourceId: string) {
           longitude: facetLng.toString(),
           isExternal: true,
           usage: '',
+          dedupeKey: computeDedupeKey(takenAt, mdWidth, mdHeight),
         });
       } else {
         // No facet GPS — download the file and try EXIF extraction
@@ -127,6 +157,7 @@ export async function syncOneDriveSource(sourceId: string) {
           latitude: gps?.latitude ?? null,
           longitude: gps?.longitude ?? null,
           isExternal: false,
+          dedupeKey: computeDedupeKey(takenAt, result.width, result.height),
         });
       }
     } catch (err) {
@@ -174,6 +205,39 @@ export async function syncOneDriveSource(sourceId: string) {
     .update(photoSources)
     .set({ lastSynced: new Date(), updatedAt: new Date() })
     .where(eq(photoSources.id, sourceId));
+}
+
+/**
+ * Sync every enabled photo source that has an automatic-sync mechanism
+ * (OneDrive folders, Immich shared links). Local-upload sources have
+ * nothing to pull. Called by the photo-sync cron so a folder the user
+ * drops photos into shows up on the dashboard without a manual trigger.
+ * Per-source failures are caught so one bad source doesn't abort the rest.
+ */
+export async function syncAllPhotoSources(): Promise<{ synced: number; errors: string[] }> {
+  const errors: string[] = [];
+  let synced = 0;
+
+  const sources = await db.query.photoSources.findMany({
+    where: eq(photoSources.enabled, true),
+  });
+
+  for (const source of sources) {
+    try {
+      if (source.type === 'onedrive') {
+        await syncOneDriveSource(source.id);
+        synced++;
+      } else if (source.type === 'immich') {
+        await syncImmichSource(source.id);
+        synced++;
+      }
+      // 'local' has nothing to pull; 'icloud_shared' handled once Phase B lands.
+    } catch (err) {
+      errors.push(`${source.name}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  return { synced, errors };
 }
 
 export async function syncImmichSource(sourceId: string) {
@@ -242,6 +306,7 @@ export async function syncImmichSource(sourceId: string) {
       longitude: asset.longitude != null ? asset.longitude.toString() : null,
       isExternal: true,
       usage: 'wallpaper,gallery,screensaver',
+      dedupeKey: computeDedupeKey(takenAt, asset.width, asset.height),
     });
   }
 

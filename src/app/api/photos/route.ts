@@ -50,6 +50,30 @@ export async function GET(request: NextRequest) {
         conditions.push(like(photos.usage, `%${tag}%`));
       }
 
+      // Cross-source dedup (#57). A photo is suppressed if another photo
+      // with the same dedupe_key is carried by a source that "beats" it:
+      //   - strictly lower priority number (preferred source), OR
+      //   - equal priority + lower id (stable tiebreak so exactly one wins).
+      // Null-key photos (missing EXIF time/dims) are never suppressed.
+      // Scoping to a single sourceId (gallery "view this source") skips
+      // dedup so the user can still see every photo within one source.
+      if (!sourceId) {
+        conditions.push(sql`(
+          ${photos.dedupeKey} IS NULL
+          OR NOT EXISTS (
+            SELECT 1 FROM ${photos} p2
+            JOIN ${photoSources} ps2 ON ps2.id = p2.source_id
+            JOIN ${photoSources} ps_self ON ps_self.id = ${photos.sourceId}
+            WHERE p2.dedupe_key = ${photos.dedupeKey}
+              AND p2.id <> ${photos.id}
+              AND (
+                ps2.priority < ps_self.priority
+                OR (ps2.priority = ps_self.priority AND p2.id < ${photos.id})
+              )
+          )
+        )`);
+      }
+
       const orderBy = sort === 'random' ? sql`RANDOM()` : desc(photos.takenAt);
 
       const query = db.select().from(photos).orderBy(orderBy).limit(limit).offset(offset);
