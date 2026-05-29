@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, RefreshCw, Trash2, Cloud, HardDrive, Pin, X, FolderOpen, MapPin, ChevronRight, Image as ImageIcon } from 'lucide-react';
+import { Plus, RefreshCw, Trash2, Cloud, HardDrive, Pin, X, FolderOpen, MapPin, ChevronRight, ChevronUp, ChevronDown, Image as ImageIcon } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { cn } from '@/lib/utils';
@@ -15,8 +15,9 @@ import { toast } from '@/components/ui/use-toast';
 
 interface PhotoSource {
   id: string;
-  type: 'local' | 'onedrive' | 'immich';
+  type: 'local' | 'onedrive' | 'immich' | 'icloud_shared';
   name: string;
+  priority: number;
   onedriveFolderId: string | null;
   enabled: boolean;
   lastSynced: string | null;
@@ -219,6 +220,48 @@ export function PhotosSettingsSection() {
     }
   };
 
+  // Move a source up/down the dedup priority order. When the same photo
+  // exists in multiple sources, the one nearer the top of this list wins.
+  // We swap the two sources' priority values and persist both, then refetch.
+  const handleReorder = async (sourceId: string, direction: 'up' | 'down') => {
+    const idx = sources.findIndex((s) => s.id === sourceId);
+    if (idx < 0) return;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= sources.length) return;
+
+    const a = sources[idx];
+    const b = sources[swapIdx];
+    if (!a || !b) return;
+    // If priorities are equal (e.g. legacy rows all at default 100),
+    // synthesize a gap so the swap is meaningful.
+    const aPrio = a.priority;
+    const bPrio = b.priority === aPrio ? aPrio + (direction === 'up' ? -1 : 1) : b.priority;
+
+    // Optimistic local reorder for snappy UI; refetch reconciles.
+    setSources((prev) => {
+      const next = [...prev];
+      [next[idx], next[swapIdx]] = [next[swapIdx]!, next[idx]!];
+      return next;
+    });
+
+    try {
+      await Promise.all([
+        fetch(`/api/photo-sources/${a.id}`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ priority: bPrio }),
+        }),
+        fetch(`/api/photo-sources/${b.id}`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ priority: aPrio }),
+        }),
+      ]);
+      await fetchSources();
+    } catch (err) {
+      console.error('Reorder error:', err);
+      await fetchSources();
+    }
+  };
+
   const { filters, setFilters } = useDisplayContextFilters();
   const { resolution, setResolution, screenSize } = useTargetResolution();
 
@@ -363,6 +406,33 @@ export function PhotosSettingsSection() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0 ml-2">
+                      {/* Dedup priority reorder — only meaningful with 2+
+                          sources. Top of the list = preferred when the same
+                          photo appears in multiple sources. */}
+                      {sources.length > 1 && (
+                        <div className="flex flex-col mr-1">
+                          <button
+                            type="button"
+                            aria-label="Higher priority"
+                            title="Prefer this source for duplicate photos"
+                            disabled={sources[0]?.id === source.id}
+                            onClick={() => handleReorder(source.id, 'up')}
+                            className="text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-default leading-none"
+                          >
+                            <ChevronUp className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            aria-label="Lower priority"
+                            title="Prefer other sources for duplicate photos"
+                            disabled={sources[sources.length - 1]?.id === source.id}
+                            onClick={() => handleReorder(source.id, 'down')}
+                            className="text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-default leading-none"
+                          >
+                            <ChevronDown className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      )}
                       {source.type === 'immich' && (
                         <Button
                           variant="ghost"

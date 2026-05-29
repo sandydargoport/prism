@@ -26,6 +26,7 @@ export async function GET() {
         id: photoSources.id,
         type: photoSources.type,
         name: photoSources.name,
+        priority: photoSources.priority,
         onedriveFolderId: photoSources.onedriveFolderId,
         enabled: photoSources.enabled,
         lastSynced: photoSources.lastSynced,
@@ -34,7 +35,10 @@ export async function GET() {
         photoCount: sql<number>`(SELECT count(*)::int FROM photos WHERE photos.source_id = photo_sources.id)`,
       })
       .from(photoSources)
-      .orderBy(photoSources.createdAt);
+      // Order by dedup priority (lower = preferred) so the settings list
+      // reads top-to-bottom as the preference order, then createdAt as a
+      // stable tiebreak.
+      .orderBy(photoSources.priority, photoSources.createdAt);
 
     return NextResponse.json({ sources });
   } catch (error) {

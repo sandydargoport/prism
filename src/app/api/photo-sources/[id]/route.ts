@@ -23,6 +23,11 @@ export async function PATCH(
     if (typeof body.name === 'string') updates.name = body.name;
     if (typeof body.enabled === 'boolean') updates.enabled = body.enabled;
     if (typeof body.onedriveFolderId === 'string') updates.onedriveFolderId = body.onedriveFolderId;
+    // Cross-source dedup priority (lower = preferred). Changing it takes
+    // effect immediately because dedup resolves at read time (#57).
+    if (typeof body.priority === 'number' && Number.isFinite(body.priority)) {
+      updates.priority = Math.trunc(body.priority);
+    }
 
     const [updated] = await db
       .update(photoSources)
