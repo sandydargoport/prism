@@ -131,8 +131,15 @@ export async function listPhotosInFolder(
   folderId: string
 ): Promise<OneDriveItem[]> {
   const allPhotos: OneDriveItem[] = [];
+  // OneDrive Personal's Graph API returns "Operation not supported" for
+  // $filter on /children — same gotcha listFolders worked around. We
+  // already filter client-side below (mime starts with 'image/'), which
+  // is more correct than $filter=file ne null anyway (excludes folders
+  // AND non-image files like videos in one shot). Drop $filter; keep
+  // $select to trim payload + ensure @microsoft.graph.downloadUrl comes
+  // back.
   let nextLink: string | null =
-    `${GRAPH_API}/me/drive/items/${folderId}/children?$filter=file ne null&$top=200&$select=id,name,file,image,size,photo,location,@microsoft.graph.downloadUrl`;
+    `${GRAPH_API}/me/drive/items/${folderId}/children?$top=200&$select=id,name,file,image,size,photo,location,@microsoft.graph.downloadUrl`;
 
   while (nextLink) {
     const url: string = nextLink;
