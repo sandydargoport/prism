@@ -7,6 +7,13 @@ import {
   refreshAccessToken,
 } from '@/lib/integrations/onedrive';
 import { fetchSharedLink, type ImmichShareCredentials } from '@/lib/integrations/immich';
+import {
+  fetchSharedAlbum,
+  fetchAssetUrls,
+  pickBestDerivative,
+  ICloudShareError,
+  ICloudShareNotFoundError,
+} from '@/lib/integrations/icloud-shared';
 import { savePhoto, deletePhoto, getPhotoPath } from './photo-storage';
 import { clearPhotoCache } from './photo-cache';
 import { promises as fs } from 'fs';
@@ -230,8 +237,11 @@ export async function syncAllPhotoSources(): Promise<{ synced: number; errors: s
       } else if (source.type === 'immich') {
         await syncImmichSource(source.id);
         synced++;
+      } else if (source.type === 'icloud_shared') {
+        await syncICloudSharedSource(source.id);
+        synced++;
       }
-      // 'local' has nothing to pull; 'icloud_shared' handled once Phase B lands.
+      // 'local' has nothing to pull.
     } catch (err) {
       errors.push(`${source.name}: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -340,4 +350,121 @@ export async function syncImmichSource(sourceId: string) {
     .update(photoSources)
     .set({ lastSynced: new Date(), updatedAt: new Date() })
     .where(eq(photoSources.id, sourceId));
+}
+
+/**
+ * Sync photos from an iCloud Shared Album (#57 Phase B). Stores assets as
+ * external metadata-only rows; bytes are fetched on demand and cached by
+ * the photo-cache layer (same pattern as Immich shared links). This avoids
+ * downloading 5,000 family photos to local disk just to display them.
+ *
+ * Stale assets (in DB but no longer in the album) are removed so unstarred
+ * photos disappear from the dashboard without a manual cleanup.
+ */
+export async function syncICloudSharedSource(sourceId: string) {
+  const source = await db.query.photoSources.findFirst({
+    where: eq(photoSources.id, sourceId),
+  });
+
+  if (!source || source.type !== 'icloud_shared') {
+    throw new Error('Invalid iCloud Shared Album photo source');
+  }
+  if (!source.icloudShareUrl) {
+    throw new Error('iCloud Shared Album source is missing the share URL');
+  }
+
+  let feed;
+  try {
+    feed = await fetchSharedAlbum(source.icloudShareUrl);
+  } catch (err) {
+    if (err instanceof ICloudShareNotFoundError) {
+      throw new Error('Shared album not found — check the share URL or sharing settings');
+    }
+    if (err instanceof ICloudShareError) {
+      throw new Error(`iCloud Shared Album fetch failed: ${err.message}`);
+    }
+    throw err;
+  }
+
+  const remoteIds = new Set(feed.assets.map((a) => a.photoGuid));
+
+  const existingPhotos = await db
+    .select()
+    .from(photos)
+    .where(eq(photos.sourceId, sourceId));
+
+  const existingExternalIds = new Set(
+    existingPhotos.map((p) => p.externalId).filter((x): x is string => !!x),
+  );
+
+  // Insert new assets as metadata-only — bytes streamed on demand.
+  for (const asset of feed.assets) {
+    if (existingExternalIds.has(asset.photoGuid)) continue;
+
+    await db.insert(photos).values({
+      sourceId,
+      filename: asset.photoGuid,
+      originalFilename: asset.filename,
+      mimeType: asset.mimeType,
+      width: asset.width,
+      height: asset.height,
+      sizeBytes: null,
+      takenAt: asset.takenAt,
+      externalId: asset.photoGuid,
+      thumbnailPath: null,
+      // iCloud Shared Albums strip EXIF GPS for privacy — leave coords null.
+      latitude: null,
+      longitude: null,
+      isExternal: true,
+      usage: 'wallpaper,gallery,screensaver',
+      dedupeKey: computeDedupeKey(asset.takenAt, asset.width, asset.height),
+    });
+  }
+
+  // Remove assets no longer in the album.
+  for (const existing of existingPhotos) {
+    if (existing.externalId && !remoteIds.has(existing.externalId)) {
+      await clearPhotoCache(sourceId, existing.externalId);
+      await db.delete(photos).where(eq(photos.id, existing.id));
+    }
+  }
+
+  // Cache the partition host on the source row so subsequent on-demand
+  // photo fetches don't repeat the 330-redirect probe. Stored in syncErrors
+  // JSON for now (will move to a providerConfig column alongside #52).
+  await db
+    .update(photoSources)
+    .set({
+      lastSynced: new Date(),
+      updatedAt: new Date(),
+      syncErrors: { partitionHost: feed.host, albumName: feed.albumName },
+    })
+    .where(eq(photoSources.id, sourceId));
+}
+
+/**
+ * Fetch a signed download URL for a specific iCloud Shared Album photo.
+ * Called by the on-demand photo-file endpoint when serving bytes. URLs
+ * are short-lived (~30 min) so we DO NOT cache them in the DB.
+ */
+export async function getICloudSharedAssetUrl(
+  sourceId: string,
+  photoGuid: string,
+): Promise<string | null> {
+  const source = await db.query.photoSources.findFirst({
+    where: eq(photoSources.id, sourceId),
+  });
+  if (!source || source.type !== 'icloud_shared' || !source.icloudShareUrl) return null;
+
+  // Re-fetch the album to get the asset's checksum (Apple keys signed URLs
+  // by checksum, not photoGuid). Cheap enough: ~30kb for a typical family
+  // album. If latency bites, cache checksums on the photos row at sync time.
+  const feed = await fetchSharedAlbum(source.icloudShareUrl);
+  const asset = feed.assets.find((a) => a.photoGuid === photoGuid);
+  if (!asset) return null;
+  const best = pickBestDerivative(asset);
+  if (!best) return null;
+
+  const urls = await fetchAssetUrls(feed.host, source.icloudShareUrl, [photoGuid]);
+  return urls.get(best.checksum) ?? null;
 }

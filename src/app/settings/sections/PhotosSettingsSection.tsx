@@ -48,6 +48,14 @@ export function PhotosSettingsSection() {
   const [immichSubmitting, setImmichSubmitting] = React.useState(false);
   const [immichError, setImmichError] = React.useState<string | null>(null);
 
+  // iCloud Shared Album add-form state (Phase B of #57). Same shape as the
+  // Immich form: pasteable share URL + name override + submission/error.
+  const [showICloudForm, setShowICloudForm] = React.useState(false);
+  const [icloudShareUrl, setICloudShareUrl] = React.useState('');
+  const [icloudName, setICloudName] = React.useState('');
+  const [icloudSubmitting, setICloudSubmitting] = React.useState(false);
+  const [icloudError, setICloudError] = React.useState<string | null>(null);
+
   const fetchSources = React.useCallback(async () => {
     try {
       const res = await fetch('/api/photo-sources');
@@ -207,6 +215,53 @@ export function PhotosSettingsSection() {
       setImmichError(err instanceof Error ? err.message : 'Failed to connect to Immich.');
     } finally {
       setImmichSubmitting(false);
+    }
+  };
+
+  const resetICloudForm = () => {
+    setShowICloudForm(false);
+    setICloudShareUrl('');
+    setICloudName('');
+    setICloudError(null);
+  };
+
+  const handleConnectICloud = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!icloudShareUrl.trim()) {
+      setICloudError('Share URL is required');
+      return;
+    }
+    setICloudSubmitting(true);
+    setICloudError(null);
+    try {
+      const res = await fetch('/api/photo-sources', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'icloud_shared',
+          icloudShareUrl: icloudShareUrl.trim(),
+          name: icloudName.trim() || undefined,
+        }),
+      });
+      if (res.ok) {
+        const created = await res.json().catch(() => null);
+        resetICloudForm();
+        await fetchSources();
+        if (created?.id) handleSync(created.id);
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      if (data.error === 'not_found') {
+        setICloudError('Shared album not found at that URL — check it points to a public iCloud share.');
+      } else if (data.error === 'invalid_share') {
+        setICloudError(data.message || 'That URL doesn\'t look like an iCloud share.');
+      } else {
+        setICloudError(data.message || data.error || 'Failed to connect to iCloud Shared Album.');
+      }
+    } catch (err) {
+      setICloudError(err instanceof Error ? err.message : 'Failed to connect to iCloud.');
+    } finally {
+      setICloudSubmitting(false);
     }
   };
 
@@ -391,6 +446,8 @@ export function PhotosSettingsSection() {
                         <Cloud className="h-5 w-5 text-blue-500 shrink-0" />
                       ) : source.type === 'immich' ? (
                         <ImageIcon className="h-5 w-5 text-purple-500 shrink-0" />
+                      ) : source.type === 'icloud_shared' ? (
+                        <Cloud className="h-5 w-5 text-sky-500 shrink-0" />
                       ) : (
                         <HardDrive className="h-5 w-5 text-muted-foreground shrink-0" />
                       )}
@@ -650,6 +707,80 @@ export function PhotosSettingsSection() {
                       variant="ghost"
                       onClick={resetImmichForm}
                       disabled={immichSubmitting}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              )}
+
+              {/* Connect iCloud Shared Album — iPhone-native curation flow. */}
+              {!showICloudForm && (
+                <button
+                  onClick={() => setShowICloudForm(true)}
+                  className="flex items-center gap-3 w-full p-3 rounded-lg border border-dashed hover:bg-muted/50 transition-colors text-sm text-muted-foreground hover:text-foreground"
+                >
+                  <Cloud className="h-5 w-5 text-sky-500" />
+                  Connect iCloud Shared Album
+                </button>
+              )}
+
+              {showICloudForm && (
+                <form
+                  onSubmit={handleConnectICloud}
+                  className="rounded-lg border p-4 space-y-3 bg-muted/20"
+                >
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Cloud className="h-4 w-4 text-sky-500" />
+                    Connect iCloud Shared Album
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1" htmlFor="icloud-share-url">
+                      Share URL
+                    </label>
+                    <Input
+                      id="icloud-share-url"
+                      type="url"
+                      required
+                      placeholder="https://www.icloud.com/sharedalbum/#XXXXXXXXX"
+                      value={icloudShareUrl}
+                      onChange={(e) => setICloudShareUrl(e.target.value)}
+                      disabled={icloudSubmitting}
+                      className="text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      In Apple Photos, create a shared album, enable Public Website,
+                      then paste the share link here. Photos added to the album from
+                      any iPhone signed into your iCloud will appear on the dashboard.
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1" htmlFor="icloud-name">
+                      Display name (optional)
+                    </label>
+                    <Input
+                      id="icloud-name"
+                      type="text"
+                      placeholder="Defaults to the album name"
+                      value={icloudName}
+                      onChange={(e) => setICloudName(e.target.value)}
+                      disabled={icloudSubmitting}
+                      className="text-sm"
+                    />
+                  </div>
+                  {icloudError && (
+                    <p className="text-xs text-destructive">{icloudError}</p>
+                  )}
+                  <div className="flex gap-2">
+                    <Button type="submit" size="sm" disabled={icloudSubmitting}>
+                      {icloudSubmitting ? 'Connecting…' : 'Connect'}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={resetICloudForm}
+                      disabled={icloudSubmitting}
                     >
                       Cancel
                     </Button>

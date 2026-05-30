@@ -1093,6 +1093,13 @@ export const photoSources = pgTable('photo_sources', {
   immichPasswordEnc: text('immich_password_enc'),
   immichAlbumId: text('immich_album_id'),
 
+  // iCloud Shared Album sources — full public share URL pasted by the user.
+  // We parse the share token + partition out at sync time. No OAuth, no
+  // Apple Developer account required: Apple exposes shared albums via the
+  // shared-streams web service (same channel apple.com's public preview UI
+  // uses). See lib/integrations/icloud-shared.ts.
+  icloudShareUrl: text('icloud_share_url'),
+
   lastSynced: timestamp('last_synced'),
   syncErrors: jsonb('sync_errors'),
 

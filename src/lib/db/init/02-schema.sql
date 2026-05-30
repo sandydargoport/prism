@@ -475,6 +475,7 @@ CREATE TABLE IF NOT EXISTS public.photo_sources (
     immich_share_key text,
     immich_password_enc text,
     immich_album_id text,
+    icloud_share_url text,
     last_synced timestamp without time zone,
     sync_errors jsonb,
     enabled boolean DEFAULT true NOT NULL,

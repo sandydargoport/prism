@@ -9,6 +9,7 @@ import { promises as fs } from 'fs';
 import { decrypt, encrypt } from '@/lib/utils/crypto';
 import { refreshAccessToken } from '@/lib/integrations/onedrive';
 import { downloadImmichAsset, type ImmichShareCredentials } from '@/lib/integrations/immich';
+import { getICloudSharedAssetUrl } from '@/lib/services/photo-sync';
 import { logError } from '@/lib/utils/logError';
 
 const GRAPH_API = 'https://graph.microsoft.com/v1.0';
@@ -103,6 +104,46 @@ export async function GET(
 
         await writePhotoCache(photo.sourceId, photo.externalId, thumb, buffer, contentType);
 
+        return new NextResponse(buffer, {
+          headers: {
+            'Content-Type': contentType,
+            'Cache-Control': 'public, max-age=3600',
+            'Content-Length': buffer.length.toString(),
+          },
+        });
+      }
+
+      // iCloud Shared Album: same cache-first pattern as Immich. Signed
+      // download URL is fetched per-request (Apple's TTL is ~30 min so
+      // there's nothing useful to cache on the URL itself).
+      if (source.type === 'icloud_shared') {
+        const cached = await readPhotoCache(photo.sourceId, photo.externalId, thumb);
+        if (cached) {
+          return new NextResponse(cached.buffer, {
+            headers: {
+              'Content-Type': cached.contentType,
+              'Cache-Control': 'public, max-age=3600',
+              'Content-Length': cached.buffer.length.toString(),
+            },
+          });
+        }
+        const signedUrl = await getICloudSharedAssetUrl(source.id, photo.externalId);
+        if (!signedUrl) {
+          return NextResponse.json(
+            { error: 'iCloud shared album asset URL unavailable (album may have changed)' },
+            { status: 502 },
+          );
+        }
+        const upstream = await fetch(signedUrl);
+        if (!upstream.ok) {
+          return NextResponse.json(
+            { error: `Upstream iCloud fetch failed: ${upstream.status}` },
+            { status: 502 },
+          );
+        }
+        const buffer = Buffer.from(await upstream.arrayBuffer());
+        const contentType = upstream.headers.get('content-type') ?? photo.mimeType;
+        await writePhotoCache(photo.sourceId, photo.externalId, thumb, buffer, contentType);
         return new NextResponse(buffer, {
           headers: {
             'Content-Type': contentType,

@@ -59,10 +59,63 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { type, name, onedriveFolderId, shareUrl, password } = body;
+    const { type, name, onedriveFolderId, shareUrl, password, icloudShareUrl } = body;
 
     if (!type) {
       return NextResponse.json({ error: 'type is required' }, { status: 400 });
+    }
+
+    // iCloud Shared Album: pasteable share URL, no OAuth, no password.
+    // Validate the URL is parseable + actually reachable + has assets
+    // before persisting, so the user sees the failure here instead of
+    // after creating an empty source.
+    if (type === 'icloud_shared') {
+      if (!icloudShareUrl || typeof icloudShareUrl !== 'string') {
+        return NextResponse.json(
+          { error: 'icloudShareUrl is required for iCloud Shared Album sources' },
+          { status: 400 },
+        );
+      }
+      const { fetchSharedAlbum, ICloudShareError, ICloudShareNotFoundError } =
+        await import('@/lib/integrations/icloud-shared');
+      let feed;
+      try {
+        feed = await fetchSharedAlbum(icloudShareUrl);
+      } catch (err) {
+        if (err instanceof ICloudShareNotFoundError) {
+          return NextResponse.json(
+            { error: 'not_found', message: 'Shared album not found at that URL' },
+            { status: 404 },
+          );
+        }
+        if (err instanceof ICloudShareError) {
+          return NextResponse.json(
+            { error: 'invalid_share', message: err.message },
+            { status: 400 },
+          );
+        }
+        throw err;
+      }
+
+      const sourceName =
+        (typeof name === 'string' && name.trim()) ||
+        feed.albumName ||
+        'iCloud Shared Album';
+
+      const [source] = await db
+        .insert(photoSources)
+        .values({
+          type: 'icloud_shared',
+          name: sourceName,
+          icloudShareUrl,
+          // Stash the partition host + album name into syncErrors JSON so
+          // subsequent on-demand fetches skip the 330-redirect probe.
+          syncErrors: { partitionHost: feed.host, albumName: feed.albumName },
+        })
+        .returning();
+
+      await invalidateEntity('photos');
+      return NextResponse.json(source, { status: 201 });
     }
 
     if (type === 'immich') {
