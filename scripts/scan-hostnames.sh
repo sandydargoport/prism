@@ -94,7 +94,9 @@ ALLOWLIST=(
   "contacts.icloud.com"
   "appleid.apple.com"
   # iCloud Shared Album public-share endpoints (#57 Phase B)
+  "icloud.com"
   "www.icloud.com"
+  "share.icloud.com"
   "sharedstreams.icloud.com"
   # Common public-suffix anchors that show up via vendor doc URLs
   "google.com"

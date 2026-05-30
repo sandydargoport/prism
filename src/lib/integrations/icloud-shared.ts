@@ -27,7 +27,13 @@
 
 import { validatePublicUrl, UnsafeUrlError } from '@/lib/utils/safeFetch';
 
-const DEFAULT_START_HOST = 'p123-sharedstreams.icloud.com';
+// Starting partition — any valid one works because Apple's 330 redirect
+// tells us the canonical host. p23 is a well-known partition that's
+// reliably alive (community tooling uses it as default). Apple's CDN
+// doesn't actually have a p123 partition, so the previous default was
+// hitting "host not found" → 400 from the load balancer instead of the
+// expected 330 redirect.
+const DEFAULT_START_HOST = 'p23-sharedstreams.icloud.com';
 
 export class ICloudShareError extends Error {}
 export class ICloudShareNotFoundError extends ICloudShareError {}
@@ -73,7 +79,35 @@ export function parseICloudShareToken(input: string): string {
   if (!trimmed.includes('://') && !trimmed.startsWith('#')) {
     return trimmed.replace(/^#/, '');
   }
-  // Hash fragment carries the token.
+
+  // share.icloud.com short links must be resolved first via
+  // resolveICloudShareUrl() — they 301-redirect to the real /photos/#TOKEN
+  // URL. We can't follow redirects synchronously, so callers (fetchSharedAlbum)
+  // call the resolver before getting here. If a short link reaches the parser
+  // unresolved, fail loudly so the bug is visible.
+  if (/^https?:\/\/share\.icloud\.com\//i.test(trimmed)) {
+    throw new ICloudShareError(
+      'Short share.icloud.com link reached the parser unresolved — call resolveICloudShareUrl first',
+    );
+  }
+
+  // Detect the iCloud signed-in CloudKit URL format (/photos/#/sa,UUID/)
+  // and reject explicitly. That's the path the modern web client navigates
+  // to while signed in — CloudKit-backed and not publicly accessible.
+  // Without this check users get a confusing 400 from a malformed request.
+  if (/\/photos\/#\/sa,[0-9A-F-]+/i.test(trimmed)) {
+    throw new ICloudShareError(
+      'That URL is from your signed-in iCloud Photos view, not a public share. ' +
+      'In Apple Photos, open the album → People icon → toggle "Public Website" on → ' +
+      'tap Share Link. The resulting URL should be a share.icloud.com/photos/... short link.'
+    );
+  }
+
+  // Hash fragment carries the token. Modern URLs look like
+  //   https://www.icloud.com/photos/#0c3g0wu0EWBQ...
+  // Legacy URLs look like
+  //   https://www.icloud.com/sharedalbum/#B1aXyZ...
+  // Both terminate in #TOKEN with no further path, so this branch handles both.
   const hashIdx = trimmed.indexOf('#');
   if (hashIdx < 0) {
     throw new ICloudShareError('Share URL is missing the album token after #');
@@ -82,7 +116,57 @@ export function parseICloudShareToken(input: string): string {
   if (!token) {
     throw new ICloudShareError('Empty share token');
   }
+  // Reject CloudKit-style tokens (UUID with commas/slashes) that get past
+  // the regex above — defense in depth.
+  if (token.includes('/') || token.includes(',')) {
+    throw new ICloudShareError(
+      'That doesn\'t look like a public iCloud Shared Album link. ' +
+      'Make sure the album has "Public Website" enabled and use the Share Link.'
+    );
+  }
   return token;
+}
+
+/**
+ * Resolve a share.icloud.com short link to its canonical
+ * www.icloud.com/photos/#TOKEN form. Pass-through for URLs that are
+ * already canonical.
+ *
+ * Apple's share.icloud.com server replies with a 301 + Location header
+ * containing the real URL. We do this server-side because the canonical
+ * URL is what the sharedstreams API needs to derive the token from.
+ */
+export async function resolveICloudShareUrl(input: string): Promise<string> {
+  const trimmed = input.trim();
+  if (!/^https?:\/\/share\.icloud\.com\//i.test(trimmed)) {
+    return trimmed;
+  }
+  await validatePublicUrl(trimmed);
+  const res = await fetch(trimmed, {
+    method: 'GET',
+    redirect: 'manual',
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
+    },
+  });
+  // 301/302/308 with Location header — what we expect.
+  if (res.status >= 300 && res.status < 400) {
+    const loc = res.headers.get('Location');
+    if (!loc) {
+      throw new ICloudShareError('Short share link redirected without a Location header');
+    }
+    // The destination must still be an icloud.com URL — defence against
+    // a misconfigured server forwarding to an arbitrary host.
+    if (!/^https:\/\/[a-z0-9.-]+\.icloud\.com\//i.test(loc)) {
+      throw new ICloudShareError(`Short link redirected to unexpected host: ${loc.slice(0, 80)}`);
+    }
+    return loc;
+  }
+  // 404 on the short link itself = the album was unshared or the link is wrong.
+  if (res.status === 404) {
+    throw new ICloudShareNotFoundError('Shared album not found at that short link');
+  }
+  throw new ICloudShareError(`Short link resolve returned ${res.status}`);
 }
 
 /**
@@ -105,8 +189,16 @@ async function postWithPartitionDiscovery(
     const res = await fetch(url, {
       method: 'POST',
       headers: {
+        // Apple's shared-streams endpoint quirk: the body is JSON but the
+        // Content-Type must be text/plain. application/json triggers a
+        // CORS preflight that the server doesn't answer.
         'Content-Type': 'text/plain',
-        'User-Agent': 'Prism/1.0 (https://github.com/sandydargoport/prism)',
+        // Origin header is required — Apple validates that the request
+        // looks like it's coming from icloud.com's own preview UI.
+        // Without this, the server returns 400.
+        'Origin': 'https://www.icloud.com',
+        'Referer': 'https://www.icloud.com/',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
       },
       body: JSON.stringify(body),
       redirect: 'manual',
@@ -170,7 +262,8 @@ interface RawWebstreamResponse {
 export async function fetchSharedAlbum(
   shareUrl: string,
 ): Promise<ICloudSharedAlbumFeed> {
-  const token = parseICloudShareToken(shareUrl);
+  const resolved = await resolveICloudShareUrl(shareUrl);
+  const token = parseICloudShareToken(resolved);
 
   let result;
   try {
@@ -251,7 +344,8 @@ export async function fetchAssetUrls(
   photoGuids: string[],
 ): Promise<Map<string, string>> {
   if (photoGuids.length === 0) return new Map();
-  const token = parseICloudShareToken(shareUrl);
+  const resolved = await resolveICloudShareUrl(shareUrl);
+  const token = parseICloudShareToken(resolved);
 
   const result = await postWithPartitionDiscovery(host, token, 'webasseturls', {
     photoGuids,
