@@ -13,8 +13,13 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const sourceName = searchParams.get('sourceName') || 'OneDrive Photos';
+    // returnSection lets the new MicrosoftProviderCard route the callback
+    // back to /settings?section=integrations#microsoft-onedrive. Legacy
+    // callers (ConnectedAccountsSection's Connect OneDrive button) omit
+    // the param and keep the existing ?section=photos behavior.
+    const returnSection = searchParams.get('returnSection') || '';
 
-    const state = JSON.stringify({ sourceName });
+    const state = JSON.stringify({ sourceName, returnSection });
     const authUrl = await getMicrosoftAuthUrl(state);
 
     return NextResponse.redirect(authUrl);

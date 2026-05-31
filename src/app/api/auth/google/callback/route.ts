@@ -26,36 +26,46 @@ export async function GET(request: Request) {
     const error = searchParams.get('error');
     const state = searchParams.get('state');
 
-    // Parse state early to get returnSection for error redirects
-    let earlyReturnSection = 'connections';
+    // Parse state early to get returnSection for error redirects.
+    // Default to 'integrations' (the new consolidated section). Legacy
+    // callers (ConnectedAccountsSection) pass explicit returnSection=connections
+    // and still land on the old section while it's mounted.
+    let earlyReturnSection = 'integrations';
     if (state) {
       try {
         const parsed = JSON.parse(state);
-        earlyReturnSection = parsed.returnSection || 'connections';
+        earlyReturnSection = parsed.returnSection || 'integrations';
       } catch { /* ignore */ }
     }
+
+    // Anchor to use when redirecting back into the consolidated Integrations
+    // page — drops the user on the Google card with the Calendars sub-section
+    // auto-expanded (see useIntegrationsHashRouter).
+    const integrationsAnchor = '#google-calendars';
+    const anchorFor = (section: string) =>
+      section === 'integrations' ? integrationsAnchor : '';
 
     // Check for errors from Google
     if (error) {
       logError('Google OAuth error:', error);
-      return NextResponse.redirect(`${BASE_URL}/settings?section=${earlyReturnSection}&error=google_auth_denied`);
+      return NextResponse.redirect(`${BASE_URL}/settings?section=${earlyReturnSection}&error=google_auth_denied${anchorFor(earlyReturnSection)}`);
     }
 
     // Ensure we have an authorization code
     if (!code) {
-      return NextResponse.redirect(`${BASE_URL}/settings?section=${earlyReturnSection}&error=missing_code`);
+      return NextResponse.redirect(`${BASE_URL}/settings?section=${earlyReturnSection}&error=missing_code${anchorFor(earlyReturnSection)}`);
     }
 
     // Parse state to get user ID, reauth source ID, and return section
     let userId: string | null = null;
     let reauthSourceId: string | null = null;
-    let returnSection = 'connections';
+    let returnSection = 'integrations';
     if (state) {
       try {
         const parsed = JSON.parse(state);
         userId = parsed.userId || null;
         reauthSourceId = parsed.reauth || null;
-        returnSection = parsed.returnSection || 'connections';
+        returnSection = parsed.returnSection || 'integrations';
       } catch {
         // State parsing failed, continue without user ID
       }
@@ -117,7 +127,7 @@ export async function GET(request: Request) {
         summary: 'Re-authenticated Google Calendar integration',
       });
 
-      return NextResponse.redirect(`${BASE_URL}/settings?section=${returnSection}&success=google_reauth`);
+      return NextResponse.redirect(`${BASE_URL}/settings?section=${returnSection}&success=google_reauth${anchorFor(returnSection)}`);
     }
 
     // Fetch calendars using the plaintext token (before we discard it)
@@ -179,16 +189,17 @@ export async function GET(request: Request) {
     });
 
     // Redirect back to settings with success message
-    return NextResponse.redirect(`${BASE_URL}/settings?section=${returnSection}&success=google_connected`);
+    return NextResponse.redirect(`${BASE_URL}/settings?section=${returnSection}&success=google_connected${anchorFor(returnSection)}`);
   } catch (error) {
     logError('Google OAuth callback error:', error);
     // returnSection may not be in scope if parsing failed early; parse state again
-    let fallbackSection = 'connections';
+    let fallbackSection = 'integrations';
     try {
       const { searchParams } = new URL(request.url);
       const s = searchParams.get('state');
-      if (s) fallbackSection = JSON.parse(s).returnSection || 'connections';
+      if (s) fallbackSection = JSON.parse(s).returnSection || 'integrations';
     } catch { /* ignore */ }
-    return NextResponse.redirect(`${BASE_URL}/settings?section=${fallbackSection}&error=google_auth_failed`);
+    const fallbackAnchor = fallbackSection === 'integrations' ? '#google-calendars' : '';
+    return NextResponse.redirect(`${BASE_URL}/settings?section=${fallbackSection}&error=google_auth_failed${fallbackAnchor}`);
   }
 }

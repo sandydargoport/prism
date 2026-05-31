@@ -73,6 +73,18 @@ export async function GET(request: Request) {
     }
   }
 
+  // Anchor for error redirects when caller asked for the integrations
+  // page. Success redirects below always go through the list-selection
+  // modal that currently only lives in the legacy section, so they stay
+  // unchanged until that modal is extracted.
+  const errorAnchorByEntity = wishMemberId
+    ? '#microsoft-wish'
+    : shoppingListId
+      ? '#microsoft-shopping'
+      : '#microsoft-tasks';
+  const errorAnchor =
+    returnSection === 'integrations' ? errorAnchorByEntity : '';
+
   try {
     const code = searchParams.get('code');
     const error = searchParams.get('error');
@@ -81,13 +93,13 @@ export async function GET(request: Request) {
       const errorDescription = searchParams.get('error_description');
       console.error('Microsoft Tasks OAuth error:', error, errorDescription);
       return NextResponse.redirect(
-        `${BASE_URL}/settings?section=${returnSection}&error=microsoft_auth_denied`
+        `${BASE_URL}/settings?section=${returnSection}&error=microsoft_auth_denied${errorAnchor}`
       );
     }
 
     if (!code) {
       return NextResponse.redirect(
-        `${BASE_URL}/settings?section=${returnSection}&error=missing_code`
+        `${BASE_URL}/settings?section=${returnSection}&error=missing_code${errorAnchor}`
       );
     }
 
@@ -143,7 +155,7 @@ export async function GET(request: Request) {
   } catch (error) {
     logError('Microsoft Tasks OAuth callback error:', error);
     return NextResponse.redirect(
-      `${BASE_URL}/settings?section=${returnSection}&error=microsoft_auth_failed`
+      `${BASE_URL}/settings?section=${returnSection}&error=microsoft_auth_failed${errorAnchor}`
     );
   }
 }

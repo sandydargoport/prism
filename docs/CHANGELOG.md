@@ -10,6 +10,9 @@ All notable changes to Prism are documented in this file.
 ### Fixed — Settings
 - **Sub-section links inside Integrations cards now navigate**: `SettingsView` read the `?section=` query param only at mount, so when an Integrations card's "Open Calendars settings" link changed the URL the content panel stayed put. Added a `useEffect` that syncs `activeSection` with the live URL.
 
+### Changed — Integrations
+- **OAuth callbacks land on the Integrations page when initiated from it**: Google, Google Tasks (errors), Microsoft (OneDrive), and Microsoft Tasks (errors) callbacks now honor a `returnSection=integrations` flag bubbled through OAuth state, redirecting to `?section=integrations#<provider>` with the right sub-section auto-expanded. Legacy callers (the still-mounted Connected Accounts section, etc.) keep their existing destinations. Step toward removing the legacy sections — phase 2A of [#52](https://github.com/sandydargoport/prism/issues/52).
+
 ### Fixed — Mobile
 - **/settings now reachable on iPhone PWA**: `MobileNav` had no Settings entry, so a Prism installed as a home-screen PWA on iPhone had zero path to settings (the original "PWA can't reach Photos settings" report turned out to be the entire route being unreachable, not a Photos-specific link). The More menu now includes Settings, and the desktop sidebar collapses to a section selector on `<md` viewports so every section remains reachable after landing.
 

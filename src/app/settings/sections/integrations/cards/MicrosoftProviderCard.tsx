@@ -30,7 +30,10 @@ const MicrosoftIcon = () => (
 );
 
 const handleConnect = () => {
-  window.location.href = '/api/auth/microsoft';
+  // Tells /api/auth/microsoft/callback to route back to the consolidated
+  // Integrations page (with the OneDrive sub-section auto-expanded) instead
+  // of the legacy ?section=photos default.
+  window.location.href = '/api/auth/microsoft?returnSection=integrations';
 };
 
 export function MicrosoftProviderCard({
