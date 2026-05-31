@@ -51,6 +51,7 @@ import { ActivityLogSection } from './sections/ActivityLogSection';
 
 import { ConnectedAccountsSection } from './sections/ConnectedAccountsSection';
 import { DisplaysSection } from './sections/DisplaysSection';
+import { IntegrationsSection } from './sections/integrations/IntegrationsSection';
 
 
 // Exported hooks (consumed by other components)
@@ -135,6 +136,7 @@ export function SettingsView() {
   const sections = [
     { id: 'account', label: 'Account & Profile', icon: User },
     { id: 'family', label: 'Family Members', icon: Users },
+    { id: 'integrations', label: 'Integrations', icon: Link2 },
     { id: 'connections', label: 'Connected Accounts', icon: Link2 },
     { id: 'displays', label: 'Displays', icon: Monitor },
     { id: 'display', label: 'Appearance', icon: Palette },
@@ -220,6 +222,7 @@ export function SettingsView() {
             <div className="max-w-2xl">
               {activeSection === 'account' && <AccountSection />}
               {activeSection === 'family' && <FamilySection />}
+              {activeSection === 'integrations' && <IntegrationsSection />}
               {activeSection === 'connections' && <ConnectedAccountsSection />}
               {activeSection === 'displays' && <DisplaysSection />}
               {activeSection === 'calendars' && <CalendarsSection />}
