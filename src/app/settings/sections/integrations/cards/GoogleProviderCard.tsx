@@ -2,15 +2,18 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Calendar, ListTodo, RefreshCw } from 'lucide-react';
+import { Calendar, ListTodo, RefreshCw, Bus, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { ProviderCardShell } from '../shared/ProviderCardShell';
 import { CollapsibleSubSection } from '../shared/CollapsibleSubSection';
+import {
+  ConnectionStatusBadge,
+  type ConnectionStatus,
+} from '../shared/ConnectionStatusBadge';
 import type { IntegrationStatus } from '../shared/useIntegrationStatus';
-import type { ConnectionStatus } from '../shared/ConnectionStatusBadge';
 
 interface Props {
   status: IntegrationStatus | null;
@@ -39,45 +42,67 @@ const GoogleIcon = () => (
   </svg>
 );
 
-const handleConnect = () => {
-  window.location.href = '/api/auth/google?returnSection=integrations';
-};
-
-const handleReauth = () => {
-  window.location.href =
-    '/api/auth/google?reauth=all&returnSection=integrations';
-};
-
 export function GoogleProviderCard({
   status,
   onChange,
   forceSubSectionOpen,
 }: Props) {
   const { confirm, dialogProps } = useConfirmDialog();
-  const [disconnecting, setDisconnecting] = React.useState(false);
+  const [disconnectingGoogle, setDisconnectingGoogle] = React.useState(false);
+  const [disconnectingGmail, setDisconnectingGmail] = React.useState(false);
 
+  // Google calendars/tasks (/api/auth/google) and Gmail bus tracking
+  // (/api/auth/google-bus) are independent OAuth flows. Most users use the
+  // same Google account for both — the card folds them under one "Google"
+  // brand. Users with different accounts (one for personal calendars, one
+  // for the school bus FirstView emails) still see the truth via per-
+  // sub-section status badges.
   const g = status?.google;
-  const connected = !!g?.connected;
-  const expired = !!g?.expired;
-  const connectionStatus: ConnectionStatus = !connected
+  const gmail = status?.gmail;
+  const calendarsConnected = !!g?.connected;
+  const calendarsExpired = !!g?.expired;
+  const gmailConnected = !!gmail?.connected;
+
+  const calendarsStatus: ConnectionStatus = !calendarsConnected
     ? 'disconnected'
-    : expired
+    : calendarsExpired
       ? 'expired'
       : 'connected';
+  const gmailStatus: ConnectionStatus = gmailConnected
+    ? 'connected'
+    : 'disconnected';
 
-  const handleDisconnect = async () => {
+  // Top-level: if any sub-service needs attention, surface it.
+  const topStatus: ConnectionStatus = calendarsExpired
+    ? 'expired'
+    : calendarsConnected || gmailConnected
+      ? 'connected'
+      : 'disconnected';
+
+  const handleConnectCalendars = () => {
+    window.location.href = '/api/auth/google?returnSection=integrations';
+  };
+  const handleReauthCalendars = () => {
+    window.location.href =
+      '/api/auth/google?reauth=all&returnSection=integrations';
+  };
+  const handleConnectGmail = () => {
+    window.location.href = '/api/auth/google-bus';
+  };
+
+  const handleDisconnectGoogle = async () => {
     const ok = await confirm(
-      'Disconnect Google?',
-      'This will remove all Google calendars and their events from Prism.',
+      'Disconnect Google calendars + tasks?',
+      'Removes all Google calendars and their events from Prism. Gmail bus tracking is a separate connection and stays.',
     );
     if (!ok) return;
-    setDisconnecting(true);
+    setDisconnectingGoogle(true);
     try {
       const res = await fetch('/api/integrations/google/disconnect', {
         method: 'POST',
       });
       if (res.ok) {
-        toast({ title: 'Google disconnected', variant: 'success' });
+        toast({ title: 'Google calendars disconnected', variant: 'success' });
         await onChange();
       } else {
         toast({ title: 'Failed to disconnect Google', variant: 'destructive' });
@@ -85,27 +110,54 @@ export function GoogleProviderCard({
     } catch {
       toast({ title: 'Failed to disconnect Google', variant: 'destructive' });
     } finally {
-      setDisconnecting(false);
+      setDisconnectingGoogle(false);
     }
   };
 
+  const handleDisconnectGmail = async () => {
+    const ok = await confirm(
+      'Disconnect Gmail?',
+      'Bus arrival data will no longer sync. Google calendars stay connected.',
+    );
+    if (!ok) return;
+    setDisconnectingGmail(true);
+    try {
+      const res = await fetch('/api/bus-tracking/connection', {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        toast({ title: 'Gmail disconnected', variant: 'success' });
+        await onChange();
+      } else {
+        toast({ title: 'Failed to disconnect Gmail', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Failed to disconnect Gmail', variant: 'destructive' });
+    } finally {
+      setDisconnectingGmail(false);
+    }
+  };
+
+  // Primary action covers calendars+tasks — the common-case path. Bus
+  // tracking has its own connect/disconnect inside the sub-section so
+  // users with two accounts can wire them independently.
   let primaryAction: React.ReactNode;
-  if (!connected) {
+  if (!calendarsConnected) {
     primaryAction = (
-      <Button size="sm" onClick={handleConnect}>
+      <Button size="sm" onClick={handleConnectCalendars}>
         Connect
       </Button>
     );
-  } else if (expired) {
+  } else if (calendarsExpired) {
     primaryAction = (
-      <Button size="sm" onClick={handleReauth}>
+      <Button size="sm" onClick={handleReauthCalendars}>
         <RefreshCw className="h-4 w-4 mr-2" />
         Re-authenticate
       </Button>
     );
   } else {
     primaryAction = (
-      <Button variant="outline" size="sm" onClick={handleReauth}>
+      <Button variant="outline" size="sm" onClick={handleReauthCalendars}>
         <RefreshCw className="h-4 w-4 mr-2" />
         Re-authenticate
       </Button>
@@ -118,26 +170,30 @@ export function GoogleProviderCard({
     ? `Last synced ${new Date(g.lastSynced).toLocaleString()}`
     : null;
 
+  const description = (() => {
+    const parts: string[] = [];
+    if (calendarsConnected) {
+      parts.push(
+        `${calendarCount} calendar${calendarCount === 1 ? '' : 's'}`,
+      );
+      if (taskCount > 0) {
+        parts.push(`${taskCount} task source${taskCount === 1 ? '' : 's'}`);
+      }
+    }
+    if (gmailConnected) parts.push('Bus tracking');
+    if (lastSyncedLabel) parts.push(lastSyncedLabel);
+    if (parts.length > 0) return parts.join(' · ');
+    return 'Calendars, Tasks, and Bus tracking via Gmail. One account or different accounts for each — Prism shows both.';
+  })();
+
   return (
     <>
       <ProviderCardShell
         id="google"
         name="Google"
         icon={<GoogleIcon />}
-        status={connectionStatus}
-        description={
-          connected
-            ? [
-                `${calendarCount} calendar${calendarCount === 1 ? '' : 's'}`,
-                taskCount > 0
-                  ? `${taskCount} task source${taskCount === 1 ? '' : 's'}`
-                  : null,
-                lastSyncedLabel,
-              ]
-                .filter(Boolean)
-                .join(' · ')
-            : 'Calendars (read+write) and Google Tasks via OAuth.'
-        }
+        status={topStatus}
+        description={description}
         primaryAction={primaryAction}
       >
         <CollapsibleSubSection
@@ -145,12 +201,15 @@ export function GoogleProviderCard({
           label="Calendars"
           icon={<Calendar className="h-4 w-4" />}
           summary={
-            connected
-              ? `${calendarCount} imported`
-              : 'Connect Google to enable'
+            <span className="inline-flex items-center gap-2">
+              <ConnectionStatusBadge status={calendarsStatus} />
+              {calendarsConnected
+                ? `${calendarCount} imported`
+                : 'Connect Google to enable'}
+            </span>
           }
           forceOpen={forceSubSectionOpen === 'google-calendars'}
-          defaultOpen={!connected}
+          defaultOpen={!calendarsConnected}
         >
           <div className="text-sm">
             <Link
@@ -166,11 +225,14 @@ export function GoogleProviderCard({
           label="Tasks sync"
           icon={<ListTodo className="h-4 w-4" />}
           summary={
-            connected
-              ? taskCount > 0
-                ? `${taskCount} list${taskCount === 1 ? '' : 's'} wired`
-                : 'No task lists wired yet'
-              : 'Connect Google to enable'
+            <span className="inline-flex items-center gap-2">
+              <ConnectionStatusBadge status={calendarsStatus} />
+              {calendarsConnected
+                ? taskCount > 0
+                  ? `${taskCount} list${taskCount === 1 ? '' : 's'} wired`
+                  : 'No task lists wired yet'
+                : 'Connect Google to enable'}
+            </span>
           }
           forceOpen={forceSubSectionOpen === 'google-tasks'}
         >
@@ -186,21 +248,77 @@ export function GoogleProviderCard({
             </Link>
           </div>
         </CollapsibleSubSection>
-        {connected && (
+        <CollapsibleSubSection
+          id="google-bus"
+          label="Bus tracking (Gmail)"
+          icon={<Bus className="h-4 w-4" />}
+          summary={
+            <span className="inline-flex items-center gap-2">
+              <ConnectionStatusBadge status={gmailStatus} />
+              {gmailConnected
+                ? 'Reading FirstView arrival emails'
+                : 'Connect a Gmail account to enable'}
+            </span>
+          }
+          forceOpen={forceSubSectionOpen === 'google-bus'}
+          defaultOpen={!gmailConnected && calendarsConnected}
+        >
+          <div className="text-sm space-y-3">
+            <p className="text-muted-foreground">
+              Bus arrival times are parsed from FirstView emails sent to a
+              Gmail inbox. This is a separate OAuth flow from calendars —
+              wire a different Google account if your school bus mail lands
+              somewhere other than your personal Gmail.{' '}
+              <Link
+                href="/settings?section=bus"
+                className="text-primary hover:underline"
+              >
+                Configure students & stops →
+              </Link>
+            </p>
+            <div className="flex items-center gap-2">
+              {!gmailConnected ? (
+                <Button size="sm" onClick={handleConnectGmail}>
+                  <Mail className="h-4 w-4 mr-2" />
+                  Connect Gmail
+                </Button>
+              ) : (
+                <>
+                  <Button variant="outline" size="sm" onClick={handleConnectGmail}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Re-authenticate
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDisconnectGmail}
+                    disabled={disconnectingGmail}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    {disconnectingGmail ? 'Disconnecting…' : 'Disconnect Gmail'}
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        </CollapsibleSubSection>
+        {calendarsConnected && (
           <CollapsibleSubSection
             id="google-account"
-            label="Account"
-            summary="Disconnect Google"
+            label="Calendars + Tasks account"
+            summary="Disconnect the Google account used for calendars and tasks"
             forceOpen={forceSubSectionOpen === 'google-account'}
           >
             <Button
               variant="outline"
               size="sm"
-              onClick={handleDisconnect}
-              disabled={disconnecting}
+              onClick={handleDisconnectGoogle}
+              disabled={disconnectingGoogle}
               className="text-destructive hover:text-destructive hover:bg-destructive/10"
             >
-              {disconnecting ? 'Disconnecting…' : 'Disconnect Google'}
+              {disconnectingGoogle
+                ? 'Disconnecting…'
+                : 'Disconnect Google (calendars + tasks)'}
             </Button>
           </CollapsibleSubSection>
         )}

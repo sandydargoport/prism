@@ -133,6 +133,17 @@ export function SettingsView() {
   const initialSection = searchParams.get('section') || 'account';
   const [activeSection, setActiveSection] = useState<string>(initialSection);
 
+  // Sync activeSection when the URL changes mid-mount. Without this, in-app
+  // links like <Link href="/settings?section=calendars"> from inside one
+  // section update the address bar but never re-render the content panel
+  // — SettingsView only read the search param at first mount.
+  const urlSection = searchParams.get('section');
+  React.useEffect(() => {
+    if (urlSection && urlSection !== activeSection) {
+      setActiveSection(urlSection);
+    }
+  }, [urlSection, activeSection]);
+
   const sections = [
     { id: 'account', label: 'Account & Profile', icon: User },
     { id: 'family', label: 'Family Members', icon: Users },
