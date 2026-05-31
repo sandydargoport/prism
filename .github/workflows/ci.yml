@@ -177,7 +177,7 @@ jobs:
         run: npm run db:seed
 
       - name: Run e2e modality suite
-        run: npx playwright test e2e/reverse-proxy.spec.ts --reporter=list
+        run: npx playwright test e2e/reverse-proxy.spec.ts e2e/mobile-pwa-settings.spec.ts --reporter=list
 
       - name: Upload Playwright report on failure
         if: failure()

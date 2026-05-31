@@ -170,6 +170,19 @@ test.describe('Visual regression', () => {
 
       await expect(page).toHaveScreenshot(`settings-${theme}.png`, SCREENSHOT_OPTIONS);
     });
+
+    test(`settings - integrations section - ${theme}`, async ({ page }) => {
+      test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
+      await setClientFlags(page, { theme });
+      await loginViaAPI(page, parentName);
+      await page.goto('/settings?section=integrations');
+      await page.waitForLoadState('networkidle');
+      // Wait for the /api/integrations/status fetch + /api/photo-sources
+      // fetch to settle so the cards render their final descriptions.
+      await page.waitForTimeout(1200);
+
+      await expect(page).toHaveScreenshot(`settings-integrations-${theme}.png`, SCREENSHOT_OPTIONS);
+    });
   }
 
   // ─── Calendar view modes ────────────────────────────────────────────────
