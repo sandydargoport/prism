@@ -133,16 +133,23 @@ export function SettingsView() {
   const initialSection = searchParams.get('section') || 'account';
   const [activeSection, setActiveSection] = useState<string>(initialSection);
 
-  // Sync activeSection when the URL changes mid-mount. Without this, in-app
-  // links like <Link href="/settings?section=calendars"> from inside one
-  // section update the address bar but never re-render the content panel
+  // Sync activeSection when the URL section changes mid-mount. Without this,
+  // in-app links like <Link href="/settings?section=calendars"> from inside
+  // one section update the address bar but never re-render the content panel
   // — SettingsView only read the search param at first mount.
+  //
+  // Deps are [urlSection] only. Including activeSection here breaks sidebar
+  // clicks: clicking a different section in the nav updates activeSection
+  // but leaves urlSection unchanged, so on the next render the effect would
+  // see (urlSection !== activeSection) and snap activeSection back to the
+  // stale URL value. (This is the "stuck on bus tracking after Gmail auth"
+  // bug.) Only the URL changing should trigger a sync.
   const urlSection = searchParams.get('section');
   React.useEffect(() => {
-    if (urlSection && urlSection !== activeSection) {
+    if (urlSection) {
       setActiveSection(urlSection);
     }
-  }, [urlSection, activeSection]);
+  }, [urlSection]);
 
   const sections = [
     { id: 'account', label: 'Account & Profile', icon: User },

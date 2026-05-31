@@ -3,7 +3,7 @@ import { requireAuth, requireRole } from '@/lib/auth';
 import { getGmailAuthUrl } from '@/lib/integrations/gmail';
 import { logError } from '@/lib/utils/logError';
 
-export async function GET() {
+export async function GET(request: Request) {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
 
@@ -11,7 +11,13 @@ export async function GET() {
   if (forbidden) return forbidden;
 
   try {
-    const state = JSON.stringify({ returnSection: 'bus' });
+    const { searchParams } = new URL(request.url);
+    // returnSection lets the new GoogleProviderCard route the callback back
+    // to /settings?section=integrations#google-bus. Default 'bus' preserves
+    // legacy callers (BusTrackingSection's Connect Gmail button).
+    const returnSection = searchParams.get('returnSection') || 'bus';
+
+    const state = JSON.stringify({ returnSection });
     const authUrl = await getGmailAuthUrl(state);
     return NextResponse.redirect(authUrl);
   } catch (error) {

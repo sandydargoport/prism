@@ -17,18 +17,31 @@ export async function GET(request: Request) {
   const forbidden = requireRole(auth, 'canModifySettings');
   if (forbidden) return forbidden;
 
+  // Parse state once at top so all redirects honor returnSection. Default
+  // 'bus' preserves legacy callers (BusTrackingSection's Connect Gmail
+  // button still uses /api/auth/google-bus with no returnSection).
+  const { searchParams } = new URL(request.url);
+  const state = searchParams.get('state');
+  let returnSection = 'bus';
+  if (state) {
+    try {
+      const parsed = JSON.parse(state);
+      returnSection = parsed.returnSection || 'bus';
+    } catch { /* ignore */ }
+  }
+  const anchor = returnSection === 'integrations' ? '#google-bus' : '';
+
   try {
-    const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const error = searchParams.get('error');
 
     if (error) {
       logError('Gmail OAuth error:', error);
-      return NextResponse.redirect(`${BASE_URL}/settings?section=bus&error=gmail_auth_denied`);
+      return NextResponse.redirect(`${BASE_URL}/settings?section=${returnSection}&error=gmail_auth_denied${anchor}`);
     }
 
     if (!code) {
-      return NextResponse.redirect(`${BASE_URL}/settings?section=bus&error=missing_code`);
+      return NextResponse.redirect(`${BASE_URL}/settings?section=${returnSection}&error=missing_code${anchor}`);
     }
 
     const tokens = await exchangeGmailCodeForTokens(code);
@@ -66,9 +79,9 @@ export async function GET(request: Request) {
       summary: 'Connected Gmail for bus tracking',
     });
 
-    return NextResponse.redirect(`${BASE_URL}/settings?section=bus&success=gmail_connected`);
+    return NextResponse.redirect(`${BASE_URL}/settings?section=${returnSection}&success=gmail_connected${anchor}`);
   } catch (error) {
     logError('Gmail OAuth callback error:', error);
-    return NextResponse.redirect(`${BASE_URL}/settings?section=bus&error=gmail_auth_failed`);
+    return NextResponse.redirect(`${BASE_URL}/settings?section=${returnSection}&error=gmail_auth_failed${anchor}`);
   }
 }

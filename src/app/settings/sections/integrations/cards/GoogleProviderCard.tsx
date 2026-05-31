@@ -87,7 +87,8 @@ export function GoogleProviderCard({
       '/api/auth/google?reauth=all&returnSection=integrations';
   };
   const handleConnectGmail = () => {
-    window.location.href = '/api/auth/google-bus';
+    window.location.href =
+      '/api/auth/google-bus?returnSection=integrations';
   };
 
   const handleDisconnectGoogle = async () => {
