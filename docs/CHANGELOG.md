@@ -4,6 +4,12 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+### Added — Settings
+- **Consolidated Integrations page** (`/settings?section=integrations`): one card per OAuth provider — Google, Microsoft (incl. OneDrive — same account), Gmail, Apple/CalDAV, Kroger — plus a cross-provider Photo Sources card. Each card has a connection status badge and collapsible sub-sections for per-feature wiring. URL anchors (`#microsoft-onedrive`, `#caldav-calendars`, etc.) deep-link straight to a sub-section. Ships alongside the legacy Connected Accounts / Task Sync / Shopping Sync / Wish List Sync / Photos sections; cleanup pass removing the legacy sections will follow once parity is verified on real accounts. Closes phase 1 of [#52](https://github.com/sandydargoport/prism/issues/52).
+
+### Fixed — Mobile
+- **/settings now reachable on iPhone PWA**: `MobileNav` had no Settings entry, so a Prism installed as a home-screen PWA on iPhone had zero path to settings (the original "PWA can't reach Photos settings" report turned out to be the entire route being unreachable, not a Photos-specific link). The More menu now includes Settings, and the desktop sidebar collapses to a section selector on `<md` viewports so every section remains reachable after landing.
+
 ### Added — Docs
 - **Apple iCloud integration overview** (`docs/features/ICLOUD.md`): single-page summary of which iCloud surfaces Prism can integrate and which it can't, with the structural rule (open IETF standards work, CloudKit dead-ends don't). Covers Calendars, Contacts, Reminders, Notes, Photos (shared + library), Find My, Health, iMessage, Apple Music. Cross-linked from Calendar and Photos guides. Saves prospective users from "wait, can't we just pull X from iCloud?" investigations that always hit the same wall.
 
