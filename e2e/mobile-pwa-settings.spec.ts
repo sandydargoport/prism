@@ -45,16 +45,18 @@ test.describe('Mobile PWA settings reachability', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    // The "More" trigger is rendered as a button at the right of MobileNav.
-    const moreButton = page.locator('button:has-text("More")');
-    await expect(moreButton).toBeVisible();
-    await moreButton.click();
+    // Mobile nav at <md is MobileFab — a floating action button that opens
+    // a stack of action items. The FAB itself is aria-labeled "Open menu".
+    const fab = page.locator('button[aria-label="Open menu"]');
+    await expect(fab).toBeVisible();
+    await fab.click();
 
-    // The More menu opens with secondary items. Settings must be among them.
-    const settingsLink = page.locator('a:has-text("Settings")');
+    // Settings action is a <Link href="/settings"> rendered inside the open
+    // stack. Click it to navigate.
+    const settingsLink = page.locator('a[href="/settings"]');
     await expect(settingsLink).toBeVisible();
-
     await settingsLink.click();
+
     await page.waitForURL(/\/settings/);
     await page.waitForLoadState('networkidle');
 

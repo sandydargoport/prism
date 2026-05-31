@@ -18,6 +18,7 @@ import {
   ScanLine,
   Rows3,
   LayoutDashboard,
+  Settings as SettingsIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/components/providers/ThemeProvider';
@@ -103,6 +104,17 @@ export function MobileFab({ user, onLogin, onLogout, uiHidden }: MobileFabProps)
       onClick: () => setIsOpen(false),
       href: '/',
     },
+    {
+      // Always present so the Settings page is reachable on mobile.
+      // (Pre-#52 phase 1, there was no path to /settings from mobile PWA
+      // because MobileFab had no Settings action and MobileNav isn't
+      // mounted.)
+      key: 'settings',
+      icon: <SettingsIcon className="h-5 w-5" />,
+      label: 'Settings',
+      onClick: () => setIsOpen(false),
+      href: '/settings',
+    },
     ...(isShopping ? [
       {
         key: 'scan',
@@ -122,9 +134,12 @@ export function MobileFab({ user, onLogin, onLogout, uiHidden }: MobileFabProps)
         onClick: toggleReorderMode,
       },
       {
-        key: 'settings',
+        // Dashboard-card visibility / theme / layout toggles — context-
+        // specific to the dashboard, not the same as /settings. Renamed
+        // from "Settings" to "Cards" so the two are distinguishable.
+        key: 'cards',
         icon: <LayoutGrid className="h-5 w-5" />,
-        label: 'Settings',
+        label: 'Cards',
         onClick: () => { setIsOpen(false); setShowCards(true); },
       },
     ] : []),
@@ -279,6 +294,7 @@ export function MobileFab({ user, onLogin, onLogout, uiHidden }: MobileFabProps)
       {/* FAB button */}
       <button
         onClick={() => { if (showCards) { setShowCards(false); } else { setIsOpen(!isOpen); } }}
+        aria-label={isOpen || showCards ? 'Close menu' : 'Open menu'}
         className={cn(
           'fixed right-6 z-50 w-14 h-14 rounded-full',
           'bg-primary text-primary-foreground shadow-lg',
