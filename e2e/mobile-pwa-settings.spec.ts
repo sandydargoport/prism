@@ -23,19 +23,15 @@ const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
 
 // iPhone 14 is the closest modern preset Playwright ships. The viewport
 // width (390) crosses the md: breakpoint (768) so the mobile layout fires.
-const iphone = devices['iPhone 14'];
+// `test.use` must live at file scope: it carries `defaultBrowserType` from
+// the device preset which forces a new worker — Playwright rejects that
+// inside a describe block.
+test.use({
+  ...devices['iPhone 14'],
+  contextOptions: { reducedMotion: 'reduce' },
+});
 
 test.describe('Mobile PWA settings reachability', () => {
-  test.use({
-    ...iphone,
-    // PWA standalone mode — drops browser chrome, which is the failure
-    // mode the original bug was reported under.
-    contextOptions: {
-      ...iphone,
-      reducedMotion: 'reduce',
-    },
-  });
-
   test('More menu exposes Settings, section selector switches sections', async ({ page }) => {
     test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
 
