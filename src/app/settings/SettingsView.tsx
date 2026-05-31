@@ -171,7 +171,7 @@ export function SettingsView() {
         </header>
 
         <div className="flex-1 flex overflow-hidden">
-          <nav className="w-64 flex-shrink-0 border-r border-border bg-card/85 backdrop-blur-sm p-4">
+          <nav className="hidden md:block w-64 flex-shrink-0 border-r border-border bg-card/85 backdrop-blur-sm p-4">
             <div className="space-y-1">
               {sections.map((section) => {
                 const Icon = section.icon;
@@ -194,7 +194,29 @@ export function SettingsView() {
 
           </nav>
 
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-4 md:p-6">
+            {/*
+              Mobile section selector. The desktop sidebar above is hidden on
+              <md, so without this the Settings page is reachable from MobileNav
+              but every section other than 'account' (the default) is not.
+            */}
+            <div className="md:hidden mb-4">
+              <label htmlFor="settings-section-select" className="sr-only">
+                Settings section
+              </label>
+              <select
+                id="settings-section-select"
+                value={activeSection}
+                onChange={(e) => setActiveSection(e.target.value)}
+                className="w-full rounded-md border border-border bg-card px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                {sections.map((section) => (
+                  <option key={section.id} value={section.id}>
+                    {section.label}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="max-w-2xl">
               {activeSection === 'account' && <AccountSection />}
               {activeSection === 'family' && <FamilySection />}

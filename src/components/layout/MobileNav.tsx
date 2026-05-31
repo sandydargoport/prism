@@ -29,6 +29,7 @@ import {
   User,
   LogOut,
   HelpCircle,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/components/providers/ThemeProvider';
@@ -64,6 +65,7 @@ const primaryItems: NavItem[] = [
 // Secondary items shown in "More" menu
 const secondaryItems: NavItem[] = [
   { label: 'Recipes', href: '/recipes', icon: ChefHat },
+  { label: 'Settings', href: '/settings', icon: Settings },
 ];
 
 export function MobileNav({ user, onLogin, onLogout, uiHidden }: MobileNavProps) {
