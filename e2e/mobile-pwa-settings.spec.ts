@@ -20,6 +20,7 @@ import { test, expect, devices } from '@playwright/test';
 import { loginViaAPI } from './helpers/auth';
 
 const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
+const PIN = process.env.E2E_PIN || '1234';
 
 // iPhone 14 is the closest modern preset Playwright ships. The viewport
 // width (390) crosses the md: breakpoint (768) so the mobile layout fires.
@@ -41,7 +42,22 @@ test.describe('Mobile PWA settings reachability', () => {
     const members = Array.isArray(family) ? family : family.members;
     const parentName = members[0].name;
 
-    await loginViaAPI(page, parentName);
+    const parent = await loginViaAPI(page, parentName);
+
+    // SettingsPinGate sits in front of /settings and requires a parent PIN
+    // re-verification on top of the session cookie. POST it directly so the
+    // gate flips to 'verified' before the page even loads — otherwise the
+    // PIN prompt renders instead of SettingsView and the section selector
+    // is never in the DOM.
+    const verifyRes = await page.request.post('/api/auth/verify-pin', {
+      data: parent.id
+        ? { userId: parent.id, pin: PIN }
+        : { memberIndex: parent.loginIndex, pin: PIN },
+    });
+    if (!verifyRes.ok()) {
+      throw new Error(`Settings verify-pin failed: ${verifyRes.status()}`);
+    }
+
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
