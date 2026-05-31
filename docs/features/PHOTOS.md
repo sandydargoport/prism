@@ -52,16 +52,16 @@ OneDrive backs up your whole camera roll to one big folder, but doesn't map iOS 
 2. **OneDrive app** — open OneDrive, select photos in your Camera Roll backup → **Copy to** → Prism folder.
 3. **From a computer** — drag files into the folder in the OneDrive web UI or synced desktop folder.
 
-> Prefer tagging on your phone with no Shortcut setup? The **iCloud Shared Album** source (coming in a follow-up) is built for exactly that — add a photo to a shared album from the iOS share sheet and it appears. See the roadmap.
+> Why not iCloud Shared Albums? Apple migrated public share URLs to a CloudKit-only backend that has no public API. See [iCloud integration](ICLOUD.md#what-works-what-doesnt) for the full story; OneDrive + the iOS Shortcut above is the workflow for iPhone users.
 
 ### Cross-source dedup + priority
 
-If you back up the same photos to **more than one** source (e.g. both OneDrive and iCloud), Prism shows each photo **once** rather than twice. When the same shot is found in multiple sources:
+If you back up the same photos to **more than one** source (e.g. local uploads plus an OneDrive folder, or two OneDrive folders that overlap), Prism shows each photo **once** rather than twice. When the same shot is found in multiple sources:
 
 - Photos are matched by **capture time + dimensions** (a cropped edit keeps the original timestamp but changes dimensions, so edits and originals both show — only true duplicates are collapsed).
 - The copy from your **preferred source wins**. Order your sources in *Settings → Photos* with the ▲▼ controls — top of the list = preferred. Reordering takes effect immediately; no re-sync needed.
 
-Example: rank OneDrive above iCloud, and any photo in both serves from OneDrive (e.g. your originals) while the iCloud copy (e.g. a web-optimized version) is suppressed from display.
+Example: rank "OneDrive: originals" above "OneDrive: web-optimized" and any photo in both folders serves from the originals folder while the smaller copy is suppressed from display.
 
 ---
 

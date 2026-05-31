@@ -4,6 +4,12 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+### Added — Docs
+- **Apple iCloud integration overview** (`docs/features/ICLOUD.md`): single-page summary of which iCloud surfaces Prism can integrate and which it can't, with the structural rule (open IETF standards work, CloudKit dead-ends don't). Covers Calendars, Contacts, Reminders, Notes, Photos (shared + library), Find My, Health, iMessage, Apple Music. Cross-linked from Calendar and Photos guides. Saves prospective users from "wait, can't we just pull X from iCloud?" investigations that always hit the same wall.
+
+### Changed — Docs
+- **Photos guide drops the "iCloud Shared Album coming in a follow-up" hint**: Phase B of the photo sources work was abandoned in late May after Apple migrated public share URLs to a CloudKit-only backend with no public API. The Photos doc now points at OneDrive + the iOS Shortcut as the canonical iPhone path and links to ICLOUD.md for the explanation.
+
 ## [1.8.4] – 2026-05-23
 
 ### Added — Integrations

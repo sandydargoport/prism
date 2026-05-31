@@ -51,6 +51,8 @@ The same flow works for **Nextcloud** (`https://your-server/remote.php/dav`), **
 
 Caveats: this path is currently **read-only** — events and tasks pulled from CalDAV appear in the dashboard but can't be edited from Prism (two-way write is on the roadmap). App-specific passwords are stored encrypted in the Prism database and never leave your server. Apple Reminders sync into Prism's Tasks list with the same priorities and due dates the iOS app uses.
 
+> Wondering what *else* you can pull from iCloud (Reminders, Notes, Photos, Find My)? See the [iCloud integration overview](ICLOUD.md) — short answer: calendars and contacts work, nothing else does, and there's a structural reason.
+
 ### Per-calendar customization
 
 In *Settings → Calendars*, each source supports:

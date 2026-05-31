@@ -105,6 +105,7 @@ nav:
       - Mobile (PWA): features/MOBILE.md
       - Global input: features/global-input-system.md
   - Integrations:
+      - Apple iCloud: features/ICLOUD.md
       - Kroger / Mariano's: features/KROGER.md
       - Home Assistant: home-assistant.md
       - Voice API: voice-api.md
