@@ -14,6 +14,7 @@ import { CssGridDisplay } from './grid/CssGridDisplay';
 import dynamic from 'next/dynamic';
 const CssGridEditor = dynamic(() => import('./grid/CssGridEditor').then(m => ({ default: m.CssGridEditor })), { ssr: false });
 import { useSquareCells } from './grid/useSquareCells';
+import { useViewportSize } from '@/lib/hooks/useViewportSize';
 
 export type { EditorTheme } from './grid/gridEditorTypes';
 export { DASHBOARD_THEME, SCREENSAVER_THEME } from './grid/gridEditorTypes';
@@ -46,6 +47,7 @@ export function LayoutGridEditor({
   const containerPadding = 12;
   const margin = marginProp;
   const { width, containerRef, mounted, cellSize: rawCellSize } = useSquareCells(cols, containerPadding, margin);
+  const { height: viewportHeight } = useViewportSize();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
   const [selectedWidget, setSelectedWidget] = useState<string | null>(null);
@@ -93,7 +95,7 @@ export function LayoutGridEditor({
 
     const effectiveHeaderOffset = measureHideNav ? 0 : 50;
     const effectiveBottomOffset = measureHideNav ? 0 : bottomOffset;
-    const availableH = window.innerHeight - effectiveHeaderOffset - effectiveBottomOffset - 2 * containerPadding;
+    const availableH = viewportHeight - effectiveHeaderOffset - effectiveBottomOffset - 2 * containerPadding;
     const availableW = width - 2 * containerPadding;
 
     // Cell size that makes zone.rows fill availableH, and zone.cols fill availableW
@@ -101,10 +103,10 @@ export function LayoutGridEditor({
     const wCell = Math.floor((availableW + margin) / zone.cols) - margin;
 
     return Math.max(16, Math.min(hCell, wCell));
-  }, [measureMode, mounted, rawCellSize, SAFE_ZONES, screenGuideOrientation, enabledSizes, previewZoneIndex, measureHideNav, bottomOffset, margin, containerPadding, width]);
+  }, [measureMode, mounted, rawCellSize, SAFE_ZONES, screenGuideOrientation, enabledSizes, previewZoneIndex, measureHideNav, bottomOffset, margin, containerPadding, width, viewportHeight]);
 
   const visibleRows = useMemo(() => {
-    if (typeof window === 'undefined') return 24;
+    if (viewportHeight <= 0) return 24;
     // Measure mode: toolbar always hidden; header + nav depend on hideNav toggle
     // measureHideNav=true: all chrome hidden (0 offset)
     // measureHideNav=false: header (~50px) + nav visible (bottomOffset)
@@ -114,9 +116,9 @@ export function LayoutGridEditor({
       : headerOffset;
     const effectiveBottomOffset = measureHideNav ? 0 : bottomOffset;
     const offset = effectiveHeaderOffset + effectiveBottomOffset;
-    const availableHeight = window.innerHeight - offset;
+    const availableHeight = viewportHeight - offset;
     return Math.max(minVisibleRows, Math.floor((availableHeight + margin) / (cellSize + margin)));
-  }, [cellSize, margin, headerOffset, bottomOffset, minVisibleRows, measureMode, measureHideNav]);
+  }, [cellSize, margin, headerOffset, bottomOffset, minVisibleRows, measureMode, measureHideNav, viewportHeight]);
 
   const visibleCols = useMemo(() => {
     if (width <= 0) return cols;

@@ -10,6 +10,9 @@ All notable changes to Prism are documented in this file.
 ### Fixed — Mobile
 - **/settings now reachable on iPhone PWA**: `MobileNav` had no Settings entry, so a Prism installed as a home-screen PWA on iPhone had zero path to settings (the original "PWA can't reach Photos settings" report turned out to be the entire route being unreachable, not a Photos-specific link). The More menu now includes Settings, and the desktop sidebar collapses to a section selector on `<md` viewports so every section remains reachable after landing.
 
+### Fixed — Dashboard
+- **Grid no longer locks to interim cold-boot viewport on slow-launching kiosks**: `LayoutGridEditor` computed `visibleRows` and `cellSize` from `window.innerHeight` inside a `useMemo` with no resize listener, so the values were frozen at mount time. On a Wyse thin client booting before its window manager finalized the work area, the dashboard rendered against the smaller interim viewport and stayed that way until the user manually refreshed. New `useViewportSize` hook subscribes to `resize` + `orientationchange` and feeds both memos so the grid re-measures when the viewport settles. Closes [#73](https://github.com/sandydargoport/prism/issues/73).
+
 ### Added — Docs
 - **Apple iCloud integration overview** (`docs/features/ICLOUD.md`): single-page summary of which iCloud surfaces Prism can integrate and which it can't, with the structural rule (open IETF standards work, CloudKit dead-ends don't). Covers Calendars, Contacts, Reminders, Notes, Photos (shared + library), Find My, Health, iMessage, Apple Music. Cross-linked from Calendar and Photos guides. Saves prospective users from "wait, can't we just pull X from iCloud?" investigations that always hit the same wall.
 
