@@ -4,6 +4,11 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.8.7] – 2026-06-01
+
+### Fixed — Distribution
+- **HA addon arm64 build now succeeds**: v1.8.6's release workflow shipped amd64 cleanly but the aarch64 matrix job died with `qemu: uncaught target signal 4 (Illegal instruction)` during `npm run build` — SWC (Next.js's Rust-based compiler) emits ARM NEON / SIMD instructions that QEMU TCG can't translate when running an arm64 binary on x86 host. Switched the arm64 matrix entry from `ubuntu-latest + setup-qemu-action` to GitHub's free public-repo native `ubuntu-24.04-arm` runner. Real ARM hardware, no emulation, no instruction-set gap. arm64 build time should now match amd64 (~5 min) instead of 30-60 min QEMU. Both `ghcr.io/sandydargoport/prism-ha-amd64` and `ghcr.io/sandydargoport/prism-ha-aarch64` should publish on tag pushes from this version onward.
+
 ## [1.8.6] – 2026-06-01
 
 ### Fixed — Distribution
