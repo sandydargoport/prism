@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { ListTodo, ShoppingCart, Gift, HardDrive, ImageIcon } from 'lucide-react';
+import { ListTodo, ShoppingCart, Gift, HardDrive, ImageIcon, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -35,6 +35,12 @@ const handleConnect = () => {
   // of the legacy ?section=photos default.
   window.location.href = '/api/auth/microsoft?returnSection=integrations';
 };
+
+// Re-auth re-uses the same init route — Microsoft's OAuth refreshes
+// silently if already connected, returning the user without a consent
+// step. Surfaced as a card primary action so connected users have a
+// way to recover from expired/revoked tokens without disconnecting.
+const handleReauth = handleConnect;
 
 export function MicrosoftProviderCard({
   status,
@@ -104,7 +110,12 @@ export function MicrosoftProviderCard({
         .join(' · ') || 'No sources wired yet'
     : 'Microsoft To-Do (tasks, shopping, wish lists) and OneDrive (photos). One OAuth covers all.';
 
-  const primaryAction = connected ? null : (
+  const primaryAction = connected ? (
+    <Button variant="outline" size="sm" onClick={handleReauth}>
+      <RefreshCw className="h-4 w-4 mr-2" />
+      Re-authenticate
+    </Button>
+  ) : (
     <Button size="sm" onClick={handleConnect}>
       Connect
     </Button>
@@ -120,6 +131,24 @@ export function MicrosoftProviderCard({
         description={description}
         primaryAction={primaryAction}
       >
+        {connected && (
+          <CollapsibleSubSection
+            id="microsoft-account"
+            label="Account"
+            summary="Connected Microsoft account · Disconnect"
+            forceOpen={forceSubSectionOpen === 'microsoft-account'}
+          >
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDisconnect}
+              disabled={disconnecting}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              {disconnecting ? 'Disconnecting…' : 'Disconnect Microsoft'}
+            </Button>
+          </CollapsibleSubSection>
+        )}
         <CollapsibleSubSection
           id="microsoft-tasks"
           label="Tasks"
@@ -212,24 +241,6 @@ export function MicrosoftProviderCard({
             </Link>
           </div>
         </CollapsibleSubSection>
-        {connected && (
-          <CollapsibleSubSection
-            id="microsoft-account"
-            label="Account"
-            summary="Disconnect Microsoft"
-            forceOpen={forceSubSectionOpen === 'microsoft-account'}
-          >
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDisconnect}
-              disabled={disconnecting}
-              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-            >
-              {disconnecting ? 'Disconnecting…' : 'Disconnect Microsoft'}
-            </Button>
-          </CollapsibleSubSection>
-        )}
       </ProviderCardShell>
       <ConfirmDialog {...dialogProps} />
     </>

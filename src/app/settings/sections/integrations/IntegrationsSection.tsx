@@ -7,24 +7,27 @@ import { useIntegrationStatus } from './shared/useIntegrationStatus';
 import { useIntegrationsHashRouter } from './shared/useIntegrationsHashRouter';
 import { GoogleProviderCard } from './cards/GoogleProviderCard';
 import { MicrosoftProviderCard } from './cards/MicrosoftProviderCard';
+import { GmailProviderCard } from './cards/GmailProviderCard';
 import { CalDAVProviderCard } from './cards/CalDAVProviderCard';
 import { KrogerProviderCard } from './cards/KrogerProviderCard';
 import { PhotoSourcesCard } from './cards/PhotoSourcesCard';
 
 /**
  * Consolidated integrations page (issue #52). One card per provider brand.
- * Google card hosts Calendars/Tasks plus the Gmail-OAuth-based Bus tracking
- * as a sub-section — they're independent OAuth flows but the brand is the
- * same and most family dashboards use one Google account for both. Users
- * with two accounts (personal calendars + family Gmail for school bus)
- * still see the truth via per-sub-section status badges.
+ *
+ * Bus tracking (Gmail) is intentionally its own card even though it uses
+ * Gmail OAuth under the hood — only a small fraction of users wire bus
+ * tracking, so folding it into the Google card made the common case
+ * noisier without helping the bus case. Card naming reflects what the
+ * user came here for ("Bus tracking") rather than the underlying provider.
  *
  * URL anchors:
  *   /settings?section=integrations#google
  *   /settings?section=integrations#google-calendars
- *   /settings?section=integrations#google-bus
  *   /settings?section=integrations#microsoft
  *   /settings?section=integrations#microsoft-tasks
+ *   /settings?section=integrations#gmail
+ *   /settings?section=integrations#gmail-bus
  *   /settings?section=integrations#caldav
  *   /settings?section=integrations#kroger
  *   /settings?section=integrations#photo-sources
@@ -75,6 +78,11 @@ export function IntegrationsSection() {
           forceSubSectionOpen={hash}
         />
         <MicrosoftProviderCard
+          status={status}
+          onChange={refetch}
+          forceSubSectionOpen={hash}
+        />
+        <GmailProviderCard
           status={status}
           onChange={refetch}
           forceSubSectionOpen={hash}
