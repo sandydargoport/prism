@@ -59,11 +59,14 @@ export SESSION_SECRET PIN_ENCRYPTION_KEY ENCRYPTION_KEY
 if [ "$BUNDLED_DB" = "true" ]; then
     PG_PASSWORD_FILE=/data/.prism_db_password
 
+    # Alpine puts postgres binaries on PATH at /usr/bin (initdb, pg_ctl,
+    # psql, createdb) under the `postgres` user, unlike Debian's
+    # /usr/lib/postgresql/15/bin/ layout.
     if [ ! -d "$PG_DATA/base" ]; then
         log "Initializing bundled postgres cluster at $PG_DATA (first boot)"
         mkdir -p "$PG_DATA"
         chown -R postgres:postgres "$PG_DATA"
-        sudo -u postgres /usr/lib/postgresql/15/bin/initdb -D "$PG_DATA" --auth=trust --encoding=UTF8 --no-locale
+        sudo -u postgres initdb -D "$PG_DATA" --auth=trust --encoding=UTF8 --no-locale
 
         # Random password kept on the host volume; survives updates.
         openssl rand -hex 32 > "$PG_PASSWORD_FILE"
@@ -71,7 +74,7 @@ if [ "$BUNDLED_DB" = "true" ]; then
     fi
 
     log "Starting bundled postgres"
-    sudo -u postgres /usr/lib/postgresql/15/bin/pg_ctl -D "$PG_DATA" -l "$PG_DATA/postgres.log" -w start
+    sudo -u postgres pg_ctl -D "$PG_DATA" -l "$PG_DATA/postgres.log" -w start
 
     PG_PASSWORD="$(cat "$PG_PASSWORD_FILE")"
     # Create role + database (idempotent: check existence first).

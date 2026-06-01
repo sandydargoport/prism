@@ -2,53 +2,57 @@
 #
 # HA Supervisor uses the addon's own folder (ha-app/) as the Docker build
 # context, so the Dockerfile can't reach `../package.json` or anything else
-# in the parent repo. To stay buildable on a user's HA host without
-# requiring a separate published image, we clone the Prism source at
-# build time and build inside this container.
+# in the parent repo. To stay buildable on a user's HA host, we clone the
+# Prism source at build time and build inside this container.
 #
-# When the release pipeline (#104) publishes pre-built multi-arch images
-# to ghcr.io, this Dockerfile gets replaced with a tiny wrapper that just
-# `FROM`s the published image and copies run.sh — install drops from
-# ~10 min to ~30 s.
+# Why node:24-alpine instead of HA's official `ghcr.io/home-assistant/
+# <arch>-base`: package.json requires Node >=24, and HA's base images
+# (Alpine 3.x) ship Node 20 via the `nodejs` apk package. Pulling a real
+# Node 24 onto HA's base is more friction than just using the official
+# node:24-alpine multi-arch image and adding what we need on top.
+# Supervisor doesn't care which base — it just runs the container's CMD.
 
-ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:latest
-FROM ${BUILD_FROM}
+FROM node:24-alpine
 
 # Pin which Prism ref the addon builds from. Defaults to master so a
-# fresh `Update` from the HA UI grabs the latest. Override via HA build
-# args if you want a tagged release.
+# fresh `Update` from the HA UI grabs the latest. The release pipeline
+# overrides this to the version tag (`v1.8.5`) for reproducible builds.
 ARG PRISM_REF=master
 
-# Install everything in a single layer: postgres + redis (bundled DB),
-# node 24 (build + runtime), chromium (Puppeteer screenshots), git (to
-# fetch the source).
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+# Single-layer install of everything the build + runtime needs:
+#   - bash         (run.sh shebang; alpine ships ash by default)
+#   - git          (clone Prism source at build time)
+#   - postgres + redis  (bundled DB + cache)
+#   - chromium     (Puppeteer screenshots for share-card rendering)
+#   - sudo         (drop privileges for postgres role switch in run.sh)
+#   - jq, openssl  (run.sh: parse options.json, generate secrets)
+#   - libc6-compat (sharp / native modules — same pattern as root Dockerfile)
+RUN apk add --no-cache \
+        bash \
         ca-certificates \
         curl \
         git \
-        postgresql-15 \
-        postgresql-client-15 \
-        redis-server \
-        sudo \
-        chromium \
-        fonts-freefont-ttf \
-        libnss3 \
-        libfreetype6 \
-        libharfbuzz0b \
-        openssl \
         jq \
-    && curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
-    && apt-get install -y nodejs \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+        openssl \
+        sudo \
+        postgresql15 \
+        postgresql15-client \
+        postgresql15-contrib \
+        redis \
+        chromium \
+        nss \
+        freetype \
+        harfbuzz \
+        ttf-freefont \
+        libc6-compat
 
 # Clone + build Prism inside the container. `--depth 1` keeps the clone
-# small; `${PRISM_REF}` lets you build a specific tag if you want.
+# small; `${PRISM_REF}` lets the release pipeline pin a specific tag.
 RUN git clone --depth 1 --branch ${PRISM_REF} https://github.com/sandydargoport/prism.git /src
 
 WORKDIR /src
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm ci --frozen-lockfile && \
+RUN npm ci && \
     npm run build && \
     npm run db:bundle
 
@@ -66,7 +70,8 @@ RUN cp -r /src/.next/standalone/. /app/ && \
     rm -rf /src
 
 ENV NODE_ENV=production
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+# Alpine's chromium apk package installs the binary as chromium-browser.
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 # HA addon mode flag — runtime config reads this to flip paths to /data.
 ENV PRISM_HA_MODE=1
