@@ -49,7 +49,6 @@ import { InputSection } from './sections/InputSection';
 import { FeaturesSection } from './sections/FeaturesSection';
 import { ActivityLogSection } from './sections/ActivityLogSection';
 
-import { ConnectedAccountsSection } from './sections/ConnectedAccountsSection';
 import { DisplaysSection } from './sections/DisplaysSection';
 import { IntegrationsSection } from './sections/integrations/IntegrationsSection';
 
@@ -128,9 +127,22 @@ export function useTargetResolution() {
 
 // Main Settings View
 
+// Legacy section IDs that have been folded into the consolidated
+// Integrations page. Any URL or OAuth callback still pointing at one
+// of these (bookmarks, ?section=connections from in-flight callbacks,
+// etc.) gets redirected to 'integrations'.
+const LEGACY_TO_INTEGRATIONS: Record<string, string> = {
+  connections: 'integrations',
+};
+
+function normalizeSection(raw: string | null): string {
+  if (!raw) return 'account';
+  return LEGACY_TO_INTEGRATIONS[raw] ?? raw;
+}
+
 export function SettingsView() {
   const searchParams = useSearchParams();
-  const initialSection = searchParams.get('section') || 'account';
+  const initialSection = normalizeSection(searchParams.get('section'));
   const [activeSection, setActiveSection] = useState<string>(initialSection);
 
   // Sync activeSection when the URL section changes mid-mount. Without this,
@@ -147,7 +159,7 @@ export function SettingsView() {
   const urlSection = searchParams.get('section');
   React.useEffect(() => {
     if (urlSection) {
-      setActiveSection(urlSection);
+      setActiveSection(normalizeSection(urlSection));
     }
   }, [urlSection]);
 
@@ -155,7 +167,6 @@ export function SettingsView() {
     { id: 'account', label: 'Account & Profile', icon: User },
     { id: 'family', label: 'Family Members', icon: Users },
     { id: 'integrations', label: 'Integrations', icon: Link2 },
-    { id: 'connections', label: 'Connected Accounts', icon: Link2 },
     { id: 'displays', label: 'Displays', icon: Monitor },
     { id: 'display', label: 'Appearance', icon: Palette },
     { id: 'calendars', label: 'Calendars', icon: Calendar },
@@ -241,7 +252,6 @@ export function SettingsView() {
               {activeSection === 'account' && <AccountSection />}
               {activeSection === 'family' && <FamilySection />}
               {activeSection === 'integrations' && <IntegrationsSection />}
-              {activeSection === 'connections' && <ConnectedAccountsSection />}
               {activeSection === 'displays' && <DisplaysSection />}
               {activeSection === 'calendars' && <CalendarsSection />}
               {activeSection === 'tasks' && <TaskIntegrationsSection />}

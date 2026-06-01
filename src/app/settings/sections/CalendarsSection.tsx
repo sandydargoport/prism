@@ -258,10 +258,10 @@ export function CalendarsSection() {
               <p className="text-sm text-muted-foreground">
                 Connect Google in{' '}
                 <button
-                  onClick={() => { window.location.href = '/settings?section=connections'; }}
+                  onClick={() => { window.location.href = '/settings?section=integrations#google'; }}
                   className="text-primary hover:underline font-medium"
                 >
-                  Connected Accounts
+                  Integrations
                 </button>
                 {' '}to import calendars.
               </p>

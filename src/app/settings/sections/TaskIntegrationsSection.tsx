@@ -250,10 +250,10 @@ export function TaskIntegrationsSection() {
           <p className="text-sm mt-1">
             or set up your account in{' '}
             <button
-              onClick={() => { window.location.href = '/settings?section=connections'; }}
+              onClick={() => { window.location.href = '/settings?section=integrations'; }}
               className="text-primary hover:underline font-medium"
             >
-              Connected Accounts
+              Integrations
             </button>
           </p>
         }

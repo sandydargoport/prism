@@ -81,9 +81,10 @@ test.describe('Mobile PWA settings reachability', () => {
     const sectionSelect = page.locator('#settings-section-select');
     await expect(sectionSelect).toBeVisible();
 
-    // The legacy 'connections' option AND the new 'integrations' option
-    // must both be reachable from the dropdown.
-    await expect(sectionSelect.locator('option[value="connections"]')).toHaveCount(1);
+    // Integrations + Photos must both be reachable from the dropdown.
+    // ('connections' was retired in Phase 2B-1 — the legacy section was
+    // fully replaced by Integrations, with ?section=connections URLs
+    // redirected via SettingsView's LEGACY_TO_INTEGRATIONS map.)
     await expect(sectionSelect.locator('option[value="integrations"]')).toHaveCount(1);
     await expect(sectionSelect.locator('option[value="photos"]')).toHaveCount(1);
 
