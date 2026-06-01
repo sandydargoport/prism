@@ -27,6 +27,15 @@ ARG PRISM_REF=master
 #   - sudo         (drop privileges for postgres role switch in run.sh)
 #   - jq, openssl  (run.sh: parse options.json, generate secrets)
 #   - libc6-compat (sharp / native modules — same pattern as root Dockerfile)
+#
+# Note on postgres version: this Dockerfile uses the unversioned
+# `postgresql` apk package, which resolves to whichever postgres major
+# the current Alpine release ships (Alpine 3.21 → postgres 17, etc.).
+# The standalone docker-compose and CI matrix run against postgres 15,
+# but Drizzle migrations are standard SQL and run cleanly on both.
+# Pinning a specific major (e.g. `postgresql15`) breaks on Alpine
+# versions that no longer carry that major in the main repo, which is
+# how the first attempt of this Dockerfile failed.
 RUN apk add --no-cache \
         bash \
         ca-certificates \
@@ -35,9 +44,9 @@ RUN apk add --no-cache \
         jq \
         openssl \
         sudo \
-        postgresql15 \
-        postgresql15-client \
-        postgresql15-contrib \
+        postgresql \
+        postgresql-client \
+        postgresql-contrib \
         redis \
         chromium \
         nss \
