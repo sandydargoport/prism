@@ -267,35 +267,42 @@ export function WishesView() {
           <div className="text-destructive text-center py-8">{error}</div>
         ) : (
           /* Grid view: one card per family member (filtered if selection active), draggable.
-             Min-width columns + horizontal scroll when group count outgrows the viewport —
-             same UX shape as Chores/Tasks. Avoids cramming many members into 3 fixed columns. */
+             Min-width columns + horizontal scroll on desktop. Mobile (multi-member):
+             viewport-wide columns + scroll-snap carousel — same UX as Chores/Tasks. */
           (() => {
-            const visibleMemberCount = orderedMembers.filter(m => showingAll || selectedMemberIds!.includes(m.id)).length;
+            const visibleMembers = orderedMembers.filter(m => showingAll || selectedMemberIds!.includes(m.id));
+            const isSwipeCarousel = isMobile && visibleMembers.length > 1;
             return (
           <div
-            className="grid gap-3 h-full overflow-x-auto"
+            className={cn(
+              'grid gap-3 h-full overflow-x-auto',
+              isSwipeCarousel && 'snap-x snap-mandatory'
+            )}
             style={{
-              gridTemplateColumns: `repeat(${Math.max(visibleMemberCount, 1)}, minmax(220px, 1fr))`,
+              gridTemplateColumns: isSwipeCarousel
+                ? `repeat(${visibleMembers.length}, calc(100vw - 32px))`
+                : `repeat(${Math.max(visibleMembers.length, 1)}, minmax(220px, 1fr))`,
             }}
           >
-            {orderedMembers.filter(m => showingAll || selectedMemberIds!.includes(m.id)).map(member => {
+            {visibleMembers.map(member => {
               const memberItems = groupedItems?.[member.id] || [];
               const isDragging = draggedMemberId === member.id;
               return (
-                <MemberWishCard
-                  key={member.id}
-                  member={member}
-                  items={memberItems}
-                  isOwnList={isOwnList(member.id)}
-                  viewerId={viewerId}
-                  isDragging={isDragging}
-                  dragProps={isMobile ? {} : getDragProps(member.id)}
-                  isMobile={isMobile}
-                  onEdit={handleOpenEditModal}
-                  onDelete={handleDelete}
-                  onClaim={handleClaim}
-                  onAdd={() => handleOpenAddModal(member.id)}
-                />
+                <div key={member.id} className={cn(isSwipeCarousel && 'snap-start')}>
+                  <MemberWishCard
+                    member={member}
+                    items={memberItems}
+                    isOwnList={isOwnList(member.id)}
+                    viewerId={viewerId}
+                    isDragging={isDragging}
+                    dragProps={isMobile ? {} : getDragProps(member.id)}
+                    isMobile={isMobile}
+                    onEdit={handleOpenEditModal}
+                    onDelete={handleDelete}
+                    onClaim={handleClaim}
+                    onAdd={() => handleOpenAddModal(member.id)}
+                  />
+                </div>
               );
             })}
           </div>

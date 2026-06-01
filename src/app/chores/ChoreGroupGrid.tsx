@@ -73,17 +73,24 @@ export function ChoreGroupGrid({
     return effectiveOrder.map((k) => map.get(k)).filter(Boolean) as ChoreGroupEntry[];
   }, [choresByUser, effectiveOrder]);
 
-  // Each column gets a minimum readable width (220px); the grid spans as
-  // wide as needed and overflows horizontally when the viewport can't fit
-  // every column comfortably. Replaces the previous `grid-cols-2 md:grid-
-  // cols-3` squeeze which crammed 7 people (5 kids + 2 adults) into 3
-  // narrow columns × 3 rows (bug #105). Same shape now used in
-  // GroupedTaskGrid and WishesView for UX consistency.
+  // Desktop / tablet: each column gets a minimum readable width (220px);
+  // grid overflows horizontally when the viewport can't fit every column.
+  // Mobile (with multiple groups): each column is sized to the viewport
+  // width and CSS scroll-snap turns the row into a swipeable carousel —
+  // user swipes left/right between profiles, scrolls up/down inside each.
+  // Replaces the previous `grid-cols-2 md:grid-cols-3` squeeze (bug #105).
+  // Same shape now used across all per-person list views.
+  const isSwipeCarousel = isMobile && sortedGroups.length > 1;
   return (
     <div
-      className="grid gap-2 h-full overflow-x-auto"
+      className={cn(
+        'grid gap-2 h-full overflow-x-auto',
+        isSwipeCarousel && 'snap-x snap-mandatory'
+      )}
       style={{
-        gridTemplateColumns: `repeat(${Math.max(sortedGroups.length, 1)}, minmax(220px, 1fr))`,
+        gridTemplateColumns: isSwipeCarousel
+          ? `repeat(${sortedGroups.length}, calc(100vw - 32px))`
+          : `repeat(${Math.max(sortedGroups.length, 1)}, minmax(220px, 1fr))`,
       }}
     >
       {sortedGroups.map(({ user, chores }, idx) => {
@@ -97,7 +104,8 @@ export function ChoreGroupGrid({
             className={cn(
               'flex flex-col border-2 rounded-lg overflow-hidden bg-card/90 backdrop-blur-sm transition-all',
               !isTouch && !isMobile && 'cursor-grab active:cursor-grabbing touch-none',
-              isDragging && 'opacity-50 scale-95 ring-4 ring-primary/50'
+              isDragging && 'opacity-50 scale-95 ring-4 ring-primary/50',
+              isSwipeCarousel && 'snap-start'
             )}
             style={{ borderColor: userColor }}
           >

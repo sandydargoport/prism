@@ -96,15 +96,20 @@ export function GiftIdeasView() {
     return <div className="text-destructive text-center py-8">{error}</div>;
   }
 
-  // Min-width columns + horizontal scroll when group count outgrows the
-  // viewport — same shape as Chores / Tasks / Wishes. Avoids cramming
-  // many members into 3 fixed columns at 5+ kids (bug #105).
+  // Desktop: min-width columns + horizontal scroll. Mobile (multi-member):
+  // viewport-wide columns + scroll-snap carousel — same UX as Chores/Tasks.
+  const isSwipeCarousel = isMobile && otherMembers.length > 1;
   return (
     <>
       <div
-        className="grid gap-3 h-full overflow-x-auto"
+        className={cn(
+          'grid gap-3 h-full overflow-x-auto',
+          isSwipeCarousel && 'snap-x snap-mandatory'
+        )}
         style={{
-          gridTemplateColumns: `repeat(${Math.max(otherMembers.length, 1)}, minmax(220px, 1fr))`,
+          gridTemplateColumns: isSwipeCarousel
+            ? `repeat(${otherMembers.length}, calc(100vw - 32px))`
+            : `repeat(${Math.max(otherMembers.length, 1)}, minmax(220px, 1fr))`,
         }}
       >
         {otherMembers.map((member) => {
@@ -112,7 +117,10 @@ export function GiftIdeasView() {
           return (
             <div
               key={member.id}
-              className="flex flex-col rounded-xl border-2 bg-card/50 overflow-hidden min-h-0"
+              className={cn(
+                'flex flex-col rounded-xl border-2 bg-card/50 overflow-hidden min-h-0',
+                isSwipeCarousel && 'snap-start'
+              )}
               style={{ borderColor: member.color }}
             >
               {/* Card header */}

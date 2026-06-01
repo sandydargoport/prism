@@ -57,16 +57,20 @@ export function GroupedTaskGrid({
     return effectiveOrder.map(k => map.get(k)).filter(Boolean) as GroupDef[];
   }, [groups, effectiveOrder]);
 
-  // Each column gets a minimum readable width (220px); the grid overflows
-  // horizontally when the viewport can't fit every column comfortably.
-  // Replaces the previous `grid-cols-2 md:grid-cols-3` squeeze (see
-  // ChoreGroupGrid for the bug context). Same shape used in
-  // ChoreGroupGrid and WishesView for UX consistency.
+  // See ChoreGroupGrid for full context. Desktop: min-width columns +
+  // horizontal scroll. Mobile (multi-group): viewport-wide columns +
+  // scroll-snap carousel — swipe between profiles, vertical scroll inside.
+  const isSwipeCarousel = isMobile && sortedGroups.length > 1;
   return (
     <div
-      className="grid gap-2 h-full overflow-x-auto"
+      className={cn(
+        'grid gap-2 h-full overflow-x-auto',
+        isSwipeCarousel && 'snap-x snap-mandatory'
+      )}
       style={{
-        gridTemplateColumns: `repeat(${Math.max(sortedGroups.length, 1)}, minmax(220px, 1fr))`,
+        gridTemplateColumns: isSwipeCarousel
+          ? `repeat(${sortedGroups.length}, calc(100vw - 32px))`
+          : `repeat(${Math.max(sortedGroups.length, 1)}, minmax(220px, 1fr))`,
       }}
     >
       {sortedGroups.map((group, idx) => {
@@ -79,7 +83,8 @@ export function GroupedTaskGrid({
             className={cn(
               'flex flex-col border-2 rounded-lg overflow-hidden bg-card/90 backdrop-blur-sm transition-all',
               !isTouch && !isMobile && 'cursor-grab active:cursor-grabbing touch-none',
-              isDragging && 'opacity-50 scale-95 ring-4 ring-primary/50'
+              isDragging && 'opacity-50 scale-95 ring-4 ring-primary/50',
+              isSwipeCarousel && 'snap-start'
             )}
             style={{ borderColor: group.color }}
           >

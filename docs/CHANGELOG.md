@@ -4,6 +4,9 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+### Changed — Mobile
+- **Per-person list views become a swipeable carousel on phones**: Chores, Tasks (flat + nested), Wishes, and Gift Ideas all switch to a CSS scroll-snap carousel when viewed on mobile with more than one group — each profile takes the full viewport width and the user swipes left/right between people while still scrolling vertically inside the active profile's list. Desktop / tablet behavior unchanged (min-width columns + horizontal scroll). Cleaner than the previous "1.5 profiles visible at 220 px each" feel on phones.
+
 ### Fixed — List views
 - **Chores person filter now actually filters the rendered columns**: `ChoresView`'s `choresByUser` memo iterated every family member when building columns, so selecting a single-person filter under Group:Person still showed empty columns for everyone else. Tasks and Wishes already filtered correctly; Chores now matches. Unassigned column also hides when a person filter is active (the user explicitly asked to see only those people).
 - **Per-person grids no longer squeeze when the family is large**: Chores, Tasks (flat + nested), Wishes, and Gift Ideas all used `grid-cols-2 md:grid-cols-3` which crammed 7 people (5 kids + 2 adults) into 3 narrow columns × 3 rows on a portrait tablet. Switched all five views to `gridTemplateColumns: repeat(N, minmax(220px, 1fr))` + `overflow-x-auto`. Each column gets at least 220px; if the viewport can't fit every column comfortably, the grid scrolls horizontally — same shape across all list views. Closes [#105](https://github.com/sandydargoport/prism/issues/105).
