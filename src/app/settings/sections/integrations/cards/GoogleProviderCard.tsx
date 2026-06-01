@@ -11,6 +11,7 @@ import { ProviderCardShell } from '../shared/ProviderCardShell';
 import { CollapsibleSubSection } from '../shared/CollapsibleSubSection';
 import type { IntegrationStatus } from '../shared/useIntegrationStatus';
 import type { ConnectionStatus } from '../shared/ConnectionStatusBadge';
+import { TaskIntegrationsSection } from '../../TaskIntegrationsSection';
 
 interface Props {
   status: IntegrationStatus | null;
@@ -191,17 +192,7 @@ export function GoogleProviderCard({
           }
           forceOpen={forceSubSectionOpen === 'google-tasks'}
         >
-          <div className="text-sm space-y-2">
-            <p className="text-muted-foreground">
-              Wire Google Tasks lists into Prism Tasks per family member.
-            </p>
-            <Link
-              href="/settings?section=tasks"
-              className="text-primary hover:underline"
-            >
-              Open Task Sync settings →
-            </Link>
-          </div>
+          <TaskIntegrationsSection embedded providerFilter="google_tasks" />
         </CollapsibleSubSection>
       </ProviderCardShell>
       <ConfirmDialog {...dialogProps} />

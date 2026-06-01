@@ -33,9 +33,42 @@ import {
   ConfirmDialog,
 } from './integrations/components';
 
-export function TaskIntegrationsSection() {
+interface TaskIntegrationsSectionProps {
+  /** Hide the section header (h2 + description) when rendered inside a card sub-section. */
+  embedded?: boolean;
+  /**
+   * Limit displayed sources and skip the provider picker on Connect. Used
+   * when embedded under a single-provider card (Microsoft or Google).
+   */
+  providerFilter?: 'microsoft_todo' | 'google_tasks';
+}
+
+export function TaskIntegrationsSection({
+  embedded = false,
+  providerFilter,
+}: TaskIntegrationsSectionProps = {}) {
   const { lists: taskLists, loading: listsLoading, createList, updateList, deleteList } = useTaskLists();
-  const integration = useIntegrationSources<TaskSource>(TASK_CONFIG);
+  // Derived config keeps this hook instance scoped to its provider's URL
+  // triggers (selectMsList vs selectGoogleTasksList) so two embedded
+  // instances (under Google + Microsoft cards) don't both pop modals.
+  const integrationConfig = providerFilter
+    ? { ...TASK_CONFIG, respondsToProvider: providerFilter }
+    : TASK_CONFIG;
+  const integration = useIntegrationSources<TaskSource>(integrationConfig);
+
+  const displayedSources = providerFilter
+    ? integration.sources.filter((s) => s.provider === providerFilter)
+    : integration.sources;
+
+  const handleConnectEntity = (entityId: string) => {
+    if (providerFilter === 'microsoft_todo') {
+      window.location.href = `/api/auth/microsoft-tasks?taskListId=${entityId}&returnSection=integrations`;
+    } else if (providerFilter === 'google_tasks') {
+      window.location.href = `/api/auth/google-tasks?taskListId=${entityId}&returnSection=integrations`;
+    } else {
+      integration.handleConnectProvider(entityId);
+    }
+  };
 
   // Task-specific: new connection flow (no pre-selected Prism list)
   const [selectedMsListForNew, setSelectedMsListForNew] = useState<{ id: string; name: string } | null>(null);
@@ -222,12 +255,14 @@ export function TaskIntegrationsSection() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">Task Sync</h2>
-        <p className="text-muted-foreground">
-          Manage task list sync with external apps
-        </p>
-      </div>
+      {!embedded && (
+        <div>
+          <h2 className="text-2xl font-bold">Task Sync</h2>
+          <p className="text-muted-foreground">
+            Manage task list sync with external apps
+          </p>
+        </div>
+      )}
 
       {integration.statusMessage && (
         <StatusBanner
@@ -237,7 +272,7 @@ export function TaskIntegrationsSection() {
       )}
 
       <ConnectedSourcesCard
-        sources={integration.sources}
+        sources={displayedSources}
         loading={integration.loading}
         syncingAll={integration.syncingAll}
         syncing={integration.syncing}
@@ -245,17 +280,25 @@ export function TaskIntegrationsSection() {
         config={TASK_CONFIG}
         emptyIcon={<ListTodo className="h-5 w-5" />}
         emptyText="No task sources connected yet"
-        emptySubtext="Connect Microsoft To-Do or Google Tasks from your task list below"
+        emptySubtext={
+          providerFilter === 'google_tasks'
+            ? 'Connect Google Tasks from your task list below'
+            : providerFilter === 'microsoft_todo'
+              ? 'Connect Microsoft To-Do from your task list below'
+              : 'Connect Microsoft To-Do or Google Tasks from your task list below'
+        }
         emptyExtra={
-          <p className="text-sm mt-1">
-            or set up your account in{' '}
-            <button
-              onClick={() => { window.location.href = '/settings?section=integrations'; }}
-              className="text-primary hover:underline font-medium"
-            >
-              Integrations
-            </button>
-          </p>
+          embedded ? null : (
+            <p className="text-sm mt-1">
+              or set up your account in{' '}
+              <button
+                onClick={() => { window.location.href = '/settings?section=integrations'; }}
+                className="text-primary hover:underline font-medium"
+              >
+                Integrations
+              </button>
+            </p>
+          )
         }
         onSyncAll={integration.handleSyncAll}
         onSyncNow={integration.handleSyncNow}
@@ -287,12 +330,12 @@ export function TaskIntegrationsSection() {
             style={{ backgroundColor: list.color || '#6B7280' }}
           />
         )}
-        sources={integration.sources}
+        sources={displayedSources}
         config={TASK_CONFIG}
         getSourceForEntity={(list) =>
-          integration.sources.find((s) => s.taskListId === list.id)
+          displayedSources.find((s) => s.taskListId === list.id)
         }
-        onConnect={integration.handleConnectProvider}
+        onConnect={handleConnectEntity}
         headerActions={
           <Button size="sm" onClick={() => setShowNewListModal(true)}>
             <Plus className="h-4 w-4 mr-1" />
@@ -306,7 +349,7 @@ export function TaskIntegrationsSection() {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  integration.handleConnectProvider(list.id);
+                  handleConnectEntity(list.id);
                 }}
               >
                 Change
@@ -322,7 +365,7 @@ export function TaskIntegrationsSection() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => integration.handleConnectProvider(list.id)}
+                onClick={() => handleConnectEntity(list.id)}
                 className="gap-1"
               >
                 <Link2 className="h-4 w-4" />

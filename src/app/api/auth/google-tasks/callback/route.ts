@@ -121,9 +121,17 @@ export async function GET(request: Request) {
       })
     );
 
+    // Land on the new Integrations cards' Google Tasks sub-section when
+    // the flow was initiated from there; otherwise the legacy ?section=tasks
+    // (redirected via LEGACY_TO_INTEGRATIONS so in-flight callbacks survive).
+    const useIntegrations = returnSection === 'integrations';
     const redirectUrl = taskListId
-      ? `${BASE_URL}/settings?section=tasks&selectGoogleTasksList=true&taskListId=${taskListId}`
-      : `${BASE_URL}/settings?section=tasks&selectGoogleTasksList=true&newConnection=true`;
+      ? useIntegrations
+        ? `${BASE_URL}/settings?section=integrations&selectGoogleTasksList=true&taskListId=${taskListId}#google-tasks`
+        : `${BASE_URL}/settings?section=tasks&selectGoogleTasksList=true&taskListId=${taskListId}`
+      : useIntegrations
+        ? `${BASE_URL}/settings?section=integrations&selectGoogleTasksList=true&newConnection=true#google-tasks`
+        : `${BASE_URL}/settings?section=tasks&selectGoogleTasksList=true&newConnection=true`;
 
     return NextResponse.redirect(redirectUrl);
   } catch (error) {

@@ -11,6 +11,9 @@ import { ProviderCardShell } from '../shared/ProviderCardShell';
 import { CollapsibleSubSection } from '../shared/CollapsibleSubSection';
 import type { IntegrationStatus } from '../shared/useIntegrationStatus';
 import type { ConnectionStatus } from '../shared/ConnectionStatusBadge';
+import { TaskIntegrationsSection } from '../../TaskIntegrationsSection';
+import { ShoppingIntegrationsSection } from '../../ShoppingIntegrationsSection';
+import { WishListIntegrationsSection } from '../../WishListIntegrationsSection';
 
 interface Props {
   status: IntegrationStatus | null;
@@ -162,14 +165,7 @@ export function MicrosoftProviderCard({
           }
           forceOpen={forceSubSectionOpen === 'microsoft-tasks'}
         >
-          <div className="text-sm">
-            <Link
-              href="/settings?section=tasks"
-              className="text-primary hover:underline"
-            >
-              Open Task Sync settings →
-            </Link>
-          </div>
+          <TaskIntegrationsSection embedded providerFilter="microsoft_todo" />
         </CollapsibleSubSection>
         <CollapsibleSubSection
           id="microsoft-shopping"
@@ -184,14 +180,7 @@ export function MicrosoftProviderCard({
           }
           forceOpen={forceSubSectionOpen === 'microsoft-shopping'}
         >
-          <div className="text-sm">
-            <Link
-              href="/settings?section=shopping"
-              className="text-primary hover:underline"
-            >
-              Open Shopping Sync settings →
-            </Link>
-          </div>
+          <ShoppingIntegrationsSection embedded />
         </CollapsibleSubSection>
         <CollapsibleSubSection
           id="microsoft-wish"
@@ -204,14 +193,7 @@ export function MicrosoftProviderCard({
           }
           forceOpen={forceSubSectionOpen === 'microsoft-wish'}
         >
-          <div className="text-sm">
-            <Link
-              href="/settings?section=wish"
-              className="text-primary hover:underline"
-            >
-              Open Wish List Sync settings →
-            </Link>
-          </div>
+          <WishListIntegrationsSection embedded />
         </CollapsibleSubSection>
         <CollapsibleSubSection
           id="microsoft-onedrive"

@@ -53,6 +53,14 @@ export interface IntegrationConfig {
   errorMessages: Record<string, string>;
   /** Success message map */
   successMessages: Record<string, string>;
+  /**
+   * Limit this hook instance to respond only to a specific provider's URL
+   * triggers (`selectMsList=true` vs `selectGoogleTasksList=true`). Set
+   * when the same legacy section is embedded inside multiple provider
+   * cards — without this, every instance would pop its modal on any
+   * trigger. Unset = legacy behavior, respond to both.
+   */
+  respondsToProvider?: 'microsoft_todo' | 'google_tasks';
 }
 
 export interface MsList {

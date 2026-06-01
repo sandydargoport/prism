@@ -91,7 +91,12 @@ export function useIntegrationSources<S extends BaseSource>(
     const entityId = searchParams.get(config.oauthEntityParam);
     const newConnection = searchParams.get('newConnection');
 
-    if (section === config.section) {
+    // Hook activates when the URL targets either:
+    //   - the legacy section this hook backs (config.section), or
+    //   - the new Integrations page (where it's now embedded).
+    // Lets one hook instance handle both standalone use AND embedded use
+    // without forking the trigger logic.
+    if (section === config.section || section === 'integrations') {
       if (error) {
         setStatusMessage({
           type: 'error',
@@ -103,26 +108,35 @@ export function useIntegrationSources<S extends BaseSource>(
           text: config.successMessages[success] || 'Operation completed successfully!',
         });
       } else if (selectGoogleTasksList === 'true') {
-        // Google Tasks OAuth callback
-        setListSelectionProvider('google_tasks');
-        if (newConnection === 'true') {
-          setIsNewConnection(true);
-          fetchListsWithUrl('/api/task-sources/google-lists');
-        } else if (entityId) {
-          setIsNewConnection(false);
-          setPendingEntityId(entityId);
-          fetchListsWithUrl(`/api/task-sources/google-lists?taskListId=${entityId}`);
+        // Skip if this hook instance is filtered to a different provider
+        // (multiple instances embedded under different cards).
+        if (config.respondsToProvider && config.respondsToProvider !== 'google_tasks') {
+          // no-op
+        } else {
+          setListSelectionProvider('google_tasks');
+          if (newConnection === 'true') {
+            setIsNewConnection(true);
+            fetchListsWithUrl('/api/task-sources/google-lists');
+          } else if (entityId) {
+            setIsNewConnection(false);
+            setPendingEntityId(entityId);
+            fetchListsWithUrl(`/api/task-sources/google-lists?taskListId=${entityId}`);
+          }
         }
       } else if (selectMsList === 'true') {
-        setListSelectionProvider('microsoft_todo');
-        if (newConnection === 'true') {
-          // New connection flow: fetch MS lists without a specific entity ID
-          setIsNewConnection(true);
-          fetchListsWithUrl('/api/task-sources/microsoft-lists?newConnection=true');
-        } else if (entityId) {
-          setIsNewConnection(false);
-          setPendingEntityId(entityId);
-          fetchMsListsInternal(entityId);
+        if (config.respondsToProvider && config.respondsToProvider !== 'microsoft_todo') {
+          // no-op — filtered out
+        } else {
+          setListSelectionProvider('microsoft_todo');
+          if (newConnection === 'true') {
+            // New connection flow: fetch MS lists without a specific entity ID
+            setIsNewConnection(true);
+            fetchListsWithUrl('/api/task-sources/microsoft-lists?newConnection=true');
+          } else if (entityId) {
+            setIsNewConnection(false);
+            setPendingEntityId(entityId);
+            fetchMsListsInternal(entityId);
+          }
         }
       }
     }
@@ -234,7 +248,15 @@ export function useIntegrationSources<S extends BaseSource>(
           text: `Connected to "${externalListName}" in ${providerName}!`,
         });
         await fetchSources();
-        window.history.replaceState({}, '', `/settings?section=${config.section}`);
+        // Preserve whichever section the user is currently on (legacy task/shopping/wish
+// vs the embedded-in-integrations case) instead of forcing back to config.section.
+{
+  const url = new URL(window.location.href);
+  for (const k of ['selectMsList', 'selectGoogleTasksList', 'newConnection', 'taskListId', 'shoppingListId', 'wishMemberId']) {
+    url.searchParams.delete(k);
+  }
+  window.history.replaceState({}, '', url.toString());
+}
       } else {
         const data = await res.json();
         setStatusMessage({
@@ -378,7 +400,15 @@ export function useIntegrationSources<S extends BaseSource>(
     setShowMsListModal(false);
     setMsLists([]);
     setPendingEntityId(null);
-    window.history.replaceState({}, '', `/settings?section=${config.section}`);
+    // Preserve whichever section the user is currently on (legacy task/shopping/wish
+// vs the embedded-in-integrations case) instead of forcing back to config.section.
+{
+  const url = new URL(window.location.href);
+  for (const k of ['selectMsList', 'selectGoogleTasksList', 'newConnection', 'taskListId', 'shoppingListId', 'wishMemberId']) {
+    url.searchParams.delete(k);
+  }
+  window.history.replaceState({}, '', url.toString());
+}
   };
 
   const closeProviderPickerModal = () => {

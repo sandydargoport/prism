@@ -15,19 +15,38 @@ import {
 } from './integrations/components';
 import { KrogerConnectionCard } from './KrogerConnectionCard';
 
-export function ShoppingIntegrationsSection() {
+interface ShoppingIntegrationsSectionProps {
+  /** Hide section header + Kroger card when rendered inside a Microsoft card sub-section. */
+  embedded?: boolean;
+}
+
+export function ShoppingIntegrationsSection({
+  embedded = false,
+}: ShoppingIntegrationsSectionProps = {}) {
   const { lists: shoppingLists, loading: listsLoading } = useShoppingLists({ refreshInterval: 0 });
 
   const integration = useIntegrationSources<ShoppingListSource>(SHOPPING_CONFIG);
 
+  const handleConnectEntity = (entityId: string) => {
+    if (embedded) {
+      // Embedded in the Microsoft card — provider is implicit. Skip the
+      // ProviderPickerModal and go straight to MS OAuth.
+      window.location.href = `/api/auth/microsoft-tasks?shoppingListId=${entityId}&returnSection=integrations`;
+    } else {
+      integration.handleConnectProvider(entityId);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">Shopping Sync</h2>
-        <p className="text-muted-foreground">
-          Manage shopping list sync with external apps
-        </p>
-      </div>
+      {!embedded && (
+        <div>
+          <h2 className="text-2xl font-bold">Shopping Sync</h2>
+          <p className="text-muted-foreground">
+            Manage shopping list sync with external apps
+          </p>
+        </div>
+      )}
 
       {integration.statusMessage && (
         <StatusBanner
@@ -36,7 +55,9 @@ export function ShoppingIntegrationsSection() {
         />
       )}
 
-      <KrogerConnectionCard />
+      {/* Kroger has its own card in the new Integrations IA, so embedded
+          shopping-sync only renders the Microsoft-To-Do shopping wiring. */}
+      {!embedded && <KrogerConnectionCard />}
 
       <ConnectedSourcesCard
         sources={integration.sources}
@@ -66,7 +87,7 @@ export function ShoppingIntegrationsSection() {
         getSourceForEntity={(list) =>
           integration.sources.find((s) => s.shoppingListId === list.id)
         }
-        onConnect={integration.handleConnectProvider}
+        onConnect={handleConnectEntity}
       />
 
       <ProviderPickerModal

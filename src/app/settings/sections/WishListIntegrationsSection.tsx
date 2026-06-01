@@ -14,19 +14,36 @@ import {
   ConfirmDialog,
 } from './integrations/components';
 
-export function WishListIntegrationsSection() {
+interface WishListIntegrationsSectionProps {
+  /** Hide section header when rendered inside a Microsoft card sub-section. */
+  embedded?: boolean;
+}
+
+export function WishListIntegrationsSection({
+  embedded = false,
+}: WishListIntegrationsSectionProps = {}) {
   const { members, loading: membersLoading } = useFamily();
 
   const integration = useIntegrationSources<WishItemSource>(WISH_CONFIG);
 
+  const handleConnectEntity = (entityId: string) => {
+    if (embedded) {
+      window.location.href = `/api/auth/microsoft-tasks?wishMemberId=${entityId}&returnSection=integrations`;
+    } else {
+      integration.handleConnectProvider(entityId);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">Wish List Sync</h2>
-        <p className="text-muted-foreground">
-          Sync family members&apos; wish lists with Microsoft To-Do
-        </p>
-      </div>
+      {!embedded && (
+        <div>
+          <h2 className="text-2xl font-bold">Wish List Sync</h2>
+          <p className="text-muted-foreground">
+            Sync family members&apos; wish lists with Microsoft To-Do
+          </p>
+        </div>
+      )}
 
       {integration.statusMessage && (
         <StatusBanner
@@ -63,7 +80,7 @@ export function WishListIntegrationsSection() {
         getSourceForEntity={(member) =>
           integration.sources.find((s) => s.memberId === member.id)
         }
-        onConnect={integration.handleConnectProvider}
+        onConnect={handleConnectEntity}
       />
 
       <ProviderPickerModal
