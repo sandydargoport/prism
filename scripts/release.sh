@@ -78,6 +78,27 @@ fs.writeFileSync('./package.json', JSON.stringify(p, null, 2) + '\n');
 console.log('✓ package.json: ' + previous + ' → $NEW_VERSION');
 "
 
+# --- Bump ha-app/config.yaml version field ---------------------------
+# Single source of truth is package.json — this just keeps the HA addon
+# manifest in lockstep so the release pipeline pushes images to the
+# right tag.
+if [[ -f ha-app/config.yaml ]]; then
+  node -e "
+const fs = require('fs');
+const path = 'ha-app/config.yaml';
+const text = fs.readFileSync(path, 'utf8');
+const match = text.match(/^version:\\s*(.*)\$/m);
+if (!match) {
+  console.error('ERROR: ha-app/config.yaml has no version: field.');
+  process.exit(1);
+}
+const previous = match[1].trim().replace(/^[\"']|[\"']\$/g, '');
+const next = text.replace(/^version:.*\$/m, 'version: \"$NEW_VERSION\"');
+fs.writeFileSync(path, next);
+console.log('✓ ha-app/config.yaml: ' + previous + ' → $NEW_VERSION');
+"
+fi
+
 # --- Migrate CHANGELOG Unreleased -> [NEW_VERSION] --------------------
 node - "$NEW_VERSION" "$TODAY" <<'NODE'
 const fs = require('fs');
@@ -148,5 +169,11 @@ After the PR merges to master:
   git push origin v$NEW_VERSION
   gh release create v$NEW_VERSION --title "$NEW_VERSION" \\
        --notes-file <(awk '/^## \\[$NEW_VERSION\\]/{f=1;next} f&&/^## \\[/{exit} f' docs/CHANGELOG.md)
+
+The tag push fires .github/workflows/release.yml, which builds the HA
+addon for amd64 + aarch64 and publishes to ghcr.io. amd64 is fast
+(~5 min), aarch64 runs via QEMU and takes 30-60 min. Both must complete
+before HA users can pull the published image; until then HA Supervisor
+falls back to building locally from the in-addon Dockerfile.
 
 MSG

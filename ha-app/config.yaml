@@ -3,6 +3,14 @@ version: "1.8.4"
 slug: prism
 description: Self-hosted family dashboard — calendars, tasks, photos, and more.
 url: https://github.com/sandydargoport/prism
+# Pre-built per-arch images published by .github/workflows/release.yml on
+# every vX.Y.Z tag push. HA Supervisor substitutes {arch} per host and
+# pulls the matching image — install becomes a 30-second pull instead of
+# a 10-minute build from source. Until the first tag is pushed, this
+# field references images that don't yet exist; users on that pre-1.8.5
+# window will see HA Supervisor fall back to building the local
+# Dockerfile (which works but is slow).
+image: ghcr.io/sandydargoport/prism-ha-{arch}
 arch:
   - amd64
   - aarch64

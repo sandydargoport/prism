@@ -36,4 +36,26 @@ if [[ "$CHANGELOG_TOP" != "$VERSION" ]]; then
   exit 1
 fi
 
-echo "✓ package.json ($VERSION) matches CHANGELOG.md top section"
+# Also gate against ha-app/config.yaml. The HA addon's `version:` field
+# is what HA Supervisor uses to detect updates — if it drifts from
+# package.json, the release pipeline pushes an image to the wrong tag
+# and HA shows users a stale "Update available" badge that doesn't move.
+HA_CONFIG=ha-app/config.yaml
+if [[ -f "$HA_CONFIG" ]]; then
+  HA_VERSION=$(grep -E '^version:' "$HA_CONFIG" | head -1 \
+    | awk '{print $2}' | tr -d '"' | tr -d "'" || true)
+  if [[ -z "$HA_VERSION" ]]; then
+    echo "ERROR: ha-app/config.yaml has no parseable version: field."
+    exit 1
+  fi
+  if [[ "$HA_VERSION" != "$VERSION" ]]; then
+    echo "ERROR: version drift detected."
+    echo "  package.json:           $VERSION"
+    echo "  ha-app/config.yaml:     $HA_VERSION"
+    echo ""
+    echo "Run 'bash scripts/release.sh <new-version>' to bump all three in lockstep."
+    exit 1
+  fi
+fi
+
+echo "✓ package.json ($VERSION) matches CHANGELOG.md + ha-app/config.yaml"

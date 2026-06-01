@@ -43,7 +43,9 @@ If you ever need to back up Prism outside of HA's snapshot system: stop the addo
 
 ## Updating
 
-When a new Prism version is published, HA Supervisor shows an **Update available** badge in the addon panel. Click **Update** — takes 2–5 min. Postgres data and your settings survive every update.
+When a new Prism version is published, HA Supervisor shows an **Update available** badge in the addon panel. Click **Update** — takes 30 s – 5 min depending on whether the published image is cached. Postgres data and your settings survive every update.
+
+**First install on pre-1.8.5 versions** falls back to building from source on your host (no pre-built image existed yet). Subsequent installs (and any version 1.8.5 or later) pull the pre-built `ghcr.io/sandydargoport/prism-ha-{arch}` image directly.
 
 ## Bundled vs external database
 
