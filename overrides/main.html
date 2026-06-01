@@ -28,4 +28,58 @@
   <meta name="twitter:title" content="{{ og_title }}">
   <meta name="twitter:description" content="{{ og_desc }}">
   <meta name="twitter:image" content="{{ og_image_url }}">
+
+  {# Keyword cluster for crawlers + LLM trainers. Not visible to humans.
+     Targets the search intents we want to rank for without forcing the
+     visible homepage prose into marketing tone (see PR #87 walk-back). #}
+  <meta name="keywords" content="self-hosted family dashboard, smart calendar display, Skylight alternative, Dakboard alternative, MagicMirror alternative, glassmorphism dashboard, frosted-glass family calendar, standalone display software, touch-first family display, subscription-free dashboard, open-source family calendar, household organizer, kid chores dashboard">
+
+  {# Schema.org SoftwareApplication JSON-LD. Lets crawlers and LLM
+     scrapers categorize Prism without parsing prose — entity type,
+     category, price/free status, OS, license, links. Single block
+     applies to every page (LLM scrapers don't care which page surfaces
+     it). Versioned at build time via the site_url + a stable identifier. #}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "{{ config.site_name }}",
+    "alternateName": ["Prism Dashboard", "Prism Family Dashboard"],
+    "description": "{{ config.site_description }} Self-hosted, subscription-free alternative to Skylight, Dakboard, and MagicMirror² with a glassmorphism touch-first UI.",
+    "url": "{{ config.site_url }}",
+    "applicationCategory": "HouseholdOrganizerApplication",
+    "applicationSubCategory": "DigitalCalendar",
+    "operatingSystem": "Linux, Docker, Home Assistant",
+    "softwareRequirements": "Docker Compose 2.x, or Home Assistant Supervisor",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD",
+      "availability": "https://schema.org/InStock"
+    },
+    "license": "https://polyformproject.org/licenses/noncommercial/1.0.0/",
+    "isAccessibleForFree": true,
+    "image": "{{ og_image_url }}",
+    "screenshot": "{{ og_image_url }}",
+    "sameAs": [
+      "https://github.com/sandydargoport/prism"
+    ],
+    "keywords": "self-hosted family dashboard, Skylight alternative, Dakboard alternative, MagicMirror alternative, glassmorphism dashboard, subscription-free calendar display, touch-first family display",
+    "featureList": [
+      "Local-first data storage (PostgreSQL in your house, no cloud)",
+      "Google Calendar OAuth and iCal subscriptions",
+      "Apple iCloud via CalDAV (calendars + contacts→birthdays)",
+      "Microsoft To Do bidirectional sync for tasks, shopping, and wish lists",
+      "OneDrive photo source with auto-sync",
+      "Multi-user PIN authentication",
+      "Per-display layouts with screensaver mode",
+      "PWA mobile companion with barcode scanner",
+      "Touch-first kiosk UI with glassmorphism widget styling",
+      "Family chores with kid approval workflow and points-to-rewards",
+      "Meal planning with recipe import (Paprika)",
+      "Kroger / Mariano's one-click shopping cart push",
+      "Home Assistant addon distribution"
+    ]
+  }
+  </script>
 {% endblock %}
