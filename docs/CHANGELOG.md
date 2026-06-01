@@ -4,6 +4,14 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.8.6] – 2026-06-01
+
+### Fixed — Distribution
+- **HA addon release pipeline now builds successfully**: v1.8.5's tagged release was the first run of the release pipeline and exposed two compounding bugs — the addon `Dockerfile` used `apt-get` (Debian) against HA's Alpine-based supervisor base images, and even with `apk add` HA's base ships Node 20 while `package.json` requires Node ≥24. Switching the addon base from `ghcr.io/home-assistant/<arch>-base` to `node:24-alpine` resolves both: it's a published multi-arch image with the guaranteed Node version and lets HA Supervisor run the container as-is (Supervisor doesn't care which base the addon uses). `apt-get` block rewritten as `apk add` with Alpine package names; `run.sh` switched from Debian-style `/usr/lib/postgresql/15/bin/` paths to bare `initdb` / `pg_ctl` on PATH. Surfaced by @joe-cole1 in [#81](https://github.com/sandydargoport/prism/issues/81).
+
+### Added — SEO / Docs
+- **`SoftwareApplication` JSON-LD in the docs site**: structured-data entity card crawlers + LLM trainers can scrape without parsing prose — `applicationCategory`, `offers.price: 0`, `operatingSystem`, `alternateName` (de-disambiguates from GraphPad Prism / LaTeX Prism), `featureList` with 13 capabilities. Plus a `<meta name="keywords">` cluster with `glassmorphism dashboard`, `Skylight alternative`, `Dakboard alternative`, `MagicMirror alternative`, etc. Hidden from human readers (lives in `<head>` + the already-hidden `alternatives.md`) — respects the PR #87 walk-back of marketing-toned prose in user-facing surfaces.
+
 ## [1.8.5] – 2026-06-01
 
 ### Added — Distribution
