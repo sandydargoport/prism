@@ -1,0 +1,35 @@
+name: Prism
+version: "1.8.4"
+slug: prism
+description: Self-hosted family dashboard — calendars, tasks, photos, and more.
+url: https://github.com/sandydargoport/prism
+arch:
+  - amd64
+  - aarch64
+init: false
+boot: auto
+host_network: false
+hassio_role: default
+ports:
+  3000/tcp: 3000
+ports_description:
+  3000/tcp: Web UI
+ingress: false
+panel_icon: mdi:view-dashboard-variant
+panel_title: Prism
+map:
+  - data:rw
+  - share:rw
+  - media:rw
+options:
+  log_level: info
+  bundled_db: true
+  database_url: ""
+  redis_url: ""
+  photos_root: /data/photos
+schema:
+  log_level: list(trace|debug|info|notice|warning|error|fatal)
+  bundled_db: bool
+  database_url: str?
+  redis_url: str?
+  photos_root: str

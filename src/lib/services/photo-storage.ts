@@ -1,8 +1,9 @@
 import sharp from 'sharp';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { getPhotosRoot } from '@/lib/config/runtime';
 
-const PHOTOS_DIR = path.join(process.cwd(), 'data', 'photos');
+const PHOTOS_DIR = getPhotosRoot();
 const ORIGINALS_DIR = path.join(PHOTOS_DIR, 'originals');
 const THUMBS_DIR = path.join(PHOTOS_DIR, 'thumbs');
 

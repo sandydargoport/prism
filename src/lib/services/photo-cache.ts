@@ -18,7 +18,9 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 
-const CACHE_ROOT = path.join(process.cwd(), 'data', 'photos', 'cache');
+import { getPhotosRoot } from '@/lib/config/runtime';
+
+const CACHE_ROOT = path.join(getPhotosRoot(), 'cache');
 
 function sanitize(segment: string): string {
   // Defense-in-depth: keys come from our own DB, but still guard against any

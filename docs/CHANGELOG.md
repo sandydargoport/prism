@@ -4,6 +4,9 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+### Added — Distribution
+- **Home Assistant addon** (`ha-app/`): Prism can now be installed as a one-click HA addon via custom repository. Bundled Postgres + Redis run inside the addon container; all state lives under HA's `/data` volume and survives addon updates. New `src/lib/config/runtime.ts` adds `isHaMode()` plus `getDataRoot()` / `getPhotosRoot()` / `getAvatarsRoot()` helpers so photo and avatar storage automatically use `/data/{photos,avatars}` in HA mode; `PRISM_HA_MODE`, `PRISM_DATA_ROOT`, `PRISM_PHOTO_ROOT`, and `PRISM_AVATAR_ROOT` env vars are respected. Standard tier (single all-in-one container, no nginx/cert work) — matches the install-friction constraint surfaced in [#81](https://github.com/sandydargoport/prism/issues/81). Release pipeline (CI image push + version sync) follows as a separate PR before the first tagged release.
+
 ### Added — Settings
 - **Consolidated Integrations page** (`/settings?section=integrations`): one card per provider brand — Google (Calendars + Tasks), Microsoft (incl. OneDrive), Bus tracking (Gmail), Apple/CalDAV, Kroger — plus a cross-provider Photo Sources card. Each card has a connection status badge and collapsible sub-sections for per-feature wiring; the Account row sits at the top of each card so disconnect / re-auth controls are reachable in one expand. URL anchors (`#microsoft-onedrive`, `#gmail-bus`, `#caldav-calendars`, etc.) deep-link straight to a sub-section. Ships alongside the legacy Connected Accounts / Task Sync / Shopping Sync / Wish List Sync / Photos sections; cleanup pass removing the legacy sections will follow once parity is verified on real accounts. Closes phase 1 of [#52](https://github.com/sandydargoport/prism/issues/52).
 
