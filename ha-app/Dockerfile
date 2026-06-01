@@ -74,7 +74,7 @@ RUN cp -r /src/.next/standalone/. /app/ && \
     cp -r /src/drizzle /app/drizzle && \
     mkdir -p /app/scripts && cp /src/scripts/migrate.js /app/scripts/migrate.js && \
     mkdir -p /app/node_modules && cp -r /src/node_modules/postgres /app/node_modules/postgres && \
-    cp -r /src/dist/db /app/dist/db && \
+    mkdir -p /app/dist && cp -r /src/dist/db /app/dist/db && \
     cp -r /src/src/lib/db/init /app/db-init && \
     rm -rf /src
 
