@@ -33,19 +33,24 @@ permissions:
 jobs:
   build:
     name: Build & push (${{ matrix.arch }})
-    runs-on: ubuntu-latest
-    # arm64 via QEMU emulation is slow (~30-60 min for a build this size)
-    # but acceptable for a tag-triggered workflow. If it becomes a problem,
-    # the arm64 matrix entry can be moved to a self-hosted runner.
-    timeout-minutes: 90
+    # Native runners per arch — `ubuntu-24.04-arm` is the free arm64
+    # runner GitHub publishes for public repos. QEMU emulation was
+    # tried first; SWC/Next.js hits ARM instructions QEMU TCG can't
+    # emulate (Illegal instruction during `npm run build`), so we
+    # switched to native ARM hardware. amd64 stays on the standard
+    # ubuntu-latest runner.
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         include:
           - arch: amd64
             platform: linux/amd64
+            runner: ubuntu-latest
           - arch: aarch64
             platform: linux/arm64
+            runner: ubuntu-24.04-arm
 
     steps:
       - uses: actions/checkout@v4
@@ -68,9 +73,7 @@ jobs:
             exit 1
           fi
 
-      - name: Set up QEMU
-        if: matrix.arch != 'amd64'
-        uses: docker/setup-qemu-action@v3
+      # No setup-qemu — both runners are native to their target arch.
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
