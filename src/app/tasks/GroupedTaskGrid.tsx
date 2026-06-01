@@ -57,14 +57,18 @@ export function GroupedTaskGrid({
     return effectiveOrder.map(k => map.get(k)).filter(Boolean) as GroupDef[];
   }, [groups, effectiveOrder]);
 
+  // Each column gets a minimum readable width (220px); the grid overflows
+  // horizontally when the viewport can't fit every column comfortably.
+  // Replaces the previous `grid-cols-2 md:grid-cols-3` squeeze (see
+  // ChoreGroupGrid for the bug context). Same shape used in
+  // ChoreGroupGrid and WishesView for UX consistency.
   return (
-    <div className={cn(
-      'grid gap-2 h-full',
-      isMobile ? 'grid-cols-1' :
-      sortedGroups.length <= 2 ? 'grid-cols-1 md:grid-cols-2' :
-      sortedGroups.length <= 4 ? 'grid-cols-2' :
-      'grid-cols-2 md:grid-cols-3'
-    )}>
+    <div
+      className="grid gap-2 h-full overflow-x-auto"
+      style={{
+        gridTemplateColumns: `repeat(${Math.max(sortedGroups.length, 1)}, minmax(220px, 1fr))`,
+      }}
+    >
       {sortedGroups.map((group, idx) => {
         const completedCount = group.tasks.filter((t) => t.completed).length;
         const isDragging = draggedId === group.key;

@@ -96,15 +96,17 @@ export function GiftIdeasView() {
     return <div className="text-destructive text-center py-8">{error}</div>;
   }
 
+  // Min-width columns + horizontal scroll when group count outgrows the
+  // viewport — same shape as Chores / Tasks / Wishes. Avoids cramming
+  // many members into 3 fixed columns at 5+ kids (bug #105).
   return (
     <>
-      <div className={cn(
-        'grid gap-3 h-full',
-        isMobile ? 'grid-cols-1' :
-        isPortrait
-          ? otherMembers.length <= 2 ? 'grid-cols-1' : 'grid-cols-2'
-          : otherMembers.length <= 2 ? 'grid-cols-2' : 'grid-cols-3'
-      )}>
+      <div
+        className="grid gap-3 h-full overflow-x-auto"
+        style={{
+          gridTemplateColumns: `repeat(${Math.max(otherMembers.length, 1)}, minmax(220px, 1fr))`,
+        }}
+      >
         {otherMembers.map((member) => {
           const memberIdeas = ideasByUser[member.id] || [];
           return (

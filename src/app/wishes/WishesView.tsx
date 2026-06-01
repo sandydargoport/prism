@@ -266,11 +266,18 @@ export function WishesView() {
         ) : error ? (
           <div className="text-destructive text-center py-8">{error}</div>
         ) : (
-          /* Grid view: one card per family member (filtered if selection active), draggable */
-          <div className={cn(
-            'grid gap-3 h-full',
-            isMobile ? 'grid-cols-1' : isPortrait ? 'grid-cols-2' : 'grid-cols-3'
-          )}>
+          /* Grid view: one card per family member (filtered if selection active), draggable.
+             Min-width columns + horizontal scroll when group count outgrows the viewport —
+             same UX shape as Chores/Tasks. Avoids cramming many members into 3 fixed columns. */
+          (() => {
+            const visibleMemberCount = orderedMembers.filter(m => showingAll || selectedMemberIds!.includes(m.id)).length;
+            return (
+          <div
+            className="grid gap-3 h-full overflow-x-auto"
+            style={{
+              gridTemplateColumns: `repeat(${Math.max(visibleMemberCount, 1)}, minmax(220px, 1fr))`,
+            }}
+          >
             {orderedMembers.filter(m => showingAll || selectedMemberIds!.includes(m.id)).map(member => {
               const memberItems = groupedItems?.[member.id] || [];
               const isDragging = draggedMemberId === member.id;
@@ -292,6 +299,8 @@ export function WishesView() {
               );
             })}
           </div>
+            );
+          })()
         )}
       </div>
 

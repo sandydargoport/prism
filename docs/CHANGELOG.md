@@ -4,6 +4,10 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+### Fixed — List views
+- **Chores person filter now actually filters the rendered columns**: `ChoresView`'s `choresByUser` memo iterated every family member when building columns, so selecting a single-person filter under Group:Person still showed empty columns for everyone else. Tasks and Wishes already filtered correctly; Chores now matches. Unassigned column also hides when a person filter is active (the user explicitly asked to see only those people).
+- **Per-person grids no longer squeeze when the family is large**: Chores, Tasks (flat + nested), Wishes, and Gift Ideas all used `grid-cols-2 md:grid-cols-3` which crammed 7 people (5 kids + 2 adults) into 3 narrow columns × 3 rows on a portrait tablet. Switched all five views to `gridTemplateColumns: repeat(N, minmax(220px, 1fr))` + `overflow-x-auto`. Each column gets at least 220px; if the viewport can't fit every column comfortably, the grid scrolls horizontally — same shape across all list views. Closes [#105](https://github.com/sandydargoport/prism/issues/105).
+
 ## [1.8.7] – 2026-06-01
 
 ### Fixed — Distribution

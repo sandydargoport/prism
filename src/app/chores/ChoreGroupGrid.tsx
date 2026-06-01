@@ -73,18 +73,18 @@ export function ChoreGroupGrid({
     return effectiveOrder.map((k) => map.get(k)).filter(Boolean) as ChoreGroupEntry[];
   }, [choresByUser, effectiveOrder]);
 
+  // Each column gets a minimum readable width (220px); the grid spans as
+  // wide as needed and overflows horizontally when the viewport can't fit
+  // every column comfortably. Replaces the previous `grid-cols-2 md:grid-
+  // cols-3` squeeze which crammed 7 people (5 kids + 2 adults) into 3
+  // narrow columns × 3 rows (bug #105). Same shape now used in
+  // GroupedTaskGrid and WishesView for UX consistency.
   return (
     <div
-      className={cn(
-        'grid gap-2 h-full',
-        isMobile
-          ? 'grid-cols-1'
-          : sortedGroups.length <= 2
-          ? 'grid-cols-1 md:grid-cols-2'
-          : sortedGroups.length <= 4
-          ? 'grid-cols-2'
-          : 'grid-cols-2 md:grid-cols-3'
-      )}
+      className="grid gap-2 h-full overflow-x-auto"
+      style={{
+        gridTemplateColumns: `repeat(${Math.max(sortedGroups.length, 1)}, minmax(220px, 1fr))`,
+      }}
     >
       {sortedGroups.map(({ user, chores }, idx) => {
         const userColor = user?.color || '#6B7280';

@@ -87,15 +87,23 @@ export function ChoresView() {
     const assigneeMap = new Map<string, { id: string; name: string; color: string }>();
     effectiveFilteredChores.forEach(c => { if (c.assignedTo) assigneeMap.set(c.assignedTo.id, c.assignedTo); });
 
+    // When the person filter is active, only render columns for the
+    // selected people — without this, all family members appear as columns
+    // and the non-filtered ones are empty (bug #105). Matches the pattern
+    // Tasks (TaskContentArea.tsx) and Wishes (WishesView.tsx) already use.
+    const personFilterActive = filterPerson !== null && filterPerson.length > 0;
+    const isMemberAllowed = (id: string) =>
+      !personFilterActive || filterPerson!.includes(id);
+
     // All family members always get a column; append any extra assignees not in family
     const ordered: { id: string; name: string; color: string }[] = [];
     familyMembers.forEach(member => {
-      if (member.id) {
+      if (member.id && isMemberAllowed(member.id)) {
         ordered.push(member);
         assigneeMap.delete(member.id);
       }
     });
-    assigneeMap.forEach(a => ordered.push(a));
+    assigneeMap.forEach(a => { if (isMemberAllowed(a.id)) ordered.push(a); });
 
     const groups: { user: { id: string; name: string; color: string } | null; chores: typeof effectiveFilteredChores }[] = [];
     ordered.forEach(member => {
@@ -103,10 +111,14 @@ export function ChoresView() {
       groups.push({ user: member, chores: userChores });
     });
 
-    const unassigned = effectiveFilteredChores.filter(c => !c.assignedTo);
-    if (unassigned.length > 0) groups.push({ user: null, chores: unassigned });
+    // Unassigned column is hidden when a person filter is active — the user
+    // explicitly asked to see only those people, not the "no one" bucket.
+    if (!personFilterActive) {
+      const unassigned = effectiveFilteredChores.filter(c => !c.assignedTo);
+      if (unassigned.length > 0) groups.push({ user: null, chores: unassigned });
+    }
     return groups;
-  }, [groupByUser, effectiveFilteredChores, familyMembers]);
+  }, [groupByUser, effectiveFilteredChores, familyMembers, filterPerson]);
 
   const handleAddWithAuth = async () => {
     const user = await requireAuth('Add Chore', 'Please log in to add a chore');
