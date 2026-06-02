@@ -73,24 +73,29 @@ export function ChoreGroupGrid({
     return effectiveOrder.map((k) => map.get(k)).filter(Boolean) as ChoreGroupEntry[];
   }, [choresByUser, effectiveOrder]);
 
-  // Desktop / tablet: each column gets a minimum readable width (220px);
-  // grid overflows horizontally when the viewport can't fit every column.
-  // Mobile (with multiple groups): each column is sized to the viewport
-  // width and CSS scroll-snap turns the row into a swipeable carousel —
-  // user swipes left/right between profiles, scrolls up/down inside each.
-  // Replaces the previous `grid-cols-2 md:grid-cols-3` squeeze (bug #105).
-  // Same shape now used across all per-person list views.
-  const isSwipeCarousel = isMobile && sortedGroups.length > 1;
+  // Carousel layout: N profiles visible at a time, swipe left/right to
+  // shift between them. N = 1 on mobile, 4 on desktop. Snap kicks in
+  // when total profiles exceed N. For ≤N profiles the grid stretches
+  // them to fill (no snap, no overflow).
+  // User scrolls up/down INSIDE each profile's column via its own
+  // overflow-y context — `overscroll-contain` on the body stops iOS PWA
+  // from bubbling vertical scrolls past the column into the page
+  // wrapper, which is what was making the page toolbar move.
+  const groupsPerScreen = isMobile ? 1 : 4;
+  const isCarousel = sortedGroups.length > groupsPerScreen;
+  const colTrack = isCarousel
+    ? isMobile
+      ? 'calc(100vw - 32px)'
+      : `calc((100% - ${(groupsPerScreen - 1) * 8}px) / ${groupsPerScreen})`
+    : 'minmax(220px, 1fr)';
   return (
     <div
       className={cn(
         'grid gap-2 h-full overflow-x-auto',
-        isSwipeCarousel && 'snap-x snap-mandatory'
+        isCarousel && 'snap-x snap-mandatory'
       )}
       style={{
-        gridTemplateColumns: isSwipeCarousel
-          ? `repeat(${sortedGroups.length}, calc(100vw - 32px))`
-          : `repeat(${Math.max(sortedGroups.length, 1)}, minmax(220px, 1fr))`,
+        gridTemplateColumns: `repeat(${Math.max(sortedGroups.length, 1)}, ${colTrack})`,
       }}
     >
       {sortedGroups.map(({ user, chores }, idx) => {
@@ -105,7 +110,7 @@ export function ChoreGroupGrid({
               'flex flex-col border-2 rounded-lg overflow-hidden bg-card/90 backdrop-blur-sm transition-all',
               !isTouch && !isMobile && 'cursor-grab active:cursor-grabbing touch-none',
               isDragging && 'opacity-50 scale-95 ring-4 ring-primary/50',
-              isSwipeCarousel && 'snap-start'
+              isCarousel && 'snap-start'
             )}
             style={{ borderColor: userColor }}
           >
@@ -148,7 +153,7 @@ export function ChoreGroupGrid({
                 {chores.length}
               </Badge>
             </div>
-            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            <div className="flex-1 overflow-y-auto overscroll-contain p-2 space-y-1">
               <Input
                 placeholder="Add chore..."
                 value={inlineChoreByUser[key] || ''}

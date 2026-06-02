@@ -53,20 +53,23 @@ export function NestedGroupedTaskGrid({
     return effectiveOrder.map(k => map.get(k)).filter(Boolean) as NestedGroupDef[];
   }, [primaryGroups, effectiveOrder]);
 
-  // See ChoreGroupGrid for full context. Desktop: min-width columns +
-  // horizontal scroll. Mobile (multi-group): viewport-wide columns +
-  // scroll-snap carousel — swipe between groups, vertical scroll inside.
-  const isSwipeCarousel = isMobile && sortedGroups.length > 1;
+  // See ChoreGroupGrid for full context. N groups visible at a time
+  // (1 mobile, 4 desktop); snap carousel when total exceeds N.
+  const groupsPerScreen = isMobile ? 1 : 4;
+  const isCarousel = sortedGroups.length > groupsPerScreen;
+  const colTrack = isCarousel
+    ? isMobile
+      ? 'calc(100vw - 32px)'
+      : `calc((100% - ${(groupsPerScreen - 1) * 8}px) / ${groupsPerScreen})`
+    : 'minmax(220px, 1fr)';
   return (
     <div
       className={cn(
         'grid gap-2 h-full overflow-x-auto',
-        isSwipeCarousel && 'snap-x snap-mandatory'
+        isCarousel && 'snap-x snap-mandatory'
       )}
       style={{
-        gridTemplateColumns: isSwipeCarousel
-          ? `repeat(${sortedGroups.length}, calc(100vw - 32px))`
-          : `repeat(${Math.max(sortedGroups.length, 1)}, minmax(220px, 1fr))`,
+        gridTemplateColumns: `repeat(${Math.max(sortedGroups.length, 1)}, ${colTrack})`,
       }}
     >
       {sortedGroups.map((group, idx) => {
@@ -80,7 +83,7 @@ export function NestedGroupedTaskGrid({
               'flex flex-col border-2 rounded-lg overflow-hidden bg-card/90 backdrop-blur-sm transition-all',
               !isTouch && !isMobile && 'cursor-grab active:cursor-grabbing touch-none',
               isDragging && 'opacity-50 scale-95 ring-4 ring-primary/50',
-              isSwipeCarousel && 'snap-start'
+              isCarousel && 'snap-start'
             )}
             style={{ borderColor: group.color }}
           >
@@ -120,7 +123,7 @@ export function NestedGroupedTaskGrid({
             </div>
 
             {/* Sub-groups */}
-            <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-2">
+            <div className="flex-1 overflow-y-auto overscroll-contain px-2 pb-2 space-y-2">
               {group.subGroups.length === 0 && (
                 <p className="text-center text-muted-foreground text-sm py-4">No tasks</p>
               )}

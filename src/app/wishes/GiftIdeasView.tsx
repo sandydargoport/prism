@@ -96,20 +96,24 @@ export function GiftIdeasView() {
     return <div className="text-destructive text-center py-8">{error}</div>;
   }
 
-  // Desktop: min-width columns + horizontal scroll. Mobile (multi-member):
-  // viewport-wide columns + scroll-snap carousel — same UX as Chores/Tasks.
-  const isSwipeCarousel = isMobile && otherMembers.length > 1;
+  // See ChoreGroupGrid for full context. N members visible at a time
+  // (1 mobile, 4 desktop); snap carousel when total exceeds N.
+  const groupsPerScreen = isMobile ? 1 : 4;
+  const isCarousel = otherMembers.length > groupsPerScreen;
+  const colTrack = isCarousel
+    ? isMobile
+      ? 'calc(100vw - 32px)'
+      : `calc((100% - ${(groupsPerScreen - 1) * 12}px) / ${groupsPerScreen})`
+    : 'minmax(220px, 1fr)';
   return (
     <>
       <div
         className={cn(
           'grid gap-3 h-full overflow-x-auto',
-          isSwipeCarousel && 'snap-x snap-mandatory'
+          isCarousel && 'snap-x snap-mandatory'
         )}
         style={{
-          gridTemplateColumns: isSwipeCarousel
-            ? `repeat(${otherMembers.length}, calc(100vw - 32px))`
-            : `repeat(${Math.max(otherMembers.length, 1)}, minmax(220px, 1fr))`,
+          gridTemplateColumns: `repeat(${Math.max(otherMembers.length, 1)}, ${colTrack})`,
         }}
       >
         {otherMembers.map((member) => {
@@ -119,7 +123,7 @@ export function GiftIdeasView() {
               key={member.id}
               className={cn(
                 'flex flex-col rounded-xl border-2 bg-card/50 overflow-hidden min-h-0',
-                isSwipeCarousel && 'snap-start'
+                isCarousel && 'snap-start'
               )}
               style={{ borderColor: member.color }}
             >
@@ -142,7 +146,7 @@ export function GiftIdeasView() {
               </div>
 
               {/* Quick add + item list */}
-              <div className="flex-1 overflow-y-auto p-2 space-y-1">
+              <div className="flex-1 overflow-y-auto overscroll-contain p-2 space-y-1">
                 <Input
                   placeholder={`Gift idea for ${member.name}...`}
                   value={quickAddByUser[member.id] || ''}

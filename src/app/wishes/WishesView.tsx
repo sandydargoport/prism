@@ -266,29 +266,32 @@ export function WishesView() {
         ) : error ? (
           <div className="text-destructive text-center py-8">{error}</div>
         ) : (
-          /* Grid view: one card per family member (filtered if selection active), draggable.
-             Min-width columns + horizontal scroll on desktop. Mobile (multi-member):
-             viewport-wide columns + scroll-snap carousel — same UX as Chores/Tasks. */
+          /* See ChoreGroupGrid for full context. N members visible at a time
+             (1 mobile, 4 desktop); snap carousel when total exceeds N. */
           (() => {
             const visibleMembers = orderedMembers.filter(m => showingAll || selectedMemberIds!.includes(m.id));
-            const isSwipeCarousel = isMobile && visibleMembers.length > 1;
+            const groupsPerScreen = isMobile ? 1 : 4;
+            const isCarousel = visibleMembers.length > groupsPerScreen;
+            const colTrack = isCarousel
+              ? isMobile
+                ? 'calc(100vw - 32px)'
+                : `calc((100% - ${(groupsPerScreen - 1) * 12}px) / ${groupsPerScreen})`
+              : 'minmax(220px, 1fr)';
             return (
           <div
             className={cn(
               'grid gap-3 h-full overflow-x-auto',
-              isSwipeCarousel && 'snap-x snap-mandatory'
+              isCarousel && 'snap-x snap-mandatory'
             )}
             style={{
-              gridTemplateColumns: isSwipeCarousel
-                ? `repeat(${visibleMembers.length}, calc(100vw - 32px))`
-                : `repeat(${Math.max(visibleMembers.length, 1)}, minmax(220px, 1fr))`,
+              gridTemplateColumns: `repeat(${Math.max(visibleMembers.length, 1)}, ${colTrack})`,
             }}
           >
             {visibleMembers.map(member => {
               const memberItems = groupedItems?.[member.id] || [];
               const isDragging = draggedMemberId === member.id;
               return (
-                <div key={member.id} className={cn(isSwipeCarousel && 'snap-start')}>
+                <div key={member.id} className={cn(isCarousel && 'snap-start')}>
                   <MemberWishCard
                     member={member}
                     items={memberItems}
@@ -397,7 +400,7 @@ function MemberWishCard({
       </div>
 
       {/* Scrollable item list */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-1">
+      <div className="flex-1 overflow-y-auto overscroll-contain p-2 space-y-1">
         {items.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-4">No wishes yet</p>
         ) : (
