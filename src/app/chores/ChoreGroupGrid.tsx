@@ -91,7 +91,11 @@ export function ChoreGroupGrid({
   return (
     <div
       className={cn(
-        'grid gap-2 h-full overflow-x-auto',
+        // grid-rows-1 constrains the row to grid height (minmax(0, 1fr))
+        // so each column has a finite height — without this the row's
+        // height grows to fit content and the inner overflow-y-auto on
+        // the column body never engages on desktop.
+        'grid grid-rows-1 gap-2 h-full overflow-x-auto',
         isCarousel && 'snap-x snap-mandatory'
       )}
       style={{

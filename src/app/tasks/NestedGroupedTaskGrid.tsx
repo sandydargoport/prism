@@ -65,7 +65,8 @@ export function NestedGroupedTaskGrid({
   return (
     <div
       className={cn(
-        'grid gap-2 h-full overflow-x-auto',
+        // See ChoreGroupGrid for the grid-rows-1 reasoning.
+        'grid grid-rows-1 gap-2 h-full overflow-x-auto',
         isCarousel && 'snap-x snap-mandatory'
       )}
       style={{
