@@ -24,7 +24,12 @@ import { useOrientation } from '@/lib/hooks/useOrientation';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import type { GiftIdea, FamilyMember } from '@/types';
 
-export function GiftIdeasView() {
+interface GiftIdeasViewProps {
+  /** PersonFilter selection from the parent. null/empty = show all members. */
+  selectedMemberIds?: string[] | null;
+}
+
+export function GiftIdeasView({ selectedMemberIds }: GiftIdeasViewProps = {}) {
   const { members } = useFamily();
   const { activeUser, requireAuth } = useAuth();
   const { ideas, loading, error, addIdea, updateIdea, deleteIdea, togglePurchased } = useGiftIdeas(activeUser?.id);
@@ -37,7 +42,12 @@ export function GiftIdeasView() {
   const [quickAddByUser, setQuickAddByUser] = useState<Record<string, string>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const otherMembers = useMemo(() => members, [members]);
+  const otherMembers = useMemo(() => {
+    const hasFilter = selectedMemberIds && selectedMemberIds.length > 0;
+    if (!hasFilter) return members;
+    return members.filter((m) => selectedMemberIds!.includes(m.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [members, selectedMemberIds?.join(',')]);
 
   // Group ideas by forUserId
   const ideasByUser = useMemo(() => {

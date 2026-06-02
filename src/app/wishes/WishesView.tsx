@@ -212,6 +212,14 @@ export function WishesView() {
 
   return (
     <PageWrapper>
+      {/*
+        h-screen + flex-col so the inner flex-1 overflow-auto content area
+        fills remaining vertical space. Without this wrapper the toolbar
+        and content stack at natural heights and the per-member columns
+        collapse to their content — matches the Tasks / Chores / Shopping
+        pattern.
+      */}
+      <div className="h-screen flex flex-col">
       <SubpageHeader
         title="Wishes"
         icon={<Gift className="h-6 w-6" />}
@@ -250,7 +258,7 @@ export function WishesView() {
           </button>
         </div>
 
-        {activeTab === 'wishes' && !familyLoading && members.length > 0 && (
+        {!familyLoading && members.length > 0 && (
           <PersonFilter
             members={members}
             selected={selectedMemberIds}
@@ -262,7 +270,7 @@ export function WishesView() {
       {/* Content */}
       <div className="flex-1 overflow-auto px-4 pb-4">
         {activeTab === 'ideas' ? (
-          <GiftIdeasView />
+          <GiftIdeasView selectedMemberIds={selectedMemberIds} />
         ) : loading || familyLoading ? (
           <div className="text-muted-foreground text-center py-8">Loading...</div>
         ) : error ? (
@@ -337,6 +345,7 @@ export function WishesView() {
       />
 
       <ConfirmDialog {...dialogProps} />
+      </div>
     </PageWrapper>
   );
 }
@@ -372,7 +381,13 @@ function MemberWishCard({
     <div
       {...dragProps}
       className={cn(
-        'flex flex-col rounded-xl border-2 bg-card/50 overflow-hidden min-h-0',
+        // h-full so the card fills its (grid-stretched) wrapper — without
+        // this it collapses to natural content height, leaving the
+        // per-member columns short and the inner body's flex-1 unable to
+        // engage. GiftIdeasView avoids this by making the card the grid
+        // cell directly; here a wrapper div sits between the grid and
+        // the card to attach snap-start without changing the card API.
+        'flex flex-col h-full rounded-xl border-2 bg-card/50 overflow-hidden min-h-0',
         'transition-all',
         !isMobile && 'cursor-grab active:cursor-grabbing touch-none',
         isDragging && 'opacity-50 scale-95 ring-4 ring-primary/50',
