@@ -1,12 +1,13 @@
 'use client';
 
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useRef } from 'react';
 import { ClipboardList, GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { UserAvatar } from '@/components/ui/avatar';
 import { useDragReorder } from '@/lib/hooks/useDragReorder';
 import { useIsTouch } from '@/lib/hooks/useIsTouch';
+import { CarouselArrows } from '@/components/ui/CarouselArrows';
 import { ChoreGroupCard } from './ChoreGroupCard';
 import { cn } from '@/lib/utils';
 
@@ -88,14 +89,17 @@ export function ChoreGroupGrid({
       ? 'calc(100vw - 32px)'
       : `calc((100% - ${(groupsPerScreen - 1) * 8}px) / ${groupsPerScreen})`
     : 'minmax(220px, 1fr)';
+  const scrollRef = useRef<HTMLDivElement>(null);
   return (
+    <div className="relative h-full">
     <div
+      ref={scrollRef}
       className={cn(
         // grid-rows-1 constrains the row to grid height (minmax(0, 1fr))
         // so each column has a finite height — without this the row's
         // height grows to fit content and the inner overflow-y-auto on
         // the column body never engages on desktop.
-        'grid grid-rows-1 gap-2 h-full overflow-x-auto',
+        'grid grid-rows-1 gap-2 h-full overflow-x-auto scroll-smooth',
         isCarousel && 'snap-x snap-mandatory'
       )}
       style={{
@@ -197,6 +201,8 @@ export function ChoreGroupGrid({
           </div>
         );
       })}
+    </div>
+      {isCarousel && !isMobile && <CarouselArrows scrollRef={scrollRef} />}
     </div>
   );
 }

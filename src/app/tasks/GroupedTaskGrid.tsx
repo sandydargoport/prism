@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useDragReorder } from '@/lib/hooks/useDragReorder';
 import { useIsTouch } from '@/lib/hooks/useIsTouch';
+import { CarouselArrows } from '@/components/ui/CarouselArrows';
 import { TaskRow } from '@/app/tasks/TaskRow';
 import type { Task } from '@/types';
 import type { GroupDef } from '@/app/tasks/taskGroupTypes';
@@ -66,11 +67,14 @@ export function GroupedTaskGrid({
       ? 'calc(100vw - 32px)'
       : `calc((100% - ${(groupsPerScreen - 1) * 8}px) / ${groupsPerScreen})`
     : 'minmax(220px, 1fr)';
+  const scrollRef = useRef<HTMLDivElement>(null);
   return (
+    <div className="relative h-full">
     <div
+      ref={scrollRef}
       className={cn(
         // See ChoreGroupGrid for the grid-rows-1 reasoning.
-        'grid grid-rows-1 gap-2 h-full overflow-x-auto',
+        'grid grid-rows-1 gap-2 h-full overflow-x-auto scroll-smooth',
         isCarousel && 'snap-x snap-mandatory'
       )}
       style={{
@@ -160,6 +164,8 @@ export function GroupedTaskGrid({
           </div>
         );
       })}
+    </div>
+      {isCarousel && !isMobile && <CarouselArrows scrollRef={scrollRef} />}
     </div>
   );
 }

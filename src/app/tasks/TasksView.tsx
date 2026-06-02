@@ -55,7 +55,7 @@ export function TasksView() {
     inlineTaskByList, setInlineTaskByList,
     handleInlineAdd,
     tasksByUser, tasksByList, tasksByPersonThenList, tasksByListThenPerson,
-  } = useTaskGrouping({ filteredTasks, familyMembers, taskLists, filterList, refreshTasks, requireAuth });
+  } = useTaskGrouping({ filteredTasks, familyMembers, taskLists, filterList, filterPerson, refreshTasks, requireAuth });
 
   const hasActiveFilters = (filterPerson !== null && filterPerson.length > 0) || filterPriority !== null || filterList !== null;
   const clearFilters = () => { setFilterPerson(null); setFilterPriority(null); setFilterList(null); };

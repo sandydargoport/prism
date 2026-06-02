@@ -1,0 +1,81 @@
+name: needs-reply triage
+
+# Auto-label issues and PRs that are waiting on a response from the maintainer.
+#
+# Rules:
+#   - A comment from anyone OTHER than the repo owner (sandydargoport) or a bot
+#     adds the `needs-reply` label.
+#   - A comment from the repo owner removes the `needs-reply` label.
+#   - An issue/PR opened by anyone other than the owner gets `needs-reply` on
+#     creation. (Self-opened issues stay clean until someone else weighs in.)
+#
+# The label powers a Project board view filter: `label:needs-reply` surfaces
+# anything an external user is waiting on a reply for.
+
+on:
+  issues:
+    types: [opened]
+  issue_comment:
+    types: [created]
+  pull_request_target:
+    types: [opened]
+  pull_request_review_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compute actor and target
+        id: ctx
+        env:
+          GH_EVENT: ${{ toJson(github.event) }}
+        run: |
+          # Actor: who triggered the event (commenter / opener / reviewer)
+          ACTOR="${{ github.event.comment.user.login || github.event.review.user.login || github.event.sender.login }}"
+          echo "actor=$ACTOR" >> "$GITHUB_OUTPUT"
+
+          # Issue/PR number — works across issues, issue_comment (on issues OR PRs),
+          # PR review, PR review_comment, pull_request_target.
+          NUMBER="${{ github.event.issue.number || github.event.pull_request.number }}"
+          echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
+
+          # Is this the bot / owner?
+          OWNER="sandydargoport"
+          if [ "$ACTOR" = "$OWNER" ]; then
+            echo "is_owner=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_owner=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Filter out bots
+          case "$ACTOR" in
+            *"[bot]"|github-actions|dependabot|renovate|codecov*)
+              echo "is_bot=true" >> "$GITHUB_OUTPUT" ;;
+            *)
+              echo "is_bot=false" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - name: Add needs-reply (external activity)
+        if: steps.ctx.outputs.is_owner != 'true' && steps.ctx.outputs.is_bot != 'true' && steps.ctx.outputs.number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue edit "${{ steps.ctx.outputs.number }}" \
+            --repo "${{ github.repository }}" \
+            --add-label needs-reply || true
+
+      - name: Remove needs-reply (owner replied)
+        if: steps.ctx.outputs.is_owner == 'true' && steps.ctx.outputs.number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue edit "${{ steps.ctx.outputs.number }}" \
+            --repo "${{ github.repository }}" \
+            --remove-label needs-reply || true

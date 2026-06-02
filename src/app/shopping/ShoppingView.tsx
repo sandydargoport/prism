@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
-import { ShoppingCart, Plus, Settings, Maximize2, Minimize2, Tags, Send } from 'lucide-react';
+import { ShoppingCart, Plus, Settings, Maximize2, Minimize2, Tags, Send, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -25,6 +25,7 @@ import { useShoppingScanFlow } from './useShoppingScanFlow';
 import { useShoppingCrudHandlers } from './useShoppingCrudHandlers';
 import { useOrientation } from '@/lib/hooks/useOrientation';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
+import { useSwipeNavigation } from '@/lib/hooks/useSwipeNavigation';
 import { cn } from '@/lib/utils';
 import type { ShoppingItem } from '@/types';
 import dynamic from 'next/dynamic';
@@ -128,6 +129,25 @@ export function ShoppingView() {
   const isPortrait = orientation === 'portrait';
   const [shoppingMode, setShoppingMode] = useState(false);
 
+  // Mobile-only: swipe to switch lists. The pill bar collapses into a
+  // compact prev/dots/next indicator when there's more than one list.
+  // Single-list households skip the affordance entirely (UX recommendation).
+  const currentListIdx = lists.findIndex((l) => l.id === activeListId);
+  const goPrevList = () => {
+    if (currentListIdx > 0) setActiveListId(lists[currentListIdx - 1]!.id);
+  };
+  const goNextList = () => {
+    if (currentListIdx >= 0 && currentListIdx < lists.length - 1) {
+      setActiveListId(lists[currentListIdx + 1]!.id);
+    }
+  };
+  const swipeRef = useSwipeNavigation<HTMLDivElement>({
+    onSwipeLeft: goNextList,
+    onSwipeRight: goPrevList,
+    enabled: isMobile && lists.length > 1 && !shoppingMode,
+    threshold: 60,
+  });
+
   const groceryCategoryItems = effectiveCategoryOrder.map((cat) => ({
     category: cat,
     items: (filteredItems[cat] || []) as ShoppingItem[],
@@ -197,26 +217,52 @@ export function ShoppingView() {
               ] as OverflowItem[]}
             />
 
-            <div className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-3 py-1">
-              <div className="overflow-x-auto">
-                <div className="flex gap-1 items-center min-w-max">
-                  {lists.map((list) => {
-                    const assignedMember = list.assignedTo ? familyMembers.find(m => m.id === list.assignedTo) : null;
-                    return (
-                      <Button key={list.id} variant={activeListId === list.id ? 'secondary' : 'ghost'} size="sm"
-                        onClick={() => setActiveListId(list.id)} className="relative">
-                        {list.name}
-                        {assignedMember && (
-                          <span className="ml-1.5 w-3 h-3 rounded-full inline-block"
-                            style={{ backgroundColor: assignedMember.color }} title={`Assigned to ${assignedMember.name}`} />
-                        )}
-                        <Badge variant="outline" className="ml-2 text-xs">{list.items.length}</Badge>
-                      </Button>
-                    );
-                  })}
+            {isMobile && lists.length > 1 ? (
+              <div className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-2 py-1">
+                <div className="flex items-center justify-between gap-2">
+                  <Button size="icon" variant="ghost" onClick={goPrevList}
+                    disabled={currentListIdx <= 0} aria-label="Previous list" className="h-8 w-8 shrink-0">
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <div className="flex flex-col items-center min-w-0 flex-1">
+                    <span className="font-semibold text-sm truncate max-w-full">{activeList?.name}</span>
+                    <div className="flex gap-1 mt-0.5">
+                      {lists.map((l, i) => (
+                        <span key={l.id} className={cn(
+                          'rounded-full transition-all',
+                          i === currentListIdx ? 'bg-primary w-3 h-1.5' : 'bg-muted-foreground/40 w-1.5 h-1.5'
+                        )} />
+                      ))}
+                    </div>
+                  </div>
+                  <Button size="icon" variant="ghost" onClick={goNextList}
+                    disabled={currentListIdx >= lists.length - 1} aria-label="Next list" className="h-8 w-8 shrink-0">
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
-            </div>
+            ) : !isMobile ? (
+              <div className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-3 py-1">
+                <div className="overflow-x-auto">
+                  <div className="flex gap-1 items-center min-w-max">
+                    {lists.map((list) => {
+                      const assignedMember = list.assignedTo ? familyMembers.find(m => m.id === list.assignedTo) : null;
+                      return (
+                        <Button key={list.id} variant={activeListId === list.id ? 'secondary' : 'ghost'} size="sm"
+                          onClick={() => setActiveListId(list.id)} className="relative">
+                          {list.name}
+                          {assignedMember && (
+                            <span className="ml-1.5 w-3 h-3 rounded-full inline-block"
+                              style={{ backgroundColor: assignedMember.color }} title={`Assigned to ${assignedMember.name}`} />
+                          )}
+                          <Badge variant="outline" className="ml-2 text-xs">{list.items.length}</Badge>
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </>
         )}
 
@@ -249,7 +295,7 @@ export function ShoppingView() {
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto p-2 pb-24">
+        <div ref={swipeRef} className="flex-1 overflow-y-auto p-2 pb-24">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
               <ShoppingCart className="h-12 w-12 mb-4 opacity-50 animate-pulse" /><p className="text-lg">Loading shopping lists...</p>

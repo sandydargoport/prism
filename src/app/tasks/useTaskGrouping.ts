@@ -10,6 +10,7 @@ interface UseTaskGroupingParams {
   familyMembers: Array<{ id: string; name: string; color: string }>;
   taskLists: Array<{ id: string; name: string; color?: string | null }>;
   filterList: string | null;
+  filterPerson: string[] | null;
   refreshTasks: () => void;
   requireAuth: (title: string, message: string) => Promise<{ id: string } | null>;
 }
@@ -19,9 +20,22 @@ export function useTaskGrouping({
   familyMembers,
   taskLists,
   filterList,
+  filterPerson,
   refreshTasks,
   requireAuth,
 }: UseTaskGroupingParams) {
+  // When the user has narrowed the PersonFilter, hide the columns/sub-columns
+  // for unselected people entirely (not just empty them). Matches Chores and
+  // Wishes. Also suppresses the "Unassigned" bucket — the user has explicitly
+  // asked to see only those people.
+  const personFilterActive = filterPerson !== null && filterPerson.length > 0;
+  const isMemberAllowed = (id: string) =>
+    !personFilterActive || filterPerson!.includes(id);
+  const allowedMembers = useMemo(
+    () => familyMembers.filter(m => !m.id || isMemberAllowed(m.id)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [familyMembers, personFilterActive, filterPerson?.join(',')]
+  );
   const [primaryGroup, setPrimaryGroup] = useState<GroupBy>('person');
   const [secondaryGroup, setSecondaryGroup] = useState<GroupBy>('none');
 
@@ -88,13 +102,13 @@ export function useTaskGrouping({
     // All family members always get a column; append any extra assignees not in family
     const ordered: { id: string; name: string; color: string }[] = [];
     familyMembers.forEach(member => {
-      if (member.id) {
+      if (member.id && isMemberAllowed(member.id)) {
         ordered.push(member);
         assigneeMap.delete(member.id);
       }
     });
     // Any assignees not yet in familyMembers (e.g., before family refresh post-login)
-    assigneeMap.forEach(a => ordered.push(a));
+    assigneeMap.forEach(a => { if (isMemberAllowed(a.id)) ordered.push(a); });
 
     const groups: { user: { id: string; name: string; color: string } | null; tasks: Task[] }[] = [];
     ordered.forEach(member => {
@@ -102,11 +116,14 @@ export function useTaskGrouping({
       groups.push({ user: member, tasks: userTasks });
     });
 
-    const unassigned = filteredTasks.filter(t => !t.assignedTo);
-    if (unassigned.length > 0) groups.push({ user: null, tasks: unassigned });
+    if (!personFilterActive) {
+      const unassigned = filteredTasks.filter(t => !t.assignedTo);
+      if (unassigned.length > 0) groups.push({ user: null, tasks: unassigned });
+    }
 
     return groups;
-  }, [groupMode, filteredTasks, familyMembers]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupMode, filteredTasks, familyMembers, personFilterActive, filterPerson?.join(',')]);
 
   // Group tasks by list
   const tasksByList = useMemo(() => {
@@ -146,18 +163,20 @@ export function useTaskGrouping({
 
     const result: { member: typeof familyMembers[0] | null; tasks: Task[]; subGroups: SubGroupDef[] }[] = [];
 
-    familyMembers.forEach((member) => {
+    allowedMembers.forEach((member) => {
       const memberTasks = filteredTasks.filter(t => t.assignedTo?.id === member.id);
       result.push({ member, tasks: memberTasks, subGroups: buildSubGroups(memberTasks) });
     });
 
-    const unassigned = filteredTasks.filter(t => !t.assignedTo);
-    if (unassigned.length > 0) {
-      result.push({ member: null, tasks: unassigned, subGroups: buildSubGroups(unassigned) });
+    if (!personFilterActive) {
+      const unassigned = filteredTasks.filter(t => !t.assignedTo);
+      if (unassigned.length > 0) {
+        result.push({ member: null, tasks: unassigned, subGroups: buildSubGroups(unassigned) });
+      }
     }
 
     return result;
-  }, [groupMode, filteredTasks, familyMembers, taskLists]);
+  }, [groupMode, filteredTasks, allowedMembers, taskLists, personFilterActive]);
 
   // Group tasks by list → person (nested)
   const tasksByListThenPerson = useMemo(() => {
@@ -165,12 +184,14 @@ export function useTaskGrouping({
 
     const buildSubGroups = (listTasks: Task[]): SubGroupDef[] => {
       const subs: SubGroupDef[] = [];
-      familyMembers.forEach((member) => {
+      allowedMembers.forEach((member) => {
         const t = listTasks.filter(task => task.assignedTo?.id === member.id);
         if (t.length > 0) subs.push({ key: member.id, label: member.name, color: member.color, tasks: t });
       });
-      const unassigned = listTasks.filter(task => !task.assignedTo);
-      if (unassigned.length > 0) subs.push({ key: 'unassigned', label: 'Unassigned', color: '#6B7280', tasks: unassigned });
+      if (!personFilterActive) {
+        const unassigned = listTasks.filter(task => !task.assignedTo);
+        if (unassigned.length > 0) subs.push({ key: 'unassigned', label: 'Unassigned', color: '#6B7280', tasks: unassigned });
+      }
       return subs;
     };
 
@@ -189,7 +210,7 @@ export function useTaskGrouping({
     }
 
     return result;
-  }, [groupMode, filteredTasks, familyMembers, taskLists]);
+  }, [groupMode, filteredTasks, allowedMembers, taskLists, personFilterActive]);
 
   return {
     primaryGroup,

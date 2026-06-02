@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { pushUndo } from '@/lib/hooks/useUndoStack';
 import {
@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageWrapper, SubpageHeader, PersonFilter, UndoButton } from '@/components/layout';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { CarouselArrows } from '@/components/ui/CarouselArrows';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { useDragReorder } from '@/lib/hooks/useDragReorder';
 import { useFamily } from '@/components/providers/FamilyProvider';
@@ -64,6 +65,7 @@ export function WishesView() {
   const isMobile = useIsMobile();
   const isPortrait = orientation === 'portrait';
   const showingAll = !selectedMemberIds || selectedMemberIds.length === 0;
+  const wishGridRef = useRef<HTMLDivElement>(null);
 
   // --- Card drag-to-swap ---
   const memberIds = useMemo(() => members.map(m => m.id), [members]);
@@ -278,10 +280,12 @@ export function WishesView() {
                 : `calc((100% - ${(groupsPerScreen - 1) * 12}px) / ${groupsPerScreen})`
               : 'minmax(220px, 1fr)';
             return (
+          <div className="relative h-full">
           <div
+            ref={wishGridRef}
             className={cn(
               // See ChoreGroupGrid for the grid-rows-1 reasoning.
-              'grid grid-rows-1 gap-3 h-full overflow-x-auto',
+              'grid grid-rows-1 gap-3 h-full overflow-x-auto scroll-smooth',
               isCarousel && 'snap-x snap-mandatory'
             )}
             style={{
@@ -309,6 +313,8 @@ export function WishesView() {
                 </div>
               );
             })}
+          </div>
+            {isCarousel && !isMobile && <CarouselArrows scrollRef={wishGridRef} />}
           </div>
             );
           })()
