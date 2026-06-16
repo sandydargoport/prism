@@ -82,6 +82,35 @@ if [ -n "$RCLONE_REMOTE" ] && command -v rclone >/dev/null 2>&1; then
   else
     echo "[$(date)] Data directory is empty or missing, skipping."
   fi
+
+  # Verify the off-site copies actually landed intact before reporting success.
+  # rclone copy/sync can exit 0 on a partial or silently-dropped upload, so
+  # re-check hashes one-way: every local file must exist and match off-site.
+  # This is what makes the healthcheck trustworthy — on the host VM-image
+  # backup, a green ping once masked a real upload gap precisely because the
+  # ping only proved the script finished, not that the bytes arrived.
+  if [ "$SYNC_FAILED" -eq 0 ]; then
+    echo "[$(date)] Verifying database backups are intact off-site..."
+    if rclone check "$BACKUP_DIR" "$RCLONE_REMOTE" --one-way; then
+      echo "[$(date)] Database off-site verify OK"
+    else
+      echo "[$(date)] WARNING: database off-site verify found differences!"
+      SYNC_FAILED=1
+    fi
+
+    # Only verify assets when real files exist: empty subdirs don't get synced,
+    # so the remote data/ dir may legitimately not exist yet. Same cache
+    # exclusion as the sync, or the check would flag cache as missing off-site.
+    if find /data -type f -not -path '*/cache/*' 2>/dev/null | grep -q .; then
+      echo "[$(date)] Verifying data assets are intact off-site..."
+      if rclone check /data "$DATA_REMOTE" --one-way --exclude 'photos/cache/**'; then
+        echo "[$(date)] Data off-site verify OK"
+      else
+        echo "[$(date)] WARNING: data off-site verify found differences!"
+        SYNC_FAILED=1
+      fi
+    fi
+  fi
 elif [ -n "$RCLONE_REMOTE" ]; then
   echo "[$(date)] WARNING: RCLONE_REMOTE set but rclone not installed"
 fi
