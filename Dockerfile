@@ -40,9 +40,13 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Migration runner and SQL files
 COPY --from=builder /app/drizzle ./drizzle
 COPY --from=builder /app/scripts/migrate.js ./scripts/migrate.js
-# postgres (postgres.js) is bundled into Next.js server chunks and not included
-# in the standalone node_modules — copy it explicitly for the migration runner.
+# reset-pin.js: offline PIN recovery, run via `docker compose exec`.
+COPY --from=builder /app/scripts/reset-pin.js ./scripts/reset-pin.js
+# postgres (postgres.js) and bcryptjs are bundled into Next.js server chunks and
+# not included in the standalone node_modules — copy them explicitly for the
+# migration runner and the reset-pin recovery script.
 COPY --from=builder /app/node_modules/postgres ./node_modules/postgres
+COPY --from=builder /app/node_modules/bcryptjs ./node_modules/bcryptjs
 # Bundled DB scripts (seed + clear) for the Settings → Backups buttons.
 # Self-contained CJS bundles with all deps inlined via esbuild — no need
 # to ship src/ or the dev node_modules.
