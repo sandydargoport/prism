@@ -4,6 +4,8 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.8.9] – 2026-06-16
+
 ### Fixed — Security / Login
 - **5–6 digit PINs can now actually be used.** PIN length is now a uniform family-wide setting (4–6 digits, like an iPhone passcode) — chosen in the setup wizard and changeable in Settings → Security. Previously PIN *creation* allowed up to 6 digits while every login/unlock pad was hard-coded to 4 and auto-submitted at 4, so any 5–6 digit PIN could never be entered and the member was locked out. All five PIN surfaces (login, settings gate, quick-switch, away-exit, babysitter-exit), `PinEditModal`, and the family API now read and enforce the configured length. Added `scripts/reset-pin.js` for offline recovery of a locked-out member. Closes [#123](https://github.com/sandydargoport/prism/issues/123).
 
