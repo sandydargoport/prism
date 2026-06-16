@@ -68,8 +68,12 @@ environment:
   - RCLONE_REMOTE=onedrive:Prism/backups
   - RCLONE_RETENTION_DAYS=30
 volumes:
-  - ./config/rclone.conf:/root/.config/rclone/rclone.conf:ro
+  - ./config/rclone.conf:/etc/rclone/rclone.conf:ro
 ```
+
+The config is mounted read-only as a seed; the scheduler copies it into the
+container's own filesystem at startup so rclone can persist refreshed OAuth
+tokens (a directly-mounted config file can't be rename-replaced).
 
 ### Step 4: Restart backup container
 

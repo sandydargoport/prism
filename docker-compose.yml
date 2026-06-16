@@ -112,9 +112,11 @@ services:
       # Off-site sync of user assets (avatars, photos, recipe images) lives
       # under data/, not uploads/. Mounted read-only for the backup job.
       - ./data:/data:ro
-      # Read-write so rclone can persist its refreshed OAuth token; a
-      # read-only mount makes every run log a config-save error.
-      - ./config/rclone.conf:/root/.config/rclone/rclone.conf
+      # Mounted read-only as a seed; backup-scheduler.sh copies it to rclone's
+      # default path inside the container so rclone can rename-replace it when
+      # refreshing its OAuth token (a direct single-file mount can't be renamed
+      # over — "device or resource busy").
+      - ./config/rclone.conf:/etc/rclone/rclone.conf:ro
     depends_on:
       db:
         condition: service_healthy
