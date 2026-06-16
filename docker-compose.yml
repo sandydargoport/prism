@@ -35,7 +35,10 @@ services:
       - ./uploads:/app/uploads
       - ./backups:/app/backups
       - photos-cache:/app/cache/photos
-      - ./data/photos:/app/data/photos
+      # Mount the whole data dir so avatars and recipe-images persist too,
+      # not just data/photos (otherwise they live only in the container layer
+      # and are lost on rebuild).
+      - ./data:/app/data
     depends_on:
       db:
         condition: service_healthy
@@ -103,10 +106,15 @@ services:
       - RETENTION_DAYS=7
       - RCLONE_REMOTE=onedrive:Prism/backups
       - RCLONE_RETENTION_DAYS=30
+      - HC_URL=https://hc-ping.com/f0bff165-06b7-48eb-a0da-10bbd4656786
     volumes:
       - ./backups:/backups
-      - ./uploads:/uploads:ro
-      - ./config/rclone.conf:/root/.config/rclone/rclone.conf:ro
+      # Off-site sync of user assets (avatars, photos, recipe images) lives
+      # under data/, not uploads/. Mounted read-only for the backup job.
+      - ./data:/data:ro
+      # Read-write so rclone can persist its refreshed OAuth token; a
+      # read-only mount makes every run log a config-save error.
+      - ./config/rclone.conf:/root/.config/rclone/rclone.conf
     depends_on:
       db:
         condition: service_healthy

@@ -3,8 +3,8 @@
 
 FROM postgres:15-alpine
 
-# Install rclone for cloud storage sync
-RUN apk add --no-cache rclone
+# rclone for cloud storage sync; curl for healthcheck pings
+RUN apk add --no-cache rclone curl
 
 # Copy scripts
 COPY backup.sh /scripts/backup.sh
