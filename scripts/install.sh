@@ -135,6 +135,18 @@ fi
 # Create necessary directories
 mkdir -p uploads backups data/photos config
 
+# The app container runs as uid 1001 (the "nextjs" user). Bind-mounted dirs it
+# writes to — photos, avatars and recipe images under data/, plus uploads —
+# must be owned by that uid or every upload/sync fails with EACCES (a 500 in the
+# UI). The host dirs were just created owned by the current user, so chown them
+# via a throwaway root container (works without host sudo, unlike `sudo chown`).
+if ! docker run --rm -v "$PWD/data":/d -v "$PWD/uploads":/u alpine \
+        sh -c 'chown -R 1001:1001 /d /u' 2>/dev/null; then
+    warn "Could not set data/uploads ownership to uid 1001."
+    warn "If photo or avatar uploads return a 500, run:"
+    warn "  docker run --rm -v \"\$PWD/data\":/d alpine chown -R 1001:1001 /d"
+fi
+
 # Build and start containers
 log "Building and starting containers (this may take a few minutes)..."
 $COMPOSE up -d --build
