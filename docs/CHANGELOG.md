@@ -4,6 +4,8 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.8.8] – 2026-06-16
+
 ### Changed — Mobile
 - **Per-person list views become a swipeable carousel on phones**: Chores, Tasks (flat + nested), Wishes, and Gift Ideas all switch to a CSS scroll-snap carousel when viewed on mobile with more than one group — each profile takes the full viewport width and the user swipes left/right between people while still scrolling vertically inside the active profile's list. Desktop / tablet behavior unchanged (min-width columns + horizontal scroll). Cleaner than the previous "1.5 profiles visible at 220 px each" feel on phones.
 
@@ -21,6 +23,16 @@ All notable changes to Prism are documented in this file.
 
 ### Added — Triage
 - **`needs-reply` auto-label workflow**: new `.github/workflows/needs-reply.yml` adds the `needs-reply` label to any issue/PR when a non-owner non-bot comments (or opens it), and removes the label when the owner replies. Triage view lives at [/labels/needs-reply](https://github.com/sandydargoport/prism/labels/needs-reply) — one navigable place to see everything an external user is waiting on.
+
+### Fixed — Uploads
+- **Photo and avatar uploads no longer 500**: the app container runs as uid 1001 (`nextjs`) but `scripts/install.sh` created the bind-mounted `data/` directory owned by the host user, so `fs.mkdir` under `/app/data/photos` (and `/app/data/avatars`) hit `EACCES` and every photo upload, 30-minute photo sync, and avatar upload failed with a 500. `install.sh` now `chown`s `data/` and `uploads/` to `1001:1001` via a throwaway root container (no host `sudo` needed), with a fallback warning and a troubleshooting note in the install docs for existing deployments. [#130](https://github.com/sandydargoport/prism/pull/130)
+
+### Fixed — Backups
+- **Photos, avatars and recipe images are now backed up off-site**: the backup container synced an empty `uploads/` directory while all user assets actually live under `data/` (`src/lib/config/runtime.ts`), so they never reached cloud storage. It now syncs `data/` (regenerable `photos/cache` excluded). The app container also only bind-mounted `data/photos`, leaving avatars and recipe images in the container's writable layer where they were lost on rebuild — the whole `data/` directory is now persisted. [#127](https://github.com/sandydargoport/prism/pull/127)
+- **Backups verify the off-site copy before reporting success**: `rclone copy`/`sync` can exit 0 on a partial or silently-dropped upload, so a green healthcheck didn't prove the data actually landed. Added an `rclone check --one-way` pass before the success ping; any mismatch pings `/fail` instead. Also consolidated the duplicate cron + in-container database-dump jobs into the single container job (porting over the cron's healthcheck ping and dump size check), and fixed an rclone OAuth token-refresh error caused by mounting `rclone.conf` as a single file (which can't be rename-replaced — now seeded to a writable path at startup). [#127](https://github.com/sandydargoport/prism/pull/127), [#128](https://github.com/sandydargoport/prism/pull/128), [#129](https://github.com/sandydargoport/prism/pull/129)
+
+### Fixed — Calendar
+- **Task-only CalDAV sources no longer show a false "stale / failed" status**: iCloud reminder lists (no event component) never run the event-sync path, which was the only code that advanced `last_synced` and cleared `sync_errors` — so they appeared stuck on an old date with a stale error even while task sync ran cleanly every cycle. `syncCalDAVTasks` now refreshes those fields itself (and records task-sync errors for task-only sources), leaving event-capable sources' `sync_errors` owned by the event path. [#131](https://github.com/sandydargoport/prism/pull/131)
 
 ## [1.8.7] – 2026-06-01
 
