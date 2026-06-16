@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/avatar';
 import { useFamily } from '@/components/providers';
+import { usePinLength } from '@/lib/hooks/usePinLength';
 
 interface ExitBabysitterModeModalProps {
   open: boolean;
@@ -37,7 +38,7 @@ export function ExitBabysitterModeModal({
   const [isVerifying, setIsVerifying] = useState(false);
   const [isShaking, setIsShaking] = useState(false);
 
-  const pinLength = 4;
+  const { pinLength } = usePinLength();
 
   // Reset state when modal closes
   useEffect(() => {

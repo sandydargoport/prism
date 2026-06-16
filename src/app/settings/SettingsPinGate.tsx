@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/avatar';
 import { useFamily, useAuth } from '@/components/providers';
+import { usePinLength } from '@/lib/hooks/usePinLength';
 import { SettingsView } from './SettingsView';
 
 type GateState = 'checking' | 'prompt' | 'verified';
@@ -89,7 +90,7 @@ function SettingsPinPrompt({
   const [isShaking, setIsShaking] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  const pinLength = 4;
+  const { pinLength } = usePinLength();
 
   useEffect(() => {
     setMounted(true);

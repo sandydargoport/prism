@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Users, Plus, Check, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { usePinLength } from '@/lib/hooks/usePinLength';
+import { MIN_PIN_LENGTH, MAX_PIN_LENGTH } from '@/lib/constants';
 
 const COLOR_OPTIONS = [
   '#3B82F6', '#EC4899', '#10B981', '#F59E0B',
@@ -33,6 +35,7 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
   const [pin, setPin] = useState('');
   const [saving, setSaving] = useState(false);
   const [added, setAdded] = useState<AddedMember[]>([]);
+  const { pinLength, setPinLength } = usePinLength();
 
   const canAdd = name.trim().length > 0;
 
@@ -82,6 +85,34 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
+        {/* Family-wide PIN length (uniform for everyone, like an iPhone passcode) */}
+        <div className="space-y-1">
+          <Label>PIN length</Label>
+          <div className="flex gap-2">
+            {Array.from(
+              { length: MAX_PIN_LENGTH - MIN_PIN_LENGTH + 1 },
+              (_, i) => MIN_PIN_LENGTH + i
+            ).map((len) => (
+              <button
+                key={len}
+                type="button"
+                onClick={() => setPinLength(len)}
+                className={cn(
+                  'flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors',
+                  len === pinLength
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'hover:bg-muted',
+                )}
+              >
+                {len} digits
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Applies to every member&apos;s PIN. You can change this later in Settings → Security.
+          </p>
+        </div>
+
         {/* Already added */}
         {added.length > 0 && (
           <div className="space-y-2">
@@ -152,8 +183,8 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
             <Input
               id="member-pin"
               type="password"
-              maxLength={8}
-              placeholder="4–8 digits"
+              maxLength={pinLength}
+              placeholder={`${pinLength} digits`}
               value={pin}
               onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
             />

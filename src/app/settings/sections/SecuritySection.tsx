@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { UserAvatar } from '@/components/ui/avatar';
 import { useFamily } from '@/components/providers';
+import { usePinLength } from '@/lib/hooks/usePinLength';
+import { MIN_PIN_LENGTH, MAX_PIN_LENGTH } from '@/lib/constants';
 import { PinEditModal } from '../components/PinEditModal';
 import type { FamilyMember } from '../components/PinEditModal';
 
@@ -33,6 +35,21 @@ const SCOPE_DESCRIPTIONS: Record<TokenScopeChoice, string> = {
 export function SecuritySection() {
   const { members: familyMembers, refresh: refreshFamily } = useFamily();
   const [editingPinMember, setEditingPinMember] = useState<FamilyMember | null>(null);
+  const { pinLength, setPinLength } = usePinLength();
+
+  const handlePinLengthChange = async (len: number) => {
+    if (len === pinLength) return;
+    const anyPins = familyMembers.some((m) => m.hasPin);
+    if (
+      anyPins &&
+      !window.confirm(
+        `Changing the PIN length to ${len} digits means every member must set a new ${len}-digit PIN before they can log in again — including you. Existing PINs of a different length will stop working. Continue?`
+      )
+    ) {
+      return;
+    }
+    await setPinLength(len);
+  };
 
   // API Tokens state
   const [tokens, setTokens] = useState<ApiToken[]>([]);
@@ -166,6 +183,39 @@ export function SecuritySection() {
               </Button>
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>PIN Length</CardTitle>
+          <CardDescription>
+            How many digits every member&apos;s PIN must have (uniform across the family, like an iPhone passcode).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex gap-2">
+            {Array.from(
+              { length: MAX_PIN_LENGTH - MIN_PIN_LENGTH + 1 },
+              (_, i) => MIN_PIN_LENGTH + i
+            ).map((len) => (
+              <Button
+                key={len}
+                variant={len === pinLength ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handlePinLengthChange(len)}
+                aria-pressed={len === pinLength}
+              >
+                {len} digits
+              </Button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Changing this affects PINs set from now on. Any member whose current PIN
+            isn&apos;t this length will need to set a new one before logging in. If
+            someone gets locked out, an admin with server access can run{' '}
+            <code>scripts/reset-pin.js</code> to reset their PIN.
+          </p>
         </CardContent>
       </Card>
 

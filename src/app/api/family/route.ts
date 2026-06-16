@@ -9,6 +9,7 @@ import { getCached } from '@/lib/cache/redis';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
+import { getConfiguredPinLength } from '@/lib/services/pinLength';
 
 interface FamilyMemberResponse {
   id: string;
@@ -168,9 +169,10 @@ export async function POST(request: NextRequest) {
 
     let hashedPin: string | null = null;
     if (body.pin) {
-      if (!/^\d{4,6}$/.test(body.pin)) {
+      const expectedLen = await getConfiguredPinLength();
+      if (!new RegExp(`^\\d{${expectedLen}}$`).test(body.pin)) {
         return NextResponse.json(
-          { error: 'PIN must be 4-6 digits' },
+          { error: `PIN must be exactly ${expectedLen} digits` },
           { status: 400 }
         );
       }

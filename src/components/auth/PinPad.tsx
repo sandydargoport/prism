@@ -26,6 +26,7 @@ import { UserAvatar } from '@/components/ui/avatar';
 import { useFamily } from '@/components/providers';
 
 import { usePinPad } from './usePinPad';
+import { usePinLength } from '@/lib/hooks/usePinLength';
 import { MemberSelection, getDemoFamilyMembers } from './MemberSelection';
 import { PinDisplay } from './PinDisplay';
 import { NumberPad } from './NumberPad';
@@ -63,7 +64,7 @@ export function PinPad({
   onPinSubmit,
   onSuccess,
   onError,
-  pinLength = 4,
+  pinLength,
   showCancel = false,
   onCancel,
   className,
@@ -73,6 +74,10 @@ export function PinPad({
 
   const familyMembers =
     providedMembers || (contextMembers.length > 0 ? contextMembers : getDemoFamilyMembers());
+
+  // Family-wide PIN length; an explicit prop still wins (e.g. tests / demos).
+  const { pinLength: configuredPinLength } = usePinLength();
+  const effectivePinLength = pinLength ?? configuredPinLength;
 
   const {
     selectedMember,
@@ -86,7 +91,7 @@ export function PinPad({
     handleClear,
     clearSelectedMember,
   } = usePinPad({
-    pinLength,
+    pinLength: effectivePinLength,
     controlledSelectedMember,
     onMemberSelect,
     onPinSubmit,
@@ -130,7 +135,7 @@ export function PinPad({
           </div>
 
           <PinDisplay
-            length={pinLength}
+            length={effectivePinLength}
             filled={pin.length}
             error={!!error}
             isShaking={isShaking}

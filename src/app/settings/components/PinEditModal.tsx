@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { usePinLength } from '@/lib/hooks/usePinLength';
+import { MAX_PIN_LENGTH } from '@/lib/constants';
 
 import type { FamilyMember } from '@/types';
 export type { FamilyMember };
@@ -22,13 +24,14 @@ export function PinEditModal({
   const [confirmPin, setConfirmPin] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const { pinLength } = usePinLength();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (newPin && !/^\d{4,6}$/.test(newPin)) {
-      setError('PIN must be 4-6 digits');
+    if (newPin && !new RegExp(`^\\d{${pinLength}}$`).test(newPin)) {
+      setError(`PIN must be exactly ${pinLength} digits`);
       return;
     }
 
@@ -93,7 +96,7 @@ export function PinEditModal({
                 type="password"
                 inputMode="numeric"
                 pattern="[0-9]*"
-                maxLength={6}
+                maxLength={MAX_PIN_LENGTH}
                 value={currentPin}
                 onChange={(e) => setCurrentPin(e.target.value.replace(/\D/g, ''))}
                 placeholder="Enter current PIN"
@@ -108,10 +111,10 @@ export function PinEditModal({
               type="password"
               inputMode="numeric"
               pattern="[0-9]*"
-              maxLength={6}
+              maxLength={pinLength}
               value={newPin}
               onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ''))}
-              placeholder="4-6 digits"
+              placeholder={`${pinLength} digits`}
               autoFocus={!member.hasPin}
             />
             <p className="text-xs text-muted-foreground mt-1">
@@ -125,7 +128,7 @@ export function PinEditModal({
               type="password"
               inputMode="numeric"
               pattern="[0-9]*"
-              maxLength={6}
+              maxLength={pinLength}
               value={confirmPin}
               onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))}
               placeholder="Re-enter new PIN"

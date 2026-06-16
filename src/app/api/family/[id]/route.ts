@@ -7,6 +7,7 @@ import bcrypt from 'bcryptjs';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
+import { getConfiguredPinLength } from '@/lib/services/pinLength';
 
 export async function GET(
   request: NextRequest,
@@ -123,7 +124,11 @@ export async function PATCH(
 
     // Handle PIN change
     if (body.pin !== undefined) {
-      // If user has existing PIN, require current PIN verification
+      // Changing an existing PIN requires proving the current one — including
+      // when an admin edits another member. We deliberately do NOT let a parent
+      // silently reset another member's PIN (that would let one parent lock out
+      // a co-parent). Recovery for a forgotten/locked-out PIN is the offline
+      // `scripts/reset-pin.js` helper instead, which needs server access.
       if (currentMember.pin) {
         if (!body.currentPin) {
           return NextResponse.json(
@@ -142,18 +147,21 @@ export async function PATCH(
         }
       }
 
-      // Validate and hash new PIN
+      // Validate and hash new PIN — must match the family-wide configured length.
       if (body.pin === null || body.pin === '') {
         // Remove PIN
         updates.pin = null;
-      } else if (/^\d{4,6}$/.test(body.pin)) {
-        // Hash and set new PIN
-        updates.pin = await bcrypt.hash(body.pin, 12);
       } else {
-        return NextResponse.json(
-          { error: 'PIN must be 4-6 digits' },
-          { status: 400 }
-        );
+        const expectedLen = await getConfiguredPinLength();
+        if (new RegExp(`^\\d{${expectedLen}}$`).test(body.pin)) {
+          // Hash and set new PIN
+          updates.pin = await bcrypt.hash(body.pin, 12);
+        } else {
+          return NextResponse.json(
+            { error: `PIN must be exactly ${expectedLen} digits` },
+            { status: 400 }
+          );
+        }
       }
     }
 
