@@ -965,9 +965,27 @@ export async function syncCalDAVTasks(
     if (stale.length > 0) {
       await db.delete(tasks).where(inArray(tasks.id, stale.map(t => t.id)));
     }
+
+    // Refresh the source's health signal on success. For task-only sources
+    // (supportsEvents === false) the event path never runs, so this is the ONLY
+    // thing that advances last_synced and clears a stale error — without it they
+    // look perpetually stuck even while syncing cleanly every cycle. For
+    // event-capable sources the event path owns syncErrors, so only bump the
+    // timestamp there to avoid clobbering a real event-sync error.
+    const taskOnly = config.supportsEvents === false;
+    await db.update(calendarSources)
+      .set({ lastSynced: new Date(), ...(taskOnly ? { syncErrors: {} } : {}) })
+      .where(eq(calendarSources.id, source.id));
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     errors.push(`CalDAV task sync failed: ${msg}`);
+    // Surface task-sync failures on the source itself for task-only sources
+    // (event-capable sources have syncErrors managed by the event path).
+    if (config.supportsEvents === false) {
+      await db.update(calendarSources)
+        .set({ syncErrors: { lastError: msg, lastErrorAt: new Date().toISOString() } })
+        .where(eq(calendarSources.id, source.id));
+    }
   }
 
   return { synced, errors };
