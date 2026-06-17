@@ -89,7 +89,13 @@ export async function GET(request: NextRequest) {
         .from(tasks)
         .leftJoin(users, eq(tasks.assignedTo, users.id))
         .where(conditions.length > 0 ? and(...conditions) : undefined)
-        .orderBy(sortFn(getSortColumn()))
+        // Incomplete tasks first, then the requested sort, then newest-first as a
+        // stable tiebreaker. Without this, a household with >limit tasks (e.g. many
+        // with no due date) would have its newest/active tasks sorted past the row
+        // limit and silently dropped from the fetch — they'd never appear in the
+        // list. The client re-sorts for display, so this only affects which rows
+        // are fetched, not their on-screen order.
+        .orderBy(asc(tasks.completed), sortFn(getSortColumn()), desc(tasks.createdAt))
         .limit(limit)
         .offset(offset);
 

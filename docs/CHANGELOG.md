@@ -4,6 +4,9 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+### Fixed — Tasks
+- **Newly-added tasks no longer vanish once a household has 100+ tasks.** The Tasks list fetches a capped number of rows (100) ordered by due date; with many tasks — especially ones without a due date, which sort last — the newest tasks fell past the row limit and were silently dropped from the fetch. They saved to the database fine but never appeared in any view (touch display or PWA). The fetch now orders **incomplete tasks first** with a newest-first tiebreaker, so active tasks are never truncated out. Display order is unchanged (the client still sorts the visible list).
+
 ### Fixed — Touch keyboard
 - **On-screen keyboard no longer dismisses itself when you tap Shift.** On touch displays (e.g. Raspberry Pi kiosks), tapping Shift (or a symbol key) blurred the focused input, so the global focusout handler hid the keyboard. The keyboard container now keeps the input focused on tap — a `mousedown` preventDefault, since simple-keyboard swallows the pointerdown the existing handler relied on. Thanks @theg00se1030 for the precise root-cause analysis. Closes [#125](https://github.com/sandydargoport/prism/issues/125).
 
