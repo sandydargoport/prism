@@ -119,13 +119,20 @@ export function VirtualKeyboard() {
         const activeInput = activeInputRef2.current.current;
         const activeContentEditable = activeContentEditableRef2.current.current;
         if (button === '{enter}' && !isContentEditableRef.current && activeInput) {
-          // Dispatch a real Enter to the focused input so it submits/commits.
-          // Thanks to the container's mousedown preventDefault the input is still
-          // focused here (previously the tap blurred it before this fired, so the
-          // value was lost on submit — #125). Closing the keyboard on Enter is
-          // intended: the field is done; tapping another field reopens it.
-          activeInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }));
+          // Fire a real Enter keydown for components that save via onKeyDown
+          // (`key === 'Enter'`). dispatchEvent returns false if a handler called
+          // preventDefault — i.e. it took ownership of Enter.
+          const notHandled = activeInput.dispatchEvent(
+            new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true })
+          );
           activeInput.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', bubbles: true }));
+          // A *synthetic* keydown doesn't trigger native form submission the way
+          // a real Enter does, so form-wrapped "Add …" fields silently dropped
+          // the typed value on virtual-Enter. If no onKeyDown handler claimed it
+          // and the input lives in a form, submit the form explicitly. (#125)
+          if (notHandled && activeInput instanceof HTMLInputElement && activeInput.form) {
+            activeInput.form.requestSubmit();
+          }
           if (activeInput instanceof HTMLInputElement) {
             setKeyboardVisibleRef.current(false);
           }
