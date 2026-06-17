@@ -5,7 +5,7 @@ All notable changes to Prism are documented in this file.
 ## Unreleased
 
 ### Fixed — Touch keyboard
-- **On-screen keyboard no longer dismisses itself on Shift or Enter.** On touch displays (e.g. Raspberry Pi kiosks), tapping Shift or a symbol key blurred the focused input — the global focusout handler then hid the keyboard — and Enter force-closed it outright. Key taps now keep the input focused (a `mousedown` preventDefault on the keyboard container, since simple-keyboard swallows the pointerdown before the existing handler runs), and Enter submits without dismissing; the keyboard closes via its dismiss key or when focus actually leaves. Thanks @theg00se1030 for the precise root-cause analysis. Closes [#125](https://github.com/sandydargoport/prism/issues/125).
+- **On-screen keyboard no longer loses input focus when you tap a key.** On touch displays (e.g. Raspberry Pi kiosks), tapping Shift (or any symbol key) blurred the focused input, so the global focusout handler hid the keyboard — and the *same* focus loss meant pressing Enter submitted an empty value and dropped what you'd typed. The keyboard container now keeps the input focused on tap (a `mousedown` preventDefault, since simple-keyboard swallows the pointerdown the existing handler relied on), fixing both the surprise dismissal on Shift and the lost data on Enter. Enter still closes the keyboard once the field is submitted (by design — tap another field to bring it back). Thanks @theg00se1030 for the precise root-cause analysis. Closes [#125](https://github.com/sandydargoport/prism/issues/125).
 
 ## [1.8.9] – 2026-06-16
 

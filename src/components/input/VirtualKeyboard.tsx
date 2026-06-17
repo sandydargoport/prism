@@ -119,12 +119,16 @@ export function VirtualKeyboard() {
         const activeInput = activeInputRef2.current.current;
         const activeContentEditable = activeContentEditableRef2.current.current;
         if (button === '{enter}' && !isContentEditableRef.current && activeInput) {
-          // Submit/confirm by dispatching a real Enter to the focused input, but
-          // do NOT force the keyboard closed — that dismissed it out from under
-          // the user mid-edit. The {dismiss} key and the focusout handler close
-          // it when the user is actually done. (#125)
+          // Dispatch a real Enter to the focused input so it submits/commits.
+          // Thanks to the container's mousedown preventDefault the input is still
+          // focused here (previously the tap blurred it before this fired, so the
+          // value was lost on submit — #125). Closing the keyboard on Enter is
+          // intended: the field is done; tapping another field reopens it.
           activeInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }));
           activeInput.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', bubbles: true }));
+          if (activeInput instanceof HTMLInputElement) {
+            setKeyboardVisibleRef.current(false);
+          }
         }
         if (button === '{dismiss}') {
           setKeyboardVisibleRef.current(false);
