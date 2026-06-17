@@ -119,11 +119,12 @@ export function VirtualKeyboard() {
         const activeInput = activeInputRef2.current.current;
         const activeContentEditable = activeContentEditableRef2.current.current;
         if (button === '{enter}' && !isContentEditableRef.current && activeInput) {
+          // Submit/confirm by dispatching a real Enter to the focused input, but
+          // do NOT force the keyboard closed — that dismissed it out from under
+          // the user mid-edit. The {dismiss} key and the focusout handler close
+          // it when the user is actually done. (#125)
           activeInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }));
           activeInput.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', bubbles: true }));
-          if (activeInput instanceof HTMLInputElement) {
-            setKeyboardVisibleRef.current(false);
-          }
         }
         if (button === '{dismiss}') {
           setKeyboardVisibleRef.current(false);
@@ -204,6 +205,13 @@ export function VirtualKeyboard() {
         display: visible ? undefined : 'none',
       }}
       onPointerDown={e => { e.stopPropagation(); e.preventDefault(); }}
+      // simple-keyboard stops the pointerdown before it reaches this container,
+      // so the preventDefault above never runs and the active input loses focus
+      // on any key tap (Shift/symbols) — the global focusout handler then reads
+      // that as "done" and hides the keyboard. The mousedown still bubbles here;
+      // preventing its default keeps focus on the input so tapping keys no longer
+      // dismisses the keyboard. (#125)
+      onMouseDown={e => { e.preventDefault(); }}
     >
       <div
         ref={containerRef}
