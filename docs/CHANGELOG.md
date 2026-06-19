@@ -4,6 +4,9 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+### Fixed — Integrations
+- **Clicking "Connect" before configuring OAuth now shows a setup prompt instead of a raw JSON error.** If you skipped OAuth setup during onboarding and then hit Connect on the Google / Gmail / Microsoft cards, the browser landed on a bare `{"error":"Failed to initiate … authentication"}` page. The init routes now detect the not-configured case and redirect back to the Integrations page with a clear banner — pointing to the Setup Wizard (where you enter your OAuth credentials) and naming the required env vars — instead of a dead JSON page. Thanks @joe-cole1 for the report and the "make this clearer for dummies who skipped onboarding" nudge. Closes [#108](https://github.com/sandydargoport/prism/issues/108).
+
 ## [1.8.10] – 2026-06-19
 
 ### Fixed — Tasks

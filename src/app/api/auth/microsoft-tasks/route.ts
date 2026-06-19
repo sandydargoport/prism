@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAuth, requireRole } from '@/lib/auth';
 import { logError } from '@/lib/utils/logError';
+import { oauthSetupRedirect } from '@/lib/integrations/oauthSetupRedirect';
 
 const MICROSOFT_AUTH_URL = 'https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize';
 const SCOPES = ['Tasks.ReadWrite', 'offline_access'].join(' ');
@@ -17,10 +18,7 @@ export async function GET(request: Request) {
     `${process.env.BASE_URL || 'http://localhost:3000'}/api/auth/microsoft-tasks/callback`;
 
   if (!clientId) {
-    return NextResponse.json(
-      { error: 'Microsoft OAuth not configured' },
-      { status: 500 }
-    );
+    return oauthSetupRedirect('microsoft');
   }
 
   try {

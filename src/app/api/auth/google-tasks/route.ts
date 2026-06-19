@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAuth, requireRole } from '@/lib/auth';
 import { logError } from '@/lib/utils/logError';
+import { oauthSetupRedirect } from '@/lib/integrations/oauthSetupRedirect';
 
 const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const SCOPES = 'https://www.googleapis.com/auth/tasks';
@@ -17,10 +18,7 @@ export async function GET(request: Request) {
     `${process.env.BASE_URL || 'http://localhost:3000'}/api/auth/google-tasks/callback`;
 
   if (!clientId) {
-    return NextResponse.json(
-      { error: 'Google OAuth not configured' },
-      { status: 500 }
-    );
+    return oauthSetupRedirect('google');
   }
 
   try {

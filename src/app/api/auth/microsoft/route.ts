@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAuth, requireRole } from '@/lib/auth';
 import { getMicrosoftAuthUrl } from '@/lib/integrations/onedrive';
 import { logError } from '@/lib/utils/logError';
+import { isOAuthNotConfigured, oauthSetupRedirect } from '@/lib/integrations/oauthSetupRedirect';
 
 export async function GET(request: Request) {
   const auth = await requireAuth();
@@ -24,6 +25,7 @@ export async function GET(request: Request) {
 
     return NextResponse.redirect(authUrl);
   } catch (error) {
+    if (isOAuthNotConfigured(error)) return oauthSetupRedirect('microsoft');
     logError('Failed to initiate Microsoft OAuth:', error);
     return NextResponse.json(
       { error: 'Failed to initiate Microsoft authentication' },
