@@ -4,6 +4,8 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.8.10] – 2026-06-19
+
 ### Fixed — Tasks
 - **Newly-added tasks no longer vanish once a household has 100+ tasks.** The Tasks list fetches a capped number of rows (100) ordered by due date; with many tasks — especially ones without a due date, which sort last — the newest tasks fell past the row limit and were silently dropped from the fetch. They saved to the database fine but never appeared in any view (touch display or PWA). The fetch now orders **incomplete tasks first** with a newest-first tiebreaker, so active tasks are never truncated out. Display order is unchanged (the client still sorts the visible list).
 
