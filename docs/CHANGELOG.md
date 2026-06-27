@@ -4,6 +4,14 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.8.11] – 2026-06-27
+
+### Fixed — Home Assistant addon
+- **The bundled-database addon now actually starts — and survives restarts.** With `bundled_db: true` (the default), the addon failed to boot at all: Alpine's Postgres defaults its Unix socket to `/run/postgresql`, which doesn't exist in the container, so `pg_ctl` died with `could not create lock file "…/.s.PGSQL.5432.lock": No such file or directory` and the dashboard never came up. A second bug then crash-looped the addon on its first restart/update — the base schema (a full `pg_dump`) was re-applied on every boot, and its `ADD CONSTRAINT` statements aren't idempotent (`relation "…" already exists`). The entrypoint now creates the socket directory on every start, and applies the base schema only when the database is empty (mirroring the standalone deploy, where Postgres' init dir runs it once), letting the idempotent migration step handle every later boot. It also dumps the Postgres log on a startup failure instead of swallowing it behind `pg_ctl`'s "Examine the log output". Thanks @joe-cole1 for the report and logs. Closes [#81](https://github.com/sandydargoport/prism/issues/81).
+
+### Changed — Backups
+- **Off-site sync and the dead-man healthcheck are now opt-in via `.env`.** `RCLONE_REMOTE` and `HC_URL` were previously hardcoded in `docker-compose.yml`, so every deployment shared one set of endpoints. They now default to empty: set your own `RCLONE_REMOTE` (an rclone remote for off-site copies) and `HC_URL` (your own healthchecks.io check) in `.env` to enable them, or leave them blank to keep backups local-only. The backup tunables (`BACKUP_HOUR`, `RETENTION_DAYS`, `RCLONE_RETENTION_DAYS`) are overridable the same way. See the new Backups section in `.env.example`.
+
 ### Fixed — Integrations
 - **Clicking "Connect" before configuring OAuth now shows a setup prompt instead of a raw JSON error.** If you skipped OAuth setup during onboarding and then hit Connect on the Google / Gmail / Microsoft cards, the browser landed on a bare `{"error":"Failed to initiate … authentication"}` page. The init routes now detect the not-configured case and redirect back to the Integrations page with a clear banner — pointing to the Setup Wizard (where you enter your OAuth credentials) and naming the required env vars — instead of a dead JSON page. Thanks @joe-cole1 for the report and the "make this clearer for dummies who skipped onboarding" nudge. Closes [#108](https://github.com/sandydargoport/prism/issues/108).
 
