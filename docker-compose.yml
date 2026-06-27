@@ -102,11 +102,15 @@ services:
     container_name: prism-backup
     environment:
       - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - BACKUP_HOUR=3
-      - RETENTION_DAYS=7
-      - RCLONE_REMOTE=onedrive:Prism/backups
-      - RCLONE_RETENTION_DAYS=30
-      - HC_URL=https://hc-ping.com/f0bff165-06b7-48eb-a0da-10bbd4656786
+      - BACKUP_HOUR=${BACKUP_HOUR:-3}
+      - RETENTION_DAYS=${RETENTION_DAYS:-7}
+      # Off-site sync + dead-man healthcheck are per-deployment. Leave blank
+      # (the defaults) to keep local-only backups and skip the ping; set them
+      # in .env to enable. These MUST NOT be hardcoded here — this file is
+      # public, and a baked-in HC_URL means every clone pings one shared check.
+      - RCLONE_REMOTE=${RCLONE_REMOTE:-}
+      - RCLONE_RETENTION_DAYS=${RCLONE_RETENTION_DAYS:-30}
+      - HC_URL=${HC_URL:-}
     volumes:
       - ./backups:/backups
       # Off-site sync of user assets (avatars, photos, recipe images) lives

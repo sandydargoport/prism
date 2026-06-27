@@ -1,2 +1,3 @@
 bash scripts/scan-pii.sh
 bash scripts/scan-hostnames.sh
+bash scripts/scan-secrets.sh
