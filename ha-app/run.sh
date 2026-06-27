@@ -73,8 +73,23 @@ if [ "$BUNDLED_DB" = "true" ]; then
         chmod 600 "$PG_PASSWORD_FILE"
     fi
 
+    # Postgres on Alpine defaults its Unix socket to /run/postgresql, which
+    # does not exist in the container — and /run is a fresh tmpfs each boot,
+    # so this must run every start, not just first boot. Without it pg_ctl
+    # dies with: could not create lock file "/run/postgresql/.s.PGSQL.5432
+    # .lock": No such file or directory. See issue #81.
+    mkdir -p /run/postgresql
+    chown postgres:postgres /run/postgresql
+
     log "Starting bundled postgres"
-    sudo -u postgres pg_ctl -D "$PG_DATA" -l "$PG_DATA/postgres.log" -w start
+    # On failure, surface the server log — pg_ctl only says "could not start
+    # server / Examine the log output", and set -e would otherwise kill the
+    # script before anyone sees why.
+    if ! sudo -u postgres pg_ctl -D "$PG_DATA" -l "$PG_DATA/postgres.log" -w start; then
+        log "bundled postgres failed to start — dumping $PG_DATA/postgres.log:"
+        cat "$PG_DATA/postgres.log" >&2 2>/dev/null || true
+        die "bundled postgres did not start"
+    fi
 
     PG_PASSWORD="$(cat "$PG_PASSWORD_FILE")"
     # Create role + database (idempotent: check existence first).
@@ -98,11 +113,21 @@ else
 fi
 
 # ─── 3. Schema + migrations ──────────────────────────────────────────
-# Base schema first (creates tables that pre-date drizzle migrations),
-# then drizzle migrations on top. Base-schema apply is idempotent
-# because each statement is CREATE … IF NOT EXISTS.
-log "Applying base schema"
-PGPASSWORD="$PG_PASSWORD" psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f /app/db-init/02-schema.sql
+# The base schema (02-schema.sql) is a full pg_dump and is NOT idempotent:
+# its ADD CONSTRAINT statements have no IF NOT EXISTS and error out on a
+# second apply. So run it only when the database has no schema yet —
+# mirroring the standalone deploy, where Postgres' docker-entrypoint-initdb.d
+# runs it exactly once. On every later boot, migrate.js (idempotent) brings
+# the schema up to date. Detect "empty" by the absence of the migration
+# bookkeeping table. Auth comes from DATABASE_URL (works for both the bundled
+# trust-auth socket and an external password URL). See issue #81.
+SCHEMA_PRESENT="$(psql "$DATABASE_URL" -tAc "SELECT to_regclass('public.__prism_migrations') IS NOT NULL" 2>/dev/null || echo f)"
+if [ "$SCHEMA_PRESENT" != "t" ]; then
+    log "Fresh database — applying base schema"
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f /app/db-init/02-schema.sql
+else
+    log "Existing database — skipping base schema (migrate.js handles updates)"
+fi
 
 log "Running migrations"
 cd /app && node scripts/migrate.js
