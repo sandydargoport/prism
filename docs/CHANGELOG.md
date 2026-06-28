@@ -4,6 +4,11 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.8.12] – 2026-06-28
+
+### Fixed — Integrations
+- **Google & Microsoft OAuth redirect URIs are now derived from the request, fixing `redirect_uri_mismatch`.** Previously the redirect URI came from a static `*_REDIRECT_URI` env var (defaulting to `localhost`), so anyone whose env var didn't byte-match what they'd registered in the provider console hit `Error 400: redirect_uri_mismatch` on Connect. All Google (Calendar, Gmail/Bus, Tasks) and Microsoft (OneDrive, Tasks) flows now build the redirect URI from the incoming request's host/proto (honoring `X-Forwarded-Host`/`-Proto` behind a reverse proxy), the same approach Kroger already uses — so the URI always matches the host you started from, and `/authorize` and `/token` stay in lockstep. The env vars still work as a fallback. Existing connections are unaffected (token refresh doesn't use the redirect URI). Closes [#124](https://github.com/sandydargoport/prism/issues/124).
+
 ## [1.8.11] – 2026-06-27
 
 ### Fixed — Home Assistant addon
@@ -13,8 +18,6 @@ All notable changes to Prism are documented in this file.
 - **Off-site sync and the dead-man healthcheck are now opt-in via `.env`.** `RCLONE_REMOTE` and `HC_URL` were previously hardcoded in `docker-compose.yml`, so every deployment shared one set of endpoints. They now default to empty: set your own `RCLONE_REMOTE` (an rclone remote for off-site copies) and `HC_URL` (your own healthchecks.io check) in `.env` to enable them, or leave them blank to keep backups local-only. The backup tunables (`BACKUP_HOUR`, `RETENTION_DAYS`, `RCLONE_RETENTION_DAYS`) are overridable the same way. See the new Backups section in `.env.example`.
 
 ### Fixed — Integrations
-- **Google & Microsoft OAuth redirect URIs are now derived from the request, fixing `redirect_uri_mismatch`.** Previously the redirect URI came from a static `*_REDIRECT_URI` env var (defaulting to `localhost`), so anyone whose env var didn't byte-match what they'd registered in the provider console hit `Error 400: redirect_uri_mismatch` on Connect. All Google (Calendar, Gmail/Bus, Tasks) and Microsoft (OneDrive, Tasks) flows now build the redirect URI from the incoming request's host/proto (honoring `X-Forwarded-Host`/`-Proto` behind a reverse proxy), the same approach Kroger already uses — so the URI always matches the host you started from, and `/authorize` and `/token` stay in lockstep. The env vars still work as a fallback. Existing connections are unaffected (token refresh doesn't use the redirect URI). Closes [#124](https://github.com/sandydargoport/prism/issues/124).
-
 - **Clicking "Connect" before configuring OAuth now shows a setup prompt instead of a raw JSON error.** If you skipped OAuth setup during onboarding and then hit Connect on the Google / Gmail / Microsoft cards, the browser landed on a bare `{"error":"Failed to initiate … authentication"}` page. The init routes now detect the not-configured case and redirect back to the Integrations page with a clear banner — pointing to the Setup Wizard (where you enter your OAuth credentials) and naming the required env vars — instead of a dead JSON page. Thanks @joe-cole1 for the report and the "make this clearer for dummies who skipped onboarding" nudge. Closes [#108](https://github.com/sandydargoport/prism/issues/108).
 
 ## [1.8.10] – 2026-06-19
