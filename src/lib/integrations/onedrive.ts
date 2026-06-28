@@ -6,6 +6,9 @@ const SCOPES = [
   'Files.Read',
   'Files.Read.All',
   'offline_access',
+  // Identify which Microsoft account authorized, for the "Connected as
+  // <email>" label on the Integrations card (#100). Read-only profile scope.
+  'User.Read',
 ].join(' ');
 
 export interface MicrosoftTokens {

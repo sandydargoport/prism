@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { accessToken, refreshToken, tokenExpiresAt } = JSON.parse(stored);
+    const { accessToken, refreshToken, tokenExpiresAt, accountEmail } = JSON.parse(stored);
 
     // Verify the Prism shopping list exists
     const [list] = await db
@@ -99,6 +99,7 @@ export async function POST(request: NextRequest) {
           accessToken,
           refreshToken: refreshToken || existing.refreshToken,
           tokenExpiresAt: new Date(tokenExpiresAt),
+          accountEmail: accountEmail ?? undefined,
           externalListId,
           externalListName: externalListName || null,
           lastSyncError: null,
@@ -116,6 +117,7 @@ export async function POST(request: NextRequest) {
         accessToken,
         refreshToken,
         tokenExpiresAt: new Date(tokenExpiresAt),
+        accountEmail: accountEmail ?? null,
         syncEnabled: true,
       });
     }

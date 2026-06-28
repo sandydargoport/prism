@@ -5,7 +5,9 @@ import { oauthSetupRedirect } from '@/lib/integrations/oauthSetupRedirect';
 import { resolveRedirectUri } from '@/lib/integrations/resolveRedirectUri';
 
 const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
-const SCOPES = 'https://www.googleapis.com/auth/tasks';
+// `openid email` lets us identify which Google account authorized, for the
+// "Connected as <email>" label on the Integrations card (#100).
+const SCOPES = 'https://www.googleapis.com/auth/tasks openid email';
 
 export async function GET(request: Request) {
   const auth = await requireAuth();

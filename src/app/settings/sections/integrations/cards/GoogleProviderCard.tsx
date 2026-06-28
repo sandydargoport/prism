@@ -11,6 +11,7 @@ import { ProviderCardShell } from '../shared/ProviderCardShell';
 import { CollapsibleSubSection } from '../shared/CollapsibleSubSection';
 import type { IntegrationStatus } from '../shared/useIntegrationStatus';
 import type { ConnectionStatus } from '../shared/ConnectionStatusBadge';
+import { connectedAsLabel } from '../shared/connectedAs';
 import { TaskIntegrationsSection } from '../../TaskIntegrationsSection';
 
 interface Props {
@@ -117,6 +118,7 @@ export function GoogleProviderCard({
   const lastSyncedLabel = g?.lastSynced
     ? `Last synced ${new Date(g.lastSynced).toLocaleString()}`
     : null;
+  const connectedAs = connectedAsLabel(g?.accountEmail ?? null, g?.accountEmails ?? []);
 
   return (
     <>
@@ -128,6 +130,7 @@ export function GoogleProviderCard({
         description={
           connected
             ? [
+                connectedAs,
                 `${calendarCount} calendar${calendarCount === 1 ? '' : 's'}`,
                 taskCount > 0
                   ? `${taskCount} task source${taskCount === 1 ? '' : 's'}`
@@ -144,7 +147,7 @@ export function GoogleProviderCard({
           <CollapsibleSubSection
             id="google-account"
             label="Account"
-            summary="Connected Google account · Disconnect"
+            summary={`${connectedAs ?? 'Connected Google account'} · Disconnect`}
             forceOpen={forceSubSectionOpen === 'google-account'}
           >
             <Button

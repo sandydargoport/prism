@@ -9,18 +9,29 @@ export interface IntegrationStatus {
     calendarCount: number;
     taskSourceCount: number;
     lastSynced: string | null;
+    // Account identity for the "Connected as <email>" label (#100).
+    // `accountEmail` is the primary; `accountEmails` lists all distinct
+    // accounts for split-account setups. Null/empty when unknown (e.g. the
+    // source predates the email-capture migration — re-auth populates it).
+    accountEmail: string | null;
+    accountEmails: string[];
   };
   microsoft: {
     connected: boolean;
     taskSourceCount: number;
     shoppingSourceCount: number;
+    accountEmail: string | null;
+    accountEmails: string[];
   };
   onedrive: {
     connected: boolean;
     sourceCount: number;
+    accountEmail: string | null;
+    accountEmails: string[];
   };
   gmail: {
     connected: boolean;
+    accountEmail: string | null;
   };
 }
 

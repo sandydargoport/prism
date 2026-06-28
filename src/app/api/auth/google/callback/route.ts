@@ -11,6 +11,7 @@ import {
 import { encrypt } from '@/lib/utils/crypto';
 import { logActivity } from '@/lib/services/auditLog';
 import { resolveRedirectUri } from '@/lib/integrations/resolveRedirectUri';
+import { fetchGoogleAccountEmail } from '@/lib/integrations/oauth-userinfo';
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 
@@ -81,6 +82,10 @@ export async function GET(request: Request) {
     const encryptedAccessToken = encrypt(tokens.access_token);
     const encryptedRefreshToken = tokens.refresh_token ? encrypt(tokens.refresh_token) : null;
 
+    // Identify which Google account this is, for the "Connected as <email>"
+    // card label (#100). Best-effort: null on failure, never blocks the flow.
+    const accountEmail = await fetchGoogleAccountEmail(tokens.access_token);
+
     // If re-authenticating, update only calendar sources that belong to this Google account.
     // Build a set of calendar IDs visible to this account so we don't overwrite tokens
     // for calendars that belong to a different Google account.
@@ -100,6 +105,9 @@ export async function GET(request: Request) {
           accessToken: encryptedAccessToken,
           refreshToken: encryptedRefreshToken || undefined,
           tokenExpiresAt,
+          // Only overwrite the email when we successfully fetched one, so a
+          // transient userinfo failure doesn't blank an existing label.
+          accountEmail: accountEmail ?? undefined,
           syncErrors: prev.userOverride ? { userOverride: true } : null,
           updatedAt: new Date(),
         }).where(eq(calendarSources.id, source.id));
@@ -160,6 +168,7 @@ export async function GET(request: Request) {
             accessToken: encryptedAccessToken,
             refreshToken: encryptedRefreshToken || existing.refreshToken,
             tokenExpiresAt,
+            accountEmail: accountEmail ?? undefined,
             syncErrors: prev.userOverride ? { userOverride: true } : null,
             updatedAt: new Date(),
           })
@@ -180,6 +189,7 @@ export async function GET(request: Request) {
           accessToken: encryptedAccessToken,
           refreshToken: encryptedRefreshToken,
           tokenExpiresAt,
+          accountEmail,
         });
       }
     }
