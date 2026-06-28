@@ -6,6 +6,7 @@ import { exchangeCodeForTokens } from '@/lib/integrations/onedrive';
 import { encrypt } from '@/lib/utils/crypto';
 import { logError } from '@/lib/utils/logError';
 import { resolveRedirectUri } from '@/lib/integrations/resolveRedirectUri';
+import { fetchMicrosoftAccountEmail } from '@/lib/integrations/oauth-userinfo';
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 
@@ -49,6 +50,9 @@ export async function GET(request: Request) {
     const encryptedAccessToken = encrypt(tokens.access_token);
     const encryptedRefreshToken = tokens.refresh_token ? encrypt(tokens.refresh_token) : null;
 
+    // Identify the Microsoft account for the "Connected as <email>" label (#100).
+    const accountEmail = await fetchMicrosoftAccountEmail(tokens.access_token);
+
     const [existing] = await db.select().from(photoSources).where(eq(photoSources.type, 'onedrive')).limit(1);
     let sourceId: string;
     if (existing) {
@@ -56,6 +60,7 @@ export async function GET(request: Request) {
         accessToken: encryptedAccessToken,
         refreshToken: encryptedRefreshToken || existing.refreshToken,
         tokenExpiresAt,
+        accountEmail: accountEmail ?? undefined,
       }).where(eq(photoSources.id, existing.id));
       sourceId = existing.id;
     } else {
@@ -65,6 +70,7 @@ export async function GET(request: Request) {
         accessToken: encryptedAccessToken,
         refreshToken: encryptedRefreshToken,
         tokenExpiresAt,
+        accountEmail,
       }).returning();
       sourceId = created?.id ?? '';
     }

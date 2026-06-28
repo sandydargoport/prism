@@ -11,6 +11,7 @@ import { ProviderCardShell } from '../shared/ProviderCardShell';
 import { CollapsibleSubSection } from '../shared/CollapsibleSubSection';
 import type { IntegrationStatus } from '../shared/useIntegrationStatus';
 import type { ConnectionStatus } from '../shared/ConnectionStatusBadge';
+import { connectedAsLabel } from '../shared/connectedAs';
 import { TaskIntegrationsSection } from '../../TaskIntegrationsSection';
 import { ShoppingIntegrationsSection } from '../../ShoppingIntegrationsSection';
 import { WishListIntegrationsSection } from '../../WishListIntegrationsSection';
@@ -97,8 +98,20 @@ export function MicrosoftProviderCard({
   const shoppingCount = ms?.shoppingSourceCount ?? 0;
   const oneDriveCount = od?.sourceCount ?? 0;
 
+  // To-Do and OneDrive can be authorized with different Microsoft accounts;
+  // merge both providers' emails into one label (#100).
+  const allMsEmails = [
+    ...(ms?.accountEmails ?? []),
+    ...(od?.accountEmails ?? []),
+  ];
+  const connectedAs = connectedAsLabel(
+    ms?.accountEmail ?? od?.accountEmail ?? null,
+    allMsEmails,
+  );
+
   const description = connected
     ? [
+        connectedAs,
         taskCount > 0
           ? `${taskCount} task list${taskCount === 1 ? '' : 's'}`
           : null,
@@ -138,7 +151,7 @@ export function MicrosoftProviderCard({
           <CollapsibleSubSection
             id="microsoft-account"
             label="Account"
-            summary="Connected Microsoft account · Disconnect"
+            summary={`${connectedAs ?? 'Connected Microsoft account'} · Disconnect`}
             forceOpen={forceSubSectionOpen === 'microsoft-account'}
           >
             <Button

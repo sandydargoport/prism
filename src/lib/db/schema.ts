@@ -103,6 +103,11 @@ export const calendarSources = pgTable('calendar_sources', {
   refreshToken: text('refresh_token'),
   tokenExpiresAt: timestamp('token_expires_at'),
 
+  // OAuth account email this source is wired to (from the id_token "email"
+  // claim at token exchange; null for non-OAuth sources like CalDAV/iCal).
+  // Surfaced as "Connected as <email>" in the Integrations cards. See #100.
+  accountEmail: varchar('account_email', { length: 320 }),
+
   // iCal subscription URL (used when provider='ical'; null otherwise)
   icalUrl: text('ical_url'),
 
@@ -210,6 +215,9 @@ export const taskSources = pgTable('task_sources', {
   accessToken: text('access_token'),
   refreshToken: text('refresh_token'),
   tokenExpiresAt: timestamp('token_expires_at'),
+
+  // OAuth account email this source is wired to. See #100.
+  accountEmail: varchar('account_email', { length: 320 }),
 
   lastSyncAt: timestamp('last_sync_at'),
   lastSyncError: text('last_sync_error'),
@@ -363,6 +371,9 @@ export const shoppingListSources = pgTable('shopping_list_sources', {
   accessToken: text('access_token'),
   refreshToken: text('refresh_token'),
   tokenExpiresAt: timestamp('token_expires_at'),
+
+  // OAuth account email this source is wired to. See #100.
+  accountEmail: varchar('account_email', { length: 320 }),
 
   lastSyncAt: timestamp('last_sync_at'),
   lastSyncError: text('last_sync_error'),
@@ -783,6 +794,11 @@ export const apiCredentials = pgTable('api_credentials', {
   // When do these credentials expire? (for OAuth tokens)
   expiresAt: timestamp('expires_at'),
 
+  // OAuth account email these credentials belong to (from the id_token
+  // "email" claim; null for non-OAuth or service-account credentials).
+  // Surfaced as "Connected as <email>" in the Integrations cards. See #100.
+  accountEmail: varchar('account_email', { length: 320 }),
+
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -1087,6 +1103,9 @@ export const photoSources = pgTable('photo_sources', {
   refreshToken: text('refresh_token'),
   tokenExpiresAt: timestamp('token_expires_at'),
 
+  // OAuth account email this source is wired to (OneDrive). See #100.
+  accountEmail: varchar('account_email', { length: 320 }),
+
   // Immich shared-link sources
   immichServerUrl: text('immich_server_url'),
   immichShareKey: text('immich_share_key'),
@@ -1329,6 +1348,9 @@ export const wishItemSources = pgTable('wish_item_sources', {
   accessToken: text('access_token'),
   refreshToken: text('refresh_token'),
   tokenExpiresAt: timestamp('token_expires_at'),
+
+  // OAuth account email this source is wired to. See #100.
+  accountEmail: varchar('account_email', { length: 320 }),
 
   lastSyncAt: timestamp('last_sync_at'),
   lastSyncError: text('last_sync_error'),

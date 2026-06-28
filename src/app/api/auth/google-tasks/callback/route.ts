@@ -4,6 +4,7 @@ import { encrypt } from '@/lib/utils/crypto';
 import { getRedisClient } from '@/lib/cache/getRedisClient';
 import { logError } from '@/lib/utils/logError';
 import { resolveRedirectUri } from '@/lib/integrations/resolveRedirectUri';
+import { fetchGoogleAccountEmail } from '@/lib/integrations/oauth-userinfo';
 
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
@@ -94,6 +95,10 @@ export async function GET(request: Request) {
     const tokens = await exchangeCodeForTokens(code, resolveRedirectUri(request, '/api/auth/google-tasks/callback')); // dynamic redirect URI per request (#124)
     const tokenExpiresAt = new Date(Date.now() + tokens.expires_in * 1000);
 
+    // Which Google account this is, carried through the temp store to the
+    // finalize step that writes the task_sources row (#100).
+    const accountEmail = await fetchGoogleAccountEmail(tokens.access_token);
+
     const encryptedAccessToken = encrypt(tokens.access_token);
     const encryptedRefreshToken = tokens.refresh_token
       ? encrypt(tokens.refresh_token)
@@ -119,6 +124,7 @@ export async function GET(request: Request) {
         refreshToken: encryptedRefreshToken,
         tokenExpiresAt: tokenExpiresAt.toISOString(),
         rawAccessToken: tokens.access_token,
+        accountEmail,
       })
     );
 

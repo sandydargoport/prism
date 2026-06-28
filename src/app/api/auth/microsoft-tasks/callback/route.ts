@@ -4,10 +4,13 @@ import { encrypt } from '@/lib/utils/crypto';
 import { getRedisClient } from '@/lib/cache/getRedisClient';
 import { logError } from '@/lib/utils/logError';
 import { resolveRedirectUri } from '@/lib/integrations/resolveRedirectUri';
+import { fetchMicrosoftAccountEmail } from '@/lib/integrations/oauth-userinfo';
 
 const MICROSOFT_TOKEN_URL = 'https://login.microsoftonline.com/consumers/oauth2/v2.0/token';
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
-const SCOPES = ['Tasks.ReadWrite', 'offline_access'].join(' ');
+// Must match the authorize route's scopes (Microsoft validates scope on the
+// token exchange). `User.Read` powers the "Connected as <email>" label (#100).
+const SCOPES = ['Tasks.ReadWrite', 'offline_access', 'User.Read'].join(' ');
 const TEMP_TOKEN_TTL = 300; // 5 minutes
 
 interface MicrosoftTokens {
@@ -108,6 +111,10 @@ export async function GET(request: Request) {
     const tokens = await exchangeCodeForTokens(code, resolveRedirectUri(request, '/api/auth/microsoft-tasks/callback')); // dynamic redirect URI per request (#124)
     const tokenExpiresAt = new Date(Date.now() + tokens.expires_in * 1000);
 
+    // Which Microsoft account this is, carried through the temp store to the
+    // finalize step that writes the source row (#100).
+    const accountEmail = await fetchMicrosoftAccountEmail(tokens.access_token);
+
     // Encrypt tokens for storage
     const encryptedAccessToken = encrypt(tokens.access_token);
     const encryptedRefreshToken = tokens.refresh_token
@@ -137,6 +144,7 @@ export async function GET(request: Request) {
         refreshToken: encryptedRefreshToken,
         tokenExpiresAt: tokenExpiresAt.toISOString(),
         rawAccessToken: tokens.access_token, // Keep raw for immediate list fetch
+        accountEmail,
       })
     );
 

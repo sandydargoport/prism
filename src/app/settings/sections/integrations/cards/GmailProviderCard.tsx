@@ -11,6 +11,7 @@ import { ProviderCardShell } from '../shared/ProviderCardShell';
 import { CollapsibleSubSection } from '../shared/CollapsibleSubSection';
 import type { IntegrationStatus } from '../shared/useIntegrationStatus';
 import type { ConnectionStatus } from '../shared/ConnectionStatusBadge';
+import { connectedAsLabel } from '../shared/connectedAs';
 
 interface Props {
   status: IntegrationStatus | null;
@@ -47,6 +48,7 @@ export function GmailProviderCard({
   const connectionStatus: ConnectionStatus = connected
     ? 'connected'
     : 'disconnected';
+  const connectedAs = connectedAsLabel(status?.gmail.accountEmail ?? null);
 
   const handleDisconnect = async () => {
     const ok = await confirm(
@@ -93,7 +95,9 @@ export function GmailProviderCard({
         status={connectionStatus}
         description={
           connected
-            ? 'Reading FirstView arrival emails from your inbox.'
+            ? connectedAs
+              ? `${connectedAs} · Reading FirstView arrival emails`
+              : 'Reading FirstView arrival emails from your inbox.'
             : 'Optional: parse school bus arrival emails from FirstView.'
         }
         primaryAction={primaryAction}
@@ -102,7 +106,7 @@ export function GmailProviderCard({
           <CollapsibleSubSection
             id="gmail-account"
             label="Account"
-            summary="Connected Gmail account · Disconnect"
+            summary={`${connectedAs ?? 'Connected Gmail account'} · Disconnect`}
             forceOpen={forceSubSectionOpen === 'gmail-account'}
           >
             <Button

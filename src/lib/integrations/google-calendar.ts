@@ -23,6 +23,10 @@ const GOOGLE_CALENDAR_API = 'https://www.googleapis.com/calendar/v3';
 const SCOPES = [
   'https://www.googleapis.com/auth/calendar.readonly',
   'https://www.googleapis.com/auth/calendar.events',
+  // Identify which Google account authorized, for the "Connected as <email>"
+  // label on the Integrations card (#100). Read-only identity scopes.
+  'openid',
+  'email',
 ].join(' ');
 
 /**

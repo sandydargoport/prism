@@ -5,7 +5,9 @@ import { oauthSetupRedirect } from '@/lib/integrations/oauthSetupRedirect';
 import { resolveRedirectUri } from '@/lib/integrations/resolveRedirectUri';
 
 const MICROSOFT_AUTH_URL = 'https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize';
-const SCOPES = ['Tasks.ReadWrite', 'offline_access'].join(' ');
+// `User.Read` lets us identify which Microsoft account authorized, for the
+// "Connected as <email>" label on the Integrations card (#100).
+const SCOPES = ['Tasks.ReadWrite', 'offline_access', 'User.Read'].join(' ');
 
 export async function GET(request: Request) {
   const auth = await requireAuth();
