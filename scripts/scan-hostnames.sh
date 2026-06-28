@@ -116,7 +116,7 @@ done
 SCAN_FILES_PATTERN='\.(ts|tsx|js|jsx|mjs|cjs|sh|py|md|yml|yaml|json|css|scss|sql)$'
 TARGETS=$(git ls-files \
   | grep -E "$SCAN_FILES_PATTERN" \
-  | grep -v -E '^(scripts/scan-(pii|examples|hostnames)\.sh|docs/code-review-modalities\.md|.*\.snap$|package-lock\.json|.*\.lock$)$' \
+  | grep -v -E '^(scripts/scan-(pii|examples|hostnames|secrets)\.sh|docs/code-review-modalities\.md|.*\.snap$|package-lock\.json|.*\.lock$)$' \
   || true)
 
 if [ -z "$TARGETS" ]; then
