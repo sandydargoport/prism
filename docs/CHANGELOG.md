@@ -4,6 +4,11 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.8.13] – 2026-06-29
+
+### Added — Integrations
+- **Each Integrations card now shows which account it's connected to — "Connected as `you@example.com`".** Previously the cards showed *that* a provider was connected but not *which account*, so anyone running split accounts under one provider (e.g. a personal Google for calendars plus a family Gmail for school-bus emails) couldn't tell from the card which account each feature used. Prism now captures the account's email during the OAuth login (Google, Microsoft, and Gmail) and shows it on the provider card and its Account sub-section; split-account setups show the primary plus a "+N more". **Existing connections show no email until you click Re-authenticate on the card** — the email is only captured on a fresh login, and there's intentionally no backfill of stored tokens. The new login adds read-only identity scopes (Google `openid email`, Microsoft `User.Read`); Gmail reuses its existing scope. Closes [#100](https://github.com/sandydargoport/prism/issues/100).
+
 ## [1.8.12] – 2026-06-28
 
 ### Fixed — Integrations
