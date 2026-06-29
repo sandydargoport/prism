@@ -32,6 +32,12 @@
 // Import global styles (including Tailwind CSS)
 import '@/styles/globals.css';
 
+// Bundle a color emoji webfont so emoji (🎯 🎂 🛒 🏆 …) render even on clients
+// with no system emoji font — e.g. a bare Raspberry Pi OS / minimal Chromium
+// kiosk. Subsetted by unicode-range, so a browser only downloads the small
+// chunks for the emoji actually on screen, not the whole font. See #145.
+import '@fontsource/noto-color-emoji/index.css';
+
 // Next.js types for metadata
 import type { Metadata, Viewport } from 'next';
 

@@ -87,6 +87,13 @@ module.exports = {
           'Helvetica Neue',
           'Arial',
           'sans-serif',
+          // Emoji fallback (#145): prefer the device's native color emoji font;
+          // fall back to the bundled "Noto Color Emoji" webfont (imported in
+          // layout.tsx) so emoji still render on clients with no emoji font.
+          'Apple Color Emoji',
+          'Segoe UI Emoji',
+          'Segoe UI Symbol',
+          'Noto Color Emoji',
         ],
         mono: [
           'JetBrains Mono',
