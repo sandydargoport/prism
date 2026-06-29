@@ -4,6 +4,11 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.8.14] – 2026-06-29
+
+### Fixed — Display
+- **Emoji now render on devices without a system emoji font.** Prism uses Unicode emoji throughout the UI (Goals 🎯, Birthdays 🎂, shopping categories 🛒, Points 🏆, the avatar picker, …); these render in the *viewing browser* using the device's emoji font, so on a minimal client with none installed — e.g. a bare Raspberry Pi OS / Chromium kiosk — they showed as empty "tofu" boxes (□). Prism now bundles the Noto Color Emoji webfont and adds it to the font stack after the system emoji fonts, so it serves the glyphs itself and emoji render on any client regardless of installed fonts. The font is subsetted by Unicode range, so a browser only downloads the small chunks for the emoji actually on screen. Devices that already have a native emoji font keep using it (no extra download). Thanks @theg00se1030 for the report. Closes [#145](https://github.com/sandydargoport/prism/issues/145).
+
 ## [1.8.13] – 2026-06-29
 
 ### Added — Integrations
