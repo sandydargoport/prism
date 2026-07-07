@@ -1,10 +1,27 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
-import { settings } from '@/lib/db/schema';
+import { settings, users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
 export async function POST() {
   try {
+    // Guard against a lockout: refuse to mark setup complete unless at least
+    // one parent account exists. Otherwise setupComplete=true with zero users
+    // leaves a login screen with no profiles and no way to add one, since
+    // /api/family only allows unauthenticated member creation while setup is
+    // still incomplete.
+    const [parent] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.role, 'parent'))
+      .limit(1);
+    if (!parent) {
+      return NextResponse.json(
+        { error: 'Add at least one parent before finishing setup' },
+        { status: 400 }
+      );
+    }
+
     const existing = await db.select().from(settings).where(eq(settings.key, 'setupComplete'));
     if (existing.length > 0) {
       await db.update(settings)

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { PartyPopper, Settings } from 'lucide-react';
@@ -15,7 +16,14 @@ export function CompleteStep() {
     const markComplete = async () => {
       setMarking(true);
       try {
-        await fetch('/api/setup/complete', { method: 'POST' });
+        const res = await fetch('/api/setup/complete', { method: 'POST' });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          toast({
+            title: data.error || 'Could not finish setup',
+            variant: 'destructive',
+          });
+        }
       } finally {
         setMarking(false);
       }

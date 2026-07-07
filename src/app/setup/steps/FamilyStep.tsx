@@ -38,17 +38,24 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
   const { pinLength, setPinLength } = usePinLength();
 
   const canAdd = name.trim().length > 0;
+  const hasParent = added.some((m) => m.role === 'parent');
 
   const addMember = async () => {
     if (!canAdd) return;
     setSaving(true);
     try {
+      const trimmedPin = pin.trim();
+      if (trimmedPin && trimmedPin.length !== pinLength) {
+        toast({ title: `PIN must be exactly ${pinLength} digits`, variant: 'destructive' });
+        return;
+      }
+
       const body: Record<string, string> = {
         name: name.trim(),
         role,
         color,
       };
-      if (pin.trim()) body.pin = pin.trim();
+      if (trimmedPin) body.pin = trimmedPin;
 
       const res = await fetch('/api/family', {
         method: 'POST',
@@ -198,14 +205,14 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
 
         <div className="flex gap-3 pt-1">
           <Button variant="ghost" onClick={onBack} className="flex-1">Back</Button>
-          <Button onClick={onNext} className="flex-1">
+          <Button onClick={onNext} disabled={!hasParent} className="flex-1">
             Continue <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </div>
 
-        {added.length === 0 && (
+        {!hasParent && (
           <p className="text-xs text-center text-muted-foreground -mt-1">
-            Add a member above, or skip if your family is already set up.
+            Add at least one parent above to continue.
           </p>
         )}
       </CardContent>
