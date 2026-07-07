@@ -22,17 +22,20 @@ export async function POST() {
       );
     }
 
-    const existing = await db.select().from(settings).where(eq(settings.key, 'setupComplete'));
-    if (existing.length > 0) {
-      await db.update(settings)
-        .set({ value: { completedAt: new Date().toISOString() } })
-        .where(eq(settings.key, 'setupComplete'));
-    } else {
-      await db.insert(settings).values({
+    // Idempotent upsert: concurrent calls (e.g. React strict-mode double-invoke
+    // in dev, or a double-submit) must not race between SELECT and INSERT and
+    // violate the settings_key_unique constraint.
+    await db
+      .insert(settings)
+      .values({
         key: 'setupComplete',
         value: { completedAt: new Date().toISOString() },
+      })
+      .onConflictDoUpdate({
+        target: settings.key,
+        set: { value: { completedAt: new Date().toISOString() } },
       });
-    }
+
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error('[setup/complete]', error);

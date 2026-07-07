@@ -3,21 +3,20 @@
  *
  * Mocks the DB to verify:
  * - Refuses to mark setup complete when no parent exists (prevents lockout)
- * - Inserts setupComplete when none exists and a parent is present
- * - Updates setupComplete when a row already exists and a parent is present
+ * - Upserts setupComplete when a parent exists (idempotent, race-safe)
+ * - Surfaces a 500 on unexpected DB errors
  */
 
 import { NextResponse } from 'next/server';
 
 const mockSelect = jest.fn();
 const mockInsert = jest.fn();
-const mockUpdate = jest.fn();
+const mockOnConflictDoUpdate = jest.fn();
 
 jest.mock('@/lib/db/client', () => ({
   db: {
     select: (...a: unknown[]) => mockSelect(...a),
     insert: (...a: unknown[]) => mockInsert(...a),
-    update: (...a: unknown[]) => mockUpdate(...a),
   },
 }));
 
@@ -35,19 +34,14 @@ function mockParentLookup(rows: unknown[]) {
   });
 }
 
-/** Build a chainable select() mock for the existing-setupComplete lookup. */
-function mockSettingsLookup(rows: unknown[]) {
-  mockSelect.mockReturnValueOnce({
-    from: () => ({ where: () => Promise.resolve(rows) }),
-  });
-}
-
 describe('POST /api/setup/complete', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockInsert.mockReturnValue({ values: jest.fn().mockResolvedValue(undefined) });
-    mockUpdate.mockReturnValue({
-      set: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue(undefined) }),
+    mockOnConflictDoUpdate.mockResolvedValue(undefined);
+    mockInsert.mockReturnValue({
+      values: jest.fn().mockReturnValue({
+        onConflictDoUpdate: (...a: unknown[]) => mockOnConflictDoUpdate(...a),
+      }),
     });
   });
 
@@ -60,12 +54,10 @@ describe('POST /api/setup/complete', () => {
     expect(res.status).toBe(400);
     expect(data.error).toContain('parent');
     expect(mockInsert).not.toHaveBeenCalled();
-    expect(mockUpdate).not.toHaveBeenCalled();
   });
 
-  it('inserts setupComplete when a parent exists and no row is present', async () => {
+  it('upserts setupComplete when a parent exists', async () => {
     mockParentLookup([{ id: 'parent-1' }]);
-    mockSettingsLookup([]); // no existing setupComplete row
 
     const res = await POST();
     const data = await res.json();
@@ -73,20 +65,18 @@ describe('POST /api/setup/complete', () => {
     expect(res.status).toBe(200);
     expect(data.ok).toBe(true);
     expect(mockInsert).toHaveBeenCalled();
-    expect(mockUpdate).not.toHaveBeenCalled();
+    expect(mockOnConflictDoUpdate).toHaveBeenCalled();
   });
 
-  it('updates setupComplete when a parent exists and a row is present', async () => {
+  it('is idempotent across concurrent calls (no unique-constraint error)', async () => {
     mockParentLookup([{ id: 'parent-1' }]);
-    mockSettingsLookup([{ key: 'setupComplete', value: { completedAt: 'old' } }]);
+    mockParentLookup([{ id: 'parent-1' }]);
 
-    const res = await POST();
-    const data = await res.json();
+    const [a, b] = await Promise.all([POST(), POST()]);
 
-    expect(res.status).toBe(200);
-    expect(data.ok).toBe(true);
-    expect(mockUpdate).toHaveBeenCalled();
-    expect(mockInsert).not.toHaveBeenCalled();
+    expect(a.status).toBe(200);
+    expect(b.status).toBe(200);
+    expect(mockOnConflictDoUpdate).toHaveBeenCalledTimes(2);
   });
 
   it('returns 500 when the query throws', async () => {

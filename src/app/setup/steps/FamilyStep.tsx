@@ -37,17 +37,18 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
   const [added, setAdded] = useState<AddedMember[]>([]);
   const { pinLength, setPinLength } = usePinLength();
 
-  const canAdd = name.trim().length > 0;
-  const hasParent = added.some((m) => m.role === 'parent');
+  const hasPendingEntry = name.trim().length > 0;
+  const canAdd = hasPendingEntry;
+  const hasParent = added.some((m) => m.role === 'parent') || (hasPendingEntry && role === 'parent');
 
-  const addMember = async () => {
-    if (!canAdd) return;
+  const addMember = async (): Promise<boolean> => {
+    if (!canAdd) return false;
     setSaving(true);
     try {
       const trimmedPin = pin.trim();
       if (trimmedPin && trimmedPin.length !== pinLength) {
         toast({ title: `PIN must be exactly ${pinLength} digits`, variant: 'destructive' });
-        return;
+        return false;
       }
 
       const body: Record<string, string> = {
@@ -66,7 +67,7 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
       if (!res.ok) {
         const data = await res.json();
         toast({ title: data.error || 'Failed to add member', variant: 'destructive' });
-        return;
+        return false;
       }
 
       setAdded((prev) => [...prev, { name: name.trim(), role, color }]);
@@ -75,9 +76,21 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
       setRole('child');
       setColor(COLOR_OPTIONS[added.length % COLOR_OPTIONS.length] ?? COLOR_OPTIONS[0]!);
       toast({ title: `Added ${name.trim()}` });
+      return true;
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleContinue = async () => {
+    // Auto-commit whatever the user typed but didn't explicitly "Add" — the
+    // separate Add member button is easy to miss, and losing the entry here
+    // is what caused people to finish setup with no account.
+    if (hasPendingEntry) {
+      const ok = await addMember();
+      if (!ok) return;
+    }
+    onNext();
   };
 
   return (
@@ -199,20 +212,20 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
 
           <Button onClick={addMember} disabled={!canAdd || saving} className="w-full" variant="secondary">
             <Plus className="h-4 w-4 mr-1" />
-            Add member
+            {added.length === 0 ? 'Add member' : 'Add another member'}
           </Button>
         </div>
 
         <div className="flex gap-3 pt-1">
           <Button variant="ghost" onClick={onBack} className="flex-1">Back</Button>
-          <Button onClick={onNext} disabled={!hasParent} className="flex-1">
+          <Button onClick={handleContinue} disabled={!hasParent || saving} className="flex-1">
             Continue <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </div>
 
         {!hasParent && (
           <p className="text-xs text-center text-muted-foreground -mt-1">
-            Add at least one parent above to continue.
+            Enter a parent&apos;s name above, then Continue — no need to click Add first.
           </p>
         )}
       </CardContent>
