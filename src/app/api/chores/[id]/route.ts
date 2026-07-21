@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, requireRole } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { chores, users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
@@ -137,6 +137,9 @@ export async function PATCH(
 ) {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
+
+  const roleCheck = requireRole(auth, 'canManageChores');
+  if (roleCheck) return roleCheck;
 
   try {
     const { id } = await params;
@@ -271,6 +274,9 @@ export async function DELETE(
 ) {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
+
+  const roleCheck = requireRole(auth, 'canManageChores');
+  if (roleCheck) return roleCheck;
 
   try {
     const { id } = await params;
