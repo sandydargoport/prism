@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     const isValidPin = await bcrypt.compare(pin, user.pin);
 
     if (!isValidPin) {
-      const { remainingAttempts } = await recordFailedLogin(userId);
+      const { remainingAttempts } = await recordFailedLogin(user.id);
       return NextResponse.json(
         { error: 'Invalid PIN', remainingAttempts },
         { status: 401 }
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Clear failed attempts on success
-    await clearLoginAttempts(userId);
+    await clearLoginAttempts(user.id);
 
     const cookieStore = await cookies();
     let sessionToken = cookieStore.get('prism_session')?.value;
