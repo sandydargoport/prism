@@ -17,7 +17,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, requireRole } from '@/lib/auth';
+import { PERMISSIONS } from '@/types/user';
 import { db } from '@/lib/db/client';
 import { chores, choreCompletions, users } from '@/lib/db/schema';
 import { eq, and, isNull, desc } from 'drizzle-orm';
@@ -171,11 +172,13 @@ export async function POST(
       // The dashboard logic should route to approve, but as a fallback, we can handle it here
     }
 
-    // Determine if approval is required:
-    // - Children ALWAYS require parent approval
-    // - Parents NEVER require approval (they self-approve)
-    // The chore's `requiresApproval` flag is specifically for child completions
-    const needsApproval = isChild; // Only children need approval
+    // Determine if approval is required based on the AUTHENTICATED caller, not
+    // the client-supplied completedBy. Otherwise a child could pass a parent's
+    // id to make needsApproval=false and auto-approve their own completion,
+    // bypassing parental approval. Only callers who can approve chores (parents)
+    // self-approve; everyone else's completion is created pending.
+    const callerCanApprove = PERMISSIONS[auth.role].canApproveChores;
+    const needsApproval = !callerCanApprove;
 
     // Create completion + conditionally update chore atomically
     const completion = await db.transaction(async (tx) => {
@@ -188,7 +191,7 @@ export async function POST(
           photoUrl: photoUrl || null,
           notes: notes || null,
           pointsAwarded: chore.pointValue,
-          approvedBy: needsApproval ? null : completedBy,
+          approvedBy: needsApproval ? null : auth.userId,
           approvedAt: needsApproval ? null : new Date(),
         })
         .returning();
@@ -264,6 +267,10 @@ export async function DELETE(
 ) {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
+
+  // Undoing a completion reverses an approval — parent-only.
+  const forbidden = requireRole(auth, 'canApproveChores');
+  if (forbidden) return forbidden;
 
   try {
     const { id: choreId } = await params;
