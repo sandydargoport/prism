@@ -99,11 +99,27 @@ export async function optionalAuth(): Promise<AuthResult | null> {
 /**
  * Server-side RBAC check. Returns a 403 response if the user lacks
  * the given permission, or null if the check passes.
+ *
+ * API-token callers are authorized by their scope list, NOT by RBAC: every
+ * token authenticates as role 'parent' (see validateApiToken), so an RBAC-only
+ * check would let a narrowly scoped token (e.g. 'voice') pass every
+ * parent-gated route. For token auth we require the token to carry '*' or the
+ * named permission as a scope — matching withAuth()'s tokenHasScope semantics.
  */
 export function requireRole(
   auth: AuthResult,
   permission: keyof RolePermissions
 ): NextResponse | null {
+  if (auth.scopes !== undefined) {
+    if (!auth.scopes.includes('*') && !auth.scopes.includes(permission)) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
+      );
+    }
+    return null;
+  }
+
   if (!PERMISSIONS[auth.role][permission]) {
     return NextResponse.json(
       { error: 'Forbidden' },
