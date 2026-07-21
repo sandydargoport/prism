@@ -15,7 +15,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, requireRole } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { events, calendarSources } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
@@ -150,6 +150,7 @@ export async function PATCH(
     const [existingEvent] = await db
       .select({
         id: events.id,
+        createdBy: events.createdBy,
         externalEventId: events.externalEventId,
         calendarSourceId: events.calendarSourceId,
         title: events.title,
@@ -168,6 +169,14 @@ export async function PATCH(
         { status: 404 }
       );
     }
+
+    // Owner may edit with canEditOwnEvent; editing anyone else's (or an
+    // unowned synced event) requires canEditAnyEvent.
+    const canEdit = requireRole(
+      auth,
+      existingEvent.createdBy === auth.userId ? 'canEditOwnEvent' : 'canEditAnyEvent'
+    );
+    if (canEdit) return canEdit;
 
     // Build update object
     const updateData: Record<string, unknown> = {
@@ -446,6 +455,7 @@ export async function DELETE(
     const [existingEvent] = await db
       .select({
         id: events.id,
+        createdBy: events.createdBy,
         title: events.title,
         externalEventId: events.externalEventId,
         calendarSourceId: events.calendarSourceId,
@@ -459,6 +469,14 @@ export async function DELETE(
         { status: 404 }
       );
     }
+
+    // Owner may delete with canDeleteOwnEvent; deleting anyone else's (or an
+    // unowned synced event) requires canDeleteAnyEvent.
+    const canDelete = requireRole(
+      auth,
+      existingEvent.createdBy === auth.userId ? 'canDeleteOwnEvent' : 'canDeleteAnyEvent'
+    );
+    if (canDelete) return canDelete;
 
     // If event is linked to a Google Calendar, delete from Google too
     if (existingEvent.calendarSourceId && existingEvent.externalEventId) {
