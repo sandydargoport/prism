@@ -69,7 +69,7 @@ Scaffolding pattern: extend `playwright.config.ts` with a project that uses the 
 
 Spec exists. Covers dashboard (default + perf-mode), calendar, settings, login landing, and the PIN modal — all in light + dark themes. **No baselines committed yet** because of a hard PII constraint: visual baselines from a live deployment capture real names, calendar events, photos, weather city, and other personal data — `CLAUDE.md` PII policy forbids committing those.
 
-**Hard requirement to enable**: a **synthetic-seed test database** with anonymized fixtures (`Alice/Bob/Carol/Dan` family members, fixture wallpaper, fictional events, fictional weather location). Capture baselines only against that. Until that synthetic seed exists, the entire spec auto-skips when run without the `E2E_HAS_TEST_DB=1` env flag.
+**Hard requirement to enable**: a **synthetic-seed test database** with anonymized fixtures (`Alex/Jordan/Emma/Sophie` family members, fixture wallpaper, fictional events, fictional weather location). Capture baselines only against that. Until that synthetic seed exists, the entire spec auto-skips when run without the `E2E_HAS_TEST_DB=1` env flag.
 
 Subtask: `e2e/seeds/synthetic.sql` (or similar) — fully anonymized DB seed for visual-regression baseline capture. Pairs with this spec.
 
