@@ -144,7 +144,7 @@ describe('fetchSharedLink (public)', () => {
 });
 
 describe('fetchSharedLink (ALBUM-type follow-up)', () => {
-  it('follows up with /albums/{id} when share type is ALBUM (assets live there, not on the share)', async () => {
+  it('follows up with search/metadata when share type is ALBUM (Immich v3 serves album assets there)', async () => {
     mockFetchSequence([
       // /shared-links/me — ALBUM-type shares return album metadata only, no assets.
       () => ({
@@ -160,27 +160,31 @@ describe('fetchSharedLink (ALBUM-type follow-up)', () => {
             assets: [],
           }),
       }),
-      // /albums/{id} — the actual asset list.
+      // /search/metadata — the actual asset list, in the paginated envelope.
       () => ({
         ok: true,
         status: 200,
         headers: new Headers(),
         json: () =>
           Promise.resolve({
-            id: 'album-uuid',
-            albumName: 'Cats',
-            assets: [
-              {
-                id: 'a1',
-                originalFileName: 'kitten.jpg',
-                originalMimeType: 'image/jpeg',
-                type: 'IMAGE',
-                fileCreatedAt: '2025-06-01T00:00:00.000Z',
-                width: 1920,
-                height: 1080,
-                exifInfo: { latitude: null, longitude: null },
-              },
-            ],
+            albums: { total: 0, count: 0, items: [] },
+            assets: {
+              total: 1,
+              count: 1,
+              nextPage: null,
+              items: [
+                {
+                  id: 'a1',
+                  originalFileName: 'kitten.jpg',
+                  originalMimeType: 'image/jpeg',
+                  type: 'IMAGE',
+                  fileCreatedAt: '2025-06-01T00:00:00.000Z',
+                  width: 1920,
+                  height: 1080,
+                  exifInfo: { latitude: null, longitude: null },
+                },
+              ],
+            },
           }),
       }),
     ]);
@@ -190,11 +194,63 @@ describe('fetchSharedLink (ALBUM-type follow-up)', () => {
     const calls = (global.fetch as jest.Mock).mock.calls;
     expect(calls).toHaveLength(2);
     expect(calls[0][0]).toBe('https://im/api/shared-links/me?key=k');
-    expect(calls[1][0]).toBe('https://im/api/albums/album-uuid?key=k');
+    expect(calls[1][0]).toBe('https://im/api/search/metadata?key=k');
+    // The album id is sent as a search filter in the POST body.
+    expect(calls[1][1].method).toBe('POST');
+    expect(JSON.parse(calls[1][1].body)).toMatchObject({ albumIds: ['album-uuid'] });
 
     expect(link.albumId).toBe('album-uuid');
     expect(link.assets).toHaveLength(1);
     expect(link.assets[0]).toMatchObject({ id: 'a1', originalFileName: 'kitten.jpg' });
+  });
+
+  it('paginates search/metadata via nextPage until it is null', async () => {
+    const makeAsset = (id: string) => ({
+      id,
+      originalFileName: `${id}.jpg`,
+      originalMimeType: 'image/jpeg',
+      type: 'IMAGE',
+      fileCreatedAt: '2025-06-01T00:00:00.000Z',
+      width: 1,
+      height: 1,
+      exifInfo: { latitude: null, longitude: null },
+    });
+    mockFetchSequence([
+      () => ({
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        json: () =>
+          Promise.resolve({
+            type: 'ALBUM',
+            album: { id: 'album-uuid', albumName: 'Big' },
+            password: null,
+            assets: [],
+          }),
+      }),
+      // page 1 -> nextPage 2
+      () => ({
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        json: () => Promise.resolve({ assets: { nextPage: '2', items: [makeAsset('a1')] } }),
+      }),
+      // page 2 -> nextPage null (last page)
+      () => ({
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        json: () => Promise.resolve({ assets: { nextPage: null, items: [makeAsset('a2')] } }),
+      }),
+    ]);
+
+    const link = await fetchSharedLink({ serverUrl: 'https://im', shareKey: 'k' });
+
+    const calls = (global.fetch as jest.Mock).mock.calls;
+    expect(calls).toHaveLength(3);
+    expect(JSON.parse(calls[1][1].body)).toMatchObject({ page: 1 });
+    expect(JSON.parse(calls[2][1].body)).toMatchObject({ page: 2 });
+    expect(link.assets.map((a) => a.id)).toEqual(['a1', 'a2']);
   });
 
   it('forwards the login session cookie on the album request for password-protected ALBUM shares', async () => {
@@ -218,14 +274,14 @@ describe('fetchSharedLink (ALBUM-type follow-up)', () => {
         ok: true,
         status: 200,
         headers: new Headers(),
-        json: () => Promise.resolve({ assets: [] }),
+        json: () => Promise.resolve({ assets: { nextPage: null, items: [] } }),
       }),
     ]);
 
     await fetchSharedLink({ serverUrl: 'https://im', shareKey: 'k', password: 'pw' });
 
     const albumCall = (global.fetch as jest.Mock).mock.calls[1];
-    expect(albumCall[0]).toBe('https://im/api/albums/album-uuid?key=k');
+    expect(albumCall[0]).toBe('https://im/api/search/metadata?key=k');
     expect(albumCall[1].headers.Cookie).toContain('immich_shared_link_token=abc');
   });
 
