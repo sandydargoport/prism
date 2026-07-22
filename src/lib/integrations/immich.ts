@@ -198,19 +198,48 @@ async function fetchAlbumAssets(
   cookie: string | null,
 ): Promise<RawAsset[]> {
   assertSafeServerUrl(serverUrl);
-  const url = `${serverUrl}/api/albums/${albumId}?key=${encodeURIComponent(shareKey)}`;
-  const headers: Record<string, string> = {};
+  // Immich v3 serves a shared album's assets through the search API, not
+  // GET /api/albums/{id}: over a share key that endpoint returns the album's
+  // assetCount but an EMPTY assets array, so the old call silently synced zero
+  // photos. POST /api/search/metadata returns the assets in a paginated
+  // envelope ({ assets: { items, nextPage } }). withExif keeps GPS so the
+  // Travel Map photo strip still works.
+  const url = `${serverUrl}/api/search/metadata?key=${encodeURIComponent(shareKey)}`;
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (cookie) headers.Cookie = cookie;
 
-  const res = await safeFetch(url, { headers });
-  if (!res.ok) {
-    throw new Error(
-      `Failed to fetch Immich album ${albumId}: ${res.status} ${res.statusText}`,
-    );
+  const all: RawAsset[] = [];
+  let page = 1;
+  // Bounded so a misbehaving nextPage can never loop forever (100 * 1000
+  // assets is far beyond any realistic shared album).
+  for (let i = 0; i < 100; i += 1) {
+    // safeFetch (not raw fetch) so a share URL that 30x-redirects to an
+    // internal host is still re-validated per hop — same SSRF guard the rest
+    // of this client uses.
+    const res = await safeFetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ albumIds: [albumId], page, size: 1000, withExif: true }),
+    });
+    if (!res.ok) {
+      throw new Error(
+        `Failed to fetch Immich album ${albumId}: ${res.status} ${res.statusText}`,
+      );
+    }
+
+    const data = (await res.json()) as {
+      assets?: { items?: RawAsset[]; nextPage?: string | number | null };
+    };
+    all.push(...(data.assets?.items ?? []));
+
+    const next = data.assets?.nextPage;
+    if (next == null) break;
+    const nextPage = Number(next);
+    if (!Number.isFinite(nextPage) || nextPage <= page) break;
+    page = nextPage;
   }
 
-  const data = (await res.json()) as { assets?: RawAsset[] };
-  return data.assets ?? [];
+  return all;
 }
 
 function extractCookies(headers: Headers): string | null {
