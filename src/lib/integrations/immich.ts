@@ -15,7 +15,7 @@
  * the share URL field and use Prism as a proxy to probe the home network.
  */
 
-import { validatePublicUrl, UnsafeUrlError } from '@/lib/utils/safeFetch';
+import { validatePublicUrl, safeFetch, UnsafeUrlError } from '@/lib/utils/safeFetch';
 
 export interface ImmichShareCredentials {
   serverUrl: string;
@@ -202,7 +202,7 @@ async function fetchAlbumAssets(
   const headers: Record<string, string> = {};
   if (cookie) headers.Cookie = cookie;
 
-  const res = await fetch(url, { headers });
+  const res = await safeFetch(url, { headers });
   if (!res.ok) {
     throw new Error(
       `Failed to fetch Immich album ${albumId}: ${res.status} ${res.statusText}`,
@@ -239,7 +239,7 @@ async function loginShare(
 ): Promise<{ raw: RawSharedLinkResponse; cookie: string | null }> {
   assertSafeServerUrl(serverUrl);
   const url = `${serverUrl}/api/shared-links/login?key=${encodeURIComponent(shareKey)}`;
-  const res = await fetch(url, {
+  const res = await safeFetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ password }),
@@ -271,7 +271,7 @@ async function fetchSharedLinkRaw(
   }
 
   const url = `${creds.serverUrl}/api/shared-links/me?key=${encodeURIComponent(creds.shareKey)}`;
-  const res = await fetch(url);
+  const res = await safeFetch(url);
 
   if (res.status === 401 || res.status === 403) {
     throw new ImmichPasswordRequiredError();
@@ -343,7 +343,10 @@ export async function downloadImmichAsset(
   const headers: Record<string, string> = {};
   if (cookie) headers.Cookie = cookie;
 
-  const res = await fetch(`${creds.serverUrl}${path}`, { headers, redirect: 'follow' });
+  // safeFetch re-validates any redirect Location, so a share URL that 30x-
+  // redirects to an internal host can no longer be used to exfiltrate the
+  // internal response (was `redirect: 'follow'`, which bypassed the guard).
+  const res = await safeFetch(`${creds.serverUrl}${path}`, { headers });
   if (!res.ok) {
     // If the cache returned a stale cookie that the server rejected, drop
     // it and let the next call re-login. We don't auto-retry here because

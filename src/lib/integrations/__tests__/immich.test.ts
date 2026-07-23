@@ -505,4 +505,20 @@ describe('SSRF guard on Immich serverUrl', () => {
       downloadImmichAsset({ serverUrl: 'http://[::1]', shareKey: 'k' }, 'asset-1'),
     ).rejects.toBeInstanceOf(UnsafeUrlError);
   });
+
+  it('blocks a public share URL that 30x-redirects to an internal host', async () => {
+    // The initial (public) host passes the guard, but the response redirects
+    // to the cloud metadata IP. safeFetch must re-validate the Location and
+    // refuse to follow it — the old `redirect: 'follow'` would have fetched it.
+    mockFetchOnce(() => ({
+      status: 302,
+      headers: new Headers({ location: 'http://169.254.169.254/latest/meta-data' }),
+    }));
+
+    await expect(
+      downloadImmichAsset({ serverUrl: 'https://immich.example.com', shareKey: 'k' }, 'asset-1'),
+    ).rejects.toBeInstanceOf(UnsafeUrlError);
+    // Only the first (public) hop was fetched; the internal target never was.
+    expect((global.fetch as jest.Mock).mock.calls).toHaveLength(1);
+  });
 });

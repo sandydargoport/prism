@@ -9,6 +9,7 @@
 
 import { createDAVClient, type DAVCollection } from 'tsdav';
 import ICAL from 'ical.js';
+import { validatePublicUrl } from '@/lib/utils/safeFetch';
 
 export interface ContactBirthday {
   /** Full display name from FN or N. Used as the dedupe key. */
@@ -36,8 +37,16 @@ export async function fetchCardDAVBirthdays(
   username: string,
   password: string,
 ): Promise<ContactBirthday[]> {
+  // Validate the *derived* URL, since deriveCardDAVUrl() (icloud host swap)
+  // is what tsdav actually fetches. Blocks an authenticated parent from
+  // pointing this at a private / loopback / metadata address. Throws
+  // UnsafeUrlError on rejection. tsdav follows redirects internally, so —
+  // as noted in safeFetch.ts — only the initial host literal is validated.
+  const targetUrl = deriveCardDAVUrl(serverUrl);
+  validatePublicUrl(targetUrl);
+
   const client = await createDAVClient({
-    serverUrl: deriveCardDAVUrl(serverUrl),
+    serverUrl: targetUrl,
     credentials: { username, password },
     authMethod: 'Basic',
     defaultAccountType: 'carddav',

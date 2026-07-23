@@ -148,3 +148,64 @@ export function validatePublicUrl(
 
   return parsed;
 }
+
+export interface SafeFetchOptions extends ValidatePublicUrlOptions {
+  /** Maximum redirect hops to follow, each re-validated. Default 5. */
+  maxRedirects?: number;
+}
+
+// 3xx statuses that carry a Location we would otherwise auto-follow.
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+
+/**
+ * SSRF-safe wrapper around fetch().
+ *
+ * validatePublicUrl() only guards the *initial* host. Left to the platform,
+ * fetch follows 3xx redirects automatically — so a public host that 30x-
+ * redirects to an internal address (loopback / RFC1918 / 169.254.169.254)
+ * slips past the guard and the internal target is fetched. safeFetch closes
+ * that: it validates the initial URL, fetches with `redirect: 'manual'`, and
+ * re-runs validatePublicUrl() on the Location of every hop before following
+ * it. Cross-host or private redirect targets throw UnsafeUrlError.
+ *
+ * Per-hop method handling mirrors the fetch spec: 303 (and 301/302 on a
+ * non-GET/HEAD request) downgrade to GET and drop the body; 307/308 preserve
+ * both. The DNS-rebinding caveat documented on validatePublicUrl() still
+ * applies — each hop validates the hostname literal, not the resolved IP.
+ */
+export async function safeFetch(
+  rawUrl: string,
+  init: RequestInit = {},
+  options: SafeFetchOptions = {},
+): Promise<Response> {
+  const maxRedirects = options.maxRedirects ?? 5;
+  let currentUrl = validatePublicUrl(rawUrl, options).toString();
+  let method = init.method ?? 'GET';
+  let body = init.body;
+
+  for (let hop = 0; hop <= maxRedirects; hop++) {
+    const res = await fetch(currentUrl, { ...init, method, body, redirect: 'manual' });
+
+    if (!REDIRECT_STATUSES.has(res.status)) return res;
+
+    const location = res.headers.get('location');
+    // A 3xx with no Location is not followable; hand it back unchanged.
+    if (!location) return res;
+
+    // Resolve relative Locations against the current URL, then re-validate
+    // the absolute target before the next hop touches the network.
+    const next = new URL(location, currentUrl);
+    validatePublicUrl(next.toString(), options);
+    currentUrl = next.toString();
+
+    const downgradeToGet =
+      res.status === 303 ||
+      ((res.status === 301 || res.status === 302) && method !== 'GET' && method !== 'HEAD');
+    if (downgradeToGet) {
+      method = 'GET';
+      body = undefined;
+    }
+  }
+
+  throw new UnsafeUrlError(`Too many redirects (>${maxRedirects})`);
+}
