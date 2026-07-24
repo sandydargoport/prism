@@ -31,6 +31,9 @@ Security-hardening release from a full codebase audit. It closes a cluster of ac
 - **A Google calendar is only auto-disabled after 3 *consecutive* 404s**, not three assorted failures — transient network/5xx blips no longer count toward disabling a calendar that still exists.
 - **The travel globe re-highlights trip stops correctly** when you select or deselect a trip.
 
+### Fixed — Photos
+- **Immich album photo sources now sync on Immich v3.** An album-backed source synced **zero photos** on Immich v3: the old `GET /api/albums/{id}` listing returns an empty asset array over a share key, so the sync finished without error and added nothing. Prism now lists album assets via the paginated `POST /api/search/metadata` endpoint (requesting EXIF so photo GPS still reaches the Travel Map); thumbnail and original downloads were already fine and are unchanged. Thanks @guylenical (Guy Stanley) for the fix and for verifying it against a live v3 instance. Closes [#154](https://github.com/sandydargoport/prism/pull/154).
+
 ## [1.8.14] – 2026-06-29
 
 ### Fixed — Display
