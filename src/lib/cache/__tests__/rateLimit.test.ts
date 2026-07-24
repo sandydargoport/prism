@@ -46,22 +46,38 @@ describe('checkRateLimit', () => {
     expect(result.remaining).toBe(9);
   });
 
-  it('sets expiry only on first request (count=1)', async () => {
+  it('sets expiry on the first request (key has no TTL yet)', async () => {
     setupRedisClient();
     mockIncr.mockResolvedValue(1);
+    mockTtl.mockResolvedValue(-1); // fresh key from INCR has no expiry
 
     await checkRateLimit('user-1', 'test', 10, 60);
 
     expect(mockExpire).toHaveBeenCalledWith('ratelimit:user-1:test', 60);
   });
 
-  it('does not set expiry on subsequent requests (count>1)', async () => {
+  it('does not re-issue expiry while the window is active (TTL>0)', async () => {
     setupRedisClient();
     mockIncr.mockResolvedValue(5);
+    mockTtl.mockResolvedValue(42);
 
     await checkRateLimit('user-1', 'test', 10, 60);
 
     expect(mockExpire).not.toHaveBeenCalled();
+  });
+
+  it('re-issues expiry when a prior EXPIRE was dropped, preventing a permanent lockout', async () => {
+    // Regression (M-RATELIMIT): a crash between INCR and EXPIRE leaves the key
+    // with no TTL. Here count is already past the limit and TTL is -1 — without
+    // the self-heal the key would live forever and the user could never reset.
+    setupRedisClient();
+    mockIncr.mockResolvedValue(50);
+    mockTtl.mockResolvedValue(-1);
+
+    const result = await checkRateLimit('user-1', 'test', 10, 60);
+
+    expect(mockExpire).toHaveBeenCalledWith('ratelimit:user-1:test', 60);
+    expect(result.resetIn).toBe(60); // recovered window, not left as -1
   });
 
   it('blocks when count exceeds maxRequests', async () => {

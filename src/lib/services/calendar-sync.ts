@@ -139,10 +139,18 @@ export async function syncGoogleCalendarSource(
     const prevErrors = (source.syncErrors as Record<string, unknown>) || {};
     const prevFailures = (typeof prevErrors.consecutiveFailures === 'number' ? prevErrors.consecutiveFailures : 0);
     const consecutiveFailures = prevFailures + 1;
+    // Auto-disable is gated on *consecutive 404s* specifically: a calendar the
+    // user deleted in Google keeps returning 404, whereas transient network /
+    // 5xx blips must not count toward disabling. The 404 streak resets on any
+    // non-404 failure (and a successful sync clears syncErrors entirely). The
+    // old code counted all failures, so two transient errors + one real 404
+    // disabled the calendar on its *first* 404 — contradicting this comment.
+    const prev404 = (typeof prevErrors.consecutive404 === 'number' ? prevErrors.consecutive404 : 0);
+    const consecutive404 = is404 ? prev404 + 1 : 0;
     const DISABLE_THRESHOLD = 3; // Only auto-disable after 3 consecutive 404s
 
     const shouldAutoDisable = is404
-      && consecutiveFailures >= DISABLE_THRESHOLD
+      && consecutive404 >= DISABLE_THRESHOLD
       && !prevErrors.userOverride; // Never auto-disable if user manually re-enabled
 
     await db
@@ -151,9 +159,10 @@ export async function syncGoogleCalendarSource(
         ...(shouldAutoDisable ? { enabled: false, showInEventModal: false } : {}),
         syncErrors: {
           lastError: is404
-            ? `Calendar not found in Google (404). Failure ${consecutiveFailures}/${DISABLE_THRESHOLD}.`
+            ? `Calendar not found in Google (404). Failure ${consecutive404}/${DISABLE_THRESHOLD}.`
             : errorStr,
           consecutiveFailures,
+          consecutive404,
           is404,
           ...(shouldAutoDisable ? { autoDisabled: true, autoDisabledAt: new Date().toISOString() } : {}),
           ...(prevErrors.userOverride ? { userOverride: true } : {}),

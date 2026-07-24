@@ -73,12 +73,18 @@ export async function checkRateLimit(
   try {
     const count = await client.incr(key);
 
-    // Set expiry only on the first request in the window
-    if (count === 1) {
+    // After INCR the key always exists, so TTL is either >0 (window active) or
+    // -1 (no expiry). -1 happens on the first request in a window AND when a
+    // prior EXPIRE was dropped (e.g. a crash between INCR and EXPIRE). Re-issue
+    // the expiry whenever there is none: otherwise the key would live forever,
+    // the counter could never reset, and the user would be permanently locked
+    // out once past maxRequests. This makes the window self-healing rather than
+    // setting the expiry only on count === 1.
+    let ttl = await client.ttl(key);
+    if (ttl < 0) {
       await client.expire(key, windowSeconds);
+      ttl = windowSeconds;
     }
-
-    const ttl = await client.ttl(key);
 
     return {
       allowed: count <= maxRequests,

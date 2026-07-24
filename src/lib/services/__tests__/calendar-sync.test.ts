@@ -287,6 +287,72 @@ describe('syncGoogleCalendarSource', () => {
   });
 });
 
+describe('syncGoogleCalendarSource — auto-disable gated on consecutive 404s (M-CALSYNC)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockFindMany.mockResolvedValue([]);
+  });
+
+  /** The object handed to db.update().set() in the fetch-failure branch. */
+  function lastSetArg() {
+    return mockUpdateSet.mock.calls[0]![0] as {
+      enabled?: boolean;
+      syncErrors: { consecutive404: number; consecutiveFailures: number };
+    };
+  }
+
+  it('does not auto-disable on the first 404 after transient (non-404) failures', async () => {
+    // Two prior transient failures already reset the 404 streak to 0.
+    mockFindFirst.mockResolvedValue(
+      makeSource({ syncErrors: { consecutiveFailures: 2, consecutive404: 0 } }),
+    );
+    mockFetchCalendarEvents.mockRejectedValue(new Error('Google API error: 404 Not Found'));
+
+    await syncGoogleCalendarSource('source-1');
+
+    const set = lastSetArg();
+    expect(set.syncErrors.consecutive404).toBe(1);
+    expect(set.enabled).toBeUndefined(); // NOT disabled on the first real 404
+  });
+
+  it('auto-disables only after 3 consecutive 404s', async () => {
+    mockFindFirst.mockResolvedValue(
+      makeSource({ syncErrors: { consecutiveFailures: 5, consecutive404: 2 } }),
+    );
+    mockFetchCalendarEvents.mockRejectedValue(new Error('404 Not Found'));
+
+    await syncGoogleCalendarSource('source-1');
+
+    const set = lastSetArg();
+    expect(set.syncErrors.consecutive404).toBe(3);
+    expect(set.enabled).toBe(false);
+  });
+
+  it('resets the 404 streak on a non-404 failure', async () => {
+    mockFindFirst.mockResolvedValue(
+      makeSource({ syncErrors: { consecutiveFailures: 2, consecutive404: 2 } }),
+    );
+    mockFetchCalendarEvents.mockRejectedValue(new Error('500 Internal Server Error'));
+
+    await syncGoogleCalendarSource('source-1');
+
+    const set = lastSetArg();
+    expect(set.syncErrors.consecutive404).toBe(0);
+    expect(set.enabled).toBeUndefined();
+  });
+
+  it('never auto-disables a source the user manually re-enabled (userOverride)', async () => {
+    mockFindFirst.mockResolvedValue(
+      makeSource({ syncErrors: { consecutive404: 5, userOverride: true } }),
+    );
+    mockFetchCalendarEvents.mockRejectedValue(new Error('404 Not Found'));
+
+    await syncGoogleCalendarSource('source-1');
+
+    expect(lastSetArg().enabled).toBeUndefined();
+  });
+});
+
 describe('syncAllGoogleCalendars', () => {
   beforeEach(() => {
     jest.clearAllMocks();

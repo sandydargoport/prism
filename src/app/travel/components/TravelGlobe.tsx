@@ -167,7 +167,11 @@ export function TravelGlobe({
       markersRef.current.set(pin.id, marker);
     }
     updateCullingRef.current?.();
-  }, [pins, trips, selectedPinId, zoomTier]); // eslint-disable-line react-hooks/exhaustive-deps
+    // selectedTripId feeds buildTripContextMap above; without it in the deps,
+    // selecting/deselecting a trip (while selectedPinId is unchanged) never
+    // re-highlighted the stop markers. The sibling trip-line effects already
+    // list it.
+  }, [pins, trips, selectedPinId, selectedTripId, zoomTier]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Trip lines — all trips rendered; active gets full style, others are faded
   useEffect(() => {

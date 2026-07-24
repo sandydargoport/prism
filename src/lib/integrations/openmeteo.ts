@@ -323,7 +323,18 @@ export async function fetchWeatherData(
   );
 
   // ── Periods (Morning / Afternoon / Evening) ───────────────────────────────
-  const todayStr = new Date().toLocaleDateString('en-CA');
+  // Bucket by the *location's* timezone, not the container's runtime TZ (UTC).
+  // h.time is a correct UTC instant; getHours()/toLocaleDateString() would read
+  // it in UTC, so e.g. Chicago 8am (13:00 UTC) fell into "Afternoon" and late
+  // evening hours rolled to the wrong calendar day and dropped. Intl formatters
+  // pinned to `timezone` give the local hour/date. `todayLocalStr` (already the
+  // location-TZ date, computed above) is the correct "today" anchor.
+  const hourInTz = new Intl.DateTimeFormat('en-GB', {
+    timeZone: timezone,
+    hour: '2-digit',
+    hourCycle: 'h23',
+  });
+  const dateInTz = new Intl.DateTimeFormat('en-CA', { timeZone: timezone });
   const periodDefs = [
     { label: 'Morn', minHour: 6, maxHour: 12 },
     { label: 'Aft', minHour: 12, maxHour: 18 },
@@ -332,10 +343,11 @@ export async function fetchWeatherData(
   const periods: ForecastPeriod[] = [];
   for (const def of periodDefs) {
     const matching = hourlyData.filter((h) => {
+      const localHour = parseInt(hourInTz.format(h.time), 10);
       return (
-        h.time.toLocaleDateString('en-CA') === todayStr &&
-        h.time.getHours() >= def.minHour &&
-        h.time.getHours() < def.maxHour
+        dateInTz.format(h.time) === todayLocalStr &&
+        localHour >= def.minHour &&
+        localHour < def.maxHour
       );
     });
     if (matching.length > 0) {

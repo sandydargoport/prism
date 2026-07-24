@@ -330,6 +330,44 @@ describe('openmeteo.fetchWeatherData', () => {
     }
   });
 
+  it('buckets day-part periods by the location timezone, not container UTC (M-WEATHER)', async () => {
+    // Pin the clock so absolute Chicago hours are deterministic. now = 11:00Z
+    // = 06:00 CDT, so an 08:00-Chicago (13:00Z) and a 14:00-Chicago (19:00Z)
+    // hour both fall inside the (now-1h, now+12h] window. Fake only the Date
+    // clock; leave timer fns real (the fetch path uses none).
+    jest.useFakeTimers({
+      now: new Date('2026-07-15T11:00:00Z').getTime(),
+      doNotFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'queueMicrotask', 'nextTick'],
+    });
+    try {
+      const response = buildResponse('America/Chicago');
+      // 08:00 Chicago → 13:00Z (UTC hour 13 = "Afternoon" under the old bug).
+      // 14:00 Chicago → 19:00Z (UTC hour 19 = "Evening" under the old bug).
+      response.hourly.time = ['2026-07-15T08:00', '2026-07-15T14:00'];
+      response.hourly.temperature_2m = [50, 80];
+      response.hourly.precipitation_probability = [0, 0];
+      response.hourly.precipitation = [0, 0];
+      response.hourly.weather_code = [0, 0];
+
+      jest.spyOn(global, 'fetch' as never).mockResolvedValue({
+        ok: true,
+        json: async () => response,
+      } as never);
+
+      const { fetchWeatherData } = await import('../openmeteo');
+      const result = await fetchWeatherData();
+
+      const byLabel = Object.fromEntries((result.periods ?? []).map((p) => [p.label, p]));
+      // Correct (location-TZ) bucketing: 08:00 → Morning, 14:00 → Afternoon.
+      expect(byLabel.Morn?.temp).toBe(50);
+      expect(byLabel.Aft?.temp).toBe(80);
+      // The old UTC bucketing would have pushed 19:00Z into an Evening period.
+      expect(byLabel.Eve).toBeUndefined();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('does not require any API key (zero env-var configuration)', async () => {
     // Strip any provider key env vars to prove openmeteo doesn't read them.
     const stripped = { ...process.env };
