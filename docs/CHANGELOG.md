@@ -4,6 +4,33 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.9.0] – 2026-07-24
+
+Security-hardening release from a full codebase audit. It closes a cluster of access-control gaps on the API, adds server-side-request-forgery guards to the calendar/photo integrations, hardens sessions and OAuth, and updates dependencies carrying published advisories. No changes to how Prism behaves for you day-to-day, and no database migration — but if you run Prism on a network-exposed Home Assistant ingress, this is a recommended upgrade.
+
+### Security — Access control
+- **Item-level edit/delete on events, chores, calendars, and photo sources now enforce the same permissions as the rest of the app.** Several `PATCH`/`DELETE` endpoints checked only that you were signed in, not *which* role you had — so a child, guest, or a narrowly-scoped API token could edit or delete family data (and, for calendars/photo sources, cascade-delete the linked source and its on-disk originals) by addressing it directly by id. Every one of these now applies the owner-or-role check the collection routes already used. Chore completion is now anchored to the signed-in caller, closing an approval bypass where a child could self-approve by supplying a parent's id.
+- **API-token scopes are enforced on the admin routes.** Bearer tokens were treated as full parent on the database and backup routes regardless of their scope; a `voice`-scoped token could truncate/seed the database or download/restore/delete backups. Scopes are now honored.
+- **Kiosk PIN lockout can no longer be brute-forced** (the lockout counter is keyed on the resolved user, so failed attempts actually accumulate).
+
+### Security — Server-side request forgery (SSRF)
+- **CalDAV, CardDAV, and Immich outbound fetches now validate the target address.** A signed-in parent could previously point one of these at a loopback / private / cloud-metadata address and use Prism to probe the internal network. All three now reject private targets before connecting, the CalDAV *test* endpoint no longer leaks whether an internal host exists, and Immich no longer follows a redirect to an internal host.
+
+### Security — Sessions, OAuth & storage
+- **Sessions now have an absolute lifetime** (parent 30 days / child 7 / guest 1 hour) on top of the existing sliding window, so a stolen session cookie can't be kept alive indefinitely.
+- **Google and Microsoft OAuth now verify a single-use state nonce**, matching the Kroger flow — closing a window where a valid `code` could bind an attacker's account (or an attacker-chosen owner) to the dashboard. The Microsoft photo-source callback, previously unauthenticated, now requires a signed-in parent.
+- **The service worker no longer caches authenticated `/api` responses to disk** — previously messages, family, tokens, and other per-session data were written into on-disk Cache Storage and outlived the session on a shared kiosk.
+- **Avatar and recipe-image URLs validate the id** before reading from disk, rejecting path-traversal payloads.
+
+### Security — Dependencies
+- Updated dependencies carrying published advisories: **Next.js** (`15.5.21`), **drizzle-orm** (`0.45.2`), **node-ical** (`0.27.1`, which also drops a vulnerable bundled `axios`), **undici** (`6.27.0`), and **dompurify** (`3.4.x`), plus dev tooling (postcss, next-tooling alignment). The abandoned `next-pwa`/Workbox build chain is a known remaining item slated for a separate migration.
+
+### Fixed — Correctness
+- **The API rate limiter can no longer permanently lock you out.** If Redis dropped the window's expiry (e.g. a crash at the wrong moment), the counter never reset and you'd stay blocked; the window now self-heals.
+- **Weather "Morning / Afternoon / Evening" temperatures now bucket by the forecast location's timezone**, not the server's UTC clock — so day-parts land on the right hours and don't roll to the wrong day.
+- **A Google calendar is only auto-disabled after 3 *consecutive* 404s**, not three assorted failures — transient network/5xx blips no longer count toward disabling a calendar that still exists.
+- **The travel globe re-highlights trip stops correctly** when you select or deselect a trip.
+
 ## [1.8.14] – 2026-06-29
 
 ### Fixed — Display
