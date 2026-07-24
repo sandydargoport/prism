@@ -8,7 +8,7 @@ import type { ShoppingListSource } from './integrations/types';
 import {
   StatusBanner,
   ConnectedSourcesCard,
-  MsListSelectionModal,
+  ListSelectionModal,
   ProviderPickerModal,
   EntityListCard,
   ConfirmDialog,
@@ -108,7 +108,7 @@ export function ShoppingIntegrationsSection({
         }}
       />
 
-      <MsListSelectionModal
+      <ListSelectionModal
         open={integration.showMsListModal}
         onClose={integration.closeMsListModal}
         lists={integration.msLists}

@@ -70,8 +70,6 @@ export interface AddMessageModalProps {
     color: string;
     avatarUrl?: string | null;
   } | null;
-  /** @deprecated Use currentUser instead */
-  defaultAuthor?: string;
 }
 
 /**
@@ -82,11 +80,10 @@ export function AddMessageModal({
   onOpenChange,
   onMessageCreated,
   currentUser,
-  defaultAuthor,
 }: AddMessageModalProps) {
-  // Form state - use currentUser.id if available, otherwise defaultAuthor
+  // Form state — author defaults to the current user when one is provided.
   const [message, setMessage] = useState('');
-  const [authorId, setAuthorId] = useState<string>(currentUser?.id || defaultAuthor || '');
+  const [authorId, setAuthorId] = useState<string>(currentUser?.id || '');
   const [pinned, setPinned] = useState(false);
   const [important, setImportant] = useState(false);
   const [expiresIn, setExpiresIn] = useState<string>('never');
@@ -105,13 +102,13 @@ export function AddMessageModal({
   useEffect(() => {
     if (!open) {
       setMessage('');
-      setAuthorId(currentUser?.id || defaultAuthor || '');
+      setAuthorId(currentUser?.id || '');
       setPinned(false);
       setImportant(false);
       setExpiresIn('never');
       setError(null);
     }
-  }, [open, currentUser, defaultAuthor]);
+  }, [open, currentUser]);
 
   // Update authorId when currentUser changes
   useEffect(() => {

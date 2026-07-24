@@ -344,9 +344,6 @@ export function ListSelectionModal({
   );
 }
 
-/** @deprecated Use ListSelectionModal instead */
-export const MsListSelectionModal = ListSelectionModal;
-
 // ---- ProviderPickerModal ----
 
 export function ProviderPickerModal({
