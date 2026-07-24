@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { requireAuth, requireRole } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { photoSources } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
@@ -7,31 +8,41 @@ import { encrypt } from '@/lib/utils/crypto';
 import { logError } from '@/lib/utils/logError';
 import { resolveRedirectUri } from '@/lib/integrations/resolveRedirectUri';
 import { fetchMicrosoftAccountEmail } from '@/lib/integrations/oauth-userinfo';
+import { consumeOAuthState } from '@/lib/auth/oauthState';
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 
 export async function GET(request: Request) {
-  // Note: no requireAuth here — Microsoft calls back without a Prism session cookie.
-  // The state param carries enough context; sensitive ops are gated by the token exchange itself.
+  // The callback is a top-level navigation, so the Prism session cookie is
+  // sent — require it (was previously unauthenticated, letting any valid code
+  // bind a OneDrive account/token to the global photo source).
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+
+  const forbidden = requireRole(auth, 'canModifySettings');
+  if (forbidden) return forbidden;
 
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
   const error = searchParams.get('error');
   const state = searchParams.get('state');
 
-  // Parse state once at top so error redirects (including the catch
-  // block) can honor returnSection without re-parsing.
+  // Verify + consume the state nonce, bound to this session at /authorize.
+  // sourceName/returnSection come from the stored payload; Redis-down proceeds
+  // with defaults (degraded), a bad/absent nonce with Redis up is rejected.
+  const consumed = await consumeOAuthState('microsoft', state, auth.userId);
   let sourceName = 'OneDrive Photos';
   let returnSection = '';
-  if (state) {
-    try {
-      const parsed = JSON.parse(state);
-      sourceName = parsed.sourceName || sourceName;
-      returnSection = parsed.returnSection || '';
-    } catch { /* ignore */ }
+  if (consumed.status === 'ok') {
+    sourceName = (consumed.payload.sourceName as string) || sourceName;
+    returnSection = (consumed.payload.returnSection as string) || '';
   }
   const errorSection = returnSection === 'integrations' ? 'integrations' : 'connections';
   const errorAnchor = returnSection === 'integrations' ? '#microsoft' : '';
+
+  if (consumed.status === 'invalid') {
+    return NextResponse.redirect(`${BASE_URL}/settings?section=${errorSection}&error=microsoft_state_mismatch${errorAnchor}`);
+  }
 
   try {
     if (error) {

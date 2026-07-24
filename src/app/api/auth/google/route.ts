@@ -4,6 +4,7 @@ import { getGoogleAuthUrl } from '@/lib/integrations/google-calendar';
 import { logError } from '@/lib/utils/logError';
 import { isOAuthNotConfigured, oauthSetupRedirect } from '@/lib/integrations/oauthSetupRedirect';
 import { resolveRedirectUri } from '@/lib/integrations/resolveRedirectUri';
+import { createOAuthState } from '@/lib/auth/oauthState';
 
 export async function GET(request: Request) {
   const auth = await requireAuth();
@@ -14,13 +15,15 @@ export async function GET(request: Request) {
 
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
     const reauth = searchParams.get('reauth');
     const returnSection = searchParams.get('returnSection') || 'connections';
-    const stateObj: Record<string, string> = { returnSection };
-    if (userId) stateObj.userId = userId;
-    if (reauth) stateObj.reauth = reauth;
-    const state = JSON.stringify(stateObj);
+    // State is now an opaque, single-use nonce bound server-side to this
+    // session; the callback reads returnSection/reauth from the stored payload
+    // and derives the owning userId from the session (never from state). The
+    // old client-supplied `userId` param is intentionally dropped.
+    const payload: Record<string, unknown> = { returnSection };
+    if (reauth) payload.reauth = reauth;
+    const state = await createOAuthState('google', auth.userId, payload);
     const redirectUri = resolveRedirectUri(request, '/api/auth/google/callback');
     const authUrl = await getGoogleAuthUrl(state, redirectUri);
 

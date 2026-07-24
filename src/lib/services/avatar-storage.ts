@@ -2,6 +2,7 @@ import sharp from 'sharp';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { getAvatarsRoot } from '@/lib/config/runtime';
+import { assertSafePathId } from '@/lib/utils/safePathId';
 
 const AVATARS_DIR = getAvatarsRoot();
 const AVATAR_SIZE = 256;
@@ -11,6 +12,7 @@ async function ensureDir() {
 }
 
 export async function saveAvatar(buffer: Buffer, userId: string): Promise<string> {
+  assertSafePathId(userId);
   await ensureDir();
 
   const filename = `${userId}.jpg`;
@@ -26,6 +28,7 @@ export async function saveAvatar(buffer: Buffer, userId: string): Promise<string
 }
 
 export async function deleteAvatar(userId: string): Promise<void> {
+  assertSafePathId(userId);
   const filePath = path.join(AVATARS_DIR, `${userId}.jpg`);
   try {
     await fs.unlink(filePath);
@@ -35,5 +38,6 @@ export async function deleteAvatar(userId: string): Promise<void> {
 }
 
 export function getAvatarPath(userId: string): string {
+  assertSafePathId(userId);
   return path.join(AVATARS_DIR, `${userId}.jpg`);
 }

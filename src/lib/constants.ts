@@ -11,6 +11,19 @@ export const SESSION_DURATION = {
   GUEST: 10 * 60,           // 10 minutes
 } as const;
 
+/**
+ * Absolute session lifetime in seconds, keyed by uppercase role. The sliding
+ * window (SESSION_DURATION) refreshes on every use, so a session that is
+ * exercised periodically would otherwise live forever — a stolen cookie stays
+ * valid indefinitely. This caps total lifetime measured from createdAt,
+ * regardless of activity. Each cap is a small multiple of the sliding window.
+ */
+export const SESSION_ABSOLUTE_LIFETIME = {
+  PARENT: 30 * 24 * 60 * 60, // 30 days
+  CHILD: 7 * 24 * 60 * 60,   // 7 days
+  GUEST: 60 * 60,            // 1 hour
+} as const;
+
 export const MIN_PIN_LENGTH = 4;
 export const MAX_PIN_LENGTH = 6;
 /** Default family-wide PIN length when none has been configured. */

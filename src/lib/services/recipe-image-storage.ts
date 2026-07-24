@@ -1,6 +1,7 @@
 import sharp from 'sharp';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { assertSafePathId } from '@/lib/utils/safePathId';
 
 const RECIPE_IMAGES_DIR = path.join(process.cwd(), 'data', 'recipe-images');
 const MAX_WIDTH = 1200;
@@ -10,6 +11,7 @@ async function ensureDir() {
 }
 
 export async function saveRecipeImage(buffer: Buffer, recipeId: string): Promise<string> {
+  assertSafePathId(recipeId);
   await ensureDir();
 
   const filename = `${recipeId}.jpg`;
@@ -25,6 +27,7 @@ export async function saveRecipeImage(buffer: Buffer, recipeId: string): Promise
 }
 
 export async function deleteRecipeImage(recipeId: string): Promise<void> {
+  assertSafePathId(recipeId);
   const filePath = path.join(RECIPE_IMAGES_DIR, `${recipeId}.jpg`);
   try {
     await fs.unlink(filePath);
@@ -34,5 +37,6 @@ export async function deleteRecipeImage(recipeId: string): Promise<void> {
 }
 
 export function getRecipeImagePath(recipeId: string): string {
+  assertSafePathId(recipeId);
   return path.join(RECIPE_IMAGES_DIR, `${recipeId}.jpg`);
 }

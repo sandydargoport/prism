@@ -9,20 +9,13 @@ const withPWA = require('next-pwa')({
   disable: process.env.NODE_ENV === 'development',
   register: true,
   skipWaiting: true,
-  runtimeCaching: [
-    {
-      urlPattern: /^https:\/\/.*\/api\/.*/i,
-      handler: 'NetworkFirst',
-      options: {
-        cacheName: 'api-cache',
-        expiration: {
-          maxEntries: 100,
-          maxAgeSeconds: 60 * 5,
-        },
-        networkTimeoutSeconds: 10,
-      },
-    },
-  ],
+  // No runtime caching of /api responses. The previous NetworkFirst rule on
+  // /^https:\/\/.*\/api\/.*/i persisted every authenticated API GET (messages,
+  // family, tokens, mapboxToken, audit-logs, …) into Cache Storage on disk,
+  // with no cacheableResponse filter and no clearing on logout — on a shared
+  // kiosk that data outlived the session. Static assets are still handled by
+  // next-pwa's precache; dynamic API data is intentionally never cached.
+  runtimeCaching: [],
 });
 
 /** @type {import('next').NextConfig} */

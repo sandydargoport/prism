@@ -4,6 +4,7 @@ import { getMicrosoftAuthUrl } from '@/lib/integrations/onedrive';
 import { logError } from '@/lib/utils/logError';
 import { isOAuthNotConfigured, oauthSetupRedirect } from '@/lib/integrations/oauthSetupRedirect';
 import { resolveRedirectUri } from '@/lib/integrations/resolveRedirectUri';
+import { createOAuthState } from '@/lib/auth/oauthState';
 
 export async function GET(request: Request) {
   const auth = await requireAuth();
@@ -21,7 +22,9 @@ export async function GET(request: Request) {
     // the param and keep the existing ?section=photos behavior.
     const returnSection = searchParams.get('returnSection') || '';
 
-    const state = JSON.stringify({ sourceName, returnSection });
+    // Opaque, single-use nonce bound to this session; the callback reads
+    // sourceName/returnSection from the stored payload after verifying it.
+    const state = await createOAuthState('microsoft', auth.userId, { sourceName, returnSection });
     const redirectUri = resolveRedirectUri(request, '/api/auth/microsoft/callback'); // dynamic redirect URI per request (#124)
     const authUrl = await getMicrosoftAuthUrl(state, redirectUri);
 

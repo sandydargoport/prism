@@ -12,6 +12,7 @@ import { encrypt } from '@/lib/utils/crypto';
 import { logActivity } from '@/lib/services/auditLog';
 import { resolveRedirectUri } from '@/lib/integrations/resolveRedirectUri';
 import { fetchGoogleAccountEmail } from '@/lib/integrations/oauth-userinfo';
+import { consumeOAuthState } from '@/lib/auth/oauthState';
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 
@@ -22,55 +23,42 @@ export async function GET(request: Request) {
   const forbidden = requireRole(auth, 'canModifySettings');
   if (forbidden) return forbidden;
 
+  // Anchor to use when redirecting back into the consolidated Integrations
+  // page — drops the user on the Google card with the Calendars sub-section
+  // auto-expanded (see useIntegrationsHashRouter).
+  const integrationsAnchor = '#google-calendars';
+  const anchorFor = (section: string) =>
+    section === 'integrations' ? integrationsAnchor : '';
+
   try {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const error = searchParams.get('error');
     const state = searchParams.get('state');
 
-    // Parse state early to get returnSection for error redirects.
-    // Default to 'integrations' (the new consolidated section). Legacy
-    // callers (ConnectedAccountsSection) pass explicit returnSection=connections
-    // and still land on the old section while it's mounted.
-    let earlyReturnSection = 'integrations';
-    if (state) {
-      try {
-        const parsed = JSON.parse(state);
-        earlyReturnSection = parsed.returnSection || 'integrations';
-      } catch { /* ignore */ }
+    // Verify + consume the state nonce, which was bound to this session at
+    // /authorize. Redis reachable + missing/mismatched nonce → reject (CSRF /
+    // cross-session graft). Redis unreachable → proceed degraded (defaults),
+    // matching the Kroger flow. returnSection/reauth come from the stored
+    // payload; the owning userId is derived from the session below, never
+    // from attacker-controllable state.
+    const consumed = await consumeOAuthState('google', state, auth.userId);
+    if (consumed.status === 'invalid') {
+      return NextResponse.redirect(`${BASE_URL}/settings?section=integrations&error=google_state_mismatch${integrationsAnchor}`);
     }
-
-    // Anchor to use when redirecting back into the consolidated Integrations
-    // page — drops the user on the Google card with the Calendars sub-section
-    // auto-expanded (see useIntegrationsHashRouter).
-    const integrationsAnchor = '#google-calendars';
-    const anchorFor = (section: string) =>
-      section === 'integrations' ? integrationsAnchor : '';
+    const statePayload = consumed.status === 'ok' ? consumed.payload : {};
+    const returnSection = (statePayload.returnSection as string) || 'integrations';
+    const reauthSourceId = (statePayload.reauth as string) || null;
 
     // Check for errors from Google
     if (error) {
       logError('Google OAuth error:', error);
-      return NextResponse.redirect(`${BASE_URL}/settings?section=${earlyReturnSection}&error=google_auth_denied${anchorFor(earlyReturnSection)}`);
+      return NextResponse.redirect(`${BASE_URL}/settings?section=${returnSection}&error=google_auth_denied${anchorFor(returnSection)}`);
     }
 
     // Ensure we have an authorization code
     if (!code) {
-      return NextResponse.redirect(`${BASE_URL}/settings?section=${earlyReturnSection}&error=missing_code${anchorFor(earlyReturnSection)}`);
-    }
-
-    // Parse state to get user ID, reauth source ID, and return section
-    let userId: string | null = null;
-    let reauthSourceId: string | null = null;
-    let returnSection = 'integrations';
-    if (state) {
-      try {
-        const parsed = JSON.parse(state);
-        userId = parsed.userId || null;
-        reauthSourceId = parsed.reauth || null;
-        returnSection = parsed.returnSection || 'integrations';
-      } catch {
-        // State parsing failed, continue without user ID
-      }
+      return NextResponse.redirect(`${BASE_URL}/settings?section=${returnSection}&error=missing_code${anchorFor(returnSection)}`);
     }
 
     // Re-derive the same request-host redirect URI used at /authorize so the
@@ -178,7 +166,9 @@ export async function GET(request: Request) {
         const isWritable = calendar.accessRole === 'writer' || calendar.accessRole === 'owner';
 
         await db.insert(calendarSources).values({
-          userId: userId || undefined,
+          // Owner is the authenticated caller, not a client-supplied state
+          // field (which was previously attacker-controllable).
+          userId: auth.userId,
           provider: 'google',
           sourceCalendarId: calendar.id,
           dashboardCalendarName: calendarName,
@@ -205,14 +195,8 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${BASE_URL}/settings?section=${returnSection}&success=google_connected${anchorFor(returnSection)}`);
   } catch (error) {
     logError('Google OAuth callback error:', error);
-    // returnSection may not be in scope if parsing failed early; parse state again
-    let fallbackSection = 'integrations';
-    try {
-      const { searchParams } = new URL(request.url);
-      const s = searchParams.get('state');
-      if (s) fallbackSection = JSON.parse(s).returnSection || 'integrations';
-    } catch { /* ignore */ }
-    const fallbackAnchor = fallbackSection === 'integrations' ? '#google-calendars' : '';
-    return NextResponse.redirect(`${BASE_URL}/settings?section=${fallbackSection}&error=google_auth_failed${fallbackAnchor}`);
+    // The state nonce is single-use and already consumed here, so returnSection
+    // can't be recovered — fall back to the consolidated Integrations section.
+    return NextResponse.redirect(`${BASE_URL}/settings?section=integrations&error=google_auth_failed${integrationsAnchor}`);
   }
 }

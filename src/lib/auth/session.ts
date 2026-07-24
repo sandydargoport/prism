@@ -1,5 +1,5 @@
 import { getRedisClient } from '@/lib/cache/getRedisClient';
-import { SESSION_DURATION, MAX_LOGIN_ATTEMPTS, LOCKOUT_TIERS, LOCKOUT_TIER_TTL } from '@/lib/constants';
+import { SESSION_DURATION, SESSION_ABSOLUTE_LIFETIME, MAX_LOGIN_ATTEMPTS, LOCKOUT_TIERS, LOCKOUT_TIER_TTL } from '@/lib/constants';
 
 export interface SessionData {
   userId: string;
@@ -81,6 +81,18 @@ export async function validateSession(token: string): Promise<ValidateSessionRes
     const sessionData = JSON.parse(data) as SessionData;
 
     if (sessionData.expiresAt < Date.now()) {
+      await client.del(sessionKey);
+      return { ok: false, reason: 'invalid' };
+    }
+
+    // Absolute lifetime cap: the sliding window below refreshes expiry on
+    // every use, so without this a periodically-exercised (or stolen) session
+    // would never expire. Reject once the session is older than its role's
+    // absolute lifetime, measured from createdAt. Sessions predating this
+    // field (createdAt undefined → NaN comparison is false) are left alone.
+    const absoluteKey = sessionData.role.toUpperCase() as keyof typeof SESSION_ABSOLUTE_LIFETIME;
+    const absoluteLifetimeMs = SESSION_ABSOLUTE_LIFETIME[absoluteKey] * 1000;
+    if (Date.now() - sessionData.createdAt > absoluteLifetimeMs) {
       await client.del(sessionKey);
       return { ok: false, reason: 'invalid' };
     }

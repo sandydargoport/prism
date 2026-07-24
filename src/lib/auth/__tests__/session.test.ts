@@ -187,6 +187,48 @@ describe('validateSession', () => {
     expect(mockRedisClient.del).toHaveBeenCalledWith('session:expired-token');
   });
 
+  it('rejects a session past its absolute lifetime even if the sliding window is fresh', async () => {
+    // createdAt is 31 days ago (parent absolute cap is 30 days), but the
+    // sliding expiresAt is still in the future — a stolen cookie kept alive.
+    const ancientButActive = {
+      userId: 'user-1', role: 'parent',
+      createdAt: Date.now() - 31 * 24 * 60 * 60 * 1000,
+      expiresAt: Date.now() + 60000,
+    };
+    mockRedisClient.get.mockResolvedValueOnce(JSON.stringify(ancientButActive));
+
+    const result = await validateSession('stale-token');
+
+    expect(result).toEqual({ ok: false, reason: 'invalid' });
+    expect(mockRedisClient.del).toHaveBeenCalledWith('session:stale-token');
+    // Must not refresh the TTL of a session it just rejected.
+    expect(mockRedisClient.setEx).not.toHaveBeenCalled();
+  });
+
+  it('honors the shorter guest absolute lifetime (1 hour)', async () => {
+    const oldGuest = {
+      userId: 'guest-1', role: 'guest',
+      createdAt: Date.now() - 2 * 60 * 60 * 1000, // 2h old, cap is 1h
+      expiresAt: Date.now() + 60000,
+    };
+    mockRedisClient.get.mockResolvedValueOnce(JSON.stringify(oldGuest));
+
+    const result = await validateSession('old-guest-token');
+    expect(result).toEqual({ ok: false, reason: 'invalid' });
+  });
+
+  it('allows a session within its absolute lifetime', async () => {
+    const youngSession = {
+      userId: 'user-1', role: 'parent',
+      createdAt: Date.now() - 2 * 24 * 60 * 60 * 1000, // 2 days old, cap 30
+      expiresAt: Date.now() + 60000,
+    };
+    mockRedisClient.get.mockResolvedValueOnce(JSON.stringify(youngSession));
+
+    const result = await validateSession('young-token');
+    expect(result.ok).toBe(true);
+  });
+
   it('returns invalid for empty token', async () => {
     const result = await validateSession('');
     expect(result).toEqual({ ok: false, reason: 'invalid' });
