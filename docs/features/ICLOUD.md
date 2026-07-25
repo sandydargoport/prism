@@ -10,7 +10,7 @@ If you have an Apple household and want Prism to surface family data living in i
 
 | iCloud surface | Supported? | How / why not |
 |---|---|---|
-| **Calendars** | ✅ Yes, two-way | CalDAV (`caldav.icloud.com`). See [Calendar setup](CALENDAR.md#apple-icloud-caldav--private-calendars--reminders--alpha). |
+| **Calendars** | ✅ Yes, two-way | CalDAV (`caldav.icloud.com`). See [Calendar setup](CALENDAR.md#apple-icloud-caldav-private-calendars-reminders-alpha). |
 | **Contacts** (incl. birthdays) | ✅ Yes, read-only | CardDAV (`contacts.icloud.com`). Used by the planned [family contacts page](https://github.com/sandydargoport/prism/issues/75). |
 | **Reminders / Tasks** | ❌ No | Apple migrated Reminders off CalDAV-VTODO years ago; iCloud Reminders are CloudKit-only with no public web API. |
 | **Notes** | ❌ No | iCloud-synced Notes have always been CloudKit-only. No IMAP-style or web API. |

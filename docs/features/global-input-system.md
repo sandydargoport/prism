@@ -17,7 +17,7 @@
 9. [Physical Keyboard Auto-Dismiss](#9-physical-keyboard-auto-dismiss)
 10. [Settings](#10-settings)
 11. [File Manifest](#11-file-manifest)
-12. [Open Questions / Deferred Items](#12-open-questions--deferred-items)
+12. [Open Questions / Deferred](#12-open-questions-deferred)
 
 ---
 
