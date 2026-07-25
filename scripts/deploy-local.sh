@@ -19,7 +19,7 @@ docker exec --user root prism-app sh -c "rm -rf /app/.next/static && mkdir -p /a
 docker cp .next/static/. prism-app:/app/.next/static/
 
 echo "Restarting app..."
-docker-compose restart app
+docker compose restart app
 
 echo "Done. Waiting for health check..."
 sleep 5
