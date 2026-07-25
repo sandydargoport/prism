@@ -50,7 +50,8 @@ async function upsertRecipe(
     sourceType: 'tandoor_import' as const,
     sourceId,
     externalId: change.externalId,
-    externalUpdatedAt: change.remoteUpdatedAt ?? null,
+    // remoteUpdatedAt may arrive as an ISO string after a Redis JSON round-trip.
+    externalUpdatedAt: change.remoteUpdatedAt ? new Date(change.remoteUpdatedAt) : null,
     ingredients: p.ingredients,
     instructions: p.instructions,
     prepTime: p.prepTime,
