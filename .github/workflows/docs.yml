@@ -8,18 +8,22 @@ on:
       - 'mkdocs.yml'
       - 'requirements-docs.txt'
       - '.github/workflows/docs.yml'
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - 'requirements-docs.txt'
+      - '.github/workflows/docs.yml'
   workflow_dispatch:
 
+# Least privilege by default; the deploy job elevates for itself.
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: false
 
 jobs:
+  # Builds the site with --strict on every push AND pull request so broken
+  # links / nav are caught before merge. Only master pushes upload the Pages
+  # artifact for the deploy job; pull requests validate without publishing.
   build:
     runs-on: ubuntu-latest
     steps:
@@ -38,12 +42,21 @@ jobs:
       - run: mkdocs build --strict
 
       - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
         with:
           path: site
 
+  # Publishes to GitHub Pages — never on pull requests.
   deploy:
     needs: build
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
