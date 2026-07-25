@@ -41,11 +41,11 @@ For any non-trivial change, the relevant modalities below must sign off before t
 | Unit / integration tests | Logic + state-machine bugs | `npx jest` against a real test DB; do not mock Drizzle |
 | Headless browser execution | Render bugs, stacking-context bugs, hydration mismatches, dark-mode contrast | Playwright (`e2e/`) — capture screenshots in both themes for any visual change |
 | Install flow | Missing env vars, install.sh gaps, fresh-install failures | `scripts/test-fresh-install.sh` |
-| Reverse-proxy deployment | HTTPS detection, secure cookie handling, `x-forwarded-proto`-dependent code | `tests/e2e/reverse-proxy.spec.ts` *(to be added — see below)* |
-| Migration replay | Idempotency, recovery from partial failure | `scripts/test-migration-replay.sh` *(to be added — see below)* |
-| Visual regression | Color contrast, layout regressions across themes, accidental rendering changes | `tests/e2e/visual-regression.spec.ts` *(to be added — see below)* |
-| PII denylist scan | Real names / addresses / phones in fixtures that look fictional but aren't | `scripts/scan-pii.sh` *(to be added — see below)* |
-| Placeholder / example audit | Real-data-derived placeholders the maintainer didn't realize were specific to their life | Eyeballed grep across `placeholder=` and `e.g.` patterns *(see TODO #6)* |
+| Reverse-proxy deployment | HTTPS detection, secure cookie handling, `x-forwarded-proto`-dependent code | `e2e/reverse-proxy.spec.ts` — runs in CI ("E2E modality suite") |
+| Migration replay | Idempotency, recovery from partial failure | `npm run test:migration-replay` (`scripts/test-migration-replay.sh`) — runs in CI |
+| Visual regression | Color contrast, layout regressions across themes, accidental rendering changes | `e2e/visual-regression.spec.ts` — spec runs in CI; **Linux baselines still needed** (see below) |
+| PII denylist scan | Real names / addresses / phones in fixtures that look fictional but aren't | `npm run scan:pii` (`scripts/scan-pii.sh`; per-maintainer denylist) |
+| Placeholder / example audit | Real-data-derived placeholders the maintainer didn't realize were specific to their life | `npm run scan:examples` (`scripts/scan-examples.sh`) |
 
 ## Operational rules
 
@@ -55,72 +55,54 @@ For any non-trivial change, the relevant modalities below must sign off before t
 - Text-only review (reading code, even adversarially) is **complementary**, not substitutable. Two LLM panels disagreeing about color contrast is still zero useful signal about color contrast.
 - When in doubt about which modality applies, ask before declaring a change verified.
 
-## Coverage gaps (current TODOs)
+## Modality implementation status
 
-These tests do not yet exist and should be added before security/deployment-sensitive work lands:
+Every execution modality in the table above is **implemented and wired into `.github/workflows/ci.yml`** (each runs on every PR), except for one remaining gap — Linux visual-regression baselines — called out at the end.
 
-### 1. `tests/e2e/reverse-proxy.spec.ts`
+### Install flow — `scripts/test-fresh-install.sh`
 
-A Playwright suite that boots nginx in front of the app with a self-signed cert, hits `/api/auth/login` over HTTPS via the proxy, and asserts that the response sets `Set-Cookie` with `Secure; HttpOnly`. Catches the `x-forwarded-proto` regression class.
+Boots a clean install and asserts the fresh-install env / secret contracts hold. CI job: "Test Fresh Install".
 
-Scaffolding pattern: extend `playwright.config.ts` with a project that uses the nginx fixture; provide an nginx config in `tests/fixtures/nginx/`; spin up via Docker before tests, tear down after.
+### Reverse-proxy deployment — `e2e/reverse-proxy.spec.ts`
 
-### 2. `e2e/visual-regression.spec.ts` (scaffold landed; baselines TODO)
+A Playwright suite that boots nginx in front of the app with a self-signed cert, hits `/api/auth/login` over HTTPS via the proxy, and asserts the response sets `Set-Cookie` with `Secure; HttpOnly`. Catches the `x-forwarded-proto` regression class. CI job: "E2E modality suite (reverse-proxy)" (also runs `e2e/mobile-pwa-settings.spec.ts`).
 
-Spec exists. Covers dashboard (default + perf-mode), calendar, settings, login landing, and the PIN modal — all in light + dark themes. **No baselines committed yet** because of a hard PII constraint: visual baselines from a live deployment capture real names, calendar events, photos, weather city, and other personal data — `CLAUDE.md` PII policy forbids committing those.
+### Migration replay — `scripts/test-migration-replay.sh`
 
-**Hard requirement to enable**: a **synthetic-seed test database** with anonymized fixtures (`Alex/Jordan/Emma/Sophie` family members, fixture wallpaper, fictional events, fictional weather location). Capture baselines only against that. Until that synthetic seed exists, the entire spec auto-skips when run without the `E2E_HAS_TEST_DB=1` env flag.
+Boots a fresh DB container, applies all migrations, applies them a second time, and asserts both runs succeed without error. Catches non-idempotent `CREATE FUNCTION`, missing `IF NOT EXISTS`, and migration-recovery regressions. Run locally with `npm run test:migration-replay`; CI job: "Migration replay".
 
-Subtask: `e2e/seeds/synthetic.sql` (or similar) — fully anonymized DB seed for visual-regression baseline capture. Pairs with this spec.
+### PII denylist scan — `scripts/scan-pii.sh`
 
-### 3. `scripts/test-migration-replay.sh`
+Whole-word, fixed-string grep that fails if any tracked file contains items from a maintainer-curated personal denylist. Catches the leak class that surfaced in `formatters.test.ts` (a fictional-looking test fixture that actually used real first names from the maintainer's family). This is a local / pre-push tool, not a CI gate — the denylist lives outside the repo and is per-maintainer.
 
-Boot a fresh DB container, apply all migrations, apply them a second time, assert both runs succeed without error. One-line CI step. Catches non-idempotent `CREATE FUNCTION`, missing `IF NOT EXISTS`, and migration-recovery regressions.
+**Setup (one-time):**
 
-### 4. CI integration
+1. Create `~/.config/prism-pii-denylist.txt` — one entry per line (`#` comments). Categories to consider: real first / last names of household members, street addresses, school / employer names, phone numbers outside the `555-01xx` reserved-for-fiction range, non-public email addresses, personal GPS coordinates (for the travel feature).
+2. (Optional) install the pre-push hook so it runs before every `git push`: `npm run scan:pii:install-hook`.
+3. Run manually anytime: `npm run scan:pii`.
 
-Wire `scripts/test-fresh-install.sh`, `scripts/test-migration-replay.sh`, the reverse-proxy spec, the visual-regression spec, and the PII scan (#5 below) into `.github/workflows/` on every PR. Currently only `jest` and `playwright test` defaults run; the modality-specific suites need explicit invocations.
+The denylist file MUST live outside the repo and MUST NOT be committed — committed values would defeat the purpose. The script exits cleanly (with a warning) when the file is absent, so contributors who haven't set one up don't have their pushes blocked. Why it catches what LLM review misses: an LLM has no way of knowing whether `'Eric'` is fictional or refers to the maintainer's spouse; a maintainer-curated denylist closes that gap with one deterministic grep.
 
-### 6. `scripts/scan-examples.sh` ✅ (script landed; recurring human review)
+### Placeholder / example audit — `scripts/scan-examples.sh`
 
-Surfaces every `placeholder="..."` and "e.g." / "for example" instance in the tracked codebase for human review. Maintainers naturally write these from their own real data ("e.g. Lincoln Park Zoo" because the maintainer lives in Chicago; "e.g., Grandma Helen" because their kid actually has a Grandma Helen). Even when the rest of the codebase is anonymized, these tend to drift toward real names / places.
+Surfaces every `placeholder="..."` and "e.g." / "for example" instance in the tracked codebase for human review. Maintainers naturally write these from their own real data ("e.g. Lincoln Park Zoo" because the maintainer lives in Chicago; "e.g., Grandma Helen" because their kid actually has a Grandma Helen). Run `npm run scan:examples` (always exits 0 — a review tool, not a gate) before each release tag and after merging large feature work; eyeball each line and ask **does this string come from my real life?**
 
-**Run:** `npm run scan:examples`. Always exits 0 — this is a review tool, not a gate. Eyeball each line and ask: **does this string come from my real life?** If yes, swap to a generic alternative.
+Complementary to `scan-pii.sh`: scan-pii is high-precision / low-recall (only finds what you knew to denylist); scan-examples is low-precision / high-recall (surfaces candidate spots you didn't realize were specific to your life). Suggested generic replacements:
 
-Suggested generic alternatives:
 - Names → first names like "Alex", "Emma", "Jordan", "Sophie" (matches Prism's anonymized seed)
-- Cities / landmarks → multi-region rotation: "Kauai, Rome, Banff" rather than one-city-only
-- Schools / employers → never use a real one
+- Cities / landmarks → a multi-region rotation ("Kauai, Rome, Banff") rather than one city only
+- Schools / employers → never a real one
 - Phone numbers → `(555) 01xx-xxxx` (reserved-for-fiction range)
 - Email addresses → `name@example.com` (reserved-for-documentation domain)
 
-This audit is **complementary to `scan-pii.sh`**:
-- `scan-pii.sh` — catches values explicitly on the maintainer's denylist (high-precision, low-recall — only finds what you knew to look for)
-- `scan-examples.sh` — surfaces all candidate spots so the maintainer can review (low-precision, high-recall — finds things you didn't realize were specific to your life)
+### Remaining gap — Linux visual-regression baselines
 
-Run `scan-examples` before each release tag and after merging large feature work.
+`e2e/visual-regression.spec.ts` exists and its CI job runs ("Visual regression"), covering the dashboard (default + perf-mode), calendar, settings, login landing, and the PIN modal in light + dark themes. **But every committed baseline is `-chromium-win32.png` while CI runs on Linux** (`-chromium-linux.png`) — so no baseline matches, the comparison is silently skipped, and the modality is effectively a no-op until Linux baselines land. Two constraints gate that:
 
-### 5. `scripts/scan-pii.sh` ✅ (script landed; denylist is per-maintainer setup)
+- **PII:** baselines from a live deployment capture real names, calendar events, photos, weather city, and other personal data — the `CLAUDE.md` PII policy forbids committing those.
+- **Prerequisite:** a **synthetic-seed test database** with anonymized fixtures (`Alex/Jordan/Emma/Sophie` family members, fixture wallpaper, fictional events, fictional weather location). Baselines must be captured only against that seed (`e2e/seeds/synthetic.sql` or similar); until it exists, the spec auto-skips unless `E2E_HAS_TEST_DB=1`.
 
-Whole-word, fixed-string grep that fails if any tracked file contains items from a maintainer-curated personal denylist. Catches the class of leak that surfaced in `formatters.test.ts` (fictional-looking test fixture that actually used real first names from the maintainer's family).
-
-**Setup per maintainer** (one-time):
-
-1. Create `~/.config/prism-pii-denylist.txt` — one entry per line. Comments start with `#`. Categories to consider:
-   - Real first / last names of household members
-   - Street addresses, school names, employer names
-   - Phone numbers (anything not in the `555-01xx` reserved-for-fiction range)
-   - Email addresses other than the maintainer's public commit identity
-   - Personal GPS coordinates (for the travel feature)
-2. (Optional) Install the pre-push hook so it runs automatically before every `git push`:
-   ```bash
-   npm run scan:pii:install-hook
-   ```
-3. Run manually anytime: `npm run scan:pii`
-
-The denylist file MUST live outside the repo and MUST NOT be committed. Each maintainer populates their own — committed values would defeat the purpose. The script exits cleanly (with a warning) if the denylist file doesn't exist, so contributors who haven't set it up don't have their pushes blocked.
-
-Why this catches what LLM review misses: an LLM has no way of knowing whether `'Eric'` is fictional or refers to the maintainer's spouse. A maintainer-curated denylist closes that gap with one grep. Cheap, deterministic, and survives changes to who's reviewing.
+To (re)capture Linux baselines once the synthetic seed exists, run the CI workflow via `workflow_dispatch` with `update_visual_baselines=true`, download the artifact, and commit the resulting `*-chromium-linux.png` files.
 
 ## Background
 
