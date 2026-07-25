@@ -94,7 +94,7 @@ Voice API foundation (v1.8). Ask Alexa "what's on the family calendar today" or 
 
 ## Integrations
 
-Reads from / writes to: **Google Calendar**, **Apple iCloud (CalDAV + CardDAV)**, **Microsoft To Do**, **OneDrive**, **Gmail (bus emails)**, **OpenWeatherMap** / **Open-Meteo**, **Paprika** recipes, **Kroger / Mariano's**, **Home Assistant** (in progress).
+Reads from / writes to: **Google Calendar**, **Apple iCloud (CalDAV + CardDAV)**, **Microsoft To Do**, **OneDrive**, **Gmail (bus emails)**, **OpenWeatherMap** / **Open-Meteo**, **Paprika** recipes, **Kroger / Mariano's**, and **Home Assistant** (embed as a panel, REST sensors, or run Prism as an HA add-on).
 
 → Full docs: [Integrations index](features/KROGER.md)
 

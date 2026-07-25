@@ -209,4 +209,4 @@ Voice cannot escalate privileges. Specifically:
 
 ## Roadmap
 
-The next phase is the Alexa skill itself, then a HACS-published Home Assistant `custom_component` (see `memory/alexa-voice-api-feature.md`). A later "device-control intents" phase will add a server-sent command bus so voice can drive the running dashboard UI (e.g. *"pull up the lasagna recipe"*).
+The next phase is the Alexa skill itself, then a HACS-published Home Assistant `custom_component` — tracked in [#56](https://github.com/sandydargoport/prism/issues/56). A later "device-control intents" phase will add a server-sent command bus so voice can drive the running dashboard UI (e.g. *"pull up the lasagna recipe"*).

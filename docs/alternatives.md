@@ -28,7 +28,7 @@ Prism's visual style is a **glassmorphism** layout (frosted-glass widgets with s
 | **Meal planning + recipes** | ✅ Built-in (Paprika import, OCR) | ❌ | ❌ | Via module |
 | **Photo screensaver** | ✅ OneDrive sync + slideshow + Ken Burns | ✅ | ✅ | Via module |
 | **Shopping with Kroger / Mariano's push** | ✅ One-click cart push | ❌ | ❌ | ❌ |
-| **Home Assistant integration** | 🚧 [In progress (#81)](https://github.com/sandydargoport/prism/issues/81) | ❌ | Limited | ✅ Native HA card available |
+| **Home Assistant integration** | ✅ [Embed as a panel, REST sensors, + one-click add-on](home-assistant.md) | ❌ | Limited | ✅ Native HA card available |
 | **Voice / Alexa skill** | ✅ Voice API foundation (v1.8) | ❌ | ❌ | Via module |
 | **Vendor lock-in** | None — your data, your DB | High | Medium | None |
 | **You own your data** | ✅ Always | ❌ Hosted by Skylight | ❌ Hosted by Dakboard | ✅ |
@@ -72,7 +72,7 @@ Prism's visual style is a **glassmorphism** layout (frosted-glass widgets with s
 Being fair:
 
 - **Hardware curation.** Skylight ships a beautiful purpose-built display. You have to source your own (a 27" 4K display + a small PC works great, but you have to pick it).
-- **Onboarding friction.** Skylight is plug-and-play. Prism needs Docker + ~15 minutes of setup. We're working on the Home Assistant addon path ([#81](https://github.com/sandydargoport/prism/issues/81)) to close this gap.
+- **Onboarding friction.** Skylight is plug-and-play. Prism needs Docker + ~15 minutes of setup — though Prism now installs as a [Home Assistant add-on](home-assistant.md) for a much simpler path if you already run HA.
 - **Mature ecosystem.** MagicMirror² has a community module for everything. Prism is younger; we're integration-rich but not module-exhaustive.
 
 If those trade-offs are deal-breakers for your household, one of the others is the better fit. If they aren't — Prism is what you've been looking for.

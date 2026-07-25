@@ -14,6 +14,8 @@
 3. Run the quality checks (see below)
 4. Submit a pull request
 
+**Not sure what to work on?** The public roadmap is the [Prism Roadmap project](https://github.com/users/sandydargoport/projects/3) (vote with an emoji reaction). Internal planning, the untracked backlog, and the engineering-reference docs are all indexed in [`docs/planning.md`](docs/planning.md).
+
 ## Quality Standards
 
 All pull requests must meet the following Lighthouse score thresholds:

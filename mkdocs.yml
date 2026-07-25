@@ -123,7 +123,9 @@ nav:
 #     They stay in the build → sitemap.xml → are crawlable, but don't
 #     appear in the side nav.
 not_in_nav: |
+  /planning.md
   /arch-review-v4.md
+  /audit-2026-07.md
   /calendar-cards-design.md
   /code-review-modalities.md
   /decisions-log.md
