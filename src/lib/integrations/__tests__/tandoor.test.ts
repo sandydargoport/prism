@@ -26,6 +26,7 @@ const DETAIL: TandoorRecipeDetail = {
   working_time: 0,
   waiting_time: 30,
   servings: 6,
+  updated_at: '2026-07-20T12:00:00.000Z',
   steps: [
     {
       name: 'Ingredients',
@@ -50,6 +51,8 @@ const DETAIL: TandoorRecipeDetail = {
 describe('normalizeTandoorRecipe', () => {
   it('maps core fields and re-anchors the image onto the connected serverUrl', () => {
     const r = normalizeTandoorRecipe(DETAIL, 'https://tandoor.example.com/');
+    expect(r.externalId).toBe('2');
+    expect(r.externalUpdatedAt).toEqual(new Date('2026-07-20T12:00:00.000Z'));
     expect(r.name).toBe('16 Bean Pasta e Fagioli');
     expect(r.description).toBe('From Barefoot Contessa.');
     expect(r.url).toBe('https://tandoor.example.com/view/recipe/2');

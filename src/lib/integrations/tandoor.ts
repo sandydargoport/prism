@@ -12,6 +12,10 @@ import { validatePublicUrl, safeFetch, UnsafeUrlError } from '@/lib/utils/safeFe
 
 /** A recipe normalized into Prism's insert shape (minus createdBy/sourceType). */
 export interface NormalizedTandoorRecipe {
+  /** Tandoor recipe id (stringified) — the sync match key. */
+  externalId: string;
+  /** Tandoor's last-modified time, or null if absent — for last-write-wins. */
+  externalUpdatedAt: Date | null;
   name: string;
   description: string | null;
   /** Deep link back to the recipe in Tandoor (for the "Open in source" link). */
@@ -58,6 +62,8 @@ export interface TandoorRecipeDetail {
   waiting_time?: number | null;
   servings?: number | null;
   source_url?: string | null;
+  /** ISO timestamp of the recipe's last change in Tandoor (for last-write-wins). */
+  updated_at?: string | null;
 }
 
 const PAGE_SIZE = 50;
@@ -199,6 +205,8 @@ export function normalizeTandoorRecipe(
   }
   const positive = (n: number | null | undefined) => (typeof n === 'number' && n > 0 ? n : null);
   return {
+    externalId: String(detail.id),
+    externalUpdatedAt: detail.updated_at ? new Date(detail.updated_at) : null,
     name: detail.name,
     description: (detail.description || '').trim() || null,
     url: `${base}/view/recipe/${detail.id}`,
