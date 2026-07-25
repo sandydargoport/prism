@@ -8,7 +8,7 @@
 
 export {};
 
-import { validatePublicUrl, safeFetch, UnsafeUrlError } from '../safeFetch';
+import { validatePublicUrl, safeFetch, parseAllowedInternalHosts, UnsafeUrlError } from '../safeFetch';
 
 describe('validatePublicUrl', () => {
   it('accepts a public https URL', () => {
@@ -130,6 +130,94 @@ describe('validatePublicUrl', () => {
       expect(() => validatePublicUrl('http://10.0.0.1/', { isProduction: false }))
         .toThrow(UnsafeUrlError);
     });
+  });
+});
+
+describe('validatePublicUrl — PRISM_ALLOWED_INTERNAL_HOSTS allowlist', () => {
+  it('permits an allowlisted private IP in production', () => {
+    const url = validatePublicUrl('http://192.168.50.60:8082/api/recipe/', {
+      isProduction: true,
+      allowedInternalHosts: ['192.168.50.60'],
+    });
+    expect(url.hostname).toBe('192.168.50.60');
+  });
+
+  it('permits an allowlisted bare hostname in production', () => {
+    const url = validatePublicUrl('http://docker-host:8082/api', {
+      isProduction: true,
+      allowedInternalHosts: ['docker-host'],
+    });
+    expect(url.hostname).toBe('docker-host');
+  });
+
+  it('permits a private IP inside an allowlisted CIDR range', () => {
+    const url = validatePublicUrl('http://10.1.2.3/x', {
+      isProduction: true,
+      allowedInternalHosts: ['10.0.0.0/8'],
+    });
+    expect(url.hostname).toBe('10.1.2.3');
+  });
+
+  it('permits an allowlisted IPv6 loopback (bracket-insensitive)', () => {
+    const url = validatePublicUrl('http://[::1]:8082/', {
+      isProduction: true,
+      allowedInternalHosts: ['::1'],
+    });
+    expect(url.hostname).toBe('[::1]');
+  });
+
+  it('still rejects a private host that is NOT on the allowlist', () => {
+    expect(() =>
+      validatePublicUrl('http://192.168.1.99/', {
+        isProduction: true,
+        allowedInternalHosts: ['192.168.50.60'],
+      }),
+    ).toThrow(UnsafeUrlError);
+  });
+
+  it('rejects an out-of-range IP even when a CIDR is allowlisted', () => {
+    expect(() =>
+      validatePublicUrl('http://172.16.5.5/', {
+        isProduction: true,
+        allowedInternalHosts: ['192.168.0.0/16'],
+      }),
+    ).toThrow(UnsafeUrlError);
+  });
+
+  it('the block error is actionable — names the host and the env var', () => {
+    try {
+      validatePublicUrl('http://192.168.1.99/', { isProduction: true, allowedInternalHosts: [] });
+      throw new Error('expected validatePublicUrl to throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(UnsafeUrlError);
+      expect((e as Error).message).toContain('192.168.1.99');
+      expect((e as Error).message).toContain('PRISM_ALLOWED_INTERNAL_HOSTS');
+      expect((e as Error).message).toMatch(/\.env/);
+    }
+  });
+
+  it('empty allowlist preserves strict behavior', () => {
+    expect(() =>
+      validatePublicUrl('http://10.0.0.1/', { isProduction: true, allowedInternalHosts: [] }),
+    ).toThrow(UnsafeUrlError);
+  });
+});
+
+describe('parseAllowedInternalHosts', () => {
+  const expected = ['192.168.50.60', 'docker-host', '10.0.0.0/8'];
+  it('accepts comma-separated entries', () => {
+    expect(parseAllowedInternalHosts(' 192.168.50.60, docker-host ,10.0.0.0/8 ')).toEqual(expected);
+  });
+  it('accepts space-separated entries', () => {
+    expect(parseAllowedInternalHosts('192.168.50.60 docker-host 10.0.0.0/8')).toEqual(expected);
+  });
+  it('accepts newline-separated entries (multiline .env value)', () => {
+    expect(parseAllowedInternalHosts('192.168.50.60\ndocker-host\n10.0.0.0/8')).toEqual(expected);
+  });
+  it('returns an empty list for empty / undefined input', () => {
+    expect(parseAllowedInternalHosts(undefined)).toEqual([]);
+    expect(parseAllowedInternalHosts('')).toEqual([]);
+    expect(parseAllowedInternalHosts('  ,  ')).toEqual([]);
   });
 });
 

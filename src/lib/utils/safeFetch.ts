@@ -89,9 +89,75 @@ function isLocalhostName(host: string): boolean {
   return lower === 'localhost' || lower.endsWith('.localhost');
 }
 
+/** Strip surrounding brackets from a bracketed IPv6 literal. */
+function unbracket(host: string): string {
+  return host.startsWith('[') && host.endsWith(']') ? host.slice(1, -1) : host;
+}
+
+/**
+ * Parse PRISM_ALLOWED_INTERNAL_HOSTS into a list of allowlist entries.
+ * Entries may be separated by commas, spaces, or newlines — whichever reads
+ * best in your .env. Each entry is a hostname, IP literal, or IPv4 CIDR range.
+ */
+export function parseAllowedInternalHosts(raw: string | undefined): string[] {
+  if (!raw) return [];
+  return raw.split(/[\s,]+/).map((s) => s.trim()).filter(Boolean);
+}
+
+function ipv4ToInt(s: string): number | null {
+  const m = s.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!m) return null;
+  const parts = m.slice(1, 5).map(Number);
+  if (parts.some((p) => p > 255)) return null;
+  return ((parts[0]! << 24) | (parts[1]! << 16) | (parts[2]! << 8) | parts[3]!) >>> 0;
+}
+
+/** True if dotted-quad `ip` is inside an `a.b.c.d/n` IPv4 CIDR. */
+function ipv4InCidr(ip: string, cidr: string): boolean {
+  const [range, bitsStr] = cidr.split('/');
+  const bits = Number(bitsStr);
+  if (!Number.isInteger(bits) || bits < 0 || bits > 32) return false;
+  const ipInt = ipv4ToInt(ip);
+  const rangeInt = ipv4ToInt(range ?? '');
+  if (ipInt === null || rangeInt === null) return false;
+  const mask = bits === 0 ? 0 : (0xffffffff << (32 - bits)) >>> 0;
+  return (ipInt & mask) === (rangeInt & mask);
+}
+
+/** Whether a host literal is explicitly allowlisted by the operator. */
+function hostAllowed(host: string, allowlist: string[]): boolean {
+  if (allowlist.length === 0) return false;
+  const bare = unbracket(host).toLowerCase();
+  for (const entry of allowlist) {
+    if (entry.includes('/')) {
+      if (ipv4InCidr(bare, entry)) return true;
+    } else if (unbracket(entry).toLowerCase() === bare) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Actionable message naming the blocked host and exactly how to allow it. */
+function blockedMessage(host: string): string {
+  return (
+    `Address "${host}" is a private or internal network address, which Prism blocks ` +
+    `by default to prevent server-side request forgery (SSRF). If this is your own ` +
+    `self-hosted service, add "${host}" to PRISM_ALLOWED_INTERNAL_HOSTS in your Prism ` +
+    `.env (comma-separated — hostnames, IPs, or CIDR ranges) and restart Prism.`
+  );
+}
+
 export interface ValidatePublicUrlOptions {
   /** Override the production check; defaults to NODE_ENV === 'production'. */
   isProduction?: boolean;
+  /**
+   * Hosts the operator has explicitly allowlisted — their own self-hosted
+   * services on a private network. Defaults to parsing
+   * PRISM_ALLOWED_INTERNAL_HOSTS. Entries are hostnames, IP literals, or IPv4
+   * CIDR ranges; a matching host bypasses the private-range checks below.
+   */
+  allowedInternalHosts?: string[];
 }
 
 /**
@@ -102,7 +168,8 @@ export interface ValidatePublicUrlOptions {
  * Rejected: non-http(s) protocols, loopback, RFC1918 private ranges,
  * link-local, cloud metadata IP, IPv6 loopback / ULA / link-local.
  * In non-production, localhost and 127.x are permitted to keep dev
- * flows working.
+ * flows working. Hosts on PRISM_ALLOWED_INTERNAL_HOSTS are always
+ * permitted (how a LAN self-hosted integration is allowed).
  */
 export function validatePublicUrl(
   rawUrl: string,
@@ -124,13 +191,21 @@ export function validatePublicUrl(
   }
 
   const isProd = options.isProduction ?? process.env.NODE_ENV === 'production';
+  const allowlist =
+    options.allowedInternalHosts ??
+    parseAllowedInternalHosts(process.env.PRISM_ALLOWED_INTERNAL_HOSTS);
   const host = parsed.hostname;
+
+  // Operator-allowlisted internal hosts bypass the private-range checks
+  // (protocol is still enforced above). This is how self-hosted integrations
+  // on a LAN — Tandoor, Nextcloud/CalDAV, Immich — are permitted in production.
+  if (hostAllowed(host, allowlist)) return parsed;
 
   // IPv6 literals come bracketed in URL.hostname on some runtimes and
   // unbracketed on others, so isPrivateIPv6 handles both shapes.
   if (host.includes(':') || (host.startsWith('[') && host.endsWith(']'))) {
     if (isPrivateIPv6(host)) {
-      throw new UnsafeUrlError('URL points at a private or loopback IPv6 address');
+      throw new UnsafeUrlError(blockedMessage(host));
     }
     return parsed;
   }
@@ -138,12 +213,12 @@ export function validatePublicUrl(
   if (isPrivateIPv4(host)) {
     // Loopback / 127.x is allowed in non-production for local dev.
     if (!isProd && /^127\./.test(host)) return parsed;
-    throw new UnsafeUrlError('URL points at a private or loopback IPv4 address');
+    throw new UnsafeUrlError(blockedMessage(host));
   }
 
   if (isLocalhostName(host)) {
     if (!isProd) return parsed;
-    throw new UnsafeUrlError('URL points at localhost');
+    throw new UnsafeUrlError(blockedMessage(host));
   }
 
   return parsed;

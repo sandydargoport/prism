@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { toast } from '@/components/ui/use-toast';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
-import { ChefHat, Plus, Search, Heart, X, Link2, FileUp, PenLine, ChevronDown, ClipboardPaste } from 'lucide-react';
+import { ChefHat, Plus, Search, Heart, X, Link2, FileUp, PenLine, ChevronDown, ClipboardPaste, Soup } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +26,7 @@ import { RecipeFormModal } from './RecipeFormModal';
 import { ImportUrlModal } from './ImportUrlModal';
 import { ImportPaprikaModal } from './ImportPaprikaModal';
 import { ImportTextModal } from './ImportTextModal';
+import { ImportTandoorModal } from './ImportTandoorModal';
 import type { ParsedRecipeText } from '@/lib/utils/recipeTextParser';
 
 type ViewMode = 'all' | 'favorites';
@@ -41,11 +42,12 @@ export function RecipesView() {
   const [showImportUrlModal, setShowImportUrlModal] = useState(false);
   const [showImportPaprikaModal, setShowImportPaprikaModal] = useState(false);
   const [showImportTextModal, setShowImportTextModal] = useState(false);
+  const [showImportTandoorModal, setShowImportTandoorModal] = useState(false);
   const [textPrefill, setTextPrefill] = useState<ParsedRecipeText | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [paramHandled, setParamHandled] = useState(false);
 
-  const { recipes, loading, error, deleteRecipe, toggleFavorite, importFromUrl, importFromPaprika, createRecipe, updateRecipe } = useRecipes({
+  const { recipes, loading, error, deleteRecipe, toggleFavorite, importFromUrl, importFromPaprika, createRecipe, updateRecipe, refresh } = useRecipes({
     favorite: viewMode === 'favorites' ? true : undefined,
   });
 
@@ -106,6 +108,11 @@ export function RecipesView() {
     setShowImportTextModal(true);
   };
 
+  const handleImportTandoorWithAuth = async () => {
+    if (!await requireAuth('Import Recipes', 'Please log in to import recipes')) return;
+    setShowImportTandoorModal(true);
+  };
+
   return (
     <PageWrapper>
       <div className="h-screen flex flex-col">
@@ -132,6 +139,10 @@ export function RecipesView() {
                 <DropdownMenuItem onClick={handleImportTextWithAuth}>
                   <ClipboardPaste className="h-4 w-4 mr-2 text-muted-foreground" />
                   Paste recipe text
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleImportTandoorWithAuth}>
+                  <Soup className="h-4 w-4 mr-2 text-muted-foreground" />
+                  Import from Tandoor
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleAddWithAuth}>
                   <PenLine className="h-4 w-4 mr-2 text-muted-foreground" />
@@ -262,6 +273,9 @@ export function RecipesView() {
 
       {showImportPaprikaModal && (
         <ImportPaprikaModal onClose={() => setShowImportPaprikaModal(false)} onImport={importFromPaprika} />
+      )}
+      {showImportTandoorModal && (
+        <ImportTandoorModal onClose={() => setShowImportTandoorModal(false)} onImported={refresh} />
       )}
 
       <ConfirmDialog {...confirmDialogProps} />

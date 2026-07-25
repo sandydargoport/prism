@@ -25,7 +25,7 @@ export interface Recipe {
   name: string;
   description?: string | null;
   url?: string | null;
-  sourceType: 'manual' | 'url_import' | 'paprika_import';
+  sourceType: 'manual' | 'url_import' | 'paprika_import' | 'tandoor_import';
   ingredients: RecipeIngredient[];
   instructions?: string | null;
   prepTime?: number | null;

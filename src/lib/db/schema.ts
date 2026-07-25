@@ -507,7 +507,7 @@ export const recipes = pgTable('recipes', {
 
   // Where did this recipe come from?
   sourceType: varchar('source_type', { length: 50 }).default('manual').notNull()
-    .$type<'manual' | 'url_import' | 'paprika_import'>(),
+    .$type<'manual' | 'url_import' | 'paprika_import' | 'tandoor_import'>(),
 
   // Structured ingredients (JSON array of {name, amount, unit, notes})
   ingredients: jsonb('ingredients').default([]).notNull(),

@@ -94,6 +94,9 @@ ALLOWLIST=(
   "caldav.icloud.com"
   "contacts.icloud.com"
   "appleid.apple.com"
+  # Self-hosted recipe managers referenced by the recipe integrations
+  "tandoor.dev"
+  "mealie.io"
   # Common public-suffix anchors that show up via vendor doc URLs
   "google.com"
   "microsoft.com"
