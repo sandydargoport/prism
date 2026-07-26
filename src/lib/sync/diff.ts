@@ -6,10 +6,11 @@
  *
  *  - ADD    — remote item with no matching local row → propose add.
  *  - UPDATE — matched pair where the remote is newer (last-write-wins). When
- *             the remote exposes no updatedAt (e.g. Tandoor meal plans), the
- *             match is always proposed as a refresh. When the LOCAL row is
- *             newer, nothing is proposed — the local edit wins (and would be
- *             pushed back in the write-back phase).
+ *             the remote exposes no updatedAt (e.g. Tandoor meal plans) but
+ *             both sides carry a content fingerprint, the match is proposed
+ *             only when the fingerprints differ; with neither signal it always
+ *             refreshes. When the LOCAL row is newer, nothing is proposed —
+ *             the local edit wins (and would be pushed back in write-back).
  *  - DELETE — a previously-synced local row (has externalId) that is now
  *             absent from the remote. But it is WITHHELD when the local row
  *             was edited since the last sync (updatedAt > lastSynced): a local
@@ -38,10 +39,29 @@ export interface ComputeDiffOptions {
   };
 }
 
-function remoteIsNewer(remote: Date | null, local: Date): boolean {
-  // Remote exposes no timestamp → treat as a refresh candidate.
-  if (remote === null) return true;
-  return remote.getTime() > local.getTime();
+type UpdateSignal = 'timestamp' | 'fingerprint' | 'refresh';
+
+/**
+ * Decide whether a matched remote item should be proposed as an update, and by
+ * which signal:
+ *  - timestamp   — remote exposes updatedAt and it's newer than local.
+ *  - fingerprint — remote has no updatedAt but both sides carry a content
+ *                  fingerprint; propose only when they differ.
+ *  - refresh     — no timestamp and no fingerprints → always refresh (the old
+ *                  behavior; the remote is the source of truth).
+ * Returns null when nothing should change.
+ */
+function updateSignal<TPayload>(
+  remote: RemoteItem<TPayload>,
+  local: LocalItem,
+): UpdateSignal | null {
+  if (remote.updatedAt !== null) {
+    return remote.updatedAt.getTime() > local.updatedAt.getTime() ? 'timestamp' : null;
+  }
+  if (remote.fingerprint !== undefined && local.fingerprint !== undefined) {
+    return remote.fingerprint !== local.fingerprint ? 'fingerprint' : null;
+  }
+  return 'refresh';
 }
 
 export function computeSyncDiff<TPayload>(
@@ -70,20 +90,28 @@ export function computeSyncDiff<TPayload>(
       });
       continue;
     }
-    if (remoteIsNewer(r.updatedAt, existing.updatedAt)) {
+    const signal = updateSignal(r, existing);
+    if (signal) {
+      const reason =
+        signal === 'timestamp'
+          ? 'Changed in source (newer than local)'
+          : signal === 'fingerprint'
+            ? 'Changed in source'
+            : 'Refreshed from source';
       changes.push({
         kind: 'update',
         externalId: r.externalId,
         localId: existing.localId,
         label: r.label,
         payload: r.payload,
-        reason: r.updatedAt === null ? 'Changed in source' : 'Changed in source (newer than local)',
+        reason,
         remoteUpdatedAt: r.updatedAt,
         localUpdatedAt: existing.updatedAt,
         defaultChecked: true,
       });
     }
-    // else: local is newer → keep local (nothing proposed); write-back handles it.
+    // else: local is newer / unchanged → keep local (nothing proposed);
+    // write-back handles pushing a newer local edit upstream later.
   }
 
   // Delete candidates: previously synced, now absent from the remote.

@@ -68,6 +68,20 @@ export interface TandoorRecipeDetail {
 
 const PAGE_SIZE = 50;
 const MAX_RECIPES = 1000; // hard cap so a huge library can't run unbounded
+const MAX_MEAL_PLAN = 2000; // hard cap on meal-plan entries pulled in one sync
+
+/** A meal-plan entry from Tandoor's /api/meal-plan/ (the fields we consume). */
+export interface TandoorMealPlanEntry {
+  id: number;
+  title?: string | null;
+  recipe?: { id: number; name?: string | null; image?: string | null } | null;
+  recipe_name?: string | null;
+  servings?: number | string | null;
+  note?: string | null;
+  /** ISO datetime with offset, e.g. "2026-07-25T19:00:00-04:00". */
+  from_date: string;
+  meal_type_name?: string | null;
+}
 
 function baseUrl(serverUrl: string): string {
   return serverUrl.trim().replace(/\/+$/, '');
@@ -241,6 +255,59 @@ export async function fetchTandoorRecipes(
     }
   }
   return { recipes, total: ids.length };
+}
+
+/**
+ * Fetch all meal-plan entries from Tandoor (bounded). The endpoint is paginated
+ * ({count,next,results}) but older/newer builds may return a bare array — both
+ * are handled. safeFetch re-validates each server-supplied `next` URL (SSRF).
+ */
+export async function fetchTandoorMealPlan(
+  serverUrl: string,
+  token: string,
+): Promise<TandoorMealPlanEntry[]> {
+  validatePublicUrl(serverUrl);
+  const base = baseUrl(serverUrl);
+  const out: TandoorMealPlanEntry[] = [];
+  let next: string | null = `${base}/api/meal-plan/?page_size=${PAGE_SIZE}`;
+  let guard = 0;
+  while (next && out.length < MAX_MEAL_PLAN && guard < 200) {
+    guard += 1;
+    const res: Response = await safeFetch(next, { headers: authHeaders(token) });
+    if (!res.ok) {
+      throw new Error(`Failed to list Tandoor meal plan: ${res.status} ${res.statusText}`);
+    }
+    const data = (await res.json()) as unknown;
+    const results = Array.isArray(data)
+      ? (data as TandoorMealPlanEntry[])
+      : ((data as { results?: TandoorMealPlanEntry[] }).results ?? []);
+    for (const e of results) {
+      if (e && typeof e.id === 'number' && typeof e.from_date === 'string') out.push(e);
+    }
+    next = Array.isArray(data) ? null : ((data as { next?: string | null }).next ?? null);
+  }
+  return out.slice(0, MAX_MEAL_PLAN);
+}
+
+/**
+ * Fetch + normalize a single Tandoor recipe by id. Used when a meal-plan entry
+ * references a recipe that isn't imported yet (auto-import on apply). Returns
+ * null if the recipe can't be fetched (never throws for a missing recipe).
+ */
+export async function fetchTandoorRecipeById(
+  serverUrl: string,
+  token: string,
+  id: number,
+): Promise<NormalizedTandoorRecipe | null> {
+  validatePublicUrl(serverUrl);
+  const base = baseUrl(serverUrl);
+  try {
+    const detail = await fetchRecipeDetail(base, token, id);
+    if (detail && detail.name) return normalizeTandoorRecipe(detail, base);
+  } catch (err) {
+    console.error(`[tandoor] failed to fetch recipe ${id}:`, err instanceof Error ? err.message : err);
+  }
+  return null;
 }
 
 /**

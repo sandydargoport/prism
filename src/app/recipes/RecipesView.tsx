@@ -26,7 +26,7 @@ import { RecipeFormModal } from './RecipeFormModal';
 import { ImportUrlModal } from './ImportUrlModal';
 import { ImportPaprikaModal } from './ImportPaprikaModal';
 import { ImportTextModal } from './ImportTextModal';
-import { SyncTandoorModal } from './SyncTandoorModal';
+import { TandoorSyncModal } from '@/components/sync/TandoorSyncModal';
 import type { ParsedRecipeText } from '@/lib/utils/recipeTextParser';
 
 type ViewMode = 'all' | 'favorites';
@@ -275,7 +275,7 @@ export function RecipesView() {
         <ImportPaprikaModal onClose={() => setShowImportPaprikaModal(false)} onImport={importFromPaprika} />
       )}
       {showSyncTandoorModal && (
-        <SyncTandoorModal onClose={() => setShowSyncTandoorModal(false)} onSynced={refresh} />
+        <TandoorSyncModal entity="recipes" onClose={() => setShowSyncTandoorModal(false)} onSynced={refresh} />
       )}
 
       <ConfirmDialog {...confirmDialogProps} />

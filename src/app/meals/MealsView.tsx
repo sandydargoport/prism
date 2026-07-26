@@ -19,12 +19,21 @@ import {
   ChefHat,
   Search,
   BookOpen,
+  ChevronDown,
+  Soup,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { UserAvatar } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { TandoorSyncModal } from '@/components/sync/TandoorSyncModal';
 import { PageWrapper, SubpageHeader, FilterBar } from '@/components/layout';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -56,12 +65,14 @@ export function MealsView() {
     goToPreviousWeek, goToNextWeek, goToThisWeek, isCurrentWeek,
     mealsByDay,
     markCooked, unmarkCooked, deleteMeal, addMeal, editMeal, handleDropMeal,
+    refresh,
     totalMeals, cookedMeals,
     confirmDialogProps,
   } = useMealsViewData();
 
   const { recipes } = useRecipes({ limit: 100 });
   const [filterMealTypes, setFilterMealTypes] = useState<Set<Meal['mealType']>>(new Set());
+  const [showSyncModal, setShowSyncModal] = useState(false);
   const orderedDays = [...ALL_DAYS.slice(weekStartsOn), ...ALL_DAYS.slice(0, weekStartsOn)] as readonly Meal['dayOfWeek'][];
 
   const handleAddWithAuth = async (day?: Meal['dayOfWeek']) => {
@@ -69,6 +80,12 @@ export function MealsView() {
     if (!user) return;
     if (day) setSelectedDay(day);
     setShowAddModal(true);
+  };
+
+  const handleSyncWithAuth = async () => {
+    const user = await requireAuth('Sync meal plan', 'Please log in to sync meals');
+    if (!user) return;
+    setShowSyncModal(true);
   };
 
   return (
@@ -79,10 +96,23 @@ export function MealsView() {
           title="Meal Planner"
           badge={<Badge variant="secondary">{cookedMeals}/{totalMeals}</Badge>}
           actions={
-            <Button onClick={() => handleAddWithAuth()} size="sm">
-              <Plus className="h-4 w-4 mr-1" />
-              Add Meal
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm">
+                  <Plus className="h-4 w-4 mr-1" />Add<ChevronDown className="h-3 w-3 ml-1 opacity-70" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={() => handleAddWithAuth()}>
+                  <Plus className="h-4 w-4 mr-2 text-muted-foreground" />
+                  Add meal
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleSyncWithAuth}>
+                  <Soup className="h-4 w-4 mr-2 text-muted-foreground" />
+                  Sync meal plan from Tandoor…
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           }
         />
 
@@ -158,6 +188,9 @@ export function MealsView() {
           <MealModal weekOf={weekOfString} meal={editingMeal} dayOptions={orderedDays} recipes={recipes}
             onClose={() => setEditingMeal(null)}
             onSave={(updates) => { editMeal(editingMeal.id, updates); setEditingMeal(null); }} />
+        )}
+        {showSyncModal && (
+          <TandoorSyncModal entity="meals" onClose={() => setShowSyncModal(false)} onSynced={refresh} />
         )}
       </div>
       <ConfirmDialog {...confirmDialogProps} />

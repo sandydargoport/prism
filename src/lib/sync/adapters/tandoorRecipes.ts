@@ -6,52 +6,42 @@
 
 import { and, eq, isNotNull } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
-import { recipes, recipeSources } from '@/lib/db/schema';
-import { decrypt } from '@/lib/utils/crypto';
+import { recipes } from '@/lib/db/schema';
 import {
   fetchTandoorRecipes,
+  fetchTandoorRecipeById,
   fetchTandoorImage,
   type NormalizedTandoorRecipe,
 } from '@/lib/integrations/tandoor';
 import { saveRecipeImage } from '@/lib/services/recipe-image-storage';
 import { logError } from '@/lib/utils/logError';
+import { loadTandoorSource, type ResolvedTandoorSource } from './tandoorSource';
 import type { EntitySyncAdapter, LocalItem, RemoteItem, SyncChange } from '../types';
 
 /** The per-recipe data carried through the diff (Tandoor's normalized shape). */
 type Payload = NormalizedTandoorRecipe;
 
-interface ResolvedSource {
-  serverUrl: string;
-  token: string;
-}
-
-async function loadSource(sourceId: string): Promise<ResolvedSource> {
-  const [src] = await db.select().from(recipeSources).where(eq(recipeSources.id, sourceId));
-  if (!src) throw new Error('Recipe source not found');
-  if (src.provider !== 'tandoor') throw new Error('Not a Tandoor recipe source');
-  if (!src.serverUrl || !src.accessToken) {
-    throw new Error('Recipe source is missing its server URL or API token');
-  }
-  return { serverUrl: src.serverUrl, token: decrypt(src.accessToken) };
-}
-
-async function upsertRecipe(
-  source: ResolvedSource,
+/**
+ * Insert or update a single recipe row from a normalized Tandoor payload, then
+ * best-effort download its image. Returns the local recipe id. Shared by the
+ * sync apply path and by ensureRecipeImported (meal-plan auto-import).
+ */
+async function writeRecipe(
+  source: ResolvedTandoorSource,
   sourceId: string,
-  change: SyncChange<Payload>,
+  p: Payload,
+  externalId: string,
+  externalUpdatedAt: Date | null,
   localId: string | null,
-): Promise<void> {
-  const p = change.payload;
-  if (!p) return;
+): Promise<string> {
   const values = {
     name: p.name,
     description: p.description,
     url: p.url,
     sourceType: 'tandoor_import' as const,
     sourceId,
-    externalId: change.externalId,
-    // remoteUpdatedAt may arrive as an ISO string after a Redis JSON round-trip.
-    externalUpdatedAt: change.remoteUpdatedAt ? new Date(change.remoteUpdatedAt) : null,
+    externalId,
+    externalUpdatedAt,
     ingredients: p.ingredients,
     instructions: p.instructions,
     prepTime: p.prepTime,
@@ -67,7 +57,7 @@ async function upsertRecipe(
     recipeId = localId;
   } else {
     const [row] = await db.insert(recipes).values(values).returning({ id: recipes.id });
-    if (!row) return;
+    if (!row) throw new Error('Failed to insert recipe');
     recipeId = row.id;
   }
 
@@ -86,13 +76,59 @@ async function upsertRecipe(
       }
     }
   }
+  return recipeId;
+}
+
+/** Apply a recipe add/update SyncChange (remoteUpdatedAt may be a Redis string). */
+async function upsertRecipe(
+  source: ResolvedTandoorSource,
+  sourceId: string,
+  change: SyncChange<Payload>,
+  localId: string | null,
+): Promise<void> {
+  const p = change.payload;
+  if (!p) return;
+  const externalUpdatedAt = change.remoteUpdatedAt ? new Date(change.remoteUpdatedAt) : null;
+  await writeRecipe(source, sourceId, p, change.externalId, externalUpdatedAt, localId);
+}
+
+/**
+ * Ensure a Tandoor recipe (by external id) exists locally for this source,
+ * importing it if missing. Returns the local recipe id + whether it was newly
+ * imported, or null if the recipe couldn't be fetched. Used by the meal-plan
+ * adapter so a planned meal always links to a real recipe.
+ */
+export async function ensureRecipeImported(
+  sourceId: string,
+  externalId: string,
+): Promise<{ recipeId: string; imported: boolean } | null> {
+  const [existing] = await db
+    .select({ id: recipes.id })
+    .from(recipes)
+    .where(and(eq(recipes.sourceId, sourceId), eq(recipes.externalId, externalId)));
+  if (existing) return { recipeId: existing.id, imported: false };
+
+  const source = await loadTandoorSource(sourceId);
+  const norm = await fetchTandoorRecipeById(source.serverUrl, source.token, Number(externalId));
+  if (!norm) return null;
+  const recipeId = await writeRecipe(source, sourceId, norm, norm.externalId, norm.externalUpdatedAt, null);
+  return { recipeId, imported: true };
+}
+
+/** Whether a Tandoor recipe (external id) is already imported for this source. */
+export async function isRecipeImported(sourceId: string, externalId: string): Promise<boolean> {
+  const [existing] = await db
+    .select({ id: recipes.id })
+    .from(recipes)
+    .where(and(eq(recipes.sourceId, sourceId), eq(recipes.externalId, externalId)));
+  return Boolean(existing);
 }
 
 export const tandoorRecipeAdapter: EntitySyncAdapter<Payload> = {
   entityType: 'recipe',
 
   async fetchRemote(sourceId) {
-    const source = await loadSource(sourceId);
+    const source = await loadTandoorSource(sourceId);
     const { recipes: items } = await fetchTandoorRecipes(source.serverUrl, source.token);
     return items.map(
       (r): RemoteItem<Payload> => ({
@@ -125,13 +161,13 @@ export const tandoorRecipeAdapter: EntitySyncAdapter<Payload> = {
   },
 
   async applyAdd(sourceId, change) {
-    const source = await loadSource(sourceId);
+    const source = await loadTandoorSource(sourceId);
     await upsertRecipe(source, sourceId, change, null);
   },
 
   async applyUpdate(sourceId, change) {
     if (!change.localId) return;
-    const source = await loadSource(sourceId);
+    const source = await loadTandoorSource(sourceId);
     await upsertRecipe(source, sourceId, change, change.localId);
   },
 

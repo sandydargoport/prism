@@ -10,11 +10,11 @@ import type { RemoteItem, LocalItem } from '../types';
 
 type P = { name: string };
 
-function remote(externalId: string, updatedAt: Date | null, name = externalId): RemoteItem<P> {
-  return { externalId, updatedAt, label: name, payload: { name } };
+function remote(externalId: string, updatedAt: Date | null, name = externalId, fingerprint?: string): RemoteItem<P> {
+  return { externalId, updatedAt, fingerprint, label: name, payload: { name } };
 }
-function local(localId: string, externalId: string | null, updatedAt: Date, name = externalId ?? localId): LocalItem {
-  return { localId, externalId, updatedAt, label: name };
+function local(localId: string, externalId: string | null, updatedAt: Date, name = externalId ?? localId, fingerprint?: string): LocalItem {
+  return { localId, externalId, updatedAt, fingerprint, label: name };
 }
 
 const T0 = new Date('2026-07-01T00:00:00Z'); // old
@@ -42,8 +42,27 @@ describe('computeSyncDiff — updates (last-write-wins)', () => {
     expect(d.changes).toHaveLength(0);
   });
 
-  it('treats a remote with no timestamp as a refresh (always proposes update)', () => {
+  it('treats a remote with no timestamp AND no fingerprint as a refresh (always proposes update)', () => {
     const d = computeSyncDiff([remote('r1', null)], [local('l1', 'r1', T2)], OPTS());
+    expect(d.counts.update).toBe(1);
+    expect(d.changes[0]!.reason).toMatch(/refreshed from source/i);
+  });
+
+  it('no timestamp but matching fingerprints → NO change (unchanged meal-plan entry)', () => {
+    const d = computeSyncDiff(
+      [remote('r1', null, 'r1', 'fp-A')],
+      [local('l1', 'r1', T2, 'r1', 'fp-A')],
+      OPTS(),
+    );
+    expect(d.changes).toHaveLength(0);
+  });
+
+  it('no timestamp but differing fingerprints → update (edited meal-plan entry)', () => {
+    const d = computeSyncDiff(
+      [remote('r1', null, 'r1', 'fp-B')],
+      [local('l1', 'r1', T2, 'r1', 'fp-A')],
+      OPTS(),
+    );
     expect(d.counts.update).toBe(1);
     expect(d.changes[0]!.reason).toMatch(/changed in source/i);
   });

@@ -17,6 +17,14 @@ export interface RemoteItem<TPayload> {
   externalId: string;
   /** Remote last-modified time, or null if the remote doesn't expose one. */
   updatedAt: Date | null;
+  /**
+   * Content fingerprint of the meaningful fields, for sources that expose no
+   * updatedAt (e.g. Tandoor meal plans). When both sides provide one and the
+   * remote has no updatedAt, the diff compares fingerprints instead of times:
+   * equal → unchanged, different → update. Optional; timestamp mode is used
+   * whenever updatedAt is present.
+   */
+  fingerprint?: string;
   /** Human label for the review UI. */
   label: string;
   /** Normalized data to insert/update locally. */
@@ -30,6 +38,8 @@ export interface LocalItem {
   externalId: string | null;
   /** Local last-modified time. */
   updatedAt: Date;
+  /** Content fingerprint recomputed from the local row (see RemoteItem). */
+  fingerprint?: string;
   label: string;
 }
 

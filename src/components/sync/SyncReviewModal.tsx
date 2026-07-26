@@ -35,6 +35,8 @@ export interface SyncReviewModalProps {
   counts: { add: number; update: number; delete: number };
   massDeleteGuardTripped?: boolean;
   withheldDeletes?: number;
+  /** Optional informational notes (e.g. side-effects) shown above the list. */
+  notes?: string[];
   applying?: boolean;
   onApply: (selected: Array<{ kind: string; externalId: string }>) => void;
   onClose: () => void;
@@ -55,6 +57,7 @@ export function SyncReviewModal({
   counts,
   massDeleteGuardTripped,
   withheldDeletes = 0,
+  notes = [],
   applying,
   onApply,
   onClose,
@@ -105,6 +108,14 @@ export function SyncReviewModal({
               {counts.add} new · {counts.update} changed · {counts.delete} removed. Adds and
               updates are pre-selected; removals are opt-in.
             </p>
+          )}
+
+          {notes.length > 0 && !nothing && (
+            <div className="rounded-md border border-blue-500/40 bg-blue-500/10 p-3 text-sm text-blue-700 dark:text-blue-300">
+              {notes.map((n, i) => (
+                <p key={i}>{n}</p>
+              ))}
+            </div>
           )}
 
           {massDeleteGuardTripped && (

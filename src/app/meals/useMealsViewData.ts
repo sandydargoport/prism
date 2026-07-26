@@ -156,6 +156,7 @@ export function useMealsViewData() {
     goToPreviousWeek, goToNextWeek, goToThisWeek, isCurrentWeek,
     mealsByDay,
     markCooked, unmarkCooked, deleteMeal, addMeal, editMeal, handleDropMeal,
+    refresh: fetchMeals,
     totalMeals, cookedMeals,
     confirmDialogProps,
   };
