@@ -14,12 +14,13 @@
  * source='tandoor'). Multi-Tandoor support would key meals to the source id.
  */
 
-import { and, eq, isNotNull } from 'drizzle-orm';
+import { and, eq, isNotNull, inArray } from 'drizzle-orm';
 import { startOfWeek, format } from 'date-fns';
 import { db } from '@/lib/db/client';
 import { meals, recipes, settings } from '@/lib/db/schema';
 import { fetchTandoorMealPlan, type TandoorMealPlanEntry } from '@/lib/integrations/tandoor';
 import { DAYS_OF_WEEK, type DayOfWeek } from '@/lib/constants/days';
+import { zonedParts } from '@/lib/utils/timezone';
 import { loadTandoorSource } from './tandoorSource';
 import { ensureRecipeImported } from './tandoorRecipes';
 import type { EntitySyncAdapter, LocalItem, RemoteItem, SyncChange } from '../types';
@@ -43,10 +44,18 @@ export interface NormalizedTandoorMeal {
   mealTime: string | null; // HH:mm
 }
 
-/** Read the household's first-day-of-week setting (0=Sun, 1=Mon), default Sun. */
-async function loadWeekStartsOn(): Promise<0 | 1> {
-  const [row] = await db.select().from(settings).where(eq(settings.key, 'weekStartsOn'));
-  return row?.value === '1' ? 1 : 0;
+/** Read the household date/time settings that shape meal bucketing. */
+async function loadTimeSettings(): Promise<{ weekStartsOn: 0 | 1; timezone: string }> {
+  const rows = await db
+    .select()
+    .from(settings)
+    .where(inArray(settings.key, ['weekStartsOn', 'timezone']));
+  const byKey = new Map(rows.map((r) => [r.key, r.value]));
+  return {
+    weekStartsOn: byKey.get('weekStartsOn') === '1' ? 1 : 0,
+    // Default UTC when unset; the meal-type time usually wins anyway (naive).
+    timezone: (byKey.get('timezone') as string) || 'UTC',
+  };
 }
 
 /** Map Tandoor's free-text meal type name onto Prism's fixed enum. */
@@ -57,21 +66,6 @@ function mapMealType(name: string | null | undefined): MealType {
   if (n.includes('snack') || n.includes('dessert') || n.includes('appetiz')) return 'snack';
   // dinner / supper / anything else → dinner (the common default)
   return 'dinner';
-}
-
-/**
- * Pull the wall-clock date + time out of a Tandoor from_date, using the offset
- * Tandoor authored it with (NOT the server's timezone). "2026-07-25T19:00:00
- * -04:00" → { y:2026, mo:7, d:25, hh:'19', mm:'00' }. Falls back to Date parse.
- */
-function parseWallClock(fromDate: string): { date: Date; time: string } {
-  const m = fromDate.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
-  if (m) {
-    const [, y, mo, d, hh, mm] = m;
-    return { date: new Date(Number(y), Number(mo) - 1, Number(d)), time: `${hh}:${mm}` };
-  }
-  const dt = new Date(fromDate);
-  return { date: dt, time: format(dt, 'HH:mm') };
 }
 
 function toNumber(v: number | string | null | undefined): number | null {
@@ -99,15 +93,18 @@ function mealFingerprint(f: {
 function normalizeEntry(
   entry: TandoorMealPlanEntry,
   weekStartsOn: 0 | 1,
+  timezone: string,
   importedRecipeIds: Set<string>,
 ): NormalizedTandoorMeal {
-  const { date, time: fromDateTime } = parseWallClock(entry.from_date);
+  // Interpret from_date (an absolute instant) in the household timezone, so the
+  // day/week land correctly regardless of Tandoor's server zone.
+  const { date, time: fromDateTime } = zonedParts(entry.from_date, timezone);
   const weekOf = format(startOfWeek(date, { weekStartsOn }), 'yyyy-MM-dd');
   const dayOfWeek = DAYS_OF_WEEK[date.getDay()] as DayOfWeek;
   // Prefer the meal type's naive default time ("18:00:00" → "18:00"): it's
   // timezone-free and matches the user's intent ("Dinner = 6pm"). Tandoor's
-  // from_date carries the server timezone + a DST artifact, so only fall back
-  // to it when the meal type has no time.
+  // from_date carries a DST artifact, so only fall back to the (zoned) from_date
+  // time when the meal type has no time of its own.
   const mealTypeTime = entry.meal_type?.time?.match(/^(\d{2}:\d{2})/)?.[1] ?? null;
   const time = mealTypeTime ?? fromDateTime;
   const recipeExternalId = entry.recipe?.id != null ? String(entry.recipe.id) : null;
@@ -168,9 +165,9 @@ export const tandoorMealPlanAdapter: EntitySyncAdapter<Payload> = {
 
   async fetchRemote(sourceId) {
     const source = await loadTandoorSource(sourceId);
-    const [entries, weekStartsOn, importedRows] = await Promise.all([
+    const [entries, timeSettings, importedRows] = await Promise.all([
       fetchTandoorMealPlan(source.serverUrl, source.token),
-      loadWeekStartsOn(),
+      loadTimeSettings(),
       db
         .select({ externalId: recipes.externalId })
         .from(recipes)
@@ -181,7 +178,7 @@ export const tandoorMealPlanAdapter: EntitySyncAdapter<Payload> = {
     );
 
     return entries.map((entry): RemoteItem<Payload> => {
-      const p = normalizeEntry(entry, weekStartsOn, importedRecipeIds);
+      const p = normalizeEntry(entry, timeSettings.weekStartsOn, timeSettings.timezone, importedRecipeIds);
       return {
         externalId: p.entryId,
         updatedAt: null, // Tandoor meal-plan entries have no updatedAt
