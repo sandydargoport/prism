@@ -101,9 +101,15 @@ function normalizeEntry(
   weekStartsOn: 0 | 1,
   importedRecipeIds: Set<string>,
 ): NormalizedTandoorMeal {
-  const { date, time } = parseWallClock(entry.from_date);
+  const { date, time: fromDateTime } = parseWallClock(entry.from_date);
   const weekOf = format(startOfWeek(date, { weekStartsOn }), 'yyyy-MM-dd');
   const dayOfWeek = DAYS_OF_WEEK[date.getDay()] as DayOfWeek;
+  // Prefer the meal type's naive default time ("18:00:00" → "18:00"): it's
+  // timezone-free and matches the user's intent ("Dinner = 6pm"). Tandoor's
+  // from_date carries the server timezone + a DST artifact, so only fall back
+  // to it when the meal type has no time.
+  const mealTypeTime = entry.meal_type?.time?.match(/^(\d{2}:\d{2})/)?.[1] ?? null;
+  const time = mealTypeTime ?? fromDateTime;
   const recipeExternalId = entry.recipe?.id != null ? String(entry.recipe.id) : null;
   const name =
     (entry.recipe_name || entry.recipe?.name || entry.title || 'Planned meal').trim() || 'Planned meal';

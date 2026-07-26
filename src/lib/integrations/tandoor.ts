@@ -80,6 +80,8 @@ export interface TandoorMealPlanEntry {
   note?: string | null;
   /** ISO datetime with offset, e.g. "2026-07-25T19:00:00-04:00". */
   from_date: string;
+  /** The meal type, incl. its naive default time ("18:00:00") — TZ-free. */
+  meal_type?: { name?: string | null; time?: string | null } | null;
   meal_type_name?: string | null;
 }
 
