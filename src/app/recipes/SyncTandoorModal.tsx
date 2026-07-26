@@ -11,6 +11,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { CheckCircle2 } from 'lucide-react';
 import { SyncReviewModal, type SyncReviewChange } from '@/components/sync/SyncReviewModal';
 
 export interface SyncTandoorModalProps {
@@ -108,6 +109,13 @@ export function SyncTandoorModal({ onClose, onSynced }: SyncTandoorModalProps) {
         setError(data.error || 'Sync failed.');
         return;
       }
+      // No-op sync: skip the review modal entirely and land on the terminal
+      // "done" screen, so there's always a clear single exit (not a bounce
+      // between an empty review list and the "Sync now" prompt).
+      if (!data.changes || data.changes.length === 0) {
+        setResult("Everything's up to date — nothing to sync.");
+        return;
+      }
       setPreview(data as PreviewResult);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sync failed.');
@@ -156,6 +164,29 @@ export function SyncTandoorModal({ onClose, onSynced }: SyncTandoorModalProps) {
         onApply={handleApply}
         onClose={() => setPreview(null)}
       />
+    );
+  }
+
+  // Terminal success state: a clean "done" screen instead of dropping back to
+  // the "Sync now" prompt (which reads like a loop). One button, and we're out.
+  if (result) {
+    return (
+      <Dialog open onOpenChange={onClose}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+              Sync complete
+            </DialogTitle>
+          </DialogHeader>
+          <p className="py-4 text-sm text-muted-foreground">{result}</p>
+          <DialogFooter>
+            <Button onClick={onClose} autoFocus>
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     );
   }
 
