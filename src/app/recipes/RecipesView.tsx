@@ -26,7 +26,7 @@ import { RecipeFormModal } from './RecipeFormModal';
 import { ImportUrlModal } from './ImportUrlModal';
 import { ImportPaprikaModal } from './ImportPaprikaModal';
 import { ImportTextModal } from './ImportTextModal';
-import { ImportTandoorModal } from './ImportTandoorModal';
+import { SyncTandoorModal } from './SyncTandoorModal';
 import type { ParsedRecipeText } from '@/lib/utils/recipeTextParser';
 
 type ViewMode = 'all' | 'favorites';
@@ -42,7 +42,7 @@ export function RecipesView() {
   const [showImportUrlModal, setShowImportUrlModal] = useState(false);
   const [showImportPaprikaModal, setShowImportPaprikaModal] = useState(false);
   const [showImportTextModal, setShowImportTextModal] = useState(false);
-  const [showImportTandoorModal, setShowImportTandoorModal] = useState(false);
+  const [showSyncTandoorModal, setShowSyncTandoorModal] = useState(false);
   const [textPrefill, setTextPrefill] = useState<ParsedRecipeText | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [paramHandled, setParamHandled] = useState(false);
@@ -108,9 +108,9 @@ export function RecipesView() {
     setShowImportTextModal(true);
   };
 
-  const handleImportTandoorWithAuth = async () => {
-    if (!await requireAuth('Import Recipes', 'Please log in to import recipes')) return;
-    setShowImportTandoorModal(true);
+  const handleSyncTandoorWithAuth = async () => {
+    if (!await requireAuth('Sync Recipes', 'Please log in to sync recipes')) return;
+    setShowSyncTandoorModal(true);
   };
 
   return (
@@ -140,9 +140,9 @@ export function RecipesView() {
                   <ClipboardPaste className="h-4 w-4 mr-2 text-muted-foreground" />
                   Paste recipe text
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleImportTandoorWithAuth}>
+                <DropdownMenuItem onClick={handleSyncTandoorWithAuth}>
                   <Soup className="h-4 w-4 mr-2 text-muted-foreground" />
-                  Import from Tandoor
+                  Sync from Tandoor…
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleAddWithAuth}>
                   <PenLine className="h-4 w-4 mr-2 text-muted-foreground" />
@@ -274,8 +274,8 @@ export function RecipesView() {
       {showImportPaprikaModal && (
         <ImportPaprikaModal onClose={() => setShowImportPaprikaModal(false)} onImport={importFromPaprika} />
       )}
-      {showImportTandoorModal && (
-        <ImportTandoorModal onClose={() => setShowImportTandoorModal(false)} onImported={refresh} />
+      {showSyncTandoorModal && (
+        <SyncTandoorModal onClose={() => setShowSyncTandoorModal(false)} onSynced={refresh} />
       )}
 
       <ConfirmDialog {...confirmDialogProps} />
