@@ -16,6 +16,7 @@ import {
   Minimize2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { scaleIngredientText } from '@/lib/utils/scaleIngredient';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -71,28 +72,9 @@ export function RecipeDetailModal({
 
   const scaleFactor = recipe.servings ? desiredServings / recipe.servings : 1;
 
-  // Scale ingredient text by adjusting numbers
-  const scaleIngredient = (text: string): string => {
-    if (scaleFactor === 1) return text;
-    // Match numbers (including fractions like 1/2, decimals like 1.5)
-    return text.replace(/(\d+\/\d+|\d+\.?\d*)/g, (match) => {
-      if (match.includes('/')) {
-        const parts = match.split('/').map(Number);
-        const num = parts[0] ?? 0;
-        const denom = parts[1] ?? 1;
-        const scaled = (num / denom) * scaleFactor;
-        // Return as fraction if close to common fractions, otherwise decimal
-        if (Math.abs(scaled - 0.25) < 0.01) return '1/4';
-        if (Math.abs(scaled - 0.33) < 0.01) return '1/3';
-        if (Math.abs(scaled - 0.5) < 0.01) return '1/2';
-        if (Math.abs(scaled - 0.67) < 0.01) return '2/3';
-        if (Math.abs(scaled - 0.75) < 0.01) return '3/4';
-        return scaled % 1 === 0 ? scaled.toString() : scaled.toFixed(1);
-      }
-      const scaled = parseFloat(match) * scaleFactor;
-      return scaled % 1 === 0 ? scaled.toString() : scaled.toFixed(1);
-    });
-  };
+  // Scale only the leading quantity of each ingredient line — later numbers are
+  // pack/size descriptors ("1 8 oz can", "1 9x13 pan") and must stay put.
+  const scaleIngredient = (text: string): string => scaleIngredientText(text, scaleFactor);
 
   const handleAddToList = async (listId: string) => {
     if (!recipe.ingredients || recipe.ingredients.length === 0) return;
