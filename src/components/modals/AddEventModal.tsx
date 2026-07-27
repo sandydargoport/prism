@@ -385,8 +385,8 @@ export function AddEventModal({
                 type="date"
                 value={startDate}
                 onChange={(e) => handleStartDateChange(e.target.value)}
+                onClick={(e) => (e.currentTarget as HTMLInputElement).showPicker?.()}
                 className="absolute inset-0 opacity-0 w-full cursor-pointer"
-                tabIndex={-1}
                 required
               />
             </div>
@@ -413,8 +413,8 @@ export function AddEventModal({
                   value={endDate}
                   min={startDate}
                   onChange={(e) => setEndDate(e.target.value)}
+                  onClick={(e) => (e.currentTarget as HTMLInputElement).showPicker?.()}
                   className="absolute inset-0 opacity-0 w-full cursor-pointer"
-                  tabIndex={-1}
                 />
               </div>
             )}
@@ -449,8 +449,8 @@ export function AddEventModal({
                   value={endDate}
                   min={startDate}
                   onChange={(e) => setEndDate(e.target.value)}
+                  onClick={(e) => (e.currentTarget as HTMLInputElement).showPicker?.()}
                   className="absolute inset-0 opacity-0 w-full cursor-pointer"
-                  tabIndex={-1}
                 />
               </div>
             )}
