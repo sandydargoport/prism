@@ -2,7 +2,18 @@
 
 A single map of where Prism's planning lives. The roadmap itself is public and community-voted on GitHub — this page **indexes** the internal planning/reference docs and **gathers the backlog** that isn't yet tracked as an issue, so nothing gets lost.
 
-_Last reviewed: 2026-07-25, after the [v1.9.0](CHANGELOG.md) security release._
+_Last reviewed: 2026-07-27, after the recipe/meal **sync framework** shipped ([#58](https://github.com/sandydargoport/prism/issues/58))._
+
+## Current focus (2026-07-27)
+
+The reusable review-and-approve **sync framework** just landed (one-way recipes + meal plans, Tandoor & Mealie — [#58](https://github.com/sandydargoport/prism/issues/58)). The active phase extends it and clears two quick wins, then cuts a release:
+
+1. **Weather location via ZIP** ([#170](https://github.com/sandydargoport/prism/issues/170)) — replace the free-text location; small, high-satisfaction. _In progress._
+2. **Write-back / two-way** ([#169](https://github.com/sandydargoport/prism/issues/169)) — push Prism edits back to Tandoor/Mealie.
+3. **Calendar sync on the same framework** ([#171](https://github.com/sandydargoport/prism/issues/171)) — the framework's original motivating case (Google Cal ↔ Prism); review-and-approve + two-way-safe.
+4. **Release** — held until the above land.
+
+Deliberately **deprioritized:** real RRULE recurrence builder ([#59](https://github.com/sandydargoport/prism/issues/59)) — valuable but heavy; revisit much later (note: recurring-event handling in calendar sync is scoped around this).
 
 ---
 
@@ -12,14 +23,16 @@ The authoritative roadmap is the **[Prism Roadmap project](https://github.com/us
 
 This page **deliberately does not mirror the full list** (a copy would drift). The themed snapshot below is just orientation — GitHub is the source of truth.
 
-**Open roadmap themes (2026-07-25):**
+**Open roadmap themes (2026-07-27):**
 
+- **Sync framework** — recipe + meal-plan sync **shipped** for Tandoor & Mealie ([#58](https://github.com/sandydargoport/prism/issues/58)); next: write-back / two-way ([#169](https://github.com/sandydargoport/prism/issues/169)) and **calendar sync** on the same framework ([#171](https://github.com/sandydargoport/prism/issues/171)).
 - **Layout / dashboard** — collapsible "expander" widgets ([#121](https://github.com/sandydargoport/prism/issues/121)), freeform pixel-layout mode ([#53](https://github.com/sandydargoport/prism/issues/53)), finish the consolidated Integrations page ([#52](https://github.com/sandydargoport/prism/issues/52) — Phase 1 shipped).
-- **Calendar** — real RRULE recurrence builder ([#59](https://github.com/sandydargoport/prism/issues/59)); the largest single calendar UX gap.
-- **Recipes / meals** — Mealie &amp; Tandoor sync ([#58](https://github.com/sandydargoport/prism/issues/58), gauging interest); due-date-anchored chore recurrence + meal-prep reminders ([#51](https://github.com/sandydargoport/prism/issues/51)).
+- **Meals / chores** — due-date-anchored chore recurrence + meal-prep reminders ([#51](https://github.com/sandydargoport/prism/issues/51)).
+- **Settings / weather** — replace free-text weather location with a ZIP ([#170](https://github.com/sandydargoport/prism/issues/170)); household timezone setting **shipped**.
+- **Calendar** — sync via the framework (above, [#171](https://github.com/sandydargoport/prism/issues/171)); real RRULE recurrence builder ([#59](https://github.com/sandydargoport/prism/issues/59)) **deprioritized** to later.
 - **Photos** — auto-detect favorites from cloud/folder ([#57](https://github.com/sandydargoport/prism/issues/57)); "By Trip" grouping via travel pins ([#54](https://github.com/sandydargoport/prism/issues/54)).
 - **Travel** — globe marker precision at low zoom ([#55](https://github.com/sandydargoport/prism/issues/55), bug).
-- **Voice / Alexa** — remaining intent phases 2c/3/4 ([#56](https://github.com/sandydargoport/prism/issues/56)).
+- **Voice / Alexa** — remaining intent phases 2c/3/4 ([#56](https://github.com/sandydargoport/prism/issues/56)) — blocked on a remote MCP endpoint.
 - **Contacts** — read-only iCloud contacts mirror ([#75](https://github.com/sandydargoport/prism/issues/75), low priority).
 
 ---
@@ -49,7 +62,7 @@ Forward-looking work found in the docs that has **no GitHub issue** — candidat
 **Integrations &amp; sync**
 
 - **Resurrect the MCP server** — a working Prism Model Context Protocol server (`.mcp/`, stdio transport, reuses Settings → API Tokens for auth) was built but never merged; re-cut from commit `f870aeb` rather than from scratch. Future direction: a remote/hosted variant (Streamable HTTP + OAuth 2.1). _(`decisions-log.md`)_
-- **Two-way CalDAV calendar write** — Apple / CalDAV calendars are read-only today. _(`features/CALENDAR.md`)_
+- **Two-way CalDAV calendar write** — Apple / CalDAV calendars are read-only today. _(`features/CALENDAR.md`)_ → now tracked as part of calendar sync ([#171](https://github.com/sandydargoport/prism/issues/171)).
 
 **Features**
 
@@ -78,4 +91,5 @@ Unresolved questions recorded in the review docs:
 
 ## Recently shipped
 
+- **Recipe & meal-plan sync framework** (2026-07-27, [#58](https://github.com/sandydargoport/prism/issues/58) via [#168](https://github.com/sandydargoport/prism/pull/168)) — reusable review-and-approve sync (entity-agnostic diff → review → apply + provider registry). One-way recipe + meal-plan pull for **Tandoor & Mealie**, with recipe auto-import, images, mass-delete guard, and idempotent re-sync. Also landed a household **timezone setting** and an ingredient **serving-scaling** fix. Not yet in a tagged release.
 - **[v1.9.0](CHANGELOG.md)** (2026-07-24) — security-hardening release that closed the entire [2026-07 audit](audit-2026-07.md): item-level authorization sweep, SSRF guards (CalDAV / CardDAV / Immich), session absolute lifetime, OAuth state nonces, service-worker cache fix, path-traversal validation, dependency-advisory bumps, correctness fixes (rate-limit lockout, weather timezone buckets, Google 404 auto-disable, travel-globe deps), and an Immich v3 album-sync fix.
