@@ -180,7 +180,7 @@ export function CalendarsSection() {
           ? `Sync complete: ${parts.join(', ')}`
           : 'Sync complete — already up to date';
         if (birthdaysSynced > 0) {
-          message += ` · ${birthdaysSynced} celebration${birthdaysSynced === 1 ? '' : 's'} updated`;
+          message += ` · ${birthdaysSynced} milestone${birthdaysSynced === 1 ? '' : 's'} updated`;
         }
         if (data.errors && data.errors.length > 0) {
           message += `\n\nWarnings (${data.errors.length}):\n${data.errors.slice(0, 5).join('\n')}`;
