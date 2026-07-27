@@ -16,14 +16,21 @@ import {
 } from '@/components/ui/dialog';
 import { CalendarsSection } from '@/app/settings/sections/CalendarsSection';
 
-export function ManageCalendarsModal({ onClose }: { onClose: () => void }) {
+export function ManageCalendarsModal({
+  onClose,
+  onSynced,
+}: {
+  onClose: () => void;
+  /** Called after a manual sync so the calendar page can refetch its events. */
+  onSynced?: () => void;
+}) {
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Manage calendars</DialogTitle>
         </DialogHeader>
-        <CalendarsSection />
+        <CalendarsSection onSynced={onSynced} />
       </DialogContent>
     </Dialog>
   );

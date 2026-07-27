@@ -16,7 +16,7 @@ import { useFamily } from '@/components/providers';
 import { CalendarColorPicker } from '../components/CalendarColorPicker';
 import { useHiddenHours } from '@/lib/hooks/useHiddenHours';
 
-export function CalendarsSection() {
+export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
   const { confirm, dialogProps: confirmDialogProps } = useConfirmDialog();
   const { members: familyMembers } = useFamily();
   const { calendars, loading: calendarsLoading, refresh: refreshCalendars } = useCalendarSources();
@@ -190,6 +190,9 @@ export function CalendarsSection() {
         }
         toast({ title: message, variant: 'success' });
         refreshCalendars();
+        // Let the host (Calendar page) refetch its events so a manual sync
+        // shows new/removed events immediately, no page refresh needed.
+        onSynced?.();
       } else {
         const hasReauthError = data.errors?.some((e: string) => e.includes('Re-authentication required') || e.includes('Token expired'));
         if (hasReauthError) {

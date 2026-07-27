@@ -611,7 +611,7 @@ export function CalendarView() {
         />
 
         {showManageCalendars && (
-          <ManageCalendarsModal onClose={() => setShowManageCalendars(false)} />
+          <ManageCalendarsModal onClose={() => setShowManageCalendars(false)} onSynced={refreshAll} />
         )}
 
         {editingChore && (
