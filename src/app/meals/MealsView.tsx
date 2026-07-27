@@ -33,7 +33,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { TandoorSyncModal } from '@/components/sync/TandoorSyncModal';
+import { RecipeSyncModal } from '@/components/sync/RecipeSyncModal';
 import { PageWrapper, SubpageHeader, FilterBar } from '@/components/layout';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -109,7 +109,7 @@ export function MealsView() {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleSyncWithAuth}>
                   <Soup className="h-4 w-4 mr-2 text-muted-foreground" />
-                  Sync meal plan from Tandoor…
+                  Sync meal plan (Tandoor / Mealie)…
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -190,7 +190,7 @@ export function MealsView() {
             onSave={(updates) => { editMeal(editingMeal.id, updates); setEditingMeal(null); }} />
         )}
         {showSyncModal && (
-          <TandoorSyncModal entity="meals" onClose={() => setShowSyncModal(false)} onSynced={refresh} />
+          <RecipeSyncModal entity="meals" onClose={() => setShowSyncModal(false)} onSynced={refresh} />
         )}
       </div>
       <ConfirmDialog {...confirmDialogProps} />

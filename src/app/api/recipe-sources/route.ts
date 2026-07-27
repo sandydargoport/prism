@@ -6,7 +6,8 @@ import { requireAuth, requireRole } from '@/lib/auth';
 import { rateLimitGuard } from '@/lib/cache/rateLimit';
 import { encrypt } from '@/lib/utils/crypto';
 import { logError } from '@/lib/utils/logError';
-import { testTandoorConnection, UnsafeUrlError } from '@/lib/integrations/tandoor';
+import { UnsafeUrlError } from '@/lib/integrations/tandoor';
+import { isSupportedProvider, testProviderConnection } from '@/lib/sync/adapters/registry';
 
 /**
  * GET /api/recipe-sources — list connected recipe servers (no secrets).
@@ -49,20 +50,20 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const provider = body.provider === 'tandoor' ? 'tandoor' : null;
+    const provider = typeof body.provider === 'string' && isSupportedProvider(body.provider) ? body.provider : null;
     const serverUrl = typeof body.serverUrl === 'string' ? body.serverUrl.trim() : '';
     const token = typeof body.token === 'string' ? body.token.trim() : '';
     const name = typeof body.name === 'string' ? body.name.trim() : '';
 
     if (!provider) {
-      return NextResponse.json({ error: 'Only Tandoor is supported right now.' }, { status: 400 });
+      return NextResponse.json({ error: 'Supported providers are Tandoor and Mealie.' }, { status: 400 });
     }
     if (!serverUrl || !token) {
       return NextResponse.json({ error: 'Server URL and API token are required.' }, { status: 400 });
     }
 
     // Verify the server + token before storing anything.
-    const { count } = await testTandoorConnection(serverUrl, token);
+    await testProviderConnection(provider, serverUrl, token);
 
     const [row] = await db
       .insert(recipeSources)
@@ -75,14 +76,14 @@ export async function POST(request: NextRequest) {
       })
       .returning({ id: recipeSources.id });
 
-    return NextResponse.json({ id: row?.id, recipeCount: count }, { status: 201 });
+    return NextResponse.json({ id: row?.id }, { status: 201 });
   } catch (error) {
     if (error instanceof UnsafeUrlError) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
     logError('Error connecting recipe source:', error);
     const msg = error instanceof Error ? error.message : 'Failed to connect.';
-    if (error instanceof Error && /token|reach|Tandoor/i.test(error.message)) {
+    if (error instanceof Error && /token|reach|Tandoor|Mealie/i.test(error.message)) {
       return NextResponse.json({ error: msg }, { status: 502 });
     }
     return NextResponse.json({ error: 'Failed to connect the recipe source.' }, { status: 500 });

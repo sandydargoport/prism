@@ -15,11 +15,23 @@ export interface ResolvedTandoorSource {
 }
 
 export async function loadTandoorSource(sourceId: string): Promise<ResolvedTandoorSource> {
+  const conn = await loadSourceConnection(sourceId);
+  if (conn.provider !== 'tandoor') throw new Error('Not a Tandoor recipe source');
+  return { serverUrl: conn.serverUrl, token: conn.token };
+}
+
+export interface ResolvedSourceConnection {
+  provider: string;
+  serverUrl: string;
+  token: string;
+}
+
+/** Provider-agnostic: resolve + decrypt a recipe source's connection. */
+export async function loadSourceConnection(sourceId: string): Promise<ResolvedSourceConnection> {
   const [src] = await db.select().from(recipeSources).where(eq(recipeSources.id, sourceId));
   if (!src) throw new Error('Recipe source not found');
-  if (src.provider !== 'tandoor') throw new Error('Not a Tandoor recipe source');
   if (!src.serverUrl || !src.accessToken) {
     throw new Error('Recipe source is missing its server URL or API token');
   }
-  return { serverUrl: src.serverUrl, token: decrypt(src.accessToken) };
+  return { provider: src.provider, serverUrl: src.serverUrl, token: decrypt(src.accessToken) };
 }

@@ -8,7 +8,7 @@ import { getRedisClient } from '@/lib/cache/getRedisClient';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logError } from '@/lib/utils/logError';
 import { applySync } from '@/lib/sync/runner';
-import { tandoorRecipeAdapter } from '@/lib/sync/adapters/tandoorRecipes';
+import { getRecipeAdapter } from '@/lib/sync/adapters/registry';
 import type { SyncChange } from '@/lib/sync/types';
 
 interface RouteParams {
@@ -48,10 +48,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     if (!src) {
       return NextResponse.json({ error: 'Recipe source not found.' }, { status: 404 });
     }
-    if (src.provider !== 'tandoor') {
-      return NextResponse.json({ error: `Sync not supported for ${src.provider}.` }, { status: 400 });
-    }
-
     const redis = await getRedisClient();
     const stored = redis ? await redis.get(`sync-diff:${diffId}`) : null;
     if (!stored) {
@@ -66,7 +62,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const toApply = allChanges.filter((c) => selectedKeys.has(`${c.kind}:${c.externalId}`));
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await applySync(tandoorRecipeAdapter, id, toApply as any);
+    const result = await applySync(getRecipeAdapter(src.provider), id, toApply as any);
 
     await db
       .update(recipeSources)

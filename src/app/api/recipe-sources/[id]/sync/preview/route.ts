@@ -8,7 +8,7 @@ import { rateLimitGuard } from '@/lib/cache/rateLimit';
 import { getRedisClient } from '@/lib/cache/getRedisClient';
 import { logError } from '@/lib/utils/logError';
 import { previewSync } from '@/lib/sync/runner';
-import { tandoorRecipeAdapter } from '@/lib/sync/adapters/tandoorRecipes';
+import { getRecipeAdapter } from '@/lib/sync/adapters/registry';
 import { UnsafeUrlError } from '@/lib/integrations/tandoor';
 
 interface RouteParams {
@@ -40,11 +40,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
     if (!src) {
       return NextResponse.json({ error: 'Recipe source not found.' }, { status: 404 });
     }
-    if (src.provider !== 'tandoor') {
-      return NextResponse.json({ error: `Sync not supported for ${src.provider}.` }, { status: 400 });
-    }
-
-    const diff = await previewSync(tandoorRecipeAdapter, { id: src.id, lastSynced: src.lastSynced });
+    const diff = await previewSync(getRecipeAdapter(src.provider), { id: src.id, lastSynced: src.lastSynced });
 
     // Stash the full diff (with payloads) for /apply; hand the UI a light view.
     const diffId = randomUUID();

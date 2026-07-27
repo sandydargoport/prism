@@ -26,7 +26,7 @@ import { RecipeFormModal } from './RecipeFormModal';
 import { ImportUrlModal } from './ImportUrlModal';
 import { ImportPaprikaModal } from './ImportPaprikaModal';
 import { ImportTextModal } from './ImportTextModal';
-import { TandoorSyncModal } from '@/components/sync/TandoorSyncModal';
+import { RecipeSyncModal } from '@/components/sync/RecipeSyncModal';
 import type { ParsedRecipeText } from '@/lib/utils/recipeTextParser';
 
 type ViewMode = 'all' | 'favorites';
@@ -142,7 +142,7 @@ export function RecipesView() {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleSyncTandoorWithAuth}>
                   <Soup className="h-4 w-4 mr-2 text-muted-foreground" />
-                  Sync from Tandoor…
+                  Sync recipes (Tandoor / Mealie)…
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleAddWithAuth}>
                   <PenLine className="h-4 w-4 mr-2 text-muted-foreground" />
@@ -275,7 +275,7 @@ export function RecipesView() {
         <ImportPaprikaModal onClose={() => setShowImportPaprikaModal(false)} onImport={importFromPaprika} />
       )}
       {showSyncTandoorModal && (
-        <TandoorSyncModal entity="recipes" onClose={() => setShowSyncTandoorModal(false)} onSynced={refresh} />
+        <RecipeSyncModal entity="recipes" onClose={() => setShowSyncTandoorModal(false)} onSynced={refresh} />
       )}
 
       <ConfirmDialog {...confirmDialogProps} />

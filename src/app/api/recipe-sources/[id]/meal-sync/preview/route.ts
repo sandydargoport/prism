@@ -8,8 +8,14 @@ import { rateLimitGuard } from '@/lib/cache/rateLimit';
 import { getRedisClient } from '@/lib/cache/getRedisClient';
 import { logError } from '@/lib/utils/logError';
 import { previewSync } from '@/lib/sync/runner';
-import { tandoorMealPlanAdapter, type NormalizedTandoorMeal } from '@/lib/sync/adapters/tandoorMealPlan';
+import { getMealPlanAdapter } from '@/lib/sync/adapters/registry';
 import { UnsafeUrlError } from '@/lib/integrations/tandoor';
+
+/** The meal-plan payload fields the review enrichment reads (both providers). */
+interface MealPayload {
+  recipeExternalId?: string | null;
+  recipeAlreadyImported?: boolean;
+}
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -41,11 +47,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
     if (!src) {
       return NextResponse.json({ error: 'Recipe source not found.' }, { status: 404 });
     }
-    if (src.provider !== 'tandoor') {
-      return NextResponse.json({ error: `Sync not supported for ${src.provider}.` }, { status: 400 });
-    }
-
-    const diff = await previewSync(tandoorMealPlanAdapter, { id: src.id, lastSynced: src.lastSynced });
+    const diff = await previewSync(getMealPlanAdapter(src.provider), { id: src.id, lastSynced: src.lastSynced });
 
     const diffId = randomUUID();
     const redis = await getRedisClient();
@@ -61,12 +63,12 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
     const recipesToImport = new Set<string>();
     for (const c of diff.changes) {
       if (c.kind === 'delete') continue;
-      const p = c.payload as NormalizedTandoorMeal | undefined;
+      const p = c.payload as MealPayload | undefined;
       if (p?.recipeExternalId && !p.recipeAlreadyImported) recipesToImport.add(p.recipeExternalId);
     }
 
     const changes = diff.changes.map((c) => {
-      const p = c.payload as NormalizedTandoorMeal | undefined;
+      const p = c.payload as MealPayload | undefined;
       const alsoImports = c.kind !== 'delete' && p?.recipeExternalId && !p.recipeAlreadyImported;
       return {
         kind: c.kind,
