@@ -8,6 +8,7 @@ import {
   Settings,
   Users,
   Palette,
+  SlidersHorizontal,
   Shield,
   Info,
   Home,
@@ -37,6 +38,7 @@ import { AccountSection } from './sections/AccountSection';
 import { FamilySection } from './sections/FamilySection';
 import { CalendarsSection } from './sections/CalendarsSection';
 import { DisplaySection } from './sections/DisplaySection';
+import { GeneralSection } from './sections/GeneralSection';
 import { SecuritySection } from './sections/SecuritySection';
 import { PhotosSettingsSection } from './sections/PhotosSettingsSection';
 // TaskIntegrationsSection, ShoppingIntegrationsSection, WishListIntegrationsSection
@@ -172,6 +174,7 @@ export function SettingsView() {
   const sections = [
     { id: 'account', label: 'Account & Profile', icon: User },
     { id: 'family', label: 'Family Members', icon: Users },
+    { id: 'general', label: 'General', icon: SlidersHorizontal },
     { id: 'integrations', label: 'Integrations', icon: Link2 },
     { id: 'displays', label: 'Displays', icon: Monitor },
     { id: 'display', label: 'Appearance', icon: Palette },
@@ -260,6 +263,7 @@ export function SettingsView() {
               {activeSection === 'photos' && <PhotosSettingsSection />}
               {activeSection === 'bus' && <BusTrackingSection />}
               {activeSection === 'babysitter' && <BabysitterInfoSection />}
+              {activeSection === 'general' && <GeneralSection />}
               {activeSection === 'display' && <DisplaySection />}
               {activeSection === 'input' && <InputSection />}
               {activeSection === 'features' && <FeaturesSection />}

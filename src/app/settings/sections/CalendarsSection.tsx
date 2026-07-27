@@ -15,9 +15,6 @@ import { useCalendarSources } from '@/lib/hooks';
 import { useFamily } from '@/components/providers';
 import { CalendarColorPicker } from '../components/CalendarColorPicker';
 import { useHiddenHours } from '@/lib/hooks/useHiddenHours';
-import { useWeekStartsOn } from '@/lib/hooks/useWeekStartsOn';
-import { useTimezone, detectBrowserTimezone } from '@/lib/hooks/useTimezone';
-import { listTimezones } from '@/lib/utils/timezone';
 
 export function CalendarsSection() {
   const { confirm, dialogProps: confirmDialogProps } = useConfirmDialog();
@@ -646,52 +643,7 @@ export function CalendarsSection() {
       </div>
 
       <CalendarHoursCard />
-
-      <WeekStartCard />
-
-      <TimezoneCard />
     </div>
-  );
-}
-
-function TimezoneCard() {
-  const { timezone, setTimezone, loading } = useTimezone();
-  const zones = listTimezones();
-  const detected = detectBrowserTimezone();
-  // Make sure the current value is selectable even if it's outside the list.
-  const options = zones.includes(timezone) ? zones : [timezone, ...zones];
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Time Zone</CardTitle>
-        <CardDescription>
-          Used for server-side scheduling and syncs — e.g. placing imported meal-plan times on the
-          right day. On-screen clocks already follow each viewer&apos;s device.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-wrap items-center gap-3">
-          <select
-            value={timezone}
-            disabled={loading}
-            onChange={(e) => setTimezone(e.target.value)}
-            className="h-9 min-w-[16rem] rounded-md border border-border bg-background px-3 text-sm"
-          >
-            {options.map((tz) => (
-              <option key={tz} value={tz}>
-                {tz.replace(/_/g, ' ')}
-              </option>
-            ))}
-          </select>
-          {detected && detected !== timezone && (
-            <Button variant="outline" size="sm" onClick={() => setTimezone(detected)}>
-              Use detected ({detected.replace(/_/g, ' ')})
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
   );
 }
 
@@ -784,47 +736,6 @@ function CalendarHoursCard() {
           ) : (
             <>Auto-fit trims dead hours around your timed events in day/week views with a {settings.bufferHours}-hour buffer.</>
           )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function WeekStartCard() {
-  const { weekStartsOn, setWeekStartsOn } = useWeekStartsOn();
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Week Starts On</CardTitle>
-        <CardDescription>
-          Controls when weekly goals reset, calendar week boundaries, and meal planning weeks.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setWeekStartsOn(0)}
-            className={cn(
-              'px-4 py-2 rounded-l-md text-sm font-medium border transition-colors',
-              weekStartsOn === 0
-                ? 'bg-primary text-primary-foreground border-primary'
-                : 'border-border hover:bg-accent'
-            )}
-          >
-            Sunday
-          </button>
-          <button
-            onClick={() => setWeekStartsOn(1)}
-            className={cn(
-              'px-4 py-2 rounded-r-md text-sm font-medium border border-l-0 transition-colors',
-              weekStartsOn === 1
-                ? 'bg-primary text-primary-foreground border-primary'
-                : 'border-border hover:bg-accent'
-            )}
-          >
-            Monday
-          </button>
         </div>
       </CardContent>
     </Card>
