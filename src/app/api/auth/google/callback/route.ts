@@ -29,6 +29,13 @@ export async function GET(request: Request) {
   const integrationsAnchor = '#google-calendars';
   const anchorFor = (section: string) =>
     section === 'integrations' ? integrationsAnchor : '';
+  // Where to send the user after the OAuth round-trip. Calendar management moved
+  // onto the Calendar page (Manage overlay), so a 'calendars' return goes there
+  // and auto-opens the overlay; everything else stays a settings section.
+  const returnUrlFor = (section: string, query: string) =>
+    section === 'calendars'
+      ? `${BASE_URL}/calendar?manage=calendars&${query}`
+      : `${BASE_URL}/settings?section=${section}&${query}${anchorFor(section)}`;
 
   try {
     const { searchParams } = new URL(request.url);
@@ -53,12 +60,12 @@ export async function GET(request: Request) {
     // Check for errors from Google
     if (error) {
       logError('Google OAuth error:', error);
-      return NextResponse.redirect(`${BASE_URL}/settings?section=${returnSection}&error=google_auth_denied${anchorFor(returnSection)}`);
+      return NextResponse.redirect(returnUrlFor(returnSection, 'error=google_auth_denied'));
     }
 
     // Ensure we have an authorization code
     if (!code) {
-      return NextResponse.redirect(`${BASE_URL}/settings?section=${returnSection}&error=missing_code${anchorFor(returnSection)}`);
+      return NextResponse.redirect(returnUrlFor(returnSection, 'error=missing_code'));
     }
 
     // Re-derive the same request-host redirect URI used at /authorize so the
@@ -126,7 +133,7 @@ export async function GET(request: Request) {
         summary: 'Re-authenticated Google Calendar integration',
       });
 
-      return NextResponse.redirect(`${BASE_URL}/settings?section=${returnSection}&success=google_reauth${anchorFor(returnSection)}`);
+      return NextResponse.redirect(returnUrlFor(returnSection, 'success=google_reauth'));
     }
 
     // Fetch calendars using the plaintext token (before we discard it)
@@ -192,7 +199,7 @@ export async function GET(request: Request) {
     });
 
     // Redirect back to settings with success message
-    return NextResponse.redirect(`${BASE_URL}/settings?section=${returnSection}&success=google_connected${anchorFor(returnSection)}`);
+    return NextResponse.redirect(returnUrlFor(returnSection, 'success=google_connected'));
   } catch (error) {
     logError('Google OAuth callback error:', error);
     // The state nonce is single-use and already consumed here, so returnSection

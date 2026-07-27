@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Settings,
@@ -148,6 +148,20 @@ function normalizeSection(raw: string | null): string {
 
 export function SettingsView() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // Calendar management moved to the Calendar page. Bounce any lingering link
+  // to ?section=calendars (old bookmarks, OAuth returns) to the Manage overlay.
+  const requestedSection = searchParams.get('section');
+  useEffect(() => {
+    if (requestedSection === 'calendars') {
+      const qs = new URLSearchParams(searchParams.toString());
+      qs.delete('section');
+      qs.set('manage', 'calendars');
+      router.replace(`/calendar?${qs.toString()}`);
+    }
+  }, [requestedSection, searchParams, router]);
+
   const initialSection = normalizeSection(searchParams.get('section'));
   const [activeSection, setActiveSection] = useState<string>(initialSection);
 
