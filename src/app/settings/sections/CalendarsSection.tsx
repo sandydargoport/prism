@@ -172,9 +172,15 @@ export function CalendarsSection() {
       }
 
       if (response.ok) {
-        let message = `Sync complete: ${data.synced ?? data.total ?? 0} events synced`;
+        const parts: string[] = [];
+        if (data.added) parts.push(`${data.added} added`);
+        if (data.updated) parts.push(`${data.updated} updated`);
+        if (data.removed) parts.push(`${data.removed} removed`);
+        let message = parts.length
+          ? `Sync complete: ${parts.join(', ')}`
+          : 'Sync complete — already up to date';
         if (birthdaysSynced > 0) {
-          message += `, ${birthdaysSynced} birthdays synced`;
+          message += ` · ${birthdaysSynced} birthdays synced`;
         }
         if (data.errors && data.errors.length > 0) {
           message += `\n\nWarnings (${data.errors.length}):\n${data.errors.slice(0, 5).join('\n')}`;
