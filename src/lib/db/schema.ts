@@ -162,6 +162,11 @@ export const events = pgTable('events', {
 
   lastSynced: timestamp('last_synced'),
 
+  // Set when sync finds this synced event gone from its source. Instead of
+  // deleting silently, it's flagged pending so the user reviews the removal
+  // (deletes-only review). Null = not pending.
+  pendingDeletion: timestamp('pending_deletion'),
+
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({

@@ -1,6 +1,6 @@
 import { db } from '@/lib/db/client';
 import { calendarSources, events, tasks, taskLists, dismissedEvents } from '@/lib/db/schema';
-import { eq, and, gte, lte, sql, inArray } from 'drizzle-orm';
+import { eq, and, gte, lte, sql, inArray, isNotNull } from 'drizzle-orm';
 import {
   fetchCalDAVEvents,
   fetchCalDAVTasks,
@@ -324,11 +324,22 @@ export async function syncGoogleCalendarSource(
     ),
   });
 
+  // Clear the pending-deletion flag on any event that reappeared in the source.
+  if (googleEventIds.size > 0) {
+    await db.update(events).set({ pendingDeletion: null }).where(and(
+      eq(events.calendarSourceId, sourceId),
+      inArray(events.externalEventId, [...googleEventIds]),
+      isNotNull(events.pendingDeletion),
+    ));
+  }
+
   for (const prismEvent of prismEventsToCheck) {
-    // Only delete if it has an external_event_id (was synced) but is no longer in Google
+    // Only flag if it has an external_event_id (was synced) but is no longer in Google
     if (prismEvent.externalEventId && !googleEventIds.has(prismEvent.externalEventId)) {
-      await db.delete(events).where(eq(events.id, prismEvent.id));
-      removed++;
+      if (!prismEvent.pendingDeletion) {
+        await db.update(events).set({ pendingDeletion: new Date() }).where(eq(events.id, prismEvent.id));
+        removed++;
+      }
     }
   }
 
@@ -709,10 +720,19 @@ export async function syncIcalCalendarSource(
       lte(events.startTime, timeMax)
     ),
   });
+  if (externalIds.size > 0) {
+    await db.update(events).set({ pendingDeletion: null }).where(and(
+      eq(events.calendarSourceId, sourceId),
+      inArray(events.externalEventId, [...externalIds]),
+      isNotNull(events.pendingDeletion),
+    ));
+  }
   for (const ev of prismEvents) {
     if (ev.externalEventId && !externalIds.has(ev.externalEventId)) {
-      await db.delete(events).where(eq(events.id, ev.id));
-      removed++;
+      if (!ev.pendingDeletion) {
+        await db.update(events).set({ pendingDeletion: new Date() }).where(eq(events.id, ev.id));
+        removed++;
+      }
     }
   }
 
@@ -909,10 +929,19 @@ export async function syncCalDAVCalendarSource(
       ),
     });
 
+    if (upstreamUids.size > 0) {
+      await db.update(events).set({ pendingDeletion: null }).where(and(
+        eq(events.calendarSourceId, sourceId),
+        inArray(events.externalEventId, [...upstreamUids]),
+        isNotNull(events.pendingDeletion),
+      ));
+    }
     for (const local of localEvents) {
       if (local.externalEventId && !upstreamUids.has(local.externalEventId)) {
-        await db.delete(events).where(eq(events.id, local.id));
-        removed++;
+        if (!local.pendingDeletion) {
+          await db.update(events).set({ pendingDeletion: new Date() }).where(eq(events.id, local.id));
+          removed++;
+        }
       }
     }
 
