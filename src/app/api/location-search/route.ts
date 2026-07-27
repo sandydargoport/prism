@@ -51,6 +51,17 @@ function shortDisplayName(result: NominatimResult): string {
   return [city, state, country].filter(Boolean).join(', ');
 }
 
+/** Like shortDisplayName but appends the postal code, for ZIP lookups. */
+function postalDisplayName(result: NominatimResult, zip: string): string {
+  const a = result.address;
+  const city = a?.city ?? a?.town ?? a?.village ?? '';
+  const state = a?.state ?? '';
+  const country = a?.country_code?.toUpperCase() ?? a?.country ?? '';
+  const base = [city, state, country].filter(Boolean).join(', ');
+  const code = a?.postcode ?? zip;
+  return base ? `${base} ${code}` : code;
+}
+
 export async function GET(request: NextRequest) {
   const q = new URL(request.url).searchParams.get('q')?.trim();
   if (!q || q.length < 2) {
@@ -60,26 +71,63 @@ export async function GET(request: NextRequest) {
   try {
     const results: LocationCandidate[] = [];
 
-    // For postal codes, try OWM first (more reliable for zip lookup)
+    // Postal-code path. A bare number in a fuzzy free-text search returns noisy
+    // matches (e.g. "60062" also hits a Greek municipality), so resolve postal
+    // codes authoritatively and return them directly:
+    //  1. OWM's zip endpoint when a key is configured, else
+    //  2. a KEYLESS Nominatim *structured* postalcode query (one clean result).
     const zipMatch = q.match(/^(\d{4,10})(?:[,\s]+([A-Za-z]{2}))?$/);
     if (zipMatch) {
+      const zip = zipMatch[1]!;
+      const country = (zipMatch[2] ?? 'US').toUpperCase();
+
       const apiKey = process.env.OPENWEATHER_API_KEY;
       if (apiKey) {
-        const zip = zipMatch[1]!;
-        const country = zipMatch[2] ?? 'US';
         const url = `https://api.openweathermap.org/geo/1.0/zip?zip=${encodeURIComponent(zip)},${country}&appid=${apiKey}`;
         try {
           const res = await fetch(url, { next: { revalidate: 3600 } });
           if (res.ok) {
             const data: OWMZipResult = await res.json();
             results.push({
-              displayName: `${data.name}, ${data.country}`,
+              displayName: `${data.name}, ${data.country} ${zip}`,
               lat: data.lat,
               lon: data.lon,
               country: data.country,
             });
           }
-        } catch { /* fall through to Nominatim */ }
+        } catch { /* fall through */ }
+      }
+
+      if (results.length === 0) {
+        try {
+          const u = new URL('https://nominatim.openstreetmap.org/search');
+          u.searchParams.set('postalcode', zip);
+          u.searchParams.set('countrycodes', country.toLowerCase());
+          u.searchParams.set('format', 'json');
+          u.searchParams.set('addressdetails', '1');
+          u.searchParams.set('limit', '5');
+          const res = await fetch(u.toString(), {
+            headers: { 'User-Agent': 'Prism-Family-Dashboard/1.0' },
+            next: { revalidate: 3600 },
+          });
+          if (res.ok) {
+            const data: NominatimResult[] = await res.json();
+            for (const item of data) {
+              results.push({
+                displayName: postalDisplayName(item, zip),
+                lat: parseFloat(item.lat),
+                lon: parseFloat(item.lon),
+                country: item.address?.country_code?.toUpperCase() ?? country,
+              });
+            }
+          }
+        } catch { /* fall through to free-text search */ }
+      }
+
+      // A postal lookup resolved → return the clean result(s), skipping the
+      // noisy free-text pass below.
+      if (results.length > 0) {
+        return NextResponse.json({ results: results.slice(0, 5) });
       }
     }
 
