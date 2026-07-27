@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays, addWeeks, startOfDay } from 'date-fns';
 import {
   DndContext,
@@ -19,6 +20,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar,
+  CalendarCog,
   Merge,
   Plus,
   Loader2,
@@ -28,6 +30,7 @@ import { contrastText } from '@/lib/utils/color';
 import { useFamily } from '@/components/providers';
 import { Button } from '@/components/ui/button';
 import { AddEventModal } from '@/components/modals';
+import { ManageCalendarsModal } from './ManageCalendarsModal';
 import { PageWrapper, SubpageHeader, FilterBar } from '@/components/layout';
 const MonthView = lazy(() => import('@/components/calendar/MonthView').then(m => ({ default: m.MonthView })));
 const WeekView = lazy(() => import('@/components/calendar/WeekView').then(m => ({ default: m.WeekView })));
@@ -214,6 +217,14 @@ export function CalendarView() {
   const [editingChore, setEditingChore] = useState<Chore | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
+  const [showManageCalendars, setShowManageCalendars] = useState(false);
+
+  // Deep link: /calendar?manage=calendars opens the Manage panel (used by the
+  // Integrations settings cards after connecting a Google/CalDAV account).
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (searchParams?.get('manage') === 'calendars') setShowManageCalendars(true);
+  }, [searchParams]);
 
   // Live data for the modals. The bucket carries lightweight summaries; the
   // modals need full records (e.g. meal recipe URL, chore startDay), which
@@ -397,6 +408,11 @@ export function CalendarView() {
                 }}
               />
             </div>
+            {!isMobile && (
+              <Button variant="outline" size="sm" onClick={() => setShowManageCalendars(true)} className="h-9" title="Manage calendars">
+                <CalendarCog className="h-4 w-4 mr-1" />Manage
+              </Button>
+            )}
             {!isMobile && (
               <Button size="sm" onClick={handleAddWithAuth}>
                 <Plus className="h-4 w-4 mr-1" />Add Event
@@ -593,6 +609,10 @@ export function CalendarView() {
           } : undefined}
           onEventCreated={() => { refreshEvents(); setShowAddEvent(false); setEditingEvent(null); }}
         />
+
+        {showManageCalendars && (
+          <ManageCalendarsModal onClose={() => setShowManageCalendars(false)} />
+        )}
 
         {editingChore && (
           <ChoreModal

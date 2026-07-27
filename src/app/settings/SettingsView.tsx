@@ -12,7 +12,6 @@ import {
   Shield,
   Info,
   Home,
-  Calendar,
   User,
   ImageIcon,
   ListTodo,
@@ -36,7 +35,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { PageWrapper } from '@/components/layout';
 import { AccountSection } from './sections/AccountSection';
 import { FamilySection } from './sections/FamilySection';
-import { CalendarsSection } from './sections/CalendarsSection';
 import { DisplaySection } from './sections/DisplaySection';
 import { GeneralSection } from './sections/GeneralSection';
 import { SecuritySection } from './sections/SecuritySection';
@@ -176,9 +174,9 @@ export function SettingsView() {
     { id: 'family', label: 'Family Members', icon: Users },
     { id: 'general', label: 'General', icon: SlidersHorizontal },
     { id: 'integrations', label: 'Integrations', icon: Link2 },
+    // Calendar management moved onto the Calendar page (Manage calendars button).
     { id: 'displays', label: 'Displays', icon: Monitor },
     { id: 'display', label: 'Appearance', icon: Palette },
-    { id: 'calendars', label: 'Calendars', icon: Calendar },
     { id: 'photos', label: 'Photos', icon: ImageIcon },
     { id: 'bus', label: 'Bus Tracking', icon: Bus },
     { id: 'input', label: 'Input', icon: KeyboardIcon },
@@ -259,7 +257,6 @@ export function SettingsView() {
               {activeSection === 'family' && <FamilySection />}
               {activeSection === 'integrations' && <IntegrationsSection />}
               {activeSection === 'displays' && <DisplaysSection />}
-              {activeSection === 'calendars' && <CalendarsSection />}
               {activeSection === 'photos' && <PhotosSettingsSection />}
               {activeSection === 'bus' && <BusTrackingSection />}
               {activeSection === 'babysitter' && <BabysitterInfoSection />}

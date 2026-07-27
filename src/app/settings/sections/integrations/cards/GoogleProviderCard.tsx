@@ -175,10 +175,10 @@ export function GoogleProviderCard({
         >
           <div className="text-sm">
             <Link
-              href="/settings?section=calendars"
+              href="/calendar?manage=calendars"
               className="text-primary hover:underline"
             >
-              Open Calendars settings →
+              Manage calendars →
             </Link>
           </div>
         </CollapsibleSubSection>
