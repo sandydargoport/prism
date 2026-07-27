@@ -7,8 +7,10 @@ export interface PendingDeletion {
   title: string;
   startTime: string;
   allDay: boolean;
-  provider: string | null;
-  sourceCalendarId: string | null;
+  /** Neat name of the source calendar the event came from. */
+  sourceCalendar: string;
+  provider: string;
+  color: string | null;
 }
 
 /**

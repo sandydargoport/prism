@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { format, parseISO } from 'date-fns';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -14,9 +14,6 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import type { PendingDeletion } from '@/lib/hooks/usePendingDeletions';
-
-const providerLabel = (p: string | null) =>
-  p === 'google' ? 'Google' : p === 'caldav' ? 'iCloud/CalDAV' : p === 'ical' ? 'iCal feed' : (p ?? 'source');
 
 /**
  * Deletes-only review (#171 Stage 3). Lists events the sync found removed from
@@ -66,9 +63,13 @@ export function PendingDeletionsModal({
 
         <div className="space-y-3 py-1">
           <p className="text-sm text-muted-foreground">
-            {pending.length} event{pending.length === 1 ? ' was' : 's were'} removed from{' '}
-            {pending.length === 1 ? 'its source' : 'their sources'} and held here for review. Delete
-            them from Prism too, or keep them (they become local events).
+            These events were removed from their source calendar and held for review.{' '}
+            <span className="font-medium text-foreground">Delete</span> removes them from Prism too.{' '}
+            <span className="font-medium text-foreground">Keep</span> transfers each one to your{' '}
+            <span className="inline-flex items-center gap-1 font-medium text-foreground">
+              <Home className="h-3 w-3" />local calendar
+            </span>{' '}
+            — it stops syncing and stays put.
           </p>
 
           <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground px-1">
@@ -89,13 +90,25 @@ export function PendingDeletionsModal({
                   className="flex items-start gap-2 rounded px-1 py-1 hover:bg-muted/50 cursor-pointer"
                 >
                   <Checkbox checked={selected.has(p.id)} onCheckedChange={() => toggle(p.id)} className="mt-0.5" />
-                  <span className="text-sm">
+                  <span className="text-sm flex-1 min-w-0">
                     <span className="font-medium">{p.title}</span>
                     <span className="block text-xs text-muted-foreground">
                       {p.allDay
                         ? format(parseISO(p.startTime), 'EEE, MMM d')
-                        : format(parseISO(p.startTime), 'EEE, MMM d · p')}{' '}
-                      · {providerLabel(p.provider)}
+                        : format(parseISO(p.startTime), 'EEE, MMM d · p')}
+                    </span>
+                    <span className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap">
+                      <span className="inline-flex items-center gap-1 min-w-0">
+                        <span
+                          className="h-2 w-2 rounded-full shrink-0"
+                          style={{ backgroundColor: p.color || 'var(--muted-foreground)' }}
+                        />
+                        <span className="truncate">{p.sourceCalendar}</span>
+                      </span>
+                      <ArrowRight className="h-3 w-3 opacity-60 shrink-0" />
+                      <span className="inline-flex items-center gap-1 shrink-0">
+                        <Home className="h-3 w-3" />Local (if kept)
+                      </span>
                     </span>
                   </span>
                 </label>
@@ -109,7 +122,8 @@ export function PendingDeletionsModal({
             Cancel
           </Button>
           <Button variant="outline" onClick={() => act('keep')} disabled={busy || selected.size === 0}>
-            Keep {selected.size}
+            <Home className="h-4 w-4 mr-1.5" />
+            Keep {selected.size} in Local
           </Button>
           <Button variant="destructive" onClick={() => act('delete')} disabled={busy || selected.size === 0}>
             Delete {selected.size}

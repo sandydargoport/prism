@@ -31,15 +31,19 @@ export async function GET() {
         title: events.title,
         startTime: events.startTime,
         allDay: events.allDay,
-        pendingDeletion: events.pendingDeletion,
-        calendarSourceId: events.calendarSourceId,
+        eventColor: events.color,
         provider: calendarSources.provider,
-        sourceCalendarId: calendarSources.sourceCalendarId,
+        displayName: calendarSources.displayName,
+        dashboardName: calendarSources.dashboardCalendarName,
+        calColor: calendarSources.color,
       })
       .from(events)
       .leftJoin(calendarSources, eq(events.calendarSourceId, calendarSources.id))
       .where(isNotNull(events.pendingDeletion))
       .orderBy(events.startTime);
+
+    const providerLabel = (p: string | null) =>
+      p === 'google' ? 'Google' : p === 'caldav' ? 'iCloud/CalDAV' : p === 'ical' ? 'iCal feed' : (p ?? 'source');
 
     return NextResponse.json({
       pending: rows.map((r) => ({
@@ -47,8 +51,10 @@ export async function GET() {
         title: r.title,
         startTime: r.startTime,
         allDay: r.allDay,
-        provider: r.provider,
-        sourceCalendarId: r.sourceCalendarId,
+        // The source calendar this event came from, shown neatly in the splash.
+        sourceCalendar: r.displayName || r.dashboardName || providerLabel(r.provider),
+        provider: providerLabel(r.provider),
+        color: r.calColor || r.eventColor || null,
       })),
       count: rows.length,
     });
