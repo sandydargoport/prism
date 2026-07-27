@@ -1,5 +1,5 @@
 import { db } from '@/lib/db/client';
-import { calendarSources, events, tasks, taskLists } from '@/lib/db/schema';
+import { calendarSources, events, tasks, taskLists, dismissedEvents } from '@/lib/db/schema';
 import { eq, and, gte, lte, sql, inArray } from 'drizzle-orm';
 import {
   fetchCalDAVEvents,
@@ -88,6 +88,15 @@ function eventChanged(a: EventContent, b: EventContent): boolean {
 /** A zero net-change result, optionally carrying errors (for early returns). */
 function emptyCounts(errors: string[] = []): SyncCounts {
   return { added: 0, updated: 0, removed: 0, unchanged: 0, synced: 0, errors };
+}
+
+/** External event ids the user deleted locally (tombstones) — skip on re-sync. */
+async function loadDismissedExternalIds(sourceId: string): Promise<Set<string>> {
+  const rows = await db
+    .select({ externalEventId: dismissedEvents.externalEventId })
+    .from(dismissedEvents)
+    .where(eq(dismissedEvents.calendarSourceId, sourceId));
+  return new Set(rows.map((r) => r.externalEventId));
 }
 
 /** Build a lookup of a source's existing events by externalEventId (for classify). */
@@ -249,12 +258,14 @@ export async function syncGoogleCalendarSource(
   // Build set of Google event IDs for deletion cleanup (excluding cancelled)
   const googleEventIds = new Set<string>();
   const existingByExtId = await loadExistingByExternalId(sourceId);
+  const dismissed = await loadDismissedExternalIds(sourceId);
 
   // Process each event using upsert to prevent duplicates
   for (const googleEvent of googleEvents) {
     try {
       // Skip cancelled events (deleted recurring instances)
       if (googleEvent.status === 'cancelled') continue;
+      if (dismissed.has(googleEvent.id)) continue;
 
       googleEventIds.add(googleEvent.id);
       const internalEvent = convertGoogleEventToInternal(googleEvent, sourceId);
@@ -575,6 +586,7 @@ export async function syncIcalCalendarSource(
 
   const externalIds = new Set<string>();
   const existingByExtId = await loadExistingByExternalId(sourceId);
+  const dismissed = await loadDismissedExternalIds(sourceId);
 
   for (const item of Object.values(parsed)) {
     if (!item || item.type !== 'VEVENT') continue;
@@ -645,6 +657,7 @@ export async function syncIcalCalendarSource(
       const location = readIcalString(vevent.location);
 
       for (const inst of instances) {
+        if (dismissed.has(inst.externalId)) continue;
         externalIds.add(inst.externalId);
         await db
           .insert(events)
@@ -851,7 +864,9 @@ export async function syncCalDAVCalendarSource(
       timeMax,
     );
 
+    const dismissed = await loadDismissedExternalIds(sourceId);
     for (const event of caldavEvents) {
+      if (dismissed.has(event.uid)) continue;
       const existing = await db.query.events.findFirst({
         where: and(
           eq(events.calendarSourceId, sourceId),

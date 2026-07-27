@@ -17,7 +17,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireRole } from '@/lib/auth';
 import { db } from '@/lib/db/client';
-import { events, calendarSources } from '@/lib/db/schema';
+import { events, calendarSources, dismissedEvents } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { updateCalendarEvent, deleteCalendarEvent, refreshAccessToken } from '@/lib/integrations/google-calendar';
@@ -520,6 +520,17 @@ export async function DELETE(
           // Continue with local delete even if Google fails
         }
       }
+
+      // Tombstone this synced event so the pull sync doesn't re-add it. Google
+      // deletes propagate upstream above; CalDAV/iCal (and a failed Google
+      // delete) rely on this so the deletion sticks.
+      await db
+        .insert(dismissedEvents)
+        .values({
+          calendarSourceId: existingEvent.calendarSourceId,
+          externalEventId: existingEvent.externalEventId,
+        })
+        .onConflictDoNothing();
     }
 
     // Delete the event locally

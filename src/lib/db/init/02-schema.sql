@@ -2598,3 +2598,12 @@ DO $$ BEGIN
   END IF;
 END $$;
 CREATE UNIQUE INDEX IF NOT EXISTS recipes_source_external_unique ON public.recipes (source_id, external_id);
+
+-- Tombstones for locally-deleted synced events (so a pull sync doesn't re-add them).
+CREATE TABLE IF NOT EXISTS public.dismissed_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  calendar_source_id uuid NOT NULL REFERENCES public.calendar_sources(id) ON DELETE CASCADE,
+  external_event_id varchar(255) NOT NULL,
+  created_at timestamp DEFAULT now() NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS dismissed_events_source_external_unique ON public.dismissed_events (calendar_source_id, external_event_id);

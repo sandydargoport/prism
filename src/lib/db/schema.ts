@@ -173,6 +173,24 @@ export const events = pgTable('events', {
     .on(table.calendarSourceId, table.externalEventId),
 }));
 
+/**
+ * Tombstones for synced events the user deleted locally. A one-way pull sync
+ * would otherwise re-add them from the source on the next run. The sync skips
+ * any (calendarSourceId, externalEventId) listed here. Cascade-deletes with the
+ * source. (Google deletes propagate upstream too; CalDAV/iCal rely on this.)
+ */
+export const dismissedEvents = pgTable('dismissed_events', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  calendarSourceId: uuid('calendar_source_id')
+    .notNull()
+    .references(() => calendarSources.id, { onDelete: 'cascade' }),
+  externalEventId: varchar('external_event_id', { length: 255 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  dismissedSourceExternalUnique: uniqueIndex('dismissed_events_source_external_unique')
+    .on(table.calendarSourceId, table.externalEventId),
+}));
+
 
 export const taskLists = pgTable('task_lists', {
   id: uuid('id').defaultRandom().primaryKey(),
