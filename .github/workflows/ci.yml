@@ -163,7 +163,10 @@ jobs:
       - run: npm ci
 
       - name: Install psql (not bundled in Playwright image)
-        run: apt-get update && apt-get install -y --no-install-recommends postgresql-client
+        # Drop the NodeSource apt source first — it periodically 403s and aborts
+        # `apt-get update` (Node is already in the image; we only need psql from
+        # the Ubuntu repos here).
+        run: rm -f /etc/apt/sources.list.d/nodesource* && apt-get update && apt-get install -y --no-install-recommends postgresql-client
 
       - name: Apply base schema
         env:
@@ -239,7 +242,10 @@ jobs:
       - run: npm ci
 
       - name: Install psql + redis-cli (not bundled in Playwright image)
-        run: apt-get update && apt-get install -y --no-install-recommends postgresql-client redis-tools
+        # Drop the NodeSource apt source first — it periodically 403s and aborts
+        # `apt-get update` (Node is already in the image; we only need the
+        # Postgres/Redis clients from the Ubuntu repos here).
+        run: rm -f /etc/apt/sources.list.d/nodesource* && apt-get update && apt-get install -y --no-install-recommends postgresql-client redis-tools
 
       - name: Apply base schema
         env:
