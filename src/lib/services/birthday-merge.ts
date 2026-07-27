@@ -69,6 +69,10 @@ export async function upsertBirthday(opts: UpsertOpts): Promise<'inserted' | 'up
   for (const existing of candidates) {
     // Exact match: standard upsert behavior — refresh fields, keep id.
     if (normalize(existing.name) === normalize(name)) {
+      // Already up to date → don't write, and don't count it as a change.
+      if (existing.birthDate === birthDate && (existing.googleCalendarSource ?? null) === (source ?? null)) {
+        return 'skipped';
+      }
       await db.update(birthdays).set({
         birthDate,
         googleCalendarSource: source,
