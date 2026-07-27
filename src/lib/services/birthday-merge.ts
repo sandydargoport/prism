@@ -69,12 +69,20 @@ export async function upsertBirthday(opts: UpsertOpts): Promise<'inserted' | 'up
   for (const existing of candidates) {
     // Exact match: standard upsert behavior — refresh fields, keep id.
     if (normalize(existing.name) === normalize(name)) {
-      // Already up to date → don't write, and don't count it as a change.
-      if (existing.birthDate === birthDate && (existing.googleCalendarSource ?? null) === (source ?? null)) {
+      // Prefer a known year over the 1904 unknown-year sentinel, so the Google
+      // sync (often has the year) and the CardDAV sync (often 1904) don't
+      // overwrite each other's date on every run.
+      const existingYear = parseYear(existing.birthDate);
+      const keepYear = existingYear !== 1904 ? existingYear : newYear;
+      const mergedDate = `${keepYear}-${mo}-${dy}`;
+      // Only a genuine change to the (year-preferring) date counts. The source
+      // is provenance and legitimately flip-flops between the two birthday
+      // syncs, so a source-only difference must NOT count as an update.
+      if (existing.birthDate === mergedDate) {
         return 'skipped';
       }
       await db.update(birthdays).set({
-        birthDate,
+        birthDate: mergedDate,
         googleCalendarSource: source,
       }).where(eq(birthdays.id, existing.id));
       return 'updated';

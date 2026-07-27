@@ -18,6 +18,7 @@ import { calendarSources } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { logError } from '@/lib/utils/logError';
 import { upsertBirthday } from '@/lib/services/birthday-merge';
+import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import {
   fetchCalendarEvents,
   refreshAccessToken,
@@ -273,6 +274,9 @@ export async function POST() {
         errors.push(`Failed to upsert ${row.name}: ${err}`);
       }
     }
+    // Refresh cached birthday lists so new/changed ones show immediately.
+    if (added + updated > 0) await invalidateEntity('birthdays');
+
     // Net changes (added + updated), not the total re-pulled — matches the
     // calendar-event sync. `synced` kept for back-compat.
     return NextResponse.json({

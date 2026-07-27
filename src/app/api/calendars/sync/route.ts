@@ -13,6 +13,7 @@ import { logError } from '@/lib/utils/logError';
 import { db } from '@/lib/db/client';
 import { calendarSources } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import {
   syncAllGoogleCalendars,
   syncGoogleCalendarSource,
@@ -121,6 +122,11 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // A manual sync writes straight to the DB; invalidate the cached event
+    // lists so the calendar reflects new/removed events immediately (the cron
+    // path does this itself, but this route didn't).
+    await invalidateEntity('events');
 
     // Report NET changes (added / updated / removed), not total re-pulled.
     const changeParts: string[] = [];
