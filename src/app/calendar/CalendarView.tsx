@@ -222,7 +222,7 @@ export function CalendarView() {
   const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
   const [showManageCalendars, setShowManageCalendars] = useState(false);
   const [showPendingReview, setShowPendingReview] = useState(false);
-  const { pending, count: pendingCount, apply: applyPending } = usePendingDeletions();
+  const { pending, count: pendingCount, apply: applyPending, refresh: refreshPending } = usePendingDeletions();
 
   // Deep link: /calendar?manage=calendars opens the Manage panel (used by the
   // Integrations settings cards after connecting a Google/CalDAV account).
@@ -628,7 +628,10 @@ export function CalendarView() {
         />
 
         {showManageCalendars && (
-          <ManageCalendarsModal onClose={() => setShowManageCalendars(false)} onSynced={refreshAll} />
+          <ManageCalendarsModal
+            onClose={() => setShowManageCalendars(false)}
+            onSynced={() => { refreshAll(); refreshPending(); }}
+          />
         )}
 
         {showPendingReview && (
