@@ -175,7 +175,8 @@ export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
         const parts: string[] = [];
         if (data.added) parts.push(`${data.added} added`);
         if (data.updated) parts.push(`${data.updated} updated`);
-        if (data.removed) parts.push(`${data.removed} removed`);
+        // Removals are held for review, not applied — reflect that in the toast.
+        if (data.removed) parts.push(`${data.removed} flagged for review`);
         let message = parts.length
           ? `Sync complete: ${parts.join(', ')}`
           : 'Sync complete — already up to date';

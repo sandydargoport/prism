@@ -129,10 +129,11 @@ export async function POST(request: NextRequest) {
     await invalidateEntity('events');
 
     // Report NET changes (added / updated / removed), not total re-pulled.
+    // Removals aren't applied silently anymore — they're flagged for review.
     const changeParts: string[] = [];
     if (result.added) changeParts.push(`${result.added} added`);
     if (result.updated) changeParts.push(`${result.updated} updated`);
-    if (result.removed) changeParts.push(`${result.removed} removed`);
+    if (result.removed) changeParts.push(`${result.removed} flagged for review`);
     const changeSummary = changeParts.length ? changeParts.join(', ') : 'no changes';
 
     return NextResponse.json({
