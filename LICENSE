@@ -6,6 +6,11 @@ This software and associated documentation files are provided under the
 PolyForm Noncommercial License 1.0.0 (the "License"). You may not use
 this software except in compliance with the License.
 
+In addition, the licensor grants the Hosting Exception set out at the end
+of this file. It only grants rights (it removes no restriction) and permits
+managed hosting of the software on behalf of end users for their personal,
+noncommercial use.
+
 ---
 
 Acceptance
@@ -126,3 +131,32 @@ Trademark
 
 The PolyForm Noncommercial License does not grant you any right in the
 trademarks, service marks, brand names or logos of the licensor.
+
+---
+
+Additional Permission — Hosting Exception
+
+This permission is granted by the licensor in addition to the PolyForm
+Noncommercial License 1.0.0 above. It only grants rights and removes no
+restriction; in case of any conflict, the interpretation that grants the
+broader permission controls. Granting it is consistent with "No Other
+Rights" above, which preserves the licensor's ability to grant further
+licenses.
+
+Notwithstanding the noncommercial limitation above, the licensor permits any
+third-party hosting or platform provider to install, run, and host instances
+of the software on behalf of end users, provided that:
+
+  (a) each instance is operated for the benefit of an individual end user or
+      household making personal, noncommercial use of the software (for
+      example, a personal or family dashboard);
+
+  (b) the software is deployed from official images or releases published by
+      the licensor, without modification other than configuration; and
+
+  (c) any fees charged by the provider are for hosting, infrastructure, or
+      managed-service value only, and not a license fee for the software.
+
+This exception grants no right to sell, sublicense, rebrand, fork for
+commercial purposes, or otherwise commercialize the software itself. All
+commercial rights are reserved to the licensor.

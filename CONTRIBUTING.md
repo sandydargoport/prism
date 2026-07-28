@@ -69,3 +69,24 @@ npx playwright test
 ## Commit Messages
 
 Write descriptive commit messages that explain the "why" rather than the "what".
+
+Sign off your commits with `git commit -s`. The `Signed-off-by:` line
+certifies the [Developer Certificate of Origin](https://developercertificate.org/)
+— that you wrote the change or otherwise have the right to submit it under the
+project's license.
+
+## Licensing of Contributions
+
+By submitting a contribution (pull request, patch, or commit) you agree that:
+
+- your contribution is licensed under the **PolyForm Noncommercial License
+  1.0.0**, the same license as Prism;
+- you have the right to license it under those terms; and
+- you consent to a **Hosting Exception** permitting third parties to host
+  Prism on behalf of end users for their personal, noncommercial use, provided
+  such an exception grants no right to sell, sublicense, rebrand, or otherwise
+  commercialize the software.
+
+This keeps Prism free for families to self-host — including one-click on
+managed platforms — while ensuring no one can commercialize the project or
+your contributions. See the Hosting Exception in [`LICENSE`](LICENSE).
