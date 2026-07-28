@@ -21,6 +21,7 @@ import { events, calendarSources, dismissedEvents } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { updateCalendarEvent, deleteCalendarEvent, refreshAccessToken } from '@/lib/integrations/google-calendar';
+import { pushCalDAVEventDelete } from '@/lib/services/calendar-sync';
 import { decrypt, encrypt } from '@/lib/utils/crypto';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
@@ -459,6 +460,9 @@ export async function DELETE(
         title: events.title,
         externalEventId: events.externalEventId,
         calendarSourceId: events.calendarSourceId,
+        recurring: events.recurring,
+        caldavHref: events.caldavHref,
+        caldavEtag: events.caldavEtag,
       })
       .from(events)
       .where(eq(events.id, id));
@@ -518,6 +522,37 @@ export async function DELETE(
         } catch (error) {
           logError('Failed to delete event from Google Calendar:', error);
           // Continue with local delete even if Google fails
+        }
+      }
+
+      // Propagate the delete to a CalDAV source too (parity with Google). The
+      // server addresses objects by href, so we use the href + ETag captured at
+      // sync time. Single-event scope only: recurring events share one parent
+      // object, and an href-based delete would drop the whole series — for those
+      // we skip write-back and just tombstone + delete locally (matches the
+      // documented CalDAV write scope, issue #59 for recurrence).
+      if (calendarSource?.provider === 'caldav') {
+        if (existingEvent.recurring) {
+          logError(
+            'Skipping CalDAV upstream delete for recurring event (single-event scope only):',
+            existingEvent.id
+          );
+        } else if (!existingEvent.caldavHref) {
+          logError(
+            'Skipping CalDAV upstream delete: no stored href (event predates href capture; re-sync to populate):',
+            existingEvent.id
+          );
+        } else {
+          const result = await pushCalDAVEventDelete(
+            calendarSource.id,
+            existingEvent.caldavHref,
+            existingEvent.caldavEtag ?? undefined
+          );
+          if (!result.ok) {
+            // Continue with local delete even if the server rejects it; the
+            // tombstone below still prevents the event from being re-pulled.
+            logError('Failed to delete event from CalDAV server:', result.error);
+          }
         }
       }
 

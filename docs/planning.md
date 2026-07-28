@@ -11,8 +11,9 @@ _Last reviewed: 2026-07-27, after the recipe/meal **sync framework** shipped ([#
 **Top of the backlog — revisit next:**
 
 1. ⭐ **Easy self-serve hosting** ([#178](https://github.com/sandydargoport/prism/issues/178)) — let non-technical users (no Docker / HA) spin up their *own* cloud instance via a one-click deploy, so the maintainer hosts nothing (not a multi-tenant SaaS). The standout strategic item; not yet scoped.
-2. **Write-back / two-way** ([#169](https://github.com/sandydargoport/prism/issues/169)) — push Prism edits back to Tandoor/Mealie (recipe/meal sync phase 2b).
-3. **CalDAV upstream delete** ([#171](https://github.com/sandydargoport/prism/issues/171)) — deleting in Prism also removes it from iCloud (two-way parity with Google; deferred from the Stage 2/3 work).
+2. **Write-back / two-way** ([#169](https://github.com/sandydargoport/prism/issues/169)) — push Prism edits back to Tandoor/Mealie (recipe/meal sync phase 2b). Low priority.
+
+**Recently closed from this list:** **CalDAV upstream delete** ([#171](https://github.com/sandydargoport/prism/issues/171) Stage 4) — deleting a synced Apple/CalDAV event in Prism now propagates to the source (parity with Google), single-event scope; validated live against iCloud. Awaiting the next release.
 
 Deliberately **deprioritized:** real RRULE recurrence builder ([#59](https://github.com/sandydargoport/prism/issues/59)) — valuable but heavy; revisit much later.
 

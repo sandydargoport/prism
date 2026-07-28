@@ -48,6 +48,12 @@ export interface CalDAVEvent {
   color: string | null;
   recurring: boolean;
   recurrenceRule: string | null;
+  /** href (path) of the CalDAV object this event was parsed from, plus its
+   *  ETag. Needed to propagate a delete/update back to the server, which
+   *  addresses objects by href, not UID. Recurring instances share the parent
+   *  object's href — write-back is single-event-only, so that's acceptable. */
+  href: string | null;
+  etag: string | null;
 }
 
 export interface CalDAVTask {
@@ -244,6 +250,12 @@ function parseICalObject(
   const vevents = comp.getAllSubcomponents('vevent');
   const events: CalDAVEvent[] = [];
 
+  // Object identity on the server: the href addresses the .ics resource and
+  // the ETag guards a conflict-safe delete/update. Both come from the DAV
+  // object, not the iCal body.
+  const href = obj.url || null;
+  const etag = obj.etag || null;
+
   for (const vevent of vevents) {
     const event = new ICAL.Event(vevent);
 
@@ -277,6 +289,8 @@ function parseICalObject(
               color: null,
               recurring: true,
               recurrenceRule: vevent.getFirstPropertyValue('rrule')?.toString() || null,
+              href,
+              etag,
             });
           }
 
@@ -285,17 +299,22 @@ function parseICalObject(
         }
       } catch {
         // If recurrence expansion fails, add the base event
-        events.push(makeEvent(event, vevent));
+        events.push(makeEvent(event, vevent, href, etag));
       }
     } else {
-      events.push(makeEvent(event, vevent));
+      events.push(makeEvent(event, vevent, href, etag));
     }
   }
 
   return events;
 }
 
-function makeEvent(event: ICAL.Event, vevent: ICAL.Component): CalDAVEvent {
+function makeEvent(
+  event: ICAL.Event,
+  vevent: ICAL.Component,
+  href: string | null,
+  etag: string | null,
+): CalDAVEvent {
   return {
     uid: event.uid,
     title: event.summary,
@@ -307,6 +326,8 @@ function makeEvent(event: ICAL.Event, vevent: ICAL.Component): CalDAVEvent {
     color: null,
     recurring: false,
     recurrenceRule: null,
+    href,
+    etag,
   };
 }
 

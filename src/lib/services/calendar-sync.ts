@@ -906,6 +906,12 @@ export async function syncCalDAVCalendarSource(
         recurrenceRule: event.recurrenceRule,
         calendarSourceId: sourceId,
         externalEventId: event.uid,
+        // Persist the object href + ETag so a local delete can propagate
+        // upstream (CalDAV addresses objects by href, not UID). Refreshed on
+        // every sync even when the event is otherwise unchanged, keeping the
+        // ETag current for a conflict-safe delete.
+        caldavHref: event.href,
+        caldavEtag: event.etag,
         updatedAt: new Date(),
       };
 

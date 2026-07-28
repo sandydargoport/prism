@@ -4,6 +4,9 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+### Calendar
+- **Deleting a synced Apple/CalDAV event in Prism now removes it from the source too.** Previously only Google deletes propagated upstream — a CalDAV event you deleted in Prism was tombstoned locally but lingered on iCloud/Nextcloud/etc. Prism now captures each event's server address at sync time and sends the delete back to the source. Single (non-recurring) events only; recurring series still delete locally without touching the source (they need proper recurrence editing first). Ships one additive database migration, applied automatically on start.
+
 ## [1.10.0] – 2026-07-27
 
 A feature release: recipe & meal-plan sync with Tandoor and Mealie, a calendar-sync overhaul that stops the sync from ever silently losing events, and a settings reshuffle so household basics live where you'd expect. Ships three database migrations (recipe sources, deleted-event tombstones, and a pending-deletion flag) — all applied automatically on start.

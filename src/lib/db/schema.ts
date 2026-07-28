@@ -167,6 +167,13 @@ export const events = pgTable('events', {
   // (deletes-only review). Null = not pending.
   pendingDeletion: timestamp('pending_deletion'),
 
+  // CalDAV calendar-object href + ETag, captured at sync time. A CalDAV DELETE
+  // targets the object by href (not UID), so we need it to propagate a local
+  // delete upstream to the source server (single-event scope; recurring events
+  // share one parent object and are excluded from write-back).
+  caldavHref: varchar('caldav_href', { length: 1024 }),
+  caldavEtag: varchar('caldav_etag', { length: 255 }),
+
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
