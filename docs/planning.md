@@ -4,16 +4,17 @@ A single map of where Prism's planning lives. The roadmap itself is public and c
 
 _Last reviewed: 2026-07-27, after the recipe/meal **sync framework** shipped ([#58](https://github.com/sandydargoport/prism/issues/58))._
 
-## Current focus (2026-07-27)
+## Current focus (2026-07-28)
 
-The reusable review-and-approve **sync framework** just landed (one-way recipes + meal plans, Tandoor & Mealie — [#58](https://github.com/sandydargoport/prism/issues/58)). The active phase extends it and clears two quick wins, then cuts a release:
+**Shipped in [v1.10.0](CHANGELOG.md):** the review-and-approve **sync framework** (recipes + meal plans for Tandoor & Mealie — [#58](https://github.com/sandydargoport/prism/issues/58)), the **calendar-sync overhaul** ([#171](https://github.com/sandydargoport/prism/issues/171) Stages 1–3: deletes-only review, tombstones, net-change counts, calendar-management-on-page), **weather-by-ZIP** ([#170](https://github.com/sandydargoport/prism/issues/170)), a household **timezone** setting, and the settings reshuffle (General section).
 
-1. **Weather location via ZIP** ([#170](https://github.com/sandydargoport/prism/issues/170)) — replace the free-text location; small, high-satisfaction. _In progress._
-2. **Write-back / two-way** ([#169](https://github.com/sandydargoport/prism/issues/169)) — push Prism edits back to Tandoor/Mealie.
-3. **Calendar sync on the same framework** ([#171](https://github.com/sandydargoport/prism/issues/171)) — the framework's original motivating case (Google Cal ↔ Prism); review-and-approve + two-way-safe.
-4. **Release** — held until the above land.
+**Top of the backlog — revisit next:**
 
-Deliberately **deprioritized:** real RRULE recurrence builder ([#59](https://github.com/sandydargoport/prism/issues/59)) — valuable but heavy; revisit much later (note: recurring-event handling in calendar sync is scoped around this).
+1. ⭐ **Easy self-serve hosting** ([#178](https://github.com/sandydargoport/prism/issues/178)) — let non-technical users (no Docker / HA) spin up their *own* cloud instance via a one-click deploy, so the maintainer hosts nothing (not a multi-tenant SaaS). The standout strategic item; not yet scoped.
+2. **Write-back / two-way** ([#169](https://github.com/sandydargoport/prism/issues/169)) — push Prism edits back to Tandoor/Mealie (recipe/meal sync phase 2b).
+3. **CalDAV upstream delete** ([#171](https://github.com/sandydargoport/prism/issues/171)) — deleting in Prism also removes it from iCloud (two-way parity with Google; deferred from the Stage 2/3 work).
+
+Deliberately **deprioritized:** real RRULE recurrence builder ([#59](https://github.com/sandydargoport/prism/issues/59)) — valuable but heavy; revisit much later.
 
 ---
 
