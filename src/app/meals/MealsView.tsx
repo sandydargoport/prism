@@ -73,7 +73,9 @@ export function MealsView() {
   const { recipes } = useRecipes({ limit: 100 });
   const [filterMealTypes, setFilterMealTypes] = useState<Set<Meal['mealType']>>(new Set());
   const [showSyncModal, setShowSyncModal] = useState(false);
-  const orderedDays = [...ALL_DAYS.slice(weekStartsOn), ...ALL_DAYS.slice(0, weekStartsOn)] as readonly Meal['dayOfWeek'][];
+  const orderedDays = ALL_DAYS.map(
+    (_, i) => ALL_DAYS[(weekStartsOn + i) % ALL_DAYS.length]
+  ) as readonly Meal['dayOfWeek'][];
 
   const handleAddWithAuth = async (day?: Meal['dayOfWeek']) => {
     const user = await requireAuth('Add Meal', 'Please log in to add a meal');

@@ -287,12 +287,20 @@ export async function DELETE(
       return NextResponse.json({ error: 'No completion to undo' }, { status: 404 });
     }
 
-    // Delete completion and recalculate chore state (lastCompleted + nextDue)
+    // Undo the completion, then rebuild the chore's schedule fields from
+    // whichever completion (if any) is now the most recent.
     await db.transaction(async (tx) => {
       await tx.delete(choreCompletions).where(eq(choreCompletions.id, latest.id));
 
-      // Fetch chore schedule info for nextDue recalculation
-      const [chore] = await tx
+      const remaining = await tx
+        .select({ completedAt: choreCompletions.completedAt })
+        .from(choreCompletions)
+        .where(eq(choreCompletions.choreId, choreId))
+        .orderBy(desc(choreCompletions.completedAt))
+        .limit(1);
+      const mostRecent = remaining[0];
+
+      const [schedule] = await tx
         .select({
           frequency: chores.frequency,
           customIntervalDays: chores.customIntervalDays,
@@ -301,24 +309,14 @@ export async function DELETE(
         .from(chores)
         .where(eq(chores.id, choreId));
 
-      // Find the new most recent completion (if any)
-      const [prevCompletion] = await tx
-        .select({ completedAt: choreCompletions.completedAt })
-        .from(choreCompletions)
-        .where(eq(choreCompletions.choreId, choreId))
-        .orderBy(desc(choreCompletions.completedAt))
-        .limit(1);
-
-      // Recalculate nextDue based on previous completion (or null if none)
-      const nextDue = prevCompletion && chore
-        ? calculateNextDue(chore.frequency, chore.customIntervalDays, chore.startDay)
-        : null;
-
       await tx
         .update(chores)
         .set({
-          lastCompleted: prevCompletion?.completedAt || null,
-          nextDue,
+          lastCompleted: mostRecent?.completedAt ?? null,
+          nextDue:
+            mostRecent && schedule
+              ? calculateNextDue(schedule.frequency, schedule.customIntervalDays, schedule.startDay)
+              : null,
           updatedAt: new Date(),
         })
         .where(eq(chores.id, choreId));
