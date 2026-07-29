@@ -39,6 +39,7 @@
     "test:e2e:ui": "playwright test --ui",
     "test:visual": "playwright test e2e/visual-regression.spec.ts",
     "test:visual:update": "playwright test e2e/visual-regression.spec.ts --update-snapshots",
+    "test:ui-audit": "playwright test e2e/ui-audit.spec.ts && node scripts/ui-audit-board.mjs",
     "test:migration-replay": "bash scripts/test-migration-replay.sh",
     "scan:pii": "bash scripts/scan-pii.sh",
     "scan:pii:install-hook": "echo '#!/usr/bin/env bash\\nbash scripts/scan-pii.sh' > .git/hooks/pre-push && chmod +x .git/hooks/pre-push && echo 'Pre-push PII hook installed at .git/hooks/pre-push'",
