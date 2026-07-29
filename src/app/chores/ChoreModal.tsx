@@ -3,10 +3,16 @@
 import * as React from 'react';
 import { useState } from 'react';
 import { DAYS_SHORT_ARRAY, DAYS_LONG_ARRAY } from '@/lib/constants/days';
-import { X, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { getCategoryEmoji } from '@/app/chores/ChoreItem';
 import type { Chore, FamilyMember } from '@/types';
 
@@ -61,22 +67,11 @@ export function ChoreModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 pb-20 md:pb-0"
-      onClick={onClose}
-    >
-      <div
-        className="bg-card rounded-lg p-6 max-w-md w-full mx-4 shadow-lg border border-border max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold">
-            {chore ? 'Edit Chore' : 'Add Chore'}
-          </h2>
-          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{chore ? 'Edit Chore' : 'Add Chore'}</DialogTitle>
+        </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -290,7 +285,7 @@ export function ChoreModal({
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

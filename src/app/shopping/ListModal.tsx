@@ -2,9 +2,15 @@
 
 import * as React from 'react';
 import { useState, useMemo } from 'react';
-import { X, User, Trash2, ShoppingCart, Package, Store, SlidersHorizontal } from 'lucide-react';
+import { User, Trash2, ShoppingCart, Package, Store, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { cn } from '@/lib/utils';
@@ -159,22 +165,11 @@ export function ListModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 pb-20 md:pb-0"
-      onClick={onClose}
-    >
-      <div
-        className="bg-card rounded-lg p-6 max-w-md w-full mx-4 shadow-lg border border-border max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold">
-            {list ? 'Edit List' : 'Create New List'}
-          </h2>
-          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{list ? 'Edit List' : 'Create New List'}</DialogTitle>
+        </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -337,8 +332,8 @@ export function ListModal({
             </div>
           </div>
         </form>
-      </div>
+      </DialogContent>
       <ConfirmDialog {...confirmDialogProps} />
-    </div>
+    </Dialog>
   );
 }
