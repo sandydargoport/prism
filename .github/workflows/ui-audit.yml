@@ -70,9 +70,10 @@ jobs:
 
       - run: npm ci
 
-      - name: Install psql (not bundled in Playwright image)
+      - name: Install psql + redis-cli (not bundled in Playwright image)
         # Drop the NodeSource apt source first — it periodically 403s.
-        run: rm -f /etc/apt/sources.list.d/nodesource* && apt-get update && apt-get install -y --no-install-recommends postgresql-client
+        # redis-tools is needed because resetAll() flushes Redis via redis-cli.
+        run: rm -f /etc/apt/sources.list.d/nodesource* && apt-get update && apt-get install -y --no-install-recommends postgresql-client redis-tools
 
       - name: Apply base schema
         env:
