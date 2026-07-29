@@ -182,24 +182,25 @@ export function ShoppingView() {
                 {activeList && activeList.items.some((i) => !i.checked) && (
                   <Button
                     variant="outline"
-                    size="sm"
+                    size={isMobile ? 'icon' : 'sm'}
                     onClick={async () => {
                       const user = await requireAuth('Send to Kroger');
                       if (!user) return;
                       setShowKrogerModal(true);
                     }}
                     title="Send unchecked items to Kroger / Mariano's cart"
+                    aria-label="Send to Kroger"
                   >
-                    <Send className="h-4 w-4 mr-1" />
-                    Send to Kroger
+                    <Send className={cn('h-4 w-4', !isMobile && 'mr-1')} />
+                    {!isMobile && 'Send to Kroger'}
                   </Button>
                 )}
                 <Button variant="ghost" size="icon" onClick={() => setShoppingMode(true)} title="Enter shopping mode">
                   <Maximize2 className="h-4 w-4" />
                 </Button>
-                <Button onClick={handleNewList} size="sm">
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add List
+                <Button onClick={handleNewList} size={isMobile ? 'icon' : 'sm'} aria-label="Add List" title="Add List">
+                  <Plus className={cn('h-4 w-4', !isMobile && 'mr-1')} />
+                  {!isMobile && 'Add List'}
                 </Button>
               </>}
               overflow={[
