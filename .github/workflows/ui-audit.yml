@@ -1,0 +1,101 @@
+name: UI Audit
+
+# Manually-triggered responsive/display-scale sweep. Runs the ui-audit rig
+# against an ephemeral seeded DB (never a live instance) and uploads the
+# blue-tape board + screenshots as an artifact. Not part of the merge gate —
+# it's a diagnostic you run on demand.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ui-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '24'
+
+jobs:
+  ui-audit:
+    name: UI audit sweep (responsive + display-scale)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    # Official Playwright image so Chromium is preinstalled (kept in lockstep
+    # with @playwright/test — see the visual-regression job in ci.yml).
+    container:
+      image: mcr.microsoft.com/playwright:v1.58.2-jammy
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: prism
+          POSTGRES_PASSWORD: ci_test_password
+          POSTGRES_DB: prism
+        options: >-
+          --health-cmd "pg_isready -U prism"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # Inside container jobs, services are reached by their network alias.
+      DATABASE_URL: postgresql://prism:ci_test_password@postgres:5432/prism
+      REDIS_URL: redis://redis:6379
+      PORT: '3000'
+      APP_URL: http://localhost:3000
+      # Throwaway test-only secrets — the runner is ephemeral.
+      SESSION_SECRET: ci_test_session_secret_padding32
+      PIN_ENCRYPTION_KEY: ci_test_pin_encryption_key_pad32
+      ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      # Gates the sweep on a synthetic-seed DB (PII safety) and sets the PIN.
+      E2E_HAS_TEST_DB: '1'
+      E2E_PIN: '1234'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Install psql (not bundled in Playwright image)
+        # Drop the NodeSource apt source first — it periodically 403s.
+        run: rm -f /etc/apt/sources.list.d/nodesource* && apt-get update && apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Apply base schema
+        env:
+          PGPASSWORD: ci_test_password
+        run: psql -h postgres -U prism -d prism -v ON_ERROR_STOP=1 -f src/lib/db/init/02-schema.sql
+
+      - name: Apply migrations
+        run: node scripts/migrate.js
+
+      - name: Seed database
+        run: npm run db:seed
+
+      - name: Run UI audit sweep
+        run: npx playwright test e2e/ui-audit.spec.ts --reporter=list
+
+      - name: Build blue-tape board
+        if: always()
+        run: node scripts/ui-audit-board.mjs || echo "no report to render"
+
+      - name: Upload board + screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-audit-board
+          path: e2e/ui-audit-artifacts/
+          retention-days: 14
