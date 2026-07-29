@@ -51,15 +51,29 @@ export function layoutProbe(tolerance: number): LayoutProbeResult {
     return `${el.tagName.toLowerCase()}${id}${cls}${widget ? `[data-widget="${widget}"]` : ''}`;
   };
 
+  // An element inside a horizontal scroller (a carousel, a horizontally
+  // scrolled nav/board) legitimately extends past the viewport — that's
+  // intentional, not a layout bug. Skip anything under an overflow-x
+  // auto/scroll ancestor.
+  const inHorizontalScroller = (el: HTMLElement): boolean => {
+    let n = el.parentElement;
+    while (n && n !== document.body) {
+      const ox = getComputedStyle(n).overflowX;
+      if (ox === 'auto' || ox === 'scroll') return true;
+      n = n.parentElement;
+    }
+    return false;
+  };
+
   const overflowers: Overflower[] = [];
   for (const el of Array.from(document.body.querySelectorAll('*')) as HTMLElement[]) {
     const r = el.getBoundingClientRect();
     if (r.width === 0 || r.height === 0) continue;
     const over = r.right - vw;
     // Flag elements pushed partly off the right edge — but skip giant
-    // containers wider than the viewport (they scroll internally by design);
-    // we want the element that actually overhangs.
-    if (over > tolerance && r.width <= vw + tolerance) {
+    // containers wider than the viewport (they scroll internally by design)
+    // and anything inside an intentional horizontal scroller.
+    if (over > tolerance && r.width <= vw + tolerance && !inHorizontalScroller(el)) {
       overflowers.push({
         desc: describe(el),
         right: Math.round(r.right),
