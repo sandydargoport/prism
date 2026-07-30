@@ -10,6 +10,8 @@ export interface FamilyMember {
   avatarUrl?: string | null;
   role?: 'parent' | 'child' | 'guest';
   hasPin?: boolean;
+  /** Number of digits this member's PIN pad requires (4/5/6). Not sensitive — exposed even unauthenticated. */
+  pinLength?: number;
 }
 
 export interface Task {

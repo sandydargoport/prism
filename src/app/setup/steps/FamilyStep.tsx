@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -22,6 +22,7 @@ interface AddedMember {
   role: 'parent' | 'child';
   color: string;
   hasPin: boolean;
+  pinLength: number;
 }
 
 interface FamilyStepProps {
@@ -36,13 +37,24 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
   const [pin, setPin] = useState('');
   const [saving, setSaving] = useState(false);
   const [added, setAdded] = useState<AddedMember[]>([]);
-  const { pinLength, setPinLength } = usePinLength();
+  // Family-wide default — seeds the PIN length for each newly-added member,
+  // but each member below can choose their own (4/5/6) independently.
+  const { pinLength: defaultPinLength, setPinLength: setDefaultPinLength, loading: defaultPinLengthLoading } = usePinLength();
+  const [memberPinLength, setMemberPinLength] = useState(defaultPinLength);
 
-  // A PIN is optional, but if one is being entered it must match the chosen
-  // family-wide length exactly — otherwise the member could be saved with a
-  // PIN shorter than what the login pad will later require, locking them out
-  // (bug: creation let a 4-digit PIN save while "5 digits" was selected).
-  const pinMatchesLength = pin.length === 0 || pin.length === pinLength;
+  // Once the family default finishes loading from the server (it starts as a
+  // locally-cached guess), adopt it for the member currently being added.
+  useEffect(() => {
+    if (!defaultPinLengthLoading) setMemberPinLength(defaultPinLength);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultPinLengthLoading]);
+
+  // A PIN is optional, but if one is being entered it must match this
+  // member's chosen length exactly — otherwise the member could be saved
+  // with a PIN shorter than what their login pad will later require,
+  // locking them out (bug: creation let a 4-digit PIN save while "5 digits"
+  // was selected).
+  const pinMatchesLength = pin.length === 0 || pin.length === memberPinLength;
 
   // Names must be unique (case-insensitive, trimmed) — two members with the
   // same name break login/admin member selection. The server enforces this
@@ -56,24 +68,14 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
 
   const canAdd = trimmedName.length > 0 && pinMatchesLength && !isDuplicateName;
 
-  // Changing the PIN length after a member with a PIN has already been added
-  // would silently strand that member's PIN at the old length — every PIN
-  // pad (including this one) requires entering exactly the *current*
-  // pinLength digits before it will even submit, so a 4-digit PIN can never
-  // satisfy a pad now expecting 5. Mirrors the same confirm-guard already in
-  // Settings → Security (SecuritySection.tsx) for changing it after setup.
-  const handlePinLengthChange = async (len: number) => {
-    if (len === pinLength) return;
-    const anyPins = added.some((m) => m.hasPin);
-    if (
-      anyPins &&
-      !window.confirm(
-        `Changing the PIN length to ${len} digits means the member${added.filter((m) => m.hasPin).length > 1 ? 's' : ''} you already added will need a new ${len}-digit PIN — their current PIN will stop working. Continue?`
-      )
-    ) {
-      return;
-    }
-    await setPinLength(len);
+  // This only changes the DEFAULT offered to the next member added — each
+  // member's own pin_length is sent (and persisted) individually when they're
+  // added below, so changing the default here never strands an
+  // already-added member's PIN. If the member currently being filled in
+  // hasn't had a PIN typed yet, adopt the new default for them too.
+  const handleDefaultPinLengthChange = async (len: number) => {
+    if (len !== defaultPinLength) await setDefaultPinLength(len);
+    if (pin.length === 0) setMemberPinLength(len);
   };
 
   const addMember = async () => {
@@ -82,10 +84,11 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
     if (!canAdd || saving) return;
     setSaving(true);
     try {
-      const body: Record<string, string> = {
+      const body: Record<string, string | number> = {
         name: trimmedName,
         role,
         color,
+        pinLength: memberPinLength,
       };
       if (pin.trim()) body.pin = pin.trim();
 
@@ -101,11 +104,12 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
         return;
       }
 
-      setAdded((prev) => [...prev, { name: trimmedName, role, color, hasPin: !!pin.trim() }]);
+      setAdded((prev) => [...prev, { name: trimmedName, role, color, hasPin: !!pin.trim(), pinLength: memberPinLength }]);
       setName('');
       setPin('');
       setRole('child');
       setColor(COLOR_OPTIONS[added.length % COLOR_OPTIONS.length] ?? COLOR_OPTIONS[0]!);
+      setMemberPinLength(defaultPinLength);
       toast({ title: `Added ${trimmedName}` });
     } finally {
       setSaving(false);
@@ -124,9 +128,10 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
-        {/* Family-wide PIN length (uniform for everyone, like an iPhone passcode) */}
+        {/* Default PIN length — seeds the picker below for each new member;
+            every member can still choose their own length independently. */}
         <div className="space-y-1">
-          <Label>PIN length</Label>
+          <Label>Default PIN length</Label>
           <div className="flex gap-2">
             {Array.from(
               { length: MAX_PIN_LENGTH - MIN_PIN_LENGTH + 1 },
@@ -135,10 +140,10 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
               <button
                 key={len}
                 type="button"
-                onClick={() => handlePinLengthChange(len)}
+                onClick={() => handleDefaultPinLengthChange(len)}
                 className={cn(
                   'flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors',
-                  len === pinLength
+                  len === defaultPinLength
                     ? 'border-primary bg-primary/10 text-primary'
                     : 'hover:bg-muted',
                 )}
@@ -148,7 +153,7 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
             ))}
           </div>
           <p className="text-xs text-muted-foreground">
-            Applies to every member&apos;s PIN. You can change this later in Settings → Security.
+            Used to pre-fill each new member&apos;s PIN length below — every member can choose their own (4/5/6). You can change this later in Settings → Security.
           </p>
         </div>
 
@@ -160,6 +165,9 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
                 <div className="h-3 w-3 rounded-full flex-shrink-0" style={{ background: m.color }} />
                 <span className="flex-1 text-sm font-medium">{m.name}</span>
                 <Badge variant="secondary" className="capitalize text-xs">{m.role}</Badge>
+                {m.hasPin && (
+                  <Badge variant="outline" className="text-xs">{m.pinLength}-digit PIN</Badge>
+                )}
                 <Check className="h-4 w-4 text-green-500" />
               </div>
             ))}
@@ -223,18 +231,42 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
           </div>
 
           <div className="space-y-1">
+            <Label>PIN length for this member</Label>
+            <div className="flex gap-2">
+              {Array.from(
+                { length: MAX_PIN_LENGTH - MIN_PIN_LENGTH + 1 },
+                (_, i) => MIN_PIN_LENGTH + i
+              ).map((len) => (
+                <button
+                  key={len}
+                  type="button"
+                  onClick={() => setMemberPinLength(len)}
+                  className={cn(
+                    'flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors',
+                    len === memberPinLength
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'hover:bg-muted',
+                  )}
+                >
+                  {len} digits
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1">
             <Label htmlFor="member-pin">PIN <span className="text-muted-foreground font-normal">(optional)</span></Label>
             <Input
               id="member-pin"
               type="password"
-              maxLength={pinLength}
-              placeholder={`${pinLength} digits`}
+              maxLength={memberPinLength}
+              placeholder={`${memberPinLength} digits`}
               value={pin}
               onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
             />
-            {pin.length > 0 && pin.length !== pinLength && (
+            {pin.length > 0 && pin.length !== memberPinLength && (
               <p className="text-xs text-destructive">
-                PIN must be exactly {pinLength} digits
+                PIN must be exactly {memberPinLength} digits
               </p>
             )}
           </div>

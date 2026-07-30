@@ -7,7 +7,7 @@ import bcrypt from 'bcryptjs';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
-import { getConfiguredPinLength } from '@/lib/services/pinLength';
+import { MIN_PIN_LENGTH, MAX_PIN_LENGTH } from '@/lib/constants';
 
 export async function GET(
   request: NextRequest,
@@ -28,6 +28,7 @@ export async function GET(
         email: users.email,
         avatarUrl: users.avatarUrl,
         pin: users.pin,
+        pinLength: users.pinLength,
         createdAt: users.createdAt,
       })
       .from(users)
@@ -48,6 +49,7 @@ export async function GET(
       email: member.email,
       avatarUrl: member.avatarUrl,
       hasPin: !!member.pin,
+      pinLength: member.pinLength,
       createdAt: member.createdAt.toISOString(),
     });
   } catch (error) {
@@ -143,6 +145,19 @@ export async function PATCH(
       updates.avatarUrl = body.avatarUrl || null;
     }
 
+    // Per-member PIN length (4/5/6). Validated up front so a PIN submitted in
+    // the same request is checked against the NEW length, not the stale one.
+    if (body.pinLength !== undefined) {
+      const n = Math.round(Number(body.pinLength));
+      if (!Number.isFinite(n) || n < MIN_PIN_LENGTH || n > MAX_PIN_LENGTH) {
+        return NextResponse.json(
+          { error: `pinLength must be between ${MIN_PIN_LENGTH} and ${MAX_PIN_LENGTH}` },
+          { status: 400 }
+        );
+      }
+      updates.pinLength = n;
+    }
+
     // Handle PIN change
     if (body.pin !== undefined) {
       // Changing an existing PIN requires proving the current one — including
@@ -168,12 +183,14 @@ export async function PATCH(
         }
       }
 
-      // Validate and hash new PIN — must match the family-wide configured length.
+      // Validate and hash new PIN — must match this member's own configured
+      // length (the request's `pinLength` if changing it in the same call,
+      // otherwise the member's already-persisted length).
       if (body.pin === null || body.pin === '') {
         // Remove PIN
         updates.pin = null;
       } else {
-        const expectedLen = await getConfiguredPinLength();
+        const expectedLen = updates.pinLength ?? currentMember.pinLength;
         if (new RegExp(`^\\d{${expectedLen}}$`).test(body.pin)) {
           // Hash and set new PIN
           updates.pin = await bcrypt.hash(body.pin, 12);
@@ -239,6 +256,7 @@ export async function PATCH(
       email: updatedMember.email,
       avatarUrl: updatedMember.avatarUrl,
       hasPin: !!updatedMember.pin,
+      pinLength: updatedMember.pinLength,
       createdAt: updatedMember.createdAt.toISOString(),
     });
   } catch (error) {

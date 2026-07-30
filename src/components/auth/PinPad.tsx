@@ -75,9 +75,11 @@ export function PinPad({
   const familyMembers =
     providedMembers || (contextMembers.length > 0 ? contextMembers : getDemoFamilyMembers());
 
-  // Family-wide PIN length; an explicit prop still wins (e.g. tests / demos).
+  // Fallback PIN length before a member is selected; an explicit prop still
+  // wins (e.g. tests / demos). Once a member is selected, usePinPad switches
+  // to THEIR own pinLength — see effectivePinLength below.
   const { pinLength: configuredPinLength } = usePinLength();
-  const effectivePinLength = pinLength ?? configuredPinLength;
+  const fallbackPinLength = pinLength ?? configuredPinLength;
 
   const {
     selectedMember,
@@ -85,13 +87,14 @@ export function PinPad({
     error,
     isShaking,
     isVerifying,
+    pinLength: effectivePinLength,
     handleMemberSelect,
     handleKeyPress,
     handleBackspace,
     handleClear,
     clearSelectedMember,
   } = usePinPad({
-    pinLength: effectivePinLength,
+    pinLength: fallbackPinLength,
     controlledSelectedMember,
     onMemberSelect,
     onPinSubmit,

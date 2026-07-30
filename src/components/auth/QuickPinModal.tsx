@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/avatar';
 import { useFamily } from '@/components/providers';
-import { usePinLength } from '@/lib/hooks/usePinLength';
+import { DEFAULT_PIN_LENGTH } from '@/lib/constants';
 
 /**
  * FAMILY MEMBER TYPE
@@ -38,6 +38,8 @@ export interface QuickPinMember {
   color: string;
   avatarUrl?: string;
   role: 'parent' | 'child' | 'guest';
+  /** This member's own PIN length (4/5/6) — every pad requires exactly this many digits. */
+  pinLength?: number;
 }
 
 /**
@@ -81,6 +83,7 @@ export function QuickPinModal({
     color: m.color,
     avatarUrl: m.avatarUrl ?? undefined,
     role: m.role as 'parent' | 'child' | 'guest',
+    pinLength: m.pinLength,
   }));
 
   // Selected member
@@ -94,7 +97,9 @@ export function QuickPinModal({
   const [isVerifying, setIsVerifying] = useState(false);
   const [isShaking, setIsShaking] = useState(false);
 
-  const { pinLength } = usePinLength();
+  // Every pad requires exactly the SELECTED member's own PIN length, not a
+  // family-wide constant — members can have different-length PINs.
+  const pinLength = selectedMember?.pinLength ?? DEFAULT_PIN_LENGTH;
 
   // Reset state when modal closes
   useEffect(() => {
@@ -106,6 +111,10 @@ export function QuickPinModal({
   }, [open, preSelectedMember]);
 
   // Handle key press
+  // NOTE: pinLength must be a dependency — it changes per selected member
+  // (their own configured length), not just once per session. Without it,
+  // useCallback would keep the closure from before a member switch and cap
+  // entry at the previous member's digit count.
   const handleKeyPress = useCallback((digit: string) => {
     if (isVerifying) return;
     setError(null);
@@ -113,7 +122,7 @@ export function QuickPinModal({
       if (prev.length >= pinLength) return prev;
       return [...prev, digit];
     });
-  }, [isVerifying]);
+  }, [isVerifying, pinLength]);
 
   // Handle backspace
   const handleBackspace = useCallback(() => {

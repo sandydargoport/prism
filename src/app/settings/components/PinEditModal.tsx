@@ -9,8 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { usePinLength } from '@/lib/hooks/usePinLength';
-import { MAX_PIN_LENGTH } from '@/lib/constants';
+import { DEFAULT_PIN_LENGTH, MAX_PIN_LENGTH } from '@/lib/constants';
 
 import type { FamilyMember } from '@/types';
 export type { FamilyMember };
@@ -29,7 +28,9 @@ export function PinEditModal({
   const [confirmPin, setConfirmPin] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const { pinLength } = usePinLength();
+  // This member's own configured PIN length — set on the member (via
+  // MemberModal / the setup wizard), not a family-wide constant.
+  const pinLength = member.pinLength ?? DEFAULT_PIN_LENGTH;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

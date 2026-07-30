@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/avatar';
 import { useFamily, useAuth } from '@/components/providers';
-import { usePinLength } from '@/lib/hooks/usePinLength';
+import { DEFAULT_PIN_LENGTH } from '@/lib/constants';
 import { SettingsView } from './SettingsView';
 
 type GateState = 'checking' | 'prompt' | 'verified';
@@ -84,6 +84,7 @@ function SettingsPinPrompt({
       name: m.name,
       color: m.color,
       avatarUrl: m.avatarUrl ?? undefined,
+      pinLength: m.pinLength,
     }));
 
   const [selectedParent, setSelectedParent] = useState<(typeof parents)[0] | null>(null);
@@ -93,7 +94,9 @@ function SettingsPinPrompt({
   const [isShaking, setIsShaking] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  const { pinLength } = usePinLength();
+  // Every pad requires exactly the SELECTED parent's own PIN length, not a
+  // family-wide constant — members can have different-length PINs.
+  const pinLength = selectedParent?.pinLength ?? DEFAULT_PIN_LENGTH;
 
   useEffect(() => {
     setMounted(true);
@@ -106,6 +109,8 @@ function SettingsPinPrompt({
     }
   }, [parents, selectedParent]);
 
+  // pinLength must be a dependency — it changes per selected parent (their
+  // own configured length), not just once per session.
   const handleKeyPress = useCallback((digit: string) => {
     if (isVerifying) return;
     setError(null);
@@ -113,7 +118,7 @@ function SettingsPinPrompt({
       if (prev.length >= pinLength) return prev;
       return [...prev, digit];
     });
-  }, [isVerifying]);
+  }, [isVerifying, pinLength]);
 
   const handleBackspace = useCallback(() => {
     if (isVerifying) return;

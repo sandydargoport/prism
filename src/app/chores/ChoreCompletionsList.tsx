@@ -22,8 +22,12 @@ export function ChoreCompletionsList({
   onUndo,
 }: ChoreCompletionsListProps) {
   return (
-    <div className="max-w-4xl mx-auto space-y-3">
-      <h2 className="text-lg font-semibold flex items-center gap-2">
+    // min-h-full + flex-col so the empty state (below) can center in the
+    // space BELOW the heading, matching every other page's toolbar-then-
+    // content layout — instead of sitting stuck right under the heading,
+    // which is what a plain block flow (no stretch) previously did.
+    <div className="max-w-4xl mx-auto space-y-3 min-h-full flex flex-col">
+      <h2 className="text-lg font-semibold flex items-center gap-2 flex-shrink-0">
         <History className="h-5 w-5" />
         Recent Completions (Last 14 Days)
       </h2>
@@ -34,7 +38,9 @@ export function ChoreCompletionsList({
           ))}
         </div>
       ) : completions.length === 0 ? (
-        <EmptyState icon={<CheckCircle2 />} title="No completed chores in the last 14 days." />
+        <div className="flex-1 flex items-center justify-center">
+          <EmptyState icon={<CheckCircle2 />} title="No completed chores in the last 14 days." />
+        </div>
       ) : (
         <div className="space-y-2">
           {completions.map((c) => (

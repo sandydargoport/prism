@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { UserAvatar } from '@/components/ui/avatar';
 import { useFamily } from '@/components/providers';
 import { usePinLength } from '@/lib/hooks/usePinLength';
-import { MIN_PIN_LENGTH, MAX_PIN_LENGTH } from '@/lib/constants';
+import { MIN_PIN_LENGTH, MAX_PIN_LENGTH, DEFAULT_PIN_LENGTH } from '@/lib/constants';
 import { PinEditModal } from '../components/PinEditModal';
 import type { FamilyMember } from '../components/PinEditModal';
 
@@ -35,19 +35,13 @@ const SCOPE_DESCRIPTIONS: Record<TokenScopeChoice, string> = {
 export function SecuritySection() {
   const { members: familyMembers, refresh: refreshFamily } = useFamily();
   const [editingPinMember, setEditingPinMember] = useState<FamilyMember | null>(null);
+  // Each member's PIN length is set on the member themselves (Edit Member,
+  // or here via "Change PIN") — this setting only seeds the default offered
+  // for a brand-new member, so changing it never affects anyone already set up.
   const { pinLength, setPinLength } = usePinLength();
 
   const handlePinLengthChange = async (len: number) => {
     if (len === pinLength) return;
-    const anyPins = familyMembers.some((m) => m.hasPin);
-    if (
-      anyPins &&
-      !window.confirm(
-        `Changing the PIN length to ${len} digits means every member must set a new ${len}-digit PIN before they can log in again — including you. Existing PINs of a different length will stop working. Continue?`
-      )
-    ) {
-      return;
-    }
     await setPinLength(len);
   };
 
@@ -167,7 +161,9 @@ export function SecuritySection() {
                   <div className="font-medium">{member.name}</div>
                   <div className="text-sm text-muted-foreground">
                     {member.hasPin ? (
-                      <span className="text-green-600">PIN set</span>
+                      <span className="text-green-600">
+                        PIN set &middot; {member.pinLength ?? DEFAULT_PIN_LENGTH} digits
+                      </span>
                     ) : (
                       <span className="text-orange-600">No PIN set</span>
                     )}
@@ -188,9 +184,11 @@ export function SecuritySection() {
 
       <Card>
         <CardHeader>
-          <CardTitle>PIN Length</CardTitle>
+          <CardTitle>Default PIN Length</CardTitle>
           <CardDescription>
-            How many digits every member&apos;s PIN must have (uniform across the family, like an iPhone passcode).
+            Each member chooses their own PIN length (4/5/6) — see &quot;Member
+            PINs&quot; above or Family Members → Edit. This is just the default
+            offered when adding a brand-new member.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -211,10 +209,9 @@ export function SecuritySection() {
             ))}
           </div>
           <p className="text-xs text-muted-foreground">
-            Changing this affects PINs set from now on. Any member whose current PIN
-            isn&apos;t this length will need to set a new one before logging in. If
-            someone gets locked out, an admin with server access can run{' '}
-            <code>scripts/reset-pin.js</code> to reset their PIN.
+            Doesn&apos;t change any existing member&apos;s PIN length or affect
+            their login. If someone gets locked out, an admin with server
+            access can run <code>scripts/reset-pin.js</code> to reset their PIN.
           </p>
         </CardContent>
       </Card>

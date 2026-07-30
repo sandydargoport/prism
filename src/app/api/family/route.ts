@@ -10,6 +10,7 @@ import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
 import { getConfiguredPinLength } from '@/lib/services/pinLength';
+import { MIN_PIN_LENGTH, MAX_PIN_LENGTH } from '@/lib/constants';
 
 interface FamilyMemberResponse {
   id: string;
@@ -19,6 +20,8 @@ interface FamilyMemberResponse {
   email: string | null;
   avatarUrl: string | null;
   hasPin: boolean;
+  /** Per-member PIN length (4/5/6). Not sensitive — every PIN pad needs it. */
+  pinLength: number;
   createdAt: string;
 }
 
@@ -35,6 +38,9 @@ interface PublicFamilyMemberResponse {
   color: string;
   avatarUrl: string | null;
   hasPin: boolean;
+  /** Per-member PIN length (4/5/6). Not sensitive — the login pad needs it
+   *  to know how many digits to expect before the user has authenticated. */
+  pinLength: number;
 }
 
 async function setupIsComplete(): Promise<boolean> {
@@ -63,6 +69,7 @@ export async function GET(request: NextRequest) {
             color: users.color,
             avatarUrl: users.avatarUrl,
             pin: users.pin,
+            pinLength: users.pinLength,
           })
           .from(users)
           .orderBy(users.sortOrder, users.createdAt);
@@ -75,6 +82,7 @@ export async function GET(request: NextRequest) {
           color: user.color,
           avatarUrl: user.avatarUrl,
           hasPin: !!user.pin,
+          pinLength: user.pinLength,
         }));
 
         return { members, total: members.length };
@@ -100,6 +108,7 @@ export async function GET(request: NextRequest) {
           email: users.email,
           avatarUrl: users.avatarUrl,
           pin: users.pin,
+          pinLength: users.pinLength,
           createdAt: users.createdAt,
         })
         .from(users)
@@ -118,6 +127,7 @@ export async function GET(request: NextRequest) {
         email: user.email,
         avatarUrl: user.avatarUrl,
         hasPin: !!user.pin,
+        pinLength: user.pinLength,
         createdAt: user.createdAt.toISOString(),
       }));
 
@@ -193,12 +203,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Per-member PIN length: an explicit, valid `pinLength` on the request
+    // wins; otherwise fall back to the family-wide default (used to seed the
+    // very first member, or any client that hasn't been updated to send it).
+    let memberPinLength = await getConfiguredPinLength();
+    if (body.pinLength !== undefined) {
+      const n = Math.round(Number(body.pinLength));
+      if (!Number.isFinite(n) || n < MIN_PIN_LENGTH || n > MAX_PIN_LENGTH) {
+        return NextResponse.json(
+          { error: `pinLength must be between ${MIN_PIN_LENGTH} and ${MAX_PIN_LENGTH}` },
+          { status: 400 }
+        );
+      }
+      memberPinLength = n;
+    }
+
     let hashedPin: string | null = null;
     if (body.pin) {
-      const expectedLen = await getConfiguredPinLength();
-      if (!new RegExp(`^\\d{${expectedLen}}$`).test(body.pin)) {
+      if (!new RegExp(`^\\d{${memberPinLength}}$`).test(body.pin)) {
         return NextResponse.json(
-          { error: `PIN must be exactly ${expectedLen} digits` },
+          { error: `PIN must be exactly ${memberPinLength} digits` },
           { status: 400 }
         );
       }
@@ -222,6 +246,7 @@ export async function POST(request: NextRequest) {
         role: body.role,
         color: body.color,
         pin: hashedPin,
+        pinLength: memberPinLength,
         email: body.email?.trim() || null,
         avatarUrl: body.avatarUrl || null,
         preferences: body.preferences || {},
@@ -243,6 +268,7 @@ export async function POST(request: NextRequest) {
       email: newMember.email,
       avatarUrl: newMember.avatarUrl,
       hasPin: !!hashedPin,
+      pinLength: newMember.pinLength,
       createdAt: newMember.createdAt.toISOString(),
     };
 

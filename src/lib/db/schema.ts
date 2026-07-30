@@ -29,6 +29,11 @@ export const users = pgTable('users', {
   // Nullable because guests don't have PINs
   pin: varchar('pin', { length: 255 }),
 
+  // Per-member PIN length (4/5/6) — each member's PIN pad requires exactly
+  // this many digits. Defaults to 4; new installs' family-wide "PIN length"
+  // setting seeds this value when a member is created.
+  pinLength: integer('pin_length').default(4).notNull(),
+
   email: varchar('email', { length: 255 }),
 
   avatarUrl: text('avatar_url'),

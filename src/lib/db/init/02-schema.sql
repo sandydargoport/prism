@@ -778,7 +778,8 @@ CREATE TABLE IF NOT EXISTS public.users (
     preferences jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
     updated_at timestamp without time zone DEFAULT now() NOT NULL,
-    sort_order integer DEFAULT 0 NOT NULL
+    sort_order integer DEFAULT 0 NOT NULL,
+    pin_length integer DEFAULT 4 NOT NULL
 );
 
 

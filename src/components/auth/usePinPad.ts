@@ -4,6 +4,9 @@ import { useState, useCallback, useEffect } from 'react';
 import type { FamilyMember } from '@/types';
 
 export interface UsePinPadOptions {
+  /** Fallback PIN length used before a member is selected (or if the selected
+   *  member has no explicit `pinLength`, e.g. demo members). Once a member is
+   *  selected, THEIR `pinLength` always wins — PIN pads are per-member. */
   pinLength?: number;
   controlledSelectedMember?: FamilyMember | null;
   onMemberSelect?: (member: FamilyMember) => void;
@@ -13,7 +16,7 @@ export interface UsePinPadOptions {
 }
 
 export function usePinPad({
-  pinLength = 4,
+  pinLength: fallbackPinLength = 4,
   controlledSelectedMember,
   onMemberSelect,
   onPinSubmit,
@@ -22,6 +25,9 @@ export function usePinPad({
 }: UsePinPadOptions) {
   const [internalSelectedMember, setInternalSelectedMember] = useState<FamilyMember | null>(null);
   const selectedMember = controlledSelectedMember ?? internalSelectedMember;
+  // The selected member's own PIN length always wins — every pad requires
+  // exactly THEIR configured number of digits, not a family-wide constant.
+  const pinLength = selectedMember?.pinLength ?? fallbackPinLength;
 
   const [pin, setPin] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -131,6 +137,8 @@ export function usePinPad({
     error,
     isShaking,
     isVerifying,
+    /** Resolved PIN length in effect right now (selected member's own length, or the fallback). */
+    pinLength,
     handleMemberSelect,
     handleKeyPress,
     handleBackspace,

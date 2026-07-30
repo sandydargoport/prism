@@ -14,6 +14,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { MIN_PIN_LENGTH, MAX_PIN_LENGTH, DEFAULT_PIN_LENGTH } from '@/lib/constants';
+import { getPinLength } from '@/lib/hooks/usePinLength';
 import type { FamilyMember } from './PinEditModal';
 
 const EmojiPicker = dynamic(
@@ -32,6 +34,7 @@ export interface MemberModalSaveData {
   color: string;
   avatarUrl?: string | null;
   avatarFile?: File | null;
+  pinLength: number;
 }
 
 export function MemberModal({
@@ -46,6 +49,10 @@ export function MemberModal({
   const [name, setName] = useState(member?.name || '');
   const [role, setRole] = useState<'parent' | 'child' | 'guest'>(member?.role || 'child');
   const [color, setColor] = useState(member?.color || colorOptions[0] || '#3B82F6');
+  // A new member defaults to the family-wide PIN length setting (last known
+  // value, read synchronously from cache) — editing an existing member
+  // starts from whatever length is already persisted on them.
+  const [pinLength, setPinLength] = useState(member?.pinLength ?? getPinLength());
   const [avatarUrl, setAvatarUrl] = useState<string | null>(member?.avatarUrl || null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -96,12 +103,24 @@ export function MemberModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
+
+    // Changing PIN length on a member who already has a PIN set will strand
+    // that PIN — every pad now requires exactly the NEW length before it will
+    // even submit, so the old (differently-sized) PIN can never match again.
+    if (member?.hasPin && pinLength !== (member.pinLength ?? DEFAULT_PIN_LENGTH)) {
+      const confirmed = window.confirm(
+        `Changing ${member.name}'s PIN length to ${pinLength} digits means their current PIN will stop working — they'll need to set a new ${pinLength}-digit PIN. Continue?`
+      );
+      if (!confirmed) return;
+    }
+
     onSave({
       name: name.trim(),
       role,
       color,
       avatarUrl: avatarFile ? null : avatarUrl,
       avatarFile,
+      pinLength,
     });
   };
 
@@ -227,6 +246,31 @@ export function MemberModal({
                 />
               ))}
             </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">PIN length</label>
+            <div className="flex gap-2 mt-1">
+              {Array.from(
+                { length: MAX_PIN_LENGTH - MIN_PIN_LENGTH + 1 },
+                (_, i) => MIN_PIN_LENGTH + i
+              ).map((len) => (
+                <Button
+                  key={len}
+                  type="button"
+                  variant={len === pinLength ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setPinLength(len)}
+                  className="flex-1"
+                  aria-pressed={len === pinLength}
+                >
+                  {len} digits
+                </Button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              How many digits {member ? `${name || 'this member'}'s` : "this member's"} PIN pad will require.
+            </p>
           </div>
 
           <div className="flex justify-end gap-2 pt-4">

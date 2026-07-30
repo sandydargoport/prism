@@ -298,7 +298,7 @@ export function ShoppingView() {
           </div>
         )}
 
-        <div ref={swipeRef} className="flex-1 overflow-y-auto p-2 pb-24">
+        <div ref={swipeRef} className="flex-1 overflow-y-auto p-2">
           {loading ? (
             <div className="flex items-center justify-center h-full">
               <PageLoader label="Loading shopping lists..." />
@@ -318,7 +318,12 @@ export function ShoppingView() {
               />
             </div>
           ) : activeList ? (
-            <div className="max-w-7xl mx-auto">
+            // pb-24 lives here (not on the scroll container above) so it only
+            // reserves clearance for the mobile FAB below actual list content —
+            // putting it on the scroll container instead skewed EmptyState's
+            // centering upward (min-h-full centers within the padded content
+            // box, and that box's center shifts when top/bottom padding differ).
+            <div className="max-w-7xl mx-auto pb-24">
               <div className={cn(
                 'grid gap-2',
                 isMobile ? 'grid-cols-1' : isPortrait ? 'grid-cols-2' : 'grid-cols-3'
