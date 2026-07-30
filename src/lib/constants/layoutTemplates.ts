@@ -190,9 +190,15 @@ export const LAYOUT_TEMPLATES: Record<string, LayoutTemplate> = {
 // Matches the seeded "Default Dashboard" so the brief loading flash isn't a
 // disorienting layout swap — and so docs screenshots captured during that
 // window still look correct. Keep these widgets in sync with seed.ts.
+//
+// Trimmed to 6 widgets (Meals removed) — a fresh install's default dashboard
+// was overrunning the screen with too many widgets. This is the DEFAULT for
+// new installs only; existing users' saved layouts (a real row in the
+// `layouts` table) are unaffected — this fallback is only used before any
+// layout has been saved.
 export const DEFAULT_TEMPLATE: LayoutTemplate = {
   name: 'Default',
-  description: 'Balanced 7-widget layout — weather-forward, no calendar/birthdays/points',
+  description: 'Lean 6-widget layout — weather-forward, no calendar/birthdays/points/meals',
   orientation: 'landscape',
   widgets: [
     { i: 'weather',   x: 0,  y: 0,  w: 24, h: 14 },
@@ -201,6 +207,5 @@ export const DEFAULT_TEMPLATE: LayoutTemplate = {
     { i: 'messages',  x: 0,  y: 14, w: 16, h: 9  },
     { i: 'chores',    x: 16, y: 14, w: 16, h: 9  },
     { i: 'shopping',  x: 32, y: 14, w: 16, h: 9  },
-    { i: 'meals',     x: 0,  y: 23, w: 48, h: 7  },
   ],
 };

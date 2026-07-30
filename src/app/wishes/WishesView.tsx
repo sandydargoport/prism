@@ -11,10 +11,10 @@ import {
   Pencil,
   Trash2,
   GripVertical,
+  Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { PageWrapper, SubpageHeader, PersonFilter, UndoButton } from '@/components/layout';
+import { PageWrapper, SubpageHeader, PersonFilter, UndoButton, FilterBar, FilterDropdown } from '@/components/layout';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { CarouselArrows } from '@/components/ui/CarouselArrows';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -37,8 +37,14 @@ export function WishesView() {
 
   const [activeTab, setActiveTab] = useState<'wishes' | 'ideas'>('wishes');
 
-  // null = "All" (grouped by person), string[] = filtered to those members
+  // null = "All", string[] = filtered to those members
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[] | null>(null);
+  // Defaults to the flat/ungrouped list — matches Chores/Tasks/Messages.
+  // Wishes previously always rendered a fixed column-per-person grid with
+  // no way to see a single combined list; the toggle below switches back
+  // to that column view (still useful for the gift-giving use case: see
+  // everyone's list side by side).
+  const [groupByUser, setGroupByUser] = useState(false);
   const viewerId = activeUser?.id || undefined;
 
   // Single selection optimises fetch; multi/none fetches all
@@ -60,7 +66,6 @@ export function WishesView() {
   const [addForMemberId, setAddForMemberId] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<WishItem | null>(null);
   const [authedUser, setAuthedUser] = useState<{ id: string } | null>(null);
-  const [quickAddName, setQuickAddName] = useState('');
   const { confirm, dialogProps } = useConfirmDialog();
 
   const orientation = useOrientation();
@@ -101,9 +106,19 @@ export function WishesView() {
       .filter((m): m is FamilyMember => m != null);
   }, [members, effectiveOrder]);
 
-  // Group items by member when showing all
+  // Members currently visible — either everyone, or just the PersonFilter
+  // selection. Used by both the flat list and the grouped grid below.
+  const visibleMembers = useMemo(
+    () => orderedMembers.filter(m => showingAll || selectedMemberIds!.includes(m.id)),
+    [orderedMembers, showingAll, selectedMemberIds]
+  );
+
+  // Group items by member — always computed from `items` (already scoped to
+  // the current PersonFilter selection by useWishItems' fetch), not gated on
+  // `showingAll`. Previously this returned null whenever a filter was
+  // active, which made every per-person column render empty even though
+  // the fetch itself had the right data.
   const groupedItems = useMemo(() => {
-    if (!showingAll) return null;
     const groups: Record<string, WishItem[]> = {};
     for (const item of items) {
       const key = item.memberId;
@@ -111,10 +126,14 @@ export function WishesView() {
       groups[key]!.push(item);
     }
     return groups;
-  }, [items, showingAll]);
+  }, [items]);
 
-  // Resolve which member to add items to
-  const targetMemberId = selectedMemberId || addForMemberId || activeUser?.id || members[0]?.id || null;
+  // Flat (ungrouped) view — every visible member's items in one list, with
+  // an owner tag on each row when more than one person is in view.
+  const flatItems = useMemo(() => {
+    const allowedIds = new Set(visibleMembers.map(m => m.id));
+    return items.filter(i => allowedIds.has(i.memberId));
+  }, [items, visibleMembers]);
 
   const isOwnList = (memberId: string) => memberId === viewerId;
 
@@ -133,23 +152,6 @@ export function WishesView() {
     if (!user) return;
     setAuthedUser(user);
     setEditingItem(item);
-  };
-
-  const handleQuickAdd = async (forMemberId?: string) => {
-    const name = quickAddName.trim();
-    const memberId = forMemberId || targetMemberId;
-    if (!name || !memberId) return;
-
-    const user = await requireAuth("Who's adding a wish?");
-    if (!user) return;
-
-    try {
-      await addItem({ memberId, name, addedBy: user.id });
-      setQuickAddName('');
-      toast({ title: `Added "${name}"` });
-    } catch {
-      toast({ title: 'Failed to add item', variant: 'destructive' });
-    }
   };
 
   const handleSaveModal = async (data: { name: string; url?: string; notes?: string }) => {
@@ -235,7 +237,7 @@ export function WishesView() {
         </>}
       />
 
-      {/* Tab toggle + Member tabs */}
+      {/* Tab toggle */}
       <div className="px-4 pb-3 flex items-center gap-3 flex-wrap">
         <div className="flex items-center border rounded-md">
           <button
@@ -259,15 +261,31 @@ export function WishesView() {
             Gift Ideas
           </button>
         </div>
+      </div>
 
-        {!familyLoading && members.length > 0 && (
+      {/* Person filter + group-by-person toggle — same pattern as Chores/Tasks. */}
+      {!familyLoading && members.length > 0 && (
+        <FilterBar>
           <PersonFilter
             members={members}
             selected={selectedMemberIds}
             onSelect={setSelectedMemberIds}
           />
-        )}
-      </div>
+          {activeTab === 'wishes' && (
+            <>
+              <div className="w-px h-5 bg-border shrink-0" />
+              <FilterDropdown
+                label="Group"
+                options={[{ value: 'none', label: 'None' }, { value: 'person', label: 'Person' }]}
+                selected={new Set([groupByUser ? 'person' : 'none'])}
+                onSelectionChange={(s) => setGroupByUser(s.size > 0 && [...s][0] === 'person')}
+                mode="single"
+                icon={<Users className="h-4 w-4" />}
+              />
+            </>
+          )}
+        </FilterBar>
+      )}
 
       {/* Content */}
       <div className="flex-1 overflow-auto px-4 pb-4">
@@ -277,11 +295,13 @@ export function WishesView() {
           <PageLoader className="py-8" />
         ) : error ? (
           <div className="text-destructive text-center py-8">{error}</div>
-        ) : (
-          /* See ChoreGroupGrid for full context. N members visible at a time
-             (1 mobile, 4 desktop); snap carousel when total exceeds N. */
+        ) : groupByUser ? (
+          /* Grouped-by-person view — one column per visible member. See
+             ChoreGroupGrid for full context: N members visible at a time
+             (1 mobile, 4 desktop); snap carousel when total exceeds N.
+             Preserved for the gift-giving use case (see everyone's list
+             side by side). */
           (() => {
-            const visibleMembers = orderedMembers.filter(m => showingAll || selectedMemberIds!.includes(m.id));
             const groupsPerScreen = isMobile ? 1 : 4;
             const isCarousel = visibleMembers.length > groupsPerScreen;
             const colTrack = isCarousel
@@ -303,7 +323,7 @@ export function WishesView() {
             }}
           >
             {visibleMembers.map(member => {
-              const memberItems = groupedItems?.[member.id] || [];
+              const memberItems = groupedItems[member.id] || [];
               const isDragging = draggedMemberId === member.id;
               return (
                 <div key={member.id} className={cn(isCarousel && 'snap-start')}>
@@ -328,6 +348,30 @@ export function WishesView() {
           </div>
             );
           })()
+        ) : flatItems.length === 0 ? (
+          <EmptyState
+            icon={<Gift />}
+            title="No wishes yet"
+            action={<Button variant="outline" size="sm" onClick={() => handleOpenAddModal()}>Add your first wish</Button>}
+          />
+        ) : (
+          /* Flat (ungrouped) view — every visible member's items in one
+             list. Shows an owner tag per row unless a single person is
+             selected (in which case it's implied). */
+          <div className="space-y-2 max-w-2xl mx-auto">
+            {flatItems.map(item => (
+              <WishItemRow
+                key={item.id}
+                item={item}
+                isOwnList={isOwnList(item.memberId)}
+                viewerId={viewerId}
+                owner={selectedMemberIds?.length === 1 ? undefined : members.find(m => m.id === item.memberId)}
+                onEdit={() => handleOpenEditModal(item)}
+                onDelete={() => handleDelete(item)}
+                onClaim={() => handleClaim(item)}
+              />
+            ))}
+          </div>
         )}
       </div>
 
@@ -447,76 +491,6 @@ function MemberWishCard({
 }
 
 
-/** Single person view with quick add */
-function SinglePersonView({
-  items,
-  memberId,
-  member,
-  isOwnList,
-  viewerId,
-  quickAddName,
-  setQuickAddName,
-  onQuickAdd,
-  onEdit,
-  onDelete,
-  onClaim,
-}: {
-  items: WishItem[];
-  memberId: string;
-  member?: FamilyMember;
-  isOwnList: boolean;
-  viewerId?: string;
-  quickAddName: string;
-  setQuickAddName: (v: string) => void;
-  onQuickAdd: () => void;
-  onEdit: (item: WishItem) => void;
-  onDelete: (item: WishItem) => void;
-  onClaim: (item: WishItem) => void;
-}) {
-  return (
-    <div className="space-y-2">
-      <div className="flex gap-2 mb-2">
-        <Input
-          value={quickAddName}
-          onChange={(e) => setQuickAddName(e.target.value)}
-          placeholder={isOwnList ? 'Add a wish...' : `Add a gift idea for ${member?.name}...`}
-          className="flex-1 h-9"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              onQuickAdd();
-            }
-          }}
-        />
-        <Button onClick={onQuickAdd} disabled={!quickAddName.trim()} size="sm">
-          <Plus className="h-4 w-4 mr-1" />
-          Add
-        </Button>
-      </div>
-
-      {items.length === 0 ? (
-        <EmptyState
-          icon={<Gift />}
-          title={isOwnList ? 'Your wish list is empty' : `${member?.name}'s wish list is empty`}
-          description={isOwnList ? 'Add things you want!' : 'Add a gift idea for them!'}
-        />
-      ) : (
-        items.map(item => (
-          <WishItemRow
-            key={item.id}
-            item={item}
-            isOwnList={isOwnList}
-            viewerId={viewerId}
-            onEdit={() => onEdit(item)}
-            onDelete={() => onDelete(item)}
-            onClaim={() => onClaim(item)}
-          />
-        ))
-      )}
-    </div>
-  );
-}
-
 
 /** Single wish item row */
 function WishItemRow({
@@ -524,6 +498,7 @@ function WishItemRow({
   isOwnList,
   viewerId,
   compact,
+  owner,
   onEdit,
   onDelete,
   onClaim,
@@ -532,6 +507,10 @@ function WishItemRow({
   isOwnList: boolean;
   viewerId?: string;
   compact?: boolean;
+  /** Shown as a small name/color tag — used by the flat (ungrouped) list
+   *  when it's mixing items from more than one person, since the owner
+   *  isn't implied by a per-person column there. */
+  owner?: FamilyMember;
   onEdit: () => void;
   onDelete: () => void;
   onClaim: () => void;
@@ -555,6 +534,15 @@ function WishItemRow({
       {/* Item content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
+          {owner && (
+            <span
+              className="inline-flex items-center gap-1 shrink-0 text-xs font-medium rounded-full px-1.5 py-0.5"
+              style={{ backgroundColor: owner.color + '20', color: owner.color }}
+            >
+              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: owner.color }} />
+              {owner.name}
+            </span>
+          )}
           <span className={cn(
             'font-medium text-sm truncate',
             item.claimed && 'line-through text-muted-foreground'

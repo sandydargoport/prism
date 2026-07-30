@@ -36,7 +36,11 @@ export function useTaskGrouping({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [familyMembers, personFilterActive, filterPerson?.join(',')]
   );
-  const [primaryGroup, setPrimaryGroup] = useState<GroupBy>('person');
+  // Defaults to the flat/ungrouped list — matches Chores (and the rest of
+  // the list pages): group-by-person previously opened by default, which
+  // read awkwardly as the first thing a new user saw. The toggle below is
+  // still one click away.
+  const [primaryGroup, setPrimaryGroup] = useState<GroupBy>('none');
   const [secondaryGroup, setSecondaryGroup] = useState<GroupBy>('none');
 
   const groupMode = useMemo((): GroupMode => {

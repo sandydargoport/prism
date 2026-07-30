@@ -4,10 +4,8 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { PartyPopper, Settings } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 
 export function CompleteStep() {
-  const router = useRouter();
   const [marking, setMarking] = useState(false);
 
   // Mark setup complete on mount
@@ -42,7 +40,20 @@ export function CompleteStep() {
 
         <div className="flex flex-col gap-3">
           <Button
-            onClick={() => router.push('/')}
+            onClick={() => {
+              // Hard navigation (not router.push): the wizard added family
+              // members etc. while FamilyProvider/AuthProvider were already
+              // mounted (Providers wraps /setup too), and those providers
+              // fetch their state once on mount with no refresh hook for
+              // "setup just finished". A client-side route change reuses
+              // that same mounted tree, so the dashboard would land with
+              // stale (pre-setup) family/session state — e.g. the PIN
+              // login member list rendering empty — until something else
+              // happened to trigger a refetch. A full navigation forces
+              // every provider to remount and re-fetch fresh, so the first
+              // paint after setup is always correct.
+              window.location.href = '/';
+            }}
             disabled={marking}
             size="lg"
             className="w-full"
@@ -51,7 +62,7 @@ export function CompleteStep() {
           </Button>
           <Button
             variant="outline"
-            onClick={() => router.push('/settings')}
+            onClick={() => { window.location.href = '/settings'; }}
             disabled={marking}
             className="w-full"
           >

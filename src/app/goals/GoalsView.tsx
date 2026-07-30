@@ -247,7 +247,7 @@ export function GoalsView() {
                 title="No goals yet."
                 action={isParent ? (
                   <Button variant="outline" onClick={openAddModal}>
-                    <Plus className="h-4 w-4 mr-1" />Add Goal
+                    <Plus className="h-4 w-4 mr-1" />Add your first goal
                   </Button>
                 ) : undefined}
               />

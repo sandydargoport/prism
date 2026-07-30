@@ -877,18 +877,21 @@ async function seed() {
       name: 'Default Dashboard',
       isDefault: true,
       widgets: [
-        // 7-widget layout that fits cleanly in a 1440x900 viewport. Weather is
-        // sized 2x wider than the rest so the sun-arc and forecast strip have
-        // room. Calendar, Birthdays, and Points are intentionally omitted from
-        // the default seed — they fetch async and the loading spinner
-        // photographs poorly. Users add them via Settings once they want them.
+        // 6-widget layout that fits cleanly in a 1440x900 viewport with no
+        // scrolling. Weather is sized 2x wider than the rest so the sun-arc
+        // and forecast strip have room. Calendar, Birthdays, and Points are
+        // intentionally omitted from the default seed — they fetch async and
+        // the loading spinner photographs poorly. Meals (and everything that
+        // used to sit below it) was trimmed too — a fresh install's default
+        // dashboard was overrunning the screen. Users add any of these via
+        // Settings once they want them. Keep in sync with DEFAULT_TEMPLATE in
+        // src/lib/constants/layoutTemplates.ts.
         { i: 'weather',   x: 0,  y: 0,  w: 24, h: 14 },
         { i: 'clock',     x: 24, y: 0,  w: 24, h: 7  },
         { i: 'tasks',     x: 24, y: 7,  w: 24, h: 7  },
         { i: 'messages',  x: 0,  y: 14, w: 16, h: 9  },
         { i: 'chores',    x: 16, y: 14, w: 16, h: 9  },
         { i: 'shopping',  x: 32, y: 14, w: 16, h: 9  },
-        { i: 'meals',     x: 0,  y: 23, w: 48, h: 7  },
       ],
       createdBy: alex.id,
     },
