@@ -877,21 +877,17 @@ async function seed() {
       name: 'Default Dashboard',
       isDefault: true,
       widgets: [
-        // 6-widget layout that fits cleanly in a 1440x900 viewport with no
-        // scrolling. Weather is sized 2x wider than the rest so the sun-arc
-        // and forecast strip have room. Calendar, Birthdays, and Points are
-        // intentionally omitted from the default seed — they fetch async and
-        // the loading spinner photographs poorly. Meals (and everything that
-        // used to sit below it) was trimmed too — a fresh install's default
-        // dashboard was overrunning the screen. Users add any of these via
-        // Settings once they want them. Keep in sync with DEFAULT_TEMPLATE in
+        // One-screen, two-column layout: weather fills the full-height left
+        // half, four widgets stack down the right half. Fits without scrolling
+        // on common laptop/desktop viewports. Calendar, Birthdays, Points,
+        // Messages, and Meals are intentionally omitted from the default —
+        // users add them via Settings. Keep in sync with DEFAULT_TEMPLATE in
         // src/lib/constants/layoutTemplates.ts.
-        { i: 'weather',   x: 0,  y: 0,  w: 24, h: 14 },
-        { i: 'clock',     x: 24, y: 0,  w: 24, h: 7  },
-        { i: 'tasks',     x: 24, y: 7,  w: 24, h: 7  },
-        { i: 'messages',  x: 0,  y: 14, w: 16, h: 9  },
-        { i: 'chores',    x: 16, y: 14, w: 16, h: 9  },
-        { i: 'shopping',  x: 32, y: 14, w: 16, h: 9  },
+        { i: 'weather',  x: 0,  y: 0,  w: 24, h: 24 },
+        { i: 'clock',    x: 24, y: 0,  w: 24, h: 6  },
+        { i: 'tasks',    x: 24, y: 6,  w: 24, h: 6  },
+        { i: 'chores',   x: 24, y: 12, w: 24, h: 6  },
+        { i: 'shopping', x: 24, y: 18, w: 24, h: 6  },
       ],
       createdBy: alex.id,
     },

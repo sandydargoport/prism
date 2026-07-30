@@ -71,10 +71,11 @@ const EmptyState = React.forwardRef<HTMLDivElement, EmptyStateProps>(
     <div
       ref={ref}
       className={cn(
-        // Layout
+        // Layout. Default size fills + vertically-centers within its container
+        // (so it lands in a consistent spot on every page, regardless of
+        // orientation); the compact 'sm' variant stays inline for embedded use.
         'flex flex-col items-center justify-center text-center text-muted-foreground',
-        // Padding scales with size
-        size === 'sm' ? 'py-4' : 'py-12',
+        size === 'sm' ? 'py-4' : 'min-h-full flex-1 py-12',
         className
       )}
       {...props}

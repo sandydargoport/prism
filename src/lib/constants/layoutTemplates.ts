@@ -198,14 +198,13 @@ export const LAYOUT_TEMPLATES: Record<string, LayoutTemplate> = {
 // layout has been saved.
 export const DEFAULT_TEMPLATE: LayoutTemplate = {
   name: 'Default',
-  description: 'Lean 6-widget layout — weather-forward, no calendar/birthdays/points/meals',
+  description: 'One-screen 5-widget layout — weather-forward, no calendar/birthdays/points',
   orientation: 'landscape',
   widgets: [
-    { i: 'weather',   x: 0,  y: 0,  w: 24, h: 14 },
-    { i: 'clock',     x: 24, y: 0,  w: 24, h: 7  },
-    { i: 'tasks',     x: 24, y: 7,  w: 24, h: 7  },
-    { i: 'messages',  x: 0,  y: 14, w: 16, h: 9  },
-    { i: 'chores',    x: 16, y: 14, w: 16, h: 9  },
-    { i: 'shopping',  x: 32, y: 14, w: 16, h: 9  },
+    { i: 'weather',  x: 0,  y: 0,  w: 24, h: 24 },
+    { i: 'clock',    x: 24, y: 0,  w: 24, h: 6  },
+    { i: 'tasks',    x: 24, y: 6,  w: 24, h: 6  },
+    { i: 'chores',   x: 24, y: 12, w: 24, h: 6  },
+    { i: 'shopping', x: 24, y: 18, w: 24, h: 6  },
   ],
 };
