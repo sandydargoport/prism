@@ -37,10 +37,17 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
   const [added, setAdded] = useState<AddedMember[]>([]);
   const { pinLength, setPinLength } = usePinLength();
 
-  const canAdd = name.trim().length > 0;
+  // A PIN is optional, but if one is being entered it must match the chosen
+  // family-wide length exactly — otherwise the member could be saved with a
+  // PIN shorter than what the login pad will later require, locking them out
+  // (bug: creation let a 4-digit PIN save while "5 digits" was selected).
+  const pinMatchesLength = pin.length === 0 || pin.length === pinLength;
+  const canAdd = name.trim().length > 0 && pinMatchesLength;
 
   const addMember = async () => {
-    if (!canAdd) return;
+    // Guard against re-entrant submits (e.g. an Enter keypress firing while
+    // the previous add is still in flight) creating a duplicate member.
+    if (!canAdd || saving) return;
     setSaving(true);
     try {
       const body: Record<string, string> = {
@@ -74,7 +81,7 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
   };
 
   return (
-    <Card>
+    <Card className="max-h-[90vh] overflow-y-auto">
       <CardHeader>
         <div className="flex items-center gap-2">
           <Users className="h-5 w-5 text-primary" />
@@ -188,9 +195,14 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
               value={pin}
               onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
             />
+            {pin.length > 0 && pin.length !== pinLength && (
+              <p className="text-xs text-destructive">
+                PIN must be exactly {pinLength} digits
+              </p>
+            )}
           </div>
 
-          <Button onClick={addMember} disabled={!canAdd || saving} className="w-full" variant="secondary">
+          <Button onClick={addMember} disabled={!canAdd || saving} className="w-full">
             <Plus className="h-4 w-4 mr-1" />
             Add member
           </Button>

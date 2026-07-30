@@ -35,7 +35,7 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
       const response = await fetch('/api/family');
       if (response.ok) {
         const data = await response.json();
-        const next: FamilyMember[] = data.members.map((m: {
+        const mapped: FamilyMember[] = data.members.map((m: {
           id: string;
           loginIndex?: number;
           name: string;
@@ -52,6 +52,19 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
           avatarUrl: m.avatarUrl,
           hasPin: m.hasPin,
         }));
+        // Defensive de-dup by id — a repeated id in the API response would
+        // otherwise render the same member twice in every member list/pill
+        // row (e.g. Chores' person filter), with both entries entangled
+        // (toggling one toggles the shared id, making the other look inert).
+        // Skipped when id is blank (unauthenticated public view intentionally
+        // omits real ids) since blank isn't a reliable identity to dedup by.
+        const seenIds = new Set<string>();
+        const next = mapped.filter((m) => {
+          if (!m.id) return true;
+          if (seenIds.has(m.id)) return false;
+          seenIds.add(m.id);
+          return true;
+        });
         // Only update state if data actually changed — avoids re-renders on every 10-min poll
         if (JSON.stringify(next) !== JSON.stringify(membersRef.current)) {
           membersRef.current = next;

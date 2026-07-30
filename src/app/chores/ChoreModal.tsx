@@ -23,6 +23,7 @@ export function ChoreModal({
   onDelete,
   onToggleEnabled,
   familyMembers,
+  defaultAssignedTo,
 }: {
   chore?: Chore;
   onClose: () => void;
@@ -30,6 +31,10 @@ export function ChoreModal({
   onDelete?: () => void;
   onToggleEnabled?: () => void;
   familyMembers: FamilyMember[];
+  /** Assignee to preselect for a brand-new chore (e.g. whoever is adding it),
+   *  so it lands in their group instead of "Unassigned" by default. Ignored
+   *  when editing an existing chore, which always keeps its own assignee. */
+  defaultAssignedTo?: string;
 }) {
   const [title, setTitle] = useState(chore?.title || '');
   const [description, setDescription] = useState(chore?.description || '');
@@ -39,7 +44,7 @@ export function ChoreModal({
   const [pointValue, setPointValue] = useState(chore?.pointValue || 5);
   const [requiresApproval, setRequiresApproval] = useState(chore?.requiresApproval || false);
   const [enabled, setEnabled] = useState(chore?.enabled ?? true);
-  const [assignedTo, setAssignedTo] = useState(chore?.assignedTo?.id || '');
+  const [assignedTo, setAssignedTo] = useState(chore?.assignedTo?.id || defaultAssignedTo || '');
   const [nextDue, setNextDue] = useState<string>(chore?.nextDue || '');
   const [nextDueTime, setNextDueTime] = useState<string>(chore?.nextDueTime || '');
 

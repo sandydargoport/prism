@@ -65,6 +65,11 @@ export function ChoresView() {
   const [inlineChore, setInlineChore] = useState('');
   const [inlineChoreByUser, setInlineChoreByUser] = useState<Record<string, string>>({});
   const [categoryFilters, setCategoryFilters] = useState<Set<string>>(new Set());
+  // Whoever authenticated to open the "Add Chore" modal — preselected as the
+  // assignee so the chore lands in their group instead of "Unassigned" by
+  // default (bug: the header-level add control sat outside every per-person
+  // group and always produced an unassigned chore).
+  const [addModalDefaultAssignee, setAddModalDefaultAssignee] = useState<string | undefined>(undefined);
 
   const effectiveFilteredChores = useMemo(() => {
     if (categoryFilters.size === 0) return filteredChores;
@@ -123,6 +128,9 @@ export function ChoresView() {
   const handleAddWithAuth = async () => {
     const user = await requireAuth('Add Chore', 'Please log in to add a chore');
     if (!user) return;
+    // Preselect the person who's adding it — only relevant when they're an
+    // actual family member (not a role-less guest) present in the groups.
+    setAddModalDefaultAssignee(familyMembers.some((m) => m.id === user.id) ? user.id : undefined);
     setShowAddModal(true);
   };
 
@@ -224,7 +232,7 @@ export function ChoresView() {
 
         {showAddModal && (
           <ChoreModal onClose={() => setShowAddModal(false)} onSave={saveNewChore}
-            familyMembers={familyMembers} />
+            familyMembers={familyMembers} defaultAssignedTo={addModalDefaultAssignee} />
         )}
         {editingChore && (
           <ChoreModal chore={editingChore} onClose={() => setEditingChore(null)}

@@ -96,7 +96,7 @@ export function CalendarStep({ onNext, onBack, appUrl }: CalendarStepProps) {
   };
 
   return (
-    <Card>
+    <Card className="max-h-[90vh] overflow-y-auto">
       <CardHeader>
         <div className="flex items-center gap-2">
           <Calendar className="h-5 w-5 text-primary" />
