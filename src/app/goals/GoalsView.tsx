@@ -40,6 +40,7 @@ import { useGoals, type Goal } from '@/lib/hooks/useGoals';
 import { usePoints } from '@/lib/hooks/usePoints';
 import { useAuth } from '@/components/providers';
 import { GoalCelebration } from '@/components/ui/GoalCelebration';
+import { EmptyState } from '@/components/ui/empty-state';
 import { cn } from '@/lib/utils';
 
 const EMOJI_OPTIONS = ['🎯', '🍦', '🎬', '🎮', '📱', '🎁', '🏖️', '🎪', '⭐', '💰', '🍕', '🎵'];
@@ -241,15 +242,15 @@ export function GoalsView() {
                 ))}
               </div>
             ) : goals.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <Trophy className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p>No goals yet.</p>
-                {isParent && (
-                  <Button variant="outline" className="mt-3" onClick={openAddModal}>
+              <EmptyState
+                icon={<Trophy />}
+                title="No goals yet."
+                action={isParent ? (
+                  <Button variant="outline" onClick={openAddModal}>
                     <Plus className="h-4 w-4 mr-1" />Add Goal
                   </Button>
-                )}
-              </div>
+                ) : undefined}
+              />
             ) : (
               <div className="space-y-3">
                 {goals.map((goal, index) => (

@@ -108,9 +108,17 @@ export function FamilySection() {
               avatarUrl: avatarUrl ?? undefined,
             });
           }
+        } else {
+          // e.g. duplicate name (409) — leave the modal open so the error is
+          // visible next to the form instead of silently discarding the edit.
+          const errData = await res.json().catch(() => ({}));
+          toast({ title: errData.error || 'Failed to update member', variant: 'destructive' });
+          return;
         }
       } catch (err) {
         console.error('Failed to update member:', err);
+        toast({ title: 'Failed to update member', variant: 'destructive' });
+        return;
       }
     } else {
       try {
@@ -136,9 +144,17 @@ export function FamilySection() {
           }
 
           await refreshFamily();
+        } else {
+          // e.g. duplicate name (409) — leave the modal open so the error is
+          // visible next to the form instead of silently discarding the entry.
+          const errData = await res.json().catch(() => ({}));
+          toast({ title: errData.error || 'Failed to add member', variant: 'destructive' });
+          return;
         }
       } catch (err) {
         console.error('Failed to create member:', err);
+        toast({ title: 'Failed to add member', variant: 'destructive' });
+        return;
       }
     }
     setShowAddMember(false);

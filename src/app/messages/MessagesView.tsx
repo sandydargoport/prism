@@ -40,6 +40,8 @@ import { useMessages } from '@/lib/hooks';
 import { useAuth } from '@/components/providers';
 import { useFamily } from '@/components/providers';
 import { AddMessageModal } from '@/components/modals/AddMessageModal';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageLoader } from '@/components/ui/spinner';
 import type { FamilyMessage } from '@/components/widgets/MessagesWidget';
 import type { FamilyMember } from '@/types';
 
@@ -127,6 +129,13 @@ export function MessagesView() {
     return groups;
   }, [groupByPerson, filteredMessages, familyMembers]);
 
+  // Handle add - requires auth. Shared by the toolbar button and the
+  // empty-state CTA so both gate on "who's posting?" the same way.
+  const handleAddWithAuth = async () => {
+    const user = await requireAuth("Who's posting?");
+    if (user) setShowAddModal(true);
+  };
+
   // Handle delete - requires auth and ownership check
   const handleDelete = async (messageId: string) => {
     const message = messages.find((m) => m.id === messageId);
@@ -195,10 +204,7 @@ export function MessagesView() {
           </>}
           actions={
             <Button
-              onClick={async () => {
-                const user = await requireAuth("Who's posting?");
-                if (user) setShowAddModal(true);
-              }}
+              onClick={handleAddWithAuth}
               size="sm"
             >
               <Plus className="h-4 w-4 mr-1" />
@@ -232,11 +238,8 @@ export function MessagesView() {
         {/* ================================================================== */}
         <div className="flex-1 overflow-y-auto p-4">
           {loading ? (
-            <div className="flex items-center justify-center h-full text-muted-foreground">
-              <div className="text-center">
-                <MessageSquare className="h-12 w-12 mb-4 opacity-50 mx-auto" />
-                <p>Loading messages...</p>
-              </div>
+            <div className="flex items-center justify-center h-full">
+              <PageLoader label="Loading messages..." />
             </div>
           ) : error ? (
             <div className="flex items-center justify-center h-full text-destructive">
@@ -254,17 +257,20 @@ export function MessagesView() {
               </div>
             </div>
           ) : filteredMessages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-              <MessageSquare className="h-12 w-12 mb-4 opacity-50" />
-              <p>No messages found</p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-4"
-                onClick={() => setShowAddModal(true)}
-              >
-                Add your first message
-              </Button>
+            <div className="flex items-center justify-center h-full">
+              <EmptyState
+                icon={<MessageSquare />}
+                title="No messages found"
+                action={(
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddWithAuth}
+                  >
+                    Add your first message
+                  </Button>
+                )}
+              />
             </div>
           ) : groupByPerson && messagesByAuthor ? (
             <div className="grid gap-3 max-w-6xl mx-auto" style={{

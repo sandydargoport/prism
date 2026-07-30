@@ -1,6 +1,8 @@
 'use client';
 
 import { Compass } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { WeekendPlaceCard } from './WeekendPlaceCard';
 import { TAG_PRESETS } from '../constants';
 import type { WeekendPlace } from '../types';
@@ -9,6 +11,11 @@ interface WeekendPlaceGridProps {
   places: WeekendPlace[];
   selectedId: string | null;
   onSelect: (place: WeekendPlace) => void;
+  /** True when `places` (the filtered list) is empty only because of an
+   *  active search/filter, not because there are no places at all — in
+   *  that case we don't show the "add your first place" CTA. */
+  hasUnfilteredPlaces?: boolean;
+  onAdd?: () => void;
 }
 
 const TAG_ORDER = TAG_PRESETS.map(t => t.value as string);
@@ -35,12 +42,17 @@ function groupByTag(places: WeekendPlace[]) {
   return groups;
 }
 
-export function WeekendPlaceGrid({ places, selectedId, onSelect }: WeekendPlaceGridProps) {
+export function WeekendPlaceGrid({ places, selectedId, onSelect, hasUnfilteredPlaces, onAdd }: WeekendPlaceGridProps) {
   if (places.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
-        <Compass className="h-12 w-12 opacity-30" />
-        <p className="text-sm">No places yet — add something to try!</p>
+      <div className="flex items-center justify-center h-full">
+        <EmptyState
+          icon={<Compass />}
+          title={hasUnfilteredPlaces ? 'No places match your filters' : 'No places yet'}
+          action={!hasUnfilteredPlaces && onAdd ? (
+            <Button variant="outline" size="sm" onClick={onAdd}>Add your first place</Button>
+          ) : undefined}
+        />
       </div>
     );
   }

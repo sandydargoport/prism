@@ -15,6 +15,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { CarouselArrows } from '@/components/ui/CarouselArrows';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageLoader } from '@/components/ui/spinner';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { useFamily } from '@/components/providers/FamilyProvider';
 import { useAuth } from '@/components/providers';
@@ -93,15 +95,14 @@ export function GiftIdeasView({ selectedMemberIds }: GiftIdeasViewProps = {}) {
 
   if (!activeUser) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-        <Lightbulb className="h-12 w-12 mb-3 opacity-40" />
-        <p>Log in to see your gift ideas</p>
+      <div className="flex items-center justify-center h-64">
+        <EmptyState icon={<Lightbulb />} title="Log in to see your gift ideas" />
       </div>
     );
   }
 
   if (loading) {
-    return <div className="text-muted-foreground text-center py-8">Loading...</div>;
+    return <PageLoader className="py-8" />;
   }
 
   if (error) {
@@ -175,7 +176,7 @@ export function GiftIdeasView({ selectedMemberIds }: GiftIdeasViewProps = {}) {
                   className="h-8 text-sm mb-1"
                 />
                 {memberIdeas.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-4">No ideas yet</p>
+                  <EmptyState size="sm" title="No ideas yet" />
                 ) : (
                   memberIdeas.map((idea) => (
                     <GiftIdeaRow

@@ -6,7 +6,6 @@ import {
   ClipboardList,
   Plus,
   AlertCircle,
-  Clock,
   History,
   Users,
   X,
@@ -16,6 +15,8 @@ import { PlaneCelebration } from '@/components/ui/PlaneCelebration';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageLoader } from '@/components/ui/spinner';
 import { PageWrapper, SubpageHeader, FilterBar, SortSelect, FilterDropdown, PersonFilter } from '@/components/layout';
 import type { OverflowItem } from '@/components/layout';
 import { ChoreItem } from '@/app/chores/ChoreItem';
@@ -60,7 +61,12 @@ export function ChoresView() {
     refreshChores, setShowAddModal, setEditingChore, deleteChore,
   });
 
-  const [groupByUser, setGroupByUser] = useState(true);
+  // Defaults to the flat/ungrouped list — group-by-person previously opened
+  // by default, which surfaced an empty "Add chore" row for every person
+  // column (including whoever had no chores yet) and read awkwardly as the
+  // first thing a new user saw. Group mode is still one click away via the
+  // toggle below.
+  const [groupByUser, setGroupByUser] = useState(false);
   const [celebratingUser, setCelebratingUser] = useState<{ id: string; name: string } | null>(null);
   const [inlineChore, setInlineChore] = useState('');
   const [inlineChoreByUser, setInlineChoreByUser] = useState<Record<string, string>>({});
@@ -188,8 +194,8 @@ export function ChoresView() {
             <ChoreCompletionsList completions={completions} completionsLoading={completionsLoading}
               onUndo={undoCompletion} />
           ) : loading ? (
-            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-              <Clock className="h-12 w-12 mb-4 opacity-50 animate-pulse" /><p>Loading chores...</p>
+            <div className="flex items-center justify-center h-full">
+              <PageLoader label="Loading chores..." />
             </div>
           ) : error ? (
             <div className="flex flex-col items-center justify-center h-full text-destructive">
@@ -197,9 +203,12 @@ export function ChoresView() {
               <Button variant="outline" size="sm" className="mt-4" onClick={() => refreshChores()}>Try Again</Button>
             </div>
           ) : effectiveFilteredChores.length === 0 && !(groupByUser && familyMembers.length > 0) ? (
-            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-              <ClipboardList className="h-12 w-12 mb-4 opacity-50" /><p>No chores found</p>
-              <Button variant="outline" size="sm" className="mt-4" onClick={handleAddWithAuth}>Add your first chore</Button>
+            <div className="flex items-center justify-center h-full">
+              <EmptyState
+                icon={<ClipboardList />}
+                title="No chores found"
+                action={<Button variant="outline" size="sm" onClick={handleAddWithAuth}>Add your first chore</Button>}
+              />
             </div>
           ) : groupByUser && choresByUser && choresByUser.length > 0 ? (
             <ChoreGroupGrid choresByUser={choresByUser} inlineChoreByUser={inlineChoreByUser}

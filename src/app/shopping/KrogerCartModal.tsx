@@ -10,8 +10,9 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { ChevronLeft, ChevronRight, Check, X, Loader2, ExternalLink, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, X, ExternalLink, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { PageLoader } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import { parseShoppingQuantity, type ParsedShoppingQuantity } from '@/lib/utils/parseShoppingQuantity';
 import type { ShoppingItem } from '@/types';
@@ -388,10 +389,7 @@ export function KrogerCartModal({ items, onClose }: KrogerCartModalProps) {
     return (
       <Dialog open onOpenChange={onClose}>
         <DialogContent className="max-w-md">
-          <div className="flex items-center justify-center py-10">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            <span className="ml-2 text-sm text-muted-foreground">Searching Kroger…</span>
-          </div>
+          <PageLoader size="sm" label="Searching Kroger…" className="py-10" />
         </DialogContent>
       </Dialog>
     );

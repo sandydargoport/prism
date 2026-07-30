@@ -3,6 +3,7 @@
 import * as React from 'react';
 import type { Photo } from '@/lib/hooks/usePhotos';
 import { getResolutionQuality } from '@/lib/hooks/usePhotos';
+import { PageLoader } from '@/components/ui/spinner';
 
 interface PhotoGalleryProps {
   photos: Photo[];
@@ -72,11 +73,7 @@ export function PhotoGallery({
         ))}
       </div>
 
-      {loading && (
-        <div className="flex justify-center py-8">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-foreground" />
-        </div>
-      )}
+      {loading && <PageLoader className="py-8" />}
 
       {hasMore && !loading && onLoadMore && (
         <div className="flex justify-center py-6">

@@ -5,6 +5,7 @@ import { History, CheckCircle2, ShieldCheck, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { UserAvatar } from '@/components/ui/avatar';
+import { EmptyState } from '@/components/ui/empty-state';
 import { getCategoryEmoji } from '@/app/chores/ChoreItem';
 import type { ChoreCompletion } from './useChoresViewData';
 import { cn } from '@/lib/utils';
@@ -33,10 +34,7 @@ export function ChoreCompletionsList({
           ))}
         </div>
       ) : completions.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <CheckCircle2 className="h-12 w-12 mx-auto mb-3 opacity-30" />
-          <p>No completed chores in the last 14 days.</p>
-        </div>
+        <EmptyState icon={<CheckCircle2 />} title="No completed chores in the last 14 days." />
       ) : (
         <div className="space-y-2">
           {completions.map((c) => (

@@ -71,10 +71,13 @@ function SettingsPinPrompt({
   onDismiss: () => void;
 }) {
   const { members, loading } = useFamily();
-  // When unauthenticated, /api/family omits role — show all members and let
-  // the backend enforce parent-only access on verify-pin.
+  // Parents only — children/guests can't manage settings. `/api/family` now
+  // returns `role` even when unauthenticated (it isn't sensitive), so this
+  // is a plain equality check; previously the fallback `!m.role` treated a
+  // missing role as "assume parent," which showed every child as selectable
+  // here since the unauthenticated response omitted role entirely.
   const parents = members
-    .filter((m) => !m.role || m.role === 'parent')
+    .filter((m) => m.role === 'parent')
     .map((m) => ({
       id: m.id,
       loginIndex: m.loginIndex,

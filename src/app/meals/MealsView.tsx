@@ -37,6 +37,8 @@ import { RecipeSyncModal } from '@/components/sync/RecipeSyncModal';
 import { PageWrapper, SubpageHeader, FilterBar } from '@/components/layout';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageLoader } from '@/components/ui/spinner';
 import { useMealsViewData } from './useMealsViewData';
 import { useRecipes, type Recipe } from '@/lib/hooks/useRecipes';
 import { useAuth } from '@/components/providers';
@@ -159,9 +161,7 @@ export function MealsView() {
 
         <div className="flex-1 overflow-y-auto p-4">
           {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-foreground" />
-            </div>
+            <PageLoader />
           ) : (
             <div className="max-w-6xl mx-auto space-y-3">
               {orderedDays.map((day, index) => {
@@ -421,7 +421,7 @@ export function MealModal({ weekOf, meal, defaultDay, dayOptions, recipes, onClo
                   <ScrollArea className="h-48">
                     <div className="p-1">
                       {filteredRecipes.length === 0 ? (
-                        <p className="text-sm text-muted-foreground text-center py-4">No recipes found</p>
+                        <EmptyState size="sm" title="No recipes found" />
                       ) : (
                         filteredRecipes.map((recipe) => (
                           <button

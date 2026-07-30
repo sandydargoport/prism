@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import type { ScanState } from './useShoppingScanFlow';
 import type { ShoppingList } from '@/types';
 
@@ -33,7 +34,7 @@ export function ScanFlowSheet({
     return (
       <div className="fixed inset-0 z-[9100] flex items-center justify-center bg-black/40">
         <div className="bg-card rounded-2xl p-6 flex flex-col items-center gap-3 shadow-xl">
-          <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <Spinner size="sm" />
           <p className="text-sm text-muted-foreground">Looking up product…</p>
         </div>
       </div>

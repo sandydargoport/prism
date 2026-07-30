@@ -1,9 +1,11 @@
 'use client';
 
-import { CheckSquare, AlertCircle, Clock, List } from 'lucide-react';
+import { CheckSquare, AlertCircle, List } from 'lucide-react';
 import { UserAvatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageLoader } from '@/components/ui/spinner';
 import { TaskRow } from '@/app/tasks/TaskRow';
 import { GroupedTaskGrid } from '@/app/tasks/GroupedTaskGrid';
 import { NestedGroupedTaskGrid } from '@/app/tasks/NestedGroupedTaskGrid';
@@ -61,8 +63,8 @@ export function TaskContentArea({
 }: TaskContentAreaProps) {
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-        <Clock className="h-12 w-12 mb-4 opacity-50 animate-pulse" /><p>Loading tasks...</p>
+      <div className="flex items-center justify-center h-full">
+        <PageLoader label="Loading tasks..." />
       </div>
     );
   }
@@ -80,9 +82,12 @@ export function TaskContentArea({
     (groupMode === 'person_then_list' && !!tasksByPersonThenList?.length);
   if (filteredTasks.length === 0 && !isPersonGrouped) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-        <CheckSquare className="h-12 w-12 mb-4 opacity-50" /><p>No tasks found</p>
-        <Button variant="outline" size="sm" className="mt-4" onClick={handleAddWithAuth}>Add your first task</Button>
+      <div className="flex items-center justify-center h-full">
+        <EmptyState
+          icon={<CheckSquare />}
+          title="No tasks found"
+          action={<Button variant="outline" size="sm" onClick={handleAddWithAuth}>Add your first task</Button>}
+        />
       </div>
     );
   }

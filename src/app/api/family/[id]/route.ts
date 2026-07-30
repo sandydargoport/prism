@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireRole } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { users, calendarGroups } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, ne } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logActivity } from '@/lib/services/auditLog';
@@ -96,7 +96,28 @@ export async function PATCH(
     const updates: Partial<typeof users.$inferInsert> = {};
 
     if (body.name && typeof body.name === 'string') {
-      updates.name = body.name.trim();
+      const trimmedName = body.name.trim();
+      if (!trimmedName) {
+        return NextResponse.json(
+          { error: 'Name is required' },
+          { status: 400 }
+        );
+      }
+
+      // Names must be unique (case-insensitive, trimmed) across every OTHER
+      // member — mirrors the same check on member creation (POST /api/family).
+      const otherNames = await db
+        .select({ id: users.id, name: users.name })
+        .from(users)
+        .where(ne(users.id, id));
+      if (otherNames.some((u) => u.name.trim().toLowerCase() === trimmedName.toLowerCase())) {
+        return NextResponse.json(
+          { error: `A member named "${trimmedName}" already exists. Please use a different name.` },
+          { status: 409 }
+        );
+      }
+
+      updates.name = trimmedName;
     }
 
     if (body.role && ['parent', 'child', 'guest'].includes(body.role)) {

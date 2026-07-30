@@ -27,6 +27,11 @@ interface PublicFamilyMemberResponse {
   id: ''; // empty — never a real UUID; loginIndex is the login token
   loginIndex: number;
   name: string;
+  // Role isn't sensitive (just parent/child/guest) and callers like the
+  // Settings PIN gate need it to filter to parents-only *before* the user
+  // has authenticated — omitting it previously made every member look like
+  // a parent (see the unauthenticated branch's `!m.role` fallback).
+  role: 'parent' | 'child' | 'guest';
   color: string;
   avatarUrl: string | null;
   hasPin: boolean;
@@ -54,6 +59,7 @@ export async function GET(request: NextRequest) {
         const results = await db
           .select({
             name: users.name,
+            role: users.role,
             color: users.color,
             avatarUrl: users.avatarUrl,
             pin: users.pin,
@@ -65,6 +71,7 @@ export async function GET(request: NextRequest) {
           id: '' as const,
           loginIndex: index,
           name: user.name,
+          role: user.role as 'parent' | 'child' | 'guest',
           color: user.color,
           avatarUrl: user.avatarUrl,
           hasPin: !!user.pin,
@@ -153,6 +160,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const trimmedName = body.name.trim();
+    if (!trimmedName) {
+      return NextResponse.json(
+        { error: 'Name is required' },
+        { status: 400 }
+      );
+    }
+
+    // Names must be unique (case-insensitive, trimmed) — two members with the
+    // same name break login/admin member selection, which key off name alone
+    // in several places (e.g. ordinal member selection, avatar-grid taps).
+    const existingNames = await db.select({ name: users.name }).from(users);
+    if (existingNames.some((u) => u.name.trim().toLowerCase() === trimmedName.toLowerCase())) {
+      return NextResponse.json(
+        { error: `A member named "${trimmedName}" already exists. Please use a different name.` },
+        { status: 409 }
+      );
+    }
+
     if (!body.role || !['parent', 'child', 'guest'].includes(body.role)) {
       return NextResponse.json(
         { error: 'Role must be "parent", "child", or "guest"' },
@@ -192,7 +218,7 @@ export async function POST(request: NextRequest) {
     const [newMember] = await db
       .insert(users)
       .values({
-        name: body.name.trim(),
+        name: trimmedName,
         role: body.role,
         color: body.color,
         pin: hashedPin,

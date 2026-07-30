@@ -21,6 +21,7 @@ interface AddedMember {
   name: string;
   role: 'parent' | 'child';
   color: string;
+  hasPin: boolean;
 }
 
 interface FamilyStepProps {
@@ -42,7 +43,38 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
   // PIN shorter than what the login pad will later require, locking them out
   // (bug: creation let a 4-digit PIN save while "5 digits" was selected).
   const pinMatchesLength = pin.length === 0 || pin.length === pinLength;
-  const canAdd = name.trim().length > 0 && pinMatchesLength;
+
+  // Names must be unique (case-insensitive, trimmed) — two members with the
+  // same name break login/admin member selection. The server enforces this
+  // too (it's the source of truth for members added in a prior wizard run),
+  // but checking here against members added in *this* session gives instant
+  // feedback instead of a round-trip error.
+  const trimmedName = name.trim();
+  const isDuplicateName =
+    trimmedName.length > 0 &&
+    added.some((m) => m.name.trim().toLowerCase() === trimmedName.toLowerCase());
+
+  const canAdd = trimmedName.length > 0 && pinMatchesLength && !isDuplicateName;
+
+  // Changing the PIN length after a member with a PIN has already been added
+  // would silently strand that member's PIN at the old length — every PIN
+  // pad (including this one) requires entering exactly the *current*
+  // pinLength digits before it will even submit, so a 4-digit PIN can never
+  // satisfy a pad now expecting 5. Mirrors the same confirm-guard already in
+  // Settings → Security (SecuritySection.tsx) for changing it after setup.
+  const handlePinLengthChange = async (len: number) => {
+    if (len === pinLength) return;
+    const anyPins = added.some((m) => m.hasPin);
+    if (
+      anyPins &&
+      !window.confirm(
+        `Changing the PIN length to ${len} digits means the member${added.filter((m) => m.hasPin).length > 1 ? 's' : ''} you already added will need a new ${len}-digit PIN — their current PIN will stop working. Continue?`
+      )
+    ) {
+      return;
+    }
+    await setPinLength(len);
+  };
 
   const addMember = async () => {
     // Guard against re-entrant submits (e.g. an Enter keypress firing while
@@ -51,7 +83,7 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
     setSaving(true);
     try {
       const body: Record<string, string> = {
-        name: name.trim(),
+        name: trimmedName,
         role,
         color,
       };
@@ -69,12 +101,12 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
         return;
       }
 
-      setAdded((prev) => [...prev, { name: name.trim(), role, color }]);
+      setAdded((prev) => [...prev, { name: trimmedName, role, color, hasPin: !!pin.trim() }]);
       setName('');
       setPin('');
       setRole('child');
       setColor(COLOR_OPTIONS[added.length % COLOR_OPTIONS.length] ?? COLOR_OPTIONS[0]!);
-      toast({ title: `Added ${name.trim()}` });
+      toast({ title: `Added ${trimmedName}` });
     } finally {
       setSaving(false);
     }
@@ -103,7 +135,7 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
               <button
                 key={len}
                 type="button"
-                onClick={() => setPinLength(len)}
+                onClick={() => handlePinLengthChange(len)}
                 className={cn(
                   'flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors',
                   len === pinLength
@@ -145,6 +177,11 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') addMember(); }}
             />
+            {isDuplicateName && (
+              <p className="text-xs text-destructive">
+                A member named &quot;{trimmedName}&quot; already exists. Use a different name.
+              </p>
+            )}
           </div>
 
           <div className="space-y-1">

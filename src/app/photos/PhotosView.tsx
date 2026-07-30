@@ -14,6 +14,7 @@ import { SlideshowCore } from '@/components/photos/SlideshowCore';
 import { PageWrapper, SubpageHeader, FilterBar, FilterDropdown } from '@/components/layout';
 import { useAutoOrientationSetting } from '@/components/layout/WallpaperBackground';
 import { useAuth } from '@/components/providers';
+import { EmptyState } from '@/components/ui/empty-state';
 
 const ORIENTATION_OPTIONS = [
   { value: 'landscape', label: 'Landscape' },
@@ -145,13 +146,13 @@ export function PhotosView() {
           )}
 
           {photos.length === 0 && !loading ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <ImageIcon className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-lg font-medium">No photos yet</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Click Upload to add photos, or connect OneDrive in Settings.
-              </p>
-            </div>
+            <EmptyState
+              icon={<ImageIcon />}
+              title="No photos yet"
+              description="Add photos, or connect OneDrive in Settings."
+              action={<Button variant="outline" size="sm" onClick={handleUploadWithAuth}>Add your first photo</Button>}
+              className="py-20"
+            />
           ) : (
             <PhotoGallery
               photos={photos}

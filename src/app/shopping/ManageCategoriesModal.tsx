@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { toast } from '@/components/ui/use-toast';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
+import { PageLoader } from '@/components/ui/spinner';
 
 const EMOJI_OPTIONS = [
   // Grocery
@@ -158,7 +159,7 @@ export function ManageCategoriesModal({ open, onOpenChange }: ManageCategoriesMo
           </DialogHeader>
 
           {loading ? (
-            <div className="text-muted-foreground py-4 text-center">Loading categories...</div>
+            <PageLoader size="sm" label="Loading categories..." className="py-4" />
           ) : (
             <div className="space-y-4">
               {/* Category list */}

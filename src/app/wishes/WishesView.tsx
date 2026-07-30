@@ -17,6 +17,8 @@ import { Input } from '@/components/ui/input';
 import { PageWrapper, SubpageHeader, PersonFilter, UndoButton } from '@/components/layout';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { CarouselArrows } from '@/components/ui/CarouselArrows';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageLoader } from '@/components/ui/spinner';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { useDragReorder } from '@/lib/hooks/useDragReorder';
 import { useFamily } from '@/components/providers/FamilyProvider';
@@ -272,7 +274,7 @@ export function WishesView() {
         {activeTab === 'ideas' ? (
           <GiftIdeasView selectedMemberIds={selectedMemberIds} />
         ) : loading || familyLoading ? (
-          <div className="text-muted-foreground text-center py-8">Loading...</div>
+          <PageLoader className="py-8" />
         ) : error ? (
           <div className="text-destructive text-center py-8">{error}</div>
         ) : (
@@ -424,7 +426,7 @@ function MemberWishCard({
       {/* Scrollable item list */}
       <div className="flex-1 overflow-y-auto overscroll-contain p-2 space-y-1">
         {items.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-4">No wishes yet</p>
+          <EmptyState size="sm" title="No wishes yet" />
         ) : (
           items.map(item => (
             <WishItemRow
@@ -493,15 +495,11 @@ function SinglePersonView({
       </div>
 
       {items.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <Gift className="h-12 w-12 mx-auto mb-3 opacity-40" />
-          <p className="text-lg font-medium mb-1">
-            {isOwnList ? 'Your wish list is empty' : `${member?.name}'s wish list is empty`}
-          </p>
-          <p className="text-sm">
-            {isOwnList ? 'Add things you want!' : 'Add a gift idea for them!'}
-          </p>
-        </div>
+        <EmptyState
+          icon={<Gift />}
+          title={isOwnList ? 'Your wish list is empty' : `${member?.name}'s wish list is empty`}
+          description={isOwnList ? 'Add things you want!' : 'Add a gift idea for them!'}
+        />
       ) : (
         items.map(item => (
           <WishItemRow

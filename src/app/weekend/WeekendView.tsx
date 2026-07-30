@@ -213,6 +213,8 @@ export function WeekendView() {
               places={filteredPlaces}
               selectedId={freshSelected?.id ?? null}
               onSelect={(p) => { setSelectedPlace(p); setOverlayMode('detail'); }}
+              hasUnfilteredPlaces={places.length > 0}
+              onAdd={handleAdd}
             />
           )}
         </div>
