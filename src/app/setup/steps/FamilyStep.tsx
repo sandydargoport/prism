@@ -1,16 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Users, Plus, Check, ChevronRight } from 'lucide-react';
+import { Users, Plus, Pencil, Trash2, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { usePinLength } from '@/lib/hooks/usePinLength';
-import { MIN_PIN_LENGTH, MAX_PIN_LENGTH } from '@/lib/constants';
+import { MIN_PIN_LENGTH, MAX_PIN_LENGTH, DEFAULT_PIN_LENGTH } from '@/lib/constants';
 
 const COLOR_OPTIONS = [
   '#3B82F6', '#EC4899', '#10B981', '#F59E0B',
@@ -18,6 +17,7 @@ const COLOR_OPTIONS = [
 ];
 
 interface AddedMember {
+  id: string;
   name: string;
   role: 'parent' | 'child';
   color: string;
@@ -35,19 +35,17 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
   const [role, setRole] = useState<'parent' | 'child'>('parent');
   const [color, setColor] = useState(COLOR_OPTIONS[0]!);
   const [pin, setPin] = useState('');
+  const [removePin, setRemovePin] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [added, setAdded] = useState<AddedMember[]>([]);
-  // Family-wide default — seeds the PIN length for each newly-added member,
-  // but each member below can choose their own (4/5/6) independently.
-  const { pinLength: defaultPinLength, setPinLength: setDefaultPinLength, loading: defaultPinLengthLoading } = usePinLength();
-  const [memberPinLength, setMemberPinLength] = useState(defaultPinLength);
-
-  // Once the family default finishes loading from the server (it starts as a
-  // locally-cached guess), adopt it for the member currently being added.
-  useEffect(() => {
-    if (!defaultPinLengthLoading) setMemberPinLength(defaultPinLength);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultPinLengthLoading]);
+  // Each member picks their own PIN length (4/5/6) independently — this is
+  // just the plain built-in default offered for the next member added.
+  const [memberPinLength, setMemberPinLength] = useState(DEFAULT_PIN_LENGTH);
+  // Non-null while the form below is editing an already-added member (by id)
+  // instead of adding a new one.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const editingMember = editingId ? added.find((m) => m.id === editingId) ?? null : null;
 
   // A PIN is optional, but if one is being entered it must match this
   // member's chosen length exactly — otherwise the member could be saved
@@ -60,28 +58,95 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
   // same name break login/admin member selection. The server enforces this
   // too (it's the source of truth for members added in a prior wizard run),
   // but checking here against members added in *this* session gives instant
-  // feedback instead of a round-trip error.
+  // feedback instead of a round-trip error. When editing, exclude the member
+  // being edited from the check against itself.
   const trimmedName = name.trim();
   const isDuplicateName =
     trimmedName.length > 0 &&
-    added.some((m) => m.name.trim().toLowerCase() === trimmedName.toLowerCase());
+    added.some((m) => m.id !== editingId && m.name.trim().toLowerCase() === trimmedName.toLowerCase());
 
-  const canAdd = trimmedName.length > 0 && pinMatchesLength && !isDuplicateName;
+  const canSubmit = trimmedName.length > 0 && pinMatchesLength && !isDuplicateName;
 
-  // This only changes the DEFAULT offered to the next member added — each
-  // member's own pin_length is sent (and persisted) individually when they're
-  // added below, so changing the default here never strands an
-  // already-added member's PIN. If the member currently being filled in
-  // hasn't had a PIN typed yet, adopt the new default for them too.
-  const handleDefaultPinLengthChange = async (len: number) => {
-    if (len !== defaultPinLength) await setDefaultPinLength(len);
-    if (pin.length === 0) setMemberPinLength(len);
+  const resetForm = () => {
+    setEditingId(null);
+    setName('');
+    setPin('');
+    setRemovePin(false);
+    setRole('child');
+    setColor(COLOR_OPTIONS[added.length % COLOR_OPTIONS.length] ?? COLOR_OPTIONS[0]!);
+    setMemberPinLength(DEFAULT_PIN_LENGTH);
   };
 
-  const addMember = async () => {
+  const startEdit = (member: AddedMember) => {
+    setEditingId(member.id);
+    setName(member.name);
+    setRole(member.role);
+    setColor(member.color);
+    setMemberPinLength(member.pinLength);
+    setPin('');
+    setRemovePin(false);
+  };
+
+  const cancelEdit = () => resetForm();
+
+  const submitMember = async () => {
     // Guard against re-entrant submits (e.g. an Enter keypress firing while
-    // the previous add is still in flight) creating a duplicate member.
-    if (!canAdd || saving) return;
+    // the previous save is still in flight) creating a duplicate/racing call.
+    if (!canSubmit || saving) return;
+
+    if (editingMember) {
+      // Changing PIN length without also supplying a new matching PIN would
+      // silently strand the member's existing PIN (the pad will require the
+      // new length, but the stored hash was made for the old one).
+      if (
+        editingMember.hasPin &&
+        memberPinLength !== editingMember.pinLength &&
+        !removePin &&
+        !pin.trim()
+      ) {
+        const confirmed = window.confirm(
+          `Changing ${trimmedName}'s PIN length to ${memberPinLength} digits means their current PIN will stop working — they'll need a new ${memberPinLength}-digit PIN. Continue?`
+        );
+        if (!confirmed) return;
+      }
+
+      setSaving(true);
+      try {
+        const body: Record<string, string | number | null> = {
+          name: trimmedName,
+          role,
+          color,
+          pinLength: memberPinLength,
+        };
+        if (removePin) body.pin = null;
+        else if (pin.trim()) body.pin = pin.trim();
+
+        const res = await fetch(`/api/family/${editingMember.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          toast({ title: data.error || 'Failed to update member', variant: 'destructive' });
+          return;
+        }
+
+        const updated = await res.json();
+        setAdded((prev) => prev.map((m) => (
+          m.id === editingMember.id
+            ? { id: updated.id, name: updated.name, role: updated.role, color: updated.color, hasPin: updated.hasPin, pinLength: updated.pinLength }
+            : m
+        )));
+        toast({ title: `Updated ${trimmedName}` });
+        resetForm();
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
     setSaving(true);
     try {
       const body: Record<string, string | number> = {
@@ -104,15 +169,32 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
         return;
       }
 
-      setAdded((prev) => [...prev, { name: trimmedName, role, color, hasPin: !!pin.trim(), pinLength: memberPinLength }]);
-      setName('');
-      setPin('');
-      setRole('child');
-      setColor(COLOR_OPTIONS[added.length % COLOR_OPTIONS.length] ?? COLOR_OPTIONS[0]!);
-      setMemberPinLength(defaultPinLength);
+      const created = await res.json();
+      setAdded((prev) => [...prev, { id: created.id, name: trimmedName, role, color, hasPin: !!pin.trim(), pinLength: memberPinLength }]);
       toast({ title: `Added ${trimmedName}` });
+      resetForm();
     } finally {
       setSaving(false);
+    }
+  };
+
+  const removeMember = async (member: AddedMember) => {
+    if (deletingId) return;
+    if (!window.confirm(`Remove ${member.name}?`)) return;
+
+    setDeletingId(member.id);
+    try {
+      const res = await fetch(`/api/family/${member.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast({ title: data.error || 'Failed to remove member', variant: 'destructive' });
+        return;
+      }
+      setAdded((prev) => prev.filter((m) => m.id !== member.id));
+      if (editingId === member.id) resetForm();
+      toast({ title: `Removed ${member.name}` });
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -128,54 +210,51 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
-        {/* Default PIN length — seeds the picker below for each new member;
-            every member can still choose their own length independently. */}
-        <div className="space-y-1">
-          <Label>Default PIN length</Label>
-          <div className="flex gap-2">
-            {Array.from(
-              { length: MAX_PIN_LENGTH - MIN_PIN_LENGTH + 1 },
-              (_, i) => MIN_PIN_LENGTH + i
-            ).map((len) => (
-              <button
-                key={len}
-                type="button"
-                onClick={() => handleDefaultPinLengthChange(len)}
-                className={cn(
-                  'flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors',
-                  len === defaultPinLength
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'hover:bg-muted',
-                )}
-              >
-                {len} digits
-              </button>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Used to pre-fill each new member&apos;s PIN length below — every member can choose their own (4/5/6). You can change this later in Settings → Security.
-          </p>
-        </div>
-
         {/* Already added */}
         {added.length > 0 && (
           <div className="space-y-2">
-            {added.map((m, i) => (
-              <div key={i} className="flex items-center gap-2 rounded-md border px-3 py-2">
+            {added.map((m) => (
+              <div key={m.id} className="flex items-center gap-2 rounded-md border px-3 py-2">
                 <div className="h-3 w-3 rounded-full flex-shrink-0" style={{ background: m.color }} />
                 <span className="flex-1 text-sm font-medium">{m.name}</span>
                 <Badge variant="secondary" className="capitalize text-xs">{m.role}</Badge>
                 {m.hasPin && (
                   <Badge variant="outline" className="text-xs">{m.pinLength}-digit PIN</Badge>
                 )}
-                <Check className="h-4 w-4 text-green-500" />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => startEdit(m)}
+                  disabled={saving || !!deletingId}
+                  aria-label={`Edit ${m.name}`}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-destructive"
+                  onClick={() => removeMember(m)}
+                  disabled={saving || !!deletingId}
+                  aria-label={`Remove ${m.name}`}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
               </div>
             ))}
           </div>
         )}
 
-        {/* Add form */}
+        {/* Add / edit form */}
         <div className="space-y-3 rounded-lg border p-4">
+          {editingMember && (
+            <p className="text-sm font-medium text-muted-foreground">
+              Editing {editingMember.name}
+            </p>
+          )}
           <div className="space-y-1">
             <Label htmlFor="member-name">Name</Label>
             <Input
@@ -183,7 +262,7 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
               placeholder="e.g. Alex"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') addMember(); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') submitMember(); }}
             />
             {isDuplicateName && (
               <p className="text-xs text-destructive">
@@ -255,26 +334,59 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="member-pin">PIN <span className="text-muted-foreground font-normal">(optional)</span></Label>
+            <Label htmlFor="member-pin">
+              PIN{' '}
+              <span className="text-muted-foreground font-normal">
+                {editingMember
+                  ? removePin ? '(will be removed)' : '(leave blank to keep current)'
+                  : '(optional)'}
+              </span>
+            </Label>
             <Input
               id="member-pin"
               type="password"
               maxLength={memberPinLength}
               placeholder={`${memberPinLength} digits`}
               value={pin}
-              onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+              disabled={removePin}
+              onChange={(e) => {
+                setPin(e.target.value.replace(/\D/g, ''));
+                if (removePin) setRemovePin(false);
+              }}
             />
             {pin.length > 0 && pin.length !== memberPinLength && (
               <p className="text-xs text-destructive">
                 PIN must be exactly {memberPinLength} digits
               </p>
             )}
+            {editingMember?.hasPin && (
+              <button
+                type="button"
+                onClick={() => { setRemovePin((v) => !v); setPin(''); }}
+                className="text-xs text-destructive underline"
+              >
+                {removePin ? 'Cancel removing PIN' : 'Remove PIN'}
+              </button>
+            )}
           </div>
 
-          <Button onClick={addMember} disabled={!canAdd || saving} className="w-full">
-            <Plus className="h-4 w-4 mr-1" />
-            Add member
-          </Button>
+          <div className="flex gap-2">
+            {editingMember && (
+              <Button type="button" variant="ghost" onClick={cancelEdit} disabled={saving} className="flex-1">
+                Cancel
+              </Button>
+            )}
+            <Button onClick={submitMember} disabled={!canSubmit || saving} className="flex-1">
+              {editingMember ? (
+                'Save changes'
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add member
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
         <div className="flex gap-3 pt-1">

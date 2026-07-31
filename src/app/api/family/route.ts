@@ -9,8 +9,7 @@ import { getCached } from '@/lib/cache/redis';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
-import { getConfiguredPinLength } from '@/lib/services/pinLength';
-import { MIN_PIN_LENGTH, MAX_PIN_LENGTH } from '@/lib/constants';
+import { MIN_PIN_LENGTH, MAX_PIN_LENGTH, DEFAULT_PIN_LENGTH } from '@/lib/constants';
 
 interface FamilyMemberResponse {
   id: string;
@@ -204,9 +203,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Per-member PIN length: an explicit, valid `pinLength` on the request
-    // wins; otherwise fall back to the family-wide default (used to seed the
-    // very first member, or any client that hasn't been updated to send it).
-    let memberPinLength = await getConfiguredPinLength();
+    // wins; otherwise fall back to the plain built-in default (there is no
+    // family-wide default setting any more — every member's length is their
+    // own choice, made at creation time).
+    let memberPinLength = DEFAULT_PIN_LENGTH;
     if (body.pinLength !== undefined) {
       const n = Math.round(Number(body.pinLength));
       if (!Number.isFinite(n) || n < MIN_PIN_LENGTH || n > MAX_PIN_LENGTH) {

@@ -68,15 +68,3 @@ export function usePinLength(): {
 
   return { pinLength: value, setPinLength, loading };
 }
-
-/**
- * Synchronous read from localStorage for non-hook contexts. Falls back to the
- * default; the authoritative value still comes from the settings API via the hook.
- */
-export function getPinLength(): number {
-  if (typeof window !== 'undefined') {
-    const saved = Number(localStorage.getItem(STORAGE_KEY));
-    if (saved) return clamp(saved);
-  }
-  return DEFAULT_PIN_LENGTH;
-}

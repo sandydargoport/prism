@@ -15,7 +15,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { MIN_PIN_LENGTH, MAX_PIN_LENGTH, DEFAULT_PIN_LENGTH } from '@/lib/constants';
-import { getPinLength } from '@/lib/hooks/usePinLength';
 import type { FamilyMember } from './PinEditModal';
 
 const EmojiPicker = dynamic(
@@ -49,10 +48,11 @@ export function MemberModal({
   const [name, setName] = useState(member?.name || '');
   const [role, setRole] = useState<'parent' | 'child' | 'guest'>(member?.role || 'child');
   const [color, setColor] = useState(member?.color || colorOptions[0] || '#3B82F6');
-  // A new member defaults to the family-wide PIN length setting (last known
-  // value, read synchronously from cache) — editing an existing member
-  // starts from whatever length is already persisted on them.
-  const [pinLength, setPinLength] = useState(member?.pinLength ?? getPinLength());
+  // A new member defaults to a plain 4-digit PIN length — editing an
+  // existing member starts from whatever length is already persisted on
+  // them. Each member's own choice is the source of truth; there is no
+  // family-wide default any more.
+  const [pinLength, setPinLength] = useState(member?.pinLength ?? DEFAULT_PIN_LENGTH);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(member?.avatarUrl || null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);

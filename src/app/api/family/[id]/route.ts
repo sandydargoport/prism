@@ -1,13 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, requireRole } from '@/lib/auth';
+import { requireAuth, requireRole, type AuthResult } from '@/lib/auth';
 import { db } from '@/lib/db/client';
-import { users, calendarGroups } from '@/lib/db/schema';
+import { users, calendarGroups, settings } from '@/lib/db/schema';
 import { eq, and, ne } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
 import { MIN_PIN_LENGTH, MAX_PIN_LENGTH } from '@/lib/constants';
+
+/** Mirrors the same-named helper in the parent /api/family route — checked
+ *  locally per-route rather than shared, matching this codebase's existing
+ *  convention (see also /api/settings). */
+async function setupIsComplete(): Promise<boolean> {
+  try {
+    const [row] = await db.select().from(settings).where(eq(settings.key, 'setupComplete'));
+    return !!row;
+  } catch {
+    return false;
+  }
+}
 
 export async function GET(
   request: NextRequest,
@@ -66,19 +78,34 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireAuth();
-  if (auth instanceof NextResponse) return auth;
+  const authResult = await requireAuth();
+  let auth: AuthResult | null = null;
+
+  if (authResult instanceof NextResponse) {
+    // Bootstrap exception, narrowly scoped like the one on POST /api/family:
+    // the setup wizard's Family step lets a brand-new install fix a mistake
+    // (typo'd name, wrong color/role/PIN) on a member it just created — all
+    // before any session exists to authenticate as. Once setup is complete
+    // this path is unreachable and normal auth is enforced as before.
+    const allowUnauthedSetup = !(await setupIsComplete());
+    if (!allowUnauthedSetup) return authResult;
+  } else {
+    auth = authResult;
+  }
 
   try {
     const { id } = await params;
     const body = await request.json();
 
-    // Editing another user or changing roles requires canManageUsers
-    const editingSelf = id === auth.userId;
-    const changingRole = body.role !== undefined;
-    if (!editingSelf || changingRole) {
-      const forbidden = requireRole(auth, 'canManageUsers');
-      if (forbidden) return forbidden;
+    // Editing another user or changing roles requires canManageUsers —
+    // only enforced once a real session exists (see bootstrap exception above).
+    if (auth) {
+      const editingSelf = id === auth.userId;
+      const changingRole = body.role !== undefined;
+      if (!editingSelf || changingRole) {
+        const forbidden = requireRole(auth, 'canManageUsers');
+        if (forbidden) return forbidden;
+      }
     }
 
     // Get current member
@@ -165,7 +192,12 @@ export async function PATCH(
       // silently reset another member's PIN (that would let one parent lock out
       // a co-parent). Recovery for a forgotten/locked-out PIN is the offline
       // `scripts/reset-pin.js` helper instead, which needs server access.
-      if (currentMember.pin) {
+      //
+      // Exception: the unauthenticated setup-bootstrap window (auth === null,
+      // see above) — there's no "co-parent" to protect yet, and requiring the
+      // exact PIN just (mis)typed a moment ago to fix a typo would defeat the
+      // point of in-wizard editing.
+      if (currentMember.pin && auth) {
         if (!body.currentPin) {
           return NextResponse.json(
             { error: 'Current PIN is required to change PIN' },
@@ -240,13 +272,15 @@ export async function PATCH(
     await invalidateEntity('family');
     await invalidateEntity('calendar-groups');
 
-    logActivity({
-      userId: auth.userId,
-      action: 'update',
-      entityType: 'user',
-      entityId: updatedMember.id,
-      summary: `Updated member: ${updatedMember.name}`,
-    });
+    if (auth) {
+      logActivity({
+        userId: auth.userId,
+        action: 'update',
+        entityType: 'user',
+        entityId: updatedMember.id,
+        summary: `Updated member: ${updatedMember.name}`,
+      });
+    }
 
     return NextResponse.json({
       id: updatedMember.id,
@@ -273,11 +307,20 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireAuth();
-  if (auth instanceof NextResponse) return auth;
+  const authResult = await requireAuth();
+  let auth: AuthResult | null = null;
 
-  const forbidden = requireRole(auth, 'canManageUsers');
-  if (forbidden) return forbidden;
+  if (authResult instanceof NextResponse) {
+    // Bootstrap exception mirroring PATCH above — lets the setup wizard
+    // remove a member it just added, before any session exists. Unreachable
+    // once setup is complete.
+    const allowUnauthedSetup = !(await setupIsComplete());
+    if (!allowUnauthedSetup) return authResult;
+  } else {
+    auth = authResult;
+    const forbidden = requireRole(auth, 'canManageUsers');
+    if (forbidden) return forbidden;
+  }
 
   try {
     const { id } = await params;
@@ -312,13 +355,15 @@ export async function DELETE(
 
     await invalidateEntity('family');
 
-    logActivity({
-      userId: auth.userId,
-      action: 'delete',
-      entityType: 'user',
-      entityId: id,
-      summary: `Removed member: ${currentMember.name}`,
-    });
+    if (auth) {
+      logActivity({
+        userId: auth.userId,
+        action: 'delete',
+        entityType: 'user',
+        entityId: id,
+        summary: `Removed member: ${currentMember.name}`,
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
