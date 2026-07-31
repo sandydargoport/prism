@@ -64,7 +64,14 @@ jest.mock('bcryptjs', () => ({
   compare: jest.fn().mockResolvedValue(true),
 }));
 
+jest.mock('@/lib/setup', () => ({
+  isSetupComplete: jest.fn(),
+}));
+
 import { DELETE } from '../[id]/route';
+import { isSetupComplete } from '@/lib/setup';
+
+const mockIsSetupComplete = isSetupComplete as jest.Mock;
 
 const parentAuth = { userId: 'parent-1', role: 'parent' };
 
@@ -77,6 +84,7 @@ describe('DELETE /api/family/[id]', () => {
     mockRequireRole.mockReturnValue(null); // allowed
     mockSelect.mockReturnValue({ from: mockFrom });
     mockFrom.mockReturnValue({ where: mockWhere });
+    mockIsSetupComplete.mockResolvedValue(true);
   });
 
   it('deletes a child member successfully', async () => {
@@ -177,7 +185,7 @@ describe('DELETE /api/family/[id]', () => {
     // Route checks for an unauthenticated setup-bootstrap exception before
     // enforcing this 401 — simulate setup already being complete so that
     // exception doesn't apply and the 401 stands.
-    mockWhere.mockResolvedValueOnce([{ key: 'setupComplete', value: 'true' }]);
+    mockIsSetupComplete.mockResolvedValue(true);
 
     const req = new NextRequest('http://localhost:3000/api/family/child-1', { method: 'DELETE' });
     const res = await DELETE(req, routeParams);
@@ -189,8 +197,8 @@ describe('DELETE /api/family/[id]', () => {
     mockRequireAuth.mockResolvedValue(
       NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     );
-    // setupIsComplete() query returns no row -> setup not complete -> bootstrap allowed
-    mockWhere.mockResolvedValueOnce([]);
+    // setup not complete -> unauthenticated bootstrap deletion allowed
+    mockIsSetupComplete.mockResolvedValue(false);
     // Member lookup
     mockWhere.mockResolvedValueOnce([{ id: 'child-1', name: 'Timmy', role: 'child' }]);
 

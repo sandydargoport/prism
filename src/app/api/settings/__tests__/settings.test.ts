@@ -51,8 +51,12 @@ const mockLogActivity = jest.fn();
 jest.mock('@/lib/services/auditLog', () => ({ logActivity: (...a: unknown[]) => mockLogActivity(...a) }));
 jest.mock('@/lib/utils/logError', () => ({ logError: jest.fn() }));
 jest.mock('drizzle-orm', () => ({ eq: jest.fn() }));
+jest.mock('@/lib/setup', () => ({ isSetupComplete: jest.fn() }));
 
 import { GET, PATCH } from '../route';
+import { isSetupComplete } from '@/lib/setup';
+
+const mockIsSetupComplete = isSetupComplete as jest.Mock;
 
 const parentAuth = { userId: 'parent-1', role: 'parent' };
 
@@ -168,11 +172,10 @@ describe('PATCH /api/settings', () => {
     });
 
     it('allows writing pinLength before setup is complete', async () => {
-      // First select() call is setupIsComplete() (no row -> not complete);
-      // second is the "does this setting already exist" lookup (no row -> insert).
-      mockWhere
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([]);
+      // setup not complete -> bootstrap write allowed. The remaining select()
+      // is the "does this setting already exist" lookup (no row -> insert).
+      mockIsSetupComplete.mockResolvedValue(false);
+      mockWhere.mockResolvedValueOnce([]);
 
       const res = await PATCH(makePatchRequest({ key: 'pinLength', value: '5' }));
       expect(res.status).toBe(200);
@@ -184,8 +187,8 @@ describe('PATCH /api/settings', () => {
     });
 
     it('rejects writing pinLength once setup is already complete', async () => {
-      // setupIsComplete() finds a row -> setup is done, bootstrap no longer applies.
-      mockWhere.mockResolvedValueOnce([{ key: 'setupComplete', value: {} }]);
+      // setup is done -> bootstrap no longer applies, unauthenticated write 401s.
+      mockIsSetupComplete.mockResolvedValue(true);
 
       const res = await PATCH(makePatchRequest({ key: 'pinLength', value: '5' }));
       expect(res.status).toBe(401);

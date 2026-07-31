@@ -1,25 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireRole, type AuthResult } from '@/lib/auth';
 import { db } from '@/lib/db/client';
-import { users, calendarGroups, settings } from '@/lib/db/schema';
+import { users, calendarGroups } from '@/lib/db/schema';
 import { eq, and, ne } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
 import { MIN_PIN_LENGTH, MAX_PIN_LENGTH } from '@/lib/constants';
-
-/** Mirrors the same-named helper in the parent /api/family route — checked
- *  locally per-route rather than shared, matching this codebase's existing
- *  convention (see also /api/settings). */
-async function setupIsComplete(): Promise<boolean> {
-  try {
-    const [row] = await db.select().from(settings).where(eq(settings.key, 'setupComplete'));
-    return !!row;
-  } catch {
-    return false;
-  }
-}
+import { isSetupComplete } from '@/lib/setup';
 
 export async function GET(
   request: NextRequest,
@@ -87,7 +76,7 @@ export async function PATCH(
     // (typo'd name, wrong color/role/PIN) on a member it just created — all
     // before any session exists to authenticate as. Once setup is complete
     // this path is unreachable and normal auth is enforced as before.
-    const allowUnauthedSetup = !(await setupIsComplete());
+    const allowUnauthedSetup = !(await isSetupComplete());
     if (!allowUnauthedSetup) return authResult;
   } else {
     auth = authResult;
@@ -314,7 +303,7 @@ export async function DELETE(
     // Bootstrap exception mirroring PATCH above — lets the setup wizard
     // remove a member it just added, before any session exists. Unreachable
     // once setup is complete.
-    const allowUnauthedSetup = !(await setupIsComplete());
+    const allowUnauthedSetup = !(await isSetupComplete());
     if (!allowUnauthedSetup) return authResult;
   } else {
     auth = authResult;

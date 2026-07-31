@@ -124,10 +124,13 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
 
   const cancelEdit = () => resetForm();
 
-  const submitMember = async () => {
+  // Returns the saved member on success (so callers like "Continue" can act on
+  // the freshly-added member before React state has flushed), or null if the
+  // submit was skipped or the request failed.
+  const submitMember = async (): Promise<AddedMember | null> => {
     // Guard against re-entrant submits (e.g. an Enter keypress firing while
     // the previous save is still in flight) creating a duplicate/racing call.
-    if (!canSubmit || saving) return;
+    if (!canSubmit || saving) return null;
 
     if (editingMember) {
       // Changing PIN length without also supplying a new matching PIN would
@@ -142,7 +145,7 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
         const confirmed = window.confirm(
           `Changing ${trimmedName}'s PIN length to ${memberPinLength} digits means their current PIN will stop working — they'll need a new ${memberPinLength}-digit PIN. Continue?`
         );
-        if (!confirmed) return;
+        if (!confirmed) return null;
       }
 
       setSaving(true);
@@ -165,21 +168,21 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           toast({ title: data.error || 'Failed to update member', variant: 'destructive' });
-          return;
+          return null;
         }
 
         const updated = await res.json();
-        setAdded((prev) => prev.map((m) => (
-          m.id === editingMember.id
-            ? { id: updated.id, name: updated.name, role: updated.role, color: updated.color, hasPin: updated.hasPin, pinLength: updated.pinLength }
-            : m
-        )));
+        const updatedMember: AddedMember = {
+          id: updated.id, name: updated.name, role: updated.role,
+          color: updated.color, hasPin: updated.hasPin, pinLength: updated.pinLength,
+        };
+        setAdded((prev) => prev.map((m) => (m.id === editingMember.id ? updatedMember : m)));
         toast({ title: `Updated ${trimmedName}` });
         resetForm();
+        return updatedMember;
       } finally {
         setSaving(false);
       }
-      return;
     }
 
     setSaving(true);
@@ -201,13 +204,15 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
       if (!res.ok) {
         const data = await res.json();
         toast({ title: data.error || 'Failed to add member', variant: 'destructive' });
-        return;
+        return null;
       }
 
       const created = await res.json();
-      setAdded((prev) => [...prev, { id: created.id, name: trimmedName, role, color, hasPin: !!pin.trim(), pinLength: memberPinLength }]);
+      const newMember: AddedMember = { id: created.id, name: trimmedName, role, color, hasPin: !!pin.trim(), pinLength: memberPinLength };
+      setAdded((prev) => [...prev, newMember]);
       toast({ title: `Added ${trimmedName}` });
       resetForm();
+      return newMember;
     } finally {
       setSaving(false);
     }
@@ -231,6 +236,47 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
     } finally {
       setDeletingId(null);
     }
+  };
+
+  const handleContinue = async () => {
+    if (saving || deletingId) return;
+
+    let effective = added;
+
+    // Auto-save a member the user typed into the form but never clicked "Add
+    // member" on. Without this, that half-entered person is silently dropped —
+    // and if they were the only member, setup finishes with zero accounts and
+    // the whole family is locked out of login (no member to select, no PIN pad).
+    if (!editingMember && trimmedName.length > 0) {
+      if (!canSubmit) {
+        toast({
+          title: 'Finish the member you\'re adding first',
+          description: isDuplicateName
+            ? 'That name is already taken.'
+            : 'Check the PIN length, then tap “Add member”.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      const saved = await submitMember();
+      if (!saved) return; // save failed — stay on this step so they can retry
+      effective = [...added, saved];
+    }
+
+    if (effective.length === 0) {
+      toast({ title: 'Add at least one family member to continue', variant: 'destructive' });
+      return;
+    }
+    if (!effective.some((m) => m.role === 'parent')) {
+      toast({
+        title: 'Add at least one parent',
+        description: 'Only parents can manage the household, so you need one to continue.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    onNext();
   };
 
   return (
@@ -422,15 +468,15 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
         </div>
 
         <div className="flex gap-3 pt-1">
-          <Button variant="ghost" onClick={onBack} className="flex-1">Back</Button>
-          <Button onClick={onNext} className="flex-1">
+          <Button variant="ghost" onClick={onBack} className="flex-1" disabled={saving}>Back</Button>
+          <Button onClick={handleContinue} className="flex-1" disabled={saving || !!deletingId}>
             Continue <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </div>
 
         {added.length === 0 && (
           <p className="text-xs text-center text-muted-foreground -mt-1">
-            Add a member above, or skip if your family is already set up.
+            Add at least one parent to continue.
           </p>
         )}
       </CardContent>

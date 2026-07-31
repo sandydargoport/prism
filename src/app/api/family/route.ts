@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireRole, optionalAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
-import { settings, users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { users } from '@/lib/db/schema';
 
 import bcrypt from 'bcryptjs';
 import { getCached } from '@/lib/cache/redis';
@@ -10,6 +9,7 @@ import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
 import { MIN_PIN_LENGTH, MAX_PIN_LENGTH, DEFAULT_PIN_LENGTH } from '@/lib/constants';
+import { isSetupComplete } from '@/lib/setup';
 
 interface FamilyMemberResponse {
   id: string;
@@ -42,15 +42,6 @@ interface PublicFamilyMemberResponse {
   pinLength: number;
 }
 
-async function setupIsComplete(): Promise<boolean> {
-  try {
-    const [row] = await db.select().from(settings).where(eq(settings.key, 'setupComplete'));
-    return !!row;
-  } catch {
-    return false;
-  }
-}
-
 export async function GET(request: NextRequest) {
   try {
     const auth = await optionalAuth();
@@ -66,7 +57,7 @@ export async function GET(request: NextRequest) {
       // Mirrors the POST/PATCH/DELETE bootstrap exception; the window closes the
       // instant setupComplete is set. Returned fresh (never cached) so real ids
       // can't leak into the cached public response.
-      if (!(await setupIsComplete())) {
+      if (!(await isSetupComplete())) {
         const rows = await db
           .select({
             id: users.id,
@@ -179,7 +170,7 @@ export async function POST(request: NextRequest) {
   let auth: { userId: string; role: 'parent' | 'child' | 'guest' } | null = null;
 
   if (authResult instanceof NextResponse) {
-    const allowUnauthedSetup = !(await setupIsComplete());
+    const allowUnauthedSetup = !(await isSetupComplete());
     // After setup is complete, normal auth is always required.
     if (!allowUnauthedSetup) return authResult;
     // During setup bootstrap we permit member creation without an active session.

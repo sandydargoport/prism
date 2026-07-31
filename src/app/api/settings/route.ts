@@ -8,17 +8,7 @@ import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import type { AuthResult } from '@/lib/auth';
 import { logError } from '@/lib/utils/logError';
 import { PIN_LENGTH_SETTING_KEY } from '@/lib/constants';
-
-/** Mirrors the same-named helper in /api/family — checked locally per-route
- *  rather than shared, matching this codebase's existing convention. */
-async function setupIsComplete(): Promise<boolean> {
-  try {
-    const [row] = await db.select().from(settings).where(eq(settings.key, 'setupComplete'));
-    return !!row;
-  } catch {
-    return false;
-  }
-}
+import { isSetupComplete } from '@/lib/setup';
 
 export async function GET() {
   const auth = await getDisplayAuth();
@@ -73,7 +63,7 @@ export async function PATCH(request: NextRequest) {
       // too-short PIN save — and once the real value is later persisted,
       // that member's PIN can never satisfy the login pad again (lockout).
       const allowUnauthedSetup =
-        body.key === PIN_LENGTH_SETTING_KEY && !(await setupIsComplete());
+        body.key === PIN_LENGTH_SETTING_KEY && !(await isSetupComplete());
       if (!allowUnauthedSetup) return authResult;
       // auth stays null — proceed as an unauthenticated setup-bootstrap write.
     } else {
