@@ -25,12 +25,12 @@ export function WelcomeStep({ onNext }: { onNext: () => void }) {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 text-sm text-left">
+        <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
           {[
             { icon: '👨‍👩‍👧', label: 'Family members' },
             { icon: '🏠', label: 'Household basics' },
           ].map(({ icon, label }) => (
-            <div key={label} className="flex items-center gap-2 text-muted-foreground">
+            <div key={label} className="flex items-center gap-2">
               <span className="text-lg">{icon}</span>
               <span>{label}</span>
             </div>
