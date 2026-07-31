@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Users, Plus, Pencil, Trash2, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { MIN_PIN_LENGTH, MAX_PIN_LENGTH, DEFAULT_PIN_LENGTH } from '@/lib/constants';
+import { PIN_LENGTH_OPTIONS, DEFAULT_PIN_LENGTH } from '@/lib/constants';
 
 const COLOR_OPTIONS = [
   '#3B82F6', '#EC4899', '#10B981', '#F59E0B',
@@ -46,6 +46,41 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
   // instead of adding a new one.
   const [editingId, setEditingId] = useState<string | null>(null);
   const editingMember = editingId ? added.find((m) => m.id === editingId) ?? null : null;
+
+  // Re-load members already created this setup session, so returning to this
+  // step (or reloading the page) re-shows them — they live in the DB, not just
+  // local state. During setup the family GET returns real ids (setup-bootstrap).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/family');
+        if (!res.ok) return;
+        const data = await res.json();
+        const members: Array<Record<string, unknown>> = Array.isArray(data)
+          ? data
+          : (data.members ?? []);
+        if (cancelled) return;
+        setAdded(
+          members
+            .filter((m) => typeof m.id === 'string' && m.id)
+            .map((m) => ({
+              id: m.id as string,
+              name: m.name as string,
+              role: m.role === 'child' ? 'child' : 'parent',
+              color: (m.color as string) ?? COLOR_OPTIONS[0]!,
+              hasPin: !!m.hasPin,
+              pinLength: (m.pinLength as number) ?? DEFAULT_PIN_LENGTH,
+            })),
+        );
+      } catch {
+        /* ignore — start with an empty list */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // A PIN is optional, but if one is being entered it must match this
   // member's chosen length exactly — otherwise the member could be saved
@@ -312,10 +347,7 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
           <div className="space-y-1">
             <Label>PIN length for this member</Label>
             <div className="flex gap-2">
-              {Array.from(
-                { length: MAX_PIN_LENGTH - MIN_PIN_LENGTH + 1 },
-                (_, i) => MIN_PIN_LENGTH + i
-              ).map((len) => (
+              {PIN_LENGTH_OPTIONS.map((len) => (
                 <button
                   key={len}
                   type="button"

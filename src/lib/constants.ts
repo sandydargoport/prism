@@ -26,6 +26,8 @@ export const SESSION_ABSOLUTE_LIFETIME = {
 
 export const MIN_PIN_LENGTH = 4;
 export const MAX_PIN_LENGTH = 6;
+/** PIN lengths a user may choose. Deliberately 4 or 6 only — no 5. */
+export const PIN_LENGTH_OPTIONS = [4, 6] as const;
 /** Default family-wide PIN length when none has been configured. */
 export const DEFAULT_PIN_LENGTH = 4;
 /** Settings key holding the family-wide PIN length (uniform for all members). */

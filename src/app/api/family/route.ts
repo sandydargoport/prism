@@ -60,6 +60,37 @@ export async function GET(request: NextRequest) {
     // No UUIDs exposed — the login endpoint accepts memberIndex instead.
     // -----------------------------------------------------------------------
     if (!auth) {
+      // Setup-bootstrap: before setup completes there's no session yet, but the
+      // wizard needs REAL member ids to display + edit the family it's building
+      // (going back to the Family step, or reloading, must re-show the members).
+      // Mirrors the POST/PATCH/DELETE bootstrap exception; the window closes the
+      // instant setupComplete is set. Returned fresh (never cached) so real ids
+      // can't leak into the cached public response.
+      if (!(await setupIsComplete())) {
+        const rows = await db
+          .select({
+            id: users.id,
+            name: users.name,
+            role: users.role,
+            color: users.color,
+            avatarUrl: users.avatarUrl,
+            pin: users.pin,
+            pinLength: users.pinLength,
+          })
+          .from(users)
+          .orderBy(users.sortOrder, users.createdAt);
+        const members = rows.map((user) => ({
+          id: user.id,
+          name: user.name,
+          role: user.role as 'parent' | 'child' | 'guest',
+          color: user.color,
+          avatarUrl: user.avatarUrl,
+          hasPin: !!user.pin,
+          pinLength: user.pinLength,
+        }));
+        return NextResponse.json({ members, total: members.length });
+      }
+
       const data = await getCached('family:public', async () => {
         const results = await db
           .select({

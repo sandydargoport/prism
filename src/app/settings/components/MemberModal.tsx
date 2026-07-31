@@ -14,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { MIN_PIN_LENGTH, MAX_PIN_LENGTH, DEFAULT_PIN_LENGTH } from '@/lib/constants';
+import { PIN_LENGTH_OPTIONS, DEFAULT_PIN_LENGTH } from '@/lib/constants';
 import type { FamilyMember } from './PinEditModal';
 
 const EmojiPicker = dynamic(
@@ -251,10 +251,7 @@ export function MemberModal({
           <div>
             <label className="text-sm font-medium">PIN length</label>
             <div className="flex gap-2 mt-1">
-              {Array.from(
-                { length: MAX_PIN_LENGTH - MIN_PIN_LENGTH + 1 },
-                (_, i) => MIN_PIN_LENGTH + i
-              ).map((len) => (
+              {PIN_LENGTH_OPTIONS.map((len) => (
                 <Button
                   key={len}
                   type="button"
