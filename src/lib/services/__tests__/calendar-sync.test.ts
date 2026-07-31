@@ -425,14 +425,20 @@ function makeIcalSource(overrides: Record<string, unknown> = {}) {
 }
 
 function makeVEvent(overrides: Record<string, unknown> = {}) {
+  // Dates are relative to "now" so the event always lands inside the sync
+  // window (~now-90d .. now+365d) no matter when the suite runs. A hardcoded
+  // date silently drifts out of the window as real time passes, which made
+  // these tests start failing months after they were written.
+  const start = new Date(Date.now() + 24 * 60 * 60 * 1000); // tomorrow
+  const end = new Date(start.getTime() + 60 * 60 * 1000);
   return {
     type: 'VEVENT',
     uid: 'event-uid-1',
     summary: 'Sample Event',
     description: 'desc',
     location: 'loc',
-    start: new Date('2026-05-01T10:00:00Z'),
-    end: new Date('2026-05-01T11:00:00Z'),
+    start,
+    end,
     datetype: 'date-time',
     ...overrides,
   };
