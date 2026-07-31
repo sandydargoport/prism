@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Sparkles } from 'lucide-react';
+import { PrismIcon } from '@/components/ui/PrismIcon';
 
 export function WelcomeStep({ onNext }: { onNext: () => void }) {
   return (
@@ -10,15 +10,14 @@ export function WelcomeStep({ onNext }: { onNext: () => void }) {
       <CardContent className="pt-8 pb-8 text-center space-y-6">
         <div className="flex justify-center">
           <div className="rounded-full bg-primary/10 p-4">
-            <Sparkles className="h-10 w-10 text-primary" />
+            <PrismIcon className="h-10 w-10" size={40} />
           </div>
         </div>
 
         <div className="space-y-2">
           <h1 className="text-2xl font-bold">Welcome to Prism</h1>
           <p className="text-muted-foreground text-balance">
-            Let&apos;s set up your family and a few basics — about a minute, and no accounts
-            or API keys required.
+            Let&apos;s set up your family and a few basics.
           </p>
           <p className="text-muted-foreground text-balance">
             Calendars, tasks, photos, and other integrations connect anytime from their own

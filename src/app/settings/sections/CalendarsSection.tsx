@@ -794,10 +794,20 @@ function AddIcalSubscriptionCard({ onAdded }: { onAdded: () => void }) {
       <CardHeader>
         <CardTitle>Subscribe to a calendar — no account needed</CardTitle>
         <CardDescription>
-          Paste any public iCal URL — Apple Calendar / iCloud, Outlook.live.com, a school sports feed, etc.
+          Paste any public iCal URL — Google Calendar, Apple Calendar / iCloud, Outlook.live.com, a school sports feed, etc.
           Works immediately, read-only, zero setup.
           Apple users: in <em>Calendar.app → right-click your calendar → Share Calendar → Public Calendar</em>, then copy the <code>webcal://</code> URL. iCloud.com works the same way under <em>Calendar → ⓘ → Public Calendar</em>.
         </CardDescription>
+        <details className="text-xs text-muted-foreground">
+          <summary className="cursor-pointer select-none hover:text-foreground">
+            How do I get my Google Calendar link?
+          </summary>
+          <p className="mt-1.5 pl-3">
+            Google Calendar → Settings → click your calendar → &quot;Integrate calendar&quot; → copy
+            the &quot;Secret address in iCal format&quot; (it ends in <code>.ics</code>). The normal
+            calendar share link won&apos;t work.
+          </p>
+        </details>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-[1fr_220px_auto]">

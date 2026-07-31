@@ -21,6 +21,7 @@ import { rateLimitGuard } from '@/lib/cache/rateLimit';
 import { validatePublicUrl, UnsafeUrlError } from '@/lib/utils/safeFetch';
 import { logError } from '@/lib/utils/logError';
 import { syncIcalCalendarSource } from '@/lib/services/calendar-sync';
+import { isGoogleCalendarWebLink, GOOGLE_WEB_LINK_ERROR } from '@/lib/utils/googleCalendarLink';
 
 async function setupIsComplete(): Promise<boolean> {
   try {
@@ -84,6 +85,10 @@ export async function POST(request: NextRequest) {
     }
 
     const icalUrl = normalizeIcalUrl(body.url.trim());
+
+    if (isGoogleCalendarWebLink(icalUrl)) {
+      return NextResponse.json({ error: GOOGLE_WEB_LINK_ERROR }, { status: 400 });
+    }
 
     // SSRF guard: a setup-mode caller (unauthenticated by design) or a
     // compromised parent could otherwise submit an internal hostname and

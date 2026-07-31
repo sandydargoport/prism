@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { PrismIcon } from '@/components/ui/PrismIcon';
 import { cn } from '@/lib/utils';
 import { WelcomeStep } from './steps/WelcomeStep';
 import { FamilyStep } from './steps/FamilyStep';
@@ -41,12 +40,6 @@ export function SetupWizard() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-      {/* Logo */}
-      <div className="flex items-center gap-2 mb-8">
-        <PrismIcon className="h-8 w-8" />
-        <span className="text-2xl font-bold tracking-tight">Prism</span>
-      </div>
-
       {/* Progress bar */}
       {showProgress && (
         <div className="w-full max-w-lg mb-6">

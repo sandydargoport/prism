@@ -16,6 +16,7 @@ import {
 } from '@/lib/integrations/google-calendar';
 import { decrypt, encrypt } from '@/lib/utils/crypto';
 import { validatePublicUrl, UnsafeUrlError } from '@/lib/utils/safeFetch';
+import { isGoogleCalendarWebLink, GOOGLE_WEB_LINK_ERROR } from '@/lib/utils/googleCalendarLink';
 import { async as icalAsync, type VEvent, type CalendarResponse } from 'node-ical';
 
 /**
@@ -598,9 +599,11 @@ export async function syncIcalCalendarSource(
   const externalIds = new Set<string>();
   const existingByExtId = await loadExistingByExternalId(sourceId);
   const dismissed = await loadDismissedExternalIds(sourceId);
+  let veventCount = 0;
 
   for (const item of Object.values(parsed)) {
     if (!item || item.type !== 'VEVENT') continue;
+    veventCount++;
     const vevent = item as VEvent;
 
     // node-ical may surface UID as a PropertyWithArgs object on feeds whose
@@ -736,15 +739,28 @@ export async function syncIcalCalendarSource(
     }
   }
 
+  // A feed that parses cleanly but yields zero VEVENTs is usually a
+  // misconfigured URL rather than an empty calendar. The one case we can
+  // diagnose with confidence — a Google Calendar web link stored before
+  // add-time validation caught it — gets a helpful message instead of being
+  // silently treated as "synced, nothing to do".
+  const staleGoogleWebLink = veventCount === 0 && isGoogleCalendarWebLink(source.icalUrl);
+
   const currentErrors = (source.syncErrors as Record<string, unknown>) || {};
   await db
     .update(calendarSources)
     .set({
       lastSynced: new Date(),
-      syncErrors: currentErrors.userOverride ? { userOverride: true } : null,
+      syncErrors: staleGoogleWebLink
+        ? { lastError: GOOGLE_WEB_LINK_ERROR, timestamp: new Date().toISOString() }
+        : currentErrors.userOverride
+          ? { userOverride: true }
+          : null,
       updatedAt: new Date(),
     })
     .where(eq(calendarSources.id, sourceId));
+
+  if (staleGoogleWebLink) errors.push(GOOGLE_WEB_LINK_ERROR);
 
   return { added, updated, removed, unchanged, synced: added + updated, errors };
 }
