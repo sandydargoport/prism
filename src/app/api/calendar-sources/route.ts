@@ -14,23 +14,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireRole } from '@/lib/auth';
 import { db } from '@/lib/db/client';
-import { calendarSources, settings } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { calendarSources } from '@/lib/db/schema';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { rateLimitGuard } from '@/lib/cache/rateLimit';
 import { validatePublicUrl, UnsafeUrlError } from '@/lib/utils/safeFetch';
 import { logError } from '@/lib/utils/logError';
 import { syncIcalCalendarSource } from '@/lib/services/calendar-sync';
 import { isGoogleCalendarWebLink, GOOGLE_WEB_LINK_ERROR } from '@/lib/utils/googleCalendarLink';
-
-async function setupIsComplete(): Promise<boolean> {
-  try {
-    const [row] = await db.select().from(settings).where(eq(settings.key, 'setupComplete'));
-    return !!row;
-  } catch {
-    return false;
-  }
-}
+import { isSetupComplete } from '@/lib/setup';
 
 function isValidIcalUrl(url: string): boolean {
   try {
@@ -52,7 +43,7 @@ export async function POST(request: NextRequest) {
   const authResult = await requireAuth();
   const isAuthed = !(authResult instanceof NextResponse);
   if (!isAuthed) {
-    const allowUnauthedSetup = !(await setupIsComplete());
+    const allowUnauthedSetup = !(await isSetupComplete());
     if (!allowUnauthedSetup) return authResult;
   } else {
     const forbidden = requireRole(authResult, 'canManageIntegrations');

@@ -195,6 +195,10 @@ export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
         // Let the host (Calendar page) refetch its events so a manual sync
         // shows new/removed events immediately, no page refresh needed.
         onSynced?.();
+        // Also fire the global signal so calendar views on *other* surfaces
+        // (dashboard widget, an open Calendar page) refetch too — this Settings
+        // host has no calendar of its own to refresh.
+        window.dispatchEvent(new Event('prism:calendar-synced'));
       } else {
         const hasReauthError = data.errors?.some((e: string) => e.includes('Re-authentication required') || e.includes('Token expired'));
         if (hasReauthError) {
@@ -782,6 +786,14 @@ function AddIcalSubscriptionCard({ onAdded }: { onAdded: () => void }) {
       setUrl('');
       setName('');
       onAdded();
+      // The server imports the feed in the background, then invalidates the
+      // events cache. Nudge calendar views to refetch as it lands — one now,
+      // and a couple of staggered follow-ups to cover the sub-second-to-a-few-
+      // seconds a first import takes — so events appear without a page refresh.
+      window.dispatchEvent(new Event('prism:calendar-synced'));
+      [2500, 6000].forEach((ms) =>
+        setTimeout(() => window.dispatchEvent(new Event('prism:calendar-synced')), ms),
+      );
     } catch (err) {
       toast({ title: err instanceof Error ? err.message : 'Failed to add calendar', variant: 'destructive' });
     } finally {

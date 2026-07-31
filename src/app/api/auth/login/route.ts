@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
 
     // Support two login strategies:
     //   userId      — direct UUID (API clients, authenticated contexts)
-    //   memberIndex — ordinal position (PinPad login screen; keeps UUIDs off the wire)
+    //   memberIndex — ordinal position (PIN login screen; keeps UUIDs off the wire)
     const hasMemberIndex = typeof body.memberIndex === 'number';
     const hasUserId = body.userId && typeof body.userId === 'string';
 

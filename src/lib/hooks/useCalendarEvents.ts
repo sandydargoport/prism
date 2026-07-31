@@ -157,6 +157,18 @@ export function useCalendarEvents(
     if (enabled) fetchEvents();
   }, [fetchEvents, enabled]);
 
+  // Refetch whenever a calendar sync or add completes anywhere in the app
+  // (Settings "Sync Now", adding an iCal subscription, the Calendar page's
+  // manage modal, …). A global window event keeps every calendar view — the
+  // dashboard widget included — in sync without a manual page refresh, no
+  // matter which page fired it. Mirrors the existing prism:auth-* events.
+  useEffect(() => {
+    if (!enabled) return;
+    const handler = () => { fetchEvents(); };
+    window.addEventListener('prism:calendar-synced', handler);
+    return () => window.removeEventListener('prism:calendar-synced', handler);
+  }, [enabled, fetchEvents]);
+
   // Periodic data refresh — pauses when tab is hidden
   useVisibilityPolling(fetchEvents, enabled ? refreshInterval : 0);
 
