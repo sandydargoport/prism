@@ -42,5 +42,5 @@ body:
     attributes:
       label: Terms
       options:
-        - label: I confirm this is my original layout and I agree to share it under the AGPL-3.0 license
+        - label: I confirm this is my original layout and I agree to license it under the PolyForm Noncommercial 1.0.0 license (the same license as Prism), consistent with the project's contribution terms
           required: true

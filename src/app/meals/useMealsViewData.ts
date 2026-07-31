@@ -148,8 +148,7 @@ export function useMealsViewData() {
   const cookedMeals = meals.filter((m) => m.cookedAt).length;
 
   return {
-    weekStartsOn,
-    today, currentWeek, weekOfString, loading,
+    weekStartsOn, today, currentWeek, weekOfString, loading,
     showAddModal, setShowAddModal,
     selectedDay, setSelectedDay,
     editingMeal, setEditingMeal,

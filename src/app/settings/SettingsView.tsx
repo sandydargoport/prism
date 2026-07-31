@@ -297,7 +297,8 @@ export function SettingsView() {
                             your calendars, tasks, and photos from the services you already use.
                           </p>
                           <p>
-                            Prism is free and open-source under the AGPL-3.0 license. If you find it useful,
+                            Prism is source-available under the PolyForm Noncommercial 1.0.0 license — free for
+                            personal and non-commercial use. If you find it useful,
                             please star the repo and share it with others who might benefit.
                           </p>
                           <div className="space-y-1 pt-2">

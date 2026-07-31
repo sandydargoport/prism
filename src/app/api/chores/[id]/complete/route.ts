@@ -300,22 +300,15 @@ export async function DELETE(
         .limit(1);
       const mostRecent = remaining[0];
 
-      const [schedule] = await tx
-        .select({
-          frequency: chores.frequency,
-          customIntervalDays: chores.customIntervalDays,
-          startDay: chores.startDay,
-        })
-        .from(chores)
-        .where(eq(chores.id, choreId));
+      const [chore] = await tx.select().from(chores).where(eq(chores.id, choreId));
 
       await tx
         .update(chores)
         .set({
           lastCompleted: mostRecent?.completedAt ?? null,
           nextDue:
-            mostRecent && schedule
-              ? calculateNextDue(schedule.frequency, schedule.customIntervalDays, schedule.startDay)
+            mostRecent && chore
+              ? calculateNextDue(chore.frequency, chore.customIntervalDays, chore.startDay)
               : null,
           updatedAt: new Date(),
         })
