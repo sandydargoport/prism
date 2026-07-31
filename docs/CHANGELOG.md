@@ -4,8 +4,19 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.11.0] – 2026-07-31
+
 ### Calendar
 - **Deleting a synced Apple/CalDAV event in Prism now removes it from the source too.** Previously only Google deletes propagated upstream — a CalDAV event you deleted in Prism was tombstoned locally but lingered on iCloud/Nextcloud/etc. Prism now captures each event's server address at sync time and sends the delete back to the source. Single (non-recurring) events only; recurring series still delete locally without touching the source (they need proper recurrence editing first). Ships one additive database migration, applied automatically on start.
+
+### Setup & first-run
+- **A much smoother first run for non-technical users.** The setup wizard now lets you **edit or remove** family members as you go (fix a typo, change a color), **remembers them if you step back or refresh**, and no longer drops you on a **blank screen** when you finish. Setup dialogs fit the screen, member **names must be unique**, "Add member" no longer looks disabled, and Prism now **starts in light mode**.
+
+### Security
+- **Per-member PIN length.** Each family member can pick their own **4- or 6-digit** PIN, and every PIN pad now asks for exactly *that* member's length — so a longer PIN can no longer lock someone out (fixes login for 5/6-digit PINs). The confusing family-wide "default PIN length" setting is gone. Ships one additive, automatic database migration; existing PINs keep working. The admin/settings gate now correctly lists parents only.
+
+### Interface
+- **Leaner one-screen default dashboard** (weather-forward, no off-screen overflow — existing custom layouts are untouched), **consistent empty & loading states** across every page each with a clear "Add your first…" button, list pages that **start ungrouped**, and a **Wishes** view that matches the rest of the app (person filter + group-by). Plus dozens of small first-impression fixes.
 
 ## [1.10.0] – 2026-07-27
 
