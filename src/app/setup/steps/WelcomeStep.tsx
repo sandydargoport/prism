@@ -16,10 +16,13 @@ export function WelcomeStep({ onNext }: { onNext: () => void }) {
 
         <div className="space-y-2">
           <h1 className="text-2xl font-bold">Welcome to Prism</h1>
-          <p className="text-muted-foreground">
-            Let&apos;s set up your family and a few basics — about a minute, no accounts or API
-            keys required. Calendars, tasks, photos, and other integrations can be connected
-            anytime from their own pages once you&apos;re in.
+          <p className="text-muted-foreground text-balance">
+            Let&apos;s set up your family and a few basics — about a minute, and no accounts
+            or API keys required.
+          </p>
+          <p className="text-muted-foreground text-balance">
+            Calendars, tasks, photos, and other integrations connect anytime from their own
+            pages once you&apos;re in.
           </p>
         </div>
 
