@@ -229,6 +229,44 @@ describe('PinPad — digit entry', () => {
   });
 });
 
+describe('PinPad — per-member PIN length (regression: #123)', () => {
+  // #123: a member with a 5/6-digit PIN could not log in because the pad
+  // auto-submitted at 4 digits. The pad must require the SELECTED member's
+  // own pinLength before submitting.
+  const SIX: FamilyMember = { id: 'user-cara', name: 'Cara', color: '#10B981', role: 'parent', pinLength: 6 };
+  const FOUR: FamilyMember = { id: 'user-dan', name: 'Dan', color: '#F59E0B', role: 'parent', pinLength: 4 };
+
+  it('does NOT auto-submit a 6-digit member until the 6th digit', async () => {
+    const onPinSubmit = jest.fn().mockResolvedValue(true);
+    render(<PinPad familyMembers={[SIX]} onPinSubmit={onPinSubmit} />);
+    selectMember('Cara');
+
+    enterPin('12345'); // five digits — the #123 bug would have submitted at four
+    expect(onPinSubmit).not.toHaveBeenCalled();
+
+    await act(async () => {
+      clickDigit('6'); // sixth digit completes the PIN
+    });
+    await waitFor(() => expect(onPinSubmit).toHaveBeenCalledTimes(1));
+    expect(onPinSubmit).toHaveBeenCalledWith('123456', SIX);
+  });
+
+  it('auto-submits a 4-digit member at the 4th digit', async () => {
+    const onPinSubmit = jest.fn().mockResolvedValue(true);
+    render(<PinPad familyMembers={[FOUR]} onPinSubmit={onPinSubmit} />);
+    selectMember('Dan');
+
+    enterPin('123');
+    expect(onPinSubmit).not.toHaveBeenCalled();
+
+    await act(async () => {
+      clickDigit('4');
+    });
+    await waitFor(() => expect(onPinSubmit).toHaveBeenCalledTimes(1));
+    expect(onPinSubmit).toHaveBeenCalledWith('1234', FOUR);
+  });
+});
+
 describe('PinPad — backspace', () => {
   it('backspace removes the last entered digit without error', () => {
     // onPinSubmit that never resolves so auto-submit doesn't fire while we test backspace
