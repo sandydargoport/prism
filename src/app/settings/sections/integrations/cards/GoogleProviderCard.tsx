@@ -12,6 +12,7 @@ import { CollapsibleSubSection } from '../shared/CollapsibleSubSection';
 import type { IntegrationStatus } from '../shared/useIntegrationStatus';
 import type { ConnectionStatus } from '../shared/ConnectionStatusBadge';
 import { connectedAsLabel } from '../shared/connectedAs';
+import { useOAuthConfigStatus } from '../shared/useOAuthConfigStatus';
 import { TaskIntegrationsSection } from '../../TaskIntegrationsSection';
 
 interface Props {
@@ -56,15 +57,21 @@ export function GoogleProviderCard({
 }: Props) {
   const { confirm, dialogProps } = useConfirmDialog();
   const [disconnecting, setDisconnecting] = React.useState(false);
+  const oauthStatus = useOAuthConfigStatus();
+  // Treat "still loading" as configured so the common case (already set up)
+  // never flashes the gated state — only downgrade once we know for sure.
+  const configured = oauthStatus === null ? true : oauthStatus.google;
 
   const g = status?.google;
   const connected = !!g?.connected;
   const expired = !!g?.expired;
-  const connectionStatus: ConnectionStatus = !connected
-    ? 'disconnected'
-    : expired
-      ? 'expired'
-      : 'connected';
+  const connectionStatus: ConnectionStatus = !configured
+    ? 'setup_required'
+    : !connected
+      ? 'disconnected'
+      : expired
+        ? 'expired'
+        : 'connected';
 
   const handleDisconnect = async () => {
     const ok = await confirm(
@@ -91,7 +98,18 @@ export function GoogleProviderCard({
   };
 
   let primaryAction: React.ReactNode;
-  if (!connected) {
+  if (!configured && !connected) {
+    primaryAction = (
+      <Button
+        size="sm"
+        variant="secondary"
+        disabled
+        title="Needs a one-time admin setup (Google OAuth credentials) before this can connect"
+      >
+        Connect
+      </Button>
+    );
+  } else if (!connected) {
     primaryAction = (
       <Button size="sm" onClick={handleConnect}>
         Connect
@@ -139,10 +157,34 @@ export function GoogleProviderCard({
               ]
                 .filter(Boolean)
                 .join(' · ')
-            : 'Calendars (read+write) and Google Tasks via OAuth.'
+            : !configured
+              ? 'Two-way sync needs a one-time admin setup. For read-only calendars with zero setup, subscribe by iCal URL instead.'
+              : 'Calendars (read+write) and Google Tasks via OAuth.'
         }
         primaryAction={primaryAction}
       >
+        {!configured && !connected && (
+          <CollapsibleSubSection
+            id="google-setup"
+            label="One-time admin setup"
+            summary="Requires a Google Cloud OAuth client"
+            defaultOpen
+          >
+            <p className="text-sm text-muted-foreground">
+              An admin needs to create a Google Cloud OAuth client and set{' '}
+              <code className="text-xs bg-muted px-1 py-0.5 rounded">GOOGLE_CLIENT_ID</code>,{' '}
+              <code className="text-xs bg-muted px-1 py-0.5 rounded">GOOGLE_CLIENT_SECRET</code>, and{' '}
+              <code className="text-xs bg-muted px-1 py-0.5 rounded">GOOGLE_REDIRECT_URI</code> in{' '}
+              <code className="text-xs bg-muted px-1 py-0.5 rounded">.env</code> (see{' '}
+              <code className="text-xs bg-muted px-1 py-0.5 rounded">.env.example</code>). No credentials?
+              Use{' '}
+              <Link href="/calendar?manage=calendars" className="text-primary hover:underline">
+                iCal subscriptions
+              </Link>{' '}
+              for keyless, read-only calendars in the meantime.
+            </p>
+          </CollapsibleSubSection>
+        )}
         {connected && (
           <CollapsibleSubSection
             id="google-account"
@@ -168,7 +210,9 @@ export function GoogleProviderCard({
           summary={
             connected
               ? `${calendarCount} imported`
-              : 'Connect Google to enable'
+              : configured
+                ? 'Connect Google to enable'
+                : 'Needs admin setup — or use iCal'
           }
           forceOpen={forceSubSectionOpen === 'google-calendars'}
           defaultOpen={!connected}
@@ -191,7 +235,9 @@ export function GoogleProviderCard({
               ? taskCount > 0
                 ? `${taskCount} list${taskCount === 1 ? '' : 's'} wired`
                 : 'No task lists wired yet'
-              : 'Connect Google to enable'
+              : configured
+                ? 'Connect Google to enable'
+                : 'Needs admin setup'
           }
           forceOpen={forceSubSectionOpen === 'google-tasks'}
         >

@@ -359,7 +359,8 @@ export function ProviderPickerModal({
   onClose: () => void;
   title: string;
   description: React.ReactNode;
-  onSelectMsTodo: () => void;
+  /** Omit when Microsoft OAuth isn't configured on this instance — pair with a `disabledProviders` entry instead. */
+  onSelectMsTodo?: () => void;
   onSelectGoogleTasks?: () => void;
   disabledProviders?: Array<{
     icon: React.ReactNode;
@@ -376,21 +377,23 @@ export function ProviderPickerModal({
         <div className="py-4">
           <p className="text-sm text-muted-foreground mb-4">{description}</p>
           <div className="space-y-2">
-            <button
-              onClick={onSelectMsTodo}
-              className="w-full flex items-center gap-3 p-3 rounded-md border border-border hover:bg-accent transition-colors text-left"
-            >
-              <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="#0078D4">
-                <path d="M0 0h11.377v11.377H0zm12.623 0H24v11.377H12.623zM0 12.623h11.377V24H0zm12.623 0H24V24H12.623z" />
-              </svg>
-              <div>
-                <span className="font-medium">Microsoft To-Do</span>
-                <p className="text-xs text-muted-foreground">
-                  Sync items as tasks in a To-Do list
-                </p>
-              </div>
-              <ExternalLink className="h-4 w-4 ml-auto text-muted-foreground" />
-            </button>
+            {onSelectMsTodo && (
+              <button
+                onClick={onSelectMsTodo}
+                className="w-full flex items-center gap-3 p-3 rounded-md border border-border hover:bg-accent transition-colors text-left"
+              >
+                <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="#0078D4">
+                  <path d="M0 0h11.377v11.377H0zm12.623 0H24v11.377H12.623zM0 12.623h11.377V24H0zm12.623 0H24V24H12.623z" />
+                </svg>
+                <div>
+                  <span className="font-medium">Microsoft To-Do</span>
+                  <p className="text-xs text-muted-foreground">
+                    Sync items as tasks in a To-Do list
+                  </p>
+                </div>
+                <ExternalLink className="h-4 w-4 ml-auto text-muted-foreground" />
+              </button>
+            )}
 
             {onSelectGoogleTasks && (
               <button

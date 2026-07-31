@@ -12,6 +12,7 @@ import { CollapsibleSubSection } from '../shared/CollapsibleSubSection';
 import type { IntegrationStatus } from '../shared/useIntegrationStatus';
 import type { ConnectionStatus } from '../shared/ConnectionStatusBadge';
 import { connectedAsLabel } from '../shared/connectedAs';
+import { useOAuthConfigStatus } from '../shared/useOAuthConfigStatus';
 import { TaskIntegrationsSection } from '../../TaskIntegrationsSection';
 import { ShoppingIntegrationsSection } from '../../ShoppingIntegrationsSection';
 import { WishListIntegrationsSection } from '../../WishListIntegrationsSection';
@@ -53,6 +54,10 @@ export function MicrosoftProviderCard({
 }: Props) {
   const { confirm, dialogProps } = useConfirmDialog();
   const [disconnecting, setDisconnecting] = React.useState(false);
+  const oauthStatus = useOAuthConfigStatus();
+  // Treat "still loading" as configured so the common case (already set up)
+  // never flashes the gated state — only downgrade once we know for sure.
+  const configured = oauthStatus === null ? true : oauthStatus.microsoft;
 
   // Microsoft and OneDrive share the same OAuth account. The card treats
   // them as one connection — connected if either To-Do OR OneDrive has any
@@ -60,9 +65,11 @@ export function MicrosoftProviderCard({
   const ms = status?.microsoft;
   const od = status?.onedrive;
   const connected = !!(ms?.connected || od?.connected);
-  const connectionStatus: ConnectionStatus = connected
-    ? 'connected'
-    : 'disconnected';
+  const connectionStatus: ConnectionStatus = !configured
+    ? 'setup_required'
+    : connected
+      ? 'connected'
+      : 'disconnected';
 
   const handleDisconnect = async () => {
     const ok = await confirm(
@@ -124,18 +131,30 @@ export function MicrosoftProviderCard({
       ]
         .filter(Boolean)
         .join(' · ') || 'No sources wired yet'
-    : 'Microsoft To-Do (tasks, shopping, wish lists) and OneDrive (photos). One OAuth covers all.';
+    : !configured
+      ? 'Needs a one-time admin setup before Microsoft To-Do, shopping/wish lists, or OneDrive can connect.'
+      : 'Microsoft To-Do (tasks, shopping, wish lists) and OneDrive (photos). One OAuth covers all.';
 
-  const primaryAction = connected ? (
-    <Button variant="outline" size="sm" onClick={handleReauth}>
-      <RefreshCw className="h-4 w-4 mr-2" />
-      Re-authenticate
-    </Button>
-  ) : (
-    <Button size="sm" onClick={handleConnect}>
-      Connect
-    </Button>
-  );
+  const primaryAction =
+    !configured && !connected ? (
+      <Button
+        size="sm"
+        variant="secondary"
+        disabled
+        title="Needs a one-time admin setup (Microsoft OAuth credentials) before this can connect"
+      >
+        Connect
+      </Button>
+    ) : connected ? (
+      <Button variant="outline" size="sm" onClick={handleReauth}>
+        <RefreshCw className="h-4 w-4 mr-2" />
+        Re-authenticate
+      </Button>
+    ) : (
+      <Button size="sm" onClick={handleConnect}>
+        Connect
+      </Button>
+    );
 
   return (
     <>
@@ -147,6 +166,23 @@ export function MicrosoftProviderCard({
         description={description}
         primaryAction={primaryAction}
       >
+        {!configured && !connected && (
+          <CollapsibleSubSection
+            id="microsoft-setup"
+            label="One-time admin setup"
+            summary="Requires an Azure AD app registration"
+            defaultOpen
+          >
+            <p className="text-sm text-muted-foreground">
+              An admin needs to register an Azure AD app and set{' '}
+              <code className="text-xs bg-muted px-1 py-0.5 rounded">MICROSOFT_CLIENT_ID</code>,{' '}
+              <code className="text-xs bg-muted px-1 py-0.5 rounded">MICROSOFT_CLIENT_SECRET</code>, and{' '}
+              <code className="text-xs bg-muted px-1 py-0.5 rounded">MICROSOFT_REDIRECT_URI</code> in{' '}
+              <code className="text-xs bg-muted px-1 py-0.5 rounded">.env</code> (see{' '}
+              <code className="text-xs bg-muted px-1 py-0.5 rounded">.env.example</code>).
+            </p>
+          </CollapsibleSubSection>
+        )}
         {connected && (
           <CollapsibleSubSection
             id="microsoft-account"
@@ -174,7 +210,9 @@ export function MicrosoftProviderCard({
               ? `${taskCount} list${taskCount === 1 ? '' : 's'} via Microsoft To-Do`
               : connected
                 ? 'No task lists wired yet'
-                : 'Connect Microsoft to enable'
+                : configured
+                  ? 'Connect Microsoft to enable'
+                  : 'Needs admin setup'
           }
           forceOpen={forceSubSectionOpen === 'microsoft-tasks'}
         >
@@ -189,7 +227,9 @@ export function MicrosoftProviderCard({
               ? `${shoppingCount} list${shoppingCount === 1 ? '' : 's'} via Microsoft To-Do`
               : connected
                 ? 'No shopping lists wired yet'
-                : 'Connect Microsoft to enable'
+                : configured
+                  ? 'Connect Microsoft to enable'
+                  : 'Needs admin setup'
           }
           forceOpen={forceSubSectionOpen === 'microsoft-shopping'}
         >
@@ -202,7 +242,9 @@ export function MicrosoftProviderCard({
           summary={
             connected
               ? 'Per-member wish list wiring'
-              : 'Connect Microsoft to enable'
+              : configured
+                ? 'Connect Microsoft to enable'
+                : 'Needs admin setup'
           }
           forceOpen={forceSubSectionOpen === 'microsoft-wish'}
         >
@@ -217,7 +259,9 @@ export function MicrosoftProviderCard({
               ? `${oneDriveCount} folder${oneDriveCount === 1 ? '' : 's'} syncing`
               : connected
                 ? 'No OneDrive folders wired yet'
-                : 'Connect Microsoft to enable'
+                : configured
+                  ? 'Connect Microsoft to enable'
+                  : 'Needs admin setup'
           }
           forceOpen={forceSubSectionOpen === 'microsoft-onedrive'}
         >

@@ -7,7 +7,8 @@ export type ConnectionStatus =
   | 'connected'
   | 'expired'
   | 'disconnected'
-  | 'alpha';
+  | 'alpha'
+  | 'setup_required';
 
 interface Props {
   status: ConnectionStatus;
@@ -19,6 +20,7 @@ const LABEL: Record<ConnectionStatus, string> = {
   expired: 'Reconnect needed',
   disconnected: 'Not connected',
   alpha: 'Alpha',
+  setup_required: 'Setup required',
 };
 
 const VARIANT: Record<ConnectionStatus, 'success' | 'warning' | 'outline' | 'secondary'> = {
@@ -26,6 +28,7 @@ const VARIANT: Record<ConnectionStatus, 'success' | 'warning' | 'outline' | 'sec
   expired: 'warning',
   disconnected: 'outline',
   alpha: 'secondary',
+  setup_required: 'secondary',
 };
 
 export function ConnectionStatusBadge({ status, className }: Props) {

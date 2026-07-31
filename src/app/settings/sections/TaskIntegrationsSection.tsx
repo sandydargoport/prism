@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTaskLists } from '@/lib/hooks/useTaskLists';
 import { useIntegrationSources } from './integrations/useIntegrationSources';
+import { useOAuthConfigStatus } from './integrations/shared/useOAuthConfigStatus';
 import { TASK_CONFIG } from './integrations/constants';
 import type { TaskSource, MsList } from './integrations/types';
 import { GOOGLE_TASKS_ICON_SM, MS_TODO_ICON_SM } from './integrations/constants';
@@ -55,6 +56,15 @@ export function TaskIntegrationsSection({
     ? { ...TASK_CONFIG, respondsToProvider: providerFilter }
     : TASK_CONFIG;
   const integration = useIntegrationSources<TaskSource>(integrationConfig);
+
+  // Whether the Google/Microsoft OAuth *app* is configured on this instance
+  // (client id/secret present) — gates the Connect affordances below so a
+  // fresh instance with no OAuth app registered doesn't dead-end the user
+  // (keyless-first). `null` while loading is treated as "configured" so the
+  // common already-set-up case never flashes a gated state.
+  const oauthStatus = useOAuthConfigStatus();
+  const googleConfigured = oauthStatus === null ? true : oauthStatus.google;
+  const msConfigured = oauthStatus === null ? true : oauthStatus.microsoft;
 
   const displayedSources = providerFilter
     ? integration.sources.filter((s) => s.provider === providerFilter)
@@ -342,7 +352,15 @@ export function TaskIntegrationsSection({
             New List
           </Button>
         }
-        renderEntityActions={(list, connectedSource) => (
+        renderEntityActions={(list, connectedSource) => {
+          // Only meaningful when embedded under a single-provider card —
+          // the standalone picker (below) gates each option individually.
+          const providerNotConfigured =
+            !connectedSource &&
+            ((providerFilter === 'google_tasks' && !googleConfigured) ||
+              (providerFilter === 'microsoft_todo' && !msConfigured));
+
+          return (
           <>
             {connectedSource ? (
               <Button
@@ -361,6 +379,17 @@ export function TaskIntegrationsSection({
               // the user into a provider picker that doesn't include
               // CalDAV / Apple as a target).
               null
+            ) : providerNotConfigured ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled
+                className="gap-1"
+                title="Needs a one-time admin setup before this can connect"
+              >
+                <Link2 className="h-4 w-4" />
+                Connect
+              </Button>
             ) : (
               <Button
                 variant="outline"
@@ -404,7 +433,8 @@ export function TaskIntegrationsSection({
               <Trash2 className="h-4 w-4" />
             </Button>
           </>
-        )}
+          );
+        }}
       />
 
       {/* Provider Picker Modal */}
@@ -418,19 +448,22 @@ export function TaskIntegrationsSection({
             <strong>{taskLists.find(l => l.id === integration.connectingEntityId)?.name}</strong>
           </>
         }
-        onSelectMsTodo={() => {
+        onSelectMsTodo={msConfigured ? () => {
           integration.setShowProviderPickerModal(false);
           if (integration.connectingEntityId) {
             window.location.href = `/api/auth/microsoft-tasks?taskListId=${integration.connectingEntityId}`;
           }
-        }}
-        onSelectGoogleTasks={() => {
+        } : undefined}
+        onSelectGoogleTasks={googleConfigured ? () => {
           integration.setShowProviderPickerModal(false);
           if (integration.connectingEntityId) {
             window.location.href = `/api/auth/google-tasks?taskListId=${integration.connectingEntityId}`;
           }
-        }}
-        disabledProviders={[]}
+        } : undefined}
+        disabledProviders={[
+          ...(!msConfigured ? [{ icon: MS_TODO_ICON_SM, name: 'Microsoft To-Do', label: 'Needs a one-time admin setup' }] : []),
+          ...(!googleConfigured ? [{ icon: GOOGLE_TASKS_ICON_SM, name: 'Google Tasks', label: 'Needs a one-time admin setup' }] : []),
+        ]}
       />
 
       {/* External List Selection Modal */}
