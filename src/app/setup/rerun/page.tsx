@@ -5,6 +5,5 @@ export const metadata = {
 };
 
 export default function RerunSetupPage() {
-  const appUrl = process.env.APP_URL || 'http://localhost:3000';
-  return <SetupWizard appUrl={appUrl} />;
+  return <SetupWizard />;
 }

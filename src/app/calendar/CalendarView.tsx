@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils';
 import { contrastText } from '@/lib/utils/color';
 import { useFamily } from '@/components/providers';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { AddEventModal } from '@/components/modals';
 import { ManageCalendarsModal } from './ManageCalendarsModal';
 import { PendingDeletionsModal } from './PendingDeletionsModal';
@@ -48,7 +49,7 @@ import { useDayBucketsForRange } from '@/lib/hooks/useDayBucketsForRange';
 import type { DayBucket } from '@/lib/hooks/useWeekViewData';
 import type { CalendarEvent } from '@/types/calendar';
 import { WeekItemCard } from '@/components/calendar/cells';
-import { useIsMobile, useSwipeNavigation } from '@/lib/hooks';
+import { useIsMobile, useSwipeNavigation, useCalendarSources } from '@/lib/hooks';
 import { useAuth } from '@/components/providers';
 import { useWeekStartsOn } from '@/lib/hooks/useWeekStartsOn';
 import { useWeekMutations } from '@/lib/hooks/useWeekMutations';
@@ -86,6 +87,11 @@ export function CalendarView() {
   const { activeUser, requireAuth } = useAuth();
   const { members: familyMembers } = useFamily();
   const { weekStartsOn } = useWeekStartsOn();
+  // Drives the "Connect a calendar" empty-state CTA below — calendar setup
+  // moved out of the onboarding wizard onto this page, so a brand-new
+  // household with zero calendar sources needs a clear way in.
+  const { calendars: calendarSources, loading: calendarSourcesLoading } = useCalendarSources();
+  const hasNoCalendarSources = !calendarSourcesLoading && calendarSources.length === 0;
   const {
     currentDate, setCurrentDate,
     viewType, setViewType,
@@ -491,7 +497,20 @@ export function CalendarView() {
               <p className="text-destructive">Failed to load calendar: {error}</p>
             </div>
           )}
-          {!loading && !error && (
+          {!loading && !error && hasNoCalendarSources && (
+            <EmptyState
+              icon={<CalendarCog />}
+              title="No calendar connected yet"
+              description="Connect Google, Apple, Outlook, or any iCal link to see events here."
+              action={
+                <Button onClick={() => setShowManageCalendars(true)}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Connect a calendar
+                </Button>
+              }
+            />
+          )}
+          {!loading && !error && !hasNoCalendarSources && (
             <div className="h-full">
             {moveError && (
               <div className="mb-2 rounded border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">

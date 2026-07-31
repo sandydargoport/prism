@@ -17,18 +17,16 @@ export function WelcomeStep({ onNext }: { onNext: () => void }) {
         <div className="space-y-2">
           <h1 className="text-2xl font-bold">Welcome to Prism</h1>
           <p className="text-muted-foreground">
-            Let&apos;s get your family dashboard set up. This wizard will guide you through adding
-            family members and connecting your services. You can skip any step and configure it
-            later from Settings.
+            Let&apos;s set up your family and a few basics — about a minute, no accounts or API
+            keys required. Calendars, tasks, photos, and other integrations can be connected
+            anytime from their own pages once you&apos;re in.
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-3 text-sm text-left">
           {[
             { icon: '👨‍👩‍👧', label: 'Family members' },
-            { icon: '🌤️', label: 'Weather' },
-            { icon: '📅', label: 'Calendar sync' },
-            { icon: '✅', label: 'Microsoft To Do' },
+            { icon: '🏠', label: 'Household basics' },
           ].map(({ icon, label }) => (
             <div key={label} className="flex items-center gap-2 text-muted-foreground">
               <span className="text-lg">{icon}</span>

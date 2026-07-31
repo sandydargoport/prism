@@ -6,7 +6,7 @@
  * "Appearance" (Location) and "Calendars" (Time zone, Week starts on).
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Search, MapPin, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { useWeekStartsOn } from '@/lib/hooks/useWeekStartsOn';
 import { useTimezone, detectBrowserTimezone } from '@/lib/hooks/useTimezone';
+import { useLocationSearch } from '@/lib/hooks/useLocationSearch';
 import { listTimezones } from '@/lib/utils/timezone';
 
 export function GeneralSection() {
@@ -26,42 +27,10 @@ export function GeneralSection() {
   );
 }
 
-interface LocationValue {
-  lat?: number;
-  lon?: number;
-  displayName?: string;
-  // legacy fields kept for reading existing installs
-  zipCode?: string;
-  city?: string;
-  state?: string;
-}
-
-function legacyDisplayName(loc: LocationValue): string {
-  if (loc.zipCode) return loc.zipCode;
-  return [loc.city, loc.state].filter(Boolean).join(', ');
-}
-
 function LocationCard() {
-  const [query, setQuery] = useState('');
-  const [savedName, setSavedName] = useState<string | null>(null);
-  const [candidates, setCandidates] = useState<{ displayName: string; lat: number; lon: number }[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const { query, setQuery, savedName, candidates, searching, saving, select, clear } = useLocationSearch();
   const [open, setOpen] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
-
-  // Load current saved location on mount
-  useEffect(() => {
-    fetch('/api/settings')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        const loc = data?.settings?.location as LocationValue | undefined;
-        if (loc?.displayName) setSavedName(loc.displayName);
-        else if (loc) setSavedName(legacyDisplayName(loc) || null);
-      })
-      .catch(() => {});
-  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -74,52 +43,10 @@ function LocationCard() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Debounced search
+  // Open/close the dropdown as candidates arrive/clear from the shared hook.
   useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (query.length < 2) { setCandidates([]); setOpen(false); return; }
-
-    debounceRef.current = setTimeout(async () => {
-      setSearching(true);
-      try {
-        const res = await fetch(`/api/location-search?q=${encodeURIComponent(query)}`);
-        const data = await res.json();
-        setCandidates(data.results ?? []);
-        setOpen((data.results ?? []).length > 0);
-      } catch { /* ignore */ }
-      setSearching(false);
-    }, 350);
-
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [query]);
-
-  const select = useCallback(async (candidate: { displayName: string; lat: number; lon: number }) => {
-    setOpen(false);
-    setQuery('');
-    setSavedName(candidate.displayName);
-    setSaving(true);
-    try {
-      await fetch('/api/settings', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: 'location', value: { lat: candidate.lat, lon: candidate.lon, displayName: candidate.displayName } }),
-      });
-    } catch { /* ignore */ }
-    setSaving(false);
-  }, []);
-
-  const clear = useCallback(async () => {
-    setSavedName(null);
-    setSaving(true);
-    try {
-      await fetch('/api/settings', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: 'location', value: null }),
-      });
-    } catch { /* ignore */ }
-    setSaving(false);
-  }, []);
+    setOpen(candidates.length > 0);
+  }, [candidates]);
 
   return (
     <Card>
@@ -161,7 +88,7 @@ function LocationCard() {
               {candidates.map((c, i) => (
                 <button
                   key={i}
-                  onMouseDown={e => { e.preventDefault(); select(c); }}
+                  onMouseDown={e => { e.preventDefault(); setOpen(false); select(c); }}
                   className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-left hover:bg-accent transition-colors"
                 >
                   <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />

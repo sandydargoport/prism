@@ -5,29 +5,21 @@ import { PrismIcon } from '@/components/ui/PrismIcon';
 import { cn } from '@/lib/utils';
 import { WelcomeStep } from './steps/WelcomeStep';
 import { FamilyStep } from './steps/FamilyStep';
-import { WeatherStep } from './steps/WeatherStep';
-import { CalendarStep } from './steps/CalendarStep';
-import { MicrosoftStep } from './steps/MicrosoftStep';
+import { HouseholdStep } from './steps/HouseholdStep';
 import { CompleteStep } from './steps/CompleteStep';
 
-export type StepId = 'welcome' | 'family' | 'weather' | 'calendar' | 'microsoft' | 'complete';
+export type StepId = 'welcome' | 'family' | 'household' | 'complete';
 
 const STEPS: { id: StepId; label: string }[] = [
   { id: 'welcome', label: 'Welcome' },
   { id: 'family', label: 'Family' },
-  { id: 'weather', label: 'Weather' },
-  { id: 'calendar', label: 'Calendar' },
-  { id: 'microsoft', label: 'Microsoft' },
+  { id: 'household', label: 'Household' },
   { id: 'complete', label: 'Done' },
 ];
 
 const CONTENT_STEPS = STEPS.filter((s) => s.id !== 'welcome' && s.id !== 'complete');
 
-export interface SetupWizardProps {
-  appUrl: string;
-}
-
-export function SetupWizard({ appUrl }: SetupWizardProps) {
+export function SetupWizard() {
   const [currentStep, setCurrentStep] = useState<StepId>('welcome');
 
   const stepIndex = STEPS.findIndex((s) => s.id === currentStep);
@@ -84,9 +76,7 @@ export function SetupWizard({ appUrl }: SetupWizardProps) {
       <div className="w-full max-w-lg">
         {currentStep === 'welcome' && <WelcomeStep onNext={goNext} />}
         {currentStep === 'family' && <FamilyStep onNext={goNext} onBack={goBack} />}
-        {currentStep === 'weather' && <WeatherStep onNext={goNext} onBack={goBack} />}
-        {currentStep === 'calendar' && <CalendarStep onNext={goNext} onBack={goBack} appUrl={appUrl} />}
-        {currentStep === 'microsoft' && <MicrosoftStep onNext={goNext} onBack={goBack} appUrl={appUrl} />}
+        {currentStep === 'household' && <HouseholdStep onNext={goNext} onBack={goBack} />}
         {currentStep === 'complete' && <CompleteStep />}
       </div>
 
