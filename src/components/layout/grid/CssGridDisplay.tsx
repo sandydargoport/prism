@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { WidgetBgOverrideProvider } from '@/components/widgets/WidgetContainer';
 import { getWidgetStyle, getWidgetContentStyle, getTextColorClass } from './gridWidgetStyles';
 import { useSquareCells } from './useSquareCells';
+import { useViewportSize } from '@/lib/hooks/useViewportSize';
 import { GRID_COLS } from '@/lib/constants/grid';
 import type { CssGridDisplayProps } from './gridEditorTypes';
 
@@ -21,43 +22,133 @@ export function CssGridDisplay({
   headerOffset = 140,
   bottomOffset = 0,
   minVisibleRows = 0,
+  targetRows,
+  designOrientation,
   className,
 }: CssGridDisplayProps) {
-  const { containerRef, cellSize } = useSquareCells(cols, containerPadding, margin, fillHeight);
+  const { containerRef, cellSize: widthCellSize, width, top } = useSquareCells(cols, containerPadding, margin, fillHeight);
+  const { width: viewportWidth, height: viewportHeight } = useViewportSize();
 
   const visibleWidgets = useMemo(
     () => layout.filter(w => w.visible !== false),
     [layout],
   );
 
-  // Compute how many rows fit in the viewport (for fixed-height container)
-  const visibleRows = useMemo(() => {
-    if (fillHeight) return 12;
-    if (typeof window === 'undefined') return 24;
-    const availableHeight = window.innerHeight - headerOffset - bottomOffset;
-    return Math.max(minVisibleRows, Math.floor((availableHeight + margin) / (cellSize + margin)));
-  }, [fillHeight, cellSize, margin, headerOffset, bottomOffset, minVisibleRows]);
+  // --- Fit-to-screen (targetRows set) --------------------------------------
+  // The design is a fixed `cols × targetRows` canvas. How it maps onto the real
+  // screen depends on whether the screen's orientation matches the design's:
+  //   • SAME orientation (e.g. a landscape design on a landscape screen — the
+  //     normal case): STRETCH both axes to fill. The layout always appears to
+  //     fill the screen and nothing is clipped; widgets squish/elongate by only
+  //     the small amount needed to absorb the aspect-ratio difference. This is
+  //     what makes F11/fullscreen, a laptop browser, and a kiosk all look right.
+  //   • OPPOSITE orientation (a portrait design on a landscape screen, or vice
+  //     versa): a stretch would be a ~2× skew, so instead CONTAIN the canvas
+  //     scaled-to-fit and letterbox it, preserving proportions.
+  const fit = !!targetRows && !fillHeight;
+  const designWide = designOrientation
+    ? designOrientation === 'landscape'
+    : cols >= (targetRows ?? cols);
+  const screenWide = viewportWidth >= viewportHeight;
+  const sameOrientation = designWide === screenWide;
+  const stretch = fit && sameOrientation;
+  const contain = fit && !sameOrientation;
 
-  const containerHeight = fillHeight
-    ? '100%'
-    : visibleRows * (cellSize + margin) + 2 * containerPadding;
+  // The canvas we fit to the screen is the ACTUAL content bounding box (origin →
+  // furthest used row/col), NOT the full guide. This is what makes the bottom
+  // row and right column land on the screen edges: any trailing empty guide rows
+  // the design didn't use are simply not part of the canvas, so they can't
+  // become an awkward gap. Top/left margins the design left ARE preserved
+  // (anchored at origin) and scale proportionally.
+  const { fitCols, fitRows } = useMemo(() => {
+    let maxCol = 1, maxRow = 1;
+    for (const w of visibleWidgets) {
+      if (w.x + w.w > maxCol) maxCol = w.x + w.w;
+      if (w.y + w.h > maxRow) maxRow = w.y + w.h;
+    }
+    return { fitCols: maxCol, fitRows: maxRow };
+  }, [visibleWidgets]);
+
+  // Available box below the real chrome. Uses the measured grid top when we have
+  // it (real header height) and the reactive viewport height so F11/fullscreen,
+  // window resize and orientation change all re-fill automatically.
+  const chromeTop = top > 0 ? top : headerOffset;
+  const availH = Math.max(120, viewportHeight - chromeTop - bottomOffset);
+
+  // Contain (letterbox) mode: largest square cell that fits the WHOLE content
+  // canvas within the available box on both axes.
+  const containCell = useMemo(() => {
+    if (!contain || width <= 0) return widthCellSize;
+    const innerW = width - 2 * containerPadding - (fitCols - 1) * margin;
+    const innerH = availH - 2 * containerPadding - (fitRows - 1) * margin;
+    return Math.max(8, Math.floor(Math.min(innerW / fitCols, innerH / fitRows)));
+  }, [contain, width, availH, widthCellSize, fitCols, fitRows, containerPadding, margin]);
+
+  // Legacy (no targetRows): fill width, adapt row count to the viewport.
+  const legacyRows = useMemo(() => {
+    if (fillHeight) return 12;
+    if (viewportHeight <= 0) return 24;
+    const available = viewportHeight - headerOffset - bottomOffset;
+    return Math.max(minVisibleRows, Math.floor((available + margin) / (widthCellSize + margin)));
+  }, [fillHeight, viewportHeight, headerOffset, bottomOffset, minVisibleRows, widthCellSize, margin]);
+
+  // Resolve the container box + grid template for the active mode.
+  let containerHeight: number | string;
+  let centerContain = false;
+  let gridStyle: React.CSSProperties;
+
+  if (stretch) {
+    // Fill the available box; columns AND rows flex (1fr) so the content canvas
+    // stretches to fit — never clipped, always full-bleed to bottom + right.
+    containerHeight = availH;
+    gridStyle = {
+      display: 'grid',
+      gridTemplateColumns: `repeat(${fitCols}, 1fr)`,
+      gridTemplateRows: `repeat(${fitRows}, 1fr)`,
+      gap: `${margin}px`,
+      padding: `${containerPadding}px`,
+      width: '100%',
+      height: '100%',
+    };
+  } else if (contain) {
+    // Fixed-size, proportion-preserving canvas centered in the available box
+    // (letterbox/pillarbox) — used only on an orientation mismatch.
+    containerHeight = availH;
+    centerContain = true;
+    gridStyle = {
+      display: 'grid',
+      gridTemplateColumns: `repeat(${fitCols}, ${containCell}px)`,
+      gridAutoRows: `${containCell}px`,
+      gap: `${margin}px`,
+      padding: `${containerPadding}px`,
+      width: fitCols * containCell + (fitCols - 1) * margin + 2 * containerPadding,
+      height: fitRows * containCell + (fitRows - 1) * margin + 2 * containerPadding,
+    };
+  } else {
+    // Legacy: fill width, square cells, adaptive rows.
+    containerHeight = fillHeight
+      ? '100%'
+      : legacyRows * widthCellSize + (legacyRows - 1) * margin + 2 * containerPadding;
+    gridStyle = {
+      display: 'grid',
+      gridTemplateColumns: `repeat(${cols}, 1fr)`,
+      gridAutoRows: `${widthCellSize}px`,
+      gap: `${margin}px`,
+      padding: `${containerPadding}px`,
+      height: '100%',
+    };
+  }
 
   return (
     <div
       ref={containerRef}
       className={`relative overflow-hidden ${className || ''}`}
-      style={{ height: containerHeight }}
+      style={{
+        height: containerHeight,
+        ...(centerContain ? { display: 'flex', alignItems: 'center', justifyContent: 'center' } : {}),
+      }}
     >
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: `repeat(${cols}, 1fr)`,
-          gridAutoRows: `${cellSize}px`,
-          gap: `${margin}px`,
-          padding: `${containerPadding}px`,
-          height: '100%',
-        }}
-      >
+      <div style={gridStyle}>
         {visibleWidgets.map(w => {
           const widgetStyle = getWidgetStyle(w);
           const contentStyle = getWidgetContentStyle(w);

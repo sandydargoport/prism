@@ -37,6 +37,21 @@ export interface CssGridDisplayProps {
   /** Offset from bottom for portrait nav */
   bottomOffset?: number;
   minVisibleRows?: number;
+  /**
+   * Canonical row count of the design's target screen (e.g. 27 for 1080p). When
+   * set, the grid renders exactly `cols × targetRows` scaled to FIT the viewport
+   * (both axes), centered/letterboxed — so the same layout looks identical on
+   * any screen (kiosk, laptop browser, tablet), just at a different scale,
+   * instead of gaining/losing rows and clipping. When unset, falls back to the
+   * legacy fill-width + adaptive-rows behavior.
+   */
+  targetRows?: number;
+  /**
+   * Orientation the layout was designed for (from the saved layout). Used to
+   * decide stretch-to-fill (screen orientation matches) vs letterbox (mismatch).
+   * Falls back to inferring from the canvas shape when omitted.
+   */
+  designOrientation?: 'landscape' | 'portrait';
   className?: string;
 }
 

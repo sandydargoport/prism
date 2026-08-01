@@ -125,6 +125,17 @@ export function LayoutGridEditor({
     return Math.floor((width - 2 * containerPadding + margin) / (cellSize + margin));
   }, [width, cellSize, margin]);
 
+  // Canonical target row count of the design (tallest configured screen for this
+  // orientation, e.g. 27 for 1080p landscape). In display mode the grid renders
+  // this exact canvas scaled-to-fit the real viewport, so a laptop browser and a
+  // fullscreen kiosk show the same layout (just different scale) instead of
+  // gaining/losing rows and clipping.
+  const displayTargetRows = useMemo(() => {
+    const zones = SAFE_ZONES[screenGuideOrientation];
+    if (!zones?.length) return undefined;
+    return Math.max(...zones.map(z => z.rows));
+  }, [SAFE_ZONES, screenGuideOrientation]);
+
   const { totalRows, totalCols } = useMemo(() => {
     let maxY = visibleRows;
     let maxX = cols;
@@ -692,6 +703,8 @@ export function LayoutGridEditor({
       headerOffset={headerOffset}
       bottomOffset={bottomOffset}
       minVisibleRows={minVisibleRows}
+      targetRows={displayTargetRows}
+      designOrientation={screenGuideOrientation}
       className={className}
     />
   );
