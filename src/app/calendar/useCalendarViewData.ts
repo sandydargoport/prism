@@ -119,6 +119,9 @@ export function useCalendarViewData() {
       allDay: event.allDay,
       color: event.color,
       location: event.location,
+      recurring: event.recurring,
+      recurrenceRule: event.recurrenceRule,
+      reminderMinutes: event.reminderMinutes,
       calendarName: event.calendarName,
       calendarId: event.calendarId,
     }));

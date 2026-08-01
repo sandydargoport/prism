@@ -98,7 +98,11 @@ const SelectContent = React.forwardRef<
     <SelectPrimitive.Content
       ref={ref}
       className={cn(
-        'relative z-50 max-h-96 min-w-[8rem] overflow-hidden',
+        // Cap by the space Radix reports as available below/above the trigger
+        // (its popper collision var) so the list never overflows a constrained
+        // container like a modal — it shrinks and scrolls instead of "running
+        // out of space". Falls back to 24rem when the var isn't set.
+        'relative z-50 max-h-[min(24rem,var(--radix-select-content-available-height,24rem))] min-w-[8rem] overflow-hidden',
         'rounded-md border bg-popover text-popover-foreground shadow-md',
         'data-[state=open]:animate-in data-[state=closed]:animate-out',
         'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
@@ -118,8 +122,11 @@ const SelectContent = React.forwardRef<
       <SelectPrimitive.Viewport
         className={cn(
           'p-1',
+          // Do NOT pin the viewport to the trigger height — that clipped the
+          // list to a single row. Let it size to its items (up to the content
+          // cap above), matching the trigger width.
           position === 'popper' &&
-            'h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]'
+            'w-full min-w-[var(--radix-select-trigger-width)]'
         )}
       >
         {children}

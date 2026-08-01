@@ -91,6 +91,9 @@ export function useCalendarEvents(
           endTime: string;
           allDay: boolean;
           color?: string;
+          recurring?: boolean;
+          recurrenceRule?: string | null;
+          reminderMinutes?: number | null;
           calendarSource?: {
             id: string;
             name: string;
@@ -105,6 +108,9 @@ export function useCalendarEvents(
           endTime: new Date(event.endTime),
           allDay: event.allDay,
           color: event.color || event.calendarSource?.color || '#3B82F6',
+          recurring: event.recurring,
+          recurrenceRule: event.recurrenceRule,
+          reminderMinutes: event.reminderMinutes,
           calendarName: event.calendarSource?.name || 'Local Calendar',
           calendarId: event.calendarSource?.id || 'local',
         })

@@ -14,6 +14,76 @@ import { db } from '@/lib/db/client';
 import { calendarSources, users, calendarGroups } from '@/lib/db/schema';
 import { eq, asc } from 'drizzle-orm';
 import { logError } from '@/lib/utils/logError';
+import { invalidateEntity } from '@/lib/cache/cacheKeys';
+
+/**
+ * Ensure every family member has a personal local calendar, plus one shared
+ * "Family" local calendar — so events created in-app can be assigned to a
+ * person (or the household) with zero third-party integrations. Idempotent and
+ * cheap: seeded lazily on calendar load, which also backfills existing installs.
+ *
+ * These are plain local sources carrying `userId` / `isFamily`; the existing
+ * group seeder (GET /api/calendar-groups → seedDefaultGroups) then files each
+ * under the member's own calendar group, so they inherit that person's
+ * visibility toggle and color rather than showing as separate switches. Even
+ * before grouping runs, ownership/color already resolve from the source's user.
+ */
+async function ensureDefaultCalendars() {
+  const allUsers = await db
+    .select({ id: users.id, name: users.name, color: users.color })
+    .from(users);
+  // Pre-setup (no members yet) — nothing to seed.
+  if (allUsers.length === 0) return;
+
+  const existing = await db
+    .select({
+      userId: calendarSources.userId,
+      isFamily: calendarSources.isFamily,
+      provider: calendarSources.provider,
+    })
+    .from(calendarSources);
+
+  const membersWithLocal = new Set(
+    existing.filter((s) => s.provider === 'local' && s.userId).map((s) => s.userId!)
+  );
+  const hasFamilyLocal = existing.some((s) => s.provider === 'local' && s.isFamily);
+
+  const toInsert: (typeof calendarSources.$inferInsert)[] = [];
+  for (const u of allUsers) {
+    if (!membersWithLocal.has(u.id)) {
+      toInsert.push({
+        provider: 'local',
+        sourceCalendarId: `local_user_${u.id}`,
+        dashboardCalendarName: u.name,
+        displayName: u.name,
+        color: u.color || null,
+        userId: u.id,
+        enabled: true,
+        showInEventModal: true,
+      });
+    }
+  }
+  if (!hasFamilyLocal) {
+    toInsert.push({
+      provider: 'local',
+      sourceCalendarId: 'local_family',
+      dashboardCalendarName: 'Family',
+      displayName: 'Family',
+      color: '#F59E0B',
+      isFamily: true,
+      enabled: true,
+      showInEventModal: true,
+    });
+  }
+
+  if (toInsert.length > 0) {
+    await db.insert(calendarSources).values(toInsert);
+    // The sources list (this endpoint) is uncached, so new rows show up on the
+    // next fetch immediately. Invalidate the cached groups so the group seeder
+    // re-files these sources under their member/family groups.
+    await invalidateEntity('calendar-groups');
+  }
+}
 
 /**
  * GET /api/calendars
@@ -26,6 +96,8 @@ export async function GET() {
   }
 
   try {
+    await ensureDefaultCalendars();
+
     // Sort by createdAt to maintain stable order regardless of user assignment changes
     const sources = await db
       .select({

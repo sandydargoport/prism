@@ -228,9 +228,21 @@ export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
         setCalGroups((prev) => [...prev, group]);
         setNewGroupName('');
         setNewGroupColor('#3B82F6');
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast({ title: data.error || 'Failed to add group', variant: 'destructive' });
       }
-    } catch { /* ignore */ }
+    } catch {
+      toast({ title: 'Failed to add group', variant: 'destructive' });
+    }
   };
+
+  // The per-member and Family local calendars are auto-managed: created and
+  // wired 1:1 to their profile behind the scenes. They must NOT appear in this
+  // "connect external calendars" list — surfacing them here also exposed a
+  // group-remap control that could break the 1:1 (e.g. point Alex's calendar at
+  // Bella's group). Assignment is automatic and immutable; hide them entirely.
+  const manageableCalendars = localCalendars.filter((c) => c.provider !== 'local');
 
   return (
     <div className="space-y-6">
@@ -268,7 +280,7 @@ export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
             <div className="text-center py-4 text-muted-foreground">
               Loading calendars...
             </div>
-          ) : localCalendars.length === 0 ? (
+          ) : manageableCalendars.length === 0 ? (
             <div className="text-center py-6 space-y-2">
               <p className="text-muted-foreground">No calendars connected yet</p>
               <p className="text-sm text-muted-foreground">
@@ -279,7 +291,7 @@ export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
           ) : (
             <div className="space-y-3">
               {/* Single re-auth banner if any Google calendar needs it */}
-              {localCalendars.some((c) => c.provider === 'google' && c.syncErrors?.needsReauth) && (
+              {manageableCalendars.some((c) => c.provider === 'google' && c.syncErrors?.needsReauth) && (
                 <div className="flex items-center gap-3 p-3 rounded-md border border-orange-500/50 bg-orange-50 dark:bg-orange-950/30">
                   <AlertTriangle className="h-5 w-5 text-orange-500 shrink-0" />
                   <div className="flex-1">
@@ -293,7 +305,7 @@ export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
                     size="sm"
                     className="border-orange-500/50 text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-950"
                     onClick={() => {
-                      const firstGoogle = localCalendars.find((c) => c.provider === 'google');
+                      const firstGoogle = manageableCalendars.find((c) => c.provider === 'google');
                       if (firstGoogle) window.location.href = `/api/auth/google?reauth=${firstGoogle.id}&returnSection=calendars`;
                     }}
                   >
@@ -301,7 +313,7 @@ export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
                   </Button>
                 </div>
               )}
-              {localCalendars
+              {manageableCalendars
                 // Hide CalDAV sources that don't support VEVENT — they're
                 // task-only (Apple Reminders lists, etc.) and surface in
                 // Task Lists settings instead. They'd just be noise in the
@@ -565,7 +577,7 @@ export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
         <CardHeader>
           <CardTitle>Calendar Groups</CardTitle>
           <CardDescription>
-            Manage calendar groups used for filtering and display colors. User groups are auto-created.
+            Manage calendar groups used for filtering and display colors. Member and Family groups are created and managed automatically — they take their color from the profile and cannot be renamed or deleted. Custom groups are yours to add and remove.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -591,8 +603,8 @@ export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
                   <span className="font-medium text-sm">{group.name}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant={group.type === 'user' ? 'default' : 'secondary'}>
-                    {group.type === 'user' ? 'User' : 'Custom'}
+                  <Badge variant={group.type === 'custom' ? 'secondary' : 'default'}>
+                    {group.type === 'custom' ? 'Custom' : 'System'}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
                     {group.sourceCount ?? 0} source{(group.sourceCount ?? 0) !== 1 ? 's' : ''}

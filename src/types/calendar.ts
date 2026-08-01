@@ -15,6 +15,11 @@ export interface CalendarEvent {
   endTime: Date;
   allDay: boolean;
   color: string;
+  /** Recurrence + reminder, carried so the edit modal round-trips them
+   *  instead of resetting the event to a single, reminder-less occurrence. */
+  recurring?: boolean;
+  recurrenceRule?: string | null;
+  reminderMinutes?: number | null;
   calendarName: string;
   calendarId: string;
   /** The calendar group this event belongs to (for split-column views) */

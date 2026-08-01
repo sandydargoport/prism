@@ -94,14 +94,37 @@ export async function POST(request: NextRequest) {
     if (!body.name || typeof body.name !== 'string') {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
     }
+    const trimmedName = body.name.trim();
+    if (!trimmedName) {
+      return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+    }
     if (body.color && !/^#[0-9A-Fa-f]{6}$/.test(body.color)) {
       return NextResponse.json({ error: 'Invalid color format' }, { status: 400 });
+    }
+
+    // Names must be unique (case-insensitive) across every group AND every
+    // family member — a member's name is reserved for their auto-managed
+    // personal group, so a second "Alex" group (or one shadowing the "Family"
+    // aggregate) would be ambiguous in the filter and event picker.
+    const lower = trimmedName.toLowerCase();
+    const [existingGroups, existingUsers] = await Promise.all([
+      db.select({ name: calendarGroups.name }).from(calendarGroups),
+      db.select({ name: users.name }).from(users),
+    ]);
+    const clash =
+      existingGroups.some((g) => g.name.trim().toLowerCase() === lower) ||
+      existingUsers.some((u) => u.name.trim().toLowerCase() === lower);
+    if (clash) {
+      return NextResponse.json(
+        { error: `A calendar group named "${trimmedName}" already exists.` },
+        { status: 409 }
+      );
     }
 
     const [group] = await db
       .insert(calendarGroups)
       .values({
-        name: body.name.trim(),
+        name: trimmedName,
         color: body.color || '#3B82F6',
         type: 'custom',
         sortOrder: body.sortOrder ?? 100,
@@ -138,12 +161,16 @@ async function seedDefaultGroups() {
       sortOrder: 10,
     }));
 
-  const hasFamily = existingGroups.some((g) => g.type === 'custom' && g.name === 'Family');
+  // The shared "Family" aggregate is a SYSTEM group (type 'family'), not a
+  // user-created 'custom' one — so it's non-deletable and non-renamable like the
+  // per-member 'user' groups. Match on type OR name so a pre-migration install
+  // (Family still typed 'custom') isn't given a duplicate.
+  const hasFamily = existingGroups.some((g) => g.type === 'family' || g.name === 'Family');
   if (!hasFamily) {
     newGroups.push({
       name: 'Family',
       color: '#F59E0B',
-      type: 'custom',
+      type: 'family',
       sortOrder: 0,
     });
   }
@@ -163,7 +190,7 @@ async function seedDefaultGroups() {
     const userGroupMap = new Map(
       refreshedGroups.filter((g) => g.type === 'user' && g.userId).map((g) => [g.userId!, g.id])
     );
-    const familyGroupId = refreshedGroups.find((g) => g.type === 'custom' && g.name === 'Family')?.id;
+    const familyGroupId = refreshedGroups.find((g) => g.type === 'family' || g.name === 'Family')?.id;
 
     for (const source of ungroupedSources) {
       const targetGroupId = source.isFamily ? familyGroupId : (source.userId ? userGroupMap.get(source.userId) : undefined);

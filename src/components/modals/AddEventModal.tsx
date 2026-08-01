@@ -19,6 +19,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Loader2, MapPin, AlignLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useCalendarSources } from '@/lib/hooks';
+import { useAuth } from '@/components/providers';
 import { toast } from '@/components/ui/use-toast';
 import { TimeDropdown } from './TimeDropdown';
 import {
@@ -150,6 +151,7 @@ export function AddEventModal({
 
   // Fetch available calendars
   const { calendars } = useCalendarSources();
+  const { activeUser } = useAuth();
 
   // Filter to only writable, non-read-only calendars with showInEventModal enabled
   const writableCalendars = useMemo(() => {
@@ -160,10 +162,19 @@ export function AddEventModal({
     );
   }, [calendars]);
 
-  // Default to first writable calendar (or 'local' if none)
+  // Default target for a new event: the logged-in member's own calendar, so an
+  // event they add is assigned to them without a manual pick. Fall back to the
+  // shared Family calendar, then any writable calendar, then the anonymous
+  // "Local only" bucket if nothing else exists.
   const defaultCalendarId = useMemo(() => {
-    return writableCalendars.length > 0 ? writableCalendars[0]!.id : 'local';
-  }, [writableCalendars]);
+    if (activeUser?.id) {
+      const mine = writableCalendars.find((c) => c.user?.id === activeUser.id);
+      if (mine) return mine.id;
+    }
+    const family = writableCalendars.find((c) => c.isFamily);
+    if (family) return family.id;
+    return writableCalendars.length > 0 ? writableCalendars[0]!.id : '';
+  }, [writableCalendars, activeUser]);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -185,7 +196,6 @@ export function AddEventModal({
 
   // Resolve color from selected calendar's group
   const selectedCalendar = useMemo(() => {
-    if (calendarSourceId === 'local') return null;
     return writableCalendars.find((c) => c.id === calendarSourceId) ?? null;
   }, [calendarSourceId, writableCalendars]);
 
@@ -308,7 +318,7 @@ export function AddEventModal({
         recurring,
         recurrenceRule: recurring ? recurrenceRule : undefined,
         reminderMinutes: reminderMinutes !== '' ? Number(reminderMinutes) : undefined,
-        calendarSourceId: calendarSourceId !== 'local' ? calendarSourceId : undefined,
+        calendarSourceId: calendarSourceId || undefined,
         color: eventColor || undefined,
       };
 
@@ -470,7 +480,7 @@ export function AddEventModal({
                       style={{ backgroundColor: cal.groupColor || cal.color || '#3B82F6' }}
                     />
                     <span className="truncate">{cal.displayName || cal.dashboardCalendarName}</span>
-                    {cal.groupName && (
+                    {cal.groupName && cal.groupName !== (cal.displayName || cal.dashboardCalendarName) && (
                       <span
                         className="text-xs font-medium shrink-0 px-1.5 py-0.5 rounded-full"
                         style={{
@@ -487,14 +497,17 @@ export function AddEventModal({
                   </div>
                 </SelectItem>
               ))}
-              <SelectItem value="local">
-                <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-muted-foreground/40 shrink-0" />
-                  <span className="text-muted-foreground">Local only (no sync)</span>
-                </div>
-              </SelectItem>
             </SelectContent>
           </Select>
+
+          {/* Sync-behavior hint. Local is the default and needs no label; the
+              only thing worth clarifying is that connected accounts push
+              outward — and only once such an account actually exists. */}
+          {writableCalendars.some((c) => c.provider === 'google') && (
+            <p className="text-xs text-muted-foreground">
+              Local calendars stay on this dashboard. Connected calendars (like Google) sync both ways.
+            </p>
+          )}
 
           {/* More options toggle */}
           <button

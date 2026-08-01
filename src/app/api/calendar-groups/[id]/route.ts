@@ -48,7 +48,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
 /**
  * DELETE /api/calendar-groups/[id]
- * Delete a custom calendar group. User-type groups cannot be deleted.
+ * Delete a user-created custom calendar group. System groups — the per-member
+ * 'user' groups and the shared 'family' aggregate — are auto-managed and cannot
+ * be deleted (they would just be re-seeded on the next calendar load).
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const auth = await requireAuth();
@@ -61,8 +63,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     if (!group) {
       return NextResponse.json({ error: 'Group not found' }, { status: 404 });
     }
-    if (group.type === 'user') {
-      return NextResponse.json({ error: 'Cannot delete user-linked groups' }, { status: 400 });
+    if (group.type === 'user' || group.type === 'family') {
+      return NextResponse.json(
+        { error: 'System calendar groups (member and Family) are managed automatically and cannot be deleted' },
+        { status: 400 }
+      );
     }
 
     // Unlink sources from this group

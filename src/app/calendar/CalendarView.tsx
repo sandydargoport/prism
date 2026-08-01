@@ -638,9 +638,9 @@ export function CalendarView() {
             endTime: editingEvent.endTime,
             allDay: editingEvent.allDay,
             color: editingEvent.color,
-            recurring: false,
-            recurrenceRule: undefined,
-            reminderMinutes: undefined,
+            recurring: editingEvent.recurring ?? false,
+            recurrenceRule: editingEvent.recurrenceRule ?? undefined,
+            reminderMinutes: editingEvent.reminderMinutes ?? undefined,
             calendarSourceId: editingEvent.calendarId !== 'local' ? editingEvent.calendarId : undefined,
           } : undefined}
           onEventCreated={() => { refreshEvents(); setShowAddEvent(false); setEditingEvent(null); }}
