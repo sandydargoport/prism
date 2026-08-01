@@ -154,11 +154,14 @@ BEGIN
     -- ========================================================================
     -- MEALS
     -- ========================================================================
-    INSERT INTO meals (name, day_of_week, meal_type, week_of, created_by) VALUES
-        ('Spaghetti and Meatballs', 'monday', 'dinner', week_start, jordan_id),
-        ('Grilled Chicken Salad', 'tuesday', 'dinner', week_start, jordan_id),
-        ('Taco Tuesday', 'tuesday', 'lunch', week_start, jordan_id),
-        ('Pizza Night', 'friday', 'dinner', week_start, alex_id);
+    -- `date` is the meal's absolute day = week_start + the offset of its weekday
+    -- within [week_start, week_start+6] (EXTRACT(DOW) is 0=Sunday). Mirrors
+    -- migration 0020 / src/lib/utils/mealDate.ts.
+    INSERT INTO meals (name, day_of_week, meal_type, week_of, date, created_by) VALUES
+        ('Spaghetti and Meatballs', 'monday',  'dinner', week_start, (week_start + ((1 - EXTRACT(DOW FROM week_start)::int + 7) % 7)), jordan_id),
+        ('Grilled Chicken Salad',   'tuesday', 'dinner', week_start, (week_start + ((2 - EXTRACT(DOW FROM week_start)::int + 7) % 7)), jordan_id),
+        ('Taco Tuesday',            'tuesday', 'lunch',  week_start, (week_start + ((2 - EXTRACT(DOW FROM week_start)::int + 7) % 7)), jordan_id),
+        ('Pizza Night',             'friday',  'dinner', week_start, (week_start + ((5 - EXTRACT(DOW FROM week_start)::int + 7) % 7)), alex_id);
 
     RAISE NOTICE '  Created 4 meal plans';
 
