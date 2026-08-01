@@ -4,6 +4,20 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.12.0] – 2026-08-01
+
+### Setup & first-run
+- **A slimmer, keyless setup.** First run is now just **Welcome → Family → Household → Done** — no API keys or accounts required to finish. Location uses a ZIP lookup with automatic time zone; calendars and other integrations connect later from their own pages. You can no longer accidentally finish setup with **no family members** (which used to lock you out of login with no way back), and a brand-new dashboard shows your calendar without anyone needing to sign in.
+
+### Calendar
+- **Assign events to a person with zero integrations.** Every family member automatically gets their own personal calendar (plus a shared **Family** one), so an event you add is assigned to someone and color-coded on the dashboard — no third-party setup. The old anonymous "Local only" bucket is gone; existing installs pick the calendars up automatically. Connected accounts (Google) still layer on top, clearly marked as two-way syncing.
+- **Meals on the calendar are marked with a utensils icon**, so a meal is instantly distinct from an ordinary event.
+- **Calendars refresh on their own after a sync** — no manual page reload after adding a subscription or hitting "Sync Now".
+- **Clearer calendar connect** — the dialog shows exactly where to find a Google Calendar's private iCal link, and rejects a Google *web* link (which used to sync nothing) with a helpful message.
+
+### Meals
+- **Correct weekday labels, and meal plans no longer vanish** when you change "Week starts on." Meals now anchor to their real calendar date, so toggling the setting simply re-windows the week. Ships one automatic, additive database migration; existing meals keep their dates.
+
 ## [1.11.0] – 2026-07-31
 
 ### Calendar
