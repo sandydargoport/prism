@@ -55,12 +55,19 @@ export const MealsWidget = React.memo(function MealsWidget({
 
   const allMeals = externalMeals || [];
   const weekOfString = format(currentWeek, 'yyyy-MM-dd');
+  const weekEndString = format(addDays(currentWeek, 6), 'yyyy-MM-dd');
   const isCurrentWeek = weekOfString === format(defaultWeekStart, 'yyyy-MM-dd');
 
   const { weekMeals, mealsByDay } = useMemo(() => {
-    const weekMeals = allMeals.filter((meal) => meal.weekOf === weekOfString);
+    // Filter by the meal's absolute date within the visible 7-day window. This
+    // is stable across "week starts on" changes (unlike matching weekOf, whose
+    // boundary moves with the preference and would hide the whole plan). Falls
+    // back to weekOf for any legacy row that predates the date backfill.
+    const weekMeals = allMeals.filter((meal) =>
+      meal.date ? meal.date >= weekOfString && meal.date <= weekEndString : meal.weekOf === weekOfString
+    );
     return { weekMeals, mealsByDay: groupMealsByDay(weekMeals) };
-  }, [allMeals, weekOfString]);
+  }, [allMeals, weekOfString, weekEndString]);
 
   const goToPreviousWeek = useCallback(() => {
     const newWeek = addDays(currentWeek, -7);
@@ -132,9 +139,15 @@ export const MealsWidget = React.memo(function MealsWidget({
         ) : (
           <div className="overflow-auto h-full -mr-2 pr-2">
             <div className="space-y-3">
-              {DAYS_OF_WEEK_MON_FIRST.map((day, index) => {
-                const dayMeals = mealsByDay[day] || [];
+              {Array.from({ length: 7 }, (_, index) => {
+                // Derive the day NAME from the actual column date rather than a
+                // fixed Monday-first list — otherwise the labels desync from
+                // the dates whenever weekStartsOn ≠ Monday (e.g. the Sunday
+                // default shifted every label a day ahead). getDay() is 0=Sun,
+                // matching DAYS_OF_WEEK's Sunday-first indexing.
                 const dayDate = addDays(currentWeek, index);
+                const day = DAYS_OF_WEEK[dayDate.getDay()]!; // getDay() is 0–6
+                const dayMeals = mealsByDay[day] || [];
                 const isToday = format(dayDate, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd');
                 return (
                   <DaySection

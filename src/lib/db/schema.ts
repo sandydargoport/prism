@@ -640,6 +640,14 @@ export const meals = pgTable('meals', {
 
   weekOf: date('week_of').notNull(),
 
+  // Absolute calendar date of this meal. `(week_of, day_of_week)` is a
+  // week-RELATIVE key that shifts when the user changes their "week starts on"
+  // preference — which orphaned whole meal plans (they became unfindable under
+  // the new week boundary). `date` is the stable identity the week views now
+  // query by (a 7-day date range), so toggling the preference only re-windows.
+  // week_of is retained and kept in sync for backward compatibility.
+  date: date('date').notNull(),
+
   dayOfWeek: varchar('day_of_week', { length: 20 }).notNull()
     .$type<'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday'>(),
 
@@ -665,6 +673,7 @@ export const meals = pgTable('meals', {
 }, (table) => ({
   weekOfIdx: index('meals_week_of_idx').on(table.weekOf),
   dayOfWeekIdx: index('meals_day_of_week_idx').on(table.dayOfWeek),
+  dateIdx: index('meals_date_idx').on(table.date),
 }));
 
 

@@ -16,9 +16,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, getDisplayAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { meals, users } from '@/lib/db/schema';
-import { eq, and, asc, aliasedTable } from 'drizzle-orm';
+import { eq, and, asc, gte, lte, aliasedTable } from 'drizzle-orm';
 import { createMealSchema, validateRequest } from '@/lib/validations';
 import { formatMealRow } from '@/lib/utils/formatters';
+import { mealDate } from '@/lib/utils/mealDate';
 import { getCached } from '@/lib/cache/redis';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logActivity } from '@/lib/services/auditLog';
@@ -39,8 +40,13 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const weekOf = searchParams.get('weekOf');
+    // Preferred: an absolute date range [from, to] for the visible week. This
+    // is stable across "week starts on" changes, unlike weekOf. weekOf is still
+    // accepted for older callers.
+    const from = searchParams.get('from');
+    const to = searchParams.get('to');
 
-    const cacheKey = `meals:${weekOf || 'all'}`;
+    const cacheKey = `meals:${from && to ? `${from}_${to}` : weekOf || 'all'}`;
 
     const data = await getCached(cacheKey, async () => {
       const query = db
@@ -61,6 +67,7 @@ export async function GET(request: NextRequest) {
           cookedAt: meals.cookedAt,
           cookedById: meals.cookedBy,
           weekOf: meals.weekOf,
+          date: meals.date,
           source: meals.source,
           sourceId: meals.sourceId,
           createdAt: meals.createdAt,
@@ -74,10 +81,12 @@ export async function GET(request: NextRequest) {
         .from(meals)
         .leftJoin(users, eq(meals.createdBy, users.id))
         .leftJoin(cookedByUser, eq(meals.cookedBy, cookedByUser.id))
-        .orderBy(asc(meals.weekOf), asc(meals.dayOfWeek), asc(meals.name));
+        .orderBy(asc(meals.date), asc(meals.name));
 
       const conditions = [];
-      if (weekOf) {
+      if (from && to) {
+        conditions.push(gte(meals.date, from), lte(meals.date, to));
+      } else if (weekOf) {
         conditions.push(eq(meals.weekOf, weekOf));
       }
 
@@ -169,6 +178,10 @@ export async function POST(request: NextRequest) {
         mealType,
         mealTime: mealTime ?? null,
         weekOf,
+        // Stable absolute date derived from (weekOf, dayOfWeek). The week views
+        // query by this so a "week starts on" change re-windows instead of
+        // orphaning the plan. See src/lib/utils/mealDate.ts + migration 0020.
+        date: mealDate(weekOf, dayOfWeek),
         source: source || 'internal',
         sourceId: sourceId || null,
         createdBy: createdBy || null,

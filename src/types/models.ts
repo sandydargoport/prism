@@ -150,6 +150,9 @@ export interface Meal {
   servings?: number | null;
   ingredients?: string | null;
   weekOf: string;
+  /** Absolute calendar date (YYYY-MM-DD). Stable across "week starts on"
+   *  changes; the week views query/filter by this. */
+  date?: string;
   dayOfWeek: DayOfWeek;
   mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
   /** Optional HH:mm time-of-day for time-grid placement; null/undefined → default by mealType. */

@@ -11,6 +11,7 @@
 import { and, eq, isNotNull } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import { meals } from '@/lib/db/schema';
+import { mealDate } from '@/lib/utils/mealDate';
 import type { DayOfWeek } from '@/lib/constants/days';
 import type { LocalItem } from '../types';
 
@@ -85,6 +86,7 @@ export async function writeMealRow(
     recipeId,
     servings: p.servings,
     weekOf: p.weekOf,
+    date: mealDate(p.weekOf, p.dayOfWeek),
     dayOfWeek: p.dayOfWeek,
     mealType: p.mealType,
     mealTime: p.mealTime,

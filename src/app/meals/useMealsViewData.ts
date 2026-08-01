@@ -21,6 +21,7 @@ export function useMealsViewData() {
 
   const [currentWeek, setCurrentWeek] = useState<Date>(defaultWeekStart);
   const weekOfString = format(currentWeek, 'yyyy-MM-dd');
+  const weekEndString = format(addDays(currentWeek, 6), 'yyyy-MM-dd');
   const [meals, setMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -29,7 +30,9 @@ export function useMealsViewData() {
 
   const fetchMeals = useCallback(async () => {
     try {
-      const res = await fetch(`/api/meals?weekOf=${weekOfString}`);
+      // Fetch by absolute date range so the plan is stable across "week starts
+      // on" changes (weekOf's boundary moves with the preference).
+      const res = await fetch(`/api/meals?from=${weekOfString}&to=${weekEndString}`);
       if (res.ok) {
         const data = await res.json();
         setMeals(data.meals || []);
@@ -39,7 +42,7 @@ export function useMealsViewData() {
     } finally {
       setLoading(false);
     }
-  }, [weekOfString]);
+  }, [weekOfString, weekEndString]);
 
   useEffect(() => {
     setLoading(true);

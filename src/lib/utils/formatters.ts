@@ -100,6 +100,7 @@ export function formatMealRow(row: {
   cookedAt: Date | null;
   cookedById: string | null;
   weekOf: string;
+  date?: string;
   source: string;
   sourceId: string | null;
   createdAt: Date;
@@ -132,6 +133,7 @@ export function formatMealRow(row: {
       color: row.cookedByUserColor,
     } : null,
     weekOf: row.weekOf,
+    ...(row.date ? { date: row.date } : {}),
     source: row.source,
     sourceId: row.sourceId,
     createdAt: row.createdAt.toISOString(),

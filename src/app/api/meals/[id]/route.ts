@@ -14,6 +14,7 @@ import { meals, users } from '@/lib/db/schema';
 import { eq, aliasedTable } from 'drizzle-orm';
 import { updateMealSchema, validateRequest } from '@/lib/validations';
 import { formatMealRow } from '@/lib/utils/formatters';
+import { mealDate } from '@/lib/utils/mealDate';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
@@ -116,9 +117,10 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
 
-    // Check if meal exists
+    // Check if meal exists (weekOf/dayOfWeek needed to recompute `date` if the
+    // update moves the meal to a different day or week).
     const [existingMeal] = await db
-      .select({ id: meals.id })
+      .select({ id: meals.id, weekOf: meals.weekOf, dayOfWeek: meals.dayOfWeek })
       .from(meals)
       .where(eq(meals.id, id));
 
@@ -158,6 +160,14 @@ export async function PATCH(
     if ('weekOf' in validation.data) updateData.weekOf = validation.data.weekOf;
     if ('source' in validation.data) updateData.source = validation.data.source;
     if ('sourceId' in validation.data) updateData.sourceId = validation.data.sourceId || null;
+
+    // Keep the absolute `date` in sync whenever the day or week moves (e.g.
+    // drag-to-day, or the week-mutation helper) so range queries stay correct.
+    if ('dayOfWeek' in validation.data || 'weekOf' in validation.data) {
+      const effWeekOf = (updateData.weekOf as string | undefined) ?? existingMeal.weekOf;
+      const effDay = (updateData.dayOfWeek as string | undefined) ?? existingMeal.dayOfWeek;
+      if (effWeekOf && effDay) updateData.date = mealDate(effWeekOf, effDay);
+    }
 
     // Handle cookedBy status - when set, automatically set cookedAt
     if ('cookedBy' in validation.data) {

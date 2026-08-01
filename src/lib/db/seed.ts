@@ -661,12 +661,22 @@ async function seed() {
   const thisWeek = ymd(startOfWeek(NOW));
   const nextWeekStart = ymd(startOfWeek(daysFromNow(7)));
 
+  // Absolute date for each seed meal (weekOf is a Sunday, so date = Sunday +
+  // day index). Mirrors src/lib/utils/mealDate.ts, inlined so the esbuild
+  // bundle (db:bundle) doesn't need @/-alias resolution.
+  const SEED_DAY_NUM: Record<string, number> = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+  const seedMealDate = (weekOf: string, dayOfWeek: string): string => {
+    const d = new Date(`${weekOf}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + (SEED_DAY_NUM[dayOfWeek] ?? 0));
+    return d.toISOString().split('T')[0]!;
+  };
+
   await db.insert(schema.meals).values([
     // This week
     { name: 'Pancakes',                  dayOfWeek: 'sunday',    mealType: 'breakfast', weekOf: thisWeek, recipeId: recipePancakes.id, createdBy: alex.id },
     { name: 'Cereal & fruit',            dayOfWeek: 'monday',    mealType: 'breakfast', weekOf: thisWeek, createdBy: jordan.id },
     { name: 'Spaghetti and Meatballs',   dayOfWeek: 'monday',    mealType: 'dinner',    weekOf: thisWeek, recipeId: recipeSpag.id,     createdBy: jordan.id },
-    { name: 'Taco Tuesday',              dayOfWeek: 'tuesday',   mealType: 'dinner',    weekOf: thisWeek, recipeId: recipeTacos.id,    createdBy: jordan.id },
+    { name: 'Taco Tuesday',              dayOfWeek: 'tuesday',   mealType: 'dinner',    weekOf: thisWeek, recipeId: recipeTacos.id,    createdBy: jordan.id }, // ↓ .map adds `date`
     { name: 'Leftovers',                 dayOfWeek: 'wednesday', mealType: 'dinner',    weekOf: thisWeek, createdBy: alex.id },
     { name: 'One-Pot Chicken Pasta',     dayOfWeek: 'thursday',  mealType: 'dinner',    weekOf: thisWeek, recipeId: recipePasta.id,    createdBy: alex.id },
     { name: 'Pizza Night',               dayOfWeek: 'friday',    mealType: 'dinner',    weekOf: thisWeek, createdBy: alex.id },
@@ -676,7 +686,7 @@ async function seed() {
     { name: 'Pancakes',                  dayOfWeek: 'sunday',    mealType: 'breakfast', weekOf: nextWeekStart, recipeId: recipePancakes.id, createdBy: alex.id },
     { name: 'Grilled Chicken Salad',     dayOfWeek: 'monday',    mealType: 'dinner',    weekOf: nextWeekStart, createdBy: alex.id },
     { name: 'Taco Tuesday',              dayOfWeek: 'tuesday',   mealType: 'dinner',    weekOf: nextWeekStart, recipeId: recipeTacos.id,    createdBy: jordan.id },
-  ]);
+  ].map((m) => ({ ...m, date: seedMealDate(m.weekOf, m.dayOfWeek) })) as (typeof schema.meals.$inferInsert)[]);
 
   console.log(`  Created 12 meal plans across this + next week`);
 
