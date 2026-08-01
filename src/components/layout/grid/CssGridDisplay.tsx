@@ -92,6 +92,12 @@ export function CssGridDisplay({
     return Math.max(minVisibleRows, Math.floor((available + margin) / (widthCellSize + margin)));
   }, [fillHeight, viewportHeight, headerOffset, bottomOffset, minVisibleRows, widthCellSize, margin]);
 
+  // A little breathing room on the left in landscape, where the side nav rail
+  // lives, so the first column isn't flush against it (and the rail's
+  // expand/collapse has somewhere to go). Right/bottom keep their normal small
+  // margin. Portrait has a bottom nav, so no left play there.
+  const leftPlay = stretch && screenWide ? 20 : 0;
+
   // Resolve the container box + grid template for the active mode.
   let containerHeight: number | string;
   let centerContain = false;
@@ -106,7 +112,10 @@ export function CssGridDisplay({
       gridTemplateColumns: `repeat(${fitCols}, 1fr)`,
       gridTemplateRows: `repeat(${fitRows}, 1fr)`,
       gap: `${margin}px`,
-      padding: `${containerPadding}px`,
+      paddingTop: containerPadding,
+      paddingRight: containerPadding,
+      paddingBottom: containerPadding,
+      paddingLeft: containerPadding + leftPlay,
       width: '100%',
       height: '100%',
     };

@@ -126,7 +126,7 @@ export function SideNav({ user, onLogout, onLogin, uiHidden, className }: SideNa
           'bg-card/95',
           'flex flex-col',
           'transition-[transform,opacity,width] duration-300 ease-in-out',
-          expanded ? 'w-60 shadow-xl' : 'w-16',
+          expanded ? 'w-52 shadow-xl' : 'w-16',
           uiHidden ? '-translate-x-full opacity-0 delay-100' : 'translate-x-0 opacity-100 delay-0',
           className
         )}
