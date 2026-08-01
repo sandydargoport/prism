@@ -8,7 +8,7 @@ import {
   addDays,
   startOfDay,
 } from 'date-fns';
-import { Calendar } from 'lucide-react';
+import { Calendar, UtensilsCrossed } from 'lucide-react';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
@@ -345,8 +345,11 @@ function AgendaRowItem({ row, cards = false }: { row: AgendaRow; cards?: boolean
         <div className={cn('text-xs', cards ? 'text-muted-foreground' : 'opacity-80')}>
           {row.timeLabel}
         </div>
-        <div className={cn('text-sm font-medium truncate', cards ? 'text-foreground' : 'text-white', row.muted && 'line-through')}>
-          {row.title}
+        <div className={cn('flex items-center gap-1 text-sm font-medium', cards ? 'text-foreground' : 'text-white', row.muted && 'line-through')}>
+          {row.dragId?.startsWith('meal:') && (
+            <UtensilsCrossed aria-hidden className="h-3 w-3 shrink-0" style={cards ? { color: row.stripeColor } : undefined} />
+          )}
+          <span className="truncate">{row.title}</span>
         </div>
         {row.subtitle && (
           <div className={cn('text-xs truncate', cards ? 'text-muted-foreground' : 'opacity-80')}>

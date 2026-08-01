@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
+import { UtensilsCrossed } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type WeekItemVariant = 'event' | 'chore' | 'task' | 'meal';
@@ -129,6 +130,12 @@ export function WeekItemCard({
   const Tag = interactive ? 'button' : 'div';
   const styles = SIZE_STYLES[size];
 
+  // Meals get a small utensils glyph before the title so a meal reads as a meal
+  // at a glance rather than looking like any other colored event. Sized with
+  // the title and tinted to the item's stripe color; hidden on the tiniest
+  // (xs) cells where there isn't room.
+  const showMealIcon = variant === 'meal' && size !== 'xs';
+
   const transformStyle: React.CSSProperties = {
     transform: CSS.Translate.toString(draggable.transform),
     touchAction: dragId ? 'none' : undefined,
@@ -171,8 +178,9 @@ export function WeekItemCard({
             {timeLabel}
           </span>
         )}
-        <span className={cn('flex-1 truncate text-foreground', styles.titleText, styles.titleWeight, muted && 'line-through')}>
-          {title}
+        <span className={cn('flex min-w-0 flex-1 items-center gap-1 text-foreground', styles.titleText, styles.titleWeight, muted && 'line-through')}>
+          {showMealIcon && <UtensilsCrossed aria-hidden className="h-3 w-3 shrink-0" style={{ color: stripeColor }} />}
+          <span className="truncate">{title}</span>
         </span>
         {styles.showSubtitle && subtitle && (
           <span className={cn('shrink-0 truncate text-muted-foreground', styles.metaText)}>
@@ -219,8 +227,9 @@ export function WeekItemCard({
             {timeLabel}
           </span>
         )}
-        <span className={cn('truncate text-foreground', styles.titleText, styles.titleWeight, muted && 'line-through')}>
-          {title}
+        <span className={cn('flex min-w-0 items-center gap-1 text-foreground', styles.titleText, styles.titleWeight, muted && 'line-through')}>
+          {showMealIcon && <UtensilsCrossed aria-hidden className="h-3 w-3 shrink-0" style={{ color: stripeColor }} />}
+          <span className="truncate">{title}</span>
         </span>
         {styles.showSubtitle && subtitle && (
           <span className={cn('truncate text-muted-foreground', styles.metaText)}>
