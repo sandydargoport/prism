@@ -17,8 +17,8 @@ export const WIDGET_CONSTRAINTS: Record<string, { minW: number; minH: number }> 
   meals:     { minW: 12, minH: 6 },
   birthdays: { minW: 8, minH: 5 },
   photos:      { minW: 8, minH: 8 },
-  points:      { minW: 8, minH: 12 },
-  busTracking: { minW: 8, minH: 8 },
+  points:      { minW: 8, minH: 8 },
+  busTracking: { minW: 8, minH: 6 },
 };
 
 export const VALID_WIDGET_IDS = Object.keys(WIDGET_CONSTRAINTS);
