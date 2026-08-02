@@ -138,18 +138,31 @@ export function WallpaperBackground() {
   const screenOrientation = useScreenOrientation();
   const orientationOverride = useOrientationOverride();
   const effectiveOrientation = orientationOverride === 'auto' ? screenOrientation : orientationOverride;
-  const { photos } = usePhotos({
+  // Fetch all wallpaper photos, then PREFER the ones matching this screen's
+  // orientation — but fall back to any photo when none match, so a display whose
+  // orientation has no photos still shows a wallpaper instead of going blank.
+  const { photos: allPhotos } = usePhotos({
     sort: 'random',
-    limit: 30,
+    limit: 40,
     usage: 'wallpaper',
-    orientation: autoOrientation ? effectiveOrientation : undefined,
   });
+  const orientedPhotos = autoOrientation
+    ? allPhotos.filter((p) => p.orientation === effectiveOrientation)
+    : allPhotos;
+  const photos = orientedPhotos.length > 0 ? orientedPhotos : allPhotos;
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [fadingOut, setFadingOut] = useState(false);
 
+  // A pinned photo that was later deleted 404s and would leave the screen blank —
+  // detect that (via the img onError below) and fall back to the rotation.
+  const [pinnedBroken, setPinnedBroken] = useState(false);
+  useEffect(() => { setPinnedBroken(false); }, [pinnedId]);
+  const usePinned = !!pinnedId && !pinnedBroken;
+
   // Rotate photos (only if no pinned photo and interval is not "never")
   useEffect(() => {
-    if (!enabled || photos.length <= 1 || pinnedId || interval === 0) return;
+    if (!enabled || photos.length <= 1 || usePinned || interval === 0) return;
     const timer = window.setInterval(() => {
       setFadingOut(true);
       // After fade out, switch image and fade back in
@@ -159,21 +172,27 @@ export function WallpaperBackground() {
       }, 1000);
     }, interval * 1000);
     return () => window.clearInterval(timer);
-  }, [enabled, photos.length, interval, pinnedId]);
+  }, [enabled, photos.length, interval, usePinned]);
 
   if (!enabled) return null;
 
-  // Use pinned photo if set, otherwise use rotating photos
-  const src = pinnedId
+  // Use pinned photo if set (and not broken), otherwise the rotating photos.
+  const safeIndex = photos.length > 0 ? currentIndex % photos.length : 0;
+  const src = usePinned
     ? `/api/photos/${pinnedId}/file`
-    : photos[currentIndex]
-      ? `/api/photos/${photos[currentIndex]!.id}/file`
+    : photos[safeIndex]
+      ? `/api/photos/${photos[safeIndex]!.id}/file`
       : null;
 
   if (!src) return null;
 
   return (
     <div className="fixed inset-0 z-0 pointer-events-none">
+      {/* Validate a pinned photo — if it 404s (deleted), fall back to rotation. */}
+      {usePinned && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="" className="hidden" onError={() => setPinnedBroken(true)} />
+      )}
       {/* Photo */}
       <div
         className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
