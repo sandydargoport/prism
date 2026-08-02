@@ -4,6 +4,8 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.13.0] – 2026-08-02
+
 ### Dashboard
 - **Your layout now fills any screen.** Design your dashboard once — on your kiosk or in a laptop browser — and it stretches to fit whatever screen it's shown on, edge to edge, without clipping or stopping awkwardly short of the bottom. It re-fits live when you resize the window, go full-screen, or zoom, and when the toolbars auto-hide the layout grows to fill the space they leave. A design whose orientation doesn't match the screen (a portrait layout on a landscape display) is neatly letterboxed rather than stretched out of shape.
 - **Preview shows exactly what the wall will show.** Full-screen preview now renders the real, stretched dashboard, and a new **device gallery** shows how your one design looks on a 27″ display, an iPad, a Fire tablet and a phone — so you can check the fit before you deploy. The old per-resolution "screen zone" controls are retired in favor of this simpler model.
