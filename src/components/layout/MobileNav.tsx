@@ -7,6 +7,7 @@
  */
 
 'use client';
+import { Emoji } from '@/components/ui/Emoji';
 
 import * as React from 'react';
 import { useState } from 'react';
@@ -160,7 +161,7 @@ export function MobileNav({ user, onLogin, onLogout, uiHidden }: MobileNavProps)
                     style={{ backgroundColor: user.color || '#6B7280' }}
                   >
                     {user.avatarUrl?.startsWith('emoji:') ? (
-                      <span className="text-sm">{user.avatarUrl.slice(6)}</span>
+                      <span className="text-sm"><Emoji e={user.avatarUrl.slice(6)} /></span>
                     ) : user.avatarUrl ? (
                       <Image
                         src={user.avatarUrl}

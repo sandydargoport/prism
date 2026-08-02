@@ -58,7 +58,9 @@
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",
     "docker:dev": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml up",
-    "prepare": "husky"
+    "prepare": "husky",
+    "prebuild": "node scripts/copy-emoji-assets.mjs",
+    "predev": "node scripts/copy-emoji-assets.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -117,6 +119,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@discordapp/twemoji": "^16.0.1",
     "@eslint/eslintrc": "^3.2.0",
     "@next/bundle-analyzer": "^15.5.21",
     "@playwright/test": "^1.58.2",

@@ -6,6 +6,7 @@
  */
 
 'use client';
+import { Emoji } from '@/components/ui/Emoji';
 
 import * as React from 'react';
 import Image from 'next/image';
@@ -79,7 +80,7 @@ export function PortraitNav({ user, onLogin, onLogout, uiHidden }: PortraitNavPr
                 style={{ backgroundColor: user.color || '#6B7280' }}
               >
                 {user.avatarUrl?.startsWith('emoji:') ? (
-                  <span className="text-base">{user.avatarUrl.slice(6)}</span>
+                  <span className="text-base"><Emoji e={user.avatarUrl.slice(6)} /></span>
                 ) : user.avatarUrl ? (
                   <Image
                     src={user.avatarUrl}

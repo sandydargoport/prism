@@ -10,6 +10,7 @@
 'use client';
 
 import * as React from 'react';
+import { Emoji } from '@/components/ui/Emoji';
 import { cn } from '@/lib/utils';
 import { WidgetContainer, WidgetEmpty } from './WidgetContainer';
 import type { Birthday } from '@/lib/hooks/useBirthdays';
@@ -78,14 +79,14 @@ export const BirthdaysWidget = React.memo(function BirthdaysWidget({
   return (
     <WidgetContainer
       title="Upcoming Birthdays & Milestones"
-      icon={<span>🎂</span>}
+      icon={<Emoji e="🎂" />}
       loading={loading}
       error={error}
       titleHref={titleHref}
     >
       {items.length === 0 ? (
         <WidgetEmpty
-          icon={<span>🎂</span>}
+          icon={<Emoji e="🎂" />}
           message="No upcoming birthdays or events"
         />
       ) : (
@@ -118,7 +119,7 @@ export const BirthdaysWidget = React.memo(function BirthdaysWidget({
                     )}
                   </td>
                   <td className="py-1.5 px-1 text-center">
-                    {TYPE_ICONS[item.eventType] || '⭐'}
+                    <Emoji e={TYPE_ICONS[item.eventType] || '⭐'} />
                   </td>
                   <td className="py-1.5 px-1 text-right text-muted-foreground tabular-nums">
                     {item.age != null ? item.age : ''}

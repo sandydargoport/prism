@@ -1,4 +1,5 @@
 'use client';
+import { Emoji } from '@/components/ui/Emoji';
 
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
@@ -151,7 +152,7 @@ export function MobileFab({ user, onLogin, onLogout, uiHidden }: MobileFabProps)
           style={{ backgroundColor: user.color || '#6B7280' }}
         >
           {user.avatarUrl?.startsWith('emoji:') ? (
-            <span className="text-sm">{user.avatarUrl.slice(6)}</span>
+            <span className="text-sm"><Emoji e={user.avatarUrl.slice(6)} /></span>
           ) : user.avatarUrl ? (
             <Image src={user.avatarUrl} alt={user.name} fill unoptimized className="rounded-full object-cover" />
           ) : (
