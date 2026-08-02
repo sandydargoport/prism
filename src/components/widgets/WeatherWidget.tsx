@@ -313,6 +313,25 @@ export const WeatherWidget = React.memo(function WeatherWidget({
   const resolvedDays = Math.max(0, forecastDays ?? autoDays);
   const showHourly = showForecast && gridH >= 9;
 
+  // The daily forecast is a vertical list of fixed-height rows. Measure the space
+  // it actually has and render only WHOLE rows, so a day is never cut in half at
+  // the bottom (which looks broken on a kiosk). Falls back to showing all days
+  // when unmeasured (SSR/tests, where clientHeight is 0).
+  const dayListRef = React.useRef<HTMLDivElement>(null);
+  const [maxDayRows, setMaxDayRows] = React.useState(7);
+  React.useEffect(() => {
+    const el = dayListRef.current;
+    if (!el) return;
+    const measure = () => {
+      const h = el.clientHeight;
+      if (h > 0) setMaxDayRows(Math.max(1, Math.floor(h / 44)));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [showForecast, resolvedDays, gridH]);
+
   // Pre-filter to today-or-future so the label count matches what renders.
   // Provider stores forecast.date as UTC-midnight of the location's calendar
   // day (see openmeteo.ts comment), so read via getUTC* to compare against
@@ -324,6 +343,8 @@ export const WeatherWidget = React.memo(function WeatherWidget({
     const s = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
     return s >= todayLocalStr;
   });
+  // Only the days that fit as whole rows (see maxDayRows above).
+  const shownForecast = visibleForecast.slice(0, maxDayRows);
 
   const hasDays = weatherData.forecast.length > 0;
 
@@ -365,15 +386,18 @@ export const WeatherWidget = React.memo(function WeatherWidget({
         {showForecast && hasDays && resolvedDays > 0 && (
           <div className="border-t border-border pt-3 flex-1 min-h-0 flex flex-col gap-3">
 
-            {/* Multi-day summary */}
-            <div>
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                {visibleForecast.length}-Day Forecast
+            {/* Multi-day summary — the day list fills the remaining space and
+                clips to WHOLE rows (maxDayRows) so a day is never half-cut. */}
+            <div className="flex-1 min-h-0 flex flex-col">
+              <span className="flex-shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {shownForecast.length}-Day Forecast
               </span>
-              <DayHeader
-                days={visibleForecast}
-                units={units}
-              />
+              <div ref={dayListRef} className="flex-1 min-h-0 overflow-hidden">
+                <DayHeader
+                  days={shownForecast}
+                  units={units}
+                />
+              </div>
             </div>
 
             {/* Sun + moon arc — replaced by precip chart when rain is imminent.
@@ -381,7 +405,7 @@ export const WeatherWidget = React.memo(function WeatherWidget({
                 row (CurrentConditions), so the arc renders without a
                 duplicate label strip. */}
             {showSunArc && (
-              <div className="flex flex-col gap-1">
+              <div className="flex-shrink-0 flex flex-col gap-1">
                 <SunriseSunsetArc
                   sunrise={weatherData.sunrise!}
                   sunset={weatherData.sunset!}
@@ -396,7 +420,7 @@ export const WeatherWidget = React.memo(function WeatherWidget({
 
             {/* Precipitation chart — replaces sunrise/sunset arc when rain is coming in the next hour */}
             {showPrecipChart && (
-              <div className="flex flex-col gap-1">
+              <div className="flex-shrink-0 flex flex-col gap-1">
                 <PrecipitationChart minutely={weatherData.minutely!} />
               </div>
             )}
