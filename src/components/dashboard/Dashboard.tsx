@@ -427,7 +427,7 @@ export function Dashboard({
                 renderWidget={renderDashboardWidget}
                 widgetConstraints={dashboardConstraints}
                 margin={8}
-                headerOffset={layout.isEditing ? 140 : uiHidden ? 0 : 50}
+                headerOffset={layout.isEditing ? 140 : uiHidden ? 0 : 56}
                 bottomOffset={bottomOffset}
                 screenGuideOrientation={screenGuideOrientation}
                 enabledSizes={enabledSizes}

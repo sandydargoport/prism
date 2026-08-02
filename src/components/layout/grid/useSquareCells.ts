@@ -56,8 +56,13 @@ export function useSquareCells(
       // Re-measure after layout settles: the ResizeObserver fires on the
       // container's SIZE, but its top offset (header/nav chrome above it) only
       // becomes accurate once the surrounding chrome has laid out — a position
-      // change the observer never sees. rAF catches that settled position.
+      // change the observer never sees. rAF catches the first settled frame;
+      // the delayed passes catch late layout (fonts, async header content, a
+      // taller touch-device header) that would otherwise leave `top` stale and
+      // the grid mis-sized (bottom-row clip on a real kiosk).
       requestAnimationFrame(compute);
+      setTimeout(compute, 200);
+      setTimeout(compute, 600);
       const ro = new ResizeObserver(compute);
       ro.observe(node);
       roRef.current = ro;
@@ -78,5 +83,5 @@ export function useSquareCells(
     return () => roRef.current?.disconnect();
   }, []);
 
-  return { containerRef, cellSize, width, top, mounted };
+  return { containerRef, cellSize, width, top, mounted, remeasure: compute };
 }

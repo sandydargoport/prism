@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { WidgetBgOverrideProvider } from '@/components/widgets/WidgetContainer';
 import { getWidgetStyle, getWidgetContentStyle, getTextColorClass } from './gridWidgetStyles';
 import { useSquareCells } from './useSquareCells';
@@ -24,10 +24,16 @@ export function CssGridDisplay({
   minVisibleRows = 0,
   targetRows,
   designOrientation,
+  containMode = false,
   className,
 }: CssGridDisplayProps) {
-  const { containerRef, cellSize: widthCellSize, width, top } = useSquareCells(cols, containerPadding, margin, fillHeight);
+  const { containerRef, cellSize: widthCellSize, width, top, remeasure } = useSquareCells(cols, containerPadding, margin, fillHeight);
   const { width: viewportWidth, height: viewportHeight } = useViewportSize();
+
+  // Re-read the grid's real top whenever the chrome offset changes (a toolbar
+  // show/hide is a position change the ResizeObserver never sees), so the fill
+  // math tracks the actual header height instead of a stale value.
+  useEffect(() => { remeasure(); }, [headerOffset, bottomOffset, remeasure]);
 
   const visibleWidgets = useMemo(
     () => layout.filter(w => w.visible !== false),
@@ -60,7 +66,7 @@ export function CssGridDisplay({
     return { fitCols: maxCol, fitRows: maxRow };
   }, [visibleWidgets]);
 
-  const fit = !!targetRows && !fillHeight;
+  const fit = (!!targetRows || containMode) && !fillHeight;
   // Decide stretch-vs-letterbox from the CONTENT'S OWN SHAPE, not a stored
   // orientation label (which can drift from the actual widgets — e.g. a layout
   // saved as "portrait" but laid out landscape). A wide design on a wide screen
@@ -73,8 +79,11 @@ export function CssGridDisplay({
     : (designOrientation ? designOrientation === 'landscape' : true);
   const screenWide = viewportWidth >= viewportHeight;
   const sameOrientation = designWide === screenWide;
-  const stretch = fit && sameOrientation;
-  const contain = fit && !sameOrientation;
+  // containMode always scales-to-fit (screensaver — sparse ambient layout that
+  // should fit any screen without clipping); otherwise stretch when orientation
+  // matches and letterbox only on a genuine mismatch.
+  const stretch = fit && sameOrientation && !containMode;
+  const contain = fit && (!sameOrientation || containMode);
 
   // Available box below the real chrome. Uses the measured grid top when we have
   // it (real header height) and the reactive viewport height so F11/fullscreen,
@@ -85,8 +94,14 @@ export function CssGridDisplay({
   // re-reads on resize (a chrome hide is a position change, not a size change),
   // so it stays stale at ~56px and leaves ~1-2 empty rows at the bottom. When the
   // caller says the chrome is gone, the top is 0.
-  const chromeTop = headerOffset <= 0 ? 0 : (top > 0 ? top : headerOffset);
-  const availH = Math.max(120, viewportHeight - chromeTop - bottomOffset);
+  // Take the LARGER of the measured grid-top and the caller's offset so we never
+  // under-estimate the header (a taller touch-device header, or a not-yet-settled
+  // measurement, used to let the bottom row clip). A small safety margin when
+  // chrome is present absorbs any residual slop — better a hair of bottom gap
+  // than a clipped row.
+  const chromeTop = headerOffset <= 0 ? 0 : Math.max(top, headerOffset);
+  const bottomSafety = chromeTop > 0 ? margin : 0;
+  const availH = Math.max(120, viewportHeight - chromeTop - bottomOffset - bottomSafety);
 
   // Contain (letterbox) mode: largest square cell that fits the WHOLE content
   // canvas within the available box on both axes.
