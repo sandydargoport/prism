@@ -23,6 +23,7 @@
 'use client';
 
 import * as React from 'react';
+import { Emoji } from '@/components/ui/Emoji';
 import { useState, useMemo, useCallback } from 'react';
 import { ShoppingCart, Plus, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -266,7 +267,7 @@ function ShoppingItemRow({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           {/* Category emoji */}
-          {categoryEmoji && <span className="text-sm">{categoryEmoji}</span>}
+          {categoryEmoji && <span className="text-sm"><Emoji e={categoryEmoji} /></span>}
 
           {/* Name */}
           <span

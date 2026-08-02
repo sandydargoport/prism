@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { Emoji } from '@/components/ui/Emoji';
 import { DAYS_OF_WEEK_MON_FIRST, DAYS_OF_WEEK, type DayOfWeek } from '@/lib/constants/days';
 import { useState, useMemo, useCallback } from 'react';
 import { format, startOfWeek, addDays, parseISO } from 'date-fns';
@@ -226,7 +227,7 @@ function MealItem({
   const isCooked = !!meal.cookedAt;
   return (
     <div className={cn('flex items-start gap-2 p-2 rounded-md', 'hover:bg-accent/50 transition-colors group', isCooked && 'opacity-60')}>
-      <span className="text-base shrink-0">{getMealTypeEmoji(meal.mealType)}</span>
+      <span className="text-base shrink-0"><Emoji e={getMealTypeEmoji(meal.mealType)} /></span>
       {/* Meal content — clickable surface that opens the edit modal. */}
       <div
         className={cn('flex-1 min-w-0', onClick && 'cursor-pointer')}

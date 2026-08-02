@@ -11,6 +11,7 @@ import { ProviderCardShell } from '../shared/ProviderCardShell';
 import { CollapsibleSubSection } from '../shared/CollapsibleSubSection';
 import type { IntegrationStatus } from '../shared/useIntegrationStatus';
 import type { ConnectionStatus } from '../shared/ConnectionStatusBadge';
+import { MicrosoftCredentialsForm } from './MicrosoftCredentialsForm';
 import { connectedAsLabel } from '../shared/connectedAs';
 import { useOAuthConfigStatus } from '../shared/useOAuthConfigStatus';
 import { TaskIntegrationsSection } from '../../TaskIntegrationsSection';
@@ -170,17 +171,19 @@ export function MicrosoftProviderCard({
           <CollapsibleSubSection
             id="microsoft-setup"
             label="One-time admin setup"
-            summary="Requires an Azure AD app registration"
+            summary="Enter your Azure AD app credentials"
             defaultOpen
           >
-            <p className="text-sm text-muted-foreground">
-              An admin needs to register an Azure AD app and set{' '}
-              <code className="text-xs bg-muted px-1 py-0.5 rounded">MICROSOFT_CLIENT_ID</code>,{' '}
-              <code className="text-xs bg-muted px-1 py-0.5 rounded">MICROSOFT_CLIENT_SECRET</code>, and{' '}
-              <code className="text-xs bg-muted px-1 py-0.5 rounded">MICROSOFT_REDIRECT_URI</code> in{' '}
-              <code className="text-xs bg-muted px-1 py-0.5 rounded">.env</code> (see{' '}
-              <code className="text-xs bg-muted px-1 py-0.5 rounded">.env.example</code>).
-            </p>
+            <MicrosoftCredentialsForm onSaved={() => window.location.reload()} />
+          </CollapsibleSubSection>
+        )}
+        {configured && (
+          <CollapsibleSubSection
+            id="microsoft-credentials"
+            label="App credentials (advanced)"
+            summary="Update the Azure client ID / secret / redirect — e.g. after a secret expires"
+          >
+            <MicrosoftCredentialsForm onSaved={() => window.location.reload()} />
           </CollapsibleSubSection>
         )}
         {connected && (

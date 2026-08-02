@@ -25,6 +25,7 @@
 'use client';
 
 import * as React from 'react';
+import { Emoji } from '@/components/ui/Emoji';
 import { useState, useMemo, useCallback } from 'react';
 import { format, isToday, isTomorrow, isPast, parseISO } from 'date-fns';
 import { ClipboardList, Plus, AlertCircle, CheckCircle, Clock, Hourglass } from 'lucide-react';
@@ -267,7 +268,7 @@ function ChoreItem({
       >
         <div className="flex items-center gap-2">
           {/* Category emoji */}
-          <span className="text-base">{categoryEmoji}</span>
+          <span className="text-base"><Emoji e={categoryEmoji} /></span>
 
           {/* Title */}
           <span className={cn(
