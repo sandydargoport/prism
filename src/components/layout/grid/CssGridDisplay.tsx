@@ -79,7 +79,13 @@ export function CssGridDisplay({
   // Available box below the real chrome. Uses the measured grid top when we have
   // it (real header height) and the reactive viewport height so F11/fullscreen,
   // window resize and orientation change all re-fill automatically.
-  const chromeTop = top > 0 ? top : headerOffset;
+  //
+  // BUT when the chrome is explicitly hidden (headerOffset 0 — auto-hide/kiosk),
+  // trust that: the grid slides to the very top, yet the measured `top` only
+  // re-reads on resize (a chrome hide is a position change, not a size change),
+  // so it stays stale at ~56px and leaves ~1-2 empty rows at the bottom. When the
+  // caller says the chrome is gone, the top is 0.
+  const chromeTop = headerOffset <= 0 ? 0 : (top > 0 ? top : headerOffset);
   const availH = Math.max(120, viewportHeight - chromeTop - bottomOffset);
 
   // Contain (letterbox) mode: largest square cell that fits the WHOLE content
