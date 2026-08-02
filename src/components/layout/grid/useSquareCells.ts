@@ -61,8 +61,13 @@ export function useSquareCells(
       // taller touch-device header) that would otherwise leave `top` stale and
       // the grid mis-sized (bottom-row clip on a real kiosk).
       requestAnimationFrame(compute);
+      // Multiple settle passes: the header height can change after first paint
+      // (web fonts, async toolbar toggles/badges, a taller touch-device header),
+      // which would otherwise leave `top` stale and clip the bottom row.
       setTimeout(compute, 200);
       setTimeout(compute, 600);
+      setTimeout(compute, 1200);
+      setTimeout(compute, 2500);
       const ro = new ResizeObserver(compute);
       ro.observe(node);
       roRef.current = ro;

@@ -100,8 +100,15 @@ export function CssGridDisplay({
   // chrome is present absorbs any residual slop — better a hair of bottom gap
   // than a clipped row.
   const chromeTop = headerOffset <= 0 ? 0 : Math.max(top, headerOffset);
-  const bottomSafety = chromeTop > 0 ? margin : 0;
-  const availH = Math.max(120, viewportHeight - chromeTop - bottomOffset - bottomSafety);
+  // Some kiosk browsers over-report window.innerHeight vs the actually-visible
+  // area (a device/browser bottom bar), which let the bottom row clip on a real
+  // touch display even when the math looked right. Prefer the visual-viewport
+  // height whenever it's smaller.
+  const visualH = (typeof window !== 'undefined' && window.visualViewport)
+    ? Math.min(viewportHeight, window.visualViewport.height)
+    : viewportHeight;
+  const bottomSafety = chromeTop > 0 ? Math.round(margin * 1.5) : 0;
+  const availH = Math.max(120, visualH - chromeTop - bottomOffset - bottomSafety);
 
   // Contain (letterbox) mode: largest square cell that fits the WHOLE content
   // canvas within the available box on both axes.
