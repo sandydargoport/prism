@@ -14,11 +14,14 @@ interface LayoutEditorPreviewPanelProps {
   gridScrollX: number;
   gridVisibleCols: number;
   scrollToGridRef?: React.MutableRefObject<((row: number, col?: number) => void) | null>;
-  screenGuideOrientation: 'landscape' | 'portrait';
-  effectiveEnabledSizes: string[];
+  // Retained for compatibility with the toolbar caller; the multi-screen
+  // safe-zone toggles/borders were retired in favor of the device gallery, so
+  // these are no longer used here.
+  screenGuideOrientation?: 'landscape' | 'portrait';
+  effectiveEnabledSizes?: string[];
   onToggleSize?: (size: string) => void;
-  allSizeNames: string[];
-  zones: ScreenSafeZones;
+  allSizeNames?: string[];
+  zones?: ScreenSafeZones;
   validation: { errors: string[]; warnings: string[] };
 }
 
@@ -30,29 +33,22 @@ export function LayoutEditorPreviewPanel({
   gridScrollX,
   gridVisibleCols,
   scrollToGridRef,
-  screenGuideOrientation,
-  effectiveEnabledSizes,
-  onToggleSize,
-  allSizeNames,
-  zones,
   validation,
 }: LayoutEditorPreviewPanelProps) {
+  const previewWidgets = visibleWidgets.map(w => ({ i: w.i, x: w.x, y: w.y, w: w.w, h: w.h }));
+
   return (
     <div className="p-3 space-y-3">
-      {/* How the layout appears on each device (stretch/squish per aspect). */}
+      {/* INTERACTIVE canvas mini-map — the one real, scrollable canvas. */}
       <div>
-        <p className="text-[10px] font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">On each screen</p>
-        <DevicePreviewGallery
-          widgets={visibleWidgets.map(w => ({ i: w.i, x: w.x, y: w.y, w: w.w, h: w.h }))}
-          highlightWidget={focusedWidget}
-        />
-      </div>
-
-      <div className="flex gap-2 items-start">
+        <div className="flex items-baseline justify-between mb-1.5">
+          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Canvas</p>
+          <span className="text-[9px] text-muted-foreground/70">click to scroll</span>
+        </div>
         <LayoutPreview
-          widgets={visibleWidgets.map(w => ({ i: w.i, x: w.x, y: w.y, w: w.w, h: w.h }))}
-          width={200}
-          height={200}
+          widgets={previewWidgets}
+          width={280}
+          height={180}
           highlightWidget={focusedWidget}
           showLabels={true}
           showGrid={true}
@@ -61,35 +57,18 @@ export function LayoutEditorPreviewPanel({
           visibleCols={gridVisibleCols}
           scrollX={gridScrollX}
           onScrollTo={(row, col) => scrollToGridRef?.current?.(row, col)}
-          screenGuideOrientation={screenGuideOrientation}
-          enabledSizes={effectiveEnabledSizes}
-          safeZones={zones}
         />
-        <div className="flex flex-col gap-1">
-          {allSizeNames.map(size => {
-            const zone = zones[screenGuideOrientation].find(z => z.name === size);
-            const isEnabled = effectiveEnabledSizes.includes(size);
-            return (
-              <button
-                key={size}
-                onClick={() => onToggleSize?.(size)}
-                className={`text-xs px-1.5 py-0.5 rounded transition-colors whitespace-nowrap ${
-                  isEnabled ? 'text-white' : 'text-muted-foreground/50 line-through'
-                }`}
-                style={{
-                  backgroundColor: isEnabled ? zone?.color : 'transparent',
-                  border: `1px solid ${zone?.color || '#666'}`,
-                }}
-              >
-                {size}
-              </button>
-            );
-          })}
-          <span className="text-[9px] text-muted-foreground mt-1 leading-tight">
-            Click map<br />to scroll
-          </span>
-        </div>
       </div>
+
+      {/* REFERENCE — how the one design looks on each screen. Not editable;
+          delineated (bordered, muted background) so it reads as a preview. */}
+      <div className="rounded-md border border-border/60 bg-muted/40 p-2">
+        <p className="text-[10px] font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
+          Preview — each screen <span className="normal-case font-normal opacity-60">(reference)</span>
+        </p>
+        <DevicePreviewGallery widgets={previewWidgets} highlightWidget={focusedWidget} />
+      </div>
+
       {validation.errors.length > 0 && (
         <div className="bg-destructive/10 border border-destructive/30 rounded-md p-2">
           <p className="text-xs font-medium text-destructive mb-0.5">
