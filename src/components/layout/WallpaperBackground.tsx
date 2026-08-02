@@ -154,45 +154,52 @@ export function WallpaperBackground() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [fadingOut, setFadingOut] = useState(false);
 
-  // A pinned photo that was later deleted 404s and would leave the screen blank —
-  // detect that (via the img onError below) and fall back to the rotation.
-  const [pinnedBroken, setPinnedBroken] = useState(false);
-  useEffect(() => { setPinnedBroken(false); }, [pinnedId]);
-  const usePinned = !!pinnedId && !pinnedBroken;
+  // Track photos whose file is missing/deleted (the image 404s) so we skip past
+  // them instead of showing a blank background. A broken pinned photo falls back
+  // to the rotation; a broken rotation photo is dropped from the pool so the next
+  // render lands on a good one. Resets on reload (so restored files reappear).
+  const [brokenIds, setBrokenIds] = useState<Set<string>>(new Set());
+  const markBroken = useCallback((id: string) => {
+    setBrokenIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
+  }, []);
+
+  const usePinned = !!pinnedId && !brokenIds.has(pinnedId);
+  const pool = photos.filter((p) => !brokenIds.has(p.id));
 
   // Rotate photos (only if no pinned photo and interval is not "never")
   useEffect(() => {
-    if (!enabled || photos.length <= 1 || usePinned || interval === 0) return;
+    if (!enabled || pool.length <= 1 || usePinned || interval === 0) return;
     const timer = window.setInterval(() => {
       setFadingOut(true);
       // After fade out, switch image and fade back in
       setTimeout(() => {
-        setCurrentIndex((i) => (i + 1) % photos.length);
+        setCurrentIndex((i) => i + 1);
         setFadingOut(false);
       }, 1000);
     }, interval * 1000);
     return () => window.clearInterval(timer);
-  }, [enabled, photos.length, interval, usePinned]);
+  }, [enabled, pool.length, interval, usePinned]);
 
   if (!enabled) return null;
 
-  // Use pinned photo if set (and not broken), otherwise the rotating photos.
-  const safeIndex = photos.length > 0 ? currentIndex % photos.length : 0;
-  const src = usePinned
-    ? `/api/photos/${pinnedId}/file`
-    : photos[safeIndex]
-      ? `/api/photos/${photos[safeIndex]!.id}/file`
-      : null;
+  // Pinned photo (if set and not broken), else the next non-broken rotation photo.
+  const rotationPhoto = pool.length > 0 ? pool[currentIndex % pool.length] : undefined;
+  const activeId = usePinned ? pinnedId : (rotationPhoto?.id ?? null);
+  const src = activeId ? `/api/photos/${activeId}/file` : null;
 
   if (!src) return null;
 
   return (
     <div className="fixed inset-0 z-0 pointer-events-none">
-      {/* Validate a pinned photo — if it 404s (deleted), fall back to rotation. */}
-      {usePinned && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt="" className="hidden" onError={() => setPinnedBroken(true)} />
-      )}
+      {/* Validator — if this photo's file 404s, mark it broken and skip it. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        key={activeId ?? 'none'}
+        src={src}
+        alt=""
+        className="hidden"
+        onError={() => activeId && markBroken(activeId)}
+      />
       {/* Photo */}
       <div
         className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000"

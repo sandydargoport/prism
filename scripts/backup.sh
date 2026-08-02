@@ -71,9 +71,16 @@ if [ -n "$RCLONE_REMOTE" ] && command -v rclone >/dev/null 2>&1; then
   # live under data/ (see src/lib/config/runtime.ts), NOT uploads/. The photo
   # cache (data/photos/cache) is regenerable on demand, so it is excluded.
   DATA_REMOTE="${RCLONE_REMOTE%/*}/data"
+  # NON-DESTRUCTIVE: user photos/avatars are irreplaceable, so a local loss must
+  # NOT wipe the off-site copy. --backup-dir moves any file that would be deleted
+  # or overwritten into a timestamped folder instead of removing it, so a
+  # deleted-locally photo is preserved off-site and recoverable. (A plain
+  # `rclone sync` mirrors deletions — which is exactly how a local photo loss
+  # once propagated to the backup and destroyed the safety net.)
+  DATA_ARCHIVE="${RCLONE_REMOTE%/*}/data-deleted/${TIMESTAMP}"
   if [ -d "/data" ] && [ "$(ls -A /data 2>/dev/null)" ]; then
-    echo "[$(date)] Syncing data directory to off-site storage: $DATA_REMOTE..."
-    if rclone sync /data "$DATA_REMOTE" --exclude 'photos/cache/**' --progress; then
+    echo "[$(date)] Syncing data directory to off-site storage: $DATA_REMOTE (preserving deletions to $DATA_ARCHIVE)..."
+    if rclone sync /data "$DATA_REMOTE" --exclude 'photos/cache/**' --backup-dir "$DATA_ARCHIVE" --progress; then
       echo "[$(date)] Data sync completed successfully"
     else
       echo "[$(date)] WARNING: Data off-site sync failed!"
