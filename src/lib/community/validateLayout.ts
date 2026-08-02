@@ -5,15 +5,17 @@
 
 // Widget minimum sizes — extracted from WIDGET_REGISTRY to avoid importing React components
 export const WIDGET_CONSTRAINTS: Record<string, { minW: number; minH: number }> = {
-  clock:     { minW: 8, minH: 8 },
-  weather:   { minW: 8, minH: 8 },
-  calendar:  { minW: 12, minH: 16 },
-  tasks:     { minW: 8, minH: 12 },
-  messages:  { minW: 8, minH: 12 },
-  chores:    { minW: 8, minH: 12 },
-  shopping:  { minW: 8, minH: 12 },
-  meals:     { minW: 12, minH: 12 },
-  birthdays: { minW: 8, minH: 12 },
+  // Minimum heights sized for the real design canvas (landscape 48×27,
+  // portrait 36×64). Kept in sync with WIDGET_REGISTRY in widgetRegistry.ts.
+  clock:     { minW: 8, minH: 4 },
+  weather:   { minW: 8, minH: 4 },
+  calendar:  { minW: 12, minH: 8 },
+  tasks:     { minW: 8, minH: 5 },
+  messages:  { minW: 8, minH: 5 },
+  chores:    { minW: 8, minH: 5 },
+  shopping:  { minW: 8, minH: 5 },
+  meals:     { minW: 12, minH: 6 },
+  birthdays: { minW: 8, minH: 5 },
   photos:      { minW: 8, minH: 8 },
   points:      { minW: 8, minH: 12 },
   busTracking: { minW: 8, minH: 8 },

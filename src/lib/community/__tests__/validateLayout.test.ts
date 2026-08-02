@@ -221,10 +221,10 @@ describe('validateCommunityLayout', () => {
     });
 
     it('rejects widget below minH', () => {
-      // calendar minH is 16
+      // calendar minH is 8
       const result = validateCommunityLayout(makeLayout({
         widgets: [
-          { i: 'calendar', x: 0, y: 0, w: 24, h: 8 },
+          { i: 'calendar', x: 0, y: 0, w: 24, h: 4 },
           { i: 'clock', x: 24, y: 0, w: 12, h: 12 },
           { i: 'weather', x: 36, y: 0, w: 12, h: 12 },
         ],
