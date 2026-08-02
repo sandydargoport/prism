@@ -34,6 +34,7 @@ const TaskModal = lazy(() => import('@/app/tasks/TaskModal').then(m => ({ defaul
 const MealModal = lazy(() => import('@/app/meals/MealsView').then(m => ({ default: m.MealModal })));
 import { WIDGET_REGISTRY } from '@/components/widgets/widgetRegistry';
 import { renderScreensaverPreview } from '@/components/screensaver/ScreensaverWidgetPreview';
+import { SCREENSAVER_WIDGET_CLASS } from '@/components/screensaver/Screensaver';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import { WidgetErrorBoundary } from '@/components/dashboard/WidgetErrorBoundary';
 import { WidgetExpandProvider, useWidgetExpand } from '@/components/dashboard/WidgetExpandProvider';
@@ -322,7 +323,7 @@ export function Dashboard({
     return (
       <WidgetBoundary name={w.i}>
         <Suspense fallback={<div className="flex items-center justify-center h-full text-white/50 text-sm">Loading...</div>}>
-          <div className="h-full w-full [&_*]:!bg-transparent [&_.bg-card]:!bg-white/10 [&_.border-border]:!border-white/20">
+          <div className={SCREENSAVER_WIDGET_CLASS}>
             <Component {...props} />
           </div>
         </Suspense>

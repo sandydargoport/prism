@@ -14,6 +14,18 @@ import { GRID_COLS } from '@/lib/constants/grid';
 import { CssGridDisplay } from '@/components/layout/grid/CssGridDisplay';
 import { loadScreensaverLayout } from './screensaverStorage';
 
+/**
+ * Wrapper classes that make any dashboard widget legible as a screensaver
+ * overlay: transparent backgrounds (wallpaper shows through), a faint frosted
+ * card, light borders, and — the important part — forced white text with a soft
+ * shadow so nothing goes dark-on-dark (or washes out over a bright photo).
+ * Shared by the live screensaver and the editor's screensaver preview.
+ */
+export const SCREENSAVER_WIDGET_CLASS =
+  'h-full w-full ' +
+  '[&_*]:!bg-transparent [&_.bg-card]:!bg-white/10 [&_.border-border]:!border-white/20 ' +
+  '[&_*]:!text-white [&_*]:[text-shadow:0_1px_4px_rgba(0,0,0,0.75)]';
+
 // Re-export storage utilities for consumers
 export {
   DEFAULT_SCREENSAVER_LAYOUT,
@@ -129,14 +141,16 @@ function ScreensaverGrid() {
     );
   };
 
-  // Override renderWidget to inject screensaver text defaults (white text)
-  const renderScreensaverWidget = (w: WidgetConfig) => {
-    return renderWidget({
-      ...w,
-      textColor: w.textColor || '#FFFFFF',
-      textOpacity: w.textOpacity ?? (w.textColor ? 1 : 0.9),
-    });
-  };
+  // Screensavers float over the wallpaper/photos, so widgets need transparent
+  // backgrounds and LIGHT text — otherwise dark widget text/borders vanish on a
+  // dark background (the CssGridDisplay text-color override alone doesn't reach
+  // widget content that uses its own Tailwind text classes). Force it here, with
+  // a soft shadow so it stays legible over bright photos too.
+  const renderScreensaverWidget = (w: WidgetConfig) => (
+    <div className={SCREENSAVER_WIDGET_CLASS}>
+      {renderWidget(w)}
+    </div>
+  );
 
   return (
     <CssGridDisplay
