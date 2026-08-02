@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import { LayoutPreview } from './LayoutPreview';
-import { DevicePreviewGallery } from './DevicePreviewGallery';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import type { ScreenSafeZones } from '@/lib/hooks/useScreenSafeZones';
 
@@ -39,15 +38,6 @@ export function LayoutEditorPreviewPanel({
 }: LayoutEditorPreviewPanelProps) {
   return (
     <div className="p-3 space-y-3">
-      {/* How the layout appears on each device (stretch/squish per aspect). */}
-      <div>
-        <p className="text-[10px] font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">On each screen</p>
-        <DevicePreviewGallery
-          widgets={visibleWidgets.map(w => ({ i: w.i, x: w.x, y: w.y, w: w.w, h: w.h }))}
-          highlightWidget={focusedWidget}
-        />
-      </div>
-
       <div className="flex gap-2 items-start">
         <LayoutPreview
           widgets={visibleWidgets.map(w => ({ i: w.i, x: w.x, y: w.y, w: w.w, h: w.h }))}
