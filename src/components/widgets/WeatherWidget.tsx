@@ -298,8 +298,20 @@ export const WeatherWidget = React.memo(function WeatherWidget({
 
   const isVertical = gridH > gridW;
 
-  // Clamp forecast days: default 7, max 7, min 1
-  const resolvedDays = forecastDays ?? Math.min(7, Math.max(1, weatherData.forecast.length));
+  // Auto-fit the content to the widget's height so it never overflows/clips in a
+  // short cell: reveal sections densest-first (current conditions → hourly
+  // timeline → N-day forecast) as more rows are available. An explicit
+  // forecastDays prop (a user setting) overrides the automatic day count, and
+  // the thresholds are deliberately conservative so it fits even on shorter
+  // (laptop-height) rows. Give it more rows in the editor to see more days.
+  const autoDays =
+    gridH >= 20 ? 7 :
+    gridH >= 16 ? 5 :
+    gridH >= 13 ? 4 :
+    gridH >= 10 ? 3 :
+    gridH >= 8 ? 2 : 0;
+  const resolvedDays = Math.max(0, forecastDays ?? autoDays);
+  const showHourly = showForecast && gridH >= 9;
 
   // Pre-filter to today-or-future so the label count matches what renders.
   // Provider stores forecast.date as UTC-midnight of the location's calendar
@@ -329,7 +341,7 @@ export const WeatherWidget = React.memo(function WeatherWidget({
       error={error}
       className={className}
     >
-      <div className={cn('flex flex-col gap-3 h-full overflow-auto', isVertical ? 'pb-2' : '')}>
+      <div className={cn('flex flex-col gap-3 h-full overflow-hidden', isVertical ? 'pb-2' : '')}>
 
         {/* CURRENT CONDITIONS */}
         <CurrentConditions
@@ -343,14 +355,14 @@ export const WeatherWidget = React.memo(function WeatherWidget({
         />
 
         {/* HOURLY FORECAST */}
-        {showForecast && weatherData.hourly && weatherData.hourly.length > 0 && (
+        {showHourly && weatherData.hourly && weatherData.hourly.length > 0 && (
           <div className="border-t border-border pt-3">
             <HourlyTimeline hourly={weatherData.hourly} units={units} />
           </div>
         )}
 
         {/* FORECAST SECTION */}
-        {showForecast && hasDays && (
+        {showForecast && hasDays && resolvedDays > 0 && (
           <div className="border-t border-border pt-3 flex-1 min-h-0 flex flex-col gap-3">
 
             {/* Multi-day summary */}
