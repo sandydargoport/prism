@@ -52,6 +52,13 @@ export interface CssGridDisplayProps {
    * Falls back to inferring from the canvas shape when omitted.
    */
   designOrientation?: 'landscape' | 'portrait';
+  /**
+   * Force contain/scale-to-fit (never stretch, never fixed-cell fill). The
+   * content bounding box is scaled with square cells to fit the viewport and
+   * centered — used for the screensaver, where a sparse ambient layout should
+   * scale to fit any screen without clipping or distortion.
+   */
+  containMode?: boolean;
   className?: string;
 }
 

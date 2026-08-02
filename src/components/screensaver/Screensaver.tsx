@@ -159,7 +159,8 @@ function ScreensaverGrid() {
       margin={4}
       containerPadding={12}
       cols={GRID_COLS}
-      fillHeight
+      containMode
+      headerOffset={0}
       className="w-full h-full"
     />
   );
