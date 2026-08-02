@@ -45,15 +45,6 @@ export function CssGridDisplay({
   //   • OPPOSITE orientation (a portrait design on a landscape screen, or vice
   //     versa): a stretch would be a ~2× skew, so instead CONTAIN the canvas
   //     scaled-to-fit and letterbox it, preserving proportions.
-  const fit = !!targetRows && !fillHeight;
-  const designWide = designOrientation
-    ? designOrientation === 'landscape'
-    : cols >= (targetRows ?? cols);
-  const screenWide = viewportWidth >= viewportHeight;
-  const sameOrientation = designWide === screenWide;
-  const stretch = fit && sameOrientation;
-  const contain = fit && !sameOrientation;
-
   // The canvas we fit to the screen is the ACTUAL content bounding box (origin →
   // furthest used row/col), NOT the full guide. This is what makes the bottom
   // row and right column land on the screen edges: any trailing empty guide rows
@@ -68,6 +59,22 @@ export function CssGridDisplay({
     }
     return { fitCols: maxCol, fitRows: maxRow };
   }, [visibleWidgets]);
+
+  const fit = !!targetRows && !fillHeight;
+  // Decide stretch-vs-letterbox from the CONTENT'S OWN SHAPE, not a stored
+  // orientation label (which can drift from the actual widgets — e.g. a layout
+  // saved as "portrait" but laid out landscape). A wide design on a wide screen
+  // (or tall on tall) stretches to fill; a genuine orientation mismatch (wide
+  // design on a tall screen or vice-versa) would be a ~2× skew, so it letterboxes
+  // to preserve proportions. `designOrientation` is kept only as a fallback for
+  // an empty/degenerate layout.
+  const designWide = fitCols !== fitRows
+    ? fitCols > fitRows
+    : (designOrientation ? designOrientation === 'landscape' : true);
+  const screenWide = viewportWidth >= viewportHeight;
+  const sameOrientation = designWide === screenWide;
+  const stretch = fit && sameOrientation;
+  const contain = fit && !sameOrientation;
 
   // Available box below the real chrome. Uses the measured grid top when we have
   // it (real header height) and the reactive viewport height so F11/fullscreen,

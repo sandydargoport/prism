@@ -641,6 +641,29 @@ export function LayoutGridEditor({
     containerRef(node);
   }, [containerRef]);
 
+  // Preview (measure) mode: render the REAL display — the same stretch-to-fill
+  // CssGridDisplay the live dashboard uses — so the preview is true WYSIWYG
+  // instead of a square-cell, letterboxed approximation. (The old multi-screen
+  // safe-zone preview lives on in git history / the archived guide code if a
+  // fixed-aspect fit is ever needed again for odd screens like iPad/e-readers.)
+  if (isEditable && measureMode) {
+    return (
+      <div className={className || ''}>
+        <CssGridDisplay
+          layout={stableLayout}
+          renderWidget={renderWidget}
+          margin={margin}
+          containerPadding={containerPadding}
+          cols={cols}
+          headerOffset={measureHideNav ? 0 : 50}
+          bottomOffset={measureHideNav ? 0 : bottomOffset}
+          targetRows={displayTargetRows}
+          designOrientation={screenGuideOrientation}
+        />
+      </div>
+    );
+  }
+
   if (isEditable) {
     return (
       <div className={className || ''}>
