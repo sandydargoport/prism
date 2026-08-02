@@ -242,10 +242,13 @@ describe('day summary header', () => {
 // ===========================================================================
 
 describe('forecastDays prop', () => {
-  it('defaults to 5 when not specified and 5+ days are available', () => {
+  it('picks the forecast length from the widget height when not specified', () => {
     const data = makeWeatherData();
-    render(<WeatherWidget data={data} />);
+    // Taller widget shows more days; a shorter one shows fewer (auto-fit).
+    const { rerender } = render(<WeatherWidget data={data} gridH={17} />);
     expect(screen.queryByText('5-Day Forecast')).not.toBeNull();
+    rerender(<WeatherWidget data={data} gridH={12} />);
+    expect(screen.queryByText('3-Day Forecast')).not.toBeNull();
   });
 
   it('respects an explicit forecastDays value', () => {
@@ -355,7 +358,8 @@ describe('showForecast prop', () => {
   it('renders the forecast section by default', () => {
     const data = makeWeatherData();
     render(<WeatherWidget data={data} />);
-    expect(screen.queryByText('5-Day Forecast')).not.toBeNull();
+    // Default height (12 rows) auto-fits to a 3-day forecast + hourly timeline.
+    expect(screen.queryByText('3-Day Forecast')).not.toBeNull();
     expect(screen.queryByText(/Next 8 Hours/)).not.toBeNull();
   });
 
