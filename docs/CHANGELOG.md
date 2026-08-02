@@ -4,6 +4,15 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.13.1] – 2026-08-02
+
+### Dashboard
+- **Fixed the bottom row clipping on some kiosks.** On touch displays where the top toolbar renders a little taller, the bottom row of widgets could be clipped while the toolbar was showing. The layout now measures the real toolbar height and fits cleanly whether the toolbar is shown or hidden.
+- **Weather no longer cuts a forecast day in half.** The daily forecast shows only the whole day rows that fit, instead of clipping the last one mid-row.
+
+### Screensaver
+- **Screensaver scales to fit any screen.** It shrinks to fit the display so nothing runs off the bottom edge, on any monitor size.
+
 ## [1.13.0] – 2026-08-02
 
 ### Dashboard
