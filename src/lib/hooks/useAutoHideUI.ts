@@ -46,13 +46,31 @@ export function useAutoHideUI() {
 
     const events = ['mousedown', 'touchstart', 'keydown', 'scroll'] as const;
     const handler = () => resetTimer();
-
     events.forEach(e => window.addEventListener(e, handler, { passive: true }));
+
+    // Also reveal on pointer MOVEMENT (throttled). Without this, the hidden
+    // toolbar can only be un-hidden by a click — but a click on the collapsed
+    // (max-h-0) header lands on the dashboard behind it and never reaches the
+    // control the user aimed for, so the first click just "wakes" the UI and
+    // seems to do nothing (e.g. the F11 kiosk edit-layout button, #21).
+    // Moving toward a control now brings the chrome up before the click.
+    // A still cursor emits no mousemove, so idle auto-hide still engages, and
+    // a touch-only kiosk (no mousemove) is unaffected.
+    let lastMove = 0;
+    const moveHandler = () => {
+      const now = performance.now();
+      if (now - lastMove < 400) return;
+      lastMove = now;
+      resetTimer();
+    };
+    window.addEventListener('mousemove', moveHandler, { passive: true });
+
     // Start the timer immediately
     resetTimer();
 
     return () => {
       events.forEach(e => window.removeEventListener(e, handler));
+      window.removeEventListener('mousemove', moveHandler);
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [enabled, resetTimer]);
