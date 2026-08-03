@@ -37,6 +37,7 @@ import type {
 } from '@/components/widgets/WeatherWidget';
 import type { LocationParam, WeatherOptions } from './weather';
 import { getMoonData } from './moon';
+import { DAYS_SHORT_ARRAY } from '@/lib/constants/days';
 
 function defaultImperialUnits(): WeatherUnits {
   return { temperature: 'F', windSpeed: 'mph', precipitation: 'in' };
@@ -175,7 +176,6 @@ function zonedTimeToUtc(localIso: string, timeZone: string): Date {
 // Main fetch function
 // ---------------------------------------------------------------------------
 
-const DAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export async function fetchWeatherData(
   location?: LocationParam,
@@ -283,7 +283,7 @@ export async function fetchWeatherData(
         : new Date(dateStr);
       return {
         date,
-        dayName: DAYS_SHORT[date.getUTCDay()] ?? 'Day',
+        dayName: DAYS_SHORT_ARRAY[date.getUTCDay()] ?? 'Day',
         high: Math.round(daily.temperature_2m_max[i] ?? 0),
         low: Math.round(daily.temperature_2m_min[i] ?? 0),
         condition: mapWmoCode(daily.weather_code[i] ?? 0),
