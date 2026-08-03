@@ -29,6 +29,7 @@ jest.mock('@/lib/db/client', () => ({
 jest.mock('@/lib/db/schema', () => ({
   photos: { id: 'id', sourceId: 'sourceId', filename: 'filename', externalId: 'externalId' },
   photoSources: { id: 'id', type: 'type' },
+  excludedPhotos: { id: 'id', sourceId: 'sourceId', externalId: 'externalId' },
 }));
 
 jest.mock('drizzle-orm', () => ({

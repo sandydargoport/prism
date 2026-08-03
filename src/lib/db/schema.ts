@@ -1259,6 +1259,27 @@ export const photos = pgTable('photos', {
 }));
 
 
+/**
+ * Tombstones for synced photos the user removed from Prism. Photo sources are a
+ * one-way pull sync, so a plain delete would re-download the photo on the next
+ * run. The sync skips any (sourceId, externalId) recorded here, so "remove from
+ * Prism" stays removed without ever touching the photo in OneDrive/Immich.
+ * Cascade-deletes with the source. Only synced photos (those with an externalId)
+ * are tombstoned; local uploads have no remote to boomerang from.
+ */
+export const excludedPhotos = pgTable('excluded_photos', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  sourceId: uuid('source_id')
+    .notNull()
+    .references(() => photoSources.id, { onDelete: 'cascade' }),
+  externalId: varchar('external_id', { length: 255 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  excludedSourceExternalUnique: uniqueIndex('excluded_photos_source_external_unique')
+    .on(table.sourceId, table.externalId),
+}));
+
+
 export const photoSourcesRelations = relations(photoSources, ({ many }) => ({
   photos: many(photos),
 }));

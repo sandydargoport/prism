@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useState, useCallback } from 'react';
-import { ImageIcon, Upload, Star, Play, X } from 'lucide-react';
+import { ImageIcon, Upload, Star, Play, X, CheckSquare, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { usePhotos } from '@/lib/hooks/usePhotos';
@@ -15,6 +15,9 @@ import { PageWrapper, SubpageHeader, FilterBar, FilterDropdown } from '@/compone
 import { useAutoOrientationSetting } from '@/components/layout/WallpaperBackground';
 import { useAuth } from '@/components/providers';
 import { EmptyState } from '@/components/ui/empty-state';
+import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { toast } from '@/components/ui/use-toast';
 
 const ORIENTATION_OPTIONS = [
   { value: 'landscape', label: 'Landscape' },
@@ -34,6 +37,12 @@ export function PhotosView() {
   const [showUpload, setShowUpload] = useState(false);
   const [galleryMode, setGalleryMode] = useState(false);
   const { enabled: autoOrientationEnabled } = useAutoOrientationSetting();
+  const { confirm, dialogProps } = useConfirmDialog();
+
+  // Multi-select "remove from Prism" mode
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   const handleUploadWithAuth = async () => {
     const user = await requireAuth('Upload Photo', 'Please log in to upload photos');
@@ -85,6 +94,52 @@ export function PhotosView() {
     }
   }, [refresh]);
 
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const exitSelectMode = useCallback(() => {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  }, []);
+
+  const handleBulkDelete = useCallback(async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    const ok = await confirm(
+      `Remove ${ids.length} photo${ids.length === 1 ? '' : 's'} from Prism?`,
+      'This removes them from Prism only — your OneDrive/source photos are never touched, and synced photos stay removed instead of re-downloading.',
+      { confirmLabel: 'Remove from Prism' },
+    );
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      const res = await fetch('/api/photos/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+      if (!res.ok) throw new Error('Request failed');
+      const data = await res.json();
+      toast({
+        title: `Removed ${data.deleted ?? ids.length} photo${(data.deleted ?? ids.length) === 1 ? '' : 's'} from Prism`,
+        variant: 'success',
+      });
+      exitSelectMode();
+      refresh();
+    } catch (err) {
+      console.error('Error removing photos:', err);
+      toast({ title: 'Failed to remove photos', variant: 'destructive' });
+    } finally {
+      setDeleting(false);
+    }
+  }, [selectedIds, confirm, exitSelectMode, refresh]);
+
   return (
     <PageWrapper>
       <div className="h-screen flex flex-col">
@@ -92,16 +147,27 @@ export function PhotosView() {
           icon={<ImageIcon className="h-5 w-5 text-primary" />}
           title="Photos"
           badge={total > 0 ? <Badge variant="secondary">{total}</Badge> : undefined}
-          actions={<>
-            <Button variant="outline" size="sm" onClick={() => setGalleryMode(true)} disabled={photos.length === 0}>
-              <Play className="h-4 w-4 mr-1" />
-              Gallery
+          actions={selectMode ? (
+            <Button variant="ghost" size="sm" onClick={exitSelectMode}>
+              <X className="h-4 w-4 mr-1" />
+              Cancel
             </Button>
-            <Button size="sm" onClick={handleUploadWithAuth}>
-              <Upload className="h-4 w-4 mr-1" />
-              Upload
-            </Button>
-          </>}
+          ) : (
+            <>
+              <Button variant="outline" size="sm" onClick={() => setSelectMode(true)} disabled={photos.length === 0}>
+                <CheckSquare className="h-4 w-4 mr-1" />
+                Select
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setGalleryMode(true)} disabled={photos.length === 0}>
+                <Play className="h-4 w-4 mr-1" />
+                Gallery
+              </Button>
+              <Button size="sm" onClick={handleUploadWithAuth}>
+                <Upload className="h-4 w-4 mr-1" />
+                Upload
+              </Button>
+            </>
+          )}
         />
 
         <FilterBar>
@@ -136,6 +202,41 @@ export function PhotosView() {
           )}
         </FilterBar>
 
+        {selectMode && (
+          <div className="flex items-center gap-2 border-b bg-muted/40 px-4 py-2">
+            <span className="text-sm font-medium">
+              {selectedIds.size} selected
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8"
+              onClick={() =>
+                setSelectedIds(
+                  selectedIds.size === photos.length
+                    ? new Set()
+                    : new Set(photos.map((p) => p.id)),
+                )
+              }
+              disabled={photos.length === 0}
+            >
+              {selectedIds.size === photos.length ? 'Clear all' : 'Select all'}
+            </Button>
+            <div className="ml-auto">
+              <Button
+                variant="destructive"
+                size="sm"
+                className="h-8"
+                onClick={handleBulkDelete}
+                disabled={selectedIds.size === 0 || deleting}
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                {deleting ? 'Removing…' : 'Remove from Prism'}
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {showUpload && (
             <PhotoUpload onUploadComplete={() => { refresh(); setShowUpload(false); }} />
@@ -160,6 +261,9 @@ export function PhotosView() {
               onPhotoClick={(i) => setLightboxIndex(i)}
               onLoadMore={loadMore}
               hasMore={photos.length < total}
+              selectMode={selectMode}
+              selectedIds={selectedIds}
+              onToggleSelect={toggleSelect}
             />
           )}
         </div>
@@ -185,6 +289,8 @@ export function PhotosView() {
           autoOrientationEnabled={autoOrientationEnabled}
         />
       )}
+
+      <ConfirmDialog {...dialogProps} />
     </PageWrapper>
   );
 }

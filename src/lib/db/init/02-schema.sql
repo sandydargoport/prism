@@ -2623,3 +2623,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS dismissed_events_source_external_unique ON pub
 -- Deletes-only review: flag synced events gone from source instead of deleting (#171).
 ALTER TABLE public.events ADD COLUMN IF NOT EXISTS pending_deletion timestamp;
 CREATE INDEX IF NOT EXISTS events_pending_deletion_idx ON public.events (pending_deletion);
+
+-- Tombstones for synced photos removed from Prism (so a pull sync doesn't re-add them).
+CREATE TABLE IF NOT EXISTS public.excluded_photos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  source_id uuid NOT NULL REFERENCES public.photo_sources(id) ON DELETE CASCADE,
+  external_id varchar(255) NOT NULL,
+  created_at timestamp DEFAULT now() NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS excluded_photos_source_external_unique ON public.excluded_photos (source_id, external_id);
