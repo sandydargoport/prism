@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { Emoji } from '@/components/ui/Emoji';
 import { Plus, Trash2, GripVertical, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -205,7 +206,7 @@ export function ManageCategoriesModal({ open, onOpenChange }: ManageCategoriesMo
                                 )}
                                 onClick={() => handleEmojiSelect(cat.id, emoji)}
                               >
-                                {emoji}
+                                <Emoji e={emoji} />
                               </button>
                             ))}
                           </div>
@@ -241,7 +242,7 @@ export function ManageCategoriesModal({ open, onOpenChange }: ManageCategoriesMo
                     onClick={() => setEmojiPickerFor(emojiPickerFor === '_new' ? null : '_new')}
                     title="Pick emoji"
                   >
-                    {newEmoji || '🛒'}
+                    <Emoji e={newEmoji || '🛒'} />
                   </button>
 
                   {emojiPickerFor === '_new' && (
@@ -263,7 +264,7 @@ export function ManageCategoriesModal({ open, onOpenChange }: ManageCategoriesMo
                               setEmojiPickerFor(null);
                             }}
                           >
-                            {emoji}
+                            <Emoji e={emoji} />
                           </button>
                         ))}
                       </div>

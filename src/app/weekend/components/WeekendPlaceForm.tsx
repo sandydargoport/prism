@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Emoji } from '@/components/ui/Emoji';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -144,7 +145,7 @@ export function WeekendPlaceForm({ initial, onSave, onCancel, hideHeader }: Week
                 : 'border-transparent bg-muted text-muted-foreground hover:bg-accent'
             }`}
           >
-            ⭐ {isFavorite ? 'Favorite' : 'Mark as favorite'}
+            <Emoji e="⭐" /> {isFavorite ? 'Favorite' : 'Mark as favorite'}
           </button>
         </div>
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { Compass } from 'lucide-react';
+import { Emoji } from '@/components/ui/Emoji';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { WeekendPlaceCard } from './WeekendPlaceCard';
@@ -74,7 +75,7 @@ export function WeekendPlaceGrid({ places, selectedId, onSelect, hasUnfilteredPl
       {groups.map(group => (
         <div key={group.key}>
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
-            <span>{group.emoji}</span>
+            <span><Emoji e={group.emoji} /></span>
             <span>{group.label}</span>
             <span className="text-muted-foreground/50 font-normal normal-case tracking-normal">({group.places.length})</span>
           </h3>

@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { Emoji } from '@/components/ui/Emoji';
 import { Card, CardContent } from '@/components/ui/card';
 import { PrismIcon } from '@/components/ui/PrismIcon';
 
@@ -31,7 +32,7 @@ export function WelcomeStep({ onNext }: { onNext: () => void }) {
             { icon: '🏠', label: 'Household basics' },
           ].map(({ icon, label }) => (
             <div key={label} className="flex items-center gap-2">
-              <span className="text-lg">{icon}</span>
+              <span className="text-lg"><Emoji e={icon} /></span>
               <span>{label}</span>
             </div>
           ))}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Emoji } from '@/components/ui/Emoji';
 import { toast } from '@/components/ui/use-toast';
 import { ShoppingCart, Plus, Settings, Maximize2, Minimize2, Tags, Send, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -371,7 +372,7 @@ export function ShoppingView() {
                   {otherItems.map(([category, items]) => (
                     <div key={category} className="border rounded-lg p-3 bg-card/90 backdrop-blur-sm">
                       <h4 className="text-base font-semibold text-muted-foreground mb-2 capitalize flex items-center gap-2">
-                        <span>{getDynCategoryEmoji(category)}</span><span>{category}</span>
+                        <span><Emoji e={getDynCategoryEmoji(category)} /></span><span>{category}</span>
                       </h4>
                       <div className="space-y-1">
                         {(items as ShoppingItem[]).map((item) => (

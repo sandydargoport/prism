@@ -1,6 +1,7 @@
 'use client';
 
 import { Plus, GripVertical, ChevronsDown } from 'lucide-react';
+import { Emoji } from '@/components/ui/Emoji';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -87,7 +88,7 @@ export function ShoppingCategoryCard({
         style={{ backgroundColor: categoryColor + '20' }}
       >
         <GripVertical className="h-4 w-4 text-muted-foreground/50 shrink-0 hidden md:block" />
-        <span className="text-xl">{categoryEmoji}</span>
+        <span className="text-xl"><Emoji e={categoryEmoji} /></span>
         <h3
           className="text-base font-bold capitalize"
           style={{ color: categoryColor }}

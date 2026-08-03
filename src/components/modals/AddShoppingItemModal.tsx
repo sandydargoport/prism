@@ -16,6 +16,7 @@
 'use client';
 
 import * as React from 'react';
+import { Emoji } from '@/components/ui/Emoji';
 import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import {
@@ -309,7 +310,7 @@ export function AddShoppingItemModal({
                   onClick={() => setCategory(cat)}
                   className="capitalize"
                 >
-                  {getCategoryEmoji(cat)} {cat}
+                  <Emoji e={getCategoryEmoji(cat)} /> {cat}
                 </Button>
               ))}
             </div>

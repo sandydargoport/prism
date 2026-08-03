@@ -1,6 +1,7 @@
 'use client';
 
 import { isPast, isToday, isTomorrow, parseISO, format } from 'date-fns';
+import { Emoji } from '@/components/ui/Emoji';
 import {
   AlertCircle,
   Trash2,
@@ -95,7 +96,7 @@ export function ChoreItem({
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-base">{categoryEmoji}</span>
+          <span className="text-base"><Emoji e={categoryEmoji} /></span>
           <span className={cn(
             'font-medium',
             isPendingApproval && 'text-amber-700 dark:text-amber-400'

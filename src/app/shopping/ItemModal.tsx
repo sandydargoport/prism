@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { Emoji } from '@/components/ui/Emoji';
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -149,7 +150,7 @@ export function ItemModal({
                 size="sm"
                 onClick={() => setCategory('other')}
               >
-                🛒 Other
+                <Emoji e="🛒" /> Other
               </Button>
             </div>
           </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { Emoji } from '@/components/ui/Emoji';
 import { Search, X, Loader2, Star, MapPin, Plus, TreePine, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -432,7 +433,7 @@ export function PinForm({ pin, initialLatLng, parentId, pinType = 'location', ch
                   <div className="flex flex-wrap gap-1">
                     {childPins.filter(c => c.pinType === 'stop').map((s) => (
                       <Badge key={s.id} variant="secondary" className="text-violet-700 bg-violet-50 dark:bg-violet-900/20 text-xs">
-                        📍 {s.name}
+                        <Emoji e="📍" /> {s.name}
                       </Badge>
                     ))}
                   </div>
@@ -470,7 +471,7 @@ export function PinForm({ pin, initialLatLng, parentId, pinType = 'location', ch
                       <Badge key={s.name} variant="secondary"
                         className="gap-1 pr-1 text-violet-700 bg-violet-50 dark:bg-violet-900/20"
                       >
-                        📍 {s.name}
+                        <Emoji e="📍" /> {s.name}
                         {s.latitude === 0 && s.longitude === 0 && (
                           <span className="text-[10px] text-amber-500 ml-0.5">no location</span>
                         )}
@@ -512,7 +513,7 @@ export function PinForm({ pin, initialLatLng, parentId, pinType = 'location', ch
                 {childPins.filter(c => c.pinType === 'national_park').length > 0 && (
                   <div className="p-2 border-b border-border flex flex-wrap gap-1">
                     {childPins.filter(c => c.pinType === 'national_park').map((p) => (
-                      <Badge key={p.id} className="bg-emerald-700 text-white text-xs">🌲 {p.name}</Badge>
+                      <Badge key={p.id} className="bg-emerald-700 text-white text-xs"><Emoji e="🌲" /> {p.name}</Badge>
                     ))}
                   </div>
                 )}
@@ -551,7 +552,7 @@ export function PinForm({ pin, initialLatLng, parentId, pinType = 'location', ch
               <div className="flex flex-wrap gap-1">
                 {pendingParks.map((p) => (
                   <Badge key={p.name} className="bg-emerald-700 text-white gap-1 pr-1 text-xs">
-                    🌲 {p.name}
+                    <Emoji e="🌲" /> {p.name}
                     {p.latitude === 0 && p.longitude === 0 && (
                       <span className="text-[10px] text-emerald-200 ml-0.5">locating…</span>
                     )}

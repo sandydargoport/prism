@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { Emoji } from '@/components/ui/Emoji';
 import { Spinner } from '@/components/ui/spinner';
 import type { ScanState } from './useShoppingScanFlow';
 import type { ShoppingList } from '@/types';
@@ -93,7 +94,7 @@ export function ScanFlowSheet({
                   variant={cat.id === product.suggestedCategory ? 'default' : 'outline'}
                   className="w-full justify-start text-base py-3 gap-2"
                   onClick={() => onDoAdd(cat.id)}>
-                  <span>{getCategoryEmoji(cat.id)}</span>
+                  <span><Emoji e={getCategoryEmoji(cat.id)} /></span>
                   <span>{cat.name}</span>
                   {cat.id === product.suggestedCategory && <span className="ml-auto text-xs opacity-60">suggested</span>}
                 </Button>

@@ -15,6 +15,7 @@
 'use client';
 
 import * as React from 'react';
+import { Emoji } from '@/components/ui/Emoji';
 import { useState, useEffect } from 'react';
 import { DAYS_SHORT_ARRAY, DAYS_LONG_ARRAY } from '@/lib/constants/days';
 import { Loader2 } from 'lucide-react';
@@ -265,7 +266,7 @@ export function AddChoreModal({
                   onClick={() => setCategory(cat)}
                   className="capitalize"
                 >
-                  {getCategoryEmoji(cat)} {cat}
+                  <Emoji e={getCategoryEmoji(cat)} /> {cat}
                 </Button>
               ))}
             </div>

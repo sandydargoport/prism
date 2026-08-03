@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { Emoji } from '@/components/ui/Emoji';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -117,7 +118,7 @@ export function TripForm({ initialData, hideHeader, onSave, onCancel }: TripForm
                     : 'border-border text-muted-foreground hover:text-foreground hover:bg-muted'
                 )}
               >
-                {s === 'been_there' ? '✓ Been There' : '📍 Want to Go'}
+                {s === 'been_there' ? '✓ Been There' : <><Emoji e="📍" /> Want to Go</>}
               </button>
             ))}
           </div>
