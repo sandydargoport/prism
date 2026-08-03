@@ -56,24 +56,32 @@ export const BirthdaysWidget = React.memo(function BirthdaysWidget({
 }: BirthdaysWidgetProps) {
   const items = birthdays.slice(0, maxItems);
 
-  // Show only the whole rows that fit (no scrollbar, no half-cut last row) —
-  // measure the list area and cap the visible count, like the weather widget.
+  // Show only the whole rows that fit (no scrollbar, no half-cut last row).
+  // Measure the REAL header + row heights from the rendered table rather than
+  // hardcoding them: a fixed estimate under-counts and clips the last row
+  // mid-line once the widget grows tall (e.g. when the navbars auto-hide).
+  // getBoundingClientRect on all three keeps the math in one coordinate space,
+  // so any dashboard transform-scale cancels out.
   const listRef = React.useRef<HTMLDivElement>(null);
   const [maxRows, setMaxRows] = React.useState(maxItems);
   React.useEffect(() => {
     const el = listRef.current;
     if (!el) return;
-    const HEADER_PX = 26; // table header row
-    const ROW_PX = 34; // one birthday row (py-1.5 + text), slightly generous
     const measure = () => {
-      const h = el.clientHeight;
-      if (h > 0) setMaxRows(Math.max(1, Math.floor((h - HEADER_PX) / ROW_PX)));
+      const h = el.getBoundingClientRect().height;
+      if (h <= 0) return;
+      const headerEl = el.querySelector('thead');
+      const rowEl = el.querySelector('tbody tr');
+      const headerH = headerEl?.getBoundingClientRect().height ?? 26;
+      const rowH = rowEl?.getBoundingClientRect().height ?? 34;
+      if (rowH <= 0) return;
+      setMaxRows(Math.max(1, Math.floor((h - headerH) / rowH)));
     };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [items.length]);
   const visible = items.slice(0, maxRows);
 
   return (
