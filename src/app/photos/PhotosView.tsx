@@ -5,7 +5,7 @@ import { useState, useCallback } from 'react';
 import { ImageIcon, Upload, Star, Play, X, CheckSquare, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { usePhotos, getResolutionQuality } from '@/lib/hooks/usePhotos';
+import { usePhotos } from '@/lib/hooks/usePhotos';
 import type { PhotoOrientation } from '@/lib/hooks/usePhotos';
 import { PhotoGallery } from '@/components/photos/PhotoGallery';
 import { PhotoUpload } from '@/components/photos/PhotoUpload';
@@ -61,6 +61,7 @@ export function PhotosView() {
       sort: 'chronological',
       limit: 50,
       favorite: favoriteFilter,
+      belowHd: belowHdFilter,
     });
 
   // Client-side multi-select filtering
@@ -75,12 +76,10 @@ export function PhotosView() {
         return tags.some((t) => usageFilters.has(t));
       });
     }
-    if (belowHdFilter) {
-      // Everything under the green dot (below 1920×1080) — the low-res photos.
-      filtered = filtered.filter((p) => getResolutionQuality(p.width, p.height) !== 'green');
-    }
+    // belowHd is applied server-side (usePhotos) so it filters the whole
+    // library, not just the loaded page — nothing to do here.
     return filtered;
-  }, [rawPhotos, orientationFilters, usageFilters, belowHdFilter]);
+  }, [rawPhotos, orientationFilters, usageFilters]);
 
   const hasActiveFilters =
     orientationFilters.size > 0 || usageFilters.size > 0 || !!favoriteFilter || belowHdFilter;
@@ -155,6 +154,37 @@ export function PhotosView() {
       setDeleting(false);
     }
   }, [selectedIds, confirm, exitSelectMode, refresh]);
+
+  // Select all — covers the WHOLE filtered library (not just the loaded page)
+  // by asking the server for every matching id. Orientation/usage are filtered
+  // client-side and can't be expressed in that query, so when either is active
+  // we fall back to selecting the currently-loaded photos.
+  const [selectingAll, setSelectingAll] = useState(false);
+  const handleSelectAll = useCallback(async () => {
+    if (selectedIds.size > 0) {
+      setSelectedIds(new Set());
+      return;
+    }
+    if (orientationFilters.size > 0 || usageFilters.size > 0) {
+      setSelectedIds(new Set(photos.map((p) => p.id)));
+      return;
+    }
+    setSelectingAll(true);
+    try {
+      const params = new URLSearchParams();
+      if (favoriteFilter !== undefined) params.set('favorite', String(favoriteFilter));
+      if (belowHdFilter) params.set('belowHd', 'true');
+      params.set('idsOnly', 'true');
+      const res = await fetch(`/api/photos?${params}`);
+      if (!res.ok) throw new Error('Request failed');
+      const data = await res.json();
+      setSelectedIds(new Set<string>(data.ids ?? []));
+    } catch {
+      setSelectedIds(new Set(photos.map((p) => p.id)));
+    } finally {
+      setSelectingAll(false);
+    }
+  }, [selectedIds, orientationFilters, usageFilters, favoriteFilter, belowHdFilter, photos]);
 
   const handleBulkUsage = useCallback(
     async (tag: string, action: 'add' | 'remove') => {
@@ -257,16 +287,14 @@ export function PhotosView() {
               variant="ghost"
               size="sm"
               className="h-8"
-              onClick={() =>
-                setSelectedIds(
-                  selectedIds.size === photos.length
-                    ? new Set()
-                    : new Set(photos.map((p) => p.id)),
-                )
-              }
-              disabled={photos.length === 0}
+              onClick={handleSelectAll}
+              disabled={photos.length === 0 || selectingAll}
             >
-              {selectedIds.size === photos.length ? 'Clear all' : 'Select all'}
+              {selectingAll
+                ? 'Selecting…'
+                : selectedIds.size > 0
+                  ? 'Clear all'
+                  : `Select all${total > photos.length ? ` (${total})` : ''}`}
             </Button>
 
             {/* Bulk-toggle W/G/S across the selection */}

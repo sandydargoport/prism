@@ -37,6 +37,8 @@ export async function GET(request: NextRequest) {
     const usage = searchParams.get('usage');
     const orientation = searchParams.get('orientation');
     const sort = searchParams.get('sort') || 'chronological';
+    const belowHd = searchParams.get('belowHd') === 'true';
+    const idsOnly = searchParams.get('idsOnly') === 'true';
     const limit = parseInt(searchParams.get('limit') || '50', 10);
     const offset = parseInt(searchParams.get('offset') || '0', 10);
 
@@ -48,6 +50,14 @@ export async function GET(request: NextRequest) {
       if (usage) {
         const tag = usage.replace(/_or_all$/, '').replace(/_or_both$/, '');
         conditions.push(like(photos.usage, `%${tag}%`));
+      }
+      // Below-HD: under 1920×1080 (the sub-green resolution dots), plus photos
+      // missing dimensions (treated as low-res). Mirrors getResolutionQuality.
+      if (belowHd) {
+        conditions.push(sql`(
+          ${photos.width} IS NULL OR ${photos.height} IS NULL
+          OR ${photos.width} * ${photos.height} < 2073600
+        )`);
       }
 
       // Cross-source dedup (#57). A photo is suppressed if another photo
@@ -74,6 +84,15 @@ export async function GET(request: NextRequest) {
         )`);
       }
 
+      // ids-only: every matching photo id for the current filter (no
+      // pagination), so the gallery's "Select all" can cover the whole
+      // filtered library rather than just the loaded page.
+      if (idsOnly) {
+        const idQuery = db.select({ id: photos.id }).from(photos);
+        const idRows = conditions.length > 0 ? await idQuery.where(and(...conditions)) : await idQuery;
+        return { ids: idRows.map((r) => r.id), total: idRows.length };
+      }
+
       const orderBy = sort === 'random' ? sql`RANDOM()` : desc(photos.takenAt);
 
       const query = db.select().from(photos).orderBy(orderBy).limit(limit).offset(offset);
@@ -87,11 +106,12 @@ export async function GET(request: NextRequest) {
       return { photos: results, total: Number(totalResult[0]?.count ?? 0) };
     };
 
-    // Skip caching for random sort — the point is to get a different selection each time
-    const result = sort === 'random'
+    // Skip caching for random sort (fresh selection each time) and idsOnly
+    // (different response shape, cheap single-column scan).
+    const result = sort === 'random' || idsOnly
       ? await runQuery()
       : await getCached(
-          `photos:${sourceId ?? 'all'}:${favorite ?? 'any'}:${usage ?? 'all'}:${orientation ?? 'any'}:${sort}:${limit}:${offset}`,
+          `photos:${sourceId ?? 'all'}:${favorite ?? 'any'}:${usage ?? 'all'}:${orientation ?? 'any'}:${belowHd ? 'belowhd' : 'allres'}:${sort}:${limit}:${offset}`,
           runQuery,
           300
         );
