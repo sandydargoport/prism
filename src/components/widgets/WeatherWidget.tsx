@@ -311,7 +311,10 @@ export const WeatherWidget = React.memo(function WeatherWidget({
     gridH >= 10 ? 3 :
     gridH >= 8 ? 2 : 0;
   const resolvedDays = Math.max(0, forecastDays ?? autoDays);
-  const showHourly = showForecast && gridH >= 9;
+  // Hourly is an extra that eats the forecast's space; only show it when the
+  // widget is tall enough (matches the sun/moon arc). Below that, favor the
+  // daily forecast so it isn't squeezed to a single clipped row.
+  const showHourly = showForecast && gridH >= 12;
 
   // The daily forecast is a vertical list of fixed-height rows. Measure the space
   // it actually has and render only WHOLE rows, so a day is never cut in half at
@@ -323,8 +326,19 @@ export const WeatherWidget = React.memo(function WeatherWidget({
     const el = dayListRef.current;
     if (!el) return;
     const measure = () => {
-      const h = el.clientHeight;
-      if (h > 0) setMaxDayRows(Math.max(1, Math.floor(h / 44)));
+      // Measure the REAL row height instead of a hardcoded 44 — the row is a
+      // hair taller than that, and the widget's height differs between the
+      // editor's square cells and the display's stretched 1fr rows, so a fixed
+      // estimate over-counts and half-clips the last row in view mode only.
+      // getBoundingClientRect keeps container + row in one coordinate space so
+      // any dashboard transform-scale cancels. -6 absorbs the list's small top
+      // margin + sub-pixel rounding so we round DOWN to whole rows.
+      const h = el.getBoundingClientRect().height;
+      if (h <= 0) return;
+      const row = el.querySelector('[data-day-row]');
+      const rowH = row ? row.getBoundingClientRect().height : 44;
+      if (rowH <= 0) return;
+      setMaxDayRows(Math.max(1, Math.floor((h - 6) / rowH)));
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -351,7 +365,10 @@ export const WeatherWidget = React.memo(function WeatherWidget({
   // Show precipitation chart only for real rain (≥ 0.1 mm/hr); 0.01 caught drizzle/trace amounts
   const hasImminentRain = (weatherData.minutely ?? []).some((m) => m.precipIntensity >= 0.1);
   const showPrecipChart = hasImminentRain && !!weatherData.minutely?.length;
-  const showSunArc = !!weatherData.sunrise && !!weatherData.sunset && !showPrecipChart;
+  // The sun/moon arc is a nice-to-have; only show it when the widget is tall
+  // enough that it doesn't squeeze the actual forecast. Below that, favor the
+  // forecast (e.g. the small weather tile on School Mornings).
+  const showSunArc = !!weatherData.sunrise && !!weatherData.sunset && !showPrecipChart && gridH >= 12;
 
   return (
     <WidgetContainer
@@ -564,7 +581,7 @@ function DayHeader({
         const dayPhase = SunCalc.getMoonIllumination(dayNoon).phase;
 
         return (
-          <div key={i} className="flex items-center gap-2 py-1">
+          <div key={i} data-day-row className="flex items-center gap-2 py-1">
 
             {/* Day label + precip % + weather icon + moon phase glyph */}
             <div className="flex items-center gap-1.5 w-28 flex-shrink-0">
@@ -1103,34 +1120,32 @@ function SunriseSunsetArc({
         )}
       </svg>
 
-      {/* Sunrise / duration / sunset label strip — sunrise on the left at its
-          X, duration in the middle (amber to match the arc), sunset on the
-          right. The header row above duplicates the rise/set times, which is
-          deliberate: this row anchors them to the arc itself. */}
-      <div className="relative text-[11px] text-muted-foreground/70 select-none" style={{ height: 14 }}>
-        <div className="relative h-3.5">
-          {inWindow(sunRiseFrac) && (
-            <span className="absolute -translate-x-1/2 whitespace-nowrap tabular-nums" style={{ left: xOf(sunRiseFrac) }}>
-              {fmtTime(sunrise)}
-            </span>
-          )}
-          {inWindow(sunRiseFrac) && inWindow(sunSetFrac) && (() => {
-            const dayMsSpan = sunset.getTime() - sunrise.getTime();
-            const h = Math.floor(dayMsSpan / 3_600_000);
-            const m = Math.round((dayMsSpan % 3_600_000) / 60_000);
-            return (
-              <span className="absolute -translate-x-1/2 whitespace-nowrap font-medium"
-                style={{ left: (xOf(sunRiseFrac) + xOf(sunSetFrac)) / 2, color: SUN_COLOR, opacity: 0.85 }}>
-                {h}h {m}m
+      {/* Sun / moon times — one evenly-spaced row: sun pair fixed on the left
+          (sunrise, sunset), moon pair on the right (moonrise ↑, moonset ↓).
+          Cleaner and never clips vs. the old x-anchored floating labels. */}
+      <div className="flex items-center justify-between gap-3 text-[11px] tabular-nums pt-0.5 whitespace-nowrap">
+        <span className="flex items-center gap-3">
+          <span className="flex items-center gap-1" style={{ color: SUN_COLOR }} title="Sunrise">
+            <Sunrise className="h-3 w-3" />{fmtTime(sunrise)}
+          </span>
+          <span className="flex items-center gap-1" style={{ color: SUN_COLOR }} title="Sunset">
+            <Sunset className="h-3 w-3" />{fmtTime(sunset)}
+          </span>
+        </span>
+        {(moonrise || moonset) && (
+          <span className="flex items-center gap-3" style={{ color: MOON_COLOR }}>
+            {moonrise && (
+              <span className="flex items-center gap-1" title="Moonrise">
+                <MoonGlyph phase={moonPhase ?? 0} size={11} /><span className="opacity-70">↑</span>{fmtTime(moonrise)}
               </span>
-            );
-          })()}
-          {inWindow(sunSetFrac) && (
-            <span className="absolute -translate-x-1/2 whitespace-nowrap tabular-nums" style={{ left: xOf(sunSetFrac) }}>
-              {fmtTime(sunset)}
-            </span>
-          )}
-        </div>
+            )}
+            {moonset && (
+              <span className="flex items-center gap-1" title="Moonset">
+                {!moonrise && <MoonGlyph phase={moonPhase ?? 0} size={11} />}<span className="opacity-70">↓</span>{fmtTime(moonset)}
+              </span>
+            )}
+          </span>
+        )}
       </div>
     </div>
   );

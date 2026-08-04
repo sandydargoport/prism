@@ -2,12 +2,12 @@
   "type": "prism-layout",
   "version": 2,
   "mode": "screensaver",
-  "name": "Info Panel",
-  "description": "A big upcoming-calendar hero, with a small clock + weather accent column.",
+  "name": "Kitchen Display",
+  "description": "Tonight’s meals as the hero, with a small clock + weather accent column.",
   "author": "Prism",
   "tags": [
-    "info",
-    "calendar"
+    "kitchen",
+    "meals"
   ],
   "screenSizes": [
     "1920x1080",
@@ -17,7 +17,7 @@
   "orientation": "landscape",
   "widgets": [
     {
-      "i": "calendar",
+      "i": "meals",
       "x": 2,
       "y": 3,
       "w": 30,

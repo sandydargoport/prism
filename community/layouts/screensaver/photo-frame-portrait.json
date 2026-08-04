@@ -1,0 +1,33 @@
+{
+  "type": "prism-layout",
+  "version": 2,
+  "mode": "screensaver",
+  "name": "Photo Frame",
+  "description": "A tiny clock + weather along the bottom — mostly photo.",
+  "author": "Prism",
+  "tags": [
+    "photo",
+    "ambient"
+  ],
+  "screenSizes": [
+    "1080x1920",
+    "1440x2560"
+  ],
+  "orientation": "portrait",
+  "widgets": [
+    {
+      "i": "clock",
+      "x": 2,
+      "y": 54,
+      "w": 16,
+      "h": 6
+    },
+    {
+      "i": "weather",
+      "x": 19,
+      "y": 54,
+      "w": 15,
+      "h": 6
+    }
+  ]
+}

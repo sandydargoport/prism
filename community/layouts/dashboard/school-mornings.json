@@ -2,12 +2,12 @@
   "type": "prism-layout",
   "version": 2,
   "mode": "dashboard",
-  "name": "Command Center",
-  "description": "Everything at a glance — calendar hero plus weather, clock, and your task, chore, and message lists.",
+  "name": "School Mornings",
+  "description": "Out-the-door board — calendar, a bus departure countdown, weather, homework tasks, and the lunch menu.",
   "author": "Prism",
   "tags": [
-    "dense",
-    "everything"
+    "school",
+    "routine"
   ],
   "screenSizes": [
     "1920x1080",
@@ -20,42 +20,35 @@
       "i": "calendar",
       "x": 0,
       "y": 0,
-      "w": 30,
+      "w": 28,
       "h": 18
     },
     {
-      "i": "clock",
-      "x": 30,
+      "i": "busTracking",
+      "x": 28,
       "y": 0,
-      "w": 18,
-      "h": 5
+      "w": 20,
+      "h": 8
     },
     {
       "i": "weather",
-      "x": 30,
-      "y": 5,
-      "w": 18,
-      "h": 13
-    },
-    {
-      "i": "messages",
-      "x": 30,
-      "y": 18,
-      "w": 18,
-      "h": 9
+      "x": 28,
+      "y": 8,
+      "w": 20,
+      "h": 10
     },
     {
       "i": "tasks",
       "x": 0,
       "y": 18,
-      "w": 15,
+      "w": 24,
       "h": 9
     },
     {
-      "i": "chores",
-      "x": 15,
+      "i": "meals",
+      "x": 24,
       "y": 18,
-      "w": 15,
+      "w": 24,
       "h": 9
     }
   ]

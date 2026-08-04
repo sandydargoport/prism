@@ -3,18 +3,46 @@
   "version": 2,
   "mode": "dashboard",
   "name": "Family Central",
-  "description": "Balanced layout with calendar, tasks, and family features",
+  "description": "Calendar hero with a tall upcoming-events column and an at-a-glance weather + clock strip.",
   "author": "Prism",
-  "tags": ["balanced", "family"],
-  "screenSizes": ["1920x1080", "2560x1440", "3840x2160"],
+  "tags": [
+    "balanced",
+    "family"
+  ],
+  "screenSizes": [
+    "1920x1080",
+    "2560x1440",
+    "3840x2160"
+  ],
   "orientation": "landscape",
   "widgets": [
-    { "i": "calendar", "x": 0, "y": 0, "w": 7, "h": 12 },
-    { "i": "clock", "x": 7, "y": 0, "w": 5, "h": 4 },
-    { "i": "weather", "x": 7, "y": 4, "w": 5, "h": 4 },
-    { "i": "tasks", "x": 8, "y": 8, "w": 4, "h": 8 },
-    { "i": "messages", "x": 0, "y": 12, "w": 4, "h": 8 },
-    { "i": "chores", "x": 4, "y": 12, "w": 4, "h": 8 },
-    { "i": "birthdays", "x": 8, "y": 16, "w": 4, "h": 4 }
+    {
+      "i": "calendar",
+      "x": 0,
+      "y": 0,
+      "w": 33,
+      "h": 19
+    },
+    {
+      "i": "birthdays",
+      "x": 33,
+      "y": 0,
+      "w": 15,
+      "h": 27
+    },
+    {
+      "i": "weather",
+      "x": 0,
+      "y": 19,
+      "w": 24,
+      "h": 8
+    },
+    {
+      "i": "clock",
+      "x": 24,
+      "y": 19,
+      "w": 9,
+      "h": 8
+    }
   ]
 }

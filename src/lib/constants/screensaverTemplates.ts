@@ -7,139 +7,135 @@ export interface ScreensaverTemplate {
   widgets: WidgetConfig[];
 }
 
-// Screensavers are ambient: less is more. A few widgets float over the
-// wallpaper/photos with generous empty space. Kept well within the visible
-// area (landscape widgets stay above ~row 20, portrait above ~row 38) so
-// nothing runs off the bottom on smaller displays. 48-column grid.
+// Screensavers: the PHOTO wallpaper is the hero. Widgets are calm accents that
+// float on it.
+//   • Where a board has content, CALENDAR (or meals) is the hero WIDGET — big.
+//   • Clock, weather, messages are small ACCENTS — never big blocks.
+//   • Aligned like the dashboards: stacked accents share a width; a hero + its
+//     accent column share top/bottom rows. No ragged, mismatched edges.
+//   • One clean rectangular photo region, not scattered gutters. 2–4 widgets.
+// Canvas: landscape 48×27, portrait 36×64.
 
 export const SCREENSAVER_TEMPLATES: Record<string, ScreensaverTemplate> = {
-  // ── Landscape Templates ──────────────────────────────────────────
+  // ── Landscape ────────────────────────────────────────────────────
   minimal: {
     name: 'Minimal',
-    description: 'Just a clock and weather, top-right',
+    description: 'A small clock + weather accent in the corner — the photo is everything else.',
     orientation: 'landscape',
     widgets: [
-      { i: 'clock', x: 31, y: 2, w: 15, h: 9, visible: true },
-      { i: 'weather', x: 31, y: 12, w: 15, h: 6, visible: true },
+      { i: 'clock', x: 4, y: 4, w: 15, h: 6, visible: true },     // accent
+      { i: 'weather', x: 4, y: 11, w: 15, h: 6, visible: true },  // accent, aligned width
     ],
   },
   photoFrame: {
     name: 'Photo Frame',
-    description: 'A small clock + weather overlay — photos fill the screen',
+    description: 'A tiny clock + weather in the corner — photos fill the screen.',
     orientation: 'landscape',
     widgets: [
-      { i: 'clock', x: 34, y: 2, w: 13, h: 6, visible: true },
-      { i: 'weather', x: 34, y: 9, w: 13, h: 5, visible: true },
+      { i: 'clock', x: 34, y: 3, w: 12, h: 5, visible: true },
+      { i: 'weather', x: 34, y: 9, w: 12, h: 5, visible: true },
     ],
   },
   infoPanel: {
     name: 'Info Panel',
-    description: 'Calendar on the left, clock + weather + messages on the right',
+    description: 'A big upcoming-calendar hero, with a small clock + weather accent column.',
     orientation: 'landscape',
     widgets: [
-      { i: 'calendar', x: 2, y: 2, w: 22, h: 16, visible: true },
-      { i: 'weather', x: 27, y: 2, w: 19, h: 5, visible: true },
-      { i: 'messages', x: 27, y: 8, w: 19, h: 6, visible: true },
-      { i: 'clock', x: 27, y: 15, w: 19, h: 5, visible: true },
+      { i: 'calendar', x: 2, y: 3, w: 30, h: 21, visible: true }, // HERO
+      { i: 'clock', x: 34, y: 3, w: 12, h: 6, visible: true },    // accents (top-aligned with hero)
+      { i: 'weather', x: 34, y: 10, w: 12, h: 6, visible: true },
     ],
   },
   familyBoard: {
     name: 'Family Board',
-    description: 'Tasks + chores, with clock, weather and messages alongside',
+    description: 'A calendar hero, a tall upcoming-events accent, and a small clock.',
     orientation: 'landscape',
     widgets: [
-      { i: 'tasks', x: 2, y: 2, w: 14, h: 16, visible: true },
-      { i: 'chores', x: 17, y: 2, w: 14, h: 16, visible: true },
-      { i: 'weather', x: 33, y: 2, w: 13, h: 5, visible: true },
-      { i: 'messages', x: 33, y: 8, w: 13, h: 6, visible: true },
-      { i: 'clock', x: 33, y: 15, w: 13, h: 5, visible: true },
+      { i: 'calendar', x: 2, y: 3, w: 24, h: 21, visible: true }, // HERO
+      { i: 'birthdays', x: 28, y: 3, w: 13, h: 15, visible: true }, // tall accent
+      { i: 'clock', x: 28, y: 19, w: 13, h: 5, visible: true },     // accent (bottom-aligned with hero)
     ],
   },
   kitchen: {
     name: 'Kitchen Display',
-    description: 'Meals over shopping, with clock + weather on the right',
+    description: 'Tonight’s meals as the hero, with a small clock + weather accent column.',
     orientation: 'landscape',
     widgets: [
-      { i: 'meals', x: 2, y: 2, w: 28, h: 10, visible: true },
-      { i: 'shopping', x: 2, y: 13, w: 28, h: 7, visible: true },
-      { i: 'weather', x: 32, y: 2, w: 14, h: 6, visible: true },
-      { i: 'clock', x: 32, y: 9, w: 14, h: 11, visible: true },
+      { i: 'meals', x: 2, y: 3, w: 30, h: 21, visible: true },    // HERO
+      { i: 'clock', x: 34, y: 3, w: 12, h: 6, visible: true },
+      { i: 'weather', x: 34, y: 10, w: 12, h: 6, visible: true },
     ],
   },
   commandCenter: {
     name: 'Command Center',
-    description: 'Calendar with a compact clock / weather / messages column',
+    description: 'A calendar hero with a small clock / weather / messages accent column.',
     orientation: 'landscape',
     widgets: [
-      { i: 'calendar', x: 2, y: 2, w: 20, h: 16, visible: true },
-      { i: 'weather', x: 24, y: 2, w: 22, h: 5, visible: true },
-      { i: 'clock', x: 24, y: 8, w: 22, h: 5, visible: true },
-      { i: 'messages', x: 24, y: 14, w: 22, h: 6, visible: true },
+      { i: 'calendar', x: 2, y: 3, w: 26, h: 21, visible: true }, // HERO
+      { i: 'clock', x: 30, y: 3, w: 16, h: 6, visible: true },    // accents, aligned width, stacked
+      { i: 'weather', x: 30, y: 10, w: 16, h: 6, visible: true },
+      { i: 'messages', x: 30, y: 17, w: 16, h: 7, visible: true }, // column bottom aligns with hero
     ],
   },
 
-  // ── Portrait Templates ───────────────────────────────────────────
+  // ── Portrait ─────────────────────────────────────────────────────
   minimalPortrait: {
     name: 'Minimal',
-    description: 'Clock and weather near the top',
+    description: 'A small clock + weather accent; the photo owns the screen.',
     orientation: 'portrait',
     widgets: [
-      { i: 'clock', x: 10, y: 5, w: 28, h: 11, visible: true },
-      { i: 'weather', x: 10, y: 17, w: 28, h: 7, visible: true },
+      { i: 'clock', x: 4, y: 28, w: 18, h: 7, visible: true },
+      { i: 'weather', x: 4, y: 36, w: 18, h: 6, visible: true },
     ],
   },
   photoFramePortrait: {
     name: 'Photo Frame',
-    description: 'A tiny clock + weather overlay for a tall screen',
+    description: 'A tiny clock + weather along the bottom — mostly photo.',
     orientation: 'portrait',
     widgets: [
-      { i: 'clock', x: 16, y: 4, w: 16, h: 8, visible: true },
-      { i: 'weather', x: 16, y: 13, w: 16, h: 5, visible: true },
+      { i: 'clock', x: 2, y: 54, w: 16, h: 6, visible: true },
+      { i: 'weather', x: 19, y: 54, w: 15, h: 6, visible: true }, // aligned accent row
     ],
   },
   infoPanelPortrait: {
     name: 'Info Panel',
-    description: 'Calendar up top, clock + weather + messages below',
+    description: 'A small clock + weather accent row over a big upcoming-calendar hero.',
     orientation: 'portrait',
     widgets: [
-      { i: 'calendar', x: 2, y: 2, w: 44, h: 20, visible: true },
-      { i: 'clock', x: 2, y: 24, w: 21, h: 8, visible: true },
-      { i: 'weather', x: 25, y: 24, w: 21, h: 8, visible: true },
-      { i: 'messages', x: 2, y: 33, w: 44, h: 5, visible: true },
+      { i: 'clock', x: 2, y: 3, w: 16, h: 7, visible: true },     // accent row (aligned)
+      { i: 'weather', x: 19, y: 3, w: 15, h: 7, visible: true },
+      { i: 'calendar', x: 2, y: 13, w: 32, h: 30, visible: true }, // HERO
     ],
   },
   familyBoardPortrait: {
     name: 'Family Board',
-    description: 'Tasks and chores stacked, clock + weather below',
+    description: 'A calendar hero, a tall upcoming-events spine, and a small clock.',
     orientation: 'portrait',
     widgets: [
-      { i: 'tasks', x: 2, y: 2, w: 44, h: 13, visible: true },
-      { i: 'chores', x: 2, y: 16, w: 44, h: 12, visible: true },
-      { i: 'weather', x: 2, y: 29, w: 21, h: 7, visible: true },
-      { i: 'clock', x: 25, y: 29, w: 21, h: 7, visible: true },
+      { i: 'calendar', x: 2, y: 3, w: 32, h: 26, visible: true }, // HERO
+      { i: 'birthdays', x: 2, y: 31, w: 15, h: 30, visible: true }, // tall accent spine
+      { i: 'clock', x: 18, y: 31, w: 16, h: 7, visible: true },     // accent
     ],
   },
   kitchenPortrait: {
     name: 'Kitchen Display',
-    description: 'Meals and shopping stacked for a tall screen',
+    description: 'A small clock + weather accent row over a big meals hero.',
     orientation: 'portrait',
     widgets: [
-      { i: 'meals', x: 2, y: 2, w: 44, h: 14, visible: true },
-      { i: 'shopping', x: 2, y: 17, w: 44, h: 12, visible: true },
-      { i: 'weather', x: 2, y: 30, w: 21, h: 7, visible: true },
-      { i: 'clock', x: 25, y: 30, w: 21, h: 7, visible: true },
+      { i: 'clock', x: 2, y: 3, w: 16, h: 7, visible: true },
+      { i: 'weather', x: 19, y: 3, w: 15, h: 7, visible: true },
+      { i: 'meals', x: 2, y: 13, w: 32, h: 32, visible: true },   // HERO
     ],
   },
   commandCenterPortrait: {
     name: 'Command Center',
-    description: 'Calendar with tasks, messages, clock and weather below',
+    description: 'A clock + weather accent row, a big calendar hero, and a low messages accent.',
     orientation: 'portrait',
     widgets: [
-      { i: 'calendar', x: 2, y: 2, w: 44, h: 16, visible: true },
-      { i: 'tasks', x: 2, y: 19, w: 21, h: 9, visible: true },
-      { i: 'messages', x: 25, y: 19, w: 21, h: 9, visible: true },
-      { i: 'weather', x: 2, y: 29, w: 21, h: 7, visible: true },
-      { i: 'clock', x: 25, y: 29, w: 21, h: 7, visible: true },
+      { i: 'clock', x: 2, y: 3, w: 16, h: 7, visible: true },
+      { i: 'weather', x: 19, y: 3, w: 15, h: 7, visible: true },
+      { i: 'calendar', x: 2, y: 13, w: 32, h: 28, visible: true }, // HERO
+      { i: 'messages', x: 2, y: 43, w: 32, h: 7, visible: true },  // accent
     ],
   },
 };

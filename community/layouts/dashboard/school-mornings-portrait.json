@@ -1,0 +1,47 @@
+{
+  "type": "prism-layout",
+  "version": 2,
+  "mode": "dashboard",
+  "name": "School Mornings",
+  "description": "Out-the-door board — bus countdown up top, weather, a calendar hero, and the lunch menu.",
+  "author": "Prism",
+  "tags": [
+    "school",
+    "routine"
+  ],
+  "screenSizes": [
+    "1080x1920",
+    "1440x2560"
+  ],
+  "orientation": "portrait",
+  "widgets": [
+    {
+      "i": "busTracking",
+      "x": 0,
+      "y": 0,
+      "w": 36,
+      "h": 10
+    },
+    {
+      "i": "weather",
+      "x": 0,
+      "y": 10,
+      "w": 36,
+      "h": 10
+    },
+    {
+      "i": "calendar",
+      "x": 0,
+      "y": 20,
+      "w": 36,
+      "h": 28
+    },
+    {
+      "i": "meals",
+      "x": 0,
+      "y": 48,
+      "w": 36,
+      "h": 16
+    }
+  ]
+}

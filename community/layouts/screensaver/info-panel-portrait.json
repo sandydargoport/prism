@@ -1,0 +1,40 @@
+{
+  "type": "prism-layout",
+  "version": 2,
+  "mode": "screensaver",
+  "name": "Info Panel",
+  "description": "A small clock + weather accent row over a big upcoming-calendar hero.",
+  "author": "Prism",
+  "tags": [
+    "info",
+    "calendar"
+  ],
+  "screenSizes": [
+    "1080x1920",
+    "1440x2560"
+  ],
+  "orientation": "portrait",
+  "widgets": [
+    {
+      "i": "clock",
+      "x": 2,
+      "y": 3,
+      "w": 16,
+      "h": 7
+    },
+    {
+      "i": "weather",
+      "x": 19,
+      "y": 3,
+      "w": 15,
+      "h": 7
+    },
+    {
+      "i": "calendar",
+      "x": 2,
+      "y": 13,
+      "w": 32,
+      "h": 30
+    }
+  ]
+}

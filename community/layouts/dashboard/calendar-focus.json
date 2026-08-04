@@ -3,17 +3,39 @@
   "version": 2,
   "mode": "dashboard",
   "name": "Calendar Focus",
-  "description": "Large calendar with compact info sidebar",
+  "description": "A full-height calendar with a slim weather + clock rail — for when the schedule is everything.",
   "author": "Prism",
-  "tags": ["calendar", "minimal"],
-  "screenSizes": ["1920x1080", "2560x1440", "3840x2160"],
+  "tags": [
+    "calendar",
+    "minimal"
+  ],
+  "screenSizes": [
+    "1920x1080",
+    "2560x1440",
+    "3840x2160"
+  ],
   "orientation": "landscape",
   "widgets": [
-    { "i": "calendar", "x": 0, "y": 0, "w": 9, "h": 16 },
-    { "i": "clock", "x": 9, "y": 0, "w": 3, "h": 4 },
-    { "i": "weather", "x": 9, "y": 4, "w": 3, "h": 4 },
-    { "i": "tasks", "x": 9, "y": 8, "w": 3, "h": 6 },
-    { "i": "birthdays", "x": 9, "y": 14, "w": 3, "h": 4 },
-    { "i": "messages", "x": 0, "y": 16, "w": 6, "h": 4 }
+    {
+      "i": "calendar",
+      "x": 0,
+      "y": 0,
+      "w": 34,
+      "h": 27
+    },
+    {
+      "i": "weather",
+      "x": 34,
+      "y": 0,
+      "w": 14,
+      "h": 16
+    },
+    {
+      "i": "clock",
+      "x": 34,
+      "y": 16,
+      "w": 14,
+      "h": 11
+    }
   ]
 }

@@ -3,31 +3,30 @@
   "version": 2,
   "mode": "screensaver",
   "name": "Minimal",
-  "description": "A small clock + weather accent in the corner — the photo is everything else.",
+  "description": "A small clock + weather accent; the photo owns the screen.",
   "author": "Prism",
   "tags": [
     "minimal",
     "ambient"
   ],
   "screenSizes": [
-    "1920x1080",
-    "2560x1440",
-    "3840x2160"
+    "1080x1920",
+    "1440x2560"
   ],
-  "orientation": "landscape",
+  "orientation": "portrait",
   "widgets": [
     {
       "i": "clock",
       "x": 4,
-      "y": 4,
-      "w": 15,
-      "h": 6
+      "y": 28,
+      "w": 18,
+      "h": 7
     },
     {
       "i": "weather",
       "x": 4,
-      "y": 11,
-      "w": 15,
+      "y": 36,
+      "w": 18,
       "h": 6
     }
   ]

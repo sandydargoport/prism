@@ -1,0 +1,33 @@
+{
+  "type": "prism-layout",
+  "version": 2,
+  "mode": "dashboard",
+  "name": "Ambient",
+  "description": "Photo-forward — your wallpaper takes the screen, with glassy clock and weather accents top and bottom.",
+  "author": "Prism",
+  "tags": [
+    "photo",
+    "ambient"
+  ],
+  "screenSizes": [
+    "1080x1920",
+    "1440x2560"
+  ],
+  "orientation": "portrait",
+  "widgets": [
+    {
+      "i": "clock",
+      "x": 0,
+      "y": 0,
+      "w": 36,
+      "h": 9
+    },
+    {
+      "i": "weather",
+      "x": 0,
+      "y": 51,
+      "w": 36,
+      "h": 13
+    }
+  ]
+}

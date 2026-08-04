@@ -1,0 +1,47 @@
+{
+  "type": "prism-layout",
+  "version": 2,
+  "mode": "dashboard",
+  "name": "Family Central",
+  "description": "Calendar hero with weather + clock bands above and a tall upcoming-events list below.",
+  "author": "Prism",
+  "tags": [
+    "balanced",
+    "family"
+  ],
+  "screenSizes": [
+    "1080x1920",
+    "1440x2560"
+  ],
+  "orientation": "portrait",
+  "widgets": [
+    {
+      "i": "clock",
+      "x": 0,
+      "y": 0,
+      "w": 36,
+      "h": 8
+    },
+    {
+      "i": "calendar",
+      "x": 0,
+      "y": 8,
+      "w": 36,
+      "h": 30
+    },
+    {
+      "i": "weather",
+      "x": 0,
+      "y": 38,
+      "w": 20,
+      "h": 26
+    },
+    {
+      "i": "birthdays",
+      "x": 20,
+      "y": 38,
+      "w": 16,
+      "h": 26
+    }
+  ]
+}

@@ -5,183 +5,469 @@
       "id": "family-central",
       "file": "dashboard/family-central.json",
       "name": "Family Central",
-      "description": "Balanced layout with calendar, tasks, and family features",
+      "description": "Calendar hero with a tall upcoming-events column and an at-a-glance weather + clock strip.",
       "author": "Prism",
       "mode": "dashboard",
-      "tags": ["balanced", "family"],
-      "screenSizes": ["1920x1080", "2560x1440", "3840x2160"],
+      "tags": [
+        "balanced",
+        "family"
+      ],
+      "screenSizes": [
+        "1920x1080",
+        "2560x1440",
+        "3840x2160"
+      ],
       "orientation": "landscape",
-      "widgetCount": 7,
-      "createdAt": "2026-02-18"
-    },
-    {
-      "id": "task-master",
-      "file": "dashboard/task-master.json",
-      "name": "Task Master",
-      "description": "Tasks and chores front and center",
-      "author": "Prism",
-      "mode": "dashboard",
-      "tags": ["productivity", "tasks"],
-      "screenSizes": ["1920x1080", "2560x1440", "3840x2160"],
-      "orientation": "landscape",
-      "widgetCount": 6,
-      "createdAt": "2026-02-18"
+      "widgetCount": 4,
+      "createdAt": "2026-08-04"
     },
     {
       "id": "calendar-focus",
       "file": "dashboard/calendar-focus.json",
       "name": "Calendar Focus",
-      "description": "Large calendar with compact info sidebar",
+      "description": "A full-height calendar with a slim weather + clock rail — for when the schedule is everything.",
       "author": "Prism",
       "mode": "dashboard",
-      "tags": ["calendar", "minimal"],
-      "screenSizes": ["1920x1080", "2560x1440", "3840x2160"],
+      "tags": [
+        "calendar",
+        "minimal"
+      ],
+      "screenSizes": [
+        "1920x1080",
+        "2560x1440",
+        "3840x2160"
+      ],
       "orientation": "landscape",
-      "widgetCount": 6,
-      "createdAt": "2026-02-18"
-    },
-    {
-      "id": "calendar-focus-sidebar",
-      "file": "dashboard/calendar-focus-sidebar.json",
-      "name": "Calendar Focus",
-      "description": "Cal, Clk, Wtr, Bdy, Msg in landscape",
-      "author": "Sandy Dargoport",
-      "mode": "dashboard",
-      "tags": ["calendar focus", "big calendar"],
-      "screenSizes": ["1920x1080", "2560x1440", "3840x2160"],
-      "orientation": "landscape",
-      "widgetCount": 5,
-      "createdAt": "2026-02-19"
+      "widgetCount": 3,
+      "createdAt": "2026-08-04"
     },
     {
       "id": "command-center",
       "file": "dashboard/command-center.json",
       "name": "Command Center",
-      "description": "Everything visible at a glance",
+      "description": "Everything at a glance — calendar hero plus weather, clock, and your task, chore, and message lists.",
       "author": "Prism",
       "mode": "dashboard",
-      "tags": ["comprehensive", "overview"],
-      "screenSizes": ["2560x1440", "3840x2160"],
+      "tags": [
+        "dense",
+        "everything"
+      ],
+      "screenSizes": [
+        "1920x1080",
+        "2560x1440",
+        "3840x2160"
+      ],
       "orientation": "landscape",
-      "widgetCount": 9,
-      "createdAt": "2026-02-18"
-    },
-    {
-      "id": "minimal-dashboard",
-      "file": "dashboard/minimal.json",
-      "name": "Minimal",
-      "description": "Clean and simple - just the essentials",
-      "author": "Prism",
-      "mode": "dashboard",
-      "tags": ["minimal", "clean"],
-      "screenSizes": ["1366x768", "1920x1080", "2560x1440", "3840x2160"],
-      "orientation": "landscape",
-      "widgetCount": 4,
-      "createdAt": "2026-02-18"
+      "widgetCount": 6,
+      "createdAt": "2026-08-04"
     },
     {
       "id": "meal-planner",
       "file": "dashboard/meal-planner.json",
       "name": "Meal Planner",
-      "description": "Focus on meals and shopping",
+      "description": "Kitchen board — meals front and center with a tall shopping list and a weather + clock corner.",
       "author": "Prism",
       "mode": "dashboard",
-      "tags": ["meals", "kitchen"],
-      "screenSizes": ["1920x1080", "2560x1440", "3840x2160"],
+      "tags": [
+        "kitchen",
+        "meals"
+      ],
+      "screenSizes": [
+        "1920x1080",
+        "2560x1440",
+        "3840x2160"
+      ],
       "orientation": "landscape",
-      "widgetCount": 6,
-      "createdAt": "2026-02-18"
+      "widgetCount": 4,
+      "createdAt": "2026-08-04"
     },
     {
-      "id": "minimal-screensaver",
-      "file": "screensaver/minimal.json",
-      "name": "Minimal",
-      "description": "Clock and weather, top-right corner",
+      "id": "school-mornings",
+      "file": "dashboard/school-mornings.json",
+      "name": "School Mornings",
+      "description": "Out-the-door board — calendar, a bus departure countdown, weather, homework tasks, and the lunch menu.",
       "author": "Prism",
-      "mode": "screensaver",
-      "tags": ["minimal", "clean"],
-      "screenSizes": ["1366x768", "1920x1080", "2560x1440", "3840x2160"],
+      "mode": "dashboard",
+      "tags": [
+        "school",
+        "routine"
+      ],
+      "screenSizes": [
+        "1920x1080",
+        "2560x1440",
+        "3840x2160"
+      ],
+      "orientation": "landscape",
+      "widgetCount": 5,
+      "createdAt": "2026-08-04"
+    },
+    {
+      "id": "ambient",
+      "file": "dashboard/ambient.json",
+      "name": "Ambient",
+      "description": "Photo-forward — your wallpaper takes the screen, with glassy floating clock and weather accents. Pair with a photo wallpaper.",
+      "author": "Prism",
+      "mode": "dashboard",
+      "tags": [
+        "photo",
+        "ambient"
+      ],
+      "screenSizes": [
+        "1920x1080",
+        "2560x1440",
+        "3840x2160"
+      ],
       "orientation": "landscape",
       "widgetCount": 2,
-      "createdAt": "2026-02-18"
+      "createdAt": "2026-08-04"
+    },
+    {
+      "id": "family-central-portrait",
+      "file": "dashboard/family-central-portrait.json",
+      "name": "Family Central",
+      "description": "Calendar hero with weather + clock bands above and a tall upcoming-events list below.",
+      "author": "Prism",
+      "mode": "dashboard",
+      "tags": [
+        "balanced",
+        "family"
+      ],
+      "screenSizes": [
+        "1080x1920",
+        "1440x2560"
+      ],
+      "orientation": "portrait",
+      "widgetCount": 4,
+      "createdAt": "2026-08-04"
+    },
+    {
+      "id": "calendar-focus-portrait",
+      "file": "dashboard/calendar-focus-portrait.json",
+      "name": "Calendar Focus",
+      "description": "A towering calendar with small weather + clock bands — the schedule dominates.",
+      "author": "Prism",
+      "mode": "dashboard",
+      "tags": [
+        "calendar",
+        "minimal"
+      ],
+      "screenSizes": [
+        "1080x1920",
+        "1440x2560"
+      ],
+      "orientation": "portrait",
+      "widgetCount": 3,
+      "createdAt": "2026-08-04"
+    },
+    {
+      "id": "command-center-portrait",
+      "file": "dashboard/command-center-portrait.json",
+      "name": "Command Center",
+      "description": "Everything at a glance — weather/clock, a calendar hero, task and chore columns, and messages.",
+      "author": "Prism",
+      "mode": "dashboard",
+      "tags": [
+        "dense",
+        "everything"
+      ],
+      "screenSizes": [
+        "1080x1920",
+        "1440x2560"
+      ],
+      "orientation": "portrait",
+      "widgetCount": 6,
+      "createdAt": "2026-08-04"
+    },
+    {
+      "id": "meal-planner-portrait",
+      "file": "dashboard/meal-planner-portrait.json",
+      "name": "Meal Planner",
+      "description": "Kitchen board — a weather/clock strip over a meals hero and a tall shopping list.",
+      "author": "Prism",
+      "mode": "dashboard",
+      "tags": [
+        "kitchen",
+        "meals"
+      ],
+      "screenSizes": [
+        "1080x1920",
+        "1440x2560"
+      ],
+      "orientation": "portrait",
+      "widgetCount": 4,
+      "createdAt": "2026-08-04"
+    },
+    {
+      "id": "school-mornings-portrait",
+      "file": "dashboard/school-mornings-portrait.json",
+      "name": "School Mornings",
+      "description": "Out-the-door board — bus countdown up top, weather, a calendar hero, and the lunch menu.",
+      "author": "Prism",
+      "mode": "dashboard",
+      "tags": [
+        "school",
+        "routine"
+      ],
+      "screenSizes": [
+        "1080x1920",
+        "1440x2560"
+      ],
+      "orientation": "portrait",
+      "widgetCount": 4,
+      "createdAt": "2026-08-04"
+    },
+    {
+      "id": "ambient-portrait",
+      "file": "dashboard/ambient-portrait.json",
+      "name": "Ambient",
+      "description": "Photo-forward — your wallpaper takes the screen, with glassy clock and weather accents top and bottom.",
+      "author": "Prism",
+      "mode": "dashboard",
+      "tags": [
+        "photo",
+        "ambient"
+      ],
+      "screenSizes": [
+        "1080x1920",
+        "1440x2560"
+      ],
+      "orientation": "portrait",
+      "widgetCount": 2,
+      "createdAt": "2026-08-04"
+    },
+    {
+      "id": "minimal",
+      "file": "screensaver/minimal.json",
+      "name": "Minimal",
+      "description": "A small clock + weather accent in the corner — the photo is everything else.",
+      "author": "Prism",
+      "mode": "screensaver",
+      "tags": [
+        "minimal",
+        "ambient"
+      ],
+      "screenSizes": [
+        "1920x1080",
+        "2560x1440",
+        "3840x2160"
+      ],
+      "orientation": "landscape",
+      "widgetCount": 2,
+      "createdAt": "2026-08-04"
     },
     {
       "id": "photo-frame",
       "file": "screensaver/photo-frame.json",
       "name": "Photo Frame",
-      "description": "Small clock and weather overlay - photos fill the screen",
+      "description": "A tiny clock + weather in the corner — photos fill the screen.",
       "author": "Prism",
       "mode": "screensaver",
-      "tags": ["photos", "minimal"],
-      "screenSizes": ["1366x768", "1920x1080", "2560x1440", "3840x2160"],
+      "tags": [
+        "photo",
+        "ambient"
+      ],
+      "screenSizes": [
+        "1920x1080",
+        "2560x1440",
+        "3840x2160"
+      ],
       "orientation": "landscape",
       "widgetCount": 2,
-      "createdAt": "2026-02-18"
+      "createdAt": "2026-08-04"
     },
     {
       "id": "info-panel",
       "file": "screensaver/info-panel.json",
       "name": "Info Panel",
-      "description": "Calendar on the left, clock + weather + messages on the right",
+      "description": "A big upcoming-calendar hero, with a small clock + weather accent column.",
       "author": "Prism",
       "mode": "screensaver",
-      "tags": ["informational", "calendar"],
-      "screenSizes": ["1920x1080", "2560x1440", "3840x2160"],
+      "tags": [
+        "info",
+        "calendar"
+      ],
+      "screenSizes": [
+        "1920x1080",
+        "2560x1440",
+        "3840x2160"
+      ],
       "orientation": "landscape",
-      "widgetCount": 4,
-      "createdAt": "2026-02-18"
+      "widgetCount": 3,
+      "createdAt": "2026-08-04"
     },
     {
       "id": "family-board",
       "file": "screensaver/family-board.json",
       "name": "Family Board",
-      "description": "Tasks and chores across the top, clock + weather + messages on the right",
+      "description": "A calendar hero, a tall upcoming-events accent, and a small clock.",
       "author": "Prism",
       "mode": "screensaver",
-      "tags": ["family", "tasks"],
-      "screenSizes": ["1920x1080", "2560x1440", "3840x2160"],
-      "orientation": "landscape",
-      "widgetCount": 5,
-      "createdAt": "2026-02-18"
-    },
-    {
-      "id": "kitchen-display",
-      "file": "screensaver/kitchen-display.json",
-      "name": "Kitchen Display",
-      "description": "Meals spanning the top, shopping list below, clock + weather on the right",
-      "author": "Prism",
-      "mode": "screensaver",
-      "tags": ["kitchen", "meals"],
-      "screenSizes": ["1920x1080", "2560x1440", "3840x2160"],
-      "orientation": "landscape",
-      "widgetCount": 4,
-      "createdAt": "2026-02-18"
-    },
-    {
-      "id": "command-center-screensaver",
-      "file": "screensaver/command-center.json",
-      "name": "Command Center",
-      "description": "Full grid with all common widgets",
-      "author": "Prism",
-      "mode": "screensaver",
-      "tags": ["comprehensive", "overview"],
-      "screenSizes": ["2560x1440", "3840x2160"],
-      "orientation": "landscape",
-      "widgetCount": 7,
-      "createdAt": "2026-02-18"
-    },
-    {
-      "id": "surface-landscape",
-      "file": "dashboard/surface-landscape.json",
-      "name": "Surface Landscape",
-      "description": "Laptop Landscape",
-      "author": "Sandy Dargoport",
-      "mode": "dashboard",
-      "tags": [],
-      "screenSizes": ["2560x1440"],
+      "tags": [
+        "family",
+        "calendar"
+      ],
+      "screenSizes": [
+        "1920x1080",
+        "2560x1440",
+        "3840x2160"
+      ],
       "orientation": "landscape",
       "widgetCount": 3,
-      "createdAt": "2026-02-21"
+      "createdAt": "2026-08-04"
+    },
+    {
+      "id": "kitchen",
+      "file": "screensaver/kitchen.json",
+      "name": "Kitchen Display",
+      "description": "Tonight’s meals as the hero, with a small clock + weather accent column.",
+      "author": "Prism",
+      "mode": "screensaver",
+      "tags": [
+        "kitchen",
+        "meals"
+      ],
+      "screenSizes": [
+        "1920x1080",
+        "2560x1440",
+        "3840x2160"
+      ],
+      "orientation": "landscape",
+      "widgetCount": 3,
+      "createdAt": "2026-08-04"
+    },
+    {
+      "id": "command-center",
+      "file": "screensaver/command-center.json",
+      "name": "Command Center",
+      "description": "A calendar hero with a small clock / weather / messages accent column.",
+      "author": "Prism",
+      "mode": "screensaver",
+      "tags": [
+        "dense",
+        "everything"
+      ],
+      "screenSizes": [
+        "1920x1080",
+        "2560x1440",
+        "3840x2160"
+      ],
+      "orientation": "landscape",
+      "widgetCount": 4,
+      "createdAt": "2026-08-04"
+    },
+    {
+      "id": "minimal-portrait",
+      "file": "screensaver/minimal-portrait.json",
+      "name": "Minimal",
+      "description": "A small clock + weather accent; the photo owns the screen.",
+      "author": "Prism",
+      "mode": "screensaver",
+      "tags": [
+        "minimal",
+        "ambient"
+      ],
+      "screenSizes": [
+        "1080x1920",
+        "1440x2560"
+      ],
+      "orientation": "portrait",
+      "widgetCount": 2,
+      "createdAt": "2026-08-04"
+    },
+    {
+      "id": "photo-frame-portrait",
+      "file": "screensaver/photo-frame-portrait.json",
+      "name": "Photo Frame",
+      "description": "A tiny clock + weather along the bottom — mostly photo.",
+      "author": "Prism",
+      "mode": "screensaver",
+      "tags": [
+        "photo",
+        "ambient"
+      ],
+      "screenSizes": [
+        "1080x1920",
+        "1440x2560"
+      ],
+      "orientation": "portrait",
+      "widgetCount": 2,
+      "createdAt": "2026-08-04"
+    },
+    {
+      "id": "info-panel-portrait",
+      "file": "screensaver/info-panel-portrait.json",
+      "name": "Info Panel",
+      "description": "A small clock + weather accent row over a big upcoming-calendar hero.",
+      "author": "Prism",
+      "mode": "screensaver",
+      "tags": [
+        "info",
+        "calendar"
+      ],
+      "screenSizes": [
+        "1080x1920",
+        "1440x2560"
+      ],
+      "orientation": "portrait",
+      "widgetCount": 3,
+      "createdAt": "2026-08-04"
+    },
+    {
+      "id": "family-board-portrait",
+      "file": "screensaver/family-board-portrait.json",
+      "name": "Family Board",
+      "description": "A calendar hero, a tall upcoming-events spine, and a small clock.",
+      "author": "Prism",
+      "mode": "screensaver",
+      "tags": [
+        "family",
+        "calendar"
+      ],
+      "screenSizes": [
+        "1080x1920",
+        "1440x2560"
+      ],
+      "orientation": "portrait",
+      "widgetCount": 3,
+      "createdAt": "2026-08-04"
+    },
+    {
+      "id": "kitchen-portrait",
+      "file": "screensaver/kitchen-portrait.json",
+      "name": "Kitchen Display",
+      "description": "A small clock + weather accent row over a big meals hero.",
+      "author": "Prism",
+      "mode": "screensaver",
+      "tags": [
+        "kitchen",
+        "meals"
+      ],
+      "screenSizes": [
+        "1080x1920",
+        "1440x2560"
+      ],
+      "orientation": "portrait",
+      "widgetCount": 3,
+      "createdAt": "2026-08-04"
+    },
+    {
+      "id": "command-center-portrait",
+      "file": "screensaver/command-center-portrait.json",
+      "name": "Command Center",
+      "description": "A clock + weather accent row, a big calendar hero, and a low messages accent.",
+      "author": "Prism",
+      "mode": "screensaver",
+      "tags": [
+        "dense",
+        "everything"
+      ],
+      "screenSizes": [
+        "1080x1920",
+        "1440x2560"
+      ],
+      "orientation": "portrait",
+      "widgetCount": 4,
+      "createdAt": "2026-08-04"
     }
   ]
 }

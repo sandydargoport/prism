@@ -1,0 +1,47 @@
+{
+  "type": "prism-layout",
+  "version": 2,
+  "mode": "dashboard",
+  "name": "Meal Planner",
+  "description": "Kitchen board — a weather/clock strip over a meals hero and a tall shopping list.",
+  "author": "Prism",
+  "tags": [
+    "kitchen",
+    "meals"
+  ],
+  "screenSizes": [
+    "1080x1920",
+    "1440x2560"
+  ],
+  "orientation": "portrait",
+  "widgets": [
+    {
+      "i": "clock",
+      "x": 0,
+      "y": 0,
+      "w": 20,
+      "h": 7
+    },
+    {
+      "i": "weather",
+      "x": 20,
+      "y": 0,
+      "w": 16,
+      "h": 7
+    },
+    {
+      "i": "meals",
+      "x": 0,
+      "y": 7,
+      "w": 36,
+      "h": 26
+    },
+    {
+      "i": "shopping",
+      "x": 0,
+      "y": 33,
+      "w": 36,
+      "h": 31
+    }
+  ]
+}

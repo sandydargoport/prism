@@ -3,18 +3,46 @@
   "version": 2,
   "mode": "screensaver",
   "name": "Command Center",
-  "description": "Full grid with all common widgets",
+  "description": "A calendar hero with a small clock / weather / messages accent column.",
   "author": "Prism",
-  "tags": ["comprehensive", "overview"],
-  "screenSizes": ["2560x1440", "3840x2160"],
+  "tags": [
+    "dense",
+    "everything"
+  ],
+  "screenSizes": [
+    "1920x1080",
+    "2560x1440",
+    "3840x2160"
+  ],
   "orientation": "landscape",
   "widgets": [
-    { "i": "calendar", "x": 0, "y": 0, "w": 4, "h": 6 },
-    { "i": "tasks", "x": 4, "y": 0, "w": 4, "h": 4 },
-    { "i": "messages", "x": 8, "y": 0, "w": 4, "h": 4 },
-    { "i": "chores", "x": 4, "y": 4, "w": 4, "h": 4 },
-    { "i": "birthdays", "x": 8, "y": 4, "w": 4, "h": 4 },
-    { "i": "weather", "x": 0, "y": 6, "w": 4, "h": 2 },
-    { "i": "clock", "x": 0, "y": 8, "w": 4, "h": 3 }
+    {
+      "i": "calendar",
+      "x": 2,
+      "y": 3,
+      "w": 26,
+      "h": 21
+    },
+    {
+      "i": "clock",
+      "x": 30,
+      "y": 3,
+      "w": 16,
+      "h": 6
+    },
+    {
+      "i": "weather",
+      "x": 30,
+      "y": 10,
+      "w": 16,
+      "h": 6
+    },
+    {
+      "i": "messages",
+      "x": 30,
+      "y": 17,
+      "w": 16,
+      "h": 7
+    }
   ]
 }

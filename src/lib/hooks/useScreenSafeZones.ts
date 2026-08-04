@@ -78,7 +78,10 @@ export function computeZones(
     return {
       name: s.name,
       cols,
-      rows: Math.min(Math.round(cols * h / w), 50),
+      // Cap at 64 = the canonical 9:16 portrait canvas (36×64). A lower cap
+      // truncated the guide so 9:16 portrait templates (rows 50–64) spilled past
+      // the blue perimeter markers in the editor.
+      rows: Math.min(Math.round(cols * h / w), 64),
       color: s.color,
     };
   });

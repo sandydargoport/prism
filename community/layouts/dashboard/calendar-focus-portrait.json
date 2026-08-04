@@ -1,0 +1,40 @@
+{
+  "type": "prism-layout",
+  "version": 2,
+  "mode": "dashboard",
+  "name": "Calendar Focus",
+  "description": "A towering calendar with small weather + clock bands — the schedule dominates.",
+  "author": "Prism",
+  "tags": [
+    "calendar",
+    "minimal"
+  ],
+  "screenSizes": [
+    "1080x1920",
+    "1440x2560"
+  ],
+  "orientation": "portrait",
+  "widgets": [
+    {
+      "i": "calendar",
+      "x": 0,
+      "y": 0,
+      "w": 36,
+      "h": 48
+    },
+    {
+      "i": "weather",
+      "x": 0,
+      "y": 48,
+      "w": 36,
+      "h": 9
+    },
+    {
+      "i": "clock",
+      "x": 0,
+      "y": 57,
+      "w": 36,
+      "h": 7
+    }
+  ]
+}
