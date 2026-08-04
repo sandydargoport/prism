@@ -4,6 +4,21 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+### Dashboard
+- **The built-in templates were rebuilt around real composition principles.** Each board now leads with one hero (usually the calendar), sizes every widget to its natural shape — birthdays runs tall rather than wide, the clock stays small, weather gets room for its sun/moon detail — and arranges them into a couple of balanced zones instead of an even grid packed with too many panels. The new lineup is **Family Central, Calendar Focus, Command Center, Meal Planner, School Mornings**, and a photo-forward **Ambient** whose glassy clock and weather float over your wallpaper.
+
+### Screensaver
+- **Refreshed screensaver templates.** The calendar (or tonight's meals) is the hero; the clock, weather and messages are small, aligned accents floating over one clean photo region — calmer and less cluttered, with everything sitting fully on-screen.
+
+### Weather
+- **Sunrise, sunset, moonrise and moonset now show their times** along the sun/moon arc. The arc and the hourly timeline appear only when the widget is tall enough to draw them cleanly, so a short widget no longer clips them.
+
+### Community layouts
+- **Redesigned the community-layouts gallery.** The preview boards now float on a wallpaper-style field with cleaner cards, a header with a live count, calmer search and size filters, and a clear **Apply layout** button — so browsing and applying a shared layout is easier to scan. The bundled community layouts were also regenerated to the current grid so they apply correctly.
+
+### Layout editor
+- **"Save As" confirmations are no longer trapped** behind the editor overlay — when a dashboard name already exists you can now see and act on the confirm/cancel prompt.
+
 ## [1.13.1] – 2026-08-02
 
 ### Dashboard
