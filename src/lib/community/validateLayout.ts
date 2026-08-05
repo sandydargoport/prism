@@ -288,7 +288,6 @@ export function validateCommunityLayout(
     const name = typeof obj.name === 'string' ? obj.name : '';
     const description = typeof obj.description === 'string' ? obj.description : '';
     const author = typeof obj.author === 'string' ? obj.author : '';
-    const screenSizes = Array.isArray(obj.screenSizes) ? obj.screenSizes : [];
     const orientation = obj.orientation;
 
     if (name.length === 0 || name.length > 100) {
@@ -300,9 +299,8 @@ export function validateCommunityLayout(
     if (author.length === 0 || author.length > 50) {
       errors.push('Community submission requires an author (1-50 characters).');
     }
-    if (screenSizes.length === 0) {
-      errors.push('Community submission requires at least one screen size.');
-    }
+    // Layouts stretch to fill any screen, so a specific screen-size / resolution
+    // is no longer required — orientation is the meaningful axis.
     if (orientation !== 'landscape' && orientation !== 'portrait') {
       errors.push('Community submission requires orientation ("landscape" or "portrait").');
     }

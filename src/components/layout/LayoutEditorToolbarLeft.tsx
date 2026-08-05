@@ -201,7 +201,7 @@ export function LayoutEditorToolbarLeft({
         width={640}
       >
         <div className="p-3 max-h-[60vh] overflow-auto">
-          <CommunityGallery mode={mode} onApplyLayout={onApplyCommunityLayout} />
+          <CommunityGallery mode={mode} onApplyLayout={onApplyCommunityLayout} currentOrientation={screenGuideOrientation} />
         </div>
       </PopoverButton>
 

@@ -14,9 +14,17 @@ import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 interface CommunityGalleryProps {
   mode: 'dashboard' | 'screensaver';
   onApplyLayout: (widgets: WidgetConfig[], name: string) => void;
+  /** Orientation of the dashboard being edited — pre-selects the matching filter. */
+  currentOrientation?: 'landscape' | 'portrait';
 }
 
-const SCREEN_SIZE_OPTIONS = ['1920x1080', '2560x1440', '3840x2160', '2560x1600', '2048x1536', '1366x768'];
+// Layouts stretch to fill whatever screen they're shown on, so the exact
+// resolution no longer matters for browsing — orientation is the axis that
+// does (a portrait layout letterboxes on a landscape screen and vice-versa).
+const ORIENTATION_OPTIONS: Array<{ value: 'landscape' | 'portrait'; label: string }> = [
+  { value: 'landscape', label: '▭ Landscape' },
+  { value: 'portrait', label: '▯ Portrait' },
+];
 
 // Checkered "open space is the wallpaper" field the preview boards float on —
 // theme-agnostic neutral so it reads on both light and dark grounds.
@@ -27,19 +35,19 @@ const PHOTO_FIELD: React.CSSProperties = {
   backgroundSize: '12px 12px',
 };
 
-export function CommunityGallery({ mode, onApplyLayout }: CommunityGalleryProps) {
+export function CommunityGallery({ mode, onApplyLayout, currentOrientation }: CommunityGalleryProps) {
   const [search, setSearch] = useState('');
   const [pendingSearch, setPendingSearch] = useState('');
-  const [screenSize, setScreenSize] = useState<string>('');
+  const [orientation, setOrientation] = useState<'landscape' | 'portrait' | ''>(currentOrientation ?? '');
   const [loading, setLoading] = useState<string | null>(null);
   const [layouts, setLayouts] = useState<CommunityIndexEntry[]>([]);
   const [loadingIndex, setLoadingIndex] = useState(true);
 
   const filters: CommunityFilterOptions = useMemo(() => ({
     mode,
-    ...(screenSize ? { screenSize } : {}),
+    ...(orientation ? { orientation } : {}),
     ...(search ? { search } : {}),
-  }), [mode, screenSize, search]);
+  }), [mode, orientation, search]);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,9 +81,9 @@ export function CommunityGallery({ mode, onApplyLayout }: CommunityGalleryProps)
     }
   }, [onApplyLayout]);
 
-  const hasFilters = Boolean(search || screenSize);
+  const hasFilters = Boolean(search || orientation);
   const clearFilters = useCallback(() => {
-    setPendingSearch(''); setSearch(''); setScreenSize('');
+    setPendingSearch(''); setSearch(''); setOrientation('');
   }, []);
 
   return (
@@ -124,17 +132,17 @@ export function CommunityGallery({ mode, onApplyLayout }: CommunityGalleryProps)
           )}
         </div>
         <div className="flex gap-1 flex-wrap">
-          {SCREEN_SIZE_OPTIONS.map(size => (
+          {ORIENTATION_OPTIONS.map(opt => (
             <button
-              key={size}
-              onClick={() => setScreenSize(prev => prev === size ? '' : size)}
-              className={`px-2 py-0.5 text-xs rounded-full border transition-colors ${
-                screenSize === size
+              key={opt.value}
+              onClick={() => setOrientation(prev => prev === opt.value ? '' : opt.value)}
+              className={`px-2.5 py-0.5 text-xs rounded-full border transition-colors ${
+                orientation === opt.value
                   ? 'bg-primary text-primary-foreground border-primary'
                   : 'bg-muted/60 border-border text-muted-foreground hover:bg-accent hover:text-foreground'
               }`}
             >
-              {size}
+              {opt.label}
             </button>
           ))}
         </div>
@@ -232,13 +240,11 @@ function CommunityLayoutCard({
           <span className="opacity-40">·</span>
           <span className="shrink-0 tabular-nums">{entry.widgetCount}w</span>
         </div>
-        {entry.screenSizes.length > 0 && (
-          <div className="mt-1.5 flex flex-wrap gap-1">
-            {entry.screenSizes.map(s => (
-              <span key={s} className="rounded-full border border-border/70 bg-muted/50 px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
-                {s}
-              </span>
-            ))}
+        {entry.orientation && (
+          <div className="mt-1.5">
+            <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-muted/50 px-1.5 py-0.5 text-[10px] capitalize text-muted-foreground">
+              {entry.orientation === 'portrait' ? '▯' : '▭'} {entry.orientation}
+            </span>
           </div>
         )}
       </div>
