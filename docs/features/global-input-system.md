@@ -1,4 +1,4 @@
-# Global Input System — Implementation Spec
+# Global Input System: Implementation Spec
 
 ## Prism v1.3 | Date: 2026-04-02
 
@@ -25,7 +25,7 @@
 
 ```
 src/app/layout.tsx (Server Component)
-  └── <Providers> (client boundary — ThemeProvider, FamilyProvider, AuthProvider)
+  └── <Providers> (client boundary: ThemeProvider, FamilyProvider, AuthProvider)
         └── <GlobalInputProvider>          ← NEW: wraps all pages once
               ├── <VirtualKeyboard />      ← NEW: portals to document.body
               ├── <KeyboardToggleButton /> ← NEW: portals to document.body
@@ -137,7 +137,7 @@ if (lastPointerType === 'touch' && !isMobile && !suppressedForScan && virtualKey
 **`focusout`:**
 ```ts
 const next = e.relatedTarget as Element | null;
-if (next && isInsideKeyboard(next)) return; // keyboard buttons stole focus — ignore
+if (next && isInsideKeyboard(next)) return; // keyboard buttons stole focus, ignore
 activeInputRef.current = null;
 setKeyboardVisible(false);
 restoreScroll();
@@ -185,7 +185,7 @@ When a scan fires, set `suppressedForScan = true` for 500ms. During this window,
 npm install simple-keyboard
 ```
 
-Pin to a specific minor version (e.g., `"simple-keyboard": "3.7.x"`) — the library has breaking changes between minor versions.
+Pin to a specific minor version (e.g., `"simple-keyboard": "3.7.x"`). The library has breaking changes between minor versions.
 
 ### Layout
 
@@ -227,7 +227,7 @@ min-height: 320px
 max-height: 480px
 ```
 
-> Note: the scroll math (§7) and the `--keyboard-height` CSS var both use **32vh**. The `VirtualKeyboard.tsx` container style still hardcodes `38vh`, so the visual height and scroll math don't yet agree — reconcile to 32vh.
+> Note: the scroll math (§7) and the `--keyboard-height` CSS var both use **32vh**. The `VirtualKeyboard.tsx` container style still hardcodes `38vh`, so the visual height and scroll math don't yet agree. Reconcile to 32vh.
 
 Key height ≥ 52px, key font size 18px. Sized for comfortable use on 24" 1080p display.
 
@@ -253,7 +253,7 @@ keyboardRef.current = new Keyboard(containerRef.current, {
   syncInstanceInputs: false,
 });
 
-// When active input changes — sync keyboard state to existing value:
+// When active input changes, sync keyboard state to existing value:
 keyboardRef.current?.setInput(activeInputRef.current?.value ?? '');
 ```
 
@@ -370,7 +370,7 @@ Body: { barcode: string, dryRun?: boolean, listId?: string, category?: ShoppingC
 403:          { error: ... }                  // scanner.enabled is false
 ```
 
-Requires a display session — `getDisplayAuth()` returns 401 if absent. Returns 403 when `scanner.enabled` is `false`. Optional body fields: `dryRun` (look up and report without adding), `listId` (override target list), `category` (override resolved category). Otherwise reads the `scanner.defaultListId` setting to determine the target list.
+Requires a display session: `getDisplayAuth()` returns 401 if absent. Returns 403 when `scanner.enabled` is `false`. Optional body fields: `dryRun` (look up and report without adding), `listId` (override target list), `category` (override resolved category). Otherwise reads the `scanner.defaultListId` setting to determine the target list.
 
 ### 5.3 Product Lookup Cascade
 
@@ -389,11 +389,11 @@ export async function lookupBarcode(barcode: string): Promise<ProductLookupResul
 ```
 
 **Provider order:**
-1. **Redis cache** — key `barcode:{barcode}`, TTL 7 days — check first
-2. **Open Food Facts** — free, no key, best grocery coverage
-3. **UPCitemdb** — free tier (100/day), good US coverage, handles non-food pantry items
+1. **Redis cache**: key `barcode:{barcode}`, TTL 7 days, check first
+2. **Open Food Facts**: free, no key, best grocery coverage
+3. **UPCitemdb**: free tier (100/day), good US coverage, handles non-food pantry items
 
-3-second timeout per provider via `AbortController`. (Nutritionix/Edamam were considered but are not implemented — no `integrations.nutritionix.*` / `integrations.edamam.*` settings exist.)
+3-second timeout per provider via `AbortController`. (Nutritionix/Edamam were considered but are not implemented: no `integrations.nutritionix.*` / `integrations.edamam.*` settings exist.)
 
 ### 5.4 Route Logic
 
@@ -439,11 +439,11 @@ async function dispatchScan(barcode: string) {
 
 ### 5.6 Database
 
-`shopping_items.source` column already exists with `default('internal')`. Add `'scan'` as a new valid value — no migration needed. Document in a schema comment.
+`shopping_items.source` column already exists with `default('internal')`. Add `'scan'` as a new valid value. No migration needed. Document in a schema comment.
 
 ### 5.7 Audio Feedback
 
-Beeps are **synthesized with the Web Audio API** — no MP3 assets are bundled. `playBeep()` builds an `AudioContext` oscillator and plays a short tone: **1800 Hz** for the `"scan"` (Scanner chirp) style, **1200 Hz** for the `"beep"` (Short beep) style.
+Beeps are **synthesized with the Web Audio API**. No MP3 assets are bundled. `playBeep()` builds an `AudioContext` oscillator and plays a short tone: **1800 Hz** for the `"scan"` (Scanner chirp) style, **1200 Hz** for the `"beep"` (Short beep) style.
 
 ```ts
 function playBeep() {
@@ -486,8 +486,8 @@ Besides USB/Bluetooth keyboard-wedge (HID) scanners, the Shopping page ships a *
 - **Trigger:** a camera icon in the Shopping page header. It's opened by dispatching the `prism:open-barcode-scanner` event; `ShoppingView` lazy-loads the overlay (dynamic import) and toggles `showCameraScanner`.
 - **Full-screen overlay:** the camera viewfinder fills the screen and self-dismisses on a successful read.
 - **Two decode paths:**
-  - **`BarcodeDetector`** (native, Android/Chrome) — continuous live scanning of the video stream.
-  - **`@zxing/browser` photo-capture fallback** (iOS/Safari, where `BarcodeDetector` is unavailable) — captures a still frame and decodes it.
+  - **`BarcodeDetector`** (native, Android/Chrome): continuous live scanning of the video stream.
+  - **`@zxing/browser` photo-capture fallback** (iOS/Safari, where `BarcodeDetector` is unavailable): captures a still frame and decodes it.
 - **Feedback:** haptic buzz + the same synthesized beep (§5.7) on a hit.
 - A decoded barcode is handed to the same `dispatchScan` flow (§5.5), so lookup/dedup/add behavior is identical to the HID path.
 
@@ -604,7 +604,7 @@ Auto-dismiss is synchronous and runs before the barcode buffer check, so USB bar
 
 ### Settings UI
 
-New section: `{ id: 'input', label: 'Input', icon: Keyboard }` — add to sections array in `SettingsView.tsx` after `'display'`.
+New section: `{ id: 'input', label: 'Input', icon: Keyboard }`. Add to sections array in `SettingsView.tsx` after `'display'`.
 
 **File:** `src/app/settings/sections/InputSection.tsx`
 
@@ -612,7 +612,7 @@ New section: `{ id: 'input', label: 'Input', icon: Keyboard }` — add to sectio
 - Enable scanner (Switch)
 - Default list (Select from shopping lists)
 - Scanner sound (Switch)
-- Sound style (Select: Short beep / Scanner chirp — disabled when sound off)
+- Sound style (Select: Short beep / Scanner chirp, disabled when sound off)
 
 **Card 2: Virtual Keyboard**
 - Enable on-screen keyboard (Switch)
@@ -657,13 +657,13 @@ New section: `{ id: 'input', label: 'Input', icon: Keyboard }` — add to sectio
 
 | # | Item |
 |---|---|
-| 1 | **simple-keyboard CSS isolation** — import scoped to `[data-virtual-keyboard]` via PostCSS to prevent class bleed |
-| 2 | **Voice language** — hardcoded `en-US` in v1; add `speech.language` setting in v2 |
-| 3 | **Interim speech results** — suppressed in v1; v2 can show as floating chip above active input (`interimText` state already in context shape) |
-| 4 | **Caps lock behavior** — double-tap `{shift}` activates caps lock; requires careful state tracking in `handleShift()` |
-| 5 | **MS To-Do sync on scan** — verify `microsoft-todo.ts` sync function is callable server-side from route handler; if not, queue the sync |
-| 6 | **Camera-based scanning on mobile** — ✅ SHIPPED (see §5.10): `BarcodeDetector` with a `@zxing/browser` + `getUserMedia` photo-capture fallback, triggered from the Shopping page header |
-| 7 | **PIN entry on login page** — verify PIN pad uses buttons (not `input[type=text]`) and is excluded from keyboard trigger |
-| 8 | **Accessibility** — add `role="application"` and `aria-label="Virtual keyboard"` to keyboard container; `aria-hidden` if AT should skip |
-| 9 | **Hardware mic availability** — ViewSonic TD2465 has audio I/O ports but no built-in mic; USB mic needed; test before voice goes live |
-| 10 | **`AppShell` bottom padding** — pages with fixed-height layouts (Shopping, Tasks) need inner scroll container to consume `--keyboard-height` var directly rather than relying on padding on `<main>` |
+| 1 | **simple-keyboard CSS isolation**: import scoped to `[data-virtual-keyboard]` via PostCSS to prevent class bleed |
+| 2 | **Voice language**: hardcoded `en-US` in v1; add `speech.language` setting in v2 |
+| 3 | **Interim speech results**: suppressed in v1; v2 can show as floating chip above active input (`interimText` state already in context shape) |
+| 4 | **Caps lock behavior**: double-tap `{shift}` activates caps lock; requires careful state tracking in `handleShift()` |
+| 5 | **MS To-Do sync on scan**: verify `microsoft-todo.ts` sync function is callable server-side from route handler; if not, queue the sync |
+| 6 | **Camera-based scanning on mobile**: ✅ SHIPPED (see §5.10): `BarcodeDetector` with a `@zxing/browser` + `getUserMedia` photo-capture fallback, triggered from the Shopping page header |
+| 7 | **PIN entry on login page**: verify PIN pad uses buttons (not `input[type=text]`) and is excluded from keyboard trigger |
+| 8 | **Accessibility**: add `role="application"` and `aria-label="Virtual keyboard"` to keyboard container; `aria-hidden` if AT should skip |
+| 9 | **Hardware mic availability**: ViewSonic TD2465 has audio I/O ports but no built-in mic; USB mic needed; test before voice goes live |
+| 10 | **`AppShell` bottom padding**: pages with fixed-height layouts (Shopping, Tasks) need inner scroll container to consume `--keyboard-height` var directly rather than relying on padding on `<main>` |

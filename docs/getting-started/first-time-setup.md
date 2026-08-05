@@ -1,15 +1,15 @@
 # First-Time Setup
 
-After [installing Prism](install.md), the first run drops you into a short, keyless setup wizard — no accounts or API keys needed to get going.
+After [installing Prism](install.md), the first run drops you into a short, keyless setup wizard. No accounts or API keys needed to get going.
 
 ## The setup wizard
 
 A fresh install boots straight into the wizard (there's no default-PIN login screen). It has four steps:
 
-1. **Welcome** — a quick intro.
-2. **Family** — add each family member (name, role, avatar) and choose a **4- or 6-digit PIN** for each one.
-3. **Household** — set your location by city or ZIP/postal code (time zone is detected automatically) and pick which day your week starts on.
-4. **Done** — you land on a dashboard that already shows your calendar, with no one needing to sign in.
+1. **Welcome**: a quick intro.
+2. **Family**: add each family member (name, role, avatar) and choose a **4- or 6-digit PIN** for each one.
+3. **Household**: set your location by city or ZIP/postal code (time zone is detected automatically) and pick which day your week starts on.
+4. **Done**: you land on a dashboard that already shows your calendar, with no one needing to sign in.
 
 Everything the wizard sets can be revisited later in Settings. The steps below cover those edit paths plus the optional extras (integrations, layout, PWA install).
 
@@ -23,7 +23,7 @@ Each member gets a name, role (parent or child), and an avatar. Parents can appr
 
 **Settings → Family Members** (or **Settings → Security**).
 
-Each member has their own PIN — **4 or 6 digits**, chosen per member (first in the wizard's Family step, later here). The pad auto-submits once that member's digit count is reached, so it's fast on shared devices. There is no shared family PIN and no default child PIN — set a real PIN for everyone before exposing a deployment.
+Each member has their own PIN: **4 or 6 digits**, chosen per member (first in the wizard's Family step, later here). The pad auto-submits once that member's digit count is reached, so it's fast on shared devices. There is no shared family PIN and no default child PIN. Set a real PIN for everyone before exposing a deployment.
 
 ## 3. Connect integrations
 
@@ -33,15 +33,15 @@ You don't need any of these to share or assign events: Prism gives every member 
 
 Most families want at least:
 
-- **Google Calendar** — for school, work, and shared family events. OAuth-based bidirectional sync.
-- **Weather** — Open-Meteo is the zero-config default (no API key). OpenWeatherMap and Pirate Weather are alternatives.
-- **OneDrive** — for the photo slideshow on the screensaver and the dashboard photo widget.
-- **Microsoft To Do** — if your family already uses it for tasks, shopping, or wish lists.
+- **Google Calendar**: for school, work, and shared family events. OAuth-based bidirectional sync.
+- **Weather**: Open-Meteo is the zero-config default (no API key). OpenWeatherMap and Pirate Weather are alternatives.
+- **OneDrive**: for the photo slideshow on the screensaver and the dashboard photo widget.
+- **Microsoft To Do**: if your family already uses it for tasks, shopping, or wish lists.
 
 Optional but popular:
 
-- **[Kroger / Mariano's cart push](../features/KROGER.md)** — send your shopping list straight into your online cart for pickup or delivery.
-- **Gmail + FirstView** — school bus arrival tracking via geofence email notifications.
+- **[Kroger / Mariano's cart push](../features/KROGER.md)**: send your shopping list straight into your online cart for pickup or delivery.
+- **Gmail + FirstView**: school bus arrival tracking via geofence email notifications.
 
 ## 4. Customize the dashboard
 

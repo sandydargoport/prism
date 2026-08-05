@@ -161,7 +161,7 @@ function GettingStarted() {
       <H2>First-Time Setup</H2>
       <Ul>
         <Li><strong>Add family members</strong> in Settings &gt; Family Members</Li>
-        <Li><strong>Set a PIN</strong> (4 or 6 digits) for each member — chosen during the setup wizard on a fresh install, or later in Settings &gt; Security. Each member&apos;s PIN length is independent; there is no shared family PIN.</Li>
+        <Li><strong>Set a PIN</strong> (4 or 6 digits) for each member, chosen during the setup wizard on a fresh install, or later in Settings &gt; Security. Each member&apos;s PIN length is independent; there is no shared family PIN.</Li>
         <Li><strong>Connect integrations</strong> (Google, Microsoft, Apple/CalDAV, weather) in Settings &gt; Integrations</Li>
         <Li><strong>Customize your dashboard</strong> layout using the Edit button</Li>
         <Li><strong>Install as an app</strong> on phones and tablets for quick access</Li>
@@ -214,7 +214,7 @@ function DashboardHelp() {
       </Ul>
 
       <H2>Starter Templates</H2>
-      <P>The <strong>Templates</strong> button offers six built-in dashboards — <strong>Family Central</strong>, <strong>Calendar Focus</strong>, <strong>Command Center</strong>, <strong>Meal Planner</strong>, <strong>School Mornings</strong>, and a photo-forward <strong>Ambient</strong>. Each is built around a single hero widget (usually the calendar) with the other widgets sized to their natural shape and grouped into a couple of balanced zones — a starting point you then rearrange. Every template ships in both landscape and portrait versions, and the screensaver has its own matching set.</P>
+      <P>The <strong>Templates</strong> button offers six built-in dashboards: <strong>Family Central</strong>, <strong>Calendar Focus</strong>, <strong>Command Center</strong>, <strong>Meal Planner</strong>, <strong>School Mornings</strong>, and a photo-forward <strong>Ambient</strong>. Each is built around a single hero widget (usually the calendar) with the other widgets sized to their natural shape and grouped into a couple of balanced zones, a starting point you then rearrange. Every template ships in both landscape and portrait versions, and the screensaver has its own matching set.</P>
 
       <H2>Mini-map &amp; Validation</H2>
       <P>Click <strong>Mini-map</strong> in the left toolbar to see a miniature map of your layout. It highlights widget positions and flags any issues like overlapping or undersized widgets. Click on the mini-map to scroll the grid to that area. A separate <strong>device preview gallery</strong> shows how your one design looks on each common screen size.</P>
@@ -224,12 +224,12 @@ function DashboardHelp() {
       <P>For a permanent clean look, enable <strong>Auto-Hide Navigation</strong> in Settings &gt; Appearance. The nav and toolbar will automatically hide after a period of inactivity and reappear on click or keyboard input.</P>
 
       <H2>Screensaver Layout</H2>
-      <P>Each dashboard has its own screensaver layout. In edit mode, click the <strong>Screensaver</strong> button to switch to editing the screensaver widget arrangement. The screensaver activates after a configurable idle period (Settings &gt; Appearance &gt; Timers &amp; Auto-Activation) and shows a photo slideshow with your chosen widgets overlaid. Its templates keep the calendar — or tonight&apos;s meals — as the hero, with small clock, weather, and message accents floating over one clean photo region so the wallpaper stays the star.</P>
+      <P>Each dashboard has its own screensaver layout. In edit mode, click the <strong>Screensaver</strong> button to switch to editing the screensaver widget arrangement. The screensaver activates after a configurable idle period (Settings &gt; Appearance &gt; Timers &amp; Auto-Activation) and shows a photo slideshow with your chosen widgets overlaid. Its templates keep the calendar, or tonight&apos;s meals, as the hero, with small clock, weather, and message accents floating over one clean photo region so the wallpaper stays the star.</P>
 
       <H2>Import, Export &amp; Community Layouts</H2>
       <Ul>
         <Li><strong>Community gallery</strong>: Click <strong>Community</strong> in the editor toolbar to browse layouts shared by other Prism users. Search by name and filter by <strong>orientation</strong> (Landscape/Portrait, pre-set to the dashboard you&apos;re editing), preview each as a thumbnail, then <strong>Apply layout</strong> to drop it onto a new dashboard.</Li>
-        <Li><strong>Share</strong>: Submit your own layout (More &gt; Share). Fill in the details and Prism opens a pre-filled <strong>GitHub issue form</strong> from any instance — sign in with a free GitHub account and submit; a bot validates it and opens a pull request, and a maintainer merges it into the gallery.</Li>
+        <Li><strong>Share</strong>: Submit your own layout (More &gt; Share). Fill in the details and submit; Prism opens a pre-filled submission, and once it&apos;s approved your layout appears in the gallery.</Li>
         <Li><strong>Export</strong>: Copy your current layout as JSON to share it directly (More &gt; Export)</Li>
         <Li><strong>Import</strong>: Paste a layout JSON to load someone else&apos;s design (More &gt; Import)</Li>
         <Li><strong>Reset</strong>: Revert unsaved edits back to the last saved layout (More &gt; Reset)</Li>
@@ -238,7 +238,7 @@ function DashboardHelp() {
       <H2>Multiple Dashboards</H2>
       <P>Create separate dashboards for different rooms or displays. Click the dashboard name dropdown in the editor toolbar to switch between dashboards or create new ones.</P>
       <Ul>
-        <Li>Default dashboard lives at <strong>/</strong> — make any dashboard the default via <strong>More &gt; Set as Default</strong></Li>
+        <Li>Default dashboard lives at <strong>/</strong>: make any dashboard the default via <strong>More &gt; Set as Default</strong></Li>
         <Li>Named dashboards get URLs like <strong>/d/kitchen</strong> or <strong>/d/living-room</strong></Li>
         <Li>Each has independent widget layout, screensaver layout, and orientation (landscape/portrait)</Li>
         <Li>Bookmark a dashboard URL on a dedicated device for instant access</Li>
@@ -265,15 +265,15 @@ function CalendarHelp({ isMobile }: { isMobile: boolean }) {
       <P>View and manage events from Google Calendar, Microsoft, and local calendars.</P>
 
       <H2>Personal &amp; Family calendars (no setup needed)</H2>
-      <P>Every family member automatically gets their own personal calendar, plus a shared <strong>Family</strong> calendar — so you can add and assign events right away without connecting anything. Connected accounts (below) simply layer on top.</P>
+      <P>Every family member automatically gets their own personal calendar, plus a shared <strong>Family</strong> calendar, so you can add and assign events right away without connecting anything. Connected accounts (below) simply layer on top.</P>
 
       <H2>Setting Up Connected Calendars</H2>
       <P>Connect Google, Microsoft, or Apple/CalDAV calendars in <strong>Settings &gt; Integrations</strong> (Google Calendar via OAuth; Apple iCloud via the CalDAV card). Once connected, open the <strong>calendar page and tap Manage</strong> to configure individual calendars, where you can:</P>
       <Ul>
         <Li><strong>Enable/disable</strong> individual calendars from showing on the dashboard</Li>
-        <Li><strong>Assign to a family member</strong> — each calendar is linked to a person or marked as &quot;Family&quot; (shared)</Li>
-        <Li><strong>Set display names</strong> — customize how a calendar appears in the UI</Li>
-        <Li><strong>Change colors</strong> — override the default color for any calendar</Li>
+        <Li><strong>Assign to a family member</strong>: each calendar is linked to a person or marked as &quot;Family&quot; (shared)</Li>
+        <Li><strong>Set display names</strong>: customize how a calendar appears in the UI</Li>
+        <Li><strong>Change colors</strong>: override the default color for any calendar</Li>
       </Ul>
       <P>Google Calendar is <strong>two-way</strong>: events you add, edit, or delete in Prism are pushed back to the connected Google calendar. (Old <strong>Settings &gt; Connected Accounts</strong> and <strong>Settings &gt; Calendars</strong> links redirect to these locations.)</P>
 
@@ -331,8 +331,8 @@ function ChoresHelp() {
       <H2>How It Works</H2>
       <Ul>
         <Li>A parent creates a chore with a frequency and point value</Li>
-        <Li>A child marks it complete — it enters &quot;Pending Approval&quot;</Li>
-        <Li>A parent approves — points are awarded and the next due date advances</Li>
+        <Li>A child marks it complete. It enters &quot;Pending Approval&quot;</Li>
+        <Li>A parent approves. Points are awarded and the next due date advances</Li>
         <Li>If a parent completes it, it&apos;s auto-approved</Li>
       </Ul>
       <H2>Reset Day</H2>
@@ -346,14 +346,14 @@ function GoalsHelp() {
     <>
       <P>Set goals that children work toward by earning points from chore completions.</P>
       <H2>How Points Work</H2>
-      <P>Points are earned from approved chores. The waterfall system allocates points in priority order — highest priority goals fill first, overflow goes to the next goal.</P>
+      <P>Points are earned from approved chores. The waterfall system allocates points in priority order: highest priority goals fill first, overflow goes to the next goal.</P>
       <H2>Recurring vs One-Time</H2>
       <Ul>
         <Li><strong>Recurring</strong> goals reset each period (weekly, monthly, yearly)</Li>
         <Li><strong>One-time</strong> goals accumulate until achieved, then a parent taps <strong>Reset</strong> on the goal to start it over</Li>
       </Ul>
       <H2>Celebrations</H2>
-      <P>When a goal is fully achieved, a seasonal celebration animation plays — themed to the nearest holiday (St. Patrick&apos;s, Easter, July 4th, Halloween, Thanksgiving, Christmas, etc.).</P>
+      <P>When a goal is fully achieved, a seasonal celebration animation plays, themed to the nearest holiday (St. Patrick&apos;s, Easter, July 4th, Halloween, Thanksgiving, Christmas, etc.).</P>
     </>
   );
 }
@@ -363,14 +363,14 @@ function ShoppingHelp() {
     <>
       <P>Manage multiple shopping lists with categories and per-person tracking.</P>
       <Ul>
-        <Li><strong>Multiple lists</strong> — Groceries, Hardware, General, etc.</Li>
-        <Li><strong>Categories</strong> — Produce, Dairy, Bakery, Meat, etc.</Li>
-        <Li><strong>Group by person</strong> — See who requested each item</Li>
-        <Li><strong>Reorder categories</strong> — Drag category headers to match your store layout (desktop)</Li>
-        <Li><strong>Edit / Delete</strong> — Each row has always-visible pencil and trash buttons. Deletes are immediate (the Undo button only reverses a check-off)</Li>
-        <Li><strong>Scan barcodes</strong> — Add items with a USB scanner or the camera scanner on the Shopping page</Li>
-        <Li><strong>Send to Kroger</strong> — Push unchecked items to your Kroger / Mariano&apos;s online cart (see the Kroger help section)</Li>
-        <Li><strong>Shopping mode</strong> — Tap the expand icon for a full-screen, in-store view</Li>
+        <Li><strong>Multiple lists</strong>: Groceries, Hardware, General, etc.</Li>
+        <Li><strong>Categories</strong>: Produce, Dairy, Bakery, Meat, etc.</Li>
+        <Li><strong>Group by person</strong>: See who requested each item</Li>
+        <Li><strong>Reorder categories</strong>: Drag category headers to match your store layout (desktop)</Li>
+        <Li><strong>Edit / Delete</strong>: Each row has always-visible pencil and trash buttons. Deletes are immediate (the Undo button only reverses a check-off)</Li>
+        <Li><strong>Scan barcodes</strong>: Add items with a USB scanner or the camera scanner on the Shopping page</Li>
+        <Li><strong>Send to Kroger</strong>: Push unchecked items to your Kroger / Mariano&apos;s online cart (see the Kroger help section)</Li>
+        <Li><strong>Shopping mode</strong>: Tap the expand icon for a full-screen, in-store view</Li>
         <Li><strong>Sync</strong> with Microsoft To Do (configure per-list in Settings &gt; Integrations)</Li>
       </Ul>
     </>
@@ -382,8 +382,8 @@ function MealsHelp() {
     <>
       <P>Weekly meal planner with optional recipe integration.</P>
       <Ul>
-        <Li><strong>Plan meals</strong> per day — a name is all you need; optionally link a recipe from your library</Li>
-        <Li><strong>Multiple meal types</strong> — Breakfast, Lunch, Dinner, Snack, with an optional time of day</Li>
+        <Li><strong>Plan meals</strong> per day: a name is all you need; optionally link a recipe from your library</Li>
+        <Li><strong>Multiple meal types</strong>: Breakfast, Lunch, Dinner, Snack, with an optional time of day</Li>
         <Li><strong>Drag meals between days</strong> to reschedule (touch supported)</Li>
         <Li><strong>Mark as cooked</strong> to track what&apos;s been prepared</Li>
         <Li>Days follow your <strong>Week Starts On</strong> setting (Settings &gt; General)</Li>
@@ -401,8 +401,8 @@ function MessagesHelp() {
         <Li><strong>Post</strong> messages attributed to whoever is logged in</Li>
         <Li><strong>Pin</strong> important messages to the top</Li>
         <Li><strong>Set expiration</strong> for temporary notices (12h to 7 days)</Li>
-        <Li><strong>Edit</strong> — Click the pencil icon, Ctrl+Enter to save</Li>
-        <Li><strong>Delete</strong> — Authors can delete their own; parents can delete any</Li>
+        <Li><strong>Edit</strong>: Click the pencil icon, Ctrl+Enter to save</Li>
+        <Li><strong>Delete</strong>: Authors can delete their own; parents can delete any</Li>
       </Ul>
     </>
   );
@@ -412,11 +412,11 @@ function WishesHelp() {
   return (
     <>
       <H2>Wish Lists</H2>
-      <P>Each family member has their own wish list. Others can secretly mark items as purchased — the owner doesn&apos;t see who bought what.</P>
+      <P>Each family member has their own wish list. Others can secretly mark items as purchased. The owner doesn&apos;t see who bought what.</P>
       <Ul>
         <Li><strong>Add</strong> items with name, link, and notes</Li>
-        <Li><strong>Claim</strong> — Mark as purchased (secret from the owner)</Li>
-        <Li><strong>Cross off</strong> — Owner can cross off items they got themselves</Li>
+        <Li><strong>Claim</strong>: Mark as purchased (secret from the owner)</Li>
+        <Li><strong>Cross off</strong>: Owner can cross off items they got themselves</Li>
         <Li><strong>Sync</strong> with Microsoft To Do per member (Settings)</Li>
       </Ul>
       <H2>Gift Ideas</H2>
@@ -425,7 +425,7 @@ function WishesHelp() {
         <Li>See columns for each family member (except yourself)</Li>
         <Li>Add ideas with name, link, price, and notes</Li>
         <Li>Mark as purchased when you buy them</Li>
-        <Li><strong>Privacy</strong>: Only you can see your ideas — they are never visible to the recipient or other family members</Li>
+        <Li><strong>Privacy</strong>: Only you can see your ideas. They are never visible to the recipient or other family members</Li>
       </Ul>
     </>
   );
@@ -436,12 +436,12 @@ function PhotosHelp() {
     <>
       <P>Photo gallery with local uploads plus OneDrive and Immich sync.</P>
       <Ul>
-        <Li><strong>Gallery</strong> — Browse all photos with lightbox view; filter to <strong>Favorites</strong></Li>
-        <Li><strong>Slideshow</strong> — Auto-rotating display for screensaver and away mode</Li>
-        <Li><strong>Sources</strong> — Local uploads, OneDrive, or Immich. Synced sources refresh automatically about every 30 minutes</Li>
-        <Li><strong>Tag for:</strong> — In the lightbox, toggle where each photo may appear — <strong>Wallpaper</strong>, <strong>Gallery</strong>, and/or <strong>Screensaver</strong></Li>
-        <Li><strong>Bulk select</strong> (desktop) — Select many photos to show in / remove from Prism at once</Li>
-        <Li><strong>Below-HD indicator</strong> — A resolution dot flags low-resolution photos so you can filter them out of wallpapers</Li>
+        <Li><strong>Gallery</strong>: Browse all photos with lightbox view; filter to <strong>Favorites</strong></Li>
+        <Li><strong>Slideshow</strong>: Auto-rotating display for screensaver and away mode</Li>
+        <Li><strong>Sources</strong>: Local uploads, OneDrive, or Immich. Synced sources refresh automatically about every 30 minutes</Li>
+        <Li><strong>Tag for:</strong> In the lightbox, toggle where each photo may appear: <strong>Wallpaper</strong>, <strong>Gallery</strong>, and/or <strong>Screensaver</strong></Li>
+        <Li><strong>Bulk select</strong> (desktop): Select many photos to show in / remove from Prism at once</Li>
+        <Li><strong>Below-HD indicator</strong>: A resolution dot flags low-resolution photos so you can filter them out of wallpapers</Li>
       </Ul>
       <P>Manage sources and set a static wallpaper or screensaver in Settings &gt; Photos.</P>
     </>
@@ -495,19 +495,19 @@ function SettingsHelp({ isMobile }: { isMobile: boolean }) {
       <H3>Family Members</H3>
       <P>Add, edit, or remove members. Set names, colors, avatars, and roles.</P>
       <H3>Security</H3>
-      <P>Set or change each member&apos;s PIN (4 or 6 digits). Generate API tokens for external integrations — each token carries a <strong>scope</strong>; pick the smallest that works (&quot;Voice API only (recommended)&quot; for Alexa / Home Assistant, or &quot;Full access (legacy)&quot;).</P>
+      <P>Set or change each member&apos;s PIN (4 or 6 digits). Generate API tokens for external integrations. Each token carries a <strong>scope</strong>; pick the smallest that works (&quot;Voice API only (recommended)&quot; for Alexa / Home Assistant, or &quot;Full access (legacy)&quot;).</P>
       <H3>General</H3>
       <Ul>
-        <Li><strong>Weather location</strong> — Set by ZIP / postal code</Li>
-        <Li><strong>Week Starts On</strong> — Sunday or Monday</Li>
+        <Li><strong>Weather location</strong>: Set by ZIP / postal code</Li>
+        <Li><strong>Week Starts On</strong>: Sunday or Monday</Li>
       </Ul>
       <H3>Integrations</H3>
-      <P>One place to connect providers — Google, Microsoft, Apple iCloud / CalDAV, Kroger, and more — shown as provider cards. Task, Shopping, and Wish List sync are configured per-list inside the Microsoft or Google card. (Old &quot;Connected Accounts&quot; / &quot;Task Sync&quot; / &quot;Shopping Sync&quot; links redirect here.)</P>
+      <P>One place to connect providers (Google, Microsoft, Apple iCloud / CalDAV, Kroger, and more) shown as provider cards. Task, Shopping, and Wish List sync are configured per-list inside the Microsoft or Google card. (Old &quot;Connected Accounts&quot; / &quot;Task Sync&quot; / &quot;Shopping Sync&quot; links redirect here.)</P>
       <H3>Appearance</H3>
       <Ul>
-        <Li><strong>Theme &amp; palette</strong> — Light, Dark, or System, plus seasonal themes</Li>
-        {!isMobile && <Li><strong>Timers &amp; Auto-Activation</strong> — Screensaver and Away Mode idle timers, photo rotation</Li>}
-        {!isMobile && <Li><strong>Auto-Hide Navigation</strong> — Hide nav after inactivity</Li>}
+        <Li><strong>Theme &amp; palette</strong>: Light, Dark, or System, plus seasonal themes</Li>
+        {!isMobile && <Li><strong>Timers &amp; Auto-Activation</strong>: Screensaver and Away Mode idle timers, photo rotation</Li>}
+        {!isMobile && <Li><strong>Auto-Hide Navigation</strong>: Hide nav after inactivity</Li>}
       </Ul>
       {!isMobile && (
         <>
@@ -536,7 +536,7 @@ function IntegrationsHelp() {
     <>
       <P>Everything connects from one place: <strong>Settings &gt; Integrations</strong>, shown as provider cards.</P>
       <H2>Google Calendar</H2>
-      <P>Connect in Settings &gt; Integrations (Google card). <strong>Two-way sync</strong> — events you add, edit, or delete in Prism are pushed back to the connected Google calendar.</P>
+      <P>Connect in Settings &gt; Integrations (Google card). <strong>Two-way sync</strong>: events you add, edit, or delete in Prism are pushed back to the connected Google calendar.</P>
       <H2>Microsoft To Do</H2>
       <P>Bidirectional sync for Tasks, Shopping Lists, and Wish Lists, with newest-wins conflict resolution. Connect the Microsoft card, then turn on sync per-list inside that card.</P>
       <H2>Google Tasks</H2>
@@ -552,7 +552,7 @@ function IntegrationsHelp() {
       <H2>OneDrive / Immich Photos</H2>
       <P>Sync photos from OneDrive folders or an Immich server. Configure in Settings &gt; Photos. Synced sources refresh automatically about every 30 minutes.</P>
       <H2>Weather</H2>
-      <P>Works out of the box via <strong>Open-Meteo</strong> — no API key needed. Set your location by ZIP / postal code in Settings &gt; General. OpenWeatherMap is optional (set <code>WEATHER_PROVIDER=openweather</code> plus a key).</P>
+      <P>Works out of the box via <strong>Open-Meteo</strong>. No API key needed. Set your location by ZIP / postal code in Settings &gt; General. OpenWeatherMap is optional (set <code>WEATHER_PROVIDER=openweather</code> plus a key).</P>
       <H2>Home Assistant &amp; Voice API</H2>
       <P>Control Prism by voice via Home Assistant, Alexa skills, or Node-RED. See the <strong>Home Assistant &amp; Voice API</strong> help section.</P>
     </>
@@ -606,7 +606,7 @@ function TroubleshootingHelp() {
       <H3>Forgot PIN</H3>
       <P>Ask a parent to reset it in Settings &gt; Security &gt; Member PINs.</P>
       <H3>Calendar events not showing</H3>
-      <P>Open the calendar page and tap <strong>Manage</strong> — is the calendar enabled? Tap &quot;Sync&quot; to force a refresh. Verify the Google / Microsoft / Apple connection is active in Settings &gt; Integrations.</P>
+      <P>Open the calendar page and tap <strong>Manage</strong>. Is the calendar enabled? Tap &quot;Sync&quot; to force a refresh. Verify the Google / Microsoft / Apple connection is active in Settings &gt; Integrations.</P>
       <H3>Tasks/Shopping not syncing</H3>
       <P>Verify Microsoft (or Google) is connected in Settings &gt; Integrations. Check that sync is enabled on the list. Tap &quot;Sync All&quot; to force a refresh.</P>
       <H3>Widget not loading</H3>
@@ -621,17 +621,17 @@ function RecipesHelp() {
       <P>A recipe library you can scale, shop from, and drop onto the meal planner.</P>
       <H2>Adding Recipes</H2>
       <Ul>
-        <Li><strong>Import from URL</strong> — Paste a recipe web address and Prism pulls in the details</Li>
-        <Li><strong>Import from Paprika</strong> — Upload a Paprika export file</Li>
-        <Li><strong>Paste text</strong> — Paste raw recipe text and Prism structures it</Li>
-        <Li><strong>Add manually</strong> — Fill in the form, including an optional photo</Li>
-        <Li><strong>Sync from Tandoor / Mealie</strong> — Connect a server with a read-only API token; the review screen pre-selects adds and updates while removals are opt-in, and re-syncing is safe to repeat</Li>
+        <Li><strong>Import from URL</strong>: Paste a recipe web address and Prism pulls in the details</Li>
+        <Li><strong>Import from Paprika</strong>: Upload a Paprika export file</Li>
+        <Li><strong>Paste text</strong>: Paste raw recipe text and Prism structures it</Li>
+        <Li><strong>Add manually</strong>: Fill in the form, including an optional photo</Li>
+        <Li><strong>Sync from Tandoor / Mealie</strong>: Connect a server with a read-only API token; the review screen pre-selects adds and updates while removals are opt-in, and re-syncing is safe to repeat</Li>
       </Ul>
       <H2>Using a Recipe</H2>
       <Ul>
-        <Li><strong>Scale servings</strong> — Use the servings stepper or the quick multiplier buttons (½×, 1×, 2×…); ingredient amounts rescale automatically</Li>
-        <Li><strong>Add to shopping list</strong> — Send the (scaled) ingredients straight to a shopping list</Li>
-        <Li><strong>Add to Meal Plan</strong> — Pick a day on the two-week mini-calendar and a meal type (defaults to Dinner) to place it on the planner</Li>
+        <Li><strong>Scale servings</strong>: Use the servings stepper or the quick multiplier buttons (½×, 1×, 2×…); ingredient amounts rescale automatically</Li>
+        <Li><strong>Add to shopping list</strong>: Send the (scaled) ingredients straight to a shopping list</Li>
+        <Li><strong>Add to Meal Plan</strong>: Pick a day on the two-week mini-calendar and a meal type (defaults to Dinner) to place it on the planner</Li>
         <Li><strong>Favorite</strong> and search across name, description, cuisine, and category; filter by cuisine or category</Li>
       </Ul>
     </>
@@ -643,10 +643,10 @@ function WeekendHelp() {
     <>
       <P>A shared board of places and activities to try together on weekends.</P>
       <Ul>
-        <Li><strong>Want to Try / Been There</strong> — Switch between the two status tabs; add places with the Add Place button</Li>
-        <Li><strong>Favorites</strong> — Star places and filter to just your favorites</Li>
-        <Li><strong>Tags</strong> — Pick from a fixed preset list (Outdoor, Nature, Hike, Food, Museum, Park, Playground…); the board groups places by tag, and you can filter by one or more tags</Li>
-        <Li><strong>Mark as Visited</strong> — One tap bumps the visit count (shown as pips) and records the last-visited date, moving the place to Been There</Li>
+        <Li><strong>Want to Try / Been There</strong>: Switch between the two status tabs; add places with the Add Place button</Li>
+        <Li><strong>Favorites</strong>: Star places and filter to just your favorites</Li>
+        <Li><strong>Tags</strong>: Pick from a fixed preset list (Outdoor, Nature, Hike, Food, Museum, Park, Playground…); the board groups places by tag, and you can filter by one or more tags</Li>
+        <Li><strong>Mark as Visited</strong>: One tap bumps the visit count (shown as pips) and records the last-visited date, moving the place to Been There</Li>
       </Ul>
     </>
   );
@@ -657,10 +657,10 @@ function TravelHelp() {
     <>
       <P>A 3D globe and list of places your family has been or wants to go.</P>
       <Ul>
-        <Li><strong>Globe &amp; Places tabs</strong> — Spin the globe to see your pins, or switch to the Places list. A dark-mode toggle restyles the globe</Li>
-        <Li><strong>Pins</strong> — Add locations, trip stops, or national parks; each pin is either <strong>Want to Go</strong> or <strong>Been There</strong> and can hold photos</Li>
-        <Li><strong>Search</strong> — Type a place name to look it up and drop a pin at the right spot</Li>
-        <Li><strong>Trips</strong> — Group multiple stops into a trip</Li>
+        <Li><strong>Globe &amp; Places tabs</strong>: Spin the globe to see your pins, or switch to the Places list. A dark-mode toggle restyles the globe</Li>
+        <Li><strong>Pins</strong>: Add locations, trip stops, or national parks; each pin is either <strong>Want to Go</strong> or <strong>Been There</strong> and can hold photos</Li>
+        <Li><strong>Search</strong>: Type a place name to look it up and drop a pin at the right spot</Li>
+        <Li><strong>Trips</strong>: Group multiple stops into a trip</Li>
       </Ul>
       <P>For satellite-quality globe imagery you can add a Mapbox token in Settings; the globe still works without one.</P>
     </>
@@ -672,9 +672,9 @@ function BusHelp() {
     <>
       <P>Track school-bus arrival times from FirstView email alerts and show them on the dashboard.</P>
       <Ul>
-        <Li><strong>Connect Gmail</strong> — In Settings &gt; Bus Tracking, connect the Gmail account that receives FirstView emails (optionally set a Gmail label to narrow the search)</Li>
-        <Li><strong>Discover routes</strong> — Prism scans for FirstView emails and creates the routes it finds, each with its stop</Li>
-        <Li><strong>Bus Tracker widget</strong> — Add the Bus Tracker widget to a dashboard to see predicted arrival times</Li>
+        <Li><strong>Connect Gmail</strong>: In Settings &gt; Bus Tracking, connect the Gmail account that receives FirstView emails (optionally set a Gmail label to narrow the search)</Li>
+        <Li><strong>Discover routes</strong>: Prism scans for FirstView emails and creates the routes it finds, each with its stop</Li>
+        <Li><strong>Bus Tracker widget</strong>: Add the Bus Tracker widget to a dashboard to see predicted arrival times</Li>
       </Ul>
     </>
   );
@@ -685,9 +685,9 @@ function InputHelp() {
     <>
       <P>Kiosk-friendly input options for touchscreens and shared displays. Configure these in Settings &gt; Input.</P>
       <Ul>
-        <Li><strong>On-screen keyboard</strong> — A touch keyboard appears automatically when you tap a text field</Li>
-        <Li><strong>Voice-to-text</strong> — Tap the mic key on the keyboard to dictate instead of typing</Li>
-        <Li><strong>Barcode scanning</strong> — Add shopping items with a USB barcode scanner, or use the camera scanner on the Shopping page</Li>
+        <Li><strong>On-screen keyboard</strong>: A touch keyboard appears automatically when you tap a text field</Li>
+        <Li><strong>Voice-to-text</strong>: Tap the mic key on the keyboard to dictate instead of typing</Li>
+        <Li><strong>Barcode scanning</strong>: Add shopping items with a USB barcode scanner, or use the camera scanner on the Shopping page</Li>
       </Ul>
     </>
   );
@@ -696,7 +696,7 @@ function InputHelp() {
 function CalDAVHelp() {
   return (
     <>
-      <P>Connect Apple iCloud — or any CalDAV / CardDAV server (e.g. Nextcloud) — for private calendars, Reminders, and contact birthdays.</P>
+      <P>Connect Apple iCloud, or any CalDAV / CardDAV server (e.g. Nextcloud), for private calendars, Reminders, and contact birthdays.</P>
       <H2>Setup</H2>
       <Ul>
         <Li>Create an <strong>app-specific password</strong> at appleid.apple.com (your normal Apple password won&apos;t work)</Li>
@@ -706,7 +706,7 @@ function CalDAVHelp() {
       <H2>What syncs</H2>
       <Ul>
         <Li>Calendars and events; Reminders (as tasks); optional contact <strong>birthdays</strong></Li>
-        <Li>Read-only for creates and edits, but <strong>deleting a single (non-recurring) synced event in Prism removes it from the source too</strong> — this is destructive upstream. Recurring series only delete locally.</Li>
+        <Li>Read-only for creates and edits, but <strong>deleting a single (non-recurring) synced event in Prism removes it from the source too</strong>. This is destructive upstream. Recurring series only delete locally.</Li>
       </Ul>
     </>
   );
@@ -717,9 +717,9 @@ function KrogerHelp() {
     <>
       <P>Push your shopping list to your online Kroger or Mariano&apos;s cart.</P>
       <Ul>
-        <Li><strong>Connect</strong> — In Settings &gt; Integrations, open the <strong>Kroger</strong> card, add your API credentials, connect your account (per-user OAuth), and pick your store</Li>
-        <Li><strong>Send to Kroger</strong> — From the Shopping page, tap Send to Kroger to push unchecked items; match each item to a product (SKU) and set a quantity</Li>
-        <Li>This is a one-way push to your cart on demand — it is not a two-way list sync</Li>
+        <Li><strong>Connect</strong>: In Settings &gt; Integrations, open the <strong>Kroger</strong> card, add your API credentials, connect your account (per-user OAuth), and pick your store</Li>
+        <Li><strong>Send to Kroger</strong>: From the Shopping page, tap Send to Kroger to push unchecked items; match each item to a product (SKU) and set a quantity</Li>
+        <Li>This is a one-way push to your cart on demand. It is not a two-way list sync</Li>
       </Ul>
     </>
   );
@@ -731,7 +731,7 @@ function VoiceApiHelp() {
       <P>Control and read Prism by voice through Home Assistant, Alexa skills, or Node-RED via the built-in Voice API.</P>
       <Ul>
         <Li><strong>Generate a token</strong> in Settings &gt; Security</Li>
-        <Li><strong>Pick a scope</strong> — Choose <strong>Voice API only (recommended)</strong> for Alexa / Home Assistant; it reaches the Voice API plus read-only REST sensors, not writes. Full access (legacy) is broader</Li>
+        <Li><strong>Pick a scope</strong>: Choose <strong>Voice API only (recommended)</strong> for Alexa / Home Assistant; it reaches the Voice API plus read-only REST sensors, not writes. Full access (legacy) is broader</Li>
         <Li>Point your automation platform at the Voice API with the token; see the Home Assistant and Voice API docs for endpoints</Li>
       </Ul>
     </>

@@ -8,7 +8,7 @@ git pull
 docker compose up -d --build
 ```
 
-Your database, settings, and uploaded files are stored in Docker volumes and are preserved across rebuilds. Database migrations run automatically on container startup — no manual `drizzle-kit push` needed.
+Your database, settings, and uploaded files are stored in Docker volumes and are preserved across rebuilds. Database migrations run automatically on container startup: no manual `drizzle-kit push` needed.
 
 ## Trying a feature branch
 
@@ -28,7 +28,7 @@ git checkout master
 docker compose up -d --build
 ```
 
-Switching branches rebuilds the app but preserves your data. Feature branches may have rough edges — use at your own risk.
+Switching branches rebuilds the app but preserves your data. Feature branches may have rough edges. Use at your own risk.
 
 ## Major version notes
 

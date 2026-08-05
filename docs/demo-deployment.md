@@ -6,14 +6,14 @@ This page explains how a public Prism demo (e.g. at a hostname like `prism-demo.
 
 ## What the demo is
 
-A read-only public Prism instance seeded with **synthetic** data — fictional family Alex / Jordan / Emma / Sophie, no real names, addresses, schools, calendars, or photos. The dashboard, calendar, chores, meals, etc. all work; mutations are intercepted by middleware and rejected with a friendly *"this is a read-only demo"* message. The database is wiped and reseeded nightly so any state that does change (login session, locally-cached layout) returns to baseline.
+A read-only public Prism instance seeded with **synthetic** data: fictional family Alex / Jordan / Emma / Sophie, no real names, addresses, schools, calendars, or photos. The dashboard, calendar, chores, meals, etc. all work; mutations are intercepted by middleware and rejected with a friendly *"this is a read-only demo"* message. The database is wiped and reseeded nightly so any state that does change (login session, locally-cached layout) returns to baseline.
 
 ## Why this shape
 
 Three things need to be true for the demo to be safe to leave running on the open internet:
 
 1. **No real PII.** The seed file `src/lib/db/init/03-seed.sql` only ever contained fictional data. Demo deployments never receive `.env` keys for real Google Calendar / OneDrive / Gmail, so even if a visitor tried to connect external accounts, the integration credentials don't exist.
-2. **Visitors can't trash it for everyone else.** `DEMO_MODE=true` is checked in `src/middleware.ts` — every `POST/PUT/PATCH/DELETE` returns 403 with a `demo_mode` error code, except auth login/logout/session (so visitors can switch between Alex/Jordan/Emma/Sophie to see role-based UI).
+2. **Visitors can't trash it for everyone else.** `DEMO_MODE=true` is checked in `src/middleware.ts`. Every `POST/PUT/PATCH/DELETE` returns 403 with a `demo_mode` error code, except auth login/logout/session (so visitors can switch between Alex/Jordan/Emma/Sophie to see role-based UI).
 3. **State drift is bounded.** A nightly cron job runs `scripts/demo-reset.sh`, which truncates every table in the public schema (except migration bookkeeping) and reapplies the seed. Worst case, the demo is wrong for ≤24 hours.
 
 The demo is never the same host as your real install. Standing it up needs its own VM, its own DNS name, its own `.env`.
@@ -24,13 +24,13 @@ The demo is never the same host as your real install. Standing it up needs its o
 
 Why this is the default recommendation:
 
-- **Predictable capacity** — pick the image, click Create, the VM is yours in 30 seconds. No region-roulette like Oracle.
-- **x86, not ARM** — same architecture as your dev machine, so any ad-hoc `docker run` debugging works without `--platform` flags.
-- **Trivially small bill** — CPX11 is 2 vCPU / 2 GB / 40 GB SSD for ~€3.79/mo. A demo for marketing purposes is worth $4/mo.
-- **Linear UX** — the Hetzner Cloud Console has roughly 4 screens. You won't get lost.
+- **Predictable capacity**: pick the image, click Create, the VM is yours in 30 seconds. No region-roulette like Oracle.
+- **x86, not ARM**: same architecture as your dev machine, so any ad-hoc `docker run` debugging works without `--platform` flags.
+- **Trivially small bill**: CPX11 is 2 vCPU / 2 GB / 40 GB SSD for ~€3.79/mo. A demo for marketing purposes is worth $4/mo.
+- **Linear UX**: the Hetzner Cloud Console has roughly 4 screens. You won't get lost.
 
 Caveats:
-- Not free (but it's $4/mo — calibrate accordingly).
+- Not free (but it's $4/mo, calibrate accordingly).
 - 2 GB RAM is tight if you also run the optional bus-tracking integration. For a demo without external integrations, it's fine.
 
 ### Alternative: Oracle Cloud Always Free
@@ -39,8 +39,8 @@ Why someone might pick this: it's actually free, indefinitely, and the free tier
 
 Caveats:
 - **Capacity is the catch.** ARM Always Free instances are frequently exhausted. People have spent days running scripts that retry every few minutes until capacity opens up. For a "ship it tonight" demo this is unacceptable; for a "I'm fine waiting" hobbyist it's free hardware.
-- ARM-only — Prism's Dockerfile is multi-arch so this works, but cross-arch debugging from your x86 dev machine is one extra friction point.
-- Console is dense. Networking has a learning curve (VCN, subnets, security lists, route tables) — you don't need to understand it deeply, but the first walkthrough takes longer.
+- ARM-only: Prism's Dockerfile is multi-arch so this works, but cross-arch debugging from your x86 dev machine is one extra friction point.
+- Console is dense. Networking has a learning curve (VCN, subnets, security lists, route tables). You don't need to understand it deeply, but the first walkthrough takes longer.
 
 ### Other alternatives
 
@@ -53,11 +53,11 @@ For a demo, the sweet spot is "public, low-friction, not connected to your home 
 
 ## DNS
 
-You need a public hostname that **does not** point at your home network or any tied to your real identity. A free DDNS name is sufficient — DuckDNS, FreeDNS, or No-IP all work. Pick something neutral (`prism-demo.duckdns.org`).
+You need a public hostname that **does not** point at your home network or any tied to your real identity. A free DDNS name is sufficient: DuckDNS, FreeDNS, or No-IP all work. Pick something neutral (`prism-demo.duckdns.org`).
 
 > Do **not** reuse the same hostname pattern as your real install (e.g. `prism.<your-real-domain>`). Keep the demo on its own DNS so visitors of the demo can never see traffic from your real install and vice versa.
 
-## Walkthrough — Hetzner CPX11 (recommended)
+## Walkthrough: Hetzner CPX11 (recommended)
 
 End-to-end, this is ~30 minutes the first time.
 
@@ -67,7 +67,7 @@ You need a public hostname pointing at your demo VM that **isn't tied to your re
 
 - Go to https://www.duckdns.org and sign in with GitHub.
 - On the dashboard, type a subdomain (e.g. `prism-demo`) and click **add domain**.
-- Save the **token** at the top of the page — you'll need it in step 4.
+- Save the **token** at the top of the page, you'll need it in step 4.
 - The hostname will be `<whatever>.duckdns.org`. Don't fill in the IP yet; you'll do that after the VM is provisioned.
 
 > Don't reuse your real install's hostname pattern (e.g. don't pick `prism.<your-real-domain>`). Keep the demo on its own DNS so visitors of the demo can never see traffic from your real install and vice versa.
@@ -96,7 +96,7 @@ You need a public hostname pointing at your demo VM that **isn't tied to your re
 - **Name**: `prism-demo`
 - Click **Create & Buy now**.
 
-After ~30 seconds the server is running. Note the **public IPv4 address** — you'll need it next.
+After ~30 seconds the server is running. Note the **public IPv4 address**, you'll need it next.
 
 ### 4. Point DDNS at the VM
 
@@ -109,7 +109,7 @@ After ~30 seconds the server is running. Note the **public IPv4 address** — yo
 ssh root@<your-vm-ip>
 ```
 
-(First time only — accept the host fingerprint.)
+(First time only, accept the host fingerprint.)
 
 ```bash
 # Make a non-root user so we don't run Docker as root
@@ -121,7 +121,7 @@ chown -R prism:prism /home/prism/.ssh
 chmod 700 /home/prism/.ssh
 chmod 600 /home/prism/.ssh/authorized_keys
 
-# Basic firewall — only HTTP/HTTPS/SSH exposed
+# Basic firewall: only HTTP/HTTPS/SSH exposed
 ufw allow OpenSSH
 ufw allow 80
 ufw allow 443
@@ -131,7 +131,7 @@ ufw --force enable
 curl -fsSL https://get.docker.com | sh
 usermod -aG docker prism
 
-# Install Caddy (provides automatic TLS via Let's Encrypt — zero config)
+# Install Caddy (provides automatic TLS via Let's Encrypt, zero config)
 apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
 curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
 curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list
@@ -188,7 +188,7 @@ docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d
 docker compose ps   # wait until app shows "healthy"
 ```
 
-First build takes 5-10 minutes. After it's up, visit `https://prism-demo.duckdns.org` — you should see:
+First build takes 5-10 minutes. After it's up, visit `https://prism-demo.duckdns.org`. You should see:
 
 - The amber **"Prism Demo · Read-only · Resets daily at midnight UTC"** banner across the top
 - The dashboard with the synthetic Alex / Jordan / Emma / Sophie family
@@ -214,15 +214,15 @@ The reset truncates every table in the public schema, reapplies `03-seed.sql`, a
 
 Open a PR adding the public demo link to the project README so visitors discover it.
 
-## Walkthrough — Oracle Cloud Always Free (alternative)
+## Walkthrough: Oracle Cloud Always Free (alternative)
 
 Oracle gives you more hardware for $0 if you can stomach the friction. The high-level flow:
 
 ### 1. Sign up
 
 - https://www.oracle.com/cloud/free
-- Fill in the (long) form. Credit card is required even for the free tier — they verify it but don't charge.
-- Pick a **home region** carefully — this is permanent and capacity varies wildly. Phoenix and Frankfurt typically have more ARM headroom than Ashburn.
+- Fill in the (long) form. Credit card is required even for the free tier, they verify it but don't charge.
+- Pick a **home region** carefully. This is permanent and capacity varies wildly. Phoenix and Frankfurt typically have more ARM headroom than Ashburn.
 
 ### 2. Provision the VM
 
@@ -233,19 +233,19 @@ Oracle gives you more hardware for $0 if you can stomach the friction. The high-
 - **SSH keys**: upload your `~/.ssh/id_ed25519.pub`
 - Click **Create**
 
-If you get **"Out of capacity for shape VM.Standard.A1.Flex"**, you'll need to retry — either manually every few hours or via a retry script. There are GitHub repos like `hitrov/oci-arm-host-capacity` that automate this.
+If you get **"Out of capacity for shape VM.Standard.A1.Flex"**, you'll need to retry: either manually every few hours or via a retry script. There are GitHub repos like `hitrov/oci-arm-host-capacity` that automate this.
 
 ### 3. Open ports in the VCN
 
 - **Networking → Virtual Cloud Networks → your VCN → Subnets → your subnet → Default Security List → Add Ingress Rules**:
   - Source CIDR `0.0.0.0/0`, IP Protocol TCP, Destination Port Range `80`
   - Source CIDR `0.0.0.0/0`, IP Protocol TCP, Destination Port Range `443`
-- **Do not** open `5432` or `6379` — those stay container-internal.
+- **Do not** open `5432` or `6379`. Those stay container-internal.
 - On the VM itself, also `iptables -I INPUT -p tcp --dport 80 -j ACCEPT` and `--dport 443` (Oracle's Ubuntu image has aggressive default iptables rules).
 
 ### 4. Continue from Hetzner step 0
 
-The DDNS, SSH, Docker, Caddy, env, compose, and cron steps are identical to the Hetzner walkthrough. Skip to **step 0** above and continue from there. The user on Oracle's Ubuntu image is `ubuntu` instead of `root` — adjust the `adduser` step accordingly.
+The DDNS, SSH, Docker, Caddy, env, compose, and cron steps are identical to the Hetzner walkthrough. Skip to **step 0** above and continue from there. The user on Oracle's Ubuntu image is `ubuntu` instead of `root`, adjust the `adduser` step accordingly.
 
 ## Security model
 
@@ -267,7 +267,7 @@ docker compose -f docker-compose.yml -f docker-compose.demo.yml build app
 docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d --force-recreate app
 ```
 
-The `--force-recreate` is important — without it the container can keep running the old image even after a successful build.
+The `--force-recreate` is important. Without it the container can keep running the old image even after a successful build.
 
 ## Tearing down
 

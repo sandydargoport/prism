@@ -1,10 +1,10 @@
 # Voice API (`/api/v1/voice/*`)
 
-The Voice API is a versioned, token-authenticated surface designed for voice and home-automation integrations (Alexa skills, Home Assistant components, Google Assistant via HA, scripting hooks). It is intentionally separate from the internal session-cookie-authenticated routes the dashboard uses — the contract here is **stable** and external callers can rely on it.
+The Voice API is a versioned, token-authenticated surface designed for voice and home-automation integrations (Alexa skills, Home Assistant components, Google Assistant via HA, scripting hooks). It is intentionally separate from the internal session-cookie-authenticated routes the dashboard uses. The contract here is **stable** and external callers can rely on it.
 
 ## Auth
 
-Every Voice API endpoint requires `Authorization: Bearer <token>` where the token's scopes include either `voice` or `*`. **Session cookies are rejected** — this is intentionally a machine-to-machine surface, so a stolen browser session can't reach voice endpoints.
+Every Voice API endpoint requires `Authorization: Bearer <token>` where the token's scopes include either `voice` or `*`. **Session cookies are rejected**: this is intentionally a machine-to-machine surface, so a stolen browser session can't reach voice endpoints.
 
 Tokens are issued via `POST /api/auth/tokens` (parent-only), SHA-256 hashed at rest, and never re-displayed after creation. The recommended scope for voice integrations is `['voice']` so a token leak cannot read or modify anything outside `/api/v1/voice/*`.
 
@@ -15,7 +15,7 @@ curl -X POST http://localhost:3000/api/auth/tokens \
   -d '{ "name": "Alexa skill", "scopes": ["voice"] }'
 ```
 
-The response includes `token` — store it immediately, it is not retrievable later.
+The response includes `token`. Store it immediately, it is not retrievable later.
 
 ### Known scopes
 
@@ -36,9 +36,9 @@ Every endpoint returns:
 }
 ```
 
-- `ok` — boolean. `false` for errors.
-- `spoken` — natural-language string the caller speaks back to the user. Pre-formatted on the server so callers don't need templating.
-- `data` — optional structured payload. Present on success; omitted on error.
+- `ok`: boolean. `false` for errors.
+- `spoken`: natural-language string the caller speaks back to the user. Pre-formatted on the server so callers don't need templating.
+- `data`: optional structured payload. Present on success; omitted on error.
 
 Errors return the same shape with `ok: false`, an HTTP error status, and a user-friendly `spoken` apology (no stack traces or IDs).
 
@@ -121,7 +121,7 @@ Fuzzy-matches the chore name (case-insensitive substring on `title`). See "Secur
 
 **Spoken (success)**: `"Marked feed the dog complete."`
 **Spoken (pending approval)**: `"Marked feed the dog complete. A parent will need to approve in the app."`
-**Spoken (ambiguous, ok:false)**: `"Multiple chores match 'feed the dog'. Which family member: Emma, Sophie?"` — `data.candidates` lists each option; caller resends with `assignee`.
+**Spoken (ambiguous, ok:false)**: `"Multiple chores match 'feed the dog'. Which family member: Emma, Sophie?"`. `data.candidates` lists each option; caller resends with `assignee`.
 
 ### `POST /api/v1/voice/message/post`
 
@@ -202,11 +202,11 @@ Returns the most recent (non-expired) family messages, newest first. `count` def
 
 Voice cannot escalate privileges. Specifically:
 
-- **Chore completions inherit the chore's `assignedTo`** as the completer — voice does not let one family member claim another's points.
-- **Ambiguous chore names require disambiguation.** If a fuzzy name match returns multiple chores assigned to different family members (e.g. both Emma and Sophie have "Feed the dog"), the endpoint returns `ok: false` with a `spoken` prompt asking for the assignee (*"Multiple chores match 'feed the dog' — which family member?"*) and `data.candidates: [...]`. The caller resends with `assignee` in the body. A single match completes immediately.
+- **Chore completions inherit the chore's `assignedTo`** as the completer. Voice does not let one family member claim another's points.
+- **Ambiguous chore names require disambiguation.** If a fuzzy name match returns multiple chores assigned to different family members (e.g. both Emma and Sophie have "Feed the dog"), the endpoint returns `ok: false` with a `spoken` prompt asking for the assignee (*"Multiple chores match 'feed the dog'. Which family member?"*) and `data.candidates: [...]`. The caller resends with `assignee` in the body. A single match completes immediately.
 - **Chores with `requiresApproval: true` create *pending* completions** when completed via voice, just like the in-app flow. The `spoken` response makes this explicit (e.g. *"Marked feed the dog complete. A parent will need to approve in the app."*).
-- **Approval is in-app only**, behind the Parent PIN. Voice has no way to approve a pending chore — there is no way to verify the speaker is a parent.
+- **Approval is in-app only**, behind the Parent PIN. Voice has no way to approve a pending chore: there is no way to verify the speaker is a parent.
 
 ## Roadmap
 
-The next phase is the Alexa skill itself, then a HACS-published Home Assistant `custom_component` — tracked in [#56](https://github.com/sandydargoport/prism/issues/56). A later "device-control intents" phase will add a server-sent command bus so voice can drive the running dashboard UI (e.g. *"pull up the lasagna recipe"*).
+The next phase is the Alexa skill itself, then a HACS-published Home Assistant `custom_component`, tracked in [#56](https://github.com/sandydargoport/prism/issues/56). A later "device-control intents" phase will add a server-sent command bus so voice can drive the running dashboard UI (e.g. *"pull up the lasagna recipe"*).

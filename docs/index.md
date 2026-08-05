@@ -29,13 +29,13 @@ Prism is a configurable family dashboard for large wall-mounted screens, tablets
 
 - :material-cart-outline: **Shopping & Kroger push**
 
-    Multiple lists, drag-to-reorder categories, barcode scanning, and one-click "Send to Kroger" — works at every Kroger banner (Mariano's, Ralphs, King Soopers, Fred Meyer, QFC, Smith's, Fry's, Harris Teeter, and 13 more).
+    Multiple lists, drag-to-reorder categories, barcode scanning, and one-click "Send to Kroger". Works at every Kroger banner (Mariano's, Ralphs, King Soopers, Fred Meyer, QFC, Smith's, Fry's, Harris Teeter, and 13 more).
 
     [Shopping guide →](features/SHOPPING.md) · [Kroger setup →](features/KROGER.md)
 
 - :material-chef-hat: **Recipes**
 
-    URL import, Paprika import, and "paste OCR'd recipe text" — point your phone at a recipe card, Live Text it, paste, and Prism splits it into title, ingredients (sections preserved), and step-by-step instructions.
+    URL import, Paprika import, and "paste OCR'd recipe text": point your phone at a recipe card, Live Text it, paste, and Prism splits it into title, ingredients (sections preserved), and step-by-step instructions.
 
     [Recipes guide →](features/RECIPES.md)
 
@@ -59,13 +59,13 @@ Prism is a configurable family dashboard for large wall-mounted screens, tablets
 
 ## Display modes
 
-- **Screensaver** — photo slideshow after idle timeout, configurable templates.
-- **Away Mode** — privacy screen with photos and clock only, auto-activates after extended inactivity. Parent PIN to exit.
-- **Babysitter Mode** — caregiver overlay with emergency contacts, WiFi QR, and house rules.
+- **Screensaver**: photo slideshow after idle timeout, configurable templates.
+- **Away Mode**: privacy screen with photos and clock only, auto-activates after extended inactivity. Parent PIN to exit.
+- **Babysitter Mode**: caregiver overlay with emergency contacts, WiFi QR, and house rules.
 
 ## Voice (optional)
 
-If you have an Echo, the **Alexa skill** lets you ask Prism for today's events, today's tasks, the weather, the family list, upcoming birthdays, and (if configured) the school bus ETA. Single-user personal skill — no AWS Lambda, no third-party hosting.
+If you have an Echo, the **Alexa skill** lets you ask Prism for today's events, today's tasks, the weather, the family list, upcoming birthdays, and (if configured) the school bus ETA. Single-user personal skill: no AWS Lambda, no third-party hosting.
 
 [Voice API reference →](voice-api.md)
 
@@ -74,6 +74,6 @@ If you have an Echo, the **Alexa skill** lets you ask Prism for today's events, 
 - All data stays on your hardware. No vendor accounts, no telemetry, no subscriptions.
 - PIN-based auth optimized for shared family devices. Parent vs. child roles for sensitive actions.
 - Runs as Docker Compose on anything from a Raspberry Pi 4 to a beefy NAS.
-- Works as a PWA — same UI on wall displays, tablets, and phones.
+- Works as a PWA: same UI on wall displays, tablets, and phones.
 
 [Install Prism →](getting-started/install.md){ .md-button .md-button--primary }

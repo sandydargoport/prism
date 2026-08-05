@@ -2,8 +2,8 @@
 
 Prism ships as a Docker Compose application. You have two install paths:
 
-1. **Clone and build** — for any platform with Docker + git.
-2. **Pull pre-built image** — for amd64 or ARM64 (Raspberry Pi).
+1. **Clone and build**: for any platform with Docker + git.
+2. **Pull pre-built image**: for amd64 or ARM64 (Raspberry Pi).
 
 After installation, open **<http://localhost:3000>**. A fresh install has no accounts yet, so it opens the **setup wizard** (Welcome → Family → Household → Done), where you create each family member and choose their PIN. (If you loaded the optional demo seed instead, every seeded user has PIN `1234`.)
 
@@ -52,7 +52,7 @@ bash scripts/install.sh
 
 ## Option 2: Pull pre-built image
 
-Works on both amd64 and ARM64 — the manifest auto-selects the right binary.
+Works on both amd64 and ARM64. The manifest auto-selects the right binary.
 
 ```bash
 # Download docker-compose.yml and .env.example
@@ -65,13 +65,13 @@ docker-compose up -d
 ```
 
 !!! note "Raspberry Pi"
-    Tested on Pi 4 (4 GB+). Works with the pre-built ARM64 image — no compilation needed.
+    Tested on Pi 4 (4 GB+). Works with the pre-built ARM64 image, no compilation needed.
 
 ---
 
 ## First login
 
-Open **<http://localhost:3000>**. On a fresh install this lands on the **setup wizard**, where you create your family members and set each one's PIN (4 or 6 digits). There is no default login PIN — you choose them here. (The optional demo seed is the only case with preset PINs, and it uses `1234` for every user.)
+Open **<http://localhost:3000>**. On a fresh install this lands on the **setup wizard**, where you create your family members and set each one's PIN (4 or 6 digits). There is no default login PIN: you choose them here. (The optional demo seed is the only case with preset PINs, and it uses `1234` for every user.)
 
 Next: [first-time setup](first-time-setup.md).
 
@@ -88,11 +88,11 @@ installer chowns it for you; if you created the directory manually, fix it with:
 docker run --rm -v "$PWD/data":/d alpine chown -R 1001:1001 /d
 ```
 
-No container restart is needed — permissions are checked at write time.
+No container restart is needed. Permissions are checked at write time.
 
-### Locked out — forgot a PIN
+### Locked out: forgot a PIN
 
-Each member picks their own PIN — **4 or 6 digits** — in the setup wizard or
+Each member picks their own PIN (**4 or 6 digits**) in the setup wizard or
 under **Settings → Security**. If someone forgets their PIN, that member can be
 locked out. Reset it from the server with the recovery script:
 
@@ -105,4 +105,4 @@ docker compose exec app node scripts/reset-pin.js "Jordan" 1234
 ```
 
 It hashes the new PIN exactly like the app and updates only that member. They
-can log in immediately with the new PIN — no restart needed.
+can log in immediately with the new PIN, no restart needed.

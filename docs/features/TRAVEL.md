@@ -2,7 +2,7 @@
 
 ![Travel globe with pins](../demos/travel-globe.png){ .hero-image }
 
-Interactive 3D globe for tracking family travel. Drop pins for places you've visited or want to visit, build multi-stop trips (route / loop / hub), and link GPS-tagged OneDrive photos to the places where they were taken. Built with MapLibre GL + OpenFreeMap tiles — no API keys, no rate limits, no vendor lock-in.
+Interactive 3D globe for tracking family travel. Drop pins for places you've visited or want to visit, build multi-stop trips (route / loop / hub), and link GPS-tagged OneDrive photos to the places where they were taken. Built with MapLibre GL + OpenFreeMap tiles: no API keys, no rate limits, no vendor lock-in.
 
 ---
 
@@ -10,8 +10,8 @@ Interactive 3D globe for tracking family travel. Drop pins for places you've vis
 
 The Travel Map has two object types:
 
-- **Pin** — a single place. Anchored by lat/lng coordinates, has a name, status (visited / want-to-go), bucket-list flag, dates, notes, tags.
-- **Trip** — a multi-stop journey composed of pins. Has its own name + style (route / loop / hub) + dates. Each stop in a trip is itself a pin (with `pinType: 'stop'` or `'national_park'`).
+- **Pin**: a single place. Anchored by lat/lng coordinates, has a name, status (visited / want-to-go), bucket-list flag, dates, notes, tags.
+- **Trip**: a multi-stop journey composed of pins. Has its own name + style (route / loop / hub) + dates. Each stop in a trip is itself a pin (with `pinType: 'stop'` or `'national_park'`).
 
 Both render on the globe simultaneously. Standalone pins are independent; trip stops are children of a trip object.
 
@@ -23,13 +23,13 @@ The **Places** tab lists every standalone pin with stats, filters, and search.
 
 ### Statuses
 
-Pins have a status — color-coded on the globe:
+Pins have a status, color-coded on the globe:
 
-- **Been there** (green checkmark) — visited.
-- **Want to go** (white dot) — on the wishlist.
-- **Bucket list** (amber star) — high-priority must-visit. Independent flag, works on either status.
+- **Been there** (green checkmark): visited.
+- **Want to go** (white dot): on the wishlist.
+- **Bucket list** (amber star): high-priority must-visit. Independent flag, works on either status.
 
-Toggling status auto-saves immediately — no Save button needed for the toggle.
+Toggling status auto-saves immediately. No Save button needed for the toggle.
 
 ### National parks badge
 
@@ -39,7 +39,7 @@ Pins with at least one entry in their `nationalParks` array get a **green tree b
 
 Filter pills at the top of the Places tab:
 
-- **All** — every pin
+- **All**: every pin
 - **Been there**
 - **Want to Go**
 - **Bucket List**
@@ -47,8 +47,8 @@ Filter pills at the top of the Places tab:
 
 Plus:
 
-- **Group by** — Year / Country / None. Country grouping shows the country flag emoji as the section header.
-- **Search** — case-insensitive substring match on place/trip name.
+- **Group by**: Year / Country / None. Country grouping shows the country flag emoji as the section header.
+- **Search**: case-insensitive substring match on place/trip name.
 
 The list is ordered automatically (there's no sort control): visited places sort newest-first by visit date; everything else falls back to alphabetical by name.
 
@@ -63,23 +63,23 @@ Two ways:
 1. **Geocoded search.** Type a place name in the side panel, pick from Nominatim suggestions. The pin lands at the geocoded coordinates with the official name + country.
 2. **Click on the globe.** Drop a pin at any clicked coordinate. The geocode runs in reverse to fetch a place name.
 
-The slide-out panel has a **Place / Trip toggle** when adding something new — switch between adding a standalone pin and creating a multi-stop trip without leaving the panel.
+The slide-out panel has a **Place / Trip toggle** when adding something new. Switch between adding a standalone pin and creating a multi-stop trip without leaving the panel.
 
 ### Editing a pin
 
-Click any pin to open its detail panel. Edits happen inline — no separate edit modal:
+Click any pin to open its detail panel. Edits happen inline, no separate edit modal:
 
 - **Name**
-- **Trip label** (a free-text grouping like "Spring Break 2026" — independent of formal Trip objects)
+- **Trip label** (a free-text grouping like "Spring Break 2026", independent of formal Trip objects)
 - **Status toggle** (auto-saves)
 - **Bucket list star** (auto-saves)
-- **Visit dates** — start + optional end.
+- **Visit dates**: start + optional end.
 - **Description**
 - **Tags**
 
 ### Re-locating a misplaced pin
 
-Pencil icon next to the coordinates opens an inline geocode search. Type a new location, pick a result, the pin's lat/lng + place name update in place. Useful when the geocoder dropped a pin in the wrong town with the same name (e.g. "Springfield" — there are like 30 of them).
+Pencil icon next to the coordinates opens an inline geocode search. Type a new location, pick a result, the pin's lat/lng + place name update in place. Useful when the geocoder dropped a pin in the wrong town with the same name (e.g. "Springfield", there are like 30 of them).
 
 ---
 
@@ -87,9 +87,9 @@ Pencil icon next to the coordinates opens an inline geocode search. Type a new l
 
 A trip is a multi-stop journey. Three styles, picked when you create the trip:
 
-- **Route** — A → B → C → D. Polyline connects stops in order.
-- **Loop** — A → B → C → A. Closed polyline returning to the start.
-- **Hub** — home base + day-trip spokes. The home stop is marked `isHub: true`; other stops radiate from it.
+- **Route**: A → B → C → D. Polyline connects stops in order.
+- **Loop**: A → B → C → A. Closed polyline returning to the start.
+- **Hub**: home base + day-trip spokes. The home stop is marked `isHub: true`; other stops radiate from it.
 
 Trips are first-class objects separate from standalone pins. Creating a trip happens via the **Place / Trip toggle** in the add panel.
 
@@ -99,7 +99,7 @@ Each stop in a trip is a pin with `pinType: 'stop'` or `pinType: 'national_park'
 
 - All the same fields as standalone pins.
 - A **sortOrder** for drawing the polyline in the right sequence.
-- An optional **national park** flag — NP stops render with a green tree icon instead of a number badge.
+- An optional **national park** flag: NP stops render with a green tree icon instead of a number badge.
 
 Drag-to-reorder stops within a trip from the trip's detail panel.
 
@@ -129,7 +129,7 @@ If your OneDrive photo sync is configured, **geotagged photos automatically matc
 
 ### How matching works
 
-Matching is computed **live** each time you open a pin's detail panel — there are no stored links and no background linking job.
+Matching is computed **live** each time you open a pin's detail panel. There are no stored links and no background linking job.
 
 1. When a photo syncs from OneDrive, its EXIF GPS coordinates (if present) are stored on the `photos` row.
 2. When the pin panel opens, the Travel Map calculates the Haversine distance from the pin (and all its child stops / national parks) to every photo that has GPS, using a bounding-box SQL prefilter followed by a precise radius check.
@@ -141,7 +141,7 @@ For photos that synced before GPS was captured, run *Settings → Photos → Bac
 
 ### Match radius
 
-The 50 km match radius (`photoRadiusKm`) is a fixed default set on the API/DB side — there is no UI to change it per pin today, and the value isn't editable from the pin panel.
+The 50 km match radius (`photoRadiusKm`) is a fixed default set on the API/DB side. There is no UI to change it per pin today, and the value isn't editable from the pin panel.
 
 ---
 
@@ -149,9 +149,9 @@ The 50 km match radius (`photoRadiusKm`) is a fixed default set on the API/DB si
 
 - **Drag** to rotate.
 - **Scroll wheel** / **pinch** to zoom.
-- **Sun / moon button** in the corner toggles a dark-map filter. The filter applies a CSS `brightness · saturate · contrast · hue-rotate` chain only to the tile canvas, not to markers — tiles darken, markers stay at full brightness. No tile reload required.
-- **Globe vs. flat projection** — default is globe (3D); MapLibre's `projection: globe` config. At certain zoom levels MapLibre may smoothly transition to mercator-flat for closer views.
-- **Sub-locations toggle** (top-left) — when on, every pin's child stops and national parks are shown on the globe at once; when off, children appear only for the currently selected pin.
+- **Sun / moon button** in the corner toggles a dark-map filter. The filter applies a CSS `brightness · saturate · contrast · hue-rotate` chain only to the tile canvas, not to markers: tiles darken, markers stay at full brightness. No tile reload required.
+- **Globe vs. flat projection**: default is globe (3D); MapLibre's `projection: globe` config. At certain zoom levels MapLibre may smoothly transition to mercator-flat for closer views.
+- **Sub-locations toggle** (top-left): when on, every pin's child stops and national parks are shown on the globe at once; when off, children appear only for the currently selected pin.
 
 ### Initial zoom
 
@@ -163,14 +163,14 @@ Default zoom is set so the Earth nearly fills the screen on load. Adjust by mani
 
 Two services power location lookup:
 
-- **Nominatim** — OpenStreetMap-based, accessed via `/api/travel/geocode` (server-side proxy to OpenStreetMap's Nominatim). Used for general place search.
-- **NPS curated list** — for the "Add national park" action in trips, a static curated list of US National Parks + Monuments. This bypasses Nominatim because Nominatim's results for park names often surface natural features (e.g. "Hawai'i Volcanoes" matches the volcano summit, not the park boundary).
+- **Nominatim**: OpenStreetMap-based, accessed via `/api/travel/geocode` (server-side proxy to OpenStreetMap's Nominatim). Used for general place search.
+- **NPS curated list**: for the "Add national park" action in trips, a static curated list of US National Parks + Monuments. This bypasses Nominatim because Nominatim's results for park names often surface natural features (e.g. "Hawai'i Volcanoes" matches the volcano summit, not the park boundary).
 
 ### Quirks the geocoder handles
 
-- **Hawaiian island aliases** — "Big Island" → "Hawaiʻi Island"; "Kauai" → "Kauaʻi".
-- **Special characters** — diacritics normalized for fuzzy matching.
-- **National park boundary scoring** — for NP queries, results with `class=boundary` or `class=park` rank above natural features.
+- **Hawaiian island aliases**: "Big Island" → "Hawaiʻi Island"; "Kauai" → "Kauaʻi".
+- **Special characters**: diacritics normalized for fuzzy matching.
+- **National park boundary scoring**: for NP queries, results with `class=boundary` or `class=park` rank above natural features.
 
 ---
 
@@ -202,7 +202,7 @@ The geocoder calls `/api/travel/geocode` server-side, which proxies to Nominatim
 
 Tile rendering uses OpenFreeMap (`https://tiles.openfreemap.org/...`). Map tile requests are public web requests; they reveal which part of the globe you're zoomed into when interacting with the map, but no personal data.
 
-If you want extra isolation, self-host OpenFreeMap tiles — the project publishes Docker images for the tile server. Then update the tile URL in the globe component.
+If you want extra isolation, self-host OpenFreeMap tiles. The project publishes Docker images for the tile server. Then update the tile URL in the globe component.
 
 ---
 
@@ -218,11 +218,11 @@ In older versions, the Zod schema rejected `null` for optional fields (only `und
 
 ### Pin visible on the wrong side of the globe (through the Earth)
 
-Was a bug in early v1.5 — far-side pin culling wasn't applying the `!important` CSS flag, so MapLibre overrode visibility. Fixed. Hard-reload to clear cached chunks.
+Was a bug in early v1.5: far-side pin culling wasn't applying the `!important` CSS flag, so MapLibre overrode visibility. Fixed. Hard-reload to clear cached chunks.
 
 ### Status toggle doesn't persist
 
-Each status toggle (been there / want to go) and bucket list star auto-saves on click. If a toggle reverts, check the network tab for the PATCH request — most often a 401 (session expired). Re-login.
+Each status toggle (been there / want to go) and bucket list star auto-saves on click. If a toggle reverts, check the network tab for the PATCH request. Most often a 401 (session expired). Re-login.
 
 ### Photos not linking to pins
 
@@ -242,7 +242,7 @@ MapLibre's globe projection is GPU-intensive. On low-power hardware:
 
 ### "Hawaii Volcanoes" pin is on top of the volcano summit
 
-Was a Nominatim ranking quirk — fixed by boosting boundary/park results over natural features for NP queries. If you still see this on Hawai'i Volcanoes (or another park), file an issue and update the manual override list.
+Was a Nominatim ranking quirk, fixed by boosting boundary/park results over natural features for NP queries. If you still see this on Hawai'i Volcanoes (or another park), file an issue and update the manual override list.
 
 ### Trip polyline crosses the antimeridian (180° line) awkwardly
 

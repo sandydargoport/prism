@@ -2,7 +2,7 @@
 
 A factual comparison for anyone evaluating a shared family display.
 
-The TL;DR: Skylight is the easiest if you're willing to pay forever, Dakboard is fine if you trust someone else with your calendar, MagicMirror² is great if you enjoy YAML and live alone, and Prism is the answer if you want **no subscription, no cloud, and a touch-first interface the whole family will actually use** — and you're comfortable running Docker.
+The TL;DR: Skylight is the easiest if you're willing to pay forever, Dakboard is fine if you trust someone else with your calendar, MagicMirror² is great if you enjoy YAML and live alone, and Prism is the answer if you want **no subscription, no cloud, and a touch-first interface the whole family will actually use**, and you're comfortable running Docker.
 
 Prism's visual style is a **glassmorphism** layout (frosted-glass widgets with subtle depth) over a per-display wallpaper, designed to look at home on a kitchen wall display rather than read like a configuration screen.
 
@@ -14,7 +14,7 @@ Prism's visual style is a **glassmorphism** layout (frosted-glass widgets with s
 |---|---|---|---|---|
 | **License** | Open source ([PolyForm NC](https://polyformproject.org/licenses/noncommercial/1.0.0/)) | Closed, proprietary | Closed, proprietary | Open source (MIT) |
 | **Hardware** | Bring your own (any browser + touch optional) | Branded device only ($159–$299) | Bring your own (any browser) | Optimized for one-way mirror + Raspberry Pi |
-| **Data storage** | **100% local** — Postgres in your house | Their cloud | Their cloud (some self-host tiers) | Local on the Pi |
+| **Data storage** | **100% local**: Postgres in your house | Their cloud | Their cloud (some self-host tiers) | Local on the Pi |
 | **Subscription** | **$0/month, forever** | ~$80/yr Plus subscription | $0–$15/mo per display | $0 |
 | **Setup difficulty** | Docker Compose + ~15 min | Plug in, done | Sign up, done | Linux + JS modules + community plugins |
 | **Touch UI** | ✅ Designed touch-first | ✅ | Partial (kiosk-mode-ish) | ❌ Display-only |
@@ -30,7 +30,7 @@ Prism's visual style is a **glassmorphism** layout (frosted-glass widgets with s
 | **Shopping with Kroger / Mariano's push** | ✅ One-click cart push | ❌ | ❌ | ❌ |
 | **Home Assistant integration** | ✅ [Embed as a panel, REST sensors, + one-click add-on](home-assistant.md) | ❌ | Limited | ✅ Native HA card available |
 | **Voice / Alexa skill** | ✅ Voice API foundation (v1.8) | ❌ | ❌ | Via module |
-| **Vendor lock-in** | None — your data, your DB | High | Medium | None |
+| **Vendor lock-in** | None: your data, your DB | High | Medium | None |
 | **You own your data** | ✅ Always | ❌ Hosted by Skylight | ❌ Hosted by Dakboard | ✅ |
 | **Works offline (your LAN)** | ✅ | ❌ | ❌ | ✅ |
 
@@ -49,7 +49,7 @@ Prism's visual style is a **glassmorphism** layout (frosted-glass widgets with s
 
 - You already have a spare display you want to repurpose
 - You're OK with the subscription cost for the convenience
-- You don't need touch interactivity — Dakboard is primarily a display dashboard
+- You don't need touch interactivity. Dakboard is primarily a display dashboard
 
 ### Choose MagicMirror² if…
 
@@ -63,7 +63,7 @@ Prism's visual style is a **glassmorphism** layout (frosted-glass widgets with s
 - The whole family needs to interact with it (touch, multi-user PINs, chore tracking, shopping list updates from your phone)
 - You refuse to pay $80/yr forever for software that should be open
 - You want your calendar, chores, and photos to **stay in your house**
-- You're comfortable running `docker-compose up` (or are willing to learn — there's an installer)
+- You're comfortable running `docker-compose up` (or are willing to learn: there's an installer)
 
 ---
 
@@ -72,10 +72,10 @@ Prism's visual style is a **glassmorphism** layout (frosted-glass widgets with s
 Being fair:
 
 - **Hardware curation.** Skylight ships a beautiful purpose-built display. You have to source your own (a 27" 4K display + a small PC works great, but you have to pick it).
-- **Onboarding friction.** Skylight is plug-and-play. Prism needs Docker + ~15 minutes of setup — though Prism now installs as a [Home Assistant add-on](home-assistant.md) for a much simpler path if you already run HA.
+- **Onboarding friction.** Skylight is plug-and-play. Prism needs Docker + ~15 minutes of setup, though Prism now installs as a [Home Assistant add-on](home-assistant.md) for a much simpler path if you already run HA.
 - **Mature ecosystem.** MagicMirror² has a community module for everything. Prism is younger; we're integration-rich but not module-exhaustive.
 
-If those trade-offs are deal-breakers for your household, one of the others is the better fit. If they aren't — Prism is what you've been looking for.
+If those trade-offs are deal-breakers for your household, one of the others is the better fit. If they aren't, Prism is what you've been looking for.
 
 ---
 

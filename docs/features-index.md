@@ -6,7 +6,7 @@ Every feature, what it does, who it's for. Designed to be quotable in one senten
 
 ## Calendar
 
-A unified family calendar that reads from Google Calendar, Apple iCloud (CalDAV), and any iCal/webcal URL — events from every source merged into one view. Day, week, multi-week, month, and 3-month views. Per-member color coding. Touch-friendly for tapping a day to see details.
+A unified family calendar that reads from Google Calendar, Apple iCloud (CalDAV), and any iCal/webcal URL: events from every source merged into one view. Day, week, multi-week, month, and 3-month views. Per-member color coding. Touch-friendly for tapping a day to see details.
 
 → Full docs: [Calendar](features/CALENDAR.md)
 
@@ -64,19 +64,19 @@ Pulls school-bus arrival emails from Gmail (FirstView), parses the route, shows 
 
 ## Display modes
 
-- **Screensaver** — full-screen photo slideshow when idle
-- **Away Mode** — privacy screen when nobody's home
-- **Babysitter Mode** — caregiver-friendly overlay with emergency info, house rules, and Wi-Fi password
+- **Screensaver**: full-screen photo slideshow when idle
+- **Away Mode**: privacy screen when nobody's home
+- **Babysitter Mode**: caregiver-friendly overlay with emergency info, house rules, and Wi-Fi password
 
 → Full docs: [Display Modes](features/DISPLAY-MODES.md)
 
 ## Multi-user PIN authentication
 
-Each family member has a PIN. Touch your avatar, tap your PIN, you're logged in. No usernames, no passwords — designed for shared family devices. Parents have admin rights for sensitive actions (chore approval, settings, goal redemption).
+Each family member has a PIN. Touch your avatar, tap your PIN, you're logged in. No usernames, no passwords, designed for shared family devices. Parents have admin rights for sensitive actions (chore approval, settings, goal redemption).
 
 ## Multiple dashboards per household
 
-Run one dashboard on the kitchen 27" display, a different layout on a 22" hallway tablet, and a third on the kids' iPad — all from the same Prism instance, each with its own widget arrangement and font scale.
+Run one dashboard on the kitchen 27" display, a different layout on a 22" hallway tablet, and a third on the kids' iPad, all from the same Prism instance, each with its own widget arrangement and font scale.
 
 → Full docs: [Display settings + multiple dashboards](features/DISPLAY-MODES.md)
 
@@ -88,7 +88,7 @@ Install Prism as a Progressive Web App on any phone. Adds chores, ticks tasks, s
 
 ## Voice control (Alexa)
 
-Voice API foundation (v1.8). Ask Alexa "what's on the family calendar today" or "remind dad to take out trash" — Alexa hits Prism's voice API to read or write.
+Voice API foundation (v1.8). Ask Alexa "what's on the family calendar today" or "remind dad to take out trash". Alexa hits Prism's voice API to read or write.
 
 → Full docs: [Voice API](voice-api.md)
 
@@ -102,7 +102,7 @@ Reads from / writes to: **Google Calendar**, **Apple iCloud (CalDAV + CardDAV)**
 
 ## What Prism explicitly is NOT
 
-- Not a CMS — it doesn't try to be your family's blog, photo storage, or document archive
-- Not a home automation controller — Home Assistant is better at that (we integrate, we don't compete)
-- Not a smart-mirror display — MagicMirror² is better for that specific form factor
-- Not cloud-hosted — your data stays in your house. If that's a feature you'd rather not have, see [Skylight or Dakboard](alternatives.md) instead
+- Not a CMS: it doesn't try to be your family's blog, photo storage, or document archive
+- Not a home automation controller: Home Assistant is better at that (we integrate, we don't compete)
+- Not a smart-mirror display: MagicMirror² is better for that specific form factor
+- Not cloud-hosted: your data stays in your house. If that's a feature you'd rather not have, see [Skylight or Dakboard](alternatives.md) instead

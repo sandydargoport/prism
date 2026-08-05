@@ -1,6 +1,6 @@
 # Prism User Guide
 
-A configurable family dashboard for large wall-mounted screens, tablets, and phones. Connects to Google Calendar, Microsoft To Do, Google Tasks, OneDrive, Kroger, Gmail/FirstView, and more — surfacing the information your family actually needs in one place.
+A configurable family dashboard for large wall-mounted screens, tablets, and phones. Connects to Google Calendar, Microsoft To Do, Google Tasks, OneDrive, Kroger, Gmail/FirstView, and more, surfacing the information your family actually needs in one place.
 
 > **This page is the overview.** For deep-dive guides on each feature, follow the links below.
 
@@ -10,19 +10,19 @@ A configurable family dashboard for large wall-mounted screens, tablets, and pho
 
 Five quick steps:
 
-1. **Install Prism** — [installation guide](getting-started/install.md).
-2. **Add family members** — *Settings → Family Members → Add Member.* Each gets a name, color, avatar, role (parent or child), and a personal 4- or 6-digit PIN.
-3. **Set PINs** — each member has their own 4- or 6-digit PIN, chosen in the setup wizard when you first install, or later in *Settings → Security.* A fresh install boots straight into the setup wizard (there is no default-PIN login screen); the optional demo seed uses `1234` for every user, so change those before real use.
-4. **Connect integrations** — *Settings → Integrations.* Most families want at least Google Calendar, weather (Open-Meteo is the zero-config default), and OneDrive. See the [first-time setup walkthrough](getting-started/first-time-setup.md).
-5. **Customize the dashboard** — click the **grid icon** to enter layout edit mode and arrange widgets.
+1. **Install Prism**: [installation guide](getting-started/install.md).
+2. **Add family members**: *Settings → Family Members → Add Member.* Each gets a name, color, avatar, role (parent or child), and a personal 4- or 6-digit PIN.
+3. **Set PINs**: each member has their own 4- or 6-digit PIN, chosen in the setup wizard when you first install, or later in *Settings → Security.* A fresh install boots straight into the setup wizard (there is no default-PIN login screen); the optional demo seed uses `1234` for every user, so change those before real use.
+4. **Connect integrations**: *Settings → Integrations.* Most families want at least Google Calendar, weather (Open-Meteo is the zero-config default), and OneDrive. See the [first-time setup walkthrough](getting-started/first-time-setup.md).
+5. **Customize the dashboard**: click the **grid icon** to enter layout edit mode and arrange widgets.
 
-When you're done with setup, install Prism as a PWA on phones and tablets — [Mobile guide](features/MOBILE.md).
+When you're done with setup, install Prism as a PWA on phones and tablets: [Mobile guide](features/MOBILE.md).
 
 ---
 
 ## Logging in
 
-Tap your avatar, enter your PIN (4 or 6 digits, depending on how it was set). The PIN auto-submits once its full length is reached. Keyboard input works too (0-9, Backspace, Enter). Sessions use a sliding window — parents stay signed in ~7 days, children 1 day — up to an absolute cap (parents 30 days, children 7 days). There is no shared-device toggle.
+Tap your avatar, enter your PIN (4 or 6 digits, depending on how it was set). The PIN auto-submits once its full length is reached. Keyboard input works too (0-9, Backspace, Enter). Sessions use a sliding window (parents stay signed in ~7 days, children 1 day) up to an absolute cap (parents 30 days, children 7 days). There is no shared-device toggle.
 
 ---
 
@@ -65,7 +65,7 @@ To-do items with assignment, due dates, priorities, lists, nested grouping (Pers
 
 ### [Goals & Points](features/GOALS.md)
 
-Kids earn points from approved chores. Parents set goals — recurring (allowance) or one-time (LEGO set). Waterfall allocation fills goals in priority order. Seasonal celebration animations when a goal is achieved.
+Kids earn points from approved chores. Parents set goals: recurring (allowance) or one-time (LEGO set). Waterfall allocation fills goals in priority order. Seasonal celebration animations when a goal is achieved.
 
 ### [Messages](features/MESSAGES.md)
 
@@ -93,7 +93,7 @@ School bus arrival predictions via Gmail/FirstView email parsing. Adaptive polli
 
 ### [Display Modes](features/DISPLAY-MODES.md)
 
-Screensaver, Away Mode, and Babysitter Mode — three overlay modes that layer on top of the dashboard for idle, privacy, and caregiver scenarios.
+Screensaver, Away Mode, and Babysitter Mode: three overlay modes that layer on top of the dashboard for idle, privacy, and caregiver scenarios.
 
 ### [Mobile & PWA](features/MOBILE.md)
 
@@ -101,9 +101,9 @@ Installable as a PWA on iOS, Android, and desktop. Phone viewports get a Floatin
 
 ### Integrations
 
-- **[Kroger / Mariano's cart push](features/KROGER.md)** — send your shopping list to your online cart at any Kroger banner.
-- **[Home Assistant](home-assistant.md)** — read Prism data into HA via the Voice API tokens.
-- **[Voice API + Alexa skill](voice-api.md)** — token-authenticated `/api/v1/voice/*` endpoints; personal Alexa skill for asking "Alexa, ask Prism what's on today."
+- **[Kroger / Mariano's cart push](features/KROGER.md)**: send your shopping list to your online cart at any Kroger banner.
+- **[Home Assistant](home-assistant.md)**: read Prism data into HA via the Voice API tokens.
+- **[Voice API + Alexa skill](voice-api.md)**: token-authenticated `/api/v1/voice/*` endpoints; personal Alexa skill for asking "Alexa, ask Prism what's on today."
 
 ---
 
@@ -119,7 +119,7 @@ Views: **Group by Person** (cards per family member), **List view** (sortable), 
 
 ### Meals
 
-Weekly meal planner. Plan meals by day + meal type (breakfast / lunch / snack / dinner); each meal can carry an optional time of day (defaulting to breakfast 7am / lunch 12pm / snack 3pm / dinner 6pm) used for calendar placement. Link recipes from the [Recipes](features/RECIPES.md) library so opening a planned meal jumps to its recipe. Mark as cooked to track. Drag between days — including from the dashboard Meals widget on touch devices. Filter the week by one or more meal types using the breakfast/lunch/dinner/snack pills. Pull a meal plan from Tandoor or Mealie via **Add ▾ → Sync meal plan…** (review-and-approve; imported meals bring their recipes along). Week starts on your configured day (*Settings → General → Week Starts On*).
+Weekly meal planner. Plan meals by day + meal type (breakfast / lunch / snack / dinner); each meal can carry an optional time of day (defaulting to breakfast 7am / lunch 12pm / snack 3pm / dinner 6pm) used for calendar placement. Link recipes from the [Recipes](features/RECIPES.md) library so opening a planned meal jumps to its recipe. Mark as cooked to track. Drag between days, including from the dashboard Meals widget on touch devices. Filter the week by one or more meal types using the breakfast/lunch/dinner/snack pills. Pull a meal plan from Tandoor or Mealie via **Add ▾ → Sync meal plan…** (review-and-approve; imported meals bring their recipes along). Week starts on your configured day (*Settings → General → Week Starts On*).
 
 ### Performance Mode
 
@@ -131,23 +131,23 @@ Auto-enabled on devices reporting ≤2 GB RAM or ≤4 CPU cores. Stretches polli
 
 A short tour of *Settings*. (Each section's deep behavior is documented in the linked feature pages above where relevant.)
 
-- **Account & Profile** — current session and default display user.
-- **Family Members** — add / edit / remove members. Names, colors, avatars, roles, sort order.
-- **General** — weather location (city or postal code), time zone, Week Starts On.
-- **Integrations** — one card per provider brand: Google (Calendar, Tasks), Microsoft (To Do, OneDrive), Gmail (bus tracking), Apple / CalDAV, Kroger (shopping cart push), plus Photo Sources. Per-list Task / Shopping / Wish List sync is mapped inside the Microsoft or Google provider card.
-- **Displays** — per-dashboard font scale.
-- **Appearance** — Color Scheme (Light / Dark / System), Theme Palette, Seasonal Theme, Performance Mode, Screensaver / Photo Rotation / Auto-Hide Navigation / Away Mode timers, Orientation Override.
-- **Photos** — manage sources (Local, OneDrive, Immich); folder picker; display filters (orientation, resolution); GPS backfill; pinned wallpaper / screensaver.
-- **Bus Tracking** — Gmail connection, route configuration, route auto-discovery, Gmail label filter.
-- **Input** — on-screen keyboard and barcode-scanner toggles.
-- **Babysitter Info** — emergency contacts, house info (WiFi password stored AES-256-GCM encrypted), child info, house rules.
-- **Features** — show / hide individual nav pages.
-- **Security** — PINs + API tokens (with Voice / Full scope picker).
-- **Backups & Data** — create, download, restore, or delete database backups. Includes dangerous operations (Truncate, Seed demo data) gated behind explicit confirmation.
-- **Activity Log** — filterable log of every action taken in the app.
-- **About** — version, links, re-run the setup wizard.
+- **Account & Profile**: current session and default display user.
+- **Family Members**: add / edit / remove members. Names, colors, avatars, roles, sort order.
+- **General**: weather location (city or postal code), time zone, Week Starts On.
+- **Integrations**: one card per provider brand: Google (Calendar, Tasks), Microsoft (To Do, OneDrive), Gmail (bus tracking), Apple / CalDAV, Kroger (shopping cart push), plus Photo Sources. Per-list Task / Shopping / Wish List sync is mapped inside the Microsoft or Google provider card.
+- **Displays**: per-dashboard font scale.
+- **Appearance**: Color Scheme (Light / Dark / System), Theme Palette, Seasonal Theme, Performance Mode, Screensaver / Photo Rotation / Auto-Hide Navigation / Away Mode timers, Orientation Override.
+- **Photos**: manage sources (Local, OneDrive, Immich); folder picker; display filters (orientation, resolution); GPS backfill; pinned wallpaper / screensaver.
+- **Bus Tracking**: Gmail connection, route configuration, route auto-discovery, Gmail label filter.
+- **Input**: on-screen keyboard and barcode-scanner toggles.
+- **Babysitter Info**: emergency contacts, house info (WiFi password stored AES-256-GCM encrypted), child info, house rules.
+- **Features**: show / hide individual nav pages.
+- **Security**: PINs + API tokens (with Voice / Full scope picker).
+- **Backups & Data**: create, download, restore, or delete database backups. Includes dangerous operations (Truncate, Seed demo data) gated behind explicit confirmation.
+- **Activity Log**: filterable log of every action taken in the app.
+- **About**: version, links, re-run the setup wizard.
 
-> Calendar management (enable / assign / color synced calendars, iCal subscriptions, and Calendar Hours) is no longer a Settings section — it now lives behind the **Manage** button on the Calendar page.
+> Calendar management (enable / assign / color synced calendars, iCal subscriptions, and Calendar Hours) is no longer a Settings section. It now lives behind the **Manage** button on the Calendar page.
 
 ---
 
@@ -195,7 +195,7 @@ Ask a parent to reset in *Settings → Security → Member PINs.*
 
 ### Stuck in Away or Babysitter Mode
 
-A parent PIN exits both modes. If you forgot it, run `docker exec prism-db psql -U prism -d prism -c "UPDATE users SET pin='\$2a\$12\$...' WHERE role='parent';"` to manually reset — see the install guide for details.
+A parent PIN exits both modes. If you forgot it, run `docker exec prism-db psql -U prism -d prism -c "UPDATE users SET pin='\$2a\$12\$...' WHERE role='parent';"` to manually reset. See the install guide for details.
 
 ### "Failed to save" / "Failed to add"
 
@@ -212,4 +212,4 @@ Refresh the page (Ctrl+Shift+R for a hard reload). For PWA installs: uninstall +
 - **Documentation**: <https://sandydargoport.github.io/prism/>
 - **Report bugs**: [GitHub Issues](https://github.com/sandydargoport/prism/issues)
 - **Source code**: [GitHub Repository](https://github.com/sandydargoport/prism)
-- **License**: PolyForm Noncommercial 1.0.0 — free for personal and non-commercial use.
+- **License**: PolyForm Noncommercial 1.0.0: free for personal and non-commercial use.
