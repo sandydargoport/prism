@@ -336,7 +336,7 @@
       "createdAt": "2026-08-04"
     },
     {
-      "id": "command-center",
+      "id": "command-center-screensaver",
       "file": "screensaver/command-center.json",
       "name": "Command Center",
       "description": "A calendar hero with a small clock / weather / messages accent column.",
@@ -451,7 +451,7 @@
       "createdAt": "2026-08-04"
     },
     {
-      "id": "command-center-portrait",
+      "id": "command-center-screensaver-portrait",
       "file": "screensaver/command-center-portrait.json",
       "name": "Command Center",
       "description": "A clock + weather accent row, a big calendar hero, and a low messages accent.",

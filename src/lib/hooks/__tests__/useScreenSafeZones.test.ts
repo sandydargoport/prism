@@ -34,8 +34,8 @@ describe('computeZones', () => {
     const zones = computeZones(screens, 'portrait');
 
     expect(zones[0]!.cols).toBe(36); // 1080 >= 996 but < 1200
-    // rows = round(36 * 1920 / 1080) = round(64) = 64
-    expect(zones[0]!.rows).toBe(50); // capped at 50
+    // rows = round(36 * 1920 / 1080) = round(64) = 64 (at the cap)
+    expect(zones[0]!.rows).toBe(64);
   });
 
   it('uses 24 cols for screens 768-995px wide', () => {
@@ -59,7 +59,7 @@ describe('computeZones', () => {
     expect(zones[0]!.cols).toBe(12);
   });
 
-  it('caps rows at 50', () => {
+  it('caps rows at 64', () => {
     // Very tall aspect ratio: 100x5000
     const screens: ScreenZoneConfig[] = [
       { name: 'tall', width: 100, height: 5000, color: '#000' },
@@ -67,8 +67,8 @@ describe('computeZones', () => {
 
     const zones = computeZones(screens, 'portrait');
 
-    // portrait: w=100, h=5000. cols=12. rows = round(12 * 5000 / 100) = 600, capped at 50
-    expect(zones[0]!.rows).toBe(50);
+    // portrait: w=100, h=5000. cols=12. rows = round(12 * 5000 / 100) = 600, capped at 64
+    expect(zones[0]!.rows).toBe(64);
   });
 
   it('processes multiple screens', () => {
@@ -79,7 +79,7 @@ describe('computeZones', () => {
       expect(z.cols).toBeGreaterThanOrEqual(12);
       expect(z.cols).toBeLessThanOrEqual(48);
       expect(z.rows).toBeGreaterThan(0);
-      expect(z.rows).toBeLessThanOrEqual(50);
+      expect(z.rows).toBeLessThanOrEqual(64);
     });
   });
 
@@ -104,8 +104,8 @@ describe('computeZones', () => {
 
     // portrait: w=min(2048,1536)=1536, h=max(2048,1536)=2048
     expect(zones[0]!.cols).toBe(48); // 1536 >= 1200
-    // rows = round(48 * 2048 / 1536) = round(64) = 64, capped at 50
-    expect(zones[0]!.rows).toBe(50);
+    // rows = round(48 * 2048 / 1536) = round(64) = 64 (at the cap)
+    expect(zones[0]!.rows).toBe(64);
   });
 });
 
