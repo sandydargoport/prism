@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { ImageIcon, Upload, Star, Play, X, CheckSquare, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,7 @@ import { useAutoOrientationSetting } from '@/components/layout/WallpaperBackgrou
 import { useAuth } from '@/components/providers';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
+import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from '@/components/ui/use-toast';
 
@@ -38,6 +39,9 @@ export function PhotosView() {
   const [galleryMode, setGalleryMode] = useState(false);
   const { enabled: autoOrientationEnabled } = useAutoOrientationSetting();
   const { confirm, dialogProps } = useConfirmDialog();
+  // Bulk select + delete is a desktop/web-app affordance; it's too much for the
+  // lightweight mobile/PWA toolbar, so it's hidden there.
+  const isMobile = useIsMobile();
 
   // Multi-select "remove from Prism" mode
   const [selectMode, setSelectMode] = useState(false);
@@ -122,6 +126,12 @@ export function PhotosView() {
     setSelectMode(false);
     setSelectedIds(new Set());
   }, []);
+
+  // If a desktop session is resized down into the mobile breakpoint while in
+  // select mode, exit it — the mobile toolbar has no way to leave it otherwise.
+  useEffect(() => {
+    if (isMobile && selectMode) exitSelectMode();
+  }, [isMobile, selectMode, exitSelectMode]);
 
   const handleBulkDelete = useCallback(async () => {
     const ids = Array.from(selectedIds);
@@ -220,10 +230,12 @@ export function PhotosView() {
             </Button>
           ) : (
             <>
-              <Button variant="outline" size="sm" onClick={() => setSelectMode(true)} disabled={photos.length === 0}>
-                <CheckSquare className="h-4 w-4 mr-1" />
-                Select
-              </Button>
+              {!isMobile && (
+                <Button variant="outline" size="sm" onClick={() => setSelectMode(true)} disabled={photos.length === 0}>
+                  <CheckSquare className="h-4 w-4 mr-1" />
+                  Select
+                </Button>
+              )}
               <Button variant="outline" size="sm" onClick={() => setGalleryMode(true)} disabled={photos.length === 0}>
                 <Play className="h-4 w-4 mr-1" />
                 Gallery
