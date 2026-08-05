@@ -5,15 +5,14 @@
  * scripts/reset-pin.js
  *
  * Offline PIN recovery — reset a family member's PIN without being logged in.
- * Use when someone is locked out: they forgot their PIN, or set one that no
- * longer matches the family PIN length (Settings → Security).
+ * Use when someone is locked out and forgot their PIN.
  *
  * Run INSIDE the app container (it has DATABASE_URL and the deps):
  *
  *   # See member names:
  *   docker compose exec app node scripts/reset-pin.js --list
  *
- *   # Reset a member's PIN (new PIN must match the family PIN length):
+ *   # Reset a member's PIN (4–6 digits; their PIN length is set to match):
  *   docker compose exec app node scripts/reset-pin.js "Jordan" 1234
  *
  * It hashes the PIN exactly like the app (bcrypt, 12 rounds) and updates only
@@ -31,7 +30,6 @@ if (!DATABASE_URL) {
 
 const MIN_PIN_LENGTH = 4;
 const MAX_PIN_LENGTH = 6;
-const DEFAULT_PIN_LENGTH = 4;
 
 async function main() {
   const args = process.argv.slice(2);
@@ -58,21 +56,17 @@ async function main() {
       process.exit(1);
     }
 
-    // Resolve the family-wide PIN length so the reset PIN can actually be entered.
-    const [setting] = await sql`SELECT value FROM settings WHERE key = 'pinLength'`;
-    let pinLength = DEFAULT_PIN_LENGTH;
-    const parsed = Math.round(Number(setting && setting.value));
-    if (Number.isFinite(parsed) && parsed >= MIN_PIN_LENGTH && parsed <= MAX_PIN_LENGTH) {
-      pinLength = parsed;
-    }
-
-    if (!new RegExp(`^\\d{${pinLength}}$`).test(newPin)) {
+    // PINs are per-member (users.pin_length) — there is no family-wide length.
+    // Accept any valid-length PIN and sync this member's pin_length to it, so
+    // their login pad expects the right number of digits after the reset.
+    if (!/^\d+$/.test(newPin) || newPin.length < MIN_PIN_LENGTH || newPin.length > MAX_PIN_LENGTH) {
       console.error(
-        `[reset-pin] ERROR: PIN must be exactly ${pinLength} digits (the family PIN length). ` +
-        `Change it in Settings → Security if you want a different length.`
+        `[reset-pin] ERROR: PIN must be ${MIN_PIN_LENGTH}–${MAX_PIN_LENGTH} digits. ` +
+        `The member's PIN length is set to match the PIN you provide.`
       );
       process.exit(1);
     }
+    const pinLength = newPin.length;
 
     const matches = members.filter((m) => m.name.toLowerCase() === name.toLowerCase());
     if (matches.length === 0) {
@@ -85,7 +79,7 @@ async function main() {
     }
 
     const hash = await bcrypt.hash(newPin, 12);
-    await sql`UPDATE users SET pin = ${hash}, updated_at = NOW() WHERE id = ${matches[0].id}`;
+    await sql`UPDATE users SET pin = ${hash}, pin_length = ${pinLength}, updated_at = NOW() WHERE id = ${matches[0].id}`;
     console.log(`[reset-pin] ✓ Reset PIN for "${matches[0].name}". They can log in now with the new ${pinLength}-digit PIN.`);
   } finally {
     await sql.end();
