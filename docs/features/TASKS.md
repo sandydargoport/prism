@@ -9,11 +9,11 @@ To-do items with assignment, due dates, priorities, lists, and bidirectional syn
 ## What's in a task
 
 - **Title** (required)
-- **Description**
+- **Description** — not editable in the Prism task modal; it only round-trips from Microsoft To Do / Google Tasks notes on sync.
 - **List** — which task list it belongs to. Nullable (inbox).
 - **Assigned to** — family member, or unassigned.
 - **Due date** — date+time, optional.
-- **Priority** — high / medium / low / none.
+- **Priority** — high / medium / low. Defaults to medium; there is no "none".
 - **Category** — free-form tag (`Health`, `School`, `Errands`, `Shopping`).
 - **Completed** — boolean. When completed, `completedAt` and `completedBy` populate.
 
@@ -29,7 +29,7 @@ Lists are the primary organizational unit. Common patterns:
 - **Work** — per-parent work tasks.
 - **School** — per-child school tasks.
 
-Create lists in *Settings → Task Sync → Add list* (or inline via the picker on the Tasks page). Each list has:
+Create lists in *Settings → Integrations → (Google or Microsoft) card → New List*. Each list has:
 
 - **Name**
 - **Color** — colored dot in the picker + per-task tag.
@@ -62,14 +62,13 @@ If the task syncs to MS To Do / Google Tasks, the completed status propagates to
 - **By list** — picker dropdown, "All lists" / "Unassigned" / specific list.
 - **By person** — avatar filter pills at the top.
 - **By priority** — filter chip.
-- **By category** — filter chip.
 - **Show completed** toggle — off by default. When on, completed tasks appear at the bottom with the strikethrough.
 
 Sort options:
 
 - **By due date** — overdue first, then today, then upcoming, then no-date last.
-- **By priority** — high → medium → low → none.
-- **By creation date** — newest first.
+- **By priority** — high → medium → low.
+- **By title** — alphabetical (A→Z).
 
 ---
 
@@ -82,13 +81,13 @@ The Group dropdown supports nested grouping:
 - **By List** — cards per task list.
 - **Then by** secondary group — when the primary group is Person, you can also sub-group by List (or vice versa). Sub-groups render as colored left-border dividers inside the primary group card.
 
-Group order persists to localStorage.
+The drag-reordered order of the group columns persists to localStorage (`prism:task-group-order` when flat-grouped, `prism:task-nested-group-order` when nested). The chosen grouping mode itself is not persisted.
 
 ---
 
 ## Reordering
 
-Drag-and-drop within a group (touch + mouse). The order persists to localStorage as `prism:task-order-<groupKey>`.
+Drag-and-drop within a group (touch + mouse). Note there is no per-task order persistence — only the drag order of the group columns is stored (see Grouping).
 
 For cross-list moves, drag a task onto a different list's card header to reassign.
 
@@ -100,17 +99,15 @@ Pick one provider per Prism instance:
 
 ### Microsoft To Do (bidirectional)
 
-1. *Settings → Connected Accounts → Microsoft → Connect.*
-2. *Settings → Task Sync → pick provider: Microsoft To Do.*
-3. For each Prism list, pick an MS To Do list to sync it with.
+1. *Settings → Integrations → Microsoft* card — connect your account.
+2. In the same card, for each Prism list pick an MS To Do list to sync it with.
 
 Bidirectional, newest-wins. Fields synced: title, notes (= description), completed, due date. Subtasks in MS To Do are flattened into the notes field (Prism doesn't have a subtask concept).
 
 ### Google Tasks (bidirectional)
 
-1. *Settings → Connected Accounts → Google → Connect* (same Google OAuth used for Calendar — Tasks scope added).
-2. *Settings → Task Sync → pick provider: Google Tasks.*
-3. Pick which Google Tasks list maps to which Prism list.
+1. *Settings → Integrations → Google* card — connect your account (same Google OAuth used for Calendar — Tasks scope added).
+2. In the same card, pick which Google Tasks list maps to which Prism list.
 
 Same shape as MS — bidirectional, newest-wins, title + notes + completed + due date.
 
@@ -164,8 +161,8 @@ The MS To Do / Google Tasks sync is the bridge. Share the Microsoft/Google list 
 
 ### Tasks not syncing
 
-1. *Settings → Connected Accounts* — is the provider still connected?
-2. *Settings → Task Sync* — is the per-list connection enabled?
+1. *Settings → Integrations → (Google or Microsoft) card* — is the provider still connected?
+2. In the same card — is the per-list connection enabled?
 3. Tap **Sync now** to force a refresh.
 4. Check the external list directly — does it have the task you expect?
 
@@ -179,7 +176,7 @@ The external system marked it incomplete and the newest-wins resolver applied th
 
 ### "Create List" button missing
 
-Lists are created from *Settings → Task Sync → Add list*. There's no inline "New list" button on the Tasks page; the picker only shows existing lists.
+Lists are created from *Settings → Integrations → (Google or Microsoft) card → New List*. There's no inline list-creation button on the Tasks page; the picker only shows existing lists.
 
 ### List deletion deleted my tasks
 

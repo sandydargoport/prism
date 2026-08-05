@@ -27,15 +27,13 @@ The original-resolution file isn't kept after processing — the resized version
 
 ### OneDrive sync
 
-Connect Microsoft in *Settings → Connected Accounts → Microsoft*. Then in *Settings → Photos → OneDrive*:
+Connect Microsoft in *Settings → Integrations → Microsoft*. Then in *Settings → Photos → OneDrive*:
 
 - **Folder picker** — browse your OneDrive tree and pick which folder to sync from. Defaults to nothing (you must pick). Avoids the trap of accidentally syncing your entire drive.
-- **Subfolder recursion** — toggle whether to include subfolders.
-- **Sync interval** — how often Prism polls OneDrive for new photos. Default 1 hour.
-- **Orientation filter** — sync only landscape, portrait, or square photos (or all).
-- **Quality threshold** — minimum dimensions to sync (skips tiny thumbnails).
 
-The sync downloads new files into `data/photos/onedrive/`. EXIF metadata is preserved. **Auto-sync runs every 30 minutes** — drop a photo into the folder and it appears on the dashboard within the half hour, no manual trigger needed. (Hit the manual sync button in settings if you want it immediately.)
+The sync downloads new files into `data/photos/onedrive/`. EXIF metadata is preserved. **Auto-sync runs automatically about every 30 minutes** — drop a photo into the folder and it appears on the dashboard within the half hour, no manual trigger needed. (Hit the manual sync button in settings if you want it immediately.)
+
+Orientation and resolution aren't sync-time filters — every photo in the picked folder syncs. Orientation allow-lists and the low-resolution warning are display-side settings under *Settings → Photos*; see [Filtering](#filtering) for the Below HD filter.
 
 You can have multiple OneDrive sources — useful if you want one folder for "family slideshow" and another for "wallpaper-only".
 
@@ -83,33 +81,46 @@ The Photos page is a paginated grid. Each thumbnail loads lazily. Click for the 
 
 - Full-resolution image.
 - Arrow keys (or swipe on mobile) for next/previous.
-- Metadata strip: source, dimensions, date, GPS (if present).
-- **Pin** action — set as wallpaper or screensaver background.
-- **Tag** action — see below.
+- **Tag for:** usage toggles — add or remove the photo from Wallpaper, Gallery, and/or Screensaver (see [Usage tags](#usage-tags)).
+- **Delete** — removes the photo from Prism.
+- A resolution-quality dot plus the photo's dimensions and orientation.
 
 ### Filtering
 
 - **Orientation** — show only landscape, portrait, or square.
-- **Source** — filter by upload source (Local, OneDrive folder X, OneDrive folder Y).
-- **Has GPS** — only photos with EXIF coordinates.
-- **Tag** — see below.
+- **Usage** — filter to photos tagged for Wallpaper, Gallery, or Screensaver.
+- **Favorites** — show only photos flagged as favorites.
+- **Below HD** — show only photos under 1920×1080 (handy for finding low-resolution shots that won't look good full-screen).
 
-### Search
+### Bulk actions (desktop)
 
-Free-text search over filename, tags, source name. (No content-based search — that would need ML inference, which Prism doesn't run.)
+On desktop, tap **Select** to enter multi-select mode (hidden on mobile):
+
+- Tap photos to select them, or use **Select all** to select the entire filtered library — not just the current page.
+- **Show in:** — bulk-add or remove the selected photos' Wallpaper / Gallery / Screensaver usage tags in one action.
+- **Remove from Prism** — bulk-delete the selected photos from Prism. Source files (including OneDrive) are untouched; photos removed from a synced source stay removed rather than re-downloading on the next sync.
+
+### Resolution indicator
+
+Each thumbnail (and the lightbox) shows a small resolution-quality dot compared against 1920×1080 (HD):
+
+- **Green** — at or above HD.
+- **Yellow** — at least 75% of HD.
+- **Red** — low resolution.
+
+Combined with the **Below HD** filter, this makes it easy to spot photos too small to look good as a full-screen wallpaper.
 
 ---
 
-## Tagging
+## Usage tags
 
-Tags are free-form labels you attach to photos for organization and filtering. Common use cases:
+Rather than free-form labels, each photo carries **usage tags** that control where it can appear. Open a photo's lightbox and use the **Tag for:** row to toggle it into any combination of:
 
-- `wallpaper-candidate` — photos you might want as the dashboard background.
-- `family` — group family photos vs. landscape shots.
-- `kids-only` — photos specifically of the kids (useful for some screensaver layouts).
-- `holiday`, `vacation`, `birthday-2025` — event tagging.
+- **Wallpaper** — eligible to be shown as the dashboard background.
+- **Gallery** — shown in the main Photos grid.
+- **Screensaver** — included in the screensaver rotation.
 
-Tags don't have hierarchy — they're flat strings. Tag chips appear on the photo's lightbox view and as filter chips in the gallery.
+A photo can carry any combination of these (or none). Usage tags double as gallery filters (see [Filtering](#filtering)). There's also a **Favorites** filter for photos flagged as favorites.
 
 ---
 
@@ -125,7 +136,7 @@ Each surface configures its own:
 
 - **Rotation interval** — how often to cycle (defaults vary by surface).
 - **Source filter** — which photo sources to draw from.
-- **Tag filter** — only show photos with certain tags.
+- **Usage filter** — draw only from photos tagged for that surface (Wallpaper / Gallery / Screensaver).
 - **Orientation filter** — only show landscape (good for full-screen displays) or only portrait, etc.
 
 Photos are pre-fetched and rotated client-side. No server round-trip per rotation.
@@ -134,16 +145,16 @@ Photos are pre-fetched and rotated client-side. No server round-trip per rotatio
 
 ## Pinned photos
 
-Override the slideshow for specific surfaces:
+Override the slideshow for specific surfaces with a single static image. Pinning is set in *Settings → Photos* (the Pinned Photos card), not from the lightbox:
 
-- **Pin as wallpaper** — set as the dashboard background. The dashboard renders this static image behind widgets instead of cycling.
-- **Pin as screensaver** — same idea for screensaver mode.
+- **Pinned wallpaper** — the dashboard renders this one static image behind widgets instead of cycling.
+- **Pinned screensaver** — same idea for screensaver mode.
 
 Useful for "we want THIS family portrait as the dashboard background, not random photos cycling."
 
-Pinning is per-surface. You can pin one photo as wallpaper and let the screensaver still cycle through the rest.
+Pinning is **per-device** — the pinned photo is stored in that browser's local storage, so each display can pin its own wallpaper/screensaver (or none). You can pin one photo as wallpaper and let the screensaver still cycle through the rest.
 
-To unpin: open the pinned photo's lightbox and tap **Unpin**.
+To change or clear a pin, use the same Pinned Photos card in *Settings → Photos*.
 
 ---
 
@@ -157,7 +168,7 @@ See the [Travel Map guide](TRAVEL.md#gps-photo-linking) for the full setup + how
 
 ## Performance mode interaction
 
-When Performance Mode is active (auto-detected on low-spec devices, or manual via *Settings → Display*):
+When Performance Mode is active (auto-detected on low-spec devices, or manual via *Settings → Appearance*):
 
 - The Photo widget renders as a **single static image** (the first photo in the configured filter) instead of cycling.
 - Slideshow rotation pauses on the screensaver in performance mode.
@@ -180,7 +191,7 @@ If you delete the volume, the next sync re-downloads everything. The DB rows sur
 - Photo files live on YOUR Prism host. Not on Anthropic, Microsoft (after sync), Cloudflare, or anywhere else.
 - The PWA caches photo thumbnails for offline display (small, low-impact).
 - The OneDrive sync direction is **OneDrive → Prism only.** Prism never writes photos back to OneDrive, never modifies files on the OneDrive side, never deletes from OneDrive.
-- If you disconnect Microsoft in *Settings → Connected Accounts*, the sync stops. Already-synced files stay in your `data/photos/` directory (and the DB). You can delete them if you want.
+- If you disconnect Microsoft in *Settings → Integrations*, the sync stops. Already-synced files stay in your `data/photos/` directory (and the DB). You can delete them if you want.
 
 ---
 
@@ -196,11 +207,11 @@ Geotag your phone photos (iOS: keep "Preserve location" on when sharing to OneDr
 
 ### Static dashboard wallpaper
 
-Take a single family portrait, upload via Photos → Add. Open the lightbox, tap "Pin as wallpaper." Dashboard now uses that photo as the background. Adjust widget translucency to taste.
+Take a single family portrait, upload via Photos → Add. In *Settings → Photos*, pin it as the wallpaper on the Pinned Photos card. Dashboard now uses that photo as the background. Adjust widget translucency to taste.
 
 ### Babysitter mode background
 
-Babysitter mode uses the screensaver photo source by default. If you have photos tagged `babysitter-friendly` (no spicy content), filter the babysitter slideshow to that tag in *Settings → Display → Photos*.
+Babysitter mode uses the screensaver photo source by default, so it draws from photos tagged for **Screensaver**. Curate that set (via each photo's lightbox **Tag for:** row) to keep the babysitter view family-friendly.
 
 ---
 
@@ -211,7 +222,7 @@ Babysitter mode uses the screensaver photo source by default. If you have photos
 1. *Settings → Photos → OneDrive* — is the folder picker pointing at the right folder?
 2. Tap **Sync now**.
 3. Check the sync log on the Photos settings page — any errors?
-4. Make sure the photos in that OneDrive folder meet the quality threshold (small thumbs may be skipped).
+4. Every photo in the picked folder syncs (nothing is skipped by size); if a photo is missing, confirm it's actually in that folder.
 
 ### Slideshow shows a thumbnail-quality image, not full
 

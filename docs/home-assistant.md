@@ -54,18 +54,26 @@ API tokens let Home Assistant query Prism's REST API without PIN-based login.
 
 1. Open Prism Settings (gear icon)
 2. Go to **Security**
-3. Under **API Tokens**, enter a name (e.g. "Home Assistant") and click **Generate Token**
-4. **Copy the token immediately** — it's only shown once
-5. Store it in your HA `secrets.yaml`:
+3. Under **API Tokens**, enter a name (e.g. "Home Assistant")
+4. Choose a **scope** — **Voice API only** (the default and recommended; sufficient for the Voice API and the read-only REST sensors below) or **Full access (legacy)** if you also need to drive write endpoints directly
+5. Click **Generate Token**
+6. **Copy the token immediately** — it's only shown once
+7. Store it in your HA `secrets.yaml`:
 
 ```yaml
 # secrets.yaml
 prism_token: "paste-your-64-char-token-here"
 ```
 
-### Token permissions
+### Token scopes
 
-- Tokens grant **parent-level access** (read + write to all endpoints)
+Tokens carry a **scope** chosen when you generate them:
+
+- **Voice API only** (default, recommended) — reaches the Voice API (`/api/v1/voice/*`) and the read-only REST sensors in Section 3. This is all most HA setups need.
+- **Full access (legacy)** — every endpoint, including writes and admin routes. Only pick this if an automation calls a write endpoint directly instead of going through the Voice API.
+
+The read sensors below (calendar, chores, shopping, meals) work with a **Voice API only** token — they are read-only GETs. Write actions (adding a shopping item, completing a chore) are exposed through the Voice API endpoints (see Section 5), which a voice-scoped token can also reach.
+
 - Tokens never expire but can be revoked from Settings at any time
 - Each request updates the token's "Last used" timestamp
 
@@ -119,7 +127,7 @@ sensor:
 sensor:
   - platform: rest
     name: "Prism Shopping Items"
-    resource: "http://prism.local:3000/api/shopping"
+    resource: "http://prism.local:3000/api/shopping-lists?includeItems=true"
     headers:
       Authorization: !secret prism_bearer
     value_template: >
@@ -186,6 +194,43 @@ automation:
           title: "Shopping List"
           message: "You have {{ states('sensor.prism_shopping_items') }} items on the shopping list."
 ```
+
+---
+
+## 5. Voice API (recommended surface)
+
+Prism ships a purpose-built **Voice API** under `/api/v1/voice/*` that is the supported integration surface for Home Assistant and voice assistants. Each endpoint returns a ready-to-speak `spoken` field alongside structured data, so you don't have to assemble sentences from raw fields in Jinja templates. A **Voice API only** scoped token (the default) is all these endpoints need.
+
+Available endpoints include:
+
+- `GET /api/v1/voice/calendar/today` and `/calendar/upcoming` — today's and upcoming events
+- `GET /api/v1/voice/chores/today` — chores due today
+- `GET /api/v1/voice/tasks/today` — tasks due today
+- `GET /api/v1/voice/meals/today` — today's planned meals
+- `GET /api/v1/voice/weather/today` — today's weather
+- `GET /api/v1/voice/birthdays/upcoming` — upcoming birthdays
+- `GET /api/v1/voice/bus/status` — bus tracking status
+- `GET /api/v1/voice/family` — family members
+- `GET /api/v1/voice/message/recent` and `POST /api/v1/voice/message/post` — read/post messages
+- `POST /api/v1/voice/shopping/add` — add a shopping item
+- `POST /api/v1/voice/chore/complete` — mark a chore complete
+
+Example REST sensor using the spoken response:
+
+```yaml
+sensor:
+  - platform: rest
+    name: "Prism Meals Today"
+    resource: "http://prism.local:3000/api/v1/voice/meals/today"
+    headers:
+      Authorization: !secret prism_bearer
+    value_template: "{{ value_json.spoken }}"
+    scan_interval: 3600
+```
+
+Because the write endpoints (`shopping/add`, `chore/complete`) are part of the Voice API, a **Voice API only** token can drive them too — you do not need a Full access token for these.
+
+See [docs/voice-api.md](voice-api.md) for the full endpoint reference, request/response shapes, and more examples.
 
 ---
 

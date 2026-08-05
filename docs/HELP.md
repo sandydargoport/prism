@@ -11,9 +11,9 @@ A configurable family dashboard for large wall-mounted screens, tablets, and pho
 Five quick steps:
 
 1. **Install Prism** — [installation guide](getting-started/install.md).
-2. **Add family members** — *Settings → Family Members → Add Member.* Each gets a name, color, avatar, role (parent or child), and a 4-digit PIN.
-3. **Set PINs** in *Settings → Security.* Change the defaults (`1234` parent / `0000` child) before sharing.
-4. **Connect integrations** — *Settings → Connected Accounts.* Most families want at least Google Calendar, weather (Open-Meteo is the zero-config default), and OneDrive. See the [first-time setup walkthrough](getting-started/first-time-setup.md).
+2. **Add family members** — *Settings → Family Members → Add Member.* Each gets a name, color, avatar, role (parent or child), and a personal 4- or 6-digit PIN.
+3. **Set PINs** — each member has their own 4- or 6-digit PIN, chosen in the setup wizard when you first install, or later in *Settings → Security.* A fresh install boots straight into the setup wizard (there is no default-PIN login screen); the optional demo seed uses `1234` for every user, so change those before real use.
+4. **Connect integrations** — *Settings → Integrations.* Most families want at least Google Calendar, weather (Open-Meteo is the zero-config default), and OneDrive. See the [first-time setup walkthrough](getting-started/first-time-setup.md).
 5. **Customize the dashboard** — click the **grid icon** to enter layout edit mode and arrange widgets.
 
 When you're done with setup, install Prism as a PWA on phones and tablets — [Mobile guide](features/MOBILE.md).
@@ -22,7 +22,7 @@ When you're done with setup, install Prism as a PWA on phones and tablets — [M
 
 ## Logging in
 
-Tap your avatar, enter your 4-digit PIN. The PIN auto-submits after 4 digits. Keyboard input works too (0-9, Backspace, Enter). Once logged in, your session stays active for 7 days (or 1 day if you check "this is a shared device").
+Tap your avatar, enter your PIN (4 or 6 digits, depending on how it was set). The PIN auto-submits once its full length is reached. Keyboard input works too (0-9, Backspace, Enter). Sessions use a sliding window — parents stay signed in ~7 days, children 1 day — up to an absolute cap (parents 30 days, children 7 days). There is no shared-device toggle.
 
 ---
 
@@ -40,6 +40,8 @@ Tap your avatar, enter your 4-digit PIN. The PIN auto-submits after 4 digits. Ke
 | Add tasks, messages, wishes | Yes | Yes |
 | Delete others' messages | Yes | No |
 | Generate API tokens | Yes | No |
+
+A third **guest** role also exists for shared-display / kiosk use: a read-only session that can view the dashboard and pages but cannot make any changes.
 
 ---
 
@@ -111,17 +113,17 @@ A few smaller surfaces are documented here rather than on dedicated pages.
 
 ### Chores
 
-The flip side of [Goals & Points](features/GOALS.md). Parents create chores with a frequency (daily / weekly / biweekly / monthly / quarterly / annually) and a point value. Kids mark complete; parent approves; points flow into the goals waterfall. Each chore can have a custom reset day (which day of the week for weekly chores, which day of the month for monthly, MM-DD for annual).
+The flip side of [Goals & Points](features/GOALS.md). Parents create chores with a frequency (daily / weekly / biweekly / monthly / quarterly / semi-annually / annually) and a point value. Kids mark complete; parent approves; points flow into the goals waterfall. Each chore can have a custom reset day (which day of the week for weekly chores, which day of the month for monthly, MM-DD for annual).
 
 Views: **Group by Person** (cards per family member), **List view** (sortable), **History** (recent completions with approval status). Approved chores stay visible for 24 hours.
 
 ### Meals
 
-Weekly meal planner. Plan meals by day + meal type (breakfast / lunch / snack / dinner). Link recipes from the [Recipes](features/RECIPES.md) library so opening a planned meal jumps to its recipe. Mark as cooked to track. Drag between days — including from the dashboard Meals widget on touch devices. Week starts on your configured day (*Settings → Display → Week Starts On*).
+Weekly meal planner. Plan meals by day + meal type (breakfast / lunch / snack / dinner); each meal can carry an optional time of day (defaulting to breakfast 7am / lunch 12pm / snack 3pm / dinner 6pm) used for calendar placement. Link recipes from the [Recipes](features/RECIPES.md) library so opening a planned meal jumps to its recipe. Mark as cooked to track. Drag between days — including from the dashboard Meals widget on touch devices. Filter the week by one or more meal types using the breakfast/lunch/dinner/snack pills. Pull a meal plan from Tandoor or Mealie via **Add ▾ → Sync meal plan…** (review-and-approve; imported meals bring their recipes along). Week starts on your configured day (*Settings → General → Week Starts On*).
 
 ### Performance Mode
 
-Auto-enabled on devices reporting ≤2 GB RAM or ≤4 CPU cores. Stretches polling intervals ~2.5×, renders Photo widget as a single static image instead of a slideshow, dials back animations. Lightning-bolt badge appears in the dashboard header while active. Override in *Settings → Display → Performance Mode*.
+Auto-enabled on devices reporting ≤2 GB RAM or ≤4 CPU cores. Stretches polling intervals ~2.5×, renders Photo widget as a single static image instead of a slideshow, dials back animations. Lightning-bolt badge appears in the dashboard header while active. Override in *Settings → Appearance → Performance Mode*.
 
 ---
 
@@ -129,18 +131,23 @@ Auto-enabled on devices reporting ≤2 GB RAM or ≤4 CPU cores. Stretches polli
 
 A short tour of *Settings*. (Each section's deep behavior is documented in the linked feature pages above where relevant.)
 
+- **Account & Profile** — current session and default display user.
 - **Family Members** — add / edit / remove members. Names, colors, avatars, roles, sort order.
-- **Security** — PINs + API tokens (with Voice / Full scope picker).
-- **Connected Accounts** — Google (Calendar, Tasks), Microsoft (To Do, OneDrive), Gmail (bus tracking), Kroger (shopping cart push).
-- **Calendars** — manage synced calendars; iCal subscriptions; per-calendar enable/assign/color.
-- **Task Sync / Shopping Sync / Wish List Sync** — map Prism lists to Microsoft To Do or Google Tasks lists.
-- **Photos** — manage sources (Local, OneDrive); folder picker; orientation filter; GPS backfill.
+- **General** — weather location (city or postal code), time zone, Week Starts On.
+- **Integrations** — one card per provider brand: Google (Calendar, Tasks), Microsoft (To Do, OneDrive), Gmail (bus tracking), Apple / CalDAV, Kroger (shopping cart push), plus Photo Sources. Per-list Task / Shopping / Wish List sync is mapped inside the Microsoft or Google provider card.
+- **Displays** — per-dashboard font scale.
+- **Appearance** — Color Scheme (Light / Dark / System), Theme Palette, Seasonal Theme, Performance Mode, Screensaver / Photo Rotation / Auto-Hide Navigation / Away Mode timers, Orientation Override.
+- **Photos** — manage sources (Local, OneDrive, Immich); folder picker; display filters (orientation, resolution); GPS backfill; pinned wallpaper / screensaver.
 - **Bus Tracking** — Gmail connection, route configuration, route auto-discovery, Gmail label filter.
+- **Input** — on-screen keyboard and barcode-scanner toggles.
 - **Babysitter Info** — emergency contacts, house info (WiFi password stored AES-256-GCM encrypted), child info, house rules.
-- **Display** — Theme (Light / Dark / System), Theme Palette, Seasonal Theme, Performance Mode, Screensaver Timeout, Photo Rotation, Auto-Hide Navigation, Away Mode Auto-Activation, Calendar Hours (hidden hours range), Week Starts On, Orientation Override.
 - **Features** — show / hide individual nav pages.
-- **Backups** — create, download, restore, or delete database backups. Includes dangerous operations (Truncate, Seed demo data) gated behind explicit confirmation.
+- **Security** — PINs + API tokens (with Voice / Full scope picker).
+- **Backups & Data** — create, download, restore, or delete database backups. Includes dangerous operations (Truncate, Seed demo data) gated behind explicit confirmation.
 - **Activity Log** — filterable log of every action taken in the app.
+- **About** — version, links, re-run the setup wizard.
+
+> Calendar management (enable / assign / color synced calendars, iCal subscriptions, and Calendar Hours) is no longer a Settings section — it now lives behind the **Manage** button on the Calendar page.
 
 ---
 

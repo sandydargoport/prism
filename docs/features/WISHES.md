@@ -21,7 +21,7 @@ Same general data shape, different privacy model.
 
 ### Per-person wish lists
 
-Each family member has their own list. Switch between lists via the avatar tabs at the top of the page.
+Each family member has their own list. By default the tab shows a combined flat list of everyone's wishes. Use the **person-filter chip-bar** at the top to narrow to specific members, and the **Group: None / Person** toggle to switch views — **Person** restores the side-by-side per-column layout, one column per family member. In that per-column view the columns themselves can be dragged to reorder (order is remembered locally).
 
 Each item carries:
 
@@ -29,12 +29,11 @@ Each item carries:
 - **URL** — optional link.
 - **Notes** — size, color, model number, "the one from the aquarium gift shop."
 - **Added by** — who added it.
-- **Sort order** — drag to reorder.
 - **Claim state** — see below.
 
 ### Adding wishes
 
-Each list has a **quick-add input** at the top — type a name, press Enter, item added. For more detail (URL, notes), use the **+ Add wish** button which opens the modal.
+Every wish is added through the **+ Add wish** modal — tap the **+** in the tab header (or on a person's column in the Person view) to open it, then fill in name, URL, and notes.
 
 Anyone in the family can add items to anyone else's list. Useful when a parent wants to add a gift idea on behalf of a kid who hasn't gotten around to it.
 
@@ -42,15 +41,15 @@ Anyone in the family can add items to anyone else's list. Useful when a parent w
 
 When someone is shopping for another family member's gift, they can **claim** an item from that person's wish list. This is the magic of the system:
 
-- Clicking the **gift icon** on an item marks it claimed.
+- Clicking an item on **another person's** list marks it claimed.
 - The claim is **secret from the wish-list owner.** They don't see who claimed what, or even that anything is claimed. The list looks unchanged from their perspective.
-- Other family members (the potential gift-givers) see the claim badge — so two people don't accidentally buy Emma the same roller skates.
+- Other family members (the potential gift-givers) see a **"Purchased by {name}"** label — so two people don't accidentally buy Emma the same roller skates.
 
 So the workflow is:
 
 1. Emma adds "Roller skates" to her wish list.
-2. Alex sees this when shopping for her birthday, clicks claim. List shows "claimed by Alex" to everyone except Emma.
-3. Jordan sees the claim badge, knows Alex is handling skates, picks something else.
+2. Alex sees this when shopping for her birthday, clicks claim. List shows "Purchased by Alex" to everyone except Emma (Alex sees "You purchased this").
+3. Jordan sees the "Purchased by Alex" label, knows Alex is handling skates, picks something else.
 4. Birthday morning: Emma gets the skates, surprised.
 
 The claim is visible to Alex (who claimed it), Jordan, and Sophie. Not to Emma.
@@ -63,7 +62,7 @@ But here's the catch: **if someone else has already secretly bought it,** crossi
 
 ### Microsoft To Do sync
 
-Each family member's wish list can sync bidirectionally with a Microsoft To Do list. Configure in *Settings → Wish List Sync*:
+Each family member's wish list can sync bidirectionally with a Microsoft To Do list. Configure it under *Settings → Integrations → Microsoft card → Wish lists* sub-section (the legacy *?section=wish* URL now redirects there):
 
 - Per-member configuration.
 - Pick which MS To Do list maps to that member's wish list.
@@ -94,7 +93,7 @@ Jordan, viewing the same page, sees columns for Alex, Emma, and Sophie — Jorda
 - **Name** — what the gift is.
 - **URL** — link to where to buy it.
 - **Notes** — size, color, "she mentioned wanting this in December."
-- **Price** — for budget tracking.
+- **Price** — record a price per idea.
 - **Purchased** — boolean. Set when you've actually bought it.
 - **Sort order**.
 
@@ -112,7 +111,7 @@ If a child opened Prism with their PIN and went to the Gift Ideas tab, they'd se
 
 When you actually buy the gift, mark the idea **purchased**. This keeps the idea in your list (so you remember what you bought) but visually distinguishes "still planning" from "done."
 
-Purchased ideas can be hidden via filter so the active planning list stays clean.
+Purchased ideas stay in the column but are shown dimmed and struck-through, so "still planning" reads clearly apart from "done."
 
 ### Data refresh on user switch
 
@@ -128,7 +127,7 @@ Three months before Emma's birthday: parents add gift ideas to Gift Ideas (priva
 
 ### Holiday season
 
-Same pattern at higher volume. Pin the "Holiday 2026" filter in your Gift Ideas list, track ideas + purchased status as you shop, keep an eye on Total Spent via the price field.
+Same pattern at higher volume. Track ideas + purchased status as you shop, and record a price on each idea as you go.
 
 ### Coordinating with extended family
 

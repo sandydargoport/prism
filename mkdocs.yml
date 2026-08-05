@@ -90,6 +90,7 @@ nav:
       - Updating: getting-started/updating.md
   - User Guide:
       - Overview: HELP.md
+      - Dashboard & Layouts: features/DASHBOARD.md
       - Calendar: features/CALENDAR.md
       - Shopping: features/SHOPPING.md
       - Recipes: features/RECIPES.md

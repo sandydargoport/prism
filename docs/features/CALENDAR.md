@@ -8,17 +8,21 @@ The calendar brings every family member's schedule together with meals, chores, 
 
 ## Setting up calendar sources
 
+### Personal & Family calendars (no integration needed)
+
+You don't have to connect anything to start using the calendar. On a fresh install every family member automatically gets their **own personal calendar**, plus there's a single shared **Family** calendar for household-wide events. Add and assign events to any of these right away — connected accounts (below) just layer additional sources on top.
+
 ### Google Calendar (OAuth — bidirectional)
 
-*Settings → Connected Accounts → Google → Connect.*
+*Settings → Integrations → Google → Connect.*
 
-OAuth grants Prism read+write access to your Google Calendars. You can create, edit, drag, and delete events in Prism, and changes push back to Google Calendar within seconds. Each individual calendar in your Google account (personal, family-shared, work, etc.) shows up in *Settings → Calendars* where you decide which to display.
+OAuth grants Prism read+write access to your Google Calendars. You can create, edit, drag, and delete events in Prism, and changes push back to Google Calendar within seconds. Each individual calendar in your Google account (personal, family-shared, work, etc.) shows up in the **Manage** overlay on the Calendar page where you decide which to display.
 
-The connection covers Calendar specifically — if you also want Google Tasks sync, that's a separate per-feature OAuth in *Settings → Task Sync*.
+The connection covers Calendar specifically — if you also want Google Tasks sync, that's configured per-list inside the Google provider card on the same *Settings → Integrations* page.
 
 ### iCal subscriptions (read-only)
 
-*Settings → Calendars → Subscribe to a calendar → paste URL.*
+*Open the Calendar page → **Manage** → Subscribe to a calendar → paste URL.*
 
 For any calendar published as an `.ics` URL — school calendars, sports leagues, holiday feeds, your spouse's outlook.live.com calendar — paste the URL and Prism subscribes. Events sync periodically and appear alongside Google events. iCal sources are read-only by definition (no write endpoint exists for these feeds), so the dashboard treats them like any other source for display but won't offer edit affordances on their events.
 
@@ -29,7 +33,7 @@ iCloud doesn't speak OAuth or expose a public REST API, so Prism rides the same 
 1. Open *Calendar.app*, right-click the calendar in the sidebar → *Share Calendar*.
 2. Tick **Public Calendar** — a URL appears underneath.
 3. Click the *share* button next to the URL and *Copy Link* (it'll start with `webcal://`).
-4. In Prism: *Settings → Calendars → Subscribe to a calendar*, paste the URL, give it a name, click *Add*.
+4. In Prism: open the Calendar page → **Manage** → *Subscribe to a calendar*, paste the URL, give it a name, click *Add*.
 
 From iCloud.com it's the same idea: *Calendar → ⓘ next to the calendar → Public Calendar → Copy Link*.
 
@@ -40,7 +44,7 @@ Caveats: this is a one-way feed (changes you make in Prism don't push back to iC
 For calendars you don't want to mark Public — or to sync **Reminders** as tasks — Prism supports iCloud over CalDAV. This is the same protocol the macOS/iOS Calendar app uses.
 
 1. Generate an app-specific password at [appleid.apple.com](https://appleid.apple.com) → *Sign-In and Security → App-Specific Passwords → Generate*.
-2. In Prism: *Settings → Connected Accounts → CalDAV → Connect CalDAV server*.
+2. In Prism: *Settings → Integrations → Apple iCloud / CalDAV → Connect*.
 3. Enter:
    - **Server URL:** `https://caldav.icloud.com`
    - **Username:** your iCloud email
@@ -49,13 +53,13 @@ For calendars you don't want to mark Public — or to sync **Reminders** as task
 
 The same flow works for **Nextcloud** (`https://your-server/remote.php/dav`), **Radicale**, **Baikal** (`https://your-server/dav.php`), and **Synology Calendar** (`https://your-nas:5001/caldav/`).
 
-Caveats: this path is currently **read-only** — events and tasks pulled from CalDAV appear in the dashboard but can't be edited from Prism (two-way write is on the roadmap). App-specific passwords are stored encrypted in the Prism database and never leave your server. Apple Reminders sync into Prism's Tasks list with the same priorities and due dates the iOS app uses.
+Caveats: this path is **read-only for create/edit** — events and tasks pulled from CalDAV appear in the dashboard but can't be created or edited from Prism. There is one exception: **deleting a single (non-recurring) synced event in Prism now removes it from the source server too** (iCloud/Nextcloud/etc.), so treat that delete as destructive upstream. Recurring series still delete locally only. App-specific passwords are stored encrypted in the Prism database and never leave your server. Apple Reminders sync into Prism's Tasks list with the same priorities and due dates the iOS app uses.
 
 > Wondering what *else* you can pull from iCloud (Reminders, Notes, Photos, Find My)? See the [iCloud integration overview](ICLOUD.md) — short answer: calendars and contacts work, nothing else does, and there's a structural reason.
 
 ### Per-calendar customization
 
-In *Settings → Calendars*, each source supports:
+In the **Manage** overlay on the Calendar page, each source supports:
 
 - **Enable/disable** — toggle off without disconnecting. Disabled calendars don't appear anywhere in the UI.
 - **Assign to a family member** — links the calendar to a person so its events appear in that person's column on Day/List views. Mark a calendar as **Family** if it's a shared household calendar.
@@ -71,7 +75,11 @@ A 10-minute background cron job keeps Google + iCal events in sync without depen
 
 Events outside the window are not deleted — once an event is synced into Prism's database, it remains there permanently. The delete-on-remove pass only operates inside the window, so manually shrinking the window won't lose your archive.
 
-Set `PRISM_DISABLE_CALENDAR_CRON=true` in your `.env` to fall back to user-triggered syncs only (e.g. on a low-power device where you don't want background work). Manual sync is always available from *Settings → Calendars → Sync*.
+### Review before deleting
+
+Sync never silently removes events. When an event that used to exist disappears from its source, Prism **holds** the removal instead of applying it and surfaces a **Review N** badge on the calendar. Open it and decide per event: **Keep** (it stays in Prism) or **Delete** (it's removed). Applying a deletion requires delete permission. Adds and updates from the source still apply automatically — only removals wait for your review.
+
+Set `PRISM_DISABLE_CALENDAR_CRON=true` in your `.env` to fall back to user-triggered syncs only (e.g. on a low-power device where you don't want background work). Manual sync is always available from the **Manage** overlay on the Calendar page (*Sync*).
 
 ---
 
@@ -189,7 +197,7 @@ Notes are read-only when not logged in (so the screensaver / babysitter view can
 
 ## Hidden Hours
 
-Hide a time range from Day/Schedule/Week views so most of the visible space goes to hours your family actually uses. Configure the range in *Settings → Display → Calendar Hours*:
+Hide a time range from Day/Schedule/Week views so most of the visible space goes to hours your family actually uses. Configure the range in the **Manage** overlay on the Calendar page (Calendar Hours):
 
 - Set start hour (e.g. midnight)
 - Set end hour (e.g. 6 AM)
@@ -200,7 +208,9 @@ Toggle visibility with the **clock button** in calendar views — it dims when a
 
 ## Color coding
 
-Events inherit their color from the calendar source they belong to. When calendars are assigned to family members, each person's events show in their column with the calendar's color. Override per-calendar in *Settings → Calendars*.
+Events inherit their color from the calendar source they belong to. When calendars are assigned to family members, each person's events show in their column with the calendar's color. Override per-calendar in the **Manage** overlay on the Calendar page.
+
+Meals rendered on the calendar carry a small **utensils icon** before the title, so they read as distinct from ordinary events at a glance.
 
 Cross-calendar events (e.g. the same event in your Google personal calendar and the Family Google calendar) are deduplicated by `groupId` at render time, so you don't see ghost duplicates across columns.
 
@@ -216,7 +226,7 @@ Click **Add Event** in the calendar header (or on the CalendarWidget). The modal
 - **Description**
 - **Location**
 - **Start / End time** or **All day** toggle.
-- **Recurrence** — None, Daily, Weekly, Monthly, Yearly (writes to Google Calendar's RRULE format if syncing to Google).
+- **Recurrence** — None, Daily, Every weekday, Weekly, Monthly, Yearly (writes to Google Calendar's RRULE format if syncing to Google).
 
 Subscription / read-only calendars are auto-hidden from the picker.
 
@@ -237,14 +247,14 @@ This is intentional: full grid views don't fit comfortably on a phone, and the a
 
 ### Events not showing
 
-1. *Settings → Calendars* — is the calendar enabled?
+1. Open the Calendar page → **Manage** — is the calendar enabled?
 2. Tap **Sync** to force a refresh.
-3. Check *Settings → Connected Accounts* — is Google still connected? (OAuth tokens can expire if revoked from the Google side.)
+3. Check *Settings → Integrations* — is Google still connected? (OAuth tokens can expire if revoked from the Google side.)
 4. The server-side sync cron also runs every 10 minutes — wait one cycle.
 
 ### Events appearing in the wrong person's column
 
-Check the calendar's assignment in *Settings → Calendars*. Cross-calendar events (same event in personal + Family calendars) dedupe by `groupId` — if you're seeing duplicates, file an issue with the calendar names.
+Check the calendar's assignment in the **Manage** overlay on the Calendar page. Cross-calendar events (same event in personal + Family calendars) dedupe by `groupId` — if you're seeing duplicates, file an issue with the calendar names.
 
 ### Sync cron not running
 
@@ -260,7 +270,7 @@ The API rejected the move. Most common cause: trying to drag a recurring event i
 
 ### Hidden hours showing the wrong range
 
-Hours are configured in 24-hour format (e.g. `0` to `6` for midnight-to-6am). Check *Settings → Display → Calendar Hours* and re-save if needed.
+Hours are configured in 24-hour format (e.g. `0` to `6` for midnight-to-6am). Check the **Manage** overlay on the Calendar page (Calendar Hours) and re-save if needed.
 
 ### Forecast day-of-week labels are off
 

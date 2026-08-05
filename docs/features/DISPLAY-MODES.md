@@ -22,13 +22,15 @@ Edit the screensaver layout in dashboard edit mode by clicking the **Screensaver
 
 ### Configuration
 
-*Settings → Display:*
+Screensaver timing lives under *Settings → Appearance → Timers & Auto-Activation (Screensaver):*
 
-- **Screensaver Timeout** — how long idle before activating. Options: 1 / 5 / 15 / 30 / 60 minutes, or Never.
-- **Photo Rotation Interval** — how fast photos cycle within the screensaver. Default 30 seconds.
+- **Screensaver Timeout** — how long idle before activating. Options: 30 seconds / 1 minute / 2 minutes / 10 minutes / 1 hour / Never (default 2 minutes).
+- **Photo Rotation Interval** — how fast photos cycle within the screensaver (5 seconds up to 1 hour, or Never for a static image).
+
+Which photos appear is configured under *Settings → Photos:*
+
 - **Source filter** — which photo source(s) to draw from.
-- **Tag filter** — show only photos with certain tags.
-- **Orientation filter** — landscape / portrait / square / any.
+- **Orientation filter** — landscape / portrait / square, applied per display context (gallery / wallpaper / screensaver).
 - **Pinned photo** — override the slideshow with a single static photo (for the surfaces you want stable).
 
 ### Activation behavior
@@ -61,12 +63,15 @@ Away mode strips that down to: clock, weather, photo. Nothing else.
 
 Two ways:
 
-1. **Manual** — tap the **shield icon** in the dashboard header. Asks "really activate Away mode?" → yes → mode engages.
-2. **Auto** — configurable in *Settings → Display → Away Mode Auto-Activation:*
-   - **Off** — never auto-activate.
+1. **Manual** — tap the **palm-tree icon** in the dashboard header. Asks "really activate Away mode?" → yes → mode engages.
+2. **Auto** — configurable in *Settings → Appearance → Timers & Auto-Activation → Away Mode Auto-Activation:*
+   - **Never (manual only)** — never auto-activate.
    - **4 hours** of no interaction → activate.
    - **8 hours** of no interaction → activate.
+   - **12 hours** of no interaction → activate.
    - **1 day** of no interaction → activate.
+   - **2 days** of no interaction → activate.
+   - **3 days** of no interaction → activate.
    - **1 week** of no interaction → activate.
 
 The auto-activation timer resets on any user interaction (touch, click, keyboard).
@@ -87,7 +92,7 @@ No calendar, no chores, no tasks, no messages, no widgets. Just the time, weathe
 
 Tap anywhere. A PIN keypad appears. Enter a **parent PIN** to exit. Children can't exit Away mode — by design, since the use case is keeping the family's info private during periods when adults aren't around to authorize seeing it.
 
-If you forget the parent PIN: the parent can run a manual SQL reset via the install instructions, or you can restart the container with `PRISM_DISABLE_AWAY_MODE_OVERLAY=true` set (and unset it after re-establishing a PIN).
+If you forget the PIN: reset it offline with the bundled recovery script from inside the app container — `docker compose exec app node scripts/reset-pin.js --list` to see member names, then `docker compose exec app node scripts/reset-pin.js "Name" 1234` to set a new PIN for that member. It hashes the PIN exactly like the app and touches only that member's row.
 
 ### Use cases
 
@@ -138,8 +143,6 @@ Anyone with the URL can access the babysitter view. Use cases:
 - Share with a one-time caregiver who isn't going to use the wall display.
 
 The public URL respects the sensitive-section gating — sensitive sections still require PIN unlock when viewed via the public URL.
-
-If you want to fully disable the public URL (e.g. you're in a building with semi-shared WiFi), set `PRISM_DISABLE_BABYSITTER_PUBLIC=true`. Babysitter mode then only works via the dashboard icon.
 
 ### Exiting
 
@@ -199,14 +202,14 @@ If you're worried about what a babysitter or short-term guest needs to know: Bab
 
 ### Screensaver doesn't activate
 
-- Check *Settings → Display → Screensaver Timeout* — is it set to "Never"?
+- Check *Settings → Appearance → Timers & Auto-Activation → Screensaver Timeout* — is it set to "Never"?
 - Is the dashboard in edit mode? Edit mode suppresses the screensaver.
 - Is a modal open? Modals suppress the screensaver.
 - On mobile PWA installs, the screensaver is intentionally auto-disabled. This is by design.
 
 ### Away mode won't exit
 
-You need the parent PIN. If you've forgotten it: reset it in SQL by exec-ing into the DB container and updating the `users.pin` column with a bcrypt-hashed PIN. The install guide has the exact command.
+You need the parent PIN. If you've forgotten it, reset it offline with the bundled script from inside the app container: `docker compose exec app node scripts/reset-pin.js --list` to see member names, then `docker compose exec app node scripts/reset-pin.js "Name" 1234` to set a new PIN for that member.
 
 ### Babysitter info shows blank
 
@@ -218,7 +221,7 @@ Check that the PIN belongs to a **parent** role. Child PINs can't unlock sensiti
 
 ### Public /babysitter URL not loading
 
-Set `PRISM_DISABLE_BABYSITTER_PUBLIC=true`? That kills the route. Unset to re-enable.
+Make sure you've configured at least one section in *Settings → Babysitter Info* — an empty babysitter view has nothing to render. Also confirm the device can reach the Prism host on your network.
 
 ### Photo slideshow stutters during screensaver
 
@@ -226,7 +229,7 @@ Performance Mode might be active — slideshows pause in performance mode (singl
 
 ### Wrong photo source on the screensaver
 
-The screensaver photo filter is per-dashboard, configured in *Settings → Display → Photos.* Each dashboard has its own settings — make sure you're editing the right one.
+The screensaver photo filters (sources, per-context orientation, pinned photo) live in *Settings → Photos* under the **screensaver** display context. Adjust them there.
 
 ### Babysitter QR code for WiFi doesn't work
 

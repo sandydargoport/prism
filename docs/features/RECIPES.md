@@ -31,7 +31,7 @@ Each recipe has:
 
 ## Importing recipes
 
-Three methods cover ~95% of inputs:
+Four methods cover ~95% of inputs — plus a fifth for syncing from an existing recipe manager:
 
 ### URL import
 
@@ -78,6 +78,15 @@ Pre-fills the same form the manual-entry modal uses, so you can review + tweak b
 
 The fallback. *Recipes → Add → Create manually*. Full form for every field. Use the same `{ heading }` syntax in the ingredients textarea (`Fries:` on its own line) to get bolded section headings in the detail view.
 
+### Sync from Tandoor / Mealie
+
+*Recipes → Add → Sync recipes (Tandoor / Mealie)…*
+
+If you already keep your recipes in [Tandoor](https://tandoor.dev/) or [Mealie](https://mealie.io/), connect the server with its base URL and a **read-only API token** to pull recipes in.
+
+- Sync runs a **review-and-approve diff**: adds and updates are pre-selected, and removals are opt-in (with a mass-delete guard so a misconfigured source can't wipe your library).
+- Re-syncing is **idempotent** — recipes already imported are matched and updated in place rather than duplicated.
+
 ---
 
 ## Per-recipe photo upload
@@ -108,7 +117,7 @@ The Recipes page shows a grid of recipe cards with image, name, cuisine, categor
 
 Filters:
 
-- **Search by name** — fuzzy match.
+- **Search** — case-insensitive match across name, description, cuisine, and category.
 - **Cuisine** dropdown.
 - **Category** dropdown.
 - **Favorites only** toggle.
@@ -136,7 +145,7 @@ The servings line shows current servings with **+/- buttons** to adjust by 1. Be
 
 Tap any pill to instantly multiply the original servings by that factor. ½× rounds up to the nearest whole serving so a 3-serving recipe scales to 2, not 1.5. The active multiplier highlights so you know what you're seeing.
 
-Ingredient quantities auto-recalculate. Smart fractions: scaled amounts that hit common fractions (¼, ⅓, ½, ⅔, ¾) display as fractions; otherwise as one-decimal-place numbers.
+Ingredient quantities auto-recalculate. Smart fractions: scaled amounts that hit common fractions display as fractions (rendered as ASCII — `1/4`, `1/3`, `1/2`, `2/3`, `3/4`); otherwise as numbers rounded to two decimal places.
 
 ### Ingredients
 
@@ -172,7 +181,9 @@ Recipes link to meals on the Meals weekly planner:
 - Selecting a recipe auto-fills: meal name, description, prep time, cook time, recipe URL.
 - Marking a meal as **cooked** increments the linked recipe's `timesMade` counter and updates `lastMadeAt`.
 
-The Recipes page surfaces both — sort by "Most cooked" or "Recently cooked" to see what's actually working in rotation vs. what's been gathering dust.
+You can also schedule straight from a recipe: the detail modal has an inline **Add to Meal Plan** mini-calendar. Pick a day on the 2-week grid, choose a meal type (Breakfast / Lunch / Dinner / Snack — defaults to Dinner), and tap **Add to Plan** to drop the recipe onto the meal planner.
+
+Each recipe card shows a **Made N×** badge once it's been cooked, so you can eyeball what's in rotation vs. what's been gathering dust.
 
 ---
 
@@ -198,7 +209,7 @@ The parser looks for `\d+\.\s` (numbered steps) or `Step N:` prefixes. Bullet-po
 
 ### Recipe scaling rounded oddly
 
-Smart fractions only kick in for ¼, ⅓, ½, ⅔, ¾. Other scaled values show as one-decimal-place numbers (`0.7 cup`). If precision matters, override manually before sending to the shopping list.
+Smart fractions only kick in for ¼, ⅓, ½, ⅔, ¾ (shown as ASCII: `1/4`, `1/3`, `1/2`, `2/3`, `3/4`). Other scaled values show as numbers rounded to two decimal places (`0.67 cup`). If precision matters, override manually before sending to the shopping list.
 
 ### Photo upload "Failed to remove photo"
 

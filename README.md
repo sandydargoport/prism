@@ -46,7 +46,7 @@ docker-compose up -d
 
 </details>
 
-Open **<http://localhost:3000>** and log in with PIN `1234` (parent) or `0000` (child).
+Open **<http://localhost:3000>**. A fresh install boots into the setup wizard, where you create family members and set each member's PIN (4 or 6 digits). The demo seed logs in with PIN `1234` for every account.
 
 Full installation notes (HTTPS / Nginx cert prerequisite, Raspberry Pi notes, troubleshooting) are in the [install guide](https://sandydargoport.github.io/prism/getting-started/install/).
 

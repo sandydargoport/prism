@@ -49,15 +49,12 @@ Custom shortcuts can be added by editing `public/manifest.json`.
 
 ## Service worker + offline support
 
-The service worker (`public/sw.js`) caches static assets aggressively:
+The service worker (`public/sw.js`) precaches static assets:
 
-- App shell (HTML, CSS, JS chunks) cached on install.
-- API responses cached network-first with a 5-minute fallback window.
-- Already-loaded pages remain available offline (read-only).
+- App shell (the `_next` static assets — CSS, JS chunks) is precached on install.
+- The start URL (`/`) is served **network-first**, falling back to the cached copy when offline.
 
-When the device reconnects, pending mutation requests retry automatically (queued via the service worker). For changes made while offline, expect a brief sync on reconnection.
-
-This is best-effort — Prism isn't designed as an offline-first app. If your dashboard is offline for hours, expect to refresh manually when you're back online.
+That's the extent of it. There is **no** API-response caching, **no** offline mutation queue, and **no** background-sync retry. Prism is not an offline-first app — if the device is offline, expect to refresh manually once you're back online, and don't expect changes made while offline to be captured.
 
 ---
 
@@ -75,12 +72,22 @@ The `AppShell` component picks the right nav based on the active viewport + orie
 
 ### FAB (phone PWA)
 
-The Floating Action Button is a single circular button in the bottom corner. Tap it to expand a small menu:
+The Floating Action Button is a single circular button in the bottom corner. Tap it to expand a small menu. Which actions appear depends on the current page:
+
+Always available:
 
 - **Home** — back to dashboard.
+- **Settings** — opens the full Settings page.
+- **Login / Logout** — switch users (shows **Login** when logged out).
+
+On the dashboard only:
+
 - **Reorder** — drag cards on the dashboard into your preferred order.
-- **Settings** — toggle which dashboard cards are visible.
-- **Login** — switch users.
+- **Cards** — show/hide dashboard cards (plus layout + theme controls, see below).
+
+On the Shopping page only:
+
+- **Scan Barcode** — scan an item into the active list.
 
 Designed to use minimum screen space and stay out of the way during regular use.
 
@@ -88,9 +95,14 @@ Designed to use minimum screen space and stay out of the way during regular use.
 
 In FAB → Reorder, dashboard cards become draggable with grip pills on each one. Drag to reorder, tap **Done** to save. Persists per user.
 
-### Card visibility
+### FAB → Cards
 
-FAB → Settings shows a toggle for each available card. Turn off cards you don't use (e.g. Bus Tracker if you don't have one). Hidden cards don't render at all — saves render cycles on a phone.
+FAB → Cards shows a toggle for each available card. Turn off cards you don't use (e.g. Bus Tracker if you don't have one). Hidden cards don't render at all — saves render cycles on a phone.
+
+The same panel also carries two extra controls:
+
+- **Layout** — switch the mobile dashboard between **Rows** and **Tiles**.
+- **Theme** — cycle **Light / Dark / Auto**.
 
 ---
 
@@ -106,6 +118,8 @@ On phones, the full dashboard grid collapses into a single-column summary card l
 - **Meals card** — today's planned meals.
 - **Messages card** — last 3 messages.
 - **Birthdays card** — upcoming birthdays.
+
+These eight are the defaults. **Clock, Bus Tracker, Recipes, Goals, Wishes, and Photos** are also available and can be turned on via FAB → Cards.
 
 Tap any card to navigate to the full page for that feature. The cards are reorderable + can be individually hidden via the FAB controls.
 
@@ -144,14 +158,14 @@ Font scale adapts to the device class:
 ```css
 html { font-size: 16px; }                                        /* phone default */
 @media (pointer: fine)                       { font-size: 14px; }  /* desktop mouse */
-@media (min-width: 768px)  and (pointer: coarse) { font-size: 20px; }  /* tablet touch */
-@media (min-width: 1024px) and (pointer: coarse) { font-size: 22px; }  /* large tablet */
-@media (min-width: 1400px) and (pointer: coarse) { font-size: 24px; }  /* kiosk */
+@media (min-width: 768px)  and (pointer: coarse) { font-size: 18px; }  /* tablet touch */
+@media (min-width: 1024px) and (pointer: coarse) { font-size: 20px; }  /* large tablet */
+@media (min-width: 1400px) and (pointer: coarse) { font-size: 22px; }  /* kiosk */
 ```
 
-The `pointer: fine` vs `pointer: coarse` media query distinguishes mouse-controlled (desktop laptop) from touch (tablet kiosk) at the same screen size. Same physical 13" display gets 14px on a laptop (mouse) but 22px on a tablet (touch).
+The `pointer: fine` vs `pointer: coarse` media query distinguishes mouse-controlled (desktop laptop) from touch (tablet kiosk) at the same screen size. Same physical 13" display gets 14px on a laptop (mouse) but 20px on a tablet (touch).
 
-Override globally via *Settings → Display → Font Scale* (planned — not yet shipped as of v1.8).
+Override globally via *Settings → Appearance → Font Scale* (planned — not yet shipped as of v1.8).
 
 ---
 
@@ -159,7 +173,7 @@ Override globally via *Settings → Display → Font Scale* (planned — not yet
 
 The `useOrientation` hook listens to `resize` + `orientationchange` events and returns the current orientation. The `AppShell` re-evaluates nav choice on every orientation change.
 
-Force a specific orientation in *Settings → Display → Orientation Override* (Landscape / Portrait / Auto). Useful for kiosks mounted in a fixed orientation that don't auto-rotate.
+Set an orientation in *Settings → Appearance → Orientation Override* (Landscape / Portrait / Auto). Note this override only drives **photo and wallpaper orientation matching** — it does not change which navigation or layout is shown. The nav still follows the physically detected orientation (width vs height).
 
 ---
 
@@ -199,7 +213,7 @@ Install as PWA. Open Shopping. Hit the maximize icon (top right) to enter shoppi
 
 ### Spouse uses iOS, you use Android
 
-Both install as PWA on their own devices. Different shopping mode preferences, different filter presets — but the same data, the same family. PIN-based login means switching users on a shared device (e.g. the kitchen tablet) is a tap + 4 digits.
+Both install as PWA on their own devices. Different shopping mode preferences, different filter presets — but the same data, the same family. PIN-based login means switching users on a shared device (e.g. the kitchen tablet) is a tap + a per-member PIN (4 or 6 digits).
 
 ---
 
@@ -231,7 +245,7 @@ The agenda-only restriction was added in v1.8. If you're seeing month view on yo
 
 ### FAB missing
 
-FAB only shows on phone viewports (`max-width: 767px`). On tablets you should see PortraitNav (bottom drawer) instead. If you're on a phone and the FAB is missing, the user might not be logged in — the FAB hides when no user session is active.
+FAB only shows on phone viewports (`max-width: 767px`). On tablets you should see PortraitNav (bottom drawer) instead. The FAB is present on phone viewports whether or not anyone is logged in — when logged out it simply offers a **Login** action.
 
 ### Cards in mobile dashboard appearing in wrong order
 

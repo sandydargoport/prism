@@ -66,7 +66,6 @@ Each item supports:
 - **Unit** (`gallon`, `lbs`, `oz`, `dozen`, `box`, etc. — free text)
 - **Category**
 - **Notes**
-- **Recurring** flag — for staples that should auto-re-add on a schedule.
 
 ---
 
@@ -82,10 +81,10 @@ Optimistic UI: the check fires before the API responds, so the strikethrough is 
 
 ## Editing / Deleting
 
-Long-press an item (or right-click on desktop) for actions:
+Each item row has always-visible inline **Edit** (pencil) and **Delete** (trash) buttons on the right:
 
-- **Edit** — opens the modal with current values.
-- **Delete** — removes immediately. Undo button appears in the nav bar for ~5 seconds.
+- **Edit** — tap to open the modal with current values.
+- **Delete** — removes immediately. There is no undo for deletes; the Undo button in the nav bar only reverses a check-off.
 
 ---
 
@@ -113,7 +112,7 @@ Tested with Honeywell, Eyoyo, Symcode, NADAMOO scanners.
 
 ## Send to Kroger / Mariano's
 
-If you've connected a Kroger account (*Settings → Shopping → Kroger / Mariano's cart*), the Shopping header gains a **Send to Kroger** button. Tap to launch the SKU picker.
+If you've connected a Kroger account (*Settings → Integrations → Kroger*), the Shopping header gains a **Send to Kroger** button. Tap to launch the SKU picker.
 
 The picker walks through each unchecked item in the active list:
 
@@ -145,7 +144,7 @@ Full setup walkthrough in the [Kroger integration guide](KROGER.md) — covers c
 
 ## Microsoft To Do sync
 
-Each shopping list can sync to one Microsoft To Do list. Configure in *Settings → Shopping Sync*:
+Each shopping list can sync to one Microsoft To Do list. Configure it in the **Microsoft** provider card under *Settings → Integrations*:
 
 - Connect Microsoft via OAuth (one-time).
 - Pick a Prism shopping list.
@@ -177,19 +176,9 @@ The animation honors `prefers-reduced-motion` and Performance Mode — both skip
 
 ---
 
-## Recurring items
-
-Set an item's **recurring** flag to mark it as a staple. The recurrence interval (`weekly`, `monthly`) controls when it re-adds itself to the unchecked items after being checked.
-
-(Note: as of v1.8 the re-add cron isn't fully wired — recurring items are stored but you may need to manually re-add for now. Tracking as a follow-up.)
-
----
-
 ## Per-person attribution
 
-Each item carries an `addedBy` — the family member who added it. Useful in shopping mode to see who wanted what, especially when an item description is ambiguous.
-
-Tap an avatar in the header to filter to that person's items. Tap again to clear.
+Each item carries an `addedBy` — the family member who added it. This is stored with the item, but the list UI does not currently surface it or offer a per-person filter.
 
 ---
 
@@ -214,11 +203,11 @@ Rate limit kicked in. Recipe imports add ingredients in a sequential loop and ca
 
 ### Send to Kroger button missing
 
-Either Kroger isn't connected (*Settings → Shopping → Kroger / Mariano's cart*) or the active list has no unchecked items. The button only appears when there's something to push.
+Either Kroger isn't connected (*Settings → Integrations → Kroger*) or the active list has no unchecked items. The button only appears when there's something to push.
 
 ### SKU picker shows "no price" everywhere
 
-No default store set. *Settings → Shopping → Kroger / Mariano's cart → Set store* and enter your zip code. Without a store, Kroger's API returns nationwide-default product data without per-store pricing.
+No default store set. *Settings → Integrations → Kroger → Set store* and enter your zip code. Without a store, Kroger's API returns nationwide-default product data without per-store pricing.
 
 ### SKU picker can't find an obvious item
 
@@ -234,4 +223,4 @@ USB HID scanners need keyboard focus on something in the Prism page. If a modal 
 
 ### Microsoft To Do sync stuck
 
-*Settings → Shopping Sync → Sync now*. If still stuck, check *Settings → Connected Accounts → Microsoft* — token may have expired.
+In the **Microsoft** provider card under *Settings → Integrations*, tap **Sync now**. If still stuck, check that card's connection — the token may have expired.

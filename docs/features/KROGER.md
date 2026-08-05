@@ -10,7 +10,7 @@ The integration uses Kroger's public Developer API. It's free, has a 10,000-call
 
 ## What it does
 
-- **Per-user OAuth** — each Prism family member who wants to push to Kroger connects their own shopper account in **Settings → Shopping → "Kroger / Mariano's cart"**. Tokens are AES-256-GCM encrypted at rest with the existing `ENCRYPTION_KEY`.
+- **Per-user OAuth** — each Prism family member who wants to push to Kroger connects their own shopper account in **Settings → Integrations → "Kroger / Mariano's cart"** card. Tokens are AES-256-GCM encrypted at rest with the existing `ENCRYPTION_KEY`.
 - **SKU picker per item** — for each unchecked shopping item, Prism fetches up to 5 candidate products from Kroger and shows them in a picker with image, name, size, price, and a normalized unit price (lb / fl oz / ct) so candidates within a page are directly comparable.
 - **SKU caching** — once you pick *"Mariano's 2% Reduced Fat Milk Gallon"* for the abstract item *"milk"*, that productId is remembered on the shopping item. Next time you push *"milk"*, the same SKU is pre-selected. One-tap weekly staples after the first trip.
 - **Quantity controls** — bump the cart quantity per item (1-99) with +/- buttons; review-screen shows `× 2` next to multiples.
@@ -73,7 +73,7 @@ The app detail page shows a **Client ID** and a **Client Secret**. Click **Show*
 
 In Prism:
 
-1. **Settings → Shopping → "Kroger / Mariano's cart"** card.
+1. **Settings → Integrations → "Kroger / Mariano's cart"** card (deep link `/settings?section=integrations#kroger`).
 2. If credentials aren't configured yet, click **Enter Kroger credentials** and paste the Client ID + Client Secret. Prism encrypts them at rest.
 3. Click **Connect Kroger**. You'll bounce to `kroger.com`, sign in with your **shopper account** (the one you actually shop with — different from the dev portal account if you used two different emails), and approve the requested scopes.
 4. You land back at Prism with **Connected** status.
@@ -108,7 +108,7 @@ You're done. Go to **Shopping**, add some items, and tap **Send to Kroger** in t
 | `403 Forbidden` on developer.kroger.com | Stale session. Sign out, incognito tab, sign back in. |
 | `kroger_state_mismatch` after consent | Redis was flushed or 10 min elapsed between starting and finishing OAuth. Click Connect again. |
 | `kroger_token_exchange_failed` | Most often: secret was rotated. Re-paste credentials. Less often: redirect URI mismatch — check exact-match in the dev portal vs. the URL your browser hit. |
-| Picker shows `no price` everywhere | Default store not set. Settings → Shopping → "Set store". |
+| Picker shows `no price` everywhere | Default store not set. Settings → Integrations → "Kroger / Mariano's card" → "Set store". |
 | Picker can't find your item | Use the search box above the candidates to refine the term (e.g. shorten `"jumbo, raw, tail-on shrimp, peeled and deveined"` to `"shrimp"`). |
 | "Too many items (max 200 per request)" | One shopping list has more than 200 unchecked items. Split it. |
 

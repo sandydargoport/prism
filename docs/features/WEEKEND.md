@@ -12,17 +12,16 @@ A "weekend place" is anywhere your family might spend a few hours: parks, restau
 
 - **Name** (required)
 - **Description** — what it is, why it's worth going.
-- **Location** — optional lat/lng + place name + address.
-- **URL** — optional link to the place's website.
-- **Status** — `backlog` (want to try) or `visited` (been there).
+- **Website** — optional link to the place's website.
+- **Status** — `Want to Try` (haven't been yet) or `Been There` (visited).
 - **Favorite** — boolean star for filtering.
-- **Rating** — 1-5 stars, set per visit.
+- **Rating** — 1-5 stars, set on the place (available once it's marked "Been There").
 - **Notes** — free-form text.
-- **Tags** — e.g. `outdoor`, `nature`, `hike`, `food`, `museum`, `farm`, `indoor`, `seasonal`.
-- **Visit count** — denormalized for fast sorting. Increments when you log a visit.
-- **Last visited** — denormalized.
+- **Tags** — chosen from a fixed preset palette (see [Tags](#tags)).
+- **Visit count** — increments each time you log a visit.
+- **Last visited** — the date of the most recent logged visit.
 
-Plus a separate **visit history** — each visit is its own row in `weekend_visits` with date, who visited, rating, and notes specific to that trip.
+Places also carry optional location fields (place name, address, latitude/longitude) that show in the detail panel when present, but these are not currently editable from the app UI.
 
 ---
 
@@ -30,87 +29,66 @@ Plus a separate **visit history** — each visit is its own row in `weekend_visi
 
 *Weekend → Add place* opens the modal. Required: name. Everything else optional.
 
-If you have a location, paste a URL with coordinates (e.g. Google Maps share link) or use the geocoder to search by name. Coordinates aren't required — many places (a friend's pool, the random pumpkin patch with no website) won't have them.
-
 Two starting statuses:
 
-- **Backlog** — default. You haven't been yet, this is something to try.
-- **Visited** — already been; you're adding it retroactively as a favorite or for record-keeping.
+- **Want to Try** — default. You haven't been yet, this is something to try.
+- **Been There** — already been; you're adding it retroactively as a favorite or for record-keeping. Marking a place "Been There" reveals the star rating field.
 
 ---
 
 ## The Weekend page
 
-### Cards grouped by tag-category
+### Cards grouped by tag
 
-Place cards group into emoji-headed tag-category sections so you can scan by activity type at a glance:
+When your places span more than one tag, place cards group into sections — one section per preset tag they use, in preset order — so you can scan by activity type at a glance. Each section is headed by the tag's emoji and label (e.g. 🌳 Outdoor, 🍽️ Food, 🏛️ Museum, 🌾 Farm) with a count. A place is bucketed by the first of its tags that matches a preset.
 
-- 🌳 **Outdoor / Nature** — parks, trails, gardens, beaches.
-- 🍔 **Food** — restaurants, breweries, ice cream.
-- 🎨 **Museum / Indoor** — museums, kid play spots, indoor activities.
-- 🚜 **Farm / Seasonal** — pick-your-own, fall festivals, lavender farms.
-- 🎬 **Entertainment** — drive-ins, theaters, mini-golf.
-- ❓ **Other** — untagged or tags that don't match a known category.
+Places whose tags don't match any preset (or have no tags) fall into a final 📍 **Other** section.
 
-Cards within each section sort by status (backlog first, then visited), then by favorite, then by last-visited date.
+Cards keep the list's default order within a section (most recently updated first); there is no separate in-group sort. When every place shares a single tag category, the page shows a flat grid with no section headers.
 
 ### Visit-frequency dots
 
-Each visited card shows pip dots representing visit count, grouped in 5s. So 12 visits = `●●●●● ●●●●● ●●`. At a glance you can see which places get heavy rotation vs. one-off visits.
+Each visited card shows pip dots representing visit count, grouped in 5s. So 12 visits = `●●●●● ●●●●● ●●`. Pips are shown for up to 15 visits; past that the display collapses to a `×N` count. At a glance you can see which places get heavy rotation vs. one-off visits.
 
 ### Filters
 
 Filter chips at the top:
 
-- **Status** — All / Backlog / Visited.
+- **Status** — All / Want to Try / Been There.
 - **Favorites only** toggle.
-- **Tags** — multi-select chips for each tag in your library.
-- **Search** — free-text match on name + description + notes.
+- **Tags** — multi-select chips from the preset palette; a place must carry every selected tag to show.
+- **Search** — free-text match on place name.
 
 ### Side panel detail view
 
 Tap any card to slide out the detail panel with:
 
-- All the place's metadata.
+- All the place's metadata (including location fields when present).
 - **Edit** button for changes.
-- **Mark visited** action — opens a date/rating/notes form. Saving creates a `weekend_visits` row and increments visit count.
+- **Mark as Visited** action (labeled **Log Another Visit** once the place has already been visited).
 - **Favorite** toggle.
-- **Visit history list** — chronological list of every visit, who went, rating, notes.
 
 ---
 
 ## Marking a visit
 
-When you mark a place visited:
+Tapping **Mark as Visited** (or **Log Another Visit** on a place you've already been to) is a single tap — there's no per-visit date/rating/notes prompt. It immediately:
 
-1. Pick the visit date (defaults to today).
-2. Optionally: rating (1-5 stars), who visited (multi-select family members), notes.
-3. Save.
+- flips the status to `Been There` (if it was still `Want to Try`),
+- increments the visit count,
+- sets last-visited to today.
 
-The place's status flips to `visited` (if it was backlog), `visitCount` increments, `lastVisitedDate` updates. The visit row persists in `weekend_visits` so you can browse history.
-
-Subsequent visits don't change status (it stays `visited`) but do increment count.
-
----
-
-## Removing or editing a visit
-
-Open the place's side panel, scroll to the visit history list, tap any visit to edit or delete it. Deleting a visit decrements the count and recalculates `lastVisitedDate`. If the count drops to 0, the status flips back to `backlog`.
+Rating lives on the place itself and is set via **Edit**, not per visit. Subsequent visits don't change status — they just increment the count and update last-visited.
 
 ---
 
 ## Tags
 
-Tags are free-form — type any string. The page deduplicates tag chips across all places, so once you use a tag, it appears as a filter chip.
+Tags come from a fixed preset palette, selected as toggle chips in the Add/Edit form and in the filter row. There is no free-text tag entry. The full set:
 
-Common tag patterns:
+`outdoor`, `indoor`, `nature`, `city`, `hike`, `food`, `museum`, `farm`, `park`, `playground`, `market`, `sports`, `arts`, `family`, `seasonal`.
 
-- **Activity type** — outdoor, indoor, hike, food, museum, farm.
-- **Audience** — kid-friendly, adult-only, all-ages.
-- **Season** — fall, summer, spring, winter, seasonal.
-- **Logistics** — free, paid, walking-distance, drive-required.
-
-Tags are also used by the tag-category grouping — the page maps known tags to emoji categories. Unknown tags fall into the "Other" group.
+The same presets drive the tag grouping on the page: a place lands in the section of the first preset tag it carries; anything untagged (or with no preset match) goes to **Other**.
 
 ---
 
@@ -118,27 +96,25 @@ Tags are also used by the tag-category grouping — the page maps known tags to 
 
 ### "What should we do Saturday?"
 
-Filter to `status: backlog`, then by season tag (`fall`), then sort by tags you're in the mood for. Surface places you haven't been yet.
+Filter to `Want to Try`, then narrow by a tag or two you're in the mood for. Surface places you haven't been yet.
 
 ### "Where do we always have a good time?"
 
-Filter to `favorite: true`, sort by `visitCount` descending. Your regulars rise to the top.
+Turn on **Favorites only** — your regulars, and the ones with the fullest pip rows, rise to the top.
 
 ### "We're hosting cousins this weekend"
 
-Filter by tags `kid-friendly` + `outdoor`. Save the side panel detail of any place you're considering and screenshot to share with the visiting parents.
+Filter by tags like `family` + `outdoor`. Open the detail panel of any place you're considering and screenshot to share with the visiting parents.
 
 ### Family activity scrapbook
 
-Over years of marking visits with ratings and notes, the visit history becomes a record of what your family liked when. Useful when the kids ask "when was the last time we went to the lavender farm?"
+Marking visits builds a running count and last-visited date per place, so you can tell which spots are in heavy rotation and roughly when you last went.
 
 ---
 
 ## Privacy
 
-Weekend places are local to your Prism database. The geocoder (if you use it for adding coordinates) calls `/api/weekend/geocode` server-side, which proxies to Nominatim — Nominatim sees place-name search queries.
-
-No external service sees your visits, ratings, or notes.
+Weekend places are local to your Prism database. Nothing about your places, visits, or notes is sent to any external service.
 
 ---
 
@@ -146,8 +122,9 @@ No external service sees your visits, ratings, or notes.
 
 The current Weekend Ideas is Phase 1 (manual entry, list/filter UI). On the roadmap:
 
-- **POI search + map view** — search nearby attractions via Mapbox or Nominatim POI categories; add directly from search results.
-- **Map view** — visualize your weekend backlog as pins on a regional map.
+- **Per-visit history** — record each visit as its own dated entry (who went, rating, notes) rather than just a running count.
+- **Location editing + geocoder** — search a place by name or paste a maps link to attach coordinates from the app.
+- **POI search + map view** — search nearby attractions and add directly from results; visualize your backlog as pins on a regional map.
 - **Suggest mode** — given current weather + season + family preferences, surface a few suggestions for "today's outing."
 - **Share / collaborate** — share a backlog with another family.
 
@@ -159,14 +136,6 @@ The current Weekend Ideas is Phase 1 (manual entry, list/filter UI). On the road
 
 Was a bug in v1.5.0 — `WeekendView` was missing its `<PageWrapper>` wrapper, causing the side panel context to not initialize. Fixed in v1.5.1. If you still see this, hard-reload.
 
-### Visit count is wrong
+### Group "Other" has places I expected to be categorized
 
-Visit count is denormalized from `weekend_visits` rows for speed. If it drifts (rare — only on edge cases like manual DB edits), the simplest fix is to delete and re-add a visit, which triggers a recalculation.
-
-### Tag filter chip missing
-
-Tags are extracted from all places at page load. If you just added a tag and it's not appearing as a filter, refresh the page.
-
-### Group "Other" has stuff I expected to be categorized
-
-The tag-category mapping is a curated list (`outdoor`/`hike`/`nature` → Outdoor; `food` → Food; etc.). Unknown tags fall into Other. To fix, either rename your tag to a recognized one, or extend the mapping in `WeekendView.tsx`.
+Grouping is driven by the fixed tag presets. A place only lands in a named section if it carries one of the preset tags; anything else falls into **Other**. To move it, edit the place and add a recognized preset tag.

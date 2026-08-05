@@ -1,6 +1,6 @@
 # Bus Tracking
 
-School bus arrival predictions on the dashboard, with adaptive polling that ramps from 60s down to 10s as the bus approaches. Works by parsing the geofence-notification emails that **FirstView** (the bus-tracking service used by many North American school districts) sends to your Gmail inbox.
+School bus arrival predictions on the dashboard, with adaptive polling that ramps from 60s down to 5s as the bus approaches. Works by parsing the geofence-notification emails that **FirstView** (the bus-tracking service used by many North American school districts) sends to your Gmail inbox.
 
 If your district uses FirstView, you can have your dashboard show "Bus 4 minutes away" without installing the FirstView app or constantly checking your phone.
 
@@ -8,7 +8,7 @@ If your district uses FirstView, you can have your dashboard show "Bus 4 minutes
 
 ## How it works (at a glance)
 
-1. You connect Gmail in *Settings → Connected Accounts*.
+1. You connect Gmail in *Settings → Bus Tracking → Gmail Connection*.
 2. You configure one or more **bus routes** — each route is a student + AM/PM trip + ordered geofence checkpoints.
 3. Prism polls Gmail for new FirstView emails, parses them, and updates each route's state (next checkpoint, ETA, status).
 4. The dashboard widget shows the status in real time. As the bus gets closer, polling interval shrinks so the ETA stays accurate.
@@ -19,21 +19,21 @@ If your district uses FirstView, you can have your dashboard show "Bus 4 minutes
 
 ### 1. Connect Gmail
 
-*Settings → Connected Accounts → Gmail → Connect.*
+*Settings → Bus Tracking → Gmail Connection → Connect.*
 
 OAuth flow. Prism requests read-only access to your Gmail (specifically: `gmail.readonly` scope). It doesn't send mail, doesn't modify labels, doesn't delete anything. The only thing it does is list + read messages matching the bus filter.
 
 ### 2. Auto-discover routes
 
-*Settings → Bus Tracking → Discover routes.*
+*Settings → Bus Tracking → Discover from Emails.*
 
-This scans your existing Gmail for FirstView emails (past 30 days) and proposes a list of routes it found. Each proposal shows:
+This scans your existing Gmail for FirstView emails (up to the most recent ~100 FirstView emails in your mailbox) and **creates any new routes it finds** in one click — routes with a trip ID + direction you already have are skipped. Each created route captures:
 
 - The FirstView trip ID (e.g. "28-C").
 - The direction (AM / PM).
 - The student name parsed from the email.
 
-Confirm any routes you want to track. Confirmed routes go into your `bus_routes` table.
+Edit or delete any routes you don't want afterward. Created routes go into your `bus_routes` table.
 
 ### 3. Configure each route
 
@@ -41,11 +41,12 @@ For each route, set:
 
 - **Student name** — what to display ("Emma", not just "Trip 28-C").
 - **Family member** — optional link to a Prism user; lets the widget filter to one kid.
-- **Scheduled time** — expected arrival time at your stop, HH:mm format (e.g. `07:42`).
-- **Active days** — array of weekday numbers (1=Mon, 5=Fri). Default `[1,2,3,4,5]`.
+- **Home ETA** — expected arrival time at your stop, HH:mm format (e.g. `07:42`).
 - **Checkpoints** — ordered list of geofence labels you want to display. The emails reference checkpoint names from FirstView's geofencing setup; you list the ones you care about (e.g. "Bus barn", "Maple & 3rd", "Pine Grove").
-- **Stop name** — your stop. Final implicit checkpoint before the kid is at home.
+- **Your Stop** — a dropdown that picks which of your listed checkpoints is your stop; it becomes the ETA target for the arrival prediction.
 - **School name** — the school. Implicit final checkpoint for AM, starting checkpoint for PM.
+
+Active days default to Mon–Fri (`[1,2,3,4,5]`) and are not currently editable in the route dialog.
 
 ### 4. Optional: Gmail label filter
 
@@ -59,20 +60,20 @@ Defaults to scanning all mail. If you have a noisy inbox, the label filter speed
 
 The BusTracker widget shows one row per route. Each row has:
 
-- **Student name + direction icon** (sun for AM, moon for PM).
+- **Route label + Home ETA time.**
 - **Checkpoint progress dots** — one dot per checkpoint, filled in as the bus crosses each geofence.
 - **Status color**:
   - **Gray** — before activation (route is enabled but the bus hasn't started moving for today's trip).
   - **Amber** — bus is moving, on the way.
   - **Green** — bus arrived at your stop (AM: arrived at school; PM: arrived at your stop).
   - **Red** — overdue (past the scheduled time with no arrival).
-- **ETA text** — "4 min" / "Arrived at school" / "8h 12m" (for large values).
+- **ETA text** — "~4 min away" / "3–5 min away" / "Arrived at stop" / "Arrived at school" / "Overdue — no updates".
 
-When 6+ checkpoints exist, the progress dots wrap into a 2-row snake layout (top row L→R, bottom row R→L with a vertical connector on the right) so the widget doesn't sprawl horizontally.
+When 6+ checkpoints exist, the progress dots wrap into a 2-row layout that follows reading order — top row L→R, bottom row L→R, joined by a U-turn connector on the right — so the widget doesn't sprawl horizontally.
 
-### Screensaver widget
+### On the screensaver
 
-Bus tracker has a screensaver variant too — same data, simplified to a single status line per route. Useful when a kid's checking the wall display before walking out the door.
+The same Bus Tracker widget can be placed on the screensaver canvas (it's hidden by default). It renders the full train-map widget, not a separate simplified variant — handy when a kid's checking the wall display before walking out the door.
 
 ---
 
@@ -80,16 +81,17 @@ Bus tracker has a screensaver variant too — same data, simplified to a single 
 
 The pulse rate adapts based on how close the bus is:
 
-- **Default:** 60 seconds.
-- **Bus is moving but >5 minutes out:** 30 seconds.
-- **ETA <5 minutes:** 15 seconds.
-- **ETA <3 minutes:** 10 seconds.
-- **Pre-activation / non-school day:** 5 minutes (low priority).
+- **Default / no checkpoint yet:** 60 seconds.
+- **ETA >10 minutes out:** 30 seconds.
+- **ETA 5–10 minutes:** 15 seconds.
+- **ETA 3–5 minutes:** 10 seconds.
+- **ETA ≤3 minutes:** 5 seconds.
+
+Outside the route's ±60-minute display window, polling is disabled entirely (interval 0) — it isn't merely slowed. Note that a route that has already **arrived** keeps a slow 30-second poll until it leaves that ±60-minute window; it does not pause on arrival.
 
 Polling pauses entirely when:
 
-- It's not an active day for any route (weekend, holiday).
-- All active routes are in `arrived` status (today's trip is done).
+- It's not an active day for any route (weekend, holiday) — nothing is within the ±60-minute window.
 - The browser tab is hidden — paused via `useVisibilityPolling`. Resumes when the tab is foregrounded.
 
 The visibility pause is important — without it, an open dashboard tab would poll Gmail every 10 seconds indefinitely, which the Gmail API quota doesn't appreciate.
@@ -132,7 +134,7 @@ Each route walks through these states per trip:
 2. **In transit** (amber) — at least one email has arrived; bus is between checkpoints.
 3. **Approaching** (amber, fast polling) — within 3-5 minutes of predicted arrival.
 4. **Arrived** (green) — final email received. AM: at school. PM: at your stop.
-5. **Overdue** (red) — past the scheduled arrival time + ~10 minute grace, with no arrival email.
+5. **Overdue** (red) — past the scheduled arrival time + 30 minute grace, with no arrival email.
 
 The overdue state intentionally has a grace window — buses run a few minutes late routinely, and you don't want a false alarm every Tuesday.
 
@@ -140,9 +142,9 @@ The overdue state intentionally has a grace window — buses run a few minutes l
 
 ## Active days awareness
 
-Without active-days config, the widget would flag "overdue" every weekend morning (no bus, no email, so the predicted arrival never happens). With it configured (`[1,2,3,4,5]` = Mon-Fri), the widget shows neutral "off duty" status on weekends and any non-active day.
+Without any notion of active days, the widget would flag "overdue" every weekend morning (no bus, no email, so the predicted arrival never happens). Routes default to active Mon–Fri (`[1,2,3,4,5]`), so the widget shows neutral "off duty" status on weekends and any non-active day.
 
-You can also have routes with different active days — e.g. one trip only runs Tue/Thu after-school enrichment.
+Active days aren't currently editable from the route dialog, so routes that only run on certain days (e.g. Tue/Thu after-school enrichment) still use the Mon–Fri default for now.
 
 ---
 
@@ -152,7 +154,7 @@ Bus tracking is your data, on your instance. The only external service involved 
 
 - Gmail OAuth tokens are stored AES-256-GCM encrypted at rest.
 - Parsed email bodies are not stored verbatim; only the structured fields (checkpoint, event time, event type) plus the Gmail message ID for dedup.
-- Disconnect anytime — *Settings → Connected Accounts → Gmail → Disconnect*. Tokens are deleted; existing bus tracking data stays in your DB but stops updating.
+- Disconnect anytime — *Settings → Bus Tracking → Gmail Connection → Disconnect*. Tokens are deleted; existing bus tracking data stays in your DB but stops updating.
 
 ---
 
@@ -184,13 +186,13 @@ Most common cause: no FirstView emails in your inbox yet for today. The widget a
 
 If yes but Prism doesn't, check:
 
-1. *Settings → Connected Accounts → Gmail* — still connected?
+1. *Settings → Bus Tracking → Gmail Connection* — still connected?
 2. *Settings → Bus Tracking → Gmail label* — is the label filter correct? (If your filter routes to a `bus` label, the default "scan all mail" might not find them either — but the label-specific scan would.)
 3. Force a sync: *Settings → Bus Tracking → Sync now.*
 
 ### Route auto-discovery missed a trip
 
-Discovery scans the past 30 days. If your district just added a new trip (or you forwarded existing emails to Gmail recently), the discovery might miss them. Manually add the route in *Settings → Bus Tracking → Add route* using the trip ID + direction.
+Discovery scans up to the most recent ~100 FirstView emails in your mailbox. If your district just added a new trip (or you forwarded existing emails to Gmail recently), the discovery might miss them. Manually add the route in *Settings → Bus Tracking → Add Route* using the trip ID + direction.
 
 ### Checkpoint progress dots don't fill in
 
@@ -198,7 +200,7 @@ The checkpoint names must match (fuzzily) what FirstView sends. If a checkpoint 
 
 ### "Overdue" status on weekends
 
-`activeDays` not configured. Set to `[1,2,3,4,5]` for Mon-Fri (or just the days the bus actually runs).
+Routes default to active Mon–Fri (`[1,2,3,4,5]`), so weekends should already show as off-duty. Active days aren't editable from the route dialog today; if a route's schedule differs from the Mon–Fri default, that's a current limitation rather than a setting to change.
 
 ### ETA shows "925m" or other huge value
 

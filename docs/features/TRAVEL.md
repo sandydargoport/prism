@@ -11,7 +11,7 @@ Interactive 3D globe for tracking family travel. Drop pins for places you've vis
 The Travel Map has two object types:
 
 - **Pin** — a single place. Anchored by lat/lng coordinates, has a name, status (visited / want-to-go), bucket-list flag, dates, notes, tags.
-- **Trip** — a multi-stop journey composed of pins. Has its own name + style (route / loop / hub) + dates + member list. Each stop in a trip is itself a pin (with `pinType: 'stop'` or `'national_park'`).
+- **Trip** — a multi-stop journey composed of pins. Has its own name + style (route / loop / hub) + dates. Each stop in a trip is itself a pin (with `pinType: 'stop'` or `'national_park'`).
 
 Both render on the globe simultaneously. Standalone pins are independent; trip stops are children of a trip object.
 
@@ -48,8 +48,9 @@ Filter pills at the top of the Places tab:
 Plus:
 
 - **Group by** — Year / Country / None. Country grouping shows the country flag emoji as the section header.
-- **Search** — fuzzy match on pin name + place name + tags.
-- **Sort** — recently added / alphabetical / by visit date.
+- **Search** — case-insensitive substring match on place/trip name.
+
+The list is ordered automatically (there's no sort control): visited places sort newest-first by visit date; everything else falls back to alphabetical by name.
 
 Selecting a place jumps to the globe view and opens its detail panel.
 
@@ -124,26 +125,23 @@ When a trip is selected:
 
 ## GPS photo linking
 
-If your OneDrive photo sync is configured, **geotagged photos automatically match to nearby travel pins**. The pin's detail panel shows a photo strip of matching shots within a configurable radius (default 50 km per pin via `photoRadiusKm`).
+If your OneDrive photo sync is configured, **geotagged photos automatically match to nearby travel pins**. The pin's detail panel shows a photo strip of matching shots within a fixed 50 km radius.
 
 ### How matching works
 
+Matching is computed **live** each time you open a pin's detail panel — there are no stored links and no background linking job.
+
 1. When a photo syncs from OneDrive, its EXIF GPS coordinates (if present) are stored on the `photos` row.
-2. The Travel Map's photo-linking job calculates the Haversine distance from each pin to each photo with GPS.
-3. Photos within the pin's `photoRadiusKm` radius are linked via the `travel_pin_photos` table.
-4. The pin's detail panel renders a horizontal photo strip of all linked shots. Tap any photo for a lightbox.
+2. When the pin panel opens, the Travel Map calculates the Haversine distance from the pin (and all its child stops / national parks) to every photo that has GPS, using a bounding-box SQL prefilter followed by a precise radius check.
+3. Photos within the 50 km radius are returned on the fly and rendered as a horizontal photo strip. Tap any photo for a lightbox.
 
 ### GPS backfill
 
-For photos that synced before GPS linking was set up, run *Settings → Photos → Backfill GPS*. This reads EXIF GPS data from already-synced files (no re-download needed) and populates the `photos.latitude` / `photos.longitude` columns. The linking job then re-runs to attach those photos to nearby pins.
+For photos that synced before GPS was captured, run *Settings → Photos → Backfill GPS*. This reads EXIF GPS data from already-synced files (no re-download needed) and populates the `photos.latitude` / `photos.longitude` columns. Once a photo has coordinates, it shows up automatically the next time you open a nearby pin.
 
-### Per-pin radius
+### Match radius
 
-If 50 km is too wide (you've got a "Seattle" pin but want photos to match only at the specific neighborhood), edit the pin's `photoRadiusKm`. Smaller radii are stricter. Set to 0 to disable auto-linking for that pin.
-
-### Manual linking
-
-You can also manually link a photo to a pin (e.g. a non-geotagged photo). The pin detail panel has an "Add photo" action — pick from your synced library. Manually linked photos persist regardless of GPS proximity.
+The 50 km match radius (`photoRadiusKm`) is a fixed default set on the API/DB side — there is no UI to change it per pin today, and the value isn't editable from the pin panel.
 
 ---
 
@@ -153,6 +151,7 @@ You can also manually link a photo to a pin (e.g. a non-geotagged photo). The pi
 - **Scroll wheel** / **pinch** to zoom.
 - **Sun / moon button** in the corner toggles a dark-map filter. The filter applies a CSS `brightness · saturate · contrast · hue-rotate` chain only to the tile canvas, not to markers — tiles darken, markers stay at full brightness. No tile reload required.
 - **Globe vs. flat projection** — default is globe (3D); MapLibre's `projection: globe` config. At certain zoom levels MapLibre may smoothly transition to mercator-flat for closer views.
+- **Sub-locations toggle** (top-left) — when on, every pin's child stops and national parks are shown on the globe at once; when off, children appear only for the currently selected pin.
 
 ### Initial zoom
 
@@ -231,13 +230,13 @@ Three possible causes:
 
 1. Photos don't have GPS EXIF data. Check the photo's metadata; not all phones embed GPS, and iOS strips it on share unless "preserve location" is enabled.
 2. Photos haven't been GPS-backfilled. Run *Settings → Photos → Backfill GPS*.
-3. Pin's `photoRadiusKm` is too small (or 0). Edit and increase.
+3. The place is more than 50 km from where the photos were taken. Matching uses a fixed 50 km radius, so distant shots won't attach.
 
 ### Globe rotation feels jerky on a Pi
 
 MapLibre's globe projection is GPU-intensive. On low-power hardware:
 
-- Enable Performance Mode (*Settings → Display*).
+- Enable Performance Mode (*Settings → Appearance*).
 - Disable other widgets to leave more GPU headroom.
 - Or fall back to the (less impressive but lighter) flat-mercator view by setting `projection: 'mercator'` in the globe init.
 

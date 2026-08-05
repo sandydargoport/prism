@@ -10,7 +10,7 @@ If you have an Apple household and want Prism to surface family data living in i
 
 | iCloud surface | Supported? | How / why not |
 |---|---|---|
-| **Calendars** | ✅ Yes, two-way | CalDAV (`caldav.icloud.com`). See [Calendar setup](CALENDAR.md#apple-icloud-caldav-private-calendars-reminders-alpha). |
+| **Calendars** | ✅ Yes | CalDAV (`caldav.icloud.com`) — read + upstream delete of single events; full create/edit write-back is not yet wired. See [Calendar setup](CALENDAR.md#apple-icloud-caldav-private-calendars-reminders-alpha). |
 | **Contacts** (incl. birthdays) | ✅ Yes, read-only | CardDAV (`contacts.icloud.com`). Used by the planned [family contacts page](https://github.com/sandydargoport/prism/issues/75). |
 | **Reminders / Tasks** | ❌ No | Apple migrated Reminders off CalDAV-VTODO years ago; iCloud Reminders are CloudKit-only with no public web API. |
 | **Notes** | ❌ No | iCloud-synced Notes have always been CloudKit-only. No IMAP-style or web API. |
@@ -43,7 +43,7 @@ This means there's no "more research" path that turns a ❌ into a ✅. If you s
 
 ## Practical advice for Apple households
 
-- **Calendars + birthdays:** wire them up via CalDAV / CardDAV in *Settings → Connected Accounts*. These genuinely work and stay working.
+- **Calendars + birthdays:** wire them up via CalDAV / CardDAV in the *Apple/CalDAV* provider card under *Settings → Integrations*. These genuinely work and stay working.
 - **Photos:** use OneDrive (or another supported source) as the canonical backup target. iOS's OneDrive app + a one-tap iOS Shortcut covers the "share to Prism" workflow without iCloud Shared Albums. See [Photos setup](PHOTOS.md#getting-photos-into-the-folder-from-your-iphone).
 - **Reminders / Notes / Find My:** mirror them somewhere else first (Microsoft To Do supports two-way sync with Prism Tasks; Home Assistant for presence). Prism integrates the mirror, not iCloud directly.
 
