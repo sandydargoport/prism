@@ -45,11 +45,14 @@ export function GiftIdeasView({ selectedMemberIds }: GiftIdeasViewProps = {}) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const otherMembers = useMemo(() => {
+    // Gift ideas are tracked for OTHER people — never render a self-column
+    // (the API already excludes the active user, so a self-column is blank).
+    const withoutSelf = members.filter((m) => m.id !== activeUser?.id);
     const hasFilter = selectedMemberIds && selectedMemberIds.length > 0;
-    if (!hasFilter) return members;
-    return members.filter((m) => selectedMemberIds!.includes(m.id));
+    if (!hasFilter) return withoutSelf;
+    return withoutSelf.filter((m) => selectedMemberIds!.includes(m.id));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [members, selectedMemberIds?.join(',')]);
+  }, [members, selectedMemberIds?.join(','), activeUser?.id]);
 
   // Group ideas by forUserId
   const ideasByUser = useMemo(() => {
