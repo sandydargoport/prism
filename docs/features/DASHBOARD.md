@@ -66,23 +66,31 @@ Most templates tile the canvas exactly; **Ambient** is the intentional exception
 
 ## Community gallery
 
-Click **Community** in the editor toolbar to browse dashboard layouts shared by other Prism users. The gallery loads a community index and shows each layout as a card with a live thumbnail preview, its name, description, author, widget count, and the screen sizes it was designed for.
+Click **Community** in the editor toolbar to browse dashboard layouts shared by other Prism users. The gallery loads a community index and shows each layout as a card with a live thumbnail preview, its name, description, author, widget count, and orientation.
 
 - **Search** — type in the search box and press **Enter** to match layouts by name/description; the field has a clear (×) button.
-- **Filter by screen size** — tap a size chip (1920×1080, 2560×1440, 3840×2160, 2560×1600, 2048×1536, 1366×768) to show only layouts tagged for that display; tap again to clear it.
-- **Preview** — every card renders a miniature board floating on a neutral "photo field", auto-oriented so portrait boards don't overflow.
+- **Filter by orientation** — tap **▭ Landscape** or **▯ Portrait** to show only matching layouts; tap again to clear. The filter defaults to the orientation of the dashboard you're editing. (Layouts stretch to fill whatever screen they're shown on, so the exact resolution doesn't matter — orientation is what counts, since a portrait layout letterboxes on a landscape screen and vice-versa.)
+- **Preview** — every card renders a miniature board floating on a neutral "photo field", auto-oriented so portrait boards don't overflow, with an orientation badge.
 - **Apply layout** — click it to drop that design onto your dashboard.
-- **Clear filters** — shown when a search/size filter returns nothing.
+- **Clear filters** — shown when a search/orientation filter returns nothing.
 
 The gallery has a separate **dashboard** and **screensaver** mode, so screensaver layouts are browsed the same way.
 
-### Share, Export & Import
+### Sharing your layout with the community
 
-From the **More** menu in the editor:
+Made a board worth sharing? From the **More** menu, click **Share**:
 
-- **Share** — submit your own layout to the community gallery. It opens a pre-filled GitHub submission that works from any Prism instance (including hosted ones), so you don't need a local checkout to contribute.
-- **Export** — copy your current layout as JSON to hand to someone directly.
-- **Import** — paste a layout JSON to load someone else's design.
+1. Fill in a **name, description, author**, and pick the **orientation** (plus optional tags).
+2. Click **Submit** — Prism opens a pre-filled **GitHub issue** (the *Community Layout Submission* form) in your browser, with your layout's JSON already filled in. This works from **any** Prism instance, including hosted ones like PikaPods — no local checkout or `git` needed.
+3. **Sign in to GitHub** (a free account is all it takes), tick the license checkbox, and submit the issue.
+4. A bot **automatically validates** the layout and, if it passes, **opens a pull request** adding it to the gallery. A maintainer gives it a quick review and merges — after which it appears in every instance's Community gallery.
+
+The GitHub sign-in is intentional: the small bit of friction keeps the gallery free of junk submissions and gives maintainers a moment to review before anything is published to everyone.
+
+### Export & Import
+
+- **Export** (More → Export) — copy your current layout as JSON to hand to someone directly.
+- **Import** (More → Import) — paste a layout JSON to load someone else's design.
 
 ---
 

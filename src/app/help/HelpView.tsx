@@ -228,8 +228,8 @@ function DashboardHelp() {
 
       <H2>Import, Export &amp; Community Layouts</H2>
       <Ul>
-        <Li><strong>Community gallery</strong>: Click <strong>Community</strong> in the editor toolbar to browse layouts shared by other Prism users. Search by name and filter by screen size, preview each one as a thumbnail, then <strong>Apply layout</strong> to drop it onto a new dashboard.</Li>
-        <Li><strong>Share</strong>: Submit your own layout to the community gallery (More &gt; Share) — it opens a pre-filled GitHub submission that works from any Prism instance</Li>
+        <Li><strong>Community gallery</strong>: Click <strong>Community</strong> in the editor toolbar to browse layouts shared by other Prism users. Search by name and filter by <strong>orientation</strong> (Landscape/Portrait, pre-set to the dashboard you&apos;re editing), preview each as a thumbnail, then <strong>Apply layout</strong> to drop it onto a new dashboard.</Li>
+        <Li><strong>Share</strong>: Submit your own layout (More &gt; Share). Fill in the details and Prism opens a pre-filled <strong>GitHub issue form</strong> from any instance — sign in with a free GitHub account and submit; a bot validates it and opens a pull request, and a maintainer merges it into the gallery.</Li>
         <Li><strong>Export</strong>: Copy your current layout as JSON to share it directly (More &gt; Export)</Li>
         <Li><strong>Import</strong>: Paste a layout JSON to load someone else&apos;s design (More &gt; Import)</Li>
         <Li><strong>Reset</strong>: Revert unsaved edits back to the last saved layout (More &gt; Reset)</Li>
