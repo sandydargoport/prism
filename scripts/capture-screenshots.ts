@@ -253,7 +253,7 @@ const SCREENSHOTS: CaptureSpec[] = [
     name: 'photos',
     url: '/photos',
     description: 'Photo gallery',
-    settleMs: 1500,
+    settleMs: 3500,
   },
 
   // ─── Travel Map ────────────────────────────────────────────
@@ -509,6 +509,24 @@ async function captureOnce(browser: Browser, spec: CaptureSpec): Promise<void> {
     // extra settle for animations + render finalization. Pass through the
     // spec's settleMs override; otherwise the function default applies.
     await waitForContentReady(page, spec.settleMs);
+
+    // Wait for any <img> (photo thumbnails, recipe images, avatars) to finish
+    // loading. waitForContentReady only tracks spinners/skeletons, not images,
+    // so without this the Photos gallery can capture blank thumbnails.
+    await page.evaluate(async () => {
+      const imgs = Array.from(document.images);
+      await Promise.all(
+        imgs.map((img) =>
+          img.complete && img.naturalWidth > 0
+            ? Promise.resolve()
+            : new Promise<void>((resolve) => {
+                img.addEventListener('load', () => resolve(), { once: true });
+                img.addEventListener('error', () => resolve(), { once: true });
+                setTimeout(() => resolve(), 8000);
+              }),
+        ),
+      );
+    });
 
     const outPath = path.join(OUT_DIR, `${spec.name}.png`);
     await page.screenshot({ path: outPath, fullPage: false });
