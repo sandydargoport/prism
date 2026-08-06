@@ -306,18 +306,6 @@ function DayCell({
           compact ? 'px-1 pb-1' : 'px-1.5 pb-1.5',
         )}
       >
-        {cards && bucket && bucket.meals.length > 0 && (
-          <DroppableOverlayCell
-            date={date}
-            bucket={bucket}
-            size={cardSize}
-            layout="column"
-            enableDnd={enableDnd}
-            include={{ meals: true, chores: false, tasks: false }}
-            mealColor={mealColor}
-            onItemClick={onItemClick}
-          />
-        )}
         {cards
           ? visibleEvents.map((event) => {
               // Only locally-managed events are safe to drag; external (Google,
@@ -362,6 +350,13 @@ function DayCell({
             onEventClick={onEventClick}
           />
         )}
+        {/* Skylight-style: events lead; a thin divider separates the day's
+            planning group (chores, tasks, then meals pinned at the very bottom). */}
+        {cards && bucket
+          && (bucket.meals.length + bucket.chores.length + bucket.tasks.length) > 0
+          && (visibleEvents.length > 0 || hiddenEvents.length > 0) && (
+          <div className="my-0.5 shrink-0 border-t border-border/40" aria-hidden />
+        )}
         {cards && bucket && (bucket.chores.length > 0 || bucket.tasks.length > 0) && (
           <DroppableOverlayCell
             date={date}
@@ -370,6 +365,18 @@ function DayCell({
             layout="column"
             enableDnd={enableDnd}
             include={{ meals: false, chores: true, tasks: true }}
+            onItemClick={onItemClick}
+          />
+        )}
+        {cards && bucket && bucket.meals.length > 0 && (
+          <DroppableOverlayCell
+            date={date}
+            bucket={bucket}
+            size={cardSize}
+            layout="column"
+            enableDnd={enableDnd}
+            include={{ meals: true, chores: false, tasks: false }}
+            mealColor={mealColor}
             onItemClick={onItemClick}
           />
         )}
