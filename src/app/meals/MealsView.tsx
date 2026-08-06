@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useState } from 'react';
 import Link from 'next/link';
+import { Emoji } from '@/components/ui/Emoji';
 import { format, addDays, isBefore, startOfDay } from 'date-fns';
 import {
   UtensilsCrossed,
@@ -151,7 +152,7 @@ export function MealsView() {
                 }}
                 className="text-xs h-7 shrink-0"
               >
-                {getMealTypeEmoji(type)} {type.charAt(0).toUpperCase() + type.slice(1)}
+                <Emoji e={getMealTypeEmoji(type)} /> {type.charAt(0).toUpperCase() + type.slice(1)}
               </Button>
             );
           })}
@@ -309,7 +310,7 @@ function MealCard({ meal, onMarkCooked, onUnmarkCooked, onEdit, onDelete, onDrop
         touchDragging && 'opacity-50 scale-95'
       )}
     >
-      <span className="text-lg shrink-0">{getMealTypeEmoji(meal.mealType)}</span>
+      <span className="text-lg shrink-0"><Emoji e={getMealTypeEmoji(meal.mealType)} /></span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className={cn('text-sm font-medium', isCooked && 'line-through text-muted-foreground')}>{meal.name}</span>
@@ -503,7 +504,7 @@ export function MealModal({ weekOf, meal, defaultDay, dayOptions, recipes, onClo
             <div className="flex gap-2 mt-1 flex-wrap">
               {(['breakfast', 'lunch', 'dinner', 'snack'] as const).map((type) => (
                 <Button key={type} type="button" variant={mealType === type ? 'default' : 'outline'} size="sm" onClick={() => setMealType(type)} className="capitalize">
-                  {getMealTypeEmoji(type)} {type}
+                  <Emoji e={getMealTypeEmoji(type)} /> {type}
                 </Button>
               ))}
             </div>
