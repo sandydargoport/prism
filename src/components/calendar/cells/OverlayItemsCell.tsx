@@ -76,21 +76,6 @@ export function OverlayItemsCell({
 
   return (
     <div className={cn('flex flex-col gap-1', className)}>
-      {meals.map((meal) => (
-        <WeekItemCard
-          key={`meal-${meal.id}`}
-          variant="meal"
-          size={size}
-          layout={layout}
-          stripeColor={mealColor ?? mealStripeColor(meal)}
-          title={meal.name}
-          timeLabel={meal.mealType}
-          subtitle={meal.cookedBy?.name ? `Cooked by ${meal.cookedBy.name}` : undefined}
-          muted={Boolean(meal.cookedAt)}
-          dragId={enableDrag ? `meal:${meal.id}` : undefined}
-          onClick={onItemClick ? () => onItemClick({ kind: 'meal', id: meal.id }) : undefined}
-        />
-      ))}
       {chores.map((chore) => (
         <WeekItemCard
           key={`chore-${chore.id}`}
@@ -117,6 +102,22 @@ export function OverlayItemsCell({
           muted={task.completed}
           dragId={enableDrag ? `task:${task.id}` : undefined}
           onClick={onItemClick ? () => onItemClick({ kind: 'task', id: task.id }) : undefined}
+        />
+      ))}
+      {/* Meals pinned to the bottom (Skylight-style), consistent with DayColumn. */}
+      {meals.map((meal) => (
+        <WeekItemCard
+          key={`meal-${meal.id}`}
+          variant="meal"
+          size={size}
+          layout={layout}
+          stripeColor={mealColor ?? mealStripeColor(meal)}
+          title={meal.name}
+          timeLabel={meal.mealType}
+          subtitle={meal.cookedBy?.name ? `Cooked by ${meal.cookedBy.name}` : undefined}
+          muted={Boolean(meal.cookedAt)}
+          dragId={enableDrag ? `meal:${meal.id}` : undefined}
+          onClick={onItemClick ? () => onItemClick({ kind: 'meal', id: meal.id }) : undefined}
         />
       ))}
     </div>

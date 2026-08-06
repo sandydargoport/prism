@@ -205,22 +205,6 @@ export function DayColumn({
         )}
       </div>
 
-      {showMeals &&
-        bucket.meals.map((meal) => (
-          <WeekItemCard
-            key={`meal-${meal.id}`}
-            variant="meal"
-            size={profile.itemSize}
-            layout={itemLayout}
-            stripeColor={mealStripeColor(meal)}
-            title={meal.name}
-            timeLabel={meal.mealType}
-            subtitle={meal.cookedBy?.name ? `Cooked by ${meal.cookedBy.name}` : undefined}
-            muted={Boolean(meal.cookedAt)}
-            dragId={disableDrop ? undefined : `meal:${meal.id}`}
-          />
-        ))}
-
       {showAllDay &&
         bucket.allDayEvents.map((event) => (
           <WeekItemCard
@@ -249,6 +233,13 @@ export function DayColumn({
           />
         ))}
 
+      {/* Skylight-style: events lead; the day's meals/chores/tasks form a
+          delineated planning group below, separated by a thin divider, with
+          meals pinned to the very bottom of the cell. */}
+      {(showChores || showTasks || showMeals) && (showAllDay || showTimed) && (
+        <div className="my-0.5 shrink-0 border-t border-border/40" aria-hidden />
+      )}
+
       {showChores &&
         bucket.chores.map((chore) => (
           <WeekItemCard
@@ -276,6 +267,22 @@ export function DayColumn({
             subtitle={task.assignedTo?.name}
             muted={task.completed}
             dragId={disableDrop ? undefined : `task:${task.id}`}
+          />
+        ))}
+
+      {showMeals &&
+        bucket.meals.map((meal) => (
+          <WeekItemCard
+            key={`meal-${meal.id}`}
+            variant="meal"
+            size={profile.itemSize}
+            layout={itemLayout}
+            stripeColor={mealStripeColor(meal)}
+            title={meal.name}
+            timeLabel={meal.mealType}
+            subtitle={meal.cookedBy?.name ? `Cooked by ${meal.cookedBy.name}` : undefined}
+            muted={Boolean(meal.cookedAt)}
+            dragId={disableDrop ? undefined : `meal:${meal.id}`}
           />
         ))}
 
