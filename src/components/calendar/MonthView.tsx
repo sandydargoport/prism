@@ -335,7 +335,7 @@ function DayCardsCell({
           onClick={(e) => e.stopPropagation()}
           className={cn(
             'mt-auto',
-            overlayItemCount > 0 && 'rounded-md bg-black/[0.04] px-1 py-0.5 dark:bg-white/[0.05]',
+            overlayItemCount > 0 && 'rounded-md bg-muted/60 px-1.5 py-1 ring-1 ring-border/50',
           )}
         >
           <DroppableOverlayCell

@@ -354,7 +354,7 @@ function DayCell({
             then meals) floats to the bottom of the cell (mt-auto) inside a faint
             theme-aware band that delineates it from the events. */}
         {cards && bucket && (bucket.meals.length + bucket.chores.length + bucket.tasks.length) > 0 && (
-          <div className="mt-auto flex flex-col gap-1 rounded-md bg-black/[0.04] p-1 dark:bg-white/[0.05]">
+          <div className="mt-auto flex flex-col gap-1 rounded-md bg-muted/60 p-1.5 ring-1 ring-border/50">
             {(bucket.chores.length > 0 || bucket.tasks.length > 0) && (
               <DroppableOverlayCell
                 date={date}
