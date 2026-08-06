@@ -260,52 +260,27 @@ async function seed() {
   // back to ~5 weeks ahead. Colors follow each source (family/Jordan pink,
   // Alex blue, Emma green, Sophie amber).
   await db.insert(schema.events).values([
-    // ── Past two weeks (historic fill) ──────────────────────────────────────
-    { calendarSourceId: calAlex.id,   title: 'Quarterly Planning',       location: 'Office',            startTime: atTime(daysAgo(13), 9, 0),  endTime: atTime(daysAgo(13), 11, 0), color: '#3B82F6', createdBy: alex.id },
-    { calendarSourceId: calFamily.id, title: 'School Closed',            allDay: true, startTime: atTime(daysAgo(12), 0, 0), endTime: atTime(daysAgo(11), 0, 0), color: '#EC4899', createdBy: jordan.id },
+    // ── Past two weeks ──────────────────────────────────────────────────────
     { calendarSourceId: calEmma.id,   title: 'Soccer Game',              location: 'Community Park',    startTime: atTime(daysAgo(11), 10, 0), endTime: atTime(daysAgo(11), 11, 30), color: '#10B981', createdBy: jordan.id },
-    { calendarSourceId: calSophie.id, title: 'Swim Lesson',              location: 'Rec Center',        startTime: atTime(daysAgo(10), 16, 0), endTime: atTime(daysAgo(10), 16, 45), color: '#F59E0B', createdBy: jordan.id },
-    { calendarSourceId: calJordan.id, title: 'Yoga Class',               location: 'Sunrise Studio',    startTime: atTime(daysAgo(9), 7, 30),  endTime: atTime(daysAgo(9), 8, 30),  color: '#EC4899', createdBy: jordan.id },
-    { calendarSourceId: calFamily.id, title: 'Farmers Market',           location: 'Town Square',       startTime: atTime(daysAgo(8), 9, 0),   endTime: atTime(daysAgo(8), 11, 0),  color: '#EC4899', createdBy: alex.id },
     { calendarSourceId: calAlex.id,   title: 'Dentist',                  location: "Dr. Smith's Office", startTime: atTime(daysAgo(6), 8, 0),  endTime: atTime(daysAgo(6), 8, 45),  color: '#3B82F6', createdBy: alex.id },
-    { calendarSourceId: calEmma.id,   title: 'Library Reading Club',     location: 'Public Library',    startTime: atTime(daysAgo(5), 15, 30), endTime: atTime(daysAgo(5), 16, 30), color: '#10B981', createdBy: jordan.id },
-    { calendarSourceId: calSophie.id, title: 'Playdate with Mia',        startTime: atTime(daysAgo(4), 15, 0),  endTime: atTime(daysAgo(4), 17, 0),  color: '#F59E0B', createdBy: jordan.id },
     { calendarSourceId: calFamily.id, title: "Dinner at Grandma Helen's", startTime: atTime(daysAgo(3), 17, 30), endTime: atTime(daysAgo(3), 20, 0), color: '#EC4899', createdBy: jordan.id },
-    { calendarSourceId: calJordan.id, title: 'Volunteer at Food Bank',   location: 'Community Center',  startTime: atTime(daysAgo(2), 9, 0),   endTime: atTime(daysAgo(2), 12, 0),  color: '#EC4899', createdBy: jordan.id },
-    { calendarSourceId: calAlex.id,   title: 'Haircut',                  startTime: atTime(daysAgo(1), 12, 0),  endTime: atTime(daysAgo(1), 12, 30), color: '#3B82F6', createdBy: alex.id },
-    // ── This week and next (near-term busy) ─────────────────────────────────
+    // ── This week and next ──────────────────────────────────────────────────
     { calendarSourceId: calSophie.id, title: 'Piano Lesson',             startTime: atTime(daysFromNow(2), 16, 0),  endTime: atTime(daysFromNow(2), 16, 45), color: '#F59E0B', createdBy: jordan.id },
-    { calendarSourceId: calAlex.id,   title: 'Client Call',              startTime: atTime(daysFromNow(2), 14, 0),  endTime: atTime(daysFromNow(2), 15, 0),  color: '#3B82F6', createdBy: alex.id },
     { calendarSourceId: calEmma.id,   title: 'Art Class',                location: 'Community Center',  startTime: atTime(daysFromNow(3), 16, 0),  endTime: atTime(daysFromNow(3), 17, 0),  color: '#10B981', createdBy: jordan.id },
-    { calendarSourceId: calJordan.id, title: 'Doctor Checkup',           startTime: atTime(daysFromNow(4), 10, 0),  endTime: atTime(daysFromNow(4), 11, 0),  color: '#EC4899', createdBy: jordan.id },
     { calendarSourceId: calFamily.id, title: 'No School: Teacher Workday', allDay: true, startTime: atTime(daysFromNow(4), 0, 0), endTime: atTime(daysFromNow(5), 0, 0), color: '#EC4899', createdBy: jordan.id },
     { calendarSourceId: calFamily.id, title: 'Neighborhood BBQ',         startTime: atTime(daysFromNow(6), 12, 0),  endTime: atTime(daysFromNow(6), 15, 0),  color: '#EC4899', createdBy: alex.id },
-    { calendarSourceId: calEmma.id,   title: "Sleepover at Mia's",       allDay: true, startTime: atTime(daysFromNow(6), 0, 0), endTime: atTime(daysFromNow(7), 0, 0), color: '#10B981', createdBy: jordan.id },
     { calendarSourceId: calSophie.id, title: 'Birthday Party for Lucas', startTime: atTime(daysFromNow(7), 14, 0),  endTime: atTime(daysFromNow(7), 16, 0),  color: '#F59E0B', createdBy: jordan.id },
     // ── Two to three weeks out ──────────────────────────────────────────────
     { calendarSourceId: calAlex.id,   title: 'Work Conference',          location: 'Chicago',           allDay: true, startTime: atTime(daysFromNow(9), 0, 0), endTime: atTime(daysFromNow(12), 0, 0), color: '#3B82F6', createdBy: alex.id },
     { calendarSourceId: calEmma.id,   title: 'Field Trip: Science Museum', allDay: true, startTime: atTime(daysFromNow(11), 0, 0), endTime: atTime(daysFromNow(12), 0, 0), color: '#10B981', createdBy: jordan.id },
-    { calendarSourceId: calSophie.id, title: 'Dentist',                  startTime: atTime(daysFromNow(12), 9, 0),  endTime: atTime(daysFromNow(12), 9, 45), color: '#F59E0B', createdBy: jordan.id },
-    { calendarSourceId: calJordan.id, title: 'Girls Night Out',          startTime: atTime(daysFromNow(12), 19, 0), endTime: atTime(daysFromNow(12), 22, 0), color: '#EC4899', createdBy: jordan.id },
     { calendarSourceId: calFamily.id, title: 'Family Movie Night',       startTime: atTime(daysFromNow(13), 19, 0), endTime: atTime(daysFromNow(13), 21, 0), color: '#EC4899', createdBy: alex.id },
-    // ── Spring break and a weekend trip ─────────────────────────────────────
+    // ── A few weeks out ─────────────────────────────────────────────────────
     { calendarSourceId: calFamily.id, title: 'Beach Trip',               location: 'Coastline',         allDay: true, startTime: atTime(daysFromNow(16), 0, 0), endTime: atTime(daysFromNow(19), 0, 0), color: '#EC4899', createdBy: alex.id },
-    { calendarSourceId: calEmma.id,   title: 'Summer Camp Registration Opens', startTime: atTime(daysFromNow(18), 10, 0), endTime: atTime(daysFromNow(18), 10, 30), color: '#10B981', createdBy: jordan.id },
-    { calendarSourceId: calAlex.id,   title: 'Back to Office',           startTime: atTime(daysFromNow(20), 9, 0),  endTime: atTime(daysFromNow(20), 17, 0), color: '#3B82F6', createdBy: alex.id },
-    // ── Four to five weeks out ──────────────────────────────────────────────
-    { calendarSourceId: calSophie.id, title: 'Soccer Tryouts',           location: 'Community Park',    startTime: atTime(daysFromNow(22), 16, 0), endTime: atTime(daysFromNow(22), 17, 30), color: '#F59E0B', createdBy: jordan.id },
-    { calendarSourceId: calJordan.id, title: 'Bake Sale (parent volunteer)', location: 'Maple Elementary', startTime: atTime(daysFromNow(23), 8, 0), endTime: atTime(daysFromNow(23), 10, 0), color: '#EC4899', createdBy: jordan.id },
-    { calendarSourceId: calAlex.id,   title: 'Car Service',              location: 'Auto Shop',         startTime: atTime(daysFromNow(24), 8, 0),  endTime: atTime(daysFromNow(24), 9, 0),  color: '#3B82F6', createdBy: alex.id },
-    { calendarSourceId: calFamily.id, title: "Grandpa Joe's Birthday Dinner", startTime: atTime(daysFromNow(25), 18, 0), endTime: atTime(daysFromNow(25), 20, 0), color: '#EC4899', createdBy: jordan.id },
     { calendarSourceId: calEmma.id,   title: 'Piano Recital',            location: 'School Auditorium', startTime: atTime(daysFromNow(26), 18, 0), endTime: atTime(daysFromNow(26), 19, 30), color: '#10B981', createdBy: jordan.id },
-    { calendarSourceId: calFamily.id, title: 'Community Fun Run',        allDay: true, startTime: atTime(daysFromNow(27), 0, 0), endTime: atTime(daysFromNow(28), 0, 0), color: '#EC4899', createdBy: alex.id },
-    { calendarSourceId: calSophie.id, title: 'Field Day',                location: 'Maple Elementary',  allDay: true, startTime: atTime(daysFromNow(30), 0, 0), endTime: atTime(daysFromNow(31), 0, 0), color: '#F59E0B', createdBy: jordan.id },
-    { calendarSourceId: calAlex.id,   title: 'Team Lunch',               startTime: atTime(daysFromNow(31), 12, 0), endTime: atTime(daysFromNow(31), 13, 0), color: '#3B82F6', createdBy: alex.id },
-    { calendarSourceId: calJordan.id, title: 'Dentist',                  startTime: atTime(daysFromNow(33), 14, 0), endTime: atTime(daysFromNow(33), 14, 45), color: '#EC4899', createdBy: jordan.id },
     { calendarSourceId: calFamily.id, title: 'Camping Weekend',          location: 'State Park',        allDay: true, startTime: atTime(daysFromNow(34), 0, 0), endTime: atTime(daysFromNow(36), 0, 0), color: '#EC4899', createdBy: alex.id },
   ]);
 
-  console.log(`  Created 53 events (48 one-off + 5 recurring)`);
+  console.log(`  Created 25 events (20 one-off + 5 recurring)`);
 
   // ─── CALENDAR NOTES ───────────────────────────────────────────────────────
   console.log('Creating calendar notes...');
@@ -787,7 +762,7 @@ async function seed() {
   // ─── GOALS ────────────────────────────────────────────────────────────────
   console.log('Creating goals...');
 
-  const goalsResult = await db
+  await db
     .insert(schema.goals)
     .values([
       { name: 'Weekly Allowance', description: 'Earn your weekly spending money',   pointCost: 50,  emoji: '💰', priority: 1, recurring: true,  recurrencePeriod: 'weekly' },
@@ -795,49 +770,9 @@ async function seed() {
       { name: 'Movie Night Pick', description: 'Pick the movie for family movie night', pointCost: 75, emoji: '🎬', priority: 3, recurring: false },
       { name: 'New LEGO Set',     description: 'Earn a new LEGO set',               pointCost: 300, emoji: '🧱', priority: 4, recurring: false },
       { name: 'Sleepover',        description: 'Host a sleepover with friends',     pointCost: 200, emoji: '🛏️', priority: 5, recurring: false },
-    ])
-    .returning();
-
-  const goalAllowance  = goalsResult[0]!;
-  const goalMovieNight = goalsResult[2]!;
+    ]);
 
   console.log(`  Created 5 goals`);
-
-  // ─── GOAL ACHIEVEMENTS (earned-points history) ────────────────────────────
-  // The weekly allowance is recurring, so each child earns it once per week —
-  // one row per (goal, child, week-start). Emma has hit it the last few weeks,
-  // Sophie most of them. Emma has also earned the one-off Movie Night Pick this
-  // cycle. periodStart mirrors getGoalPeriodKey(): recurring = start of week
-  // (Sunday), non-recurring = the goal's lastResetAt day (seeded "now").
-  console.log('Creating goal achievements...');
-
-  const goalAchievementRows: (typeof schema.goalAchievements.$inferInsert)[] = [];
-  for (const n of [0, 1, 2, 3]) {
-    goalAchievementRows.push({
-      goalId: goalAllowance.id,
-      userId: emma.id,
-      periodStart: ymd(startOfWeek(daysAgo(n * 7))),
-      achievedAt: atTime(daysAgo(n * 7), 18, 0),
-    });
-  }
-  for (const n of [0, 1, 2]) {
-    goalAchievementRows.push({
-      goalId: goalAllowance.id,
-      userId: sophie.id,
-      periodStart: ymd(startOfWeek(daysAgo(n * 7))),
-      achievedAt: atTime(daysAgo(n * 7), 18, 30),
-    });
-  }
-  goalAchievementRows.push({
-    goalId: goalMovieNight.id,
-    userId: emma.id,
-    periodStart: ymd(NOW),
-    achievedAt: atTime(daysAgo(2), 17, 0),
-  });
-
-  await db.insert(schema.goalAchievements).values(goalAchievementRows);
-
-  console.log(`  Created ${goalAchievementRows.length} goal achievements`);
 
   // ─── BABYSITTER INFO ──────────────────────────────────────────────────────
   console.log('Creating babysitter info...');

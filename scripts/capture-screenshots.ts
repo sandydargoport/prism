@@ -212,8 +212,9 @@ const SCREENSHOTS: CaptureSpec[] = [
   {
     name: 'tasks',
     url: '/tasks',
-    description: 'Tasks page with multiple lists',
-    settleMs: 1000,
+    description: 'Tasks grouped by person',
+    settleMs: 1500,
+    setup: groupByPerson,
   },
 
   // ─── Chores ────────────────────────────────────────────────
@@ -244,8 +245,9 @@ const SCREENSHOTS: CaptureSpec[] = [
   {
     name: 'wishes',
     url: '/wishes',
-    description: 'Wish lists with claim tracking',
-    settleMs: 1000,
+    description: 'Wish lists grouped by person, with claim tracking',
+    settleMs: 1500,
+    setup: groupByPerson,
   },
 
   // ─── Photos ────────────────────────────────────────────────
@@ -299,6 +301,24 @@ async function loginAsAlex(page: Page) {
   }
 }
 
+/**
+ * Switch a list page (Tasks, Wishes) into group-by-person view via its "Group"
+ * filter dropdown, so the screenshot shows per-member columns. Best-effort: if
+ * the control isn't found the page is left in its default flat view.
+ */
+async function groupByPerson(page: Page): Promise<void> {
+  try {
+    // The FilterDropdown trigger's accessible name is its label ("Group").
+    await page.getByRole('button', { name: /^Group/ }).first().click({ timeout: 6000 });
+    // Options render as Radix menuitemcheckbox rows labelled "None" / "Person".
+    await page.getByRole('menuitemcheckbox', { name: /^Person$/ }).first().click({ timeout: 3000 });
+    await page.keyboard.press('Escape').catch(() => {});
+    await page.waitForTimeout(1000);
+  } catch {
+    // Leave the page in its default view.
+  }
+}
+
 /** Fetch a handful of Bing daily wallpapers (landscape + a few portrait). */
 async function fetchBingWallpapers(): Promise<{ name: string; buffer: Buffer }[]> {
   const bases: string[] = [];
@@ -312,8 +332,10 @@ async function fetchBingWallpapers(): Promise<{ name: string; buffer: Buffer }[]
     }
   }
   const jobs: { url: string; name: string }[] = [];
+  // Landscape and portrait must come from DISJOINT bases, or the same image
+  // shows up twice (once cropped landscape, once cropped portrait).
   bases.slice(0, 8).forEach((ub, i) => jobs.push({ url: `https://www.bing.com${ub}_1920x1080.jpg`, name: `demo-land-${i}.jpg` }));
-  bases.slice(0, 3).forEach((ub, i) => jobs.push({ url: `https://www.bing.com${ub}_1080x1920.jpg`, name: `demo-port-${i}.jpg` }));
+  bases.slice(8, 11).forEach((ub, i) => jobs.push({ url: `https://www.bing.com${ub}_1080x1920.jpg`, name: `demo-port-${i}.jpg` }));
   const out: { name: string; buffer: Buffer }[] = [];
   for (const job of jobs) {
     try {
@@ -421,9 +443,10 @@ async function captureOnce(browser: Browser, spec: CaptureSpec): Promise<void> {
     ({ theme, calendarView, calendarWeekCount, calendarDisplayMode }) => {
       try {
         if (theme) {
-          localStorage.setItem('theme', theme);
-          document.documentElement.classList.remove('light', 'dark');
-          document.documentElement.classList.add(theme);
+          // ThemeProvider reads the 'prism-theme' key (not 'theme') and toggles
+          // only the 'dark' class on <html>.
+          localStorage.setItem('prism-theme', theme);
+          document.documentElement.classList.toggle('dark', theme === 'dark');
         }
         if (calendarView) {
           localStorage.setItem('prism-calendar-view-type', calendarView);
