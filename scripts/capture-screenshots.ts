@@ -1,18 +1,33 @@
 /**
  * Auto-capture screenshots of every Prism feature for the docs site.
  *
- * Run against the screenshots stack (port :3010) with:
+ * Run against the screenshots stack (port :3010), which builds from the current
+ * source and seeds the demo family:
  *
  *   docker-compose -f docker-compose.screenshots.yml up -d
  *   # ... wait ~90s for first boot ...
  *   npm run screenshots:capture
  *
- * Saves to docs/demos/ with stable filenames so the docs site + README
- * references stay valid across re-runs. Captures both light + dark theme
- * for the main dashboard, plus mobile viewport variants.
+ * Or point it at any already-running, current-code instance that has the demo
+ * seed (for example the demo container on :8091):
  *
- * Login is automatic — uses Alex (parent) with PIN 1234 from the seed.
- * No setup wizard needed; the seed pre-creates users + settings + layout.
+ *   PRISM_URL=http://localhost:8091 npm run screenshots:capture
+ *
+ * IMPORTANT: capture only against an instance running CURRENT master, or the
+ * shots will show stale UI.
+ *
+ * Photos: the seed does not create photos (they need image bytes), so before
+ * capturing this script auto-seeds a handful of Bing daily wallpapers into the
+ * target if it has none, and pins one as the dashboard wallpaper. That keeps the
+ * Photos page, the dashboard hero, and the screensaver populated with no manual
+ * prep. If Bing is unreachable, capture still proceeds (photo shots just empty).
+ *
+ * Saves to docs/demos/ with stable filenames so the docs site + README
+ * references stay valid across re-runs. Captures both light + dark theme for the
+ * main dashboard, plus mobile viewport variants.
+ *
+ * Login is automatic, using Alex (parent) with PIN 1234 from the seed. No setup
+ * wizard needed; the seed pre-creates users + settings + layout.
  */
 
 import { chromium, Browser, BrowserContext, Page } from '@playwright/test';
@@ -60,6 +75,12 @@ interface CaptureSpec {
   calendarDisplayMode?: 'inline' | 'cards';
   /** Optional pre-screenshot setup (e.g. click into a sub-view) */
   setup?: (page: Page) => Promise<void>;
+  /**
+   * Pin a landscape wallpaper photo before capture so the photo-forward
+   * dashboard renders with a stable hero image (and light/dark match). No-op if
+   * the target has no wallpaper photos.
+   */
+  pinWallpaper?: boolean;
 }
 
 const SCREENSHOTS: CaptureSpec[] = [
@@ -70,6 +91,7 @@ const SCREENSHOTS: CaptureSpec[] = [
     description: 'Dashboard with widgets (light mode)',
     theme: 'light',
     settleMs: 15000, // dashboard has many lazy-loaded widgets that each fetch async
+    pinWallpaper: true,
   },
   {
     name: 'dashboard-dark',
@@ -77,6 +99,7 @@ const SCREENSHOTS: CaptureSpec[] = [
     description: 'Dashboard with widgets (dark mode)',
     theme: 'dark',
     settleMs: 15000,
+    pinWallpaper: true,
   },
   {
     name: 'dashboard-mobile',
@@ -276,6 +299,74 @@ async function loginAsAlex(page: Page) {
   }
 }
 
+/** Fetch a handful of Bing daily wallpapers (landscape + a few portrait). */
+async function fetchBingWallpapers(): Promise<{ name: string; buffer: Buffer }[]> {
+  const bases: string[] = [];
+  for (const idx of [0, 7]) {
+    try {
+      const r = await fetch(`https://www.bing.com/HPImageArchive.aspx?format=js&idx=${idx}&n=8&mkt=en-US`);
+      const j = (await r.json()) as { images?: { urlbase: string }[] };
+      for (const im of j.images ?? []) if (!bases.includes(im.urlbase)) bases.push(im.urlbase);
+    } catch {
+      // Bing unreachable — return whatever we have.
+    }
+  }
+  const jobs: { url: string; name: string }[] = [];
+  bases.slice(0, 8).forEach((ub, i) => jobs.push({ url: `https://www.bing.com${ub}_1920x1080.jpg`, name: `demo-land-${i}.jpg` }));
+  bases.slice(0, 3).forEach((ub, i) => jobs.push({ url: `https://www.bing.com${ub}_1080x1920.jpg`, name: `demo-port-${i}.jpg` }));
+  const out: { name: string; buffer: Buffer }[] = [];
+  for (const job of jobs) {
+    try {
+      const r = await fetch(job.url);
+      if (!r.ok) continue;
+      const buffer = Buffer.from(await r.arrayBuffer());
+      if (buffer.length > 10_000) out.push({ name: job.name, buffer });
+    } catch {
+      // Skip a failed image; keep going.
+    }
+  }
+  return out;
+}
+
+/**
+ * Make sure the target has demo photos before capturing. The seed omits photos
+ * (they need image bytes), so if the instance has none we upload a few Bing
+ * wallpapers through the real upload API (which builds thumbnails, dimensions,
+ * orientation, and tags them wallpaper+gallery+screensaver). Best-effort: any
+ * failure leaves the photo-dependent shots empty rather than aborting capture.
+ */
+async function ensureDemoPhotos(browser: Browser): Promise<void> {
+  const context = await browser.newContext({ baseURL: BASE_URL });
+  const page = await context.newPage();
+  try {
+    await page.goto('/', { waitUntil: 'load', timeout: 60_000 });
+    await loginAsAlex(page);
+
+    const resp = await page.request.get('/api/photos?limit=1');
+    const json = await resp.json();
+    const list = Array.isArray(json) ? json : (json.photos ?? []);
+    if (list.length > 0) {
+      console.log('  photos already present — skipping Bing seed');
+      return;
+    }
+
+    console.log('  no photos found — seeding Bing wallpapers...');
+    const images = await fetchBingWallpapers();
+    let uploaded = 0;
+    for (const img of images) {
+      const up = await page.request.post('/api/photos', {
+        multipart: { file: { name: img.name, mimeType: 'image/jpeg', buffer: img.buffer } },
+      });
+      if (up.ok()) uploaded++;
+    }
+    console.log(`  uploaded ${uploaded} wallpaper photo(s)`);
+  } catch (err) {
+    console.warn(`  photo seed skipped: ${err instanceof Error ? err.message : String(err)}`);
+  } finally {
+    await context.close();
+  }
+}
+
 /**
  * Wait until any loading indicators have disappeared. Next.js dev mode
  * compiles each route on first hit, taking several seconds, during which
@@ -368,6 +459,30 @@ async function captureOnce(browser: Browser, spec: CaptureSpec): Promise<void> {
     // websocket open, so networkidle never fires and every navigation times out.
     await page.goto('/', { waitUntil: 'load', timeout: 60_000 });
     await loginAsAlex(page);
+
+    // Pin a landscape wallpaper (if requested) so the dashboard renders over a
+    // stable photo hero. Added as an init script so it applies before the
+    // dashboard's first paint on the navigation below.
+    if (spec.pinWallpaper) {
+      try {
+        const resp = await page.request.get('/api/photos?usage=wallpaper&orientation=landscape&limit=1');
+        const json = await resp.json();
+        const list = Array.isArray(json) ? json : (json.photos ?? []);
+        const id: string | undefined = list[0]?.id;
+        if (id) {
+          await page.addInitScript((pid: string) => {
+            try {
+              localStorage.setItem('prism-wallpaper-enabled', 'true');
+              localStorage.setItem('prism-pinned-wallpaper', pid);
+            } catch {
+              // localStorage unavailable — dashboard falls back to auto-pick.
+            }
+          }, id);
+        }
+      } catch {
+        // No wallpaper photo available — dashboard renders without a pinned hero.
+      }
+    }
 
     // Navigate to the target page.
     await page.goto(spec.url, { waitUntil: 'load', timeout: 60_000 });
@@ -488,6 +603,11 @@ async function main() {
   let failed = 0;
 
   try {
+    // Ensure the target has demo photos (Photos page, dashboard hero,
+    // screensaver) before capturing. Skipped automatically if a photo filter
+    // is not part of the run but photos are cheap and shared, so always run it.
+    await ensureDemoPhotos(browser);
+
     for (const spec of specs) {
       const success = await captureOne(browser, spec);
       if (success) ok++;
