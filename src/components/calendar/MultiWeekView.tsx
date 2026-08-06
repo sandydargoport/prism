@@ -350,36 +350,35 @@ function DayCell({
             onEventClick={onEventClick}
           />
         )}
-        {/* Skylight-style: events lead; the day's planning group (chores,
-            tasks, then meals) floats to the bottom of the cell via mt-auto, so
-            the whitespace above it delineates it from the events. */}
-        {cards && bucket
-          && (bucket.meals.length + bucket.chores.length + bucket.tasks.length) > 0
-          && (visibleEvents.length > 0 || hiddenEvents.length > 0) && (
-          <div className="mt-auto shrink-0 border-t border-border/40 pt-0.5" aria-hidden />
-        )}
-        {cards && bucket && (bucket.chores.length > 0 || bucket.tasks.length > 0) && (
-          <DroppableOverlayCell
-            date={date}
-            bucket={bucket}
-            size={cardSize}
-            layout="column"
-            enableDnd={enableDnd}
-            include={{ meals: false, chores: true, tasks: true }}
-            onItemClick={onItemClick}
-          />
-        )}
-        {cards && bucket && bucket.meals.length > 0 && (
-          <DroppableOverlayCell
-            date={date}
-            bucket={bucket}
-            size={cardSize}
-            layout="column"
-            enableDnd={enableDnd}
-            include={{ meals: true, chores: false, tasks: false }}
-            mealColor={mealColor}
-            onItemClick={onItemClick}
-          />
+        {/* Skylight-style: events lead; the day's planning group (chores, tasks,
+            then meals) floats to the bottom of the cell (mt-auto) inside a faint
+            theme-aware band that delineates it from the events. */}
+        {cards && bucket && (bucket.meals.length + bucket.chores.length + bucket.tasks.length) > 0 && (
+          <div className="mt-auto flex flex-col gap-1 rounded-md bg-black/[0.04] p-1 dark:bg-white/[0.05]">
+            {(bucket.chores.length > 0 || bucket.tasks.length > 0) && (
+              <DroppableOverlayCell
+                date={date}
+                bucket={bucket}
+                size={cardSize}
+                layout="column"
+                enableDnd={enableDnd}
+                include={{ meals: false, chores: true, tasks: true }}
+                onItemClick={onItemClick}
+              />
+            )}
+            {bucket.meals.length > 0 && (
+              <DroppableOverlayCell
+                date={date}
+                bucket={bucket}
+                size={cardSize}
+                layout="column"
+                enableDnd={enableDnd}
+                include={{ meals: true, chores: false, tasks: false }}
+                mealColor={mealColor}
+                onItemClick={onItemClick}
+              />
+            )}
+          </div>
         )}
       </div>
     </div>

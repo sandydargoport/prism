@@ -328,13 +328,16 @@ function DayCardsCell({
           <DayOverflowPopover date={date} hiddenEvents={hidden} onEventClick={onEventClick} />
         </div>
       )}
-      {/* Overlay row floats to the bottom of the cell (Skylight-style), with the
-          whitespace above delineating it from the events. */}
-      {bucket && overlayItemCount > 0 && (visible.length > 0 || hidden.length > 0) && (
-        <div className="mt-auto shrink-0 border-t border-border/40 pt-0.5" aria-hidden />
-      )}
+      {/* Meals/chores/tasks overlay floats to the bottom of the cell, inside a
+          faint theme-aware band (when populated) that delineates it from events. */}
       {bucket && (
-        <div onClick={(e) => e.stopPropagation()}>
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className={cn(
+            'mt-auto',
+            overlayItemCount > 0 && 'rounded-md bg-black/[0.04] px-1 py-0.5 dark:bg-white/[0.05]',
+          )}
+        >
           <DroppableOverlayCell
             date={date}
             bucket={bucket}
