@@ -328,9 +328,10 @@ function DayCardsCell({
           <DayOverflowPopover date={date} hiddenEvents={hidden} onEventClick={onEventClick} />
         </div>
       )}
-      {/* Thin divider between events and the meals/chores/tasks overlay row. */}
+      {/* Overlay row floats to the bottom of the cell (Skylight-style), with the
+          whitespace above delineating it from the events. */}
       {bucket && overlayItemCount > 0 && (visible.length > 0 || hidden.length > 0) && (
-        <div className="my-0.5 shrink-0 border-t border-border/40" aria-hidden />
+        <div className="mt-auto shrink-0 border-t border-border/40 pt-0.5" aria-hidden />
       )}
       {bucket && (
         <div onClick={(e) => e.stopPropagation()}>

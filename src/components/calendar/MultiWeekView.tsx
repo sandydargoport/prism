@@ -350,12 +350,13 @@ function DayCell({
             onEventClick={onEventClick}
           />
         )}
-        {/* Skylight-style: events lead; a thin divider separates the day's
-            planning group (chores, tasks, then meals pinned at the very bottom). */}
+        {/* Skylight-style: events lead; the day's planning group (chores,
+            tasks, then meals) floats to the bottom of the cell via mt-auto, so
+            the whitespace above it delineates it from the events. */}
         {cards && bucket
           && (bucket.meals.length + bucket.chores.length + bucket.tasks.length) > 0
           && (visibleEvents.length > 0 || hiddenEvents.length > 0) && (
-          <div className="my-0.5 shrink-0 border-t border-border/40" aria-hidden />
+          <div className="mt-auto shrink-0 border-t border-border/40 pt-0.5" aria-hidden />
         )}
         {cards && bucket && (bucket.chores.length > 0 || bucket.tasks.length > 0) && (
           <DroppableOverlayCell
