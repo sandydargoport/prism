@@ -1,0 +1,128 @@
+name: Refresh Screenshots
+
+# Manually-triggered. Boots an ephemeral, freshly-seeded Prism, captures every
+# docs screenshot with scripts/capture-screenshots.ts (which also self-seeds a
+# few Bing daily wallpapers and pins one for the dashboard hero), and opens a PR
+# with the refreshed docs/demos/*.png. Runs against a throwaway seeded DB only,
+# never a live instance. This is an on-demand chore, not part of the merge gate.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: refresh-screenshots-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  NODE_VERSION: '24'
+
+jobs:
+  screenshots:
+    name: Capture docs screenshots
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    # Official Playwright image so Chromium is preinstalled, pinned in lockstep
+    # with @playwright/test (mirrors the ui-audit + visual-regression jobs).
+    container:
+      image: mcr.microsoft.com/playwright:v1.58.2-jammy
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: prism
+          POSTGRES_PASSWORD: ci_test_password
+          POSTGRES_DB: prism
+        options: >-
+          --health-cmd "pg_isready -U prism"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # Inside container jobs, services are reached by their network alias.
+      DATABASE_URL: postgresql://prism:ci_test_password@postgres:5432/prism
+      REDIS_URL: redis://redis:6379
+      PORT: '3000'
+      APP_URL: http://localhost:3000
+      # Throwaway test-only secrets — the runner is ephemeral.
+      SESSION_SECRET: ci_test_session_secret_padding32
+      PIN_ENCRYPTION_KEY: ci_test_pin_encryption_key_pad32
+      ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      # Gates any PII-sensitive helpers on a synthetic seed and sets the PIN.
+      E2E_HAS_TEST_DB: '1'
+      E2E_PIN: '1234'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Install psql + redis-cli (not bundled in the Playwright image)
+        # Drop the NodeSource apt source first — it periodically 403s.
+        run: rm -f /etc/apt/sources.list.d/nodesource* && apt-get update && apt-get install -y --no-install-recommends postgresql-client redis-tools
+
+      - name: Apply base schema
+        env:
+          PGPASSWORD: ci_test_password
+        run: psql -h postgres -U prism -d prism -v ON_ERROR_STOP=1 -f src/lib/db/init/02-schema.sql
+
+      - name: Apply migrations
+        run: node scripts/migrate.js
+
+      - name: Seed database
+        run: npm run db:seed
+
+      - name: Boot app and capture screenshots
+        # Start the dev server (same boot the e2e suite uses), wait for health,
+        # then run the capture against it. The capture script self-seeds Bing
+        # wallpapers and pins one for the dashboard hero.
+        run: |
+          npm run dev > /tmp/dev.log 2>&1 &
+          echo "Waiting for the app to come up..."
+          for i in $(seq 1 80); do
+            if curl -sf http://localhost:3000/api/health >/dev/null 2>&1; then echo "App is up."; break; fi
+            sleep 3
+          done
+          if ! curl -sf http://localhost:3000/api/health >/dev/null 2>&1; then
+            echo "App failed to start. Last 60 log lines:"; tail -60 /tmp/dev.log; exit 1
+          fi
+          PRISM_URL=http://localhost:3000 npm run screenshots:capture
+
+      - name: Show changed images
+        if: always()
+        run: git status --porcelain docs/demos/ || true
+
+      - name: Open a PR with the refreshed screenshots
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: chore/refresh-screenshots
+          delete-branch: true
+          add-paths: docs/demos/*.png
+          commit-message: "docs(demos): refresh screenshots"
+          title: "docs(demos): refresh screenshots"
+          body: |
+            Automated refresh of `docs/demos/*.png` from the **Refresh Screenshots** workflow,
+            captured against an ephemeral, freshly-seeded instance built from the current default branch.
+
+            Review the image diffs, then merge.
+
+            Note: this PR is opened with `GITHUB_TOKEN`, so the merge checks may not run automatically.
+            Close and reopen it (or push an empty commit) to trigger them, or merge with admin rights.
