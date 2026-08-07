@@ -300,7 +300,7 @@ async function seed() {
     .insert(schema.chores)
     .values([
       { title: 'Empty dishwasher',  description: 'Put away all clean dishes',     category: 'dishes',  assignedTo: emma.id,   frequency: 'daily',  pointValue: 5,  requiresApproval: false, nextDue: ymd(daysFromNow(0)), createdBy: jordan.id },
-      { title: 'Make bed',          description: 'Make your bed before school',   category: 'cleaning', frequency: 'daily',  pointValue: 2,  requiresApproval: false, nextDue: ymd(daysFromNow(0)), createdBy: jordan.id },
+      { title: 'Make bed',          description: 'Make your bed and tidy up',     category: 'cleaning', frequency: 'weekly', pointValue: 2,  requiresApproval: false, nextDue: ymd(daysFromNow(2)), createdBy: jordan.id, startDay: String((NOW.getDay() + 2) % 7) },
       { title: 'Feed the pets',     description: 'Feed the fish and cat',         category: 'pets',     assignedTo: sophie.id, frequency: 'daily',  pointValue: 3,  requiresApproval: false, nextDue: ymd(daysFromNow(0)), createdBy: alex.id },
       { title: 'Clean room',        description: 'Tidy up and vacuum your room',  category: 'cleaning', assignedTo: emma.id,   frequency: 'weekly', pointValue: 10, requiresApproval: true,  nextDue: ymd(daysFromNow(2)), createdBy: jordan.id, startDay: '0' },
       { title: 'Take out trash',    description: 'Curb by 7am Friday',            category: 'trash',    assignedTo: emma.id,   frequency: 'weekly', pointValue: 5,  requiresApproval: false, nextDue: ymd(daysFromNow(((5 - NOW.getDay()) + 7) % 7)), createdBy: alex.id, startDay: '5' },
@@ -697,40 +697,26 @@ async function seed() {
   };
 
   await db.insert(schema.meals).values([
-    // This week
+    // This week — mostly one meal a day (dinner), with a couple of extra
+    // breakfasts/snacks. Enough for the meal planner to read as a real week
+    // without crowding the calendar cards-mode cells.
     { name: 'Pancakes',                  dayOfWeek: 'sunday',    mealType: 'breakfast', weekOf: thisWeek, recipeId: recipePancakes.id, createdBy: alex.id },
-    { name: 'Cereal & fruit',            dayOfWeek: 'monday',    mealType: 'breakfast', weekOf: thisWeek, createdBy: jordan.id },
+    { name: 'Roast Chicken & Veggies',   dayOfWeek: 'sunday',    mealType: 'dinner',    weekOf: thisWeek, createdBy: alex.id },
     { name: 'Spaghetti and Meatballs',   dayOfWeek: 'monday',    mealType: 'dinner',    weekOf: thisWeek, recipeId: recipeSpag.id,     createdBy: jordan.id },
-    { name: 'Taco Tuesday',              dayOfWeek: 'tuesday',   mealType: 'dinner',    weekOf: thisWeek, recipeId: recipeTacos.id,    createdBy: jordan.id }, // ↓ .map adds `date`
+    { name: 'Taco Tuesday',              dayOfWeek: 'tuesday',   mealType: 'dinner',    weekOf: thisWeek, recipeId: recipeTacos.id,    createdBy: jordan.id },
     { name: 'Leftovers',                 dayOfWeek: 'wednesday', mealType: 'dinner',    weekOf: thisWeek, createdBy: alex.id },
+    { name: 'Apple slices',              dayOfWeek: 'wednesday', mealType: 'snack',     weekOf: thisWeek, createdBy: emma.id },
     { name: 'One-Pot Chicken Pasta',     dayOfWeek: 'thursday',  mealType: 'dinner',    weekOf: thisWeek, recipeId: recipePasta.id,    createdBy: alex.id },
     { name: 'Pizza Night',               dayOfWeek: 'friday',    mealType: 'dinner',    weekOf: thisWeek, createdBy: alex.id },
-    { name: 'Apple slices',              dayOfWeek: 'wednesday', mealType: 'snack',     weekOf: thisWeek, createdBy: emma.id },
+    { name: 'Weekend Pancakes',          dayOfWeek: 'saturday',  mealType: 'breakfast', weekOf: thisWeek, recipeId: recipePancakes.id, createdBy: alex.id },
     { name: 'Sheet Pan Meatball Pitas',  dayOfWeek: 'saturday',  mealType: 'dinner',    weekOf: thisWeek, recipeId: recipePita.id,     createdBy: jordan.id },
-    // Next week
+    // Next week — a few dinners so the planner scrolls forward with content.
     { name: 'Pancakes',                  dayOfWeek: 'sunday',    mealType: 'breakfast', weekOf: nextWeekStart, recipeId: recipePancakes.id, createdBy: alex.id },
     { name: 'Grilled Chicken Salad',     dayOfWeek: 'monday',    mealType: 'dinner',    weekOf: nextWeekStart, createdBy: alex.id },
     { name: 'Taco Tuesday',              dayOfWeek: 'tuesday',   mealType: 'dinner',    weekOf: nextWeekStart, recipeId: recipeTacos.id,    createdBy: jordan.id },
-    // ── This week: fill in breakfasts, lunches, a Sunday dinner + snacks so
-    //    the meal planner reads as a full week for screenshots ──────────────
-    { name: 'Grilled cheese & tomato soup', dayOfWeek: 'sunday',    mealType: 'lunch',     weekOf: thisWeek, createdBy: jordan.id },
-    { name: 'Roast Chicken & Veggies',   dayOfWeek: 'sunday',    mealType: 'dinner',    weekOf: thisWeek, createdBy: alex.id },
-    { name: 'Turkey sandwiches',         dayOfWeek: 'monday',    mealType: 'lunch',     weekOf: thisWeek, createdBy: jordan.id },
-    { name: 'Scrambled eggs & toast',    dayOfWeek: 'tuesday',   mealType: 'breakfast', weekOf: thisWeek, createdBy: alex.id },
-    { name: 'Leftover spaghetti',        dayOfWeek: 'tuesday',   mealType: 'lunch',     weekOf: thisWeek, createdBy: jordan.id },
-    { name: 'Oatmeal & berries',         dayOfWeek: 'wednesday', mealType: 'breakfast', weekOf: thisWeek, createdBy: jordan.id },
-    { name: 'Chicken salad wraps',       dayOfWeek: 'wednesday', mealType: 'lunch',     weekOf: thisWeek, createdBy: jordan.id },
-    { name: 'Yogurt parfaits',           dayOfWeek: 'thursday',  mealType: 'breakfast', weekOf: thisWeek, createdBy: emma.id },
-    { name: 'Mac & cheese',              dayOfWeek: 'thursday',  mealType: 'lunch',     weekOf: thisWeek, createdBy: sophie.id },
-    { name: 'Fruit smoothies',           dayOfWeek: 'friday',    mealType: 'breakfast', weekOf: thisWeek, createdBy: alex.id },
-    { name: 'PB&J and apple slices',     dayOfWeek: 'friday',    mealType: 'lunch',     weekOf: thisWeek, createdBy: emma.id },
-    { name: 'Cheese & crackers',         dayOfWeek: 'friday',    mealType: 'snack',     weekOf: thisWeek, createdBy: sophie.id },
-    { name: 'Weekend Pancakes',          dayOfWeek: 'saturday',  mealType: 'breakfast', weekOf: thisWeek, recipeId: recipePancakes.id, createdBy: alex.id },
-    { name: 'Quesadillas',               dayOfWeek: 'saturday',  mealType: 'lunch',     weekOf: thisWeek, createdBy: jordan.id },
-    { name: 'Popcorn',                   dayOfWeek: 'saturday',  mealType: 'snack',     weekOf: thisWeek, createdBy: emma.id },
   ].map((m) => ({ ...m, date: seedMealDate(m.weekOf, m.dayOfWeek) })) as (typeof schema.meals.$inferInsert)[]);
 
-  console.log(`  Created 27 meal plans across this + next week`);
+  console.log(`  Created 13 meal plans across this + next week`);
 
   // ─── MAINTENANCE REMINDERS ────────────────────────────────────────────────
   console.log('Creating maintenance reminders...');
