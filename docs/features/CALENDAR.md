@@ -109,7 +109,7 @@ On phones, calendar views collapse to Agenda only: no view switcher, no chevrons
 The **View Options** gear (next to the view dropdown) lets you switch between two ways of laying out events within each day cell:
 
 - **Inline**: compact rows of event titles. Original look. Highest event density per cell.
-- **Cards**: each day becomes a small card with meals at top, events in the middle, chores+tasks at bottom. A dynamic capacity probe respects your font scale and viewport. Overflow folds into a "+N more" popover so nothing is silently clipped.
+- **Cards**: each day becomes a small card. The events lead the cell, and the day's chores, tasks, and meals are grouped in a delineated band pinned to the bottom (meals last), so the schedule and the day's plan read as separate zones. A dynamic capacity probe respects your font scale and viewport. Overflow folds into a "+N more" popover so nothing is silently clipped.
 
 Cards mode is what unlocks drag-and-drop and overlays.
 
