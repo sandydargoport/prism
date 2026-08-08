@@ -1,0 +1,40 @@
+# Prism PII denylist — TEMPLATE
+# ============================================================================
+# Copy this file to ~/.config/prism-pii-denylist.txt and fill in YOUR real
+# values. That copy lives OUTSIDE the repo and must NEVER be committed.
+#
+#   cp scripts/prism-pii-denylist.example.txt ~/.config/prism-pii-denylist.txt
+#   # then edit ~/.config/prism-pii-denylist.txt with your real values
+#
+# scripts/scan-pii.sh reads it (fixed-string, whole-word, case-insensitive) and
+# fails the push/commit if any tracked file contains one of these values. This
+# is the reliable catch for your EXACT PII anywhere in the tree, with zero false
+# positives. The built-in rules in scan-pii.sh already catch the general classes
+# (your tallacker domain, non-allowlisted emails, private/Tailscale IPs), so
+# this file is for the specifics they can't know.
+#
+# Format: one fixed-string entry per line. '#' comments and blank lines ignored.
+# ============================================================================
+
+# NOTE: the lines below are GENERIC placeholders. Replace them in your private
+# ~/.config copy with your OWN real values. Do NOT put real values in this
+# committed template.
+
+# ── Real LAN / Tailscale / WAN addresses (past and present) ─────────────────
+# the real 192.168.x.x / 10.x.x.x host addresses you have actually used
+# your Tailscale 100.x.y.z address
+# yourdomain.example
+
+# ── Real people (first AND last names of household members) ─────────────────
+# Firstname
+# Lastname
+
+# ── Address / school / employer ─────────────────────────────────────────────
+# 123 Real Street
+# Real Elementary School
+
+# ── Phone numbers (anything not 555-01xx reserved-for-fiction) ──────────────
+# 5551234567
+
+# ── Personal GPS coordinates (Travel Map) ───────────────────────────────────
+# 41.8781, -87.6298

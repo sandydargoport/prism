@@ -57,7 +57,7 @@ PATTERNS=(
 # Files to scan: every tracked file except binaries, lockfiles, snapshots,
 # and the scanners themselves (which contain these patterns as literals).
 TARGETS=$(git ls-files \
-  | grep -v -E '^(scripts/scan-(pii|examples|hostnames|secrets)\.sh|docs/code-review-modalities\.md|package-lock\.json|.*\.lock|.*\.snap)$' \
+  | grep -v -E '^(scripts/scan-(pii|examples|hostnames|secrets)\.sh|scripts/prism-pii-denylist\.example\.txt|docs/code-review-modalities\.md|package-lock\.json|.*\.lock|.*\.snap)$' \
   || true)
 
 if [ -z "$TARGETS" ]; then

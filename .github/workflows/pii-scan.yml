@@ -1,0 +1,30 @@
+name: PII / Secret Scan
+
+# Server-side gate for the local pre-commit/pre-push scanners: local hooks can
+# be bypassed with --no-verify, CI cannot. Runs the built-in PII pattern rules
+# (maintainer domain, non-allowlisted emails, private/Tailscale IPs), the
+# hostname-in-comment heuristic, and the secret-shape scan on every PR and push
+# to master. The per-maintainer denylist file is absent in CI, which is fine:
+# the built-in rules still run.
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+concurrency:
+  group: pii-scan-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    name: PII / secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: PII denylist + pattern rules
+        run: bash scripts/scan-pii.sh
+      - name: Hostname-in-comment heuristic
+        run: bash scripts/scan-hostnames.sh
+      - name: Secret-shape scan
+        run: bash scripts/scan-secrets.sh

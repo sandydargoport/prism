@@ -1,159 +1,117 @@
 #!/usr/bin/env bash
 # ============================================================================
-# Prism — PII Denylist Scanner
+# Prism — PII Scanner (built-in pattern rules + maintainer denylist)
 # ============================================================================
-# Greps tracked files for items in a maintainer-curated personal denylist.
-# Catches the cross-artifact-shape bug class where a fixture LOOKS fictional
-# but actually uses real names / addresses / phones the maintainer happens
-# to know. LLM review can't tell 'Eric in a mock' from 'Eric who lives at
-# this house'; a denylist can.
+# Two layers, both run on every push (and in CI):
+#
+#   1. BUILT-IN PATTERN RULES (committed, always on). Catch the classes of
+#      maintainer-PII we know we care about, tuned against the tree so they do
+#      NOT trip on legitimate security code (SSRF guards use private ranges) or
+#      test fixtures (10.0.0.5, 169.254.169.254) or vendor/system emails.
+#        - the maintainer's own domain (tallacker)
+#        - any email address other than an allowlisted one
+#        - a specific private / Tailscale-CGNAT / link-local IP host in a
+#          non-test, non-SSRF-guard file (the "real LAN IP in a comment" bug)
+#
+#   2. MAINTAINER DENYLIST (per-maintainer file, outside the repo). Fixed-string
+#      list of the maintainer's REAL specifics — exact IPs, names, address,
+#      phone, Tailscale IPs. This is the reliable catch for known PII anywhere,
+#      with zero false positives. See "DENYLIST FILE" below.
+#
+# Exits 0 if clean. Exits 1 if either layer finds a match.
+# ============================================================================
 #
 # DENYLIST FILE
 # -------------
 # Path: $PRISM_PII_DENYLIST (env var) OR ~/.config/prism-pii-denylist.txt
-#
-# Format (one entry per line):
-#     # Comments start with hash. Blank lines ignored.
-#     RealFirstName
-#     RealLastName
-#     742 Real Street
-#     real.email@example.com
-#     5551234567
-#
-# The denylist itself MUST live outside the repo and MUST NOT be committed.
-# Each maintainer populates their own. Categories to consider:
+# Format: one fixed-string entry per line; '#' comments and blank lines ignored.
+# MUST live outside the repo and MUST NOT be committed. Populate with:
+#   - Real LAN / Tailscale IPs (e.g. 192.168.1.236, 100.x.y.z)
 #   - Real names of household members (first AND last)
-#   - Street addresses, school names, employer names
-#   - Phone numbers (anything not in 555-01xx reserved-for-fiction)
-#   - Email addresses other than the maintainer's public commit identity
-#   - Personal GPS coordinates (for travel feature)
-#
-# USAGE
-# -----
-#   bash scripts/scan-pii.sh                 # scan tracked files
-#   PRISM_PII_DENYLIST=/path/to/list bash scripts/scan-pii.sh
-#
-# Exits 0 if clean OR if no denylist file exists (with a warning).
-# Exits 1 if any tracked file contains a denylist entry.
-#
-# Wire into git via .husky/pre-push or .git/hooks/pre-push to run before
-# every push. The cost of an extra grep is far smaller than a public PII
-# leak.
+#   - Street address, school name, employer name
+#   - Phone numbers (anything not 555-01xx reserved-for-fiction)
+#   - Personal GPS coordinates
 # ============================================================================
 
-set -euo pipefail
+set -uo pipefail
 
-# Resolve the denylist path. Try in order:
-#   1. $PRISM_PII_DENYLIST if set
-#   2. $HOME/.config/prism-pii-denylist.txt (Linux/macOS, also Git Bash on Windows)
-#   3. $USERPROFILE/.config/prism-pii-denylist.txt (Windows; some bash setups have
-#      HOME pointing at a Linux-shaped path that doesn't match the actual user dir)
+REPO_FILES=$(git ls-files | grep -vE '^(scripts/scan-(pii|examples|hostnames|secrets)\.sh|scripts/prism-pii-denylist\.example\.txt|docs/code-review-modalities\.md|package-lock\.json|.*\.lock)$' || true)
+
+fail=0
+
+# ── Layer 1: built-in pattern rules ─────────────────────────────────────────
+
+# Files legitimately full of private-range IPs (SSRF guards + their tests) and
+# security-audit prose. Private IPs there are generic examples, not PII.
+IP_EXCLUDE='(/__tests__/|\.test\.|\.spec\.|^e2e/|src/app/api/recipes/import-url/route\.ts$|src/lib/integrations/(caldav|carddav|immich)\.ts$|src/lib/utils/safeFetch\.ts$|^docs/(audit-|code-review-modalities))'
+
+# Emails that are NOT maintainer PII: the public commit identity, GitHub
+# noreply, RFC2606 example domains, vendor/system addresses the integration code
+# references, and obvious placeholder local-parts (you@, your-apple-id@, etc.).
+EMAIL_ALLOW='(@example\.(com|org|net|edu)|@users\.noreply\.github\.com|sandydargoport@gmail\.com|contacts@group\.v\.calendar\.google\.com|@myfirstview\.com|noreply@|@sentry\.|(your-[a-z-]+|you|me|user|name|email|firstname|lastname|example|test)@)'
+
+builtin=""
+
+# 1. The maintainer's own domain, anywhere.
+m=$(printf '%s\n' "$REPO_FILES" | xargs -d '\n' grep -inHE 'tallacker' 2>/dev/null || true)
+[ -n "$m" ] && builtin+="$m"$'\n'
+
+# 2. Any email not on the allowlist, anywhere.
+m=$(printf '%s\n' "$REPO_FILES" | xargs -d '\n' grep -inHoE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' 2>/dev/null | grep -viE "$EMAIL_ALLOW" || true)
+[ -n "$m" ] && builtin+="$m"$'\n'
+
+# 3. A specific private / CGNAT / link-local IP HOST (not a /CIDR range, not a
+#    .0.0 network) in a file that is not an SSRF guard or a test fixture.
+m=$(printf '%s\n' "$REPO_FILES" | grep -vE "$IP_EXCLUDE" \
+  | xargs -d '\n' grep -inHE '\b(192\.168|10\.[0-9]{1,3}|172\.(1[6-9]|2[0-9]|3[01])|100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])|169\.254)\.[0-9]{1,3}\.[0-9]{1,3}\b' 2>/dev/null \
+  | grep -vE '\.0\.0([/. ]|$)' | grep -vE '/[0-9]{1,2}\b' || true)
+[ -n "$m" ] && builtin+="$m"$'\n'
+
+if [ -n "$builtin" ]; then
+  echo "[scan-pii] BUILT-IN RULE MATCHES (maintainer domain / non-allowlisted email / private IP):"
+  printf '%s' "$builtin" | grep -v '^$' | sed 's/^/  /'
+  echo ""
+  echo "[scan-pii] Scrub the value, or (if it is a legitimate example/vendor ref)"
+  echo "add it to the allowlist near the top of scripts/scan-pii.sh."
+  fail=1
+fi
+
+# ── Layer 2: maintainer denylist file ───────────────────────────────────────
+
 DENYLIST=""
 candidates=()
-if [ -n "${PRISM_PII_DENYLIST:-}" ]; then
-  candidates+=("$PRISM_PII_DENYLIST")
-fi
-if [ -n "${HOME:-}" ]; then
-  candidates+=("${HOME}/.config/prism-pii-denylist.txt")
-fi
+[ -n "${PRISM_PII_DENYLIST:-}" ] && candidates+=("$PRISM_PII_DENYLIST")
+[ -n "${HOME:-}" ] && candidates+=("${HOME}/.config/prism-pii-denylist.txt")
 if [ -n "${USERPROFILE:-}" ]; then
-  # Convert C:\Users\Foo to /c/Users/Foo for bash file-test compatibility.
-  win_home="${USERPROFILE//\\//}"
-  win_home="${win_home//C:/\/c}"
-  win_home="${win_home//D:/\/d}"
-  candidates+=("${win_home}/.config/prism-pii-denylist.txt")
-  candidates+=("${USERPROFILE}/.config/prism-pii-denylist.txt")
+  win_home="${USERPROFILE//\\//}"; win_home="${win_home//C:/\/c}"; win_home="${win_home//D:/\/d}"
+  candidates+=("${win_home}/.config/prism-pii-denylist.txt" "${USERPROFILE}/.config/prism-pii-denylist.txt")
 fi
-# Last-resort: ask Windows directly via cmd.exe for USERPROFILE. Catches
-# WSL / Git-Bash / npm-spawned bash where USERPROFILE didn't propagate into
-# the bash environment.
-#
-# Path format depends on the bash flavor:
-#   Git Bash on Windows  → /c/Users/Foo
-#   WSL (mounts C: at /mnt/c) → /mnt/c/Users/Foo
-# We can't reliably detect which, so we try both.
-if command -v cmd.exe >/dev/null 2>&1; then
-  win_up_raw=$(cmd.exe /c "echo %USERPROFILE%" 2>/dev/null | tr -d '\r')
-  if [ -n "${win_up_raw:-}" ]; then
-    # /c/... form (Git Bash)
-    gitbash_path=$(echo "$win_up_raw" | sed 's|\\|/|g; s|^\([A-Za-z]\):|/\L\1|')
-    # /mnt/c/... form (WSL)
-    wsl_path=$(echo "$win_up_raw" | sed 's|\\|/|g; s|^\([A-Za-z]\):|/mnt/\L\1|')
-    candidates+=("${gitbash_path}/.config/prism-pii-denylist.txt")
-    candidates+=("${wsl_path}/.config/prism-pii-denylist.txt")
-  fi
-fi
-for path in "${candidates[@]}"; do
-  if [ -f "$path" ]; then
-    DENYLIST="$path"
-    break
-  fi
+for path in "${candidates[@]:-}"; do
+  [ -n "$path" ] && [ -f "$path" ] && { DENYLIST="$path"; break; }
 done
 
 if [ -z "$DENYLIST" ]; then
-  cat <<EOF
-[scan-pii] WARNING: denylist not found.
-Searched:
-$(printf '  - %s\n' "${candidates[@]}")
-
-To enable PII scanning, create the file with one entry per line.
-See docs/code-review-modalities.md (TODO #5) for guidance on what to include.
-
-Skipping scan — exiting clean, but you have no protection until the file exists.
-EOF
-  exit 0
+  echo "[scan-pii] NOTE: maintainer denylist not found (checked \$PRISM_PII_DENYLIST, ~/.config/prism-pii-denylist.txt)."
+  echo "          Built-in rules still ran. For full coverage of your exact IPs/names/address,"
+  echo "          create that file (one entry per line). Template: scripts/prism-pii-denylist.example.txt"
+  [ "$fail" -eq 0 ] && echo "[scan-pii] Clean (built-in rules): no matches."
+  exit "$fail"
 fi
 
-# Single-pass scan. Naive approach (loop over each entry, grep all files
-# once per entry) is O(entries × files) and went 30s+ on a 50-entry list
-# against the Prism tree. Strip comments + blanks into a temp file, then
-# one `grep -f` does the whole job in one Aho-Corasick pass.
-tmpfile=$(mktemp)
-trap 'rm -f "$tmpfile"' EXIT INT TERM
+tmpfile=$(mktemp); trap 'rm -f "$tmpfile"' EXIT INT TERM
+sed -e 's/\r$//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$DENYLIST" | grep -v '^$' | grep -v '^#' > "$tmpfile"
 
-# Filter denylist:
-#   - drop blank lines
-#   - drop comment lines (whole-line comments starting with #, after trim)
-#   - strip leading/trailing whitespace from each remaining entry
-#   - strip trailing CR (Windows line endings)
-sed -e 's/\r$//' \
-    -e 's/^[[:space:]]*//' \
-    -e 's/[[:space:]]*$//' \
-    "$DENYLIST" \
-  | grep -v '^$' \
-  | grep -v '^#' \
-  > "$tmpfile"
-
-if [ ! -s "$tmpfile" ]; then
-  echo "[scan-pii] Denylist contains no entries (after stripping comments and blanks)."
-  echo "Add real entries to $DENYLIST or the scan does nothing."
-  exit 0
+if [ -s "$tmpfile" ]; then
+  m=$(printf '%s\n' "$REPO_FILES" | xargs -d '\n' grep -iwn -H -F -I -f "$tmpfile" 2>/dev/null || true)
+  if [ -n "$m" ]; then
+    echo "[scan-pii] DENYLIST MATCHES:"
+    printf '%s\n' "$m" | sed 's/^/  /'
+    echo "[scan-pii] Anonymize the offending values before pushing."
+    fail=1
+  fi
 fi
 
-# Single-pass: grep -f reads patterns from the temp file. -w whole-word,
-# -F fixed-string, -I skip binary files, -i case-insensitive (a denylist
-# entry with capitalized form previously failed to match a lowercased
-# occurrence in tracked files, since -w -F is case-sensitive by default).
-# xargs may shard the file list across multiple grep invocations on very
-# large repos, which is fine: each shard still does one pass over its
-# files for all patterns at once.
-matches=$(
-  git ls-files \
-    | grep -v -E '^(scripts/scan-pii\.sh|scripts/scan-examples\.sh|docs/code-review-modalities\.md)$' \
-    | xargs -d '\n' grep -iwn -F -I -f "$tmpfile" 2>/dev/null \
-  || true
-)
-
-if [ -z "$matches" ]; then
-  echo "[scan-pii] Clean: no denylist matches in tracked files."
-  exit 0
+if [ "$fail" -eq 0 ]; then
+  echo "[scan-pii] Clean: no built-in-rule or denylist matches."
 fi
-
-violations=$(printf '%s\n' "$matches" | wc -l)
-
-echo "[scan-pii] DENYLIST MATCHES:"
-printf '%s\n' "$matches" | sed 's/^/  /'
-echo ""
-echo "[scan-pii] FAIL: $violations match(es) in tracked files."
-echo "Anonymize the offending values before pushing."
-exit 1
+exit "$fail"
