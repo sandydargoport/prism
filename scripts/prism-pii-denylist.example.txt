@@ -10,7 +10,7 @@
 # fails the push/commit if any tracked file contains one of these values. This
 # is the reliable catch for your EXACT PII anywhere in the tree, with zero false
 # positives. The built-in rules in scan-pii.sh already catch the general classes
-# (your tallacker domain, non-allowlisted emails, private/Tailscale IPs), so
+# (non-allowlisted emails, private/Tailscale IPs), so
 # this file is for the specifics they can't know.
 #
 # Format: one fixed-string entry per line. '#' comments and blank lines ignored.

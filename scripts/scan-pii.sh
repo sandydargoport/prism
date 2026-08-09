@@ -8,7 +8,6 @@
 #      maintainer-PII we know we care about, tuned against the tree so they do
 #      NOT trip on legitimate security code (SSRF guards use private ranges) or
 #      test fixtures (10.0.0.5, 169.254.169.254) or vendor/system emails.
-#        - the maintainer's own domain (tallacker)
 #        - any email address other than an allowlisted one
 #        - a specific private / Tailscale-CGNAT / link-local IP host in a
 #          non-test, non-SSRF-guard file (the "real LAN IP in a comment" bug)
@@ -26,7 +25,9 @@
 # Path: $PRISM_PII_DENYLIST (env var) OR ~/.config/prism-pii-denylist.txt
 # Format: one fixed-string entry per line; '#' comments and blank lines ignored.
 # MUST live outside the repo and MUST NOT be committed. Populate with:
-#   - Real LAN / Tailscale IPs (e.g. 192.168.1.236, 100.x.y.z)
+#   - Real LAN / Tailscale IPs (e.g. 192.168.x.x, 10.x.x.x, 100.x.y.z)
+#   - The real WAN/host DOMAIN(S) you use (this is the reliable catch for the
+#     specific domain — it is intentionally NOT hardcoded in this public file)
 #   - Real names of household members (first AND last)
 #   - Street address, school name, employer name
 #   - Phone numbers (anything not 555-01xx reserved-for-fiction)
@@ -52,15 +53,16 @@ EMAIL_ALLOW='(@example\.(com|org|net|edu)|@users\.noreply\.github\.com|sandydarg
 
 builtin=""
 
-# 1. The maintainer's own domain, anywhere.
-m=$(printf '%s\n' "$REPO_FILES" | xargs -d '\n' grep -inHE 'tallacker' 2>/dev/null || true)
-[ -n "$m" ] && builtin+="$m"$'\n'
+# NOTE: the maintainer's SPECIFIC domain/host literals are deliberately NOT
+# hardcoded here — this file is public and must never itself carry that PII.
+# The specific domain is caught by Layer 2 (the external denylist) everywhere,
+# and by scan-hostnames.sh generically when it appears in a comment.
 
-# 2. Any email not on the allowlist, anywhere.
+# 1. Any email not on the allowlist, anywhere.
 m=$(printf '%s\n' "$REPO_FILES" | xargs -d '\n' grep -inHoE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' 2>/dev/null | grep -viE "$EMAIL_ALLOW" || true)
 [ -n "$m" ] && builtin+="$m"$'\n'
 
-# 3. A specific private / CGNAT / link-local IP HOST (not a /CIDR range, not a
+# 2. A specific private / CGNAT / link-local IP HOST (not a /CIDR range, not a
 #    .0.0 network) in a file that is not an SSRF guard or a test fixture.
 m=$(printf '%s\n' "$REPO_FILES" | grep -vE "$IP_EXCLUDE" \
   | xargs -d '\n' grep -inHE '\b(192\.168|10\.[0-9]{1,3}|172\.(1[6-9]|2[0-9]|3[01])|100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])|169\.254)\.[0-9]{1,3}\.[0-9]{1,3}\b' 2>/dev/null \
