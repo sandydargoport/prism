@@ -24,7 +24,7 @@ Real Prism bugs in this class that survived adversarial review and were caught b
 | Toolbar icons invisible under wallpaper z-index in perf mode | Render |
 | `/api/family` POST blocked initial setup wizard | User-flow |
 | Auto-hide UI making toolbar appear "broken" | User-flow |
-| Real first names ("Eric"/"Kim") in `formatters.test.ts` fixtures | Cross-artifact (PII) |
+| Real first names in `formatters.test.ts` fixtures | Cross-artifact (PII) |
 | `scan-pii.sh` couldn't find the denylist when run via npm-spawned bash on WSL | Cross-environment (path resolution) |
 | `scan-pii.sh` ran 30+ seconds on a 50-entry denylist (per-entry loop instead of single-pass `grep -f`) | Performance / algorithmic |
 
@@ -81,7 +81,7 @@ Whole-word, fixed-string grep that fails if any tracked file contains items from
 2. (Optional) install the pre-push hook so it runs before every `git push`: `npm run scan:pii:install-hook`.
 3. Run manually anytime: `npm run scan:pii`.
 
-The denylist file MUST live outside the repo and MUST NOT be committed — committed values would defeat the purpose. The script exits cleanly (with a warning) when the file is absent, so contributors who haven't set one up don't have their pushes blocked. Why it catches what LLM review misses: an LLM has no way of knowing whether `'Eric'` is fictional or refers to the maintainer's spouse; a maintainer-curated denylist closes that gap with one deterministic grep.
+The denylist file MUST live outside the repo and MUST NOT be committed — committed values would defeat the purpose. The script exits cleanly (with a warning) when the file is absent, so contributors who haven't set one up don't have their pushes blocked. Why it catches what LLM review misses: an LLM has no way of knowing whether a given first name is fictional or refers to a real family member; a maintainer-curated denylist closes that gap with one deterministic grep.
 
 ### Placeholder / example audit — `scripts/scan-examples.sh`
 
