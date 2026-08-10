@@ -62,10 +62,12 @@ builtin=""
 m=$(printf '%s\n' "$REPO_FILES" | xargs -d '\n' grep -inHoE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' 2>/dev/null | grep -viE "$EMAIL_ALLOW" || true)
 [ -n "$m" ] && builtin+="$m"$'\n'
 
-# 2. A specific private / CGNAT / link-local IP HOST (not a /CIDR range, not a
-#    .0.0 network) in a file that is not an SSRF guard or a test fixture.
+# 2. A specific private / Tailscale / link-local IP HOST (not a /CIDR range, not
+#    a .0.0 network) in a file that is not an SSRF guard or a test fixture.
+#    The 100.x.x.x branch is intentionally the FULL /8 (not just the 100.64/10
+#    CGNAT range) so any Tailscale host address is caught, per maintainer request.
 m=$(printf '%s\n' "$REPO_FILES" | grep -vE "$IP_EXCLUDE" \
-  | xargs -d '\n' grep -inHE '\b(192\.168|10\.[0-9]{1,3}|172\.(1[6-9]|2[0-9]|3[01])|100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])|169\.254)\.[0-9]{1,3}\.[0-9]{1,3}\b' 2>/dev/null \
+  | xargs -d '\n' grep -inHE '\b(192\.168|10\.[0-9]{1,3}|172\.(1[6-9]|2[0-9]|3[01])|100\.[0-9]{1,3}|169\.254)\.[0-9]{1,3}\.[0-9]{1,3}\b' 2>/dev/null \
   | grep -vE '\.0\.0([/. ]|$)' | grep -vE '/[0-9]{1,2}\b' || true)
 [ -n "$m" ] && builtin+="$m"$'\n'
 
