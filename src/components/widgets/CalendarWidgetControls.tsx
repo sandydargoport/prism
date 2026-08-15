@@ -77,7 +77,10 @@ export function CalendarWidgetControls({
   return (
     // Layout mirrors the calendar subpage toolbar: Today | < > | view menu |
     // gear popover. All controls share h-8 so the toolbar reads as one band.
-    <div className="flex items-stretch gap-1" onClick={(e) => e.stopPropagation()}>
+    // data-screensaver-keep: taps on these controls must NOT dismiss the
+    // screensaver overlay, so the view can be changed in place. useIdleDetection
+    // checks for this attribute before dismissing on pointer-down.
+    <div className="flex items-stretch gap-1" data-screensaver-keep onClick={(e) => e.stopPropagation()}>
       {/* Navigation (hidden in agenda-only mode) */}
       {availableViews.length > 1 && resolvedView !== 'agenda' && (
         <>
@@ -198,7 +201,7 @@ function ViewPopover({
             <ChevronDown className="h-3 w-3 opacity-60 shrink-0" />
           </button>
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-32 p-1">
+        <PopoverContent align="end" className="w-32 p-1" data-screensaver-keep>
           {VIEW_OPTIONS.map((opt) => {
             const isActive = opt.value === viewType;
             const isAvailable = availableViews.includes(opt.value);

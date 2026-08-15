@@ -98,15 +98,27 @@ export function useIdleDetection(initialTimeout?: number) {
     const moveEvents = ['mousemove', 'scroll'] as const;
     moveEvents.forEach((e) => window.addEventListener(e, resetTimer));
 
-    // Click/key/touch dismiss the screensaver AND reset the timer
+    // Click/key/touch dismiss the screensaver AND reset the timer — EXCEPT when
+    // the interaction targets an opt-in "keep-alive" control (e.g. the calendar
+    // view switcher), so those can be operated in place without exiting the
+    // screensaver. Checking the native event target covers portaled controls
+    // (like the view popover, which renders under <body>) that stopPropagation
+    // on the React tree would miss.
+    const maybeDismiss = (e: Event) => {
+      const target = e.target as Element | null;
+      if (target && typeof target.closest === 'function' && target.closest('[data-screensaver-keep]')) {
+        return;
+      }
+      dismissIdle();
+    };
     const dismissEvents = ['mousedown', 'keydown', 'touchstart'] as const;
-    dismissEvents.forEach((e) => window.addEventListener(e, dismissIdle));
+    dismissEvents.forEach((e) => window.addEventListener(e, maybeDismiss));
 
     resetTimer();
 
     return () => {
       moveEvents.forEach((e) => window.removeEventListener(e, resetTimer));
-      dismissEvents.forEach((e) => window.removeEventListener(e, dismissIdle));
+      dismissEvents.forEach((e) => window.removeEventListener(e, maybeDismiss));
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [resetTimer, dismissIdle, timeout, isPWA]);
