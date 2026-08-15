@@ -1,3 +1,5 @@
+import { isPrivateHostname } from '@/lib/utils/safeFetch';
+
 /**
  * Resolve an OAuth redirect URI from the current request, honoring reverse-proxy
  * forwarded headers (Cloudflare Tunnel, nginx, etc.).
@@ -23,5 +25,34 @@ export function resolveRedirectUri(request: Request, callbackPath: string): stri
   const url = new URL(request.url);
   const host = xfHost ?? headers.get('host') ?? url.host;
   const proto = xfProto ?? url.protocol.replace(':', '');
-  return `${proto}://${host}${callbackPath}`;
+  const derived = `${proto}://${host}${callbackPath}`;
+
+  // OAuth providers (notably Google) reject private-IP / non-HTTPS redirect
+  // URIs. If the request resolved to one — usually because Prism was reached
+  // directly on the LAN (http://192.168.x.x:3000) instead of through its public
+  // HTTPS proxy — fall back to the configured public base URL (APP_URL) so the
+  // provider still gets a valid redirect_uri. When APP_URL is unset or itself
+  // non-public (the dev default localhost), the derived value is kept, so
+  // multi-host setups (#124) and local development are unaffected.
+  if (proto !== 'https' || isPrivateHostname(hostnameOf(host))) {
+    const base = process.env.APP_URL;
+    if (base) {
+      try {
+        const b = new URL(base);
+        if (b.protocol === 'https:' && !isPrivateHostname(b.hostname)) {
+          return new URL(callbackPath, b).toString();
+        }
+      } catch { /* malformed APP_URL — fall through to the derived value */ }
+    }
+  }
+  return derived;
+}
+
+/** Extract the bare hostname (no port, no IPv6 brackets) from a Host value. */
+function hostnameOf(host: string): string {
+  try {
+    return new URL(`http://${host}`).hostname;
+  } catch {
+    return host;
+  }
 }

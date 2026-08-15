@@ -95,6 +95,17 @@ function unbracket(host: string): string {
 }
 
 /**
+ * True if `host` (a hostname or IP literal, port already stripped) is not
+ * publicly routable: a localhost name, RFC1918 / loopback / link-local / CGNAT
+ * IPv4, or a private IPv6. Used to decide when a request-derived OAuth redirect
+ * URI can't be handed to a public provider (e.g. Google rejects private IPs).
+ */
+export function isPrivateHostname(host: string): boolean {
+  const h = unbracket(host);
+  return isLocalhostName(h) || isPrivateIPv4(h) || isPrivateIPv6(h);
+}
+
+/**
  * Parse PRISM_ALLOWED_INTERNAL_HOSTS into a list of allowlist entries.
  * Entries may be separated by commas, spaces, or newlines — whichever reads
  * best in your .env. Each entry is a hostname, IP literal, or IPv4 CIDR range.
