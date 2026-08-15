@@ -12,6 +12,7 @@ import { useDashboardData } from '@/components/dashboard/useDashboardData';
 import { buildWidgetProps } from '@/components/dashboard/useWidgetProps';
 import { GRID_COLS } from '@/lib/constants/grid';
 import { CssGridDisplay } from '@/components/layout/grid/CssGridDisplay';
+import { CalendarPrefsScopeContext } from '@/lib/hooks/useCalendarWidgetPrefs';
 import { loadScreensaverLayout } from './screensaverStorage';
 
 /**
@@ -153,16 +154,20 @@ function ScreensaverGrid() {
   );
 
   return (
-    <CssGridDisplay
-      layout={layout}
-      renderWidget={renderScreensaverWidget}
-      margin={4}
-      containerPadding={12}
-      cols={GRID_COLS}
-      containMode
-      headerOffset={0}
-      className="w-full h-full"
-    />
+    // Scope calendar prefs to 'screensaver' so the screensaver's calendar keeps
+    // its own view/display settings, independent of the dashboard calendar.
+    <CalendarPrefsScopeContext.Provider value="screensaver">
+      <CssGridDisplay
+        layout={layout}
+        renderWidget={renderScreensaverWidget}
+        margin={4}
+        containerPadding={12}
+        cols={GRID_COLS}
+        containMode
+        headerOffset={0}
+        className="w-full h-full"
+      />
+    </CalendarPrefsScopeContext.Provider>
   );
 }
 

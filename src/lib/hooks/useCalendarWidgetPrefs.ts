@@ -1,8 +1,17 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, createContext } from 'react';
 import { addDays, addWeeks, addMonths, subDays, subWeeks, subMonths, startOfWeek } from 'date-fns';
 import type { OverlayFlags } from '@/lib/hooks/useDayBucketsForRange';
+
+/**
+ * Scopes CalendarWidget preference storage. Empty string = the shared keys used
+ * on the dashboard. A non-empty scope (e.g. 'screensaver') suffixes every
+ * `prism-calendar-*` key so that context keeps its own independent, persisted
+ * view + display prefs. Provided by the screensaver overlay so its calendar can
+ * show a different view than the dashboard's.
+ */
+export const CalendarPrefsScopeContext = createContext<string>('');
 
 export type WidgetViewType =
   | 'agenda'
@@ -52,13 +61,16 @@ export function resolveMultiWeek(vt: WidgetViewType): { baseView: ResolvedViewTy
   return { baseView: vt as ResolvedViewType, weekCount: 2 };
 }
 
-function readViewPref(): WidgetViewType {
+function readViewPref(suffix: string): WidgetViewType {
   if (typeof window === 'undefined') return 'agenda';
-  const saved = localStorage.getItem('prism-calendar-view');
+  // A scoped calendar (e.g. screensaver) with no saved view yet inherits the
+  // dashboard's current view, then diverges once the user changes it.
+  const saved = localStorage.getItem(`prism-calendar-view${suffix}`)
+    ?? (suffix ? localStorage.getItem('prism-calendar-view') : null);
   // Migrate legacy formats
   if (saved === 'twoWeek') return 'multiWeek2';
   if (saved === 'multiWeek') {
-    const wc = Number(localStorage.getItem('prism-calendar-weekcount') || '2');
+    const wc = Number(localStorage.getItem(`prism-calendar-weekcount${suffix}`) || '2');
     if (wc === 1) return 'multiWeek';
     if (wc === 3) return 'multiWeek3';
     if (wc === 4) return 'multiWeek4';
@@ -73,29 +85,32 @@ function readViewPref(): WidgetViewType {
  * Manages view-type selection, date navigation, and preference persistence
  * for the CalendarWidget. Extracted from the component to keep it under 250 lines.
  */
-export function useCalendarWidgetPrefs(gridW: number, gridH: number) {
+export function useCalendarWidgetPrefs(gridW: number, gridH: number, scope = '') {
+  // Non-empty scope suffixes every storage key so this calendar (e.g. the one on
+  // the screensaver) keeps prefs independent of the dashboard's. Empty = shared.
+  const suffix = scope ? `:${scope}` : '';
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [widgetBordered, setWidgetBordered] = useState(
-    () => typeof window !== 'undefined' && localStorage.getItem('prism-calendar-bordered') === 'true'
+    () => typeof window !== 'undefined' && localStorage.getItem(`prism-calendar-bordered${suffix}`) === 'true'
   );
   const [mergedView, setMergedView] = useState(false);
   const [showNotes, setShowNotes] = useState(
-    () => typeof window !== 'undefined' && localStorage.getItem('prism-calendar-notes-visible') === 'true'
+    () => typeof window !== 'undefined' && localStorage.getItem(`prism-calendar-notes-visible${suffix}`) === 'true'
   );
-  const [viewType, setViewType] = useState<WidgetViewType>(readViewPref);
+  const [viewType, setViewType] = useState<WidgetViewType>(() => readViewPref(suffix));
   const [displayMode, setDisplayMode] = useState<'inline' | 'cards'>(
     // Match useCalendarViewData's default: 'cards' only if explicitly set,
     // else 'inline'. Same localStorage key — divergent defaults caused the
     // widget and subpage to render differently on first load.
-    () => (typeof window !== 'undefined' && localStorage.getItem('prism-calendar-display-mode') === 'cards') ? 'cards' : 'inline'
+    () => (typeof window !== 'undefined' && localStorage.getItem(`prism-calendar-display-mode${suffix}`) === 'cards') ? 'cards' : 'inline'
   );
   const [hideWeekends, setHideWeekends] = useState<boolean>(
-    () => typeof window !== 'undefined' && localStorage.getItem('prism-calendar-hide-weekends') === 'true'
+    () => typeof window !== 'undefined' && localStorage.getItem(`prism-calendar-hide-weekends${suffix}`) === 'true'
   );
   const [overlays, setOverlays] = useState<OverlayFlags>(() => {
     if (typeof window === 'undefined') return { events: true, meals: true, chores: true, tasks: true };
     try {
-      const raw = localStorage.getItem('prism-calendar-overlays');
+      const raw = localStorage.getItem(`prism-calendar-overlays${suffix}`);
       if (raw) {
         const parsed = JSON.parse(raw);
         return {
@@ -109,13 +124,13 @@ export function useCalendarWidgetPrefs(gridW: number, gridH: number) {
     return { events: true, meals: true, chores: true, tasks: true };
   });
 
-  // Persist prefs
-  useEffect(() => { localStorage.setItem('prism-calendar-view', viewType); }, [viewType]);
-  useEffect(() => { localStorage.setItem('prism-calendar-bordered', String(widgetBordered)); }, [widgetBordered]);
-  useEffect(() => { localStorage.setItem('prism-calendar-notes-visible', String(showNotes)); }, [showNotes]);
-  useEffect(() => { localStorage.setItem('prism-calendar-display-mode', displayMode); }, [displayMode]);
-  useEffect(() => { localStorage.setItem('prism-calendar-hide-weekends', String(hideWeekends)); }, [hideWeekends]);
-  useEffect(() => { localStorage.setItem('prism-calendar-overlays', JSON.stringify(overlays)); }, [overlays]);
+  // Persist prefs (keyed by scope)
+  useEffect(() => { localStorage.setItem(`prism-calendar-view${suffix}`, viewType); }, [viewType, suffix]);
+  useEffect(() => { localStorage.setItem(`prism-calendar-bordered${suffix}`, String(widgetBordered)); }, [widgetBordered, suffix]);
+  useEffect(() => { localStorage.setItem(`prism-calendar-notes-visible${suffix}`, String(showNotes)); }, [showNotes, suffix]);
+  useEffect(() => { localStorage.setItem(`prism-calendar-display-mode${suffix}`, displayMode); }, [displayMode, suffix]);
+  useEffect(() => { localStorage.setItem(`prism-calendar-hide-weekends${suffix}`, String(hideWeekends)); }, [hideWeekends, suffix]);
+  useEffect(() => { localStorage.setItem(`prism-calendar-overlays${suffix}`, JSON.stringify(overlays)); }, [overlays, suffix]);
 
   // Derived view state
   const availableViews = useMemo(() => getAvailableViews(gridW, gridH), [gridW, gridH]);
