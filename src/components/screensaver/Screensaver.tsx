@@ -94,16 +94,20 @@ export function Screensaver() {
         visible ? 'opacity-100' : 'opacity-0'
       }`}
     >
+      {/* Decorative layers are absolutely positioned, so in CSS paint order they
+          sit ABOVE the (statically-positioned) widget grid and would swallow every
+          tap. pointer-events-none lets taps fall through to the widgets — needed
+          for the calendar view controls to be operable on the screensaver. */}
       {src && (
         <div
-          className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
+          className="pointer-events-none absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
           style={{
             backgroundImage: `url(${src})`,
             opacity: fadingOut ? 0 : 1,
           }}
         />
       )}
-      <div className="absolute inset-0 bg-black/40" />
+      <div className="pointer-events-none absolute inset-0 bg-black/40" />
       <ScreensaverGrid />
     </div>
   );
