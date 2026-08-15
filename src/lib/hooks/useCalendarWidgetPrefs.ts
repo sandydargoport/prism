@@ -45,10 +45,14 @@ export const VIEW_OPTIONS: { value: WidgetViewType; label: string }[] = [
 /** Which views are available at a given grid size (48-column grid) */
 export function getAvailableViews(gridW: number, gridH: number): WidgetViewType[] {
   const mw: WidgetViewType[] = ['multiWeek', 'multiWeek2', 'multiWeek3', 'multiWeek4'];
+  // 'day' is a single-day timeline (one time gutter + a column per shown
+  // calendar; merged = one column), so it needs no more width than 'week',
+  // which always draws seven day-columns. Offer 'day' wherever 'week' is
+  // offered rather than gating it behind a much wider widget.
   if (gridW >= 36 && gridH >= 24) return ['agenda', 'list', 'day', 'week', ...mw, 'month'];
   if (gridW >= 24 && gridH >= 36) return ['agenda', 'list', 'day', 'week', ...mw, 'month'];
-  if (gridW >= 24 && gridH >= 24) return ['agenda', 'list', 'week', ...mw, 'month'];
-  if (gridW >= 16 && gridH >= 16) return ['agenda', 'list', 'week', ...mw];
+  if (gridW >= 24 && gridH >= 24) return ['agenda', 'list', 'day', 'week', ...mw, 'month'];
+  if (gridW >= 16 && gridH >= 16) return ['agenda', 'list', 'day', 'week', ...mw];
   return ['agenda'];
 }
 
