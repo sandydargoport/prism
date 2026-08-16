@@ -51,11 +51,22 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+>(({ className, children, onInteractOutside, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
+      // The on-screen virtual keyboard portals to <body>, outside this dialog.
+      // Without this guard, tapping a key counts as an "outside" interaction and
+      // Radix closes the dialog — so a keystroke into any dialog field would shut
+      // the dialog and be lost. Ignore interactions that originate in the keyboard.
+      onInteractOutside={(e) => {
+        const t = (e.detail?.originalEvent?.target ?? null) as Element | null;
+        if (t && typeof t.closest === 'function' && t.closest('[data-virtual-keyboard]')) {
+          e.preventDefault();
+        }
+        onInteractOutside?.(e);
+      }}
       className={cn(
         'fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg',
         'translate-x-[-50%] translate-y-[-50%] gap-4',
