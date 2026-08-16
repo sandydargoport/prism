@@ -18,6 +18,13 @@ docker cp .next/standalone/. prism-app:/app/
 docker exec --user root prism-app sh -c "rm -rf /app/.next/static && mkdir -p /app/.next/static"
 docker cp .next/static/. prism-app:/app/.next/static/
 
+# Public assets, incl. the PWA service worker. Next.js standalone output does
+# NOT bundle public/, so without this the container keeps the image's stale
+# sw.js — its precache manifest points at old chunk hashes, so browsers keep
+# serving an outdated app (and can't cleanly update) after every deploy.
+docker cp public/. prism-app:/app/public/
+docker exec --user root prism-app chown -R nextjs:nodejs /app/public
+
 # The standalone bundle ships empty data/ dirs (recipe-images, photos). The
 # docker cp above lays them over the bind-mounted /app/data, resetting it to
 # the host uid so the container user (nextjs) can no longer write uploads
