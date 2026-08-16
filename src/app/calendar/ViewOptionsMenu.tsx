@@ -161,7 +161,7 @@ export function ViewOptionsMenu({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-64 p-2">
+      <PopoverContent align="end" className="w-64 p-2 z-[10000]" data-screensaver-keep>
         <div className="space-y-3">
           <section>
             <p className="mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">

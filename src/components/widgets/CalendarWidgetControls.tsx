@@ -201,7 +201,7 @@ function ViewPopover({
             <ChevronDown className="h-3 w-3 opacity-60 shrink-0" />
           </button>
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-32 p-1" data-screensaver-keep>
+        <PopoverContent align="end" className="w-32 p-1 z-[10000]" data-screensaver-keep>
           {VIEW_OPTIONS.map((opt) => {
             const isActive = opt.value === viewType;
             const isAvailable = availableViews.includes(opt.value);
