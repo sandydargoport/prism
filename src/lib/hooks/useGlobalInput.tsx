@@ -85,6 +85,15 @@ export function GlobalInputProvider({ children }: { children: React.ReactNode })
   const suppressedForScan = useRef(false);
   const lastPointerTypeRef = useRef<'touch' | 'mouse' | 'keyboard'>('mouse');
   const textInjectedWhileOpen = useRef(false);
+  // True while the most recent pointerdown landed on the virtual keyboard. The
+  // durable guard against the recurring "first key tap dismisses the keyboard"
+  // bug (#125/#135/#234): keyboard keys are non-focusable divs, so tapping one
+  // blurs the input with a null relatedTarget and the focusout handler used to
+  // tear the keyboard down. We instead detect the keyboard-origin blur here and
+  // restore focus, independent of preventDefault (which simple-keyboard defeats)
+  // and of relatedTarget (always null for div keys). See global-input-system.md.
+  const pointerOnKeyboardRef = useRef(false);
+  const keyboardVisibleRef = useRef(false);
 
   // Read virtual keyboard setting (default enabled)
   const [virtualKeyboardEnabled, setVirtualKeyboardEnabled] = useState(true);
@@ -111,6 +120,10 @@ export function GlobalInputProvider({ children }: { children: React.ReactNode })
     input.dispatchEvent(new Event('change', { bubbles: true }));
     textInjectedWhileOpen.current = true;
   }, []);
+
+  // Mirror keyboardVisible into a ref so the document event handlers (bound once)
+  // can read the live value without re-binding.
+  useEffect(() => { keyboardVisibleRef.current = keyboardVisible; }, [keyboardVisible]);
 
   // ---- audio feedback ----
   const playBeep = useCallback(async () => {
@@ -222,6 +235,10 @@ export function GlobalInputProvider({ children }: { children: React.ReactNode })
     if (visible) {
       textInjectedWhileOpen.current = false;
     } else {
+      // Explicit close (↓ dismiss / Enter). Clear the keyboard-tap flag so the
+      // blur those keys trigger isn't caught by the focusout refocus guard,
+      // which would otherwise immediately reopen the keyboard.
+      pointerOnKeyboardRef.current = false;
       if (!textInjectedWhileOpen.current) restoreScroll();
       textInjectedWhileOpen.current = false;
     }
@@ -246,6 +263,8 @@ export function GlobalInputProvider({ children }: { children: React.ReactNode })
       } else if (e.pointerType === 'mouse') {
         lastPointerTypeRef.current = 'mouse';
       }
+      const t = e.target;
+      pointerOnKeyboardRef.current = t instanceof Element && isInsideKeyboard(t);
     };
 
     const onFocusIn = (e: FocusEvent) => {
@@ -271,14 +290,26 @@ export function GlobalInputProvider({ children }: { children: React.ReactNode })
         !suppressedForScan.current &&
         virtualKeyboardEnabled
       ) {
+        const wasVisible = keyboardVisibleRef.current;
         setKeyboardVisibleState(true);
-        scrollInputIntoView(target);
+        // Don't re-scroll when this focusin is the restore-focus that follows a
+        // keyboard key tap — the keyboard is already open and in place.
+        if (!wasVisible) scrollInputIntoView(target);
       }
     };
 
     const onFocusOut = (e: FocusEvent) => {
       const next = e.relatedTarget as Element | null;
       if (next && isInsideKeyboard(next)) return;
+      // Tapping a virtual-keyboard key blurs the input (its keys are
+      // non-focusable divs, so relatedTarget is null). Restore focus to the
+      // active field and keep the keyboard open, rather than tearing it down —
+      // this is the touch-safe fix for the recurring first-tap-dismiss bug that
+      // preventDefault (swallowed by simple-keyboard) never reliably solved.
+      if (pointerOnKeyboardRef.current) {
+        const el = activeContentEditableRef.current ?? activeInputRef.current;
+        if (el) { el.focus({ preventScroll: true }); return; }
+      }
       activeInputRef.current = null;
       activeContentEditableRef.current = null;
       setIsInputFocused(false);

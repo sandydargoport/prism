@@ -137,13 +137,35 @@ if (lastPointerType === 'touch' && !isMobile && !suppressedForScan && virtualKey
 **`focusout`:**
 ```ts
 const next = e.relatedTarget as Element | null;
-if (next && isInsideKeyboard(next)) return; // keyboard buttons stole focus, ignore
+if (next && isInsideKeyboard(next)) return; // focus moved to a focusable keyboard control
+// Keyboard keys are non-focusable <div>s, so tapping one blurs the input with a
+// NULL relatedTarget. Detect that via the pointerdown target we tracked and
+// restore focus instead of tearing the keyboard down.
+if (pointerOnKeyboardRef.current) {
+  const el = activeContentEditableRef.current ?? activeInputRef.current;
+  if (el) { el.focus({ preventScroll: true }); return; }
+}
 activeInputRef.current = null;
 setKeyboardVisible(false);
 restoreScroll();
 ```
 
 `isInsideKeyboard(el)` checks `el.closest('[data-virtual-keyboard]')`.
+
+> **⚠️ Recurring bug — "first key tap dismisses the keyboard" (#125 → #135 → #234 → and again).**
+> Tapping a key blurs the focused input (keys are non-focusable divs → null
+> `relatedTarget`), so `focusout` hid the keyboard and the character was lost.
+> Earlier fixes tried to *prevent the blur* — `onPointerDown`/`onMouseDown`/
+> `onPointerDownCapture` `preventDefault` on the keyboard container — but
+> simple-keyboard swallows the pointerdown and touch displays emit no usable
+> mousedown, so each patch fixed only one input path (mouse, or one key group).
+> **The durable fix does not rely on preventDefault or relatedTarget:** track
+> whether the last `pointerdown` landed inside `[data-virtual-keyboard]`
+> (`pointerOnKeyboardRef`), and in `focusout` re-focus the active field when it
+> did. `setKeyboardVisible(false)` clears that flag so the ↓/Enter keys still
+> close the keyboard. If this regresses again, verify `pointerOnKeyboardRef` is
+> being set on `pointerdown` and read in `focusout` — don't add another
+> `preventDefault`.
 
 **`keydown`:** physical keyboard auto-dismiss (§9) + barcode buffer (§5).
 
