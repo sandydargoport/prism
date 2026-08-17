@@ -3,6 +3,7 @@
 import * as React from 'react';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import { cn } from '@/lib/utils';
+import { isVirtualKeyboardTarget } from '@/lib/input/keyboardTarget';
 
 const Popover = PopoverPrimitive.Root;
 const PopoverTrigger = PopoverPrimitive.Trigger;
@@ -22,9 +23,7 @@ const PopoverContent = React.forwardRef<
       // closes the popover. Ignore interactions originating in the keyboard.
       onInteractOutside={(e) => {
         const t = (e.detail?.originalEvent?.target ?? null) as Element | null;
-        if (t && typeof t.closest === 'function' && t.closest('[data-virtual-keyboard]')) {
-          e.preventDefault();
-        }
+        if (isVirtualKeyboardTarget(t)) e.preventDefault();
         onInteractOutside?.(e);
       }}
       className={cn(

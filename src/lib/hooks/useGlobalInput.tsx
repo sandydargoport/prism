@@ -12,6 +12,7 @@ import React, {
 import { useIsMobile } from './useIsMobile';
 import { useSpeechRecognition } from './useSpeechRecognition';
 import { toast } from '@/components/ui/use-toast';
+import { isVirtualKeyboardTarget } from '@/lib/input/keyboardTarget';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -48,7 +49,7 @@ function shouldShowKeyboard(el: Element): boolean {
 }
 
 function isInsideKeyboard(el: Element): boolean {
-  return !!el.closest('[data-virtual-keyboard]');
+  return isVirtualKeyboardTarget(el);
 }
 
 function getScrollParent(el: Element): Element | Window {
@@ -300,12 +301,17 @@ export function GlobalInputProvider({ children }: { children: React.ReactNode })
 
     const onFocusOut = (e: FocusEvent) => {
       const next = e.relatedTarget as Element | null;
+      const from = e.target as Element | null;
+      // Only react when the element LOSING focus is the input we're tracking.
+      // Otherwise this global handler fires on every unrelated focus move — e.g.
+      // Radix Select cycling focus across its options — and repeatedly hides the
+      // keyboard / restores scroll, which nudges the list under the finger and
+      // makes option taps land a row off ("sometimes clicks past it").
+      if (from !== activeInputRef.current && from !== activeContentEditableRef.current) return;
+      // Focus moved to a focusable keyboard control — keep the keyboard open.
       if (next && isInsideKeyboard(next)) return;
-      // Tapping a virtual-keyboard key blurs the input (its keys are
-      // non-focusable divs, so relatedTarget is null). Restore focus to the
-      // active field and keep the keyboard open, rather than tearing it down —
-      // this is the touch-safe fix for the recurring first-tap-dismiss bug that
-      // preventDefault (swallowed by simple-keyboard) never reliably solved.
+      // Tapping a (non-focusable) key blurs the input with a null relatedTarget.
+      // Restore focus and keep the keyboard open instead of tearing it down.
       if (pointerOnKeyboardRef.current) {
         const el = activeContentEditableRef.current ?? activeInputRef.current;
         if (el) { el.focus({ preventScroll: true }); return; }

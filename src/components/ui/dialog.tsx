@@ -22,6 +22,7 @@ import * as React from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { isVirtualKeyboardTarget } from '@/lib/input/keyboardTarget';
 
 const Dialog = DialogPrimitive.Root;
 
@@ -62,9 +63,7 @@ const DialogContent = React.forwardRef<
       // the dialog and be lost. Ignore interactions that originate in the keyboard.
       onInteractOutside={(e) => {
         const t = (e.detail?.originalEvent?.target ?? null) as Element | null;
-        if (t && typeof t.closest === 'function' && t.closest('[data-virtual-keyboard]')) {
-          e.preventDefault();
-        }
+        if (isVirtualKeyboardTarget(t)) e.preventDefault();
         onInteractOutside?.(e);
       }}
       className={cn(

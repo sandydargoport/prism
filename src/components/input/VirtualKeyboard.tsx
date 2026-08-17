@@ -202,6 +202,12 @@ export function VirtualKeyboard() {
       style={{
         height: '38vh', minHeight: 320, maxHeight: 480,
         display: visible ? undefined : 'none',
+        // A Radix *modal* dialog (e.g. the Add-Message compose box) sets
+        // pointer-events:none on everything outside its content. This keyboard
+        // portals to <body>, outside the dialog, so without this it becomes
+        // inert — taps fall straight through to the dialog backdrop and close it
+        // instead of typing. Force interactivity so keys work over a modal.
+        pointerEvents: 'auto',
       }}
       // Keep focus on the active input when a key is tapped. simple-keyboard
       // swallows the BUBBLING pointerdown before it reaches this container, so

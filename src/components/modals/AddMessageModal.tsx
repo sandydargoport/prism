@@ -287,19 +287,21 @@ export function AddMessageModal({
             <div className="flex items-center gap-2">
               <Clock className="h-3.5 w-3.5 text-muted-foreground" />
               <Label htmlFor="expiresIn" className="text-sm whitespace-nowrap">Expires after</Label>
-              <Select value={expiresIn} onValueChange={setExpiresIn}>
-                <SelectTrigger id="expiresIn" className="h-8 w-[130px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="never">Never</SelectItem>
-                  <SelectItem value="12h">12 hours</SelectItem>
-                  <SelectItem value="1d">1 day</SelectItem>
-                  <SelectItem value="2d">2 days</SelectItem>
-                  <SelectItem value="3d">3 days</SelectItem>
-                  <SelectItem value="7d">7 days</SelectItem>
-                </SelectContent>
-              </Select>
+              {/* Native select: Radix Select's tap-to-commit is unreliable on
+                  the touch wall display; the OS picker is rock-solid on touch. */}
+              <select
+                id="expiresIn"
+                value={expiresIn}
+                onChange={(e) => setExpiresIn(e.target.value)}
+                className="h-8 w-[130px] rounded-md border border-input bg-background px-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              >
+                <option value="never">Never</option>
+                <option value="12h">12 hours</option>
+                <option value="1d">1 day</option>
+                <option value="2d">2 days</option>
+                <option value="3d">3 days</option>
+                <option value="7d">7 days</option>
+              </select>
             </div>
           </div>
 
