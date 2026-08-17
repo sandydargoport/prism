@@ -38,9 +38,11 @@ export function DayOverflowPopover({
         <button
           onClick={(e) => e.stopPropagation()}
           className={cn(
-            'block w-full text-left text-[10px] font-medium px-1 py-0.5 rounded',
-            'bg-muted/60 hover:bg-muted text-muted-foreground transition-colors',
-            'min-h-[20px]',
+            // Full-width + a taller min-height so it's an easy touch target on a
+            // wall display (was min-h-20px / 10px text — fiddly to tap).
+            'flex w-full items-center text-left text-[11px] font-medium px-2 py-1 rounded',
+            'bg-muted/60 hover:bg-muted active:bg-muted text-muted-foreground transition-colors',
+            'min-h-[28px]',
             triggerClassName,
           )}
         >

@@ -192,7 +192,7 @@ function DayCell({
   const overlayRowHeight = cardHeight ?? 56;
   const cellGap = 4; // matches `gap-1` between cards in the events container
   const overlayRowsHeight = overlayItemCount * (overlayRowHeight + cellGap);
-  const popoverTriggerHeight = 22; // only present when events actually overflow
+  const popoverTriggerHeight = 28; // only present when events actually overflow
   const { cellRef, fitWithOverflow, fitWithoutOverflow } = useCardCapacity({
     cardHeight,
     headerHeight: overlayRowsHeight,

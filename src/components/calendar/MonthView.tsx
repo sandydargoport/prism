@@ -281,7 +281,7 @@ function DayCardsCell({
   // Reserve ~22px for the popover trigger; each overlay row is ~24px (sm card)
   // plus the cell's 4px gap-1 separator. 20px under-reserved enough that event
   // rows pushed overlay items into clipped territory on dense days.
-  const popoverHeight = 22 + overlayItemCount * 26;
+  const popoverHeight = 28 + overlayItemCount * 26;
 
   const { cellRef, fitWithOverflow, fitWithoutOverflow } = useCardCapacity({
     cardHeight,
