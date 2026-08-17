@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+const BASE_URL = process.env.APP_URL || process.env.BASE_URL || 'http://localhost:3000';
 
 /**
  * True when an OAuth "initiate" failure is just "credentials aren't configured

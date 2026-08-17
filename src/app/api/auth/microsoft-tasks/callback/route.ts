@@ -7,7 +7,7 @@ import { resolveRedirectUri } from '@/lib/integrations/resolveRedirectUri';
 import { fetchMicrosoftAccountEmail } from '@/lib/integrations/oauth-userinfo';
 
 const MICROSOFT_TOKEN_URL = 'https://login.microsoftonline.com/consumers/oauth2/v2.0/token';
-const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+const BASE_URL = process.env.APP_URL || process.env.BASE_URL || 'http://localhost:3000';
 // Must match the authorize route's scopes (Microsoft validates scope on the
 // token exchange). `User.Read` powers the "Connected as <email>" label (#100).
 const SCOPES = ['Tasks.ReadWrite', 'offline_access', 'User.Read'].join(' ');

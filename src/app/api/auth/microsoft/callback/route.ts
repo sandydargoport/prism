@@ -10,7 +10,7 @@ import { resolveRedirectUri } from '@/lib/integrations/resolveRedirectUri';
 import { fetchMicrosoftAccountEmail } from '@/lib/integrations/oauth-userinfo';
 import { consumeOAuthState } from '@/lib/auth/oauthState';
 
-const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+const BASE_URL = process.env.APP_URL || process.env.BASE_URL || 'http://localhost:3000';
 
 export async function GET(request: Request) {
   // The callback is a top-level navigation, so the Prism session cookie is

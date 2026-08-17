@@ -7,7 +7,7 @@ import { resolveRedirectUri } from '@/lib/integrations/resolveRedirectUri';
 import { fetchGoogleAccountEmail } from '@/lib/integrations/oauth-userinfo';
 
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
-const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+const BASE_URL = process.env.APP_URL || process.env.BASE_URL || 'http://localhost:3000';
 const TEMP_TOKEN_TTL = 300; // 5 minutes
 
 interface GoogleTokens {

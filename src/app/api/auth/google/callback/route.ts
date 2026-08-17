@@ -14,7 +14,7 @@ import { resolveRedirectUri } from '@/lib/integrations/resolveRedirectUri';
 import { fetchGoogleAccountEmail } from '@/lib/integrations/oauth-userinfo';
 import { consumeOAuthState } from '@/lib/auth/oauthState';
 
-const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+const BASE_URL = process.env.APP_URL || process.env.BASE_URL || 'http://localhost:3000';
 
 export async function GET(request: Request) {
   const auth = await requireAuth();
