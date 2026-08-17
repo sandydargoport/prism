@@ -106,8 +106,9 @@ export const CalendarWidget = React.memo(function CalendarWidget({
         to: endOfWeek(monthEnd, { weekStartsOn }),
       };
     }
-    // agenda — 14 day window
-    return { from: currentDate, to: addDays(currentDate, 13) };
+    // agenda — 30 day window (matches AgendaView days below, so cards-mode
+    // meal/chore/task overlays are loaded for every day the agenda shows)
+    return { from: currentDate, to: addDays(currentDate, 29) };
   }, [resolvedView, resolvedWeekCount, currentDate, weekStartsOn]);
 
   const overlaysActive = cardsMode;
