@@ -4,6 +4,11 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.14.2] – 2026-08-17
+
+### Integrations
+- **OAuth sign-in returns you to the right place behind a reverse proxy.** After connecting Google or Microsoft (calendar, tasks, or the bus tracker), the post-connect redirect now uses your configured `APP_URL` instead of an undocumented variable that fell back to `localhost:3000` — so you land back on your dashboard's Integrations page instead of an unreachable address. The connection itself always worked; only the redirect afterward was wrong. Thanks to @c-jw for the precise report (#245).
+
 ## [1.14.1] – 2026-08-17
 
 ### Dashboard
