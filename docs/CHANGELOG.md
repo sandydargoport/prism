@@ -4,6 +4,15 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.14.1] – 2026-08-17
+
+### Dashboard
+- **The dashboard no longer flashes and rebuilds every few minutes.** Background data refreshes now happen silently — the dashboard stays on screen and updates in place, instead of every widget briefly blanking to a loading skeleton on each refresh.
+
+### Calendar
+- **The agenda view lists all of your events.** It no longer caps each day at five and hides the rest behind a "+N more" line — since the agenda scrolls, every event across the next 30 days is shown.
+- **The "+N more" button on the month and multi-week views is an easier touch target.** Tapping it still opens a popup listing that day's hidden events; the button is now bigger and simpler to hit on a wall display.
+
 ## [1.14.0] – 2026-08-17
 
 ### Dashboard
