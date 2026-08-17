@@ -105,6 +105,7 @@ nav:
       - Display Modes: features/DISPLAY-MODES.md
       - Mobile (PWA): features/MOBILE.md
       - Global input: features/global-input-system.md
+      - Anonymous update check: features/TELEMETRY.md
   - Integrations:
       - Apple iCloud: features/ICLOUD.md
       - Kroger / Mariano's: features/KROGER.md

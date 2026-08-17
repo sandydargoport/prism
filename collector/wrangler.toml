@@ -1,0 +1,22 @@
+# Cloudflare Worker config for the Prism telemetry collector.
+# Deploy steps are in collector/README.md.
+
+name = "prism-telemetry"
+main = "worker.js"
+compatibility_date = "2026-08-01"
+
+# D1 database binding. Create it with:
+#   wrangler d1 create prism-telemetry
+# then paste the printed database_id below.
+[[d1_databases]]
+binding = "DB"
+database_name = "prism-telemetry"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+
+[vars]
+# Repo whose latest release drives the "update available" reply.
+GITHUB_REPO = "sandydargoport/prism"
+
+# STATS_TOKEN is a SECRET, not a var. Set it with:
+#   wrangler secret put STATS_TOKEN
+# Then read stats at: https://<worker-url>/stats?token=<that value>

@@ -19,5 +19,8 @@ export async function register() {
 
     const { startPhotoSyncCron } = await import('./lib/server/photoSyncCron');
     startPhotoSyncCron();
+
+    const { startTelemetryCron } = await import('./lib/server/telemetryCron');
+    startTelemetryCron();
   }
 }

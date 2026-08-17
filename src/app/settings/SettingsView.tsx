@@ -49,6 +49,7 @@ import { BackupSection } from './sections/BackupSection';
 import { BusTrackingSection } from './sections/BusTrackingSection';
 import { InputSection } from './sections/InputSection';
 import { FeaturesSection } from './sections/FeaturesSection';
+import { TelemetryCard } from './sections/TelemetryCard';
 import { ActivityLogSection } from './sections/ActivityLogSection';
 
 import { DisplaysSection } from './sections/DisplaysSection';
@@ -348,6 +349,7 @@ export function SettingsView() {
                       </Button>
                     </CardContent>
                   </Card>
+                  <TelemetryCard />
                 </div>
               )}
             </div>
