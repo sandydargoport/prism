@@ -36,10 +36,18 @@ export function useFetch<T>(options: UseFetchOptions<T>): UseFetchResult<T> {
   // Only show loading spinner on true cold fetches (no cached data available)
   const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState<string | null>(null);
+  // The URL we've already loaded data for. Used to keep background POLLS silent
+  // (stale-while-revalidate) — the spinner is only for a cold first load of a
+  // URL. We can't rely on navCache for this: its TTL is 60s, far shorter than
+  // poll intervals (minutes), so on every poll the cache is already gone and the
+  // widget would blank. Reset implicitly when the URL changes (new endpoint =
+  // cold load), preserving the spinner on filter/param changes.
+  const loadedUrlRef = useRef<string | null>(cached ? url : null);
 
   const fetchData = useCallback(async () => {
-    // Don't flash a spinner if we already have something to show (SWR)
-    if (!navCacheGet(url)) setLoading(true);
+    // Spinner only on a cold first load of this URL; background polls keep the
+    // current data on screen instead of blanking every widget.
+    if (loadedUrlRef.current !== url && !navCacheGet(url)) setLoading(true);
     try {
       setError(null);
       const response = await fetch(url);
@@ -47,6 +55,7 @@ export function useFetch<T>(options: UseFetchOptions<T>): UseFetchResult<T> {
       const json = await response.json();
       const result = transformRef.current ? transformRef.current(json) : (json as T);
       navCacheSet(url, result);
+      loadedUrlRef.current = url;
       // Structural-shared polling: when the new payload is byte-identical
       // to what's already in state, return the previous reference so React
       // skips re-renders for every consumer of this data. Big win on weak
