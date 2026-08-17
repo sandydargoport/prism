@@ -4,17 +4,27 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.14.0] – 2026-08-17
+
 ### Dashboard
 - **The built-in templates were rebuilt around real composition principles.** Each board now leads with one hero (usually the calendar), sizes every widget to its natural shape (birthdays runs tall rather than wide, the clock stays small, weather gets room for its sun/moon detail) and arranges them into a couple of balanced zones instead of an even grid packed with too many panels. The new lineup is **Family Central, Calendar Focus, Command Center, Meal Planner, School Mornings**, and a photo-forward **Ambient** whose glassy clock and weather float over your wallpaper.
 
 ### Calendar
 - **Meals now sit at the bottom of each day cell in cards mode.** The events lead the cell, and the day's chores, tasks, and meals are grouped in a delineated band pinned to the bottom (meals last), so the schedule and the day's plan read as separate zones.
+- **Day view is available at more widget sizes.** The single-day timeline no longer needs a very wide calendar widget — it's offered wherever the week view is.
+
+### On-screen keyboard
+- **The touch keyboard now works inside pop-up dialogs** (for example, posting a message). Previously the first key tap closed the dialog and lost the keystroke, Shift dismissed the keyboard, and dropdowns were hard to land on a touch display. Typing, Shift/capitals, and dropdowns are all reliable now.
+
+### Integrations
+- **Google and Microsoft sign-in work from any address.** When Prism is reached directly on a LAN IP, the sign-in redirect now falls back to your configured public URL, so connecting a calendar no longer fails with a provider "invalid redirect" error.
 
 ### Meals
 - **Meal-type icons render everywhere, including thin clients.** The breakfast, lunch, and dinner icons now use Prism's self-hosted emoji images, so they display on kiosk and thin-client browsers that cannot render a color-emoji font, instead of showing blank.
 
 ### Screensaver
 - **Refreshed screensaver templates.** The calendar (or tonight's meals) is the hero; the clock, weather and messages are small, aligned accents floating over one clean photo region, calmer and less cluttered, with everything sitting fully on-screen.
+- **The calendar's controls now work on the screensaver.** You can change the view, toggle hide-hours, and use the other calendar controls directly on the screensaver without it dismissing on the first tap — and the screensaver's calendar keeps its own view, independent of the dashboard calendar.
 
 ### Weather
 - **Sunrise, sunset, moonrise and moonset now show their times** along the sun/moon arc. The arc and the hourly timeline appear only when the widget is tall enough to draw them cleanly, so a short widget no longer clips them.
