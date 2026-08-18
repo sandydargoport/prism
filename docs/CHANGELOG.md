@@ -4,6 +4,11 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.14.3] – 2026-08-18
+
+### Calendar
+- **Events more than ~2 months out no longer disappear from the calendar.** The calendar only loaded a rolling window around today (about 30 days back and 60 days forward), so events further out silently dropped from every view — Month, Agenda, and the rest — and paging ahead showed empty grids. This was purely a display limit: the events were always saved and simply reappear once you update. The calendar now loads a much wider window (Jan 1 of last year through the end of two years out), so future events stay visible while navigation stays fast. Thanks to @JoshuaPostema for the precise report (#250).
+
 ## [1.14.2] – 2026-08-17
 
 ### Integrations
