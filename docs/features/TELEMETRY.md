@@ -16,10 +16,14 @@ Exactly four fields, once a week:
   "schema": 1,
   "id": "9f2c7b3e-…",     // a random id this install made up for itself
   "version": "1.14.2",     // which Prism version you're running
-  "deployment": "docker",  // "docker" or "ha" (Home Assistant addon)
+  "deployment": "docker",  // how you installed: "docker", "ha", "pikapods", …
   "arch": "arm64"          // CPU architecture
 }
 ```
+
+The `deployment` field lets the maintainer see the split between Home Assistant,
+one-click hosts like PikaPods, and plain self-hosted Docker — nothing more
+specific than the channel you installed through.
 
 You can see the live payload for your own install any time under
 **Settings → About → Anonymous update check → "Show exactly what's sent."**
@@ -68,6 +72,8 @@ Any one of these disables it:
 
 - **In the app:** Settings → About → **Anonymous update check** → switch off.
   Nothing further is sent.
+- **Home Assistant:** the addon's **Configuration** tab has an **Anonymous
+  stats** toggle — turn it off there and the addon disables it at startup.
 - **Environment variable:** set `PRISM_DISABLE_TELEMETRY=true`. This hard-disables
   the feature for the whole install (useful for distro or workplace builds) and
   greys the switch out in the UI.

@@ -5,7 +5,7 @@
  * affect the running app.
  */
 import { APP_VERSION } from '@/lib/constants';
-import { isHaMode } from '@/lib/config/runtime';
+import { getDeploymentChannel } from '@/lib/config/runtime';
 import {
   TELEMETRY_SCHEMA_VERSION,
   TELEMETRY_SETTING_KEYS,
@@ -35,7 +35,7 @@ export async function buildPayload(): Promise<TelemetryPayload> {
     schema: TELEMETRY_SCHEMA_VERSION,
     id: await getOrCreateInstanceId(),
     version: APP_VERSION,
-    deployment: isHaMode() ? 'ha' : 'docker',
+    deployment: getDeploymentChannel(),
     arch: process.arch,
   };
 }

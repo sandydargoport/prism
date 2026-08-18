@@ -23,6 +23,22 @@ export function isHaMode(): boolean {
 }
 
 /**
+ * Which distribution channel this install is running under, used only for the
+ * anonymous install count (see src/lib/telemetry). Resolution order:
+ *   1. PRISM_DEPLOYMENT env (explicit) — set by hosted blueprints so we can tell
+ *      PikaPods / Render / Railway etc. apart from a plain local Docker run.
+ *   2. Home Assistant addon (PRISM_HA_MODE=1).
+ *   3. Otherwise "docker" (self-hosted compose / bare container).
+ * The value is sanitised to a short slug so an odd env can never bloat the payload.
+ */
+export function getDeploymentChannel(): string {
+  const explicit = process.env.PRISM_DEPLOYMENT?.trim().toLowerCase();
+  if (explicit) return explicit.replace(/[^a-z0-9_-]/g, '').slice(0, 16) || 'docker';
+  if (isHaMode()) return 'ha';
+  return 'docker';
+}
+
+/**
  * Base directory for persisted state (photos, avatars, future buckets).
  * Overrideable via PRISM_DATA_ROOT — the HA addon sets it to /data, the
  * docker-compose default is `<cwd>/data`.

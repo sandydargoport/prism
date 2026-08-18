@@ -35,8 +35,15 @@ BUNDLED_DB="$(opt bundled_db || echo true)"
 EXTERNAL_DB_URL="$(opt database_url || echo '')"
 EXTERNAL_REDIS_URL="$(opt redis_url || echo '')"
 PHOTOS_ROOT="$(opt photos_root || echo /data/photos)"
+ANON_STATS="$(opt anonymous_stats || echo true)"
 
-log "log_level=$LOG_LEVEL bundled_db=$BUNDLED_DB photos_root=$PHOTOS_ROOT"
+log "log_level=$LOG_LEVEL bundled_db=$BUNDLED_DB photos_root=$PHOTOS_ROOT anonymous_stats=$ANON_STATS"
+
+# Anonymous update check is opt-out; the addon option lets HA users disable it
+# from the Configuration tab (maps to the app's PRISM_DISABLE_TELEMETRY).
+if [ "$ANON_STATS" = "false" ]; then
+    export PRISM_DISABLE_TELEMETRY=true
+fi
 
 mkdir -p "$PHOTOS_ROOT"
 export PRISM_PHOTO_ROOT="$PHOTOS_ROOT"

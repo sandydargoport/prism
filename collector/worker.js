@@ -58,7 +58,12 @@ async function handleCheckIn(request, env) {
   const id = typeof body.id === 'string' ? body.id.slice(0, 64) : null;
   if (!id) return json({ error: 'missing id' }, 400);
   const version = typeof body.version === 'string' ? body.version.slice(0, 32) : null;
-  const deployment = body.deployment === 'ha' ? 'ha' : 'docker';
+  // Channel slug (ha | docker | pikapods | render | …). Sanitised, not forced to
+  // a binary, so installs can be counted by source without a schema change.
+  const deployment =
+    typeof body.deployment === 'string'
+      ? body.deployment.toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 16) || 'docker'
+      : 'docker';
   const arch = typeof body.arch === 'string' ? body.arch.slice(0, 16) : null;
   const now = new Date().toISOString();
 

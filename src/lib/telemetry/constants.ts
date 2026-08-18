@@ -54,8 +54,12 @@ export type TelemetryPayload = {
   id: string;
   /** Running app version, e.g. "1.14.2". */
   version: string;
-  /** Distribution channel: Home Assistant addon vs. plain Docker. */
-  deployment: 'ha' | 'docker';
+  /**
+   * Distribution channel, e.g. "ha" | "docker" | "pikapods" | "render". Set by
+   * getDeploymentChannel() so installs can be counted by source. Open-ended so
+   * new hosted blueprints need no schema change.
+   */
+  deployment: string;
   /** CPU architecture, e.g. "x64" | "arm64". */
   arch: string;
 };

@@ -35,9 +35,11 @@ options:
   database_url: ""
   redis_url: ""
   photos_root: /data/photos
+  anonymous_stats: true
 schema:
   log_level: list(trace|debug|info|notice|warning|error|fatal)
   bundled_db: bool
   database_url: str?
   redis_url: str?
   photos_root: str
+  anonymous_stats: bool

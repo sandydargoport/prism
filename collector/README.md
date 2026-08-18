@@ -66,7 +66,11 @@ curl "https://prism-telemetry.<you>.workers.dev/stats?token=<STATS_TOKEN>"
   "activeInstalls7d": 231,
   "activeInstalls30d": 388,
   "byVersion":   [{ "version": "1.14.2", "n": 190 }, …],
-  "byDeployment":[{ "deployment": "docker", "n": 300 }, { "deployment": "ha", "n": 88 }]
+  "byDeployment":[
+    { "deployment": "docker",   "n": 240 },
+    { "deployment": "ha",       "n": 88  },
+    { "deployment": "pikapods", "n": 60  }
+  ]
 }
 ```
 
