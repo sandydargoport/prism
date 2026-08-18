@@ -58,6 +58,10 @@ dashboard itself. Patch releases (`1.14.1` → `1.14.2`) are **not** surfaced at
 all; you're only nudged when a new **minor or major** version lands, so a busy
 release schedule never turns into nagging.
 
+It is also disclosed **at first-run setup** — the final step of the setup wizard
+shows exactly this, with an off switch right there — so it is never a surprise
+you have to go hunting for.
+
 ## How to turn it off
 
 Any one of these disables it:
