@@ -15,6 +15,7 @@ import {
 import { useCalendarEvents, useCalendarFilter } from '@/lib/hooks';
 import { useWeekStartsOn } from '@/lib/hooks/useWeekStartsOn';
 import { deduplicateEvents } from '@/lib/utils/calendarDedup';
+import { getFullCalendarRange, MAX_CALENDAR_EVENTS } from '@/lib/utils/calendarRange';
 import type { CalendarEvent } from '@/types/calendar';
 
 export type CalendarViewType = 'agenda' | 'day' | 'week' | 'weekVertical' | 'multiWeek' | 'month' | 'threeMonth';
@@ -108,7 +109,16 @@ export function useCalendarViewData() {
   }, [overlays]);
 
   const { selectedCalendarIds, toggleCalendar, filterEvents, calendarGroups } = useCalendarFilter();
-  const { events: apiEvents, loading, error, refresh: refreshEvents } = useCalendarEvents({ daysToShow: 60 });
+  // Fetch a wide, static window (Jan 1 last year … Dec 31 +2yr) rather than a
+  // rolling today-anchored one, so events don't vanish from the views once
+  // they're more than a couple months out (#250). Fixed window => navigation
+  // reuses one cached dataset instead of refetching on every prev/next.
+  const fetchRange = useMemo(() => getFullCalendarRange(new Date()), []);
+  const { events: apiEvents, loading, error, refresh: refreshEvents } = useCalendarEvents({
+    rangeStart: fetchRange.start,
+    rangeEnd: fetchRange.end,
+    limit: MAX_CALENDAR_EVENTS,
+  });
 
   const events: CalendarEvent[] = useMemo(() => {
     const mapped = apiEvents.map((event) => ({

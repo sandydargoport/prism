@@ -31,6 +31,7 @@ import { decrypt, encrypt } from '@/lib/utils/crypto';
 import { formatEventRow } from '@/lib/utils/formatters';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
+import { MAX_CALENDAR_EVENTS } from '@/lib/utils/calendarRange';
 
 // Cache events for 5 minutes
 const EVENTS_CACHE_TTL = 5 * 60;
@@ -70,7 +71,7 @@ export async function GET(request: NextRequest) {
     const endDateStr = searchParams.get('endDate');
     const calendarId = searchParams.get('calendarId');
     const allDay = searchParams.get('allDay');
-    const limit = Math.min(parseInt(searchParams.get('limit') || '100'), 500);
+    const limit = Math.min(parseInt(searchParams.get('limit') || '100'), MAX_CALENDAR_EVENTS);
     const offset = parseInt(searchParams.get('offset') || '0');
 
     // Validate required date range
@@ -180,6 +181,15 @@ export async function GET(request: NextRequest) {
         .orderBy(asc(events.startTime))
         .limit(limit)
         .offset(offset);
+
+      // If a fetch fills the row ceiling, events may be silently omitted — the
+      // exact failure mode of #250. Surface it in logs rather than dropping
+      // events quietly, so the cap can be raised or the fetch paginated.
+      if (results.length >= limit) {
+        console.warn(
+          `[events] fetch hit the ${limit}-row ceiling for ${startDateStr}..${endDateStr}; some events may be omitted.`,
+        );
+      }
 
       // Format response
       // Color priority: event color > user color > calendar color > default
