@@ -7,6 +7,16 @@ All notable changes to Prism are documented in this file.
 ### Privacy
 - **Anonymous update check (on by default, one switch to turn off).** Once a week Prism now checks whether a newer version is available and, in the same request, adds one anonymous install to a count the maintainer uses to gauge real usage. Exactly four fields are sent — a random per-install id, the version, docker-vs-Home-Assistant, and CPU architecture — with **no IP address, no personal data, and no usage tracking**. See the exact payload any time under Settings → About, disable it there with one switch, or hard-disable it for the whole install with `PRISM_DISABLE_TELEMETRY=true`. Update notices are quiet: they appear only in Settings (never on the dashboard) and only for minor/major releases, never patches. Full details in the [Anonymous update check](features/TELEMETRY.md) guide.
 
+## [1.14.4] – 2026-08-19
+
+### Calendar
+- **Synced calendar events now populate the same multi-year range the calendar shows.** Google, iCloud, and CalDAV events were only synced for a rolling ~90 days back / 1 year forward, so once the calendar's visible window widened (see 1.14.3), synced events beyond that horizon could be missing even though local events at the same dates appeared. Sync now covers about 1 year back and 2 years forward to match. (Recurring series still populate as far as each provider expands them at sync time.)
+
+## [1.14.3] – 2026-08-18
+
+### Calendar
+- **Events more than ~2 months out no longer disappear from the calendar.** The calendar only loaded a rolling window around today (about 30 days back and 60 days forward), so events further out silently dropped from every view — Month, Agenda, and the rest — and paging ahead showed empty grids. This was purely a display limit: the events were always saved and simply reappear once you update. The calendar now loads a much wider window (Jan 1 of last year through the end of two years out), so future events stay visible while navigation stays fast. Thanks to @JoshuaPostema for the precise report (#250).
+
 ## [1.14.2] – 2026-08-17
 
 ### Integrations
