@@ -165,17 +165,18 @@ function DisplayTimezoneCard() {
   }> = [
     {
       value: 'household',
-      label: 'Household timezone',
+      label: 'Household',
       timezone: householdTimezone,
       description: 'Keeps appointments and clocks consistent on every Prism display.',
     },
     {
       value: 'device',
-      label: 'This device’s timezone',
+      label: 'This device',
       timezone: deviceTimezone,
       description: 'Uses this browser’s timezone on this device only.',
     },
   ];
+  const selected = options.find((option) => option.value === displayTimezoneMode)!;
 
   return (
     <Card>
@@ -187,7 +188,11 @@ function DisplayTimezoneCard() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Display timezone">
+        <div
+          className="inline-flex max-w-full rounded-md border border-input p-0.5"
+          role="radiogroup"
+          aria-label="Display timezone"
+        >
           {options.map((option) => (
             <button
               key={option.value}
@@ -196,18 +201,21 @@ function DisplayTimezoneCard() {
               aria-checked={displayTimezoneMode === option.value}
               onClick={() => setDisplayTimezoneMode(option.value)}
               className={cn(
-                'min-h-20 rounded-md border p-3 text-left transition-colors',
+                'min-h-11 rounded-sm px-3 py-1.5 text-sm transition-colors',
                 displayTimezoneMode === option.value
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-border hover:bg-accent',
+                  ? 'bg-primary text-primary-foreground'
+                  : 'hover:bg-accent',
               )}
             >
-              <span className="block text-sm font-medium">{option.label}</span>
-              <span className="block text-xs font-mono opacity-80">{option.timezone}</span>
-              <span className="mt-1 block text-xs opacity-80">{option.description}</span>
+              {option.label}
             </button>
           ))}
         </div>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Using <span className="font-mono text-xs text-foreground">{selected.timezone}</span>
+          <span aria-hidden="true"> · </span>
+          {selected.description}
+        </p>
       </CardContent>
     </Card>
   );
