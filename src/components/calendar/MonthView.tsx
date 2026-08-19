@@ -21,11 +21,11 @@ import { useWeekStartsOn } from '@/lib/hooks/useWeekStartsOn';
 import { DAYS_SHORT_ARRAY } from '@/lib/constants/days';
 import type { CalendarEvent } from '@/types/calendar';
 import { seasonalPalettes } from '@/lib/themes/seasonalThemes';
-import { CardHeightProbe, DayOverflowPopover, DroppableOverlayCell, useDayDroppable, type OverlayItemRef } from './cells';
+import { CardHeightProbe, DayOverflowPopover, DroppableOverlayCell, SpanningEventRows, useDayDroppable, type OverlayItemRef } from './cells';
 import { useCardCapacity } from '@/lib/hooks/useCardCapacity';
 import type { DayBucket } from '@/lib/hooks/useWeekViewData';
 import { useTimeFormat } from '@/components/providers';
-import { eventOccursOnDisplayDay, formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
+import { eventOccursOnDisplayDay, eventSpansMultipleDisplayDays, formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
 
 // Get the accent color for a month (1-12)
 function getMonthColor(month: Date): string {
@@ -85,6 +85,15 @@ export function MonthView({
 
   const numWeeks = Math.ceil(days.length / 7);
   const dayNames = [...DAYS_SHORT_ARRAY.slice(weekStartsOn), ...DAYS_SHORT_ARRAY.slice(0, weekStartsOn)];
+  const spanningEvents = events
+    .filter((event) => eventSpansMultipleDisplayDays(
+      event.startTime,
+      event.endTime,
+      event.allDay,
+      displayTimezone,
+    ))
+    .sort((a, b) => a.startTime.getTime() - b.startTime.getTime() || a.title.localeCompare(b.title));
+  const spanningEventSet = new Set(spanningEvents);
 
   return (
     <div className="h-full flex flex-col overflow-auto">
@@ -115,7 +124,18 @@ export function MonthView({
         style={{ gridTemplateRows: `repeat(${numWeeks}, minmax(60px, 1fr))` }}
       >
         {days.map((date, index) => {
+          const weekStartIndex = Math.floor(index / 7) * 7;
+          const rowDates = days.slice(weekStartIndex, weekStartIndex + 7);
+          const rowSpanningEvents = spanningEvents.filter((event) => rowDates.some((rowDate) =>
+            eventOccursOnDisplayDay(
+              event.startTime,
+              event.endTime,
+              event.allDay,
+              rowDate,
+              displayTimezone,
+            )));
           const dayEvents = events
+            .filter((event) => !spanningEventSet.has(event))
             .filter((event) => eventOccursOnDisplayDay(
               event.startTime,
               event.endTime,
@@ -136,6 +156,8 @@ export function MonthView({
               key={index}
               date={date}
               dayEvents={dayEvents}
+              rowDates={rowDates}
+              spanningEvents={rowSpanningEvents}
               bucket={bucketsByDate?.get(format(date, 'yyyy-MM-dd'))}
               cards={cards}
               enableDnd={enableDnd}
@@ -164,6 +186,8 @@ export function MonthView({
 function MonthDayCell({
   date,
   dayEvents,
+  rowDates,
+  spanningEvents,
   bucket,
   cards,
   enableDnd,
@@ -179,6 +203,8 @@ function MonthDayCell({
 }: {
   date: Date;
   dayEvents: CalendarEvent[];
+  rowDates: Date[];
+  spanningEvents: CalendarEvent[];
   bucket: DayBucket | undefined;
   cards: boolean;
   enableDnd: boolean;
@@ -203,7 +229,7 @@ function MonthDayCell({
       onClick={() => onDateClick(date)}
       className={cn(
         bordered && 'border border-border rounded-md',
-        'cursor-pointer overflow-hidden',
+        'relative cursor-pointer overflow-visible',
         !transparentMode && !cellBgStyle && 'bg-card/85 backdrop-blur-sm',
         'flex flex-col min-h-0',
         !isSameMonth(date, currentDate) && 'opacity-50 text-muted-foreground',
@@ -222,6 +248,13 @@ function MonthDayCell({
           {format(date, 'd')}
         </div>
       )}
+
+      <SpanningEventRows
+        date={date}
+        rowDates={rowDates}
+        events={spanningEvents}
+        onEventClick={onEventClick}
+      />
 
       {cards ? (
         <DayCardsCell

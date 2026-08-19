@@ -15,7 +15,7 @@ import { hexToRgba } from '@/lib/utils/color';
 import { useWeekStartsOn } from '@/lib/hooks/useWeekStartsOn';
 import { seasonalPalettes } from '@/lib/themes/seasonalThemes';
 import type { CalendarEvent } from '@/types/calendar';
-import { CardHeightProbe, DayOverflowPopover, DroppableOverlayCell, WeekItemCard, useDayDroppable, weatherIcon, type OverlayItemRef } from './cells';
+import { CardHeightProbe, DayOverflowPopover, DroppableOverlayCell, SpanningEventRows, WeekItemCard, useDayDroppable, weatherIcon, type OverlayItemRef } from './cells';
 
 /** HSL color for the seasonal accent of the cell's month. */
 function getMonthAccentColor(date: Date): string {
@@ -25,7 +25,7 @@ function getMonthAccentColor(date: Date): string {
 import { useCardCapacity } from '@/lib/hooks/useCardCapacity';
 import type { DayBucket } from '@/lib/hooks/useWeekViewData';
 import { useTimeFormat } from '@/components/providers';
-import { eventOccursOnDisplayDay, formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
+import { eventOccursOnDisplayDay, eventSpansMultipleDisplayDays, formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
 
 export interface MultiWeekViewProps {
   currentDate: Date;
@@ -62,6 +62,7 @@ export function MultiWeekView({
   onItemClick,
 }: MultiWeekViewProps) {
   const { weekStartsOn } = useWeekStartsOn();
+  const { displayTimezone } = useTimeFormat();
   const [cardHeight, setCardHeight] = React.useState<number | undefined>(undefined);
   const cards = displayMode === 'cards';
   const bgOverride = useWidgetBgOverride();
@@ -85,6 +86,14 @@ export function MultiWeekView({
     weeks.push(hideWeekends ? row.filter((d) => d.getDay() !== 0 && d.getDay() !== 6) : row);
   }
   const colCount = hideWeekends ? 5 : 7;
+  const spanningEvents = events
+    .filter((event) => eventSpansMultipleDisplayDays(
+      event.startTime,
+      event.endTime,
+      event.allDay,
+      displayTimezone,
+    ))
+    .sort((a, b) => a.startTime.getTime() - b.startTime.getTime() || a.title.localeCompare(b.title));
 
   // In inline mode, rows size to content (events list scrolls). In cards mode
   // with multiple weeks, rows are equal-height (`1fr`) so dynamic capacity has
@@ -105,32 +114,45 @@ export function MultiWeekView({
         className={cn('grid gap-1 min-h-0', !singleWeek && 'flex-1')}
         style={{ gridTemplateRows: `repeat(${weekCount}, ${rowSizing})` }}
       >
-        {weeks.map((week, wIdx) => (
-          <div
-            key={wIdx}
-            className={cn('grid gap-1', cards && !singleWeek && 'min-h-0 h-full')}
-            style={{ gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))` }}
-          >
-            {week.map((date, dIdx) => (
-              <DayCell
-                key={dIdx}
-                date={date}
-                events={events}
-                onEventClick={onEventClick}
-                compact={compact}
-                bordered={bordered}
-                cellBgStyle={cellBgStyle}
-                displayMode={displayMode}
-                bucket={bucketsByDate?.get(format(date, 'yyyy-MM-dd'))}
-                enableDnd={enableDnd}
-                cardHeight={cardHeight}
-                mealColor={mealColor}
-                onItemClick={onItemClick}
-                showAll={singleWeek}
-              />
-            ))}
-          </div>
-        ))}
+        {weeks.map((week, wIdx) => {
+          const rowSpanningEvents = spanningEvents.filter((event) => week.some((rowDate) =>
+            eventOccursOnDisplayDay(
+              event.startTime,
+              event.endTime,
+              event.allDay,
+              rowDate,
+              displayTimezone,
+            )));
+
+          return (
+            <div
+              key={wIdx}
+              className={cn('grid gap-1', cards && !singleWeek && 'min-h-0 h-full')}
+              style={{ gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))` }}
+            >
+              {week.map((date, dIdx) => (
+                <DayCell
+                  key={dIdx}
+                  date={date}
+                  rowDates={week}
+                  spanningEvents={rowSpanningEvents}
+                  events={events}
+                  onEventClick={onEventClick}
+                  compact={compact}
+                  bordered={bordered}
+                  cellBgStyle={cellBgStyle}
+                  displayMode={displayMode}
+                  bucket={bucketsByDate?.get(format(date, 'yyyy-MM-dd'))}
+                  enableDnd={enableDnd}
+                  cardHeight={cardHeight}
+                  mealColor={mealColor}
+                  onItemClick={onItemClick}
+                  showAll={singleWeek}
+                />
+              ))}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -138,6 +160,8 @@ export function MultiWeekView({
 
 function DayCell({
   date,
+  rowDates,
+  spanningEvents,
   events,
   onEventClick,
   compact,
@@ -152,6 +176,8 @@ function DayCell({
   showAll = false,
 }: {
   date: Date;
+  rowDates: Date[];
+  spanningEvents: CalendarEvent[];
   events: CalendarEvent[];
   onEventClick: (event: CalendarEvent) => void;
   compact: boolean;
@@ -171,13 +197,16 @@ function DayCell({
   const { timeFormat, displayTimezone } = useTimeFormat();
   const cards = displayMode === 'cards';
   const fallback = compact ? FALLBACK_VISIBLE_CARDS_COMPACT : FALLBACK_VISIBLE_CARDS;
-  const dayEvents = events.filter((event) => eventOccursOnDisplayDay(
-    event.startTime,
-    event.endTime,
-    event.allDay,
-    date,
-    displayTimezone,
-  ));
+  const spanningEventSet = new Set(spanningEvents);
+  const dayEvents = events
+    .filter((event) => !spanningEventSet.has(event))
+    .filter((event) => eventOccursOnDisplayDay(
+      event.startTime,
+      event.endTime,
+      event.allDay,
+      date,
+      displayTimezone,
+    ));
   const sorted = [...dayEvents].sort((a, b) => {
     if (a.allDay && !b.allDay) return -1;
     if (!a.allDay && b.allDay) return 1;
@@ -243,7 +272,7 @@ function DayCell({
       ref={cards && enableDnd ? droppable.setNodeRef : undefined}
       data-droppable-day={cards && enableDnd ? droppable.droppableId : undefined}
       className={cn(
-        'flex flex-col rounded-md',
+        'relative flex flex-col overflow-visible rounded-md',
         // In 1W mode (showAll=true) the column sizes to its content. In
         // 2/3/4W modes the cell stretches to fill the equal-height row so
         // the capacity probe has a real target height.
@@ -299,6 +328,14 @@ function DayCell({
           </div>
         )}
       </div>
+
+      <SpanningEventRows
+        date={date}
+        rowDates={rowDates}
+        events={spanningEvents}
+        onEventClick={onEventClick}
+        compact={compact}
+      />
 
       {/* Cards / events. In cards mode, meals render at the top of the day's
           stack (like all-day events); chores + tasks fall to the bottom. */}

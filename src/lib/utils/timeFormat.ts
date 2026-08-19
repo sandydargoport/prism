@@ -70,6 +70,44 @@ function nextUtcDateKey(date: Date): string {
   )));
 }
 
+function getAllDayExclusiveEndKey(eventStart: Date, eventEnd: Date): string {
+  const startKey = getUtcDateKey(eventStart);
+  const endIsExclusiveMidnight = eventEnd > eventStart
+    && eventEnd.getUTCHours() === 0
+    && eventEnd.getUTCMinutes() === 0
+    && eventEnd.getUTCSeconds() === 0
+    && eventEnd.getUTCMilliseconds() === 0;
+  const endKey = endIsExclusiveMidnight
+    ? getUtcDateKey(eventEnd)
+    : nextUtcDateKey(eventEnd);
+
+  return endKey > startKey ? endKey : nextUtcDateKey(eventStart);
+}
+
+/** Return true when an event occupies more than one displayed calendar day. */
+export function eventSpansMultipleDisplayDays(
+  start: Date | number,
+  end: Date | number,
+  allDay: boolean,
+  timeZone?: string,
+): boolean {
+  const eventStart = new Date(start);
+  const eventEnd = new Date(end);
+  if (
+    Number.isNaN(eventStart.getTime())
+    || Number.isNaN(eventEnd.getTime())
+    || eventEnd <= eventStart
+  ) return false;
+
+  if (allDay) {
+    return getAllDayExclusiveEndKey(eventStart, eventEnd) > nextUtcDateKey(eventStart);
+  }
+
+  // An event ending exactly at midnight does not occupy the following day.
+  const inclusiveEnd = new Date(eventEnd.getTime() - 1);
+  return getDisplayDateKey(eventStart, timeZone) !== getDisplayDateKey(inclusiveEnd, timeZone);
+}
+
 /**
  * Test whether an event belongs to a displayed calendar day.
  *
@@ -92,14 +130,7 @@ export function eventOccursOnDisplayDay(
   if (allDay) {
     const dayKey = format(day, 'yyyy-MM-dd');
     const startKey = getUtcDateKey(eventStart);
-    const endIsExclusiveMidnight = eventEnd > eventStart
-      && eventEnd.getUTCHours() === 0
-      && eventEnd.getUTCMinutes() === 0
-      && eventEnd.getUTCSeconds() === 0
-      && eventEnd.getUTCMilliseconds() === 0;
-    const endExclusiveKey = endIsExclusiveMidnight
-      ? getUtcDateKey(eventEnd)
-      : nextUtcDateKey(eventEnd);
+    const endExclusiveKey = getAllDayExclusiveEndKey(eventStart, eventEnd);
 
     return dayKey >= startKey && dayKey < endExclusiveKey;
   }

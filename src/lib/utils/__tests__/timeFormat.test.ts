@@ -1,5 +1,6 @@
 import {
   eventOccursOnDisplayDay,
+  eventSpansMultipleDisplayDays,
   formatDisplayHour,
   formatDisplayTime,
   formatDisplayTimeRange,
@@ -90,5 +91,32 @@ describe('time format utilities', () => {
     expect(eventOccursOnDisplayDay(start, exclusiveEnd, true, new Date(2026, 7, 18))).toBe(true);
     expect(eventOccursOnDisplayDay(start, exclusiveEnd, true, new Date(2026, 7, 19))).toBe(true);
     expect(eventOccursOnDisplayDay(start, exclusiveEnd, true, new Date(2026, 7, 20))).toBe(false);
+  });
+
+  it('classifies timed events spanning displayed dates', () => {
+    const start = new Date('2026-08-21T16:00:00.000Z');
+    const end = new Date('2026-08-23T17:00:00.000Z');
+
+    expect(eventSpansMultipleDisplayDays(start, end, false, 'Europe/Warsaw')).toBe(true);
+  });
+
+  it('does not treat an exact-midnight end as occupying another day', () => {
+    const start = new Date('2026-08-21T16:00:00.000Z');
+    const midnightEnd = new Date('2026-08-21T22:00:00.000Z');
+
+    expect(eventSpansMultipleDisplayDays(start, midnightEnd, false, 'Europe/Warsaw')).toBe(false);
+  });
+
+  it('distinguishes one-day and multi-day all-day ranges', () => {
+    expect(eventSpansMultipleDisplayDays(
+      new Date('2026-08-21T00:00:00.000Z'),
+      new Date('2026-08-22T00:00:00.000Z'),
+      true,
+    )).toBe(false);
+    expect(eventSpansMultipleDisplayDays(
+      new Date('2026-08-21T00:00:00.000Z'),
+      new Date('2026-08-24T00:00:00.000Z'),
+      true,
+    )).toBe(true);
   });
 });
