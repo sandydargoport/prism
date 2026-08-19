@@ -23,7 +23,7 @@ import { useWeekStartsOn } from '@/lib/hooks/useWeekStartsOn';
 import type { CalendarEvent } from '@/types/calendar';
 import { seasonalPalettes } from '@/lib/themes/seasonalThemes';
 import { useTimeFormat } from '@/components/providers';
-import { toDisplayDate } from '@/lib/utils/timeFormat';
+import { eventOccursOnDisplayDay, toDisplayDate } from '@/lib/utils/timeFormat';
 
 // Get the accent color for a month (1-12)
 function getMonthColor(month: Date): string {
@@ -113,15 +113,14 @@ function MiniMonth({
               const inMonth = isSameMonth(date, month);
               const today = isSameDay(date, displayNow);
               const isPast = isBefore(date, startOfDay(displayNow)) && !today;
-              const dayStart = startOfDay(date);
               const dayEvents = events
-                .filter((e) => {
-                  const displayStart = toDisplayDate(e.startTime, displayTimezone);
-                  const displayEnd = toDisplayDate(e.endTime, displayTimezone);
-                  return e.allDay
-                    ? displayStart <= dayStart && displayEnd > dayStart
-                    : isSameDay(displayStart, date);
-                })
+                .filter((event) => eventOccursOnDisplayDay(
+                  event.startTime,
+                  event.endTime,
+                  event.allDay,
+                  date,
+                  displayTimezone,
+                ))
                 .sort((a, b) => {
                   if (a.allDay && !b.allDay) return -1;
                   if (!a.allDay && b.allDay) return 1;

@@ -25,7 +25,7 @@ function getMonthAccentColor(date: Date): string {
 import { useCardCapacity } from '@/lib/hooks/useCardCapacity';
 import type { DayBucket } from '@/lib/hooks/useWeekViewData';
 import { useTimeFormat } from '@/components/providers';
-import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
+import { eventOccursOnDisplayDay, formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
 
 export interface MultiWeekViewProps {
   currentDate: Date;
@@ -171,14 +171,13 @@ function DayCell({
   const { timeFormat, displayTimezone } = useTimeFormat();
   const cards = displayMode === 'cards';
   const fallback = compact ? FALLBACK_VISIBLE_CARDS_COMPACT : FALLBACK_VISIBLE_CARDS;
-  const dayStart = startOfDay(date);
-  const dayEvents = events.filter((event) => {
-    const displayStart = toDisplayDate(event.startTime, displayTimezone);
-    const displayEnd = toDisplayDate(event.endTime, displayTimezone);
-    return event.allDay
-      ? displayStart <= dayStart && displayEnd > dayStart
-      : isSameDay(displayStart, date);
-  });
+  const dayEvents = events.filter((event) => eventOccursOnDisplayDay(
+    event.startTime,
+    event.endTime,
+    event.allDay,
+    date,
+    displayTimezone,
+  ));
   const sorted = [...dayEvents].sort((a, b) => {
     if (a.allDay && !b.allDay) return -1;
     if (!a.allDay && b.allDay) return 1;

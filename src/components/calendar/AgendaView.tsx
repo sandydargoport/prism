@@ -15,7 +15,7 @@ import type { CalendarEvent } from '@/types/calendar';
 import type { DayBucket } from '@/lib/hooks/useWeekViewData';
 import { useDayDroppable, getMealTime, getChoreTime, getTaskTime, parseTimeOfDay, formatTimeOfDay, type OverlayItemRef } from './cells';
 import { useTimeFormat } from '@/components/providers';
-import { formatDisplayTime, toDisplayDate, type TimeFormat } from '@/lib/utils/timeFormat';
+import { eventOccursOnDisplayDay, formatDisplayTime, toDisplayDate, type TimeFormat } from '@/lib/utils/timeFormat';
 
 const MEAL_FALLBACK_COLOR = '#10b981';
 const CHORE_FALLBACK_COLOR = '#f59e0b';
@@ -73,16 +73,16 @@ export function AgendaView({
   const { displayTimezone } = useTimeFormat();
   const cards = displayMode === 'cards';
   const startDate = startOfDay(toDisplayDate(new Date(), displayTimezone));
-  const endDate = addDays(startDate, days);
 
   const filteredEvents = events
-    .filter(e => {
-      if (e.allDay) {
-        return e.startTime < endDate && e.endTime > startDate;
-      }
-      const ed = startOfDay(toDisplayDate(e.startTime, displayTimezone));
-      return ed >= startDate && ed < endDate;
-    })
+    .filter(e => Array.from({ length: days }, (_, i) => addDays(startDate, i))
+      .some(date => eventOccursOnDisplayDay(
+        e.startTime,
+        e.endTime,
+        e.allDay,
+        date,
+        displayTimezone,
+      )))
     .sort((a, b) => {
       const dc = startOfDay(toDisplayDate(a.startTime, displayTimezone)).getTime()
         - startOfDay(toDisplayDate(b.startTime, displayTimezone)).getTime();
@@ -95,12 +95,13 @@ export function AgendaView({
   const eventsByDay: Array<{ date: Date; events: CalendarEvent[]; bucket?: DayBucket }> = [];
   for (let i = 0; i < days; i++) {
     const date = addDays(startDate, i);
-    const dayStart = startOfDay(date);
-    const dayEvents = filteredEvents.filter(e =>
-      e.allDay
-        ? e.startTime <= dayStart && e.endTime > dayStart
-        : isSameDay(toDisplayDate(e.startTime, displayTimezone), date)
-    );
+    const dayEvents = filteredEvents.filter(e => eventOccursOnDisplayDay(
+      e.startTime,
+      e.endTime,
+      e.allDay,
+      date,
+      displayTimezone,
+    ));
     const bucket = bucketsByDate?.get(format(date, 'yyyy-MM-dd'));
     const hasOverlay = bucket && (bucket.meals.length + bucket.chores.length + bucket.tasks.length > 0);
     if (dayEvents.length > 0 || hasOverlay) {

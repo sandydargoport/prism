@@ -55,6 +55,64 @@ export function getDisplayDateKey(date: Date | number, timeZone?: string): strin
   return format(toDisplayDate(date, timeZone), 'yyyy-MM-dd');
 }
 
+function getUtcDateKey(date: Date): string {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function nextUtcDateKey(date: Date): string {
+  return getUtcDateKey(new Date(Date.UTC(
+    date.getUTCFullYear(),
+    date.getUTCMonth(),
+    date.getUTCDate() + 1,
+  )));
+}
+
+/**
+ * Test whether an event belongs to a displayed calendar day.
+ *
+ * All-day events are floating date ranges: their UTC date fields are the
+ * intended calendar dates and must not be shifted into the display timezone.
+ * Google uses an exclusive midnight end, while Prism also accepts its legacy
+ * inclusive end-of-day representation.
+ */
+export function eventOccursOnDisplayDay(
+  start: Date | number,
+  end: Date | number,
+  allDay: boolean,
+  day: Date,
+  timeZone?: string,
+): boolean {
+  const eventStart = new Date(start);
+  const eventEnd = new Date(end);
+  if (Number.isNaN(eventStart.getTime()) || Number.isNaN(eventEnd.getTime())) return false;
+
+  if (allDay) {
+    const dayKey = format(day, 'yyyy-MM-dd');
+    const startKey = getUtcDateKey(eventStart);
+    const endIsExclusiveMidnight = eventEnd > eventStart
+      && eventEnd.getUTCHours() === 0
+      && eventEnd.getUTCMinutes() === 0
+      && eventEnd.getUTCSeconds() === 0
+      && eventEnd.getUTCMilliseconds() === 0;
+    const endExclusiveKey = endIsExclusiveMidnight
+      ? getUtcDateKey(eventEnd)
+      : nextUtcDateKey(eventEnd);
+
+    return dayKey >= startKey && dayKey < endExclusiveKey;
+  }
+
+  const dayStart = new Date(day);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(dayStart);
+  dayEnd.setDate(dayEnd.getDate() + 1);
+  const displayStart = toDisplayDate(eventStart, timeZone);
+  const displayEnd = toDisplayDate(eventEnd, timeZone);
+  return displayStart < dayEnd && displayEnd > dayStart;
+}
+
 /**
  * Convert date/time fields entered in the selected display timezone into the
  * real instant that should be persisted. This is the inverse of

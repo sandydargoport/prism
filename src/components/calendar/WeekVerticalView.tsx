@@ -18,7 +18,7 @@ import type { CalendarNote } from '@/lib/hooks/useCalendarNotes';
 import type { DayBucket } from '@/lib/hooks/useWeekViewData';
 import { DroppableOverlayCell, useDayDroppable, type OverlayItemRef } from './cells';
 import { useTimeFormat } from '@/components/providers';
-import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
+import { eventOccursOnDisplayDay, formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
 
 export interface WeekVerticalViewProps {
   currentDate: Date;
@@ -183,11 +183,13 @@ function WeekListDayRow({
   const isCurrentDay = isSameDay(day, today);
   const isPast = isBefore(dayStart, today);
 
-  const dayEvents = events.filter((event) => {
-    const eventStart = toDisplayDate(event.startTime, displayTimezone);
-    const eventEnd = toDisplayDate(event.endTime, displayTimezone);
-    return eventStart < addDays(dayStart, 1) && eventEnd > dayStart;
-  });
+  const dayEvents = events.filter((event) => eventOccursOnDisplayDay(
+    event.startTime,
+    event.endTime,
+    event.allDay,
+    day,
+    displayTimezone,
+  ));
 
   const allDayEvents = dayEvents.filter((e) => e.allDay);
   const timedEvents = dayEvents.filter((e) => !e.allDay).sort(

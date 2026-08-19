@@ -15,7 +15,7 @@ import { useWidgetBgOverride } from '@/components/widgets/WidgetContainer';
 import { useOrientation } from '@/lib/hooks/useOrientation';
 import type { CalendarEvent } from '@/types/calendar';
 import { useTimeFormat } from '@/components/providers';
-import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
+import { eventOccursOnDisplayDay, formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
 
 export interface TwoWeekViewProps {
   currentDate: Date;
@@ -48,7 +48,13 @@ export function TwoWeekView({
   const week2Num = getWeek(week2[0]!);
 
   const renderDayCell = (date: Date, compact: boolean = false) => {
-    const dayEvents = events.filter((event) => isSameDay(toDisplayDate(event.startTime, displayTimezone), date));
+    const dayEvents = events.filter((event) => eventOccursOnDisplayDay(
+      event.startTime,
+      event.endTime,
+      event.allDay,
+      date,
+      displayTimezone,
+    ));
     const sorted = [...dayEvents].sort((a, b) => {
       if (a.allDay && !b.allDay) return -1;
       if (!a.allDay && b.allDay) return 1;

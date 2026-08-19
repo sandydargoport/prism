@@ -1,4 +1,5 @@
 import {
+  eventOccursOnDisplayDay,
   formatDisplayHour,
   formatDisplayTime,
   formatDisplayTimeRange,
@@ -60,5 +61,34 @@ describe('time format utilities', () => {
       .toBe('2026-01-19T07:00:00.000Z');
     expect(fromDisplayDateTime('2026-08-19', '08:00', 'Europe/Warsaw').toISOString())
       .toBe('2026-08-19T06:00:00.000Z');
+  });
+
+  it('keeps a Google all-day event on its date despite a positive timezone offset', () => {
+    const start = new Date('2026-08-18T00:00:00.000Z');
+    const exclusiveEnd = new Date('2026-08-19T00:00:00.000Z');
+
+    expect(eventOccursOnDisplayDay(start, exclusiveEnd, true, new Date(2026, 7, 18), 'Europe/Warsaw'))
+      .toBe(true);
+    expect(eventOccursOnDisplayDay(start, exclusiveEnd, true, new Date(2026, 7, 19), 'Europe/Warsaw'))
+      .toBe(false);
+  });
+
+  it('supports Prism all-day events with an inclusive end-of-day timestamp', () => {
+    const start = new Date('2026-08-18T00:00:00.000Z');
+    const inclusiveEnd = new Date('2026-08-18T23:59:59.999Z');
+
+    expect(eventOccursOnDisplayDay(start, inclusiveEnd, true, new Date(2026, 7, 18), 'Europe/Warsaw'))
+      .toBe(true);
+    expect(eventOccursOnDisplayDay(start, inclusiveEnd, true, new Date(2026, 7, 19), 'Europe/Warsaw'))
+      .toBe(false);
+  });
+
+  it('preserves exclusive ends for multi-day all-day events', () => {
+    const start = new Date('2026-08-18T00:00:00.000Z');
+    const exclusiveEnd = new Date('2026-08-20T00:00:00.000Z');
+
+    expect(eventOccursOnDisplayDay(start, exclusiveEnd, true, new Date(2026, 7, 18))).toBe(true);
+    expect(eventOccursOnDisplayDay(start, exclusiveEnd, true, new Date(2026, 7, 19))).toBe(true);
+    expect(eventOccursOnDisplayDay(start, exclusiveEnd, true, new Date(2026, 7, 20))).toBe(false);
   });
 });

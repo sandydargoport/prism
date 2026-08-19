@@ -25,7 +25,7 @@ import { CardHeightProbe, DayOverflowPopover, DroppableOverlayCell, useDayDroppa
 import { useCardCapacity } from '@/lib/hooks/useCardCapacity';
 import type { DayBucket } from '@/lib/hooks/useWeekViewData';
 import { useTimeFormat } from '@/components/providers';
-import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
+import { eventOccursOnDisplayDay, formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
 
 // Get the accent color for a month (1-12)
 function getMonthColor(month: Date): string {
@@ -115,15 +115,14 @@ export function MonthView({
         style={{ gridTemplateRows: `repeat(${numWeeks}, minmax(60px, 1fr))` }}
       >
         {days.map((date, index) => {
-          const dayStart = startOfDay(date);
           const dayEvents = events
-            .filter((event) => {
-              const displayStart = toDisplayDate(event.startTime, displayTimezone);
-              const displayEnd = toDisplayDate(event.endTime, displayTimezone);
-              return event.allDay
-                ? displayStart <= dayStart && displayEnd > dayStart
-                : isSameDay(displayStart, date);
-            })
+            .filter((event) => eventOccursOnDisplayDay(
+              event.startTime,
+              event.endTime,
+              event.allDay,
+              date,
+              displayTimezone,
+            ))
             .sort((a, b) => {
               if (a.allDay && !b.allDay) return -1;
               if (!a.allDay && b.allDay) return 1;

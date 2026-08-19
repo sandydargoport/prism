@@ -21,7 +21,7 @@ import type { DayBucket } from '@/lib/hooks/useWeekViewData';
 import { DroppableOverlayCell, useDayDroppable, weatherIcon, getMealTime, getChoreTime, getTaskTime, formatTimeOfDay, type OverlayItemRef } from './cells';
 import { WeekItemCard } from './cells/WeekItemCard';
 import { useTimeFormat } from '@/components/providers';
-import { formatDisplayHour, formatDisplayTimeRange, toDisplayDate } from '@/lib/utils/timeFormat';
+import { eventOccursOnDisplayDay, formatDisplayHour, formatDisplayTimeRange, toDisplayDate } from '@/lib/utils/timeFormat';
 
 export type CalendarDisplayMode = 'inline' | 'cards';
 
@@ -84,14 +84,14 @@ export function WeekView({
   const hours = getVisibleHours(timedWeekEvents, { from: weekStart, to: weekEnd });
 
   // Get all-day events for a day (multi-day events span across days)
-  const getAllDayEvents = (date: Date) => {
-    const dayStart = startOfDay(date);
-    return events.filter((e) => {
-      const displayStart = toDisplayDate(e.startTime, displayTimezone);
-      const displayEnd = toDisplayDate(e.endTime, displayTimezone);
-      return e.allDay && displayStart <= dayStart && displayEnd > dayStart;
-    });
-  };
+  const getAllDayEvents = (date: Date) => events.filter((event) =>
+    event.allDay && eventOccursOnDisplayDay(
+      event.startTime,
+      event.endTime,
+      true,
+      date,
+      displayTimezone,
+    ));
 
   // Get all timed events for a day (used to compute side-by-side positions
   // across the entire day, so events that overlap but start in different
