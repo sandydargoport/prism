@@ -305,6 +305,42 @@ export async function createCalendarEvent(
 }
 
 /**
+ * Convert Prism's inclusive all-day range into Google's exclusive-end date
+ * range. Google requires a one-day event on Aug 19 to be represented as
+ * start=Aug 19, end=Aug 20.
+ */
+export function toGoogleAllDayRange(startTime: Date, endTime: Date): {
+  start: { date: string };
+  end: { date: string };
+} {
+  const dateOnly = (date: Date) => date.toISOString().slice(0, 10);
+  const addUtcDay = (date: string) => {
+    const value = new Date(`${date}T00:00:00.000Z`);
+    value.setUTCDate(value.getUTCDate() + 1);
+    return dateOnly(value);
+  };
+
+  const startDate = dateOnly(startTime);
+  const endIsExclusiveMidnight = endTime.getTime() > startTime.getTime()
+    && endTime.getUTCHours() === 0
+    && endTime.getUTCMinutes() === 0
+    && endTime.getUTCSeconds() === 0
+    && endTime.getUTCMilliseconds() === 0;
+  let endDate = endIsExclusiveMidnight
+    ? dateOnly(endTime)
+    : addUtcDay(dateOnly(endTime));
+
+  // Google rejects zero-length all-day ranges. Keep malformed/legacy local
+  // rows editable by coercing them to a single-day event.
+  if (endDate <= startDate) endDate = addUtcDay(startDate);
+
+  return {
+    start: { date: startDate },
+    end: { date: endDate },
+  };
+}
+
+/**
  * Update an event in a calendar
  */
 export async function updateCalendarEvent(
@@ -388,8 +424,8 @@ export function convertGoogleEventToInternal(
 
   if (isAllDay) {
     // All-day events use date strings (YYYY-MM-DD)
-    startTime = new Date(googleEvent.start.date + 'T00:00:00');
-    endTime = new Date(googleEvent.end.date + 'T00:00:00');
+    startTime = new Date(googleEvent.start.date + 'T00:00:00Z');
+    endTime = new Date(googleEvent.end.date + 'T00:00:00Z');
   } else {
     startTime = new Date(googleEvent.start.dateTime!);
     endTime = new Date(googleEvent.end.dateTime!);

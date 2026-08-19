@@ -20,7 +20,7 @@ import { db } from '@/lib/db/client';
 import { events, calendarSources, dismissedEvents } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
-import { updateCalendarEvent, deleteCalendarEvent, refreshAccessToken } from '@/lib/integrations/google-calendar';
+import { updateCalendarEvent, deleteCalendarEvent, refreshAccessToken, toGoogleAllDayRange } from '@/lib/integrations/google-calendar';
 import { pushCalDAVEventDelete } from '@/lib/services/calendar-sync';
 import { decrypt, encrypt } from '@/lib/utils/crypto';
 import { logActivity } from '@/lib/services/auditLog';
@@ -274,7 +274,14 @@ export async function PATCH(
         .from(calendarSources)
         .where(eq(calendarSources.id, existingEvent.calendarSourceId));
 
-      if (calendarSource?.provider === 'google' && calendarSource.accessToken) {
+      if (calendarSource?.provider === 'google') {
+        if (!calendarSource.accessToken) {
+          return NextResponse.json(
+            { error: 'Google Calendar is not authenticated. Reconnect it before editing this event.' },
+            { status: 401 }
+          );
+        }
+
         try {
           let accessToken = decrypt(calendarSource.accessToken);
 
@@ -322,8 +329,9 @@ export async function PATCH(
 
           if (newStart !== undefined || newEnd !== undefined || newAllDay !== undefined) {
             if (finalAllDay) {
-              googleUpdate.start = { date: finalStart.toISOString().split('T')[0] };
-              googleUpdate.end = { date: finalEnd.toISOString().split('T')[0] };
+              const range = toGoogleAllDayRange(finalStart, finalEnd);
+              googleUpdate.start = range.start;
+              googleUpdate.end = range.end;
             } else {
               googleUpdate.start = { dateTime: finalStart.toISOString() };
               googleUpdate.end = { dateTime: finalEnd.toISOString() };
@@ -339,7 +347,12 @@ export async function PATCH(
           );
         } catch (error) {
           logError('Failed to update event on Google Calendar:', error);
-          // Continue with local update even if Google fails
+          return NextResponse.json(
+            {
+              error: `Google Calendar could not be updated. Your local event was left unchanged: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            },
+            { status: 502 }
+          );
         }
       }
     }
