@@ -12,6 +12,8 @@ import type { CalendarEvent } from '@/types/calendar';
 import type { Chore, Meal } from '@/types';
 import type { Task } from '@/components/widgets/TasksWidget';
 import type { DayBucket } from './useWeekViewData';
+import { useTimeFormat } from '@/components/providers';
+import { toDisplayDate } from '@/lib/utils/timeFormat';
 
 export interface OverlayFlags {
   events: boolean;
@@ -58,10 +60,12 @@ function dateKey(d: Date): string {
   return format(d, 'yyyy-MM-dd');
 }
 
-function eventOnDay(event: CalendarEvent, day: Date): boolean {
+function eventOnDay(event: CalendarEvent, day: Date, displayTimezone: string): boolean {
   const dayStart = startOfDay(day);
   const dayEnd = addDays(dayStart, 1);
-  return event.startTime < dayEnd && event.endTime > dayStart;
+  const eventStart = toDisplayDate(event.startTime, displayTimezone);
+  const eventEnd = toDisplayDate(event.endTime, displayTimezone);
+  return eventStart < dayEnd && eventEnd > dayStart;
 }
 
 function choreNextDueOnDay(chore: Chore, day: Date): boolean {
@@ -88,6 +92,7 @@ export function useDayBucketsForRange({
   overlays,
   externalEvents,
 }: UseDayBucketsForRangeOptions): UseDayBucketsForRangeResult {
+  const { displayTimezone } = useTimeFormat();
   const fromKey = useMemo(() => dateKey(from), [from]);
   const toKey = useMemo(() => dateKey(to), [to]);
 
@@ -147,7 +152,7 @@ export function useDayBucketsForRange({
       const key = dateKey(date);
 
       const dayEvents = overlays.events
-        ? events.filter((e) => eventOnDay(e, date))
+        ? events.filter((e) => eventOnDay(e, date, displayTimezone))
         : EMPTY_EVENTS;
       const allDayEvents = dayEvents
         .filter((e) => e.allDay)
@@ -192,7 +197,7 @@ export function useDayBucketsForRange({
     return map;
     // fromKey/toKey trigger recompute on actual date changes, not Date identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fromKey, toKey, events, meals, chores, tasks, weather, overlays.events, overlays.meals, overlays.chores, overlays.tasks]);
+  }, [fromKey, toKey, events, meals, chores, tasks, weather, overlays.events, overlays.meals, overlays.chores, overlays.tasks, displayTimezone]);
 
   const loading =
     (overlays.events && fetchEvents && eventsLoading) ||

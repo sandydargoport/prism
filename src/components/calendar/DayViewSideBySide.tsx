@@ -20,7 +20,7 @@ import type { DayBucket } from '@/lib/hooks/useWeekViewData';
 import { DroppableOverlayCell, useDayDroppable, getMealTime, getChoreTime, getTaskTime, formatTimeOfDay, type OverlayItemRef } from './cells';
 import { WeekItemCard } from './cells/WeekItemCard';
 import { useTimeFormat } from '@/components/providers';
-import { formatDisplayHour, formatDisplayTimeRange } from '@/lib/utils/timeFormat';
+import { formatDisplayHour, formatDisplayTimeRange, toDisplayDate } from '@/lib/utils/timeFormat';
 
 export interface DayViewSideBySideProps {
   currentDate: Date;
@@ -59,7 +59,7 @@ export function DayViewSideBySide({
   mealColor,
   onItemClick,
 }: DayViewSideBySideProps) {
-  const { timeFormat } = useTimeFormat();
+  const { timeFormat, displayTimezone } = useTimeFormat();
   const cards = displayMode === 'cards';
   const droppable = useDayDroppable({ date: currentDate, enabled: cards && enableDnd });
   const bgOverride = useWidgetBgOverride();
@@ -72,7 +72,7 @@ export function DayViewSideBySide({
   const { settings: hiddenSettings, toggleHidden, getVisibleHours } = useHiddenHours();
 
   // Time tracking
-  const now = new Date();
+  const now = toDisplayDate(new Date(), displayTimezone);
   const isCurrentDay = isSameDay(currentDate, now);
   const isPastDay = isBefore(startOfDay(currentDate), startOfDay(now)) && !isCurrentDay;
   const currentHour = now.getHours();
@@ -81,16 +81,22 @@ export function DayViewSideBySide({
 
   // Get visible hours (filtered if hidden mode is enabled)
   const dayStart = startOfDay(currentDate);
-  const dayEvents = events.filter((event) =>
-    event.allDay
-      ? event.startTime <= dayStart && event.endTime > dayStart
-      : isSameDay(event.startTime, currentDate)
-  );
+  const dayEvents = events.filter((event) => {
+    const displayStart = toDisplayDate(event.startTime, displayTimezone);
+    const displayEnd = toDisplayDate(event.endTime, displayTimezone);
+    return event.allDay
+      ? displayStart <= dayStart && displayEnd > dayStart
+      : isSameDay(displayStart, currentDate);
+  });
 
   const allDayEvents = dayEvents.filter((e) => e.allDay);
   const timedEvents = dayEvents.filter((e) => !e.allDay);
 
-  const hours = getVisibleHours(timedEvents, { from: dayStart, to: addDays(dayStart, 1) });
+  const hours = getVisibleHours(timedEvents.map((event) => ({
+    ...event,
+    startTime: toDisplayDate(event.startTime, displayTimezone),
+    endTime: toDisplayDate(event.endTime, displayTimezone),
+  })), { from: dayStart, to: addDays(dayStart, 1) });
 
   // If there are no calendar groups configured or merged view is on, show all events in a single column
   const showAllInOne = calendarGroups.length === 0 || mergedView;
@@ -298,7 +304,7 @@ export function DayViewSideBySide({
                   style={{ gridTemplateRows: `repeat(${hours.length}, 1fr)` }}
                 >
                   {hours.map((hour) => {
-                    const hourEvents = calEvents.filter((event) => event.startTime.getHours() === hour);
+                    const hourEvents = calEvents.filter((event) => toDisplayDate(event.startTime, displayTimezone).getHours() === hour);
                     const isPastHour = isPastDay || (isCurrentDay && hour < currentHour);
                     const isNowHour = isCurrentDay && hour === currentHour;
                     return (
@@ -328,7 +334,7 @@ export function DayViewSideBySide({
                                 cards
                                   ? {
                                       borderLeft: `3px solid ${event.color}`,
-                                      top: `calc(${(event.startTime.getMinutes() / 60) * 100}% + 2px)`,
+                                      top: `calc(${(toDisplayDate(event.startTime, displayTimezone).getMinutes() / 60) * 100}% + 2px)`,
                                       height: `calc(${heightPct}% - 4px)`,
                                       left: css.left,
                                       width: css.width,
@@ -337,7 +343,7 @@ export function DayViewSideBySide({
                                       backgroundColor: event.color,
                                       color: '#fff',
                                       borderLeft: `2px solid ${event.color}`,
-                                      top: `${(event.startTime.getMinutes() / 60) * 100}%`,
+                                      top: `${(toDisplayDate(event.startTime, displayTimezone).getMinutes() / 60) * 100}%`,
                                       height: `${heightPct}%`,
                                       left: css.left,
                                       width: css.width,
@@ -350,7 +356,7 @@ export function DayViewSideBySide({
                               <div className={cn('font-medium truncate w-full text-[11px] leading-tight', cards && 'text-foreground')}>{event.title}</div>
                               {durationMin >= 60 && (
                                 <div className={cn('text-[9px] leading-tight', cards ? 'text-muted-foreground' : 'opacity-70')}>
-                                  {formatDisplayTimeRange(event.startTime, event.endTime ?? new Date(event.startTime.getTime() + 3600000), timeFormat)}
+                                  {formatDisplayTimeRange(event.startTime, event.endTime ?? new Date(event.startTime.getTime() + 3600000), timeFormat, displayTimezone)}
                                 </div>
                               )}
                             </button>

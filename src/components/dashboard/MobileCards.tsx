@@ -3,7 +3,7 @@
 import React, { useMemo, createContext, useContext } from 'react';
 import { DAYS_OF_WEEK } from '@/lib/constants/days';
 import type { MobileLayoutMode } from '@/lib/hooks/useMobileLayout';
-import { format, isToday, isTomorrow, startOfWeek } from 'date-fns';
+import { addDays, format, isSameDay, startOfWeek } from 'date-fns';
 import Link from 'next/link';
 import {
   Calendar,
@@ -30,7 +30,7 @@ import type { useDashboardData } from './useDashboardData';
 import type { CalendarEvent } from '@/types/calendar';
 import type { BusRouteStatus, BusPrediction } from '@/lib/hooks/useBusTracking';
 import { useTimeFormat } from '@/components/providers';
-import { formatDisplayTime } from '@/lib/utils/timeFormat';
+import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
 
 type DashData = ReturnType<typeof useDashboardData>;
 
@@ -90,18 +90,20 @@ export function WeatherCard({ data }: { data: DashData['weather'] }) {
 }
 
 export function ClockCard() {
-  const { timeFormat } = useTimeFormat();
+  const { timeFormat, displayTimezone } = useTimeFormat();
+  const now = new Date();
+  const displayNow = toDisplayDate(now, displayTimezone);
   return (
     <div className="bg-card/85 backdrop-blur-sm rounded-xl border border-border p-3 flex items-center gap-3">
       <Clock className="h-5 w-5 text-muted-foreground" />
-      <span className="text-2xl font-light tabular-nums">{formatDisplayTime(new Date(), timeFormat)}</span>
-      <span className="text-sm text-muted-foreground">{format(new Date(), 'EEEE, MMM d')}</span>
+      <span className="text-2xl font-light tabular-nums">{formatDisplayTime(now, timeFormat, {}, displayTimezone)}</span>
+      <span className="text-sm text-muted-foreground">{format(displayNow, 'EEEE, MMM d')}</span>
     </div>
   );
 }
 
 export function CalendarCard({ data }: { data: DashData['calendar'] }) {
-  const { timeFormat } = useTimeFormat();
+  const { timeFormat, displayTimezone } = useTimeFormat();
   const upcoming = useMemo(() => {
     if (!data.events) return [];
     const now = new Date();
@@ -117,17 +119,21 @@ export function CalendarCard({ data }: { data: DashData['calendar'] }) {
         <p className="text-xs text-muted-foreground">No upcoming events</p>
       ) : (
         <div className="space-y-1">
-          {upcoming.map((e: CalendarEvent) => (
+          {upcoming.map((e: CalendarEvent) => {
+            const displayStart = toDisplayDate(e.startTime, displayTimezone);
+            const displayNow = toDisplayDate(new Date(), displayTimezone);
+            return (
             <div key={e.id} className="flex items-center gap-2 text-xs">
               <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: e.color }} />
               <span className="truncate flex-1">{e.title}</span>
               <span className="text-muted-foreground shrink-0">
-                {isToday(e.startTime) ? formatDisplayTime(e.startTime, timeFormat) :
-                 isTomorrow(e.startTime) ? `Tomorrow ${formatDisplayTime(e.startTime, timeFormat)}` :
-                 `${format(e.startTime, 'EEE')} ${formatDisplayTime(e.startTime, timeFormat)}`}
+                {isSameDay(displayStart, displayNow) ? formatDisplayTime(e.startTime, timeFormat, {}, displayTimezone) :
+                 isSameDay(displayStart, addDays(displayNow, 1)) ? `Tomorrow ${formatDisplayTime(e.startTime, timeFormat, {}, displayTimezone)}` :
+                 `${format(displayStart, 'EEE')} ${formatDisplayTime(e.startTime, timeFormat, {}, displayTimezone)}`}
               </span>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </CardShell>

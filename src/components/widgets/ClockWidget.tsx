@@ -31,7 +31,7 @@ import { format } from 'date-fns';
 import { Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTimeFormat } from '@/components/providers';
-import { formatDisplayTime } from '@/lib/utils/timeFormat';
+import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
 import { WidgetContainer } from './WidgetContainer';
 
 
@@ -82,7 +82,7 @@ export const ClockWidget = React.memo(function ClockWidget({
   size = 'medium',
   className,
 }: ClockWidgetProps) {
-  const { timeFormat } = useTimeFormat();
+  const { timeFormat, displayTimezone } = useTimeFormat();
   const effectiveTimeFormat = format24Hour === undefined
     ? timeFormat
     : format24Hour ? '24h' : '12h';
@@ -110,8 +110,8 @@ export const ClockWidget = React.memo(function ClockWidget({
   const dateFormat = 'EEEE, MMMM d'; // e.g., "Tuesday, January 21"
 
   // Formatted strings
-  const timeString = formatDisplayTime(currentTime, effectiveTimeFormat, { showSeconds });
-  const dateString = format(currentTime, dateFormat);
+  const timeString = formatDisplayTime(currentTime, effectiveTimeFormat, { showSeconds }, displayTimezone);
+  const dateString = format(toDisplayDate(currentTime, displayTimezone), dateFormat);
 
   // Size-based styling
   const timeStyles = {

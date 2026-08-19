@@ -16,13 +16,14 @@ import { useWeekStartsOn } from '@/lib/hooks/useWeekStartsOn';
 import { useTimezone, detectBrowserTimezone } from '@/lib/hooks/useTimezone';
 import { useLocationSearch } from '@/lib/hooks/useLocationSearch';
 import { listTimezones } from '@/lib/utils/timezone';
-import { useTimeFormat, type TimeFormat } from '@/components/providers';
+import { useTimeFormat, type DisplayTimezoneMode, type TimeFormat } from '@/components/providers';
 
 export function GeneralSection() {
   return (
     <div className="space-y-6">
       <LocationCard />
       <TimezoneCard />
+      <DisplayTimezoneCard />
       <TimeFormatCard />
       <WeekStartCard />
     </div>
@@ -119,8 +120,8 @@ function TimezoneCard() {
       <CardHeader>
         <CardTitle>Time Zone</CardTitle>
         <CardDescription>
-          Used for server-side scheduling and syncs — e.g. placing imported meal-plan times on the
-          right day. On-screen clocks already follow each viewer&apos;s device.
+          The household timezone used for scheduling, calendar sync, and—by default—times shown
+          throughout Prism.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -142,6 +143,70 @@ function TimezoneCard() {
               Use detected ({detected.replace(/_/g, ' ')})
             </Button>
           )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function DisplayTimezoneCard() {
+  const {
+    householdTimezone,
+    deviceTimezone,
+    displayTimezoneMode,
+    setDisplayTimezoneMode,
+  } = useTimeFormat();
+
+  const options: Array<{
+    value: DisplayTimezoneMode;
+    label: string;
+    timezone: string;
+    description: string;
+  }> = [
+    {
+      value: 'household',
+      label: 'Household timezone',
+      timezone: householdTimezone,
+      description: 'Keeps appointments and clocks consistent on every Prism display.',
+    },
+    {
+      value: 'device',
+      label: 'This device’s timezone',
+      timezone: deviceTimezone,
+      description: 'Uses this browser’s timezone on this device only.',
+    },
+  ];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Display Timezone</CardTitle>
+        <CardDescription>
+          Choose which timezone this device uses for calendars, reminders, and clocks. Household
+          timezone is the recommended default.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Display timezone">
+          {options.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={displayTimezoneMode === option.value}
+              onClick={() => setDisplayTimezoneMode(option.value)}
+              className={cn(
+                'min-h-20 rounded-md border p-3 text-left transition-colors',
+                displayTimezoneMode === option.value
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-border hover:bg-accent',
+              )}
+            >
+              <span className="block text-sm font-medium">{option.label}</span>
+              <span className="block text-xs font-mono opacity-80">{option.timezone}</span>
+              <span className="mt-1 block text-xs opacity-80">{option.description}</span>
+            </button>
+          ))}
         </div>
       </CardContent>
     </Card>

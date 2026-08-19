@@ -12,6 +12,8 @@ import type { CalendarEvent } from '@/types/calendar';
 import type { Chore, Meal } from '@/types';
 import type { Task } from '@/components/widgets/TasksWidget';
 import type { ForecastDay } from '@/components/widgets/WeatherWidget';
+import { useTimeFormat } from '@/components/providers';
+import { toDisplayDate } from '@/lib/utils/timeFormat';
 
 export interface DayBucket {
   date: Date;
@@ -52,10 +54,12 @@ const MEAL_TYPE_ORDER: Record<Meal['mealType'], number> = {
   snack: 3,
 };
 
-function eventOnDay(event: CalendarEvent, day: Date): boolean {
+function eventOnDay(event: CalendarEvent, day: Date, displayTimezone: string): boolean {
   const dayStart = startOfDay(day);
   const dayEnd = addDays(dayStart, 1);
-  return event.startTime < dayEnd && event.endTime > dayStart;
+  const eventStart = toDisplayDate(event.startTime, displayTimezone);
+  const eventEnd = toDisplayDate(event.endTime, displayTimezone);
+  return eventStart < dayEnd && eventEnd > dayStart;
 }
 
 function choreNextDueOnDay(chore: Chore, day: Date): boolean {
@@ -70,6 +74,7 @@ export function useWeekViewData({
   weekStart,
   weekStartsOn,
 }: UseWeekViewDataOptions): UseWeekViewDataResult {
+  const { displayTimezone } = useTimeFormat();
   // Normalize to start-of-week for stable identity
   const normalizedStart = useMemo(
     () => startOfWeek(weekStart, { weekStartsOn }),
@@ -96,7 +101,7 @@ export function useWeekViewData({
       const date = addDays(normalizedStart, i);
       const dayOfWeek = DAYS_OF_WEEK[date.getDay()] as DayOfWeek;
 
-      const dayEvents = events.filter((e) => eventOnDay(e, date));
+      const dayEvents = events.filter((e) => eventOnDay(e, date, displayTimezone));
       const allDayEvents = dayEvents.filter((e) => e.allDay).sort((a, b) =>
         a.startTime.getTime() - b.startTime.getTime(),
       );
@@ -132,7 +137,7 @@ export function useWeekViewData({
         weather: dayWeather,
       };
     });
-  }, [normalizedStart, events, meals, chores, tasks, weather]);
+  }, [normalizedStart, events, meals, chores, tasks, weather, displayTimezone]);
 
   const loading = eventsLoading || mealsLoading || choresLoading || tasksLoading;
   const error = eventsError || mealsError || choresError || tasksError;

@@ -4,7 +4,6 @@ import {
   format,
   startOfWeek,
   addDays,
-  isToday,
   isBefore,
   startOfDay,
   isSameDay,
@@ -19,7 +18,7 @@ import type { CalendarNote } from '@/lib/hooks/useCalendarNotes';
 import type { DayBucket } from '@/lib/hooks/useWeekViewData';
 import { DroppableOverlayCell, useDayDroppable, type OverlayItemRef } from './cells';
 import { useTimeFormat } from '@/components/providers';
-import { formatDisplayTime } from '@/lib/utils/timeFormat';
+import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
 
 export interface WeekVerticalViewProps {
   currentDate: Date;
@@ -60,6 +59,7 @@ export function WeekVerticalView({
   mealColor,
   onItemClick,
 }: WeekVerticalViewProps) {
+  const { displayTimezone } = useTimeFormat();
   const { weekStartsOn } = useWeekStartsOn();
   const bgOverride = useWidgetBgOverride();
   const cellBg = bgOverride?.cellBackgroundColor;
@@ -67,7 +67,7 @@ export function WeekVerticalView({
   const cellBgStyle = cellBg ? { backgroundColor: hexToRgba(cellBg, cellBgOpacity) } : undefined;
   const weekStart = startOfWeek(currentDate, { weekStartsOn });
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-  const now = new Date();
+  const now = toDisplayDate(new Date(), displayTimezone);
   const today = startOfDay(now);
   const currentHour = now.getHours();
 
@@ -177,14 +177,15 @@ function WeekListDayRow({
   mealColor: string | undefined;
   onItemClick: ((ref: OverlayItemRef) => void) | undefined;
 }) {
+  const { displayTimezone } = useTimeFormat();
   const cards = displayMode === 'cards';
   const dayStart = startOfDay(day);
-  const isCurrentDay = isToday(day);
+  const isCurrentDay = isSameDay(day, today);
   const isPast = isBefore(dayStart, today);
 
   const dayEvents = events.filter((event) => {
-    const eventStart = new Date(event.startTime);
-    const eventEnd = new Date(event.endTime);
+    const eventStart = toDisplayDate(event.startTime, displayTimezone);
+    const eventEnd = toDisplayDate(event.endTime, displayTimezone);
     return eventStart < addDays(dayStart, 1) && eventEnd > dayStart;
   });
 
@@ -346,7 +347,7 @@ function DayEventList({
   currentHour?: number;
   cards?: boolean;
 }) {
-  const { timeFormat } = useTimeFormat();
+  const { timeFormat, displayTimezone } = useTimeFormat();
   if (allDayEvents.length === 0 && timedEvents.length === 0) {
     return null;
   }
@@ -371,7 +372,7 @@ function DayEventList({
         </button>
       ))}
       {timedEvents.map((event) => {
-        const isPastEvent = isPastDay || (isCurrentDay && new Date(event.startTime).getHours() < currentHour);
+        const isPastEvent = isPastDay || (isCurrentDay && toDisplayDate(event.startTime, displayTimezone).getHours() < currentHour);
         return (
           <button
             key={event.id}
@@ -389,7 +390,7 @@ function DayEventList({
                 : { backgroundColor: event.color, borderLeft: `3px solid ${event.color}` }
             }
           >
-            <span className={cn('mr-1', cards ? 'text-muted-foreground' : 'opacity-80')}>{formatDisplayTime(new Date(event.startTime), timeFormat)}</span>
+            <span className={cn('mr-1', cards ? 'text-muted-foreground' : 'opacity-80')}>{formatDisplayTime(event.startTime, timeFormat, {}, displayTimezone)}</span>
             <span className="font-medium">{event.title}</span>
           </button>
         );
