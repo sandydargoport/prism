@@ -6,7 +6,7 @@
  * "Appearance" (Location) and "Calendars" (Time zone, Week starts on).
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, MapPin, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -16,12 +16,14 @@ import { useWeekStartsOn } from '@/lib/hooks/useWeekStartsOn';
 import { useTimezone, detectBrowserTimezone } from '@/lib/hooks/useTimezone';
 import { useLocationSearch } from '@/lib/hooks/useLocationSearch';
 import { listTimezones } from '@/lib/utils/timezone';
+import { useTimeFormat, type TimeFormat } from '@/components/providers';
 
 export function GeneralSection() {
   return (
     <div className="space-y-6">
       <LocationCard />
       <TimezoneCard />
+      <TimeFormatCard />
       <WeekStartCard />
     </div>
   );
@@ -140,6 +142,53 @@ function TimezoneCard() {
               Use detected ({detected.replace(/_/g, ' ')})
             </Button>
           )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function TimeFormatCard() {
+  const { timeFormat, setTimeFormat } = useTimeFormat();
+  const [saving, setSaving] = useState(false);
+
+  const save = useCallback(async (next: TimeFormat) => {
+    setSaving(true);
+    try {
+      await setTimeFormat(next);
+    } catch {
+      // The provider rolls back the optimistic change on failure.
+    } finally {
+      setSaving(false);
+    }
+  }, [setTimeFormat]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Time Format</CardTitle>
+        <CardDescription>
+          Choose how times appear across the dashboard, weather, and calendar.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="inline-flex rounded-md border border-input p-0.5" role="radiogroup" aria-label="Time format">
+          {(['12h', '24h'] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={timeFormat === value}
+              disabled={saving}
+              onClick={() => save(value)}
+              className={cn(
+                'min-h-11 px-3 py-1.5 text-sm rounded-sm transition-colors',
+                timeFormat === value ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
+              )}
+            >
+              {value === '12h' ? '12-hour (2:30 PM)' : '24-hour (14:30)'}
+            </button>
+          ))}
         </div>
       </CardContent>
     </Card>
