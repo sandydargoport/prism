@@ -18,6 +18,8 @@ import { useWeekStartsOn } from '@/lib/hooks/useWeekStartsOn';
 import type { CalendarNote } from '@/lib/hooks/useCalendarNotes';
 import type { DayBucket } from '@/lib/hooks/useWeekViewData';
 import { DroppableOverlayCell, useDayDroppable, type OverlayItemRef } from './cells';
+import { useTimeFormat } from '@/components/providers';
+import { formatDisplayTime } from '@/lib/utils/timeFormat';
 
 export interface WeekVerticalViewProps {
   currentDate: Date;
@@ -344,6 +346,7 @@ function DayEventList({
   currentHour?: number;
   cards?: boolean;
 }) {
+  const { timeFormat } = useTimeFormat();
   if (allDayEvents.length === 0 && timedEvents.length === 0) {
     return null;
   }
@@ -386,7 +389,7 @@ function DayEventList({
                 : { backgroundColor: event.color, borderLeft: `3px solid ${event.color}` }
             }
           >
-            <span className={cn('mr-1', cards ? 'text-muted-foreground' : 'opacity-80')}>{format(new Date(event.startTime), 'h:mm a')}</span>
+            <span className={cn('mr-1', cards ? 'text-muted-foreground' : 'opacity-80')}>{formatDisplayTime(new Date(event.startTime), timeFormat)}</span>
             <span className="font-medium">{event.title}</span>
           </button>
         );

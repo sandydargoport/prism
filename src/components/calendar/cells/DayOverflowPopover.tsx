@@ -5,6 +5,8 @@ import { format } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import type { CalendarEvent } from '@/types/calendar';
+import { useTimeFormat } from '@/components/providers';
+import { formatDisplayTime } from '@/lib/utils/timeFormat';
 
 interface DayOverflowPopoverProps {
   /** The date this popover represents — shown in the popover header. */
@@ -28,6 +30,7 @@ export function DayOverflowPopover({
   onEventClick,
   triggerClassName,
 }: DayOverflowPopoverProps) {
+  const { timeFormat } = useTimeFormat();
   const [open, setOpen] = React.useState(false);
 
   if (hiddenEvents.length === 0) return null;
@@ -70,7 +73,7 @@ export function DayOverflowPopover({
               >
                 {!event.allDay && (
                   <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
-                    {format(event.startTime, 'h:mm a')}
+                    {formatDisplayTime(event.startTime, timeFormat)}
                   </span>
                 )}
                 <span className="text-xs font-medium truncate flex-1 text-foreground">

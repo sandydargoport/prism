@@ -29,6 +29,8 @@ import {
 import type { useDashboardData } from './useDashboardData';
 import type { CalendarEvent } from '@/types/calendar';
 import type { BusRouteStatus, BusPrediction } from '@/lib/hooks/useBusTracking';
+import { useTimeFormat } from '@/components/providers';
+import { formatDisplayTime } from '@/lib/utils/timeFormat';
 
 type DashData = ReturnType<typeof useDashboardData>;
 
@@ -88,16 +90,18 @@ export function WeatherCard({ data }: { data: DashData['weather'] }) {
 }
 
 export function ClockCard() {
+  const { timeFormat } = useTimeFormat();
   return (
     <div className="bg-card/85 backdrop-blur-sm rounded-xl border border-border p-3 flex items-center gap-3">
       <Clock className="h-5 w-5 text-muted-foreground" />
-      <span className="text-2xl font-light tabular-nums">{format(new Date(), 'h:mm a')}</span>
+      <span className="text-2xl font-light tabular-nums">{formatDisplayTime(new Date(), timeFormat)}</span>
       <span className="text-sm text-muted-foreground">{format(new Date(), 'EEEE, MMM d')}</span>
     </div>
   );
 }
 
 export function CalendarCard({ data }: { data: DashData['calendar'] }) {
+  const { timeFormat } = useTimeFormat();
   const upcoming = useMemo(() => {
     if (!data.events) return [];
     const now = new Date();
@@ -118,9 +122,9 @@ export function CalendarCard({ data }: { data: DashData['calendar'] }) {
               <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: e.color }} />
               <span className="truncate flex-1">{e.title}</span>
               <span className="text-muted-foreground shrink-0">
-                {isToday(e.startTime) ? format(e.startTime, 'h:mm a') :
-                 isTomorrow(e.startTime) ? `Tomorrow ${format(e.startTime, 'h:mm a')}` :
-                 format(e.startTime, 'EEE h:mm a')}
+                {isToday(e.startTime) ? formatDisplayTime(e.startTime, timeFormat) :
+                 isTomorrow(e.startTime) ? `Tomorrow ${formatDisplayTime(e.startTime, timeFormat)}` :
+                 `${format(e.startTime, 'EEE')} ${formatDisplayTime(e.startTime, timeFormat)}`}
               </span>
             </div>
           ))}

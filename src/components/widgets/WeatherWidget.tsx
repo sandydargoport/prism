@@ -42,6 +42,8 @@ import {
 import { cn } from '@/lib/utils';
 import { DAYS_SHORT_ARRAY } from '@/lib/constants/days';
 import { WidgetContainer } from './WidgetContainer';
+import { useTimeFormat } from '@/components/providers';
+import { formatDisplayHour, formatDisplayTime } from '@/lib/utils/timeFormat';
 
 /**
  * WEATHER DATA TYPES
@@ -470,9 +472,9 @@ function CurrentConditions({
   moonPhase?: number;
   moonPhaseName?: string;
 }) {
+  const { timeFormat } = useTimeFormat();
   const temp  = formatTemp(weather.temperature, units);
   const feels = formatTemp(weather.feelsLike, units);
-  const fmtTime = (d: Date) => d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
 
   return (
     <div className="flex items-start justify-between gap-2">
@@ -517,13 +519,13 @@ function CurrentConditions({
             {sunrise && (
               <span className="flex items-center gap-0.5" title="Sunrise">
                 <Sunrise className="h-3 w-3" style={{ color: '#FBBF24' }} />
-                {fmtTime(sunrise)}
+                {formatDisplayTime(sunrise, timeFormat)}
               </span>
             )}
             {sunset && (
               <span className="flex items-center gap-0.5" title="Sunset">
                 <Sunset className="h-3 w-3" style={{ color: '#F97316' }} />
-                {fmtTime(sunset)}
+                {formatDisplayTime(sunset, timeFormat)}
               </span>
             )}
           </div>
@@ -663,6 +665,7 @@ function WeatherIcon({
  * earlier merry-timeline color strip, which read as a 1995-era band chart.
  */
 function HourlyTimeline({ hourly, units }: { hourly: HourlyForecast[]; units: WeatherUnits }) {
+  const { timeFormat } = useTimeFormat();
   // Start at the hour whose endTime is still in the future ("Now" card).
   // Take 8 hours so the row stays readable at the default widget width.
   const nowMs = Date.now();
@@ -682,10 +685,7 @@ function HourlyTimeline({ hourly, units }: { hourly: HourlyForecast[]; units: We
           const isNow = i === 0;
           const timeLabel = isNow
             ? 'Now'
-            : h.time
-                .toLocaleTimeString([], { hour: 'numeric', hour12: true })
-                .replace(/\s/g, '')
-                .toLowerCase();
+            : formatDisplayHour(h.time, timeFormat, { compact: true }).toLowerCase();
           const precipPct = Math.round(h.precipProbability ?? 0);
           const showPrecip = precipPct >= 10;
           return (
@@ -893,6 +893,7 @@ function SunriseSunsetArc({
   moonset?: Date;
   moonPhase?: number;
 }) {
+  const { timeFormat } = useTimeFormat();
   const [width, setWidth] = React.useState(220);
   const containerRef = React.useRef<HTMLDivElement>(null);
   // Unique gradient ID so multiple weather widgets on a page (e.g., dashboard
@@ -1013,8 +1014,6 @@ function SunriseSunsetArc({
   const SUN_HORIZON = '#EF4444'; // red-500 — sun at the horizon
   const MOON_COLOR = '#60A5FA';
 
-  const fmtTime = (d: Date) => d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
-
   // Pick a sun-dot color that matches where it sits on the altitude gradient
   // — red near the horizon, amber high in the sky. Bucketed (rather than
   // smoothly interpolated) for legibility against a small dot.
@@ -1126,22 +1125,22 @@ function SunriseSunsetArc({
       <div className="flex items-center justify-between gap-3 text-[11px] tabular-nums pt-0.5 whitespace-nowrap">
         <span className="flex items-center gap-3">
           <span className="flex items-center gap-1" style={{ color: SUN_COLOR }} title="Sunrise">
-            <Sunrise className="h-3 w-3" />{fmtTime(sunrise)}
+            <Sunrise className="h-3 w-3" />{formatDisplayTime(sunrise, timeFormat)}
           </span>
           <span className="flex items-center gap-1" style={{ color: SUN_COLOR }} title="Sunset">
-            <Sunset className="h-3 w-3" />{fmtTime(sunset)}
+            <Sunset className="h-3 w-3" />{formatDisplayTime(sunset, timeFormat)}
           </span>
         </span>
         {(moonrise || moonset) && (
           <span className="flex items-center gap-3" style={{ color: MOON_COLOR }}>
             {moonrise && (
               <span className="flex items-center gap-1" title="Moonrise">
-                <MoonGlyph phase={moonPhase ?? 0} size={11} /><span className="opacity-70">↑</span>{fmtTime(moonrise)}
+                <MoonGlyph phase={moonPhase ?? 0} size={11} /><span className="opacity-70">↑</span>{formatDisplayTime(moonrise, timeFormat)}
               </span>
             )}
             {moonset && (
               <span className="flex items-center gap-1" title="Moonset">
-                {!moonrise && <MoonGlyph phase={moonPhase ?? 0} size={11} />}<span className="opacity-70">↓</span>{fmtTime(moonset)}
+                {!moonrise && <MoonGlyph phase={moonPhase ?? 0} size={11} />}<span className="opacity-70">↓</span>{formatDisplayTime(moonset, timeFormat)}
               </span>
             )}
           </span>

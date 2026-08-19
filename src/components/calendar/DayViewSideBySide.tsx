@@ -19,6 +19,8 @@ import type { CalendarNote } from '@/lib/hooks/useCalendarNotes';
 import type { DayBucket } from '@/lib/hooks/useWeekViewData';
 import { DroppableOverlayCell, useDayDroppable, getMealTime, getChoreTime, getTaskTime, formatTimeOfDay, type OverlayItemRef } from './cells';
 import { WeekItemCard } from './cells/WeekItemCard';
+import { useTimeFormat } from '@/components/providers';
+import { formatDisplayHour, formatDisplayTimeRange } from '@/lib/utils/timeFormat';
 
 export interface DayViewSideBySideProps {
   currentDate: Date;
@@ -57,6 +59,7 @@ export function DayViewSideBySide({
   mealColor,
   onItemClick,
 }: DayViewSideBySideProps) {
+  const { timeFormat } = useTimeFormat();
   const cards = displayMode === 'cards';
   const droppable = useDayDroppable({ date: currentDate, enabled: cards && enableDnd });
   const bgOverride = useWidgetBgOverride();
@@ -253,7 +256,7 @@ export function DayViewSideBySide({
                     isPastHour && 'bg-muted/15',
                     isNowHour && 'bg-primary text-primary-foreground font-semibold rounded-sm'
                   )}>
-                    {format(new Date().setHours(hour, 0), 'h a')}
+                    {formatDisplayHour(new Date().setHours(hour, 0), timeFormat)}
                     {isNowHour && (
                       <div className="absolute left-0 right-0 border-t-2 border-t-primary z-20 pointer-events-none" style={{ top: `${currentMinuteSnapped}%` }} />
                     )}
@@ -347,7 +350,7 @@ export function DayViewSideBySide({
                               <div className={cn('font-medium truncate w-full text-[11px] leading-tight', cards && 'text-foreground')}>{event.title}</div>
                               {durationMin >= 60 && (
                                 <div className={cn('text-[9px] leading-tight', cards ? 'text-muted-foreground' : 'opacity-70')}>
-                                  {format(event.startTime, 'h:mm')}&ndash;{format(event.endTime ?? new Date(event.startTime.getTime() + 3600000), 'h:mm a')}
+                                  {formatDisplayTimeRange(event.startTime, event.endTime ?? new Date(event.startTime.getTime() + 3600000), timeFormat)}
                                 </div>
                               )}
                             </button>
@@ -410,6 +413,7 @@ function DayTimedBucketLayer({
   enableDnd: boolean;
   onItemClick?: (ref: OverlayItemRef) => void;
 }) {
+  const { timeFormat } = useTimeFormat();
   const slotPct = 100 / hours.length;
   const visibleSet = new Set(hours);
 
@@ -440,7 +444,7 @@ function DayTimedBucketLayer({
       dragId: `meal:${meal.id}`,
       variant: 'meal',
       title: meal.name,
-      timeLabel: formatTimeOfDay(t),
+      timeLabel: formatTimeOfDay(t, timeFormat),
       subtitle: meal.cookedBy?.name ? `Cooked by ${meal.cookedBy.name}` : undefined,
       stripeColor: mealColor ?? '#10b981',
       muted: Boolean(meal.cookedAt),
@@ -460,7 +464,7 @@ function DayTimedBucketLayer({
       dragId: `chore:${chore.id}`,
       variant: 'chore',
       title: chore.title,
-      timeLabel: formatTimeOfDay(t),
+      timeLabel: formatTimeOfDay(t, timeFormat),
       subtitle: chore.assignedTo?.name,
       stripeColor: chore.assignedTo?.color || '#f59e0b',
       pendingApproval: Boolean(chore.pendingApproval),
@@ -480,7 +484,7 @@ function DayTimedBucketLayer({
       dragId: `task:${task.id}`,
       variant: 'task',
       title: task.title,
-      timeLabel: formatTimeOfDay(t),
+      timeLabel: formatTimeOfDay(t, timeFormat),
       subtitle: task.assignedTo?.name,
       stripeColor: task.assignedTo?.color || '#3b82f6',
       muted: task.completed,

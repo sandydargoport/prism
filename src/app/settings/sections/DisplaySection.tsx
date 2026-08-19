@@ -16,6 +16,7 @@ import { useScreensaverTimeout } from '@/lib/hooks/useScreensaverTimeout';
 import { useAutoHideUI } from '@/lib/hooks/useAutoHideUI';
 import { useAwayModeTimeout } from '@/lib/hooks/useAwayModeTimeout';
 import { usePerformanceMode } from '@/lib/hooks/usePerformanceMode';
+import { useTimeFormat, type TimeFormat } from '@/components/providers';
 
 function getCurrentMonthNum(): number {
   return new Date().getMonth() + 1;
@@ -172,6 +173,8 @@ export function DisplaySection() {
 
       <SectionDivider label="Wallpaper & Display" />
 
+      <TimeFormatCard />
+
       <PerformanceModeCard />
 
       <WallpaperSettingsCard />
@@ -184,6 +187,53 @@ export function DisplaySection() {
 
       <WeatherUnitsCard />
     </div>
+  );
+}
+
+function TimeFormatCard() {
+  const { timeFormat, setTimeFormat } = useTimeFormat();
+  const [saving, setSaving] = useState(false);
+
+  const save = useCallback(async (next: TimeFormat) => {
+    setSaving(true);
+    try {
+      await setTimeFormat(next);
+    } catch {
+      // The provider rolls back the optimistic change on failure.
+    } finally {
+      setSaving(false);
+    }
+  }, [setTimeFormat]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Time format</CardTitle>
+        <CardDescription>
+          Choose how times appear across the dashboard, weather, and calendar
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="inline-flex rounded-md border border-input p-0.5" role="radiogroup" aria-label="Time format">
+          {(['12h', '24h'] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={timeFormat === value}
+              disabled={saving}
+              onClick={() => save(value)}
+              className={cn(
+                'min-h-11 px-3 py-1.5 text-sm rounded-sm transition-colors',
+                timeFormat === value ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
+              )}
+            >
+              {value === '12h' ? '12-hour (2:30 PM)' : '24-hour (14:30)'}
+            </button>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

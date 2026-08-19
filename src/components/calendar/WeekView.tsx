@@ -21,6 +21,8 @@ import type { CalendarEvent } from '@/types/calendar';
 import type { DayBucket } from '@/lib/hooks/useWeekViewData';
 import { DroppableOverlayCell, useDayDroppable, weatherIcon, getMealTime, getChoreTime, getTaskTime, formatTimeOfDay, type OverlayItemRef } from './cells';
 import { WeekItemCard } from './cells/WeekItemCard';
+import { useTimeFormat } from '@/components/providers';
+import { formatDisplayHour, formatDisplayTimeRange } from '@/lib/utils/timeFormat';
 
 export type CalendarDisplayMode = 'inline' | 'cards';
 
@@ -50,6 +52,7 @@ export function WeekView({
   mealColor,
   onItemClick,
 }: WeekViewProps) {
+  const { timeFormat } = useTimeFormat();
   const cards = displayMode === 'cards';
   const { weekStartsOn } = useWeekStartsOn();
   const bgOverride = useWidgetBgOverride();
@@ -198,7 +201,7 @@ export function WeekView({
                       <span className={cn('truncate w-full text-[10px] font-medium leading-tight', cards && 'text-foreground')}>{event.title}</span>
                       {cards && durationMin >= 30 && (
                         <span className="text-[9px] leading-tight text-muted-foreground truncate w-full">
-                          {format(event.startTime, 'h:mm')}&ndash;{format(event.endTime ?? new Date(event.startTime.getTime() + 3600000), 'h:mm a')}
+                          {formatDisplayTimeRange(event.startTime, event.endTime ?? new Date(event.startTime.getTime() + 3600000), timeFormat)}
                         </span>
                       )}
                       {cards && durationMin >= 60 && (event.location || event.calendarName) && (
@@ -208,7 +211,7 @@ export function WeekView({
                       )}
                       {!cards && (
                         <span className="text-[9px] leading-tight opacity-70">
-                          {format(event.startTime, 'h:mm')}&ndash;{format(event.endTime ?? new Date(event.startTime.getTime() + 3600000), 'h:mm a')}
+                          {formatDisplayTimeRange(event.startTime, event.endTime ?? new Date(event.startTime.getTime() + 3600000), timeFormat)}
                         </span>
                       )}
                     </button>
@@ -251,7 +254,7 @@ export function WeekView({
                   key={hour}
                   className="text-[9px] text-muted-foreground text-right pl-0.5 pr-0.5 border-t border-transparent flex items-start"
                 >
-                  {format(new Date().setHours(hour, 0), 'ha')}
+                  {formatDisplayHour(new Date().setHours(hour, 0), timeFormat, { compact: true })}
                 </div>
               ))}
             </div>
@@ -268,7 +271,7 @@ export function WeekView({
                   key={hour}
                   className="text-[9px] text-muted-foreground text-right pl-0.5 pr-0.5 border-t border-transparent flex items-start"
                 >
-                  {format(new Date().setHours(hour, 0), 'ha')}
+                  {formatDisplayHour(new Date().setHours(hour, 0), timeFormat, { compact: true })}
                 </div>
               ))}
             </div>
@@ -407,7 +410,7 @@ export function WeekView({
             <div className="w-16 shrink-0 h-full grid" style={{ gridTemplateRows: `repeat(${hours.length}, 1fr)` }}>
               {hours.map((hour) => (
                 <div key={hour} className={cn('pl-1 pr-1 text-right text-xs text-muted-foreground flex items-start pt-0.5 min-h-0', bordered && 'border-t border-border')}>
-                  {format(new Date().setHours(hour, 0), 'h a')}
+                  {formatDisplayHour(new Date().setHours(hour, 0), timeFormat)}
                 </div>
               ))}
             </div>
@@ -475,7 +478,7 @@ export function WeekView({
                               <div className={cn('font-medium truncate w-full text-[10px] leading-tight', cards && 'text-foreground')}>{event.title}</div>
                               {cards && durationMin >= 60 && (
                                 <div className="text-[9px] leading-tight text-muted-foreground truncate w-full">
-                                  {format(event.startTime, 'h:mm')}&ndash;{format(event.endTime ?? new Date(event.startTime.getTime() + 3600000), 'h:mm a')}
+                                  {formatDisplayTimeRange(event.startTime, event.endTime ?? new Date(event.startTime.getTime() + 3600000), timeFormat)}
                                 </div>
                               )}
                               {cards && durationMin >= 90 && (event.location || event.calendarName) && (
@@ -485,7 +488,7 @@ export function WeekView({
                               )}
                               {!cards && durationMin >= 45 && (
                                 <div className="text-[9px] leading-tight opacity-70">
-                                  {format(event.startTime, 'h:mm')}&ndash;{format(event.endTime ?? new Date(event.startTime.getTime() + 3600000), 'h:mm a')}
+                                  {formatDisplayTimeRange(event.startTime, event.endTime ?? new Date(event.startTime.getTime() + 3600000), timeFormat)}
                                 </div>
                               )}
                             </button>
@@ -545,6 +548,7 @@ function TimedBucketLayer({
   enableDnd: boolean;
   onItemClick?: (ref: OverlayItemRef) => void;
 }) {
+  const { timeFormat } = useTimeFormat();
   const slotPct = 100 / hours.length;
   const visibleSet = new Set(hours);
 
@@ -576,7 +580,7 @@ function TimedBucketLayer({
       dragId: `meal:${meal.id}`,
       variant: 'meal',
       title: meal.name,
-      timeLabel: formatTimeOfDay(t),
+      timeLabel: formatTimeOfDay(t, timeFormat),
       subtitle: meal.cookedBy?.name ? `Cooked by ${meal.cookedBy.name}` : undefined,
       stripeColor: mealColor ?? '#10b981',
       muted: Boolean(meal.cookedAt),
@@ -596,7 +600,7 @@ function TimedBucketLayer({
       dragId: `chore:${chore.id}`,
       variant: 'chore',
       title: chore.title,
-      timeLabel: formatTimeOfDay(t),
+      timeLabel: formatTimeOfDay(t, timeFormat),
       subtitle: chore.assignedTo?.name,
       stripeColor: chore.assignedTo?.color || '#f59e0b',
       pendingApproval: Boolean(chore.pendingApproval),
@@ -616,7 +620,7 @@ function TimedBucketLayer({
       dragId: `task:${task.id}`,
       variant: 'task',
       title: task.title,
-      timeLabel: formatTimeOfDay(t),
+      timeLabel: formatTimeOfDay(t, timeFormat),
       subtitle: task.assignedTo?.name,
       stripeColor: task.assignedTo?.color || '#3b82f6',
       muted: task.completed,

@@ -13,6 +13,8 @@ import { cn } from '@/lib/utils';
 import { DAYS_OF_WEEK } from '@/lib/constants/days';
 import type { useDashboardData } from './useDashboardData';
 import type { BusRouteStatus, BusPrediction } from '@/lib/hooks/useBusTracking';
+import { useTimeFormat } from '@/components/providers';
+import { formatDisplayTime } from '@/lib/utils/timeFormat';
 
 type DashData = ReturnType<typeof useDashboardData>;
 
@@ -75,6 +77,7 @@ export function WeatherTile({ data }: { data: DashData['weather'] }) {
 }
 
 export function ClockTile() {
+  const { timeFormat } = useTimeFormat();
   const [now, setNow] = useState(new Date());
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -82,7 +85,7 @@ export function ClockTile() {
   }, []);
   return (
     <TileShell icon={<Clock className="h-4 w-4 text-violet-500" />} title="Clock">
-      <TileLine>{format(now, 'h:mm a')}</TileLine>
+      <TileLine>{formatDisplayTime(now, timeFormat)}</TileLine>
       <TileLine dim>{format(now, 'EEE, MMM d')}</TileLine>
     </TileShell>
   );

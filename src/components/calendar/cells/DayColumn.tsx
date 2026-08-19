@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils';
 import { WeekItemCard, type WeekItemSize, type WeekItemLayout } from './WeekItemCard';
 import { weatherIcon } from './weatherIcon';
 import type { DayBucket } from '@/lib/hooks/useWeekViewData';
+import { useTimeFormat } from '@/components/providers';
+import { formatDisplayTime, type TimeFormat } from '@/lib/utils/timeFormat';
 
 const PRIORITY_COLORS = {
   high: '#ef4444',
@@ -44,9 +46,9 @@ function dayLabel(date: Date): string {
   return format(date, 'EEEE');
 }
 
-function timeLabel(start: Date, end: Date, allDay: boolean): string | undefined {
+function timeLabel(start: Date, end: Date, allDay: boolean, timeFormat: TimeFormat): string | undefined {
   if (allDay) return 'All day';
-  const startStr = format(start, 'h:mm a');
+  const startStr = formatDisplayTime(start, timeFormat);
   if (!isSameDay(start, end)) return startStr;
   return startStr;
 }
@@ -147,6 +149,7 @@ export function DayColumn({
   disableDrop = false,
   className,
 }: DayColumnProps) {
+  const { timeFormat } = useTimeFormat();
   const flags = { ...ALL_OVERLAYS, ...overlays };
   const today = isToday(bucket.date);
   const droppableId = format(bucket.date, 'yyyy-MM-dd');
@@ -228,7 +231,7 @@ export function DayColumn({
             layout={itemLayout}
             stripeColor={event.color}
             title={event.title}
-            timeLabel={timeLabel(event.startTime, event.endTime, false)}
+            timeLabel={timeLabel(event.startTime, event.endTime, false, timeFormat)}
             subtitle={event.location || event.calendarName}
           />
         ))}

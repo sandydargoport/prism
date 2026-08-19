@@ -15,6 +15,8 @@ import { DAYS_SHORT_ARRAY } from '@/lib/constants/days';
 import { useWidgetBgOverride } from '@/components/widgets/WidgetContainer';
 import { useOrientation } from '@/lib/hooks/useOrientation';
 import type { CalendarEvent } from '@/types/calendar';
+import { useTimeFormat } from '@/components/providers';
+import { formatDisplayTime } from '@/lib/utils/timeFormat';
 
 export interface TwoWeekViewProps {
   currentDate: Date;
@@ -27,6 +29,7 @@ export function TwoWeekView({
   events,
   onEventClick,
 }: TwoWeekViewProps) {
+  const { timeFormat } = useTimeFormat();
   const bgOverride = useWidgetBgOverride();
   const transparentMode = bgOverride?.hasCustomBg === true;
   const weekStart = startOfWeek(currentDate);
@@ -96,7 +99,7 @@ export function TwoWeekView({
                 : { color: event.color }
               }
             >
-              {event.allDay ? event.title : `• ${format(event.startTime, 'h:mm')} ${event.title}`}
+              {event.allDay ? event.title : `• ${formatDisplayTime(event.startTime, timeFormat)} ${event.title}`}
             </button>
           ))}
         </div>

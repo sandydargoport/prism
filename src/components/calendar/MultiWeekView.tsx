@@ -26,6 +26,8 @@ function getMonthAccentColor(date: Date): string {
 }
 import { useCardCapacity } from '@/lib/hooks/useCardCapacity';
 import type { DayBucket } from '@/lib/hooks/useWeekViewData';
+import { useTimeFormat } from '@/components/providers';
+import { formatDisplayTime } from '@/lib/utils/timeFormat';
 
 export interface MultiWeekViewProps {
   currentDate: Date;
@@ -168,6 +170,7 @@ function DayCell({
       the row to grow to accommodate the day with the most events. */
   showAll?: boolean;
 }) {
+  const { timeFormat } = useTimeFormat();
   const cards = displayMode === 'cards';
   const fallback = compact ? FALLBACK_VISIBLE_CARDS_COMPACT : FALLBACK_VISIBLE_CARDS;
   const dayStart = startOfDay(date);
@@ -320,7 +323,7 @@ function DayCell({
                   layout="column"
                   stripeColor={event.color}
                   title={event.title}
-                  timeLabel={event.allDay ? 'All day' : format(event.startTime, 'h:mm a')}
+                  timeLabel={event.allDay ? 'All day' : formatDisplayTime(event.startTime, timeFormat)}
                   subtitle={event.location || event.calendarName}
                   onClick={() => onEventClick(event)}
                   dragId={draggable ? `event:${event.id}` : undefined}
@@ -340,7 +343,7 @@ function DayCell({
                   : { color: event.color }
                 }
               >
-                {event.allDay ? event.title : `${format(event.startTime, 'h:mm')} ${event.title}`}
+                {event.allDay ? event.title : `${formatDisplayTime(event.startTime, timeFormat)} ${event.title}`}
               </button>
             ))}
         {cards && hiddenEvents.length > 0 && (

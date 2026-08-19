@@ -25,6 +25,8 @@ import { seasonalPalettes } from '@/lib/themes/seasonalThemes';
 import { CardHeightProbe, DayOverflowPopover, DroppableOverlayCell, useDayDroppable, type OverlayItemRef } from './cells';
 import { useCardCapacity } from '@/lib/hooks/useCardCapacity';
 import type { DayBucket } from '@/lib/hooks/useWeekViewData';
+import { useTimeFormat } from '@/components/providers';
+import { formatDisplayTime } from '@/lib/utils/timeFormat';
 
 // Get the accent color for a month (1-12)
 function getMonthColor(month: Date): string {
@@ -188,6 +190,7 @@ function MonthDayCell({
   onEventClick: (event: CalendarEvent) => void;
   onItemClick?: (ref: OverlayItemRef) => void;
 }) {
+  const { timeFormat } = useTimeFormat();
   const droppable = useDayDroppable({ date, enabled: cards && enableDnd });
 
   return (
@@ -245,7 +248,7 @@ function MonthDayCell({
                 : { color: event.color }
               }
             >
-              {event.allDay ? event.title : `• ${format(event.startTime, 'h:mm a')} ${event.title}`}
+              {event.allDay ? event.title : `• ${formatDisplayTime(event.startTime, timeFormat)} ${event.title}`}
             </li>
           ))}
         </ul>

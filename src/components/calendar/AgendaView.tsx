@@ -16,6 +16,8 @@ import { Badge } from '@/components/ui';
 import type { CalendarEvent } from '@/types/calendar';
 import type { DayBucket } from '@/lib/hooks/useWeekViewData';
 import { useDayDroppable, getMealTime, getChoreTime, getTaskTime, parseTimeOfDay, formatTimeOfDay, type OverlayItemRef } from './cells';
+import { useTimeFormat } from '@/components/providers';
+import { formatDisplayTime, type TimeFormat } from '@/lib/utils/timeFormat';
 
 const MEAL_FALLBACK_COLOR = '#10b981';
 const CHORE_FALLBACK_COLOR = '#f59e0b';
@@ -158,8 +160,9 @@ function AgendaDaySection({
   mealColor?: string;
   onItemClick?: (ref: OverlayItemRef) => void;
 }) {
+  const { timeFormat } = useTimeFormat();
   const droppable = useDayDroppable({ date, enabled: cards && enableDnd });
-  const rows = buildAgendaRows({ events, bucket, onEventClick, mealColor, onItemClick });
+  const rows = buildAgendaRows({ events, bucket, onEventClick, mealColor, onItemClick, timeFormat });
   const displayRows = maxEvents > 0 ? rows.slice(0, maxEvents) : rows;
   const remainingCount = maxEvents > 0 ? rows.length - maxEvents : 0;
 
@@ -208,12 +211,14 @@ function buildAgendaRows({
   onEventClick,
   mealColor,
   onItemClick,
+  timeFormat,
 }: {
   events: CalendarEvent[];
   bucket?: DayBucket;
   onEventClick?: (event: CalendarEvent) => void;
   mealColor?: string;
   onItemClick?: (ref: OverlayItemRef) => void;
+  timeFormat: TimeFormat;
 }): AgendaRow[] {
   const rows: AgendaRow[] = [];
 
@@ -226,7 +231,7 @@ function buildAgendaRows({
         : event.startTime.getHours() * 60 + event.startTime.getMinutes(),
       floating: allDay,
       stripeColor: event.color,
-      timeLabel: allDay ? 'All day' : format(event.startTime, 'h:mm a'),
+      timeLabel: allDay ? 'All day' : formatDisplayTime(event.startTime, timeFormat),
       title: event.title,
       subtitle: event.location,
       onClick: onEventClick ? () => onEventClick(event) : undefined,
@@ -243,7 +248,7 @@ function buildAgendaRows({
         floating: min === null,
         dragId: `meal:${meal.id}`,
         stripeColor: mealColor ?? meal.cookedBy?.color ?? meal.createdBy?.color ?? MEAL_FALLBACK_COLOR,
-        timeLabel: min !== null ? formatTimeLabel(t) : meal.mealType,
+        timeLabel: min !== null ? formatTimeLabel(t, timeFormat) : meal.mealType,
         title: meal.name,
         subtitle: meal.cookedBy?.name ? `Cooked by ${meal.cookedBy.name}` : undefined,
         muted: Boolean(meal.cookedAt),
@@ -259,7 +264,7 @@ function buildAgendaRows({
         floating: min === null,
         dragId: `chore:${chore.id}`,
         stripeColor: chore.assignedTo?.color || CHORE_FALLBACK_COLOR,
-        timeLabel: min !== null ? formatTimeLabel(t!) : 'Chore',
+        timeLabel: min !== null ? formatTimeLabel(t!, timeFormat) : 'Chore',
         title: chore.title,
         subtitle: chore.assignedTo?.name,
         pendingApproval: Boolean(chore.pendingApproval),
@@ -275,7 +280,7 @@ function buildAgendaRows({
         floating: min === null,
         dragId: `task:${task.id}`,
         stripeColor: task.assignedTo?.color || TASK_FALLBACK_COLOR,
-        timeLabel: min !== null ? formatTimeLabel(t!) : 'Task',
+        timeLabel: min !== null ? formatTimeLabel(t!, timeFormat) : 'Task',
         title: task.title,
         subtitle: task.assignedTo?.name,
         muted: task.completed,
@@ -294,8 +299,8 @@ function buildAgendaRows({
   return rows;
 }
 
-function formatTimeLabel(hhmm: string): string {
-  return formatTimeOfDay(hhmm);
+function formatTimeLabel(hhmm: string, timeFormat: TimeFormat): string {
+  return formatTimeOfDay(hhmm, timeFormat);
 }
 
 function AgendaRowItem({ row, cards = false }: { row: AgendaRow; cards?: boolean }) {
