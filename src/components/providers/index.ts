@@ -9,4 +9,4 @@ export { AuthProvider, useAuth } from './AuthProvider';
 export { FamilyProvider, useFamily } from './FamilyProvider';
 export { Providers } from './Providers';
 export { TimeFormatProvider, useTimeFormat } from './TimeFormatProvider';
-export type { TimeFormat } from '@/lib/utils/timeFormat';
+export type { DisplayTimezoneMode, TimeFormat } from '@/lib/utils/timeFormat';

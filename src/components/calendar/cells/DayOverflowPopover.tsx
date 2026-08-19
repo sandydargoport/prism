@@ -30,7 +30,7 @@ export function DayOverflowPopover({
   onEventClick,
   triggerClassName,
 }: DayOverflowPopoverProps) {
-  const { timeFormat } = useTimeFormat();
+  const { timeFormat, displayTimezone } = useTimeFormat();
   const [open, setOpen] = React.useState(false);
 
   if (hiddenEvents.length === 0) return null;
@@ -73,7 +73,7 @@ export function DayOverflowPopover({
               >
                 {!event.allDay && (
                   <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
-                    {formatDisplayTime(event.startTime, timeFormat)}
+                    {formatDisplayTime(event.startTime, timeFormat, {}, displayTimezone)}
                   </span>
                 )}
                 <span className="text-xs font-medium truncate flex-1 text-foreground">

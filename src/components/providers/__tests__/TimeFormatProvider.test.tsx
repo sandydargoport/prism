@@ -16,6 +16,7 @@ describe('TimeFormatProvider', () => {
   beforeEach(() => {
     fetchMock.mockReset();
     global.fetch = fetchMock;
+    localStorage.clear();
   });
 
   it('loads the saved family-wide preference', async () => {
@@ -65,5 +66,35 @@ describe('TimeFormatProvider', () => {
       'Failed to save time format',
     );
     expect(result.current.timeFormat).toBe('12h');
+  });
+
+  it('defaults display times to the saved household timezone', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ settings: { timeFormat: '24h', timezone: 'Europe/Warsaw' } }),
+    });
+
+    const { result } = renderHook(() => useTimeFormat(), { wrapper });
+
+    await waitFor(() => expect(result.current.householdTimezone).toBe('Europe/Warsaw'));
+    expect(result.current.displayTimezoneMode).toBe('household');
+    expect(result.current.displayTimezone).toBe('Europe/Warsaw');
+  });
+
+  it('stores the device-timezone override locally without changing family settings', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ settings: { timezone: 'Europe/Warsaw' } }),
+    });
+
+    const { result } = renderHook(() => useTimeFormat(), { wrapper });
+    await waitFor(() => expect(result.current.householdTimezone).toBe('Europe/Warsaw'));
+
+    act(() => result.current.setDisplayTimezoneMode('device'));
+
+    expect(result.current.displayTimezoneMode).toBe('device');
+    expect(result.current.displayTimezone).toBe(result.current.deviceTimezone);
+    expect(localStorage.getItem('prism:display-timezone-mode')).toBe('device');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

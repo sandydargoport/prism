@@ -13,7 +13,7 @@ import { ExitBabysitterModeModal } from './ExitBabysitterModeModal';
 import { WifiQRCode } from '@/components/ui/WifiQRCode';
 import { cn } from '@/lib/utils';
 import { useTimeFormat } from '@/components/providers';
-import { formatDisplayTime } from '@/lib/utils/timeFormat';
+import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
 
 interface EmergencyContact {
   name: string;
@@ -182,7 +182,7 @@ export function BabysitterModeOverlay() {
 }
 
 function BabysitterClock() {
-  const { timeFormat } = useTimeFormat();
+  const { timeFormat, displayTimezone } = useTimeFormat();
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
@@ -193,10 +193,10 @@ function BabysitterClock() {
   return (
     <div className="text-white">
       <div className="text-4xl font-light tabular-nums">
-        {formatDisplayTime(time, timeFormat)}
+        {formatDisplayTime(time, timeFormat, {}, displayTimezone)}
       </div>
       <div className="text-sm text-white/60">
-        {format(time, 'EEEE, MMMM d')}
+        {format(toDisplayDate(time, displayTimezone), 'EEEE, MMMM d')}
       </div>
     </div>
   );
