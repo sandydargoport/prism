@@ -22,17 +22,23 @@ import { async as icalAsync, type VEvent, type CalendarResponse } from 'node-ica
 /**
  * Default sync window.
  *
- * Past: 90 days back so recent-past events (last quarter) keep flowing in.
- * Events OLDER than this are never touched by sync — the delete-on-remove
- * logic only operates within this window, so historic events synced under
- * an older default stay in the local DB forever.
+ * Sized to cover the calendar's display window (getFullCalendarRange: ~1yr
+ * back … ~2yr forward). If sync were narrower than the display, synced Google/
+ * CalDAV events past the sync horizon would silently not appear even though the
+ * views reach for them — the synced-calendar counterpart of #250, and worse
+ * because it's inconsistent (a local event shows at that date, a synced one
+ * doesn't). So keep sync >= the display reach.
  *
- * Future: 365 days forward so school-year, sports-season, and far-out
- * scheduled events show up. The previous ±30-day default silently dropped
- * anything beyond a month.
+ * Past: 365 days back so recent history stays in step with the views. Events
+ * OLDER than this are never touched by sync — the delete-on-remove logic only
+ * operates within this window, so historic events synced under an older default
+ * stay in the local DB forever.
+ *
+ * Future: 730 days forward so school-year, sports-season, and far-out scheduled
+ * events show up. (Was ±90d/365d, which the wider display window outran.)
  */
-const DEFAULT_TIME_MIN_MS = 90 * 24 * 60 * 60 * 1000;       // 90 days
-const DEFAULT_TIME_MAX_MS = 365 * 24 * 60 * 60 * 1000;      // 365 days
+const DEFAULT_TIME_MIN_MS = 365 * 24 * 60 * 60 * 1000;      // 1 year
+const DEFAULT_TIME_MAX_MS = 730 * 24 * 60 * 60 * 1000;      // 2 years
 
 /**
  * Check if token needs refresh (within 5 minutes of expiry)

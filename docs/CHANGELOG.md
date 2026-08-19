@@ -4,6 +4,9 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+### Calendar
+- **Synced calendar events now populate the same multi-year range the calendar shows.** Google, iCloud, and CalDAV events were only synced for a rolling ~90 days back / 1 year forward, so once the calendar's visible window widened (see 1.14.3), synced events beyond that horizon could be missing even though local events at the same dates appeared. Sync now covers about 1 year back and 2 years forward to match. (Recurring series still populate as far as each provider expands them at sync time.)
+
 ## [1.14.3] – 2026-08-18
 
 ### Calendar
