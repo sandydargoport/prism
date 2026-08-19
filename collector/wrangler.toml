@@ -11,7 +11,7 @@ compatibility_date = "2026-08-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "prism-telemetry"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "33618d6d-31da-4ada-aa10-f1933f32b475"
 
 [vars]
 # Repo whose latest release drives the "update available" reply.

@@ -61,3 +61,4 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             NEXT_TELEMETRY_DISABLED=1
+            PRISM_TELEMETRY_URL=https://prism-telemetry.sandydargoport.workers.dev

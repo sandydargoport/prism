@@ -93,6 +93,7 @@ jobs:
           platforms: ${{ matrix.platform }}
           build-args: |
             PRISM_REF=${{ steps.ver.outputs.tag }}
+            PRISM_TELEMETRY_URL=https://prism-telemetry.sandydargoport.workers.dev
           push: true
           tags: |
             ghcr.io/sandydargoport/prism-ha-${{ matrix.arch }}:${{ steps.ver.outputs.version }}

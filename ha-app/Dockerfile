@@ -84,6 +84,12 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 # HA addon mode flag — runtime config reads this to flip paths to /data.
 ENV PRISM_HA_MODE=1
+# Anonymous update-check endpoint (see src/lib/telemetry). Empty by default so
+# a source build stays silent; only the official CI build passes the real URL
+# as a build-arg (Option B). Runtime-overridable; the addon's anonymous_stats
+# option can disable it via PRISM_DISABLE_TELEMETRY.
+ARG PRISM_TELEMETRY_URL=""
+ENV PRISM_TELEMETRY_URL=${PRISM_TELEMETRY_URL}
 
 # Entrypoint orchestrates: init secrets, init DB, start postgres+redis,
 # run migrations, exec Next.js. Only file from the addon's own context.
