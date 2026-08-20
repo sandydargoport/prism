@@ -4,6 +4,8 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.15.0] – 2026-08-20
+
 ### Privacy
 - **Anonymous update check (on by default, one switch to turn off).** Once a week Prism now checks whether a newer version is available and, in the same request, adds one anonymous install to a count the maintainer uses to gauge real usage. Exactly four fields are sent — a random per-install id, the version, docker-vs-Home-Assistant, and CPU architecture — with **no IP address, no personal data, and no usage tracking**. See the exact payload any time under Settings → About, disable it there with one switch, or hard-disable it for the whole install with `PRISM_DISABLE_TELEMETRY=true`. Update notices are quiet: they appear only in Settings (never on the dashboard) and only for minor/major releases, never patches. Full details in the [Anonymous update check](features/TELEMETRY.md) guide.
 
