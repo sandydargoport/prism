@@ -8,6 +8,10 @@ All notable changes to Prism are documented in this file.
 - **Choose 12-hour or 24-hour time, family-wide.** A new time-format preference under Settings → Display applies everywhere times appear — clocks, weather, every calendar view, and the Away/Babysitter overlays — instead of each surface deciding on its own. Thanks to @m4rtski for the contribution.
 - **Pin a display timezone for the household.** You can now set the timezone Prism renders times in (defaults to each device's own, so nothing changes unless you set it) — keeping calendar, reminder, weather, and clock times consistent across devices. Also from @m4rtski's contribution.
 
+### Calendar
+- **Multi-day events render as one continuous bar.** Trips, holidays, and other events that span several days now draw as a single connected bar across the month, multi-week, and week views instead of repeating as a separate chip on each day, with clipped ends where the bar crosses a week or month boundary. Events already in the past are dimmed. Thanks to @m4rtski for the contribution.
+- **All-day events created in Prism sync to Google correctly.** Creating or editing an all-day event now writes it to Google Calendar as a true date-only all-day event on the right day, rather than a timed event, and all-day events no longer shift by a day depending on your display timezone. Also from @m4rtski's contribution.
+
 ## [1.15.5] – 2026-08-20
 
 ### Integrations
