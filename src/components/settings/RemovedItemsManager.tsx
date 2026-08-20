@@ -44,10 +44,11 @@ export function RemovedItemsManager({
               key={item.id}
               className="flex items-center justify-between gap-3 rounded-md border border-border/50 px-3 py-2"
             >
-              <span className="text-sm truncate">{item.name}</span>
+              <span className="text-sm truncate min-w-0 flex-1">{item.name}</span>
               <Button
                 variant="outline"
                 size="sm"
+                className="shrink-0"
                 disabled={restoringId === item.id}
                 onClick={() => onRestore(item.id)}
               >
