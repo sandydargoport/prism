@@ -4,6 +4,8 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.15.4] – 2026-08-20
+
 ### Calendar
 - **The "Review removals" window now scrolls to show every item.** When the sync holds a lot of removed events for review (Delete vs. Keep in your local calendar), the list is now natively scrollable — including drag-to-scroll on touch wall displays — and the Delete/Keep buttons stay pinned at the bottom, so a long list is fully reachable instead of clipped.
 
