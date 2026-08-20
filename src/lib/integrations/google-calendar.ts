@@ -330,7 +330,7 @@ export async function updateCalendarEvent(
   }>
 ): Promise<GoogleCalendarEvent> {
   const response = await fetch(
-    `${GOOGLE_CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events/${eventId}`,
+    `${GOOGLE_CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
     {
       method: 'PATCH',
       headers: {
@@ -358,7 +358,7 @@ export async function deleteCalendarEvent(
   eventId: string
 ): Promise<void> {
   const response = await fetch(
-    `${GOOGLE_CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events/${eventId}`,
+    `${GOOGLE_CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
     {
       method: 'DELETE',
       headers: {
