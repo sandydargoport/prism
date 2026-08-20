@@ -3,9 +3,9 @@
 **Version 1.0 — Effective August 20, 2026**
 
 Thank you for contributing to Prism. This Contributor License Agreement (the
-"Agreement") records the rights you grant to the Prism project maintainer,
-Sandy Dargoport (the "Maintainer"), for the contributions you make to the
-project.
+"Agreement") records the rights you grant to the maintainer of the Prism
+project, the GitHub account **@sandydargoport** and its successors or assigns
+(the "Maintainer"), for the contributions you make to the project.
 
 Its purpose is to keep Prism's licensing flexible — so the project can, if the
 Maintainer ever chooses, be offered under additional or different terms (for

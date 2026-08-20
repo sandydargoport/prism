@@ -31,7 +31,9 @@ jobs:
         with:
           path-to-signatures: 'signatures/cla.json'
           path-to-document: 'https://github.com/sandydargoport/prism/blob/master/CLA.md'
-          branch: 'master'
+          # Signatures are committed to this dedicated, UNPROTECTED branch — the
+          # bot cannot push to master (branch protection ruleset).
+          branch: 'cla-signatures'
           allowlist: sandydargoport,dependabot[bot],github-actions[bot]
           custom-notsigned-prcomment: 'Thanks for the contribution! Before it can be merged, please read our [Contributor License Agreement](https://github.com/sandydargoport/prism/blob/master/CLA.md) and, if you agree, post a comment below with exactly this text:'
           custom-pr-sign-comment: 'I have read the CLA and I agree'
