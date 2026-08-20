@@ -77,16 +77,23 @@ project's license.
 
 ## Licensing of Contributions
 
-By submitting a contribution (pull request, patch, or commit) you agree that:
+By submitting a contribution (pull request, patch, or commit) to Prism, you
+agree that:
 
-- your contribution is licensed under the **PolyForm Noncommercial License
-  1.0.0**, the same license as Prism;
-- you have the right to license it under those terms; and
-- you consent to a **Hosting Exception** permitting third parties to host
-  Prism on behalf of end users for their personal, noncommercial use, provided
-  such an exception grants no right to sell, sublicense, rebrand, or otherwise
-  commercialize the software.
+- Your contribution is licensed under the **PolyForm Noncommercial License
+  1.0.0**, together with Prism's **Hosting Exception** — the same terms as
+  Prism itself — so it stays free for families to self-host, including
+  one-click deployment on managed hosting platforms for personal, noncommercial
+  use.
+- You have the right to license your contribution under those terms.
+- Consistent with Prism's [`LICENSE`](LICENSE), **all commercial rights in the
+  software, including in your contribution, are reserved to the project
+  maintainer.** No third party may sell, sublicense, rebrand, or otherwise
+  commercialize Prism or your contribution, and the maintainer retains the
+  right to offer Prism under additional or commercial terms in the future.
 
-This keeps Prism free for families to self-host — including one-click on
-managed platforms — while ensuring no one can commercialize the project or
-your contributions. See the Hosting Exception in [`LICENSE`](LICENSE).
+This keeps Prism free for families forever and permits managed hosting for
+personal, noncommercial use, while preserving the maintainer's ability to
+sustain the project — without ever removing the free noncommercial edition. For
+code and documentation contributions, we also ask you to sign the
+[Contributor License Agreement](CLA.md), which records this grant.
