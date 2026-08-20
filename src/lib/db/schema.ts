@@ -148,7 +148,7 @@ export const events = pgTable('events', {
 
   title: varchar('title', { length: 255 }).notNull(),
   description: text('description'),
-  location: varchar('location', { length: 255 }),
+  location: text('location'),
 
   startTime: timestamp('start_time').notNull(),
   endTime: timestamp('end_time').notNull(),

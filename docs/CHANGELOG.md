@@ -7,6 +7,9 @@ All notable changes to Prism are documented in this file.
 ### Privacy
 - **Anonymous update check (on by default, one switch to turn off).** Once a week Prism now checks whether a newer version is available and, in the same request, adds one anonymous install to a count the maintainer uses to gauge real usage. Exactly four fields are sent — a random per-install id, the version, docker-vs-Home-Assistant, and CPU architecture — with **no IP address, no personal data, and no usage tracking**. See the exact payload any time under Settings → About, disable it there with one switch, or hard-disable it for the whole install with `PRISM_DISABLE_TELEMETRY=true`. Update notices are quiet: they appear only in Settings (never on the dashboard) and only for minor/major releases, never patches. Full details in the [Anonymous update check](features/TELEMETRY.md) guide.
 
+### Calendar
+- **Fixed calendar sync failing for events with long locations.** Events whose location lists several venues (e.g. a CalDAV event with three rooms joined by `;`, ~300+ characters) exceeded the location field's 255-character limit, so every occurrence of that recurring series failed to sync and flooded the logs with errors. The location field is now unbounded (stored as `text`), matching the description field — nothing is truncated, and existing data is preserved.
+
 ## [1.14.4] – 2026-08-19
 
 ### Calendar
