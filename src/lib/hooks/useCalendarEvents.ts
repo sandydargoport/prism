@@ -254,7 +254,7 @@ export function useCalendarSources() {
       groupName: string | null;
       groupColor: string | null;
       lastSynced: string | null;
-      syncErrors: { needsReauth?: boolean; lastError?: string; timestamp?: string } | null;
+      syncErrors: { needsReauth?: boolean; removedAtSource?: boolean; lastError?: string; timestamp?: string } | null;
       providerConfig: Record<string, unknown> | null;
       user: { id: string; name: string; color: string } | null;
     }>

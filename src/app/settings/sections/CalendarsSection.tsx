@@ -496,6 +496,14 @@ export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
                             </span>
                           </div>
                         )}
+                        {cal.syncErrors?.removedAtSource && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <AlertTriangle className="h-3 w-3 text-muted-foreground shrink-0" />
+                            <span className="text-xs text-muted-foreground">
+                              Removed in Google — auto-disabled here
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                     <label className="flex items-center gap-2 cursor-pointer">

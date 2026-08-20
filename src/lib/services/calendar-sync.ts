@@ -246,12 +246,16 @@ export async function syncGoogleCalendarSource(
         ...(shouldAutoDisable ? { enabled: false, showInEventModal: false } : {}),
         syncErrors: {
           lastError: is404
-            ? `Calendar not found in Google (404). Failure ${consecutive404}/${DISABLE_THRESHOLD}.`
+            ? (shouldAutoDisable
+                ? 'Removed in Google Calendar — auto-disabled here.'
+                : `Calendar not found in Google (404). Failure ${consecutive404}/${DISABLE_THRESHOLD}.`)
             : errorStr,
           consecutiveFailures,
           consecutive404,
           is404,
-          ...(shouldAutoDisable ? { autoDisabled: true, autoDisabledAt: new Date().toISOString() } : {}),
+          // On confirmed deletion, flag it so the UI can say "removed in Google"
+          // rather than leaving a mysteriously-disabled calendar.
+          ...(shouldAutoDisable ? { autoDisabled: true, autoDisabledAt: new Date().toISOString(), removedAtSource: true } : {}),
           ...(prevErrors.userOverride ? { userOverride: true } : {}),
           timestamp: new Date().toISOString(),
         },
@@ -259,7 +263,10 @@ export async function syncGoogleCalendarSource(
       })
       .where(eq(calendarSources.id, sourceId));
 
-    return emptyCounts([`Failed to fetch events: ${error}`]);
+    // A 404 means the calendar was deleted in Google — expected and handled
+    // (it counts toward auto-disable above). Don't surface it as a user-facing
+    // "Sync failed"; only real/transient errors bubble up to the sync result.
+    return emptyCounts(is404 ? [] : [`Failed to fetch events: ${error}`]);
   }
 
   // Build set of Google event IDs for deletion cleanup (excluding cancelled)
