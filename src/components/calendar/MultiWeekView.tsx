@@ -277,7 +277,7 @@ function DayCell({
         // 2/3/4W modes the cell stretches to fill the equal-height row so
         // the capacity probe has a real target height.
         cards && (showAll ? 'min-h-0' : 'min-h-0 h-full'),
-        isPast && !cellBgStyle && 'opacity-50',
+        isPast && !cellBgStyle && '[&>*:not([data-spanning-events])]:opacity-50',
         // Cards mode: every cell gets a subtle border, today gets the month's
         // seasonal-accent ring (lavender in April, etc.).
         cards && !cellBgStyle && 'border border-border bg-card/85 backdrop-blur-sm',

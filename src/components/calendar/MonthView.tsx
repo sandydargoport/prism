@@ -232,7 +232,10 @@ function MonthDayCell({
         'relative cursor-pointer overflow-visible',
         !transparentMode && !cellBgStyle && 'bg-card/85 backdrop-blur-sm',
         'flex flex-col min-h-0',
-        !isSameMonth(date, currentDate) && 'opacity-50 text-muted-foreground',
+        !isSameMonth(date, currentDate) && [
+          'text-muted-foreground',
+          '[&>*:not([data-spanning-events])]:opacity-50',
+        ],
         !transparentMode && !cellBgStyle && isPast && isSameMonth(date, currentDate) && 'bg-muted/65 text-muted-foreground',
         cards && enableDnd && droppable.isOver && 'ring-2 ring-seasonal-accent shadow-lg',
       )}

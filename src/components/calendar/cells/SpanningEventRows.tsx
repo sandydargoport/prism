@@ -18,7 +18,9 @@ export type SpanningEventRowsProps = {
 
 /**
  * Renders the slice of each multi-day event that crosses this day cell.
- * Adjacent slices bridge the parent grid gap, creating one continuous bar.
+ * A continuing slice covers only the gap after its own cell. Adjacent slices
+ * therefore meet without overlapping, which keeps translucent/muted bars from
+ * producing darker seams at day boundaries.
  */
 export function SpanningEventRows({
   date,
@@ -41,7 +43,10 @@ export function SpanningEventRows({
   );
 
   return (
-    <div className={cn('relative z-20 flex shrink-0 flex-col', compact ? 'gap-px' : 'gap-0.5')}>
+    <div
+      data-spanning-events
+      className={cn('relative z-20 flex shrink-0 flex-col', compact ? 'gap-px' : 'gap-0.5')}
+    >
       {events.map((event) => {
         const active = occurs(event, date);
         const continuesFromPrevious = active && column > 0 && occurs(event, rowDates[column - 1]!);
@@ -75,14 +80,7 @@ export function SpanningEventRows({
             style={{
               backgroundColor: event.color,
               color: contrastText(event.color),
-              marginLeft: continuesFromPrevious ? `calc(-${gap} - 1px)` : undefined,
-              width: continuesFromPrevious && continuesToNext
-                ? `calc(100% + ${gap} + 1px + ${gap})`
-                : continuesFromPrevious
-                  ? `calc(100% + ${gap} + 1px)`
-                  : continuesToNext
-                    ? `calc(100% + ${gap})`
-                    : '100%',
+              width: continuesToNext ? `calc(100% + ${gap})` : '100%',
             }}
           >
             {!continuesFromPrevious && label}
