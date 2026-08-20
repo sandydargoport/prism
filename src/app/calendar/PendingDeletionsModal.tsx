@@ -5,7 +5,6 @@ import { format, parseISO } from 'date-fns';
 import { AlertTriangle, ArrowRight, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Dialog,
   DialogContent,
@@ -53,7 +52,7 @@ export function PendingDeletionsModal({
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-amber-500" />
@@ -61,7 +60,7 @@ export function PendingDeletionsModal({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-3 py-1">
+        <div className="space-y-3 py-1 flex-1 min-h-0 flex flex-col">
           <p className="text-sm text-muted-foreground">
             These events were removed from their source calendar and held for review.{' '}
             <span className="font-medium text-foreground">Delete</span> removes them from Prism too.{' '}
@@ -82,7 +81,9 @@ export function PendingDeletionsModal({
             Select all ({selected.size}/{pending.length})
           </label>
 
-          <ScrollArea className="max-h-[45vh] pr-3">
+          {/* Native scroll (not Radix ScrollArea) so the list drag-scrolls on
+              touch wall displays and can't clip when the list is long. */}
+          <div className="flex-1 min-h-0 overflow-y-auto pr-3 -mr-1">
             <div className="space-y-1">
               {pending.map((p) => (
                 <label
@@ -114,7 +115,7 @@ export function PendingDeletionsModal({
                 </label>
               ))}
             </div>
-          </ScrollArea>
+          </div>
         </div>
 
         <DialogFooter className="gap-2">
