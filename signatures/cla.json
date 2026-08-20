@@ -1,3 +1,20 @@
 {
-   "signedContributors": []
+  "signedContributors": [
+    {
+      "name": "m4rtski",
+      "id": 17580810,
+      "comment_id": 5361110180,
+      "created_at": "2026-08-20T20:10:04Z",
+      "repoId": 1153134231,
+      "pullRequestNo": 253
+    },
+    {
+      "name": "m4rtski",
+      "id": 17580810,
+      "comment_id": 5361151819,
+      "created_at": "2026-08-20T20:14:14Z",
+      "repoId": 1153134231,
+      "pullRequestNo": 253
+    }
+  ]
 }
