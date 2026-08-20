@@ -9,6 +9,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { ProviderCardShell } from '../shared/ProviderCardShell';
 import { CollapsibleSubSection } from '../shared/CollapsibleSubSection';
+import { GoogleCredentialsForm } from './GoogleCredentialsForm';
 import type { IntegrationStatus } from '../shared/useIntegrationStatus';
 import type { ConnectionStatus } from '../shared/ConnectionStatusBadge';
 import { connectedAsLabel } from '../shared/connectedAs';
@@ -167,22 +168,26 @@ export function GoogleProviderCard({
           <CollapsibleSubSection
             id="google-setup"
             label="One-time admin setup"
-            summary="Requires a Google Cloud OAuth client"
+            summary="Enter your Google Cloud OAuth credentials"
             defaultOpen
           >
-            <p className="text-sm text-muted-foreground">
-              An admin needs to create a Google Cloud OAuth client and set{' '}
-              <code className="text-xs bg-muted px-1 py-0.5 rounded">GOOGLE_CLIENT_ID</code>,{' '}
-              <code className="text-xs bg-muted px-1 py-0.5 rounded">GOOGLE_CLIENT_SECRET</code>, and{' '}
-              <code className="text-xs bg-muted px-1 py-0.5 rounded">GOOGLE_REDIRECT_URI</code> in{' '}
-              <code className="text-xs bg-muted px-1 py-0.5 rounded">.env</code> (see{' '}
-              <code className="text-xs bg-muted px-1 py-0.5 rounded">.env.example</code>). No credentials?
-              Use{' '}
+            <GoogleCredentialsForm onSaved={() => window.location.reload()} />
+            <p className="text-xs text-muted-foreground mt-3">
+              Prefer no setup? Use{' '}
               <Link href="/calendar?manage=calendars" className="text-primary hover:underline">
                 iCal subscriptions
               </Link>{' '}
-              for keyless, read-only calendars in the meantime.
+              for keyless, read-only calendars.
             </p>
+          </CollapsibleSubSection>
+        )}
+        {configured && !connected && (
+          <CollapsibleSubSection
+            id="google-credentials"
+            label="App credentials (advanced)"
+            summary="Update the Google client ID / secret / redirect — e.g. after a secret rotates"
+          >
+            <GoogleCredentialsForm onSaved={() => window.location.reload()} />
           </CollapsibleSubSection>
         )}
         {connected && (

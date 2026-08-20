@@ -8,8 +8,14 @@ import { db } from '@/lib/db/client';
 import { settings } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { encrypt } from '@/lib/utils/crypto';
+import { requireAuth, requireRole } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth();
+  if (auth instanceof NextResponse) return auth;
+  const forbidden = requireRole(auth, 'canModifySettings');
+  if (forbidden) return forbidden;
+
   try {
     const body = await request.json() as {
       clientId?: string;

@@ -4,6 +4,12 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+### Integrations
+- **Set up Google Calendar entirely in the app — no `.env` file needed.** You can now enter your Google OAuth credentials (Client ID, Secret, Redirect URI) directly in Settings → Integrations → Google, stored encrypted in Prism's database. This unblocks Home Assistant addon and other installs where you can't edit `.env` — previously the Google card only pointed you at `.env`, so there was no way to configure it. (Microsoft already worked this way; Google now matches.)
+
+### Security
+- **The OAuth credential-save endpoints now require an admin.** `/api/setup/credentials/google` and `/api/setup/credentials/microsoft` were unauthenticated; they now require a signed-in user with settings-management permission before storing app credentials.
+
 ## [1.15.4] – 2026-08-20
 
 ### Calendar
