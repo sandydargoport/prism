@@ -56,6 +56,9 @@ export interface GoogleCalendarEvent {
 /**
  * Google Calendar from API
  */
+/** Settings key holding the tombstones for user-deleted Google calendars. */
+export const DISMISSED_GOOGLE_CALENDARS_KEY = 'dismissedGoogleCalendarIds';
+
 export interface GoogleCalendar {
   id: string;
   summary: string;

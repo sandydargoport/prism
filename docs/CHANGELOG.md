@@ -4,6 +4,9 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+### Calendar
+- **Restore a Google calendar you removed by mistake.** Deleting a Google calendar from Prism tombstones it so it won't reappear on your next sign-in — but until now there was no way to undo that. Manage calendars now has a **Removed calendars** section listing anything you've deleted, each with a **Restore** button that brings it back. (The tombstone now remembers the calendar's name, so the list is readable rather than a cryptic id.)
+
 ## [1.15.2] – 2026-08-20
 
 ### Calendar

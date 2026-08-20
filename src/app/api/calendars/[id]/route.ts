@@ -12,9 +12,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireRole } from '@/lib/auth';
 import { db } from '@/lib/db/client';
-import { calendarSources, events, settings } from '@/lib/db/schema';
+import { calendarSources, events } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { logError } from '@/lib/utils/logError';
+import { addTombstone } from '@/lib/services/settingsTombstone';
+import { DISMISSED_GOOGLE_CALENDARS_KEY } from '@/lib/integrations/google-calendar';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -233,20 +235,14 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     // Delete the calendar (events will be cascade deleted)
     await db.delete(calendarSources).where(eq(calendarSources.id, id));
 
-    // If it's a Google calendar, add to dismissed list so it won't be recreated on re-connect
+    // If it's a Google calendar, tombstone it (with its name) so discovery won't
+    // recreate it on the next connect/re-auth. Reversible via Manage Calendars →
+    // Removed calendars → Restore.
     if (existing.provider === 'google' && existing.sourceCalendarId) {
-      const [dismissedSetting] = await db.select().from(settings)
-        .where(eq(settings.key, 'dismissedGoogleCalendarIds'));
-      const dismissed: string[] = (dismissedSetting?.value as string[]) || [];
-      if (!dismissed.includes(existing.sourceCalendarId)) {
-        dismissed.push(existing.sourceCalendarId);
-        if (dismissedSetting) {
-          await db.update(settings).set({ value: dismissed, updatedAt: new Date() })
-            .where(eq(settings.key, 'dismissedGoogleCalendarIds'));
-        } else {
-          await db.insert(settings).values({ key: 'dismissedGoogleCalendarIds', value: dismissed });
-        }
-      }
+      await addTombstone(DISMISSED_GOOGLE_CALENDARS_KEY, {
+        id: existing.sourceCalendarId,
+        name: existing.dashboardCalendarName || existing.displayName || existing.sourceCalendarId,
+      });
     }
 
     return NextResponse.json({

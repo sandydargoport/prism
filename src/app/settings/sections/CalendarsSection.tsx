@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { RemovedItemsManager } from '@/components/settings/RemovedItemsManager';
 import { Switch } from '@/components/ui/switch';
 import { useCalendarSources } from '@/lib/hooks';
 import { useFamily } from '@/components/providers';
@@ -32,6 +33,8 @@ export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
   // State for editing calendar display names
   const [editingCalendarId, setEditingCalendarId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [removedCalendars, setRemovedCalendars] = useState<Array<{ id: string; name: string }>>([]);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
 
   const familyCalendarColor = typeof window !== 'undefined'
     ? localStorage.getItem('prism-family-calendar-color') || '#F59E0B'
@@ -49,6 +52,43 @@ export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
     }
     fetchGroups();
   }, [calendars]);
+
+  // Load the list of removed (tombstoned) Google calendars so we can offer to
+  // restore them.
+  useEffect(() => {
+    async function fetchRemoved() {
+      try {
+        const res = await fetch('/api/calendars/removed');
+        if (res.ok) {
+          const data = await res.json();
+          setRemovedCalendars(data.removed || []);
+        }
+      } catch { /* ignore */ }
+    }
+    fetchRemoved();
+  }, [calendars]);
+
+  // Restore a removed calendar: clear its tombstone, then re-authenticate Google
+  // so discovery re-adds it (discovery only runs on connect/re-auth).
+  const handleRestoreCalendar = async (id: string) => {
+    setRestoringId(id);
+    try {
+      const res = await fetch('/api/calendars/removed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      if (res.ok) {
+        setRemovedCalendars((prev) => prev.filter((c) => c.id !== id));
+        const firstGoogle = localCalendars.find((c) => c.provider === 'google');
+        window.location.href = firstGoogle
+          ? `/api/auth/google?reauth=${firstGoogle.id}&returnSection=calendars`
+          : '/api/auth/google?returnSection=calendars';
+      }
+    } finally {
+      setRestoringId(null);
+    }
+  };
 
   useEffect(() => {
     if (calendars.length > 0 && localCalendars.length === 0) {
@@ -571,6 +611,14 @@ export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
           )}
         </CardContent>
       </Card>
+
+      <RemovedItemsManager
+        title="Removed calendars"
+        description="Google calendars you deleted from Prism. Discovery won't re-add them automatically — restore one to bring it back on your next Google sign-in."
+        items={removedCalendars}
+        onRestore={handleRestoreCalendar}
+        restoringId={restoringId}
+      />
 
       {/* Calendar Groups */}
       <Card>

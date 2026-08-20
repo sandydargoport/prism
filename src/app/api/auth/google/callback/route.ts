@@ -7,7 +7,9 @@ import { logError } from '@/lib/utils/logError';
 import {
   exchangeCodeForTokens,
   fetchCalendarList,
+  DISMISSED_GOOGLE_CALENDARS_KEY,
 } from '@/lib/integrations/google-calendar';
+import { tombstoneIdSet } from '@/lib/services/settingsTombstone';
 import { encrypt } from '@/lib/utils/crypto';
 import { logActivity } from '@/lib/services/auditLog';
 import { resolveRedirectUri } from '@/lib/integrations/resolveRedirectUri';
@@ -113,9 +115,7 @@ export async function GET(request: Request) {
       // known calendars and never picked up new ones, so a newly-subscribed
       // calendar would never appear. Mirror the fresh-connect path here:
       // update showInEventModal for existing, and insert genuinely new ones.
-      const [reauthDismissed] = await db.select().from(settings)
-        .where(eq(settings.key, 'dismissedGoogleCalendarIds'));
-      const reauthDismissedIds: string[] = (reauthDismissed?.value as string[]) || [];
+      const reauthDismissedSet = await tombstoneIdSet(DISMISSED_GOOGLE_CALENDARS_KEY);
 
       for (const calendar of reAuthCalendars) {
         const isWritable = calendar.accessRole === 'writer' || calendar.accessRole === 'owner';
@@ -134,7 +134,7 @@ export async function GET(request: Request) {
           continue;
         }
         // New calendar — skip if the user previously deleted it from Prism.
-        if (reauthDismissedIds.includes(calendar.id)) continue;
+        if (reauthDismissedSet.has(calendar.id)) continue;
         const calendarName = (calendar.summary || 'Untitled Calendar').slice(0, 255);
         await db.insert(calendarSources).values({
           userId: auth.userId,
@@ -168,13 +168,11 @@ export async function GET(request: Request) {
     const calendars = await fetchCalendarList(tokens.access_token);
 
     // Fetch dismissed Google calendar IDs so we don't recreate user-deleted calendars
-    const [dismissedSetting] = await db.select().from(settings)
-      .where(eq(settings.key, 'dismissedGoogleCalendarIds'));
-    const dismissedIds: string[] = (dismissedSetting?.value as string[]) || [];
+    const dismissedSet = await tombstoneIdSet(DISMISSED_GOOGLE_CALENDARS_KEY);
 
     for (const calendar of calendars) {
       // Skip calendars the user has previously deleted from Prism
-      if (dismissedIds.includes(calendar.id)) continue;
+      if (dismissedSet.has(calendar.id)) continue;
       const existing = await db.query.calendarSources.findFirst({
         where: (cs, { and, eq }) =>
           and(
