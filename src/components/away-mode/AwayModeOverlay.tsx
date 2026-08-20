@@ -8,6 +8,8 @@ import { usePhotos } from '@/lib/hooks/usePhotos';
 import { useAutoOrientationSetting, usePinnedPhoto, useScreensaverInterval } from '@/components/layout/WallpaperBackground';
 import { useScreenOrientation } from '@/lib/hooks/useScreenOrientation';
 import { ExitAwayModeModal } from './ExitAwayModeModal';
+import { useTimeFormat } from '@/components/providers';
+import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
 
 export function AwayModeOverlay() {
   const { isAway, toggle } = useAwayMode();
@@ -121,6 +123,7 @@ export function AwayModeOverlay() {
 }
 
 function AwayModeClock() {
+  const { timeFormat, displayTimezone } = useTimeFormat();
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
@@ -131,11 +134,10 @@ function AwayModeClock() {
   return (
     <div className="flex items-center gap-3 text-white">
       <div className="text-3xl font-light tabular-nums">
-        {format(time, 'h:mm')}
-        <span className="text-lg ml-1 opacity-70">{format(time, 'a')}</span>
+        {formatDisplayTime(time, timeFormat, {}, displayTimezone)}
       </div>
       <div className="text-sm text-white/60">
-        {format(time, 'EEEE, MMMM d')}
+        {format(toDisplayDate(time, displayTimezone), 'EEEE, MMMM d')}
       </div>
     </div>
   );

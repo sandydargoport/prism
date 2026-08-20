@@ -6,7 +6,7 @@
  * "Appearance" (Location) and "Calendars" (Time zone, Week starts on).
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, MapPin, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -16,12 +16,15 @@ import { useWeekStartsOn } from '@/lib/hooks/useWeekStartsOn';
 import { useTimezone, detectBrowserTimezone } from '@/lib/hooks/useTimezone';
 import { useLocationSearch } from '@/lib/hooks/useLocationSearch';
 import { listTimezones } from '@/lib/utils/timezone';
+import { useTimeFormat, type DisplayTimezoneMode, type TimeFormat } from '@/components/providers';
 
 export function GeneralSection() {
   return (
     <div className="space-y-6">
       <LocationCard />
       <TimezoneCard />
+      <DisplayTimezoneCard />
+      <TimeFormatCard />
       <WeekStartCard />
     </div>
   );
@@ -117,8 +120,8 @@ function TimezoneCard() {
       <CardHeader>
         <CardTitle>Time Zone</CardTitle>
         <CardDescription>
-          Used for server-side scheduling and syncs — e.g. placing imported meal-plan times on the
-          right day. On-screen clocks already follow each viewer&apos;s device.
+          The household timezone used for scheduling, calendar sync, and—by default—times shown
+          throughout Prism.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -140,6 +143,125 @@ function TimezoneCard() {
               Use detected ({detected.replace(/_/g, ' ')})
             </Button>
           )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function DisplayTimezoneCard() {
+  const {
+    householdTimezone,
+    deviceTimezone,
+    displayTimezoneMode,
+    setDisplayTimezoneMode,
+  } = useTimeFormat();
+
+  const options: Array<{
+    value: DisplayTimezoneMode;
+    label: string;
+    timezone: string;
+    description: string;
+  }> = [
+    {
+      value: 'household',
+      label: 'Household',
+      timezone: householdTimezone,
+      description: 'Keeps appointments and clocks consistent on every Prism display.',
+    },
+    {
+      value: 'device',
+      label: 'This device',
+      timezone: deviceTimezone,
+      description: 'Uses this browser’s timezone on this device only.',
+    },
+  ];
+  const selected = options.find((option) => option.value === displayTimezoneMode)!;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Display Timezone</CardTitle>
+        <CardDescription>
+          Choose which timezone this device uses for calendars, reminders, and clocks. Household
+          timezone is the recommended default.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div
+          className="inline-flex max-w-full rounded-md border border-input p-0.5"
+          role="radiogroup"
+          aria-label="Display timezone"
+        >
+          {options.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={displayTimezoneMode === option.value}
+              onClick={() => setDisplayTimezoneMode(option.value)}
+              className={cn(
+                'min-h-11 rounded-sm px-3 py-1.5 text-sm transition-colors',
+                displayTimezoneMode === option.value
+                  ? 'bg-primary text-primary-foreground'
+                  : 'hover:bg-accent',
+              )}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Using <span className="font-mono text-xs text-foreground">{selected.timezone}</span>
+          <span aria-hidden="true"> · </span>
+          {selected.description}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function TimeFormatCard() {
+  const { timeFormat, setTimeFormat } = useTimeFormat();
+  const [saving, setSaving] = useState(false);
+
+  const save = useCallback(async (next: TimeFormat) => {
+    setSaving(true);
+    try {
+      await setTimeFormat(next);
+    } catch {
+      // The provider rolls back the optimistic change on failure.
+    } finally {
+      setSaving(false);
+    }
+  }, [setTimeFormat]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Time Format</CardTitle>
+        <CardDescription>
+          Choose how times appear across the dashboard, weather, and calendar.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="inline-flex rounded-md border border-input p-0.5" role="radiogroup" aria-label="Time format">
+          {(['12h', '24h'] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={timeFormat === value}
+              disabled={saving}
+              onClick={() => save(value)}
+              className={cn(
+                'min-h-11 px-3 py-1.5 text-sm rounded-sm transition-colors',
+                timeFormat === value ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
+              )}
+            >
+              {value === '12h' ? '12-hour (2:30 PM)' : '24-hour (14:30)'}
+            </button>
+          ))}
         </div>
       </CardContent>
     </Card>

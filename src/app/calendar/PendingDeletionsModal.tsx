@@ -13,6 +13,8 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import type { PendingDeletion } from '@/lib/hooks/usePendingDeletions';
+import { useTimeFormat } from '@/components/providers';
+import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
 
 /**
  * Deletes-only review (#171 Stage 3). Lists events the sync found removed from
@@ -28,6 +30,7 @@ export function PendingDeletionsModal({
   onApply: (eventIds: string[], action: 'delete' | 'keep') => Promise<boolean>;
   onClose: () => void;
 }) {
+  const { timeFormat, displayTimezone } = useTimeFormat();
   const [selected, setSelected] = useState<Set<string>>(() => new Set(pending.map((p) => p.id)));
   const [busy, setBusy] = useState(false);
 
@@ -95,8 +98,8 @@ export function PendingDeletionsModal({
                     <span className="font-medium">{p.title}</span>
                     <span className="block text-xs text-muted-foreground">
                       {p.allDay
-                        ? format(parseISO(p.startTime), 'EEE, MMM d')
-                        : format(parseISO(p.startTime), 'EEE, MMM d · p')}
+                        ? format(toDisplayDate(parseISO(p.startTime), displayTimezone), 'EEE, MMM d')
+                        : `${format(toDisplayDate(parseISO(p.startTime), displayTimezone), 'EEE, MMM d')} · ${formatDisplayTime(parseISO(p.startTime), timeFormat, {}, displayTimezone)}`}
                     </span>
                     <span className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap">
                       <span className="inline-flex items-center gap-1 min-w-0">

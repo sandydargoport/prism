@@ -2,8 +2,6 @@
 
 import {
   format,
-  isToday,
-  isTomorrow,
   isSameDay,
   addDays,
   startOfDay,
@@ -16,6 +14,8 @@ import { Badge } from '@/components/ui';
 import type { CalendarEvent } from '@/types/calendar';
 import type { DayBucket } from '@/lib/hooks/useWeekViewData';
 import { useDayDroppable, getMealTime, getChoreTime, getTaskTime, parseTimeOfDay, formatTimeOfDay, type OverlayItemRef } from './cells';
+import { useTimeFormat } from '@/components/providers';
+import { formatDisplayTime, toDisplayDate, type TimeFormat } from '@/lib/utils/timeFormat';
 
 const MEAL_FALLBACK_COLOR = '#10b981';
 const CHORE_FALLBACK_COLOR = '#f59e0b';
@@ -70,8 +70,9 @@ export function AgendaView({
   mealColor,
   onItemClick,
 }: AgendaViewProps) {
+  const { displayTimezone } = useTimeFormat();
   const cards = displayMode === 'cards';
-  const startDate = startOfDay(new Date());
+  const startDate = startOfDay(toDisplayDate(new Date(), displayTimezone));
   const endDate = addDays(startDate, days);
 
   const filteredEvents = events
@@ -79,11 +80,12 @@ export function AgendaView({
       if (e.allDay) {
         return e.startTime < endDate && e.endTime > startDate;
       }
-      const ed = startOfDay(e.startTime);
+      const ed = startOfDay(toDisplayDate(e.startTime, displayTimezone));
       return ed >= startDate && ed < endDate;
     })
     .sort((a, b) => {
-      const dc = startOfDay(a.startTime).getTime() - startOfDay(b.startTime).getTime();
+      const dc = startOfDay(toDisplayDate(a.startTime, displayTimezone)).getTime()
+        - startOfDay(toDisplayDate(b.startTime, displayTimezone)).getTime();
       if (dc !== 0) return dc;
       if (a.allDay && !b.allDay) return -1;
       if (!a.allDay && b.allDay) return 1;
@@ -97,7 +99,7 @@ export function AgendaView({
     const dayEvents = filteredEvents.filter(e =>
       e.allDay
         ? e.startTime <= dayStart && e.endTime > dayStart
-        : isSameDay(e.startTime, date)
+        : isSameDay(toDisplayDate(e.startTime, displayTimezone), date)
     );
     const bucket = bucketsByDate?.get(format(date, 'yyyy-MM-dd'));
     const hasOverlay = bucket && (bucket.meals.length + bucket.chores.length + bucket.tasks.length > 0);
@@ -158,8 +160,9 @@ function AgendaDaySection({
   mealColor?: string;
   onItemClick?: (ref: OverlayItemRef) => void;
 }) {
+  const { timeFormat, displayTimezone } = useTimeFormat();
   const droppable = useDayDroppable({ date, enabled: cards && enableDnd });
-  const rows = buildAgendaRows({ events, bucket, onEventClick, mealColor, onItemClick });
+  const rows = buildAgendaRows({ events, bucket, onEventClick, mealColor, onItemClick, timeFormat, displayTimezone });
   const displayRows = maxEvents > 0 ? rows.slice(0, maxEvents) : rows;
   const remainingCount = maxEvents > 0 ? rows.length - maxEvents : 0;
 
@@ -176,12 +179,12 @@ function AgendaDaySection({
         <span
           className={cn(
             'text-sm font-semibold',
-            isToday(date) && 'text-seasonal-accent'
+            isSameDay(date, toDisplayDate(new Date(), displayTimezone)) && 'text-seasonal-accent'
           )}
         >
-          {formatAgendaDayHeader(date)}
+          {formatAgendaDayHeader(date, displayTimezone)}
         </span>
-        {isToday(date) && (
+        {isSameDay(date, toDisplayDate(new Date(), displayTimezone)) && (
           <Badge className="text-[10px] px-1.5 py-0 bg-seasonal-highlight text-foreground">
             Today
           </Badge>
@@ -208,12 +211,16 @@ function buildAgendaRows({
   onEventClick,
   mealColor,
   onItemClick,
+  timeFormat,
+  displayTimezone,
 }: {
   events: CalendarEvent[];
   bucket?: DayBucket;
   onEventClick?: (event: CalendarEvent) => void;
   mealColor?: string;
   onItemClick?: (ref: OverlayItemRef) => void;
+  timeFormat: TimeFormat;
+  displayTimezone: string;
 }): AgendaRow[] {
   const rows: AgendaRow[] = [];
 
@@ -223,10 +230,11 @@ function buildAgendaRows({
       key: `event-${event.id}`,
       sortMinutes: allDay
         ? -1
-        : event.startTime.getHours() * 60 + event.startTime.getMinutes(),
+        : toDisplayDate(event.startTime, displayTimezone).getHours() * 60
+          + toDisplayDate(event.startTime, displayTimezone).getMinutes(),
       floating: allDay,
       stripeColor: event.color,
-      timeLabel: allDay ? 'All day' : format(event.startTime, 'h:mm a'),
+      timeLabel: allDay ? 'All day' : formatDisplayTime(event.startTime, timeFormat, {}, displayTimezone),
       title: event.title,
       subtitle: event.location,
       onClick: onEventClick ? () => onEventClick(event) : undefined,
@@ -243,7 +251,7 @@ function buildAgendaRows({
         floating: min === null,
         dragId: `meal:${meal.id}`,
         stripeColor: mealColor ?? meal.cookedBy?.color ?? meal.createdBy?.color ?? MEAL_FALLBACK_COLOR,
-        timeLabel: min !== null ? formatTimeLabel(t) : meal.mealType,
+        timeLabel: min !== null ? formatTimeLabel(t, timeFormat) : meal.mealType,
         title: meal.name,
         subtitle: meal.cookedBy?.name ? `Cooked by ${meal.cookedBy.name}` : undefined,
         muted: Boolean(meal.cookedAt),
@@ -259,7 +267,7 @@ function buildAgendaRows({
         floating: min === null,
         dragId: `chore:${chore.id}`,
         stripeColor: chore.assignedTo?.color || CHORE_FALLBACK_COLOR,
-        timeLabel: min !== null ? formatTimeLabel(t!) : 'Chore',
+        timeLabel: min !== null ? formatTimeLabel(t!, timeFormat) : 'Chore',
         title: chore.title,
         subtitle: chore.assignedTo?.name,
         pendingApproval: Boolean(chore.pendingApproval),
@@ -275,7 +283,7 @@ function buildAgendaRows({
         floating: min === null,
         dragId: `task:${task.id}`,
         stripeColor: task.assignedTo?.color || TASK_FALLBACK_COLOR,
-        timeLabel: min !== null ? formatTimeLabel(t!) : 'Task',
+        timeLabel: min !== null ? formatTimeLabel(t!, timeFormat) : 'Task',
         title: task.title,
         subtitle: task.assignedTo?.name,
         muted: task.completed,
@@ -294,8 +302,8 @@ function buildAgendaRows({
   return rows;
 }
 
-function formatTimeLabel(hhmm: string): string {
-  return formatTimeOfDay(hhmm);
+function formatTimeLabel(hhmm: string, timeFormat: TimeFormat): string {
+  return formatTimeOfDay(hhmm, timeFormat);
 }
 
 function AgendaRowItem({ row, cards = false }: { row: AgendaRow; cards?: boolean }) {
@@ -361,9 +369,10 @@ function AgendaRowItem({ row, cards = false }: { row: AgendaRow; cards?: boolean
   );
 }
 
-function formatAgendaDayHeader(date: Date): string {
+function formatAgendaDayHeader(date: Date, displayTimezone: string): string {
+  const displayNow = toDisplayDate(new Date(), displayTimezone);
   const dayName = format(date, 'EEEE, MMMM d, yyyy');
-  if (isToday(date)) return `Today - ${dayName}`;
-  if (isTomorrow(date)) return `Tomorrow - ${dayName}`;
+  if (isSameDay(date, displayNow)) return `Today - ${dayName}`;
+  if (isSameDay(date, addDays(displayNow, 1))) return `Tomorrow - ${dayName}`;
   return dayName;
 }

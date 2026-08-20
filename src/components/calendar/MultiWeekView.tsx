@@ -6,8 +6,6 @@ import {
   startOfWeek,
   addDays,
   isSameDay,
-  isToday,
-  isTomorrow,
   isBefore,
   startOfDay,
 } from 'date-fns';
@@ -26,6 +24,8 @@ function getMonthAccentColor(date: Date): string {
 }
 import { useCardCapacity } from '@/lib/hooks/useCardCapacity';
 import type { DayBucket } from '@/lib/hooks/useWeekViewData';
+import { useTimeFormat } from '@/components/providers';
+import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
 
 export interface MultiWeekViewProps {
   currentDate: Date;
@@ -168,20 +168,24 @@ function DayCell({
       the row to grow to accommodate the day with the most events. */
   showAll?: boolean;
 }) {
+  const { timeFormat, displayTimezone } = useTimeFormat();
   const cards = displayMode === 'cards';
   const fallback = compact ? FALLBACK_VISIBLE_CARDS_COMPACT : FALLBACK_VISIBLE_CARDS;
   const dayStart = startOfDay(date);
-  const dayEvents = events.filter((event) =>
-    event.allDay
-      ? event.startTime <= dayStart && event.endTime > dayStart
-      : isSameDay(event.startTime, date)
-  );
+  const dayEvents = events.filter((event) => {
+    const displayStart = toDisplayDate(event.startTime, displayTimezone);
+    const displayEnd = toDisplayDate(event.endTime, displayTimezone);
+    return event.allDay
+      ? displayStart <= dayStart && displayEnd > dayStart
+      : isSameDay(displayStart, date);
+  });
   const sorted = [...dayEvents].sort((a, b) => {
     if (a.allDay && !b.allDay) return -1;
     if (!a.allDay && b.allDay) return 1;
     return a.startTime.getTime() - b.startTime.getTime();
   });
-  const isPast = isBefore(date, startOfDay(new Date())) && !isToday(date);
+  const displayNow = toDisplayDate(new Date(), displayTimezone);
+  const isPast = isBefore(date, startOfDay(displayNow)) && !isSameDay(date, displayNow);
 
   // Overlay items render in the same flex container as events (meals at top,
   // chores+tasks at bottom). They are ALWAYS rendered when present, so the
@@ -222,8 +226,8 @@ function DayCell({
   const visibleEvents = cards ? sorted.slice(0, Math.max(0, visibleCount)) : sorted;
   const hiddenEvents = cards ? sorted.slice(visibleEvents.length) : [];
 
-  const today = isToday(date);
-  const tomorrow = isTomorrow(date);
+  const today = isSameDay(date, displayNow);
+  const tomorrow = isSameDay(date, addDays(displayNow, 1));
   const dayLabel = today
     ? 'Today'
     : tomorrow
@@ -320,7 +324,7 @@ function DayCell({
                   layout="column"
                   stripeColor={event.color}
                   title={event.title}
-                  timeLabel={event.allDay ? 'All day' : format(event.startTime, 'h:mm a')}
+                  timeLabel={event.allDay ? 'All day' : formatDisplayTime(event.startTime, timeFormat, {}, displayTimezone)}
                   subtitle={event.location || event.calendarName}
                   onClick={() => onEventClick(event)}
                   dragId={draggable ? `event:${event.id}` : undefined}
@@ -340,7 +344,7 @@ function DayCell({
                   : { color: event.color }
                 }
               >
-                {event.allDay ? event.title : `${format(event.startTime, 'h:mm')} ${event.title}`}
+                {event.allDay ? event.title : `${formatDisplayTime(event.startTime, timeFormat, {}, displayTimezone)} ${event.title}`}
               </button>
             ))}
         {cards && hiddenEvents.length > 0 && (

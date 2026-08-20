@@ -281,6 +281,7 @@ export async function fetchWeatherData(
 
   return {
     location: config.locationName,
+    timezone,
     units,
     current,
     forecast,

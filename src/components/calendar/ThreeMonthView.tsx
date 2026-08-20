@@ -11,7 +11,6 @@ import {
   subMonths,
   isSameMonth,
   isSameDay,
-  isToday,
   isBefore,
   startOfDay,
   getMonth,
@@ -23,6 +22,8 @@ import { useOrientation } from '@/lib/hooks/useOrientation';
 import { useWeekStartsOn } from '@/lib/hooks/useWeekStartsOn';
 import type { CalendarEvent } from '@/types/calendar';
 import { seasonalPalettes } from '@/lib/themes/seasonalThemes';
+import { useTimeFormat } from '@/components/providers';
+import { toDisplayDate } from '@/lib/utils/timeFormat';
 
 // Get the accent color for a month (1-12)
 function getMonthColor(month: Date): string {
@@ -56,6 +57,8 @@ function MiniMonth({
   isCenter: boolean;
   bordered?: boolean;
 }) {
+  const { displayTimezone } = useTimeFormat();
+  const displayNow = toDisplayDate(new Date(), displayTimezone);
   const { weekStartsOn } = useWeekStartsOn();
   const dayNames = [...ALL_DAY_NAMES.slice(weekStartsOn), ...ALL_DAY_NAMES.slice(0, weekStartsOn)];
   const bgOverride = useWidgetBgOverride();
@@ -108,15 +111,17 @@ function MiniMonth({
           <div key={weekIndex} className="flex-1 grid grid-cols-7 gap-px min-h-0">
             {week.map((date, dayIndex) => {
               const inMonth = isSameMonth(date, month);
-              const today = isToday(date);
-              const isPast = isBefore(date, startOfDay(new Date())) && !today;
+              const today = isSameDay(date, displayNow);
+              const isPast = isBefore(date, startOfDay(displayNow)) && !today;
               const dayStart = startOfDay(date);
               const dayEvents = events
-                .filter((e) =>
-                  e.allDay
-                    ? e.startTime <= dayStart && e.endTime > dayStart
-                    : isSameDay(e.startTime, date)
-                )
+                .filter((e) => {
+                  const displayStart = toDisplayDate(e.startTime, displayTimezone);
+                  const displayEnd = toDisplayDate(e.endTime, displayTimezone);
+                  return e.allDay
+                    ? displayStart <= dayStart && displayEnd > dayStart
+                    : isSameDay(displayStart, date);
+                })
                 .sort((a, b) => {
                   if (a.allDay && !b.allDay) return -1;
                   if (!a.allDay && b.allDay) return 1;

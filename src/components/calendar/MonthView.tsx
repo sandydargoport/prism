@@ -10,7 +10,6 @@ import {
   addDays,
   isSameMonth,
   isSameDay,
-  isToday,
   isBefore,
   startOfDay,
   getMonth,
@@ -25,6 +24,8 @@ import { seasonalPalettes } from '@/lib/themes/seasonalThemes';
 import { CardHeightProbe, DayOverflowPopover, DroppableOverlayCell, useDayDroppable, type OverlayItemRef } from './cells';
 import { useCardCapacity } from '@/lib/hooks/useCardCapacity';
 import type { DayBucket } from '@/lib/hooks/useWeekViewData';
+import { useTimeFormat } from '@/components/providers';
+import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
 
 // Get the accent color for a month (1-12)
 function getMonthColor(month: Date): string {
@@ -59,6 +60,8 @@ export function MonthView({
   enableDnd = false,
   onItemClick,
 }: MonthViewProps) {
+  const { displayTimezone } = useTimeFormat();
+  const displayNow = toDisplayDate(new Date(), displayTimezone);
   const cards = displayMode === 'cards';
   const { weekStartsOn } = useWeekStartsOn();
   const [cardHeight, setCardHeight] = React.useState<number | undefined>(undefined);
@@ -114,18 +117,20 @@ export function MonthView({
         {days.map((date, index) => {
           const dayStart = startOfDay(date);
           const dayEvents = events
-            .filter((event) =>
-              event.allDay
-                ? event.startTime <= dayStart && event.endTime > dayStart
-                : isSameDay(event.startTime, date)
-            )
+            .filter((event) => {
+              const displayStart = toDisplayDate(event.startTime, displayTimezone);
+              const displayEnd = toDisplayDate(event.endTime, displayTimezone);
+              return event.allDay
+                ? displayStart <= dayStart && displayEnd > dayStart
+                : isSameDay(displayStart, date);
+            })
             .sort((a, b) => {
               if (a.allDay && !b.allDay) return -1;
               if (!a.allDay && b.allDay) return 1;
               return a.startTime.getTime() - b.startTime.getTime();
             });
 
-          const isPast = isBefore(date, startOfDay(new Date())) && !isToday(date);
+          const isPast = isBefore(date, startOfDay(displayNow)) && !isSameDay(date, displayNow);
 
           return (
             <MonthDayCell
@@ -188,6 +193,8 @@ function MonthDayCell({
   onEventClick: (event: CalendarEvent) => void;
   onItemClick?: (ref: OverlayItemRef) => void;
 }) {
+  const { timeFormat, displayTimezone } = useTimeFormat();
+  const today = isSameDay(date, toDisplayDate(new Date(), displayTimezone));
   const droppable = useDayDroppable({ date, enabled: cards && enableDnd });
 
   return (
@@ -207,7 +214,7 @@ function MonthDayCell({
       style={cellBgStyle}
     >
       {/* Today gets a blue bar; other days just show the date */}
-      {isToday(date) ? (
+      {today ? (
         <div className="bg-primary px-1 py-0.5 mb-0.5 rounded-t-[3px]">
           <span className="text-sm font-bold text-primary-foreground">{format(date, 'd')}</span>
         </div>
@@ -245,7 +252,7 @@ function MonthDayCell({
                 : { color: event.color }
               }
             >
-              {event.allDay ? event.title : `• ${format(event.startTime, 'h:mm a')} ${event.title}`}
+              {event.allDay ? event.title : `• ${formatDisplayTime(event.startTime, timeFormat, {}, displayTimezone)} ${event.title}`}
             </li>
           ))}
         </ul>

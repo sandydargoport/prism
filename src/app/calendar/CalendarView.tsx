@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { contrastText } from '@/lib/utils/color';
-import { useFamily } from '@/components/providers';
+import { useFamily, useTimeFormat } from '@/components/providers';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { AddEventModal } from '@/components/modals';
@@ -65,6 +65,7 @@ import { TaskModal } from '@/app/tasks/TaskModal';
 import { useChoreModals } from '@/app/chores/useChoreModals';
 import type { OverlayItemRef } from '@/components/calendar/cells';
 import type { Chore, Task, Meal } from '@/types';
+import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
 
 const MEAL_TYPE_ORDER = { breakfast: 0, lunch: 1, snack: 2, dinner: 3 } as const;
 const EMPTY_EVENTS: CalendarEvent[] = [];
@@ -749,6 +750,7 @@ function EventDetailModal({ event, onClose, onEdit, onDeleted }: {
   onEdit: () => void;
   onDeleted: () => void;
 }) {
+  const { timeFormat, displayTimezone } = useTimeFormat();
   const { confirm, dialogProps } = useConfirmDialog();
 
   const handleDelete = async () => {
@@ -772,8 +774,8 @@ function EventDetailModal({ event, onClose, onEdit, onDeleted }: {
         <h2 className="text-xl font-bold mb-2">{event.title}</h2>
         <p className="text-sm text-muted-foreground mb-1">
           {event.allDay
-            ? format(event.startTime, 'EEEE, MMMM d')
-            : `${format(event.startTime, 'EEEE, MMMM d')} at ${format(event.startTime, 'h:mm a')}`}
+            ? format(toDisplayDate(event.startTime, displayTimezone), 'EEEE, MMMM d')
+            : `${format(toDisplayDate(event.startTime, displayTimezone), 'EEEE, MMMM d')} at ${formatDisplayTime(event.startTime, timeFormat, {}, displayTimezone)}`}
         </p>
         {event.location && <p className="text-sm text-muted-foreground mb-4">{event.location}</p>}
         <p className="text-xs text-muted-foreground">{event.calendarName}</p>
@@ -819,6 +821,7 @@ function CalendarDragPreview({
   events: CalendarEvent[];
   mealColor: string;
 }) {
+  const { timeFormat, displayTimezone } = useTimeFormat();
   const colon = dragId.indexOf(':');
   if (colon === -1) return null;
   const variant = dragId.slice(0, colon) as 'meal' | 'chore' | 'task' | 'event';
@@ -835,7 +838,7 @@ function CalendarDragPreview({
           layout="column"
           stripeColor={ev.color}
           title={ev.title}
-          timeLabel={ev.allDay ? 'All day' : new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(ev.startTime)}
+          timeLabel={ev.allDay ? 'All day' : formatDisplayTime(ev.startTime, timeFormat, {}, displayTimezone)}
           subtitle={ev.location || ev.calendarName}
         />
       </div>
