@@ -1,5 +1,7 @@
 # Prism Contributor License Agreement
 
+**Version 1.0 — Effective August 20, 2026**
+
 Thank you for contributing to Prism. This Contributor License Agreement (the
 "Agreement") records the rights you grant to the Prism project maintainer,
 Sandy Dargoport (the "Maintainer"), for the contributions you make to the
