@@ -87,6 +87,25 @@ describe('SpanningEventRows', () => {
     expect(buttons[6]!.className).not.toContain('rounded-r-md');
     expect(buttons[6]!.style.clipPath).toContain('100% 50%');
   });
+
+  it('uses white text for a future spanning event', () => {
+    const futureEvent: CalendarEvent = {
+      ...event,
+      startTime: new Date('2099-08-10T00:00:00.000Z'),
+      endTime: new Date('2099-08-13T00:00:00.000Z'),
+    };
+
+    const { getByRole } = render(
+      <SpanningEventRows
+        date={new Date(2099, 7, 10)}
+        rowDates={[new Date(2099, 7, 10)]}
+        events={[futureEvent]}
+        onEventClick={() => {}}
+      />
+    );
+
+    expect(getByRole('button').style.color).toBe('rgb(255, 255, 255)');
+  });
 });
 
 describe('InlineCalendarEvent', () => {
@@ -121,5 +140,17 @@ describe('InlineCalendarEvent', () => {
 
     expect(button.className).toContain('opacity-55');
     expect(button.className).not.toContain('line-through');
+  });
+
+  it('uses white text for a current or future filled event', () => {
+    const futureEvent: CalendarEvent = {
+      ...event,
+      startTime: new Date('2026-08-21T00:00:00.000Z'),
+      endTime: new Date('2026-08-22T00:00:00.000Z'),
+    };
+
+    const { getByRole } = render(<InlineCalendarEvent event={futureEvent} onClick={() => {}} />);
+
+    expect(getByRole('button').style.color).toBe('rgb(255, 255, 255)');
   });
 });

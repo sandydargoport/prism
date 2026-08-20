@@ -89,7 +89,7 @@ export function SpanningEventRows({
             )}
             style={{
               backgroundColor: event.color,
-              color: contrastText(event.color),
+              color: past ? contrastText(event.color) : '#fff',
               width: continuesWithinRow ? `calc(100% + ${gap})` : '100%',
               clipPath:
                 continuesBeforeRow && continuesAfterRow

@@ -53,7 +53,7 @@ export function InlineCalendarEvent({
       )}
       style={
         event.allDay
-          ? { backgroundColor: event.color, color: contrastText(event.color) }
+          ? { backgroundColor: event.color, color: past ? contrastText(event.color) : '#fff' }
           : undefined
       }
     >
