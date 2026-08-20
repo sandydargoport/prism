@@ -108,7 +108,15 @@ export async function GET(request: Request) {
         }).where(eq(calendarSources.id, source.id));
       }
 
-      // Update showInEventModal based on current accessRole
+      // Discover calendars added since the initial connect (e.g. one you
+      // subscribed to later). Re-auth previously only refreshed tokens for
+      // known calendars and never picked up new ones, so a newly-subscribed
+      // calendar would never appear. Mirror the fresh-connect path here:
+      // update showInEventModal for existing, and insert genuinely new ones.
+      const [reauthDismissed] = await db.select().from(settings)
+        .where(eq(settings.key, 'dismissedGoogleCalendarIds'));
+      const reauthDismissedIds: string[] = (reauthDismissed?.value as string[]) || [];
+
       for (const calendar of reAuthCalendars) {
         const isWritable = calendar.accessRole === 'writer' || calendar.accessRole === 'owner';
         const existing = await db.query.calendarSources.findFirst({
@@ -123,7 +131,25 @@ export async function GET(request: Request) {
             .update(calendarSources)
             .set({ showInEventModal: isWritable, updatedAt: new Date() })
             .where(eq(calendarSources.id, existing.id));
+          continue;
         }
+        // New calendar — skip if the user previously deleted it from Prism.
+        if (reauthDismissedIds.includes(calendar.id)) continue;
+        const calendarName = (calendar.summary || 'Untitled Calendar').slice(0, 255);
+        await db.insert(calendarSources).values({
+          userId: auth.userId,
+          provider: 'google',
+          sourceCalendarId: calendar.id,
+          dashboardCalendarName: calendarName,
+          displayName: calendarName,
+          color: calendar.backgroundColor || undefined,
+          enabled: true,
+          showInEventModal: isWritable,
+          accessToken: encryptedAccessToken,
+          refreshToken: encryptedRefreshToken,
+          tokenExpiresAt,
+          accountEmail,
+        });
       }
 
       logActivity({

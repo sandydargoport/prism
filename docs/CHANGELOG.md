@@ -4,6 +4,9 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+### Calendar
+- **Re-authenticating Google now picks up newly-subscribed calendars.** Once Google was connected, re-authenticating only refreshed the calendars Prism already knew about — so a calendar you subscribed to *afterward* never appeared, and the only workaround was to fully disconnect and reconnect. Re-auth now also discovers and adds any new calendars (skipping ones you've deleted from Prism before), so subscribing to a calendar and re-authenticating brings it in.
+
 ## [1.15.0] – 2026-08-20
 
 ### Privacy
