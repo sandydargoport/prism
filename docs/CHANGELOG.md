@@ -4,6 +4,8 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.15.3] – 2026-08-20
+
 ### Calendar
 - **Deleting a calendar in Google no longer flashes a "Sync failed" error in Prism.** When you remove a calendar from Google, Prism used to surface the resulting "not found" error as an alarming sync failure for a few cycles before auto-disabling the calendar. It now handles that quietly and, once confirmed, labels the calendar **"Removed in Google — auto-disabled"** in Manage calendars so you can see why it went inactive.
 - **Restore a Google calendar you removed by mistake.** Deleting a Google calendar from Prism tombstones it so it won't reappear on your next sign-in — but until now there was no way to undo that. Manage calendars now has a **Removed calendars** section listing anything you've deleted, each with a **Restore** button that brings it back. (The tombstone now remembers the calendar's name, so the list is readable rather than a cryptic id.)
