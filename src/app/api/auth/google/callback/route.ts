@@ -143,7 +143,9 @@ export async function GET(request: Request) {
           dashboardCalendarName: calendarName,
           displayName: calendarName,
           color: calendar.backgroundColor || undefined,
-          enabled: true,
+          // Calendars hidden in the user's Google list come in disabled, so
+          // they're available in Manage Calendars without cluttering the board.
+          enabled: !calendar.hidden,
           showInEventModal: isWritable,
           accessToken: encryptedAccessToken,
           refreshToken: encryptedRefreshToken,
@@ -207,7 +209,9 @@ export async function GET(request: Request) {
           dashboardCalendarName: calendarName,
           displayName: calendarName,
           color: calendar.backgroundColor || undefined,
-          enabled: true,
+          // Calendars hidden in the user's Google list come in disabled, so
+          // they're available in Manage Calendars without cluttering the board.
+          enabled: !calendar.hidden,
           showInEventModal: isWritable,
           accessToken: encryptedAccessToken,
           refreshToken: encryptedRefreshToken,

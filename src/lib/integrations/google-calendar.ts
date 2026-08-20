@@ -64,6 +64,8 @@ export interface GoogleCalendar {
   foregroundColor?: string;
   primary?: boolean;
   accessRole: string;
+  /** True when the calendar is hidden from the user's Google list view. */
+  hidden?: boolean;
 }
 
 /**
@@ -186,7 +188,12 @@ export async function refreshAccessToken(refreshToken: string): Promise<GoogleTo
  * Fetch list of calendars
  */
 export async function fetchCalendarList(accessToken: string): Promise<GoogleCalendar[]> {
-  const response = await fetch(`${GOOGLE_CALENDAR_API}/users/me/calendarList`, {
+  // showHidden=true so subscribed calendars you've hidden from your Google list
+  // are still discovered. Prism controls on/off itself (in Manage Calendars),
+  // decoupled from Google's list visibility — so hiding a calendar in Google no
+  // longer makes it vanish from Prism. Newly-discovered hidden calendars are
+  // added disabled by the callers (see enabled: !calendar.hidden).
+  const response = await fetch(`${GOOGLE_CALENDAR_API}/users/me/calendarList?showHidden=true`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
