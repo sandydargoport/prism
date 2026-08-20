@@ -140,6 +140,26 @@ function formatDateLocal(date: Date | string | undefined, timeZone?: string): st
   return `${year}-${month}-${day}`;
 }
 
+/** Date-only events are floating calendar dates, not timezone-based instants. */
+function formatAllDayDate(date: Date | string | undefined): string {
+  const value = date ? (typeof date === 'string' ? new Date(date) : date) : new Date();
+  return value.toISOString().slice(0, 10);
+}
+
+/** Convert Google's exclusive all-day end date to the inclusive form date. */
+function formatAllDayEndDate(start: Date | string, end: Date | string): string {
+  const startValue = typeof start === 'string' ? new Date(start) : start;
+  const endValue = typeof end === 'string' ? new Date(end) : new Date(end.getTime());
+  const isExclusiveMidnight = endValue.getTime() > startValue.getTime()
+    && endValue.getUTCHours() === 0
+    && endValue.getUTCMinutes() === 0
+    && endValue.getUTCSeconds() === 0
+    && endValue.getUTCMilliseconds() === 0;
+
+  if (isExclusiveMidnight) endValue.setUTCDate(endValue.getUTCDate() - 1);
+  return formatAllDayDate(endValue);
+}
+
 /**
  * ADD EVENT MODAL COMPONENT
  */
@@ -246,8 +266,12 @@ export function AddEventModal({
       setLocation(event.location || '');
       const isAllDay = event.allDay || false;
       setAllDay(isAllDay);
-      const sd = formatDateLocal(event.startTime, displayTimezone);
-      const ed = formatDateLocal(event.endTime, displayTimezone);
+      const sd = isAllDay
+        ? formatAllDayDate(event.startTime)
+        : formatDateLocal(event.startTime, displayTimezone);
+      const ed = isAllDay
+        ? formatAllDayEndDate(event.startTime, event.endTime)
+        : formatDateLocal(event.endTime, displayTimezone);
       setStartDate(sd);
       setEndDate(ed);
       if (!isAllDay) {
@@ -296,16 +320,14 @@ export function AddEventModal({
     if (!title.trim() || !startDate || !endDate) return;
     if (!allDay && (!startTimeStr || !endTimeStr)) return;
 
-    const startISO = fromDisplayDateTime(
-      startDate,
-      allDay ? '00:00:00' : startTimeStr,
-      displayTimezone,
-    ).toISOString();
-    const endISO = fromDisplayDateTime(
-      endDate,
-      allDay ? '23:59:59' : endTimeStr,
-      displayTimezone,
-    ).toISOString();
+    // All-day values are floating dates. Keep them in UTC so their calendar
+    // date is stable and Google can receive an exclusive end date reliably.
+    const startISO = allDay
+      ? `${startDate}T00:00:00.000Z`
+      : fromDisplayDateTime(startDate, startTimeStr, displayTimezone).toISOString();
+    const endISO = allDay
+      ? `${endDate}T23:59:59.000Z`
+      : fromDisplayDateTime(endDate, endTimeStr, displayTimezone).toISOString();
 
     if (new Date(endISO) < new Date(startISO)) {
       setError('End must be after start');

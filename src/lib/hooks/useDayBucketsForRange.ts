@@ -13,7 +13,7 @@ import type { Chore, Meal } from '@/types';
 import type { Task } from '@/components/widgets/TasksWidget';
 import type { DayBucket } from './useWeekViewData';
 import { useTimeFormat } from '@/components/providers';
-import { toDisplayDate } from '@/lib/utils/timeFormat';
+import { eventOccursOnDisplayDay } from '@/lib/utils/timeFormat';
 
 export interface OverlayFlags {
   events: boolean;
@@ -61,11 +61,13 @@ function dateKey(d: Date): string {
 }
 
 function eventOnDay(event: CalendarEvent, day: Date, displayTimezone: string): boolean {
-  const dayStart = startOfDay(day);
-  const dayEnd = addDays(dayStart, 1);
-  const eventStart = toDisplayDate(event.startTime, displayTimezone);
-  const eventEnd = toDisplayDate(event.endTime, displayTimezone);
-  return eventStart < dayEnd && eventEnd > dayStart;
+  return eventOccursOnDisplayDay(
+    event.startTime,
+    event.endTime,
+    event.allDay,
+    day,
+    displayTimezone,
+  );
 }
 
 function choreNextDueOnDay(chore: Chore, day: Date): boolean {

@@ -26,7 +26,7 @@ import { eq, and, or, gte, lte, asc, isNotNull, isNull } from 'drizzle-orm';
 import { createEventSchema, validateRequest } from '@/lib/validations';
 import { getCached } from '@/lib/cache/redis';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
-import { createCalendarEvent, refreshAccessToken } from '@/lib/integrations/google-calendar';
+import { createCalendarEvent, refreshAccessToken, toGoogleAllDayRange } from '@/lib/integrations/google-calendar';
 import { decrypt, encrypt } from '@/lib/utils/crypto';
 import { formatEventRow } from '@/lib/utils/formatters';
 import { logActivity } from '@/lib/services/auditLog';
@@ -343,6 +343,8 @@ export async function POST(request: NextRequest) {
               .where(eq(calendarSources.id, calendarSourceId));
           }
 
+          const allDayRange = allDay ? toGoogleAllDayRange(startTime, endTime) : null;
+
           // Create event on Google Calendar
           const googleEvent = await createCalendarEvent(
             accessToken,
@@ -352,10 +354,10 @@ export async function POST(request: NextRequest) {
               description: description?.trim() || undefined,
               location: location?.trim() || undefined,
               start: allDay
-                ? { date: startTime.toISOString().split('T')[0] }
+                ? allDayRange!.start
                 : { dateTime: startTime.toISOString() },
               end: allDay
-                ? { date: endTime.toISOString().split('T')[0] }
+                ? allDayRange!.end
                 : { dateTime: endTime.toISOString() },
             }
           );
@@ -363,7 +365,7 @@ export async function POST(request: NextRequest) {
           externalEventId = googleEvent.id;
         } catch (error) {
           logError('Failed to create event on Google Calendar:', error);
-          googleWarning = `Event was saved locally but could not be synced to Google Calendar: ${error instanceof Error ? error.message : 'Unknown error'}`;
+          googleWarning = 'Event was saved locally but could not be synced to Google Calendar.';
         }
       }
     }

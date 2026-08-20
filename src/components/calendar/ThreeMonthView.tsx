@@ -11,8 +11,6 @@ import {
   subMonths,
   isSameMonth,
   isSameDay,
-  isBefore,
-  startOfDay,
   getMonth,
 } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -23,7 +21,8 @@ import { useWeekStartsOn } from '@/lib/hooks/useWeekStartsOn';
 import type { CalendarEvent } from '@/types/calendar';
 import { seasonalPalettes } from '@/lib/themes/seasonalThemes';
 import { useTimeFormat } from '@/components/providers';
-import { toDisplayDate } from '@/lib/utils/timeFormat';
+import { InlineCalendarEvent, SpanningEventRows } from './cells';
+import { eventOccursOnDisplayDay, eventSpansMultipleDisplayDays, toDisplayDate } from '@/lib/utils/timeFormat';
 
 // Get the accent color for a month (1-12)
 function getMonthColor(month: Date): string {
@@ -80,6 +79,15 @@ function MiniMonth({
   for (let i = 0; i < days.length; i += 7) {
     weeks.push(days.slice(i, i + 7));
   }
+  const spanningEvents = events
+    .filter((event) => eventSpansMultipleDisplayDays(
+      event.startTime,
+      event.endTime,
+      event.allDay,
+      displayTimezone,
+    ))
+    .sort((a, b) => a.startTime.getTime() - b.startTime.getTime() || a.title.localeCompare(b.title));
+  const spanningEventSet = new Set(spanningEvents);
 
   return (
     <div className={cn(
@@ -107,21 +115,31 @@ function MiniMonth({
 
       {/* Day grid — fills remaining space */}
       <div className="flex-1 flex flex-col gap-px px-1 pb-1">
-        {weeks.map((week, weekIndex) => (
-          <div key={weekIndex} className="flex-1 grid grid-cols-7 gap-px min-h-0">
-            {week.map((date, dayIndex) => {
+        {weeks.map((week, weekIndex) => {
+          const visibleRowDates = week.filter((date) => isSameMonth(date, month));
+          const rowSpanningEvents = spanningEvents.filter((event) => visibleRowDates.some((rowDate) =>
+            eventOccursOnDisplayDay(
+              event.startTime,
+              event.endTime,
+              event.allDay,
+              rowDate,
+              displayTimezone,
+            )));
+
+          return (
+            <div key={weekIndex} className="flex-1 grid grid-cols-7 gap-px min-h-0">
+              {week.map((date, dayIndex) => {
               const inMonth = isSameMonth(date, month);
               const today = isSameDay(date, displayNow);
-              const isPast = isBefore(date, startOfDay(displayNow)) && !today;
-              const dayStart = startOfDay(date);
               const dayEvents = events
-                .filter((e) => {
-                  const displayStart = toDisplayDate(e.startTime, displayTimezone);
-                  const displayEnd = toDisplayDate(e.endTime, displayTimezone);
-                  return e.allDay
-                    ? displayStart <= dayStart && displayEnd > dayStart
-                    : isSameDay(displayStart, date);
-                })
+                .filter((event) => !spanningEventSet.has(event))
+                .filter((event) => eventOccursOnDisplayDay(
+                  event.startTime,
+                  event.endTime,
+                  event.allDay,
+                  date,
+                  displayTimezone,
+                ))
                 .sort((a, b) => {
                   if (a.allDay && !b.allDay) return -1;
                   if (!a.allDay && b.allDay) return 1;
@@ -133,45 +151,50 @@ function MiniMonth({
                   key={dayIndex}
                   onClick={() => onDateClick(date)}
                   className={cn(
-                    'flex flex-col rounded text-xs cursor-pointer overflow-hidden p-0.5',
+                    'relative flex flex-col rounded text-xs cursor-pointer overflow-visible p-0.5',
                     bordered && 'border border-border',
                     !inMonth && 'text-muted-foreground/40',
-                    !transparentMode && isPast && inMonth && 'bg-muted/30 text-muted-foreground',
-                    today && 'bg-seasonal-highlight/20',
                   )}
                 >
-                  <span className={cn(
-                    'text-center text-[10px] leading-tight flex-shrink-0',
-                    today && 'font-bold text-seasonal-accent',
-                  )}>
-                    {format(date, 'd')}
-                  </span>
+                  <div className="flex h-4 flex-shrink-0 items-center justify-center">
+                    <span className={cn(
+                      'inline-flex h-4 min-w-4 items-center justify-center rounded-full px-0.5 text-[10px] leading-tight',
+                      today && 'bg-primary font-bold text-primary-foreground',
+                    )}>
+                      {format(date, 'd')}
+                    </span>
+                  </div>
+                  {inMonth && (
+                    <SpanningEventRows
+                      date={date}
+                      rowDates={visibleRowDates}
+                      events={rowSpanningEvents}
+                      onEventClick={onEventClick}
+                      compact
+                      gap="1px"
+                    />
+                  )}
                   {/* Event list — scrollable within day cell */}
                   {inMonth && dayEvents.length > 0 && (
                     <ul className="flex-1 overflow-y-auto space-y-px mt-0.5 scrollbar-thin list-none m-0 p-0">
                       {dayEvents.map((event) => (
-                        <li
-                          key={event.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onEventClick(event);
-                          }}
-                          className="text-[8px] leading-tight px-0.5 rounded truncate cursor-pointer hover:opacity-80 hover:ring-1 hover:ring-seasonal-accent/50 transition-all"
-                          style={event.allDay
-                            ? { backgroundColor: event.color + '20', borderLeft: `2px solid ${event.color}` }
-                            : { color: event.color }
-                          }
-                        >
-                          {event.allDay ? event.title : `• ${event.title}`}
+                        <li key={event.id}>
+                          <InlineCalendarEvent
+                            event={event}
+                            onClick={onEventClick}
+                            compact
+                            showTime={false}
+                          />
                         </li>
                       ))}
                     </ul>
                   )}
                 </div>
               );
-            })}
-          </div>
-        ))}
+              })}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

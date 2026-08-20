@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { addDays, format, isSameDay, startOfDay, startOfWeek } from 'date-fns';
+import { addDays, format, isSameDay, startOfWeek } from 'date-fns';
 import { useCalendarEvents } from './useCalendarEvents';
 import { useMeals } from './useMeals';
 import { useChores } from './useChores';
@@ -13,7 +13,7 @@ import type { Chore, Meal } from '@/types';
 import type { Task } from '@/components/widgets/TasksWidget';
 import type { ForecastDay } from '@/components/widgets/WeatherWidget';
 import { useTimeFormat } from '@/components/providers';
-import { toDisplayDate } from '@/lib/utils/timeFormat';
+import { eventOccursOnDisplayDay } from '@/lib/utils/timeFormat';
 
 export interface DayBucket {
   date: Date;
@@ -55,11 +55,13 @@ const MEAL_TYPE_ORDER: Record<Meal['mealType'], number> = {
 };
 
 function eventOnDay(event: CalendarEvent, day: Date, displayTimezone: string): boolean {
-  const dayStart = startOfDay(day);
-  const dayEnd = addDays(dayStart, 1);
-  const eventStart = toDisplayDate(event.startTime, displayTimezone);
-  const eventEnd = toDisplayDate(event.endTime, displayTimezone);
-  return eventStart < dayEnd && eventEnd > dayStart;
+  return eventOccursOnDisplayDay(
+    event.startTime,
+    event.endTime,
+    event.allDay,
+    day,
+    displayTimezone,
+  );
 }
 
 function choreNextDueOnDay(chore: Chore, day: Date): boolean {

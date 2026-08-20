@@ -102,6 +102,8 @@ The view dropdown has ▲▼ triangles for one-click cycling. Multi-week navigat
 
 On phones, calendar views collapse to Agenda only: no view switcher, no chevrons. Header reads "Upcoming Events."
 
+**Multi-day events** (trips, holidays, anything spanning more than one day) draw as a single continuous bar across the days they cover in the Month, multi-week, and week grids, rather than repeating as a separate chip on each day. The bar clips with a chevron where it crosses a week or month boundary and continues on the next row, and events that have already finished are dimmed. All-day events are placed by calendar date, so they stay on the correct day regardless of the display timezone.
+
 ---
 
 ## Display modes: inline vs cards

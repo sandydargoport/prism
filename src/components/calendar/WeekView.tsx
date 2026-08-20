@@ -21,7 +21,15 @@ import type { DayBucket } from '@/lib/hooks/useWeekViewData';
 import { DroppableOverlayCell, useDayDroppable, weatherIcon, getMealTime, getChoreTime, getTaskTime, formatTimeOfDay, type OverlayItemRef } from './cells';
 import { WeekItemCard } from './cells/WeekItemCard';
 import { useTimeFormat } from '@/components/providers';
-import { formatDisplayHour, formatDisplayTimeRange, toDisplayDate } from '@/lib/utils/timeFormat';
+import {
+  eventOccursOnDisplayDay,
+  eventSpansMultipleDisplayDays,
+  eventStartsOnDisplayDay,
+  formatDisplayHour,
+  formatDisplayTime,
+  formatDisplayTimeRange,
+  toDisplayDate,
+} from '@/lib/utils/timeFormat';
 
 export type CalendarDisplayMode = 'inline' | 'cards';
 
@@ -72,7 +80,10 @@ export function WeekView({
   const timedWeekEvents = events
     .filter((event) => {
       const displayStart = toDisplayDate(event.startTime, displayTimezone);
-      return !event.allDay && displayStart >= weekStart && displayStart < weekEnd;
+      return !event.allDay
+        && !eventSpansMultipleDisplayDays(event.startTime, event.endTime, false, displayTimezone)
+        && displayStart >= weekStart
+        && displayStart < weekEnd;
     })
     .map((event) => ({
       ...event,
@@ -83,21 +94,40 @@ export function WeekView({
   // Get visible hours (filtered if hidden mode is enabled)
   const hours = getVisibleHours(timedWeekEvents, { from: weekStart, to: weekEnd });
 
-  // Get all-day events for a day (multi-day events span across days)
-  const getAllDayEvents = (date: Date) => {
-    const dayStart = startOfDay(date);
-    return events.filter((e) => {
-      const displayStart = toDisplayDate(e.startTime, displayTimezone);
-      const displayEnd = toDisplayDate(e.endTime, displayTimezone);
-      return e.allDay && displayStart <= dayStart && displayEnd > dayStart;
-    });
-  };
+  // Multi-day timed events share the persistent header with all-day events so
+  // they do not become oversized blocks in the hourly grid.
+  const getAllDayEvents = (date: Date) => events.filter((event) =>
+    (event.allDay || eventSpansMultipleDisplayDays(
+      event.startTime,
+      event.endTime,
+      false,
+      displayTimezone,
+    )) && eventOccursOnDisplayDay(
+      event.startTime,
+      event.endTime,
+      event.allDay,
+      date,
+      displayTimezone,
+    ));
+
+  const getHeaderEventLabel = (event: CalendarEvent, date: Date) =>
+    !event.allDay && eventStartsOnDisplayDay(
+      event.startTime,
+      false,
+      date,
+      displayTimezone,
+    )
+      ? `${formatDisplayTime(event.startTime, timeFormat, {}, displayTimezone)} ${event.title}`
+      : event.title;
 
   // Get all timed events for a day (used to compute side-by-side positions
   // across the entire day, so events that overlap but start in different
   // hours still split the column horizontally).
   const getDayTimedEvents = (date: Date) =>
-    events.filter((e) => isSameDay(toDisplayDate(e.startTime, displayTimezone), date) && !e.allDay);
+    events.filter((event) =>
+      !event.allDay
+      && !eventSpansMultipleDisplayDays(event.startTime, event.endTime, false, displayTimezone)
+      && isSameDay(toDisplayDate(event.startTime, displayTimezone), date));
 
   // Get timed events for a specific day and hour
   const getHourEvents = (date: Date, hour: number) =>
@@ -105,6 +135,7 @@ export function WeekView({
       (e) =>
         isSameDay(toDisplayDate(e.startTime, displayTimezone), date) &&
         !e.allDay &&
+        !eventSpansMultipleDisplayDays(e.startTime, e.endTime, false, displayTimezone) &&
         toDisplayDate(e.startTime, displayTimezone).getHours() === hour
     );
 
@@ -144,7 +175,7 @@ export function WeekView({
         {/* All-day events */}
         {allDayEvents.length > 0 && (
           <div className={cn('shrink-0 p-0.5 flex flex-col gap-px', !transparentMode && 'bg-card/50')}>
-            {allDayEvents.map((event, idx) => (
+            {allDayEvents.map((event) => (
               <button
                 key={event.id}
                 onClick={() => onEventClick(event)}
@@ -158,7 +189,7 @@ export function WeekView({
                     : { backgroundColor: event.color, color: '#fff', borderLeft: `2px solid ${event.color}` }
                 }
               >
-                {event.title}
+                {getHeaderEventLabel(event, date)}
               </button>
             ))}
           </div>
@@ -391,7 +422,7 @@ export function WeekView({
                               : { backgroundColor: event.color, color: '#fff', borderLeft: `2px solid ${event.color}` }
                           }
                         >
-                          {event.title}
+                          {getHeaderEventLabel(event, date)}
                         </button>
                       ))}
                     </div>

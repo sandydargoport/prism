@@ -22,6 +22,8 @@ interface WeekItemCardProps {
   subtitle?: string;
   /** Strike-through and dim, for completed/cooked items */
   muted?: boolean;
+  /** Dim without marking complete, for items whose time has passed. */
+  subdued?: boolean;
   /** Diagonal-stripe overlay for items awaiting parent approval. */
   pendingApproval?: boolean;
   /** Click handler — opens detail modal in caller */
@@ -108,6 +110,7 @@ export function WeekItemCard({
   timeLabel,
   subtitle,
   muted,
+  subdued,
   pendingApproval,
   onClick,
   ariaLabel,
@@ -166,6 +169,7 @@ export function WeekItemCard({
           dragId && 'cursor-grab active:cursor-grabbing',
           draggable.isDragging && 'opacity-60 ring-2 ring-seasonal-accent shadow-xl',
           muted && 'opacity-60',
+          subdued && 'opacity-55 saturate-[0.65]',
           styles.padding,
         )}
       >
@@ -214,6 +218,7 @@ export function WeekItemCard({
         dragId && 'cursor-grab active:cursor-grabbing',
         draggable.isDragging && 'opacity-60 ring-2 ring-seasonal-accent shadow-xl',
         muted && 'opacity-60',
+        subdued && 'opacity-55 saturate-[0.65]',
       )}
     >
       {pendingApproval && (
