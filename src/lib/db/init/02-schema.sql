@@ -291,7 +291,7 @@ CREATE TABLE IF NOT EXISTS public.events (
     external_event_id character varying(255),
     title character varying(255) NOT NULL,
     description text,
-    location character varying(255),
+    location text,
     start_time timestamp without time zone NOT NULL,
     end_time timestamp without time zone NOT NULL,
     all_day boolean DEFAULT false NOT NULL,

@@ -4,6 +4,9 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+### Calendar
+- **Fixed calendar sync failing for events with long locations.** Events whose location lists several venues (e.g. a CalDAV event with three rooms joined by `;`, ~300+ characters) exceeded the location field's 255-character limit, so every occurrence of that recurring series failed to sync and flooded the logs with errors. The location field is now unbounded (stored as `text`), matching the description field — nothing is truncated, and existing data is preserved.
+
 ## [1.14.4] – 2026-08-19
 
 ### Calendar
