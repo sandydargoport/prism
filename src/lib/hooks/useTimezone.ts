@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
 const STORAGE_KEY = 'prism:timezone';
+const TIMEZONE_CHANGED_EVENT = 'prism:timezone-changed';
 
 /** The browser's own IANA timezone, e.g. "America/Chicago". Safe fallback. */
 export function detectBrowserTimezone(): string {
@@ -56,6 +57,7 @@ export function useTimezone(): {
   const setTimezone = useCallback(async (newValue: string) => {
     setValue(newValue);
     localStorage.setItem(STORAGE_KEY, newValue);
+    window.dispatchEvent(new CustomEvent(TIMEZONE_CHANGED_EVENT, { detail: newValue }));
     try {
       await fetch('/api/settings', {
         method: 'PATCH',

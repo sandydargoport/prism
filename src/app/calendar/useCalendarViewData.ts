@@ -17,6 +17,8 @@ import { useWeekStartsOn } from '@/lib/hooks/useWeekStartsOn';
 import { deduplicateEvents } from '@/lib/utils/calendarDedup';
 import { getFullCalendarRange, MAX_CALENDAR_EVENTS } from '@/lib/utils/calendarRange';
 import type { CalendarEvent } from '@/types/calendar';
+import { useTimeFormat } from '@/components/providers';
+import { toDisplayDate } from '@/lib/utils/timeFormat';
 
 export type CalendarViewType = 'agenda' | 'day' | 'week' | 'weekVertical' | 'multiWeek' | 'month' | 'threeMonth';
 export type MultiWeekCount = 1 | 2 | 3 | 4;
@@ -25,7 +27,12 @@ export type { CalendarGroup } from '@/lib/hooks';
 
 export function useCalendarViewData() {
   const { weekStartsOn } = useWeekStartsOn();
+  const { displayTimezone } = useTimeFormat();
   const [currentDate, setCurrentDate] = useState(new Date());
+
+  useEffect(() => {
+    setCurrentDate(toDisplayDate(new Date(), displayTimezone));
+  }, [displayTimezone]);
   const [viewType, setViewType] = useState<CalendarViewType>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('prism-calendar-view-type') as CalendarViewType | null;
@@ -138,7 +145,10 @@ export function useCalendarViewData() {
     return deduplicateEvents(filterEvents(mapped));
   }, [apiEvents, filterEvents]);
 
-  const goToToday = useCallback(() => setCurrentDate(new Date()), []);
+  const goToToday = useCallback(
+    () => setCurrentDate(toDisplayDate(new Date(), displayTimezone)),
+    [displayTimezone],
+  );
 
   const goToPrevious = useCallback(() => {
     setCurrentDate(prev => {

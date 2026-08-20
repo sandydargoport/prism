@@ -1,0 +1,100 @@
+/**
+ * @jest-environment jsdom
+ */
+
+import * as React from 'react';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { TimeFormatProvider, useTimeFormat } from '../TimeFormatProvider';
+
+const wrapper = ({ children }: { children: React.ReactNode }) => (
+  <TimeFormatProvider>{children}</TimeFormatProvider>
+);
+
+describe('TimeFormatProvider', () => {
+  const fetchMock = jest.fn();
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    global.fetch = fetchMock;
+    localStorage.clear();
+  });
+
+  it('loads the saved family-wide preference', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ settings: { timeFormat: '24h' } }),
+    });
+
+    const { result } = renderHook(() => useTimeFormat(), { wrapper });
+
+    await waitFor(() => expect(result.current.timeFormat).toBe('24h'));
+  });
+
+  it('updates the context and persists the setting', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ settings: { timeFormat: '12h' } }),
+      })
+      .mockResolvedValueOnce({ ok: true });
+
+    const { result } = renderHook(() => useTimeFormat(), { wrapper });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    await act(async () => result.current.setTimeFormat('24h'));
+
+    expect(result.current.timeFormat).toBe('24h');
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: 'timeFormat', value: '24h' }),
+    });
+  });
+
+  it('rolls back an optimistic change when saving fails', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ settings: { timeFormat: '12h' } }),
+      })
+      .mockResolvedValueOnce({ ok: false });
+
+    const { result } = renderHook(() => useTimeFormat(), { wrapper });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    await expect(act(async () => result.current.setTimeFormat('24h'))).rejects.toThrow(
+      'Failed to save time format',
+    );
+    expect(result.current.timeFormat).toBe('12h');
+  });
+
+  it('defaults display times to the saved household timezone', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ settings: { timeFormat: '24h', timezone: 'Europe/Warsaw' } }),
+    });
+
+    const { result } = renderHook(() => useTimeFormat(), { wrapper });
+
+    await waitFor(() => expect(result.current.householdTimezone).toBe('Europe/Warsaw'));
+    expect(result.current.displayTimezoneMode).toBe('household');
+    expect(result.current.displayTimezone).toBe('Europe/Warsaw');
+  });
+
+  it('stores the device-timezone override locally without changing family settings', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ settings: { timezone: 'Europe/Warsaw' } }),
+    });
+
+    const { result } = renderHook(() => useTimeFormat(), { wrapper });
+    await waitFor(() => expect(result.current.householdTimezone).toBe('Europe/Warsaw'));
+
+    act(() => result.current.setDisplayTimezoneMode('device'));
+
+    expect(result.current.displayTimezoneMode).toBe('device');
+    expect(result.current.displayTimezone).toBe(result.current.deviceTimezone);
+    expect(localStorage.getItem('prism:display-timezone-mode')).toBe('device');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});

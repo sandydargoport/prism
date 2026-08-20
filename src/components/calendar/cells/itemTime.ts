@@ -1,4 +1,5 @@
 import type { Meal, Chore, Task } from '@/types/models';
+import type { TimeFormat } from '@/lib/utils/timeFormat';
 
 /** Default times for each meal type when meal.mealTime is null. */
 export const MEAL_TIME_DEFAULTS: Record<Meal['mealType'], string> = {
@@ -53,16 +54,20 @@ export function parseTimeOfDay(hhmm: string | null | undefined): number | null {
 }
 
 /**
- * Format "HH:mm" → "6 PM" or "6:30 PM". On-the-hour times drop ":00" so the
- * label is short enough to fit beside a card title in the time grid.
+ * Format an "HH:mm" value for display using the family-wide time preference.
+ * In 12-hour mode, on-the-hour times drop ":00" so the label remains compact.
  */
-export function formatTimeOfDay(hhmm: string | null | undefined): string {
+export function formatTimeOfDay(
+  hhmm: string | null | undefined,
+  timeFormat: TimeFormat = '12h',
+): string {
   if (!hhmm) return '';
   const m = /^(\d{2}):(\d{2})$/.exec(hhmm);
   if (!m) return hhmm;
   const h = Number(m[1]);
   const min = Number(m[2]);
   if (Number.isNaN(h) || Number.isNaN(min)) return hhmm;
+  if (timeFormat === '24h') return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
   const period = h >= 12 ? 'PM' : 'AM';
   const hour12 = ((h + 11) % 12) + 1;
   return min === 0 ? `${hour12} ${period}` : `${hour12}:${String(min).padStart(2, '0')} ${period}`;
