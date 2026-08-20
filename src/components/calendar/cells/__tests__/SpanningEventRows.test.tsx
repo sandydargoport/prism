@@ -5,6 +5,7 @@
 import * as React from 'react';
 import { render } from '@testing-library/react';
 import { SpanningEventRows } from '../SpanningEventRows';
+import { InlineCalendarEvent } from '../InlineCalendarEvent';
 import type { CalendarEvent } from '@/types/calendar';
 
 jest.mock('@/components/providers', () => ({
@@ -27,11 +28,7 @@ const event: CalendarEvent = {
 
 describe('SpanningEventRows', () => {
   it('bridges day gaps without overlapping adjacent event slices', () => {
-    const rowDates = [
-      new Date(2026, 7, 10),
-      new Date(2026, 7, 11),
-      new Date(2026, 7, 12),
-    ];
+    const rowDates = [new Date(2026, 7, 10), new Date(2026, 7, 11), new Date(2026, 7, 12)];
 
     const { container } = render(
       <div>
@@ -44,7 +41,7 @@ describe('SpanningEventRows', () => {
             onEventClick={() => {}}
           />
         ))}
-      </div>,
+      </div>
     );
 
     const rows = container.querySelectorAll('[data-spanning-events]');
@@ -58,5 +55,71 @@ describe('SpanningEventRows', () => {
     expect(buttons[0]!.style.width).toBe('calc(100% + 0.25rem)');
     expect(buttons[1]!.style.width).toBe('calc(100% + 0.25rem)');
     expect(buttons[2]!.style.width).toBe('100%');
+  });
+
+  it('shows continuation edges and repeats the label after a week wrap', () => {
+    const wrappingEvent: CalendarEvent = {
+      ...event,
+      startTime: new Date('2026-08-09T00:00:00.000Z'),
+      endTime: new Date('2026-08-18T00:00:00.000Z'),
+    };
+    const rowDates = Array.from({ length: 7 }, (_, index) => new Date(2026, 7, 10 + index));
+
+    const { container } = render(
+      <div>
+        {rowDates.map((date) => (
+          <SpanningEventRows
+            key={date.toISOString()}
+            date={date}
+            rowDates={rowDates}
+            events={[wrappingEvent]}
+            onEventClick={() => {}}
+          />
+        ))}
+      </div>
+    );
+
+    const buttons = container.querySelectorAll('button');
+    expect(buttons).toHaveLength(7);
+    expect(buttons[0]!.textContent).toBe('Family trip');
+    expect(buttons[0]!.className).not.toContain('rounded-l-md');
+    expect(buttons[0]!.style.clipPath).toContain('0 50%');
+    expect(buttons[6]!.className).not.toContain('rounded-r-md');
+    expect(buttons[6]!.style.clipPath).toContain('100% 50%');
+  });
+});
+
+describe('InlineCalendarEvent', () => {
+  beforeEach(() => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-08-20T12:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('uses a neutral timed-event label and event-colour dot', () => {
+    const timedEvent: CalendarEvent = {
+      ...event,
+      allDay: false,
+      startTime: new Date('2026-08-20T14:00:00.000Z'),
+      endTime: new Date('2026-08-20T15:00:00.000Z'),
+    };
+
+    const { getByRole } = render(<InlineCalendarEvent event={timedEvent} onClick={() => {}} />);
+    const button = getByRole('button');
+    const dot = button.querySelector('[aria-hidden]') as HTMLElement;
+
+    expect(button.className).toContain('text-left');
+    expect(button.style.backgroundColor).toBe('');
+    expect(dot.style.backgroundColor).toBe('rgb(91, 127, 234)');
+  });
+
+  it('subdues a completed event without striking it through', () => {
+    const { getByRole } = render(<InlineCalendarEvent event={event} onClick={() => {}} />);
+    const button = getByRole('button');
+
+    expect(button.className).toContain('opacity-55');
+    expect(button.className).not.toContain('line-through');
   });
 });

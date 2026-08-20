@@ -11,8 +11,6 @@ import {
   subMonths,
   isSameMonth,
   isSameDay,
-  isBefore,
-  startOfDay,
   getMonth,
 } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -23,7 +21,7 @@ import { useWeekStartsOn } from '@/lib/hooks/useWeekStartsOn';
 import type { CalendarEvent } from '@/types/calendar';
 import { seasonalPalettes } from '@/lib/themes/seasonalThemes';
 import { useTimeFormat } from '@/components/providers';
-import { SpanningEventRows } from './cells';
+import { InlineCalendarEvent, SpanningEventRows } from './cells';
 import { eventOccursOnDisplayDay, eventSpansMultipleDisplayDays, toDisplayDate } from '@/lib/utils/timeFormat';
 
 // Get the accent color for a month (1-12)
@@ -133,7 +131,6 @@ function MiniMonth({
               {week.map((date, dayIndex) => {
               const inMonth = isSameMonth(date, month);
               const today = isSameDay(date, displayNow);
-              const isPast = isBefore(date, startOfDay(displayNow)) && !today;
               const dayEvents = events
                 .filter((event) => !spanningEventSet.has(event))
                 .filter((event) => eventOccursOnDisplayDay(
@@ -157,16 +154,16 @@ function MiniMonth({
                     'relative flex flex-col rounded text-xs cursor-pointer overflow-visible p-0.5',
                     bordered && 'border border-border',
                     !inMonth && 'text-muted-foreground/40',
-                    !transparentMode && isPast && inMonth && 'bg-muted/30 text-muted-foreground',
-                    today && 'bg-seasonal-highlight/20',
                   )}
                 >
-                  <span className={cn(
-                    'text-center text-[10px] leading-tight flex-shrink-0',
-                    today && 'font-bold text-seasonal-accent',
-                  )}>
-                    {format(date, 'd')}
-                  </span>
+                  <div className="flex h-4 flex-shrink-0 items-center justify-center">
+                    <span className={cn(
+                      'inline-flex h-4 min-w-4 items-center justify-center rounded-full px-0.5 text-[10px] leading-tight',
+                      today && 'bg-primary font-bold text-primary-foreground',
+                    )}>
+                      {format(date, 'd')}
+                    </span>
+                  </div>
                   {inMonth && (
                     <SpanningEventRows
                       date={date}
@@ -181,19 +178,13 @@ function MiniMonth({
                   {inMonth && dayEvents.length > 0 && (
                     <ul className="flex-1 overflow-y-auto space-y-px mt-0.5 scrollbar-thin list-none m-0 p-0">
                       {dayEvents.map((event) => (
-                        <li
-                          key={event.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onEventClick(event);
-                          }}
-                          className="text-[8px] leading-tight px-0.5 rounded truncate cursor-pointer hover:opacity-80 hover:ring-1 hover:ring-seasonal-accent/50 transition-all"
-                          style={event.allDay
-                            ? { backgroundColor: event.color + '20', borderLeft: `2px solid ${event.color}` }
-                            : { color: event.color }
-                          }
-                        >
-                          {event.allDay ? event.title : `• ${event.title}`}
+                        <li key={event.id}>
+                          <InlineCalendarEvent
+                            event={event}
+                            onClick={onEventClick}
+                            compact
+                            showTime={false}
+                          />
                         </li>
                       ))}
                     </ul>

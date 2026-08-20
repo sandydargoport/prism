@@ -1,11 +1,15 @@
 'use client';
 
-import { isSameDay } from 'date-fns';
+import { addDays, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { contrastText } from '@/lib/utils/color';
 import type { CalendarEvent } from '@/types/calendar';
 import { useTimeFormat } from '@/components/providers';
-import { eventOccursOnDisplayDay, formatDisplayTime } from '@/lib/utils/timeFormat';
+import {
+  eventOccursOnDisplayDay,
+  formatDisplayTime,
+  isCalendarEventPast,
+} from '@/lib/utils/timeFormat';
 
 export type SpanningEventRowsProps = {
   date: Date;
@@ -34,13 +38,8 @@ export function SpanningEventRows({
   const column = rowDates.findIndex((candidate) => isSameDay(candidate, date));
   if (column < 0 || events.length === 0) return null;
 
-  const occurs = (event: CalendarEvent, target: Date) => eventOccursOnDisplayDay(
-    event.startTime,
-    event.endTime,
-    event.allDay,
-    target,
-    displayTimezone,
-  );
+  const occurs = (event: CalendarEvent, target: Date) =>
+    eventOccursOnDisplayDay(event.startTime, event.endTime, event.allDay, target, displayTimezone);
 
   return (
     <div
@@ -49,10 +48,18 @@ export function SpanningEventRows({
     >
       {events.map((event) => {
         const active = occurs(event, date);
-        const continuesFromPrevious = active && column > 0 && occurs(event, rowDates[column - 1]!);
-        const continuesToNext = active
-          && column < rowDates.length - 1
-          && occurs(event, rowDates[column + 1]!);
+        const continuesFromPrevious = active && occurs(event, addDays(date, -1));
+        const continuesToNext = active && occurs(event, addDays(date, 1));
+        const continuesWithinRow = continuesToNext && column < rowDates.length - 1;
+        const continuesBeforeRow = continuesFromPrevious && column === 0;
+        const continuesAfterRow = continuesToNext && column === rowDates.length - 1;
+        const past = isCalendarEventPast(
+          event.startTime,
+          event.endTime,
+          event.allDay,
+          new Date(),
+          displayTimezone
+        );
         const rowHeight = compact ? 'h-3.5' : 'h-5';
 
         if (!active) return <div key={event.id} aria-hidden className={rowHeight} />;
@@ -76,14 +83,25 @@ export function SpanningEventRows({
               compact ? 'h-3.5 px-0.5 text-[8px]' : 'h-5 px-1 text-xs',
               !continuesFromPrevious && 'rounded-l-md',
               !continuesToNext && 'rounded-r-md',
+              continuesBeforeRow && (compact ? 'pl-1.5' : 'pl-2'),
+              continuesAfterRow && (compact ? 'pr-1.5' : 'pr-2'),
+              past && 'opacity-55 saturate-[0.65]'
             )}
             style={{
               backgroundColor: event.color,
               color: contrastText(event.color),
-              width: continuesToNext ? `calc(100% + ${gap})` : '100%',
+              width: continuesWithinRow ? `calc(100% + ${gap})` : '100%',
+              clipPath:
+                continuesBeforeRow && continuesAfterRow
+                  ? 'polygon(0 50%, 6px 0, calc(100% - 6px) 0, 100% 50%, calc(100% - 6px) 100%, 6px 100%)'
+                  : continuesBeforeRow
+                    ? 'polygon(0 50%, 6px 0, 100% 0, 100% 100%, 6px 100%)'
+                    : continuesAfterRow
+                      ? 'polygon(0 0, calc(100% - 6px) 0, 100% 50%, calc(100% - 6px) 100%, 0 100%)'
+                      : undefined,
             }}
           >
-            {!continuesFromPrevious && label}
+            {(!continuesFromPrevious || column === 0) && label}
           </button>
         );
       })}

@@ -109,6 +109,35 @@ export function eventSpansMultipleDisplayDays(
 }
 
 /**
+ * Return true when an event has completely finished from the viewer's
+ * perspective. All-day ranges use their floating, exclusive end date; timed
+ * events use their real instant. An event that is still in progress is never
+ * treated as past.
+ */
+export function isCalendarEventPast(
+  start: Date | number,
+  end: Date | number,
+  allDay: boolean,
+  now: Date | number = new Date(),
+  timeZone?: string,
+): boolean {
+  const eventStart = new Date(start);
+  const eventEnd = new Date(end);
+  const current = new Date(now);
+  if (
+    Number.isNaN(eventStart.getTime())
+    || Number.isNaN(eventEnd.getTime())
+    || Number.isNaN(current.getTime())
+  ) return false;
+
+  if (allDay) {
+    return getAllDayExclusiveEndKey(eventStart, eventEnd) <= getDisplayDateKey(current, timeZone);
+  }
+
+  return eventEnd <= current;
+}
+
+/**
  * Test whether an event belongs to a displayed calendar day.
  *
  * All-day events are floating date ranges: their UTC date fields are the

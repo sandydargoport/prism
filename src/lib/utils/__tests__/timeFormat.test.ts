@@ -6,6 +6,7 @@ import {
   formatDisplayTimeRange,
   fromDisplayDateTime,
   getDisplayDateKey,
+  isCalendarEventPast,
   toDisplayDate,
 } from '../timeFormat';
 
@@ -118,5 +119,35 @@ describe('time format utilities', () => {
       new Date('2026-08-24T00:00:00.000Z'),
       true,
     )).toBe(true);
+  });
+
+  it('treats an all-day event as past only after its exclusive end date', () => {
+    const start = new Date('2026-08-18T00:00:00.000Z');
+    const exclusiveEnd = new Date('2026-08-20T00:00:00.000Z');
+
+    expect(isCalendarEventPast(
+      start,
+      exclusiveEnd,
+      true,
+      new Date('2026-08-19T12:00:00.000Z'),
+      'Europe/Warsaw',
+    )).toBe(false);
+    expect(isCalendarEventPast(
+      start,
+      exclusiveEnd,
+      true,
+      new Date('2026-08-20T12:00:00.000Z'),
+      'Europe/Warsaw',
+    )).toBe(true);
+  });
+
+  it('keeps an ongoing timed event active until its actual end instant', () => {
+    const start = new Date('2026-08-20T06:00:00.000Z');
+    const end = new Date('2026-08-20T08:00:00.000Z');
+
+    expect(isCalendarEventPast(start, end, false, new Date('2026-08-20T07:00:00.000Z')))
+      .toBe(false);
+    expect(isCalendarEventPast(start, end, false, new Date('2026-08-20T08:00:00.000Z')))
+      .toBe(true);
   });
 });

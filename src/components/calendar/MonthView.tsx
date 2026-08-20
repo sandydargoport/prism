@@ -21,11 +21,11 @@ import { useWeekStartsOn } from '@/lib/hooks/useWeekStartsOn';
 import { DAYS_SHORT_ARRAY } from '@/lib/constants/days';
 import type { CalendarEvent } from '@/types/calendar';
 import { seasonalPalettes } from '@/lib/themes/seasonalThemes';
-import { CardHeightProbe, DayOverflowPopover, DroppableOverlayCell, SpanningEventRows, useDayDroppable, type OverlayItemRef } from './cells';
+import { CardHeightProbe, DayOverflowPopover, DroppableOverlayCell, InlineCalendarEvent, SpanningEventRows, useDayDroppable, type OverlayItemRef } from './cells';
 import { useCardCapacity } from '@/lib/hooks/useCardCapacity';
 import type { DayBucket } from '@/lib/hooks/useWeekViewData';
 import { useTimeFormat } from '@/components/providers';
-import { eventOccursOnDisplayDay, eventSpansMultipleDisplayDays, formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
+import { eventOccursOnDisplayDay, eventSpansMultipleDisplayDays, isCalendarEventPast, toDisplayDate } from '@/lib/utils/timeFormat';
 
 // Get the accent color for a month (1-12)
 function getMonthColor(month: Date): string {
@@ -44,6 +44,8 @@ export interface MonthViewProps {
   bucketsByDate?: Map<string, DayBucket>;
   enableDnd?: boolean;
   onItemClick?: (ref: OverlayItemRef) => void;
+  /** Show the in-view month band. Full-page calendar already has this title. */
+  showMonthHeader?: boolean;
 }
 
 /** Fallback when ResizeObserver has not yet measured (~1 frame on mount). */
@@ -59,6 +61,7 @@ export function MonthView({
   bucketsByDate,
   enableDnd = false,
   onItemClick,
+  showMonthHeader = true,
 }: MonthViewProps) {
   const { displayTimezone } = useTimeFormat();
   const displayNow = toDisplayDate(new Date(), displayTimezone);
@@ -96,22 +99,21 @@ export function MonthView({
   const spanningEventSet = new Set(spanningEvents);
 
   return (
-    <div className="h-full flex flex-col overflow-auto">
+    <div className="h-full min-h-0 flex flex-col overflow-hidden">
       {cards && <CardHeightProbe size="xs" onMeasure={setCardHeight} />}
-      {/* Month header — kept compact (py-1, text-sm) so it doesn't eat into
-          the calendar grid. The toolbar already shows the month name; this
-          band is mostly a colored anchor. */}
-      <div
-        className="shrink-0 text-center py-1 font-semibold text-sm text-white rounded-t-md mb-1 shadow-sm"
-        style={{ backgroundColor: monthColor }}
-      >
-        {format(currentDate, 'MMMM yyyy')}
-      </div>
-      <div className="shrink-0 grid grid-cols-7 gap-1 mb-1">
+      {showMonthHeader && (
+        <div
+          className="shrink-0 text-center py-1 font-semibold text-sm text-white rounded-t-md shadow-sm"
+          style={{ backgroundColor: monthColor }}
+        >
+          {format(currentDate, 'MMMM yyyy')}
+        </div>
+      )}
+      <div className="shrink-0 grid grid-cols-7 border-b border-border/70">
         {dayNames.map((name) => (
           <div
             key={name}
-            className="text-center text-xs font-medium text-muted-foreground py-1"
+            className="text-center text-xs font-medium text-muted-foreground py-1.5"
           >
             {name}
           </div>
@@ -120,8 +122,11 @@ export function MonthView({
 
       {/* Auto-scaling calendar grid */}
       <div
-        className="flex-1 shrink-0 grid grid-cols-7 gap-1"
-        style={{ gridTemplateRows: `repeat(${numWeeks}, minmax(60px, 1fr))` }}
+        className={cn(
+          'flex-1 min-h-0 grid grid-cols-7 gap-px overflow-hidden bg-border/45',
+          bordered && 'bg-border/80',
+        )}
+        style={{ gridTemplateRows: `repeat(${numWeeks}, minmax(0, 1fr))` }}
       >
         {days.map((date, index) => {
           const weekStartIndex = Math.floor(index / 7) * 7;
@@ -164,7 +169,6 @@ export function MonthView({
               cardHeight={cardHeight}
               currentDate={currentDate}
               isPast={isPast}
-              bordered={bordered}
               transparentMode={transparentMode}
               cellBgStyle={cellBgStyle}
               onDateClick={onDateClick}
@@ -194,7 +198,6 @@ function MonthDayCell({
   cardHeight,
   currentDate,
   isPast,
-  bordered,
   transparentMode,
   cellBgStyle,
   onDateClick,
@@ -211,14 +214,13 @@ function MonthDayCell({
   cardHeight: number | undefined;
   currentDate: Date;
   isPast: boolean;
-  bordered: boolean;
   transparentMode: boolean;
   cellBgStyle: React.CSSProperties | undefined;
   onDateClick: (date: Date) => void;
   onEventClick: (event: CalendarEvent) => void;
   onItemClick?: (ref: OverlayItemRef) => void;
 }) {
-  const { timeFormat, displayTimezone } = useTimeFormat();
+  const { displayTimezone } = useTimeFormat();
   const today = isSameDay(date, toDisplayDate(new Date(), displayTimezone));
   const droppable = useDayDroppable({ date, enabled: cards && enableDnd });
 
@@ -228,29 +230,23 @@ function MonthDayCell({
       data-droppable-day={cards && enableDnd ? droppable.droppableId : undefined}
       onClick={() => onDateClick(date)}
       className={cn(
-        bordered && 'border border-border rounded-md',
         'relative cursor-pointer overflow-visible',
         !transparentMode && !cellBgStyle && 'bg-card/85 backdrop-blur-sm',
         'flex flex-col min-h-0',
-        !isSameMonth(date, currentDate) && [
-          'text-muted-foreground',
-          '[&>*:not([data-spanning-events])]:opacity-50',
-        ],
-        !transparentMode && !cellBgStyle && isPast && isSameMonth(date, currentDate) && 'bg-muted/65 text-muted-foreground',
         cards && enableDnd && droppable.isOver && 'ring-2 ring-seasonal-accent shadow-lg',
       )}
       style={cellBgStyle}
     >
-      {/* Today gets a blue bar; other days just show the date */}
-      {today ? (
-        <div className="bg-primary px-1 py-0.5 mb-0.5 rounded-t-[3px]">
-          <span className="text-sm font-bold text-primary-foreground">{format(date, 'd')}</span>
-        </div>
-      ) : (
-        <div className="text-sm font-medium px-1 pt-1 mb-0.5">
+      <div className="flex h-7 shrink-0 items-center justify-center">
+        <span className={cn(
+          'inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-xs font-medium',
+          today && 'bg-primary font-bold text-primary-foreground',
+          !today && isPast && 'text-muted-foreground',
+          !today && !isSameMonth(date, currentDate) && 'text-muted-foreground/55',
+        )}>
           {format(date, 'd')}
-        </div>
-      )}
+        </span>
+      </div>
 
       <SpanningEventRows
         date={date}
@@ -272,22 +268,8 @@ function MonthDayCell({
       ) : (
         <ul className="flex-1 overflow-y-auto space-y-0.5 list-none m-0 px-1 pb-1 pt-0">
           {dayEvents.map((event) => (
-            <li
-              key={event.id}
-              onClick={(e) => {
-                e.stopPropagation();
-                onEventClick(event);
-              }}
-              className={cn(
-                'text-xs px-1 rounded truncate cursor-pointer hover:opacity-80 hover:ring-2 hover:ring-seasonal-accent/50 transition-all',
-                event.allDay ? 'py-px' : 'py-0.5'
-              )}
-              style={event.allDay
-                ? { backgroundColor: event.color, color: '#fff', borderLeft: `2px solid ${event.color}` }
-                : { color: event.color }
-              }
-            >
-              {event.allDay ? event.title : `• ${formatDisplayTime(event.startTime, timeFormat, {}, displayTimezone)} ${event.title}`}
+            <li key={event.id}>
+              <InlineCalendarEvent event={event} onClick={onEventClick} />
             </li>
           ))}
         </ul>
@@ -319,6 +301,7 @@ function DayCardsCell({
   onEventClick: (event: CalendarEvent) => void;
   onItemClick?: (ref: OverlayItemRef) => void;
 }) {
+  const { displayTimezone } = useTimeFormat();
   const overlayItemCount = bucket ? bucket.meals.length + bucket.chores.length + bucket.tasks.length : 0;
   // Reserve ~22px for the popover trigger; each overlay row is ~24px (sm card)
   // plus the cell's 4px gap-1 separator. 20px under-reserved enough that event
@@ -359,7 +342,16 @@ function DayCardsCell({
             e.stopPropagation();
             onEventClick(event);
           }}
-          className="w-full text-left text-[10px] px-1 py-0.5 rounded bg-card/85 backdrop-blur-sm border border-border/40 shadow-sm truncate hover:bg-card transition-colors leading-tight"
+          className={cn(
+            'w-full text-left text-[10px] px-1 py-0.5 rounded bg-card/85 backdrop-blur-sm border border-border/40 shadow-sm truncate hover:bg-card transition-colors leading-tight',
+            isCalendarEventPast(
+              event.startTime,
+              event.endTime,
+              event.allDay,
+              new Date(),
+              displayTimezone,
+            ) && 'opacity-55 saturate-[0.65]',
+          )}
           style={{ borderLeft: `3px solid ${event.color}` }}
         >
           <span className="font-medium text-foreground">{event.title}</span>
