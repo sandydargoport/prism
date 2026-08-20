@@ -1,5 +1,6 @@
 import {
   eventOccursOnDisplayDay,
+  eventStartsOnDisplayDay,
   eventSpansMultipleDisplayDays,
   formatDisplayHour,
   formatDisplayTime,
@@ -99,6 +100,24 @@ describe('time format utilities', () => {
     const end = new Date('2026-08-23T17:00:00.000Z');
 
     expect(eventSpansMultipleDisplayDays(start, end, false, 'Europe/Warsaw')).toBe(true);
+  });
+
+  it('shows a timed event start only on its first displayed day', () => {
+    const start = new Date('2026-08-21T16:00:00.000Z');
+
+    expect(eventStartsOnDisplayDay(start, false, new Date(2026, 7, 21), 'Europe/Warsaw'))
+      .toBe(true);
+    expect(eventStartsOnDisplayDay(start, false, new Date(2026, 7, 22), 'Europe/Warsaw'))
+      .toBe(false);
+  });
+
+  it('uses floating UTC dates for all-day event starts', () => {
+    const start = new Date('2026-08-21T00:00:00.000Z');
+
+    expect(eventStartsOnDisplayDay(start, true, new Date(2026, 7, 21), 'America/Los_Angeles'))
+      .toBe(true);
+    expect(eventStartsOnDisplayDay(start, true, new Date(2026, 7, 20), 'America/Los_Angeles'))
+      .toBe(false);
   });
 
   it('does not treat an exact-midnight end as occupying another day', () => {

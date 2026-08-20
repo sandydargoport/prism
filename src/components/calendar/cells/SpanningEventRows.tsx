@@ -7,6 +7,7 @@ import type { CalendarEvent } from '@/types/calendar';
 import { useTimeFormat } from '@/components/providers';
 import {
   eventOccursOnDisplayDay,
+  eventStartsOnDisplayDay,
   formatDisplayTime,
   isCalendarEventPast,
 } from '@/lib/utils/timeFormat';
@@ -64,9 +65,15 @@ export function SpanningEventRows({
 
         if (!active) return <div key={event.id} aria-hidden className={rowHeight} />;
 
-        const label = event.allDay
-          ? event.title
-          : `${formatDisplayTime(event.startTime, timeFormat, {}, displayTimezone)} ${event.title}`;
+        const startsToday = eventStartsOnDisplayDay(
+          event.startTime,
+          event.allDay,
+          date,
+          displayTimezone,
+        );
+        const label = !event.allDay && startsToday
+          ? `${formatDisplayTime(event.startTime, timeFormat, {}, displayTimezone)} ${event.title}`
+          : event.title;
 
         return (
           <button

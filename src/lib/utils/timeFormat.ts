@@ -108,6 +108,22 @@ export function eventSpansMultipleDisplayDays(
   return getDisplayDateKey(eventStart, timeZone) !== getDisplayDateKey(inclusiveEnd, timeZone);
 }
 
+/** Return true when an event begins on the supplied displayed calendar day. */
+export function eventStartsOnDisplayDay(
+  start: Date | number,
+  allDay: boolean,
+  day: Date,
+  timeZone?: string,
+): boolean {
+  const eventStart = new Date(start);
+  if (Number.isNaN(eventStart.getTime())) return false;
+
+  const dayKey = format(day, 'yyyy-MM-dd');
+  return allDay
+    ? getUtcDateKey(eventStart) === dayKey
+    : getDisplayDateKey(eventStart, timeZone) === dayKey;
+}
+
 /**
  * Return true when an event has completely finished from the viewer's
  * perspective. All-day ranges use their floating, exclusive end date; timed

@@ -15,7 +15,13 @@ import type { CalendarEvent } from '@/types/calendar';
 import type { DayBucket } from '@/lib/hooks/useWeekViewData';
 import { useDayDroppable, getMealTime, getChoreTime, getTaskTime, parseTimeOfDay, formatTimeOfDay, type OverlayItemRef } from './cells';
 import { useTimeFormat } from '@/components/providers';
-import { eventOccursOnDisplayDay, formatDisplayTime, toDisplayDate, type TimeFormat } from '@/lib/utils/timeFormat';
+import {
+  eventOccursOnDisplayDay,
+  eventStartsOnDisplayDay,
+  formatDisplayTime,
+  toDisplayDate,
+  type TimeFormat,
+} from '@/lib/utils/timeFormat';
 
 const MEAL_FALLBACK_COLOR = '#10b981';
 const CHORE_FALLBACK_COLOR = '#f59e0b';
@@ -163,7 +169,7 @@ function AgendaDaySection({
 }) {
   const { timeFormat, displayTimezone } = useTimeFormat();
   const droppable = useDayDroppable({ date, enabled: cards && enableDnd });
-  const rows = buildAgendaRows({ events, bucket, onEventClick, mealColor, onItemClick, timeFormat, displayTimezone });
+  const rows = buildAgendaRows({ date, events, bucket, onEventClick, mealColor, onItemClick, timeFormat, displayTimezone });
   const displayRows = maxEvents > 0 ? rows.slice(0, maxEvents) : rows;
   const remainingCount = maxEvents > 0 ? rows.length - maxEvents : 0;
 
@@ -207,6 +213,7 @@ function AgendaDaySection({
 }
 
 function buildAgendaRows({
+  date,
   events,
   bucket,
   onEventClick,
@@ -215,6 +222,7 @@ function buildAgendaRows({
   timeFormat,
   displayTimezone,
 }: {
+  date: Date;
   events: CalendarEvent[];
   bucket?: DayBucket;
   onEventClick?: (event: CalendarEvent) => void;
@@ -227,15 +235,26 @@ function buildAgendaRows({
 
   for (const event of events) {
     const allDay = event.allDay;
+    const startsToday = eventStartsOnDisplayDay(
+      event.startTime,
+      event.allDay,
+      date,
+      displayTimezone,
+    );
+    const floating = allDay || !startsToday;
     rows.push({
       key: `event-${event.id}`,
-      sortMinutes: allDay
+      sortMinutes: floating
         ? -1
         : toDisplayDate(event.startTime, displayTimezone).getHours() * 60
           + toDisplayDate(event.startTime, displayTimezone).getMinutes(),
-      floating: allDay,
+      floating,
       stripeColor: event.color,
-      timeLabel: allDay ? 'All day' : formatDisplayTime(event.startTime, timeFormat, {}, displayTimezone),
+      timeLabel: allDay
+        ? 'All day'
+        : startsToday
+          ? formatDisplayTime(event.startTime, timeFormat, {}, displayTimezone)
+          : 'Continues',
       title: event.title,
       subtitle: event.location,
       onClick: onEventClick ? () => onEventClick(event) : undefined,

@@ -106,6 +106,41 @@ describe('SpanningEventRows', () => {
 
     expect(getByRole('button').style.color).toBe('rgb(255, 255, 255)');
   });
+
+  it('does not repeat a timed event start time on continuation days', () => {
+    const timedEvent: CalendarEvent = {
+      ...event,
+      title: 'Weekend trip',
+      allDay: false,
+      startTime: new Date('2026-08-21T16:00:00.000Z'),
+      endTime: new Date('2026-08-23T17:00:00.000Z'),
+    };
+
+    const startDay = new Date(2026, 7, 21);
+    const continuationDay = new Date(2026, 7, 22);
+    const rowDates = [startDay, continuationDay];
+    const { container } = render(
+      <div>
+        <SpanningEventRows
+          date={startDay}
+          rowDates={rowDates}
+          events={[timedEvent]}
+          onEventClick={() => {}}
+        />
+        <SpanningEventRows
+          date={continuationDay}
+          rowDates={rowDates}
+          events={[timedEvent]}
+          onEventClick={() => {}}
+        />
+      </div>
+    );
+
+    const buttons = container.querySelectorAll('button');
+    expect(buttons[0]!.textContent).toBe('18:00 Weekend trip');
+    expect(buttons[1]!.textContent).toBe('');
+    expect(buttons[1]!.title).toBe('Weekend trip');
+  });
 });
 
 describe('InlineCalendarEvent', () => {

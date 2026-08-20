@@ -15,7 +15,12 @@ import { useWidgetBgOverride } from '@/components/widgets/WidgetContainer';
 import { useOrientation } from '@/lib/hooks/useOrientation';
 import type { CalendarEvent } from '@/types/calendar';
 import { useTimeFormat } from '@/components/providers';
-import { eventOccursOnDisplayDay, formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
+import {
+  eventOccursOnDisplayDay,
+  eventStartsOnDisplayDay,
+  formatDisplayTime,
+  toDisplayDate,
+} from '@/lib/utils/timeFormat';
 
 export interface TwoWeekViewProps {
   currentDate: Date;
@@ -106,7 +111,14 @@ export function TwoWeekView({
                 : { color: event.color }
               }
             >
-              {event.allDay ? event.title : `• ${formatDisplayTime(event.startTime, timeFormat, {}, displayTimezone)} ${event.title}`}
+              {event.allDay || !eventStartsOnDisplayDay(
+                event.startTime,
+                false,
+                date,
+                displayTimezone,
+              )
+                ? event.title
+                : `• ${formatDisplayTime(event.startTime, timeFormat, {}, displayTimezone)} ${event.title}`}
             </button>
           ))}
         </div>
