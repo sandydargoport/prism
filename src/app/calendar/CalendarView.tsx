@@ -543,6 +543,7 @@ export function CalendarView() {
                   bucketsByDate={overlaysActive ? filteredBucketsByDate : undefined}
                   enableDnd={overlaysActive}
                   onItemClick={handleOverlayItemClick}
+                  showMonthHeader={false}
                 />
               )}
               {viewType === 'week' && (

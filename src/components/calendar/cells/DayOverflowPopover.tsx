@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import type { CalendarEvent } from '@/types/calendar';
 import { useTimeFormat } from '@/components/providers';
-import { formatDisplayTime } from '@/lib/utils/timeFormat';
+import { formatDisplayTime, isCalendarEventPast } from '@/lib/utils/timeFormat';
 
 interface DayOverflowPopoverProps {
   /** The date this popover represents — shown in the popover header. */
@@ -68,7 +68,16 @@ export function DayOverflowPopover({
                   onEventClick(event);
                   setOpen(false);
                 }}
-                className="w-full text-left px-2 py-1 rounded bg-card hover:bg-accent transition-colors flex items-center gap-2 border border-border/40"
+                className={cn(
+                  'w-full text-left px-2 py-1 rounded bg-card hover:bg-accent transition-colors flex items-center gap-2 border border-border/40',
+                  isCalendarEventPast(
+                    event.startTime,
+                    event.endTime,
+                    event.allDay,
+                    new Date(),
+                    displayTimezone,
+                  ) && 'opacity-55 saturate-[0.65]',
+                )}
                 style={{ borderLeft: `3px solid ${event.color}` }}
               >
                 {!event.allDay && (

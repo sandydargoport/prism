@@ -20,7 +20,15 @@ import type { DayBucket } from '@/lib/hooks/useWeekViewData';
 import { DroppableOverlayCell, useDayDroppable, getMealTime, getChoreTime, getTaskTime, formatTimeOfDay, type OverlayItemRef } from './cells';
 import { WeekItemCard } from './cells/WeekItemCard';
 import { useTimeFormat } from '@/components/providers';
-import { formatDisplayHour, formatDisplayTimeRange, toDisplayDate } from '@/lib/utils/timeFormat';
+import {
+  eventOccursOnDisplayDay,
+  eventSpansMultipleDisplayDays,
+  eventStartsOnDisplayDay,
+  formatDisplayHour,
+  formatDisplayTime,
+  formatDisplayTimeRange,
+  toDisplayDate,
+} from '@/lib/utils/timeFormat';
 
 export interface DayViewSideBySideProps {
   currentDate: Date;
@@ -81,16 +89,39 @@ export function DayViewSideBySide({
 
   // Get visible hours (filtered if hidden mode is enabled)
   const dayStart = startOfDay(currentDate);
-  const dayEvents = events.filter((event) => {
-    const displayStart = toDisplayDate(event.startTime, displayTimezone);
-    const displayEnd = toDisplayDate(event.endTime, displayTimezone);
-    return event.allDay
-      ? displayStart <= dayStart && displayEnd > dayStart
-      : isSameDay(displayStart, currentDate);
-  });
+  const dayEvents = events.filter((event) => eventOccursOnDisplayDay(
+    event.startTime,
+    event.endTime,
+    event.allDay,
+    currentDate,
+    displayTimezone,
+  ));
 
-  const allDayEvents = dayEvents.filter((e) => e.allDay);
-  const timedEvents = dayEvents.filter((e) => !e.allDay);
+  // Timed events that cross midnight belong in the persistent header rather
+  // than producing an oversized block in the hourly grid on every day.
+  const allDayEvents = dayEvents.filter((event) =>
+    event.allDay || eventSpansMultipleDisplayDays(
+      event.startTime,
+      event.endTime,
+      false,
+      displayTimezone,
+    ));
+  const timedEvents = dayEvents.filter((event) =>
+    !event.allDay && !eventSpansMultipleDisplayDays(
+      event.startTime,
+      event.endTime,
+      false,
+      displayTimezone,
+    ));
+  const headerLabel = (event: CalendarEvent) =>
+    !event.allDay && eventStartsOnDisplayDay(
+      event.startTime,
+      false,
+      currentDate,
+      displayTimezone,
+    )
+      ? `${formatDisplayTime(event.startTime, timeFormat, {}, displayTimezone)} ${event.title}`
+      : event.title;
 
   const hours = getVisibleHours(timedEvents.map((event) => ({
     ...event,
@@ -210,7 +241,7 @@ export function DayViewSideBySide({
                               : { backgroundColor: event.color, color: '#fff', borderLeft: `2px solid ${event.color}` }
                           }
                         >
-                          {event.title}
+                          {headerLabel(event)}
                         </button>
                       ))}
                     </div>

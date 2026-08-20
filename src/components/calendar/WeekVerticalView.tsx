@@ -18,7 +18,13 @@ import type { CalendarNote } from '@/lib/hooks/useCalendarNotes';
 import type { DayBucket } from '@/lib/hooks/useWeekViewData';
 import { DroppableOverlayCell, useDayDroppable, type OverlayItemRef } from './cells';
 import { useTimeFormat } from '@/components/providers';
-import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
+import {
+  eventOccursOnDisplayDay,
+  eventStartsOnDisplayDay,
+  formatDisplayTime,
+  isCalendarEventPast,
+  toDisplayDate,
+} from '@/lib/utils/timeFormat';
 
 export interface WeekVerticalViewProps {
   currentDate: Date;
@@ -69,7 +75,6 @@ export function WeekVerticalView({
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const now = toDisplayDate(new Date(), displayTimezone);
   const today = startOfDay(now);
-  const currentHour = now.getHours();
 
   // Determine display groups (same logic as DayViewSideBySide)
   const showAllInOne = calendarGroups.length === 0 || mergedView;
@@ -124,7 +129,6 @@ export function WeekVerticalView({
           getEventsForGroup={getEventsForGroup}
           bordered={bordered}
           cellBgStyle={cellBgStyle}
-          currentHour={currentHour}
           onEventClick={onEventClick}
           showNotes={showNotes}
           notesByDate={notesByDate}
@@ -148,7 +152,6 @@ function WeekListDayRow({
   getEventsForGroup,
   bordered,
   cellBgStyle,
-  currentHour,
   onEventClick,
   showNotes,
   notesByDate,
@@ -166,7 +169,6 @@ function WeekListDayRow({
   getEventsForGroup: (dayEvents: CalendarEvent[], gid: string) => CalendarEvent[];
   bordered: boolean;
   cellBgStyle: React.CSSProperties | undefined;
-  currentHour: number;
   onEventClick: (event: CalendarEvent) => void;
   showNotes: boolean;
   notesByDate: Map<string, CalendarNote> | undefined;
@@ -183,16 +185,21 @@ function WeekListDayRow({
   const isCurrentDay = isSameDay(day, today);
   const isPast = isBefore(dayStart, today);
 
-  const dayEvents = events.filter((event) => {
-    const eventStart = toDisplayDate(event.startTime, displayTimezone);
-    const eventEnd = toDisplayDate(event.endTime, displayTimezone);
-    return eventStart < addDays(dayStart, 1) && eventEnd > dayStart;
-  });
+  const dayEvents = events.filter((event) => eventOccursOnDisplayDay(
+    event.startTime,
+    event.endTime,
+    event.allDay,
+    day,
+    displayTimezone,
+  ));
 
   const allDayEvents = dayEvents.filter((e) => e.allDay);
-  const timedEvents = dayEvents.filter((e) => !e.allDay).sort(
-    (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
-  );
+  const timedEvents = dayEvents.filter((e) => !e.allDay).sort((a, b) => {
+    const aStartsToday = eventStartsOnDisplayDay(a.startTime, false, day, displayTimezone);
+    const bStartsToday = eventStartsOnDisplayDay(b.startTime, false, day, displayTimezone);
+    if (aStartsToday !== bStartsToday) return aStartsToday ? 1 : -1;
+    return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+  });
 
   const droppable = useDayDroppable({ date: day, enabled: cards && enableDnd });
 
@@ -267,12 +274,12 @@ function WeekListDayRow({
             return (
               <div key={group.id} className="flex-1 min-w-0 border-l border-border p-1 space-y-0.5">
                 <DayEventList
+                  day={day}
                   allDayEvents={groupAllDay}
                   timedEvents={groupTimed}
                   onEventClick={onEventClick}
                   isPastDay={isPast && !isCurrentDay}
                   isCurrentDay={isCurrentDay}
-                  currentHour={currentHour}
                   cards={cards}
                 />
                 {groupBucket && (
@@ -293,12 +300,12 @@ function WeekListDayRow({
       ) : (
         <div className="flex-1 p-1.5 min-w-0 space-y-1">
           <DayEventList
+            day={day}
             allDayEvents={allDayEvents}
             timedEvents={timedEvents}
             onEventClick={onEventClick}
             isPastDay={isPast && !isCurrentDay}
             isCurrentDay={isCurrentDay}
-            currentHour={currentHour}
             cards={cards}
           />
           {bucketsByDate && (
@@ -331,20 +338,20 @@ function WeekListDayRow({
 
 /** Renders all-day events then timed events in chronological order */
 function DayEventList({
+  day,
   allDayEvents,
   timedEvents,
   onEventClick,
   isPastDay = false,
   isCurrentDay = false,
-  currentHour = 0,
   cards = false,
 }: {
+  day: Date;
   allDayEvents: CalendarEvent[];
   timedEvents: CalendarEvent[];
   onEventClick: (event: CalendarEvent) => void;
   isPastDay?: boolean;
   isCurrentDay?: boolean;
-  currentHour?: number;
   cards?: boolean;
 }) {
   const { timeFormat, displayTimezone } = useTimeFormat();
@@ -372,7 +379,19 @@ function DayEventList({
         </button>
       ))}
       {timedEvents.map((event) => {
-        const isPastEvent = isPastDay || (isCurrentDay && toDisplayDate(event.startTime, displayTimezone).getHours() < currentHour);
+        const startsToday = eventStartsOnDisplayDay(
+          event.startTime,
+          false,
+          day,
+          displayTimezone,
+        );
+        const isPastEvent = isPastDay || (isCurrentDay && isCalendarEventPast(
+          event.startTime,
+          event.endTime,
+          false,
+          new Date(),
+          displayTimezone,
+        ));
         return (
           <button
             key={event.id}
@@ -390,7 +409,11 @@ function DayEventList({
                 : { backgroundColor: event.color, borderLeft: `3px solid ${event.color}` }
             }
           >
-            <span className={cn('mr-1', cards ? 'text-muted-foreground' : 'opacity-80')}>{formatDisplayTime(event.startTime, timeFormat, {}, displayTimezone)}</span>
+            {startsToday && (
+              <span className={cn('mr-1', cards ? 'text-muted-foreground' : 'opacity-80')}>
+                {formatDisplayTime(event.startTime, timeFormat, {}, displayTimezone)}
+              </span>
+            )}
             <span className="font-medium">{event.title}</span>
           </button>
         );

@@ -55,6 +55,140 @@ export function getDisplayDateKey(date: Date | number, timeZone?: string): strin
   return format(toDisplayDate(date, timeZone), 'yyyy-MM-dd');
 }
 
+function getUtcDateKey(date: Date): string {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function nextUtcDateKey(date: Date): string {
+  return getUtcDateKey(new Date(Date.UTC(
+    date.getUTCFullYear(),
+    date.getUTCMonth(),
+    date.getUTCDate() + 1,
+  )));
+}
+
+function getAllDayExclusiveEndKey(eventStart: Date, eventEnd: Date): string {
+  const startKey = getUtcDateKey(eventStart);
+  const endIsExclusiveMidnight = eventEnd > eventStart
+    && eventEnd.getUTCHours() === 0
+    && eventEnd.getUTCMinutes() === 0
+    && eventEnd.getUTCSeconds() === 0
+    && eventEnd.getUTCMilliseconds() === 0;
+  const endKey = endIsExclusiveMidnight
+    ? getUtcDateKey(eventEnd)
+    : nextUtcDateKey(eventEnd);
+
+  return endKey > startKey ? endKey : nextUtcDateKey(eventStart);
+}
+
+/** Return true when an event occupies more than one displayed calendar day. */
+export function eventSpansMultipleDisplayDays(
+  start: Date | number,
+  end: Date | number,
+  allDay: boolean,
+  timeZone?: string,
+): boolean {
+  const eventStart = new Date(start);
+  const eventEnd = new Date(end);
+  if (
+    Number.isNaN(eventStart.getTime())
+    || Number.isNaN(eventEnd.getTime())
+    || eventEnd <= eventStart
+  ) return false;
+
+  if (allDay) {
+    return getAllDayExclusiveEndKey(eventStart, eventEnd) > nextUtcDateKey(eventStart);
+  }
+
+  // An event ending exactly at midnight does not occupy the following day.
+  const inclusiveEnd = new Date(eventEnd.getTime() - 1);
+  return getDisplayDateKey(eventStart, timeZone) !== getDisplayDateKey(inclusiveEnd, timeZone);
+}
+
+/** Return true when an event begins on the supplied displayed calendar day. */
+export function eventStartsOnDisplayDay(
+  start: Date | number,
+  allDay: boolean,
+  day: Date,
+  timeZone?: string,
+): boolean {
+  const eventStart = new Date(start);
+  if (Number.isNaN(eventStart.getTime())) return false;
+
+  const dayKey = format(day, 'yyyy-MM-dd');
+  return allDay
+    ? getUtcDateKey(eventStart) === dayKey
+    : getDisplayDateKey(eventStart, timeZone) === dayKey;
+}
+
+/**
+ * Return true when an event has completely finished from the viewer's
+ * perspective. All-day ranges use their floating, exclusive end date; timed
+ * events use their real instant. An event that is still in progress is never
+ * treated as past.
+ */
+export function isCalendarEventPast(
+  start: Date | number,
+  end: Date | number,
+  allDay: boolean,
+  now: Date | number = new Date(),
+  timeZone?: string,
+): boolean {
+  const eventStart = new Date(start);
+  const eventEnd = new Date(end);
+  const current = new Date(now);
+  if (
+    Number.isNaN(eventStart.getTime())
+    || Number.isNaN(eventEnd.getTime())
+    || Number.isNaN(current.getTime())
+  ) return false;
+
+  if (allDay) {
+    return getAllDayExclusiveEndKey(eventStart, eventEnd) <= getDisplayDateKey(current, timeZone);
+  }
+
+  return eventEnd <= current;
+}
+
+/**
+ * Test whether an event belongs to a displayed calendar day.
+ *
+ * All-day events are floating date ranges: their UTC date fields are the
+ * intended calendar dates and must not be shifted into the display timezone.
+ * Google uses an exclusive midnight end, while Prism also accepts its legacy
+ * inclusive end-of-day representation.
+ */
+export function eventOccursOnDisplayDay(
+  start: Date | number,
+  end: Date | number,
+  allDay: boolean,
+  day: Date,
+  timeZone?: string,
+): boolean {
+  const eventStart = new Date(start);
+  const eventEnd = new Date(end);
+  if (Number.isNaN(eventStart.getTime()) || Number.isNaN(eventEnd.getTime())) return false;
+
+  if (allDay) {
+    const dayKey = format(day, 'yyyy-MM-dd');
+    const startKey = getUtcDateKey(eventStart);
+    const endExclusiveKey = getAllDayExclusiveEndKey(eventStart, eventEnd);
+
+    return dayKey >= startKey && dayKey < endExclusiveKey;
+  }
+
+  const dayStart = new Date(day);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(dayStart);
+  dayEnd.setDate(dayEnd.getDate() + 1);
+  const displayStart = toDisplayDate(eventStart, timeZone);
+  const displayEnd = toDisplayDate(eventEnd, timeZone);
+  return displayStart < dayEnd && displayEnd > dayStart;
+}
+
 /**
  * Convert date/time fields entered in the selected display timezone into the
  * real instant that should be persisted. This is the inverse of
