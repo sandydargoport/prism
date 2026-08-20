@@ -14,6 +14,29 @@ export function isDisplayTimezoneMode(value: unknown): value is DisplayTimezoneM
   return value === 'household' || value === 'device';
 }
 
+// Constructing an Intl.DateTimeFormat is expensive (~1ms), and the calendar
+// helpers call the wall-clock conversion per event per visible day, so building
+// a formatter per call turns a month view into seconds of jank. Cache one
+// formatter per timezone; formatToParts on a cached instance is cheap.
+const wallClockFormatterCache = new Map<string, Intl.DateTimeFormat>();
+function getWallClockFormatter(timeZone: string): Intl.DateTimeFormat {
+  let formatter = wallClockFormatterCache.get(timeZone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat('en-GB', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    });
+    wallClockFormatterCache.set(timeZone, formatter);
+  }
+  return formatter;
+}
+
 /**
  * Return a presentation-only Date whose local fields match `date` in
  * `timeZone`. This is useful with date-fns, whose formatters always use the
@@ -24,16 +47,7 @@ export function toDisplayDate(date: Date | number, timeZone?: string): Date {
   if (!timeZone || Number.isNaN(source.getTime())) return source;
 
   try {
-    const parts = new Intl.DateTimeFormat('en-GB', {
-      timeZone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hourCycle: 'h23',
-    }).formatToParts(source);
+    const parts = getWallClockFormatter(timeZone).formatToParts(source);
     const value = (type: Intl.DateTimeFormatPartTypes) =>
       Number(parts.find((part) => part.type === type)?.value);
 
@@ -52,7 +66,16 @@ export function toDisplayDate(date: Date | number, timeZone?: string): Date {
 }
 
 export function getDisplayDateKey(date: Date | number, timeZone?: string): string {
-  return format(toDisplayDate(date, timeZone), 'yyyy-MM-dd');
+  const source = new Date(date);
+  if (!timeZone || Number.isNaN(source.getTime())) return format(source, 'yyyy-MM-dd');
+  try {
+    const parts = getWallClockFormatter(timeZone).formatToParts(source);
+    const value = (type: Intl.DateTimeFormatPartTypes) =>
+      parts.find((part) => part.type === type)?.value;
+    return `${value('year')}-${value('month')}-${value('day')}`;
+  } catch {
+    return format(source, 'yyyy-MM-dd');
+  }
 }
 
 function getUtcDateKey(date: Date): string {
@@ -212,16 +235,7 @@ export function fromDisplayDateTime(
   let instant = targetWallTime;
 
   try {
-    const formatter = new Intl.DateTimeFormat('en-GB', {
-      timeZone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hourCycle: 'h23',
-    });
+    const formatter = getWallClockFormatter(timeZone);
 
     // A second pass handles dates where the first offset guess crosses a DST
     // boundary. Three passes keep the operation stable for unusual offsets.
