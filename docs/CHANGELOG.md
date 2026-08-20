@@ -4,6 +4,8 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.15.2] – 2026-08-20
+
 ### Calendar
 - **Google calendars you've hidden in your list are now discoverable, and hiding one in Google no longer removes it from Prism.** Prism now sees all your Google calendars regardless of their visibility in your Google sidebar. Newly-discovered hidden calendars are added switched **off**, so they're available in Manage Calendars without cluttering your dashboard — and your on/off choices in Prism are now independent of Google's list, so tidying up your Google sidebar won't make calendars vanish from your board.
 
