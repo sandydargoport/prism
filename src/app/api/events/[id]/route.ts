@@ -349,7 +349,7 @@ export async function PATCH(
           logError('Failed to update event on Google Calendar:', error);
           return NextResponse.json(
             {
-              error: `Google Calendar could not be updated. Your local event was left unchanged: ${error instanceof Error ? error.message : 'Unknown error'}`,
+              error: 'Google Calendar could not be updated. Your local event was left unchanged.',
             },
             { status: 502 }
           );

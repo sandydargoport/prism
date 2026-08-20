@@ -365,7 +365,7 @@ export async function POST(request: NextRequest) {
           externalEventId = googleEvent.id;
         } catch (error) {
           logError('Failed to create event on Google Calendar:', error);
-          googleWarning = `Event was saved locally but could not be synced to Google Calendar: ${error instanceof Error ? error.message : 'Unknown error'}`;
+          googleWarning = 'Event was saved locally but could not be synced to Google Calendar.';
         }
       }
     }
