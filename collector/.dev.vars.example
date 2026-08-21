@@ -1,0 +1,4 @@
+# Local secrets for the Prism telemetry collector.
+# Copy this file to collector/.dev.vars (which is gitignored) and fill in the
+# value. Used by `wrangler dev` for local runs and by `npm run stats`.
+STATS_TOKEN=
