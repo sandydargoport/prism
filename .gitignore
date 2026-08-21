@@ -8,6 +8,9 @@
 .env.production
 .env.production.local
 !.env.example
+
+# Wrangler local secrets (telemetry collector). Keep tokens out of git.
+.dev.vars
 .claude/settings.local.json
 
 # Dependencies
