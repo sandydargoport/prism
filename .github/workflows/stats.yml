@@ -1,0 +1,79 @@
+name: Install stats
+
+# Publishes an aggregate install-stats snapshot into a single pinned issue,
+# and appends one data point per day so the issue's stacked-bar chart shows
+# adoption by source over time. The token is a repo Actions secret and never
+# leaves the runner; nothing is committed to any branch.
+
+on:
+  schedule:
+    - cron: '17 12 * * *' # daily, ~12:17 UTC
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  contents: read
+
+concurrency:
+  group: install-stats
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Fetch current stats
+        env:
+          STATS_TOKEN: ${{ secrets.STATS_TOKEN }}
+        run: |
+          if [ -z "${STATS_TOKEN}" ]; then
+            echo "::error::STATS_TOKEN secret is not set. Add it under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          bash scripts/stats.sh > stats.json
+          test -s stats.json
+
+      - name: Find existing dashboard issue
+        id: find
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          num=$(gh issue list --state all --limit 200 --json number,title \
+                  --jq 'map(select(.title == "📊 Install stats")) | .[0].number // empty')
+          echo "number=${num}" >> "$GITHUB_OUTPUT"
+
+      - name: Read previous issue body
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -n "${{ steps.find.outputs.number }}" ]; then
+            gh issue view "${{ steps.find.outputs.number }}" --json body --jq .body > prev.md
+          else
+            : > prev.md
+          fi
+
+      - name: Build issue body
+        run: node scripts/build-stats-issue.mjs
+
+      - name: Create or update the pinned issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          num="${{ steps.find.outputs.number }}"
+          if [ -n "${num}" ]; then
+            gh issue edit "${num}" --body-file body.md
+            echo "Updated issue #${num}"
+          else
+            url=$(gh issue create --title "📊 Install stats" --body-file body.md)
+            num="${url##*/}"
+            echo "Created issue #${num}"
+            id=$(gh issue view "${num}" --json id --jq .id)
+            gh api graphql -f query='mutation($id:ID!){ pinIssue(input:{issueId:$id}){ issue { number } } }' -f id="${id}" \
+              || echo "::warning::Could not pin the issue automatically. Pin it once by hand and future runs will keep updating it."
+          fi
