@@ -4,6 +4,8 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.16.0] – 2026-08-21
+
 ### Display
 - **Choose 12-hour or 24-hour time, family-wide.** A new time-format preference under Settings → Display applies everywhere times appear — clocks, weather, every calendar view, and the Away/Babysitter overlays — instead of each surface deciding on its own. Thanks to @m4rtski for the contribution.
 - **Pin a display timezone for the household.** You can now set the timezone Prism renders times in (defaults to each device's own, so nothing changes unless you set it) — keeping calendar, reminder, weather, and clock times consistent across devices. Also from @m4rtski's contribution.
