@@ -119,20 +119,29 @@ async function handleStats(url, env) {
 
   const q = (sql) => env.DB.prepare(sql).all().then((r) => r.results);
 
-  const [total, active7, active30, byVersion, byDeployment] = await Promise.all([
-    env.DB.prepare('SELECT COUNT(*) AS n FROM checkins').first('n'),
-    env.DB.prepare(`SELECT COUNT(*) AS n FROM checkins WHERE last_seen >= datetime('now','-7 days')`).first('n'),
-    env.DB.prepare(`SELECT COUNT(*) AS n FROM checkins WHERE last_seen >= datetime('now','-30 days')`).first('n'),
-    q(`SELECT version, COUNT(*) AS n FROM checkins WHERE last_seen >= datetime('now','-30 days') GROUP BY version ORDER BY n DESC`),
-    q(`SELECT deployment, COUNT(*) AS n FROM checkins WHERE last_seen >= datetime('now','-30 days') GROUP BY deployment ORDER BY n DESC`),
-  ]);
+  const [total, active7, active30, new7, new30, byVersion, byDeployment, byArch, newInstallsByWeek] =
+    await Promise.all([
+      env.DB.prepare('SELECT COUNT(*) AS n FROM checkins').first('n'),
+      env.DB.prepare(`SELECT COUNT(*) AS n FROM checkins WHERE last_seen >= datetime('now','-7 days')`).first('n'),
+      env.DB.prepare(`SELECT COUNT(*) AS n FROM checkins WHERE last_seen >= datetime('now','-30 days')`).first('n'),
+      env.DB.prepare(`SELECT COUNT(*) AS n FROM checkins WHERE first_seen >= datetime('now','-7 days')`).first('n'),
+      env.DB.prepare(`SELECT COUNT(*) AS n FROM checkins WHERE first_seen >= datetime('now','-30 days')`).first('n'),
+      q(`SELECT version, COUNT(*) AS n FROM checkins WHERE last_seen >= datetime('now','-30 days') GROUP BY version ORDER BY n DESC`),
+      q(`SELECT deployment, COUNT(*) AS n FROM checkins WHERE last_seen >= datetime('now','-30 days') GROUP BY deployment ORDER BY n DESC`),
+      q(`SELECT COALESCE(arch,'unknown') AS arch, COUNT(*) AS n FROM checkins WHERE last_seen >= datetime('now','-30 days') GROUP BY COALESCE(arch,'unknown') ORDER BY n DESC`),
+      q(`SELECT strftime('%Y-%W', first_seen) AS week, COUNT(*) AS n FROM checkins GROUP BY week ORDER BY week`),
+    ]);
 
   return json({
     totalInstalls: total,
     activeInstalls7d: active7,
     activeInstalls30d: active30,
+    newInstalls7d: new7,
+    newInstalls30d: new30,
     byVersion,
     byDeployment,
+    byArch,
+    newInstallsByWeek,
     generatedAt: new Date().toISOString(),
   });
 }
