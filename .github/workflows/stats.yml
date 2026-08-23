@@ -39,6 +39,14 @@ jobs:
           bash scripts/stats.sh > stats.json
           test -s stats.json
 
+      # Registry download counts, scraped from the public package pages because
+      # GHCR publishes no download API. Fail-soft on purpose: a GitHub markup
+      # change must not take the telemetry dashboard down with it — the
+      # downloads section just disappears until the parser is fixed.
+      - name: Fetch registry download counts
+        continue-on-error: true
+        run: node scripts/fetch-ghcr-downloads.mjs
+
       - name: Find existing dashboard issue
         id: find
         env:

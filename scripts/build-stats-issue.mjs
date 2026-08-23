@@ -1,9 +1,10 @@
 // Builds the body for the pinned "Install stats" dashboard issue.
 //
 // Reads:
-//   stats.json  - the current /stats snapshot from the collector Worker
-//   prev.md     - the existing issue body (may be empty on first run); its
-//                 embedded history block is the rolling time-series datastore
+//   stats.json     - the current /stats snapshot from the collector Worker
+//   downloads.json - optional registry download counts (fetch-ghcr-downloads.mjs)
+//   prev.md        - the existing issue body (may be empty on first run); its
+//                    embedded history block is the rolling time-series datastore
 // Writes:
 //   body.md     - the new issue body (tables + stacked-bar charts + refreshed
 //                 hidden history)
@@ -31,17 +32,31 @@ const SOURCE_COLORS = {
 };
 const PALETTE = ['#0984e3', '#00b894', '#fdcb6e', '#e17055', '#6c5ce7', '#d63031', '#00cec9', '#e84393'];
 
-function readHistory(prev) {
+// Published images, coloured to match the source palette above.
+const PACKAGE_COLORS = {
+  prism: '#2496ed',
+  'prism-ha-amd64': '#41bdf5',
+  'prism-ha-aarch64': '#7b61ff',
+};
+
+// The embedded block holds two independent series: `points` (install snapshots,
+// one per run) and `downloads` (registry pulls, one per calendar day). A body
+// written before downloads existed simply yields an empty second series.
+function readStore(prev) {
+  const empty = { points: [], downloads: [] };
   const start = prev.indexOf(HISTORY_OPEN);
-  if (start === -1) return [];
+  if (start === -1) return empty;
   const rest = prev.slice(start + HISTORY_OPEN.length);
   const end = rest.indexOf(HISTORY_CLOSE);
   const raw = (end === -1 ? rest : rest.slice(0, end)).trim();
   try {
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed.points) ? parsed.points : [];
+    return {
+      points: Array.isArray(parsed.points) ? parsed.points : [],
+      downloads: Array.isArray(parsed.downloads) ? parsed.downloads : [],
+    };
   } catch {
-    return [];
+    return empty;
   }
 }
 
@@ -72,7 +87,7 @@ function barUrl(rows, labelKey, title) {
     type: 'bar',
     data: {
       labels: rows.map((r) => r[labelKey]),
-      datasets: [{ label: 'new installs', data: rows.map((r) => r.n), backgroundColor: '#00b894' }],
+      datasets: [{ label: 'newly visible', data: rows.map((r) => r.n), backgroundColor: '#00b894' }],
     },
     options: {
       plugins: { title: { display: true, text: title }, legend: { display: false } },
@@ -84,7 +99,7 @@ function barUrl(rows, labelKey, title) {
 
 const stats = JSON.parse(readFileSync('stats.json', 'utf8'));
 const prev = existsSync('prev.md') ? readFileSync('prev.md', 'utf8') : '';
-const history = readHistory(prev);
+const { points: history, downloads: dlHistoryPrev } = readStore(prev);
 const today = (process.env.STATS_DATE || new Date().toISOString().slice(0, 10)).trim();
 
 const toMap = (arr, key) =>
@@ -105,14 +120,24 @@ const rows = (arr, key) =>
   arr && arr.length ? arr.map((r) => `| ${r[key]} | ${r.n} |`).join('\n') : '| _(none yet)_ | |';
 
 // Sections that only appear once the collector exposes the fields.
+// "Newly visible", not "new": the collector's first_seen is the first time an
+// install ever checked in, which for anything installed before the update check
+// shipped (1.15.0, 2026-08-19) is its upgrade date, not its install date. Older
+// installs therefore arrive as they upgrade, and labelling that "new installs"
+// would read as growth that never happened.
 const newInstallsRows =
   stats.newInstalls7d != null || stats.newInstalls30d != null
-    ? `| New installs (7 days) | ${stats.newInstalls7d ?? 0} |\n| New installs (30 days) | ${stats.newInstalls30d ?? 0} |\n`
+    ? `| Newly visible (7 days) | ${stats.newInstalls7d ?? 0} |\n| Newly visible (30 days) | ${stats.newInstalls30d ?? 0} |\n`
     : '';
 
 const growthSection =
   Array.isArray(stats.newInstallsByWeek) && stats.newInstallsByWeek.length
-    ? `\n## New installs per week\n\n![New installs per week](${barUrl(stats.newInstallsByWeek, 'week', 'New installs per week')})\n`
+    ? `\n## Newly visible installs per week
+
+_First check-in, not install date. Installs predating 1.15.0 appear here when
+they upgrade, so expect a ramp that reflects upgrade adoption, not new users._
+
+![Newly visible installs per week](${barUrl(stats.newInstallsByWeek, 'week', 'Newly visible installs per week')})\n`
     : '';
 
 const archSection =
@@ -120,19 +145,72 @@ const archSection =
     ? `\n## By architecture (last 30 days)\n\n| Arch | Installs |\n|---|---|\n${rows(stats.byArch, 'arch')}\n`
     : '';
 
+// --- Registry downloads -----------------------------------------------------
+// GitHub serves a rolling 30-day window per package, so every run backfills
+// anything we missed and corrects the most recent day (which arrives partial).
+// We keep our own copy so the series survives past GitHub's 30-day horizon.
+const dlPackages = existsSync('downloads.json')
+  ? JSON.parse(readFileSync('downloads.json', 'utf8')).packages ?? {}
+  : {};
+
+const byDate = new Map(dlHistoryPrev.map((p) => [p.date, p]));
+for (const [name, info] of Object.entries(dlPackages)) {
+  for (const { date, count } of info.daily || []) {
+    const point = byDate.get(date) ?? { date, byPkg: {} };
+    point.byPkg = { ...point.byPkg, [name]: count };
+    byDate.set(date, point);
+  }
+}
+// Bounded so the embedded datastore can't grow the issue body past GitHub's
+// 65k limit — a couple of years of daily points is far more than we plot.
+const DL_RETENTION_DAYS = 400;
+const dlHistory = [...byDate.values()]
+  .sort((a, b) => a.date.localeCompare(b.date))
+  .slice(-DL_RETENTION_DAYS);
+
+// Drop the newest day from the chart only: it is still accumulating and would
+// draw a false cliff. It stays in history and is corrected on the next run.
+const dlPlotted = dlHistory.slice(-CHART_WINDOW).slice(0, -1);
+
+const downloadRows = Object.entries(dlPackages)
+  .map(([name, info]) => {
+    const last30 = (info.daily || []).reduce((sum, d) => sum + d.count, 0);
+    return `| \`${name}\` | ${info.total ?? '—'} | ${last30} |`;
+  })
+  .join('\n');
+
+const downloadsSection = Object.keys(dlPackages).length
+  ? `\n## Registry downloads (GHCR)
+
+_Pulls, not installs. Mirrors, scanners and auto-updaters poll continuously, so
+the flat daily baseline is mostly automated traffic. Read the **shape** — bumps
+above baseline after a release are real people updating — not the total._
+
+| Image | Total (all time) | Last 30 days |
+|---|---|---|
+${downloadRows}
+${dlPlotted.length ? `\n![Registry downloads per day](${stackedBarUrl(dlPlotted, 'byPkg', 'Registry downloads per day', PACKAGE_COLORS)})\n` : ''}`
+  : '';
+
 const stamp = new Date().toISOString().replace('T', ' ').slice(0, 16);
 
 const body = `${MARKER}
 # Prism install stats
 
-_Auto-updated ${stamp} UTC. Aggregate opt-out telemetry, so treat it as a floor, not a census._
+_Auto-updated ${stamp} UTC. Anonymous opt-out check-ins — a floor, not a census._
 
 | Metric | Count |
 |---|---|
-| Total installs | ${stats.totalInstalls ?? 0} |
+| Total installs (ever seen) | ${stats.totalInstalls ?? 0} |
 | Active (7 days) | ${stats.activeInstalls7d ?? 0} |
-| Active (30 days) | ${stats.activeInstalls30d ?? 0} |
+| **Active (30 days)** | ${stats.activeInstalls30d ?? 0} |
 ${newInstallsRows}
+_**Active (30 days)** is the figure to quote: an exact, de-duplicated count of
+installs still checking in — one install counts once however often it updates.
+**Total** never decays, since check-in rows are never deleted, so it drifts above
+reality as installs are retired. Both undercount: anything below 1.15.0 has no
+check-in code at all, and opted-out or offline installs never report._
+
 ## Installs by source over time
 
 ![Installs by source over time](${sourceChart})
@@ -152,14 +230,15 @@ ${rows(stats.byDeployment, 'deployment')}
 | Version | Installs |
 |---|---|
 ${rows(stats.byVersion, 'version')}
-${archSection}
+${archSection}${downloadsSection}
 ${HISTORY_OPEN}
-${JSON.stringify({ points: history })}
+${JSON.stringify({ points: history, downloads: dlHistory })}
 ${HISTORY_CLOSE}
 `;
 
 writeFileSync('body.md', body);
 console.log(
   `Wrote body.md: ${history.length} day(s) of history; sources+versions charted` +
-    `${archSection ? ', arch table' : ''}${growthSection ? ', new-installs chart' : ''}.`,
+    `${archSection ? ', arch table' : ''}${growthSection ? ', new-installs chart' : ''}` +
+    `${downloadsSection ? `, downloads (${dlHistory.length} day(s), ${Object.keys(dlPackages).length} image(s))` : ''}.`,
 );
