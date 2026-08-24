@@ -20,6 +20,12 @@ permissions:
 
 jobs:
   cla:
+    # Only ever run in this repository. Workflow files travel with a fork, so
+    # without this guard the bot fires inside contributors' own forks: it walks
+    # the commit authors of their private PRs (including upstream authors picked
+    # up by a routine master sync) and nags each one to sign a CLA they aren't
+    # party to. Signing there can't work either, since CLA_PAT only exists here.
+    if: github.repository == 'sandydargoport/prism'
     runs-on: ubuntu-latest
     steps:
       - name: CLA Assistant
