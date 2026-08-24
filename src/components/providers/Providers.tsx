@@ -10,6 +10,7 @@
 import * as React from 'react';
 import dynamic from 'next/dynamic';
 import { ThemeProvider } from './ThemeProvider';
+import { LocaleProvider } from './LocaleProvider';
 import { AuthProvider } from './AuthProvider';
 import { FamilyProvider } from './FamilyProvider';
 import { GlobalInputProvider } from '@/lib/hooks/useGlobalInput';
@@ -37,17 +38,19 @@ interface ProvidersProps {
 export function Providers({ children }: ProvidersProps) {
   return (
     <ThemeProvider defaultTheme="light">
-      <FamilyProvider>
-        <AuthProvider>
-          <TimeFormatProvider>
-            <GlobalInputProvider>
-              {children}
-              <VirtualKeyboard />
-              <KeyboardToggleButton />
-            </GlobalInputProvider>
-          </TimeFormatProvider>
-        </AuthProvider>
-      </FamilyProvider>
+      <LocaleProvider>
+        <FamilyProvider>
+          <AuthProvider>
+            <TimeFormatProvider>
+              <GlobalInputProvider>
+                {children}
+                <VirtualKeyboard />
+                <KeyboardToggleButton />
+              </GlobalInputProvider>
+            </TimeFormatProvider>
+          </AuthProvider>
+        </FamilyProvider>
+      </LocaleProvider>
     </ThemeProvider>
   );
 }

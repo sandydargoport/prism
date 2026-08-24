@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { useTheme } from '@/components/providers';
+import { useAppLocale, APP_LOCALES } from '@/components/providers/LocaleProvider';
 import { useSeasonalTheme } from '@/lib/hooks/useSeasonalTheme';
 import { MONTH_NAMES, seasonalPalettes } from '@/lib/themes/seasonalThemes';
 import { useWallpaperSettings, useAutoOrientationSetting, useScreensaverInterval } from '@/components/layout/WallpaperBackground';
@@ -183,7 +184,59 @@ export function DisplaySection() {
       <TimersCard />
 
       <WeatherUnitsCard />
+
+      <LanguageCard />
     </div>
+  );
+}
+
+function LanguageCard() {
+  const { locale, setLocale } = useAppLocale();
+  const [saving, setSaving] = useState(false);
+
+  const pick = useCallback(
+    async (next: (typeof APP_LOCALES)[number]['value']) => {
+      setSaving(true);
+      try {
+        await setLocale(next);
+      } catch {
+        /* provider reverts on failure */
+      }
+      setSaving(false);
+    },
+    [setLocale],
+  );
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Language <span className="text-xs font-normal text-muted-foreground">(early preview)</span></CardTitle>
+        <CardDescription>
+          The dashboard&apos;s display language. English is the default; other languages fall back to English
+          for anything not yet translated. Only part of the UI is translated so far — this is an early preview.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="inline-flex rounded-md border border-input p-0.5" role="radiogroup" aria-label="Language">
+          {APP_LOCALES.map((l) => (
+            <button
+              key={l.value}
+              type="button"
+              role="radio"
+              aria-checked={locale === l.value}
+              disabled={saving}
+              onClick={() => pick(l.value)}
+              className={cn(
+                'px-3 py-1.5 text-sm rounded-sm transition-colors',
+                locale === l.value ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
+              )}
+            >
+              {l.label}
+            </button>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

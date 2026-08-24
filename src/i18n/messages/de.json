@@ -1,0 +1,12 @@
+{
+  "birthdays": {
+    "title": "Anstehende Geburtstage & Meilensteine",
+    "empty": "Keine anstehenden Geburtstage oder Termine",
+    "colEvent": "Anlass",
+    "colYears": "Jahre",
+    "colDays": "Tage",
+    "colDate": "Datum",
+    "todayBadge": "HEUTE",
+    "daysUntil": "{days, plural, =0 {Heute!} one {# Tag} other {# Tage}}"
+  }
+}

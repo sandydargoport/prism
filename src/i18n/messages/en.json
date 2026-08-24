@@ -1,0 +1,12 @@
+{
+  "birthdays": {
+    "title": "Upcoming Birthdays & Milestones",
+    "empty": "No upcoming birthdays or events",
+    "colEvent": "Event",
+    "colYears": "Yrs",
+    "colDays": "Days",
+    "colDate": "Date",
+    "todayBadge": "TODAY",
+    "daysUntil": "{days, plural, =0 {Today!} one {# day} other {# days}}"
+  }
+}

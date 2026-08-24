@@ -25,7 +25,10 @@ import { loadScreensaverLayout } from './screensaverStorage';
 export const SCREENSAVER_WIDGET_CLASS =
   'h-full w-full ' +
   '[&_*]:!bg-transparent [&_.bg-card]:!bg-white/10 [&_.border-border]:!border-white/20 ' +
-  '[&_*]:!text-white [&_*]:[text-shadow:0_1px_4px_rgba(0,0,0,0.75)]';
+  // Force white text for legibility over the photo — EXCEPT elements marked
+  // data-keep-color (e.g. the birthdays "days until" urgency coloring), which
+  // keep their own color but still get the shadow.
+  '[&_*:not([data-keep-color])]:!text-white [&_*]:[text-shadow:0_1px_4px_rgba(0,0,0,0.75)]';
 
 // Re-export storage utilities for consumers
 export {
