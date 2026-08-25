@@ -4,6 +4,14 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.17.1] – 2026-08-25
+
+### Fixed
+- **A birthday on the day itself no longer disappears from the widget.** The next occurrence was worked out against the current time rather than the start of the day, so a birthday falling today always compared as already past, rolled forward a year, and was then filtered out of the 30-day window — meaning the one day it mattered most was the one day it wasn't shown. Today's entries now appear at the top of the list, counted as 0 days, and are highlighted in green.
+
+### Added
+- **Choose the interface language.** A new **Language** option under *Settings → Appearance* switches Prism's wording, starting with German (Deutsch) alongside English. Navigation is fully translated and the Birthdays widget is done; the rest of the app follows in stages, and anything not yet translated simply stays in English rather than breaking. Dates and numbers automatically follow the language you pick. Whether the clock shows 12- or 24-hour time stays a separate choice under *Settings → General*, so you can mix the two however you like. Translations are plain files anyone can correct or extend — see the [Languages guide](features/LANGUAGES.md).
+
 ## [1.17.0] – 2026-08-23
 
 ### Integrations

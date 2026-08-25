@@ -102,6 +102,7 @@ nav:
       - Travel Map: features/TRAVEL.md
       - Weekend Ideas: features/WEEKEND.md
       - Bus Tracking: features/BUS.md
+      - Languages (i18n): features/LANGUAGES.md
       - Display Modes: features/DISPLAY-MODES.md
       - Mobile (PWA): features/MOBILE.md
       - Global input: features/global-input-system.md

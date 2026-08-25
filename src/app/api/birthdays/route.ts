@@ -57,7 +57,13 @@ export async function GET(request: NextRequest) {
     const results = await query;
 
     // Calculate age and days until for each birthday
+    // Midnight-normalised. `nextBirthday` below is built at 00:00, so comparing
+    // against a `new Date()` that carries the current time made a birthday that
+    // falls TODAY compare as already past — it rolled to next year and vanished
+    // from the upcoming list. Zeroing the clock also makes daysUntil an exact
+    // whole number of days rather than a ceil() of a fractional one.
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const currentYear = today.getFullYear();
 
     let formattedBirthdays = results.map(birthday => {

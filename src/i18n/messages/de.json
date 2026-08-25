@@ -1,4 +1,37 @@
 {
+  "common": {
+    "nav": {
+      "dashboard": "Übersicht",
+      "calendar": "Kalender",
+      "tasks": "Aufgaben",
+      "chores": "Hausarbeiten",
+      "goals": "Ziele",
+      "shopping": "Einkaufen",
+      "meals": "Mahlzeiten",
+      "recipes": "Rezepte",
+      "messages": "Nachrichten",
+      "photos": "Fotos",
+      "wishes": "Wünsche",
+      "babysitter": "Babysitter",
+      "travel": "Reisen",
+      "weekend": "Wochenende",
+      "settings": "Einstellungen"
+    },
+    "actions": {
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "delete": "Löschen",
+      "edit": "Bearbeiten",
+      "add": "Hinzufügen",
+      "close": "Schließen",
+      "remove": "Entfernen",
+      "back": "Zurück",
+      "next": "Weiter",
+      "done": "Fertig",
+      "search": "Suchen",
+      "loading": "Wird geladen"
+    }
+  },
   "birthdays": {
     "title": "Anstehende Geburtstage & Meilensteine",
     "empty": "Keine anstehenden Geburtstage oder Termine",

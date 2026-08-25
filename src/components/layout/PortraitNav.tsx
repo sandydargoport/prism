@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { User } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTranslations } from 'next-intl';
 import { ALL_NAV_ITEMS } from '@/lib/constants/navItems';
 import { useHiddenPages } from '@/lib/hooks/useHiddenPages';
 
@@ -33,6 +34,7 @@ export function PortraitNav({ user, onLogin, onLogout, uiHidden }: PortraitNavPr
   const pathname = usePathname();
   const { filterNavItems } = useHiddenPages();
   const navItems = filterNavItems(ALL_NAV_ITEMS);
+  const t = useTranslations('common');
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
@@ -59,7 +61,7 @@ export function PortraitNav({ user, onLogin, onLogout, uiHidden }: PortraitNavPr
               )}
             >
               <Icon className={cn('h-7 w-7', active && 'stroke-[2.5]')} />
-              <span className="text-xs font-medium">{item.label}</span>
+              <span className="text-xs font-medium">{t(item.i18nKey)}</span>
             </Link>
           );
         })}

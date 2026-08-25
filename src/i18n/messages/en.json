@@ -1,4 +1,37 @@
 {
+  "common": {
+    "nav": {
+      "dashboard": "Dashboard",
+      "calendar": "Calendar",
+      "tasks": "Tasks",
+      "chores": "Chores",
+      "goals": "Goals",
+      "shopping": "Shopping",
+      "meals": "Meals",
+      "recipes": "Recipes",
+      "messages": "Messages",
+      "photos": "Photos",
+      "wishes": "Wishes",
+      "babysitter": "Babysitter",
+      "travel": "Travel",
+      "weekend": "Weekend",
+      "settings": "Settings"
+    },
+    "actions": {
+      "save": "Save",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "edit": "Edit",
+      "add": "Add",
+      "close": "Close",
+      "remove": "Remove",
+      "back": "Back",
+      "next": "Next",
+      "done": "Done",
+      "search": "Search",
+      "loading": "Loading"
+    }
+  },
   "birthdays": {
     "title": "Upcoming Birthdays & Milestones",
     "empty": "No upcoming birthdays or events",
