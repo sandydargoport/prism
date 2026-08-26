@@ -1,10 +1,17 @@
 /**
  * Pull birthdays out of CardDAV contacts and upsert into the birthdays
- * table. Credentials are reused from any existing CalDAV calendar_source
- * row whose providerConfig carries `contactBirthdaysEnabled: true` — the
- * user opts in by checking a box in the CalDAV connect dialog. One row's
- * creds are enough; we don't multi-tenant this. (If the user ever wants
- * per-iCloud-account isolation, this is the place to fan out.)
+ * table. Credentials are reused from existing CalDAV calendar_source rows
+ * whose providerConfig carries `contactBirthdaysEnabled: true` — the user
+ * opts in by checking a box in the CalDAV connect dialog.
+ *
+ * Fans out across every opted-in account. It used to take only the first
+ * match, so a household with two iCloud accounts silently synced one of them,
+ * and which one depended on connection order. A failure on one account is
+ * collected and the rest still run.
+ *
+ * Note this covers iPhone contacts: iCloud contacts are CardDAV, so ticking
+ * "contact birthdays" when connecting iCloud is what makes phone birthdays
+ * appear. The same path serves Nextcloud and Fastmail.
  */
 
 import { db } from '@/lib/db/client';
@@ -22,38 +29,48 @@ interface SyncResult {
 export async function syncCardDAVBirthdays(): Promise<SyncResult> {
   const result: SyncResult = { synced: 0, errors: [] };
 
-  const enabledSource = await db.query.calendarSources.findFirst({
+  const enabledSources = await db.query.calendarSources.findMany({
     where: and(
       eq(calendarSources.provider, 'caldav'),
       sql`(${calendarSources.providerConfig}->>'contactBirthdaysEnabled')::boolean = true`,
     ),
   });
 
-  if (!enabledSource) return result;
+  if (enabledSources.length === 0) return result;
 
-  const cfg = (enabledSource.providerConfig as Record<string, unknown> | null) ?? {};
-  const serverUrl = String(cfg.serverUrl || '');
-  const username = String(cfg.username || '');
-  if (!serverUrl || !username || !enabledSource.accessToken) {
-    result.errors.push('CardDAV sync: source row missing credentials');
-    return result;
-  }
+  // One entry per distinct account: several calendars from the same iCloud
+  // login can each carry the flag, and fetching their shared address book
+  // more than once would just be wasted round-trips.
+  const contacts: { name: string; birthDate: string }[] = [];
+  const seenAccounts = new Set<string>();
 
-  let password: string;
-  try {
-    password = decrypt(enabledSource.accessToken);
-  } catch (err) {
-    result.errors.push(`CardDAV sync: failed to decrypt password — ${err instanceof Error ? err.message : err}`);
-    return result;
-  }
+  for (const source of enabledSources) {
+    const cfg = (source.providerConfig as Record<string, unknown> | null) ?? {};
+    const serverUrl = String(cfg.serverUrl || '');
+    const username = String(cfg.username || '');
+    if (!serverUrl || !username || !source.accessToken) {
+      result.errors.push('CardDAV sync: source row missing credentials');
+      continue;
+    }
 
-  let contacts;
-  try {
-    contacts = await fetchCardDAVBirthdays(serverUrl, username, password);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    result.errors.push(`CardDAV fetch failed: ${msg}`);
-    return result;
+    const accountKey = `${serverUrl}|${username}`;
+    if (seenAccounts.has(accountKey)) continue;
+    seenAccounts.add(accountKey);
+
+    let password: string;
+    try {
+      password = decrypt(source.accessToken);
+    } catch (err) {
+      result.errors.push(`CardDAV sync: failed to decrypt password for ${username} — ${err instanceof Error ? err.message : err}`);
+      continue;
+    }
+
+    try {
+      contacts.push(...(await fetchCardDAVBirthdays(serverUrl, username, password)));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      result.errors.push(`CardDAV fetch failed for ${username}: ${msg}`);
+    }
   }
 
   // upsertBirthday handles three cases per contact:

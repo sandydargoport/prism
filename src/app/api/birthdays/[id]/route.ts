@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/api/withAuth';
 import { db } from '@/lib/db/client';
 import { birthdays, users } from '@/lib/db/schema';
+import { dismissBirthday } from '@/lib/services/birthday-detect';
 import { eq } from 'drizzle-orm';
 import { createBirthdaySchema, validateRequest } from '@/lib/validations';
 import { logError } from '@/lib/utils/logError';
@@ -229,7 +230,12 @@ export async function DELETE(
 
       // Check if birthday exists
       const [existingBirthday] = await db
-        .select({ id: birthdays.id, name: birthdays.name })
+        .select({
+          id: birthdays.id,
+          name: birthdays.name,
+          birthDate: birthdays.birthDate,
+          eventType: birthdays.eventType,
+        })
         .from(birthdays)
         .where(eq(birthdays.id, id));
 
@@ -240,7 +246,15 @@ export async function DELETE(
         );
       }
 
-      // Delete the birthday
+      // Tombstone first, then delete. Detection re-reads every calendar on
+      // each sync, so without this the row is simply re-added on the next run
+      // and the delete appears not to have worked.
+      await dismissBirthday({
+        name: existingBirthday.name,
+        birthDate: existingBirthday.birthDate,
+        eventType: existingBirthday.eventType,
+      });
+
       await db
         .delete(birthdays)
         .where(eq(birthdays.id, id));

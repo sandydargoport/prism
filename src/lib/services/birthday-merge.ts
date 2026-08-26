@@ -16,6 +16,14 @@
  *
  * Sharing first name + birthday but with two distinct last names is
  * (deliberately) NOT auto-merged — that's the false-positive case.
+ *
+ * Hand-entered rows (googleCalendarSource IS NULL) are authoritative and a
+ * sync must not rewrite them. Detection now scans every calendar rather than
+ * two curated ones, so a same-day near-name collision with something the user
+ * typed themselves went from unlikely to routine — and silently renaming or
+ * re-dating their row, then stamping it as "synced", is not recoverable.
+ * The only change ever applied to such a row is filling in a real year over
+ * the 1904 unknown-year sentinel.
  */
 
 import { db } from '@/lib/db/client';
@@ -46,6 +54,28 @@ function parseYear(birthDate: string): number {
   return parseInt(birthDate.split('-')[0]!, 10);
 }
 
+/** Null provenance = the user typed this in. Schema comment: "Null = manually created". */
+function isHandEntered(row: { googleCalendarSource: string | null }): boolean {
+  return row.googleCalendarSource === null;
+}
+
+/**
+ * Fill in a real year over the 1904 sentinel, leaving everything else alone.
+ * The only mutation a sync may apply to a hand-entered row.
+ */
+async function upgradeSentinelYear(
+  existing: { id: string; birthDate: string },
+  newYear: number,
+  mo: string,
+  dy: string,
+): Promise<'updated' | 'skipped'> {
+  if (parseYear(existing.birthDate) !== 1904 || newYear === 1904) return 'skipped';
+  await db.update(birthdays)
+    .set({ birthDate: `${newYear}-${mo}-${dy}` })
+    .where(eq(birthdays.id, existing.id));
+  return 'updated';
+}
+
 /**
  * Insert a birthday, but merge with any existing prefix-match candidate
  * sharing the same month/day. Returns the action taken so callers can
@@ -67,6 +97,17 @@ export async function upsertBirthday(opts: UpsertOpts): Promise<'inserted' | 'up
   });
 
   for (const existing of candidates) {
+    // A row the user typed is authoritative: never rename it, never re-date it,
+    // and never stamp it with sync provenance. Only fill in a missing year.
+    if (
+      isHandEntered(existing) &&
+      (normalize(existing.name) === normalize(name) ||
+        isTokenPrefix(existing.name, name) ||
+        isTokenPrefix(name, existing.name))
+    ) {
+      return upgradeSentinelYear(existing, newYear, mo, dy);
+    }
+
     // Exact match: standard upsert behavior — refresh fields, keep id.
     if (normalize(existing.name) === normalize(name)) {
       // Prefer a known year over the 1904 unknown-year sentinel, so the Google

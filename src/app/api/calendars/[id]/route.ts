@@ -162,6 +162,19 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       updates.showInEventModal = body.showInEventModal;
     }
 
+    // Handle the life-events calendar flag. Only this single key is accepted
+    // and it is merged server-side — providerConfig also carries CalDAV
+    // credentials (serverUrl, username), so accepting a client-supplied object
+    // wholesale would let a caller overwrite or clear them.
+    if (typeof body.lifeEventsCalendar === 'boolean') {
+      const [current] = await db
+        .select({ providerConfig: calendarSources.providerConfig })
+        .from(calendarSources)
+        .where(eq(calendarSources.id, id));
+      const cfg = (current?.providerConfig as Record<string, unknown> | null) ?? {};
+      updates.providerConfig = { ...cfg, lifeEventsCalendar: body.lifeEventsCalendar };
+    }
+
     if (body.color) {
       if (!/^#[0-9A-Fa-f]{6}$/.test(body.color)) {
         return NextResponse.json(

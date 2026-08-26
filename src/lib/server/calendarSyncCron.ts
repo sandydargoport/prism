@@ -14,6 +14,7 @@
 
 import { syncAllGoogleCalendars, syncAllIcalCalendars, syncAllCalDAVCalendars } from '@/lib/services/calendar-sync';
 import { syncCardDAVBirthdays } from '@/lib/services/carddav-birthday-sync';
+import { detectBirthdaysFromEvents } from '@/lib/services/birthday-detect';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 
 const INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
@@ -27,14 +28,26 @@ async function runOnce() {
       syncAllCalDAVCalendars(),
       syncCardDAVBirthdays(),
     ]);
+    // Detection reads the events those syncs just wrote, so it has to run
+    // after them rather than alongside. Calendar-sourced birthdays were
+    // previously never picked up by the cron at all — only the CardDAV
+    // contact path was — so they refreshed only when someone happened to open
+    // Manage Calendars and hit sync.
+    const detected = await detectBirthdaysFromEvents();
+
     const total = google.total + ical.total + caldav.total + carddav.synced;
-    const errors = [...google.errors, ...ical.errors, ...caldav.errors, ...carddav.errors];
+    const errors = [
+      ...google.errors, ...ical.errors, ...caldav.errors,
+      ...carddav.errors, ...detected.errors,
+    ];
 
     await invalidateEntity('events');
     // CalDAV sources also sync VTODO into the tasks table; invalidate that
     // cache too so the Tasks page picks up new / updated reminders.
     await invalidateEntity('tasks');
-    if (carddav.synced > 0) await invalidateEntity('birthdays');
+    if (carddav.synced > 0 || detected.added + detected.updated > 0) {
+      await invalidateEntity('birthdays');
+    }
 
     if (errors.length > 0) {
       console.warn(

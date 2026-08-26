@@ -31,6 +31,7 @@ function useSections(isMobile: boolean): HelpSection[] {
       { id: 'recipes', title: 'Recipes', content: <RecipesHelp /> },
       { id: 'messages', title: 'Messages', content: <MessagesHelp /> },
       { id: 'wishes', title: 'Wishes & Gift Ideas', content: <WishesHelp /> },
+      { id: 'birthdays', title: 'Birthdays & Milestones', content: <BirthdaysHelp /> },
       { id: 'weekend', title: 'Weekend Ideas', content: <WeekendHelp /> },
       { id: 'travel', title: 'Travel Map', content: <TravelHelp /> },
       { id: 'photos', title: 'Photos', desktopOnly: true, content: <PhotosHelp /> },
@@ -404,6 +405,35 @@ function MessagesHelp() {
         <Li><strong>Edit</strong>: Click the pencil icon, Ctrl+Enter to save</Li>
         <Li><strong>Delete</strong>: Authors can delete their own; parents can delete any</Li>
       </Ul>
+    </>
+  );
+}
+
+function BirthdaysHelp() {
+  return (
+    <>
+      <H2>Where birthdays come from</H2>
+      <P>You don&apos;t enter birthdays into Prism. It reads them from the calendars and contacts you already keep, so they stay correct in one place.</P>
+      <Ul>
+        <Li><strong>Your calendars</strong> — any all-day event with &quot;birthday&quot; or &quot;anniversary&quot; in the title, on any connected calendar (Google, iCloud/CalDAV, iCal subscription, or a local Prism calendar)</Li>
+        <Li><strong>Your contacts</strong> — the birthday field on iCloud/CardDAV contacts. Tick &quot;contact birthdays&quot; when connecting iCloud; this is how iPhone birthdays arrive</Li>
+        <Li><strong>Google Contacts</strong> — Google&apos;s own generated birthday calendar</Li>
+      </Ul>
+      <H2>Adding one Prism can&apos;t find</H2>
+      <P>Put it on a calendar and Prism picks it up on the next sync. Your own local Prism calendar works fine for this.</P>
+      <Ul>
+        <Li>Make it an <strong>all-day</strong> event. A timed event is treated as something happening near a birthday, not the birthday itself</Li>
+        <Li>Put the person&apos;s name and the word <strong>birthday</strong> in the title: <em>Grandma&apos;s Birthday</em></Li>
+        <Li>Add the year in brackets to show their age: <em>Grandma&apos;s Birthday (1948)</em>. Without a year you still get the date, just no age</Li>
+      </Ul>
+      <H2>Anniversaries and milestones</H2>
+      <P>Anniversaries work the same way — include the word <strong>anniversary</strong> in the title.</P>
+      <P>Milestones have no obvious keyword, so Prism looks for the shape instead: an all-day event that <strong>repeats every year</strong> and carries a <strong>year</strong> in the title, like <em>Ana and Ben (2005)</em>.</P>
+      <P>If you keep a calendar where <em>everything</em> is a life event, open <strong>Manage calendars</strong> and turn on <strong>&quot;Treat every all-day event here as a birthday or milestone&quot;</strong>. Then titles need no keyword at all.</P>
+      <H2>Removing one</H2>
+      <P>Deleting a birthday in Prism keeps it deleted — it won&apos;t reappear on the next sync, even though the calendar event still exists. Delete the calendar event too if you want it gone everywhere.</P>
+      <H2>What Prism ignores</H2>
+      <P>Read-only calendars you subscribe to (school terms, public holidays) are skipped, so things like &quot;No School — Martin Luther King&apos;s Birthday&quot; don&apos;t become family birthdays. Titles such as &quot;birthday party&quot; or &quot;prep for Sam&apos;s birthday&quot; are ignored too, since they describe something happening near a birthday rather than the day itself.</P>
     </>
   );
 }

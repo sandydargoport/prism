@@ -613,6 +613,44 @@ export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
                       </div>
                     );
                   })()}
+                  {/* Life-events calendar. Optional: birthdays and anniversaries
+                      are detected on every calendar by keyword, and milestones by
+                      shape (recurring + a year). This is for a curated calendar
+                      where EVERY all-day entry is a life event, and it replaces
+                      the old hardcoded "Friends & Family" name match. */}
+                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
+                    <span className="text-xs text-muted-foreground">
+                      Treat every all-day event here as a birthday or milestone
+                    </span>
+                    <Switch
+                      checked={
+                        ((cal as { providerConfig?: Record<string, unknown> }).providerConfig
+                          ?.lifeEventsCalendar) === true
+                      }
+                      onCheckedChange={async () => {
+                        const current = (cal as { providerConfig?: Record<string, unknown> }).providerConfig ?? {};
+                        const newValue = current.lifeEventsCalendar !== true;
+                        setUpdatingCalendar(cal.id);
+                        try {
+                          await fetch(`/api/calendars/${cal.id}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ lifeEventsCalendar: newValue }),
+                          });
+                          setLocalCalendars((prev) =>
+                            prev.map((lc) =>
+                              lc.id === cal.id
+                                ? { ...lc, providerConfig: { ...current, lifeEventsCalendar: newValue } }
+                                : lc
+                            )
+                          );
+                        } catch { /* ignore */ }
+                        setUpdatingCalendar(null);
+                      }}
+                      disabled={updatingCalendar === cal.id}
+                      className="data-[state=checked]:bg-blue-500"
+                    />
+                  </div>
                 </div>
               ))}
             </div>

@@ -771,6 +771,32 @@ export const birthdays = pgTable('birthdays', {
   nameEventTypeIdx: uniqueIndex('birthdays_name_event_type_idx').on(table.name, table.eventType),
 }));
 
+/**
+ * Tombstones for detected birthdays the user deleted. Detection re-reads every
+ * calendar on each sync, so without this a dismissed entry reappears on the
+ * next run and the delete button does nothing that lasts.
+ *
+ * Keyed on the normalised name plus month/day rather than a source event id:
+ * the same person legitimately arrives from several calendars and from CardDAV
+ * contacts, and dismissing them once should hold for all of those. Year is
+ * excluded deliberately — the 1904 unknown-year sentinel means the same person
+ * can arrive with different years from different sources.
+ */
+export const dismissedBirthdays = pgTable('dismissed_birthdays', {
+  id: uuid('id').defaultRandom().primaryKey(),
+
+  /** Lowercased, punctuation-stripped name — matches normalize() in birthday-merge.ts */
+  normalizedName: varchar('normalized_name', { length: 100 }).notNull(),
+  birthMonth: integer('birth_month').notNull(),
+  birthDay: integer('birth_day').notNull(),
+  eventType: varchar('event_type', { length: 20 }).default('birthday').notNull(),
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  dismissedBirthdayUnique: uniqueIndex('dismissed_birthdays_name_day_type_unique')
+    .on(table.normalizedName, table.birthMonth, table.birthDay, table.eventType),
+}));
+
 
 export const settings = pgTable('settings', {
   id: uuid('id').defaultRandom().primaryKey(),
