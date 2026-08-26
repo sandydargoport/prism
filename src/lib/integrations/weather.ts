@@ -16,7 +16,16 @@
 
 import type { WeatherData, WeatherUnits } from '@/components/widgets/WeatherWidget';
 
-export type LocationParam = string | { lat: number; lon: number };
+/**
+ * A location to fetch weather for.
+ *
+ * `displayName` matters for providers that return no place name of their own.
+ * Open-Meteo is coordinates-in, coordinates-out, so without the label the
+ * caller chose there is nothing to show the user, and the widget falls back to
+ * whatever WEATHER_LOCATION happens to say — which is how a saved location of
+ * Leverkusen ended up displaying as Springfield (#295).
+ */
+export type LocationParam = string | { lat: number; lon: number; displayName?: string };
 
 export interface WeatherOptions {
   units?: WeatherUnits;

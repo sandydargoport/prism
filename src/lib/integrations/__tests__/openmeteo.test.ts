@@ -117,6 +117,53 @@ describe('openmeteo.fetchWeatherData', () => {
     expect(calledUrl).toContain('longitude=-87.6298');
   });
 
+  // Regression: #295. Open-Meteo returns no place name of its own, so the label
+  // has to come from the caller. Coordinates were being applied correctly while
+  // the label stayed pinned to WEATHER_LOCATION, so a user who saved Leverkusen
+  // got Leverkusen's forecast under a Springfield heading and reasonably
+  // concluded the setting did nothing. Nothing asserted the label before, which
+  // is why it shipped.
+  it('uses the displayName from the location as the label', async () => {
+    jest.spyOn(global, 'fetch' as never).mockResolvedValue({
+      ok: true,
+      json: async () => buildResponse(),
+    } as never);
+
+    const { fetchWeatherData } = await import('../openmeteo');
+    const result = await fetchWeatherData({
+      lat: 51.0324743,
+      lon: 6.9881194,
+      displayName: 'Leverkusen, Nordrhein-Westfalen, Deutschland',
+    });
+
+    expect(result.location).toBe('Leverkusen, Nordrhein-Westfalen, Deutschland');
+    expect(result.location).not.toBe('Chicago, IL'); // the env fallback
+  });
+
+  it('falls back to the env label only when the location carries none', async () => {
+    jest.spyOn(global, 'fetch' as never).mockResolvedValue({
+      ok: true,
+      json: async () => buildResponse(),
+    } as never);
+
+    const { fetchWeatherData } = await import('../openmeteo');
+    const result = await fetchWeatherData({ lat: 51.0324743, lon: 6.9881194 });
+
+    expect(result.location).toBe('Chicago, IL');
+  });
+
+  it('still accepts a plain string location as the label', async () => {
+    jest.spyOn(global, 'fetch' as never).mockResolvedValue({
+      ok: true,
+      json: async () => buildResponse(),
+    } as never);
+
+    const { fetchWeatherData } = await import('../openmeteo');
+    const result = await fetchWeatherData('Köln, DE');
+
+    expect(result.location).toBe('Köln, DE');
+  });
+
   it('requests timezone=auto so daily entries use the location-local date', async () => {
     const fetchSpy = jest
       .spyOn(global, 'fetch' as never)

@@ -39,7 +39,10 @@ async function resolveLocation(queryLocation: string | null): Promise<LocationPa
         zipCode?: string; city?: string; state?: string; country?: string;
       };
       if (val.lat !== undefined && val.lon !== undefined) {
-        return { lat: val.lat, lon: val.lon };
+        // Pass displayName through. Dropping it here is what pinned the
+        // widget's label to WEATHER_LOCATION regardless of the saved
+        // location (#295).
+        return { lat: val.lat, lon: val.lon, displayName: val.displayName };
       }
       // Legacy fallback — still works for existing installs
       if (val.zipCode) return `${val.zipCode},US`;

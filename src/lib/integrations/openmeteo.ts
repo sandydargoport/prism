@@ -96,6 +96,10 @@ function getConfig(location?: LocationParam) {
   if (typeof location === 'object' && location !== null && 'lat' in location) {
     lat = location.lat;
     lon = location.lon;
+    // Open-Meteo returns no place name, so the label has to come from the
+    // caller. Without this the name stayed at the env default forever and a
+    // saved location never showed up in the widget (#295).
+    if (location.displayName) locationName = location.displayName;
   } else if (typeof location === 'string' && location.length > 0) {
     locationName = location;
   }
