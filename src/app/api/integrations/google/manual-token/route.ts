@@ -185,6 +185,18 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     // Never surface or log the request body / credentials.
     logError('google/manual-token failed:', err instanceof Error ? err.name : 'error');
-    return NextResponse.json({ error: 'internal_error' }, { status: 500 });
+    // This branch must carry a message. Every *expected* failure above returns
+    // a specific diagnosis, so when this one returned a bare error code the
+    // client fell back to "Could not connect with the pasted token" — which
+    // reads as "your token is wrong" and sends people to re-mint a token that
+    // was never the problem. Say plainly that this one is on us.
+    return NextResponse.json(
+      {
+        error: 'internal_error',
+        message:
+          'Something went wrong on the Prism side while connecting, so this is not a problem with your token. Check the Prism logs for a line mentioning "google/manual-token" and include it if you report this.',
+      },
+      { status: 500 },
+    );
   }
 }
