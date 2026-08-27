@@ -4,6 +4,11 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.17.2] – 2026-08-27
+
+### Fixed
+- **The weather widget now shows the location you actually chose.** Setting a location in *Settings → General* updated the forecast but not the name above it, so the widget kept displaying whatever place was in the install's environment file — Springfield, on a default install. The forecast data was correct the whole time, which made it look like the setting had done nothing at all. The name and the forecast now always come from the same place. If you upgrade and still see the old name for a few minutes, that's the cached forecast expiring; changing your location clears it immediately.
+
 ## [1.17.1] – 2026-08-25
 
 ### Fixed
