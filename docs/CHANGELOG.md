@@ -4,6 +4,11 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.18.1] – 2026-08-28
+
+### Fixed
+- **A misconfigured encryption key is now reported clearly instead of surfacing later as a broken integration.** If the `ENCRYPTION_KEY` in your `.env` was missing, left as the example placeholder, or otherwise malformed, Prism started and looked completely healthy — nothing encrypts until an integration first stores a credential. The problem only appeared later, as an unexplained failure when connecting Google Calendar, iCloud, bus tracking or photo sources, which pointed at those integrations rather than at the key. Prism now checks the key when it starts and prints a clear message saying what is wrong and how to generate a valid one, and connecting an account will tell you the key is at fault rather than blaming your credentials. The example `.env` no longer ships placeholder values for secrets, since a placeholder looks configured when it isn't.
+
 ## [1.18.0] – 2026-08-28
 
 ### Added
