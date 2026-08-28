@@ -4,6 +4,14 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.18.3] – 2026-08-28
+
+### Added
+- **A read-only Google calendar can now be connected on its own.** Pasting a token that covers only `calendar.readonly` used to be refused. It now connects, and its calendars appear in Prism exactly like an iCal subscription you have subscribed to: the events show up, and Prism will not try to write to them. These calendars are not offered when you add an event, so you cannot fill in a form that was never going to save. To create events from Prism, include the `calendar.events` line as well when you generate the token; the setup screen shows both.
+
+### Fixed
+- **A Google calendar Prism could not write to no longer offers to add events to it.** Whether a calendar accepted new events was decided from your permissions on that calendar in Google, rather than from what the token itself was allowed to do. A calendar you own therefore looked writable even when the connection was read-only, and an event typed into it was saved locally with a vague warning that it "could not be synced". Now a read-only connection is treated as read-only everywhere, and a save that fails for this reason says so plainly instead of suggesting you try again.
+
 ## [1.18.2] – 2026-08-28
 
 ### Added
