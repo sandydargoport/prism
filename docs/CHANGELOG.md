@@ -4,6 +4,12 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+### Added
+- **Birthdays are found on any calendar you use, not just two specific Google ones.** Prism previously only picked up birthdays from Google's contacts calendar and from a calendar that happened to be named "Friends & Family", which worked if you kept one and did nothing at all otherwise. It now reads them from every calendar you've connected — Google, iCloud, an iCal subscription, or a calendar you created inside Prism. That last one is the answer to "how do I add a birthday Prism can't find": make an **all-day** event with the person's name and the word *birthday* in the title, and it appears on the next sync. Add the year in brackets, like `Grandma's Birthday (1948)`, to show their age. Anniversaries work the same way with the word *anniversary*, and anything else you want to remember is picked up if it's all-day, repeats yearly, and has a year in the title. Deleting a birthday now sticks too, rather than reappearing on the next sync. Read-only calendars you subscribe to (school terms, public holidays) are skipped on purpose, so "No School — Martin Luther King's Birthday" doesn't become a family birthday, and titles like "birthday party" or "prep for Sam's birthday" are ignored because they describe the celebration rather than the day. Titles are recognised in English and German. Full details in the [Birthdays & Milestones](features/BIRTHDAYS.md) guide.
+
+### Fixed
+- **A failed Google token connection no longer blames your token when the problem is ours.** When connecting Google Calendar with a pasted refresh token, anything unexpected going wrong on Prism's side reported the same message as a genuinely bad token, sending people off to generate a new one that was never the issue. Prism now says plainly when the failure is on its side and points at the log line to quote if you report it.
+
 ## [1.17.2] – 2026-08-27
 
 ### Fixed
