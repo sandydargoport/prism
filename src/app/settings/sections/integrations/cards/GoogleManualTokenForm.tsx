@@ -61,9 +61,19 @@ export function GoogleManualTokenForm({ onSaved }: { onSaved?: () => void }) {
       }
 
       const data = await res.json();
+      // Report what the token actually covered, not just that it worked. The
+      // scopes are chosen in the Playground, so someone who meant to include
+      // Tasks and forgot to tick it would otherwise see a success message and
+      // then wonder why no tasks appeared.
+      const parts: string[] = [];
+      if (data.capabilities?.includes('calendar')) {
+        parts.push(`${data.calendarCount ?? 0} calendar${data.calendarCount === 1 ? '' : 's'} imported`);
+      }
+      if (data.capabilities?.includes('gmail')) parts.push('Gmail connected for bus tracking');
+      if (data.needsTaskListSelection) parts.push('choose which task lists to show under Tasks sync');
       toast({
-        title: 'Google Calendar connected',
-        description: `${data.calendarCount ?? 0} calendar${data.calendarCount === 1 ? '' : 's'} imported.`,
+        title: `Google connected: ${data.enabled ?? 'Calendar'}`,
+        description: parts.join(' · ') || undefined,
         variant: 'success',
       });
       // Clear the sensitive fields; they're never hydrated from the server.
@@ -105,6 +115,20 @@ export function GoogleManualTokenForm({ onSaved }: { onSaved?: () => void }) {
         Do all of this signed into a <span className="underline">single</span> Google account — the one
         whose calendars you want — ideally in a private/incognito window, so you never mix up accounts.
       </p>
+
+        <p className="text-xs text-muted-foreground">
+          One token can cover more than the calendar. In the Playground&apos;s scope list, tick whichever of
+          these you want Prism to use, and only those:
+        </p>
+        <ul className="list-disc space-y-1 pl-5 text-xs text-muted-foreground">
+          <li><strong>Google Calendar API v3</strong> &mdash; two-way calendar sync</li>
+          <li><strong>Tasks API v1</strong> &mdash; Google Tasks as a task source</li>
+          <li><strong>Gmail API v1</strong> &mdash; bus tracking only, which reads transport emails</li>
+        </ul>
+        <p className="text-xs text-muted-foreground">
+          Leave one out and Prism simply will not enable it. A token cannot gain a scope later, so to add
+          one afterwards you generate a new token with the extra scope ticked and paste it here again.
+        </p>
 
       <ol className="list-decimal space-y-1 pl-5 text-xs text-muted-foreground">
         <li>

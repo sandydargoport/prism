@@ -21,6 +21,8 @@ import { settings } from '@/lib/db/schema';
 import { encrypt } from '@/lib/utils/crypto';
 import { logError } from '@/lib/utils/logError';
 import { EncryptionKeyError } from '@/lib/utils/crypto';
+import { detectCapabilities, describeCapabilities } from '@/lib/integrations/googleManualScopes';
+import { stashGoogleTasksTokens, storeGmailBusCredentials } from '@/lib/integrations/googleManualConnect';
 import { logActivity } from '@/lib/services/auditLog';
 import { getGoogleCredentials } from '@/lib/integrations/credentialStore';
 import { refreshAccessToken, TokenRevokedError } from '@/lib/integrations/google-calendar';
@@ -120,17 +122,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Scope check — the token must actually carry Calendar access.
-    const scope = tokens.scope || '';
-    const hasCalendar =
-      /auth\/calendar(\.events|\.readonly)?(\s|$)/.test(scope) ||
-      (/auth\/calendar\.events/.test(scope) && /auth\/calendar\.readonly/.test(scope));
-    if (!hasCalendar) {
+    // Enable whatever the token actually covers, rather than requiring
+    // Calendar. Scopes are fixed when the token is authorised, so this is the
+    // user's choice made in the Playground: tick Tasks but not Gmail and you
+    // get Tasks but not Gmail. Only a token covering nothing is an error.
+    const capabilities = detectCapabilities(tokens.scope);
+    if (capabilities.length === 0) {
       return NextResponse.json(
         {
-          error: 'missing_calendar_scope',
+          error: 'no_supported_scope',
           message:
-            'The token was not granted Calendar access. In the Playground, select the Google Calendar API v3 scope before authorizing.',
+            'This token was not granted any scope Prism can use. In the OAuth Playground, select at least one of: ' +
+            'Google Calendar API v3, Tasks API v1, or Gmail API v1 (for bus tracking), then authorize again.',
         },
         { status: 400 },
       );
@@ -146,7 +149,8 @@ export async function POST(request: NextRequest) {
 
     // Store calendars. Persist the *pasted* refresh token — the refresh grant
     // does not return a new one.
-    let result;
+    let result: { calendarCount: number; accountEmail?: string | null } = { calendarCount: 0 };
+    if (capabilities.includes('calendar')) {
     try {
       result = await storeGoogleCalendarConnection({
         userId: auth.userId,
@@ -170,18 +174,68 @@ export async function POST(request: NextRequest) {
         { status: 502 },
       );
     }
+    }
+
+    // Tasks: hand off to the flow the browser callback already feeds. It parks
+    // the tokens in Redis under a per-user key, then the existing list picker
+    // and /api/task-sources/finalize take over unchanged — the only step the
+    // redirect flow owned was getting the tokens there in the first place.
+    if (capabilities.includes('tasks')) {
+      try {
+        await stashGoogleTasksTokens({
+          userId: auth.userId,
+          accessToken: tokens.access_token,
+          refreshToken,
+          expiresIn: tokens.expires_in,
+          accountEmail,
+        });
+      } catch (err) {
+        logError('google/manual-token: stashing tasks tokens failed', err instanceof Error ? err.name : 'error');
+        return NextResponse.json(
+          { error: 'tasks_stash_failed', message: 'Connected, but could not start the Tasks list picker. Please try again.' },
+          { status: 502 },
+        );
+      }
+    }
+
+    // Gmail: used only by bus tracking. Same credential row the browser flow
+    // writes, so nothing downstream can tell which route produced it.
+    if (capabilities.includes('gmail')) {
+      try {
+        await storeGmailBusCredentials({
+          accessToken: tokens.access_token,
+          refreshToken,
+          expiresIn: tokens.expires_in,
+          accountEmail,
+        });
+      } catch (err) {
+        logError('google/manual-token: storing gmail credentials failed', err instanceof Error ? err.name : 'error');
+        return NextResponse.json(
+          { error: 'gmail_store_failed', message: 'Could not save the Gmail connection. Please try again.' },
+          { status: 502 },
+        );
+      }
+    }
 
     logActivity({
       userId: auth.userId,
       action: 'create',
       entityType: 'integration',
-      summary: `Connected Google Calendar via manual refresh token (${result.calendarCount} calendars)`,
+      summary: `Connected Google via manual refresh token: ${describeCapabilities(capabilities)}${
+        capabilities.includes('calendar') ? ` (${result.calendarCount} calendars)` : ''
+      }`,
     });
 
     return NextResponse.json({
       ok: true,
+      capabilities,
+      // Named so the UI can tell the user what this token did and did not
+      // cover. Someone who meant to include Tasks but forgot to tick it in the
+      // Playground otherwise sees a success message and no Tasks.
+      enabled: describeCapabilities(capabilities),
+      needsTaskListSelection: capabilities.includes('tasks'),
       calendarCount: result.calendarCount,
-      accountEmail: result.accountEmail,
+      accountEmail: result.accountEmail ?? accountEmail,
     });
   } catch (err) {
     // A misconfigured encryption key is a configuration problem, not a token

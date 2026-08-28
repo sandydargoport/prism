@@ -161,12 +161,15 @@ describe('POST /api/integrations/google/manual-token — validation & mapping', 
     expect(body.error).toBe('invalid_client');
   });
 
-  it('400 missing_calendar_scope when the token lacks calendar access', async () => {
+  // The route no longer requires Calendar specifically: a token is accepted if
+  // it covers ANY supported capability (Calendar, Tasks or Gmail), so the
+  // failure case is now "covers none of them". See #310.
+  it('400 no_supported_scope when the token covers none of the supported APIs', async () => {
     mockRefresh.mockResolvedValue({ access_token: 'at', expires_in: 3600, scope: 'openid email', token_type: 'Bearer' });
     const res = await POST(req(goodBody));
     const body = await res.json();
     expect(res.status).toBe(400);
-    expect(body.error).toBe('missing_calendar_scope');
+    expect(body.error).toBe('no_supported_scope');
     expect(mockStore).not.toHaveBeenCalled();
   });
 });
@@ -177,7 +180,14 @@ describe('POST /api/integrations/google/manual-token — success', () => {
     const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(body).toEqual({ ok: true, calendarCount: 2, accountEmail: 'user@example.com' });
+    expect(body).toEqual({
+      ok: true,
+      capabilities: ['calendar'],
+      enabled: 'Calendar',
+      needsTaskListSelection: false,
+      calendarCount: 2,
+      accountEmail: 'user@example.com',
+    });
     expectNoLeak(JSON.stringify(body));
 
     // Exactly one refresh + one store.
