@@ -69,6 +69,12 @@ export function GoogleManualTokenForm({ onSaved }: { onSaved?: () => void }) {
       if (data.capabilities?.includes('calendar')) {
         parts.push(`${data.calendarCount ?? 0} calendar${data.calendarCount === 1 ? '' : 's'} imported`);
       }
+      if (data.capabilities?.includes('calendarReadonly')) {
+        parts.push(
+          `${data.calendarCount ?? 0} calendar${data.calendarCount === 1 ? '' : 's'} imported, read-only` +
+          ' · add calendar.events to create events from Prism',
+        );
+      }
       if (data.capabilities?.includes('gmail')) parts.push('Gmail connected for bus tracking');
       if (data.needsTaskListSelection) parts.push('choose which task lists to show under Tasks sync');
       toast({
@@ -127,6 +133,10 @@ export function GoogleManualTokenForm({ onSaved }: { onSaved?: () => void }) {
             <code className="mt-0.5 block break-all text-[11px]">
               https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly
             </code>
+            <span className="mt-0.5 block">
+              The <code>calendar.readonly</code> line on its own also works and gives you a read-only
+              calendar: events show in Prism, but you cannot create or edit them there.
+            </span>
           </li>
           <li>
             <strong>Tasks</strong> &mdash; Google Tasks as a task source:

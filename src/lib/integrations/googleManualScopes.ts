@@ -14,7 +14,7 @@
  * Prism their Gmail simply does not tick that scope, and nothing else changes.
  */
 
-export type GoogleCapability = 'calendar' | 'tasks' | 'gmail';
+export type GoogleCapability = 'calendar' | 'calendarReadonly' | 'tasks' | 'gmail';
 
 interface CapabilitySpec {
   /** Does the granted scope string cover this capability? */
@@ -27,12 +27,27 @@ interface CapabilitySpec {
 
 export const GOOGLE_CAPABILITIES: Record<GoogleCapability, CapabilitySpec> = {
   calendar: {
-    // The browser flow asks for calendar.events + calendar.readonly; a
-    // Playground user may instead tick the single broader auth/calendar.
+    // Full two-way sync. Setup lists calendars via users/me/calendarList, which
+    // needs calendar.readonly or the broad calendar scope; creating events needs
+    // calendar.events or broad. So neither narrow scope alone delivers two-way
+    // sync, and the browser flow accordingly grants both.
     matches: (s) =>
       /auth\/calendar(\s|$)/.test(s) ||
       (/auth\/calendar\.events/.test(s) && /auth\/calendar\.readonly/.test(s)),
     label: 'Calendar',
+    playgroundApi: 'Google Calendar API v3',
+  },
+  calendarReadonly: {
+    // calendar.readonly on its own can list and read calendars but cannot write
+    // events. That is a legitimate thing to want — the same shape as an iCal
+    // subscription — so it connects rather than being rejected. It is reported
+    // as read-only, because a calendar that silently refuses new events is the
+    // failure mode this whole area keeps producing.
+    matches: (s) =>
+      !/auth\/calendar(\s|$)/.test(s) &&
+      !/auth\/calendar\.events/.test(s) &&
+      /auth\/calendar\.readonly/.test(s),
+    label: 'Calendar (read-only)',
     playgroundApi: 'Google Calendar API v3',
   },
   tasks: {

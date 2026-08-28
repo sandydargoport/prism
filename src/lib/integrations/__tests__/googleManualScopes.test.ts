@@ -51,10 +51,28 @@ describe('detectCapabilities', () => {
     expect(detectCapabilities(undefined)).toEqual([]);
   });
 
-  it('does not mistake calendar.readonly alone for calendar access', () => {
-    // The browser flow always grants the pair; readonly alone cannot write, so
-    // treating it as full calendar access would fail later on the first write.
-    expect(detectCapabilities('https://www.googleapis.com/auth/calendar.readonly')).toEqual([]);
+  it('treats calendar.readonly alone as read-only, not full calendar access', () => {
+    // Readonly can list and read calendars but cannot write events. Calling it
+    // full access would fail later on the first write, which is the silent
+    // failure this area keeps producing; rejecting it outright would drop a
+    // legitimate use, the same shape as an iCal subscription. So it connects,
+    // and is reported as read-only.
+    const caps = detectCapabilities('https://www.googleapis.com/auth/calendar.readonly');
+    expect(caps).toEqual(['calendarReadonly']);
+    expect(caps).not.toContain('calendar');
+  });
+
+  it('does not also report read-only when the full pair is granted', () => {
+    expect(detectCapabilities(CAL_PAIR)).toEqual(['calendar']);
+  });
+
+  it('does not report read-only for the broad calendar scope', () => {
+    expect(detectCapabilities(CAL_BROAD)).toEqual(['calendar']);
+  });
+
+  it('ignores calendar.events on its own, which cannot list calendars', () => {
+    // users/me/calendarList needs readonly or broad, so setup would fail.
+    expect(detectCapabilities('https://www.googleapis.com/auth/calendar.events')).toEqual([]);
   });
 });
 

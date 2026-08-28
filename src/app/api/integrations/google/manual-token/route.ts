@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
     // Store calendars. Persist the *pasted* refresh token — the refresh grant
     // does not return a new one.
     let result: { calendarCount: number; accountEmail?: string | null } = { calendarCount: 0 };
-    if (capabilities.includes('calendar')) {
+    if (capabilities.includes('calendar') || capabilities.includes('calendarReadonly')) {
     try {
       result = await storeGoogleCalendarConnection({
         userId: auth.userId,
