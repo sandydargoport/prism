@@ -36,12 +36,17 @@ export function InputSection() {
           fetch('/api/shopping/lists'),
         ]);
         if (settingsRes.ok) {
-          const s = await settingsRes.json();
+          // GET /api/settings returns { settings: { ... } }, not a bare map.
+          // Reading the top level meant every lookup was undefined, so each
+          // toggle silently reset to its default on load.
+          const { settings: s = {} } = (await settingsRes.json()) as {
+            settings?: Record<string, unknown>;
+          };
           setKeyboardEnabled(s['input.virtualKeyboardEnabled'] !== false);
           setScannerEnabled(s['scanner.enabled'] !== false);
           setSoundEnabled(s['scanner.soundEnabled'] !== false);
           setSoundStyle(s['scanner.soundStyle'] === 'scan' ? 'scan' : 'beep');
-          setDefaultListId(s['scanner.defaultListId'] ?? '');
+          setDefaultListId((s['scanner.defaultListId'] as string) ?? '');
         }
         if (listsRes.ok) {
           const data = await listsRes.json();
@@ -56,11 +61,16 @@ export function InputSection() {
 
   const save = useCallback(async (key: string, value: unknown) => {
     try {
-      await fetch('/api/settings', {
-        method: 'POST',
+      // PATCH, not POST: /api/settings implements GET and PATCH only, so every
+      // save from this section was returning 405. fetch() does not throw on an
+      // HTTP error status, so the catch below never fired and the failure was
+      // invisible — the toggle animated and nothing was written.
+      const res = await fetch('/api/settings', {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key, value }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
     } catch {
       toast({ title: 'Failed to save setting', variant: 'destructive' });
     }

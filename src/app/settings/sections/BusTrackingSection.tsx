@@ -177,11 +177,15 @@ export function BusTrackingSection() {
 
   const handleSaveLabel = async (label: string) => {
     try {
-      await fetch('/api/settings', {
-        method: 'POST',
+      // PATCH, not POST: /api/settings implements GET and PATCH only. Because
+      // fetch() does not throw on an HTTP error status, the 405 fell straight
+      // past the catch and this reported "saved" while writing nothing.
+      const res = await fetch('/api/settings', {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key: 'busGmailLabel', value: label.trim() || null }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setGmailLabel(label.trim());
       toast({ title: 'Gmail label saved' });
     } catch {
