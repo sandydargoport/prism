@@ -4,20 +4,62 @@ const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12;
 const AUTH_TAG_LENGTH = 16;
 
+/**
+ * Raised when the encryption key itself is unusable, as opposed to anything
+ * going wrong with the data being encrypted.
+ *
+ * It exists so callers can tell the two apart. Handlers deliberately log only
+ * `err.name` to keep credentials out of the logs, which meant a misconfigured
+ * key surfaced as a bare "Error" and read as a problem with whatever the user
+ * was doing at the time. A distinct name is safe to log and safe to show:
+ * nothing here contains a secret. See #307.
+ */
+export class EncryptionKeyError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'EncryptionKeyError';
+  }
+}
+
+/** Guidance appended to every key error, since the fix is always the same. */
+const HOW_TO_GENERATE =
+  'Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"';
+
+/**
+ * Validate the configured key without encrypting anything.
+ *
+ * Returns null when usable, or a human-readable reason when not. Used at
+ * startup so a bad key is reported once, loudly, instead of surfacing later as
+ * an unrelated-looking failure in whichever integration happens to encrypt
+ * first.
+ */
+export function checkEncryptionKey(): string | null {
+  const key = process.env.ENCRYPTION_KEY || process.env.PIN_ENCRYPTION_KEY;
+  if (!key) {
+    return `ENCRYPTION_KEY is not set (PIN_ENCRYPTION_KEY is accepted as a fallback). ${HOW_TO_GENERATE}`;
+  }
+  // A placeholder copied from .env.example is the common case: it looks
+  // configured, so nothing about the running app suggests otherwise.
+  if (/^generate_/i.test(key)) {
+    return `ENCRYPTION_KEY is still the example placeholder from .env.example. ${HOW_TO_GENERATE}`;
+  }
+  if (!/^[0-9a-fA-F]+$/.test(key)) {
+    return `ENCRYPTION_KEY must be hexadecimal, and this value contains other characters. ${HOW_TO_GENERATE}`;
+  }
+  if (key.length !== 64) {
+    return `ENCRYPTION_KEY must be 64 hex characters (32 bytes); this one is ${key.length}. ${HOW_TO_GENERATE}`;
+  }
+  return null;
+}
+
 function getKey(): Buffer {
   // Backward compatibility:
   // Older installs generated PIN_ENCRYPTION_KEY but not ENCRYPTION_KEY.
   // Prefer ENCRYPTION_KEY for integrations, fall back to PIN_ENCRYPTION_KEY.
-  const key = process.env.ENCRYPTION_KEY || process.env.PIN_ENCRYPTION_KEY;
-  if (!key) {
-    throw new Error('ENCRYPTION_KEY (or PIN_ENCRYPTION_KEY fallback) environment variable is required');
-  }
-  // Accept hex-encoded 32-byte key
-  const buf = Buffer.from(key, 'hex');
-  if (buf.length !== 32) {
-    throw new Error('ENCRYPTION_KEY/PIN_ENCRYPTION_KEY must be 64 hex characters (32 bytes)');
-  }
-  return buf;
+  const problem = checkEncryptionKey();
+  if (problem) throw new EncryptionKeyError(problem);
+  const key = (process.env.ENCRYPTION_KEY || process.env.PIN_ENCRYPTION_KEY)!;
+  return Buffer.from(key, 'hex');
 }
 
 /**

@@ -152,15 +152,80 @@ describe('getKey validation', () => {
     const savedPin = process.env.PIN_ENCRYPTION_KEY;
     delete process.env.ENCRYPTION_KEY;
     delete process.env.PIN_ENCRYPTION_KEY;
-    expect(() => encrypt('test')).toThrow('environment variable is required');
+    expect(() => encrypt('test')).toThrow(/ENCRYPTION_KEY is not set/);
     process.env.ENCRYPTION_KEY = savedKey;
     if (savedPin !== undefined) process.env.PIN_ENCRYPTION_KEY = savedPin;
   });
 
-  it('throws when ENCRYPTION_KEY is wrong length', () => {
+  it('throws when ENCRYPTION_KEY is malformed', () => {
     const saved = process.env.ENCRYPTION_KEY;
+    // 'tooshort' is both too short AND not hexadecimal. The validator reports
+    // the hex problem first, which is the more useful of the two: a value that
+    // isn't hex at all is usually a placeholder rather than a truncated key.
     process.env.ENCRYPTION_KEY = 'tooshort';
-    expect(() => encrypt('test')).toThrow('ENCRYPTION_KEY must be 64 hex characters');
+    expect(() => encrypt('test')).toThrow(/must be hexadecimal/);
     process.env.ENCRYPTION_KEY = saved;
+  });
+});
+
+/**
+ * Regression tests for #307. A placeholder ENCRYPTION_KEY left in .env made
+ * Prism start and appear healthy, then fail much later inside whichever
+ * integration encrypted first, reporting an error that pointed at the
+ * integration rather than at the key.
+ */
+describe('checkEncryptionKey', () => {
+  const original = process.env;
+  beforeEach(() => { process.env = { ...original }; });
+  afterAll(() => { process.env = original; });
+
+  const valid = 'a'.repeat(64);
+
+  it('accepts a valid 64-character hex key', async () => {
+    process.env.ENCRYPTION_KEY = valid;
+    const { checkEncryptionKey } = await import('../crypto');
+    expect(checkEncryptionKey()).toBeNull();
+  });
+
+  it('rejects the placeholder that shipped in .env.example', async () => {
+    process.env.ENCRYPTION_KEY = 'generate_a_64_hex_character_string_here';
+    delete process.env.PIN_ENCRYPTION_KEY;
+    const { checkEncryptionKey } = await import('../crypto');
+    expect(checkEncryptionKey()).toMatch(/placeholder/i);
+  });
+
+  it('rejects a non-hexadecimal value', async () => {
+    process.env.ENCRYPTION_KEY = 'z'.repeat(64);
+    delete process.env.PIN_ENCRYPTION_KEY;
+    const { checkEncryptionKey } = await import('../crypto');
+    expect(checkEncryptionKey()).toMatch(/hexadecimal/i);
+  });
+
+  it('rejects a key of the wrong length and says what it got', async () => {
+    process.env.ENCRYPTION_KEY = 'ab'.repeat(10);
+    delete process.env.PIN_ENCRYPTION_KEY;
+    const { checkEncryptionKey } = await import('../crypto');
+    expect(checkEncryptionKey()).toMatch(/64 hex characters.*is 20/i);
+  });
+
+  it('reports a missing key', async () => {
+    delete process.env.ENCRYPTION_KEY;
+    delete process.env.PIN_ENCRYPTION_KEY;
+    const { checkEncryptionKey } = await import('../crypto');
+    expect(checkEncryptionKey()).toMatch(/not set/i);
+  });
+
+  it('still accepts the PIN_ENCRYPTION_KEY fallback', async () => {
+    delete process.env.ENCRYPTION_KEY;
+    process.env.PIN_ENCRYPTION_KEY = valid;
+    const { checkEncryptionKey } = await import('../crypto');
+    expect(checkEncryptionKey()).toBeNull();
+  });
+
+  it('throws a named error so callers can tell config from data failures', async () => {
+    process.env.ENCRYPTION_KEY = 'generate_a_64_hex_character_string_here';
+    delete process.env.PIN_ENCRYPTION_KEY;
+    const { encrypt, EncryptionKeyError } = await import('../crypto');
+    expect(() => encrypt('x')).toThrow(EncryptionKeyError);
   });
 });

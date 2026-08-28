@@ -20,6 +20,7 @@ import { db } from '@/lib/db/client';
 import { settings } from '@/lib/db/schema';
 import { encrypt } from '@/lib/utils/crypto';
 import { logError } from '@/lib/utils/logError';
+import { EncryptionKeyError } from '@/lib/utils/crypto';
 import { logActivity } from '@/lib/services/auditLog';
 import { getGoogleCredentials } from '@/lib/integrations/credentialStore';
 import { refreshAccessToken, TokenRevokedError } from '@/lib/integrations/google-calendar';
@@ -183,6 +184,16 @@ export async function POST(request: NextRequest) {
       accountEmail: result.accountEmail,
     });
   } catch (err) {
+    // A misconfigured encryption key is a configuration problem, not a token
+    // problem, and saying so saves the user from troubleshooting Google. The
+    // message names no secret — only the shape of the key that was expected.
+    if (err instanceof EncryptionKeyError) {
+      logError('google/manual-token failed: encryption key invalid', err.message);
+      return NextResponse.json(
+        { error: 'encryption_key_invalid', message: `Prism's encryption key is not configured correctly, so it cannot store the credentials. This is not a problem with your token. ${err.message}` },
+        { status: 500 },
+      );
+    }
     // Never surface or log the request body / credentials.
     logError('google/manual-token failed:', err instanceof Error ? err.name : 'error');
     // This branch must carry a message. Every *expected* failure above returns
