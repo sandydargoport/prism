@@ -117,8 +117,34 @@ export function GoogleManualTokenForm({ onSaved }: { onSaved?: () => void }) {
       </p>
 
         <p className="text-xs text-muted-foreground">
-          One token can cover more than the calendar. In the Playground&apos;s scope list, tick whichever of
-          these you want Prism to use, and only those:
+          One token can cover more than the calendar. The Playground&apos;s API list is long, so use the
+          <strong> Input your own scopes</strong> box at the top of Step 1 and paste the lines you want,
+          space-separated. Paste only what you want Prism to use:
+        </p>
+        <ul className="list-disc space-y-1.5 pl-5 text-xs text-muted-foreground">
+          <li>
+            <strong>Calendar</strong> &mdash; two-way sync. Both lines:
+            <code className="mt-0.5 block break-all text-[11px]">
+              https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly
+            </code>
+          </li>
+          <li>
+            <strong>Tasks</strong> &mdash; Google Tasks as a task source:
+            <code className="mt-0.5 block break-all text-[11px]">https://www.googleapis.com/auth/tasks</code>
+          </li>
+          <li>
+            <strong>Gmail</strong> &mdash; bus tracking only:
+            <code className="mt-0.5 block break-all text-[11px]">https://www.googleapis.com/auth/gmail.modify</code>
+            <span className="mt-0.5 block">
+              Bus tracking marks the transport emails it has read, which needs <code>modify</code>.
+              <code> gmail.readonly</code> also works if you would rather it never wrote anything, but then
+              those emails stay unread in your inbox.
+            </span>
+          </li>
+        </ul>
+        <p className="text-xs text-muted-foreground">
+          Leave one out and Prism simply will not enable it. A token cannot gain a scope later, so to add
+          one afterwards you generate a new token with the extra scope included and paste it here again.
         </p>
         <ul className="list-disc space-y-1 pl-5 text-xs text-muted-foreground">
           <li><strong>Google Calendar API v3</strong> &mdash; two-way calendar sync</li>
