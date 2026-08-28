@@ -225,3 +225,55 @@ describe('POST /api/integrations/google/manual-token — success', () => {
     expect(order).toEqual(['creds', 'store']);
   });
 });
+
+describe('POST /api/integrations/google/manual-token — read-only calendar', () => {
+  const READONLY = 'https://www.googleapis.com/auth/calendar.readonly openid email';
+
+  beforeEach(() => {
+    mockRefresh.mockResolvedValue({
+      access_token: 'at_plain',
+      expires_in: 3600,
+      scope: READONLY,
+      token_type: 'Bearer',
+    });
+  });
+
+  it('connects rather than rejecting, and reports read-only', async () => {
+    const res = await POST(req(goodBody));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.capabilities).toEqual(['calendarReadonly']);
+    expect(body.enabled).toBe('Calendar (read-only)');
+    expect(body.calendarCount).toBe(2);
+  });
+
+  it('tells the store the token cannot write, so no calendar offers an event form', async () => {
+    // The whole point of the flag: per-calendar accessRole describes the
+    // ACCOUNT's rights, so without this an owned calendar would still show in
+    // the event modal and fail on submit.
+    await POST(req(goodBody));
+    expect(mockStore).toHaveBeenCalledTimes(1);
+    expect(mockStore.mock.calls[0][0].readOnly).toBe(true);
+  });
+
+  it('does not set the read-only flag for a full-access token', async () => {
+    mockRefresh.mockResolvedValue({
+      access_token: 'at_plain',
+      expires_in: 3600,
+      scope: 'https://www.googleapis.com/auth/calendar openid email',
+      token_type: 'Bearer',
+    });
+    await POST(req(goodBody));
+    expect(mockStore.mock.calls[0][0].readOnly).toBe(false);
+  });
+
+  it('still records the calendar count in the audit log', async () => {
+    // Regression: the summary keyed off 'calendar' alone, so read-only
+    // connections logged no count while full ones did.
+    await POST(req(goodBody));
+    const summary = mockLogActivity.mock.calls[0][0].summary as string;
+    expect(summary).toContain('2 calendars');
+    expect(summary).toContain('read-only');
+  });
+});

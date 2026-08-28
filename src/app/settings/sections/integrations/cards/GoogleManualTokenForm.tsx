@@ -71,8 +71,8 @@ export function GoogleManualTokenForm({ onSaved }: { onSaved?: () => void }) {
       }
       if (data.capabilities?.includes('calendarReadonly')) {
         parts.push(
-          `${data.calendarCount ?? 0} calendar${data.calendarCount === 1 ? '' : 's'} imported, read-only` +
-          ' · add calendar.events to create events from Prism',
+          `${data.calendarCount ?? 0} calendar${data.calendarCount === 1 ? '' : 's'} imported, ` +
+          'read-only (Prism cannot add events to them)',
         );
       }
       if (data.capabilities?.includes('gmail')) parts.push('Gmail connected for bus tracking');
@@ -134,8 +134,9 @@ export function GoogleManualTokenForm({ onSaved }: { onSaved?: () => void }) {
               https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly
             </code>
             <span className="mt-0.5 block">
-              The <code>calendar.readonly</code> line on its own also works and gives you a read-only
-              calendar: events show in Prism, but you cannot create or edit them there.
+              The <code>calendar.readonly</code> line on its own also works and gives you read-only
+              calendars: their events show in Prism, but they are not offered when you add an
+              event. Include the <code>calendar.events</code> line as well to create events from Prism.
             </span>
           </li>
           <li>

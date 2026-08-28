@@ -365,7 +365,14 @@ export async function POST(request: NextRequest) {
           externalEventId = googleEvent.id;
         } catch (error) {
           logError('Failed to create event on Google Calendar:', error);
-          googleWarning = 'Event was saved locally but could not be synced to Google Calendar.';
+          // A scope failure is permanent — the token cannot write, and retrying
+          // will fail identically. Saying "could not be synced" invites a retry
+          // that cannot work, so name the cause and the fix instead.
+          const msg = error instanceof Error ? error.message : '';
+          googleWarning = /insufficient|forbidden|\b403\b/i.test(msg)
+            ? 'Event saved locally. This Google connection is read-only, so it was not added to Google Calendar. ' +
+              'Reconnect with the calendar.events scope to create events there.'
+            : 'Event was saved locally but could not be synced to Google Calendar.';
         }
       }
     }

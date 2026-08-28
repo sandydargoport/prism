@@ -46,8 +46,16 @@ export async function storeGoogleCalendarConnection(params: {
   userId: string;
   tokens: GoogleTokenBundle;
   accountEmail: string | null;
+  /**
+   * The token carries calendar.readonly but not calendar.events, so it cannot
+   * write to ANY calendar — including ones Google reports as owned. Per-calendar
+   * accessRole describes the account's rights, not the token's, so it is the
+   * wrong thing to gate on here and would leave these sources offering an event
+   * form that fails on submit.
+   */
+  readOnly?: boolean;
 }): Promise<StoreResult> {
-  const { userId, tokens } = params;
+  const { userId, tokens, readOnly = false } = params;
 
   const tokenExpiresAt = new Date(Date.now() + tokens.expiresIn * 1000);
   const encryptedAccessToken = encrypt(tokens.accessToken);
@@ -88,6 +96,10 @@ export async function storeGoogleCalendarConnection(params: {
           // Only overwrite the email when we resolved one, so a transient
           // userinfo failure doesn't blank an existing label.
           accountEmail: accountEmail ?? undefined,
+          // Only forced in the read-only direction. Reconnecting with a
+          // writable token must not silently re-tick a box the user turned
+          // off; losing write access is a fact, hiding a calendar is a choice.
+          ...(readOnly ? { showInEventModal: false } : {}),
           syncErrors: prev.userOverride ? { userOverride: true } : null,
           updatedAt: new Date(),
         })
@@ -95,7 +107,8 @@ export async function storeGoogleCalendarConnection(params: {
       updated++;
     } else {
       const calendarName = (calendar.summary || 'Untitled Calendar').slice(0, 255);
-      const isWritable = calendar.accessRole === 'writer' || calendar.accessRole === 'owner';
+      const isWritable =
+        !readOnly && (calendar.accessRole === 'writer' || calendar.accessRole === 'owner');
       await db.insert(calendarSources).values({
         userId,
         provider: 'google',
