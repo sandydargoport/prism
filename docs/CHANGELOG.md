@@ -4,6 +4,11 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.18.2] – 2026-08-28
+
+### Added
+- **Google Tasks and bus-tracking Gmail can now be connected without a public web address.** Prism has supported Google Tasks as a task source for a while, but connecting it required Google's browser sign-in, which needs a public HTTPS address that a home-network-only install does not have. The same paste-a-token method already used for Google Calendar now covers Tasks and Gmail too, and one token can carry all three. You choose which: in Google's OAuth Playground you paste only the lines for the parts you want, so a token can cover your calendar and tasks while leaving your email alone. Prism tells you afterwards exactly what the token enabled. The exact lines to paste are shown in *Settings → Integrations → Google*. Note that a token cannot gain access later, so to add something you generate a fresh one with the extra line included.
+
 ## [1.18.1] – 2026-08-28
 
 ### Fixed
