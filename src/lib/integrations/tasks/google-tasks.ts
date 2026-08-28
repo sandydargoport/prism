@@ -2,7 +2,7 @@
  * Google Tasks Integration
  *
  * Uses Google Tasks API v1 to sync tasks bidirectionally.
- * Requires OAuth tokens with https://www.googleapis.com/auth/tasks scope.
+ * Requires OAuth tokens carrying GOOGLE_SCOPE.tasks (see googleScopes.ts).
  *
  * API Reference: https://developers.google.com/tasks/reference/rest
  */

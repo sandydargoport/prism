@@ -15,19 +15,12 @@
  */
 const GOOGLE_OAUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+import { CALENDAR_BROWSER_SCOPES } from '@/lib/integrations/googleScopes';
+
 const GOOGLE_CALENDAR_API = 'https://www.googleapis.com/calendar/v3';
 
-/**
- * Required scopes for Google Calendar access
- */
-const SCOPES = [
-  'https://www.googleapis.com/auth/calendar.readonly',
-  'https://www.googleapis.com/auth/calendar.events',
-  // Identify which Google account authorized, for the "Connected as <email>"
-  // label on the Integrations card (#100). Read-only identity scopes.
-  'openid',
-  'email',
-].join(' ');
+/** Required scopes for Google Calendar access. Defined in googleScopes.ts. */
+const SCOPES = CALENDAR_BROWSER_SCOPES;
 
 /**
  * Google Calendar Event from API

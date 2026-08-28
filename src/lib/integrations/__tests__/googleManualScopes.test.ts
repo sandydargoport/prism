@@ -7,7 +7,7 @@
  * a capability they asked for, or wires up one they deliberately withheld.
  */
 
-import { detectCapabilities, describeCapabilities } from '../googleManualScopes';
+import { detectCapabilities, describeCapabilities, GOOGLE_CAPABILITIES } from '../googleManualScopes';
 
 const CAL_PAIR = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly';
 const CAL_BROAD = 'https://www.googleapis.com/auth/calendar';
@@ -86,5 +86,29 @@ describe('describeCapabilities', () => {
 
   it('says nothing rather than producing an empty string', () => {
     expect(describeCapabilities([])).toBe('nothing');
+  });
+});
+
+describe('advertised scopes round-trip through the validator', () => {
+  // The setup screen renders playgroundScopes verbatim. If a scope set the UI
+  // tells a user to paste no longer satisfies matches(), that user follows the
+  // instructions and gets rejected — the #312 failure, in the other direction.
+  const CAPS = Object.keys(GOOGLE_CAPABILITIES) as Array<keyof typeof GOOGLE_CAPABILITIES>;
+
+  it.each(CAPS)('pasting exactly what %s advertises enables it', (cap) => {
+    const pasted = GOOGLE_CAPABILITIES[cap].playgroundScopes.join(' ');
+    expect(detectCapabilities(pasted)).toContain(cap);
+  });
+
+  it('every capability advertises at least one scope', () => {
+    for (const cap of CAPS) {
+      expect(GOOGLE_CAPABILITIES[cap].playgroundScopes.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('matches whole scope entries, not prefixes of longer ones', () => {
+    // 'auth/tasks' must not be found inside a hypothetical 'auth/tasks.extra',
+    // which is a different, narrower grant.
+    expect(detectCapabilities('https://www.googleapis.com/auth/tasks.readonly')).toEqual([]);
   });
 });

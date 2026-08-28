@@ -12,7 +12,16 @@
  * read back what Google says the token covers and enable each capability it
  * actually has. Someone who wants Calendar and Tasks but would rather not hand
  * Prism their Gmail simply does not tick that scope, and nothing else changes.
+ *
+ * Scope URLs are NOT written here. They come from googleScopes.ts, so the
+ * lines the setup screen tells a user to paste and the check that reads the
+ * resulting token cannot disagree — see the note there.
  */
+import { GOOGLE_SCOPE } from '@/lib/integrations/googleScopes';
+
+/** Matches a scope URL as a whole entry, not as a prefix of a longer one. */
+const has = (scope: string) => (granted: string) =>
+  granted.split(/\s+/).includes(scope);
 
 export type GoogleCapability = 'calendar' | 'calendarReadonly' | 'tasks' | 'gmail';
 
@@ -23,6 +32,12 @@ interface CapabilitySpec {
   label: string;
   /** What to tick in the OAuth Playground to grant it. */
   playgroundApi: string;
+  /**
+   * The exact lines a manual/Playground user pastes to get this capability.
+   * The setup screen renders these rather than repeating the URLs, and a test
+   * feeds them back through `matches`, so advertised-but-rejected cannot ship.
+   */
+  playgroundScopes: string[];
 }
 
 export const GOOGLE_CAPABILITIES: Record<GoogleCapability, CapabilitySpec> = {
@@ -32,10 +47,11 @@ export const GOOGLE_CAPABILITIES: Record<GoogleCapability, CapabilitySpec> = {
     // calendar.events or broad. So neither narrow scope alone delivers two-way
     // sync, and the browser flow accordingly grants both.
     matches: (s) =>
-      /auth\/calendar(\s|$)/.test(s) ||
-      (/auth\/calendar\.events/.test(s) && /auth\/calendar\.readonly/.test(s)),
+      has(GOOGLE_SCOPE.calendarBroad)(s) ||
+      (has(GOOGLE_SCOPE.calendarEvents)(s) && has(GOOGLE_SCOPE.calendarReadonly)(s)),
     label: 'Calendar',
     playgroundApi: 'Google Calendar API v3',
+    playgroundScopes: [GOOGLE_SCOPE.calendarEvents, GOOGLE_SCOPE.calendarReadonly],
   },
   calendarReadonly: {
     // calendar.readonly on its own can list and read calendars but cannot write
@@ -44,22 +60,25 @@ export const GOOGLE_CAPABILITIES: Record<GoogleCapability, CapabilitySpec> = {
     // as read-only, because a calendar that silently refuses new events is the
     // failure mode this whole area keeps producing.
     matches: (s) =>
-      !/auth\/calendar(\s|$)/.test(s) &&
-      !/auth\/calendar\.events/.test(s) &&
-      /auth\/calendar\.readonly/.test(s),
+      !has(GOOGLE_SCOPE.calendarBroad)(s) &&
+      !has(GOOGLE_SCOPE.calendarEvents)(s) &&
+      has(GOOGLE_SCOPE.calendarReadonly)(s),
     label: 'Calendar (read-only)',
     playgroundApi: 'Google Calendar API v3',
+    playgroundScopes: [GOOGLE_SCOPE.calendarReadonly],
   },
   tasks: {
-    matches: (s) => /auth\/tasks(\s|$)/.test(s),
+    matches: has(GOOGLE_SCOPE.tasks),
     label: 'Tasks',
     playgroundApi: 'Tasks API v1',
+    playgroundScopes: [GOOGLE_SCOPE.tasks],
   },
   gmail: {
     // Bus tracking parses transport emails; readonly is enough to do that.
-    matches: (s) => /auth\/gmail\.(readonly|modify)/.test(s),
+    matches: (s) => has(GOOGLE_SCOPE.gmailModify)(s) || has(GOOGLE_SCOPE.gmailReadonly)(s),
     label: 'Gmail (bus tracking)',
     playgroundApi: 'Gmail API v1',
+    playgroundScopes: [GOOGLE_SCOPE.gmailModify],
   },
 };
 

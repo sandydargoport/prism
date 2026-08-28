@@ -5,6 +5,46 @@ import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
+import { GOOGLE_CAPABILITIES, type GoogleCapability } from '@/lib/integrations/googleManualScopes';
+
+/**
+ * The capabilities a user can ask for by pasting scopes, in the order shown.
+ *
+ * Only the prose lives here — the scope lines themselves come from
+ * GOOGLE_CAPABILITIES, which is also what validates the resulting token. That
+ * is deliberate: these instructions and that check used to be separate copies,
+ * and #312 changed one without the other.
+ *
+ * 'calendarReadonly' is described inside the Calendar entry rather than listed
+ * as its own bullet, because it is a weaker version of the same thing, not a
+ * fourth feature to choose.
+ */
+const PASTEABLE: Array<{ key: GoogleCapability; blurb: string; note?: React.ReactNode }> = [
+  {
+    key: 'calendar',
+    blurb: 'two-way sync. Both lines:',
+    note: (
+      <>
+        The{' '}
+        <code>{GOOGLE_CAPABILITIES.calendarReadonly.playgroundScopes.join(' ')}</code> line on its
+        own also works and gives you read-only calendars: their events show in Prism, but they are
+        not offered when you add an event.
+      </>
+    ),
+  },
+  { key: 'tasks', blurb: 'Google Tasks as a task source:' },
+  {
+    key: 'gmail',
+    blurb: 'bus tracking only:',
+    note: (
+      <>
+        Bus tracking marks the transport emails it has read, which needs <code>modify</code>.{' '}
+        <code>gmail.readonly</code> also works if you would rather it never wrote anything, but then
+        those emails stay unread in your inbox.
+      </>
+    ),
+  },
+];
 
 /**
  * Connect Google Calendar without a public URL by pasting a refresh token
@@ -128,30 +168,15 @@ export function GoogleManualTokenForm({ onSaved }: { onSaved?: () => void }) {
           space-separated. Paste only what you want Prism to use:
         </p>
         <ul className="list-disc space-y-1.5 pl-5 text-xs text-muted-foreground">
-          <li>
-            <strong>Calendar</strong> &mdash; two-way sync. Both lines:
-            <code className="mt-0.5 block break-all text-[11px]">
-              https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly
-            </code>
-            <span className="mt-0.5 block">
-              The <code>calendar.readonly</code> line on its own also works and gives you read-only
-              calendars: their events show in Prism, but they are not offered when you add an
-              event. Include the <code>calendar.events</code> line as well to create events from Prism.
-            </span>
-          </li>
-          <li>
-            <strong>Tasks</strong> &mdash; Google Tasks as a task source:
-            <code className="mt-0.5 block break-all text-[11px]">https://www.googleapis.com/auth/tasks</code>
-          </li>
-          <li>
-            <strong>Gmail</strong> &mdash; bus tracking only:
-            <code className="mt-0.5 block break-all text-[11px]">https://www.googleapis.com/auth/gmail.modify</code>
-            <span className="mt-0.5 block">
-              Bus tracking marks the transport emails it has read, which needs <code>modify</code>.
-              <code> gmail.readonly</code> also works if you would rather it never wrote anything, but then
-              those emails stay unread in your inbox.
-            </span>
-          </li>
+          {PASTEABLE.map(({ key, blurb, note }) => (
+            <li key={key}>
+              <strong>{GOOGLE_CAPABILITIES[key].label}</strong> &mdash; {blurb}
+              <code className="mt-0.5 block break-all text-[11px]">
+                {GOOGLE_CAPABILITIES[key].playgroundScopes.join(' ')}
+              </code>
+              {note ? <span className="mt-0.5 block">{note}</span> : null}
+            </li>
+          ))}
         </ul>
         <p className="text-xs text-muted-foreground">
           Leave one out and Prism simply will not enable it. A token cannot gain a scope later, so to add
@@ -208,8 +233,7 @@ export function GoogleManualTokenForm({ onSaved }: { onSaved?: () => void }) {
           Client ID and Secret.
         </li>
         <li>
-          Step 1: enter the scope{' '}
-          <code className="rounded bg-muted px-1">https://www.googleapis.com/auth/calendar</code> →{' '}
+          Step 1: enter the scopes you chose above &rarr;{' '}
           <span className="font-medium">Authorize APIs</span> → sign in → if warned the app isn&apos;t
           verified, choose <span className="font-medium">Advanced → proceed</span> (expected for your own
           app) → <span className="font-medium">Allow</span>.

@@ -5,13 +5,12 @@
  */
 
 const GOOGLE_OAUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
+import { GMAIL_BROWSER_SCOPES } from '@/lib/integrations/googleScopes';
+
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GMAIL_API = 'https://www.googleapis.com/gmail/v1';
 
-const SCOPES = [
-  'https://www.googleapis.com/auth/gmail.readonly',
-  'https://www.googleapis.com/auth/gmail.modify',
-].join(' ');
+const SCOPES = GMAIL_BROWSER_SCOPES;
 
 export interface GmailTokens {
   access_token: string;
