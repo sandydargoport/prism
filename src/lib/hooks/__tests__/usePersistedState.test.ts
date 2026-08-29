@@ -10,7 +10,14 @@
  * localStorage throw on access, not return null.
  */
 import { renderHook, act } from '@testing-library/react';
-import { usePersistedState, oneOf, isBoolean } from '../usePersistedState';
+import {
+  usePersistedState,
+  useSessionScopedState,
+  displayWentIdle,
+  IDLE_FORGET_MS,
+  oneOf,
+  isBoolean,
+} from '../usePersistedState';
 
 const isGroup = oneOf('none', 'person', 'list');
 
@@ -67,5 +74,58 @@ describe('usePersistedState', () => {
     act(() => result.current[1](true));
     const second = renderHook(() => usePersistedState('done', false, isBoolean));
     expect(second.result.current[0]).toBe(true);
+  });
+});
+
+describe('displayWentIdle', () => {
+  it('is false when the display was just touched', () => {
+    window.localStorage.setItem('prism-last-activity', String(Date.now()));
+    expect(displayWentIdle()).toBe(false);
+  });
+
+  it('is true once the display has sat untouched past the threshold', () => {
+    window.localStorage.setItem('prism-last-activity', String(Date.now() - IDLE_FORGET_MS - 1000));
+    expect(displayWentIdle()).toBe(true);
+  });
+
+  it('is false when no activity was ever recorded', () => {
+    // A browser that has never run the screensaver must not lose its filter on
+    // every single load.
+    expect(displayWentIdle()).toBe(false);
+  });
+
+  it('is false when the stored value is nonsense rather than a number', () => {
+    window.localStorage.setItem('prism-last-activity', 'yesterday');
+    expect(displayWentIdle()).toBe(false);
+  });
+});
+
+describe('useSessionScopedState', () => {
+  const isListFilter = (v: unknown): v is string | null => v === null || typeof v === 'string';
+
+  it('keeps the value across a reload during active use', () => {
+    window.localStorage.setItem('prism-last-activity', String(Date.now()));
+    window.localStorage.setItem('f', JSON.stringify('list-1'));
+
+    const { result } = renderHook(() => useSessionScopedState<string | null>('f', null, isListFilter));
+    expect(result.current[0]).toBe('list-1');
+  });
+
+  it('forgets it after the display has been idle', () => {
+    // The screensaver has been and gone. Walking up to a list that silently
+    // hides most of its tasks reads as data loss.
+    window.localStorage.setItem('prism-last-activity', String(Date.now() - IDLE_FORGET_MS - 1000));
+    window.localStorage.setItem('f', JSON.stringify('list-1'));
+
+    const { result } = renderHook(() => useSessionScopedState<string | null>('f', null, isListFilter));
+    expect(result.current[0]).toBeNull();
+  });
+
+  it('forgetting is a real write, so the next load agrees', () => {
+    window.localStorage.setItem('prism-last-activity', String(Date.now() - IDLE_FORGET_MS - 1000));
+    window.localStorage.setItem('f', JSON.stringify('list-1'));
+    renderHook(() => useSessionScopedState<string | null>('f', null, isListFilter));
+
+    expect(JSON.parse(window.localStorage.getItem('f')!)).toBeNull();
   });
 });

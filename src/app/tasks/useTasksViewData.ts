@@ -8,7 +8,7 @@ import { toast } from '@/components/ui/use-toast';
 import { pushUndo } from '@/lib/hooks/useUndoStack';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import type { Task } from '@/types';
-import { usePersistedState, oneOf, isBoolean } from '@/lib/hooks/usePersistedState';
+import { usePersistedState, useSessionScopedState, oneOf, isBoolean } from '@/lib/hooks/usePersistedState';
 
 const AUTO_SYNC_STALE_MINUTES = 5; // Sync if last sync > 5 min ago
 const AUTO_SYNC_INTERVAL_MS = 5 * 60 * 1000; // Background sync every 5 min
@@ -36,7 +36,13 @@ export function useTasksViewData() {
   const [showCompleted, setShowCompleted] = usePersistedState(
     'prism-tasks-show-completed', false, isBoolean,
   );
-  const [filterList, setFilterList] = useState<string | null>(null);
+  // Persisted, but forgotten once the display has been idle a while. Keeping
+  // a filter across a refresh is useful mid-session; keeping it after the
+  // screensaver has been and gone means walking up to a list that silently
+  // hides most of it, which reads as missing tasks.
+  const [filterList, setFilterList] = useSessionScopedState<string | null>(
+    'prism-tasks-filter-list', null, (v): v is string | null => v === null || typeof v === 'string',
+  );
   const [sortBy, setSortBy] = usePersistedState<'dueDate' | 'priority' | 'title'>(
     'prism-tasks-sort', 'dueDate', oneOf('dueDate', 'priority', 'title'),
   );
