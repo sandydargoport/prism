@@ -317,10 +317,23 @@ function TasksHelp() {
       <Ul>
         <Li><strong>Add</strong> via the &quot;Add Task&quot; button or inline text input</Li>
         <Li><strong>Complete</strong> by tapping the checkbox</Li>
+        <Li><strong>Delete</strong> with the trash icon on a task, or from its edit window (parents only)</Li>
         <Li><strong>Filter</strong> by person, priority, or list</Li>
         <Li><strong>Group by Person</strong> to see tasks organized by family member</Li>
         <Li><strong>Sync</strong> with Microsoft To Do or Google Tasks (configure per-list in Settings &gt; Integrations)</Li>
       </Ul>
+      <H2>Removed tasks are held for review</H2>
+      <P>
+        If a task disappears from the app you sync with, Prism keeps it and shows a
+        <strong> Review</strong> button on the Tasks page. A parent chooses to delete it
+        or keep it as a local task. If a lot vanish at once — the shape of a connection
+        problem rather than someone tidying up — nothing is flagged and the sync says why,
+        so a bad connection cannot quietly empty your list.
+      </P>
+      <P>
+        Deleting a task in Prism also removes it from the app it syncs with. Your view
+        settings — grouping, sorting and show-completed — are remembered between visits.
+      </P>
     </>
   );
 }

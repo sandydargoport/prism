@@ -57,6 +57,18 @@ If the task syncs to MS To Do / Google Tasks, the completed status propagates to
 
 ---
 
+## Deleting tasks
+
+Parents only. Two places: the trash icon on the task row, and the **Delete**
+button inside the task's edit window. Both confirm first.
+
+Deleting a synced task also deletes it in the provider. That happens
+immediately, not on the next sync. If the provider cannot be reached the task
+is still removed from Prism and a tombstone stops the next sync re-adding it,
+so the deletion sticks either way.
+
+---
+
 ## Filtering + sorting
 
 - **By list**: picker dropdown, "All lists" / "Unassigned" / specific list.
@@ -102,7 +114,11 @@ Pick one provider per Prism instance:
 1. *Settings → Integrations → Microsoft* card: connect your account.
 2. In the same card, for each Prism list pick an MS To Do list to sync it with.
 
-Bidirectional, newest-wins. Fields synced: title, notes (= description), completed, due date. Subtasks in MS To Do are flattened into the notes field (Prism doesn't have a subtask concept).
+Bidirectional, newest-wins. Fields synced: title, notes (= description), completed, due date.
+
+Steps (MS To Do's sub-items) are **not** imported — Prism has no subtask
+concept, so they are skipped rather than flattened. Attachments are not
+imported either.
 
 ### Google Tasks (bidirectional)
 
@@ -110,9 +126,45 @@ Bidirectional, newest-wins. Fields synced: title, notes (= description), complet
 2. In the same card, pick which Google Tasks list maps to which Prism list.
 
 Same shape as MS: bidirectional, newest-wins, title + notes + completed + due date.
+Subtasks and attachments are not imported.
+
+**No public web address?** Google's browser sign-in needs a redirect address
+it will accept, which a home-network-only install does not have. Use
+*Connect without a public URL (advanced)* on the same card and paste a refresh
+token minted in Google's OAuth Playground — include
+`https://www.googleapis.com/auth/tasks` in the scopes. Prism then takes you
+straight to the list picker. See CALENDAR.md for the full walkthrough; the
+only difference is the scope.
+
+### Removed tasks are held for review
+
+When a task you sync stops being listed by the provider, Prism does **not**
+delete it. It stays visible and a **Review** button appears in the Tasks
+header, where a parent chooses per task:
+
+- **Delete** — remove it from Prism too.
+- **Keep** — turn it into a local task. It stops syncing, and is never pushed
+  back to the provider it was removed from.
+
+Two safeguards sit in front of that:
+
+- A task must have been missing for longer than one sync interval before it is
+  flagged, so a task you just created is never reported as deleted, and a
+  single missed response flags nothing.
+- If an unusual number vanish at once — more than ten, or at least half of a
+  set of four or more — **nothing is flagged at all** and the source records an
+  error instead. That is the shape of an outage rather than of housekeeping,
+  and burying you in entries would invite a bulk confirm.
+
+A task that reappears at the provider clears its own flag on the next sync,
+with no action from you.
+
+Apple Reminders (CalDAV) task sources behave the same way.
 
 ### Auto-sync
 
+- Parents only. A child profile does not run sync; the page still shows tasks,
+  it just does not fetch new ones.
 - Fires on dashboard mount if last sync is stale (>5 minutes ago).
 - Background sync every 5 minutes via the polling hook.
 - Pauses when the browser tab is hidden.

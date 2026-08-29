@@ -4,6 +4,23 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.19.0] – 2026-08-29
+
+### Added
+- **Tasks removed in Google or Microsoft are now held for your review instead of disappearing.** When a task you sync stops being listed by the other app, Prism no longer deletes it. It stays put and a *Review* button appears on the Tasks page, where you choose to delete it or keep it as a local task. If an unusual number vanish at once — the shape of an outage rather than someone ticking things off — nothing is flagged at all and the sync says why, so a bad connection cannot quietly empty your list. A task that comes back on its own clears itself with no action from you.
+- **Tasks can be deleted from the Tasks page.** There was previously no delete anywhere in the task list or its edit window; you could only mark something complete. Both now have one.
+- **A read-only Google calendar can be connected on its own.** See 1.18.3; this release extends the same idea to task sources.
+
+### Fixed
+- **Deleting a task in Prism now removes it from the app it syncs with.** It previously vanished locally and came back within about five minutes, with nothing to explain why.
+- **Google Tasks could not be connected without a public web address.** Two separate faults: the connection read its credentials from a place they are not stored when Prism is set up through the app rather than a configuration file, and after pasting a token there was no way to reach the screen that picks which lists to show. The first also meant that, where the connection did work, it stopped about an hour later and reported only that credentials were missing.
+- **Apple Reminders tasks removed on the server are held for review too**, rather than deleted outright.
+- **The Tasks page kept its own settings.** Grouping, sorting and *show completed* survive a refresh now. The list filter does too, but is forgotten once the display has been idle a while, so walking up to a sleeping screen gives you the whole list back rather than a filtered one you do not remember setting.
+- **The task list filter said "No List" where it meant "All".** Choosing the obvious-looking option emptied the screen, and clearing the filter was only possible by unticking everything. There is now an explicit *All*, with the old option renamed *Unassigned*.
+- **The Tasks page stopped updating for child profiles.** It was repeatedly attempting a sync only a parent is allowed to run, and failing silently.
+- **A child asked to review a removed task was refused without being told why.**
+- **Weather and Kroger API keys could be overwritten without signing in.** Both now require an authenticated parent, matching the equivalent Google and Microsoft settings.
+
 ## [1.18.3] – 2026-08-28
 
 ### Added
