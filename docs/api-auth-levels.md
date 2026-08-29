@@ -105,6 +105,23 @@ Documents the authentication requirement for each API route. There are three acc
 | `/api/audit-logs` | Auth + Parent | — |
 | `/api/health` | Public | — |
 
+### Setup
+`/api/setup/credentials/*` are reached from **Settings**, not the setup wizard,
+so they all require an authenticated parent. `/api/setup/complete` and
+`/api/setup/status` run before any account exists and are necessarily public.
+
+| Route | GET | POST |
+|---|---|---|
+| `/api/setup/status` | Public | — |
+| `/api/setup/complete` | — | Public ¹ |
+| `/api/setup/credentials/google` | — | Auth + Parent |
+| `/api/setup/credentials/microsoft` | — | Auth + Parent |
+| `/api/setup/credentials/kroger` | — | Auth + Parent |
+| `/api/setup/credentials/weather` | — | Auth + Parent |
+
+> ¹ Writes the `setupComplete` marker during first-time setup, before any user
+> exists to authenticate as.
+
 ### Voice / Alexa
 | Route | GET | POST |
 |---|---|---|
