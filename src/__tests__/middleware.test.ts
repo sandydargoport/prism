@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { middleware } from '../middleware';
+import { createHouseholdSession, HOUSEHOLD_COOKIE_NAME } from '@/lib/auth/householdAuth';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -7,10 +8,7 @@ import { middleware } from '../middleware';
 
 function makeRequest(
   path: string,
-  {
-    method = 'GET',
-    headers = {},
-  }: { method?: string; headers?: Record<string, string> } = {},
+  { method = 'GET', headers = {} }: { method?: string; headers?: Record<string, string> } = {}
 ): NextRequest {
   const url = `http://localhost:3000${path}`;
   return new NextRequest(url, { method, headers: new Headers(headers) });
@@ -187,7 +185,7 @@ describe('middleware', () => {
       expect(res.status).not.toBe(403);
     });
 
-    it('on — logout allowed so visitors don\'t get stuck', async () => {
+    it("on — logout allowed so visitors don't get stuck", async () => {
       process.env.DEMO_MODE = 'true';
       const req = makeRequest('/api/auth/logout', {
         method: 'POST',
@@ -195,6 +193,83 @@ describe('middleware', () => {
       });
       const res = await middleware(req);
       expect(res.status).not.toBe(403);
+    });
+  });
+
+  describe('KYST household authentication', () => {
+    const authSecret = 's'.repeat(64);
+    const serviceToken = `v1.${'a'.repeat(64)}`;
+
+    beforeEach(() => {
+      process.env.KYST_AUTH_PASSWORD = 'test-password';
+      process.env.KYST_AUTH_SECRET = authSecret;
+      process.env.KYST_AUTH_SERVICE_TOKEN = serviceToken;
+    });
+
+    afterEach(() => {
+      delete process.env.KYST_AUTH_PASSWORD;
+      delete process.env.KYST_AUTH_SECRET;
+      delete process.env.KYST_AUTH_DEVICE_TOKEN;
+      delete process.env.KYST_AUTH_SERVICE_TOKEN;
+    });
+
+    it('returns 401 for an unauthenticated data API request', async () => {
+      const response = await middleware(makeRequest('/api/tasks'));
+      expect(response.status).toBe(401);
+      await expect(response.json()).resolves.toEqual({
+        error: 'Household authentication required',
+      });
+    });
+
+    it('accepts a valid household session cookie', async () => {
+      const cookie = await createHouseholdSession(authSecret);
+      const response = await middleware(
+        makeRequest('/api/tasks', {
+          headers: { cookie: `${HOUSEHOLD_COOKIE_NAME}=${cookie}` },
+        })
+      );
+      expect(response.status).not.toBe(401);
+    });
+
+    it('accepts the deployment service header', async () => {
+      const response = await middleware(
+        makeRequest('/api/tasks', {
+          headers: { 'x-kyst-service-token': serviceToken },
+        })
+      );
+      expect(response.status).not.toBe(401);
+    });
+
+    it('rejects an arbitrary service header', async () => {
+      const response = await middleware(
+        makeRequest('/api/tasks', {
+          headers: { 'x-kyst-service-token': `v1.${'b'.repeat(64)}` },
+        })
+      );
+      expect(response.status).toBe(401);
+    });
+
+    it('redirects an unauthenticated page request to the login wall', async () => {
+      const response = await middleware(makeRequest('/calendar?view=week'));
+      expect(response.status).toBe(307);
+      expect(response.headers.get('location')).toBe(
+        'http://localhost:3000/auth/household?next=%2Fcalendar%3Fview%3Dweek'
+      );
+    });
+
+    it('keeps the login wall and health checks public', async () => {
+      expect((await middleware(makeRequest('/auth/household'))).status).not.toBe(401);
+      expect((await middleware(makeRequest('/api/health'))).status).not.toBe(401);
+      expect((await middleware(makeRequest('/api/health/ready'))).status).not.toBe(401);
+      expect((await middleware(makeRequest('/api/health/deep'))).status).toBe(401);
+      expect((await middleware(makeRequest('/sw.js'))).status).not.toBe(401);
+      expect((await middleware(makeRequest('/workbox-123.js'))).status).not.toBe(401);
+    });
+
+    it('fails closed when only one core secret is configured', async () => {
+      delete process.env.KYST_AUTH_SECRET;
+      const response = await middleware(makeRequest('/api/tasks'));
+      expect(response.status).toBe(503);
     });
   });
 });
