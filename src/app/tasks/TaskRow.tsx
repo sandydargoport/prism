@@ -1,7 +1,7 @@
 'use client';
 
 import { format, isPast, differenceInDays, formatDistanceToNow } from 'date-fns';
-import { CalendarDays, Settings } from 'lucide-react';
+import { CalendarDays, Settings, Trash2 } from 'lucide-react';
 import { UserAvatar } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ export function TaskRow({
   task,
   onToggle,
   onEdit,
+  onDelete,
   showAvatar = false,
   showList = false,
   taskLists = [],
@@ -19,6 +20,8 @@ export function TaskRow({
   task: Task;
   onToggle: () => void;
   onEdit: () => void;
+  /** Omitted where a row is not deletable; the button is then not rendered. */
+  onDelete?: () => void;
   showAvatar?: boolean;
   showList?: boolean;
   taskLists?: Array<{ id: string; name: string; color?: string | null }>;
@@ -90,9 +93,26 @@ export function TaskRow({
               e.stopPropagation();
               onEdit();
             }}
+            aria-label="Edit task"
           >
             <Settings className="h-3 w-3" />
           </Button>
+          {onDelete && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 opacity-50 hover:opacity-100 hover:text-destructive"
+              onClick={(e) => {
+                // The row itself toggles completion, so a delete tap must not
+                // also mark the task done on its way out.
+                e.stopPropagation();
+                onDelete();
+              }}
+              aria-label="Delete task"
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          )}
         </div>
       </div>
     </div>

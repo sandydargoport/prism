@@ -16,6 +16,7 @@ export function GroupedTaskGrid({
   groups,
   toggleTask,
   editTask,
+  deleteTask,
   setCelebratingUser,
   taskLists,
   isMobile = false,
@@ -23,6 +24,7 @@ export function GroupedTaskGrid({
   groups: GroupDef[];
   toggleTask: (id: string) => Promise<boolean>;
   editTask: (task: Task) => void;
+  deleteTask: (taskId: string) => void;
   setCelebratingUser: (user: { id: string; name: string } | null) => void;
   taskLists: Array<{ id: string; name: string; color?: string | null }>;
   isMobile?: boolean;
@@ -153,6 +155,7 @@ export function GroupedTaskGrid({
                     }
                   }}
                   onEdit={() => editTask(task)}
+                  onDelete={() => deleteTask(task.id)}
                   showList={true}
                   taskLists={taskLists}
                 />

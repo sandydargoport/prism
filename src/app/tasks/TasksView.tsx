@@ -36,7 +36,7 @@ export function TasksView() {
     showAddModal, setShowAddModal,
     editingTask, setEditingTask,
     filteredTasks,
-    toggleTask, editTask, handleAddClick,
+    toggleTask, editTask, deleteTask, handleAddClick,
     completedCount, totalCount,
     taskLists,
     autoSyncing,
@@ -166,6 +166,7 @@ export function TasksView() {
 
         <div className="flex-1 overflow-y-auto p-4">
           <TaskContentArea
+            deleteTask={deleteTask}
             loading={loading} error={error} filteredTasks={filteredTasks}
             groupMode={groupMode}
             tasksByUser={tasksByUser} tasksByList={tasksByList}

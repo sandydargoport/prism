@@ -30,6 +30,7 @@ interface TaskContentAreaProps {
   handleInlineAdd: (assignedTo?: string, listId?: string) => void;
   toggleTask: (id: string) => Promise<boolean>;
   editTask: (task: Task) => void;
+  deleteTask: (taskId: string) => void;
   setCelebratingUser: (user: { id: string; name: string } | null) => void;
   taskLists: Array<{ id: string; name: string; color?: string | null }>;
   isMobile: boolean;
@@ -55,6 +56,7 @@ export function TaskContentArea({
   handleInlineAdd,
   toggleTask,
   editTask,
+  deleteTask,
   setCelebratingUser,
   taskLists,
   isMobile,
@@ -108,6 +110,7 @@ export function TaskContentArea({
         }))}
         toggleTask={toggleTask}
         editTask={editTask}
+        deleteTask={deleteTask}
         setCelebratingUser={setCelebratingUser}
         taskLists={taskLists}
         isMobile={isMobile}
@@ -130,6 +133,7 @@ export function TaskContentArea({
         }))}
         toggleTask={toggleTask}
         editTask={editTask}
+        deleteTask={deleteTask}
         setCelebratingUser={setCelebratingUser}
         taskLists={taskLists}
         isMobile={isMobile}
@@ -156,6 +160,7 @@ export function TaskContentArea({
         }))}
         toggleTask={toggleTask}
         editTask={editTask}
+        deleteTask={deleteTask}
         setCelebratingUser={setCelebratingUser}
         isMobile={isMobile}
       />
@@ -178,6 +183,7 @@ export function TaskContentArea({
         }))}
         toggleTask={toggleTask}
         editTask={editTask}
+        deleteTask={deleteTask}
         setCelebratingUser={setCelebratingUser}
         isMobile={isMobile}
       />
@@ -205,6 +211,7 @@ export function TaskContentArea({
           task={task}
           onToggle={() => toggleTask(task.id)}
           onEdit={() => editTask(task)}
+          onDelete={() => deleteTask(task.id)}
           showAvatar={true}
           showList={true}
           taskLists={taskLists}

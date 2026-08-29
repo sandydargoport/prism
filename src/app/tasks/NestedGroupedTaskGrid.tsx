@@ -16,12 +16,14 @@ export function NestedGroupedTaskGrid({
   primaryGroups,
   toggleTask,
   editTask,
+  deleteTask,
   setCelebratingUser,
   isMobile = false,
 }: {
   primaryGroups: NestedGroupDef[];
   toggleTask: (id: string) => Promise<boolean>;
   editTask: (task: Task) => void;
+  deleteTask: (taskId: string) => void;
   setCelebratingUser: (user: { id: string; name: string } | null) => void;
   isMobile?: boolean;
 }) {
@@ -156,6 +158,7 @@ export function NestedGroupedTaskGrid({
                           }
                         }}
                         onEdit={() => editTask(task)}
+                  onDelete={() => deleteTask(task.id)}
                       />
                     ))}
                   </div>
