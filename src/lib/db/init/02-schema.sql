@@ -687,6 +687,8 @@ CREATE TABLE IF NOT EXISTS public.tasks (
     external_id character varying(255),
     external_updated_at timestamp without time zone,
     last_synced timestamp without time zone,
+    pending_deletion timestamp without time zone,
+    sync_exempt boolean DEFAULT false NOT NULL,
     created_by uuid,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
     updated_at timestamp without time zone DEFAULT now() NOT NULL
@@ -2619,6 +2621,32 @@ CREATE TABLE IF NOT EXISTS public.dismissed_events (
   created_at timestamp DEFAULT now() NOT NULL
 );
 CREATE UNIQUE INDEX IF NOT EXISTS dismissed_events_source_external_unique ON public.dismissed_events (calendar_source_id, external_event_id);
+
+-- Tombstones for locally-deleted synced tasks (so the reconciler doesn't re-add them).
+CREATE TABLE IF NOT EXISTS public.dismissed_tasks (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  task_source_id uuid NOT NULL REFERENCES public.task_sources(id) ON DELETE CASCADE,
+  external_task_id varchar(255) NOT NULL,
+  created_at timestamp DEFAULT now() NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS dismissed_tasks_source_external_unique ON public.dismissed_tasks (task_source_id, external_task_id);
+
+-- Deletes-only review for tasks: flag synced tasks gone from the provider
+-- instead of deleting them outright.
+CREATE INDEX IF NOT EXISTS tasks_pending_deletion_idx ON public.tasks (pending_deletion) WHERE pending_deletion IS NOT NULL;
+
+-- Tombstones for dismissed detected birthdays. Added with migration 0023, which
+-- did not update this file; fresh installs picked the table up from the numbered
+-- migration instead, so this only restores the documented parity.
+CREATE TABLE IF NOT EXISTS public.dismissed_birthdays (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  normalized_name varchar(100) NOT NULL,
+  birth_month integer NOT NULL,
+  birth_day integer NOT NULL,
+  event_type varchar(20) DEFAULT 'birthday' NOT NULL,
+  created_at timestamp DEFAULT now() NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS dismissed_birthdays_name_day_type_unique ON public.dismissed_birthdays (normalized_name, birth_month, birth_day, event_type);
 
 -- Deletes-only review: flag synced events gone from source instead of deleting (#171).
 ALTER TABLE public.events ADD COLUMN IF NOT EXISTS pending_deletion timestamp;

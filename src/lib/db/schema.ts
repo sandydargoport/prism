@@ -293,6 +293,23 @@ export const tasks = pgTable('tasks', {
   externalUpdatedAt: timestamp('external_updated_at'),
   lastSynced: timestamp('last_synced'),
 
+  /**
+   * Set when the remote dropped this task and the deletion is awaiting the
+   * user's decision. The task stays visible meanwhile. Mirrors
+   * events.pendingDeletion — see the pending-deletions review route.
+   */
+  pendingDeletion: timestamp('pending_deletion'),
+
+  /**
+   * The user chose to keep this task after the remote deleted it, so the
+   * reconciler must ignore it in both directions.
+   *
+   * Detaching alone is not enough: the reconciler pushes any local task in a
+   * synced list with no external id to the provider, which would recreate a
+   * kept task on the remote it was just deleted from.
+   */
+  syncExempt: boolean('sync_exempt').default(false).notNull(),
+
   createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

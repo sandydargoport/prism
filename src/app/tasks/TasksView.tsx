@@ -10,6 +10,7 @@ import {
   Users,
   List,
   X,
+  AlertTriangle,
 } from 'lucide-react';
 import { PlaneCelebration } from '@/components/ui/PlaneCelebration';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,8 @@ import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import { useTaskGrouping } from '@/app/tasks/useTaskGrouping';
 import { TaskContentArea } from '@/app/tasks/TaskContentArea';
 import type { GroupBy } from '@/app/tasks/taskGroupTypes';
+import { usePendingTaskDeletions } from '@/lib/hooks/usePendingTaskDeletions';
+import { PendingTaskDeletionsModal } from '@/app/tasks/PendingTaskDeletionsModal';
 
 export function TasksView() {
   const { requireAuth } = useAuth();
@@ -45,6 +48,12 @@ export function TasksView() {
 
   const isMobile = useIsMobile();
   const [celebratingUser, setCelebratingUser] = useState<{ id: string; name: string } | null>(null);
+  const [showPendingReview, setShowPendingReview] = useState(false);
+  const {
+    pending: pendingDeletions,
+    count: pendingCount,
+    apply: applyPendingDeletions,
+  } = usePendingTaskDeletions();
 
   const {
     primaryGroup, setPrimaryGroup,
@@ -106,6 +115,18 @@ export function TasksView() {
             {autoSyncing && <RefreshCw className="h-4 w-4 text-muted-foreground animate-spin" />}
           </>}
           actions={<>
+            {pendingCount > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowPendingReview(true)}
+                className="h-9 border-amber-500/50 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+                title="Review task removals held for your approval"
+              >
+                <AlertTriangle className="h-4 w-4 mr-1" />
+                Review {pendingCount}
+              </Button>
+            )}
             <UndoButton />
             <Button onClick={handleAddWithAuth} size="sm">
               <Plus className="h-4 w-4 mr-1" />Add Task
@@ -233,6 +254,18 @@ export function TasksView() {
               }
             }}
             familyMembers={familyMembers} taskLists={taskLists}
+          />
+        )}
+
+        {showPendingReview && pendingCount > 0 && (
+          <PendingTaskDeletionsModal
+            pending={pendingDeletions}
+            onApply={async (ids, action) => {
+              const ok = await applyPendingDeletions(ids, action);
+              if (ok) refreshTasks();
+              return ok;
+            }}
+            onClose={() => setShowPendingReview(false)}
           />
         )}
 

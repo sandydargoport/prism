@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
 import { taskSources, tasks, dismissedTasks } from '@/lib/db/schema';
-import { eq, and, or, isNull, inArray } from 'drizzle-orm';
+import { eq, and, or, isNull, isNotNull, inArray } from 'drizzle-orm';
 import { requireAuth, requireRole } from '@/lib/auth';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { getTaskProvider } from '@/lib/integrations/tasks';
+import { decideDeletionReview } from '@/lib/services/taskDeletionReview';
+
+/**
+ * How long a task must have been absent from the provider before it is flagged.
+ * Covers the provider listing a just-created task late, and means one missed
+ * response cannot flag anything on its own. Slightly over the 5-minute
+ * auto-sync interval, so it takes two runs.
+ */
+const MISSING_GRACE_MS = 6 * 60 * 1000;
 import { decrypt, encrypt } from '@/lib/utils/crypto';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
@@ -154,7 +163,10 @@ export async function POST(
       action: 'sync',
       entityType: 'integration',
       entityId: sourceId,
-      summary: `Synced task source: ${source.provider} (${source.externalListName || source.externalListId}) - ${result.created} created, ${result.updated} updated, ${result.deleted} deleted`,
+      summary:
+        `Synced task source: ${source.provider} (${source.externalListName || source.externalListId}) - ` +
+        `${result.created} created, ${result.updated} updated` +
+        (result.flagged > 0 ? `, ${result.flagged} removals held for review` : ''),
     });
 
     return NextResponse.json({
@@ -198,6 +210,7 @@ async function performSync(
     created: 0,
     updated: 0,
     deleted: 0,
+    flagged: 0,
     errors: [],
   };
 
@@ -210,9 +223,15 @@ async function performSync(
       .select()
       .from(tasks)
       .where(
-        or(
-          eq(tasks.taskSourceId, sourceId),
-          and(eq(tasks.listId, taskListId), isNull(tasks.taskSourceId))
+        and(
+          // Kept after a remote deletion, or detached when a source was removed
+          // (task_source_id is ON DELETE SET NULL). Either way the row is
+          // Prism's now: it must not be matched, pushed or flagged.
+          eq(tasks.syncExempt, false),
+          or(
+            eq(tasks.taskSourceId, sourceId),
+            and(eq(tasks.listId, taskListId), isNull(tasks.taskSourceId))
+          )
         )
       );
 
@@ -232,6 +251,23 @@ async function performSync(
 
     // Create maps for quick lookup
     const remoteById = new Map(remoteTasks.map(t => [t.id, t]));
+
+    // Anything the remote is listing again is not missing. Clearing this first
+    // is what makes one bad response self-healing rather than leaving a pile of
+    // flags to work through by hand. Calendar clears the same way before it
+    // re-scans, on all three of its provider paths.
+    if (remoteById.size > 0) {
+      await db
+        .update(tasks)
+        .set({ pendingDeletion: null })
+        .where(
+          and(
+            eq(tasks.taskSourceId, sourceId),
+            inArray(tasks.externalId, [...remoteById.keys()]),
+            isNotNull(tasks.pendingDeletion),
+          ),
+        );
+    }
     const localByExternalId = new Map(
       localTasks
         .filter(t => t.externalId)
@@ -331,6 +367,7 @@ async function performSync(
     }
 
     // Find local tasks that don't exist remotely (created locally or deleted remotely)
+    const missingLocally: typeof localTasks = [];
     for (const localTask of localTasks) {
       if (!localTask.externalId) {
         // Local task without externalId - push to remote
@@ -358,16 +395,55 @@ async function performSync(
         } catch (err) {
           result.errors.push(`Failed to push task to remote: ${localTask.title}`);
         }
-      } else if (!remoteById.has(localTask.externalId)) {
-        // Local task has externalId but remote doesn't have it - deleted remotely
-        // Option 1: Delete locally (sync deletion)
-        // Option 2: Re-create remotely (preserve local)
-        // We'll go with Option 1 for true bidirectional sync
+      } else if (localTask.taskSourceId === sourceId && !remoteById.has(localTask.externalId)) {
+        // Gone from this provider. Previously deleted outright — silent and
+        // unrecoverable — now collected so the whole run is judged at once.
+        //
+        // The taskSourceId check matters: the query above also picks up rows
+        // with no source at all (CalDAV task rows, and orphans left behind by
+        // ON DELETE SET NULL). Those carry an external id this provider has
+        // never heard of, so without it one provider deletes another's tasks.
+        missingLocally.push(localTask);
+      }
+    }
+
+    // Decide what to do about the tasks the remote stopped listing. The
+    // decision is per-run, not per-task: one task going missing is someone
+    // ticking it off, all of them going missing is a broken provider, and
+    // telling those apart needs the whole set.
+    const now = new Date();
+    const flaggable = missingLocally.filter((t) => {
+      // A task pushed upstream moments ago may not be in the provider's list
+      // yet. Flagging it would tell the user their own new task was deleted.
+      // Requiring it to have been absent for longer than one sync interval
+      // also means a single missed response never flags anything.
+      if (!t.lastSynced) return false;
+      return now.getTime() - t.lastSynced.getTime() > MISSING_GRACE_MS;
+    });
+
+    const review = decideDeletionReview({
+      syncedCount: localTasks.filter((t) => t.externalId && t.taskSourceId === sourceId).length,
+      missingCount: flaggable.length,
+    });
+
+    if (review.guardTripped) {
+      // Deliberately NOT flagged. Burying the user in hundreds of entries
+      // invites a bulk confirm, which destroys exactly what the review exists
+      // to protect. Said out loud rather than withheld silently.
+      result.errors.push(
+        `${review.withheld} tasks are missing from the provider — too many at once to be a normal ` +
+        `change, so none were touched. Check the connection, then sync again.`,
+      );
+    } else if (review.flag) {
+      for (const localTask of flaggable) {
+        // Only when not already flagged, so the original time survives and the
+        // count does not climb every five minutes.
+        if (localTask.pendingDeletion) continue;
         try {
-          await db.delete(tasks).where(eq(tasks.id, localTask.id));
-          result.deleted++;
+          await db.update(tasks).set({ pendingDeletion: now }).where(eq(tasks.id, localTask.id));
+          result.flagged++;
         } catch (err) {
-          result.errors.push(`Failed to delete local task: ${localTask.title}`);
+          result.errors.push(`Failed to flag deleted task: ${localTask.title}`);
         }
       }
     }

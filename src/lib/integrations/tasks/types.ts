@@ -43,7 +43,14 @@ export interface UpdateTaskInput {
 export interface SyncResult {
   created: number;
   updated: number;
+  /** Rows actually removed locally. The reconciler no longer does this. */
   deleted: number;
+  /**
+   * Synced tasks the provider stopped listing, held for the user's review
+   * rather than deleted. Reported separately because "deleted" is what the
+   * audit log and the sync-all totals say, and none of these were.
+   */
+  flagged: number;
   errors: string[];
 }
 
