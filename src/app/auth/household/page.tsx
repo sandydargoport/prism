@@ -5,7 +5,11 @@ import Image from 'next/image';
 
 function safeDestination(): string {
   const requested = new URLSearchParams(window.location.search).get('next');
-  return requested && requested.startsWith('/') && !requested.startsWith('//') ? requested : '/';
+  if (!requested || !requested.startsWith('/') || requested.includes('\\')) return '/';
+  return new URL(requested, window.location.origin).origin === window.location.origin &&
+    !requested.startsWith('//')
+    ? requested
+    : '/';
 }
 
 export default function HouseholdLoginPage() {
