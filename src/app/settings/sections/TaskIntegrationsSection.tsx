@@ -411,11 +411,13 @@ export function TaskIntegrationsSection({
                 className="gap-1 text-muted-foreground"
                 title={
                   'Google will not accept this address as a sign-in redirect. ' +
-                  'Use "Connect without a public URL (advanced)" on the Google card instead.'
+                  'Reopen Prism on a public https address, or on localhost (an SSH tunnel works), ' +
+                  'and Connect will work here. Otherwise use "Connect without a public URL ' +
+                  '(advanced)" on the Google card, which needs no redirect address at all.'
                 }
               >
                 <Link2 className="h-4 w-4" />
-                Needs a public address
+                Not from this address
               </Button>
             ) : (
               <Button
