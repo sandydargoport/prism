@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import type { Task, FamilyMember } from '@/types';
+import { Trash2 } from 'lucide-react';
 
 interface TaskList {
   id: string;
@@ -22,12 +23,15 @@ export function TaskModal({
   task,
   onClose,
   onSave,
+  onDelete,
   familyMembers,
   taskLists = [],
   defaultListId,
 }: {
   task?: Task;
   onClose: () => void;
+  /** Omitted when creating, and where a caller has no delete path. */
+  onDelete?: () => void;
   // dueDate may be `null` to signal explicit clearing (server distinguishes
   // null = clear from undefined = leave untouched).
   onSave: (task: Omit<Task, 'id' | 'dueDate'> & { dueDate: Date | null; listId?: string }) => void;
@@ -210,7 +214,22 @@ export function TaskModal({
             </div>
           )}
 
-          <div className="flex justify-end gap-2 pt-4">
+          <div className="flex items-center gap-2 pt-4">
+            {/* Only when editing an existing task. Matches ChoreModal, which
+                is the closest equivalent: destructive action on the left,
+                separated from the confirming actions on the right. */}
+            {task && onDelete && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1"
+                onClick={onDelete}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </Button>
+            )}
+            <div className="flex-1" />
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>

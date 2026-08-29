@@ -212,6 +212,13 @@ export function TasksView() {
           <TaskModal
             task={editingTask}
             onClose={() => setEditingTask(null)}
+            onDelete={() => {
+              // Close first: deleteTask opens its own confirmation, and two
+              // stacked dialogs on a wall display is a trap.
+              const id = editingTask.id;
+              setEditingTask(null);
+              deleteTask(id);
+            }}
             onSave={async (updatedTask) => {
               try {
                 const res = await fetch(`/api/tasks/${editingTask.id}`, {
