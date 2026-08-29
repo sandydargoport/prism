@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
-import { taskSources, tasks } from '@/lib/db/schema';
-import { eq, and, or, isNull } from 'drizzle-orm';
+import { taskSources, tasks, dismissedTasks } from '@/lib/db/schema';
+import { eq, and, or, isNull, inArray } from 'drizzle-orm';
 import { requireAuth, requireRole } from '@/lib/auth';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { getTaskProvider } from '@/lib/integrations/tasks';
@@ -216,6 +216,20 @@ async function performSync(
         )
       );
 
+    // Tasks deleted in Prism. The delete is pushed to the provider at delete
+    // time, so normally the remote no longer lists them; this covers the cases
+    // where that could not be relied on (failed or unsupported upstream
+    // delete, or a lagging remote). Without it the loop below sees a remote
+    // task with no local match and re-creates it.
+    const tombstoned = new Set(
+      (
+        await db
+          .select({ externalTaskId: dismissedTasks.externalTaskId })
+          .from(dismissedTasks)
+          .where(eq(dismissedTasks.taskSourceId, sourceId))
+      ).map((row) => row.externalTaskId),
+    );
+
     // Create maps for quick lookup
     const remoteById = new Map(remoteTasks.map(t => [t.id, t]));
     const localByExternalId = new Map(
@@ -227,6 +241,13 @@ async function performSync(
     // Process remote tasks
     for (const remoteTask of remoteTasks) {
       const localTask = localByExternalId.get(remoteTask.id);
+
+      if (tombstoned.has(remoteTask.id)) {
+        // Deleted in Prism and still coming back from the remote. Leave it
+        // alone rather than re-adding it; the tombstone is cleared below once
+        // the remote stops listing it.
+        continue;
+      }
 
       if (!localTask) {
         // Remote task doesn't exist locally - create it
@@ -349,6 +370,21 @@ async function performSync(
           result.errors.push(`Failed to delete local task: ${localTask.title}`);
         }
       }
+    }
+
+    // Drop tombstones the remote has caught up on. Once a task is gone from
+    // the provider there is nothing left to suppress, and keeping the row
+    // would grow this table without bound.
+    const stale = [...tombstoned].filter((externalId) => !remoteById.has(externalId));
+    if (stale.length > 0) {
+      await db
+        .delete(dismissedTasks)
+        .where(
+          and(
+            eq(dismissedTasks.taskSourceId, sourceId),
+            inArray(dismissedTasks.externalTaskId, stale),
+          ),
+        );
     }
 
     return result;

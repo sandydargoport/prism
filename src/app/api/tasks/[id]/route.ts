@@ -17,13 +17,37 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
-import { tasks, users } from '@/lib/db/schema';
+import { tasks, users, dismissedTasks } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { requireAuth, requireRole } from '@/lib/auth';
 import { formatTaskRow } from '@/lib/utils/formatters';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
+import { resolveTaskProviderAuth } from '@/lib/integrations/tasks/providerAuth';
+
+/**
+ * Remove a synced task from its provider. Best-effort by design: a failure
+ * here must not stop the user deleting the task in Prism, which is how the
+ * calendar delete behaves too. The caller writes a tombstone either way, so a
+ * failure costs an orphaned remote task rather than a resurrected local one.
+ */
+async function deleteTaskUpstream(taskSourceId: string, externalId: string): Promise<void> {
+  try {
+    const auth = await resolveTaskProviderAuth(taskSourceId);
+    if (!auth.ok) {
+      logError('Skipping upstream task delete:', auth.reason);
+      return;
+    }
+    if (!auth.provider.deleteTask) return;
+
+    // Providers address a task by list, so the id is "listId:taskId" — the
+    // same form the sync route builds when it pushes an update.
+    await auth.provider.deleteTask(auth.tokens, `${auth.externalListId}:${externalId}`);
+  } catch (error) {
+    logError('Failed to delete task from provider:', error);
+  }
+}
 
 
 /**
@@ -358,6 +382,8 @@ export async function DELETE(
         title: tasks.title,
         createdBy: tasks.createdBy,
         assignedTo: tasks.assignedTo,
+        taskSourceId: tasks.taskSourceId,
+        externalId: tasks.externalId,
       })
       .from(tasks)
       .where(eq(tasks.id, id));
@@ -374,6 +400,28 @@ export async function DELETE(
     if (!isOwner) {
       const forbidden = requireRole(auth, 'canDeleteTasks');
       if (forbidden) return forbidden;
+    }
+
+    // Propagate the delete to the provider, mirroring how calendar events are
+    // handled: best-effort, and never blocking the local delete. Without this
+    // the reconciler saw a task present remotely with no local match, treated
+    // it as newly created, and re-added it within about five minutes.
+    if (existingTask.taskSourceId && existingTask.externalId) {
+      await deleteTaskUpstream(
+        existingTask.taskSourceId,
+        existingTask.externalId,
+      );
+
+      // Tombstone regardless of whether the call above succeeded. A failed or
+      // unsupported upstream delete, or a remote that still lists the task on
+      // the next run, would otherwise resurrect it. See dismissed_tasks.
+      await db
+        .insert(dismissedTasks)
+        .values({
+          taskSourceId: existingTask.taskSourceId,
+          externalTaskId: existingTask.externalId,
+        })
+        .onConflictDoNothing();
     }
 
     // Delete the task

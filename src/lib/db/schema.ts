@@ -782,6 +782,28 @@ export const birthdays = pgTable('birthdays', {
  * excluded deliberately — the 1904 unknown-year sentinel means the same person
  * can arrive with different years from different sources.
  */
+/**
+ * Synced tasks deleted in Prism, so the reconciler does not re-add them.
+ *
+ * The delete route also removes the task from the provider, which covers the
+ * ordinary case. This exists for when that cannot be relied on: a failed or
+ * unsupported upstream delete, or a remote that still lists the task on the
+ * next run. Without it the task reappears within about five minutes.
+ *
+ * Same shape and purpose as [dismissedEvents] on the calendar side.
+ */
+export const dismissedTasks = pgTable('dismissed_tasks', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  taskSourceId: uuid('task_source_id')
+    .notNull()
+    .references(() => taskSources.id, { onDelete: 'cascade' }),
+  externalTaskId: varchar('external_task_id', { length: 255 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  dismissedTasksSourceExternalUnique: uniqueIndex('dismissed_tasks_source_external_unique')
+    .on(table.taskSourceId, table.externalTaskId),
+}));
+
 export const dismissedBirthdays = pgTable('dismissed_birthdays', {
   id: uuid('id').defaultRandom().primaryKey(),
 
