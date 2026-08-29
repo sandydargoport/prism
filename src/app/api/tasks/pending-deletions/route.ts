@@ -44,6 +44,10 @@ export async function GET() {
         provider: taskSources.provider,
         listName: taskSources.externalListName,
         prismList: taskLists.name,
+        // CalDAV task rows carry no task_source_id, so the join above yields
+        // nothing for them. Their origin is encoded in the external id
+        // instead: caldav:<sourceId>:<uid>.
+        externalId: tasks.externalId,
       })
       .from(tasks)
       .leftJoin(taskSources, eq(tasks.taskSourceId, taskSources.id))
@@ -51,9 +55,10 @@ export async function GET() {
       .where(isNotNull(tasks.pendingDeletion))
       .orderBy(tasks.title);
 
-    const providerLabel = (p: string | null) => {
+    const providerLabel = (p: string | null, externalId: string | null) => {
       if (p === 'google_tasks') return 'Google Tasks';
       if (p === 'microsoft_todo') return 'Microsoft To Do';
+      if (externalId?.startsWith('caldav:')) return 'Reminders (CalDAV)';
       return p ?? 'its source';
     };
 
@@ -63,7 +68,9 @@ export async function GET() {
         title: r.title,
         dueDate: r.dueDate,
         completed: r.completed,
-        source: r.listName ? `${providerLabel(r.provider)} — ${r.listName}` : providerLabel(r.provider),
+        source: r.listName
+          ? `${providerLabel(r.provider, r.externalId)} — ${r.listName}`
+          : providerLabel(r.provider, r.externalId),
         list: r.prismList,
       })),
       count: rows.length,

@@ -89,3 +89,13 @@ describe('decideDeletionReview — thresholds', () => {
     expect(MASS_DELETE_FRACTION).toBe(0.5);
   });
 });
+
+describe('decideDeletionReview — shared by both task sync paths', () => {
+  it('applies the same policy to a CalDAV source as to a provider source', () => {
+    // calendar-sync.ts used to hard-delete CalDAV task rows outright, with no
+    // review and no guard, while the provider path held them. Same decision
+    // function now, so the two cannot drift apart again.
+    expect(decideDeletionReview({ syncedCount: 12, missingCount: 12 }).guardTripped).toBe(true);
+    expect(decideDeletionReview({ syncedCount: 12, missingCount: 1 }).flag).toBe(true);
+  });
+});

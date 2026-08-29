@@ -14,7 +14,7 @@ const AUTO_SYNC_STALE_MINUTES = 5; // Sync if last sync > 5 min ago
 const AUTO_SYNC_INTERVAL_MS = 5 * 60 * 1000; // Background sync every 5 min
 
 export function useTasksViewData() {
-  const { requireAuth } = useAuth();
+  const { requireAuth, activeUser } = useAuth();
   const { confirm, dialogProps: confirmDialogProps } = useConfirmDialog();
 
   const {
@@ -59,6 +59,15 @@ export function useTasksViewData() {
       return;
     }
 
+    // sync-all requires canManageIntegrations, which only a parent has. A
+    // child profile would fire this every five minutes, be refused, and land
+    // in the silent catch below — so the page quietly stopped updating with
+    // nothing to indicate why. Not attempting it is honest; the refusal was
+    // never going to become a sync.
+    if (activeUser && activeUser.role !== 'parent') {
+      return;
+    }
+
     setAutoSyncing(true);
     try {
       const res = await fetch(`/api/task-sources/sync-all?staleMinutes=${AUTO_SYNC_STALE_MINUTES}`, {
@@ -77,7 +86,7 @@ export function useTasksViewData() {
     } finally {
       setAutoSyncing(false);
     }
-  }, [refreshTasks]);
+  }, [refreshTasks, activeUser]);
 
   // Auto-sync on mount
   useEffect(() => {
