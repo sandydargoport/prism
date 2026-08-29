@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
+/** Why an apply failed, so the UI can say so rather than doing nothing. */
+export type ApplyResult = { ok: true } | { ok: false; reason: string };
+
 export interface PendingTaskDeletion {
   id: string;
   title: string;
@@ -42,14 +45,26 @@ export function usePendingTaskDeletions() {
   }, [refresh]);
 
   const apply = useCallback(
-    async (taskIds: string[], action: 'delete' | 'keep') => {
-      const res = await fetch('/api/tasks/pending-deletions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ taskIds, action }),
-      });
-      await refresh();
-      return res.ok;
+    async (taskIds: string[], action: 'delete' | 'keep'): Promise<ApplyResult> => {
+      try {
+        const res = await fetch('/api/tasks/pending-deletions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ taskIds, action }),
+        });
+        await refresh();
+        if (res.ok) return { ok: true };
+
+        // A refusal has to say why. A child tapping Delete and watching
+        // nothing happen cannot tell "not allowed" from "broken".
+        if (res.status === 401 || res.status === 403) {
+          return { ok: false, reason: 'Only a parent can review removed tasks.' };
+        }
+        const body = await res.json().catch(() => null);
+        return { ok: false, reason: body?.error || 'Could not apply that. Please try again.' };
+      } catch {
+        return { ok: false, reason: 'Could not reach Prism. Please try again.' };
+      }
     },
     [refresh],
   );

@@ -12,7 +12,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import type { PendingTaskDeletion } from '@/lib/hooks/usePendingTaskDeletions';
+import { toast } from '@/components/ui/use-toast';
+import type { PendingTaskDeletion, ApplyResult } from '@/lib/hooks/usePendingTaskDeletions';
 
 /**
  * Deletes-only review for task sync. Lists tasks the provider stopped
@@ -27,7 +28,7 @@ export function PendingTaskDeletionsModal({
   onClose,
 }: {
   pending: PendingTaskDeletion[];
-  onApply: (taskIds: string[], action: 'delete' | 'keep') => Promise<boolean>;
+  onApply: (taskIds: string[], action: 'delete' | 'keep') => Promise<ApplyResult>;
   onClose: () => void;
 }) {
   const [selected, setSelected] = useState<Set<string>>(() => new Set(pending.map((p) => p.id)));
@@ -47,9 +48,15 @@ export function PendingTaskDeletionsModal({
   const act = async (action: 'delete' | 'keep') => {
     if (bulk.length === 0) return;
     setBusy(true);
-    const ok = await onApply(bulk, action);
+    const result = await onApply(bulk, action);
     setBusy(false);
-    if (ok) onClose();
+    if (result.ok) {
+      onClose();
+      return;
+    }
+    // Stay open and say why. Closing on failure, or closing silently, would
+    // leave the user thinking it worked.
+    toast({ title: 'Nothing was changed', description: result.reason, variant: 'destructive' });
   };
 
   return (

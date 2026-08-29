@@ -261,9 +261,9 @@ export function TasksView() {
           <PendingTaskDeletionsModal
             pending={pendingDeletions}
             onApply={async (ids, action) => {
-              const ok = await applyPendingDeletions(ids, action);
-              if (ok) refreshTasks();
-              return ok;
+              const result = await applyPendingDeletions(ids, action);
+              if (result.ok) refreshTasks();
+              return result;
             }}
             onClose={() => setShowPendingReview(false)}
           />
