@@ -54,6 +54,13 @@ const PASTEABLE: Array<{ key: GoogleCapability; blurb: string; note?: React.Reac
  *
  * Write-only: the secret and refresh token are never read back to the UI.
  */
+/**
+ * Where the Google Tasks list picker lives. Matches the redirect the browser
+ * OAuth callback issues, so both paths land in the same place.
+ */
+const TASK_LIST_PICKER_URL =
+  '/settings?section=integrations&selectGoogleTasksList=true&newConnection=true#google-tasks';
+
 export function GoogleManualTokenForm({ onSaved }: { onSaved?: () => void }) {
   const { confirm, dialogProps } = useConfirmDialog();
   const [clientId, setClientId] = React.useState('');
@@ -116,7 +123,7 @@ export function GoogleManualTokenForm({ onSaved }: { onSaved?: () => void }) {
         );
       }
       if (data.capabilities?.includes('gmail')) parts.push('Gmail connected for bus tracking');
-      if (data.needsTaskListSelection) parts.push('choose which task lists to show under Tasks sync');
+      if (data.needsTaskListSelection) parts.push('choose which task lists to show');
       toast({
         title: `Google connected: ${data.enabled ?? 'Calendar'}`,
         description: parts.join(' · ') || undefined,
@@ -126,6 +133,16 @@ export function GoogleManualTokenForm({ onSaved }: { onSaved?: () => void }) {
       setClientSecret('');
       setRefreshToken('');
       onSaved?.();
+
+      // Tasks tokens are parked in Redis for five minutes and spent by the
+      // list picker, which only opens from these query params — the browser
+      // callback redirects to exactly this URL. Without navigating here the
+      // token expires unspent and Tasks silently never connects, which is the
+      // whole feature for a LAN-only install. Told the user to "choose which
+      // lists" and then leaving them no way to get there is not a fix.
+      if (data.needsTaskListSelection) {
+        window.location.href = TASK_LIST_PICKER_URL;
+      }
     } catch (err) {
       toast({
         title: 'Could not connect',
