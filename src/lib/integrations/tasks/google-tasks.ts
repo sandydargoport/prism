@@ -7,6 +7,7 @@
  * API Reference: https://developers.google.com/tasks/reference/rest
  */
 
+import { getGoogleCredentials } from '@/lib/integrations/credentialStore';
 import type {
   TaskProvider,
   TaskProviderTokens,
@@ -221,8 +222,13 @@ export const googleTasksProvider: TaskProvider = {
       return null;
     }
 
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    // The worst of the three: reading the env var here meant sync worked until
+    // the access token expired, about an hour, and then stopped for good on any
+    // install whose credentials live in the database — which is every install
+    // that used the in-app form or the paste-a-token flow.
+    const credentials = await getGoogleCredentials();
+    const clientId = credentials?.clientId;
+    const clientSecret = credentials?.clientSecret;
 
     if (!clientId || !clientSecret) {
       console.error('Google OAuth credentials not configured');

@@ -5,6 +5,7 @@ import { getRedisClient } from '@/lib/cache/getRedisClient';
 import { logError } from '@/lib/utils/logError';
 import { resolveRedirectUri } from '@/lib/integrations/resolveRedirectUri';
 import { fetchGoogleAccountEmail } from '@/lib/integrations/oauth-userinfo';
+import { getGoogleCredentials } from '@/lib/integrations/credentialStore';
 
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const BASE_URL = process.env.APP_URL || process.env.BASE_URL || 'http://localhost:3000';
@@ -17,8 +18,11 @@ interface GoogleTokens {
 }
 
 async function exchangeCodeForTokens(code: string, redirectUriOverride?: string): Promise<GoogleTokens> {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  // Same store the connect route reads, so the pair that started the flow is
+  // the pair that completes it.
+  const credentials = await getGoogleCredentials();
+  const clientId = credentials?.clientId;
+  const clientSecret = credentials?.clientSecret;
   const redirectUri = redirectUriOverride || process.env.GOOGLE_TASKS_REDIRECT_URI ||
     `${BASE_URL}/api/auth/google-tasks/callback`;
 
