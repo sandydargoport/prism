@@ -24,6 +24,9 @@ import { useTaskGrouping } from '@/app/tasks/useTaskGrouping';
 import { TaskContentArea } from '@/app/tasks/TaskContentArea';
 import type { GroupBy } from '@/app/tasks/taskGroupTypes';
 
+/** Sentinel for the "no filter" choice; null is what the filter itself uses. */
+const ALL_LISTS = '__all__';
+
 export function TasksView() {
   const { requireAuth } = useAuth();
   const {
@@ -71,8 +74,18 @@ export function TasksView() {
   ];
 
   const listOptions = useMemo(() => {
-    const opts = [{ value: 'none', label: 'No List' }];
+    // 'All' is an explicit option rather than something you reach by
+    // deselecting. The dropdown previously opened on 'No List', which reads
+    // as "no filter" but actually means "tasks with no list assigned" — so
+    // picking the obvious-looking option emptied the screen. Clearing the
+    // filter was only possible by unticking, which looks like selecting
+    // nothing.
+    const opts = [{ value: ALL_LISTS, label: 'All' }];
     taskLists.forEach((list) => opts.push({ value: list.id, label: list.name }));
+    // Kept, but renamed. It genuinely means "tasks with no list assigned",
+    // which is what 'No List' was doing all along — the old label just read
+    // as "no filter".
+    opts.push({ value: 'none', label: 'Unassigned' });
     return opts;
   }, [taskLists]);
 
@@ -130,8 +143,13 @@ export function TasksView() {
                 <>
                   <div className="w-px h-5 bg-border shrink-0" />
                   <FilterDropdown label="List" options={listOptions}
-                    selected={filterList ? new Set([filterList]) : new Set()}
-                    onSelectionChange={(s) => setFilterList(s.size > 0 ? [...s][0]! : null)}
+                    selected={new Set([filterList ?? ALL_LISTS])}
+                    onSelectionChange={(s) => {
+                      // Deselecting everything means no filter, same as All —
+                      // never an empty list.
+                      const picked = s.size > 0 ? [...s][0]! : ALL_LISTS;
+                      setFilterList(picked === ALL_LISTS ? null : picked);
+                    }}
                     mode="single" icon={<List className="h-3.5 w-3.5" />}
                   />
                 </>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { usePersistedState, oneOf } from '@/lib/hooks/usePersistedState';
 import { toast } from '@/components/ui/use-toast';
 import type { Task } from '@/types';
 import type { GroupBy, GroupMode, SubGroupDef } from '@/app/tasks/taskGroupTypes';
@@ -40,8 +41,16 @@ export function useTaskGrouping({
   // the list pages): group-by-person previously opened by default, which
   // read awkwardly as the first thing a new user saw. The toggle below is
   // still one click away.
-  const [primaryGroup, setPrimaryGroup] = useState<GroupBy>('none');
-  const [secondaryGroup, setSecondaryGroup] = useState<GroupBy>('none');
+  // Persisted: on a wall display the page reloads on its own, and losing the
+  // grouping someone chose every time makes it a suggestion rather than a
+  // setting. Filters are deliberately NOT persisted — returning to a silently
+  // filtered list, with no memory of setting it, reads as missing data.
+  const [primaryGroup, setPrimaryGroup] = usePersistedState<GroupBy>(
+    'prism-tasks-group-primary', 'none', oneOf<GroupBy>('none', 'person', 'list'),
+  );
+  const [secondaryGroup, setSecondaryGroup] = usePersistedState<GroupBy>(
+    'prism-tasks-group-secondary', 'none', oneOf<GroupBy>('none', 'person', 'list'),
+  );
 
   const groupMode = useMemo((): GroupMode => {
     if (primaryGroup === 'none') return 'none';

@@ -8,6 +8,7 @@ import { toast } from '@/components/ui/use-toast';
 import { pushUndo } from '@/lib/hooks/useUndoStack';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import type { Task } from '@/types';
+import { usePersistedState, oneOf, isBoolean } from '@/lib/hooks/usePersistedState';
 
 const AUTO_SYNC_STALE_MINUTES = 5; // Sync if last sync > 5 min ago
 const AUTO_SYNC_INTERVAL_MS = 5 * 60 * 1000; // Background sync every 5 min
@@ -30,9 +31,15 @@ export function useTasksViewData() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filterPerson, setFilterPerson] = useState<string[] | null>(null);
   const [filterPriority, setFilterPriority] = useState<string | null>(null);
-  const [showCompleted, setShowCompleted] = useState(false);
+  // Persisted alongside grouping: both describe how the list is presented,
+  // rather than narrowing what it contains.
+  const [showCompleted, setShowCompleted] = usePersistedState(
+    'prism-tasks-show-completed', false, isBoolean,
+  );
   const [filterList, setFilterList] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<'dueDate' | 'priority' | 'title'>('dueDate');
+  const [sortBy, setSortBy] = usePersistedState<'dueDate' | 'priority' | 'title'>(
+    'prism-tasks-sort', 'dueDate', oneOf('dueDate', 'priority', 'title'),
+  );
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [autoSyncing, setAutoSyncing] = useState(false);
