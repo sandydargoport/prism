@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import {
   Plus,
@@ -33,6 +33,7 @@ import {
   EntityListCard,
   ConfirmDialog,
 } from './integrations/components';
+import { browserOAuthUsable } from '@/lib/utils/googleRedirectSupport';
 
 interface TaskIntegrationsSectionProps {
   /** Hide the section header (h2 + description) when rendered inside a card sub-section. */
@@ -69,6 +70,14 @@ export function TaskIntegrationsSection({
   const displayedSources = providerFilter
     ? integration.sources.filter((s) => s.provider === providerFilter)
     : integration.sources;
+
+  // Google's browser sign-in cannot work from a private address — it refuses
+  // the redirect URI before showing a consent screen. Checked after mount so
+  // the server render does not disagree with the client.
+  const [origin, setOrigin] = useState<string | null>(null);
+  useEffect(() => setOrigin(window.location.origin), []);
+  const googleBrowserFlowUnusable =
+    providerFilter === 'google_tasks' && origin !== null && !browserOAuthUsable(origin);
 
   const handleConnectEntity = (entityId: string) => {
     if (providerFilter === 'microsoft_todo') {
@@ -389,6 +398,24 @@ export function TaskIntegrationsSection({
               >
                 <Link2 className="h-4 w-4" />
                 Connect
+              </Button>
+            ) : googleBrowserFlowUnusable ? (
+              // Google refuses a redirect URI on this address, so Connect
+              // would bounce off its consent screen with an error only Google
+              // words. Say so here instead of offering a button that cannot
+              // work; the paste-a-token flow needs no redirect URI at all.
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled
+                className="gap-1 text-muted-foreground"
+                title={
+                  'Google will not accept this address as a sign-in redirect. ' +
+                  'Use "Connect without a public URL (advanced)" on the Google card instead.'
+                }
+              >
+                <Link2 className="h-4 w-4" />
+                Needs a public address
               </Button>
             ) : (
               <Button

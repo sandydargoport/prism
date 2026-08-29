@@ -19,6 +19,9 @@ import { useBackups } from '@/lib/hooks/useBackups';
 
 type DangerStep = null | 'warn-truncate' | 'confirm-truncate' | 'warn-seed' | 'confirm-seed';
 
+/** How many backups to show before collapsing the rest behind a toggle. */
+const RECENT_BACKUP_COUNT = 5;
+
 export function BackupSection() {
   const {
     backups,
@@ -37,6 +40,11 @@ export function BackupSection() {
     truncateDatabase,
     seedDatabase,
   } = useBackups();
+
+  // Older ones are collapsed rather than dropped: nothing is deleted here, and
+  // an old backup is still restorable. The list has no retention policy, so it
+  // grows forever and buries the actions above it.
+  const [showAllBackups, setShowAllBackups] = useState(false);
 
   const [confirmRestore, setConfirmRestore] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -100,6 +108,44 @@ export function BackupSection() {
 
   return (
     <div className="space-y-6">
+      {/* Cache Management */}
+      <div className="border border-border rounded-lg p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h4 className="font-semibold flex items-center gap-2">
+              <RefreshCw className="h-4 w-4 text-primary" />
+              Clear Cache &amp; Reload
+            </h4>
+            <p className="text-sm text-muted-foreground mt-1">
+              Unregisters the service worker and clears cached assets. Use after an update if the app seems stale.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              try {
+                if ('serviceWorker' in navigator) {
+                  const registrations = await navigator.serviceWorker.getRegistrations();
+                  await Promise.all(registrations.map(r => r.unregister()));
+                }
+                if ('caches' in window) {
+                  const keys = await caches.keys();
+                  await Promise.all(keys.map(k => caches.delete(k)));
+                }
+                window.location.reload();
+              } catch {
+                window.location.reload();
+              }
+            }}
+            className="ml-4 flex-shrink-0"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
+      </div>
+
       {/* Header with Create Backup button */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -167,7 +213,7 @@ export function BackupSection() {
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {backups.map((backup) => (
+            {(showAllBackups ? backups : backups.slice(0, RECENT_BACKUP_COUNT)).map((backup) => (
               <div
                 key={backup.filename}
                 className="p-4 flex items-center justify-between hover:bg-muted/50"
@@ -275,6 +321,19 @@ export function BackupSection() {
                 </div>
               </div>
             ))}
+            {backups.length > RECENT_BACKUP_COUNT && (
+              <button
+                type="button"
+                onClick={() => setShowAllBackups((v) => !v)}
+                className="w-full p-3 text-sm text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+              >
+                {showAllBackups
+                  ? 'Show fewer'
+                  : `Show ${backups.length - RECENT_BACKUP_COUNT} older backup${
+                      backups.length - RECENT_BACKUP_COUNT === 1 ? '' : 's'
+                    }`}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -284,44 +343,6 @@ export function BackupSection() {
         Backups contain all database data including family members, chores, tasks, calendar events, and settings.
         Restoring a backup will overwrite all current data.
       </p>
-
-      {/* Cache Management */}
-      <div className="border border-border rounded-lg p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h4 className="font-semibold flex items-center gap-2">
-              <RefreshCw className="h-4 w-4 text-primary" />
-              Clear Cache &amp; Reload
-            </h4>
-            <p className="text-sm text-muted-foreground mt-1">
-              Unregisters the service worker and clears cached assets. Use after an update if the app seems stale.
-            </p>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={async () => {
-              try {
-                if ('serviceWorker' in navigator) {
-                  const registrations = await navigator.serviceWorker.getRegistrations();
-                  await Promise.all(registrations.map(r => r.unregister()));
-                }
-                if ('caches' in window) {
-                  const keys = await caches.keys();
-                  await Promise.all(keys.map(k => caches.delete(k)));
-                }
-                window.location.reload();
-              } catch {
-                window.location.reload();
-              }
-            }}
-            className="ml-4 flex-shrink-0"
-          >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
-        </div>
-      </div>
 
       {/* Danger Zone */}
       <div className="border border-red-200 dark:border-red-800 rounded-lg p-4 space-y-4">

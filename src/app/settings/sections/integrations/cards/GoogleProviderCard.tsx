@@ -11,6 +11,7 @@ import { ProviderCardShell } from '../shared/ProviderCardShell';
 import { CollapsibleSubSection } from '../shared/CollapsibleSubSection';
 import { GoogleCredentialsForm } from './GoogleCredentialsForm';
 import { GoogleManualTokenForm } from './GoogleManualTokenForm';
+import { browserOAuthUsable } from '@/lib/utils/googleRedirectSupport';
 import type { IntegrationStatus } from '../shared/useIntegrationStatus';
 import type { ConnectionStatus } from '../shared/ConnectionStatusBadge';
 import { connectedAsLabel } from '../shared/connectedAs';
@@ -63,6 +64,13 @@ export function GoogleProviderCard({
   // Treat "still loading" as configured so the common case (already set up)
   // never flashes the gated state — only downgrade once we know for sure.
   const configured = oauthStatus === null ? true : oauthStatus.google;
+
+  // Google refuses a private address as a sign-in redirect, so on a LAN-only
+  // install the browser flow cannot work at all. Checked after mount so the
+  // server render does not disagree with the client.
+  const [origin, setOrigin] = React.useState<string | null>(null);
+  React.useEffect(() => setOrigin(window.location.origin), []);
+  const browserFlowUnusable = origin !== null && !browserOAuthUsable(origin);
 
   const g = status?.google;
   const connected = !!g?.connected;
@@ -212,8 +220,15 @@ export function GoogleProviderCard({
         <CollapsibleSubSection
           id="google-manual-token"
           label="Connect without a public URL (advanced)"
-          summary="Paste a refresh token from Google's OAuth Playground — for LAN-only installs, or to re-paste an expired one"
-          forceOpen={forceSubSectionOpen === 'google-manual-token'}
+          summary={
+            browserFlowUnusable
+              ? "The way to connect on this address — Google will not accept a private address for its sign-in"
+              : "Paste a refresh token from Google's OAuth Playground — for LAN-only installs, or to re-paste an expired one"
+          }
+          // Opened by default where it is the only flow that can work, so a
+          // LAN user is not left hunting behind a collapsed "advanced" label
+          // for the one thing that will succeed.
+          forceOpen={forceSubSectionOpen === 'google-manual-token' || browserFlowUnusable}
         >
           <GoogleManualTokenForm onSaved={() => window.location.reload()} />
         </CollapsibleSubSection>
