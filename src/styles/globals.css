@@ -552,40 +552,75 @@
   animation: mic-pulse 1s infinite;
 }
 
-/* simple-keyboard theme — scoped to [data-virtual-keyboard] */
+/* simple-keyboard theme — scoped to [data-virtual-keyboard]
+   Selectors include .hg-theme-default so we beat the library stylesheet
+   (same 0,2,0 specificity, and that CSS is imported from VirtualKeyboard
+   so it often loads after globals.css). Without that, idle keys keep the
+   library's background:#fff while inheriting our near-white dark-mode
+   label color — solid blank keys that only show a letter while :active. */
 [data-virtual-keyboard] .hg-theme-default {
   height: 100%;
   background: hsl(var(--background));
   border-radius: 0;
   padding: 8px;
   font-family: inherit;
+  color: hsl(var(--foreground));
 }
-[data-virtual-keyboard] .hg-row {
+
+[data-virtual-keyboard] .hg-theme-default .hg-row {
   margin-bottom: 4px;
 }
-[data-virtual-keyboard] .hg-button {
+
+[data-virtual-keyboard] .hg-theme-default .hg-button,
+[data-virtual-keyboard] .hg-theme-default .hg-button span {
+  color: hsl(var(--secondary-foreground));
+  -webkit-text-fill-color: currentColor;
+}
+
+[data-virtual-keyboard] .hg-theme-default .hg-button {
   height: 52px;
   font-size: 18px;
   background: hsl(var(--secondary));
-  color: hsl(var(--secondary-foreground));
   border-bottom: 2px solid hsl(var(--border));
   border-radius: 6px;
   box-shadow: none;
 }
-[data-virtual-keyboard] .hg-button:hover,
-[data-virtual-keyboard] .hg-button:active {
-  background: hsl(var(--accent));
-  color: hsl(var(--accent-foreground));
+
+/* Pressed: .hg-activeButton is what simple-keyboard actually toggles.
+   --accent == --secondary in .dark, so don't use --accent here. */
+[data-virtual-keyboard] .hg-theme-default .hg-button:hover,
+[data-virtual-keyboard] .hg-theme-default .hg-button:active,
+[data-virtual-keyboard] .hg-theme-default .hg-button.hg-activeButton {
+  background: hsl(var(--border));
+  color: hsl(var(--foreground));
+  -webkit-text-fill-color: currentColor;
 }
-[data-virtual-keyboard] .hg-button.key-action {
+
+[data-virtual-keyboard] .hg-theme-default .hg-button.key-action {
   background: hsl(var(--muted));
   font-size: 20px;
 }
-[data-virtual-keyboard] .hg-button.key-space {
+
+.dark [data-virtual-keyboard] .hg-theme-default .hg-button {
+  background: hsl(217 33% 24%);
+}
+
+.dark [data-virtual-keyboard] .hg-theme-default .hg-button.key-action {
+  background: hsl(217 33% 20%);
+}
+
+.dark [data-virtual-keyboard] .hg-theme-default .hg-button:hover,
+.dark [data-virtual-keyboard] .hg-theme-default .hg-button:active,
+.dark [data-virtual-keyboard] .hg-theme-default .hg-button.hg-activeButton {
+  background: hsl(217 33% 34%);
+}
+
+[data-virtual-keyboard] .hg-theme-default .hg-button.key-space {
   flex-grow: 4;
 }
-[data-virtual-keyboard] .hg-button.key-mic,
-[data-virtual-keyboard] .hg-button.key-dismiss {
+
+[data-virtual-keyboard] .hg-theme-default .hg-button.key-mic,
+[data-virtual-keyboard] .hg-theme-default .hg-button.key-dismiss {
   flex-grow: 1;
   font-size: 20px;
 }
