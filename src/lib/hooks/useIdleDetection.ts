@@ -6,7 +6,7 @@ import { useIsPWA } from './useIsPWA';
 const STORAGE_KEY = 'prism-screensaver-timeout';
 const AWAY_MODE_STORAGE_KEY = 'prism-away-mode-timeout';
 const LAST_ACTIVITY_KEY = 'prism-last-activity';
-const DEFAULT_TIMEOUT = 120;
+const DEFAULT_TIMEOUT = 0;
 
 function getStoredTimeout(): number {
   if (typeof window === 'undefined') return DEFAULT_TIMEOUT;
@@ -111,7 +111,7 @@ export function useIdleDetection(initialTimeout?: number) {
       }
       dismissIdle();
     };
-    const dismissEvents = ['mousedown', 'keydown', 'touchstart'] as const;
+    const dismissEvents = ['pointerdown', 'mousedown', 'keydown', 'touchstart'] as const;
     dismissEvents.forEach((e) => window.addEventListener(e, maybeDismiss));
 
     resetTimer();
@@ -122,6 +122,25 @@ export function useIdleDetection(initialTimeout?: number) {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [resetTimer, dismissIdle, timeout, isPWA]);
+
+  // Kiosk announcements commonly navigate/refresh the page or bring a hidden
+  // page back to the foreground. Exit immediately so their UI is never covered.
+  useEffect(() => {
+    const wake = () => { forcedRef.current = false; setIsIdle(false); resetTimer(); };
+    const onVisibility = () => wake();
+    window.addEventListener('pageshow', wake);
+    window.addEventListener('popstate', wake);
+    window.addEventListener('hashchange', wake);
+    window.addEventListener('prism:announce', wake);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('pageshow', wake);
+      window.removeEventListener('popstate', wake);
+      window.removeEventListener('hashchange', wake);
+      window.removeEventListener('prism:announce', wake);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [resetTimer]);
 
   // Listen for custom screensaver activation event
   useEffect(() => {

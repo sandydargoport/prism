@@ -34,7 +34,7 @@ const DEFAULT_SCREENSAVER_INTERVAL = 15; // seconds
 export function useWallpaperSettings() {
   const [enabled, setEnabledState] = useState(() => {
     if (typeof window === 'undefined') return false;
-    return localStorage.getItem(STORAGE_KEY) !== 'false';
+    return localStorage.getItem(STORAGE_KEY) === 'true';
   });
   const [interval, setIntervalState] = useState(() => {
     if (typeof window === 'undefined') return DEFAULT_INTERVAL;

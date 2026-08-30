@@ -134,18 +134,13 @@ describe('useIdleDetection', () => {
     expect(result.current.isIdle).toBe(true);
   });
 
-  it('defaults to 120s when no stored value and no initialTimeout', () => {
+  it('defaults to disabled when no stored value and no initialTimeout', () => {
     const { result } = renderHook(() => useIdleDetection());
 
     act(() => {
-      jest.advanceTimersByTime(119000);
+      jest.advanceTimersByTime(300000);
     });
     expect(result.current.isIdle).toBe(false);
-
-    act(() => {
-      jest.advanceTimersByTime(1000);
-    });
-    expect(result.current.isIdle).toBe(true);
   });
 
   it('dismisses idle on keydown after becoming idle', () => {

@@ -3,9 +3,6 @@
 import * as React from 'react';
 import { useState, useEffect, useMemo } from 'react';
 import { useIdleDetection } from '@/lib/hooks/useIdleDetection';
-import { usePhotos } from '@/lib/hooks/usePhotos';
-import { useAutoOrientationSetting, usePinnedPhoto, useScreensaverInterval } from '@/components/layout/WallpaperBackground';
-import { useScreenOrientation } from '@/lib/hooks/useScreenOrientation';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import { WIDGET_REGISTRY } from '@/components/widgets/widgetRegistry';
 import { useDashboardData } from '@/components/dashboard/useDashboardData';
@@ -14,6 +11,8 @@ import { GRID_COLS } from '@/lib/constants/grid';
 import { CssGridDisplay } from '@/components/layout/grid/CssGridDisplay';
 import { CalendarPrefsScopeContext } from '@/lib/hooks/useCalendarWidgetPrefs';
 import { loadScreensaverLayout } from './screensaverStorage';
+import { NightSky } from './NightSky';
+import { NIGHT_SKY_IDLE_SECONDS } from './nightSkyUtils';
 
 /**
  * Wrapper classes that make any dashboard widget legible as a screensaver
@@ -38,37 +37,8 @@ export {
 } from './screensaverStorage';
 
 export function Screensaver() {
-  const { isIdle } = useIdleDetection();
-  const { enabled: autoOrientation } = useAutoOrientationSetting();
-  const { pinnedId } = usePinnedPhoto('screensaver');
-  const { interval: screensaverInterval } = useScreensaverInterval();
-  const screenOrientation = useScreenOrientation();
-  const orientationOverride = typeof window !== 'undefined'
-    ? (localStorage.getItem('prism-orientation-override') as 'landscape' | 'portrait' | null) || null
-    : null;
-  const effectiveOrientation = orientationOverride || screenOrientation;
-  const { photos } = usePhotos({
-    sort: 'random',
-    limit: 50,
-    usage: 'screensaver',
-    orientation: autoOrientation ? effectiveOrientation : undefined,
-  });
+  const { isIdle } = useIdleDetection(NIGHT_SKY_IDLE_SECONDS);
   const [visible, setVisible] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [fadingOut, setFadingOut] = useState(false);
-
-  // Only rotate if no pinned photo and interval is not "never" (0)
-  useEffect(() => {
-    if (!isIdle || photos.length <= 1 || pinnedId || screensaverInterval === 0) return;
-    const timer = setInterval(() => {
-      setFadingOut(true);
-      setTimeout(() => {
-        setCurrentIndex((i) => (i + 1) % photos.length);
-        setFadingOut(false);
-      }, 1000);
-    }, screensaverInterval * 1000);
-    return () => clearInterval(timer);
-  }, [isIdle, photos.length, pinnedId, screensaverInterval]);
 
   useEffect(() => {
     if (isIdle) {
@@ -79,36 +49,18 @@ export function Screensaver() {
     }
   }, [isIdle]);
 
-  if (!isIdle) return null;
+  const nightSkyDomains = useMemo(() => new Set(['calendar']), []);
+  const nightSkyData = useDashboardData(nightSkyDomains);
 
-  // Use pinned photo if set, otherwise use rotating photos
-  const src = pinnedId
-    ? `/api/photos/${pinnedId}/file`
-    : photos[currentIndex]
-      ? `/api/photos/${photos[currentIndex]!.id}/file`
-      : '';
+  if (!isIdle) return null;
 
   return (
     <div
-      className={`fixed inset-0 z-[9999] bg-black transition-opacity duration-1000 ${
+      className={`fixed inset-0 z-[9999] bg-black transition-opacity duration-200 ${
         visible ? 'opacity-100' : 'opacity-0'
       }`}
     >
-      {/* Decorative layers are absolutely positioned, so in CSS paint order they
-          sit ABOVE the (statically-positioned) widget grid and would swallow every
-          tap. pointer-events-none lets taps fall through to the widgets — needed
-          for the calendar view controls to be operable on the screensaver. */}
-      {src && (
-        <div
-          className="pointer-events-none absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
-          style={{
-            backgroundImage: `url(${src})`,
-            opacity: fadingOut ? 0 : 1,
-          }}
-        />
-      )}
-      <div className="pointer-events-none absolute inset-0 bg-black/40" />
-      <ScreensaverGrid />
+      <NightSky events={nightSkyData.calendar.events} loading={nightSkyData.calendar.loading} />
     </div>
   );
 }

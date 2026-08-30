@@ -36,7 +36,7 @@ interface ProvidersProps {
  */
 export function Providers({ children }: ProvidersProps) {
   return (
-    <ThemeProvider defaultTheme="light">
+    <ThemeProvider defaultTheme="dark">
       <FamilyProvider>
         <AuthProvider>
           <TimeFormatProvider>

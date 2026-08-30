@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
 const STORAGE_KEY = 'prism-screensaver-timeout';
-const DEFAULT_TIMEOUT = 120; // 2 minutes in seconds
+const DEFAULT_TIMEOUT = 0; // Disabled by default; Night Sky owns its 15-minute timer.
 
 export const SCREENSAVER_TIMEOUT_OPTIONS = [
   { value: 30, label: '30 seconds' },
