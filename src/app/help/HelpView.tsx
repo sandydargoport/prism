@@ -527,6 +527,18 @@ function ScreensaverHelp() {
         <Li><strong>Photo rotation</strong>: Set the &quot;Rotate photos every&quot; interval, or pin one static photo</Li>
         <Li><strong>Edit layout</strong>: In dashboard edit mode, toggle &quot;Screensaver&quot;</Li>
       </Ul>
+      <H2>Signing out when nobody is there</H2>
+      <P>
+        Under the same Timers section, <strong>Sign out after</strong> controls how long
+        the display can sit untouched before it stops being signed in as whoever last
+        used it. Thirty minutes by default; you can change it or turn it off.
+      </P>
+      <P>
+        Nothing disappears when it happens. The calendar, tasks and messages stay on
+        screen for anyone to read. What comes back is the PIN prompt on anything that
+        changes something, so a task added on the display is added by whoever is
+        actually standing there.
+      </P>
     </>
   );
 }

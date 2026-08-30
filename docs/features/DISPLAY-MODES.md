@@ -26,6 +26,23 @@ Screensaver timing lives under *Settings → Appearance → Timers & Auto-Activa
 
 - **Screensaver Timeout**: how long idle before activating. Options: 30 seconds / 1 minute / 2 minutes / 10 minutes / 1 hour / Never (default 2 minutes).
 - **Photo Rotation Interval**: how fast photos cycle within the screensaver (5 seconds up to 1 hour, or Never for a static image).
+- **Sign out after**: how long the display can sit untouched before it stops
+  being signed in as whoever last used it (5 minutes up to 4 hours, or Never;
+  default 30 minutes). Per device, like the other timers here.
+
+  Signing out does not blank anything. `getDisplayAuth` keeps serving the
+  dashboard from the configured display user, so the calendar, tasks and
+  messages stay readable to anyone who walks up. What comes back is the PIN
+  prompt on anything that *changes* something.
+
+  Worth knowing why this exists: a parent session lasts 7 days and its window
+  is refreshed on every request, and the dashboard polls constantly — so
+  without this, one sign-in leaves the display authenticated as that person
+  until the 30-day absolute cap, and whoever walks up next inherits it.
+
+  It is deliberately not tied to the screensaver. That timer is cosmetic and
+  often set to two minutes; being asked for a PIN that often teaches people to
+  resent it.
 
 Which photos appear is configured under *Settings → Photos:*
 

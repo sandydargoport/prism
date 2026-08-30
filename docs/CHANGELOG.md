@@ -4,6 +4,15 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.20.0] – 2026-08-30
+
+### Added
+- **The display can now sign itself out after a stretch of inactivity.** Once someone signs in at a wall display it has been staying signed in as them for weeks, so anyone who walked up afterwards could add, change or delete things as that person. It now signs out after 30 minutes untouched, which you can change or turn off under *Settings → Appearance → Timers*. Nothing disappears when it does: the calendar, tasks and messages stay on screen for anyone to read. What comes back is the PIN prompt on anything that changes something.
+
+### Fixed
+- **On-screen keyboard keys were blank in dark mode.** The letters only appeared while a key was held down. Thanks to Brian Adams for finding and fixing this.
+- **Prism was fetching some things twice.** Two parts of the app that ask for the same information at the same moment now share one request instead of making two, and the short-term cache no longer grows without limit on a display left running for weeks.
+
 ## [1.19.1] – 2026-08-30
 
 ### Fixed
