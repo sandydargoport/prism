@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { useIdleLogout } from '@/lib/hooks/useIdleLogout';
 
 const Screensaver = dynamic(
   () => import('@/components/screensaver/Screensaver').then(m => ({ default: m.Screensaver })),
@@ -16,6 +17,10 @@ const BabysitterModeOverlay = dynamic(
 );
 
 export function LazyOverlays() {
+  // Mounted here because this component is already in the root layout, so the
+  // check runs on every page rather than only on the dashboard.
+  useIdleLogout();
+
   return (
     <>
       <BabysitterModeOverlay />

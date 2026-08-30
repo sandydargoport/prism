@@ -14,6 +14,7 @@ import { useWallpaperSettings, useAutoOrientationSetting, useScreensaverInterval
 import { useScreenOrientation } from '@/lib/hooks/useScreenOrientation';
 import { useOrientationOverride } from '../SettingsView';
 import { useScreensaverTimeout } from '@/lib/hooks/useScreensaverTimeout';
+import { useIdleLogoutSetting, IDLE_LOGOUT_OPTIONS } from '@/lib/hooks/useIdleLogout';
 import { useAutoHideUI } from '@/lib/hooks/useAutoHideUI';
 import { useAwayModeTimeout } from '@/lib/hooks/useAwayModeTimeout';
 import { usePerformanceMode } from '@/lib/hooks/usePerformanceMode';
@@ -316,6 +317,7 @@ function TimersCard() {
   const { interval: photoInterval, setInterval: setPhotoInterval } = useScreensaverInterval();
   const { autoHideEnabled, setAutoHideEnabled } = useAutoHideUI();
   const { timeout: awayTimeout, setTimeout: setAwayTimeout } = useAwayModeTimeout();
+  const [idleLogout, setIdleLogout] = useIdleLogoutSetting();
 
   return (
     <Card>
@@ -344,6 +346,23 @@ function TimersCard() {
               <option value={0}>Never</option>
             </select>
           </div>
+          <div className="flex items-center gap-3 pl-2">
+            <span className="text-sm text-muted-foreground">Sign out after</span>
+            <select
+              value={idleLogout}
+              onChange={(e) => setIdleLogout(Number(e.target.value))}
+              className="border border-border rounded px-2 py-1 text-sm bg-background"
+            >
+              {IDLE_LOGOUT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+          <p className="text-xs text-muted-foreground pl-2">
+            After this long untouched, the display stops being signed in as
+            whoever last used it. The dashboard stays readable; adding or
+            changing anything asks for a PIN. This screen only.
+          </p>
           <div className="flex items-center gap-3 pl-2">
             <span className="text-sm text-muted-foreground">Rotate photos every</span>
             <select
