@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
 import { useVisibilityPolling } from './useVisibilityPolling';
-import { navCacheGet, navCacheSet } from '@/lib/utils/navCache';
+import { navCacheGet, navCacheSet, navCacheDedupe } from '@/lib/utils/navCache';
 
 interface UseFetchOptions<T> {
   url: string;
@@ -50,10 +50,15 @@ export function useFetch<T>(options: UseFetchOptions<T>): UseFetchResult<T> {
     if (loadedUrlRef.current !== url && !navCacheGet(url)) setLoading(true);
     try {
       setError(null);
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`Failed to fetch ${labelRef.current}`);
-      const json = await response.json();
-      const result = transformRef.current ? transformRef.current(json) : (json as T);
+      // Joined rather than duplicated: two components polling the same URL on
+      // the same tick make one request. The transform runs per consumer, since
+      // two callers of the same endpoint can shape the response differently.
+      const json = await navCacheDedupe(url, async () => {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Failed to fetch ${labelRef.current}`);
+        return response.json();
+      });
+      const result = transformRef.current ? transformRef.current(json as never) : (json as T);
       navCacheSet(url, result);
       loadedUrlRef.current = url;
       // Structural-shared polling: when the new payload is byte-identical
