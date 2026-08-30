@@ -11,6 +11,7 @@ import { addDays, subDays, startOfDay, endOfDay } from 'date-fns';
 import type { CalendarEvent } from '@/types/calendar';
 import { useVisibilityPolling } from '@/lib/hooks/useVisibilityPolling';
 import { navCacheGet, navCacheSet } from '@/lib/utils/navCache';
+import { useLocalDateKey } from '@/lib/hooks/useLocalDateKey';
 
 interface UseCalendarEventsOptions {
   /** Number of days to fetch events for (used only when rangeStart/rangeEnd are omitted). */
@@ -53,6 +54,7 @@ export function useCalendarEvents(
   // The request URL doubles as the cache key. When an explicit range is given
   // it wins; otherwise fall back to the today-anchored daysToShow window.
   // Stable across remounts within the same day (deps are primitives).
+  const dateKey = useLocalDateKey();
   const rangeStartMs = rangeStart?.getTime();
   const rangeEndMs = rangeEnd?.getTime();
   const cacheKey = useMemo(() => {
@@ -67,7 +69,13 @@ export function useCalendarEvents(
       endDate = endOfDay(addDays(today, daysToShow));
     }
     return `/api/events?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}&limit=${limit}`;
-  }, [daysToShow, rangeStartMs, rangeEndMs, limit]);
+    // dateKey is in the dependency list on purpose. Without it this memo's
+    // deps are all constants, so the window computed from `new Date()` above
+    // is frozen at mount — invisible on a page someone opens and closes, and
+    // wrong for weeks on a display that is never reloaded. It changes exactly
+    // once per local midnight, so it cannot trigger a refetch for any other
+    // reason. Irrelevant when an explicit range was passed, but harmless.
+  }, [daysToShow, rangeStartMs, rangeEndMs, limit, dateKey]);
 
   const cached = navCacheGet<CalendarEvent[]>(cacheKey);
   const [events, setEvents] = useState<CalendarEvent[]>(() => cached ?? []);
