@@ -4,9 +4,16 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.19.1] – 2026-08-30
+
 ### Fixed
 - **Prism no longer offers a Google sign-in button that cannot work.** Google refuses a private address as a sign-in redirect, so on a home-network-only install the button sent you to Google and Google turned you away in its own words, with nothing on the Prism side explaining why. Where the address you are using cannot work, Prism now says so, names the ways round it — reopen Prism on a public https address or on localhost, or paste a token instead — and opens the paste-a-token section for you. On a public address nothing changes.
 - **The backups page put its most-used button last.** *Clear Cache & Reload* now sits above the list of backups rather than below it, and the list shows the five most recent with the rest behind a *Show older backups* toggle. Nothing is deleted; the list simply no longer grows until it pushes everything else off the screen.
+- **A locked-out PIN no longer says the PIN is wrong.** After five failed attempts Prism stops accepting a PIN for a while, and during that pause it was reporting even the *correct* PIN as incorrect — for up to four hours, with nothing to suggest waiting would help. It now says how many tries are left before the pause, and once paused, the time to try again. A PIN entered while Prism cannot be reached is no longer reported as wrong either.
+- **A screensaver you opened yourself can always be closed again.** Opening it from the toolbar button, on an installed app or with the timeout set to *Never*, produced a screensaver that nothing could dismiss. It still will not switch itself on in those cases, which is deliberate.
+- **Your calendar no longer stops rolling over at midnight.** A display left running for days kept asking for the range of days it worked out when it started, so "today" on screen quietly stopped being today. Nothing looked wrong, which is why it went unnoticed.
+- **The screensaver was quietly fetching everything.** It loaded data for every widget in Prism while showing three of them, and asked your task provider to sync each time it appeared. It now loads only what it draws.
+- **Prism no longer tells the network who has a PIN.** The member list shown before anyone signs in, so the login screen can draw it, also said which members had a PIN set. Names and faces are on the display anyway; which member is unprotected is not, so it has been removed.
 
 ## [1.19.0] – 2026-08-29
 
