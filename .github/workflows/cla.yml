@@ -47,6 +47,9 @@ jobs:
           # bot cannot push to master (branch protection ruleset).
           branch: 'cla-signatures'
           allowlist: sandydargoport,dependabot[bot],github-actions[bot]
-          custom-notsigned-prcomment: 'Thanks for the contribution! Before it can be merged, please read our [Contributor License Agreement](https://github.com/sandydargoport/prism/blob/master/CLA.md) and, if you agree, post a comment below with exactly this text:'
-          custom-pr-sign-comment: 'I have read the CLA and I agree'
+          custom-notsigned-prcomment: 'Thanks for the contribution! One thing before it can be merged: Prism needs a CLA signature from you, once, for all time. Read the [Contributor License Agreement](https://github.com/sandydargoport/prism/blob/master/CLA.md) and, if you agree, post a comment below with exactly this text. It has to be your own comment rather than a tick-box, because the signature needs to be your affirmative act:'
           custom-allsigned-prcomment: 'All contributors have signed the CLA. Thank you! ✅'
+          # The bot only re-evaluates on a new comment or a push. Someone who
+          # signs and then waits sees a red check with no way to clear it, so
+          # say what unsticks it.
+          custom-pr-sign-comment: 'I have read the CLA and I agree'
