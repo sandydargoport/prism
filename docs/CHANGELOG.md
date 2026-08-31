@@ -4,6 +4,16 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.21.0] – 2026-08-31
+
+### Added
+- **Colour themes.** Prism has had light and dark; it now has palettes. Five to start — Prism, Clay, Harvest, Snow Day and Arcade — chosen under *Settings → Appearance*. The palette applies to every screen in the house, while light and dark stay per-screen, because one is a decision about how the home looks and the other is about the room a particular screen is in. Every palette is checked for readability before it can ship: Prism is read from across a kitchen, often by someone who is not wearing their glasses.
+- **Groundwork for sharing themes.** Themes are plain colour values, which means they can be passed between households the way dashboard layouts already are. Two ways to share one, and they differ in what happens to your work: through the gallery it stays yours, or as a contribution it ships with Prism for everyone. Neither is better. The submission side of this is not finished yet; what is here is the part that has to be right first.
+
+### Fixed
+- **A security fix in the layout submission workflow.** A submitted layout name was passed to a command line without being quoted, so a carefully chosen name could run commands on the machine that processes submissions. Anyone with a GitHub account more than a week old could have reached it. Nothing suggests this was used; it was found while reviewing whether the same workflow could handle themes. If you run a fork with community submissions enabled, take this update.
+- **The theme no longer flashes on load.** Opening Prism showed the light palette for a moment before settling on your actual choice. Unnoticeable on a laptop, obvious on a wall display that reloads by itself. It also meant a saved "match my system" preference was ignored for the first moment of every page.
+
 ## [1.20.1] – 2026-08-31
 
 ### Fixed

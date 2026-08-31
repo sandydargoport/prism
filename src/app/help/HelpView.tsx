@@ -527,6 +527,16 @@ function ScreensaverHelp() {
         <Li><strong>Photo rotation</strong>: Set the &quot;Rotate photos every&quot; interval, or pin one static photo</Li>
         <Li><strong>Edit layout</strong>: In dashboard edit mode, toggle &quot;Screensaver&quot;</Li>
       </Ul>
+      <H2>Palettes</H2>
+      <P>
+        <strong>Settings &gt; Appearance &gt; Palette</strong> changes the colours. The
+        palette applies to every screen in the house; light and dark stay per-screen,
+        since that depends on the room a screen is in.
+      </P>
+      <P>
+        If a palette ever makes Prism hard to read, add <code>?theme=default</code> to the
+        address to reset it. That works on a display with no keyboard.
+      </P>
       <H2>Signing out when nobody is there</H2>
       <P>
         Under the same Timers section, <strong>Sign out after</strong> controls how long

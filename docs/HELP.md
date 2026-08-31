@@ -95,6 +95,10 @@ School bus arrival predictions via Gmail/FirstView email parsing. Adaptive polli
 
 Screensaver, Away Mode, and Babysitter Mode: three overlay modes that layer on top of the dashboard for idle, privacy, and caregiver scenarios.
 
+### [Themes](features/THEMES.md)
+
+Five colour palettes, chosen under Settings. The palette is set once for the whole house; light and dark stay per-screen. Every palette is checked for readability before it ships, and `?theme=default` recovers a display with no keyboard.
+
 ### [Mobile & PWA](features/MOBILE.md)
 
 Installable as a PWA on iOS, Android, and desktop. Phone viewports get a Floating Action Button (FAB), simplified single-column dashboard, and agenda-only calendar.
