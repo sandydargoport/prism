@@ -206,6 +206,32 @@ describe('shape', () => {
     expect(isValidShape({ radius: 0.75 })).toBe(true);
   });
 
+  it('clamps density and border width too, not just radius', () => {
+    const n = normalizeShape({ density: 99, borderWidth: -4 });
+    expect(n.density).toBe(SHAPE_LIMITS.density.max);
+    expect(n.borderWidth).toBe(SHAPE_LIMITS.borderWidth.min);
+  });
+
+  it('fills in only what a theme leaves out', () => {
+    // A theme states what it wants to change; everything else takes the
+    // default rather than having to be repeated.
+    const n = normalizeShape({ radius: 0 });
+    expect(n.radius).toBe(0);
+    expect(n.density).toBe(SHAPE_LIMITS.density.default);
+    expect(n.borderWidth).toBe(SHAPE_LIMITS.borderWidth.default);
+  });
+
+  it('emits all three properties', () => {
+    const css = themeCss(BUILTIN_THEMES[0]!);
+    expect(css).toContain('--density:');
+    expect(css).toContain('--border-width:');
+  });
+
+  it('gives the themes different densities, not just different hues', () => {
+    const densities = new Set(BUILTIN_THEMES.map((t) => normalizeShape(t.shape).density));
+    expect(densities.size).toBeGreaterThan(1);
+  });
+
   it('is emitted on :root only, since it does not vary by mode', () => {
     const css = themeCss(BUILTIN_THEMES[0]!);
     const root = css.slice(0, css.indexOf('.dark{'));

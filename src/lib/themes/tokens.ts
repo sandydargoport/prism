@@ -54,27 +54,59 @@ export type ThemeTokens = Record<ThemeToken, string>;
 export interface ThemeShape {
   /** Corner rounding, in rem. 0 is square; the cap stops cards becoming lozenges. */
   radius: number;
+  /**
+   * Multiplier on the padding inside cards and the gaps between them.
+   *
+   * The largest lever of the three. Density is most of what separates one
+   * design language from another — a spacious layout and a compact one read as
+   * different products even in identical colours.
+   */
+  density: number;
+  /** Border thickness in px. 0 is borderless, which is a real style. */
+  borderWidth: number;
 }
 
+/**
+ * Every shape value is a capped number.
+ *
+ * The cap is what keeps a theme from expressing something broken. Past a point
+ * these stop being style and start being a layout fault, and the person who
+ * installed the theme cannot tell the difference.
+ */
 export const SHAPE_LIMITS = {
   radius: { min: 0, max: 1.5, default: 0.5 },
+  // Below 0.75 text starts touching card edges; above 1.5 a wall display fits
+  // very little on screen, which defeats the point of a dashboard.
+  density: { min: 0.75, max: 1.5, default: 1 },
+  borderWidth: { min: 0, max: 3, default: 1 },
 } as const;
+
+type ShapeKey = keyof typeof SHAPE_LIMITS;
+const SHAPE_KEYS = Object.keys(SHAPE_LIMITS) as ShapeKey[];
 
 export function isValidShape(value: unknown): value is ThemeShape {
   if (!value || typeof value !== 'object') return false;
   const s = value as Record<string, unknown>;
-  const r = s.radius;
-  return typeof r === 'number' && Number.isFinite(r) &&
-    r >= SHAPE_LIMITS.radius.min && r <= SHAPE_LIMITS.radius.max;
+  return SHAPE_KEYS.every((key) => {
+    const v = s[key];
+    if (v === undefined) return true; // absent falls back to the default
+    const { min, max } = SHAPE_LIMITS[key];
+    return typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max;
+  });
 }
 
 /** Clamp rather than reject, so an out-of-range value degrades to the nearest legal one. */
 export function normalizeShape(value: unknown): ThemeShape {
   const s = (value ?? {}) as Record<string, unknown>;
-  const r = typeof s.radius === 'number' && Number.isFinite(s.radius)
-    ? Math.min(SHAPE_LIMITS.radius.max, Math.max(SHAPE_LIMITS.radius.min, s.radius))
-    : SHAPE_LIMITS.radius.default;
-  return { radius: r };
+  const out = {} as ThemeShape;
+  for (const key of SHAPE_KEYS) {
+    const { min, max, default: fallback } = SHAPE_LIMITS[key];
+    const v = s[key];
+    out[key] = typeof v === 'number' && Number.isFinite(v)
+      ? Math.min(max, Math.max(min, v))
+      : fallback;
+  }
+  return out;
 }
 
 export interface Theme {
@@ -83,8 +115,11 @@ export interface Theme {
   description: string;
   light: ThemeTokens;
   dark: ThemeTokens;
-  /** Optional; absent means the default shape. */
-  shape?: ThemeShape;
+  /**
+   * Optional, and partial. Any value left out takes the default, so a theme
+   * only states what it actually wants to change.
+   */
+  shape?: Partial<ThemeShape>;
 }
 
 /**

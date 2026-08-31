@@ -33,14 +33,33 @@ export function applyThemeVars(root: HTMLElement, tokens: Partial<ThemeTokens>):
 
 /** Apply the shape values, which are the same in both modes. */
 export function applyThemeShape(root: HTMLElement, theme: Theme): void {
-  const { radius } = normalizeShape(theme.shape);
-  root.style.setProperty('--radius', `${radius}rem`);
+  for (const [prop, value] of shapeProperties(theme)) {
+    root.style.setProperty(prop, value);
+  }
+}
+
+/**
+ * Shape as CSS custom properties.
+ *
+ * Density is a multiplier rather than a length so it can scale the existing
+ * spacing scale instead of replacing it — a theme says "roomier", not "16px",
+ * and stays correct wherever it is applied.
+ */
+function shapeProperties(theme: Theme): Array<[string, string]> {
+  const { radius, density, borderWidth } = normalizeShape(theme.shape);
+  return [
+    ['--radius', `${radius}rem`],
+    ['--density', String(density)],
+    ['--border-width', `${borderWidth}px`],
+  ];
 }
 
 /** Remove every theme token, falling back to the values in globals.css. */
 export function clearThemeVars(root: HTMLElement): void {
   for (const token of THEME_TOKENS) root.style.removeProperty(`--${token}`);
-  root.style.removeProperty('--radius');
+  for (const [prop] of shapeProperties({ light: {}, dark: {} } as Theme)) {
+    root.style.removeProperty(prop);
+  }
 }
 
 /**
@@ -64,6 +83,6 @@ export function themeCss(theme: Theme): string {
 
   // Shape sits on :root only — it does not differ between modes, and repeating
   // it under .dark would just be a second place to keep in step.
-  const { radius } = normalizeShape(theme.shape);
-  return `:root{${block(theme.light)};--radius:${radius}rem}.dark{${block(theme.dark)}}`;
+  const shape = shapeProperties(theme).map(([p, v]) => `${p}:${v}`).join(';');
+  return `:root{${block(theme.light)};${shape}}.dark{${block(theme.dark)}}`;
 }

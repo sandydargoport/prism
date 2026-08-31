@@ -49,9 +49,12 @@ const Card = React.forwardRef<
     className={cn(
       // Background and border
       'bg-card/85 backdrop-blur-sm text-card-foreground',
-      'border border-border',
-      // Shape
-      'rounded-xl',
+      // Border and rounding come from the active theme rather than a fixed
+      // utility. A theme that wants a square, heavily outlined look has to
+      // reach the surface people actually see, and on a dashboard that is
+      // the card.
+      'border-border border-[length:var(--border-width,1px)]',
+      'rounded-[var(--radius,0.5rem)]',
       // Shadow for depth (subtle)
       'shadow-sm',
       // Allow custom classes to override
@@ -84,7 +87,7 @@ const CardHeader = React.forwardRef<
       // Flex column for title + description
       'flex flex-col space-y-1.5',
       // Padding
-      'p-4 pb-0',
+      'p-[calc(1rem*var(--density,1))] pb-0',
       className
     )}
     {...props}
@@ -161,7 +164,7 @@ const CardContent = React.forwardRef<
     ref={ref}
     className={cn(
       // Padding (top padding is smaller because header has padding)
-      'p-4 pt-2',
+      'p-[calc(1rem*var(--density,1))] pt-2',
       className
     )}
     {...props}
@@ -191,7 +194,7 @@ const CardFooter = React.forwardRef<
       // Flex row with spacing
       'flex items-center gap-2',
       // Padding
-      'p-4 pt-0',
+      'p-[calc(1rem*var(--density,1))] pt-0',
       className
     )}
     {...props}
