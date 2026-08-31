@@ -58,6 +58,8 @@ import { DemoBanner } from '@/components/layout/DemoBanner';
 
 // Toast notifications
 import { Toaster } from '@/components/ui/toaster';
+import { getServerTheme } from '@/lib/themes/serverTheme';
+import { themeCss } from '@/lib/themes/applyTheme';
 
 
 /**
@@ -225,11 +227,17 @@ export const viewport: Viewport = {
  * - Can't use hooks or browser APIs directly
  * - For client-side features, wrap in a Client Component
  */
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Rendered here rather than applied on the client, so the first paint is
+  // already the right palette. A wall display reloads on its own; a flash of
+  // the default colours on every reload is the most visible thing about
+  // theming, and it reads as a fault.
+  const theme = await getServerTheme();
+
   return (
     <html
       lang="en"
@@ -237,6 +245,26 @@ export default function RootLayout({
       // that might modify the HTML (password managers, etc.)
       suppressHydrationWarning
     >
+      <head>
+        {/*
+          Two things have to be right before the first paint: which palette,
+          and whether it is the light or dark half of it. The palette comes
+          from the server above. The light/dark choice lives in localStorage,
+          which the server cannot read — hence the blocking script, which sets
+          the class the stylesheet below keys on. Both are tiny and neither
+          fetches anything.
+
+          themeCss builds its output from an allowlist of property names and
+          re-checks every value, so nothing from a stored palette can escape
+          this element. There is no CSP here to catch it if it could.
+        */}
+        <style id="prism-theme" dangerouslySetInnerHTML={{ __html: themeCss(theme) }} />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('prism-theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark')}catch(e){}})()`,
+          }}
+        />
+      </head>
       {/*
         The body element with our font applied.
 

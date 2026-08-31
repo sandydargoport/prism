@@ -9,6 +9,7 @@ import type { AuthResult } from '@/lib/auth';
 import { logError } from '@/lib/utils/logError';
 import { PIN_LENGTH_SETTING_KEY } from '@/lib/constants';
 import { isSetupComplete } from '@/lib/setup';
+import { getBuiltinTheme } from '@/lib/themes/appThemes';
 
 export async function GET() {
   const auth = await getDisplayAuth();
@@ -70,6 +71,22 @@ export async function PATCH(request: NextRequest) {
       auth = authResult;
       const forbidden = requireRole(auth, 'canModifySettings');
       if (forbidden) return forbidden;
+    }
+
+    // Per-key validation. This endpoint otherwise accepts any shape for any
+    // key, and the theme row is read on the server and rendered into a <style>
+    // element in the root layout — so an unchecked value there is not a bad
+    // setting, it is markup in the page. Never trust the row on the render
+    // path; refuse it on the way in as well.
+    if (body.key === 'theme') {
+      const value = body.value as { paletteId?: unknown } | null;
+      const paletteId = value && typeof value === 'object' ? value.paletteId : undefined;
+      if (paletteId !== undefined && (typeof paletteId !== 'string' || !getBuiltinTheme(paletteId))) {
+        return NextResponse.json(
+          { error: 'Unknown palette' },
+          { status: 400 },
+        );
+      }
     }
 
     const [existing] = await db

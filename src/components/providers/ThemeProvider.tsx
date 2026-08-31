@@ -17,6 +17,9 @@ import * as React from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useSeasonalTheme } from '@/lib/hooks/useSeasonalTheme';
 import { usePerformanceMode } from '@/lib/hooks/usePerformanceMode';
+import type { Theme } from '@/lib/themes/tokens';
+import { BUILTIN_THEMES, getBuiltinTheme, DEFAULT_THEME_ID } from '@/lib/themes/appThemes';
+import { applyThemeVars, themeTokens } from '@/lib/themes/applyTheme';
 
 /**
  * Theme modes
@@ -33,6 +36,12 @@ interface ThemeContextValue {
   resolvedTheme: 'light' | 'dark';
   /** Update the theme */
   setTheme: (theme: ThemeMode) => void;
+  /** Which palette is applied. Independent of light/dark. */
+  palette: Theme;
+  /** Every palette that can be chosen right now. */
+  palettes: Theme[];
+  /** Switch palette. Persisted to the settings row, not to localStorage. */
+  setPalette: (id: string) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
@@ -41,6 +50,13 @@ const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
  * Storage key for persisting theme preference
  */
 const STORAGE_KEY = 'prism-theme';
+
+/**
+ * The settings row holding the chosen palette. Seeded since the beginning and
+ * read by nothing until now — the `{ mode }` shape it was seeded with is kept
+ * so existing rows stay valid.
+ */
+const THEME_SETTING_KEY = 'theme';
 
 /**
  * Get the system theme preference
@@ -75,6 +91,9 @@ export function ThemeProvider({
   const [theme, setThemeState] = useState<ThemeMode>(defaultTheme);
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
   const [mounted, setMounted] = useState(false);
+  const [palette, setPaletteState] = useState<Theme>(
+    () => getBuiltinTheme(DEFAULT_THEME_ID) ?? BUILTIN_THEMES[0]!,
+  );
 
   // On mount, load saved theme from localStorage
   useEffect(() => {
@@ -137,8 +156,72 @@ export function ThemeProvider({
     localStorage.setItem(STORAGE_KEY, newTheme);
   };
 
-  // Apply seasonal theme CSS variables globally
-  useSeasonalTheme();
+  // Persisted to the database rather than localStorage, because a palette is a
+  // household choice: every screen in the house should agree, and a new tablet
+  // should pick it up without being configured.
+  const setPalette = (id: string) => {
+    const next = getBuiltinTheme(id);
+    if (!next) return;
+    setPaletteState(next);
+    fetch('/api/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: THEME_SETTING_KEY, value: { mode: theme, paletteId: id } }),
+    }).catch(() => { /* applied locally; the next load falls back to the server value */ });
+  };
+
+  // Apply the palette's variables whenever it or the light/dark mode changes.
+  //
+  // Runs after mount only. The first paint is handled by a stylesheet rendered
+  // on the server, so this effect is for changes rather than for load — which
+  // is why there is no flash when someone picks a palette.
+  useEffect(() => {
+    if (!mounted) return;
+    applyThemeVars(document.documentElement, themeTokens(palette, resolvedTheme));
+  }, [palette, resolvedTheme, mounted]);
+
+  // Escape hatch for a kiosk that cannot reach Settings: ?theme=default resets
+  // the palette and persists it. A wall display has no keyboard, and a palette
+  // with a broken background/foreground pair makes the Settings page itself
+  // unreadable — which would otherwise mean an SSH session to recover.
+  // Mirrors ?perf=0 in usePerformanceMode, which exists for the same reason.
+  useEffect(() => {
+    if (!mounted) return;
+    if (new URLSearchParams(window.location.search).get('theme') !== 'default') return;
+    const fallback = getBuiltinTheme(DEFAULT_THEME_ID) ?? BUILTIN_THEMES[0]!;
+    setPaletteState(fallback);
+    fetch('/api/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: THEME_SETTING_KEY, value: { mode: theme, paletteId: fallback.id } }),
+    }).catch(() => { /* reset locally at least; the display is usable again */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted]);
+
+  // Read the stored palette once. A failure here is not worth surfacing: the
+  // server already rendered a palette, so the visible result of the request
+  // never arriving is that the picker shows the default.
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/settings')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        const stored = data.settings?.[THEME_SETTING_KEY];
+        const id = typeof stored?.paletteId === 'string' ? stored.paletteId : null;
+        const found = id ? getBuiltinTheme(id) : undefined;
+        if (found) setPaletteState(found);
+      })
+      .catch(() => { /* keep whatever the server rendered */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Apply seasonal theme CSS variables globally.
+  //
+  // Passed the resolved mode so it does not have to watch the html class list
+  // to discover it. Its four --seasonal-* properties are deliberately outside
+  // THEME_TOKENS, so the two writers never touch the same property.
+  useSeasonalTheme(resolvedTheme);
   // Apply performance-mode class on <html> from localStorage preference
   usePerformanceMode();
 
@@ -146,14 +229,18 @@ export function ThemeProvider({
   // Return null or a loading state until mounted
   if (!mounted) {
     return (
-      <ThemeContext.Provider value={{ theme: defaultTheme, resolvedTheme: 'light', setTheme }}>
+      <ThemeContext.Provider
+        value={{ theme: defaultTheme, resolvedTheme: 'light', setTheme, palette, palettes: BUILTIN_THEMES, setPalette }}
+      >
         {children}
       </ThemeContext.Provider>
     );
   }
 
   return (
-    <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme }}>
+    <ThemeContext.Provider
+      value={{ theme, resolvedTheme, setTheme, palette, palettes: BUILTIN_THEMES, setPalette }}
+    >
       {children}
     </ThemeContext.Provider>
   );

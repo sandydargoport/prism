@@ -35,7 +35,7 @@ function SectionDivider({ label }: { label: string }) {
 }
 
 export function DisplaySection() {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, resolvedTheme, palette: activePalette, palettes, setPalette } = useTheme();
   const { seasonalTheme, setSeasonalTheme, palette } = useSeasonalTheme();
 
   const mode: 'auto' | 'manual' | 'off' =
@@ -92,6 +92,48 @@ export function DisplaySection() {
               <Monitor className="h-4 w-4 mr-2" />
               System
             </Button>
+          </div>
+
+          <div className="mt-6 space-y-3">
+            <div>
+              <h4 className="text-sm font-medium">Palette</h4>
+              <p className="text-xs text-muted-foreground mt-1">
+                Applies to every screen in the house. Light and dark above stay
+                per-screen.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {palettes.map((p) => {
+                const preview = resolvedTheme === 'dark' ? p.dark : p.light;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setPalette(p.id)}
+                    aria-pressed={activePalette.id === p.id}
+                    className={`rounded-lg border p-3 text-left transition-colors ${
+                      activePalette.id === p.id
+                        ? 'border-primary ring-2 ring-primary/40'
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                  >
+                    {/* Swatches read from the palette being offered, not from
+                        the active one, so each card previews itself. */}
+                    <div className="flex gap-1.5 mb-2">
+                      {(['background', 'card', 'primary', 'accent', 'destructive'] as const).map((tok) => (
+                        <span
+                          key={tok}
+                          className="h-6 w-6 rounded border border-black/10"
+                          style={{ backgroundColor: `hsl(${preview[tok]})` }}
+                        />
+                      ))}
+                    </div>
+                    <div className="text-sm font-medium">{p.name}</div>
+                    <div className="text-xs text-muted-foreground">{p.description}</div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </CardContent>
       </Card>

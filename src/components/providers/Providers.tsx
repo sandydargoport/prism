@@ -36,8 +36,12 @@ interface ProvidersProps {
  * AuthProvider must be inside ThemeProvider since QuickPinModal uses styled components.
  */
 export function Providers({ children }: ProvidersProps) {
+  // No defaultTheme override here. It was 'light' to mask the flash before the
+  // stored preference loaded, which also meant a stored 'system' setting was
+  // ignored on first render. The blocking script in the root layout now sets
+  // the class before paint, so the mask is no longer needed.
   return (
-    <ThemeProvider defaultTheme="light">
+    <ThemeProvider>
       <LocaleProvider>
         <FamilyProvider>
           <AuthProvider>

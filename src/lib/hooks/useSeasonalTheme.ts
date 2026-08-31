@@ -38,7 +38,7 @@ function applySeasonalVars(month: number | null, isDark: boolean) {
   root.style.setProperty('--seasonal-subtle', colors.subtle);
 }
 
-export function useSeasonalTheme() {
+export function useSeasonalTheme(mode?: 'light' | 'dark') {
   const [setting, setSetting] = useState<SeasonalThemeKey>(loadSetting);
 
   const activeMonth: number | null =
@@ -53,6 +53,17 @@ export function useSeasonalTheme() {
 
   // Apply CSS variables whenever setting or dark mode changes
   useEffect(() => {
+    // When the caller already knows the mode — ThemeProvider does, it is React
+    // state there — take it directly. The observer below is the fallback for
+    // callers that do not, and it fires on every class change on <html>,
+    // including the performance-mode toggle and anything else that writes
+    // there. Skipping it removes a MutationObserver from a display that runs
+    // for weeks.
+    if (mode) {
+      applySeasonalVars(activeMonth, mode === 'dark');
+      return;
+    }
+
     const isDark = document.documentElement.classList.contains('dark');
     applySeasonalVars(activeMonth, isDark);
 
@@ -64,7 +75,7 @@ export function useSeasonalTheme() {
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
     return () => observer.disconnect();
-  }, [activeMonth]);
+  }, [activeMonth, mode]);
 
   return {
     seasonalTheme: setting,
