@@ -208,11 +208,36 @@ jobs:
             const layout = JSON.parse(fs.readFileSync('/tmp/submission.json', 'utf-8'));
             const index = JSON.parse(fs.readFileSync('./community/layouts/index.json', 'utf-8'));
 
-            // Generate ID from name
+            // Generate ID from name. Two guards, because this id becomes both a
+            // filename and a branch name.
             const id = layout.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+            // A name of only punctuation slugifies to '' and would write
+            // community/layouts/<mode>/.json — a hidden file, silently.
+            if (!/^[a-z0-9][a-z0-9-]{0,48}$/.test(id)) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: '❌ **That name cannot be used as an identifier.** Please include some letters or numbers.'
+              });
+              core.setFailed('Unusable slug');
+              return;
+            }
             const mode = layout.mode || 'dashboard';
             const fileName = `${mode}/${id}.json`;
             const filePath = `community/layouts/${fileName}`;
+
+            // Two layouts with the same name resolve to the same path; the write
+            // below would silently overwrite the earlier one and push a duplicate
+            // index entry.
+            if (fs.existsSync(filePath)) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `❌ **A layout with that name already exists.** Please choose a different name.`
+              });
+              core.setFailed('Duplicate id');
+              return;
+            }
 
             // Add to index
             index.layouts.push({
@@ -234,15 +259,26 @@ jobs:
             fs.writeFileSync('community/layouts/index.json', JSON.stringify(index, null, 2) + '\n');
 
             // Create branch and commit (force-push in case branch exists from a prior attempt)
+            //
+            // spawnSync with an argument array, NOT execSync with a template literal.
+            // `layout.name` is submitter-controlled text validated only for length and
+            // profanity, so it may contain quotes. Interpolated into a shell command it
+            // escaped the quoting and executed in a job holding contents:write and
+            // pull-requests:write.
             const branch = `layout/${id}-${context.issue.number}`;
-            const { execSync } = require('child_process');
-            execSync(`git config user.name "github-actions[bot]"`);
-            execSync(`git config user.email "github-actions[bot]@users.noreply.github.com"`);
-            try { execSync(`git branch -D ${branch}`); } catch { /* branch may not exist locally */ }
-            execSync(`git checkout -b ${branch}`);
-            execSync(`git add ${filePath} community/layouts/index.json`);
-            execSync(`git commit -m "Add community layout: ${layout.name}\n\nFrom #${context.issue.number}"`);
-            execSync(`git push --force origin ${branch}`);
+            const { spawnSync } = require('child_process');
+            const git = (...args) => {
+              const r = spawnSync('git', args, { encoding: 'utf8' });
+              if (r.status !== 0) throw new Error(`git ${args[0]} failed: ${r.stderr || r.stdout}`);
+              return r;
+            };
+            git('config', 'user.name', 'github-actions[bot]');
+            git('config', 'user.email', 'github-actions[bot]@users.noreply.github.com');
+            spawnSync('git', ['branch', '-D', branch]); // may not exist locally; ignore failure
+            git('checkout', '-b', branch);
+            git('add', filePath, 'community/layouts/index.json');
+            git('commit', '-m', `Add community layout: ${layout.name}\n\nFrom #${context.issue.number}`);
+            git('push', '--force', 'origin', branch);
 
             // Create PR
             const pr = await github.rest.pulls.create({
