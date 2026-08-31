@@ -30,6 +30,16 @@ export function relativeLuminance(hex: string): number {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
+/**
+ * WCAG contrast ratio between two hex colours.
+ *
+ * The luminance-pair version below is the primitive; this is what callers
+ * almost always want, and exporting it keeps the conversion in one place.
+ */
+export function contrastRatioHex(a: string, b: string): number {
+  return contrastRatio(relativeLuminance(a), relativeLuminance(b));
+}
+
 /** WCAG contrast ratio between two luminances. */
 function contrastRatio(l1: number, l2: number): number {
   const lighter = Math.max(l1, l2);

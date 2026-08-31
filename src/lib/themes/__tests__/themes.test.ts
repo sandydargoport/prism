@@ -8,6 +8,7 @@
 import { THEME_TOKENS, isValidTokenValue, isValidTokenSet } from '../tokens';
 import { BUILTIN_THEMES, getBuiltinTheme, DEFAULT_THEME_ID } from '../appThemes';
 import { applyThemeVars, clearThemeVars, themeCss, themeTokens } from '../applyTheme';
+import { checkContrast, checkThemeContrast } from '../contrast';
 
 describe('isValidTokenValue', () => {
   it('accepts a bare HSL triple, which is what Tailwind expects', () => {
@@ -146,5 +147,43 @@ describe('themeCss', () => {
       light: { ...BUILTIN_THEMES[0]!.light, 'background-image': '0 0% 0%' },
     };
     expect(themeCss(smuggled as never)).not.toContain('background-image');
+  });
+});
+
+describe('legibility', () => {
+  // This is the enforcement. A theme that fails cannot be merged, which means
+  // the check runs on every built-in and, later, on every gallery submission —
+  // rather than depending on whoever authored it having looked carefully.
+  it.each(BUILTIN_THEMES.map((t) => [t.name, t] as const))(
+    '%s is readable in both modes',
+    (_name, theme) => {
+      const { errors } = checkThemeContrast(theme);
+      expect(errors.map((e) => `${e.pair} = ${e.ratio.toFixed(2)}`)).toEqual([]);
+    },
+  );
+
+  it('rejects text that cannot be read', () => {
+    const base = BUILTIN_THEMES[0]!.light;
+    const unreadable = { ...base, foreground: '0 0% 96%', background: '0 0% 100%' };
+    const issues = checkContrast(unreadable);
+    expect(issues.some((i) => i.level === 'error' && i.pair.startsWith('foreground'))).toBe(true);
+  });
+
+  it('warns rather than blocks on a borderless look', () => {
+    // A theme with invisible borders is a style choice. One with invisible
+    // text is not, and the two must not be treated the same.
+    const base = BUILTIN_THEMES[0]!.light;
+    const borderless = { ...base, border: base.background };
+    const issues = checkContrast(borderless);
+    const edge = issues.filter((i) => i.pair.includes('border'));
+    expect(edge.length).toBeGreaterThan(0);
+    expect(edge.every((i) => i.level === 'warning')).toBe(true);
+  });
+
+  it('flags a merely-tiring pair as a warning, not an error', () => {
+    const base = BUILTIN_THEMES[0]!.light;
+    const dim = { ...base, 'muted-foreground': '0 0% 55%', muted: '0 0% 100%' };
+    const issues = checkContrast(dim).filter((i) => i.pair.startsWith('muted-foreground'));
+    expect(issues[0]?.level).toBe('warning');
   });
 });
