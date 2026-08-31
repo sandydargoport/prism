@@ -1,7 +1,7 @@
 /**
  * Turning a theme into CSS, on the client and on the server.
  */
-import { THEME_TOKENS, isValidTokenValue, type Theme, type ThemeTokens } from './tokens';
+import { THEME_TOKENS, isValidTokenValue, normalizeShape, type Theme, type ThemeTokens } from './tokens';
 
 export type ResolvedMode = 'light' | 'dark';
 
@@ -31,9 +31,16 @@ export function applyThemeVars(root: HTMLElement, tokens: Partial<ThemeTokens>):
   }
 }
 
+/** Apply the shape values, which are the same in both modes. */
+export function applyThemeShape(root: HTMLElement, theme: Theme): void {
+  const { radius } = normalizeShape(theme.shape);
+  root.style.setProperty('--radius', `${radius}rem`);
+}
+
 /** Remove every theme token, falling back to the values in globals.css. */
 export function clearThemeVars(root: HTMLElement): void {
   for (const token of THEME_TOKENS) root.style.removeProperty(`--${token}`);
+  root.style.removeProperty('--radius');
 }
 
 /**
@@ -55,5 +62,8 @@ export function themeCss(theme: Theme): string {
       .map((t) => `--${t}:${tokens[t]}`)
       .join(';');
 
-  return `:root{${block(theme.light)}}.dark{${block(theme.dark)}}`;
+  // Shape sits on :root only — it does not differ between modes, and repeating
+  // it under .dark would just be a second place to keep in step.
+  const { radius } = normalizeShape(theme.shape);
+  return `:root{${block(theme.light)};--radius:${radius}rem}.dark{${block(theme.dark)}}`;
 }

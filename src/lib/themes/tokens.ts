@@ -8,8 +8,6 @@
  *
  * Deliberately excluded:
  *
- * - `--radius`. A shape token, not a colour, and an uncapped value makes cards
- *   look broken rather than styled.
  * - `--seasonal-*`. Owned by useSeasonalTheme, which writes them imperatively
  *   from a month-keyed palette. Two writers of the same four properties on the
  *   same element is a last-effect-wins bug; the sets stay disjoint.
@@ -42,12 +40,51 @@ export type ThemeToken = (typeof THEME_TOKENS)[number];
 /** A complete set of values for one mode. */
 export type ThemeTokens = Record<ThemeToken, string>;
 
+/**
+ * Shape values, which are not colours and do not differ between light and dark.
+ *
+ * Colour alone makes themes read as tints of each other — the same app with a
+ * filter over it. Corner rounding is the cheapest thing that changes what
+ * something looks *like* rather than what colour it is: square corners and
+ * pill buttons are recognisably different products.
+ *
+ * Capped, because these are the values that can make a layout look broken
+ * rather than styled. A theme cannot express anything outside the range.
+ */
+export interface ThemeShape {
+  /** Corner rounding, in rem. 0 is square; the cap stops cards becoming lozenges. */
+  radius: number;
+}
+
+export const SHAPE_LIMITS = {
+  radius: { min: 0, max: 1.5, default: 0.5 },
+} as const;
+
+export function isValidShape(value: unknown): value is ThemeShape {
+  if (!value || typeof value !== 'object') return false;
+  const s = value as Record<string, unknown>;
+  const r = s.radius;
+  return typeof r === 'number' && Number.isFinite(r) &&
+    r >= SHAPE_LIMITS.radius.min && r <= SHAPE_LIMITS.radius.max;
+}
+
+/** Clamp rather than reject, so an out-of-range value degrades to the nearest legal one. */
+export function normalizeShape(value: unknown): ThemeShape {
+  const s = (value ?? {}) as Record<string, unknown>;
+  const r = typeof s.radius === 'number' && Number.isFinite(s.radius)
+    ? Math.min(SHAPE_LIMITS.radius.max, Math.max(SHAPE_LIMITS.radius.min, s.radius))
+    : SHAPE_LIMITS.radius.default;
+  return { radius: r };
+}
+
 export interface Theme {
   id: string;
   name: string;
   description: string;
   light: ThemeTokens;
   dark: ThemeTokens;
+  /** Optional; absent means the default shape. */
+  shape?: ThemeShape;
 }
 
 /**
@@ -91,6 +128,7 @@ export function isInstallableTheme(value: unknown): value is Theme {
     typeof t.name === 'string' && t.name.length > 0 && t.name.length <= 40 &&
     typeof t.description === 'string' && t.description.length <= 160 &&
     isValidTokenSet(t.light) &&
-    isValidTokenSet(t.dark)
+    isValidTokenSet(t.dark) &&
+    (t.shape === undefined || isValidShape(t.shape))
   );
 }

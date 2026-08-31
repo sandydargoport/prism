@@ -55,6 +55,7 @@ const PRISM: Theme = {
     input: '217 33% 25%',
     ring: '212 95% 68%',
   },
+  shape: { radius: 0.5 },
 };
 
 /**
@@ -108,6 +109,9 @@ const CLAY: Theme = {
     input: '25 14% 28%',
     ring: '22 55% 62%',
   },
+  // Softer corners suit the warmth; the difference from Prism is meant to be
+  // felt rather than measured.
+  shape: { radius: 0.9 },
 };
 
 
@@ -162,6 +166,7 @@ const HARVEST: Theme = {
     input: '26 16% 26%',
     ring: '32 70% 60%',
   },
+  shape: { radius: 0.75 },
 };
 
 const SNOW_DAY: Theme = {
@@ -210,6 +215,7 @@ const SNOW_DAY: Theme = {
     input: '215 24% 27%',
     ring: '199 75% 65%',
   },
+  shape: { radius: 1.1 },
 };
 
 /**
@@ -264,6 +270,9 @@ const ARCADE: Theme = {
     input: '248 28% 26%',
     ring: '285 85% 70%',
   },
+  // Square. A sixteen-bit console had no rounded corners, and this is the
+  // single change that stops Arcade reading as Prism with different colours.
+  shape: { radius: 0 },
 };
 
 export const BUILTIN_THEMES: Theme[] = [PRISM, CLAY, HARVEST, SNOW_DAY, ARCADE];

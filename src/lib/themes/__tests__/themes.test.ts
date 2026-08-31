@@ -5,7 +5,7 @@
  * Themes are data, and data can arrive from a community gallery. So the tests
  * that matter most are the ones proving a hostile value cannot become CSS.
  */
-import { THEME_TOKENS, isValidTokenValue, isValidTokenSet } from '../tokens';
+import { THEME_TOKENS, isValidTokenValue, isValidTokenSet, normalizeShape, isValidShape, SHAPE_LIMITS } from '../tokens';
 import { BUILTIN_THEMES, getBuiltinTheme, DEFAULT_THEME_ID } from '../appThemes';
 import { applyThemeVars, clearThemeVars, themeCss, themeTokens } from '../applyTheme';
 import { checkContrast, checkThemeContrast } from '../contrast';
@@ -185,5 +185,39 @@ describe('legibility', () => {
     const dim = { ...base, 'muted-foreground': '0 0% 55%', muted: '0 0% 100%' };
     const issues = checkContrast(dim).filter((i) => i.pair.startsWith('muted-foreground'));
     expect(issues[0]?.level).toBe('warning');
+  });
+});
+
+describe('shape', () => {
+  it('clamps a radius that would make cards look broken', () => {
+    // The reason shape is capped rather than free: a large enough radius turns
+    // a card into a lozenge and text starts colliding with the edge.
+    expect(normalizeShape({ radius: 99 }).radius).toBe(SHAPE_LIMITS.radius.max);
+    expect(normalizeShape({ radius: -5 }).radius).toBe(SHAPE_LIMITS.radius.min);
+  });
+
+  it('falls back to the default when absent or nonsense', () => {
+    expect(normalizeShape(undefined).radius).toBe(SHAPE_LIMITS.radius.default);
+    expect(normalizeShape({ radius: 'round' }).radius).toBe(SHAPE_LIMITS.radius.default);
+  });
+
+  it('rejects an out-of-range value rather than silently accepting it', () => {
+    expect(isValidShape({ radius: 99 })).toBe(false);
+    expect(isValidShape({ radius: 0.75 })).toBe(true);
+  });
+
+  it('is emitted on :root only, since it does not vary by mode', () => {
+    const css = themeCss(BUILTIN_THEMES[0]!);
+    const root = css.slice(0, css.indexOf('.dark{'));
+    const dark = css.slice(css.indexOf('.dark{'));
+    expect(root).toContain('--radius:');
+    expect(dark).not.toContain('--radius:');
+  });
+
+  it('gives the themes genuinely different shapes, not just hues', () => {
+    // If every theme shared a radius they would all read as tints of one
+    // another, which is the complaint that prompted this.
+    const radii = new Set(BUILTIN_THEMES.map((t) => normalizeShape(t.shape).radius));
+    expect(radii.size).toBeGreaterThan(1);
   });
 });
