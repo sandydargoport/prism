@@ -109,3 +109,76 @@ export async function filterCommunityLayouts(
 
   return layouts;
 }
+
+// ---------------------------------------------------------------------------
+// Themes
+//
+// A second index rather than a new shape for the existing one. The raw URL
+// below is pinned to master and baked into every deployed client, so a change
+// to layouts/index.json would break instances that have not updated. An
+// additional file cannot.
+// ---------------------------------------------------------------------------
+
+const THEMES_RAW_BASE =
+  'https://raw.githubusercontent.com/sandydargoport/prism/master/community/themes/';
+
+export interface CommunityThemeIndexEntry {
+  id: string;
+  file: string;
+  name: string;
+  description: string;
+  author: string;
+  tags: string[];
+  createdAt: string;
+  /** Pairs that are legible but tiring. Shown so the installer can judge. */
+  contrastWarnings: number;
+}
+
+export interface CommunityThemeIndex {
+  version: number;
+  themes: CommunityThemeIndexEntry[];
+}
+
+let themeIndexCache: { data: CommunityThemeIndex; fetchedAt: number } | null = null;
+
+/** Bounded, unlike the layout cache — a display runs for weeks. */
+const themeCache = new Map<string, unknown>();
+const MAX_CACHED_THEMES = 40;
+
+export async function getCommunityThemeIndex(): Promise<CommunityThemeIndex> {
+  const now = Date.now();
+  if (themeIndexCache && now - themeIndexCache.fetchedAt < INDEX_TTL_MS) {
+    return themeIndexCache.data;
+  }
+  try {
+    const res = await fetch(`${THEMES_RAW_BASE}index.json`, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = (await res.json()) as CommunityThemeIndex;
+    themeIndexCache = { data, fetchedAt: now };
+    return data;
+  } catch {
+    // Stale beats empty: a gallery that blanks on a flaky connection looks
+    // like the feature broke.
+    if (themeIndexCache) return themeIndexCache.data;
+    return { version: 1, themes: [] };
+  }
+}
+
+export async function getCommunityTheme(file: string): Promise<unknown | null> {
+  const cached = themeCache.get(file);
+  if (cached) return cached;
+  try {
+    const res = await fetch(`${THEMES_RAW_BASE}${file}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    themeCache.set(file, data);
+    while (themeCache.size > MAX_CACHED_THEMES) {
+      const oldest = themeCache.keys().next().value;
+      if (oldest === undefined) break;
+      themeCache.delete(oldest);
+    }
+    return data;
+  } catch {
+    return null;
+  }
+}

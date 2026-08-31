@@ -75,3 +75,22 @@ export function isValidTokenSet(value: unknown): value is ThemeTokens {
   const obj = value as Record<string, unknown>;
   return THEME_TOKENS.every((t) => isValidTokenValue(obj[t]));
 }
+
+/**
+ * A complete, installable theme from an untrusted source.
+ *
+ * Used when reading themes back out of storage. The API validates on the way
+ * in, but this is the last point before the values become CSS, and a stored
+ * row is not the same thing as a trusted one.
+ */
+export function isInstallableTheme(value: unknown): value is Theme {
+  if (!value || typeof value !== 'object') return false;
+  const t = value as Record<string, unknown>;
+  return (
+    typeof t.id === 'string' && t.id.length > 0 && t.id.length <= 64 &&
+    typeof t.name === 'string' && t.name.length > 0 && t.name.length <= 40 &&
+    typeof t.description === 'string' && t.description.length <= 160 &&
+    isValidTokenSet(t.light) &&
+    isValidTokenSet(t.dark)
+  );
+}

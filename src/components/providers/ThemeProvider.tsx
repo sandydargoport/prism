@@ -17,7 +17,7 @@ import * as React from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useSeasonalTheme } from '@/lib/hooks/useSeasonalTheme';
 import { usePerformanceMode } from '@/lib/hooks/usePerformanceMode';
-import type { Theme } from '@/lib/themes/tokens';
+import { isInstallableTheme, type Theme } from '@/lib/themes/tokens';
 import { BUILTIN_THEMES, getBuiltinTheme, DEFAULT_THEME_ID } from '@/lib/themes/appThemes';
 import { applyThemeVars, themeTokens } from '@/lib/themes/applyTheme';
 
@@ -91,6 +91,7 @@ export function ThemeProvider({
   const [theme, setThemeState] = useState<ThemeMode>(defaultTheme);
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
   const [mounted, setMounted] = useState(false);
+  const [installedThemes, setInstalledThemes] = useState<Theme[]>([]);
   const [palette, setPaletteState] = useState<Theme>(
     () => getBuiltinTheme(DEFAULT_THEME_ID) ?? BUILTIN_THEMES[0]!,
   );
@@ -160,7 +161,7 @@ export function ThemeProvider({
   // household choice: every screen in the house should agree, and a new tablet
   // should pick it up without being configured.
   const setPalette = (id: string) => {
-    const next = getBuiltinTheme(id);
+    const next = getBuiltinTheme(id) ?? installedThemes.find((t) => t.id === id);
     if (!next) return;
     setPaletteState(next);
     fetch('/api/settings', {
@@ -208,8 +209,19 @@ export function ThemeProvider({
       .then((data) => {
         if (cancelled || !data) return;
         const stored = data.settings?.[THEME_SETTING_KEY];
+
+        // Themes installed from the gallery are stored inline rather than
+        // fetched, so a display that boots without a network still renders the
+        // palette it was left on. Re-validated on read: the row is written by
+        // an API that checks, but this is the last point before it becomes CSS
+        // and the check costs a regex per token.
+        const installed = Array.isArray(stored?.installed)
+          ? (stored.installed as unknown[]).filter(isInstallableTheme)
+          : [];
+        if (installed.length > 0) setInstalledThemes(installed);
+
         const id = typeof stored?.paletteId === 'string' ? stored.paletteId : null;
-        const found = id ? getBuiltinTheme(id) : undefined;
+        const found = id ? (getBuiltinTheme(id) ?? installed.find((t) => t.id === id)) : undefined;
         if (found) setPaletteState(found);
       })
       .catch(() => { /* keep whatever the server rendered */ });
@@ -230,7 +242,7 @@ export function ThemeProvider({
   if (!mounted) {
     return (
       <ThemeContext.Provider
-        value={{ theme: defaultTheme, resolvedTheme: 'light', setTheme, palette, palettes: BUILTIN_THEMES, setPalette }}
+        value={{ theme: defaultTheme, resolvedTheme: 'light', setTheme, palette, palettes: [...BUILTIN_THEMES, ...installedThemes], setPalette }}
       >
         {children}
       </ThemeContext.Provider>
@@ -239,7 +251,7 @@ export function ThemeProvider({
 
   return (
     <ThemeContext.Provider
-      value={{ theme, resolvedTheme, setTheme, palette, palettes: BUILTIN_THEMES, setPalette }}
+      value={{ theme, resolvedTheme, setTheme, palette, palettes: [...BUILTIN_THEMES, ...installedThemes], setPalette }}
     >
       {children}
     </ThemeContext.Provider>
