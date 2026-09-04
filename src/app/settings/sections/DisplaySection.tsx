@@ -489,9 +489,10 @@ function ScreensaverCard() {
               className="border border-border rounded px-2 py-1 text-sm bg-background"
             >
               <option value="off">All at once</option>
-              <option value="smoke">Fade in and out</option>
+              <option value="fade">Fade</option>
+              <option value="smoke">Smoke</option>
               <option value="liquid">Fill and drain</option>
-              <option value="dissolve">Scatter into pixels</option>
+              <option value="fireworks">Fireworks</option>
             </select>
           </div>
           {motion !== 'off' && (
