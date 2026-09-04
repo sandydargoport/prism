@@ -35,7 +35,15 @@ import { easeOutExpo } from './types';
  */
 const SAMPLE_PX = 4;
 const MAX_PARTICLES = 26000;
-const SWELL_FRACTION = 0.28; // of the transition spent swelling before the burst
+/**
+ * How much of the transition is spent winding up before the burst.
+ *
+ * The whole thing is deliberately long. This is slow motion: the field should
+ * barely creep at the instant it comes apart and be moving fast by the time it
+ * leaves the screen, which only reads if there is time to see it happen. A
+ * short burst with the same acceleration curve just looks quick.
+ */
+const SWELL_FRACTION = 0.3;
 
 interface Spark {
   x: number; y: number;
@@ -70,13 +78,17 @@ function build(pixels: ImageData, width: number, height: number): Spark[] {
         y: y * sy,
         dx: ox / d,
         dy: oy / d,
-        // px/second. Outer pixels start faster, so the field opens outward
-        // rather than smearing, and acceleration does the rest.
-        v: 20 + (d / reach) * 70,
-        acc: 260 + Math.random() * 520,
+        // px/second, and deliberately almost nothing to begin with: at the
+        // instant of the burst the field IS the widget, and it should look like
+        // it for a moment. Nearly all the travel comes from acceleration, which
+        // is what makes it read as slow motion rather than as a fast explosion
+        // played back slowly. Outer pixels start marginally faster so the field
+        // opens outward instead of smearing.
+        v: 22 + (d / reach) * 55,
+        acc: 120 + Math.random() * 180,
         size: Math.max(1, step * 0.9),
         colour: `rgba(${data[i]},${data[i + 1]},${data[i + 2]},${(a / 255).toFixed(3)})`,
-        life: 0.9 + Math.random() * 0.8,
+        life: 2.4 + Math.random() * 1.1,
         age: 0,
       });
     }
@@ -87,7 +99,7 @@ function build(pixels: ImageData, width: number, height: number): Spark[] {
 export const fireworks: ScreensaverEffect = {
   id: 'fireworks',
   label: 'Fireworks',
-  durationMs: { in: 2200, out: 2600 },
+  durationMs: { in: 2200, out: 4800 },
   needsPixels: true,
   takesOverAt: SWELL_FRACTION,
 
@@ -96,12 +108,12 @@ export const fireworks: ScreensaverEffect = {
    * shake barely above the threshold of noticing. Deliberately small — at full
    * size it read as cartoonish.
    */
-  elementStyle: (progress, phase) => {
+  elementStyle: ({ progress, phase }) => {
     if (phase !== 'out') return null;
     if (progress >= SWELL_FRACTION) return { opacity: '0' };
     const t = progress / SWELL_FRACTION;
     const swell = 1 + Math.sin(t * Math.PI * 1.5) * 0.012 * (1 - t * 0.3);
-    const shake = Math.sin(t * Math.PI * 14) * 1.1 * t;
+    const shake = Math.sin(t * Math.PI * 7) * 1.0 * t;
     // opacity is forced back on: the resting hidden state is opacity 0, and the
     // widget has to stay solid through the swell that announces the burst.
     return {
@@ -138,7 +150,6 @@ export const fireworks: ScreensaverEffect = {
     }
 
     const dt = Math.min(f.dt, 48); // a dropped frame must not teleport the field
-    ctx.globalCompositeOperation = 'lighter';
     ctx.save();
     for (let i = burst.sparks.length - 1; i >= 0; i--) {
       const k = burst.sparks[i]!;

@@ -62,8 +62,12 @@ export interface ScreensaverEffect {
   /**
    * Per-frame styles for the LIVE element, applied imperatively so driving them
    * costs no React render. Return null when there is nothing to apply.
+   *
+   * Gets the whole frame because an effect that shapes the element — clipping
+   * it to a waterline, say — needs the box and the clock, not just how far
+   * through it is.
    */
-  elementStyle?: (progress: number, phase: EffectPhase) => Partial<CSSStyleDeclaration> | null;
+  elementStyle?: (f: EffectFrame) => Partial<CSSStyleDeclaration> | null;
   /** Allocate per-transition state. */
   init?: (f: Omit<EffectFrame, 'state'>) => unknown;
   /** Draw onto a canvas laid over the widget. */

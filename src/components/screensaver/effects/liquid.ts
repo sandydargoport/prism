@@ -3,44 +3,60 @@ import type { EffectFrame, ScreensaverEffect } from './types';
 /**
  * A waterline crossing the widget: it fills to arrive and drains to leave.
  *
- * The level is moved with mask-POSITION, not by re-declaring the gradient.
- * Chromium does not interpolate between two different linear-gradient() values,
- * so animating mask-image snaps from one to the other in a single frame — with
- * an opacity transition alongside, that looked exactly like a plain crossfade,
- * which is what this mode did for its first outing. mask-position is a length,
- * and animates properly: measured 100 distinct waterline positions per
- * transition where the old version had one.
+ * The wave IS the boundary, not a decoration on one. The first version revealed
+ * the widget with a CSS mask — a straight cut — and painted a wave over the top
+ * of it, so the content actually appeared and disappeared along a flat line
+ * while a crest undulated somewhere near it. The two never agreed, and that
+ * disagreement is exactly what makes a thing look painted on.
  *
- * The gradient is drawn at twice the widget's height so that sliding it from
- * one end to the other carries the waterline across the whole widget: its lower
- * half is opaque, its upper half is clear.
- */
-const MASK = 'linear-gradient(to top, #000 0%, #000 46%, transparent 56%, transparent 100%)';
-
-/**
- * The surface, drawn rather than masked.
- *
- * A CSS mask can move a waterline but it cannot make one behave like water: the
- * edge is whatever shape the gradient is, and it stays that shape. So the mask
- * still does the revealing — that is the part it is good at — and the canvas
- * draws the actual surface over the top: two sine components at different
- * wavelengths so the crest never repeats convincingly, a bright meniscus along
- * it, and bubbles that rise and pop. The straight cut the mask leaves sits
- * underneath the drawn band, which is what hides it.
+ * So the element is clipped to the wave itself. clip-path takes a polygon, a
+ * polygon is just a list of points, and points can be recomputed every frame
+ * for nothing — no mask image to re-parse, no gradient that refuses to
+ * interpolate. The canvas then draws the water's body, its crest and its
+ * bubbles from the SAME wave function, so the surface it draws is the surface
+ * the widget is cut to.
  */
 const WAVE_BAND = 26;      // px of drawn surface either side of the level
 const BUBBLES = 14;
+const POINTS = 48;         // polygon resolution along the crest
 
 interface Bubble { x: number; y: number; r: number; v: number; seed: number }
 
-/** Matches the mask's cubic-bezier(.45,.05,.55,.95) closely enough that the
- *  drawn surface sits over the cut rather than beside it. */
+/** Two components at different wavelengths, so the crest never repeats in a way
+ *  the eye can catch. Shared by the clip and the drawing — that is the point. */
+function waveAt(x: number, level: number, now: number): number {
+  return level
+    + Math.sin(x / 48 + now / 900) * 5
+    + Math.sin(x / 19 - now / 1400) * 2;
+}
+
 const easeInOut = (t: number) => t * t * (3 - 2 * t);
+
+/** Water level in px from the top: 0 is full, height is empty. */
+function levelOf(f: { progress: number; phase: string; height: number }): number {
+  const fill = f.phase === 'in' ? easeInOut(f.progress) : 1 - easeInOut(f.progress);
+  return f.height * (1 - fill);
+}
 
 export const liquid: ScreensaverEffect = {
   id: 'liquid',
   label: 'Fill and drain',
   durationMs: { in: 3400, out: 3400 },
+
+  // At rest: whole when shown, gone when not. The transition does the rest.
+  css: (shown) => (shown ? { opacity: 1 } : { opacity: 0 }),
+
+  elementStyle: (f: EffectFrame) => {
+    const level = levelOf(f);
+    const pts: string[] = [];
+    for (let i = 0; i <= POINTS; i++) {
+      const x = (f.width * i) / POINTS;
+      const y = waveAt(x, level, f.now);
+      pts.push(`${((x / f.width) * 100).toFixed(2)}% ${((y / f.height) * 100).toFixed(2)}%`);
+    }
+    pts.push('100% 100%', '0% 100%');
+    return { opacity: '1', clipPath: `polygon(${pts.join(',')})` };
+  },
 
   init: (): Bubble[] =>
     Array.from({ length: BUBBLES }, () => ({
@@ -53,16 +69,13 @@ export const liquid: ScreensaverEffect = {
 
   frame: (ctx, f: EffectFrame) => {
     const bubbles = f.state as Bubble[];
-    const fill = f.phase === 'in' ? easeInOut(f.progress) : 1 - easeInOut(f.progress);
-    const level = f.height * (1 - fill);
-    const waveY = (x: number) =>
-      level
-      + Math.sin(x / 48 + f.now / 900) * 5
-      + Math.sin(x / 19 - f.now / 1400) * 2;
+    const level = levelOf(f);
+    const waveY = (x: number) => waveAt(x, level, f.now);
 
     ctx.save();
 
-    // The body of the water, tinted and translucent so the widget reads through it.
+    // The body of the water, tinted and translucent so the widget reads through
+    // it. Same polygon as the clip, so it sits exactly on the cut.
     ctx.beginPath();
     ctx.moveTo(0, f.height);
     for (let x = 0; x <= f.width; x += 6) ctx.lineTo(x, waveY(x));
@@ -74,7 +87,6 @@ export const liquid: ScreensaverEffect = {
     ctx.fillStyle = body;
     ctx.fill();
 
-    // Bubbles, inside the water only.
     for (const bub of bubbles) {
       bub.y -= (bub.v * f.dt) / 1000 / f.height;
       if (bub.y < 0) { bub.y = 1; bub.x = Math.random(); }
@@ -87,16 +99,17 @@ export const liquid: ScreensaverEffect = {
       ctx.fill();
     }
 
-    // The meniscus: a bright line right on the crest, which is what actually
-    // reads as a surface rather than as a gradient.
+    // The crest. This is the line the widget is actually cut along, which is
+    // why it can be drawn hard: there is nothing behind it to give it away.
+    const fill = f.phase === 'in' ? easeInOut(f.progress) : 1 - easeInOut(f.progress);
     if (fill > 0.002 && fill < 0.998) {
       ctx.beginPath();
       for (let x = 0; x <= f.width; x += 4) {
         const y = waveY(x);
         if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       }
-      ctx.strokeStyle = 'rgba(226,242,255,0.55)';
-      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = 'rgba(226,242,255,0.62)';
+      ctx.lineWidth = 1.6;
       ctx.stroke();
 
       const glow = ctx.createLinearGradient(0, level - WAVE_BAND, 0, level + WAVE_BAND);
@@ -109,21 +122,4 @@ export const liquid: ScreensaverEffect = {
 
     ctx.restore();
   },
-  css: (shown) => ({
-    WebkitMaskImage: MASK,
-    maskImage: MASK,
-    WebkitMaskSize: '100% 200%',
-    maskSize: '100% 200%',
-    WebkitMaskRepeat: 'no-repeat',
-    maskRepeat: 'no-repeat',
-    // 0% shows the clear top half (empty); 100% the opaque bottom half (full).
-    WebkitMaskPosition: shown ? '0% 100%' : '0% 0%',
-    maskPosition: shown ? '0% 100%' : '0% 0%',
-    transition:
-      'mask-position 3.4s cubic-bezier(.45,.05,.55,.95), ' +
-      '-webkit-mask-position 3.4s cubic-bezier(.45,.05,.55,.95)',
-    // Opacity stays put: a fade running alongside the level hides the very
-    // thing this mode exists to show.
-    opacity: 1,
-  }),
 };

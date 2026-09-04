@@ -60,7 +60,11 @@ export function WidgetStage({
       // Apply frame zero before handing over, or the element spends one frame
       // in its resting hidden state — a visible blink right before the swell.
       if (liveEl) {
-        const s0 = effect.elementStyle?.(0, phase) ?? null;
+        const s0 = effect.elementStyle?.({
+          progress: 0, phase, width: Math.round(el.getBoundingClientRect().width),
+          height: Math.round(el.getBoundingClientRect().height),
+          dt: 0, now: performance.now(), pixels, state: null,
+        }) ?? null;
         if (s0) Object.assign(liveEl.style, s0);
       }
       const box = el.getBoundingClientRect();
@@ -72,23 +76,41 @@ export function WidgetStage({
         width: Math.round(box.width),
         height: Math.round(box.height),
         pixels,
-        onProgress: (p) => {
+        onFrame: (f) => {
           if (!liveEl) return;
-          const s = effect.elementStyle?.(p, phase) ?? null;
+          const s = effect.elementStyle?.(f) ?? null;
           if (s) Object.assign(liveEl.style, s);
-          if (effect.takesOverAt !== undefined) {
-            liveEl.style.visibility = p >= effect.takesOverAt ? 'hidden' : '';
+          // Only hand over when the canvas actually holds this widget's
+          // pixels. Applying the threshold on the arriving side too hid a
+          // widget that was busy fading IN, and left it hidden — with nothing
+          // drawn in its place, because there was no snapshot to draw.
+          if (effect.takesOverAt !== undefined && f.pixels) {
+            liveEl.style.visibility = f.progress >= effect.takesOverAt ? 'hidden' : '';
           }
         },
         onDone: () => {
           if (!liveEl) return;
           liveEl.style.transform = '';
           liveEl.style.visibility = '';
+          liveEl.style.clipPath = '';
         },
       });
     };
 
     if (effect.needsPixels && phase === 'out') {
+      // Hold the widget exactly as it was until the transition can actually
+      // begin. Rasterising takes a beat, and React has already applied the
+      // resting hidden state by now — without this the widget blinks out,
+      // comes back for the swell, and then bursts, which looks like a fault
+      // rather than a wind-up.
+      if (liveEl) {
+        const box0 = el.getBoundingClientRect();
+        const hold = effect.elementStyle?.({
+          progress: 0, phase, width: Math.round(box0.width), height: Math.round(box0.height),
+          dt: 0, now: performance.now(), pixels: null, state: null,
+        }) ?? null;
+        if (hold) Object.assign(liveEl.style, hold);
+      }
       rasterize(el, prepare)
         .then(start)
         .catch(() => { /* a widget we cannot snapshot simply skips the effect */ });
@@ -99,7 +121,11 @@ export function WidgetStage({
     return () => {
       dropped = true;
       cancel?.();
-      if (liveEl) { liveEl.style.transform = ''; liveEl.style.visibility = ''; }
+      if (liveEl) {
+        liveEl.style.transform = '';
+        liveEl.style.visibility = '';
+        liveEl.style.clipPath = '';
+      }
     };
   }, [shown, effect, stage, id, prepare]);
 

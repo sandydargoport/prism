@@ -1,9 +1,9 @@
 'use client';
 
 import {
-  createContext, useCallback, useContext, useEffect, useRef,
+  createContext, useCallback, useContext, useEffect, useMemo, useRef,
 } from 'react';
-import type { EffectPhase, ScreensaverEffect } from './effects';
+import type { EffectFrame, EffectPhase, ScreensaverEffect } from './effects';
 
 /**
  * One canvas for the whole screensaver, not one per widget.
@@ -29,7 +29,7 @@ interface Active {
   pixels: ImageData | null;
   state: unknown;
   t0: number;
-  onProgress: (p: number) => void;
+  onFrame: (f: EffectFrame) => void;
   onDone: () => void;
 }
 
@@ -69,13 +69,14 @@ export function EffectStage({ children }: { children: React.ReactNode }) {
     for (const [key, a] of Array.from(active.current)) {
       const duration = a.effect.durationMs[a.phase];
       const progress = Math.min(1, (now - a.t0) / duration);
-      a.onProgress(progress);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.translate(a.viewportLeft - origin.left, a.viewportTop - origin.top);
-      a.effect.frame?.(ctx, {
+      const frame: EffectFrame = {
         progress, phase: a.phase, width: a.width, height: a.height,
         dt, now, pixels: a.pixels, state: a.state,
-      });
+      };
+      a.onFrame(frame);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.translate(a.viewportLeft - origin.left, a.viewportTop - origin.top);
+      a.effect.frame?.(ctx, frame);
       if (progress >= 1) { active.current.delete(key); a.onDone(); }
     }
 
@@ -99,8 +100,15 @@ export function EffectStage({ children }: { children: React.ReactNode }) {
 
   useEffect(() => () => { if (raf.current) cancelAnimationFrame(raf.current); }, []);
 
+  // Memoised, and it matters more than it looks. A fresh object here is a new
+  // context value on every render of this component — which happens on every
+  // rotation — and every widget's transition effect depends on it. Each
+  // rotation therefore cancelled and restarted a transition on EVERY widget at
+  // once, so a single swap detonated the whole board.
+  const value = useMemo(() => ({ begin }), [begin]);
+
   return (
-    <StageContext.Provider value={{ begin }}>
+    <StageContext.Provider value={value}>
       {children}
       {/* Above the widgets so fragments pass in front of them, and never in the
           way of a tap — the calendar's on-screensaver controls are underneath. */}
