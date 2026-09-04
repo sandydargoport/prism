@@ -267,7 +267,12 @@ export function SettingsView() {
                 ))}
               </select>
             </div>
-            <div className="max-w-2xl">
+            {/* Appearance is long enough to be worth a second column on a wide
+                screen, and only it: widening every section would leave the
+                short ones as a thin strip of controls across a lot of nothing.
+                The column itself keeps its width — the space goes into a new
+                column beside it, not into stretching the old one. */}
+            <div className={activeSection === 'display' ? 'max-w-2xl xl:max-w-[85rem]' : 'max-w-2xl'}>
               {activeSection === 'account' && <AccountSection />}
               {activeSection === 'family' && <FamilySection />}
               {activeSection === 'integrations' && <IntegrationsSection />}

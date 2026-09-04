@@ -58,11 +58,11 @@ export function DisplaySection() {
         </p>
       </div>
 
-      {/* Landscape has room for two. Multi-column rather than a grid so the
-          cards keep their order and their section headings stay with what
-          they head — a grid would reflow them into rows and separate the two. */}
-      <div className="lg:columns-2 lg:gap-4 [&>*]:break-inside-avoid [&>*]:mb-4">
       <SectionDivider label="Theme" />
+      {/* A section spreads across the width rather than running down it:
+          Seasonal Theme sits beside Color Scheme instead of below it. The
+          divider stays full width so the grouping still reads as one thing. */}
+      <div className="grid xl:grid-cols-2 gap-4 items-start">
 
       <Card>
         <CardHeader>
@@ -219,7 +219,12 @@ export function DisplaySection() {
         </CardContent>
       </Card>
 
+      </div>
       <SectionDivider label="Wallpaper & Display" />
+      {/* A section spreads across the width rather than running down it:
+          Seasonal Theme sits beside Color Scheme instead of below it. The
+          divider stays full width so the grouping still reads as one thing. */}
+      <div className="grid xl:grid-cols-2 gap-4 items-start">
 
       <PerformanceModeCard />
 
@@ -227,7 +232,12 @@ export function DisplaySection() {
 
       <OrientationCard />
 
+      </div>
       <SectionDivider label="Behavior" />
+      {/* A section spreads across the width rather than running down it:
+          Seasonal Theme sits beside Color Scheme instead of below it. The
+          divider stays full width so the grouping still reads as one thing. */}
+      <div className="grid xl:grid-cols-2 gap-4 items-start">
 
       <ScreensaverCard />
       <TimersCard />
@@ -235,8 +245,8 @@ export function DisplaySection() {
       <WeatherUnitsCard />
 
       <LanguageCard />
-      </div>
 
+      </div>
     </div>
   );
 }
