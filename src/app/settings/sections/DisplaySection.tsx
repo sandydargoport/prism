@@ -228,9 +228,9 @@ export function DisplaySection() {
 
       <PerformanceModeCard />
 
-      <WallpaperSettingsCard />
-
       <OrientationCard />
+
+      <WallpaperSettingsCard />
 
       </div>
       <SectionDivider label="Behavior" />
