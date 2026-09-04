@@ -31,6 +31,7 @@ const MIGRATED_KEY = 'prism-screensaver-motion-v2';
 const FLOOR_KEY = 'prism-screensaver-min-widgets';
 const CEILING_KEY = 'prism-screensaver-max-widgets';
 const OUTLINES_KEY = 'prism-screensaver-outlines';
+const SHORTCUT_KEY = 'prism-screensaver-shortcut';
 export const DEFAULT_FLOOR = 2;
 export const DEFAULT_CEILING = 0;   // 0 = no cap
 
@@ -50,6 +51,10 @@ export function useScreensaverMotion() {
   const [floor, setFloorState] = useState(DEFAULT_FLOOR);
   const [ceiling, setCeilingState] = useState(DEFAULT_CEILING);
   const [outlines, setOutlinesState] = useState(true);
+  // Off by default. The screensaver is what a room looks like when nobody is
+  // using it, and putting a control on it changes that for every display on
+  // update — the same reason the effects themselves default to off.
+  const [shortcut, setShortcutState] = useState(false);
 
   // Read after mount, never during render: the server has no localStorage, so
   // reading it in the initialiser makes the first client render disagree with
@@ -72,6 +77,7 @@ export function useScreensaverMotion() {
       const hi = Number(localStorage.getItem(CEILING_KEY));
       if (hi >= 0 && localStorage.getItem(CEILING_KEY) !== null) setCeilingState(hi);
       if (localStorage.getItem(OUTLINES_KEY) === 'off') setOutlinesState(false);
+      if (localStorage.getItem(SHORTCUT_KEY) === 'on') setShortcutState(true);
     } catch { /* storage unavailable */ }
   }, []);
 
@@ -116,6 +122,14 @@ export function useScreensaverMotion() {
     } catch { /* storage unavailable */ }
   }, []);
 
+  const setShortcut = useCallback((v: boolean) => {
+    setShortcutState(v);
+    try {
+      localStorage.setItem(SHORTCUT_KEY, v ? 'on' : 'off');
+      window.dispatchEvent(new StorageEvent('storage', { key: SHORTCUT_KEY, newValue: v ? 'on' : 'off' }));
+    } catch { /* storage unavailable */ }
+  }, []);
+
   // Settings and the screensaver are separate trees; the storage event is how
   // a change made in one reaches the other without a reload.
   useEffect(() => {
@@ -128,6 +142,7 @@ export function useScreensaverMotion() {
       if (e.key === FLOOR_KEY) { const n = Number(e.newValue); if (n > 0) setFloorState(n); }
       if (e.key === CEILING_KEY) { const n = Number(e.newValue); if (n >= 0) setCeilingState(n); }
       if (e.key === OUTLINES_KEY) setOutlinesState(e.newValue !== 'off');
+      if (e.key === SHORTCUT_KEY) setShortcutState(e.newValue === 'on');
     };
     window.addEventListener('storage', handler);
     return () => window.removeEventListener('storage', handler);
@@ -139,5 +154,6 @@ export function useScreensaverMotion() {
     floor, setFloor,
     ceiling, setCeiling,
     outlines, setOutlines,
+    shortcut, setShortcut,
   };
 }

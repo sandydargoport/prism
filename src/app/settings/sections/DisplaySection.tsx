@@ -465,6 +465,7 @@ function ScreensaverCard() {
     motion, setMotion,
     interval: motionInterval, setInterval: setMotionInterval,
     floor, setFloor, ceiling, setCeiling, outlines, setOutlines,
+    shortcut, setShortcut,
   } = useScreensaverMotion();
 
   return (
@@ -557,6 +558,22 @@ function ScreensaverCard() {
               <span className="text-sm text-muted-foreground">Hide widget outlines</span>
             </label>
           )}
+          <label className="flex items-center gap-3 pl-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={shortcut}
+              onChange={(e) => setShortcut(e.target.checked)}
+              className="rounded border-border"
+            />
+            <span className="text-sm text-muted-foreground">
+              Show a settings shortcut on the screensaver
+            </span>
+          </label>
+          <p className="text-xs text-muted-foreground pl-2">
+            Puts a faint Prism mark in the top-left of the screensaver. Tapping it opens
+            these effect settings without leaving the display — useful while you are
+            deciding which one you like.
+          </p>
           <p className="text-xs text-muted-foreground pl-2">
             Showing some widgets at a time and swapping them gives the screensaver slow
             movement, and keeps a static image off the panel. About two thirds are shown

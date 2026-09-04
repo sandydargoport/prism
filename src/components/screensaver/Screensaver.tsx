@@ -21,6 +21,7 @@ import { rotate, showingCount } from './screensaverRotation';
 import { useScreensaverMotion } from './useScreensaverMotion';
 import { WidgetStage } from './WidgetStage';
 import { EffectStage } from './EffectStage';
+import { ScreensaverQuickSettings } from './ScreensaverQuickSettings';
 import { getEffect } from './effects';
 import { usePerformanceMode } from '@/lib/hooks/usePerformanceMode';
 
@@ -133,6 +134,7 @@ export function Screensaver() {
       )}
       <div className="pointer-events-none absolute inset-0 bg-black/40" />
       <ScreensaverGrid />
+      <ScreensaverQuickSettings />
     </div>
   );
 }
