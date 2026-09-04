@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useIdleDetection } from '@/lib/hooks/useIdleDetection';
 import { useAwayMode } from '@/lib/hooks/useAwayMode';
 import { useBabysitterMode } from '@/lib/hooks/useBabysitterMode';
@@ -17,6 +17,10 @@ import { CssGridDisplay } from '@/components/layout/grid/CssGridDisplay';
 import { CalendarPrefsScopeContext } from '@/lib/hooks/useCalendarWidgetPrefs';
 import { loadScreensaverLayout } from './screensaverStorage';
 import { shouldShowScreensaver } from './shouldShowScreensaver';
+import { rotate, showingCount } from './screensaverRotation';
+import { useScreensaverMotion } from './useScreensaverMotion';
+import { DissolveFilter, DISSOLVE_ID, DISSOLVE_MS } from './DissolveFilter';
+import { usePerformanceMode } from '@/lib/hooks/usePerformanceMode';
 
 /**
  * Wrapper classes that make any dashboard widget legible as a screensaver
@@ -134,6 +138,66 @@ export function Screensaver() {
 function ScreensaverGrid() {
   const layout = useMemo(() => loadScreensaverLayout(), []);
 
+  // Which widgets are currently on screen. Off by default, in which case every
+  // widget shows and all of this is inert.
+  const { motion, interval: motionInterval } = useScreensaverMotion();
+  const widgetIds = useMemo(
+    () => layout.filter((w) => w.visible !== false).map((w) => w.i),
+    [layout],
+  );
+  const [showing, setShowing] = useState<string[]>([]);
+  useEffect(() => {
+    if (motion === 'off' || widgetIds.length === 0) return;
+    // Seed straight to the target rather than fading them in one at a time,
+    // which would read as the screensaver loading rather than running.
+    setShowing((prev) => {
+      let next = prev;
+      for (let k = 0; k < showingCount(widgetIds.length); k++) next = rotate(widgetIds, next);
+      return next;
+    });
+    const id = window.setInterval(
+      () => setShowing((prev) => rotate(widgetIds, prev)),
+      Math.max(4, motionInterval) * 1000,
+    );
+    return () => window.clearInterval(id);
+  }, [motion, widgetIds, motionInterval]);
+
+  // Dissolve is the one effect heavy enough to matter. It is an SVG filter over
+  // the widget's real pixels, and its cost scales with AREA — a tile-sized
+  // widget is nearly free, a full-screen one is not. Two guards:
+  //  - performance mode already strips backdrop-filter as the biggest GPU win
+  //    on thin clients; piling a filter onto those same devices is backwards
+  //  - reduced motion should never mean "the same effect, still moving"
+  // Both fall back to the plain fade rather than to nothing, so the rotation
+  // still reads as intentional.
+  const { enabled: lowPower } = usePerformanceMode();
+  const reduced = useMemo(
+    () => typeof window !== 'undefined'
+      && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
+    [],
+  );
+  const effect = motion === 'dissolve' && (lowPower || reduced) ? 'smoke' : motion;
+
+  // Only ever one widget on its way out at a time — the rotation swaps one for
+  // one — so a single shared filter is enough.
+  const [leaving, setLeaving] = useState<{ id: string; t: number } | null>(null);
+  const prevShowing = useRef<string[]>([]);
+  useEffect(() => {
+    const gone = prevShowing.current.find((id: string) => !showing.includes(id));
+    prevShowing.current = showing;
+    if (effect !== 'dissolve' || !gone) return;
+    let raf = 0;
+    const t0 = performance.now();
+    const step = (now: number) => {
+      const t = Math.min(1, (now - t0) / DISSOLVE_MS);
+      setLeaving({ id: gone, t });
+      if (t < 1) raf = requestAnimationFrame(step);
+      else setLeaving(null);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [showing, effect]);
+
   // Only fetch what this overlay actually draws. Called bare, the hook enables
   // every data domain — eleven of them — while the default screensaver layout
   // renders three, and the dashboard underneath is already fetching its own
@@ -169,9 +233,66 @@ function ScreensaverGrid() {
       onMarkCooked, onUnmarkCooked,
       ...props
     } = rawProps as Record<string, unknown>;
+      // Arriving and leaving are not mirror images. A widget appears at once and
+      // then settles (easeOutExpo); it holds a moment and then goes quickly
+      // (easeInExpo). A symmetric fade reads as a crossfade between slides,
+      // which is precisely what this should not feel like.
+      const on = effect === 'off' || showing.includes(w.i);
+      let fade: React.CSSProperties = {};
+      if (effect === 'smoke'){
+        // Arriving and leaving are not mirror images. It appears at once and
+        // then settles (easeOutExpo); it holds a moment and then goes quickly
+        // (easeInExpo). A symmetric fade reads as a crossfade between slides.
+        fade = {
+          opacity: on ? 1 : 0,
+          transition: `opacity ${on ? 2.4 : 3.2}s ${on ? 'cubic-bezier(.16,1,.3,1)' : 'cubic-bezier(.7,0,.84,0)'}`,
+        };
+      } else if (effect === 'liquid'){
+        // A level rather than a fade: the widget is uncovered from the bottom
+        // as the vessel fills, using a soft-edged mask so the waterline is a
+        // band rather than a hard line.
+        //
+        // The waterline is moved with mask-POSITION, not by re-declaring the
+        // gradient. Chromium does not interpolate between two different
+        // linear-gradient() values, so animating mask-image snaps from one to
+        // the other in a single frame — with an opacity transition alongside
+        // it, that looks exactly like a plain cross-fade, which is what this
+        // mode did before. mask-position is a length and animates properly.
+        //
+        // The gradient is drawn at twice the widget's height: its lower half is
+        // opaque, its upper half is clear, and sliding it from one end to the
+        // other carries the waterline across the whole widget.
+        const mask = 'linear-gradient(to top, #000 0%, #000 46%, transparent 56%, transparent 100%)';
+        fade = {
+          WebkitMaskImage: mask, maskImage: mask,
+          WebkitMaskSize: '100% 200%', maskSize: '100% 200%',
+          WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat',
+          // 0% shows the clear top half (empty); 100% shows the opaque bottom
+          // half (full).
+          WebkitMaskPosition: on ? '0% 100%' : '0% 0%',
+          maskPosition: on ? '0% 100%' : '0% 0%',
+          transition: 'mask-position 3.4s cubic-bezier(.45,.05,.55,.95), '
+                    + '-webkit-mask-position 3.4s cubic-bezier(.45,.05,.55,.95)',
+          // Opacity stays put: a fade running at the same time as the level
+          // hides the very thing this mode exists to show.
+          opacity: 1,
+        };
+      } else if (effect === 'dissolve'){
+        // The widget on its way out is handed to the SVG filter, which erodes
+        // its real pixels into fragments. Arrivals stay a plain fade — two
+        // competing effects at once reads as a glitch, not a transition.
+        const going = leaving?.id === w.i;
+        fade = going
+          ? { filter: `url(#${DISSOLVE_ID})`, opacity: 1 }
+          : { opacity: on ? 1 : 0,
+              transition: on ? 'opacity 2.2s cubic-bezier(.16,1,.3,1)' : 'none' };
+      }
     return (
       <React.Suspense fallback={<div className="flex items-center justify-center h-full opacity-50 text-sm">Loading...</div>}>
-        <div className="h-full w-full [&_*:not([data-keep-bg])]:!bg-transparent [&_.bg-card]:!bg-white/10 [&_.border-border]:!border-white/20">
+          <div
+            style={fade}
+            className="h-full w-full [&_*:not([data-keep-bg])]:!bg-transparent [&_.bg-card]:!bg-white/10 [&_.border-border]:!border-white/20"
+          >
           <Component {...props} />
         </div>
       </React.Suspense>
@@ -193,6 +314,7 @@ function ScreensaverGrid() {
     // Scope calendar prefs to 'screensaver' so the screensaver's calendar keeps
     // its own view/display settings, independent of the dashboard calendar.
     <CalendarPrefsScopeContext.Provider value="screensaver">
+      {effect === 'dissolve' && <DissolveFilter progress={leaving?.t ?? 0} />}
       <CssGridDisplay
         layout={layout}
         renderWidget={renderScreensaverWidget}

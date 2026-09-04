@@ -14,6 +14,7 @@ import { useWallpaperSettings, useAutoOrientationSetting, useScreensaverInterval
 import { useScreenOrientation } from '@/lib/hooks/useScreenOrientation';
 import { useOrientationOverride } from '../SettingsView';
 import { useScreensaverTimeout } from '@/lib/hooks/useScreensaverTimeout';
+import { useScreensaverMotion, type ScreensaverMotion } from '@/components/screensaver/useScreensaverMotion';
 import { useIdleLogoutSetting, IDLE_LOGOUT_OPTIONS } from '@/lib/hooks/useIdleLogout';
 import { useAutoHideUI } from '@/lib/hooks/useAutoHideUI';
 import { useAwayModeTimeout } from '@/lib/hooks/useAwayModeTimeout';
@@ -224,6 +225,7 @@ export function DisplaySection() {
 
       <SectionDivider label="Behavior" />
 
+      <ScreensaverCard />
       <TimersCard />
 
       <WeatherUnitsCard />
@@ -355,8 +357,6 @@ function WeatherUnitsCard() {
 }
 
 function TimersCard() {
-  const { timeout: ssTimeout, setTimeout: setSsTimeout } = useScreensaverTimeout();
-  const { interval: photoInterval, setInterval: setPhotoInterval } = useScreensaverInterval();
   const { autoHideEnabled, setAutoHideEnabled } = useAutoHideUI();
   const { timeout: awayTimeout, setTimeout: setAwayTimeout } = useAwayModeTimeout();
   const [idleLogout, setIdleLogout] = useIdleLogoutSetting();
@@ -366,28 +366,13 @@ function TimersCard() {
       <CardHeader>
         <CardTitle>Timers &amp; Auto-Activation</CardTitle>
         <CardDescription>
-          Configure screensaver, auto-hide, and away mode inactivity timers
+          Auto-hide, away mode, and how long a signed-in session lasts
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
-        {/* Screensaver */}
+        {/* Sign out */}
         <div className="space-y-3">
-          <h4 className="text-sm font-medium">Screensaver</h4>
-          <div className="flex items-center gap-3 pl-2">
-            <span className="text-sm text-muted-foreground">Activate after</span>
-            <select
-              value={ssTimeout}
-              onChange={(e) => setSsTimeout(Number(e.target.value))}
-              className="border border-border rounded px-2 py-1 text-sm bg-background"
-            >
-              <option value={30}>30 seconds</option>
-              <option value={60}>1 minute</option>
-              <option value={120}>2 minutes</option>
-              <option value={600}>10 minutes</option>
-              <option value={3600}>1 hour</option>
-              <option value={0}>Never</option>
-            </select>
-          </div>
+          <h4 className="text-sm font-medium">Signed-in session</h4>
           <div className="flex items-center gap-3 pl-2">
             <span className="text-sm text-muted-foreground">Sign out after</span>
             <select
@@ -405,24 +390,6 @@ function TimersCard() {
             whoever last used it. The dashboard stays readable; adding or
             changing anything asks for a PIN. This screen only.
           </p>
-          <div className="flex items-center gap-3 pl-2">
-            <span className="text-sm text-muted-foreground">Rotate photos every</span>
-            <select
-              value={photoInterval}
-              onChange={(e) => setPhotoInterval(Number(e.target.value))}
-              className="border border-border rounded px-2 py-1 text-sm bg-background"
-            >
-              <option value={5}>5 seconds</option>
-              <option value={10}>10 seconds</option>
-              <option value={15}>15 seconds</option>
-              <option value={30}>30 seconds</option>
-              <option value={60}>1 minute</option>
-              <option value={300}>5 minutes</option>
-              <option value={600}>10 minutes</option>
-              <option value={3600}>1 hour</option>
-              <option value={0}>Never (static)</option>
-            </select>
-          </div>
         </div>
 
         <div className="border-t border-border" />
@@ -471,6 +438,101 @@ function TimersCard() {
             After the specified idle time, Away Mode activates automatically for privacy.
           </p>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * The screensaver's own card.
+ *
+ * These controls used to be an <h4> inside "Timers & Auto-Activation", between
+ * the sign-out timer and the away-mode timer. Everything worked, but nobody
+ * could find it: "screensaver" is not a timer, and the one place people look
+ * for it — the screensaver editor — didn't mention it either. Giving it a card
+ * with its own name is the whole fix.
+ */
+function ScreensaverCard() {
+  const { timeout: ssTimeout, setTimeout: setSsTimeout } = useScreensaverTimeout();
+  const { interval: photoInterval, setInterval: setPhotoInterval } = useScreensaverInterval();
+  const { motion, setMotion, interval: motionInterval, setInterval: setMotionInterval } = useScreensaverMotion();
+
+  return (
+    <Card id="screensaver-settings">
+      <CardHeader>
+        <CardTitle>Screensaver</CardTitle>
+        <CardDescription>
+          When it starts, how the widgets come and go, and how often the photo changes
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+          <div className="flex items-center gap-3 pl-2">
+            <span className="text-sm text-muted-foreground">Activate after</span>
+            <select
+              value={ssTimeout}
+              onChange={(e) => setSsTimeout(Number(e.target.value))}
+              className="border border-border rounded px-2 py-1 text-sm bg-background"
+            >
+              <option value={30}>30 seconds</option>
+              <option value={60}>1 minute</option>
+              <option value={120}>2 minutes</option>
+              <option value={600}>10 minutes</option>
+              <option value={3600}>1 hour</option>
+              <option value={0}>Never</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-3 pl-2">
+            <span className="text-sm text-muted-foreground">Widgets</span>
+            <select
+              value={motion}
+              onChange={(e) => setMotion(e.target.value as ScreensaverMotion)}
+              className="border border-border rounded px-2 py-1 text-sm bg-background"
+            >
+              <option value="off">All at once</option>
+              <option value="smoke">Fade in and out</option>
+              <option value="liquid">Fill and drain</option>
+              <option value="dissolve">Scatter into pixels</option>
+            </select>
+          </div>
+          {motion !== 'off' && (
+            <div className="flex items-center gap-3 pl-2">
+              <span className="text-sm text-muted-foreground">Change every</span>
+              <select
+                value={motionInterval}
+                onChange={(e) => setMotionInterval(Number(e.target.value))}
+                className="border border-border rounded px-2 py-1 text-sm bg-background"
+              >
+                <option value={10}>10 seconds</option>
+                <option value={20}>20 seconds</option>
+                <option value={45}>45 seconds</option>
+                <option value={90}>1.5 minutes</option>
+                <option value={300}>5 minutes</option>
+              </select>
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground pl-2">
+            Showing a few widgets at a time and swapping them gives the screensaver slow
+            movement, and keeps a static image off the panel. Just under half are shown
+            at once.
+          </p>
+          <div className="flex items-center gap-3 pl-2">
+            <span className="text-sm text-muted-foreground">Rotate photos every</span>
+            <select
+              value={photoInterval}
+              onChange={(e) => setPhotoInterval(Number(e.target.value))}
+              className="border border-border rounded px-2 py-1 text-sm bg-background"
+            >
+              <option value={5}>5 seconds</option>
+              <option value={10}>10 seconds</option>
+              <option value={15}>15 seconds</option>
+              <option value={30}>30 seconds</option>
+              <option value={60}>1 minute</option>
+              <option value={300}>5 minutes</option>
+              <option value={600}>10 minutes</option>
+              <option value={3600}>1 hour</option>
+              <option value={0}>Never (static)</option>
+            </select>
+          </div>
       </CardContent>
     </Card>
   );

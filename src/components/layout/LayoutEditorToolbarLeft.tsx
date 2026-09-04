@@ -118,7 +118,19 @@ export function LayoutEditorToolbarLeft({
       )}
 
       {editingScreensaver ? (
-        <span className="text-sm font-medium">Screensaver</span>
+        <>
+          <span className="text-sm font-medium">Screensaver</span>
+          {/* This editor arranges the widgets; when it starts, how they come and
+              go, and how often the photo changes are settings, not layout. That
+              split is not guessable, so say where the other half lives. */}
+          <a
+            href="/settings?section=display"
+            className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
+            title="Timing and motion settings for the screensaver"
+          >
+            Timing &amp; motion
+          </a>
+        </>
       ) : (
         <DashboardDropdown
           layoutName={layoutName}
