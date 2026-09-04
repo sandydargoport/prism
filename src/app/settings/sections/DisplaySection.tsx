@@ -62,7 +62,7 @@ export function DisplaySection() {
       {/* A section spreads across the width rather than running down it:
           Seasonal Theme sits beside Color Scheme instead of below it. The
           divider stays full width so the grouping still reads as one thing. */}
-      <div className="grid xl:grid-cols-2 gap-4 items-start">
+      <div className="grid xl:grid-cols-2 2xl:grid-cols-3 gap-4 items-start">
 
       <Card>
         <CardHeader>
@@ -224,7 +224,7 @@ export function DisplaySection() {
       {/* A section spreads across the width rather than running down it:
           Seasonal Theme sits beside Color Scheme instead of below it. The
           divider stays full width so the grouping still reads as one thing. */}
-      <div className="grid xl:grid-cols-2 gap-4 items-start">
+      <div className="grid xl:grid-cols-2 2xl:grid-cols-3 gap-4 items-start">
 
       <PerformanceModeCard />
 
@@ -237,7 +237,7 @@ export function DisplaySection() {
       {/* A section spreads across the width rather than running down it:
           Seasonal Theme sits beside Color Scheme instead of below it. The
           divider stays full width so the grouping still reads as one thing. */}
-      <div className="grid xl:grid-cols-2 gap-4 items-start">
+      <div className="grid xl:grid-cols-2 2xl:grid-cols-3 gap-4 items-start">
 
       <ScreensaverCard />
       <TimersCard />
