@@ -58,7 +58,15 @@ export function EffectStage({ children }: { children: React.ReactNode }) {
   const tick = useCallback((now: number) => {
     const el = canvas.current;
     if (!el) { raf.current = 0; return; }
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // Deliberately 1, not devicePixelRatio.
+    //
+    // At 2 this is a 3840x2160 surface, and the whole of it is cleared every
+    // frame — about 8 million pixels of pure overhead before anything is drawn.
+    // Fill and drain pays it continuously, because its surface never stops
+    // moving, and that alone held it at 17fps against a 54fps baseline. Nothing
+    // drawn here has any fine detail to lose: the fragments are a couple of
+    // pixels across and the water is a soft gradient.
+    const dpr = 1;
     const w = Math.round(el.clientWidth * dpr);
     const h = Math.round(el.clientHeight * dpr);
     if (el.width !== w || el.height !== h) { el.width = w; el.height = h; }
@@ -66,8 +74,21 @@ export function EffectStage({ children }: { children: React.ReactNode }) {
     if (!ctx) { raf.current = 0; return; }
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, el.width, el.height);
     const origin = el.getBoundingClientRect();
+
+    // Clear only where something is actually drawing. An effect says how far
+    // beyond its widget it reaches — fireworks throws fragments most of the way
+    // across the screen, water stays in its box — so the cleared area is the
+    // union of what is live rather than the whole display.
+    for (const a of active.current.values()) {
+      const pad = a.effect.spread ?? 0;
+      ctx.clearRect(
+        (a.viewportLeft - origin.left - pad) * dpr,
+        (a.viewportTop - origin.top - pad) * dpr,
+        (a.width + pad * 2) * dpr,
+        (a.height + pad * 2) * dpr,
+      );
+    }
 
     const dt = last.current ? now - last.current : 16;
     last.current = now;

@@ -168,7 +168,7 @@ function ScreensaverGrid() {
 
   // Which widgets are currently on screen. Off by default, in which case every
   // widget shows and all of this is inert.
-  const { motion, interval: motionInterval } = useScreensaverMotion();
+  const { motion, interval: motionInterval, floor, ceiling, outlines } = useScreensaverMotion();
   const widgetIds = useMemo(
     () => layout.filter((w) => w.visible !== false).map((w) => w.i),
     [layout],
@@ -180,15 +180,16 @@ function ScreensaverGrid() {
     // which would read as the screensaver loading rather than running.
     setShowing((prev) => {
       let next = prev;
-      for (let k = 0; k < showingCount(widgetIds.length); k++) next = rotate(widgetIds, next);
+      const target = showingCount(widgetIds.length, floor, ceiling);
+      for (let k = 0; k < target; k++) next = rotate(widgetIds, next, Math.random, floor, ceiling);
       return next;
     });
     const id = window.setInterval(
-      () => setShowing((prev) => rotate(widgetIds, prev)),
+      () => setShowing((prev) => rotate(widgetIds, prev, Math.random, floor, ceiling)),
       Math.max(4, motionInterval) * 1000,
     );
     return () => window.clearInterval(id);
-  }, [motion, widgetIds, motionInterval]);
+  }, [motion, widgetIds, motionInterval, floor, ceiling]);
 
   // Fireworks is the one effect heavy enough to matter: it rasterises the
   // widget and then draws thousands of particles, and its cost scales with
@@ -248,7 +249,12 @@ function ScreensaverGrid() {
           id={w.i}
           effect={effect}
           shown={on}
-          className="h-full w-full [&_*:not([data-keep-bg])]:!bg-transparent [&_.bg-card]:!bg-white/10 [&_.border-border]:!border-white/20"
+          className={'h-full w-full [&_*:not([data-keep-bg])]:!bg-transparent [&_.bg-card]:!bg-white/10 '
+            + (outlines
+              ? '[&_.border-border]:!border-white/20'
+              // Nothing to catch the eye at a widget's edge, so a transition
+              // reads as the content arriving rather than as a box being filled.
+              : '[&_*]:!border-transparent [&_.bg-card]:!shadow-none')}
           prepare={giveItBody}
         >
           <Component {...props} />

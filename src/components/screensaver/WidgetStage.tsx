@@ -13,6 +13,31 @@ import { useEffectStage } from './EffectStage';
  * the widget's box on screen, and its pixels if the effect needs them — and
  * drives the live element as the effect dictates.
  */
+/** Everything a transition is allowed to write to the live element. */
+const DRIVEN = [
+  'opacity', 'transform', 'visibility', 'clipPath', 'transition',
+  'maskImage', 'webkitMaskImage', 'maskSize', 'webkitMaskSize',
+  'maskRepeat', 'webkitMaskRepeat', 'maskPosition', 'webkitMaskPosition',
+] as const;
+
+/**
+ * Put the element back to its resting state.
+ *
+ * Clearing cssText wholesale is wrong: it drops opacity back to its default of
+ * 1 for the moment before the resting value is reapplied, so a widget that is
+ * supposed to be gone flashes into view. Only the properties a transition
+ * actually drives are cleared, and only the ones the resting state does not set
+ * for itself.
+ */
+function applyResting(el: HTMLElement, resting: React.CSSProperties) {
+  for (const prop of DRIVEN) {
+    if (!(prop in (resting as Record<string, unknown>))) {
+      (el.style as unknown as Record<string, string>)[prop] = '';
+    }
+  }
+  Object.assign(el.style, resting);
+}
+
 export function WidgetStage({
   id,
   effect,
@@ -34,6 +59,9 @@ export function WidgetStage({
   const first = useRef(true);
   const stage = useEffectStage();
   const [busy, setBusy] = useState(false);
+  /** Read synchronously by the resting-style effect, which must not fight a
+   *  transition that is already driving this element. */
+  const busyRef = useRef(false);
 
   // Fetch and encode the widget's fonts now, while it is sitting still, rather
   // than at the instant it is meant to burst.
@@ -71,12 +99,7 @@ export function WidgetStage({
      */
     const release = () => {
       if (!liveEl) return;
-      liveEl.style.transform = '';
-      liveEl.style.visibility = '';
-      liveEl.style.clipPath = '';
-      liveEl.style.opacity = '';
-      liveEl.style.maskImage = '';
-      liveEl.style.webkitMaskImage = '';
+      applyResting(liveEl, effect.css?.(shown) ?? {});
     };
 
     const start = (pixels: ImageData | null) => {
@@ -92,6 +115,7 @@ export function WidgetStage({
         if (s0) Object.assign(liveEl.style, s0);
       }
       const box = el.getBoundingClientRect();
+      busyRef.current = true;
       setBusy(true);
       cancel = stage.begin(`${id}:${phase}`, {
         effect,
@@ -113,7 +137,7 @@ export function WidgetStage({
             liveEl.style.visibility = f.progress >= effect.takesOverAt ? 'hidden' : '';
           }
         },
-        onDone: () => { setBusy(false); release(); },
+        onDone: () => { busyRef.current = false; setBusy(false); release(); },
       });
     };
 
@@ -141,10 +165,27 @@ export function WidgetStage({
     return () => {
       dropped = true;
       cancel?.();
+      busyRef.current = false;
       setBusy(false);
       release();
     };
   }, [shown, effect, stage, id, prepare]);
+
+  /**
+   * The resting state, applied imperatively.
+   *
+   * It used to be a style prop, and that is a race: a transition holds opacity
+   * at 1 by writing straight to the element, and ANY re-render of this
+   * component — the ambient bookkeeping causes one — re-applies the rendered
+   * resting state over the top and blanks the widget until the next frame
+   * restores it. One frame is all it takes; that was the flash still showing up
+   * just before the wind-up. React no longer writes to this element at all.
+   */
+  useLayoutEffect(() => {
+    const el = live.current;
+    if (!el || busyRef.current) return;
+    applyResting(el, effect?.css?.(shown) ?? {});
+  }, [effect, shown]);
 
   // The resting state, for effects whose resting state still moves. Held open
   // only once the widget has settled, or it would draw a second waterline on
@@ -170,7 +211,7 @@ export function WidgetStage({
 
   return (
     <div ref={host} className="h-full w-full">
-      <div ref={live} style={effect?.css?.(shown) ?? {}} className={className}>
+      <div ref={live} className={className}>
         {children}
       </div>
     </div>

@@ -73,6 +73,12 @@ export interface ScreensaverEffect {
   /** Draw onto a canvas laid over the widget. */
   frame?: (ctx: CanvasRenderingContext2D, f: EffectFrame) => void;
   /**
+   * How far beyond its widget this effect draws, in px. The stage clears only
+   * the area an effect can reach, so anything drawn outside this is left on
+   * screen as a smear.
+   */
+  spread?: number;
+  /**
    * Keep drawing once the widget has settled, with progress pinned at 1. For
    * anything whose resting state is still in motion — a full glass is still
    * carbonated — rather than a freeze-frame of the last transition.

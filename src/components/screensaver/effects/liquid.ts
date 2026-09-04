@@ -23,6 +23,24 @@ const POINTS = 48;         // polygon resolution along the crest
 
 interface Bubble { x: number; y: number; r: number; v: number; seed: number }
 
+/**
+ * The body gradient, cached. It only depends on where the surface is, so it is
+ * rebuilt when the level moves by more than a few pixels rather than 60 times a
+ * second.
+ */
+let cachedFill: CanvasGradient | null = null;
+let cachedKey = -1;
+function bodyFill(ctx: CanvasRenderingContext2D, level: number, height: number): CanvasGradient {
+  const key = Math.round(level / 8) * 1000 + Math.round(height);
+  if (cachedFill && cachedKey === key) return cachedFill;
+  const g = ctx.createLinearGradient(0, level, 0, height);
+  g.addColorStop(0, 'rgba(125,180,225,0.20)');
+  g.addColorStop(1, 'rgba(60,110,170,0.06)');
+  cachedFill = g;
+  cachedKey = key;
+  return g;
+}
+
 /** Two components at different wavelengths, so the crest never repeats in a way
  *  the eye can catch. Shared by the clip and the drawing — that is the point. */
 function waveAt(x: number, level: number, now: number): number {
@@ -48,6 +66,7 @@ function levelOf(f: { progress: number; phase: string; height: number }): number
 export const liquid: ScreensaverEffect = {
   id: 'liquid',
   label: 'Fill and drain',
+  spread: 40,
   durationMs: { in: 3400, out: 3800 },
 
   // A full glass is still carbonated. Without this the surface froze the
@@ -82,22 +101,34 @@ export const liquid: ScreensaverEffect = {
   frame: (ctx, f: EffectFrame) => {
     const bubbles = f.state as Bubble[];
     const level = levelOf(f);
+    const fill = fillOf(f);
     const waveY = (x: number) => waveAt(x, level, f.now);
 
     ctx.save();
 
     // The body of the water, tinted and translucent so the widget reads through
-    // it. Same polygon as the clip, so it sits exactly on the cut.
-    ctx.beginPath();
-    ctx.moveTo(0, f.height);
-    for (let x = 0; x <= f.width; x += 6) ctx.lineTo(x, waveY(x));
-    ctx.lineTo(f.width, f.height);
-    ctx.closePath();
-    const body = ctx.createLinearGradient(0, level, 0, f.height);
-    body.addColorStop(0, 'rgba(125,180,225,0.20)');
-    body.addColorStop(1, 'rgba(60,110,170,0.06)');
-    ctx.fillStyle = body;
-    ctx.fill();
+    // it. Same wave as the clip, so it sits exactly on the cut.
+    //
+    // Both the gradient and the path are deliberately cheap. Building two
+    // gradients and two ~150-segment paths per widget per frame — for every
+    // widget at rest, because the surface never stops moving — cost more than
+    // the fireworks burst did: measured 16.8fps against a 54.4 baseline.
+    // Only while the level is actually moving. A full glass needs no wash over
+    // it: the widget is simply there, and tinting the whole of it — every
+    // frame, for every settled widget — was both wrong to look at and the
+    // single most expensive thing on the canvas. Four widgets each compositing
+    // a translucent fill across their whole area is 1.2 million pixels a frame
+    // of pure fill rate, and it held the screensaver at 17fps.
+    if (fill < 0.995) {
+      ctx.beginPath();
+      ctx.moveTo(0, f.height);
+      for (let x = 0; x <= f.width; x += 16) ctx.lineTo(x, waveY(x));
+      ctx.lineTo(f.width, waveY(f.width));
+      ctx.lineTo(f.width, f.height);
+      ctx.closePath();
+      ctx.fillStyle = bodyFill(ctx, level, f.height);
+      ctx.fill();
+    }
 
     for (const bub of bubbles) {
       bub.y -= (bub.v * f.dt) / 1000 / f.height;
@@ -113,25 +144,17 @@ export const liquid: ScreensaverEffect = {
 
     // The crest. This is the line the widget is actually cut along, which is
     // why it can be drawn hard: there is nothing behind it to give it away.
-    const fill = fillOf(f);
     // Drawn whenever there is any water at all, full included — the surface of
     // a full glass is at its top edge, and it still moves.
     if (fill > 0.002) {
       ctx.beginPath();
-      for (let x = 0; x <= f.width; x += 4) {
+      for (let x = 0; x <= f.width; x += 12) {
         const y = waveY(x);
         if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       }
       ctx.strokeStyle = 'rgba(226,242,255,0.62)';
       ctx.lineWidth = 1.6;
       ctx.stroke();
-
-      const glow = ctx.createLinearGradient(0, level - WAVE_BAND, 0, level + WAVE_BAND);
-      glow.addColorStop(0, 'rgba(255,255,255,0)');
-      glow.addColorStop(0.5, 'rgba(214,236,255,0.16)');
-      glow.addColorStop(1, 'rgba(255,255,255,0)');
-      ctx.fillStyle = glow;
-      ctx.fillRect(0, level - WAVE_BAND, f.width, WAVE_BAND * 2);
     }
 
     ctx.restore();

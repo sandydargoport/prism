@@ -17,8 +17,19 @@ import { easeInExpo, easeOutExpo } from './types';
  * interpolation at all, and puts the mask in lockstep with the puffs drawn over
  * it, which is what makes them look like the same event.
  */
-const PUFFS = 26;
-const FEATHER = 38;   // % of the widget the soft edge spans
+const PUFFS = 22;
+
+/**
+ * The mask is three widget-heights tall with a long ramp through its middle,
+ * and it is SLID rather than redrawn: at 0% the widget sits under the clear top
+ * third and is wholly gone, at 100% under the opaque bottom third and wholly
+ * there, and in between a wide soft front crosses it. A gradient rebuilt per
+ * frame could never reach "wholly gone" without special-casing its stops, and a
+ * CSS transition on it snaps rather than interpolates. A position is a length,
+ * and lengths are honest.
+ */
+const MASK =
+  'linear-gradient(to top, #000 0%, #000 30%, rgba(0,0,0,0.5) 50%, transparent 70%, transparent 100%)';
 
 interface Puff { x: number; y: number; r: number; vy: number; phase: number }
 
@@ -53,31 +64,37 @@ function presence(f: { progress: number; phase: string }): number {
 export const smoke: ScreensaverEffect = {
   id: 'smoke',
   label: 'Smoke',
-  durationMs: { in: 3000, out: 3800 },
+  spread: 260,
+  durationMs: { in: 5600, out: 7000 },
 
   css: (shown) => (shown ? { opacity: 1 } : { opacity: 0 }),
 
   elementStyle: (f: EffectFrame) => {
     const v = presence(f);
-    // A soft front sweeping up the widget: opaque below it, clear above, with a
-    // wide feather so there is never a line to see.
-    const edge = v * 100;
-    const mask =
-      `linear-gradient(to top, #000 0%, #000 ${edge.toFixed(1)}%, ` +
-      `transparent ${Math.min(100, edge + FEATHER).toFixed(1)}%)`;
+    const pos = `0% ${(v * 100).toFixed(2)}%`;
+    // Opacity is deliberately NOT touched. Fading the widget at the same time
+    // as masking it is two departures at once, and the fade is the one you
+    // notice — which is why this mode read as a plain fade with some haze over
+    // it. The mask is the whole effect.
     return {
-      opacity: String(0.25 + 0.75 * v),
-      maskImage: mask,
-      webkitMaskImage: mask,
-    } as Partial<CSSStyleDeclaration>;
+      opacity: '1',
+      maskImage: MASK,
+      webkitMaskImage: MASK,
+      maskSize: '100% 300%',
+      webkitMaskSize: '100% 300%',
+      maskRepeat: 'no-repeat',
+      webkitMaskRepeat: 'no-repeat',
+      maskPosition: pos,
+      webkitMaskPosition: pos,
+    } as unknown as Partial<CSSStyleDeclaration>;
   },
 
   init: () =>
     Array.from({ length: PUFFS }, (): Puff => ({
       x: Math.random(),
       y: Math.random(),
-      r: 0.22 + Math.random() * 0.42,
-      vy: 0.10 + Math.random() * 0.22,
+      r: 0.10 + Math.random() * 0.16,
+      vy: 0.026 + Math.random() * 0.05,
       phase: Math.random() * 7,
     })),
 
@@ -93,15 +110,18 @@ export const smoke: ScreensaverEffect = {
     ctx.globalCompositeOperation = 'lighter';
     for (const q of puffs) {
       q.y -= (q.vy * f.dt) / 1000;
-      if (q.y < -0.4) { q.y = 1.2; q.x = Math.random(); }
-      // The box is where the smoke comes FROM, not where it stays: it is drawn
-      // on the screensaver's own full-screen canvas, so a puff that rises past
-      // the top keeps going instead of being clipped away.
-      const px = f.width * q.x + Math.sin(f.now / 2600 + q.phase) * f.width * 0.22;
-      const py = f.height * (q.y * 1.5 - 0.25);
+      if (q.y < -0.12) { q.y = 1.05; q.x = Math.random(); }
+      // Kept over the widget it belongs to. The canvas is the whole screen, so
+      // nothing stops a puff wandering across the board — and when it did, the
+      // smoke read as weather over the entire screensaver rather than as one
+      // widget going. A little drift and a little rise above the top edge is
+      // all it takes to look like volume.
+      const px = f.width * (0.08 + q.x * 0.84)
+        + Math.sin(f.now / 5200 + q.phase) * f.width * 0.05;
+      const py = f.height * (q.y * 1.1 - 0.08);
       const rr = Math.min(f.width, f.height) * q.r;
       if (rr <= 0) continue;
-      ctx.globalAlpha = 0.42 * strength;
+      ctx.globalAlpha = 0.30 * strength;
       ctx.drawImage(puffSprite(), px - rr, py - rr, rr * 2, rr * 2);
     }
     ctx.restore();

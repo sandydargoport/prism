@@ -67,17 +67,24 @@ function block(w: number, h: number, alpha = 255): ImageData {
 }
 
 describe('fireworks sampling', () => {
-  it('samples densely enough to read as the widget, not as confetti', () => {
+  it('samples at pixel scale, so fragments are pixels rather than blocks', () => {
     const sparks = fw.build(block(200, 160), 200, 160);
     // spacing, not count, is what makes the field contiguous at the burst
-    expect(fw.SAMPLE_PX).toBeLessThanOrEqual(4);
-    expect(sparks.length).toBeGreaterThan(1500);
+    expect(fw.SAMPLE_PX).toBeLessThanOrEqual(2);
+    expect(sparks.length).toBeGreaterThan(4000);
+    for (const s of sparks.slice(0, 10)) expect(s.size).toBeLessThanOrEqual(2);
+  });
+
+  it('ends up somewhere warmer than it started', () => {
+    expect(fw.EMBER[0]).toBeGreaterThan(fw.EMBER[2]);
   });
 
   it('carries each pixel its own colour', () => {
     const sparks = fw.build(block(120, 120), 120, 120);
     expect(sparks.length).toBeGreaterThan(0);
-    for (const s of sparks.slice(0, 20)) expect(s.colour).toContain('200,30,40');
+    for (const s of sparks.slice(0, 20)) {
+      expect([s.r, s.g, s.bl]).toEqual([200, 30, 40]);
+    }
   });
 
   it('throws nothing where the widget is transparent', () => {

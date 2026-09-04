@@ -33,8 +33,19 @@ import { easeOutExpo } from './types';
  * follows from the spacing and the widget's area, so it is capped rather than
  * targeted: a full-width widget would otherwise ask for 90,000 particles.
  */
-const SAMPLE_PX = 4;
-const MAX_PARTICLES = 26000;
+const SAMPLE_PX = 2;
+const MAX_PARTICLES = 42000;
+
+/**
+ * What the fragments cool into as they scatter.
+ *
+ * They leave carrying the widget's own colour, which is mostly frosted white,
+ * and drift towards ember over their life. Keeping them white the whole way
+ * reads as snow; going straight to orange loses the moment where the field is
+ * still recognisably the widget. The shift is what makes it burn rather than
+ * disperse.
+ */
+const EMBER = [255, 176, 74] as const;
 /**
  * How much of the transition is spent winding up before the burst.
  *
@@ -49,8 +60,11 @@ interface Spark {
   x: number; y: number;
   dx: number; dy: number;
   v: number; acc: number;
-  size: number; colour: string;
+  size: number;
+  r: number; g: number; bl: number; a: number;
   life: number; age: number;
+  /** Colour string, rebuilt only when the ember blend moves a whole step. */
+  cache: string; bucket: number;
 }
 
 interface Burst { sparks: Spark[]; built: boolean }
@@ -84,11 +98,12 @@ function build(pixels: ImageData, width: number, height: number): Spark[] {
         // is what makes it read as slow motion rather than as a fast explosion
         // played back slowly. Outer pixels start marginally faster so the field
         // opens outward instead of smearing.
-        v: 22 + (d / reach) * 55,
-        acc: 120 + Math.random() * 180,
-        size: Math.max(1, step * 0.9),
-        colour: `rgba(${data[i]},${data[i + 1]},${data[i + 2]},${(a / 255).toFixed(3)})`,
-        life: 2.4 + Math.random() * 1.1,
+        v: 6 + (d / reach) * 16,
+        acc: 90 + Math.random() * 130,
+        size: step,
+        r: data[i]!, g: data[i + 1]!, bl: data[i + 2]!, a: a / 255,
+        cache: '', bucket: -1,
+        life: 3.4 + Math.random() * 1.8,
         age: 0,
       });
     }
@@ -99,7 +114,8 @@ function build(pixels: ImageData, width: number, height: number): Spark[] {
 export const fireworks: ScreensaverEffect = {
   id: 'fireworks',
   label: 'Fireworks',
-  durationMs: { in: 2200, out: 7200 },
+  spread: 2200,
+  durationMs: { in: 3600, out: 9000 },
   needsPixels: true,
   takesOverAt: SWELL_FRACTION,
 
@@ -154,7 +170,7 @@ export const fireworks: ScreensaverEffect = {
     // opacity 1 — as this did — meant a departing widget never actually went
     // anywhere, and one that had gone sat there fully visible.
     shown
-      ? { opacity: 1, transition: 'opacity 2.2s cubic-bezier(.16,1,.3,1)' }
+      ? { opacity: 1, transition: 'opacity 3.6s cubic-bezier(.33,0,.25,1)' }
       : { opacity: 0, transition: 'none' },
 
   init: (): Burst => ({ sparks: [], built: false }),
@@ -174,23 +190,39 @@ export const fireworks: ScreensaverEffect = {
 
     const dt = Math.min(f.dt, 48); // a dropped frame must not teleport the field
     ctx.save();
+    ctx.globalAlpha = 1;
     for (let i = burst.sparks.length - 1; i >= 0; i--) {
       const k = burst.sparks[i]!;
       k.age += dt / 1000;
       const t = k.age / k.life;
       if (t >= 1) continue;
-      // Everything in px/second. The previous version carried the prototype's
-      // cell-sized units into a full screen, so a fragment travelled about 70px
-      // over the whole burst — the field sat where the widget had been and
-      // faded, which reads as a rectangle of static rather than an explosion.
+      // Everything in px/second, and the acceleration itself grows with age:
+      // the field creeps at the instant it comes apart and is still gathering
+      // pace as it goes, rather than settling into a constant drift. Constant
+      // acceleration looked like a thing being pushed; this looks like one
+      // coming apart.
       const secs = dt / 1000;
-      k.v += k.acc * secs;
+      k.v += k.acc * (0.35 + 1.9 * t) * secs;
       k.x += k.dx * k.v * secs;
       k.y += k.dy * k.v * secs;
-      const alpha = Math.pow(1 - t, 1.5);
-      if (alpha <= 0.015) continue;
+      const alpha = k.a * Math.pow(1 - t, 1.4);
+      if (alpha <= 0.012) continue;
+
+      // Cool towards ember on the way out. Quantised into eight steps and
+      // cached: building an rgba() string per fragment per frame means tens of
+      // thousands of string builds and colour parses every 16ms, and that alone
+      // took this from 54fps to 20. Fading is done with globalAlpha, which is a
+      // number rather than a new colour.
+      const bucket = (t * 8) | 0;
+      if (bucket !== k.bucket) {
+        const heat = Math.min(1, (bucket / 8) * 1.4);
+        k.cache = `rgb(${Math.round(k.r + (EMBER[0] - k.r) * heat)},`
+          + `${Math.round(k.g + (EMBER[1] - k.g) * heat)},`
+          + `${Math.round(k.bl + (EMBER[2] - k.bl) * heat)})`;
+        k.bucket = bucket;
+      }
       ctx.globalAlpha = alpha;
-      ctx.fillStyle = k.colour;
+      ctx.fillStyle = k.cache;
       ctx.fillRect(k.x, k.y, k.size, k.size);
     }
     ctx.restore();
@@ -198,4 +230,4 @@ export const fireworks: ScreensaverEffect = {
 };
 
 /** Exported for tests: the sampling is the whole effect, so it is worth pinning. */
-export const __test = { build, SAMPLE_PX, MAX_PARTICLES, SWELL_FRACTION, easeOutExpo };
+export const __test = { build, SAMPLE_PX, MAX_PARTICLES, SWELL_FRACTION, EMBER, easeOutExpo };

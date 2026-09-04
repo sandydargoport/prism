@@ -28,6 +28,11 @@ function normalise(raw: string | null, migrated: boolean): ScreensaverMotion | n
 }
 
 const MIGRATED_KEY = 'prism-screensaver-motion-v2';
+const FLOOR_KEY = 'prism-screensaver-min-widgets';
+const CEILING_KEY = 'prism-screensaver-max-widgets';
+const OUTLINES_KEY = 'prism-screensaver-outlines';
+export const DEFAULT_FLOOR = 2;
+export const DEFAULT_CEILING = 0;   // 0 = no cap
 
 /**
  * Whether the screensaver shows all its widgets at once (the original
@@ -42,6 +47,9 @@ const MIGRATED_KEY = 'prism-screensaver-motion-v2';
 export function useScreensaverMotion() {
   const [motion, setMotionState] = useState<ScreensaverMotion>('off');
   const [interval, setIntervalState] = useState(DEFAULT_MOTION_INTERVAL);
+  const [floor, setFloorState] = useState(DEFAULT_FLOOR);
+  const [ceiling, setCeilingState] = useState(DEFAULT_CEILING);
+  const [outlines, setOutlinesState] = useState(true);
 
   // Read after mount, never during render: the server has no localStorage, so
   // reading it in the initialiser makes the first client render disagree with
@@ -59,6 +67,11 @@ export function useScreensaverMotion() {
       }
       const n = Number(localStorage.getItem(INTERVAL_KEY));
       if (n > 0) setIntervalState(n);
+      const lo = Number(localStorage.getItem(FLOOR_KEY));
+      if (lo > 0) setFloorState(lo);
+      const hi = Number(localStorage.getItem(CEILING_KEY));
+      if (hi >= 0 && localStorage.getItem(CEILING_KEY) !== null) setCeilingState(hi);
+      if (localStorage.getItem(OUTLINES_KEY) === 'off') setOutlinesState(false);
     } catch { /* storage unavailable */ }
   }, []);
 
@@ -79,6 +92,30 @@ export function useScreensaverMotion() {
     } catch { /* storage unavailable */ }
   }, []);
 
+  const setFloor = useCallback((v: number) => {
+    setFloorState(v);
+    try {
+      localStorage.setItem(FLOOR_KEY, String(v));
+      window.dispatchEvent(new StorageEvent('storage', { key: FLOOR_KEY, newValue: String(v) }));
+    } catch { /* storage unavailable */ }
+  }, []);
+
+  const setCeiling = useCallback((v: number) => {
+    setCeilingState(v);
+    try {
+      localStorage.setItem(CEILING_KEY, String(v));
+      window.dispatchEvent(new StorageEvent('storage', { key: CEILING_KEY, newValue: String(v) }));
+    } catch { /* storage unavailable */ }
+  }, []);
+
+  const setOutlines = useCallback((v: boolean) => {
+    setOutlinesState(v);
+    try {
+      localStorage.setItem(OUTLINES_KEY, v ? 'on' : 'off');
+      window.dispatchEvent(new StorageEvent('storage', { key: OUTLINES_KEY, newValue: v ? 'on' : 'off' }));
+    } catch { /* storage unavailable */ }
+  }, []);
+
   // Settings and the screensaver are separate trees; the storage event is how
   // a change made in one reaches the other without a reload.
   useEffect(() => {
@@ -88,10 +125,19 @@ export function useScreensaverMotion() {
         if (m) setMotionState(m);
       }
       if (e.key === INTERVAL_KEY) { const n = Number(e.newValue); if (n > 0) setIntervalState(n); }
+      if (e.key === FLOOR_KEY) { const n = Number(e.newValue); if (n > 0) setFloorState(n); }
+      if (e.key === CEILING_KEY) { const n = Number(e.newValue); if (n >= 0) setCeilingState(n); }
+      if (e.key === OUTLINES_KEY) setOutlinesState(e.newValue !== 'off');
     };
     window.addEventListener('storage', handler);
     return () => window.removeEventListener('storage', handler);
   }, []);
 
-  return { motion, setMotion, interval, setInterval };
+  return {
+    motion, setMotion,
+    interval, setInterval,
+    floor, setFloor,
+    ceiling, setCeiling,
+    outlines, setOutlines,
+  };
 }

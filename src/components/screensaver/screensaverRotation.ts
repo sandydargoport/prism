@@ -20,9 +20,13 @@
  * Two is the floor because one widget alone on a wall reads as a fault rather
  * than as a design, and a layout with one or two widgets should show them all.
  */
-export function showingCount(total: number): number {
+export function showingCount(total: number, floor = 2, ceiling = 0): number {
   if (total <= 0) return 0;
-  return Math.min(total, Math.max(2, Math.ceil((total * 2) / 3)));
+  const wanted = Math.max(floor, Math.ceil((total * 2) / 3));
+  const capped = ceiling > 0 ? Math.min(wanted, ceiling) : wanted;
+  // Never more than exist, and never fewer than one — a floor set above the
+  // number of widgets in the layout means "show them all", not "show nothing".
+  return Math.max(1, Math.min(total, capped));
 }
 
 /**
@@ -35,8 +39,10 @@ export function rotate(
   all: readonly string[],
   showing: readonly string[],
   pick: () => number = Math.random,
+  floor = 2,
+  ceiling = 0,
 ): string[] {
-  const want = showingCount(all.length);
+  const want = showingCount(all.length, floor, ceiling);
   const present = showing.filter((id) => all.includes(id));
   const hidden = all.filter((id) => !present.includes(id));
 

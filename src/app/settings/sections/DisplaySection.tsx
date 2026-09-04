@@ -58,6 +58,10 @@ export function DisplaySection() {
         </p>
       </div>
 
+      {/* Landscape has room for two. Multi-column rather than a grid so the
+          cards keep their order and their section headings stay with what
+          they head — a grid would reflow them into rows and separate the two. */}
+      <div className="lg:columns-2 lg:gap-4 [&>*]:break-inside-avoid [&>*]:mb-4">
       <SectionDivider label="Theme" />
 
       <Card>
@@ -231,6 +235,8 @@ export function DisplaySection() {
       <WeatherUnitsCard />
 
       <LanguageCard />
+      </div>
+
     </div>
   );
 }
@@ -455,7 +461,11 @@ function TimersCard() {
 function ScreensaverCard() {
   const { timeout: ssTimeout, setTimeout: setSsTimeout } = useScreensaverTimeout();
   const { interval: photoInterval, setInterval: setPhotoInterval } = useScreensaverInterval();
-  const { motion, setMotion, interval: motionInterval, setInterval: setMotionInterval } = useScreensaverMotion();
+  const {
+    motion, setMotion,
+    interval: motionInterval, setInterval: setMotionInterval,
+    floor, setFloor, ceiling, setCeiling, outlines, setOutlines,
+  } = useScreensaverMotion();
 
   return (
     <Card id="screensaver-settings">
@@ -511,10 +521,46 @@ function ScreensaverCard() {
               </select>
             </div>
           )}
+          {motion !== 'off' && (
+            <div className="flex items-center gap-3 pl-2 flex-wrap">
+              <span className="text-sm text-muted-foreground">Show at least</span>
+              <select
+                value={floor}
+                onChange={(e) => setFloor(Number(e.target.value))}
+                className="border border-border rounded px-2 py-1 text-sm bg-background"
+              >
+                {[1, 2, 3, 4, 5, 6, 8].map((n) => (
+                  <option key={n} value={n}>{n} widget{n === 1 ? '' : 's'}</option>
+                ))}
+              </select>
+              <span className="text-sm text-muted-foreground">and at most</span>
+              <select
+                value={ceiling}
+                onChange={(e) => setCeiling(Number(e.target.value))}
+                className="border border-border rounded px-2 py-1 text-sm bg-background"
+              >
+                <option value={0}>no limit</option>
+                {[2, 3, 4, 5, 6, 8, 10, 12].map((n) => (
+                  <option key={n} value={n}>{n} widgets</option>
+                ))}
+              </select>
+            </div>
+          )}
+          {motion !== 'off' && (
+            <label className="flex items-center gap-3 pl-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={!outlines}
+                onChange={(e) => setOutlines(!e.target.checked)}
+                className="rounded border-border"
+              />
+              <span className="text-sm text-muted-foreground">Hide widget outlines</span>
+            </label>
+          )}
           <p className="text-xs text-muted-foreground pl-2">
-            Showing a few widgets at a time and swapping them gives the screensaver slow
-            movement, and keeps a static image off the panel. Just under half are shown
-            at once.
+            Showing some widgets at a time and swapping them gives the screensaver slow
+            movement, and keeps a static image off the panel. About two thirds are shown
+            at once, within the limits above.
           </p>
           <div className="flex items-center gap-3 pl-2">
             <span className="text-sm text-muted-foreground">Rotate photos every</span>
