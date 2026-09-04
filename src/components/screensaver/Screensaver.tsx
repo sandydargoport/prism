@@ -176,22 +176,6 @@ function ScreensaverGrid() {
     [layout],
   );
   const [showing, setShowing] = useState<string[]>([]);
-  useEffect(() => {
-    if (motion === 'off' || widgetIds.length === 0) return;
-    // Seed straight to the target rather than fading them in one at a time,
-    // which would read as the screensaver loading rather than running.
-    setShowing((prev) => {
-      let next = prev;
-      const target = showingCount(widgetIds.length, floor, ceiling);
-      for (let k = 0; k < target; k++) next = rotate(widgetIds, next, Math.random, floor, ceiling);
-      return next;
-    });
-    const id = window.setInterval(
-      () => setShowing((prev) => rotate(widgetIds, prev, Math.random, floor, ceiling)),
-      Math.max(4, motionInterval) * 1000,
-    );
-    return () => window.clearInterval(id);
-  }, [motion, widgetIds, motionInterval, floor, ceiling]);
 
   // Fireworks is the one effect heavy enough to matter: it rasterises the
   // widget and then draws thousands of particles, and its cost scales with
@@ -207,6 +191,28 @@ function ScreensaverGrid() {
   );
   const motionId = motion === 'fireworks' && (lowPower || reduced) ? 'fade' : motion;
   const effect = motionId === 'off' ? null : getEffect(motionId);
+  useEffect(() => {
+    if (motion === 'off' || widgetIds.length === 0) return;
+    // Seed straight to the target rather than fading them in one at a time,
+    // which would read as the screensaver loading rather than running.
+    setShowing((prev) => {
+      let next = prev;
+      const target = showingCount(widgetIds.length, floor, ceiling);
+      for (let k = 0; k < target; k++) next = rotate(widgetIds, next, Math.random, floor, ceiling);
+      return next;
+    });
+    // A rotation must not start before the last one has finished. Fireworks
+    // takes nine seconds to leave; with the interval set shorter than that,
+    // every swap interrupted the one before it, transitions piled up and no
+    // widget was ever handed back to its resting state. The setting is a
+    // minimum gap between changes, not a promise to change that often.
+    const settle = effect ? Math.ceil((effect.durationMs.out + 900) / 1000) : 0;
+    const id = window.setInterval(
+      () => setShowing((prev) => rotate(widgetIds, prev, Math.random, floor, ceiling)),
+      Math.max(4, motionInterval, settle) * 1000,
+    );
+    return () => window.clearInterval(id);
+  }, [motion, effect, widgetIds, motionInterval, floor, ceiling]);
 
 
   // Only fetch what this overlay actually draws. Called bare, the hook enables

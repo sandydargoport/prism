@@ -656,3 +656,61 @@
   font-size: 20px;
 }
 
+/**
+ * The screensaver's fireworks wind-up: one slow breath before the widget comes
+ * apart.
+ *
+ * Expressed as keyframes rather than driven from JavaScript, and that is the
+ * whole point of it. The effect stage animates on requestAnimationFrame, and
+ * that loop is only as fast as the machine allows — measured at 18fps on a
+ * software-rendered browser. A large, fast motion hides dropped frames; this one
+ * is deliberately slow and about one percent in amplitude, which is exactly the
+ * case where every missed frame shows as a step. Handed to the compositor it
+ * runs smoothly regardless of what the main thread is doing.
+ *
+ * Generated from the same curve the effect used to compute per frame: a slow
+ * settle out, then a swell back past the start with a tremor that grows as it
+ * fills.
+ */
+@keyframes prism-screensaver-breath {
+  0% { transform: translateX(0.00px) scale(1.0000); }
+  3.57% { transform: translateX(0.00px) scale(0.9988); }
+  7.14% { transform: translateX(0.00px) scale(0.9975); }
+  10.71% { transform: translateX(0.00px) scale(0.9963); }
+  14.29% { transform: translateX(0.00px) scale(0.9952); }
+  17.86% { transform: translateX(0.00px) scale(0.9942); }
+  21.43% { transform: translateX(0.00px) scale(0.9932); }
+  25% { transform: translateX(0.00px) scale(0.9923); }
+  28.57% { transform: translateX(0.00px) scale(0.9916); }
+  32.14% { transform: translateX(0.00px) scale(0.9910); }
+  35.71% { transform: translateX(0.00px) scale(0.9905); }
+  39.29% { transform: translateX(0.00px) scale(0.9902); }
+  42.86% { transform: translateX(0.00px) scale(0.9900); }
+  46.43% { transform: translateX(0.00px) scale(0.9911); }
+  50% { transform: translateX(0.03px) scale(0.9937); }
+  53.57% { transform: translateX(0.06px) scale(0.9963); }
+  57.14% { transform: translateX(-0.06px) scale(0.9988); }
+  60.71% { transform: translateX(-0.28px) scale(1.0013); }
+  64.29% { transform: translateX(-0.29px) scale(1.0036); }
+  67.86% { transform: translateX(0.13px) scale(1.0058); }
+  71.43% { transform: translateX(0.67px) scale(1.0078); }
+  75% { transform: translateX(0.65px) scale(1.0096); }
+  78.57% { transform: translateX(-0.16px) scale(1.0113); }
+  82.14% { transform: translateX(-1.06px) scale(1.0127); }
+  85.71% { transform: translateX(-1.02px) scale(1.0139); }
+  89.29% { transform: translateX(0.11px) scale(1.0148); }
+  92.86% { transform: translateX(1.28px) scale(1.0155); }
+  96.43% { transform: translateX(1.26px) scale(1.0159); }
+  100% { transform: translateX(0.00px) scale(1.0160); }
+}
+
+.prism-breath {
+  animation-name: prism-screensaver-breath;
+  animation-timing-function: linear;   /* the shaping is in the keyframes */
+  animation-fill-mode: forwards;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prism-breath { animation: none; }
+}

@@ -120,46 +120,24 @@ export const fireworks: ScreensaverEffect = {
   takesOverAt: SWELL_FRACTION,
 
   /**
-   * The announcement, on the real widget: one breath.
+   * The announcement: one breath, handed to the compositor.
    *
    * Out first, slowly and quite still — the widget settles very slightly, which
    * is the only warning you get. Then in, swelling back past where it started,
-   * and only now does it begin to tremble, harder as it fills. It bursts at the
-   * top of the inhale.
+   * trembling harder as it fills. It bursts at the top of the inhale.
    *
-   * Everything about this is slower than instinct says it should be. Earlier
-   * versions oscillated several times at a few hertz and read as a rattle or a
-   * glitch; a single slow breath at roughly half a hertz reads as something
-   * alive about to let go. The amplitudes stay tiny for the same reason —
-   * anything you can clearly measure by eye looks cartoonish.
+   * This used to be computed here and written to the element every frame, which
+   * made it exactly as smooth as the effect stage's frame loop — and that loop
+   * runs at whatever the machine can manage, measured as low as 18fps. A motion
+   * this slow and this small (about one percent) has nowhere to hide a dropped
+   * frame: it reads as stepping rather than as breathing. The curve now lives in
+   * keyframes and the compositor runs it, so the main thread's frame rate stops
+   * mattering.
    */
-  elementStyle: ({ progress, phase }) => {
-    if (phase !== 'out') return null;
-    if (progress >= SWELL_FRACTION) return { opacity: '0' };
-    const t = progress / SWELL_FRACTION;
-
-    const EXHALE = 0.45;              // of the wind-up
-    let scale: number;
-    let shake = 0;
-    if (t < EXHALE) {
-      // Breathe out: a slow, still settle.
-      const e = t / EXHALE;
-      scale = 1 - 0.010 * Math.sin(e * Math.PI * 0.5);
-    } else {
-      // Breathe in: swell past the start, trembling more as it fills.
-      const e = (t - EXHALE) / (1 - EXHALE);
-      const eased = Math.sin(e * Math.PI * 0.5);          // easeOutSine
-      scale = 1 - 0.010 + 0.026 * eased;
-      shake = Math.sin(e * Math.PI * 5) * 1.5 * eased * eased;
-    }
-
-    // opacity is forced back on: the resting hidden state is opacity 0, and the
-    // widget has to stay solid through the breath that announces the burst.
-    return {
-      opacity: '1',
-      transform: `translateX(${shake.toFixed(2)}px) scale(${scale.toFixed(4)})`,
-    };
-  },
+  startStyle: (phase, durationMs) =>
+    phase === 'out'
+      ? { animationDuration: `${Math.round(durationMs * SWELL_FRACTION)}ms`, opacity: '1' }
+      : null,
 
   css: (shown) =>
     // Arriving is a plain fade. Two competing effects at once reads as a

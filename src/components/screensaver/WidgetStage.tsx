@@ -16,6 +16,7 @@ import { useEffectStage } from './EffectStage';
 /** Everything a transition is allowed to write to the live element. */
 const DRIVEN = [
   'opacity', 'transform', 'visibility', 'clipPath', 'transition',
+  'animation', 'animationDuration', 'willChange',
   'maskImage', 'webkitMaskImage', 'maskSize', 'webkitMaskSize',
   'maskRepeat', 'webkitMaskRepeat', 'maskPosition', 'webkitMaskPosition',
 ] as const;
@@ -30,6 +31,7 @@ const DRIVEN = [
  * for itself.
  */
 function applyResting(el: HTMLElement, resting: React.CSSProperties) {
+  el.classList.remove('prism-breath');
   for (const prop of DRIVEN) {
     if (!(prop in (resting as Record<string, unknown>))) {
       (el.style as unknown as Record<string, string>)[prop] = '';
@@ -113,6 +115,16 @@ export function WidgetStage({
           dt: 0, now: performance.now(), pixels, state: null,
         }) ?? null;
         if (s0) Object.assign(liveEl.style, s0);
+      }
+      // Anything better handed to the compositor than driven from our frame
+      // loop, applied once. The breath is a CSS animation for exactly this
+      // reason: a slow, one-percent motion cannot hide a dropped frame.
+      if (liveEl) {
+        const once = effect.startStyle?.(phase, effect.durationMs[phase]) ?? null;
+        if (once) {
+          Object.assign(liveEl.style, once);
+          if (once.animationDuration) liveEl.classList.add('prism-breath');
+        }
       }
       const box = el.getBoundingClientRect();
       busyRef.current = true;

@@ -1,5 +1,4 @@
 import type { EffectFrame, ScreensaverEffect } from './types';
-import { easeInExpo, easeOutExpo } from './types';
 
 /**
  * A waterline crossing the widget: it fills to arrive and drains to leave.
@@ -50,12 +49,23 @@ function waveAt(x: number, level: number, now: number): number {
 }
 
 /**
- * How full, 0 to 1. Eased at both ends, and not symmetrically: it fills briskly
- * and then settles, and it holds and then drains away. A linear level is the
- * one thing water never does.
+ * How full, 0 to 1.
+ *
+ * One easing curve, used forwards to fill and backwards to drain, so the two
+ * are exact mirrors: at any instant the water that has left one widget is the
+ * water that has arrived in the other. Rotation swaps one out for one in, so a
+ * drain always has a fill to pour into — but only if they move as one, and
+ * separate curves (easeOut arriving, easeIn leaving) meant they did not. One
+ * would still be half full while the other had finished.
+ *
+ * Smoothstep rather than an expo: eased at both ends, and symmetric, which is
+ * what mirroring requires.
  */
+const smoothstep = (t: number) => t * t * (3 - 2 * t);
+
 function fillOf(f: { progress: number; phase: string }): number {
-  return f.phase === 'in' ? easeOutExpo(f.progress) : 1 - easeInExpo(f.progress);
+  const e = smoothstep(Math.min(1, Math.max(0, f.progress)));
+  return f.phase === 'in' ? e : 1 - e;
 }
 
 /** Water level in px from the top: 0 is full, height is empty. */
@@ -67,7 +77,7 @@ export const liquid: ScreensaverEffect = {
   id: 'liquid',
   label: 'Fill and drain',
   spread: 40,
-  durationMs: { in: 3400, out: 3800 },
+  durationMs: { in: 3600, out: 3600 },
 
   // A full glass is still carbonated. Without this the surface froze the
   // instant the level arrived, which made the whole thing read as an animation

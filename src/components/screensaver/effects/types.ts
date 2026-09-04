@@ -60,6 +60,14 @@ export interface ScreensaverEffect {
   /** Resting styles for the shown and hidden states; CSS does the tween. */
   css?: (shown: boolean) => CSSProperties;
   /**
+   * Applied to the live element ONCE, when the transition starts.
+   *
+   * For anything better handed to the compositor than driven from our frame
+   * loop — a CSS animation, say. Per-frame writes are only ever as smooth as
+   * the loop behind them, which on a slow machine is not smooth at all.
+   */
+  startStyle?: (phase: EffectPhase, durationMs: number) => Partial<CSSStyleDeclaration> | null;
+  /**
    * Per-frame styles for the LIVE element, applied imperatively so driving them
    * costs no React render. Return null when there is nothing to apply.
    *
