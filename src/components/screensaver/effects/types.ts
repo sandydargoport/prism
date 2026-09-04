@@ -72,6 +72,12 @@ export interface ScreensaverEffect {
   init?: (f: Omit<EffectFrame, 'state'>) => unknown;
   /** Draw onto a canvas laid over the widget. */
   frame?: (ctx: CanvasRenderingContext2D, f: EffectFrame) => void;
+  /**
+   * Keep drawing once the widget has settled, with progress pinned at 1. For
+   * anything whose resting state is still in motion — a full glass is still
+   * carbonated — rather than a freeze-frame of the last transition.
+   */
+  ambient?: boolean;
 }
 
 /** Penner. Arriving settles; leaving holds and then goes. */

@@ -482,13 +482,13 @@ function ScreensaverCard() {
             </select>
           </div>
           <div className="flex items-center gap-3 pl-2">
-            <span className="text-sm text-muted-foreground">Widgets</span>
+            <span className="text-sm text-muted-foreground">Widget transition effect</span>
             <select
               value={motion}
               onChange={(e) => setMotion(e.target.value as ScreensaverMotion)}
               className="border border-border rounded px-2 py-1 text-sm bg-background"
             >
-              <option value="off">All at once</option>
+              <option value="off">None</option>
               <option value="fade">Fade</option>
               <option value="smoke">Smoke</option>
               <option value="liquid">Fill and drain</option>

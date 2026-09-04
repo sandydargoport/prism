@@ -43,7 +43,7 @@ const MAX_PARTICLES = 26000;
  * leaves the screen, which only reads if there is time to see it happen. A
  * short burst with the same acceleration curve just looks quick.
  */
-const SWELL_FRACTION = 0.3;
+const SWELL_FRACTION = 0.42;
 
 interface Spark {
   x: number; y: number;
@@ -99,26 +99,49 @@ function build(pixels: ImageData, width: number, height: number): Spark[] {
 export const fireworks: ScreensaverEffect = {
   id: 'fireworks',
   label: 'Fireworks',
-  durationMs: { in: 2200, out: 4800 },
+  durationMs: { in: 2200, out: 7200 },
   needsPixels: true,
   takesOverAt: SWELL_FRACTION,
 
   /**
-   * The announcement, on the real widget: one and a half slow bulges with a
-   * shake barely above the threshold of noticing. Deliberately small — at full
-   * size it read as cartoonish.
+   * The announcement, on the real widget: one breath.
+   *
+   * Out first, slowly and quite still — the widget settles very slightly, which
+   * is the only warning you get. Then in, swelling back past where it started,
+   * and only now does it begin to tremble, harder as it fills. It bursts at the
+   * top of the inhale.
+   *
+   * Everything about this is slower than instinct says it should be. Earlier
+   * versions oscillated several times at a few hertz and read as a rattle or a
+   * glitch; a single slow breath at roughly half a hertz reads as something
+   * alive about to let go. The amplitudes stay tiny for the same reason —
+   * anything you can clearly measure by eye looks cartoonish.
    */
   elementStyle: ({ progress, phase }) => {
     if (phase !== 'out') return null;
     if (progress >= SWELL_FRACTION) return { opacity: '0' };
     const t = progress / SWELL_FRACTION;
-    const swell = 1 + Math.sin(t * Math.PI * 1.5) * 0.012 * (1 - t * 0.3);
-    const shake = Math.sin(t * Math.PI * 7) * 1.0 * t;
+
+    const EXHALE = 0.45;              // of the wind-up
+    let scale: number;
+    let shake = 0;
+    if (t < EXHALE) {
+      // Breathe out: a slow, still settle.
+      const e = t / EXHALE;
+      scale = 1 - 0.010 * Math.sin(e * Math.PI * 0.5);
+    } else {
+      // Breathe in: swell past the start, trembling more as it fills.
+      const e = (t - EXHALE) / (1 - EXHALE);
+      const eased = Math.sin(e * Math.PI * 0.5);          // easeOutSine
+      scale = 1 - 0.010 + 0.026 * eased;
+      shake = Math.sin(e * Math.PI * 5) * 1.5 * eased * eased;
+    }
+
     // opacity is forced back on: the resting hidden state is opacity 0, and the
-    // widget has to stay solid through the swell that announces the burst.
+    // widget has to stay solid through the breath that announces the burst.
     return {
       opacity: '1',
-      transform: `translateX(${shake.toFixed(2)}px) scale(${swell.toFixed(4)})`,
+      transform: `translateX(${shake.toFixed(2)}px) scale(${scale.toFixed(4)})`,
     };
   },
 

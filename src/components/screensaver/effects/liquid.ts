@@ -1,4 +1,5 @@
 import type { EffectFrame, ScreensaverEffect } from './types';
+import { easeInExpo, easeOutExpo } from './types';
 
 /**
  * A waterline crossing the widget: it fills to arrive and drains to leave.
@@ -30,18 +31,29 @@ function waveAt(x: number, level: number, now: number): number {
     + Math.sin(x / 19 - now / 1400) * 2;
 }
 
-const easeInOut = (t: number) => t * t * (3 - 2 * t);
+/**
+ * How full, 0 to 1. Eased at both ends, and not symmetrically: it fills briskly
+ * and then settles, and it holds and then drains away. A linear level is the
+ * one thing water never does.
+ */
+function fillOf(f: { progress: number; phase: string }): number {
+  return f.phase === 'in' ? easeOutExpo(f.progress) : 1 - easeInExpo(f.progress);
+}
 
 /** Water level in px from the top: 0 is full, height is empty. */
 function levelOf(f: { progress: number; phase: string; height: number }): number {
-  const fill = f.phase === 'in' ? easeInOut(f.progress) : 1 - easeInOut(f.progress);
-  return f.height * (1 - fill);
+  return f.height * (1 - fillOf(f));
 }
 
 export const liquid: ScreensaverEffect = {
   id: 'liquid',
   label: 'Fill and drain',
-  durationMs: { in: 3400, out: 3400 },
+  durationMs: { in: 3400, out: 3800 },
+
+  // A full glass is still carbonated. Without this the surface froze the
+  // instant the level arrived, which made the whole thing read as an animation
+  // that had finished rather than as water sitting there.
+  ambient: true,
 
   // At rest: whole when shown, gone when not. The transition does the rest.
   css: (shown) => (shown ? { opacity: 1 } : { opacity: 0 }),
@@ -101,8 +113,10 @@ export const liquid: ScreensaverEffect = {
 
     // The crest. This is the line the widget is actually cut along, which is
     // why it can be drawn hard: there is nothing behind it to give it away.
-    const fill = f.phase === 'in' ? easeInOut(f.progress) : 1 - easeInOut(f.progress);
-    if (fill > 0.002 && fill < 0.998) {
+    const fill = fillOf(f);
+    // Drawn whenever there is any water at all, full included — the surface of
+    // a full glass is at its top edge, and it still moves.
+    if (fill > 0.002) {
       ctx.beginPath();
       for (let x = 0; x <= f.width; x += 4) {
         const y = waveY(x);

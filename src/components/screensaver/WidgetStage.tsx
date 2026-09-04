@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ScreensaverEffect } from './effects';
 import { rasterize, warmRasterCache } from './effects';
 import { useEffectStage } from './EffectStage';
@@ -33,6 +33,7 @@ export function WidgetStage({
   const live = useRef<HTMLDivElement>(null);
   const first = useRef(true);
   const stage = useEffectStage();
+  const [busy, setBusy] = useState(false);
 
   // Fetch and encode the widget's fonts now, while it is sitting still, rather
   // than at the instant it is meant to burst.
@@ -43,7 +44,12 @@ export function WidgetStage({
   // `shown` flipping is what starts a transition. The first render is the
   // resting state, not a transition — animating it would play every effect at
   // once the moment the screensaver opens.
-  useEffect(() => {
+  //
+  // Layout effect, not effect: React has already rendered the resting hidden
+  // state by the time this runs, and a plain effect runs AFTER the browser
+  // paints — so the widget was painted invisible for one frame before the
+  // wind-up took hold of it. That single frame is the flash.
+  useLayoutEffect(() => {
     if (first.current) { first.current = false; return; }
     if (!effect?.frame || !stage) return;
 
@@ -54,6 +60,24 @@ export function WidgetStage({
 
     let cancel: (() => void) | null = null;
     let dropped = false;
+
+    /**
+     * Hand the element back to React.
+     *
+     * Every property elementStyle touched has to go, opacity above all: the
+     * effects hold it at 1 for the duration, and leaving that behind beat the
+     * rendered resting state — so a widget that had just drained away popped
+     * straight back into view, fully opaque, and the board never emptied.
+     */
+    const release = () => {
+      if (!liveEl) return;
+      liveEl.style.transform = '';
+      liveEl.style.visibility = '';
+      liveEl.style.clipPath = '';
+      liveEl.style.opacity = '';
+      liveEl.style.maskImage = '';
+      liveEl.style.webkitMaskImage = '';
+    };
 
     const start = (pixels: ImageData | null) => {
       if (dropped) return;
@@ -68,6 +92,7 @@ export function WidgetStage({
         if (s0) Object.assign(liveEl.style, s0);
       }
       const box = el.getBoundingClientRect();
+      setBusy(true);
       cancel = stage.begin(`${id}:${phase}`, {
         effect,
         phase,
@@ -88,12 +113,7 @@ export function WidgetStage({
             liveEl.style.visibility = f.progress >= effect.takesOverAt ? 'hidden' : '';
           }
         },
-        onDone: () => {
-          if (!liveEl) return;
-          liveEl.style.transform = '';
-          liveEl.style.visibility = '';
-          liveEl.style.clipPath = '';
-        },
+        onDone: () => { setBusy(false); release(); },
       });
     };
 
@@ -121,13 +141,32 @@ export function WidgetStage({
     return () => {
       dropped = true;
       cancel?.();
-      if (liveEl) {
-        liveEl.style.transform = '';
-        liveEl.style.visibility = '';
-        liveEl.style.clipPath = '';
-      }
+      setBusy(false);
+      release();
     };
   }, [shown, effect, stage, id, prepare]);
+
+  // The resting state, for effects whose resting state still moves. Held open
+  // only once the widget has settled, or it would draw a second waterline on
+  // top of the one the transition is still moving.
+  useEffect(() => {
+    if (!stage || !effect?.ambient || !shown || busy) return;
+    const el = host.current;
+    if (!el) return;
+    const box = el.getBoundingClientRect();
+    return stage.begin(`${id}:ambient`, {
+      effect,
+      phase: 'in',
+      viewportLeft: box.left,
+      viewportTop: box.top,
+      width: Math.round(box.width),
+      height: Math.round(box.height),
+      pixels: null,
+      persistent: true,
+      onFrame: () => {},
+      onDone: () => {},
+    });
+  }, [stage, effect, shown, busy, id]);
 
   return (
     <div ref={host} className="h-full w-full">

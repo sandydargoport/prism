@@ -7,8 +7,8 @@ import { showingCount, rotate } from '../screensaverRotation';
 
 describe('showingCount', () => {
   it.each([
-    [0, 0], [1, 1], [2, 2], [3, 2], [4, 2], [5, 2],
-    [6, 2], [8, 3], [11, 5], [12, 5], [16, 7],
+    [0, 0], [1, 1], [2, 2], [3, 2], [4, 3], [5, 4],
+    [6, 4], [8, 6], [11, 8], [12, 8], [16, 11],
   ])('%i widgets -> %i showing', (total, expected) => {
     expect(showingCount(total)).toBe(expected);
   });
@@ -17,38 +17,40 @@ describe('showingCount', () => {
     for (let n = 0; n < 40; n++) expect(showingCount(n)).toBeLessThanOrEqual(n);
   });
 
-  it('is just under half once there are enough to choose from', () => {
-    for (let n = 6; n < 40; n++) expect(showingCount(n)).toBeLessThan(n / 2 + 1);
+  it('leaves a third of the board free to rotate', () => {
+    // always leaves something hidden, so there is always something to rotate in
+    for (let n = 3; n < 40; n++) expect(showingCount(n)).toBeLessThan(n);
   });
 });
 
 describe('rotate', () => {
-  const all = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];   // -> 3 showing
+  const all = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+  const TARGET = showingCount(all.length);
+  /** A settled selection of the right size, whatever the target happens to be. */
+  const settled = () => all.slice(0, TARGET);
 
   it('fills up to the target before it starts swapping', () => {
     let showing: string[] = [];
-    showing = rotate(all, showing, () => 0);
-    showing = rotate(all, showing, () => 0);
-    showing = rotate(all, showing, () => 0);
-    expect(showing).toHaveLength(showingCount(all.length));
+    for (let i = 0; i < TARGET; i++) showing = rotate(all, showing, () => 0);
+    expect(showing).toHaveLength(TARGET);
   });
 
   it('holds the count steady once it is there', () => {
-    let showing = ['a', 'b', 'c'];
+    let showing = settled();
     for (let i = 0; i < 50; i++) showing = rotate(all, showing);
-    expect(showing).toHaveLength(3);
+    expect(showing).toHaveLength(TARGET);
   });
 
   it('swaps exactly one widget per turn', () => {
-    const showing = ['a', 'b', 'c'];
+    const showing = settled();
     const next = rotate(all, showing);
     const kept = next.filter((id) => showing.includes(id));
-    expect(kept).toHaveLength(2);
-    expect(next).toHaveLength(3);
+    expect(kept).toHaveLength(TARGET - 1);
+    expect(next).toHaveLength(TARGET);
   });
 
   it('never shows the same widget twice', () => {
-    let showing = ['a', 'b', 'c'];
+    let showing = settled();
     for (let i = 0; i < 200; i++) {
       showing = rotate(all, showing);
       expect(new Set(showing).size).toBe(showing.length);
@@ -56,7 +58,7 @@ describe('rotate', () => {
   });
 
   it('gives every widget a turn rather than cycling a favourite few', () => {
-    let showing = ['a', 'b', 'c'];
+    let showing = settled();
     const seen = new Set(showing);
     for (let i = 0; i < 400; i++) { showing = rotate(all, showing); showing.forEach((id) => seen.add(id)); }
     expect(seen.size).toBe(all.length);

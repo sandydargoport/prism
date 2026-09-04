@@ -1,34 +1,31 @@
 import type { EffectFrame, ScreensaverEffect } from './types';
+import { easeInExpo, easeOutExpo } from './types';
 
 /**
- * Smoke thins out and it gathers, and the two are not mirror images.
+ * The widget thins out and gathers, behind a translucent front of smoke.
  *
- * Two parts, because smoke is not one thing:
+ * Same shape as fill and drain, deliberately: something is on its way out while
+ * something else is on its way in, and the boundary between "here" and "gone"
+ * is a real edge you can point at. The difference is only that smoke has no
+ * level, so the edge is a wide soft band rather than a line, and it takes the
+ * widget with it as it passes.
  *
- *  - A feathered boundary sweeping the widget. Same mask-position trick as the
- *    waterline, but the gradient is three widget-heights tall with a very long
- *    ramp, so there is no line anywhere — just a region that has not arrived
- *    yet. Using the liquid's tight feather here made it look like a bucket with
- *    the waterline hidden, which is exactly what it should not look like.
- *
- *  - Drifting puffs over the top. These owe nothing to the widget's content —
- *    they are volume in front of it — so this effect never needs the widget's
- *    pixels, only a canvas to draw on. They rise, wander, and are strongest in
- *    the middle of the transition, where the widget is half gone.
+ * The mask is rebuilt every frame rather than transitioned. Chromium does not
+ * interpolate between two gradients, so a CSS transition on mask-image snapped
+ * from one to the other in a single frame — which is why this was
+ * indistinguishable from a plain fade. Writing the gradient per frame needs no
+ * interpolation at all, and puts the mask in lockstep with the puffs drawn over
+ * it, which is what makes them look like the same event.
  */
-const MASK =
-  'linear-gradient(to top, #000 0%, #000 34%, rgba(0,0,0,0.45) 50%, transparent 66%, transparent 100%)';
-
 const PUFFS = 26;
+const FEATHER = 38;   // % of the widget the soft edge spans
+
+interface Puff { x: number; y: number; r: number; vy: number; phase: number }
 
 /**
- * One puff, drawn once.
- *
- * Building a radial gradient per puff per frame — sixteen of them, sixty times
- * a second — cost more than everything else in the screensaver put together:
- * measured 30fps with a 100ms 95th percentile. A gradient's shape never changes
- * here, only its size and opacity, so it is rendered once into an offscreen
- * canvas and stamped with drawImage after that.
+ * One puff, drawn once. Building a radial gradient per puff per frame — 26 of
+ * them, 60 times a second — cost more than everything else in the screensaver
+ * put together. The shape never changes here, only size and opacity.
  */
 let sprite: HTMLCanvasElement | null = null;
 function puffSprite(): HTMLCanvasElement {
@@ -48,27 +45,32 @@ function puffSprite(): HTMLCanvasElement {
   return c;
 }
 
-interface Puff { x: number; y: number; r: number; vy: number; phase: number }
+/** How much of the widget is present, 0 gone to 1 whole. */
+function presence(f: { progress: number; phase: string }): number {
+  return f.phase === 'in' ? easeOutExpo(f.progress) : 1 - easeInExpo(f.progress);
+}
 
 export const smoke: ScreensaverEffect = {
   id: 'smoke',
   label: 'Smoke',
-  durationMs: { in: 2600, out: 3400 },
+  durationMs: { in: 3000, out: 3800 },
 
-  css: (shown) => ({
-    WebkitMaskImage: MASK,
-    maskImage: MASK,
-    WebkitMaskSize: '100% 300%',
-    maskSize: '100% 300%',
-    WebkitMaskRepeat: 'no-repeat',
-    maskRepeat: 'no-repeat',
-    WebkitMaskPosition: shown ? '0% 100%' : '0% 0%',
-    maskPosition: shown ? '0% 100%' : '0% 0%',
-    transition:
-      `mask-position ${shown ? 2.6 : 3.4}s cubic-bezier(.4,0,.5,1), ` +
-      `-webkit-mask-position ${shown ? 2.6 : 3.4}s cubic-bezier(.4,0,.5,1)`,
-    opacity: 1,
-  }),
+  css: (shown) => (shown ? { opacity: 1 } : { opacity: 0 }),
+
+  elementStyle: (f: EffectFrame) => {
+    const v = presence(f);
+    // A soft front sweeping up the widget: opaque below it, clear above, with a
+    // wide feather so there is never a line to see.
+    const edge = v * 100;
+    const mask =
+      `linear-gradient(to top, #000 0%, #000 ${edge.toFixed(1)}%, ` +
+      `transparent ${Math.min(100, edge + FEATHER).toFixed(1)}%)`;
+    return {
+      opacity: String(0.25 + 0.75 * v),
+      maskImage: mask,
+      webkitMaskImage: mask,
+    } as Partial<CSSStyleDeclaration>;
+  },
 
   init: () =>
     Array.from({ length: PUFFS }, (): Puff => ({
@@ -82,8 +84,8 @@ export const smoke: ScreensaverEffect = {
   frame: (ctx, f: EffectFrame) => {
     const puffs = f.state as Puff[];
     if (!puffs) return;
-    // Densest halfway through, gone at either end — smoke should not appear
-    // from nothing or outlive the thing it came off.
+    // Thickest where the widget is half gone, and absent at either end — smoke
+    // should not appear from nothing or outlive the thing it came off.
     const strength = Math.sin(Math.PI * Math.min(1, Math.max(0, f.progress)));
     if (strength <= 0.01) return;
 
@@ -94,7 +96,7 @@ export const smoke: ScreensaverEffect = {
       if (q.y < -0.4) { q.y = 1.2; q.x = Math.random(); }
       // The box is where the smoke comes FROM, not where it stays: it is drawn
       // on the screensaver's own full-screen canvas, so a puff that rises past
-      // the top of the widget keeps going instead of being clipped away.
+      // the top keeps going instead of being clipped away.
       const px = f.width * q.x + Math.sin(f.now / 2600 + q.phase) * f.width * 0.22;
       const py = f.height * (q.y * 1.5 - 0.25);
       const rr = Math.min(f.width, f.height) * q.r;

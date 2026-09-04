@@ -9,15 +9,20 @@
  */
 
 /**
- * `max(2, ceil(n/2) - 1)`, never more than there are widgets.
+ * `max(2, ceil(2n/3))`, never more than there are widgets.
  *
- * Just under half. Two is the floor because one widget alone on a wall reads as
- * a fault rather than as a design, and a layout with one or two widgets should
- * simply show them all.
+ * Roughly two thirds, so a third of the board is in motion at any time. This
+ * was `ceil(n/2) - 1`, described as "just under half" — but for the layouts
+ * people actually build it was nowhere near: six widgets showed two, which is a
+ * third, and reads as a mostly empty screen with a couple of things on it
+ * rather than as a board with something changing.
+ *
+ * Two is the floor because one widget alone on a wall reads as a fault rather
+ * than as a design, and a layout with one or two widgets should show them all.
  */
 export function showingCount(total: number): number {
   if (total <= 0) return 0;
-  return Math.min(total, Math.max(2, Math.ceil(total / 2) - 1));
+  return Math.min(total, Math.max(2, Math.ceil((total * 2) / 3)));
 }
 
 /**

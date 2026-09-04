@@ -31,6 +31,12 @@ interface Active {
   t0: number;
   onFrame: (f: EffectFrame) => void;
   onDone: () => void;
+  /**
+   * Runs until it is cancelled instead of finishing. Water does not stop moving
+   * because the glass is full — the surface still stirs and the bubbles still
+   * rise — so an effect can hold a resting state open rather than ending.
+   */
+  persistent?: boolean;
 }
 
 interface Stage {
@@ -68,7 +74,7 @@ export function EffectStage({ children }: { children: React.ReactNode }) {
 
     for (const [key, a] of Array.from(active.current)) {
       const duration = a.effect.durationMs[a.phase];
-      const progress = Math.min(1, (now - a.t0) / duration);
+      const progress = a.persistent ? 1 : Math.min(1, (now - a.t0) / duration);
       const frame: EffectFrame = {
         progress, phase: a.phase, width: a.width, height: a.height,
         dt, now, pixels: a.pixels, state: a.state,
@@ -77,7 +83,7 @@ export function EffectStage({ children }: { children: React.ReactNode }) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.translate(a.viewportLeft - origin.left, a.viewportTop - origin.top);
       a.effect.frame?.(ctx, frame);
-      if (progress >= 1) { active.current.delete(key); a.onDone(); }
+      if (progress >= 1 && !a.persistent) { active.current.delete(key); a.onDone(); }
     }
 
     raf.current = active.current.size ? requestAnimationFrame(tick) : 0;
