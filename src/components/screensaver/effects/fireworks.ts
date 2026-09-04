@@ -70,12 +70,13 @@ function build(pixels: ImageData, width: number, height: number): Spark[] {
         y: y * sy,
         dx: ox / d,
         dy: oy / d,
-        // Outer pixels start faster, so the field opens rather than smears.
-        v: 0.02 + (d / reach) * 0.05,
-        acc: 0.5 + Math.random() * 0.9,
+        // px/second. Outer pixels start faster, so the field opens outward
+        // rather than smearing, and acceleration does the rest.
+        v: 20 + (d / reach) * 70,
+        acc: 260 + Math.random() * 520,
         size: Math.max(1, step * 0.9),
         colour: `rgba(${data[i]},${data[i + 1]},${data[i + 2]},${(a / 255).toFixed(3)})`,
-        life: 0.55 + Math.random() * 0.45,
+        life: 0.9 + Math.random() * 0.8,
         age: 0,
       });
     }
@@ -95,20 +96,31 @@ export const fireworks: ScreensaverEffect = {
    * shake barely above the threshold of noticing. Deliberately small — at full
    * size it read as cartoonish.
    */
-  elementStyle: (progress) => {
-    if (progress >= SWELL_FRACTION) return null;
+  elementStyle: (progress, phase) => {
+    if (phase !== 'out') return null;
+    if (progress >= SWELL_FRACTION) return { opacity: '0' };
     const t = progress / SWELL_FRACTION;
     const swell = 1 + Math.sin(t * Math.PI * 1.5) * 0.012 * (1 - t * 0.3);
     const shake = Math.sin(t * Math.PI * 14) * 1.1 * t;
-    return { transform: `translateX(${shake.toFixed(2)}px) scale(${swell.toFixed(4)})` };
+    // opacity is forced back on: the resting hidden state is opacity 0, and the
+    // widget has to stay solid through the swell that announces the burst.
+    return {
+      opacity: '1',
+      transform: `translateX(${shake.toFixed(2)}px) scale(${swell.toFixed(4)})`,
+    };
   },
 
   css: (shown) =>
     // Arriving is a plain fade. Two competing effects at once reads as a
     // glitch, not as a transition.
+    //
+    // Leaving is NOT a fade: the widget is at full strength right up to the
+    // burst, and after it there is nothing left to see. Giving both states
+    // opacity 1 — as this did — meant a departing widget never actually went
+    // anywhere, and one that had gone sat there fully visible.
     shown
       ? { opacity: 1, transition: 'opacity 2.2s cubic-bezier(.16,1,.3,1)' }
-      : { opacity: 1 },
+      : { opacity: 0, transition: 'none' },
 
   init: (): Burst => ({ sparks: [], built: false }),
 
@@ -126,15 +138,21 @@ export const fireworks: ScreensaverEffect = {
     }
 
     const dt = Math.min(f.dt, 48); // a dropped frame must not teleport the field
+    ctx.globalCompositeOperation = 'lighter';
     ctx.save();
     for (let i = burst.sparks.length - 1; i >= 0; i--) {
       const k = burst.sparks[i]!;
       k.age += dt / 1000;
       const t = k.age / k.life;
       if (t >= 1) continue;
-      k.v += k.acc * (dt / 1000);
-      k.x += k.dx * k.v * dt * 0.06;
-      k.y += k.dy * k.v * dt * 0.06;
+      // Everything in px/second. The previous version carried the prototype's
+      // cell-sized units into a full screen, so a fragment travelled about 70px
+      // over the whole burst — the field sat where the widget had been and
+      // faded, which reads as a rectangle of static rather than an explosion.
+      const secs = dt / 1000;
+      k.v += k.acc * secs;
+      k.x += k.dx * k.v * secs;
+      k.y += k.dy * k.v * secs;
       const alpha = Math.pow(1 - t, 1.5);
       if (alpha <= 0.015) continue;
       ctx.globalAlpha = alpha;

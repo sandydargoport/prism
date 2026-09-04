@@ -19,7 +19,7 @@ import type { EffectFrame, ScreensaverEffect } from './types';
 const MASK =
   'linear-gradient(to top, #000 0%, #000 34%, rgba(0,0,0,0.45) 50%, transparent 66%, transparent 100%)';
 
-const PUFFS = 16;
+const PUFFS = 26;
 
 /**
  * One puff, drawn once.
@@ -38,8 +38,9 @@ function puffSprite(): HTMLCanvasElement {
   c.width = S; c.height = S;
   const g = c.getContext('2d')!;
   const grad = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
-  grad.addColorStop(0, 'rgba(255,255,255,0.30)');
-  grad.addColorStop(0.4, 'rgba(226,232,240,0.12)');
+  grad.addColorStop(0, 'rgba(255,255,255,0.55)');
+  grad.addColorStop(0.35, 'rgba(219,229,241,0.26)');
+  grad.addColorStop(0.7, 'rgba(190,205,225,0.08)');
   grad.addColorStop(1, 'rgba(0,0,0,0)');
   g.fillStyle = grad;
   g.fillRect(0, 0, S, S);
@@ -73,8 +74,8 @@ export const smoke: ScreensaverEffect = {
     Array.from({ length: PUFFS }, (): Puff => ({
       x: Math.random(),
       y: Math.random(),
-      r: 0.1 + Math.random() * 0.22,
-      vy: 0.06 + Math.random() * 0.14,
+      r: 0.22 + Math.random() * 0.42,
+      vy: 0.10 + Math.random() * 0.22,
       phase: Math.random() * 7,
     })),
 
@@ -90,12 +91,15 @@ export const smoke: ScreensaverEffect = {
     ctx.globalCompositeOperation = 'lighter';
     for (const q of puffs) {
       q.y -= (q.vy * f.dt) / 1000;
-      if (q.y < -0.15) { q.y = 1.1; q.x = Math.random(); }
-      const px = f.width * q.x + Math.sin(f.now / 2600 + q.phase) * f.width * 0.1;
-      const py = f.height * q.y;
+      if (q.y < -0.4) { q.y = 1.2; q.x = Math.random(); }
+      // The box is where the smoke comes FROM, not where it stays: it is drawn
+      // on the screensaver's own full-screen canvas, so a puff that rises past
+      // the top of the widget keeps going instead of being clipped away.
+      const px = f.width * q.x + Math.sin(f.now / 2600 + q.phase) * f.width * 0.22;
+      const py = f.height * (q.y * 1.5 - 0.25);
       const rr = Math.min(f.width, f.height) * q.r;
       if (rr <= 0) continue;
-      ctx.globalAlpha = 0.15 * strength;
+      ctx.globalAlpha = 0.42 * strength;
       ctx.drawImage(puffSprite(), px - rr, py - rr, rr * 2, rr * 2);
     }
     ctx.restore();

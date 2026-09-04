@@ -20,6 +20,7 @@ import { shouldShowScreensaver } from './shouldShowScreensaver';
 import { rotate, showingCount } from './screensaverRotation';
 import { useScreensaverMotion } from './useScreensaverMotion';
 import { WidgetStage } from './WidgetStage';
+import { EffectStage } from './EffectStage';
 import { getEffect } from './effects';
 import { usePerformanceMode } from '@/lib/hooks/usePerformanceMode';
 
@@ -153,8 +154,12 @@ function giveItBody(clone: HTMLElement) {
   const cards = clone.querySelectorAll<HTMLElement>('.bg-card');
   const targets = cards.length ? Array.from(cards) : [clone];
   for (const el of targets) {
-    el.style.setProperty('background-color', 'rgba(15,23,42,0.86)', 'important');
-    el.style.setProperty('border-color', 'rgba(255,255,255,0.28)', 'important');
+    // Light, not dark. A solid slate card gave the burst plenty to throw and
+    // made it a big dark rectangle coming apart over the photo; frosted white
+    // fragments read as embers instead, and keep the widget's own text colours
+    // legible as brighter specks among them.
+    el.style.setProperty('background-color', 'rgba(255,255,255,0.30)', 'important');
+    el.style.setProperty('border-color', 'rgba(255,255,255,0.45)', 'important');
   }
 }
 
@@ -240,6 +245,7 @@ function ScreensaverGrid() {
     return (
       <React.Suspense fallback={<div className="flex items-center justify-center h-full opacity-50 text-sm">Loading...</div>}>
         <WidgetStage
+          id={w.i}
           effect={effect}
           shown={on}
           className="h-full w-full [&_*:not([data-keep-bg])]:!bg-transparent [&_.bg-card]:!bg-white/10 [&_.border-border]:!border-white/20"
@@ -266,6 +272,7 @@ function ScreensaverGrid() {
     // Scope calendar prefs to 'screensaver' so the screensaver's calendar keeps
     // its own view/display settings, independent of the dashboard calendar.
     <CalendarPrefsScopeContext.Provider value="screensaver">
+      <EffectStage>
       <CssGridDisplay
         layout={layout}
         renderWidget={renderScreensaverWidget}
@@ -276,6 +283,7 @@ function ScreensaverGrid() {
         headerOffset={0}
         className="w-full h-full"
       />
+      </EffectStage>
     </CalendarPrefsScopeContext.Provider>
   );
 }
