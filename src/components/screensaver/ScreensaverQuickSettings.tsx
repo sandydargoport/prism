@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { EFFECT_ORDER, getEffect } from './effects';
-import { useScreensaverMotion, type ScreensaverMotion } from './useScreensaverMotion';
+import { useScreensaverMotion, type ScreensaverMotion, type ScreensaverDrift } from './useScreensaverMotion';
 
 /**
  * The screensaver's own settings, reachable from the screensaver.
@@ -30,6 +30,7 @@ export function ScreensaverQuickSettings() {
     floor, setFloor,
     ceiling, setCeiling,
     outlines, setOutlines,
+    drift, setDrift,
     shortcut,
   } = useScreensaverMotion();
 
@@ -47,19 +48,26 @@ export function ScreensaverQuickSettings() {
 
   return (
     <div data-screensaver-keep className="absolute inset-0 z-10 pointer-events-none">
-      {/* Faint at rest: it is a way back in, not part of the picture.
+      {/* Invisible until you go looking for it.
 
-          The resting opacity is a compromise rather than a default. A wall
-          display has no hover, so whatever this looks like at rest is what it
-          looks like — faint enough to stay out of the picture, solid enough to
-          be findable by somebody who knows it is there. */}
+          It still takes pointer events at zero opacity, so the corner stays
+          live whether or not anything is drawn there — on a touch display a tap
+          in the corner works exactly as before, it just does not advertise
+          itself. Two seconds to appear because anything quicker reads as a
+          thing popping up at you, which is the opposite of what a screensaver
+          is for. Leaving is quicker than arriving, as it is everywhere else
+          here. */}
       <button
         onClick={() => setOpen(true)}
         aria-label="Screensaver settings"
+        // Set here rather than with a duration utility: the arbitrary-value
+        // class did not survive into the stylesheet and the default 150ms won,
+        // which is a pop rather than an arrival.
+        style={{ transitionDuration: '2000ms' }}
         className="pointer-events-auto absolute left-5 top-5 h-12 w-12 rounded-full
-                   bg-black/35 backdrop-blur-sm border border-white/20
-                   opacity-60 hover:opacity-100 focus-visible:opacity-100
-                   transition-opacity duration-500
+                   bg-black/35 border border-white/20
+                   opacity-0 hover:opacity-100 focus-visible:opacity-100
+                   transition-opacity ease-out motion-reduce:transition-none
                    flex items-center justify-center"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -154,6 +162,19 @@ export function ScreensaverQuickSettings() {
                   </label>
                 </>
               )}
+              <label className="flex items-center justify-between gap-3">
+                <span className="text-sm text-white/70">Drift</span>
+                <select
+                  value={drift}
+                  onChange={(e) => setDrift(e.target.value as ScreensaverDrift)}
+                  className={select}
+                >
+                  <option value="off">Still</option>
+                  <option value="breathe">Breathe</option>
+                  <option value="ripple">Ripple</option>
+                  <option value="figure8">Figure eight</option>
+                </select>
+              </label>
             </div>
 
             <p className="mt-4 text-xs text-white/40">

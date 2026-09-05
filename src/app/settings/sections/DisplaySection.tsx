@@ -14,7 +14,7 @@ import { useWallpaperSettings, useAutoOrientationSetting, useScreensaverInterval
 import { useScreenOrientation } from '@/lib/hooks/useScreenOrientation';
 import { useOrientationOverride } from '../SettingsView';
 import { useScreensaverTimeout } from '@/lib/hooks/useScreensaverTimeout';
-import { useScreensaverMotion, type ScreensaverMotion } from '@/components/screensaver/useScreensaverMotion';
+import { useScreensaverMotion, type ScreensaverMotion, type ScreensaverDrift } from '@/components/screensaver/useScreensaverMotion';
 import { useIdleLogoutSetting, IDLE_LOGOUT_OPTIONS } from '@/lib/hooks/useIdleLogout';
 import { useAutoHideUI } from '@/lib/hooks/useAutoHideUI';
 import { useAwayModeTimeout } from '@/lib/hooks/useAwayModeTimeout';
@@ -475,7 +475,7 @@ function ScreensaverCard() {
     motion, setMotion,
     interval: motionInterval, setInterval: setMotionInterval,
     floor, setFloor, ceiling, setCeiling, outlines, setOutlines,
-    shortcut, setShortcut,
+    shortcut, setShortcut, drift, setDrift,
   } = useScreensaverMotion();
 
   return (
@@ -568,6 +568,24 @@ function ScreensaverCard() {
               <span className="text-sm text-muted-foreground">Hide widget outlines</span>
             </label>
           )}
+          <div className="flex items-center gap-3 pl-2">
+            <span className="text-sm text-muted-foreground">Drift</span>
+            <select
+              value={drift}
+              onChange={(e) => setDrift(e.target.value as ScreensaverDrift)}
+              className="border border-border rounded px-2 py-1 text-sm bg-background"
+            >
+              <option value="off">Still</option>
+              <option value="breathe">Breathe</option>
+              <option value="ripple">Ripple</option>
+              <option value="figure8">Figure eight</option>
+            </select>
+          </div>
+          <p className="text-xs text-muted-foreground pl-2">
+            Moves each widget slowly and out of step with the others, so no edge sits on
+            the same pixels for months. Periods are minutes long and the movement is a
+            few pixels — enough to spare the panel, not enough to notice.
+          </p>
           <label className="flex items-center gap-3 pl-2 cursor-pointer">
             <input
               type="checkbox"

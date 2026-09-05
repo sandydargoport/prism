@@ -668,48 +668,45 @@
  * case where every missed frame shows as a step. Handed to the compositor it
  * runs smoothly regardless of what the main thread is doing.
  *
- * A slow settle out, then the widget draws IN — closing toward its centre with
- * a tremor that grows as it goes — so the burst comes out of a small dense mass
- * rather than off a full-size rectangle. Swelling outward first and then
- * exploding gave two expansions back to back, and the second read as more of
- * the same; collapsing first gives the burst something to be the opposite of.
+ * A slow settle out, then a swell back past where it started with a tremor that
+ * grows as it fills. It bursts at the top of the inhale.
+ *
+ * Collapsing the widget to a fifth of its size first — so the burst came out of
+ * a small dense mass — was tried and did not work on screen, whatever the idea
+ * had going for it. Reverted to the breath.
  */
 @keyframes prism-screensaver-breath {
   0% { transform: translateX(0.00px) scale(1.0000); }
-  2.94% { transform: translateX(0.00px) scale(0.9988); }
-  5.88% { transform: translateX(0.00px) scale(0.9976); }
-  8.82% { transform: translateX(0.00px) scale(0.9964); }
-  11.76% { transform: translateX(0.00px) scale(0.9952); }
-  14.71% { transform: translateX(0.00px) scale(0.9941); }
-  17.65% { transform: translateX(0.00px) scale(0.9931); }
-  20.59% { transform: translateX(0.00px) scale(0.9921); }
-  23.53% { transform: translateX(0.00px) scale(0.9912); }
-  26.47% { transform: translateX(0.00px) scale(0.9904); }
-  29.41% { transform: translateX(0.00px) scale(0.9897); }
-  32.35% { transform: translateX(0.00px) scale(0.9892); }
-  35.29% { transform: translateX(0.00px) scale(0.9887); }
-  38.24% { transform: translateX(0.00px) scale(0.9883); }
-  41.18% { transform: translateX(0.00px) scale(0.9881); }
-  44.12% { transform: translateX(0.00px) scale(0.9880); }
-  47.06% { transform: translateX(0.00px) scale(0.9880); }
-  50% { transform: translateX(0.00px) scale(0.9874); }
-  52.94% { transform: translateX(0.00px) scale(0.9856); }
-  55.88% { transform: translateX(-0.01px) scale(0.9819); }
-  58.82% { transform: translateX(-0.03px) scale(0.9755); }
-  61.76% { transform: translateX(-0.03px) scale(0.9657); }
-  64.71% { transform: translateX(0.05px) scale(0.9518); }
-  67.65% { transform: translateX(0.15px) scale(0.9330); }
-  70.59% { transform: translateX(0.13px) scale(0.9086); }
-  73.53% { transform: translateX(-0.11px) scale(0.8780); }
-  76.47% { transform: translateX(-0.40px) scale(0.8404); }
-  79.41% { transform: translateX(-0.38px) scale(0.7950); }
-  82.35% { transform: translateX(0.16px) scale(0.7412); }
-  85.29% { transform: translateX(0.82px) scale(0.6781); }
-  88.24% { transform: translateX(0.83px) scale(0.6052); }
-  91.18% { transform: translateX(-0.15px) scale(0.5217); }
-  94.12% { transform: translateX(-1.41px) scale(0.4268); }
-  97.06% { transform: translateX(-1.58px) scale(0.3198); }
-  100% { transform: translateX(-0.00px) scale(0.2000); }
+  3.33% { transform: translateX(0.00px) scale(0.9986); }
+  6.67% { transform: translateX(0.00px) scale(0.9972); }
+  10% { transform: translateX(0.00px) scale(0.9959); }
+  13.33% { transform: translateX(0.00px) scale(0.9946); }
+  16.67% { transform: translateX(0.00px) scale(0.9934); }
+  20% { transform: translateX(0.00px) scale(0.9923); }
+  23.33% { transform: translateX(0.00px) scale(0.9913); }
+  26.67% { transform: translateX(0.00px) scale(0.9904); }
+  30% { transform: translateX(0.00px) scale(0.9896); }
+  33.33% { transform: translateX(0.00px) scale(0.9890); }
+  36.67% { transform: translateX(0.00px) scale(0.9885); }
+  40% { transform: translateX(0.00px) scale(0.9882); }
+  43.33% { transform: translateX(0.00px) scale(0.9880); }
+  46.67% { transform: translateX(0.00px) scale(0.9893); }
+  50% { transform: translateX(0.03px) scale(0.9920); }
+  53.33% { transform: translateX(0.05px) scale(0.9946); }
+  56.67% { transform: translateX(-0.03px) scale(0.9972); }
+  60% { transform: translateX(-0.22px) scale(0.9996); }
+  63.33% { transform: translateX(-0.30px) scale(1.0020); }
+  66.67% { transform: translateX(-0.04px) scale(1.0042); }
+  70% { transform: translateX(0.45px) scale(1.0063); }
+  73.33% { transform: translateX(0.71px) scale(1.0083); }
+  76.67% { transform: translateX(0.32px) scale(1.0100); }
+  80% { transform: translateX(-0.54px) scale(1.0116); }
+  83.33% { transform: translateX(-1.10px) scale(1.0129); }
+  86.67% { transform: translateX(-0.75px) scale(1.0140); }
+  90% { transform: translateX(0.36px) scale(1.0149); }
+  93.33% { transform: translateX(1.28px) scale(1.0155); }
+  96.67% { transform: translateX(1.13px) scale(1.0159); }
+  100% { transform: translateX(0.00px) scale(1.0160); }
 }
 
 .prism-breath {
@@ -749,4 +746,84 @@
 .prism-no-outline [class*="bg-card"].border-border {
   border-color: transparent !important;
   box-shadow: none !important;
+}
+
+/**
+ * No backdrop blur on a screensaver widget.
+ *
+ * The card is backdrop-blurred, and any transform animation on or above it
+ * makes Chromium promote it to its own compositing layer for the duration — at
+ * which point the blur resamples and visibly steps, right at the start of the
+ * sequence and before anything has moved. Dropping `will-change` was not enough
+ * because the animation promotes the layer by itself.
+ *
+ * So the blur goes, permanently and everywhere in the screensaver. There is
+ * nothing to step if there is nothing being blurred, the card keeps its
+ * translucency either way, and this is the same effect performance mode already
+ * applies as its single biggest saving on a thin client.
+ */
+.prism-screensaver-flat [class*="bg-card"],
+.prism-screensaver-flat [class*="backdrop-blur"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/**
+ * Widget drift — slow ambient motion, for the panel's sake.
+ *
+ * A wall display shows the same widget in the same place for years, and an OLED
+ * or a tired LCD will keep it there permanently. Rotating which widgets are on
+ * screen helps; moving the ones that are helps more, because it shifts the
+ * boundaries themselves rather than what is inside them.
+ *
+ * All three are CSS animations and none of them touch JavaScript. That is not
+ * an optimisation, it is the requirement: this runs for hours, so it has to
+ * cost nothing and it has to stay smooth without depending on a frame loop that
+ * is also drawing transitions.
+ *
+ * Amplitudes are in whole pixels because sub-pixel movement does not shift
+ * anything — the same physical pixels stay lit. Periods are in minutes because
+ * anything you can see moving is a distraction on a display people read.
+ */
+@keyframes prism-drift-breathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.012); }
+}
+
+@keyframes prism-drift-ripple {
+  0%, 100% { transform: translateX(0) rotate(0deg) skewY(0deg); }
+  25%      { transform: translateX(6px) rotate(0.22deg) skewY(0.16deg); }
+  50%      { transform: translateX(0) rotate(0deg) skewY(-0.1deg); }
+  75%      { transform: translateX(-6px) rotate(-0.22deg) skewY(0.16deg); }
+}
+
+/* x = sin(t), y = sin(2t): a figure eight, which covers two axes without ever
+   retracing the same path — the most displacement for the least apparent motion. */
+@keyframes prism-drift-figure8 {
+  0%    { transform: translate(0px, 0px); }
+  12.5% { transform: translate(7px, 7px); }
+  25%   { transform: translate(10px, 0px); }
+  37.5% { transform: translate(7px, -7px); }
+  50%   { transform: translate(0px, 0px); }
+  62.5% { transform: translate(-7px, 7px); }
+  75%   { transform: translate(-10px, 0px); }
+  87.5% { transform: translate(-7px, -7px); }
+  100%  { transform: translate(0px, 0px); }
+}
+
+.prism-drift-breathe,
+.prism-drift-ripple,
+.prism-drift-figure8 {
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+}
+
+.prism-drift-breathe { animation-name: prism-drift-breathe; animation-duration: 22s; }
+.prism-drift-ripple  { animation-name: prism-drift-ripple;  animation-duration: 34s; }
+.prism-drift-figure8 { animation-name: prism-drift-figure8; animation-duration: 96s; animation-timing-function: linear; }
+
+@media (prefers-reduced-motion: reduce) {
+  .prism-drift-breathe,
+  .prism-drift-ripple,
+  .prism-drift-figure8 { animation: none; }
 }

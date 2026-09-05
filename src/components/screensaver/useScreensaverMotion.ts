@@ -8,6 +8,11 @@ export const DEFAULT_MOTION_INTERVAL = 20;   // seconds between changes
 
 export type ScreensaverMotion = 'off' | 'fade' | 'smoke' | 'liquid' | 'fireworks';
 
+/** Slow ambient movement, to stop a widget living on the same pixels for years. */
+export type ScreensaverDrift = 'off' | 'breathe' | 'ripple' | 'figure8';
+
+const DRIFTS: ScreensaverDrift[] = ['off', 'breathe', 'ripple', 'figure8'];
+
 const VALID: ScreensaverMotion[] = ['off', 'fade', 'smoke', 'liquid', 'fireworks'];
 
 /**
@@ -32,6 +37,7 @@ const FLOOR_KEY = 'prism-screensaver-min-widgets';
 const CEILING_KEY = 'prism-screensaver-max-widgets';
 const OUTLINES_KEY = 'prism-screensaver-outlines';
 const SHORTCUT_KEY = 'prism-screensaver-shortcut';
+const DRIFT_KEY = 'prism-screensaver-drift';
 export const DEFAULT_FLOOR = 2;
 export const DEFAULT_CEILING = 0;   // 0 = no cap
 
@@ -55,6 +61,7 @@ export function useScreensaverMotion() {
   // using it, and putting a control on it changes that for every display on
   // update — the same reason the effects themselves default to off.
   const [shortcut, setShortcutState] = useState(false);
+  const [drift, setDriftState] = useState<ScreensaverDrift>('off');
 
   // Read after mount, never during render: the server has no localStorage, so
   // reading it in the initialiser makes the first client render disagree with
@@ -78,6 +85,8 @@ export function useScreensaverMotion() {
       if (hi >= 0 && localStorage.getItem(CEILING_KEY) !== null) setCeilingState(hi);
       if (localStorage.getItem(OUTLINES_KEY) === 'off') setOutlinesState(false);
       if (localStorage.getItem(SHORTCUT_KEY) === 'on') setShortcutState(true);
+      const d = localStorage.getItem(DRIFT_KEY);
+      if (d && (DRIFTS as string[]).includes(d)) setDriftState(d as ScreensaverDrift);
     } catch { /* storage unavailable */ }
   }, []);
 
@@ -130,6 +139,14 @@ export function useScreensaverMotion() {
     } catch { /* storage unavailable */ }
   }, []);
 
+  const setDrift = useCallback((v: ScreensaverDrift) => {
+    setDriftState(v);
+    try {
+      localStorage.setItem(DRIFT_KEY, v);
+      window.dispatchEvent(new StorageEvent('storage', { key: DRIFT_KEY, newValue: v }));
+    } catch { /* storage unavailable */ }
+  }, []);
+
   // Settings and the screensaver are separate trees; the storage event is how
   // a change made in one reaches the other without a reload.
   useEffect(() => {
@@ -143,6 +160,9 @@ export function useScreensaverMotion() {
       if (e.key === CEILING_KEY) { const n = Number(e.newValue); if (n >= 0) setCeilingState(n); }
       if (e.key === OUTLINES_KEY) setOutlinesState(e.newValue !== 'off');
       if (e.key === SHORTCUT_KEY) setShortcutState(e.newValue === 'on');
+      if (e.key === DRIFT_KEY && e.newValue && (DRIFTS as string[]).includes(e.newValue)) {
+        setDriftState(e.newValue as ScreensaverDrift);
+      }
     };
     window.addEventListener('storage', handler);
     return () => window.removeEventListener('storage', handler);
@@ -155,5 +175,6 @@ export function useScreensaverMotion() {
     ceiling, setCeiling,
     outlines, setOutlines,
     shortcut, setShortcut,
+    drift, setDrift,
   };
 }

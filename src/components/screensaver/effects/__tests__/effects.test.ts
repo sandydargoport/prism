@@ -67,24 +67,43 @@ function block(w: number, h: number, alpha = 255): ImageData {
 }
 
 describe('fireworks sampling', () => {
-  it('draws grains smaller than it samples, so the field is a stipple', () => {
-    expect(fw.GRAIN_PX).toBeLessThan(fw.SAMPLE_PX);
+  it('keeps well under half the pixels, so the field is a stipple', () => {
+    expect(fw.KEEP_CENTRE).toBeLessThan(0.7);
+    expect(fw.GRAIN_PX).toBe(1);
   });
 
-  it('leaves most pixels out rather than tiling the widget solidly', () => {
-    const sparks = fw.build(block(200, 160), 200, 160);
-    const sampled = Math.ceil(200 / fw.SAMPLE_PX) * Math.ceil(160 / fw.SAMPLE_PX);
-    expect(sparks.length).toBeGreaterThan(1000);
-    expect(sparks.length).toBeLessThan(sampled * 0.75);
+  it('thins toward the edges, so the source has no rectangle to it', () => {
+    // a rectangle coming apart has a hard edge and four corners; nothing
+    // explodes into those
+    expect(fw.keepAt(0)).toBeGreaterThan(fw.keepAt(0.5));
+    expect(fw.keepAt(0.5)).toBeGreaterThan(fw.keepAt(0.9));
+    expect(fw.keepAt(1)).toBe(0);
   });
 
-  it('starts the fragments collapsed toward the centre', () => {
+  it('leaves the corners of the widget empty', () => {
     const W = 400, H = 400;
     const sparks = fw.build(block(W, H), W, H);
-    const spread = Math.max(...sparks.map((s) => Math.abs(s.x - W / 2)));
-    // the widget has closed in on itself before it goes, so nothing starts
-    // anywhere near the original edge
-    expect(spread).toBeLessThan((W / 2) * (fw.COLLAPSE_TO + 0.05));
+    const half = Math.hypot(W, H) / 2;
+    const corners = sparks.filter((s) => {
+      const d = Math.hypot(s.x - W / 2, s.y - H / 2);
+      return d > half * 0.88;
+    });
+    expect(corners.length).toBe(0);
+  });
+
+  it('is densest in the middle', () => {
+    const W = 400, H = 400;
+    const sparks = fw.build(block(W, H), W, H);
+    const half = Math.hypot(W, H) / 2;
+    const near = sparks.filter((s) => Math.hypot(s.x - W / 2, s.y - H / 2) < half * 0.3).length;
+    const far = sparks.filter((s) => {
+      const d = Math.hypot(s.x - W / 2, s.y - H / 2);
+      return d > half * 0.6 && d < half * 0.9;
+    }).length;
+    // per unit area, the middle wins comfortably
+    const nearArea = Math.PI * Math.pow(half * 0.3, 2);
+    const farArea = Math.PI * (Math.pow(half * 0.9, 2) - Math.pow(half * 0.6, 2));
+    expect(near / nearArea).toBeGreaterThan((far / farArea) * 1.5);
   });
 
   it('ends up somewhere warmer than it started', () => {

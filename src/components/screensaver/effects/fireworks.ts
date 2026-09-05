@@ -24,45 +24,51 @@ import { easeOutExpo } from './types';
  *    swell is deliberately small; at full size it read as cartoonish.
  */
 /**
- * Density is the whole effect.
+ * Not every pixel gets to be a fragment, and the ones near the edges least of
+ * all.
  *
- * The sample spacing — not the count — decides whether this reads as the widget
- * coming apart or as confetti thrown at it. At a 9px spacing you can see the
- * individual blocks and the clock's own digits survive as chunks; at 4px the
- * field is contiguous at the moment of the burst, which is the point. The count
- * follows from the spacing and the widget's area, so it is capped rather than
- * targeted: a full-width widget would otherwise ask for 90,000 particles.
- */
-const SAMPLE_PX = 2;
-const MAX_PARTICLES = 68000;
-
-/**
- * Not every pixel gets to be a fragment.
+ * Two separate problems, one mechanism.
  *
  * Drawing one square per sample, sized to the spacing, tiles the widget solidly
- * — so the field starts as an exact mosaic of it and only starts looking like
- * anything once it has spread far enough to break up. Which is backwards: the
- * moment it comes apart is the moment that should look best.
+ * — so the field starts as an exact mosaic and only looks like anything once it
+ * has spread far enough to break up. Which is backwards: the moment it comes
+ * apart should be the best-looking one. So grains are drawn smaller than the
+ * spacing they are sampled at, and most are dropped.
  *
- * So the grains are drawn smaller than the spacing they are sampled at, and a
- * share of them are dropped outright. What is left is a stipple of the widget
- * rather than a copy of it: sparse enough to read as grain from the first frame,
- * dense enough to still be recognisably the thing that was there.
- *
- * These two are the dial. Fewer, smaller grains read as finer and emptier;
- * more, larger ones read as coarser and more solid. At GRAIN_PX 1 with KEEP
- * 0.55 the burst covered 1.5% of the screen at its peak, which is past fine and
- * into invisible.
+ * And a widget is a rectangle, so keeping an even share everywhere made the
+ * burst visibly a rectangle coming apart — a hard edge and four corners, which
+ * nothing in the world explodes into. The share kept now falls off from the
+ * middle outward, reaching nothing before the corners, so what leaves is a soft
+ * mass with no edge to it. The widget is still legible in the first instant,
+ * because that is where the density is.
  */
 const GRAIN_PX = 1;
-const KEEP = 0.8;
 
 /**
- * How far the widget has closed in on itself by the time it goes — matched to
- * the tail of the breath keyframes. Fragments start from that collapsed
- * position, so the burst comes out of a small dense mass.
+ * How much of the transition is spent winding up before the burst.
+ *
+ * The whole thing is deliberately long. This is slow motion: the field should
+ * barely creep at the instant it comes apart and be moving fast by the time it
+ * leaves the screen, which only reads if there is time to see it happen.
  */
-const COLLAPSE_TO = 0.2;
+const SWELL_FRACTION = 0.42;
+
+/** Kept at the centre of mass. */
+const KEEP_CENTRE = 0.62;
+
+/** How sharply that falls off toward the edges. Higher empties the rim sooner. */
+const FALLOFF = 2.2;
+
+/**
+ * The fraction of the half-diagonal at which nothing is kept at all.
+ *
+ * Below 1, deliberately. Measuring the falloff against the corner itself leaves
+ * a thin scatter all the way out to it, and four sparse corners still read as a
+ * rectangle — the shape survives in the outline even when the fill has gone.
+ * Emptying everything past four fifths of the way out gives the source an
+ * ellipse to be instead.
+ */
+const EDGE = 0.8;
 
 /**
  * What the fragments cool into as they scatter.
@@ -70,19 +76,25 @@ const COLLAPSE_TO = 0.2;
  * They leave carrying the widget's own colour, which is mostly frosted white,
  * and drift towards ember over their life. Keeping them white the whole way
  * reads as snow; going straight to orange loses the moment where the field is
- * still recognisably the widget. The shift is what makes it burn rather than
- * disperse.
+ * still recognisably the widget.
  */
 const EMBER = [255, 176, 74] as const;
+
+/** Ceiling on the number of grains, whatever size the widget is. */
+const MAX_PARTICLES = 74000;
+
 /**
- * How much of the transition is spent winding up before the burst.
- *
- * The whole thing is deliberately long. This is slow motion: the field should
- * barely creep at the instant it comes apart and be moving fast by the time it
- * leaves the screen, which only reads if there is time to see it happen. A
- * short burst with the same acceleration curve just looks quick.
+ * The share of pixels kept at a given distance from the centre, where r is 0 in
+ * the middle and 1 at the furthest corner.
  */
-const SWELL_FRACTION = 0.42;
+export function keepAt(r: number): number {
+  const rr = Math.min(1, r / EDGE);
+  return KEEP_CENTRE * Math.max(0, 1 - Math.pow(rr, FALLOFF));
+}
+
+/** Measured mean of keepAt across a rectangle — stable at 0.32 for every aspect
+ *  ratio tried, which is what the spacing is chosen against. */
+const MEAN_KEPT = 0.32;
 
 interface Spark {
   x: number; y: number;
@@ -99,7 +111,10 @@ interface Burst { sparks: Spark[]; built: boolean }
 
 function build(pixels: ImageData, width: number, height: number): Spark[] {
   const { data, width: pw, height: ph } = pixels;
-  const step = Math.max(SAMPLE_PX, Math.ceil(Math.sqrt((pw * ph) / MAX_PARTICLES)));
+  // Roughly a third of the samples survive the falloff, so the spacing is
+  // chosen against the kept count rather than the raw one — otherwise thinning
+  // the field also coarsens it, which is the opposite of the point.
+  const step = Math.max(1, Math.ceil(Math.sqrt((pw * ph * MEAN_KEPT) / MAX_PARTICLES)));
   const cx = pw / 2;
   const cy = ph / 2;
   const reach = Math.hypot(pw, ph) / 2;
@@ -112,14 +127,13 @@ function build(pixels: ImageData, width: number, height: number): Spark[] {
       const i = (y * pw + x) * 4;
       const a = data[i + 3]!;
       if (a < 24) continue; // nothing here to throw
-      if (Math.random() > KEEP) continue;
       const ox = x - cx;
       const oy = y - cy;
       const d = Math.hypot(ox, oy) || 1;
+      if (Math.random() > keepAt(d / reach)) continue;
       sparks.push({
-        // Collapsed toward the centre, where the widget actually is by now.
-        x: (width / 2) + (x * sx - width / 2) * COLLAPSE_TO,
-        y: (height / 2) + (y * sy - height / 2) * COLLAPSE_TO,
+        x: x * sx,
+        y: y * sy,
         dx: ox / d,
         dy: oy / d,
         // px/second, and deliberately almost nothing to begin with: at the
@@ -138,6 +152,9 @@ function build(pixels: ImageData, width: number, height: number): Spark[] {
       });
     }
   }
+  // The spacing above is chosen from a measured average, and an average is not
+  // a guarantee. Trim rather than trust it.
+  if (sparks.length > MAX_PARTICLES) sparks.length = MAX_PARTICLES;
   return sparks;
 }
 
@@ -238,4 +255,4 @@ export const fireworks: ScreensaverEffect = {
 };
 
 /** Exported for tests: the sampling is the whole effect, so it is worth pinning. */
-export const __test = { build, SAMPLE_PX, MAX_PARTICLES, GRAIN_PX, KEEP, COLLAPSE_TO, SWELL_FRACTION, EMBER, easeOutExpo };
+export const __test = { build, keepAt, MAX_PARTICLES, GRAIN_PX, KEEP_CENTRE, SWELL_FRACTION, EMBER, easeOutExpo };

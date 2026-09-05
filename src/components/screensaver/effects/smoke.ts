@@ -20,16 +20,22 @@ import { easeInExpo, easeOutExpo } from './types';
 const PUFFS = 22;
 
 /**
- * The mask is three widget-heights tall with a long ramp through its middle,
- * and it is SLID rather than redrawn: at 0% the widget sits under the clear top
- * third and is wholly gone, at 100% under the opaque bottom third and wholly
- * there, and in between a wide soft front crosses it. A gradient rebuilt per
- * frame could never reach "wholly gone" without special-casing its stops, and a
- * CSS transition on it snaps rather than interpolates. A position is a length,
- * and lengths are honest.
+ * The mask is three widget-heights tall and is SLID rather than redrawn: at 0%
+ * the widget sits under the clear top third and is wholly gone, at 100% under
+ * the opaque bottom third and wholly there, and in between a soft front crosses
+ * it. A gradient rebuilt per frame could never reach "wholly gone" without
+ * special-casing its stops, and a CSS transition on it snaps rather than
+ * interpolates. A position is a length, and lengths are honest.
+ *
+ * The ramp is narrow on purpose, and getting that wrong is what made this look
+ * like a fade with smoke drawn over it rather than like a mask. The mask image
+ * is three widget-heights tall, so a ramp spanning 40% of it is 1.2 widget
+ * heights — taller than the widget, which means every part of the widget is
+ * part-masked at the same time and the whole thing simply dims. At 10% the band
+ * is about a quarter of the widget, so there is an edge with somewhere to be.
  */
 const MASK =
-  'linear-gradient(to top, #000 0%, #000 30%, rgba(0,0,0,0.5) 50%, transparent 70%, transparent 100%)';
+  'linear-gradient(to top, #000 0%, #000 34%, rgba(0,0,0,0.55) 39%, transparent 44%, transparent 100%)';
 
 interface Puff { x: number; y: number; r: number; vy: number; phase: number }
 

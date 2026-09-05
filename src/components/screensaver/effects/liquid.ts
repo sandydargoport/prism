@@ -22,6 +22,19 @@ const POINTS = 48;         // polygon resolution along the crest
 
 interface Bubble { x: number; y: number; r: number; v: number; seed: number }
 
+/** Per-transition state: the bubbles, and how long the widget has been settled. */
+interface Water { bubbles: Bubble[]; settled: number }
+
+/**
+ * How long the blue takes to drain out of a widget once it is full.
+ *
+ * The colour is the water, not the widget, so it has no business staying. It
+ * follows the level on the way in — a half-full widget is half tinted — reaches
+ * full strength as the pour finishes, and then leaves over five seconds, which
+ * is slow enough that you never catch it going.
+ */
+const SETTLE_MS = 5000;
+
 /**
  * The body gradient, cached. It only depends on where the surface is, so it is
  * rebuilt when the level moves by more than a few pixels rather than 60 times a
@@ -99,20 +112,31 @@ export const liquid: ScreensaverEffect = {
     return { opacity: '1', clipPath: `polygon(${pts.join(',')})` };
   },
 
-  init: (): Bubble[] =>
-    Array.from({ length: BUBBLES }, () => ({
+  init: (): Water => ({
+    settled: 0,
+    bubbles: Array.from({ length: BUBBLES }, () => ({
       x: Math.random(),
       y: Math.random(),
       r: 1.5 + Math.random() * 3.5,
       v: 18 + Math.random() * 46,
       seed: Math.random() * 7,
     })),
+  }),
 
   frame: (ctx, f: EffectFrame) => {
-    const bubbles = f.state as Bubble[];
+    const water = f.state as Water;
+    if (!water) return;
+    const bubbles = water.bubbles;
     const level = levelOf(f);
     const fill = fillOf(f);
     const waveY = (x: number) => waveAt(x, level, f.now);
+
+    // Strength follows the level on the way in, then drains away once the
+    // widget is full and simply sitting there.
+    if (f.progress >= 1 && f.phase === 'in') water.settled += f.dt;
+    const draining = Math.max(0, 1 - water.settled / SETTLE_MS);
+    const strength = fill * draining;
+    if (strength <= 0.003) return;
 
     ctx.save();
 
@@ -123,22 +147,20 @@ export const liquid: ScreensaverEffect = {
     // gradients and two ~150-segment paths per widget per frame — for every
     // widget at rest, because the surface never stops moving — cost more than
     // the fireworks burst did: measured 16.8fps against a 54.4 baseline.
-    // Only while the level is actually moving. A full glass needs no wash over
-    // it: the widget is simply there, and tinting the whole of it — every
-    // frame, for every settled widget — was both wrong to look at and the
-    // single most expensive thing on the canvas. Four widgets each compositing
-    // a translucent fill across their whole area is 1.2 million pixels a frame
-    // of pure fill rate, and it held the screensaver at 17fps.
-    if (fill < 0.995) {
-      ctx.beginPath();
-      ctx.moveTo(0, f.height);
-      for (let x = 0; x <= f.width; x += 16) ctx.lineTo(x, waveY(x));
-      ctx.lineTo(f.width, waveY(f.width));
-      ctx.lineTo(f.width, f.height);
-      ctx.closePath();
-      ctx.fillStyle = bodyFill(ctx, level, f.height);
-      ctx.fill();
-    }
+    // The body of the water. It stops being drawn entirely once the blue has
+    // drained (strength hits zero above and the frame returns), which also
+    // settles what used to be the most expensive thing on this canvas: four
+    // settled widgets each compositing a translucent fill across their whole
+    // area, every frame, forever.
+    ctx.globalAlpha = strength;
+    ctx.beginPath();
+    ctx.moveTo(0, f.height);
+    for (let x = 0; x <= f.width; x += 16) ctx.lineTo(x, waveY(x));
+    ctx.lineTo(f.width, waveY(f.width));
+    ctx.lineTo(f.width, f.height);
+    ctx.closePath();
+    ctx.fillStyle = bodyFill(ctx, level, f.height);
+    ctx.fill();
 
     for (const bub of bubbles) {
       bub.y -= (bub.v * f.dt) / 1000 / f.height;
@@ -149,6 +171,7 @@ export const liquid: ScreensaverEffect = {
       ctx.beginPath();
       ctx.arc(bx, by, bub.r, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(255,255,255,0.22)';
+      ctx.globalAlpha = strength;
       ctx.fill();
     }
 
