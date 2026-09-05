@@ -170,6 +170,7 @@ jobs:
               process.exit(1);
             }
             fs.writeFileSync('/tmp/validation-warnings.json', JSON.stringify(result.warnings));
+            fs.writeFileSync('/tmp/validation-unknown.json', JSON.stringify(result.unknownTokens));
             console.log('VALID');
           " 2>&1 || echo "VALIDATION_FAILED=true" >> $GITHUB_ENV
 
@@ -207,6 +208,7 @@ jobs:
             const { execFileSync } = require('child_process');
             const submission = JSON.parse(fs.readFileSync('/tmp/theme-submission.json', 'utf-8'));
             const warnings = JSON.parse(fs.readFileSync('/tmp/validation-warnings.json', 'utf-8'));
+            const unknownTokens = JSON.parse(fs.readFileSync('/tmp/validation-unknown.json', 'utf-8'));
             const index = JSON.parse(fs.readFileSync('./community/themes/index.json', 'utf-8'));
 
             // This id becomes both a filename and a branch name.
@@ -255,6 +257,9 @@ jobs:
 
             const projected = fs.readFileSync('/tmp/theme-projected.json', 'utf-8');
             const entry = JSON.parse(fs.readFileSync('/tmp/theme-entry.json', 'utf-8'));
+            // Counted off the projection rather than written down here, so it
+            // cannot drift from THEME_TOKENS the next time a token is added.
+            const THEME_TOKEN_COUNT = Object.keys(JSON.parse(projected).light).length;
 
             fs.writeFileSync(filePath, projected);
             index.themes.push(entry);
@@ -288,6 +293,10 @@ jobs:
                 : '**No text-contrast warnings.**',
               edgeWarnings.length
                 ? `\n**Subtle edges** (a style, not a defect — not counted on the card):\n${fmt(edgeWarnings)}`
+                : '',
+              unknownTokens.length
+                ? `\n**${unknownTokens.length} key(s) not carried** (this schema has no such surface): ` +
+                  unknownTokens.map((t) => `\`${t}\``).join(', ')
                 : '',
             ].join('\n');
 
@@ -326,5 +335,20 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: `✅ **Theme validated.** A pull request is open: ${pr.data.html_url}\n\nA maintainer reads every submission before it merges. Once it does, your theme appears in the gallery.`
+              body: [
+                `✅ **Theme validated.** A pull request is open: ${pr.data.html_url}`,
+                '',
+                'A maintainer reads every submission before it merges. Once it does, your theme appears in the gallery.',
+                // Said here rather than only on the pull request: the person who
+                // will notice their theme looking flatter than it does at home
+                // is the submitter, and they may never open the PR.
+                ...(unknownTokens.length ? [
+                  '',
+                  `ℹ️ **${unknownTokens.length} of the keys you sent were not carried over.** Prism themes only set the ${THEME_TOKEN_COUNT} colours listed in \`community/themes/README.md\`; these name surfaces it does not have, so they were left out and your theme will look correspondingly plainer here than it does where you made it:`,
+                  '',
+                  unknownTokens.map((t) => `- \`${t}\``).join('\n'),
+                  '',
+                  'Nothing is wrong with the submission — this is a note, not a problem to fix. If one of these is a surface Prism ought to theme, that is worth its own issue.',
+                ] : []),
+              ].join('\n')
             });

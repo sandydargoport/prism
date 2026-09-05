@@ -141,6 +141,36 @@ export function isValidTokenValue(value: unknown): value is string {
   return h <= 360 && s <= 100 && l <= 100;
 }
 
+/**
+ * Token keys as a submission spells them, reduced to the bare names used here.
+ *
+ * A theme written by hand — or exported from a fork, or copied out of a
+ * stylesheet or a devtools pane — spells these the way CSS does, with the
+ * leading `--`. Bare names are this project's own convention and nothing tells
+ * a submitter about it, so the prefixed spelling arrived looking like nineteen
+ * missing values rather than one naming difference, and the error listed every
+ * token the file in fact contained.
+ *
+ * Read-side only. What gets written is still the bare form, so the stored
+ * shape stays single.
+ *
+ * A bare key beats a prefixed one, so a file carrying both is read as the
+ * canonical spelling rather than by whichever came last in the object.
+ */
+export function normalizeTokenKeys(src: unknown): Record<string, unknown> {
+  if (!src || typeof src !== 'object') return {};
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(src as Record<string, unknown>)) {
+    if (key.startsWith('--')) {
+      const bare = key.slice(2);
+      if (!(bare in out)) out[bare] = value;
+    } else {
+      out[key] = value;
+    }
+  }
+  return out;
+}
+
 /** True when every token is present and every value is a valid triple. */
 export function isValidTokenSet(value: unknown): value is ThemeTokens {
   if (!value || typeof value !== 'object') return false;
