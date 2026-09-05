@@ -476,7 +476,7 @@ function ScreensaverCard() {
     interval: motionInterval, setInterval: setMotionInterval,
     floor, setFloor, ceiling, setCeiling, outlines, setOutlines,
     shortcut, setShortcut, drift, setDrift,
-    carbonation, setCarbonation, blobs, setBlobs, wobble, setWobble, speed, setSpeed,
+    carbonation, setCarbonation, wobble, setWobble, speed, setSpeed,
   } = useScreensaverMotion();
 
   return (
@@ -592,15 +592,6 @@ function ScreensaverCard() {
                   className="rounded border-border"
                 />
                 <span className="text-sm text-muted-foreground">Carbonation</span>
-              </label>
-              <label className="flex items-center gap-3 pl-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={blobs}
-                  onChange={(e) => setBlobs(e.target.checked)}
-                  className="rounded border-border"
-                />
-                <span className="text-sm text-muted-foreground">Blobs</span>
               </label>
               <div className="flex items-center gap-3 pl-2">
                 <span className="text-sm text-muted-foreground">Surface wobble</span>

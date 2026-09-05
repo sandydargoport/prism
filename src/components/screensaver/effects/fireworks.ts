@@ -156,8 +156,16 @@ function build(pixels: ImageData, width: number, height: number): Spark[] {
       // half — or the middle empties and what is left is a ring.
       const speed = Math.pow(Math.random(), 4) * 1.6;
       sparks.push({
-        x: x * sx,
-        y: y * sy,
+        // Jittered off the sampling grid.
+        //
+        // Sampling every two or three pixels and drawing one produces exactly
+        // that: a lattice of lit dots with unlit gaps between them, and since
+        // the screensaver dims the photo behind the widgets, those gaps read as
+        // a black grid laid over the burst. The grain stays one pixel — the
+        // fineness is the point — but where it starts is scattered within its
+        // own cell, so there is no grid left to see.
+        x: (x + (Math.random() - 0.5) * step) * sx,
+        y: (y + (Math.random() - 0.5) * step) * sy,
         dx: ox / d,
         dy: oy / d,
         // px/second, and deliberately almost nothing to begin with: at the

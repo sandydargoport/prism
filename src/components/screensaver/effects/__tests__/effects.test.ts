@@ -141,6 +141,15 @@ describe('fireworks sampling', () => {
     expect(coreShare).toBeGreaterThan(areaShare);
   });
 
+  it('does not lay the grains out on a grid', () => {
+    // Sampling every N pixels and drawing one leaves a lattice of lit dots with
+    // unlit gaps, and the dimmed photo behind shows through those gaps as a
+    // black grid over the burst. Positions are scattered within their own cell.
+    const sparks = fw.build(block(300, 300), 300, 300);
+    const fracs = sparks.slice(0, 400).map((s) => s.x - Math.floor(s.x));
+    expect(new Set(fracs.map((f) => f.toFixed(2))).size).toBeGreaterThan(20);
+  });
+
   it('is densest in the middle', () => {
     const W = 400, H = 400;
     const sparks = fw.build(block(W, H), W, H);
