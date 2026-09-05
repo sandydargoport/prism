@@ -46,7 +46,12 @@ describe('hide widget outlines', () => {
   });
 
   it('never reaches for a universal selector in the screensaver wrapper', () => {
-    // `[&_*]:!border-transparent` is the shape that broke the inner rules
-    expect(screensaver).not.toMatch(/\[&_\*\]:!border/);
+    // Comments stripped first: this file explains the old broken pattern, and a
+    // guard that trips on its own explanation is worse than no guard.
+    const code = screensaver
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+    // `[&_*]:!border-transparent` is the shape that wiped the inner rules
+    expect(code).not.toMatch(/\[&_\*\]:!border/);
   });
 });
