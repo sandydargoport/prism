@@ -140,28 +140,38 @@ export function Screensaver() {
 }
 
 /**
- * Give the snapshot a body.
+ * Give the snapshot a body — a round one.
  *
- * A screensaver widget at rest is about 97% transparent pixels: everything is
- * forced see-through so the photo shows through, which is right on screen and
- * useless to an effect that throws the widget's own pixels — there is almost
- * nothing to throw, so it comes apart into a sprinkle of its own text rather
- * than into the widget.
+ * A screensaver widget is about 97% transparent pixels, so an effect that
+ * throws the widget's own pixels has almost nothing to throw. The obvious fix
+ * was a flat translucent fill across the card, and it worked, but it also meant
+ * every pixel inside a rectangle had something to throw: the burst was visibly
+ * a rectangle coming apart, whatever the sampling did afterwards.
  *
- * This runs on the snapshot only, so what you see on screen is unchanged: the
- * widget you were reading is the widget that bursts, and it bursts as a solid
- * card rather than as a handful of letters.
+ * So the material is a radial wash instead — strongest in the middle, gone
+ * before the corners. The mass that leaves is round because the material is
+ * round, and it is only roughly round, because the widget's own text and icons
+ * are still in there being their own shape. The card's own fill is dropped for
+ * the same reason it is dropped on screen.
+ *
+ * This runs on the snapshot only, so what you are reading is unchanged.
  */
 function giveItBody(clone: HTMLElement) {
-  const cards = clone.querySelectorAll<HTMLElement>('.bg-card');
+  const cards = clone.querySelectorAll<HTMLElement>('[class*="bg-card"]');
   const targets = cards.length ? Array.from(cards) : [clone];
   for (const el of targets) {
-    // Light, not dark. A solid slate card gave the burst plenty to throw and
-    // made it a big dark rectangle coming apart over the photo; frosted white
-    // fragments read as embers instead, and keep the widget's own text colours
-    // legible as brighter specks among them.
-    el.style.setProperty('background-color', 'rgba(255,255,255,0.30)', 'important');
-    el.style.setProperty('border-color', 'rgba(255,255,255,0.45)', 'important');
+    el.style.setProperty('background-color', 'transparent', 'important');
+    el.style.setProperty(
+      'background-image',
+      'radial-gradient(ellipse 62% 62% at 50% 50%, '
+        + 'rgba(255,255,255,0.34) 0%, '
+        + 'rgba(255,255,255,0.22) 42%, '
+        + 'rgba(255,255,255,0.06) 74%, '
+        + 'rgba(255,255,255,0) 92%)',
+      'important',
+    );
+    el.style.setProperty('border-color', 'transparent', 'important');
+    el.style.setProperty('box-shadow', 'none', 'important');
   }
 }
 

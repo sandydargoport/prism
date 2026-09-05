@@ -135,9 +135,12 @@ describe('fireworks sampling', () => {
     }
   });
 
-  it('announces the burst before it happens', () => {
-    // the swell has to occupy real time, or the widget just vanishes
-    expect(fw.SWELL_FRACTION).toBeGreaterThan(0.1);
-    expect(fw.SWELL_FRACTION).toBeLessThan(0.5);
+  it('announces the burst before it happens, at length', () => {
+    // The wind-up is most of the transition on purpose: the card sheds its
+    // background, then the widget swells and draws back in, and none of that
+    // should be quick enough to catch. What it must not do is leave too little
+    // time for the burst itself.
+    expect(fw.SWELL_FRACTION).toBeGreaterThan(0.4);
+    expect(fw.SWELL_FRACTION).toBeLessThan(0.75);
   });
 });

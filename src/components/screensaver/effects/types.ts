@@ -60,6 +60,12 @@ export interface ScreensaverEffect {
   /** Resting styles for the shown and hidden states; CSS does the tween. */
   css?: (shown: boolean) => CSSProperties;
   /**
+   * Fade the widget's card fill and border away for the duration, so what is
+   * left is the content rather than a rectangle. Applied on the way out and
+   * released on the way in, both slowly.
+   */
+  shedsCard?: boolean;
+  /**
    * Applied to the live element ONCE, when the transition starts.
    *
    * For anything better handed to the compositor than driven from our frame

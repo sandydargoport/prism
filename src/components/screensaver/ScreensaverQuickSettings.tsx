@@ -22,8 +22,22 @@ import { useScreensaverMotion, type ScreensaverMotion, type ScreensaverDrift } f
  * watcher knows a tap in here is somebody using the display rather than
  * somebody dismissing it.
  */
-export function ScreensaverQuickSettings() {
-  const [open, setOpen] = useState(false);
+/**
+ * The panel itself, openable from anywhere.
+ *
+ * The screensaver has a corner to tap; the screensaver designer has a toolbar.
+ * Both want the same controls, and sending the designer off to the settings
+ * page instead was the same round trip these controls exist to avoid — you go
+ * to arrange a screensaver, and to change how it moves you leave the thing you
+ * are arranging.
+ */
+export function ScreensaverSettingsPanel({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
   const {
     motion, setMotion,
     interval, setInterval,
@@ -31,38 +45,151 @@ export function ScreensaverQuickSettings() {
     ceiling, setCeiling,
     outlines, setOutlines,
     drift, setDrift,
-    shortcut,
   } = useScreensaverMotion();
 
   // Escape closes it, as it does everywhere else in the app.
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open]);
+  }, [open, onClose]);
 
-  if (!shortcut) return null;
+  if (!open) return null;
 
   const select = 'border border-white/25 rounded px-2 py-1 text-sm bg-black/50 text-white';
 
   return (
-    <div data-screensaver-keep className="absolute inset-0 z-10 pointer-events-none">
-      {/* Invisible until you go looking for it.
+    <div
+      data-screensaver-keep
+      className="fixed inset-0 z-[10000] pointer-events-auto flex items-center justify-center bg-black/45"
+    >
 
-          It still takes pointer events at zero opacity, so the corner stays
-          live whether or not anything is drawn there — on a touch display a tap
-          in the corner works exactly as before, it just does not advertise
-          itself. Two seconds to appear because anything quicker reads as a
-          thing popping up at you, which is the opposite of what a screensaver
-          is for. Leaving is quicker than arriving, as it is everywhere else
-          here. */}
+      <div className="w-[min(30rem,92vw)] rounded-2xl border border-white/15 bg-neutral-900/95 p-5 text-white shadow-2xl">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-medium">Screensaver</h2>
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="p-1.5 rounded-md hover:bg-white/10 transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <label className="flex items-center justify-between gap-3">
+              <span className="text-sm text-white/70">Transition effect</span>
+              <select
+                value={motion}
+                onChange={(e) => setMotion(e.target.value as ScreensaverMotion)}
+                className={select}
+              >
+                <option value="off">None</option>
+                {EFFECT_ORDER.map((id) => (
+                  <option key={id} value={id}>{getEffect(id)?.label ?? id}</option>
+                ))}
+              </select>
+            </label>
+
+            {motion !== 'off' && (
+              <>
+                <label className="flex items-center justify-between gap-3">
+                  <span className="text-sm text-white/70">Change every</span>
+                  <select
+                    value={interval}
+                    onChange={(e) => setInterval(Number(e.target.value))}
+                    className={select}
+                  >
+                    <option value={10}>10 seconds</option>
+                    <option value={20}>20 seconds</option>
+                    <option value={45}>45 seconds</option>
+                    <option value={90}>1.5 minutes</option>
+                    <option value={300}>5 minutes</option>
+                  </select>
+                </label>
+
+                <label className="flex items-center justify-between gap-3">
+                  <span className="text-sm text-white/70">Show at least</span>
+                  <select
+                    value={floor}
+                    onChange={(e) => setFloor(Number(e.target.value))}
+                    className={select}
+                  >
+                    {[1, 2, 3, 4, 5, 6, 8].map((n) => (
+                      <option key={n} value={n}>{n} widget{n === 1 ? '' : 's'}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="flex items-center justify-between gap-3">
+                  <span className="text-sm text-white/70">and at most</span>
+                  <select
+                    value={ceiling}
+                    onChange={(e) => setCeiling(Number(e.target.value))}
+                    className={select}
+                  >
+                    <option value={0}>no limit</option>
+                    {[2, 3, 4, 5, 6, 8, 10, 12].map((n) => (
+                      <option key={n} value={n}>{n} widgets</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="flex items-center justify-between gap-3 cursor-pointer">
+                  <span className="text-sm text-white/70">Hide widget outlines</span>
+                  <input
+                    type="checkbox"
+                    checked={!outlines}
+                    onChange={(e) => setOutlines(!e.target.checked)}
+                    className="h-4 w-4 rounded border-white/30"
+                  />
+                </label>
+              </>
+            )}
+            <label className="flex items-center justify-between gap-3">
+              <span className="text-sm text-white/70">Drift</span>
+              <select
+                value={drift}
+                onChange={(e) => setDrift(e.target.value as ScreensaverDrift)}
+                className={select}
+              >
+                <option value="off">Still</option>
+                <option value="breathe">Breathe</option>
+                <option value="ripple">Ripple</option>
+                <option value="figure8">Figure eight</option>
+              </select>
+            </label>
+          </div>
+
+          <p className="mt-4 text-xs text-white/40">
+            These apply to this display only. Timers and photos are in
+            Settings → Appearance.
+          </p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The screensaver's corner: invisible until you go looking for it.
+ *
+ * It still takes pointer events at zero opacity, so the corner stays live
+ * whether or not anything is drawn there — on a touch display a tap in the
+ * corner works exactly as before, it just does not advertise itself. Two
+ * seconds to appear, because anything quicker reads as a thing popping up at
+ * you, which is the opposite of what a screensaver is for.
+ */
+export function ScreensaverQuickSettings() {
+  const [open, setOpen] = useState(false);
+  const { shortcut } = useScreensaverMotion();
+  if (!shortcut) return null;
+
+  return (
+    <div data-screensaver-keep className="absolute inset-0 z-10 pointer-events-none">
       <button
         onClick={() => setOpen(true)}
         aria-label="Screensaver settings"
-        // Set here rather than with a duration utility: the arbitrary-value
-        // class did not survive into the stylesheet and the default 150ms won,
-        // which is a pop rather than an arrival.
         style={{ transitionDuration: '2000ms' }}
         className="pointer-events-auto absolute left-5 top-5 h-12 w-12 rounded-full
                    bg-black/35 border border-white/20
@@ -77,113 +204,7 @@ export function ScreensaverQuickSettings() {
           className="h-7 w-7 object-contain drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]"
         />
       </button>
-
-      {open && (
-        <div className="pointer-events-auto absolute inset-0 flex items-center justify-center bg-black/45">
-          <div className="w-[min(30rem,92vw)] rounded-2xl border border-white/15 bg-neutral-900/95 p-5 text-white shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-medium">Screensaver</h2>
-              <button
-                onClick={() => setOpen(false)}
-                aria-label="Close"
-                className="p-1.5 rounded-md hover:bg-white/10 transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <label className="flex items-center justify-between gap-3">
-                <span className="text-sm text-white/70">Transition effect</span>
-                <select
-                  value={motion}
-                  onChange={(e) => setMotion(e.target.value as ScreensaverMotion)}
-                  className={select}
-                >
-                  <option value="off">None</option>
-                  {EFFECT_ORDER.map((id) => (
-                    <option key={id} value={id}>{getEffect(id)?.label ?? id}</option>
-                  ))}
-                </select>
-              </label>
-
-              {motion !== 'off' && (
-                <>
-                  <label className="flex items-center justify-between gap-3">
-                    <span className="text-sm text-white/70">Change every</span>
-                    <select
-                      value={interval}
-                      onChange={(e) => setInterval(Number(e.target.value))}
-                      className={select}
-                    >
-                      <option value={10}>10 seconds</option>
-                      <option value={20}>20 seconds</option>
-                      <option value={45}>45 seconds</option>
-                      <option value={90}>1.5 minutes</option>
-                      <option value={300}>5 minutes</option>
-                    </select>
-                  </label>
-
-                  <label className="flex items-center justify-between gap-3">
-                    <span className="text-sm text-white/70">Show at least</span>
-                    <select
-                      value={floor}
-                      onChange={(e) => setFloor(Number(e.target.value))}
-                      className={select}
-                    >
-                      {[1, 2, 3, 4, 5, 6, 8].map((n) => (
-                        <option key={n} value={n}>{n} widget{n === 1 ? '' : 's'}</option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="flex items-center justify-between gap-3">
-                    <span className="text-sm text-white/70">and at most</span>
-                    <select
-                      value={ceiling}
-                      onChange={(e) => setCeiling(Number(e.target.value))}
-                      className={select}
-                    >
-                      <option value={0}>no limit</option>
-                      {[2, 3, 4, 5, 6, 8, 10, 12].map((n) => (
-                        <option key={n} value={n}>{n} widgets</option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="flex items-center justify-between gap-3 cursor-pointer">
-                    <span className="text-sm text-white/70">Hide widget outlines</span>
-                    <input
-                      type="checkbox"
-                      checked={!outlines}
-                      onChange={(e) => setOutlines(!e.target.checked)}
-                      className="h-4 w-4 rounded border-white/30"
-                    />
-                  </label>
-                </>
-              )}
-              <label className="flex items-center justify-between gap-3">
-                <span className="text-sm text-white/70">Drift</span>
-                <select
-                  value={drift}
-                  onChange={(e) => setDrift(e.target.value as ScreensaverDrift)}
-                  className={select}
-                >
-                  <option value="off">Still</option>
-                  <option value="breathe">Breathe</option>
-                  <option value="ripple">Ripple</option>
-                  <option value="figure8">Figure eight</option>
-                </select>
-              </label>
-            </div>
-
-            <p className="mt-4 text-xs text-white/40">
-              These apply to this display only. Timers and photos are in
-              Settings → Appearance.
-            </p>
-          </div>
-        </div>
-      )}
+      <ScreensaverSettingsPanel open={open} onClose={() => setOpen(false)} />
     </div>
   );
 }

@@ -668,45 +668,59 @@
  * case where every missed frame shows as a step. Handed to the compositor it
  * runs smoothly regardless of what the main thread is doing.
  *
- * A slow settle out, then a swell back past where it started with a tremor that
- * grows as it fills. It bursts at the top of the inhale.
+ * It holds still while the card quietly sheds its background, swells outward,
+ * draws back in, and goes at the bottom of that. Out then in, in that order:
+ * the burst is an expansion, so the beat before it should be a contraction.
  *
- * Collapsing the widget to a fifth of its size first — so the burst came out of
- * a small dense mass — was tried and did not work on screen, whatever the idea
- * had going for it. Reverted to the breath.
+ * There is no tremor any more. A shake at any speed that could be seen read as
+ * cartoonish, and one slow enough not to was doing nothing.
+ *
+ * The amplitude is one percent over several seconds — meant to be felt rather
+ * than watched. If you can point at the moment it starts moving, it is too
+ * much.
  */
 @keyframes prism-screensaver-breath {
-  0% { transform: translateX(0.00px) scale(1.0000); }
-  3.33% { transform: translateX(0.00px) scale(0.9986); }
-  6.67% { transform: translateX(0.00px) scale(0.9972); }
-  10% { transform: translateX(0.00px) scale(0.9959); }
-  13.33% { transform: translateX(0.00px) scale(0.9946); }
-  16.67% { transform: translateX(0.00px) scale(0.9934); }
-  20% { transform: translateX(0.00px) scale(0.9923); }
-  23.33% { transform: translateX(0.00px) scale(0.9913); }
-  26.67% { transform: translateX(0.00px) scale(0.9904); }
-  30% { transform: translateX(0.00px) scale(0.9896); }
-  33.33% { transform: translateX(0.00px) scale(0.9890); }
-  36.67% { transform: translateX(0.00px) scale(0.9885); }
-  40% { transform: translateX(0.00px) scale(0.9882); }
-  43.33% { transform: translateX(0.00px) scale(0.9880); }
-  46.67% { transform: translateX(0.00px) scale(0.9893); }
-  50% { transform: translateX(0.03px) scale(0.9920); }
-  53.33% { transform: translateX(0.05px) scale(0.9946); }
-  56.67% { transform: translateX(-0.03px) scale(0.9972); }
-  60% { transform: translateX(-0.22px) scale(0.9996); }
-  63.33% { transform: translateX(-0.30px) scale(1.0020); }
-  66.67% { transform: translateX(-0.04px) scale(1.0042); }
-  70% { transform: translateX(0.45px) scale(1.0063); }
-  73.33% { transform: translateX(0.71px) scale(1.0083); }
-  76.67% { transform: translateX(0.32px) scale(1.0100); }
-  80% { transform: translateX(-0.54px) scale(1.0116); }
-  83.33% { transform: translateX(-1.10px) scale(1.0129); }
-  86.67% { transform: translateX(-0.75px) scale(1.0140); }
-  90% { transform: translateX(0.36px) scale(1.0149); }
-  93.33% { transform: translateX(1.28px) scale(1.0155); }
-  96.67% { transform: translateX(1.13px) scale(1.0159); }
-  100% { transform: translateX(0.00px) scale(1.0160); }
+  0% { transform: scale(1.0000); }
+  2.5% { transform: scale(1.0000); }
+  5% { transform: scale(1.0000); }
+  7.5% { transform: scale(1.0000); }
+  10% { transform: scale(1.0000); }
+  12.5% { transform: scale(1.0000); }
+  15% { transform: scale(1.0000); }
+  17.5% { transform: scale(1.0000); }
+  20% { transform: scale(1.0000); }
+  22.5% { transform: scale(1.0000); }
+  25% { transform: scale(1.0000); }
+  27.5% { transform: scale(1.0000); }
+  30% { transform: scale(1.0000); }
+  32.5% { transform: scale(1.0000); }
+  35% { transform: scale(1.0000); }
+  37.5% { transform: scale(1.0003); }
+  40% { transform: scale(1.0007); }
+  42.5% { transform: scale(1.0014); }
+  45% { transform: scale(1.0022); }
+  47.5% { transform: scale(1.0032); }
+  50% { transform: scale(1.0042); }
+  52.5% { transform: scale(1.0052); }
+  55% { transform: scale(1.0062); }
+  57.5% { transform: scale(1.0072); }
+  60% { transform: scale(1.0081); }
+  62.5% { transform: scale(1.0089); }
+  65% { transform: scale(1.0095); }
+  67.5% { transform: scale(1.0099); }
+  70% { transform: scale(1.0100); }
+  72.5% { transform: scale(1.0096); }
+  75% { transform: scale(1.0087); }
+  77.5% { transform: scale(1.0072); }
+  80% { transform: scale(1.0053); }
+  82.5% { transform: scale(1.0032); }
+  85% { transform: scale(1.0010); }
+  87.5% { transform: scale(0.9988); }
+  90% { transform: scale(0.9967); }
+  92.5% { transform: scale(0.9948); }
+  95% { transform: scale(0.9933); }
+  97.5% { transform: scale(0.9924); }
+  100% { transform: scale(0.9920); }
 }
 
 .prism-breath {
@@ -826,4 +840,26 @@
   .prism-drift-breathe,
   .prism-drift-ripple,
   .prism-drift-figure8 { animation: none; }
+}
+
+/**
+ * A widget setting down its card before it goes.
+ *
+ * The burst was visibly a rectangle, and the rectangle was the card: a uniform
+ * translucent fill across the whole widget means every pixel in a rectangle has
+ * something to throw, however the sampling is shaped afterwards. So the fill and
+ * the border go first, slowly enough that nothing appears to happen — by the
+ * time anything moves, what is left on screen is the widget's own content
+ * floating on the photo, which has no edges to speak of.
+ *
+ * It comes back the same way on arrival, for the same reason: a card that snaps
+ * in is a rectangle appearing.
+ */
+.prism-shed [class*="bg-card"] {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  transition: background-color 2.8s ease-in-out,
+              border-color 2.8s ease-in-out,
+              box-shadow 2.8s ease-in-out;
 }

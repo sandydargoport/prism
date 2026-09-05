@@ -36,6 +36,19 @@ interface Water { bubbles: Bubble[]; settled: number }
 const SETTLE_MS = 5000;
 
 /**
+ * The share of the transition spent before the level moves at all.
+ *
+ * The blue comes back during it. The colour is the water, so it should be there
+ * before the water does anything — arriving at the same moment as the level
+ * starts dropping makes the tint look like part of the animation rather than
+ * like the thing that is about to move.
+ *
+ * Both directions wait, or the pour stops being a mirror: the widget filling
+ * has to start when the widget draining starts.
+ */
+const POUR_START = 0.5;
+
+/**
  * The body gradient, cached. It only depends on where the surface is, so it is
  * rebuilt when the level moves by more than a few pixels rather than 60 times a
  * second.
@@ -77,8 +90,23 @@ function waveAt(x: number, level: number, now: number): number {
 const smoothstep = (t: number) => t * t * (3 - 2 * t);
 
 function fillOf(f: { progress: number; phase: string }): number {
-  const e = smoothstep(Math.min(1, Math.max(0, f.progress)));
+  const moving = Math.max(0, (f.progress - POUR_START) / (1 - POUR_START));
+  const e = smoothstep(Math.min(1, moving));
   return f.phase === 'in' ? e : 1 - e;
+}
+
+/**
+ * How blue it is, 0 to 1.
+ *
+ * Full while the level is moving. Before a drain it spends the first half of
+ * the transition coming back, and once a widget has settled full it drains away
+ * over five seconds and stays gone — the widget is then just a widget, with
+ * water still moving over it but no colour in it.
+ */
+function tintOf(f: EffectFrame, settled: number): number {
+  if (f.phase === 'out') return Math.min(1, f.progress / POUR_START);
+  if (f.progress < 1) return 1;
+  return Math.max(0, 1 - settled / SETTLE_MS);
 }
 
 /** Water level in px from the top: 0 is full, height is empty. */
@@ -90,7 +118,7 @@ export const liquid: ScreensaverEffect = {
   id: 'liquid',
   label: 'Fill and drain',
   spread: 40,
-  durationMs: { in: 3600, out: 3600 },
+  durationMs: { in: 10000, out: 10000 },
 
   // A full glass is still carbonated. Without this the surface froze the
   // instant the level arrived, which made the whole thing read as an animation
@@ -131,36 +159,31 @@ export const liquid: ScreensaverEffect = {
     const fill = fillOf(f);
     const waveY = (x: number) => waveAt(x, level, f.now);
 
-    // Strength follows the level on the way in, then drains away once the
-    // widget is full and simply sitting there.
     if (f.progress >= 1 && f.phase === 'in') water.settled += f.dt;
-    const draining = Math.max(0, 1 - water.settled / SETTLE_MS);
-    const strength = fill * draining;
-    if (strength <= 0.003) return;
+    const tint = tintOf(f, water.settled);
 
     ctx.save();
 
-    // The body of the water, tinted and translucent so the widget reads through
-    // it. Same wave as the clip, so it sits exactly on the cut.
+    // The body of the water — the only part that carries the colour, and so the
+    // only part that drains away. The surface and the bubbles keep going for as
+    // long as the widget is up: it was the blue that outstayed its welcome, not
+    // the water.
     //
-    // Both the gradient and the path are deliberately cheap. Building two
-    // gradients and two ~150-segment paths per widget per frame — for every
-    // widget at rest, because the surface never stops moving — cost more than
-    // the fireworks burst did: measured 16.8fps against a 54.4 baseline.
-    // The body of the water. It stops being drawn entirely once the blue has
-    // drained (strength hits zero above and the frame returns), which also
-    // settles what used to be the most expensive thing on this canvas: four
-    // settled widgets each compositing a translucent fill across their whole
-    // area, every frame, forever.
-    ctx.globalAlpha = strength;
-    ctx.beginPath();
-    ctx.moveTo(0, f.height);
-    for (let x = 0; x <= f.width; x += 16) ctx.lineTo(x, waveY(x));
-    ctx.lineTo(f.width, waveY(f.width));
-    ctx.lineTo(f.width, f.height);
-    ctx.closePath();
-    ctx.fillStyle = bodyFill(ctx, level, f.height);
-    ctx.fill();
+    // Skipped outright once the tint is gone, which also settles what used to be
+    // the most expensive thing on this canvas: four settled widgets each
+    // compositing a translucent fill across their whole area, every frame. The
+    // gradient is cached and the path is coarse for the same reason.
+    if (tint > 0.004) {
+      ctx.globalAlpha = tint;
+      ctx.beginPath();
+      ctx.moveTo(0, f.height);
+      for (let x = 0; x <= f.width; x += 16) ctx.lineTo(x, waveY(x));
+      ctx.lineTo(f.width, waveY(f.width));
+      ctx.lineTo(f.width, f.height);
+      ctx.closePath();
+      ctx.fillStyle = bodyFill(ctx, level, f.height);
+      ctx.fill();
+    }
 
     for (const bub of bubbles) {
       bub.y -= (bub.v * f.dt) / 1000 / f.height;
@@ -171,7 +194,7 @@ export const liquid: ScreensaverEffect = {
       ctx.beginPath();
       ctx.arc(bx, by, bub.r, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(255,255,255,0.22)';
-      ctx.globalAlpha = strength;
+      ctx.globalAlpha = 1;
       ctx.fill();
     }
 
@@ -185,6 +208,7 @@ export const liquid: ScreensaverEffect = {
         const y = waveY(x);
         if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       }
+      ctx.globalAlpha = 1;
       ctx.strokeStyle = 'rgba(226,242,255,0.62)';
       ctx.lineWidth = 1.6;
       ctx.stroke();

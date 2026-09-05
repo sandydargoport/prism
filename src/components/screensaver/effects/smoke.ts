@@ -20,22 +20,43 @@ import { easeInExpo, easeOutExpo } from './types';
 const PUFFS = 22;
 
 /**
- * The mask is three widget-heights tall and is SLID rather than redrawn: at 0%
- * the widget sits under the clear top third and is wholly gone, at 100% under
- * the opaque bottom third and wholly there, and in between a soft front crosses
- * it. A gradient rebuilt per frame could never reach "wholly gone" without
- * special-casing its stops, and a CSS transition on it snaps rather than
- * interpolates. A position is a length, and lengths are honest.
+ * The widget comes through the smoke, rather than up out of it.
  *
- * The ramp is narrow on purpose, and getting that wrong is what made this look
- * like a fade with smoke drawn over it rather than like a mask. The mask image
- * is three widget-heights tall, so a ramp spanning 40% of it is 1.2 widget
- * heights — taller than the widget, which means every part of the widget is
- * part-masked at the same time and the whole thing simply dims. At 10% the band
- * is about a quarter of the widget, so there is an edge with somewhere to be.
+ * The mask used to be a horizontal front sliding up the widget — which is the
+ * waterline again, and made smoke look like a second fill-and-drain. Smoke has
+ * no level. It has patches: thin somewhere, thick somewhere else, and the thing
+ * behind it shows through wherever it happens to be thin.
+ *
+ * So the mask is a handful of soft blobs that grow from nothing until they
+ * merge, at fixed positions but different rates. The widget appears in pieces
+ * that join up, and leaves the same way in reverse. A last flat layer fades in
+ * over the final quarter, because a union of circles reaches "almost all of the
+ * widget" long before it reaches all of it, and the last few percent would
+ * otherwise linger as odd gaps.
  */
-const MASK =
-  'linear-gradient(to top, #000 0%, #000 34%, rgba(0,0,0,0.55) 39%, transparent 44%, transparent 100%)';
+const BLOBS: Array<[number, number, number]> = [
+  // x%, y%, how fast this one opens relative to the others
+  [26, 32, 1.00],
+  [72, 28, 0.86],
+  [46, 66, 0.94],
+  [82, 74, 0.78],
+  [16, 78, 0.90],
+  [58, 46, 1.06],
+];
+
+function cloudMask(progress: number, width: number, height: number): string {
+  const diag = Math.hypot(width, height);
+  const p = Math.max(0, Math.min(1, progress));
+  const layers = BLOBS.map(([x, y, rate]) => {
+    const r = Math.max(0.5, Math.pow(p, 0.85) * rate * diag * 0.62);
+    return `radial-gradient(circle ${r.toFixed(1)}px at ${x}% ${y}%, `
+      + '#000 0%, rgba(0,0,0,0.72) 58%, transparent 100%)';
+  });
+  // the closer: fills the last gaps so the widget ends up whole
+  const flat = Math.max(0, (p - 0.72) / 0.28);
+  layers.push(`linear-gradient(rgba(0,0,0,${flat.toFixed(3)}), rgba(0,0,0,${flat.toFixed(3)}))`);
+  return layers.join(', ');
+}
 
 interface Puff { x: number; y: number; r: number; vy: number; phase: number }
 
@@ -76,22 +97,19 @@ export const smoke: ScreensaverEffect = {
   css: (shown) => (shown ? { opacity: 1 } : { opacity: 0 }),
 
   elementStyle: (f: EffectFrame) => {
-    const v = presence(f);
-    const pos = `0% ${(v * 100).toFixed(2)}%`;
+    const mask = cloudMask(presence(f), f.width, f.height);
     // Opacity is deliberately NOT touched. Fading the widget at the same time
     // as masking it is two departures at once, and the fade is the one you
-    // notice — which is why this mode read as a plain fade with some haze over
-    // it. The mask is the whole effect.
+    // notice — which is why this mode read as a plain fade with haze over it.
+    // The mask is the whole effect.
     return {
       opacity: '1',
-      maskImage: MASK,
-      webkitMaskImage: MASK,
-      maskSize: '100% 300%',
-      webkitMaskSize: '100% 300%',
+      maskImage: mask,
+      webkitMaskImage: mask,
       maskRepeat: 'no-repeat',
       webkitMaskRepeat: 'no-repeat',
-      maskPosition: pos,
-      webkitMaskPosition: pos,
+      maskComposite: 'add',
+      webkitMaskComposite: 'source-over',
     } as unknown as Partial<CSSStyleDeclaration>;
   },
 

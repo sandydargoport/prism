@@ -14,6 +14,8 @@ import { useEffectStage } from './EffectStage';
  * drives the live element as the effect dictates.
  */
 /** Everything a transition is allowed to write to the live element. */
+const SHED_CLASSES = ['prism-breath', 'prism-shed'] as const;
+
 const DRIVEN = [
   'opacity', 'transform', 'visibility', 'clipPath', 'transition',
   'animation', 'animationDuration', 'willChange',
@@ -31,7 +33,7 @@ const DRIVEN = [
  * for itself.
  */
 function applyResting(el: HTMLElement, resting: React.CSSProperties) {
-  el.classList.remove('prism-breath');
+  for (const c of SHED_CLASSES) el.classList.remove(c);
   for (const prop of DRIVEN) {
     if (!(prop in (resting as Record<string, unknown>))) {
       (el.style as unknown as Record<string, string>)[prop] = '';
@@ -119,6 +121,11 @@ export function WidgetStage({
       // Anything better handed to the compositor than driven from our frame
       // loop, applied once. The breath is a CSS animation for exactly this
       // reason: a slow, one-percent motion cannot hide a dropped frame.
+      if (liveEl && effect.shedsCard) {
+        // Out: drop the card. In: put it back, at the same unhurried pace.
+        if (phase === 'out') liveEl.classList.add('prism-shed');
+        else liveEl.classList.remove('prism-shed');
+      }
       if (liveEl) {
         const once = effect.startStyle?.(phase, effect.durationMs[phase]) ?? null;
         if (once) {

@@ -51,13 +51,13 @@ const GRAIN_PX = 1;
  * barely creep at the instant it comes apart and be moving fast by the time it
  * leaves the screen, which only reads if there is time to see it happen.
  */
-const SWELL_FRACTION = 0.42;
+const SWELL_FRACTION = 0.62;
 
 /** Kept at the centre of mass. */
 const KEEP_CENTRE = 0.62;
 
 /** How sharply that falls off toward the edges. Higher empties the rim sooner. */
-const FALLOFF = 2.2;
+const FALLOFF = 1.5;
 
 /**
  * The fraction of the half-diagonal at which nothing is kept at all.
@@ -65,10 +65,13 @@ const FALLOFF = 2.2;
  * Below 1, deliberately. Measuring the falloff against the corner itself leaves
  * a thin scatter all the way out to it, and four sparse corners still read as a
  * rectangle — the shape survives in the outline even when the fill has gone.
- * Emptying everything past four fifths of the way out gives the source an
- * ellipse to be instead.
+ *
+ * Not too far below 1 either. This and the radial wash in the snapshot are both
+ * pushing the mass round, and between them it is easy to end up with a clean
+ * disc, which looks manufactured. The widget's own content should still be
+ * showing through as irregularity.
  */
-const EDGE = 0.8;
+const EDGE = 0.86;
 
 /**
  * What the fragments cool into as they scatter.
@@ -94,7 +97,7 @@ export function keepAt(r: number): number {
 
 /** Measured mean of keepAt across a rectangle — stable at 0.32 for every aspect
  *  ratio tried, which is what the spacing is chosen against. */
-const MEAN_KEPT = 0.32;
+const MEAN_KEPT = 0.30;
 
 interface Spark {
   x: number; y: number;
@@ -162,7 +165,7 @@ export const fireworks: ScreensaverEffect = {
   id: 'fireworks',
   label: 'Fireworks',
   spread: 2200,
-  durationMs: { in: 3600, out: 9000 },
+  durationMs: { in: 4200, out: 12000 },
   needsPixels: true,
   takesOverAt: SWELL_FRACTION,
 
@@ -185,6 +188,10 @@ export const fireworks: ScreensaverEffect = {
     phase === 'out'
       ? { animationDuration: `${Math.round(durationMs * SWELL_FRACTION)}ms`, opacity: '1' }
       : null,
+
+  /** The card sheds its background before anything moves, and puts it back on
+   *  arrival — see .prism-shed. */
+  shedsCard: true,
 
   css: (shown) =>
     // Arriving is a plain fade. Two competing effects at once reads as a
