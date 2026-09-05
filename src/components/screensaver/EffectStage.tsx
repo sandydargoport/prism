@@ -98,16 +98,24 @@ export function EffectStage({ children }: { children: React.ReactNode }) {
     // throws fragments most of the way across the screen, water stays in its
     // box — and a throttled effect leaves its last frame on the canvas rather
     // than clearing to nothing and redrawing the same thing.
-    const due = [...active.current.entries()].filter(([, a]) => {
-      // Only the persistent entries are throttled. A transition is short, it is
-      // the thing being watched, and its shape changes every frame — the
-      // waterline is a different curve each time, not the same curve moved — so
-      // drawing it at a third of the display's rate reads as a flicker rather
-      // than as a slower animation. A settled widget's surface is just idling
-      // and can afford to.
+    // Throttling is all-or-nothing for the frame, not per entry.
+    //
+    // An effect reaches beyond its widget, so neighbouring entries overlap. With
+    // each entry on its own schedule, one drawing at full rate cleared its
+    // region — including the part its neighbour had drawn into — while the
+    // neighbour, throttled, only redrew every third frame. The overlap
+    // flickered, and for a widget with settled water on both sides it never
+    // stopped.
+    //
+    // So the frame is either drawn or skipped. A transition is short and is the
+    // thing being watched, so its presence pulls the whole frame up to full
+    // rate; when only settled water is left, everything idles together.
+    const entries = [...active.current.entries()];
+    const anyDue = entries.some(([, a]) => {
       const gap = a.persistent ? (a.effect.frameMs ?? 0) : 0;
       return gap <= 0 || now - a.drawnAt >= gap;
     });
+    const due = anyDue ? entries : [];
     if (!due.length) {
       raf.current = active.current.size ? requestAnimationFrame(tick) : 0;
       return;

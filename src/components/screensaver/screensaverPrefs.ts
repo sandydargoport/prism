@@ -16,8 +16,11 @@ export interface EffectPrefs {
    * pick a number of seconds per effect.
    */
   speed: number;
-  /** Bubbles rising through the water. */
+  /** Fine bubbles rising through the water. */
   carbonation: boolean;
+  /** Larger, slower shapes drifting inside it — the body of the liquid moving,
+   *  as against the fizz in it. */
+  blobs: boolean;
   /** How much the surface moves, as a multiplier. 0 is a dead flat waterline. */
   wobble: number;
 }
@@ -25,8 +28,9 @@ export interface EffectPrefs {
 const CARBONATION_KEY = 'prism-screensaver-carbonation';
 const WOBBLE_KEY = 'prism-screensaver-wobble';
 const SPEED_KEY = 'prism-screensaver-speed';
+const BLOBS_KEY = 'prism-screensaver-blobs';
 
-const DEFAULTS: EffectPrefs = { carbonation: true, wobble: 1, speed: 1 };
+const DEFAULTS: EffectPrefs = { carbonation: true, blobs: true, wobble: 1, speed: 1 };
 
 let cached: EffectPrefs = { ...DEFAULTS };
 let listening = false;
@@ -44,6 +48,7 @@ function read(): EffectPrefs {
     const sp = rawSpeed === null ? NaN : Number(rawSpeed);
     return {
       carbonation: localStorage.getItem(CARBONATION_KEY) !== 'off',
+      blobs: localStorage.getItem(BLOBS_KEY) !== 'off',
       wobble: Number.isFinite(w) && w >= 0 ? w : DEFAULTS.wobble,
       speed: Number.isFinite(sp) && sp > 0 ? sp : DEFAULTS.speed,
     };
@@ -57,13 +62,14 @@ export function effectPrefs(): EffectPrefs {
     listening = true;
     cached = read();
     window.addEventListener('storage', (e) => {
-      if (e.key === CARBONATION_KEY || e.key === WOBBLE_KEY || e.key === SPEED_KEY) cached = read();
+      if (e.key === CARBONATION_KEY || e.key === BLOBS_KEY
+        || e.key === WOBBLE_KEY || e.key === SPEED_KEY) cached = read();
     });
   }
   return cached;
 }
 
-export const PREF_KEYS = { CARBONATION_KEY, WOBBLE_KEY, SPEED_KEY };
+export const PREF_KEYS = { CARBONATION_KEY, BLOBS_KEY, WOBBLE_KEY, SPEED_KEY };
 
 /** An effect's length for a phase, with the display's speed setting applied. */
 export function scaledDuration(base: number): number {

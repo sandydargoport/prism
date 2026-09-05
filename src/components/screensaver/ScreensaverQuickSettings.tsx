@@ -49,6 +49,7 @@ export function ScreensaverSettingsPanel({
     drift, setDrift,
     speed, setSpeed,
     carbonation, setCarbonation,
+    blobs, setBlobs,
     wobble, setWobble,
   } = useScreensaverMotion();
   const { timeout: ssTimeout, setTimeout: setSsTimeout } = useScreensaverTimeout();
@@ -175,6 +176,15 @@ export function ScreensaverSettingsPanel({
                       type="checkbox"
                       checked={carbonation}
                       onChange={(e) => setCarbonation(e.target.checked)}
+                      className="h-4 w-4 rounded border-white/30"
+                    />
+                  </label>
+                  <label className="flex items-center justify-between gap-3 cursor-pointer">
+                    <span className="text-sm text-white/70">Blobs</span>
+                    <input
+                      type="checkbox"
+                      checked={blobs}
+                      onChange={(e) => setBlobs(e.target.checked)}
                       className="h-4 w-4 rounded border-white/30"
                     />
                   </label>

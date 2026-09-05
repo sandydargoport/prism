@@ -23,8 +23,15 @@ const POINTS = 48;         // polygon resolution along the crest
 
 interface Bubble { x: number; y: number; r: number; v: number; seed: number }
 
-/** Per-transition state: the bubbles, and how long the widget has been settled. */
-interface Water { bubbles: Bubble[]; settled: number }
+/** Bigger and slower than a bubble, and barely there — the body of the liquid
+ *  shifting rather than gas going through it. */
+interface Blob { x: number; y: number; r: number; v: number; seed: number }
+
+const BLOB_COUNT = 5;
+
+/** Per-transition state: what is moving in the water, and how long the widget
+ *  has been settled. */
+interface Water { bubbles: Bubble[]; blobs: Blob[]; settled: number }
 
 /**
  * How long the blue takes to drain out of a widget once it is full.
@@ -138,7 +145,7 @@ function fillOf(f: { progress: number; phase: string }): number {
  */
 function waterOn(f: EffectFrame): number {
   if (f.phase !== 'in') return 1;
-  return Math.min(1, Math.max(0, (f.progress - POUR_START) / 0.25));
+  return Math.min(1, Math.max(0, (f.progress - POUR_START) / 0.42));
 }
 
 function tintOf(f: EffectFrame, settled: number): number {
@@ -183,6 +190,13 @@ export const liquid: ScreensaverEffect = {
 
   init: (): Water => ({
     settled: 0,
+    blobs: Array.from({ length: BLOB_COUNT }, () => ({
+      x: Math.random(),
+      y: Math.random(),
+      r: 0.09 + Math.random() * 0.13,
+      v: 4 + Math.random() * 9,
+      seed: Math.random() * 7,
+    })),
     bubbles: Array.from({ length: BUBBLES }, () => ({
       x: Math.random(),
       y: Math.random(),
@@ -200,7 +214,7 @@ export const liquid: ScreensaverEffect = {
     const fill = fillOf(f);
     // The drawn surface keeps its full swing and sits just below the top once
     // the glass is full, so there is always water moving to look at.
-    const { carbonation, wobble } = effectPrefs();
+    const { carbonation, blobs: blobsOn, wobble } = effectPrefs();
     const surface = level + settleInset(wobble) * fill;
     const waveY = (x: number) => waveAt(x, surface, f.now, wobble);
 
@@ -228,6 +242,20 @@ export const liquid: ScreensaverEffect = {
       ctx.lineTo(f.width, f.height);
       ctx.closePath();
       ctx.fillStyle = bodyFill(ctx, surface, f.height);
+      ctx.fill();
+    }
+
+    if (blobsOn) for (const blob of water.blobs) {
+      blob.y -= (blob.v * f.dt) / 1000 / f.height;
+      if (blob.y < -0.2) { blob.y = 1.2; blob.x = Math.random(); }
+      const by = surface + (f.height - surface) * blob.y;
+      if (by <= surface || by >= f.height + 40) continue;
+      const bx = f.width * blob.x + Math.sin(f.now / 3400 + blob.seed) * f.width * 0.05;
+      const rr = Math.min(f.width, f.height) * blob.r;
+      ctx.globalAlpha = 0.1 * arriving * Math.max(0.25, tint);
+      ctx.beginPath();
+      ctx.ellipse(bx, by, rr, rr * 0.72, 0, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(186,224,255,0.5)';
       ctx.fill();
     }
 

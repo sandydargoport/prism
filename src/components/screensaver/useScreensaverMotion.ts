@@ -41,6 +41,7 @@ const DRIFT_KEY = 'prism-screensaver-drift';
 const CARBONATION_KEY = 'prism-screensaver-carbonation';
 const WOBBLE_KEY = 'prism-screensaver-wobble';
 const SPEED_KEY = 'prism-screensaver-speed';
+const BLOBS_KEY = 'prism-screensaver-blobs';
 export const DEFAULT_FLOOR = 2;
 export const DEFAULT_CEILING = 0;   // 0 = no cap
 
@@ -66,6 +67,7 @@ export function useScreensaverMotion() {
   const [shortcut, setShortcutState] = useState(false);
   const [drift, setDriftState] = useState<ScreensaverDrift>('off');
   const [carbonation, setCarbonationState] = useState(true);
+  const [blobs, setBlobsState] = useState(true);
   const [wobble, setWobbleState] = useState(1);
   const [speed, setSpeedState] = useState(1);
 
@@ -94,6 +96,7 @@ export function useScreensaverMotion() {
       const d = localStorage.getItem(DRIFT_KEY);
       if (d && (DRIFTS as string[]).includes(d)) setDriftState(d as ScreensaverDrift);
       if (localStorage.getItem(CARBONATION_KEY) === 'off') setCarbonationState(false);
+      if (localStorage.getItem(BLOBS_KEY) === 'off') setBlobsState(false);
       const wob = Number(localStorage.getItem(WOBBLE_KEY));
       if (Number.isFinite(wob) && wob >= 0 && localStorage.getItem(WOBBLE_KEY) !== null) setWobbleState(wob);
       const rawSpeed = localStorage.getItem(SPEED_KEY);
@@ -167,6 +170,14 @@ export function useScreensaverMotion() {
     } catch { /* storage unavailable */ }
   }, []);
 
+  const setBlobs = useCallback((v: boolean) => {
+    setBlobsState(v);
+    try {
+      localStorage.setItem(BLOBS_KEY, v ? 'on' : 'off');
+      window.dispatchEvent(new StorageEvent('storage', { key: BLOBS_KEY, newValue: v ? 'on' : 'off' }));
+    } catch { /* storage unavailable */ }
+  }, []);
+
   const setWobble = useCallback((v: number) => {
     setWobbleState(v);
     try {
@@ -200,6 +211,7 @@ export function useScreensaverMotion() {
         setDriftState(e.newValue as ScreensaverDrift);
       }
       if (e.key === CARBONATION_KEY) setCarbonationState(e.newValue !== 'off');
+      if (e.key === BLOBS_KEY) setBlobsState(e.newValue !== 'off');
       if (e.key === WOBBLE_KEY) { const n = Number(e.newValue); if (Number.isFinite(n) && n >= 0) setWobbleState(n); }
       if (e.key === SPEED_KEY) { const n = Number(e.newValue); if (Number.isFinite(n) && n > 0) setSpeedState(n); }
     };
@@ -216,6 +228,7 @@ export function useScreensaverMotion() {
     shortcut, setShortcut,
     drift, setDrift,
     carbonation, setCarbonation,
+    blobs, setBlobs,
     wobble, setWobble,
     speed, setSpeed,
   };
