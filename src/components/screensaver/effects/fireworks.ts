@@ -53,9 +53,6 @@ const GRAIN_PX = 1;
  */
 const SWELL_FRACTION = 0.3;
 
-/** How much of the transition the widget spends fading into its own fragments. */
-const HANDOVER = 0.03;
-
 /** Kept at the centre of mass. */
 const KEEP_CENTRE = 0.78;
 
@@ -199,7 +196,7 @@ export const fireworks: ScreensaverEffect = {
   spread: 2200,
   durationMs: { in: 4200, out: 22000 },
   needsPixels: true,
-  takesOverAt: SWELL_FRACTION + HANDOVER,
+  takesOverAt: SWELL_FRACTION,
 
   /**
    * The announcement: one breath, handed to the compositor.
@@ -318,10 +315,10 @@ export const fireworks: ScreensaverEffect = {
       const k = burst.sparks[i]!;
       const t = k.age / k.life;
       if (t >= 1) continue;
-      // Lifted, and deliberately: a one-pixel grain every two or three pixels
-      // covers a fraction of the area the widget did, so matching the source
-      // alpha exactly makes the field far fainter than the thing it replaces.
-      const alpha = Math.min(1, k.a * 2.1) * (1 - t);
+      // The pixel's own alpha, unmodified. Lifting it clipped the brighter
+      // fragments toward white, and the field stopped looking like the widget
+      // it came off — which is the one thing this effect has going for it.
+      const alpha = k.a * (1 - t);
       if (alpha <= 0.012) continue;
       const px = (originX + k.x - x0) | 0;
       const py = (originY + k.y - y0) | 0;
