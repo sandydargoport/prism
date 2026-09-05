@@ -1,4 +1,5 @@
 import type { EffectFrame, ScreensaverEffect } from './types';
+import { effectPrefs } from '../screensaverPrefs';
 
 /**
  * A waterline crossing the widget: it fills to arrive and drains to leave.
@@ -75,18 +76,30 @@ function waveAt(x: number, level: number, now: number, amp: number): number {
 }
 
 /**
- * The surface settles as the glass empties or fills.
+ * How much the CLIP boundary is allowed to wave — not the drawn surface.
  *
- * At full, the level sits on the widget's top edge — so a wave still swinging
- * around it crosses that edge, and the clip-path takes a bite out of the top of
- * the widget and gives it back, over and over. That is the flicker at the end
- * of a fill: not a frame-rate problem, a waterline oscillating across the
- * boundary it is supposed to have reached. Flat at both ends fixes it, and is
- * what water does anyway.
+ * At full, the level sits on the widget's top edge, so a boundary still swinging
+ * around it crosses that edge: the clip takes a bite out of the top of the
+ * widget and gives it back, over and over. That was the flicker at the end of a
+ * fill.
+ *
+ * Damping it flat fixed that and cost the waves entirely, because a settled
+ * widget sits at full — which is most of the time, and exactly when you would
+ * be looking. So only the boundary settles. The surface carries on.
  */
-function waveAmp(fill: number): number {
+function clipAmp(fill: number): number {
   return Math.sin(Math.PI * Math.min(1, Math.max(0, fill)));
 }
+
+/**
+ * Where the drawn surface sits, which is not quite where the clip boundary is.
+ *
+ * As the glass fills, the surface is eased a little way down from the very top
+ * edge, so at rest there is still a waterline inside the widget with room to
+ * move. Without the offset a full widget's surface is exactly on its top edge
+ * and half of every wave is drawn outside it.
+ */
+const SETTLE_INSET = 9;
 
 /**
  * How full, 0 to 1.
@@ -146,7 +159,7 @@ export const liquid: ScreensaverEffect = {
 
   elementStyle: (f: EffectFrame) => {
     const level = levelOf(f);
-    const amp = waveAmp(fillOf(f));
+    const amp = clipAmp(fillOf(f)) * effectPrefs().wobble;
     const pts: string[] = [];
     for (let i = 0; i <= POINTS; i++) {
       const x = (f.width * i) / POINTS;
@@ -174,8 +187,11 @@ export const liquid: ScreensaverEffect = {
     const bubbles = water.bubbles;
     const level = levelOf(f);
     const fill = fillOf(f);
-    const amp = waveAmp(fill);
-    const waveY = (x: number) => waveAt(x, level, f.now, amp);
+    // The drawn surface keeps its full swing and sits just below the top once
+    // the glass is full, so there is always water moving to look at.
+    const { carbonation, wobble } = effectPrefs();
+    const surface = level + SETTLE_INSET * fill;
+    const waveY = (x: number) => waveAt(x, surface, f.now, wobble);
 
     if (f.progress >= 1 && f.phase === 'in') water.settled += f.dt;
     const tint = tintOf(f, water.settled);
@@ -199,15 +215,15 @@ export const liquid: ScreensaverEffect = {
       ctx.lineTo(f.width, waveY(f.width));
       ctx.lineTo(f.width, f.height);
       ctx.closePath();
-      ctx.fillStyle = bodyFill(ctx, level, f.height);
+      ctx.fillStyle = bodyFill(ctx, surface, f.height);
       ctx.fill();
     }
 
-    for (const bub of bubbles) {
+    if (carbonation) for (const bub of bubbles) {
       bub.y -= (bub.v * f.dt) / 1000 / f.height;
       if (bub.y < 0) { bub.y = 1; bub.x = Math.random(); }
-      const by = level + (f.height - level) * bub.y;
-      if (by <= level + 2 || by >= f.height) continue;
+      const by = surface + (f.height - surface) * bub.y;
+      if (by <= surface + 2 || by >= f.height) continue;
       const bx = f.width * bub.x + Math.sin(f.now / 700 + bub.seed) * 3;
       ctx.beginPath();
       ctx.arc(bx, by, bub.r, 0, Math.PI * 2);

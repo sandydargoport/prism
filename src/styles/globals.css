@@ -804,9 +804,9 @@
   50%      { transform: scale(1.012); }
 }
 
-/* Ripple is the one that is meant to be seen. Breathe and figure-eight exist to
-   move pixels without anyone noticing; a flag that nobody can tell is moving is
-   not a flag. Still gentle — a slow lift and settle, not a flutter. */
+/* A flag in almost no wind. Fifteen seconds was flag-like and far too busy for
+   something that runs all night; at seventy-five the shape is the same and you
+   have to watch to catch it, which is the whole brief. */
 @keyframes prism-drift-ripple {
   0%, 100% { transform: translate(0, 0) rotate(0deg) skewY(0deg); }
   20%      { transform: translate(5px, -3px) rotate(0.5deg) skewY(0.45deg); }
@@ -837,7 +837,7 @@
 }
 
 .prism-drift-breathe { animation-name: prism-drift-breathe; animation-duration: 22s; }
-.prism-drift-ripple  { animation-name: prism-drift-ripple;  animation-duration: 15s; }
+.prism-drift-ripple  { animation-name: prism-drift-ripple;  animation-duration: 75s; }
 .prism-drift-figure8 { animation-name: prism-drift-figure8; animation-duration: 96s; animation-timing-function: linear; }
 
 @media (prefers-reduced-motion: reduce) {

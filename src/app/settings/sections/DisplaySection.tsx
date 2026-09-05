@@ -476,6 +476,7 @@ function ScreensaverCard() {
     interval: motionInterval, setInterval: setMotionInterval,
     floor, setFloor, ceiling, setCeiling, outlines, setOutlines,
     shortcut, setShortcut, drift, setDrift,
+    carbonation, setCarbonation, wobble, setWobble,
   } = useScreensaverMotion();
 
   return (
@@ -567,6 +568,32 @@ function ScreensaverCard() {
               />
               <span className="text-sm text-muted-foreground">Hide widget outlines</span>
             </label>
+          )}
+          {motion === 'liquid' && (
+            <>
+              <label className="flex items-center gap-3 pl-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={carbonation}
+                  onChange={(e) => setCarbonation(e.target.checked)}
+                  className="rounded border-border"
+                />
+                <span className="text-sm text-muted-foreground">Carbonation</span>
+              </label>
+              <div className="flex items-center gap-3 pl-2">
+                <span className="text-sm text-muted-foreground">Surface wobble</span>
+                <select
+                  value={wobble}
+                  onChange={(e) => setWobble(Number(e.target.value))}
+                  className="border border-border rounded px-2 py-1 text-sm bg-background"
+                >
+                  <option value={0}>None</option>
+                  <option value={0.5}>Slight</option>
+                  <option value={1}>Normal</option>
+                  <option value={1.8}>Choppy</option>
+                </select>
+              </div>
+            </>
           )}
           <div className="flex items-center gap-3 pl-2">
             <span className="text-sm text-muted-foreground">Drift</span>

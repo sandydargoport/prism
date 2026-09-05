@@ -38,6 +38,8 @@ const CEILING_KEY = 'prism-screensaver-max-widgets';
 const OUTLINES_KEY = 'prism-screensaver-outlines';
 const SHORTCUT_KEY = 'prism-screensaver-shortcut';
 const DRIFT_KEY = 'prism-screensaver-drift';
+const CARBONATION_KEY = 'prism-screensaver-carbonation';
+const WOBBLE_KEY = 'prism-screensaver-wobble';
 export const DEFAULT_FLOOR = 2;
 export const DEFAULT_CEILING = 0;   // 0 = no cap
 
@@ -62,6 +64,8 @@ export function useScreensaverMotion() {
   // update — the same reason the effects themselves default to off.
   const [shortcut, setShortcutState] = useState(false);
   const [drift, setDriftState] = useState<ScreensaverDrift>('off');
+  const [carbonation, setCarbonationState] = useState(true);
+  const [wobble, setWobbleState] = useState(1);
 
   // Read after mount, never during render: the server has no localStorage, so
   // reading it in the initialiser makes the first client render disagree with
@@ -87,6 +91,9 @@ export function useScreensaverMotion() {
       if (localStorage.getItem(SHORTCUT_KEY) === 'on') setShortcutState(true);
       const d = localStorage.getItem(DRIFT_KEY);
       if (d && (DRIFTS as string[]).includes(d)) setDriftState(d as ScreensaverDrift);
+      if (localStorage.getItem(CARBONATION_KEY) === 'off') setCarbonationState(false);
+      const wob = Number(localStorage.getItem(WOBBLE_KEY));
+      if (Number.isFinite(wob) && wob >= 0 && localStorage.getItem(WOBBLE_KEY) !== null) setWobbleState(wob);
     } catch { /* storage unavailable */ }
   }, []);
 
@@ -147,6 +154,22 @@ export function useScreensaverMotion() {
     } catch { /* storage unavailable */ }
   }, []);
 
+  const setCarbonation = useCallback((v: boolean) => {
+    setCarbonationState(v);
+    try {
+      localStorage.setItem(CARBONATION_KEY, v ? 'on' : 'off');
+      window.dispatchEvent(new StorageEvent('storage', { key: CARBONATION_KEY, newValue: v ? 'on' : 'off' }));
+    } catch { /* storage unavailable */ }
+  }, []);
+
+  const setWobble = useCallback((v: number) => {
+    setWobbleState(v);
+    try {
+      localStorage.setItem(WOBBLE_KEY, String(v));
+      window.dispatchEvent(new StorageEvent('storage', { key: WOBBLE_KEY, newValue: String(v) }));
+    } catch { /* storage unavailable */ }
+  }, []);
+
   // Settings and the screensaver are separate trees; the storage event is how
   // a change made in one reaches the other without a reload.
   useEffect(() => {
@@ -163,6 +186,8 @@ export function useScreensaverMotion() {
       if (e.key === DRIFT_KEY && e.newValue && (DRIFTS as string[]).includes(e.newValue)) {
         setDriftState(e.newValue as ScreensaverDrift);
       }
+      if (e.key === CARBONATION_KEY) setCarbonationState(e.newValue !== 'off');
+      if (e.key === WOBBLE_KEY) { const n = Number(e.newValue); if (Number.isFinite(n) && n >= 0) setWobbleState(n); }
     };
     window.addEventListener('storage', handler);
     return () => window.removeEventListener('storage', handler);
@@ -176,5 +201,7 @@ export function useScreensaverMotion() {
     outlines, setOutlines,
     shortcut, setShortcut,
     drift, setDrift,
+    carbonation, setCarbonation,
+    wobble, setWobble,
   };
 }

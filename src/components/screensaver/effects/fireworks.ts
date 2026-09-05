@@ -51,7 +51,7 @@ const GRAIN_PX = 1;
  * barely creep at the instant it comes apart and be moving fast by the time it
  * leaves the screen, which only reads if there is time to see it happen.
  */
-const SWELL_FRACTION = 0.62;
+const SWELL_FRACTION = 0.3;
 
 /** Kept at the centre of mass. */
 const KEEP_CENTRE = 0.78;
@@ -110,7 +110,14 @@ interface Spark {
   cache: string; bucket: number;
 }
 
-interface Burst { sparks: Spark[]; built: boolean }
+interface Burst {
+  sparks: Spark[];
+  built: boolean;
+  /** Reused pixel buffer; see the note in frame(). */
+  buf: ImageData | null;
+  bufW: number;
+  bufH: number;
+}
 
 function build(pixels: ImageData, width: number, height: number): Spark[] {
   const { data, width: pw, height: ph } = pixels;
@@ -170,7 +177,7 @@ function build(pixels: ImageData, width: number, height: number): Spark[] {
         size: GRAIN_PX,
         r: data[i]!, g: data[i + 1]!, bl: data[i + 2]!, a: a / 255,
         cache: '', bucket: -1,
-        life: 4.6 + Math.random() * 2.6,
+        life: 8 + Math.random() * 4.5,
         age: 0,
       });
     }
@@ -185,7 +192,7 @@ export const fireworks: ScreensaverEffect = {
   id: 'fireworks',
   label: 'Fireworks',
   spread: 2200,
-  durationMs: { in: 4200, out: 16000 },
+  durationMs: { in: 4200, out: 22000 },
   needsPixels: true,
   takesOverAt: SWELL_FRACTION,
 
@@ -225,7 +232,7 @@ export const fireworks: ScreensaverEffect = {
       ? { opacity: 1, transition: 'opacity 3.6s cubic-bezier(.33,0,.25,1)' }
       : { opacity: 0, transition: 'none' },
 
-  init: (): Burst => ({ sparks: [], built: false }),
+  init: (): Burst => ({ sparks: [], built: false, buf: null, bufW: 0, bufH: 0 }),
 
   frame: (ctx, f: EffectFrame) => {
     const burst = f.state as Burst;
@@ -241,45 +248,84 @@ export const fireworks: ScreensaverEffect = {
     }
 
     const dt = Math.min(f.dt, 48); // a dropped frame must not teleport the field
-    ctx.save();
-    ctx.globalAlpha = 1;
-    for (let i = burst.sparks.length - 1; i >= 0; i--) {
+
+    // Fragments are written into a pixel buffer, not stroked onto the canvas.
+    //
+    // Tens of thousands of one-pixel fillRect calls a frame is tens of
+    // thousands of canvas state changes a frame, and it does not matter that
+    // each one is trivial — the per-call overhead is the whole cost, and it put
+    // this well under a smooth frame rate on ordinary hardware. Writing four
+    // bytes into a typed array has no such overhead.
+    //
+    // Only the region the field currently occupies is allocated, cleared and
+    // uploaded. Early in the burst that is about the size of the widget; it
+    // grows as the field spreads, which is exactly when fragments have thinned
+    // out enough for the upload to still be cheap.
+    const tf = ctx.getTransform();
+    const originX = tf.e / (tf.a || 1);
+    const originY = tf.f / (tf.d || 1);
+    const canvasW = ctx.canvas.width;
+    const canvasH = ctx.canvas.height;
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (let i = 0; i < burst.sparks.length; i++) {
       const k = burst.sparks[i]!;
       k.age += dt / 1000;
       const t = k.age / k.life;
       if (t >= 1) continue;
-      // Everything in px/second, and the acceleration itself grows with age:
-      // the field creeps at the instant it comes apart and is still gathering
-      // pace as it goes, rather than settling into a constant drift. Constant
-      // acceleration looked like a thing being pushed; this looks like one
-      // coming apart.
       const secs = dt / 1000;
       k.v += k.acc * (0.35 + 1.9 * t) * secs;
       k.x += k.dx * k.v * secs;
       k.y += k.dy * k.v * secs;
-      // Linear rather than 1.4: the steeper curve dumped most of the
-      // brightness in the first third and the field was gone while it was still
-      // spreading. Fragments should thin out as they go, not drop out.
+      const sx = originX + k.x;
+      const sy = originY + k.y;
+      if (sx < minX) minX = sx;
+      if (sx > maxX) maxX = sx;
+      if (sy < minY) minY = sy;
+      if (sy > maxY) maxY = sy;
+    }
+    if (minX > maxX) return;
+
+    const x0 = Math.max(0, Math.floor(minX));
+    const y0 = Math.max(0, Math.floor(minY));
+    const x1 = Math.min(canvasW, Math.ceil(maxX) + 1);
+    const y1 = Math.min(canvasH, Math.ceil(maxY) + 1);
+    const w = x1 - x0;
+    const h = y1 - y0;
+    if (w <= 0 || h <= 0) return;
+
+    if (!burst.buf || burst.bufW < w || burst.bufH < h) {
+      burst.buf = ctx.createImageData(Math.max(w, burst.bufW), Math.max(h, burst.bufH));
+      burst.bufW = burst.buf.width;
+      burst.bufH = burst.buf.height;
+    }
+    const buf = burst.buf;
+    const data = buf.data;
+    data.fill(0);
+    const stride = buf.width;
+
+    for (let i = 0; i < burst.sparks.length; i++) {
+      const k = burst.sparks[i]!;
+      const t = k.age / k.life;
+      if (t >= 1) continue;
       const alpha = k.a * (1 - t);
       if (alpha <= 0.012) continue;
+      const px = (originX + k.x - x0) | 0;
+      const py = (originY + k.y - y0) | 0;
+      if (px < 0 || py < 0 || px >= stride || py >= buf.height) continue;
 
-      // Cool towards ember on the way out. Quantised into eight steps and
-      // cached: building an rgba() string per fragment per frame means tens of
-      // thousands of string builds and colour parses every 16ms, and that alone
-      // took this from 54fps to 20. Fading is done with globalAlpha, which is a
-      // number rather than a new colour.
-      const bucket = (t * 8) | 0;
-      if (bucket !== k.bucket) {
-        const heat = Math.min(1, (bucket / 8) * 1.4);
-        k.cache = `rgb(${Math.round(k.r + (EMBER[0] - k.r) * heat)},`
-          + `${Math.round(k.g + (EMBER[1] - k.g) * heat)},`
-          + `${Math.round(k.bl + (EMBER[2] - k.bl) * heat)})`;
-        k.bucket = bucket;
-      }
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = k.cache;
-      ctx.fillRect(k.x, k.y, k.size, k.size);
+      // Cool towards ember on the way out.
+      const heat = Math.min(1, t * 1.4);
+      const o = (py * stride + px) * 4;
+      data[o] = k.r + (EMBER[0] - k.r) * heat;
+      data[o + 1] = k.g + (EMBER[1] - k.g) * heat;
+      data[o + 2] = k.bl + (EMBER[2] - k.bl) * heat;
+      data[o + 3] = alpha * 255;
     }
+
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.putImageData(buf, x0, y0, 0, 0, w, h);
     ctx.restore();
   },
 };

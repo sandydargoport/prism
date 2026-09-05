@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { EFFECT_ORDER, getEffect } from './effects';
 import { useScreensaverMotion, type ScreensaverMotion, type ScreensaverDrift } from './useScreensaverMotion';
+import { useScreensaverTimeout } from '@/lib/hooks/useScreensaverTimeout';
+import { useScreensaverInterval } from '@/components/layout/WallpaperBackground';
 
 /**
  * The screensaver's own settings, reachable from the screensaver.
@@ -45,7 +47,11 @@ export function ScreensaverSettingsPanel({
     ceiling, setCeiling,
     outlines, setOutlines,
     drift, setDrift,
+    carbonation, setCarbonation,
+    wobble, setWobble,
   } = useScreensaverMotion();
+  const { timeout: ssTimeout, setTimeout: setSsTimeout } = useScreensaverTimeout();
+  const { interval: photoInterval, setInterval: setPhotoInterval } = useScreensaverInterval();
 
   // Escape closes it, as it does everywhere else in the app.
   useEffect(() => {
@@ -147,6 +153,32 @@ export function ScreensaverSettingsPanel({
                 </label>
               </>
             )}
+              {motion === 'liquid' && (
+                <>
+                  <label className="flex items-center justify-between gap-3 cursor-pointer">
+                    <span className="text-sm text-white/70">Carbonation</span>
+                    <input
+                      type="checkbox"
+                      checked={carbonation}
+                      onChange={(e) => setCarbonation(e.target.checked)}
+                      className="h-4 w-4 rounded border-white/30"
+                    />
+                  </label>
+                  <label className="flex items-center justify-between gap-3">
+                    <span className="text-sm text-white/70">Surface wobble</span>
+                    <select
+                      value={wobble}
+                      onChange={(e) => setWobble(Number(e.target.value))}
+                      className={select}
+                    >
+                      <option value={0}>None</option>
+                      <option value={0.5}>Slight</option>
+                      <option value={1}>Normal</option>
+                      <option value={1.8}>Choppy</option>
+                    </select>
+                  </label>
+                </>
+              )}
             <label className="flex items-center justify-between gap-3">
               <span className="text-sm text-white/70">Drift</span>
               <select
@@ -160,11 +192,46 @@ export function ScreensaverSettingsPanel({
                 <option value="figure8">Figure eight</option>
               </select>
             </label>
+
+            <div className="h-px bg-white/10 my-1" />
+
+            <label className="flex items-center justify-between gap-3">
+              <span className="text-sm text-white/70">Start after</span>
+              <select
+                value={ssTimeout}
+                onChange={(e) => setSsTimeout(Number(e.target.value))}
+                className={select}
+              >
+                <option value={30}>30 seconds</option>
+                <option value={60}>1 minute</option>
+                <option value={120}>2 minutes</option>
+                <option value={600}>10 minutes</option>
+                <option value={3600}>1 hour</option>
+                <option value={0}>Never</option>
+              </select>
+            </label>
+
+            <label className="flex items-center justify-between gap-3">
+              <span className="text-sm text-white/70">Change photo every</span>
+              <select
+                value={photoInterval}
+                onChange={(e) => setPhotoInterval(Number(e.target.value))}
+                className={select}
+              >
+                <option value={5}>5 seconds</option>
+                <option value={15}>15 seconds</option>
+                <option value={30}>30 seconds</option>
+                <option value={60}>1 minute</option>
+                <option value={300}>5 minutes</option>
+                <option value={600}>10 minutes</option>
+                <option value={3600}>1 hour</option>
+                <option value={0}>Never</option>
+              </select>
+            </label>
           </div>
 
           <p className="mt-4 text-xs text-white/40">
-            These apply to this display only. Timers and photos are in
-            Settings → Appearance.
+            Everything here applies to this display only.
           </p>
       </div>
     </div>

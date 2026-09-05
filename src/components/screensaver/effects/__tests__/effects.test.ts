@@ -9,7 +9,7 @@
  * pixels, would be silently broken at runtime — nothing would draw.
  */
 import { EFFECTS, EFFECT_ORDER, getEffect } from '../index';
-import { __test as fw } from '../fireworks';
+import { fireworks, __test as fw } from '../fireworks';
 
 describe('effect registry', () => {
   it('offers exactly the four transitions', () => {
@@ -186,11 +186,14 @@ describe('fireworks sampling', () => {
   });
 
   it('announces the burst before it happens, at length', () => {
-    // The wind-up is most of the transition on purpose: the card sheds its
-    // background, then the widget swells and draws back in, and none of that
-    // should be quick enough to catch. What it must not do is leave too little
-    // time for the burst itself.
-    expect(fw.SWELL_FRACTION).toBeGreaterThan(0.4);
-    expect(fw.SWELL_FRACTION).toBeLessThan(0.75);
+    // In seconds, not as a share of the transition. The share fell when the
+    // burst was lengthened to let fragments drift further, while the wind-up
+    // itself got longer in wall-clock — the fraction said it had shrunk. What
+    // matters is that the card has time to shed its background and the widget
+    // time to swell and draw back in, none of it quick enough to catch, and
+    // that the burst still gets the greater part of the transition.
+    const windUp = fireworks.durationMs.out * fw.SWELL_FRACTION;
+    expect(windUp).toBeGreaterThan(4000);
+    expect(fw.SWELL_FRACTION).toBeLessThan(0.5);
   });
 });
