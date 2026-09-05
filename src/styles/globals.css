@@ -668,49 +668,85 @@
  * case where every missed frame shows as a step. Handed to the compositor it
  * runs smoothly regardless of what the main thread is doing.
  *
- * Generated from the same curve the effect used to compute per frame: a slow
- * settle out, then a swell back past the start with a tremor that grows as it
- * fills.
+ * A slow settle out, then the widget draws IN — closing toward its centre with
+ * a tremor that grows as it goes — so the burst comes out of a small dense mass
+ * rather than off a full-size rectangle. Swelling outward first and then
+ * exploding gave two expansions back to back, and the second read as more of
+ * the same; collapsing first gives the burst something to be the opposite of.
  */
 @keyframes prism-screensaver-breath {
   0% { transform: translateX(0.00px) scale(1.0000); }
-  3.57% { transform: translateX(0.00px) scale(0.9988); }
-  7.14% { transform: translateX(0.00px) scale(0.9975); }
-  10.71% { transform: translateX(0.00px) scale(0.9963); }
-  14.29% { transform: translateX(0.00px) scale(0.9952); }
-  17.86% { transform: translateX(0.00px) scale(0.9942); }
-  21.43% { transform: translateX(0.00px) scale(0.9932); }
-  25% { transform: translateX(0.00px) scale(0.9923); }
-  28.57% { transform: translateX(0.00px) scale(0.9916); }
-  32.14% { transform: translateX(0.00px) scale(0.9910); }
-  35.71% { transform: translateX(0.00px) scale(0.9905); }
-  39.29% { transform: translateX(0.00px) scale(0.9902); }
-  42.86% { transform: translateX(0.00px) scale(0.9900); }
-  46.43% { transform: translateX(0.00px) scale(0.9911); }
-  50% { transform: translateX(0.03px) scale(0.9937); }
-  53.57% { transform: translateX(0.06px) scale(0.9963); }
-  57.14% { transform: translateX(-0.06px) scale(0.9988); }
-  60.71% { transform: translateX(-0.28px) scale(1.0013); }
-  64.29% { transform: translateX(-0.29px) scale(1.0036); }
-  67.86% { transform: translateX(0.13px) scale(1.0058); }
-  71.43% { transform: translateX(0.67px) scale(1.0078); }
-  75% { transform: translateX(0.65px) scale(1.0096); }
-  78.57% { transform: translateX(-0.16px) scale(1.0113); }
-  82.14% { transform: translateX(-1.06px) scale(1.0127); }
-  85.71% { transform: translateX(-1.02px) scale(1.0139); }
-  89.29% { transform: translateX(0.11px) scale(1.0148); }
-  92.86% { transform: translateX(1.28px) scale(1.0155); }
-  96.43% { transform: translateX(1.26px) scale(1.0159); }
-  100% { transform: translateX(0.00px) scale(1.0160); }
+  2.94% { transform: translateX(0.00px) scale(0.9988); }
+  5.88% { transform: translateX(0.00px) scale(0.9976); }
+  8.82% { transform: translateX(0.00px) scale(0.9964); }
+  11.76% { transform: translateX(0.00px) scale(0.9952); }
+  14.71% { transform: translateX(0.00px) scale(0.9941); }
+  17.65% { transform: translateX(0.00px) scale(0.9931); }
+  20.59% { transform: translateX(0.00px) scale(0.9921); }
+  23.53% { transform: translateX(0.00px) scale(0.9912); }
+  26.47% { transform: translateX(0.00px) scale(0.9904); }
+  29.41% { transform: translateX(0.00px) scale(0.9897); }
+  32.35% { transform: translateX(0.00px) scale(0.9892); }
+  35.29% { transform: translateX(0.00px) scale(0.9887); }
+  38.24% { transform: translateX(0.00px) scale(0.9883); }
+  41.18% { transform: translateX(0.00px) scale(0.9881); }
+  44.12% { transform: translateX(0.00px) scale(0.9880); }
+  47.06% { transform: translateX(0.00px) scale(0.9880); }
+  50% { transform: translateX(0.00px) scale(0.9874); }
+  52.94% { transform: translateX(0.00px) scale(0.9856); }
+  55.88% { transform: translateX(-0.01px) scale(0.9819); }
+  58.82% { transform: translateX(-0.03px) scale(0.9755); }
+  61.76% { transform: translateX(-0.03px) scale(0.9657); }
+  64.71% { transform: translateX(0.05px) scale(0.9518); }
+  67.65% { transform: translateX(0.15px) scale(0.9330); }
+  70.59% { transform: translateX(0.13px) scale(0.9086); }
+  73.53% { transform: translateX(-0.11px) scale(0.8780); }
+  76.47% { transform: translateX(-0.40px) scale(0.8404); }
+  79.41% { transform: translateX(-0.38px) scale(0.7950); }
+  82.35% { transform: translateX(0.16px) scale(0.7412); }
+  85.29% { transform: translateX(0.82px) scale(0.6781); }
+  88.24% { transform: translateX(0.83px) scale(0.6052); }
+  91.18% { transform: translateX(-0.15px) scale(0.5217); }
+  94.12% { transform: translateX(-1.41px) scale(0.4268); }
+  97.06% { transform: translateX(-1.58px) scale(0.3198); }
+  100% { transform: translateX(-0.00px) scale(0.2000); }
 }
 
 .prism-breath {
   animation-name: prism-screensaver-breath;
   animation-timing-function: linear;   /* the shaping is in the keyframes */
   animation-fill-mode: forwards;
-  will-change: transform;
+  /*
+   * No will-change here, deliberately.
+   *
+   * It promotes the widget to its own compositing layer the moment the class is
+   * applied — before anything has moved — and a promoted layer samples its
+   * backdrop-filter differently. The screensaver card is backdrop-blurred, so
+   * the blur visibly jumped a beat before the wind-up began: a change with no
+   * cause on screen, which reads worse than the thing it was meant to smooth.
+   * Chromium promotes an animating transform on its own anyway.
+   */
 }
 
 @media (prefers-reduced-motion: reduce) {
   .prism-breath { animation: none; }
+}
+
+/**
+ * "Hide widget outlines" — the perimeter of a screensaver widget, and nothing
+ * inside it.
+ *
+ * Written here rather than as a Tailwind arbitrary variant because the selector
+ * has to be exact and the utility form could not be. The card's class is
+ * `bg-card/85`, not `bg-card`, and those are different class names — so a
+ * `[&_.bg-card]` variant silently matched nothing at all, which is why an
+ * earlier version of this reached for `[&_*]` and wiped every rule inside the
+ * widget while leaving the outline it was supposed to remove.
+ *
+ * The perimeter is the one element that is both a card surface and bordered.
+ * Rules between table rows are neither.
+ */
+.prism-no-outline [class*="bg-card"].border-border {
+  border-color: transparent !important;
+  box-shadow: none !important;
 }

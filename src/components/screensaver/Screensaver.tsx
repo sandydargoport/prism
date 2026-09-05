@@ -260,9 +260,11 @@ function ScreensaverGrid() {
           className={'h-full w-full [&_*:not([data-keep-bg])]:!bg-transparent [&_.bg-card]:!bg-white/10 '
             + (outlines
               ? '[&_.border-border]:!border-white/20'
-              // Nothing to catch the eye at a widget's edge, so a transition
-              // reads as the content arriving rather than as a box being filled.
-              : '[&_*]:!border-transparent [&_.bg-card]:!shadow-none')}
+              // Only the perimeter — see .prism-no-outline in globals.css. This
+              // was `[&_*]:!border-transparent`, which is every element in the
+              // widget: it wiped the rules between table rows and left the
+              // outline of the card, the exact opposite of what it says.
+              : 'prism-no-outline')}
           prepare={giveItBody}
         >
           <Component {...props} />

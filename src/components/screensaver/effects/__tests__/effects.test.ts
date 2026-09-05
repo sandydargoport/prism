@@ -67,12 +67,24 @@ function block(w: number, h: number, alpha = 255): ImageData {
 }
 
 describe('fireworks sampling', () => {
-  it('samples at pixel scale, so fragments are pixels rather than blocks', () => {
+  it('draws grains smaller than it samples, so the field is a stipple', () => {
+    expect(fw.GRAIN_PX).toBeLessThan(fw.SAMPLE_PX);
+  });
+
+  it('leaves most pixels out rather than tiling the widget solidly', () => {
     const sparks = fw.build(block(200, 160), 200, 160);
-    // spacing, not count, is what makes the field contiguous at the burst
-    expect(fw.SAMPLE_PX).toBeLessThanOrEqual(2);
-    expect(sparks.length).toBeGreaterThan(4000);
-    for (const s of sparks.slice(0, 10)) expect(s.size).toBeLessThanOrEqual(2);
+    const sampled = Math.ceil(200 / fw.SAMPLE_PX) * Math.ceil(160 / fw.SAMPLE_PX);
+    expect(sparks.length).toBeGreaterThan(1000);
+    expect(sparks.length).toBeLessThan(sampled * 0.75);
+  });
+
+  it('starts the fragments collapsed toward the centre', () => {
+    const W = 400, H = 400;
+    const sparks = fw.build(block(W, H), W, H);
+    const spread = Math.max(...sparks.map((s) => Math.abs(s.x - W / 2)));
+    // the widget has closed in on itself before it goes, so nothing starts
+    // anywhere near the original edge
+    expect(spread).toBeLessThan((W / 2) * (fw.COLLAPSE_TO + 0.05));
   });
 
   it('ends up somewhere warmer than it started', () => {

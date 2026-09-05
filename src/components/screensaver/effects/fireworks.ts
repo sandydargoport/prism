@@ -34,7 +34,35 @@ import { easeOutExpo } from './types';
  * targeted: a full-width widget would otherwise ask for 90,000 particles.
  */
 const SAMPLE_PX = 2;
-const MAX_PARTICLES = 42000;
+const MAX_PARTICLES = 68000;
+
+/**
+ * Not every pixel gets to be a fragment.
+ *
+ * Drawing one square per sample, sized to the spacing, tiles the widget solidly
+ * — so the field starts as an exact mosaic of it and only starts looking like
+ * anything once it has spread far enough to break up. Which is backwards: the
+ * moment it comes apart is the moment that should look best.
+ *
+ * So the grains are drawn smaller than the spacing they are sampled at, and a
+ * share of them are dropped outright. What is left is a stipple of the widget
+ * rather than a copy of it: sparse enough to read as grain from the first frame,
+ * dense enough to still be recognisably the thing that was there.
+ *
+ * These two are the dial. Fewer, smaller grains read as finer and emptier;
+ * more, larger ones read as coarser and more solid. At GRAIN_PX 1 with KEEP
+ * 0.55 the burst covered 1.5% of the screen at its peak, which is past fine and
+ * into invisible.
+ */
+const GRAIN_PX = 1;
+const KEEP = 0.8;
+
+/**
+ * How far the widget has closed in on itself by the time it goes — matched to
+ * the tail of the breath keyframes. Fragments start from that collapsed
+ * position, so the burst comes out of a small dense mass.
+ */
+const COLLAPSE_TO = 0.2;
 
 /**
  * What the fragments cool into as they scatter.
@@ -84,12 +112,14 @@ function build(pixels: ImageData, width: number, height: number): Spark[] {
       const i = (y * pw + x) * 4;
       const a = data[i + 3]!;
       if (a < 24) continue; // nothing here to throw
+      if (Math.random() > KEEP) continue;
       const ox = x - cx;
       const oy = y - cy;
       const d = Math.hypot(ox, oy) || 1;
       sparks.push({
-        x: x * sx,
-        y: y * sy,
+        // Collapsed toward the centre, where the widget actually is by now.
+        x: (width / 2) + (x * sx - width / 2) * COLLAPSE_TO,
+        y: (height / 2) + (y * sy - height / 2) * COLLAPSE_TO,
         dx: ox / d,
         dy: oy / d,
         // px/second, and deliberately almost nothing to begin with: at the
@@ -100,7 +130,7 @@ function build(pixels: ImageData, width: number, height: number): Spark[] {
         // opens outward instead of smearing.
         v: 6 + (d / reach) * 16,
         acc: 90 + Math.random() * 130,
-        size: step,
+        size: GRAIN_PX,
         r: data[i]!, g: data[i + 1]!, bl: data[i + 2]!, a: a / 255,
         cache: '', bucket: -1,
         life: 3.4 + Math.random() * 1.8,
@@ -208,4 +238,4 @@ export const fireworks: ScreensaverEffect = {
 };
 
 /** Exported for tests: the sampling is the whole effect, so it is worth pinning. */
-export const __test = { build, SAMPLE_PX, MAX_PARTICLES, SWELL_FRACTION, EMBER, easeOutExpo };
+export const __test = { build, SAMPLE_PX, MAX_PARTICLES, GRAIN_PX, KEEP, COLLAPSE_TO, SWELL_FRACTION, EMBER, easeOutExpo };
