@@ -1,7 +1,7 @@
 /**
  * Turning a theme into CSS, on the client and on the server.
  */
-import { THEME_TOKENS, isValidTokenValue, type Theme, type ThemeTokens } from './tokens';
+import { THEME_TOKENS, isValidTokenValue, normalizeShape, type Theme, type ThemeTokens } from './tokens';
 
 export type ResolvedMode = 'light' | 'dark';
 
@@ -31,9 +31,35 @@ export function applyThemeVars(root: HTMLElement, tokens: Partial<ThemeTokens>):
   }
 }
 
+/** Apply the shape values, which are the same in both modes. */
+export function applyThemeShape(root: HTMLElement, theme: Theme): void {
+  for (const [prop, value] of shapeProperties(theme)) {
+    root.style.setProperty(prop, value);
+  }
+}
+
+/**
+ * Shape as CSS custom properties.
+ *
+ * Density is a multiplier rather than a length so it can scale the existing
+ * spacing scale instead of replacing it — a theme says "roomier", not "16px",
+ * and stays correct wherever it is applied.
+ */
+function shapeProperties(theme: Theme): Array<[string, string]> {
+  const { radius, density, borderWidth } = normalizeShape(theme.shape);
+  return [
+    ['--radius', `${radius}rem`],
+    ['--density', String(density)],
+    ['--border-width', `${borderWidth}px`],
+  ];
+}
+
 /** Remove every theme token, falling back to the values in globals.css. */
 export function clearThemeVars(root: HTMLElement): void {
   for (const token of THEME_TOKENS) root.style.removeProperty(`--${token}`);
+  for (const [prop] of shapeProperties({ light: {}, dark: {} } as Theme)) {
+    root.style.removeProperty(prop);
+  }
 }
 
 /**
@@ -55,5 +81,8 @@ export function themeCss(theme: Theme): string {
       .map((t) => `--${t}:${tokens[t]}`)
       .join(';');
 
-  return `:root{${block(theme.light)}}.dark{${block(theme.dark)}}`;
+  // Shape sits on :root only — it does not differ between modes, and repeating
+  // it under .dark would just be a second place to keep in step.
+  const shape = shapeProperties(theme).map(([p, v]) => `${p}:${v}`).join(';');
+  return `:root{${block(theme.light)};${shape}}.dark{${block(theme.dark)}}`;
 }

@@ -65,6 +65,21 @@ is checked and what is not allowed.
 
 The submission side is not finished yet.
 
+## Beyond colour
+
+A palette also carries three shape values, which is what stops the themes
+reading as tints of one another:
+
+- **Corner rounding** — square through to soft. Arcade is square; Snow Day is
+  the roundest.
+- **Density** — how much space sits inside and between cards. Snow Day is airy,
+  Arcade is tight.
+- **Border weight** — from none to heavy. Snow Day has no borders at all and
+  separates things with space; Arcade outlines everything.
+
+All three are capped. Past a point they stop being style and start looking like
+a layout fault, and whoever installed the theme cannot tell the difference.
+
 ## What a theme cannot change
 
 Themes set surface and text colours. They do not currently change:

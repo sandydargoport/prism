@@ -8,8 +8,6 @@
  *
  * Deliberately excluded:
  *
- * - `--radius`. A shape token, not a colour, and an uncapped value makes cards
- *   look broken rather than styled.
  * - `--seasonal-*`. Owned by useSeasonalTheme, which writes them imperatively
  *   from a month-keyed palette. Two writers of the same four properties on the
  *   same element is a last-effect-wins bug; the sets stay disjoint.
@@ -42,12 +40,86 @@ export type ThemeToken = (typeof THEME_TOKENS)[number];
 /** A complete set of values for one mode. */
 export type ThemeTokens = Record<ThemeToken, string>;
 
+/**
+ * Shape values, which are not colours and do not differ between light and dark.
+ *
+ * Colour alone makes themes read as tints of each other — the same app with a
+ * filter over it. Corner rounding is the cheapest thing that changes what
+ * something looks *like* rather than what colour it is: square corners and
+ * pill buttons are recognisably different products.
+ *
+ * Capped, because these are the values that can make a layout look broken
+ * rather than styled. A theme cannot express anything outside the range.
+ */
+export interface ThemeShape {
+  /** Corner rounding, in rem. 0 is square; the cap stops cards becoming lozenges. */
+  radius: number;
+  /**
+   * Multiplier on the padding inside cards and the gaps between them.
+   *
+   * The largest lever of the three. Density is most of what separates one
+   * design language from another — a spacious layout and a compact one read as
+   * different products even in identical colours.
+   */
+  density: number;
+  /** Border thickness in px. 0 is borderless, which is a real style. */
+  borderWidth: number;
+}
+
+/**
+ * Every shape value is a capped number.
+ *
+ * The cap is what keeps a theme from expressing something broken. Past a point
+ * these stop being style and start being a layout fault, and the person who
+ * installed the theme cannot tell the difference.
+ */
+export const SHAPE_LIMITS = {
+  radius: { min: 0, max: 1.5, default: 0.5 },
+  // Below 0.75 text starts touching card edges; above 1.5 a wall display fits
+  // very little on screen, which defeats the point of a dashboard.
+  density: { min: 0.75, max: 1.5, default: 1 },
+  borderWidth: { min: 0, max: 3, default: 1 },
+} as const;
+
+type ShapeKey = keyof typeof SHAPE_LIMITS;
+const SHAPE_KEYS = Object.keys(SHAPE_LIMITS) as ShapeKey[];
+
+export function isValidShape(value: unknown): value is ThemeShape {
+  if (!value || typeof value !== 'object') return false;
+  const s = value as Record<string, unknown>;
+  return SHAPE_KEYS.every((key) => {
+    const v = s[key];
+    if (v === undefined) return true; // absent falls back to the default
+    const { min, max } = SHAPE_LIMITS[key];
+    return typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max;
+  });
+}
+
+/** Clamp rather than reject, so an out-of-range value degrades to the nearest legal one. */
+export function normalizeShape(value: unknown): ThemeShape {
+  const s = (value ?? {}) as Record<string, unknown>;
+  const out = {} as ThemeShape;
+  for (const key of SHAPE_KEYS) {
+    const { min, max, default: fallback } = SHAPE_LIMITS[key];
+    const v = s[key];
+    out[key] = typeof v === 'number' && Number.isFinite(v)
+      ? Math.min(max, Math.max(min, v))
+      : fallback;
+  }
+  return out;
+}
+
 export interface Theme {
   id: string;
   name: string;
   description: string;
   light: ThemeTokens;
   dark: ThemeTokens;
+  /**
+   * Optional, and partial. Any value left out takes the default, so a theme
+   * only states what it actually wants to change.
+   */
+  shape?: Partial<ThemeShape>;
 }
 
 /**
@@ -91,6 +163,7 @@ export function isInstallableTheme(value: unknown): value is Theme {
     typeof t.name === 'string' && t.name.length > 0 && t.name.length <= 40 &&
     typeof t.description === 'string' && t.description.length <= 160 &&
     isValidTokenSet(t.light) &&
-    isValidTokenSet(t.dark)
+    isValidTokenSet(t.dark) &&
+    (t.shape === undefined || isValidShape(t.shape))
   );
 }

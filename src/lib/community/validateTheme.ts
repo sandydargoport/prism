@@ -12,7 +12,7 @@
  * 3. This is a family kitchen display. Handled by the metadata limits, and
  *    by a human reading the pull request — see the note on that below.
  */
-import { THEME_TOKENS, isValidTokenValue, type Theme, type ThemeTokens } from '@/lib/themes/tokens';
+import { THEME_TOKENS, isValidTokenValue, isValidShape, normalizeShape, SHAPE_LIMITS, type Theme, type ThemeTokens } from '@/lib/themes/tokens';
 import { checkThemeContrast, type ContrastIssue } from '@/lib/themes/contrast';
 
 export interface ThemeValidationResult {
@@ -120,6 +120,13 @@ export function validateCommunityTheme(data: unknown): ThemeValidationResult {
     }
   }
 
+  if (obj.shape !== undefined && !isValidShape(obj.shape)) {
+    errors.push(
+      `Corner radius must be a number between ${SHAPE_LIMITS.radius.min} and ` +
+      `${SHAPE_LIMITS.radius.max}. Beyond that, cards stop looking styled and start looking broken.`,
+    );
+  }
+
   const lightOk = validateTokenSet(obj.light, 'light', errors);
   const darkOk = validateTokenSet(obj.dark, 'dark', errors);
 
@@ -173,5 +180,8 @@ export function projectCommunityTheme(data: unknown, id: string): Theme & {
     tags: Array.isArray(obj.tags) ? (obj.tags as string[]).slice(0, 5) : [],
     light: pickTokens(obj.light),
     dark: pickTokens(obj.dark),
+    // Clamped rather than copied, so an out-of-range value that slipped past
+    // validation still cannot reach the page.
+    shape: normalizeShape(obj.shape),
   };
 }
