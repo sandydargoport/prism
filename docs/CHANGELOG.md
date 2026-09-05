@@ -4,6 +4,8 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.23.0] – 2026-09-05
+
 ### Added
 - **The screensaver can bring its widgets in and out, four different ways.** It has always drawn every widget in its layout, all the time: busy to look at, and the worst case for a panel, since nothing on screen ever moves. It can now show about two thirds of them and rotate which ones — *Settings → Appearance → Screensaver → Widget transition effect*. **Fade** is opacity, eased at both ends. **Smoke** dissolves the widget's own pixels through a turbulence mask. **Fill and drain** runs a waterline across it, with one widget draining as another fills — the water leaving one is exactly the water arriving in the other, and the pair is chosen from opposite sides of the board so it reads as a transfer. **Fireworks** takes the widget apart into its own pixels: it is sampled pixel by pixel and each fragment carries that pixel's colour, so at the instant it comes apart you are looking at the widget itself. Off by default; no display changes character on an update without being asked.
 - **Widgets can drift, to spare the panel.** Slow, out-of-step movement — *Breathe*, *Ripple* or *Figure eight* — over periods of twenty seconds to a minute and a half. Rotating which widgets are shown helps with burn-in; moving the ones that are showing helps more, because it shifts the edges rather than what is inside them. Breathe and Figure eight are meant to go unnoticed. Ripple is meant to be just noticeable.
