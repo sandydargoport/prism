@@ -157,10 +157,24 @@ function nearEmpty(fill: number): number {
   return Math.min(1, Math.max(0, fill / EMPTY_FADE));
 }
 
+/**
+ * What the blue never quite drains past.
+ *
+ * A trace of colour left in the water is what keeps the waterline reading as a
+ * surface once the pour is long over — the widget stays faintly submerged
+ * rather than merely cut. Draining to nothing was the version that made the cut
+ * look like damage.
+ *
+ * A literal one percent would not do it: the body only reaches 0.2 alpha at
+ * full strength, so a hundredth of that is 0.002 and invisible. This is the
+ * number to turn if the trace wants to be fainter or stronger.
+ */
+const RESIDUAL_TINT = 0.12;
+
 function tintOf(f: EffectFrame, settled: number): number {
   if (f.phase === 'out') return Math.min(1, f.progress / POUR_START);
   if (f.progress < 1) return 1;
-  return Math.max(0, 1 - settled / SETTLE_MS);
+  return Math.max(RESIDUAL_TINT, 1 - settled / SETTLE_MS);
 }
 
 /** Water level in px from the top: 0 is full, height is empty. */
