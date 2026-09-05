@@ -181,7 +181,7 @@ function ScreensaverGrid() {
 
   // Which widgets are currently on screen. Off by default, in which case every
   // widget shows and all of this is inert.
-  const { motion, interval: motionInterval, floor, ceiling, outlines, drift, waterClear } = useScreensaverMotion();
+  const { motion, interval: motionInterval, floor, ceiling, outlines, drift, waterClear, ready } = useScreensaverMotion();
   const widgetIds = useMemo(
     () => layout.filter((w) => w.visible !== false).map((w) => w.i),
     [layout],
@@ -282,6 +282,21 @@ function ScreensaverGrid() {
       '',
     ),
   [data]);
+
+  // Nothing at all until the display's own settings have been read.
+  //
+  // These live in localStorage, which cannot be read while rendering, so for
+  // one paint every value is still its default — and the default for motion is
+  // 'off', which means "show every widget". The board therefore came up full
+  // and then, as the real setting arrived, all of it drained away at once. The
+  // effects are at their most visible in the first second of the screensaver,
+  // and that second was being spent undoing a board that should never have
+  // been drawn.
+  //
+  // Holding the grid back costs one frame. With motion off the widgets appear
+  // a frame later than they used to, which is not perceptible; with an effect
+  // on, the screensaver opens empty and fills itself the way it is meant to.
+  if (!ready) return null;
 
   const renderWidget = (w: WidgetConfig) => {
     const reg = WIDGET_REGISTRY[w.i];
