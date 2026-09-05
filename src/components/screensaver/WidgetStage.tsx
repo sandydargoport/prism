@@ -102,6 +102,16 @@ export function WidgetStage({
     let cancel: (() => void) | null = null;
     let dropped = false;
 
+    // Claimed HERE, not when the transition actually starts drawing.
+    //
+    // The resting-style effect is declared after this one, so React runs it
+    // second in the same commit — and it bails only if this element is already
+    // claimed. Setting the flag inside start(), which for an effect that needs
+    // a snapshot happens an await later, left a window where the resting hidden
+    // state was applied over the top of the wind-up: the widget went fully
+    // transparent and stayed that way until the canvas took over at the burst.
+    busyRef.current = true;
+
     /**
      * Hand the element back to React.
      *
@@ -121,7 +131,6 @@ export function WidgetStage({
       // loop, applied once. The breath is a CSS animation for exactly this
       // reason: a slow, one-percent motion cannot hide a dropped frame.
       const box = el.getBoundingClientRect();
-      busyRef.current = true;
       setBusy(true);
       cancel = stage.begin(`${id}:${phase}`, {
         effect,

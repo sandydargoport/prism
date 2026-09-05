@@ -53,6 +53,9 @@ const GRAIN_PX = 1;
  */
 const SWELL_FRACTION = 0.3;
 
+/** How much of the transition the widget spends fading into its own fragments. */
+const HANDOVER = 0.03;
+
 /** Kept at the centre of mass. */
 const KEEP_CENTRE = 0.78;
 
@@ -117,6 +120,8 @@ interface Burst {
   buf: ImageData | null;
   bufW: number;
   bufH: number;
+  /** The buffer is composited through this, not written straight to the stage. */
+  off: HTMLCanvasElement | null;
 }
 
 function build(pixels: ImageData, width: number, height: number): Spark[] {
@@ -194,7 +199,7 @@ export const fireworks: ScreensaverEffect = {
   spread: 2200,
   durationMs: { in: 4200, out: 22000 },
   needsPixels: true,
-  takesOverAt: SWELL_FRACTION,
+  takesOverAt: SWELL_FRACTION + HANDOVER,
 
   /**
    * The announcement: one breath, handed to the compositor.
@@ -232,7 +237,7 @@ export const fireworks: ScreensaverEffect = {
       ? { opacity: 1, transition: 'opacity 3.6s cubic-bezier(.33,0,.25,1)' }
       : { opacity: 0, transition: 'none' },
 
-  init: (): Burst => ({ sparks: [], built: false, buf: null, bufW: 0, bufH: 0 }),
+  init: (): Burst => ({ sparks: [], built: false, buf: null, bufW: 0, bufH: 0, off: null }),
 
   frame: (ctx, f: EffectFrame) => {
     const burst = f.state as Burst;
@@ -295,9 +300,14 @@ export const fireworks: ScreensaverEffect = {
     if (w <= 0 || h <= 0) return;
 
     if (!burst.buf || burst.bufW < w || burst.bufH < h) {
-      burst.buf = ctx.createImageData(Math.max(w, burst.bufW), Math.max(h, burst.bufH));
-      burst.bufW = burst.buf.width;
-      burst.bufH = burst.buf.height;
+      const bw = Math.max(w, burst.bufW);
+      const bh = Math.max(h, burst.bufH);
+      burst.buf = ctx.createImageData(bw, bh);
+      burst.bufW = bw;
+      burst.bufH = bh;
+      burst.off = document.createElement('canvas');
+      burst.off.width = bw;
+      burst.off.height = bh;
     }
     const buf = burst.buf;
     const data = buf.data;
@@ -308,7 +318,10 @@ export const fireworks: ScreensaverEffect = {
       const k = burst.sparks[i]!;
       const t = k.age / k.life;
       if (t >= 1) continue;
-      const alpha = k.a * (1 - t);
+      // Lifted, and deliberately: a one-pixel grain every two or three pixels
+      // covers a fraction of the area the widget did, so matching the source
+      // alpha exactly makes the field far fainter than the thing it replaces.
+      const alpha = Math.min(1, k.a * 2.1) * (1 - t);
       if (alpha <= 0.012) continue;
       const px = (originX + k.x - x0) | 0;
       const py = (originY + k.y - y0) | 0;
@@ -323,9 +336,25 @@ export const fireworks: ScreensaverEffect = {
       data[o + 3] = alpha * 255;
     }
 
+    // Composited through an offscreen canvas, NOT written to the stage
+    // directly.
+    //
+    // putImageData replaces the destination rather than blending with it, so
+    // every pixel in the rectangle is overwritten — transparent ones included.
+    // With two widgets bursting at once, the second one's rectangle wiped the
+    // first one's fragments wherever the two overlapped, and left a hard square
+    // hole in the middle of the field. drawImage composites, which is what is
+    // wanted; putImageData is only how the pixels get into a canvas to start
+    // with.
+    const off = burst.off;
+    if (!off) return;
+    const offCtx = off.getContext('2d');
+    if (!offCtx) return;
+    offCtx.putImageData(buf, 0, 0, 0, 0, w, h);
+
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.putImageData(buf, x0, y0, 0, 0, w, h);
+    ctx.drawImage(off, 0, 0, w, h, x0, y0, w, h);
     ctx.restore();
   },
 };

@@ -204,25 +204,40 @@ function ScreensaverGrid() {
   const effect = motionId === 'off' ? null : getEffect(motionId);
   useEffect(() => {
     if (motion === 'off' || widgetIds.length === 0) return;
-    // Seed straight to the target rather than fading them in one at a time,
-    // which would read as the screensaver loading rather than running.
-    setShowing((prev) => {
-      let next = prev;
-      const target = showingCount(widgetIds.length, floor, ceiling);
-      for (let k = 0; k < target; k++) next = rotate(widgetIds, next, Math.random, floor, ceiling);
-      return next;
-    });
+    // The board arrives empty and fills itself, one widget at a time.
+    //
+    // This used to seed straight to the target, on the reasoning that fading
+    // them in one by one would read as the screensaver loading rather than
+    // running. In practice the opposite is true: every widget appearing at once
+    // is indistinguishable from them having always been there, and the whole
+    // point of an effect is lost at the moment you are most likely to be
+    // watching — the second the screensaver comes up.
+    //
+    // rotate() fills before it swaps, so the same call does both jobs; only the
+    // gap between calls changes once the board is full.
+    const target = showingCount(widgetIds.length, floor, ceiling);
+
     // A rotation must not start before the last one has finished. Fireworks
-    // takes nine seconds to leave; with the interval set shorter than that,
-    // every swap interrupted the one before it, transitions piled up and no
-    // widget was ever handed back to its resting state. The setting is a
+    // takes twenty-two seconds to leave; with the interval set shorter than
+    // that, every swap interrupted the one before it, transitions piled up and
+    // no widget was ever handed back to its resting state. The setting is a
     // minimum gap between changes, not a promise to change that often.
     const settle = effect ? Math.ceil((scaledDuration(effect.durationMs.out) + 900) / 1000) : 0;
-    const id = window.setInterval(
-      () => setShowing((prev) => rotate(widgetIds, prev, Math.random, floor, ceiling)),
-      Math.max(4, motionInterval, settle) * 1000,
-    );
-    return () => window.clearInterval(id);
+    const gap = Math.max(4, motionInterval, settle) * 1000;
+    const ARRIVAL_GAP = 900;
+    const FIRST = 600;
+
+    let count = 0;
+    let timer = window.setTimeout(function step() {
+      setShowing((prev) => {
+        const next = rotate(widgetIds, prev, Math.random, floor, ceiling);
+        count = next.length;
+        return next;
+      });
+      timer = window.setTimeout(step, count >= target ? gap : ARRIVAL_GAP);
+    }, FIRST);
+
+    return () => window.clearTimeout(timer);
   }, [motion, effect, widgetIds, motionInterval, floor, ceiling]);
 
 

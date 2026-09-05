@@ -125,6 +125,22 @@ function fillOf(f: { progress: number; phase: string }): number {
  * over five seconds and stays gone — the widget is then just a widget, with
  * water still moving over it but no colour in it.
  */
+/**
+ * The water easing on as the tide starts to rise.
+ *
+ * A pour used to begin with the surface, the crest and the bubbles all at full
+ * strength on the first frame the level moved — the water did not arrive so
+ * much as switch on. Ramping it over the first part of the rise lets the tide
+ * come in from nothing, which is the only way it ever comes in.
+ *
+ * Only on the way in. A drain already ends with the widget gone, so the water
+ * has somewhere to go on its own.
+ */
+function waterOn(f: EffectFrame): number {
+  if (f.phase !== 'in') return 1;
+  return Math.min(1, Math.max(0, (f.progress - POUR_START) / 0.25));
+}
+
 function tintOf(f: EffectFrame, settled: number): number {
   if (f.phase === 'out') return Math.min(1, f.progress / POUR_START);
   if (f.progress < 1) return 1;
@@ -189,7 +205,8 @@ export const liquid: ScreensaverEffect = {
     const waveY = (x: number) => waveAt(x, surface, f.now, wobble);
 
     if (f.progress >= 1 && f.phase === 'in') water.settled += f.dt;
-    const tint = tintOf(f, water.settled);
+    const arriving = waterOn(f);
+    const tint = tintOf(f, water.settled) * arriving;
 
     ctx.save();
 
@@ -223,7 +240,7 @@ export const liquid: ScreensaverEffect = {
       ctx.beginPath();
       ctx.arc(bx, by, bub.r, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(255,255,255,0.22)';
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = arriving;
       ctx.fill();
     }
 
@@ -250,7 +267,7 @@ export const liquid: ScreensaverEffect = {
       fade.addColorStop(0.18, 'rgba(226,242,255,0.55)');
       fade.addColorStop(0.82, 'rgba(226,242,255,0.55)');
       fade.addColorStop(1, 'rgba(226,242,255,0)');
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = arriving;
       ctx.strokeStyle = fade;
       ctx.lineWidth = 1.6;
       ctx.stroke();

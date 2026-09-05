@@ -57,21 +57,19 @@ export function EffectStage({ children }: { children: React.ReactNode }) {
   const active = useRef(new Map<string, Active>());
   const raf = useRef(0);
 
-  /**
-   * Wipe the whole surface.
-   *
-   * Since only the regions in use are cleared each frame, the last thing an
-   * effect drew stays on the canvas after it finishes — and when the effect is
-   * switched away from, or the last widget settles, nothing is left running to
-   * clear it. Water's crest lines sat there frozen until the widget that owned
-   * them happened to cycle again.
-   */
-  const wipe = useCallback(() => {
+  const clearEntry = useCallback((a: Active) => {
     const el = canvas.current;
     const ctx = el?.getContext('2d');
     if (!el || !ctx) return;
+    const origin = el.getBoundingClientRect();
+    const pad = a.effect.spread ?? 0;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, el.width, el.height);
+    ctx.clearRect(
+      a.viewportLeft - origin.left - pad,
+      a.viewportTop - origin.top - pad,
+      a.width + pad * 2,
+      a.height + pad * 2,
+    );
   }, []);
 
   const tick = useCallback((now: number) => {
@@ -101,12 +99,17 @@ export function EffectStage({ children }: { children: React.ReactNode }) {
     // box — and a throttled effect leaves its last frame on the canvas rather
     // than clearing to nothing and redrawing the same thing.
     const due = [...active.current.entries()].filter(([, a]) => {
-      const gap = a.effect.frameMs ?? 0;
+      // Only the persistent entries are throttled. A transition is short, it is
+      // the thing being watched, and its shape changes every frame — the
+      // waterline is a different curve each time, not the same curve moved — so
+      // drawing it at a third of the display's rate reads as a flicker rather
+      // than as a slower animation. A settled widget's surface is just idling
+      // and can afford to.
+      const gap = a.persistent ? (a.effect.frameMs ?? 0) : 0;
       return gap <= 0 || now - a.drawnAt >= gap;
     });
     if (!due.length) {
       raf.current = active.current.size ? requestAnimationFrame(tick) : 0;
-      if (!raf.current) wipe();
       return;
     }
     for (const [, a] of due) {
@@ -132,16 +135,15 @@ export function EffectStage({ children }: { children: React.ReactNode }) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.translate(a.viewportLeft - origin.left, a.viewportTop - origin.top);
       a.effect.frame?.(ctx, frame);
-      if (progress >= 1 && !a.persistent) { active.current.delete(key); a.onDone(); }
+      if (progress >= 1 && !a.persistent) {
+        active.current.delete(key);
+        clearEntry(a);
+        a.onDone();
+      }
     }
 
-    if (active.current.size) {
-      raf.current = requestAnimationFrame(tick);
-    } else {
-      raf.current = 0;
-      wipe();
-    }
-  }, [wipe]);
+    raf.current = active.current.size ? requestAnimationFrame(tick) : 0;
+  }, [clearEntry]);
 
   const begin = useCallback<Stage['begin']>((key, a) => {
     const entry: Active = {
@@ -156,13 +158,13 @@ export function EffectStage({ children }: { children: React.ReactNode }) {
     active.current.set(key, entry);
     if (!raf.current) raf.current = requestAnimationFrame(tick);
     return () => {
+      const a = active.current.get(key);
       active.current.delete(key);
-      // Nothing left to redraw over what is on screen, and the loop may have
-      // already stopped, so clear it here rather than waiting for a frame that
-      // is not coming.
-      if (!active.current.size) wipe();
+      // The loop may already have stopped, so clear this entry's own patch here
+      // rather than waiting for a frame that is not coming.
+      if (a) clearEntry(a);
     };
-  }, [tick, wipe]);
+  }, [tick, clearEntry]);
 
   useEffect(() => () => { if (raf.current) cancelAnimationFrame(raf.current); }, []);
 
