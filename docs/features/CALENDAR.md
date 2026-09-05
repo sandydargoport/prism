@@ -105,6 +105,14 @@ Events outside the window are not deleted. Once an event is synced into Prism's 
 
 Sync never silently removes events. When an event that used to exist disappears from its source, Prism **holds** the removal instead of applying it and surfaces a **Review N** badge on the calendar. Open it and decide per event: **Keep** (it stays in Prism) or **Delete** (it's removed). Applying a deletion requires delete permission. Adds and updates from the source still apply automatically. Only removals wait for your review.
 
+### When sync stops
+
+A connection can expire or be revoked — a password change, a grant withdrawn from the provider's own security page, or an OAuth consent screen still in Testing, which caps tokens at seven days. When that happens sync stops, and a calendar that has stopped syncing looks no different from a calendar with nothing on it.
+
+So Prism says so. A **Sync paused** badge appears on the Calendar page next to **Review N**, and a matching line appears on the Calendar dashboard widget. Either one opens the **Manage** overlay, where the **Reconnect** button restores the connection for every calendar on that account at once.
+
+The badge deliberately says very little: how many calendars are affected, and which service when they are all on the same one. It never names a calendar or an account, because a wall display is read by whoever walks past it. It also stays off the screensaver.
+
 Set `PRISM_DISABLE_CALENDAR_CRON=true` in your `.env` to fall back to user-triggered syncs only (e.g. on a low-power device where you don't want background work). Manual sync is always available from the **Manage** overlay on the Calendar page (*Sync*).
 
 ---
@@ -283,6 +291,12 @@ This is intentional: full grid views don't fit comfortably on a phone, and the a
 ### Events appearing in the wrong person's column
 
 Check the calendar's assignment in the **Manage** overlay on the Calendar page. Cross-calendar events (same event in personal + Family calendars) dedupe by `groupId`. If you're seeing duplicates, file an issue with the calendar names.
+
+### "Sync paused" badge won't clear
+
+Reconnecting clears the flag as soon as Google redirects you back — but only for the calendars visible to *that* account. If you sync calendars from two Google accounts, reconnecting one leaves the other flagged, and the badge stays up with a smaller count. Reconnect each account.
+
+If it clears and then returns within a week, the grant is being revoked rather than expiring: check whether the Google Cloud project's OAuth consent screen is still in **Testing** status, which caps refresh tokens at seven days no matter how much you use them. Publishing the consent screen removes that cap.
 
 ### Sync cron not running
 

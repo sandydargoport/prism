@@ -35,6 +35,7 @@ import { AddEventModal } from '@/components/modals';
 import { ManageCalendarsModal } from './ManageCalendarsModal';
 import { PendingDeletionsModal } from './PendingDeletionsModal';
 import { usePendingDeletions } from '@/lib/hooks/usePendingDeletions';
+import { useCalendarSyncHealth } from '@/lib/hooks/useCalendarSyncHealth';
 import { PageWrapper, SubpageHeader, FilterBar } from '@/components/layout';
 const MonthView = lazy(() => import('@/components/calendar/MonthView').then(m => ({ default: m.MonthView })));
 const WeekView = lazy(() => import('@/components/calendar/WeekView').then(m => ({ default: m.WeekView })));
@@ -228,6 +229,11 @@ export function CalendarView() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
   const [showManageCalendars, setShowManageCalendars] = useState(false);
+
+  // A revoked or expired grant stops sync silently — the calendar just goes
+  // stale. Surface it here, next to the pending-deletions badge, and send the
+  // tap straight to the Manage panel where the Reconnect button already lives.
+  const { needsReauth, provider: stalledProvider } = useCalendarSyncHealth();
   const [showPendingReview, setShowPendingReview] = useState(false);
   const { pending, count: pendingCount, apply: applyPending, refresh: refreshPending } = usePendingDeletions();
 
@@ -367,6 +373,18 @@ export function CalendarView() {
           icon={!isMobile ? <Calendar className="h-5 w-5 text-primary" /> : undefined}
           title={getDateRangeTitle()}
           actions={<>
+            {needsReauth > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowManageCalendars(true)}
+                className="h-9 border-amber-500/50 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+                title={`${stalledProvider ? `${stalledProvider} calendar sync` : 'Calendar sync'} has stopped — reconnect to resume`}
+              >
+                <AlertTriangle className="h-4 w-4 mr-1" />
+                {needsReauth === 1 ? 'Sync paused' : `Sync paused (${needsReauth})`}
+              </Button>
+            )}
             {pendingCount > 0 && (
               <Button
                 variant="outline"
