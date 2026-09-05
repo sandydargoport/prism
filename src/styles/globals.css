@@ -867,3 +867,18 @@
               border-color 2.8s ease-in-out,
               box-shadow 2.8s ease-in-out;
 }
+
+/**
+ * Keep a widget's content clear of the waterline.
+ *
+ * At rest the surface sits a little below the widget's top edge, and the cut
+ * follows it — so on a widget whose text starts flush at the top, the first
+ * line lives permanently under water. Whether that is the effect or a fault
+ * depends entirely on taste, so it is a setting rather than a decision.
+ *
+ * The space has to clear the inset AND the full swing of the wave above it,
+ * or the crest still crosses the first line on its way past.
+ */
+.prism-water-clear [class*="bg-card"] {
+  padding-top: 30px;
+}

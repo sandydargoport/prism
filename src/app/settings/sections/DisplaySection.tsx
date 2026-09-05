@@ -476,7 +476,7 @@ function ScreensaverCard() {
     interval: motionInterval, setInterval: setMotionInterval,
     floor, setFloor, ceiling, setCeiling, outlines, setOutlines,
     shortcut, setShortcut, drift, setDrift,
-    carbonation, setCarbonation, wobble, setWobble, speed, setSpeed,
+    carbonation, setCarbonation, waterClear, setWaterClear, wobble, setWobble, speed, setSpeed,
   } = useScreensaverMotion();
 
   return (
@@ -593,6 +593,21 @@ function ScreensaverCard() {
                 />
                 <span className="text-sm text-muted-foreground">Carbonation</span>
               </label>
+              <label className="flex items-center gap-3 pl-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={waterClear}
+                  onChange={(e) => setWaterClear(e.target.checked)}
+                  className="rounded border-border"
+                />
+                <span className="text-sm text-muted-foreground">Keep text clear of the waterline</span>
+              </label>
+              <p className="text-xs text-muted-foreground pl-2">
+                Adds space above the content in each widget so the surface sits over empty
+                room rather than across the first line of text. Off, the water covers
+                the top of what the widget is showing — which is either the effect or a
+                fault, depending on taste.
+              </p>
               <div className="flex items-center gap-3 pl-2">
                 <span className="text-sm text-muted-foreground">Surface wobble</span>
                 <select

@@ -181,7 +181,7 @@ function ScreensaverGrid() {
 
   // Which widgets are currently on screen. Off by default, in which case every
   // widget shows and all of this is inert.
-  const { motion, interval: motionInterval, floor, ceiling, outlines, drift } = useScreensaverMotion();
+  const { motion, interval: motionInterval, floor, ceiling, outlines, drift, waterClear } = useScreensaverMotion();
   const widgetIds = useMemo(
     () => layout.filter((w) => w.visible !== false).map((w) => w.i),
     [layout],
@@ -314,7 +314,9 @@ function ScreensaverGrid() {
           id={w.i}
           effect={effect}
           shown={on}
-          className={'h-full w-full prism-screensaver-flat [&_*:not([data-keep-bg])]:!bg-transparent [&_.bg-card]:!bg-white/10 '
+          className={'h-full w-full prism-screensaver-flat '
+            // Only the waterline cuts into a widget, so only it needs the room.
+            + (waterClear && motion === 'liquid' ? 'prism-water-clear ' : '') + '[&_*:not([data-keep-bg])]:!bg-transparent [&_.bg-card]:!bg-white/10 '
             + (outlines
               ? '[&_.border-border]:!border-white/20'
               // Only the perimeter — see .prism-no-outline in globals.css. This
