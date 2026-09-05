@@ -656,3 +656,229 @@
   font-size: 20px;
 }
 
+/**
+ * The screensaver's fireworks wind-up: one slow breath before the widget comes
+ * apart.
+ *
+ * Expressed as keyframes rather than driven from JavaScript, and that is the
+ * whole point of it. The effect stage animates on requestAnimationFrame, and
+ * that loop is only as fast as the machine allows — measured at 18fps on a
+ * software-rendered browser. A large, fast motion hides dropped frames; this one
+ * is deliberately slow and about one percent in amplitude, which is exactly the
+ * case where every missed frame shows as a step. Handed to the compositor it
+ * runs smoothly regardless of what the main thread is doing.
+ *
+ * It holds still while the card quietly sheds its background, swells outward,
+ * draws back in, and goes at the bottom of that. Out then in, in that order:
+ * the burst is an expansion, so the beat before it should be a contraction.
+ *
+ * There is no tremor any more. A shake at any speed that could be seen read as
+ * cartoonish, and one slow enough not to was doing nothing.
+ *
+ * The amplitude is one percent over several seconds — meant to be felt rather
+ * than watched. If you can point at the moment it starts moving, it is too
+ * much.
+ */
+@keyframes prism-screensaver-breath {
+  0% { transform: scale(1.0000); }
+  2.5% { transform: scale(1.0000); }
+  5% { transform: scale(1.0000); }
+  7.5% { transform: scale(1.0000); }
+  10% { transform: scale(1.0000); }
+  12.5% { transform: scale(1.0000); }
+  15% { transform: scale(1.0000); }
+  17.5% { transform: scale(1.0000); }
+  20% { transform: scale(1.0000); }
+  22.5% { transform: scale(1.0000); }
+  25% { transform: scale(1.0000); }
+  27.5% { transform: scale(1.0000); }
+  30% { transform: scale(1.0000); }
+  32.5% { transform: scale(1.0000); }
+  35% { transform: scale(1.0000); }
+  37.5% { transform: scale(1.0003); }
+  40% { transform: scale(1.0007); }
+  42.5% { transform: scale(1.0014); }
+  45% { transform: scale(1.0022); }
+  47.5% { transform: scale(1.0032); }
+  50% { transform: scale(1.0042); }
+  52.5% { transform: scale(1.0052); }
+  55% { transform: scale(1.0062); }
+  57.5% { transform: scale(1.0072); }
+  60% { transform: scale(1.0081); }
+  62.5% { transform: scale(1.0089); }
+  65% { transform: scale(1.0095); }
+  67.5% { transform: scale(1.0099); }
+  70% { transform: scale(1.0100); }
+  72.5% { transform: scale(1.0096); }
+  75% { transform: scale(1.0087); }
+  77.5% { transform: scale(1.0072); }
+  80% { transform: scale(1.0053); }
+  82.5% { transform: scale(1.0032); }
+  85% { transform: scale(1.0010); }
+  87.5% { transform: scale(0.9988); }
+  90% { transform: scale(0.9967); }
+  92.5% { transform: scale(0.9948); }
+  95% { transform: scale(0.9933); }
+  97.5% { transform: scale(0.9924); }
+  100% { transform: scale(0.9920); }
+}
+
+.prism-breath {
+  animation-name: prism-screensaver-breath;
+  animation-timing-function: linear;   /* the shaping is in the keyframes */
+  animation-fill-mode: forwards;
+  /*
+   * No will-change here, deliberately.
+   *
+   * It promotes the widget to its own compositing layer the moment the class is
+   * applied — before anything has moved — and a promoted layer samples its
+   * backdrop-filter differently. The screensaver card is backdrop-blurred, so
+   * the blur visibly jumped a beat before the wind-up began: a change with no
+   * cause on screen, which reads worse than the thing it was meant to smooth.
+   * Chromium promotes an animating transform on its own anyway.
+   */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prism-breath { animation: none; }
+}
+
+/**
+ * "Hide widget outlines" — the perimeter of a screensaver widget, and nothing
+ * inside it.
+ *
+ * Written here rather than as a Tailwind arbitrary variant because the selector
+ * has to be exact and the utility form could not be. The card's class is
+ * `bg-card/85`, not `bg-card`, and those are different class names — so a
+ * `[&_.bg-card]` variant silently matched nothing at all, which is why an
+ * earlier version of this reached for `[&_*]` and wiped every rule inside the
+ * widget while leaving the outline it was supposed to remove.
+ *
+ * The perimeter is the one element that is both a card surface and bordered.
+ * Rules between table rows are neither.
+ */
+.prism-no-outline [class*="bg-card"].border-border {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/**
+ * No backdrop blur on a screensaver widget.
+ *
+ * The card is backdrop-blurred, and any transform animation on or above it
+ * makes Chromium promote it to its own compositing layer for the duration — at
+ * which point the blur resamples and visibly steps, right at the start of the
+ * sequence and before anything has moved. Dropping `will-change` was not enough
+ * because the animation promotes the layer by itself.
+ *
+ * So the blur goes, permanently and everywhere in the screensaver. There is
+ * nothing to step if there is nothing being blurred, the card keeps its
+ * translucency either way, and this is the same effect performance mode already
+ * applies as its single biggest saving on a thin client.
+ */
+.prism-screensaver-flat [class*="bg-card"],
+.prism-screensaver-flat [class*="backdrop-blur"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/**
+ * Widget drift — slow ambient motion, for the panel's sake.
+ *
+ * A wall display shows the same widget in the same place for years, and an OLED
+ * or a tired LCD will keep it there permanently. Rotating which widgets are on
+ * screen helps; moving the ones that are helps more, because it shifts the
+ * boundaries themselves rather than what is inside them.
+ *
+ * All three are CSS animations and none of them touch JavaScript. That is not
+ * an optimisation, it is the requirement: this runs for hours, so it has to
+ * cost nothing and it has to stay smooth without depending on a frame loop that
+ * is also drawing transitions.
+ *
+ * Amplitudes are in whole pixels because sub-pixel movement does not shift
+ * anything — the same physical pixels stay lit. Periods are in minutes because
+ * anything you can see moving is a distraction on a display people read.
+ */
+@keyframes prism-drift-breathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.012); }
+}
+
+/* A flag in almost no wind. Fifteen seconds was flag-like and far too busy for
+   something that runs all night; at seventy-five the shape is the same and you
+   have to watch to catch it, which is the whole brief. */
+@keyframes prism-drift-ripple {
+  0%, 100% { transform: translate(0, 0) rotate(0deg) skewY(0deg); }
+  20%      { transform: translate(5px, -3px) rotate(0.5deg) skewY(0.45deg); }
+  40%      { transform: translate(2px, 2px) rotate(-0.2deg) skewY(-0.3deg); }
+  60%      { transform: translate(-4px, -2px) rotate(-0.5deg) skewY(0.35deg); }
+  80%      { transform: translate(-2px, 3px) rotate(0.25deg) skewY(-0.2deg); }
+}
+
+/* x = sin(t), y = sin(2t): a figure eight, which covers two axes without ever
+   retracing the same path — the most displacement for the least apparent motion. */
+@keyframes prism-drift-figure8 {
+  0%    { transform: translate(0px, 0px); }
+  12.5% { transform: translate(7px, 7px); }
+  25%   { transform: translate(10px, 0px); }
+  37.5% { transform: translate(7px, -7px); }
+  50%   { transform: translate(0px, 0px); }
+  62.5% { transform: translate(-7px, 7px); }
+  75%   { transform: translate(-10px, 0px); }
+  87.5% { transform: translate(-7px, -7px); }
+  100%  { transform: translate(0px, 0px); }
+}
+
+.prism-drift-breathe,
+.prism-drift-ripple,
+.prism-drift-figure8 {
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+}
+
+.prism-drift-breathe { animation-name: prism-drift-breathe; animation-duration: 22s; }
+.prism-drift-ripple  { animation-name: prism-drift-ripple;  animation-duration: 75s; }
+.prism-drift-figure8 { animation-name: prism-drift-figure8; animation-duration: 96s; animation-timing-function: linear; }
+
+@media (prefers-reduced-motion: reduce) {
+  .prism-drift-breathe,
+  .prism-drift-ripple,
+  .prism-drift-figure8 { animation: none; }
+}
+
+/**
+ * A widget setting down its card before it goes.
+ *
+ * The burst was visibly a rectangle, and the rectangle was the card: a uniform
+ * translucent fill across the whole widget means every pixel in a rectangle has
+ * something to throw, however the sampling is shaped afterwards. So the fill and
+ * the border go first, slowly enough that nothing appears to happen — by the
+ * time anything moves, what is left on screen is the widget's own content
+ * floating on the photo, which has no edges to speak of.
+ *
+ * It comes back the same way on arrival, for the same reason: a card that snaps
+ * in is a rectangle appearing.
+ */
+.prism-shed [class*="bg-card"] {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  transition: background-color 2.8s ease-in-out,
+              border-color 2.8s ease-in-out,
+              box-shadow 2.8s ease-in-out;
+}
+
+/**
+ * Keep a widget's content clear of the waterline.
+ *
+ * At rest the surface sits a little below the widget's top edge, and the cut
+ * follows it — so on a widget whose text starts flush at the top, the first
+ * line lives permanently under water. Whether that is the effect or a fault
+ * depends entirely on taste, so it is a setting rather than a decision.
+ *
+ * The space has to clear the inset AND the full swing of the wave above it,
+ * or the crest still crosses the first line on its way past.
+ */
+.prism-water-clear [class*="bg-card"] {
+  padding-top: 30px;
+}

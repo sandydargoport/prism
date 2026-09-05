@@ -1,9 +1,10 @@
 'use client';
 
 import * as React from 'react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { LAYOUT_TEMPLATES } from '@/lib/constants/layoutTemplates';
 import { SCREENSAVER_TEMPLATES } from '@/lib/constants/screensaverTemplates';
+import { ScreensaverSettingsPanel } from '@/components/screensaver/ScreensaverQuickSettings';
 import { CommunityGallery } from './CommunityGallery';
 import { CoordinateEditor } from './CoordinateEditor';
 import { LayoutEditorPreviewPanel } from './LayoutEditorPreviewPanel';
@@ -103,6 +104,8 @@ export function LayoutEditorToolbarLeft({
     onTogglePopover('templates');
   };
 
+  const [motionOpen, setMotionOpen] = useState(false);
+
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
       {!editingScreensaver && onRenameOpen ? (
@@ -118,7 +121,22 @@ export function LayoutEditorToolbarLeft({
       )}
 
       {editingScreensaver ? (
-        <span className="text-sm font-medium">Screensaver</span>
+        <>
+          <ScreensaverSettingsPanel open={motionOpen} onClose={() => setMotionOpen(false)} />
+          <span className="text-sm font-medium">Screensaver</span>
+          {/* This editor arranges the widgets; how they come and go is a
+              setting, not layout. That split is not guessable — and sending
+              someone to the settings page to cross it means leaving the thing
+              they are arranging, which is the round trip these controls exist
+              to avoid. Same panel as the screensaver's own corner. */}
+          <button
+            onClick={() => setMotionOpen(true)}
+            className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
+            title="Timing and motion settings for the screensaver"
+          >
+            Timing &amp; motion
+          </button>
+        </>
       ) : (
         <DashboardDropdown
           layoutName={layoutName}

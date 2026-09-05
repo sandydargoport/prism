@@ -12,6 +12,11 @@ interface AwayModeState {
   enabled: boolean;
   enabledAt: string | null;
   enabledBy: string | null;
+  // When it was last switched off. Clients auto-activate from their own
+  // localStorage idle clock, which is per-browser, so without a shared "a human
+  // just turned this off" timestamp any long-idle tab re-enables Away Mode for
+  // the whole house within a minute of someone dismissing it.
+  disabledAt?: string | null;
   autoActivated?: boolean;
 }
 
@@ -27,6 +32,7 @@ export async function GET() {
         enabled: false,
         enabledAt: null,
         enabledBy: null,
+        disabledAt: null,
       });
     }
 
@@ -99,6 +105,7 @@ export async function POST(request: NextRequest) {
           enabled: false,
           enabledAt: null,
           enabledBy: null,
+          disabledAt: new Date().toISOString(),
         };
 
     const [existing] = await db

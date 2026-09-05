@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useIdleDetection } from '@/lib/hooks/useIdleDetection';
 import { useAwayMode } from '@/lib/hooks/useAwayMode';
 import { useBabysitterMode } from '@/lib/hooks/useBabysitterMode';
@@ -17,6 +17,14 @@ import { CssGridDisplay } from '@/components/layout/grid/CssGridDisplay';
 import { CalendarPrefsScopeContext } from '@/lib/hooks/useCalendarWidgetPrefs';
 import { loadScreensaverLayout } from './screensaverStorage';
 import { shouldShowScreensaver } from './shouldShowScreensaver';
+import { rotate, showingCount } from './screensaverRotation';
+import { useScreensaverMotion } from './useScreensaverMotion';
+import { WidgetStage } from './WidgetStage';
+import { EffectStage } from './EffectStage';
+import { ScreensaverQuickSettings } from './ScreensaverQuickSettings';
+import { getEffect } from './effects';
+import { scaledDuration } from './screensaverPrefs';
+import { usePerformanceMode } from '@/lib/hooks/usePerformanceMode';
 
 /**
  * Wrapper classes that make any dashboard widget legible as a screensaver
@@ -127,12 +135,130 @@ export function Screensaver() {
       )}
       <div className="pointer-events-none absolute inset-0 bg-black/40" />
       <ScreensaverGrid />
+      <ScreensaverQuickSettings />
     </div>
   );
 }
 
+/**
+ * Give the snapshot a body — a round one.
+ *
+ * A screensaver widget is about 97% transparent pixels, so an effect that
+ * throws the widget's own pixels has almost nothing to throw. The obvious fix
+ * was a flat translucent fill across the card, and it worked, but it also meant
+ * every pixel inside a rectangle had something to throw: the burst was visibly
+ * a rectangle coming apart, whatever the sampling did afterwards.
+ *
+ * So the material is a radial wash instead — strongest in the middle, gone
+ * before the corners. The mass that leaves is round because the material is
+ * round, and it is only roughly round, because the widget's own text and icons
+ * are still in there being their own shape. The card's own fill is dropped for
+ * the same reason it is dropped on screen.
+ *
+ * This runs on the snapshot only, so what you are reading is unchanged.
+ */
+function giveItBody(clone: HTMLElement) {
+  const cards = clone.querySelectorAll<HTMLElement>('[class*="bg-card"]');
+  const targets = cards.length ? Array.from(cards) : [clone];
+  for (const el of targets) {
+    el.style.setProperty('background-color', 'transparent', 'important');
+    el.style.setProperty(
+      'background-image',
+      'radial-gradient(ellipse 58% 58% at 50% 50%, '
+        + 'rgba(255,255,255,0.42) 0%, '
+        + 'rgba(255,255,255,0.30) 30%, '
+        + 'rgba(255,255,255,0.12) 62%, '
+        + 'rgba(255,255,255,0) 88%)',
+      'important',
+    );
+    el.style.setProperty('border-color', 'transparent', 'important');
+    el.style.setProperty('box-shadow', 'none', 'important');
+  }
+}
+
 function ScreensaverGrid() {
   const layout = useMemo(() => loadScreensaverLayout(), []);
+
+  // Which widgets are currently on screen. Off by default, in which case every
+  // widget shows and all of this is inert.
+  const { motion, interval: motionInterval, floor, ceiling, outlines, drift, waterClear } = useScreensaverMotion();
+  const widgetIds = useMemo(
+    () => layout.filter((w) => w.visible !== false).map((w) => w.i),
+    [layout],
+  );
+
+  /** Horizontal centre of each widget, so a pour can find a partner across the
+   *  board rather than directly above or below it. */
+  const colOf = useMemo(() => {
+    const cols = new Map(layout.map((w) => [w.i, w.x + w.w / 2]));
+    return (id: string) => cols.get(id) ?? 0;
+  }, [layout]);
+  const [showing, setShowing] = useState<string[]>([]);
+  /** Last widget to arrive, so the next pour picks someone else. */
+  const lastIn = useRef<string | undefined>(undefined);
+
+  // Fireworks is the one effect heavy enough to matter: it rasterises the
+  // widget and then draws thousands of particles, and its cost scales with
+  // area. Performance mode already strips backdrop-filter as the biggest GPU
+  // win on thin clients, so handing those same displays a particle system would
+  // be backwards. Both it and prefers-reduced-motion fall back to the plain
+  // fade rather than to nothing, so the rotation still reads as intentional.
+  const { enabled: lowPower } = usePerformanceMode();
+  const reduced = useMemo(
+    () => typeof window !== 'undefined'
+      && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
+    [],
+  );
+  const motionId = motion === 'fireworks' && (lowPower || reduced) ? 'fade' : motion;
+  const effect = motionId === 'off' ? null : getEffect(motionId);
+  useEffect(() => {
+    if (motion === 'off' || widgetIds.length === 0) return;
+    // The board arrives empty and fills itself, one widget at a time.
+    //
+    // This used to seed straight to the target, on the reasoning that fading
+    // them in one by one would read as the screensaver loading rather than
+    // running. In practice the opposite is true: every widget appearing at once
+    // is indistinguishable from them having always been there, and the whole
+    // point of an effect is lost at the moment you are most likely to be
+    // watching — the second the screensaver comes up.
+    //
+    // rotate() fills before it swaps, so the same call does both jobs; only the
+    // gap between calls changes once the board is full.
+    const target = showingCount(widgetIds.length, floor, ceiling);
+
+    // A rotation must not start before the last one has finished. Fireworks
+    // takes twenty-two seconds to leave; with the interval set shorter than
+    // that, every swap interrupted the one before it, transitions piled up and
+    // no widget was ever handed back to its resting state. The setting is a
+    // minimum gap between changes, not a promise to change that often.
+    const settle = effect ? Math.ceil((scaledDuration(effect.durationMs.out) + 900) / 1000) : 0;
+    const gap = Math.max(4, motionInterval, settle) * 1000;
+    // How long to wait between the widgets that fill the board at the start.
+    //
+    // Nine hundred milliseconds is a pleasant cascade for effects that do not
+    // mind overlapping. A pour does mind: at ten seconds a transition and a
+    // widget arriving every nine hundred milliseconds, eleven of them run at
+    // once and the board is a wall of moving water. For those, each arrival
+    // waits for the last one to finish.
+    const ARRIVAL_GAP = effect?.pairedTransitions
+      ? scaledDuration(effect.durationMs.in) + 300
+      : 900;
+    const FIRST = 600;
+
+    let count = 0;
+    let timer = window.setTimeout(function step() {
+      setShowing((prev) => {
+        const next = rotate(widgetIds, prev, Math.random, floor, ceiling, colOf, lastIn.current);
+        lastIn.current = next.find((id) => !prev.includes(id)) ?? lastIn.current;
+        count = next.length;
+        return next;
+      });
+      timer = window.setTimeout(step, count >= target ? gap : ARRIVAL_GAP);
+    }, FIRST);
+
+    return () => window.clearTimeout(timer);
+  }, [motion, effect, widgetIds, motionInterval, floor, ceiling, colOf]);
+
 
   // Only fetch what this overlay actually draws. Called bare, the hook enables
   // every data domain — eleven of them — while the default screensaver layout
@@ -169,10 +295,39 @@ function ScreensaverGrid() {
       onMarkCooked, onUnmarkCooked,
       ...props
     } = rawProps as Record<string, unknown>;
+      const on = !effect || showing.includes(w.i);
+    // Every widget on its own schedule. Drifting in lockstep would move the
+    // whole board as one object, which is both obvious and useless — the
+    // relationship between widgets is exactly what would stay burned in.
+    // Derived from the widget's id so it is stable across renders.
+    let hash = 0;
+    for (let i = 0; i < w.i.length; i++) hash = (hash * 31 + w.i.charCodeAt(i)) % 997;
+    const driftPhase = -(hash % 60);
+
     return (
       <React.Suspense fallback={<div className="flex items-center justify-center h-full opacity-50 text-sm">Loading...</div>}>
-        <div className="h-full w-full [&_*:not([data-keep-bg])]:!bg-transparent [&_.bg-card]:!bg-white/10 [&_.border-border]:!border-white/20">
+        <div
+          className={drift === 'off' ? 'h-full w-full' : `h-full w-full prism-drift-${drift}`}
+          style={drift === 'off' ? undefined : { animationDelay: `${driftPhase}s` }}
+        >
+        <WidgetStage
+          id={w.i}
+          effect={effect}
+          shown={on}
+          className={'h-full w-full prism-screensaver-flat '
+            // Only the waterline cuts into a widget, so only it needs the room.
+            + (waterClear && motion === 'liquid' ? 'prism-water-clear ' : '') + '[&_*:not([data-keep-bg])]:!bg-transparent [&_.bg-card]:!bg-white/10 '
+            + (outlines
+              ? '[&_.border-border]:!border-white/20'
+              // Only the perimeter — see .prism-no-outline in globals.css. This
+              // was `[&_*]:!border-transparent`, which is every element in the
+              // widget: it wiped the rules between table rows and left the
+              // outline of the card, the exact opposite of what it says.
+              : 'prism-no-outline')}
+          prepare={giveItBody}
+        >
           <Component {...props} />
+        </WidgetStage>
         </div>
       </React.Suspense>
     );
@@ -193,6 +348,7 @@ function ScreensaverGrid() {
     // Scope calendar prefs to 'screensaver' so the screensaver's calendar keeps
     // its own view/display settings, independent of the dashboard calendar.
     <CalendarPrefsScopeContext.Provider value="screensaver">
+      <EffectStage>
       <CssGridDisplay
         layout={layout}
         renderWidget={renderScreensaverWidget}
@@ -203,6 +359,7 @@ function ScreensaverGrid() {
         headerOffset={0}
         className="w-full h-full"
       />
+      </EffectStage>
     </CalendarPrefsScopeContext.Provider>
   );
 }
