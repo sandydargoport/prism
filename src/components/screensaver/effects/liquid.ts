@@ -157,23 +157,6 @@ function nearEmpty(fill: number): number {
   return Math.min(1, Math.max(0, fill / EMPTY_FADE));
 }
 
-/**
- * How far the colour has drained out of a settled widget, 0 to 1.
- *
- * Everything the water does is scaled by what is left of this — the tint, the
- * surface, the bubbles, and the cut itself. Once it reaches 1 the widget is
- * simply a widget again.
- *
- * The cut matters most. The surface sits a little below the top edge so a full
- * swing cannot cross it, which means a settled widget has its top few pixels
- * clipped away — fine while there is water over them, and a bug once there is
- * not: text with its tips sliced off and nothing to explain why.
- */
-function drainedBy(f: EffectFrame, settled: number): number {
-  if (f.phase !== 'in' || f.progress < 1) return 0;
-  return Math.min(1, settled / SETTLE_MS);
-}
-
 function tintOf(f: EffectFrame, settled: number): number {
   if (f.phase === 'out') return Math.min(1, f.progress / POUR_START);
   if (f.progress < 1) return 1;
@@ -206,14 +189,16 @@ export const liquid: ScreensaverEffect = {
   elementStyle: (f: EffectFrame) => {
     const level = levelOf(f);
     const { wobble } = effectPrefs();
-    // Both the inset and the swing shrink to nothing as the water drains, so
-    // the boundary ends up flat on the widget's own top edge — which is the
-    // same as not being clipped at all, arrived at without a jump.
-    const left = 1 - drainedBy(f, (f.state as Water | null)?.settled ?? 0);
+    // The cut stays. Releasing it as the colour drained left the waves floating
+    // over an intact widget, covering nothing — and a waterline that covers
+    // nothing is a line, not a surface. What made the cut read as water rather
+    // than as damage was never the blue: it is the crest and the band of light
+    // sitting on it, and those stay for good. The blue is free to go without
+    // taking the surface with it.
     const pts: string[] = [];
     for (let i = 0; i <= POINTS; i++) {
       const x = (f.width * i) / POINTS;
-      const y = waveAt(x, level + settleInset(wobble) * fillOf(f) * left, f.now, wobble * left);
+      const y = waveAt(x, level + settleInset(wobble) * fillOf(f), f.now, wobble);
       pts.push(`${((x / f.width) * 100).toFixed(2)}% ${((y / f.height) * 100).toFixed(2)}%`);
     }
     pts.push('100% 100%', '0% 100%');
