@@ -185,3 +185,31 @@ export function projectCommunityTheme(data: unknown, id: string): Theme & {
     shape: normalizeShape(obj.shape),
   };
 }
+
+/**
+ * The row that goes into `community/themes/index.json`.
+ *
+ * Lives here rather than in the workflow because the workflow is YAML with
+ * JavaScript embedded in a string, which nothing can test. Everything the
+ * gallery card shows is decided in this function instead.
+ */
+export function buildThemeIndexEntry(
+  theme: { id: string; name: string; description: string; author: string; tags: string[] },
+  warnings: ContrastIssue[],
+  today: string,
+): CommunityThemeEntry {
+  return {
+    id: theme.id,
+    file: `${theme.id}.json`,
+    name: theme.name,
+    description: theme.description,
+    author: theme.author,
+    tags: theme.tags,
+    createdAt: today,
+    // Text pairs only. An edge warning means the borders are subtle, which is
+    // a style rather than a defect — see the note on ContrastIssue.kind. The
+    // README promises this number is about the eight text pairs, so counting
+    // edges here would make the card contradict the documentation.
+    contrastWarnings: warnings.filter((w) => w.kind === 'text').length,
+  };
+}

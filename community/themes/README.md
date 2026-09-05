@@ -4,6 +4,18 @@ A theme is a set of colours. Nineteen values for light mode, nineteen for dark,
 a name and a short description. No CSS, no fonts, no images — a theme cannot
 contain anything but colour values, deliberately.
 
+## Installing one
+
+*Settings → Appearance → Palette → Browse* lists everything in this directory,
+with both light and dark previewed on the card, and installs one in a tap. An
+installed theme is copied into your instance rather than linked, so a display
+that boots without a network still comes up in the palette it was left on. It
+then sits in the palette picker next to the built-in five, marked *Community*,
+and can be removed again from the same place.
+
+Cards say how many colour pairs came out between 3:1 and 4.5:1 — legible, but
+tiring on a screen read from a distance. See *Contrast, in practice* below.
+
 ## Two ways to share one
 
 Pick whichever suits you. They differ in who owns the theme afterwards, and it

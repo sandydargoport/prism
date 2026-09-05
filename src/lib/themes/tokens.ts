@@ -167,3 +167,15 @@ export function isInstallableTheme(value: unknown): value is Theme {
     (t.shape === undefined || isValidShape(t.shape))
   );
 }
+
+/**
+ * How many gallery themes one instance may keep.
+ *
+ * The cap exists because installed themes are stored inline in a single
+ * settings row that is read on every server render. Forty is well past what a
+ * household picks through and still small enough that the row stays cheap.
+ *
+ * Shared by the API, which refuses a larger write, and by the provider, which
+ * refuses before making one — the same number in both places, from here.
+ */
+export const MAX_INSTALLED_THEMES = 40;

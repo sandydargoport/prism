@@ -43,6 +43,17 @@ export interface ContrastIssue {
   pair: string;
   ratio: number;
   level: 'error' | 'warning';
+  /**
+   * Which kind of pair this is.
+   *
+   * Worth telling apart because they mean different things to somebody
+   * installing a theme. A text warning says "this will be tiring to read from
+   * across the room". An edge warning says "the borders are subtle", which for
+   * a theme like Snow Day is the whole design — it ships with no borders at
+   * all. Counting them together would put a warning badge on a theme whose
+   * only crime is being airy.
+   */
+  kind: 'text' | 'edge';
 }
 
 export function checkContrast(tokens: ThemeTokens): ContrastIssue[] {
@@ -51,15 +62,15 @@ export function checkContrast(tokens: ThemeTokens): ContrastIssue[] {
 
   for (const [fg, bg] of TEXT_PAIRS) {
     const ratio = contrastRatioHex(hex(fg), hex(bg));
-    if (ratio < CONTRAST_ERROR) issues.push({ pair: `${fg} on ${bg}`, ratio, level: 'error' });
-    else if (ratio < CONTRAST_WARN) issues.push({ pair: `${fg} on ${bg}`, ratio, level: 'warning' });
+    if (ratio < CONTRAST_ERROR) issues.push({ pair: `${fg} on ${bg}`, ratio, level: 'error', kind: 'text' });
+    else if (ratio < CONTRAST_WARN) issues.push({ pair: `${fg} on ${bg}`, ratio, level: 'warning', kind: 'text' });
   }
 
   for (const [a, b] of EDGE_PAIRS) {
     const ratio = contrastRatioHex(hex(a), hex(b));
     // An edge that fails is a warning, never an error: a borderless look is a
     // deliberate style, where unreadable text never is.
-    if (ratio < EDGE_MIN) issues.push({ pair: `${a} against ${b}`, ratio, level: 'warning' });
+    if (ratio < EDGE_MIN) issues.push({ pair: `${a} against ${b}`, ratio, level: 'warning', kind: 'edge' });
   }
 
   return issues;

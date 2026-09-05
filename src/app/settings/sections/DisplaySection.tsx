@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Sun, Moon, Monitor } from 'lucide-react';
+import { Sun, Moon, Monitor, Share2, Store } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -10,6 +10,8 @@ import { useTheme } from '@/components/providers';
 import { useAppLocale, APP_LOCALES } from '@/components/providers/LocaleProvider';
 import { useSeasonalTheme } from '@/lib/hooks/useSeasonalTheme';
 import { MONTH_NAMES, seasonalPalettes } from '@/lib/themes/seasonalThemes';
+import { ThemeShareDialog } from '@/components/settings/ThemeShareDialog';
+import { CommunityThemeGallery } from '@/components/settings/CommunityThemeGallery';
 import { useWallpaperSettings, useAutoOrientationSetting, useScreensaverInterval } from '@/components/layout/WallpaperBackground';
 import { useScreenOrientation } from '@/lib/hooks/useScreenOrientation';
 import { useOrientationOverride } from '../SettingsView';
@@ -36,8 +38,10 @@ function SectionDivider({ label }: { label: string }) {
 }
 
 export function DisplaySection() {
-  const { theme, setTheme, resolvedTheme, palette: activePalette, palettes, setPalette } = useTheme();
+  const { theme, setTheme, resolvedTheme, palette: activePalette, palettes, setPalette, installedThemes } = useTheme();
   const { seasonalTheme, setSeasonalTheme, palette } = useSeasonalTheme();
+  const [sharing, setSharing] = useState(false);
+  const [browsing, setBrowsing] = useState(false);
 
   const mode: 'auto' | 'manual' | 'off' =
     seasonalTheme === 'none' ? 'off' :
@@ -100,12 +104,26 @@ export function DisplaySection() {
           </div>
 
           <div className="mt-6 space-y-3">
-            <div>
-              <h4 className="text-sm font-medium">Palette</h4>
-              <p className="text-xs text-muted-foreground mt-1">
-                Applies to every screen in the house. Light and dark above stay
-                per-screen.
-              </p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h4 className="text-sm font-medium">Palette</h4>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Applies to every screen in the house. Light and dark above stay
+                  per-screen.
+                </p>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <Button variant="outline" size="sm" onClick={() => setBrowsing(true)}>
+                  <Store className="h-4 w-4 mr-1" />
+                  Browse
+                </Button>
+                {/* Shares the palette in use, so what you submit is what you are
+                    looking at. */}
+                <Button variant="outline" size="sm" onClick={() => setSharing(true)}>
+                  <Share2 className="h-4 w-4 mr-1" />
+                  Share
+                </Button>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               {palettes.map((p) => {
@@ -133,7 +151,16 @@ export function DisplaySection() {
                         />
                       ))}
                     </div>
-                    <div className="text-sm font-medium">{p.name}</div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-sm font-medium">{p.name}</span>
+                      {/* Tells the two kinds apart. A gallery theme can be
+                          removed and a built-in one cannot, so the picker has
+                          to say which is which before anyone goes looking for
+                          a Remove button that is not there. */}
+                      {installedThemes.some((t) => t.id === p.id) && (
+                        <span className="text-[10px] text-muted-foreground">Community</span>
+                      )}
+                    </div>
                     <div className="text-xs text-muted-foreground">{p.description}</div>
                   </button>
                 );
@@ -142,6 +169,12 @@ export function DisplaySection() {
           </div>
         </CardContent>
       </Card>
+
+      {sharing && (
+        <ThemeShareDialog palette={activePalette} onClose={() => setSharing(false)} />
+      )}
+
+      {browsing && <CommunityThemeGallery onClose={() => setBrowsing(false)} />}
 
       <Card>
         <CardHeader>
