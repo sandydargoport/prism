@@ -154,8 +154,13 @@ export function EffectStage({ children }: { children: React.ReactNode }) {
           // showed at the end of a fill, which is where a widget hands over from
           // arriving to simply sitting there. Keeping the entry keeps its water
           // exactly where it was.
+          // Deliberately NOT calling onDone. That hands the element back to its
+          // resting styles, which clears the clip — and the very next frame this
+          // same entry reapplies it. The widget's top snapped open and shut
+          // again in consecutive frames, which is the flicker at the end of a
+          // fill "as the mask turns back on". The entry still owns the element,
+          // so it keeps it.
           a.persistent = true;
-          a.onDone();
         } else {
           active.current.delete(key);
           clearEntry(a);

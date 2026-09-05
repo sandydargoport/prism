@@ -75,3 +75,68 @@ describe('rotate', () => {
     expect(showing.sort()).toEqual(['a', 'b']);
   });
 });
+
+describe('pouring across the board', () => {
+  // three columns, two widgets in each — the shape a real layout takes
+  const grid: Record<string, number> = {
+    a: 0, d: 0,
+    b: 16, e: 16,
+    c: 32, f: 32,
+  };
+  const ids = Object.keys(grid);
+  const colOf = (id: string) => grid[id]!;
+
+  it('hands over across the board, not to the widget in its own column', () => {
+    for (let i = 0; i < 60; i++) {
+      const showing = ['a', 'b', 'c'];
+      const next = rotate(ids, showing, Math.random, 3, 3, colOf);
+      const left = showing.find((id) => !next.includes(id))!;
+      const arrived = next.find((id) => !showing.includes(id))!;
+      expect(colOf(arrived)).not.toBe(colOf(left));
+    }
+  });
+
+  it('does not settle into the same pairing every time', () => {
+    const seen = new Set<string>();
+    let showing = ['a', 'b', 'c'];
+    let last: string | undefined;
+    for (let i = 0; i < 80; i++) {
+      const next = rotate(ids, showing, Math.random, 3, 3, colOf, last);
+      const left = showing.find((id) => !next.includes(id))!;
+      const arrived = next.find((id) => !showing.includes(id))!;
+      seen.add(`${left}->${arrived}`);
+      last = arrived;
+      showing = next;
+    }
+    expect(seen.size).toBeGreaterThan(3);
+  });
+
+  it('never repeats the arrival it just made when it has a choice', () => {
+    let showing = ['a', 'b', 'c'];
+    let last: string | undefined;
+    for (let i = 0; i < 60; i++) {
+      const next = rotate(ids, showing, Math.random, 3, 3, colOf, last);
+      const arrived = next.find((id) => !showing.includes(id))!;
+      if (last) expect(arrived).not.toBe(last);
+      last = arrived;
+      showing = next;
+    }
+  });
+
+  it('still swaps exactly one, and never duplicates', () => {
+    let showing = ['a', 'b', 'c'];
+    for (let i = 0; i < 100; i++) {
+      const next = rotate(ids, showing, Math.random, 3, 3, colOf);
+      expect(next).toHaveLength(3);
+      expect(new Set(next).size).toBe(3);
+      expect(next.filter((id) => showing.includes(id))).toHaveLength(2);
+      showing = next;
+    }
+  });
+
+  it('falls back gracefully when everything shares a column', () => {
+    const flat = () => 0;
+    const next = rotate(['x', 'y', 'z'], ['x', 'y'], Math.random, 2, 2, flat);
+    expect(next).toHaveLength(2);
+  });
+});

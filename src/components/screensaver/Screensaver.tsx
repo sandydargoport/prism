@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useIdleDetection } from '@/lib/hooks/useIdleDetection';
 import { useAwayMode } from '@/lib/hooks/useAwayMode';
 import { useBabysitterMode } from '@/lib/hooks/useBabysitterMode';
@@ -186,7 +186,16 @@ function ScreensaverGrid() {
     () => layout.filter((w) => w.visible !== false).map((w) => w.i),
     [layout],
   );
+
+  /** Horizontal centre of each widget, so a pour can find a partner across the
+   *  board rather than directly above or below it. */
+  const colOf = useMemo(() => {
+    const cols = new Map(layout.map((w) => [w.i, w.x + w.w / 2]));
+    return (id: string) => cols.get(id) ?? 0;
+  }, [layout]);
   const [showing, setShowing] = useState<string[]>([]);
+  /** Last widget to arrive, so the next pour picks someone else. */
+  const lastIn = useRef<string | undefined>(undefined);
 
   // Fireworks is the one effect heavy enough to matter: it rasterises the
   // widget and then draws thousands of particles, and its cost scales with
@@ -239,7 +248,8 @@ function ScreensaverGrid() {
     let count = 0;
     let timer = window.setTimeout(function step() {
       setShowing((prev) => {
-        const next = rotate(widgetIds, prev, Math.random, floor, ceiling);
+        const next = rotate(widgetIds, prev, Math.random, floor, ceiling, colOf, lastIn.current);
+        lastIn.current = next.find((id) => !prev.includes(id)) ?? lastIn.current;
         count = next.length;
         return next;
       });
@@ -247,7 +257,7 @@ function ScreensaverGrid() {
     }, FIRST);
 
     return () => window.clearTimeout(timer);
-  }, [motion, effect, widgetIds, motionInterval, floor, ceiling]);
+  }, [motion, effect, widgetIds, motionInterval, floor, ceiling, colOf]);
 
 
   // Only fetch what this overlay actually draws. Called bare, the hook enables

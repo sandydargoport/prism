@@ -35,12 +35,28 @@ export function showingCount(total: number, floor = 2, ceiling = 0): number {
  * Returns the same array when there is nothing to rotate — every widget is
  * already showing — so callers can skip a re-render.
  */
+/**
+ * Where each widget sits across the board, used to choose which one a departing
+ * widget hands over to.
+ *
+ * Water leaving one widget and arriving in another only reads as a pour if the
+ * two are apart: a drain and a fill in the same column are one above the other
+ * and look like a single column doing something, not like a transfer. So the
+ * arriving widget is chosen from those furthest across the board — and chosen
+ * randomly among them, rather than always the very furthest, or the same two
+ * widgets pair with each other every time.
+ */
+export type ColumnOf = (id: string) => number;
+
 export function rotate(
   all: readonly string[],
   showing: readonly string[],
   pick: () => number = Math.random,
   floor = 2,
   ceiling = 0,
+  colOf?: ColumnOf,
+  /** The widget that arrived last time, avoided when there is an alternative. */
+  avoid?: string,
 ): string[] {
   const want = showingCount(all.length, floor, ceiling);
   const present = showing.filter((id) => all.includes(id));
@@ -55,6 +71,25 @@ export function rotate(
   if (!hidden.length) return present as string[];
 
   const out = present[Math.floor(pick() * present.length)]!;
-  const inn = hidden[Math.floor(pick() * hidden.length)]!;
+
+  // Prefer a partner well across the board from the departing widget. Anything
+  // in the far half qualifies, not just the single furthest, so the same two
+  // widgets do not pair off every time; and last time's arrival is skipped when
+  // there is something else to choose.
+  let candidates = hidden;
+  if (colOf && hidden.length > 1) {
+    const from = colOf(out);
+    const spread = hidden.map((id) => Math.abs(colOf(id) - from));
+    const furthest = Math.max(...spread);
+    if (furthest > 0) {
+      const far = hidden.filter((_, i) => spread[i]! >= furthest * 0.5);
+      if (far.length) candidates = far;
+    }
+  }
+  if (avoid && candidates.length > 1) {
+    const fresh = candidates.filter((id) => id !== avoid);
+    if (fresh.length) candidates = fresh;
+  }
+  const inn = candidates[Math.floor(pick() * candidates.length)]!;
   return present.map((id) => (id === out ? inn : id));
 }

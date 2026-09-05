@@ -240,11 +240,12 @@ export const liquid: ScreensaverEffect = {
     // The drawn surface keeps its full swing and sits just below the top once
     // the glass is full, so there is always water moving to look at.
     const { carbonation, wobble } = effectPrefs();
-    // Same shrink as the clip, or the drawn line and the cut drift apart as the
-    // water drains — which is the disagreement that flickered before.
-    const left = 1 - drainedBy(f, water.settled);
-    const surface = level + settleInset(wobble) * fill * left;
-    const waveY = (x: number) => waveAt(x, surface, f.now, wobble * left);
+    // The DRAWN surface keeps its inset and its full swing for good. Only the
+    // cut is released as the colour drains (see elementStyle): a settled widget
+    // ends up whole and unclipped with water still moving across it, rather
+    // than losing its waves along with its blue.
+    const surface = level + settleInset(wobble) * fill;
+    const waveY = (x: number) => waveAt(x, surface, f.now, wobble);
 
     if (f.progress >= 1 && f.phase === 'in') water.settled += f.dt;
     const arriving = waterOn(f) * nearEmpty(fillOf(f));
@@ -282,7 +283,7 @@ export const liquid: ScreensaverEffect = {
       ctx.beginPath();
       ctx.arc(bx, by, bub.r, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(255,255,255,0.22)';
-      ctx.globalAlpha = tint;
+      ctx.globalAlpha = arriving;
       ctx.fill();
     }
 
@@ -309,9 +310,9 @@ export const liquid: ScreensaverEffect = {
       fade.addColorStop(0.18, 'rgba(226,242,255,0.55)');
       fade.addColorStop(0.82, 'rgba(226,242,255,0.55)');
       fade.addColorStop(1, 'rgba(226,242,255,0)');
-      // Tied to the tint, not drawn independently of it: the surface is part of
-      // the water, so when the water has gone there is no surface to draw.
-      ctx.globalAlpha = tint;
+      // Not tied to the tint. The blue is the thing that outstays its welcome;
+      // the moving surface is the thing worth keeping.
+      ctx.globalAlpha = arriving;
       ctx.strokeStyle = fade;
       ctx.lineWidth = 1.6;
       ctx.stroke();
