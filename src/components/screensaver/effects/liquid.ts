@@ -157,6 +157,23 @@ function nearEmpty(fill: number): number {
   return Math.min(1, Math.max(0, fill / EMPTY_FADE));
 }
 
+/**
+ * How far the colour has drained out of a settled widget, 0 to 1.
+ *
+ * Everything the water does is scaled by what is left of this — the tint, the
+ * surface, the bubbles, and the cut itself. Once it reaches 1 the widget is
+ * simply a widget again.
+ *
+ * The cut matters most. The surface sits a little below the top edge so a full
+ * swing cannot cross it, which means a settled widget has its top few pixels
+ * clipped away — fine while there is water over them, and a bug once there is
+ * not: text with its tips sliced off and nothing to explain why.
+ */
+function drainedBy(f: EffectFrame, settled: number): number {
+  if (f.phase !== 'in' || f.progress < 1) return 0;
+  return Math.min(1, settled / SETTLE_MS);
+}
+
 function tintOf(f: EffectFrame, settled: number): number {
   if (f.phase === 'out') return Math.min(1, f.progress / POUR_START);
   if (f.progress < 1) return 1;
@@ -172,6 +189,8 @@ export const liquid: ScreensaverEffect = {
   id: 'liquid',
   label: 'Fill and drain',
   spread: 40,
+  // One pour at a time; see the note on the flag.
+  pairedTransitions: true,
   // It never stops moving, so it must not cost a full frame to do it.
   frameMs: 50,
   durationMs: { in: 10000, out: 10000 },
@@ -187,10 +206,14 @@ export const liquid: ScreensaverEffect = {
   elementStyle: (f: EffectFrame) => {
     const level = levelOf(f);
     const { wobble } = effectPrefs();
+    // Both the inset and the swing shrink to nothing as the water drains, so
+    // the boundary ends up flat on the widget's own top edge — which is the
+    // same as not being clipped at all, arrived at without a jump.
+    const left = 1 - drainedBy(f, (f.state as Water | null)?.settled ?? 0);
     const pts: string[] = [];
     for (let i = 0; i <= POINTS; i++) {
       const x = (f.width * i) / POINTS;
-      const y = waveAt(x, level + settleInset(wobble) * fillOf(f), f.now, wobble);
+      const y = waveAt(x, level + settleInset(wobble) * fillOf(f) * left, f.now, wobble * left);
       pts.push(`${((x / f.width) * 100).toFixed(2)}% ${((y / f.height) * 100).toFixed(2)}%`);
     }
     pts.push('100% 100%', '0% 100%');
@@ -217,8 +240,11 @@ export const liquid: ScreensaverEffect = {
     // The drawn surface keeps its full swing and sits just below the top once
     // the glass is full, so there is always water moving to look at.
     const { carbonation, wobble } = effectPrefs();
-    const surface = level + settleInset(wobble) * fill;
-    const waveY = (x: number) => waveAt(x, surface, f.now, wobble);
+    // Same shrink as the clip, or the drawn line and the cut drift apart as the
+    // water drains — which is the disagreement that flickered before.
+    const left = 1 - drainedBy(f, water.settled);
+    const surface = level + settleInset(wobble) * fill * left;
+    const waveY = (x: number) => waveAt(x, surface, f.now, wobble * left);
 
     if (f.progress >= 1 && f.phase === 'in') water.settled += f.dt;
     const arriving = waterOn(f) * nearEmpty(fillOf(f));
@@ -256,7 +282,7 @@ export const liquid: ScreensaverEffect = {
       ctx.beginPath();
       ctx.arc(bx, by, bub.r, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(255,255,255,0.22)';
-      ctx.globalAlpha = arriving;
+      ctx.globalAlpha = tint;
       ctx.fill();
     }
 
@@ -283,7 +309,9 @@ export const liquid: ScreensaverEffect = {
       fade.addColorStop(0.18, 'rgba(226,242,255,0.55)');
       fade.addColorStop(0.82, 'rgba(226,242,255,0.55)');
       fade.addColorStop(1, 'rgba(226,242,255,0)');
-      ctx.globalAlpha = arriving;
+      // Tied to the tint, not drawn independently of it: the surface is part of
+      // the water, so when the water has gone there is no surface to draw.
+      ctx.globalAlpha = tint;
       ctx.strokeStyle = fade;
       ctx.lineWidth = 1.6;
       ctx.stroke();

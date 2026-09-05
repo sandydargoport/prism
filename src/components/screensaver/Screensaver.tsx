@@ -224,7 +224,16 @@ function ScreensaverGrid() {
     // minimum gap between changes, not a promise to change that often.
     const settle = effect ? Math.ceil((scaledDuration(effect.durationMs.out) + 900) / 1000) : 0;
     const gap = Math.max(4, motionInterval, settle) * 1000;
-    const ARRIVAL_GAP = 900;
+    // How long to wait between the widgets that fill the board at the start.
+    //
+    // Nine hundred milliseconds is a pleasant cascade for effects that do not
+    // mind overlapping. A pour does mind: at ten seconds a transition and a
+    // widget arriving every nine hundred milliseconds, eleven of them run at
+    // once and the board is a wall of moving water. For those, each arrival
+    // waits for the last one to finish.
+    const ARRIVAL_GAP = effect?.pairedTransitions
+      ? scaledDuration(effect.durationMs.in) + 300
+      : 900;
     const FIRST = 600;
 
     let count = 0;

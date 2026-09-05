@@ -144,9 +144,23 @@ export function EffectStage({ children }: { children: React.ReactNode }) {
       ctx.translate(a.viewportLeft - origin.left, a.viewportTop - origin.top);
       a.effect.frame?.(ctx, frame);
       if (progress >= 1 && !a.persistent) {
-        active.current.delete(key);
-        clearEntry(a);
-        a.onDone();
+        if (a.effect.ambient && a.phase === 'in') {
+          // A finished arrival BECOMES the resting state rather than ending and
+          // being replaced by one.
+          //
+          // Deleting it, clearing its patch and waiting for a fresh entry to be
+          // registered left a frame or two with nothing drawn — and the new
+          // entry started with new state, so the bubbles jumped as well. Both
+          // showed at the end of a fill, which is where a widget hands over from
+          // arriving to simply sitting there. Keeping the entry keeps its water
+          // exactly where it was.
+          a.persistent = true;
+          a.onDone();
+        } else {
+          active.current.delete(key);
+          clearEntry(a);
+          a.onDone();
+        }
       }
     }
 
@@ -166,11 +180,14 @@ export function EffectStage({ children }: { children: React.ReactNode }) {
     active.current.set(key, entry);
     if (!raf.current) raf.current = requestAnimationFrame(tick);
     return () => {
-      const a = active.current.get(key);
+      // Only if this entry is still the one under that key. A widget keys its
+      // entries by id alone, so starting a new transition replaces the old one
+      // — and the old one's cancel must not then delete its replacement.
+      if (active.current.get(key) !== entry) return;
       active.current.delete(key);
       // The loop may already have stopped, so clear this entry's own patch here
       // rather than waiting for a frame that is not coming.
-      if (a) clearEntry(a);
+      clearEntry(entry);
     };
   }, [tick, clearEntry]);
 

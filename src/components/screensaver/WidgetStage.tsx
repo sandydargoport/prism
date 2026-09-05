@@ -132,7 +132,7 @@ export function WidgetStage({
       // reason: a slow, one-percent motion cannot hide a dropped frame.
       const box = el.getBoundingClientRect();
       setBusy(true);
-      cancel = stage.begin(`${id}:${phase}`, {
+      cancel = stage.begin(id, {
         effect,
         phase,
         viewportLeft: box.left,
@@ -224,28 +224,6 @@ export function WidgetStage({
     if (busyRef.current && !changed) return;
     applyResting(el, effect?.css?.(shown) ?? {});
   }, [effect, shown]);
-
-  // The resting state, for effects whose resting state still moves. Held open
-  // only once the widget has settled, or it would draw a second waterline on
-  // top of the one the transition is still moving.
-  useEffect(() => {
-    if (!stage || !effect?.ambient || !shown || busy) return;
-    const el = host.current;
-    if (!el) return;
-    const box = el.getBoundingClientRect();
-    return stage.begin(`${id}:ambient`, {
-      effect,
-      phase: 'in',
-      viewportLeft: box.left,
-      viewportTop: box.top,
-      width: Math.round(box.width),
-      height: Math.round(box.height),
-      pixels: null,
-      persistent: true,
-      onFrame: () => {},
-      onDone: () => {},
-    });
-  }, [stage, effect, shown, busy, id]);
 
   return (
     <div ref={host} className="h-full w-full">

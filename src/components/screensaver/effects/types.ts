@@ -87,6 +87,16 @@ export interface ScreensaverEffect {
   /** Draw onto a canvas laid over the widget. */
   frame?: (ctx: CanvasRenderingContext2D, f: EffectFrame) => void;
   /**
+   * Never run two of these at once.
+   *
+   * A pour is one transfer of water: the level leaving one widget is the level
+   * arriving in another, and two of them going at the same time is not a busier
+   * version of that idea, it is a different and worse one. Effects that are
+   * independent of each other — a fade, a burst — are fine overlapping and
+   * should leave this alone.
+   */
+  pairedTransitions?: boolean;
+  /**
    * Minimum milliseconds between draws.
    *
    * For anything that keeps drawing after its transition has finished. The
