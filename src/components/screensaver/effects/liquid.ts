@@ -68,10 +68,24 @@ function bodyFill(ctx: CanvasRenderingContext2D, level: number, height: number):
 
 /** Two components at different wavelengths, so the crest never repeats in a way
  *  the eye can catch. Shared by the clip and the drawing — that is the point. */
-function waveAt(x: number, level: number, now: number): number {
+function waveAt(x: number, level: number, now: number, amp: number): number {
   return level
-    + Math.sin(x / 48 + now / 900) * 5
-    + Math.sin(x / 19 - now / 1400) * 2;
+    + (Math.sin(x / 48 + now / 900) * 5
+     + Math.sin(x / 19 - now / 1400) * 2) * amp;
+}
+
+/**
+ * The surface settles as the glass empties or fills.
+ *
+ * At full, the level sits on the widget's top edge — so a wave still swinging
+ * around it crosses that edge, and the clip-path takes a bite out of the top of
+ * the widget and gives it back, over and over. That is the flicker at the end
+ * of a fill: not a frame-rate problem, a waterline oscillating across the
+ * boundary it is supposed to have reached. Flat at both ends fixes it, and is
+ * what water does anyway.
+ */
+function waveAmp(fill: number): number {
+  return Math.sin(Math.PI * Math.min(1, Math.max(0, fill)));
 }
 
 /**
@@ -132,10 +146,11 @@ export const liquid: ScreensaverEffect = {
 
   elementStyle: (f: EffectFrame) => {
     const level = levelOf(f);
+    const amp = waveAmp(fillOf(f));
     const pts: string[] = [];
     for (let i = 0; i <= POINTS; i++) {
       const x = (f.width * i) / POINTS;
-      const y = waveAt(x, level, f.now);
+      const y = waveAt(x, level, f.now, amp);
       pts.push(`${((x / f.width) * 100).toFixed(2)}% ${((y / f.height) * 100).toFixed(2)}%`);
     }
     pts.push('100% 100%', '0% 100%');
@@ -159,7 +174,8 @@ export const liquid: ScreensaverEffect = {
     const bubbles = water.bubbles;
     const level = levelOf(f);
     const fill = fillOf(f);
-    const waveY = (x: number) => waveAt(x, level, f.now);
+    const amp = waveAmp(fill);
+    const waveY = (x: number) => waveAt(x, level, f.now, amp);
 
     if (f.progress >= 1 && f.phase === 'in') water.settled += f.dt;
     const tint = tintOf(f, water.settled);

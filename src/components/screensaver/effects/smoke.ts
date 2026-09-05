@@ -65,7 +65,7 @@ export const smoke: ScreensaverEffect = {
   id: 'smoke',
   label: 'Smoke',
   spread: 0,
-  durationMs: { in: 5600, out: 7000 },
+  durationMs: { in: 11200, out: 14000 },
 
   css: (shown) => (shown ? { opacity: 1 } : { opacity: 0 }),
 

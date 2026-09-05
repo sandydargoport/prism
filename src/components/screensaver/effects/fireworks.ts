@@ -57,7 +57,7 @@ const SWELL_FRACTION = 0.62;
 const KEEP_CENTRE = 0.78;
 
 /** How sharply that falls off toward the edges. Higher empties the rim sooner. */
-const FALLOFF = 2.2;
+const FALLOFF = 1.9;
 
 /**
  * The fraction of the half-diagonal at which nothing is kept at all.
@@ -71,7 +71,7 @@ const FALLOFF = 2.2;
  * disc, which looks manufactured. The widget's own content should still be
  * showing through as irregularity.
  */
-const EDGE = 0.62;
+const EDGE = 0.98;
 
 /**
  * What the fragments cool into as they scatter.
@@ -121,6 +121,12 @@ function build(pixels: ImageData, width: number, height: number): Spark[] {
   const cx = pw / 2;
   const cy = ph / 2;
   const reach = Math.hypot(pw, ph) / 2;
+  // Shape is measured against the short side, not the diagonal. Measured
+  // against the diagonal, a wide widget keeps everything out to its left and
+  // right extremes and drops only the corners — which still reads as a
+  // rectangle with the corners knocked off. Against the short side the kept
+  // region is a circle inscribed in the widget, whatever its aspect ratio.
+  const shapeReach = Math.min(pw, ph) / 2;
   const sx = width / pw;
   const sy = height / ph;
   const sparks: Spark[] = [];
@@ -133,7 +139,7 @@ function build(pixels: ImageData, width: number, height: number): Spark[] {
       const ox = x - cx;
       const oy = y - cy;
       const d = Math.hypot(ox, oy) || 1;
-      if (Math.random() > keepAt(d / reach)) continue;
+      if (Math.random() > keepAt(d / shapeReach)) continue;
       // Cubed, with no floor, because acceleration dominates: a fragment at
       // even a third of full speed still crosses 200px in two seconds. Only
       // below about 0.15 does one stay anywhere near where it started, so the
@@ -164,7 +170,7 @@ function build(pixels: ImageData, width: number, height: number): Spark[] {
         size: GRAIN_PX,
         r: data[i]!, g: data[i + 1]!, bl: data[i + 2]!, a: a / 255,
         cache: '', bucket: -1,
-        life: 3.4 + Math.random() * 1.8,
+        life: 4.6 + Math.random() * 2.6,
         age: 0,
       });
     }
@@ -179,7 +185,7 @@ export const fireworks: ScreensaverEffect = {
   id: 'fireworks',
   label: 'Fireworks',
   spread: 2200,
-  durationMs: { in: 4200, out: 12000 },
+  durationMs: { in: 4200, out: 16000 },
   needsPixels: true,
   takesOverAt: SWELL_FRACTION,
 
@@ -251,7 +257,10 @@ export const fireworks: ScreensaverEffect = {
       k.v += k.acc * (0.35 + 1.9 * t) * secs;
       k.x += k.dx * k.v * secs;
       k.y += k.dy * k.v * secs;
-      const alpha = k.a * Math.pow(1 - t, 1.4);
+      // Linear rather than 1.4: the steeper curve dumped most of the
+      // brightness in the first third and the field was gone while it was still
+      // spreading. Fragments should thin out as they go, not drop out.
+      const alpha = k.a * (1 - t);
       if (alpha <= 0.012) continue;
 
       // Cool towards ember on the way out. Quantised into eight steps and

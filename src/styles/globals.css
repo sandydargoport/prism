@@ -804,11 +804,15 @@
   50%      { transform: scale(1.012); }
 }
 
+/* Ripple is the one that is meant to be seen. Breathe and figure-eight exist to
+   move pixels without anyone noticing; a flag that nobody can tell is moving is
+   not a flag. Still gentle — a slow lift and settle, not a flutter. */
 @keyframes prism-drift-ripple {
-  0%, 100% { transform: translateX(0) rotate(0deg) skewY(0deg); }
-  25%      { transform: translateX(6px) rotate(0.22deg) skewY(0.16deg); }
-  50%      { transform: translateX(0) rotate(0deg) skewY(-0.1deg); }
-  75%      { transform: translateX(-6px) rotate(-0.22deg) skewY(0.16deg); }
+  0%, 100% { transform: translate(0, 0) rotate(0deg) skewY(0deg); }
+  20%      { transform: translate(5px, -3px) rotate(0.5deg) skewY(0.45deg); }
+  40%      { transform: translate(2px, 2px) rotate(-0.2deg) skewY(-0.3deg); }
+  60%      { transform: translate(-4px, -2px) rotate(-0.5deg) skewY(0.35deg); }
+  80%      { transform: translate(-2px, 3px) rotate(0.25deg) skewY(-0.2deg); }
 }
 
 /* x = sin(t), y = sin(2t): a figure eight, which covers two axes without ever
@@ -833,7 +837,7 @@
 }
 
 .prism-drift-breathe { animation-name: prism-drift-breathe; animation-duration: 22s; }
-.prism-drift-ripple  { animation-name: prism-drift-ripple;  animation-duration: 34s; }
+.prism-drift-ripple  { animation-name: prism-drift-ripple;  animation-duration: 15s; }
 .prism-drift-figure8 { animation-name: prism-drift-figure8; animation-duration: 96s; animation-timing-function: linear; }
 
 @media (prefers-reduced-motion: reduce) {
