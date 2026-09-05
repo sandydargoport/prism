@@ -16,6 +16,14 @@ export function useSquareCells(
 ) {
   const [cellSize, setCellSize] = useState(SSR_FALLBACK);
   const [width, setWidth] = useState(0);
+  // Effective scale between this element's own coordinate space and the
+  // viewport's. A per-display font scale renders the dashboard inside a CSS
+  // `zoom` wrapper, and the two spaces stop agreeing: `clientWidth` is already
+  // divided by the zoom, while `window.innerHeight` is not. Anything mixing the
+  // two budgets a height in root pixels and then renders it magnified, which
+  // pushes the bottom of the grid off the screen. Callers divide viewport-derived
+  // figures by this to get back into local units. 1 when unscaled.
+  const [zoom, setZoom] = useState(1);
   // Measured distance from the top of the viewport to the top of the grid
   // container (i.e. the real header/chrome height) — more reliable than a
   // hardcoded headerOffset for fitting the design into the viewport.
@@ -37,6 +45,10 @@ export function useSquareCells(
     const w = el.clientWidth;
     setWidth(w);
     setTop(rect.top);
+    // offsetWidth (not clientWidth) because getBoundingClientRect includes
+    // borders too; the ratio is then exactly the accumulated zoom.
+    const z = el.offsetWidth > 0 ? rect.width / el.offsetWidth : 1;
+    setZoom(Number.isFinite(z) && z > 0 ? z : 1);
     setMounted(true);
     if (w <= 0) return;
     const available = w - 2 * containerPadding - (cols - 1) * gap;
@@ -88,5 +100,5 @@ export function useSquareCells(
     return () => roRef.current?.disconnect();
   }, []);
 
-  return { containerRef, cellSize, width, top, mounted, remeasure: compute };
+  return { containerRef, cellSize, width, top, zoom, mounted, remeasure: compute };
 }

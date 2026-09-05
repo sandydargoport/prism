@@ -28,7 +28,19 @@ export default async function HomePage() {
       <div id="ssr-placeholder" className="h-screen flex items-center justify-center" aria-hidden="true">
         <h1 className="text-4xl font-bold text-muted-foreground/20">Prism</h1>
       </div>
-      <div style={fontScale !== 100 ? { zoom: fontScale / 100 } : undefined}>
+      {/* `--app-vh` is a viewport height expressed in this subtree's own units.
+          `vh` is relative to the root viewport and `zoom` does not divide it, so
+          every `min-h-screen` inside here would otherwise be one full viewport
+          TALL AND THEN MAGNIFIED, running the dashboard off the bottom of the
+          screen. Children read the variable and fall back to 100vh where it is
+          not set, so unscaled displays and every other page are unaffected. */}
+      <div
+        style={
+          fontScale !== 100
+            ? ({ zoom: fontScale / 100, '--app-vh': `${10000 / fontScale}vh` } as React.CSSProperties)
+            : undefined
+        }
+      >
         <DashboardClient />
       </div>
     </main>

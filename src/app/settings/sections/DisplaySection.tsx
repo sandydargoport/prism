@@ -14,6 +14,7 @@ import { useWallpaperSettings, useAutoOrientationSetting, useScreensaverInterval
 import { useScreenOrientation } from '@/lib/hooks/useScreenOrientation';
 import { useOrientationOverride } from '../SettingsView';
 import { useScreensaverTimeout } from '@/lib/hooks/useScreensaverTimeout';
+import { useScreensaverMotion, type ScreensaverMotion, type ScreensaverDrift } from '@/components/screensaver/useScreensaverMotion';
 import { useIdleLogoutSetting, IDLE_LOGOUT_OPTIONS } from '@/lib/hooks/useIdleLogout';
 import { useAutoHideUI } from '@/lib/hooks/useAutoHideUI';
 import { useAwayModeTimeout } from '@/lib/hooks/useAwayModeTimeout';
@@ -58,6 +59,10 @@ export function DisplaySection() {
       </div>
 
       <SectionDivider label="Theme" />
+      {/* A section spreads across the width rather than running down it:
+          Seasonal Theme sits beside Color Scheme instead of below it. The
+          divider stays full width so the grouping still reads as one thing. */}
+      <div className="grid xl:grid-cols-2 2xl:grid-cols-3 gap-4 items-start">
 
       <Card>
         <CardHeader>
@@ -214,21 +219,34 @@ export function DisplaySection() {
         </CardContent>
       </Card>
 
+      </div>
       <SectionDivider label="Wallpaper & Display" />
+      {/* A section spreads across the width rather than running down it:
+          Seasonal Theme sits beside Color Scheme instead of below it. The
+          divider stays full width so the grouping still reads as one thing. */}
+      <div className="grid xl:grid-cols-2 2xl:grid-cols-3 gap-4 items-start">
 
       <PerformanceModeCard />
 
-      <WallpaperSettingsCard />
-
       <OrientationCard />
 
-      <SectionDivider label="Behavior" />
+      <WallpaperSettingsCard />
 
+      </div>
+      <SectionDivider label="Behavior" />
+      {/* A section spreads across the width rather than running down it:
+          Seasonal Theme sits beside Color Scheme instead of below it. The
+          divider stays full width so the grouping still reads as one thing. */}
+      <div className="grid xl:grid-cols-2 2xl:grid-cols-3 gap-4 items-start">
+
+      <ScreensaverCard />
       <TimersCard />
 
       <WeatherUnitsCard />
 
       <LanguageCard />
+
+      </div>
     </div>
   );
 }
@@ -355,8 +373,6 @@ function WeatherUnitsCard() {
 }
 
 function TimersCard() {
-  const { timeout: ssTimeout, setTimeout: setSsTimeout } = useScreensaverTimeout();
-  const { interval: photoInterval, setInterval: setPhotoInterval } = useScreensaverInterval();
   const { autoHideEnabled, setAutoHideEnabled } = useAutoHideUI();
   const { timeout: awayTimeout, setTimeout: setAwayTimeout } = useAwayModeTimeout();
   const [idleLogout, setIdleLogout] = useIdleLogoutSetting();
@@ -366,28 +382,13 @@ function TimersCard() {
       <CardHeader>
         <CardTitle>Timers &amp; Auto-Activation</CardTitle>
         <CardDescription>
-          Configure screensaver, auto-hide, and away mode inactivity timers
+          Auto-hide, away mode, and how long a signed-in session lasts
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
-        {/* Screensaver */}
+        {/* Sign out */}
         <div className="space-y-3">
-          <h4 className="text-sm font-medium">Screensaver</h4>
-          <div className="flex items-center gap-3 pl-2">
-            <span className="text-sm text-muted-foreground">Activate after</span>
-            <select
-              value={ssTimeout}
-              onChange={(e) => setSsTimeout(Number(e.target.value))}
-              className="border border-border rounded px-2 py-1 text-sm bg-background"
-            >
-              <option value={30}>30 seconds</option>
-              <option value={60}>1 minute</option>
-              <option value={120}>2 minutes</option>
-              <option value={600}>10 minutes</option>
-              <option value={3600}>1 hour</option>
-              <option value={0}>Never</option>
-            </select>
-          </div>
+          <h4 className="text-sm font-medium">Signed-in session</h4>
           <div className="flex items-center gap-3 pl-2">
             <span className="text-sm text-muted-foreground">Sign out after</span>
             <select
@@ -405,24 +406,6 @@ function TimersCard() {
             whoever last used it. The dashboard stays readable; adding or
             changing anything asks for a PIN. This screen only.
           </p>
-          <div className="flex items-center gap-3 pl-2">
-            <span className="text-sm text-muted-foreground">Rotate photos every</span>
-            <select
-              value={photoInterval}
-              onChange={(e) => setPhotoInterval(Number(e.target.value))}
-              className="border border-border rounded px-2 py-1 text-sm bg-background"
-            >
-              <option value={5}>5 seconds</option>
-              <option value={10}>10 seconds</option>
-              <option value={15}>15 seconds</option>
-              <option value={30}>30 seconds</option>
-              <option value={60}>1 minute</option>
-              <option value={300}>5 minutes</option>
-              <option value={600}>10 minutes</option>
-              <option value={3600}>1 hour</option>
-              <option value={0}>Never (static)</option>
-            </select>
-          </div>
         </div>
 
         <div className="border-t border-border" />
@@ -471,6 +454,232 @@ function TimersCard() {
             After the specified idle time, Away Mode activates automatically for privacy.
           </p>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * The screensaver's own card.
+ *
+ * These controls used to be an <h4> inside "Timers & Auto-Activation", between
+ * the sign-out timer and the away-mode timer. Everything worked, but nobody
+ * could find it: "screensaver" is not a timer, and the one place people look
+ * for it — the screensaver editor — didn't mention it either. Giving it a card
+ * with its own name is the whole fix.
+ */
+function ScreensaverCard() {
+  const { timeout: ssTimeout, setTimeout: setSsTimeout } = useScreensaverTimeout();
+  const { interval: photoInterval, setInterval: setPhotoInterval } = useScreensaverInterval();
+  const {
+    motion, setMotion,
+    interval: motionInterval, setInterval: setMotionInterval,
+    floor, setFloor, ceiling, setCeiling, outlines, setOutlines,
+    shortcut, setShortcut, drift, setDrift,
+    carbonation, setCarbonation, waterClear, setWaterClear, wobble, setWobble, speed, setSpeed,
+  } = useScreensaverMotion();
+
+  return (
+    <Card id="screensaver-settings">
+      <CardHeader>
+        <CardTitle>Screensaver</CardTitle>
+        <CardDescription>
+          When it starts, how the widgets come and go, and how often the photo changes
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+          <div className="flex items-center gap-3 pl-2">
+            <span className="text-sm text-muted-foreground">Activate after</span>
+            <select
+              value={ssTimeout}
+              onChange={(e) => setSsTimeout(Number(e.target.value))}
+              className="border border-border rounded px-2 py-1 text-sm bg-background"
+            >
+              <option value={30}>30 seconds</option>
+              <option value={60}>1 minute</option>
+              <option value={120}>2 minutes</option>
+              <option value={600}>10 minutes</option>
+              <option value={3600}>1 hour</option>
+              <option value={0}>Never</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-3 pl-2">
+            <span className="text-sm text-muted-foreground">Widget transition effect</span>
+            <select
+              value={motion}
+              onChange={(e) => setMotion(e.target.value as ScreensaverMotion)}
+              className="border border-border rounded px-2 py-1 text-sm bg-background"
+            >
+              <option value="off">None</option>
+              <option value="fade">Fade</option>
+              <option value="smoke">Smoke</option>
+              <option value="liquid">Fill and drain</option>
+              <option value="fireworks">Fireworks</option>
+            </select>
+          </div>
+          {motion !== 'off' && (
+            <div className="flex items-center gap-3 pl-2">
+              <span className="text-sm text-muted-foreground">Change every</span>
+              <select
+                value={motionInterval}
+                onChange={(e) => setMotionInterval(Number(e.target.value))}
+                className="border border-border rounded px-2 py-1 text-sm bg-background"
+              >
+                <option value={10}>10 seconds</option>
+                <option value={20}>20 seconds</option>
+                <option value={45}>45 seconds</option>
+                <option value={90}>1.5 minutes</option>
+                <option value={300}>5 minutes</option>
+              </select>
+            </div>
+          )}
+          {motion !== 'off' && (
+            <div className="flex items-center gap-3 pl-2 flex-wrap">
+              <span className="text-sm text-muted-foreground">Show at least</span>
+              <select
+                value={floor}
+                onChange={(e) => setFloor(Number(e.target.value))}
+                className="border border-border rounded px-2 py-1 text-sm bg-background"
+              >
+                {[1, 2, 3, 4, 5, 6, 8].map((n) => (
+                  <option key={n} value={n}>{n} widget{n === 1 ? '' : 's'}</option>
+                ))}
+              </select>
+              <span className="text-sm text-muted-foreground">and at most</span>
+              <select
+                value={ceiling}
+                onChange={(e) => setCeiling(Number(e.target.value))}
+                className="border border-border rounded px-2 py-1 text-sm bg-background"
+              >
+                <option value={0}>no limit</option>
+                {[2, 3, 4, 5, 6, 8, 10, 12].map((n) => (
+                  <option key={n} value={n}>{n} widgets</option>
+                ))}
+              </select>
+            </div>
+          )}
+          {motion !== 'off' && (
+            <label className="flex items-center gap-3 pl-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={!outlines}
+                onChange={(e) => setOutlines(!e.target.checked)}
+                className="rounded border-border"
+              />
+              <span className="text-sm text-muted-foreground">Hide widget outlines</span>
+            </label>
+          )}
+          <div className="flex items-center gap-3 pl-2">
+            <span className="text-sm text-muted-foreground">Transition length</span>
+            <select
+              value={speed}
+              onChange={(e) => setSpeed(Number(e.target.value))}
+              className="border border-border rounded px-2 py-1 text-sm bg-background"
+            >
+              <option value={0.5}>Brisk</option>
+              <option value={1}>Normal</option>
+              <option value={1.6}>Slow</option>
+              <option value={2.4}>Very slow</option>
+            </select>
+          </div>
+          {motion === 'liquid' && (
+            <>
+              <label className="flex items-center gap-3 pl-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={carbonation}
+                  onChange={(e) => setCarbonation(e.target.checked)}
+                  className="rounded border-border"
+                />
+                <span className="text-sm text-muted-foreground">Carbonation</span>
+              </label>
+              <label className="flex items-center gap-3 pl-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={waterClear}
+                  onChange={(e) => setWaterClear(e.target.checked)}
+                  className="rounded border-border"
+                />
+                <span className="text-sm text-muted-foreground">Keep text clear of the waterline</span>
+              </label>
+              <p className="text-xs text-muted-foreground pl-2">
+                Adds space above the content in each widget so the surface sits over empty
+                room rather than across the first line of text. Off, the water covers
+                the top of what the widget is showing — which is either the effect or a
+                fault, depending on taste.
+              </p>
+              <div className="flex items-center gap-3 pl-2">
+                <span className="text-sm text-muted-foreground">Surface wobble</span>
+                <select
+                  value={wobble}
+                  onChange={(e) => setWobble(Number(e.target.value))}
+                  className="border border-border rounded px-2 py-1 text-sm bg-background"
+                >
+                  <option value={0}>None</option>
+                  <option value={0.5}>Slight</option>
+                  <option value={1}>Normal</option>
+                  <option value={1.8}>Choppy</option>
+                </select>
+              </div>
+            </>
+          )}
+          <div className="flex items-center gap-3 pl-2">
+            <span className="text-sm text-muted-foreground">Drift</span>
+            <select
+              value={drift}
+              onChange={(e) => setDrift(e.target.value as ScreensaverDrift)}
+              className="border border-border rounded px-2 py-1 text-sm bg-background"
+            >
+              <option value="off">Still</option>
+              <option value="breathe">Breathe</option>
+              <option value="ripple">Ripple</option>
+              <option value="figure8">Figure eight</option>
+            </select>
+          </div>
+          <p className="text-xs text-muted-foreground pl-2">
+            Moves each widget slowly and out of step with the others, so no edge sits on
+            the same pixels for months. Periods are minutes long and the movement is a
+            few pixels — enough to spare the panel, not enough to notice.
+          </p>
+          <label className="flex items-center gap-3 pl-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={shortcut}
+              onChange={(e) => setShortcut(e.target.checked)}
+              className="rounded border-border"
+            />
+            <span className="text-sm text-muted-foreground">
+              Show a settings shortcut on the screensaver
+            </span>
+          </label>
+          <p className="text-xs text-muted-foreground pl-2">
+            Puts a faint Prism mark in the top-left of the screensaver. Tapping it opens
+            these effect settings without leaving the display — useful while you are
+            deciding which one you like.
+          </p>
+          <p className="text-xs text-muted-foreground pl-2">
+            Showing some widgets at a time and swapping them gives the screensaver slow
+            movement, and keeps a static image off the panel. About two thirds are shown
+            at once, within the limits above.
+          </p>
+          <div className="flex items-center gap-3 pl-2">
+            <span className="text-sm text-muted-foreground">Rotate photos every</span>
+            <select
+              value={photoInterval}
+              onChange={(e) => setPhotoInterval(Number(e.target.value))}
+              className="border border-border rounded px-2 py-1 text-sm bg-background"
+            >
+              <option value={5}>5 seconds</option>
+              <option value={10}>10 seconds</option>
+              <option value={15}>15 seconds</option>
+              <option value={30}>30 seconds</option>
+              <option value={60}>1 minute</option>
+              <option value={300}>5 minutes</option>
+              <option value={600}>10 minutes</option>
+              <option value={3600}>1 hour</option>
+              <option value={0}>Never (static)</option>
+            </select>
+          </div>
       </CardContent>
     </Card>
   );

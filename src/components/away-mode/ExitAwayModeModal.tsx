@@ -183,7 +183,12 @@ export function ExitAwayModeModal({
               <div className="grid grid-cols-2 gap-3">
                 {parents.map((parent) => (
                   <button
-                    key={parent.id}
+                    // `id` is deliberately blank in the unauthenticated /api/family
+                    // response — `loginIndex` is the login token there. Keying on the
+                    // blank id gave every parent the SAME key, so React reused DOM
+                    // nodes between them and the list rendered one member's avatar
+                    // against another's name. Matches QuickPinModal, which had it right.
+                    key={parent.id || parent.loginIndex}
                     onClick={() => setSelectedParent(parent)}
                     className={cn(
                       'flex flex-col items-center p-3 rounded-xl',

@@ -1,5 +1,10 @@
 PolyForm Noncommercial License 1.0.0
 
+NOTE: this licence covers Prism's own code. Prism also redistributes
+third-party fonts and emoji artwork under their own, more permissive
+terms — see the NOTICE file. The bundled emoji graphics are CC-BY 4.0
+and require attribution.
+
 Copyright (c) 2024 Prism Contributors
 
 This software and associated documentation files are provided under the

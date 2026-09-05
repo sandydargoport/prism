@@ -21,7 +21,7 @@ broken.
 particular screen is in — a hallway display at night and a tablet in a bright
 kitchen want different answers, and both are right at the same time.
 
-The same split applies to the screensaver timeout and font scale, which are
+The same split applies to the screensaver timeout and text size, which are
 also per-screen.
 
 ## Readability

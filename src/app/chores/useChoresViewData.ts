@@ -7,6 +7,7 @@ import { useChores } from '@/lib/hooks';
 import { toast } from '@/components/ui/use-toast';
 
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
+import { usePersistedState, useSessionScopedState, oneOf, isBoolean, isStringArray } from '@/lib/hooks/usePersistedState';
 import type { Chore } from '@/types';
 
 export interface ChoreCompletion {
@@ -36,14 +37,27 @@ export function useChoresViewData() {
   const { members: familyMembers } = useFamily();
 
   const [chores, setChores] = useState<Chore[]>([]);
-  const [filterPerson, setFilterPerson] = useState<string[] | null>(null);
+  // Narrowing choice — kept across a refresh, forgotten once the display has
+  // been idle, so nobody walks up to a board that silently hides most of it.
+  const [filterPerson, setFilterPerson] = useSessionScopedState<string[] | null>(
+    'prism-chores-filter-person', null,
+    (v): v is string[] | null => v === null || isStringArray(v),
+  );
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
-  const [showDisabled, setShowDisabled] = useState(false);
-  const [hideCompleted, setHideCompleted] = useState(false);
+  // Presentation choices, persisted like the Tasks page: they describe how the
+  // list reads rather than narrowing what it contains.
+  const [showDisabled, setShowDisabled] = usePersistedState(
+    'prism-chores-show-disabled', false, isBoolean,
+  );
+  const [hideCompleted, setHideCompleted] = usePersistedState(
+    'prism-chores-hide-completed', false, isBoolean,
+  );
   const [showCompletions, setShowCompletions] = useState(false);
   const [completions, setCompletions] = useState<ChoreCompletion[]>([]);
   const [completionsLoading, setCompletionsLoading] = useState(false);
-  const [sortBy, setSortBy] = useState<'nextDue' | 'category' | 'frequency'>('nextDue');
+  const [sortBy, setSortBy] = usePersistedState<'nextDue' | 'category' | 'frequency'>(
+    'prism-chores-sort', 'nextDue', oneOf('nextDue', 'category', 'frequency'),
+  );
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingChore, setEditingChore] = useState<Chore | null>(null);
 

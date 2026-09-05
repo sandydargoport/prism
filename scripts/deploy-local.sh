@@ -31,6 +31,15 @@ docker exec --user root prism-app chown -R nextjs:nodejs /app/public
 # (recipe images, imported photos). Restore app ownership after every copy.
 docker exec --user root prism-app chown -R nextjs:nodejs /app/data
 
+# docker cp writes as root, and the standalone bundle carries .env and .next
+# with it. The app runs as nextjs, so without this it cannot read its own
+# environment (EACCES on /app/.env) or write its render cache (EACCES on
+# /app/.next/cache) — which surfaces later as pages failing to load rather than
+# as anything that looks like a deploy problem.
+docker exec --user root prism-app sh -c "
+  chown -R nextjs:nodejs /app/.next /app/.env 2>/dev/null || true
+  mkdir -p /app/.next/cache && chown -R nextjs:nodejs /app/.next/cache" 
+
 echo "Restarting app..."
 docker compose restart app
 

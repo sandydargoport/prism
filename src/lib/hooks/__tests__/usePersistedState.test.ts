@@ -13,6 +13,8 @@ import { renderHook, act } from '@testing-library/react';
 import {
   usePersistedState,
   useSessionScopedState,
+  usePersistedStringSet,
+  useSessionScopedStringSet,
   displayWentIdle,
   IDLE_FORGET_MS,
   oneOf,
@@ -127,5 +129,108 @@ describe('useSessionScopedState', () => {
     renderHook(() => useSessionScopedState<string | null>('f', null, isListFilter));
 
     expect(JSON.parse(window.localStorage.getItem('f')!)).toBeNull();
+  });
+});
+
+/**
+ * A Set does not survive JSON — it serialises to `{}` — so storing one
+ * directly would come back empty and silently show everything, which on a
+ * filter reads as the filter having been cleared by itself.
+ */
+describe('usePersistedStringSet', () => {
+  it('round-trips a Set through storage', () => {
+    const { result } = renderHook(() => usePersistedStringSet('s'));
+    act(() => result.current[1](new Set(['b', 'a'])));
+
+    const second = renderHook(() => usePersistedStringSet('s'));
+    expect([...second.result.current[0]].sort()).toEqual(['a', 'b']);
+  });
+
+  it('does not store a Set as an empty object', () => {
+    const { result } = renderHook(() => usePersistedStringSet('s'));
+    act(() => result.current[1](new Set(['x'])));
+    expect(window.localStorage.getItem('s')).toBe('["x"]');
+  });
+
+  it('accepts an updater, like useState', () => {
+    const { result } = renderHook(() => usePersistedStringSet('s', ['a']));
+    act(() => result.current[1]((prev) => new Set([...prev, 'b'])));
+    expect([...result.current[0]].sort()).toEqual(['a', 'b']);
+  });
+
+  it('drops stored members that are no longer valid options', () => {
+    window.localStorage.setItem('s', JSON.stringify(['breakfast', 'brunch']));
+    const isMeal = oneOf('breakfast', 'lunch');
+    const { result } = renderHook(() => usePersistedStringSet('s', [], isMeal));
+    // One bad member invalidates the stored value rather than being silently
+    // kept: a half-valid filter is still a filter the UI cannot fully undo.
+    expect([...result.current[0]]).toEqual([]);
+  });
+
+  it('survives storage being unavailable', () => {
+    const spy = jest.spyOn(window.localStorage.__proto__, 'getItem')
+      .mockImplementation(() => { throw new Error('blocked'); });
+    const { result } = renderHook(() => usePersistedStringSet('s', ['a']));
+    expect([...result.current[0]]).toEqual(['a']);
+    spy.mockRestore();
+  });
+});
+
+describe('useSessionScopedStringSet', () => {
+  it('forgets the Set once the display has been idle', () => {
+    window.localStorage.setItem('s', JSON.stringify(['a']));
+    window.localStorage.setItem('prism-last-activity', String(Date.now() - IDLE_FORGET_MS - 1));
+    const { result } = renderHook(() => useSessionScopedStringSet('s'));
+    expect([...result.current[0]]).toEqual([]);
+  });
+
+  it('keeps the Set across a reload during active use', () => {
+    window.localStorage.setItem('s', JSON.stringify(['a']));
+    window.localStorage.setItem('prism-last-activity', String(Date.now()));
+    const { result } = renderHook(() => useSessionScopedStringSet('s'));
+    expect([...result.current[0]]).toEqual(['a']);
+  });
+});
+
+/**
+ * The hook must not read storage during the first render.
+ *
+ * The server has no localStorage, so it always renders the default. A stored
+ * value applied during the first client render disagrees with that markup and
+ * React discards the tree (#418). The value is therefore applied after mount,
+ * and the write is gated behind that read — writing first would overwrite the
+ * stored preference with the default on every mount, which is the same as not
+ * persisting at all.
+ */
+describe('hydration safety', () => {
+  it('does not clobber a stored value on mount', () => {
+    window.localStorage.setItem('k', JSON.stringify('person'));
+    renderHook(() => usePersistedState('k', 'none', isGroup));
+    expect(window.localStorage.getItem('k')).toBe(JSON.stringify('person'));
+  });
+
+  it('still applies the stored value once mounted', () => {
+    window.localStorage.setItem('k', JSON.stringify('person'));
+    const { result } = renderHook(() => usePersistedState('k', 'none', isGroup));
+    expect(result.current[0]).toBe('person');
+  });
+
+  it('a changed value is written after hydration', () => {
+    const { result } = renderHook(() => usePersistedState('k', 'none', isGroup));
+    act(() => result.current[1]('list'));
+    expect(window.localStorage.getItem('k')).toBe(JSON.stringify('list'));
+  });
+
+  it('tolerates a validator whose identity changes every render', () => {
+    window.localStorage.setItem('k', JSON.stringify('person'));
+    // An inline arrow is the normal call-site shape; a re-read on every render
+    // would be wasteful and would fight any local edit.
+    const { result, rerender } = renderHook(() =>
+      usePersistedState('k', 'none', (v): v is string => typeof v === 'string'),
+    );
+    expect(result.current[0]).toBe('person');
+    act(() => result.current[1]('none'));
+    rerender();
+    expect(result.current[0]).toBe('none');
   });
 });

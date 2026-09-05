@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { usePersistedState, useSessionScopedStringSet, isBoolean } from '@/lib/hooks/usePersistedState';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
   ClipboardList,
@@ -66,11 +67,23 @@ export function ChoresView() {
   // column (including whoever had no chores yet) and read awkwardly as the
   // first thing a new user saw. Group mode is still one click away via the
   // toggle below.
-  const [groupByUser, setGroupByUser] = useState(false);
+  // Persisted: grouping describes how the list is presented, not what it
+  // contains, so restoring it cannot hide anything. The default stays off for
+  // the reason above; once someone turns it on, it is a deliberate choice about
+  // how this display reads and should survive the next reload.
+  const [groupByUser, setGroupByUser] = usePersistedState(
+    'prism-chores-group-by-user', false, isBoolean,
+  );
   const [celebratingUser, setCelebratingUser] = useState<{ id: string; name: string } | null>(null);
   const [inlineChore, setInlineChore] = useState('');
   const [inlineChoreByUser, setInlineChoreByUser] = useState<Record<string, string>>({});
-  const [categoryFilters, setCategoryFilters] = useState<Set<string>>(new Set());
+  // Session-scoped, not persisted outright: this one NARROWS the list, and
+  // walking up to a silently filtered board with no memory of setting it reads
+  // as missing chores. Kept across a refresh, dropped once the display has been
+  // idle a while.
+  const [categoryFilters, setCategoryFilters] = useSessionScopedStringSet(
+    'prism-chores-category-filters',
+  );
   // Whoever authenticated to open the "Add Chore" modal — preselected as the
   // assignee so the chore lands in their group instead of "Unassigned" by
   // default (bug: the header-level add control sat outside every per-person

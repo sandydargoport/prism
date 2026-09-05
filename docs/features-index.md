@@ -76,7 +76,7 @@ Each family member has a PIN. Touch your avatar, tap your PIN, you're logged in.
 
 ## Multiple dashboards per household
 
-Run one dashboard on the kitchen 27" display, a different layout on a 22" hallway tablet, and a third on the kids' iPad, all from the same Prism instance, each with its own widget arrangement and font scale.
+Run one dashboard on the kitchen 27" display, a different layout on a 22" hallway tablet, and a third on the kids' iPad, all from the same Prism instance, each with its own widget arrangement and text size.
 
 → Full docs: [Display settings + multiple dashboards](features/DISPLAY-MODES.md)
 

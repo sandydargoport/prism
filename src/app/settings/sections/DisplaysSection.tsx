@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Monitor, ExternalLink } from 'lucide-react';
+import { Monitor, ExternalLink, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -56,10 +56,12 @@ export function DisplaysSection() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Displays</h2>
+        <h2 className="text-2xl font-bold">Text Size</h2>
         <p className="text-muted-foreground">
-          Configure per-display settings for each of your named dashboards.
-          Font scale lets you tune text size for screens that are farther away or have unusual DPI.
+          How large everything reads on each of your dashboards. This scales the whole
+          board at once, which is different from the per-widget text size in the layout
+          editor. Most screens never need it — reach for it only if one is read from
+          further away than the rest.
         </p>
       </div>
 
@@ -106,16 +108,26 @@ export function DisplaysSection() {
                   )}
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Font Scale</span>
+                  {/* Collapsed by default. Reading a dashboard from across a room is a
+                      real case but an uncommon one, and leaving the control open put a
+                      slider in front of everyone to serve the few who need it.
+                      Deliberately open when the value is not 100%: a display someone has
+                      already tuned should not have that hidden, or the setting becomes
+                      something you can change and then never find again. */}
+                  <details open={scale !== 100} className="group">
+                    <summary className="flex cursor-pointer list-none items-center justify-between py-0.5 [&::-webkit-details-marker]:hidden">
+                      <span className="flex items-center gap-1 text-sm font-medium">
+                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground transition-transform group-open:rotate-90" />
+                        Text size
+                      </span>
                       <span className={cn(
                         'text-sm tabular-nums',
                         scale !== 100 ? 'text-primary font-medium' : 'text-muted-foreground'
                       )}>
                         {scale}%
                       </span>
-                    </div>
+                    </summary>
+                  <div className="space-y-1.5 pt-2">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground w-6">A</span>
                       <div className="flex-1 relative">
@@ -171,6 +183,7 @@ export function DisplaysSection() {
                       </>
                     )}
                   </div>
+                  </details>
                 </CardContent>
               </Card>
             );
@@ -181,7 +194,8 @@ export function DisplaysSection() {
       <Card className="border-dashed">
         <CardContent className="py-4">
           <p className="text-sm text-muted-foreground">
-            <strong>Tip:</strong> Set a dedicated device to open <code className="font-mono text-xs bg-muted px-1 py-0.5 rounded">/d/your-slug</code> as its home page, then tune font scale here to match its viewing distance and screen size.
+            <strong>Tip:</strong> Set a dedicated device to open <code className="font-mono text-xs bg-muted px-1 py-0.5 rounded">/d/your-slug</code> as its home page, then set the text size here to match how far away it is read from.
+            Larger text means fewer rows fit on the screen, so a dashboard read from across the room holds less than one read at the counter.
             Each named dashboard is independent — changes here don&apos;t affect other displays.
           </p>
         </CardContent>

@@ -121,7 +121,7 @@ export function AppShell({
   const showMobileNav = isMobile;
 
   return (
-    <div className={cn('relative min-h-screen', !showWallpaper && 'bg-background')}>
+    <div className={cn('relative min-h-[var(--app-vh,100vh)]', !showWallpaper && 'bg-background')}>
       {/* WALLPAPER BACKGROUND (only on dashboard/screensaver) */}
       {showWallpaper && <WallpaperBackground />}
 
@@ -133,7 +133,7 @@ export function AppShell({
       {/* MAIN CONTENT AREA */}
       <main
         className={cn(
-          'min-h-screen',
+          'min-h-[var(--app-vh,100vh)]',
           // Snap margin/padding when nav hides — animating layout properties causes
           // layout reflow on every frame, which is expensive on weak CPUs (Atom).
           // The nav itself slides smoothly via GPU-composited transform; the content

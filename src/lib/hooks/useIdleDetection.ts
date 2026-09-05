@@ -104,6 +104,16 @@ export function useIdleDetection(initialTimeout?: number) {
   // that intent never implied "cannot be dismissed".
   useEffect(() => {
     const maybeDismiss = (e: Event) => {
+      // Record activity before the keep-region check, not after it.
+      //
+      // Activity is otherwise only written by resetTimer(), which dismissIdle()
+      // calls — so every interaction that reaches dismissIdle already counted.
+      // Taps inside a data-screensaver-keep region return below WITHOUT
+      // reaching it, which made the calendar's on-screensaver view controls the
+      // one way to use the display without the display noticing. That guard
+      // exists so the overlay is not dismissed; it was never meant to mean
+      // nobody is standing here.
+      updateLastActivity();
       const target = e.target as Element | null;
       if (target && typeof target.closest === 'function' && target.closest('[data-screensaver-keep]')) {
         return;
@@ -154,29 +164,31 @@ export function useIdleDetection(initialTimeout?: number) {
     }
 
     const checkAwayMode = async () => {
-      const lastActivity = getLastActivity();
-      const hoursSinceActivity = (Date.now() - lastActivity) / (1000 * 60 * 60);
+      try {
+        // Ask the server first. Activity is per-browser, but Away Mode is one
+        // switch for the whole house, so the decision cannot be made from local
+        // state alone: someone turning it off at the wall display has to count
+        // against every other client's idle clock, or the most neglected tab in
+        // the house wins and turns it straight back on.
+        const stateRes = await fetch('/api/away-mode');
+        if (!stateRes.ok) return;
+        const state = await stateRes.json();
+        if (state.enabled) return;
 
-      if (hoursSinceActivity >= awayModeTimeout) {
-        try {
-          // Check if already in away mode
-          const stateRes = await fetch('/api/away-mode');
-          if (stateRes.ok) {
-            const state = await stateRes.json();
-            if (!state.enabled) {
-              // Activate away mode
-              await fetch('/api/away-mode', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ enabled: true, autoActivated: true }),
-              });
-              // Notify components
-              window.dispatchEvent(new Event('prism:away-mode-change'));
-            }
-          }
-        } catch {
-          // Ignore errors - away mode is optional
+        const disabledAt = state.disabledAt ? Date.parse(state.disabledAt) : 0;
+        const lastActivity = Math.max(getLastActivity(), Number.isNaN(disabledAt) ? 0 : disabledAt);
+        const hoursSinceActivity = (Date.now() - lastActivity) / (1000 * 60 * 60);
+
+        if (hoursSinceActivity >= awayModeTimeout) {
+          await fetch('/api/away-mode', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled: true, autoActivated: true }),
+          });
+          window.dispatchEvent(new Event('prism:away-mode-change'));
         }
+      } catch {
+        // Ignore errors - away mode is optional
       }
     };
 

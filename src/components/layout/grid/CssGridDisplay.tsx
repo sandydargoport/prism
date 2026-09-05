@@ -27,7 +27,7 @@ export function CssGridDisplay({
   containMode = false,
   className,
 }: CssGridDisplayProps) {
-  const { containerRef, cellSize: widthCellSize, width, top, remeasure } = useSquareCells(cols, containerPadding, margin, fillHeight);
+  const { containerRef, cellSize: widthCellSize, width, top, zoom, remeasure } = useSquareCells(cols, containerPadding, margin, fillHeight);
   const { width: viewportWidth, height: viewportHeight } = useViewportSize();
 
   // Re-read the grid's real top whenever the chrome offset changes (a toolbar
@@ -99,7 +99,15 @@ export function CssGridDisplay({
   // measurement, used to let the bottom row clip). A small safety margin when
   // chrome is present absorbs any residual slop — better a hair of bottom gap
   // than a clipped row.
-  const chromeTop = headerOffset <= 0 ? 0 : Math.max(top, headerOffset);
+  // `top` is a getBoundingClientRect value (visual pixels) while the viewport
+  // heights below are root pixels. Under a per-display font scale the dashboard
+  // renders inside a `zoom` wrapper and those stop being the same unit, so the
+  // grid budgeted its height unscaled and then drew it magnified — the bottom
+  // of the dashboard ran off the screen, a whole widget at a time. Divide both
+  // by the measured scale so the budget is computed in the grid's own space.
+  // `zoom` is 1 on an unscaled display, so this is a no-op there.
+  const localTop = top / zoom;
+  const chromeTop = headerOffset <= 0 ? 0 : Math.max(localTop, headerOffset);
   // Some kiosk browsers over-report window.innerHeight vs the actually-visible
   // area (a device/browser bottom bar), which let the bottom row clip on a real
   // touch display even when the math looked right. Prefer the visual-viewport
@@ -107,8 +115,9 @@ export function CssGridDisplay({
   const visualH = (typeof window !== 'undefined' && window.visualViewport)
     ? Math.min(viewportHeight, window.visualViewport.height)
     : viewportHeight;
+  const localH = visualH / zoom;
   const bottomSafety = chromeTop > 0 ? Math.round(margin * 1.5) : 0;
-  const availH = Math.max(120, visualH - chromeTop - bottomOffset - bottomSafety);
+  const availH = Math.max(120, localH - chromeTop - bottomOffset - bottomSafety);
 
   // Contain (letterbox) mode: largest square cell that fits the WHOLE content
   // canvas within the available box on both axes.
@@ -123,9 +132,9 @@ export function CssGridDisplay({
   const legacyRows = useMemo(() => {
     if (fillHeight) return 12;
     if (viewportHeight <= 0) return 24;
-    const available = viewportHeight - headerOffset - bottomOffset;
+    const available = viewportHeight / zoom - headerOffset - bottomOffset;
     return Math.max(minVisibleRows, Math.floor((available + margin) / (widthCellSize + margin)));
-  }, [fillHeight, viewportHeight, headerOffset, bottomOffset, minVisibleRows, widthCellSize, margin]);
+  }, [fillHeight, viewportHeight, zoom, headerOffset, bottomOffset, minVisibleRows, widthCellSize, margin]);
 
   // A little breathing room on the left in landscape, where the side nav rail
   // lives, so the first column isn't flush against it (and the rail's

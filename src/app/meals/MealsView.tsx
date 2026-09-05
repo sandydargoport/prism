@@ -45,6 +45,10 @@ import { useRecipes, type Recipe } from '@/lib/hooks/useRecipes';
 import { useAuth } from '@/components/providers';
 import type { Meal } from '@/types';
 import { DAYS_OF_WEEK as ALL_DAYS } from '@/lib/constants/days';
+import { useSessionScopedStringSet, oneOf } from '@/lib/hooks/usePersistedState';
+
+/** The meal types a filter may hold — mirrors Meal['mealType'] in types/models. */
+const isMealType = oneOf<Meal['mealType']>('breakfast', 'lunch', 'dinner', 'snack');
 
 function getMealTypeEmoji(mealType: string): string {
   switch (mealType) {
@@ -72,7 +76,12 @@ export function MealsView() {
   } = useMealsViewData();
 
   const { recipes } = useRecipes({ limit: 100 });
-  const [filterMealTypes, setFilterMealTypes] = useState<Set<Meal['mealType']>>(new Set());
+  // Narrowing choice, and a Set — stored as an array because a Set does not
+  // survive JSON, and element-validated so a meal type that no longer exists
+  // cannot come back as an unselectable filter.
+  const [filterMealTypes, setFilterMealTypes] = useSessionScopedStringSet<Meal['mealType']>(
+    'prism-meals-filter-types', [], isMealType,
+  );
   const [showSyncModal, setShowSyncModal] = useState(false);
   const orderedDays = ALL_DAYS.map(
     (_, i) => ALL_DAYS[(weekStartsOn + i) % ALL_DAYS.length]

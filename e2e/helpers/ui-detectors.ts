@@ -21,11 +21,40 @@ export interface LayoutProbeResult {
   viewportH: number;
   /** Horizontal pixels the document scrolls beyond the viewport (0 = none). */
   pageOverflowX: number;
+  /**
+   * Vertical pixels the document scrolls beyond the viewport (0 = none).
+   *
+   * Reported, not graded: most routes scroll vertically by design. It matters
+   * on the dashboard, which is built to fit exactly — a display scale that
+   * grows this proportionally means the bottom of the board is off the screen
+   * on a display nobody can scroll.
+   */
+  pageOverflowY: number;
   /** Elements pushed off the right edge, worst first (max 8). */
   overflowers: Overflower[];
   /** True when the fixed side/portrait nav is clipped or spills the viewport. */
   navClipped: boolean;
   navDetail: string | null;
+  /**
+   * Widgets hiding content inside their own box, worst first.
+   *
+   * The rig could not see this class of problem at all. Its detectors looked
+   * for things spilling the viewport, but a widget shell carries
+   * `overflow-hidden` on both the frame and the content region, so content that
+   * outgrows its cell does not spill — it silently disappears. That is the
+   * failure mode when text size goes up: the board still looks tidy, with rows
+   * missing from the bottom of a widget and nothing to say so.
+   */
+  clippedWidgets: ClippedWidget[];
+}
+
+export interface ClippedWidget {
+  /** The widget's `data-widget` value — its type, or its title as a fallback. */
+  widget: string;
+  /** Vertical pixels of content the widget is hiding. */
+  hiddenY: number;
+  /** Height of the box doing the clipping, for scale. */
+  boxH: number;
 }
 
 /** Runs in the browser. `tolerance` is the px slack before flagging. */
@@ -34,6 +63,7 @@ export function layoutProbe(tolerance: number): LayoutProbeResult {
   const vh = window.innerHeight;
   const doc = document.documentElement;
   const pageOverflowX = Math.max(0, doc.scrollWidth - vw);
+  const pageOverflowY = Math.max(0, doc.scrollHeight - vh);
 
   const describe = (el: Element): string => {
     const e = el as HTMLElement;
@@ -103,13 +133,44 @@ export function layoutProbe(tolerance: number): LayoutProbeResult {
     }
   }
 
+  // Content clipped INSIDE a widget, rather than spilling out of it.
+  //
+  // Reported against the innermost `data-widget` element: the grid cell and the
+  // widget shell both carry the attribute, and the inner one is named for the
+  // widget type rather than its layout id, which is what a punch-list needs.
+  const clippedWidgets: ClippedWidget[] = [];
+  for (const host of Array.from(document.querySelectorAll('[data-widget]'))) {
+    if (host.querySelector('[data-widget]')) continue;
+    let hiddenY = 0;
+    let boxH = 0;
+    for (const el of [host, ...Array.from(host.querySelectorAll('*'))]) {
+      const cs = window.getComputedStyle(el);
+      if (cs.overflowY !== 'hidden' && cs.overflow !== 'hidden') continue;
+      const hidden = el.scrollHeight - el.clientHeight;
+      if (hidden > tolerance && hidden > hiddenY) {
+        hiddenY = hidden;
+        boxH = el.clientHeight;
+      }
+    }
+    if (hiddenY > 0) {
+      clippedWidgets.push({
+        widget: host.getAttribute('data-widget') || '(unnamed)',
+        hiddenY: Math.round(hiddenY),
+        boxH: Math.round(boxH),
+      });
+    }
+  }
+  clippedWidgets.sort((a, b) => b.hiddenY - a.hiddenY);
+
   return {
     viewportW: vw,
     viewportH: vh,
     pageOverflowX: Math.round(pageOverflowX),
+    pageOverflowY: Math.round(pageOverflowY),
     overflowers: overflowers.slice(0, 8),
     navClipped,
     navDetail,
+    clippedWidgets,
   };
 }
 
@@ -120,6 +181,17 @@ export function gradeProbe(p: LayoutProbeResult): { severity: Severity; summary:
   if (p.navClipped) return { severity: 'high', summary: p.navDetail || 'navigation clipped' };
   if (p.pageOverflowX > 4)
     return { severity: 'high', summary: `page scrolls horizontally by ${p.pageOverflowX}px` };
+  // Ranked above a right-edge overhang: an element sticking out is visible and
+  // someone will report it. Content cut off inside a widget looks like the
+  // widget simply had less to show, so it is never reported at all.
+  const clip = p.clippedWidgets[0];
+  if (clip)
+    return {
+      severity: 'medium',
+      summary:
+        `${p.clippedWidgets.length} widget(s) hiding content ` +
+        `(worst: ${clip.widget}, ${clip.hiddenY}px cut from a ${clip.boxH}px box)`,
+    };
   const worst = p.overflowers[0];
   if (worst)
     return {

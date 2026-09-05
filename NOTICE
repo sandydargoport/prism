@@ -1,0 +1,61 @@
+Prism — third-party notices
+===========================
+
+Prism itself is licensed under the PolyForm Noncommercial License 1.0.0; see
+LICENSE. That licence covers Prism's own code and does not extend to the
+third-party assets listed below, which are redistributed under their own terms.
+Nothing here restricts Prism; each entry is more permissive than PolyForm.
+
+Full licence texts are in third-party/. This file and that directory ship
+inside the published container image, because the obligation attaches to the
+distributed artifact rather than to the source repository.
+
+--------------------------------------------------------------------------
+Twemoji  —  graphics: CC-BY 4.0  |  code: MIT
+--------------------------------------------------------------------------
+Package:   @discordapp/twemoji 16.0.1
+Source:    https://github.com/discord/twemoji
+Licence:   third-party/twemoji/LICENSE (MIT, covering the code)
+           Graphics: Creative Commons Attribution 4.0 International
+           https://creativecommons.org/licenses/by/4.0/
+
+Copyright (c) 2014-2021 Twitter, Inc and other contributors
+Copyright (c) 2022-present Jason Sofonia & Justine De Caires
+
+Prism bundles the Twemoji SVG graphics under public/twemoji and serves them as
+images so emoji render identically on displays whose own emoji font is missing
+or inconsistent. The graphics are unmodified.
+
+ATTRIBUTION IS REQUIRED for these graphics. Unlike the SIL Open Font License,
+CC-BY 4.0 obliges anyone redistributing the artwork to credit the creators, and
+that obligation travels with every copy of Prism. Do not remove this entry.
+
+--------------------------------------------------------------------------
+Inter  —  SIL Open Font License 1.1
+--------------------------------------------------------------------------
+Source:    https://github.com/rsms/inter
+Licence:   third-party/inter/OFL.txt
+Copyright (c) 2016 The Inter Project Authors
+
+Prism's interface typeface. Fetched at build time by next/font and self-hosted
+from the application's own origin, so a running instance makes no request to a
+third-party font host. Inter carries no Reserved Font Name.
+
+--------------------------------------------------------------------------
+Noto Color Emoji  —  SIL Open Font License 1.1
+--------------------------------------------------------------------------
+Package:   @fontsource/noto-color-emoji 5.2.12
+Source:    https://github.com/fontsource/font-files
+Licence:   third-party/noto-color-emoji/OFL.txt
+Copyright 2021 Google Inc. All Rights Reserved.
+
+Webfont fallback so emoji still render on a client with no colour emoji font of
+its own — typically a minimal kiosk build. Self-hosted, split by unicode-range
+so a display fetches only the ranges it draws.
+
+--------------------------------------------------------------------------
+
+Bundling OFL fonts places no condition on Prism's own licence: the OFL is a
+per-file licence and does not reach the surrounding work. Its one prohibition
+is selling the font software by itself, which Prism does not do. Hosting Prism,
+commercially or otherwise, is distribution the OFL expressly permits.

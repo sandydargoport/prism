@@ -43,6 +43,13 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Third-party notices. The bundled Twemoji artwork is CC-BY 4.0, which — unlike
+# the OFL fonts — genuinely requires attribution from anyone redistributing it.
+# That obligation attaches to the distributed artifact, so the notices have to
+# be in the image; sitting in the repository does not discharge it.
+COPY --from=builder /app/NOTICE ./NOTICE
+COPY --from=builder /app/third-party ./third-party
+
 # Migration runner and SQL files
 COPY --from=builder /app/drizzle ./drizzle
 COPY --from=builder /app/scripts/migrate.js ./scripts/migrate.js

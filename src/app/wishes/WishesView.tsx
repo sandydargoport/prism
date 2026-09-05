@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useRef } from 'react';
+import { usePersistedState, useSessionScopedState, isBoolean, isStringArray } from '@/lib/hooks/usePersistedState';
 import { toast } from '@/components/ui/use-toast';
 import { pushUndo } from '@/lib/hooks/useUndoStack';
 import {
@@ -35,16 +36,27 @@ export function WishesView() {
   const { members, loading: familyLoading } = useFamily();
   const { activeUser, requireAuth } = useAuth();
 
+  // NOT persisted, deliberately. The tab decides which panel is rendered, so a
+  // stored value read during the first render disagrees with what the server
+  // sent and React bails out of hydration (#418). The grouping toggles below
+  // are safe because their content renders after data loads. Persisting this
+  // one would mean applying it post-mount and accepting a visible flip of the
+  // default tab on every load, which is worse than not remembering it.
   const [activeTab, setActiveTab] = useState<'wishes' | 'ideas'>('wishes');
 
   // null = "All", string[] = filtered to those members
-  const [selectedMemberIds, setSelectedMemberIds] = useState<string[] | null>(null);
+  const [selectedMemberIds, setSelectedMemberIds] = useSessionScopedState<string[] | null>(
+    'prism-wishes-filter-members', null,
+    (v): v is string[] | null => v === null || isStringArray(v),
+  );
   // Defaults to the flat/ungrouped list — matches Chores/Tasks/Messages.
   // Wishes previously always rendered a fixed column-per-person grid with
   // no way to see a single combined list; the toggle below switches back
   // to that column view (still useful for the gift-giving use case: see
   // everyone's list side by side).
-  const [groupByUser, setGroupByUser] = useState(false);
+  const [groupByUser, setGroupByUser] = usePersistedState(
+    'prism-wishes-group-by-user', false, isBoolean,
+  );
   const viewerId = activeUser?.id || undefined;
 
   // Single selection optimises fetch; multi/none fetches all

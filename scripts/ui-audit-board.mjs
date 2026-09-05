@@ -36,6 +36,11 @@ function card(f) {
   const overflowers = (f.probe?.overflowers || [])
     .map((o) => `<li><code>${esc(o.desc)}</code> — overhang ${o.overflow}px (w ${o.w})</li>`)
     .join('');
+  // Listed separately from overhang: this is content the widget hides inside
+  // itself, which leaves no visible trace in the screenshot above.
+  const clipped = (f.probe?.clippedWidgets || [])
+    .map((c) => `<li><code>${esc(c.widget)}</code> — ${c.hiddenY}px cut from a ${c.boxH}px box</li>`)
+    .join('');
   return `
   <article class="card sev-${f.severity}">
     <header>
@@ -45,6 +50,7 @@ function card(f) {
     </header>
     <p class="summary">${esc(f.summary)}</p>
     ${overflowers ? `<details><summary>overhanging elements</summary><ul>${overflowers}</ul></details>` : ''}
+    ${clipped ? `<details><summary>widgets hiding content</summary><ul>${clipped}</ul></details>` : ''}
     ${uri ? `<a href="${uri}" target="_blank"><img loading="lazy" src="${uri}" alt="${esc(f.route)} ${esc(f.viewport)}"></a>` : '<p class="noshot">(no screenshot)</p>'}
   </article>`;
 }

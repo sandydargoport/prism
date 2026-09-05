@@ -15,6 +15,7 @@
 
 import * as React from 'react';
 import { useState, useMemo } from 'react';
+import { usePersistedState, useSessionScopedState, isBoolean, isStringArray } from '@/lib/hooks/usePersistedState';
 import { toast } from '@/components/ui/use-toast';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
@@ -57,8 +58,16 @@ export function MessagesView() {
 
   // State
   const { messages, loading, error, refresh, deleteMessage, updateMessage } = useMessages();
-  const [filterAuthor, setFilterAuthor] = useState<string[] | null>(null);
-  const [groupByPerson, setGroupByPerson] = useState(false);
+  // Narrowing choice — kept across a refresh, dropped once the display has
+  // been idle, so nobody walks up to a board silently hiding most of it.
+  const [filterAuthor, setFilterAuthor] = useSessionScopedState<string[] | null>(
+    'prism-messages-filter-author', null,
+    (v): v is string[] | null => v === null || isStringArray(v),
+  );
+  // Presentation choice — safe to restore outright; it hides nothing.
+  const [groupByPerson, setGroupByPerson] = usePersistedState(
+    'prism-messages-group-by-person', false, isBoolean,
+  );
   const [showAddModal, setShowAddModal] = useState(false);
 
   // Get unique authors

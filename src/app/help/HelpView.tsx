@@ -576,7 +576,7 @@ function SettingsHelp({ isMobile }: { isMobile: boolean }) {
       </Ul>
       {!isMobile && (
         <>
-          <H3>Displays</H3>
+          <H3>Text Size</H3>
           <P>Wallpaper and per-display kiosk options.</P>
         </>
       )}
