@@ -20,12 +20,91 @@ Screensaver layouts are dashboard-scoped. Your kitchen dashboard (`/d/kitchen`) 
 
 Edit the screensaver layout in dashboard edit mode by clicking the **Screensaver** button to switch from editing the dashboard to editing the screensaver overlay.
 
+### Widget transitions
+
+By default the screensaver shows every widget in its layout, all the time. It can
+instead show a subset and rotate which ones, so the board changes slowly. That is
+easier on a panel — nothing sits in the same place indefinitely — and it gives
+the screensaver something to do besides change photographs.
+
+Four ways a widget can come and go, under *Widget transition effect*:
+
+- **Fade** — opacity, eased at both ends. Arriving and leaving are deliberately
+  not mirror images: a widget appears at once and settles, and holds a moment
+  before it goes.
+- **Smoke** — the widget itself dissolves. A turbulence mask thins its own pixels
+  out in patches with soft edges. Nothing is drawn over the top of it.
+- **Fill and drain** — a waterline crosses the widget, with a surface that keeps
+  moving and bubbles rising through it. One widget drains as another fills, and
+  the two are exact mirrors: the water leaving one is the water arriving in the
+  other. Only ever one pair at a time, and the pair is chosen from opposite sides
+  of the board so it reads as a transfer rather than as one column doing
+  something.
+- **Fireworks** — the widget comes apart into its own pixels. It is sampled pixel
+  by pixel and each sample becomes a fragment carrying that pixel's colour, so at
+  the instant of the burst the field *is* the widget. It winds up first: the card
+  sets down its background, the widget swells and draws back in, and then it
+  goes. Fragments accelerate as they scatter and cool towards ember.
+
+Fireworks is the only one that costs anything material. It is turned down to a
+plain fade automatically on hardware that reports itself as low-end, and whenever
+the display asks for reduced motion.
+
+### Drift
+
+Independently of transitions, the widgets that *are* showing can move very
+slowly: **Breathe**, **Ripple** or **Figure eight**. This is for the panel's
+sake. Rotating which widgets are shown helps with burn-in; moving the ones that
+are helps more, because it shifts the boundaries rather than what is inside them.
+
+Periods run from twenty seconds to a minute and a half, each widget is out of
+step with the others, and the amplitudes are whole pixels — sub-pixel movement
+leaves the same physical pixels lit and does nothing. Breathe and Figure eight
+are meant to be imperceptible. Ripple is meant to be just noticeable.
+
 ### Configuration
 
-Screensaver timing lives under *Settings → Appearance → Timers & Auto-Activation (Screensaver):*
+Screensaver settings live under *Settings → Appearance → Screensaver*, and can
+also be reached from the screensaver itself — see below.
 
-- **Screensaver Timeout**: how long idle before activating. Options: 30 seconds / 1 minute / 2 minutes / 10 minutes / 1 hour / Never (default 2 minutes).
-- **Photo Rotation Interval**: how fast photos cycle within the screensaver (5 seconds up to 1 hour, or Never for a static image).
+- **Start after**: how long idle before activating. 30 seconds / 1 minute /
+  2 minutes / 10 minutes / 1 hour / Never (default 2 minutes).
+- **Change photo every**: how fast photos cycle (5 seconds up to 1 hour, or Never
+  for a static image).
+- **Widget transition effect** and **Change every**: which effect, and the
+  minimum gap between changes. It is a minimum: a rotation never begins before
+  the last one has finished, so a long effect paces itself.
+- **Transition length**: Brisk, Normal, Slow or Very slow, scaling every effect
+  together.
+- **Show at least / at most**: bounds on how many widgets are on screen. About
+  two thirds of the layout by default, within those bounds.
+- **Hide widget outlines**: drops the perimeter of each widget. Rules inside a
+  widget are untouched.
+- **Carbonation**, **Surface wobble**, **Keep text clear of the waterline**: fill
+  and drain only. The last of these decides whether the surface passes over the
+  top line of a widget's text or over empty space above it — the water covering
+  content is the effect working as intended for some people and a fault for
+  others, so it is a switch rather than a decision.
+- **Drift**: Still, Breathe, Ripple or Figure eight.
+- **Show a settings shortcut on the screensaver**: off by default.
+
+### Changing it from the screensaver
+
+Judging a transition means watching it, and every adjustment otherwise meant
+leaving the screensaver, finding the settings page, changing one value and
+waiting for the screensaver to come back.
+
+With the shortcut enabled, a Prism mark appears in the top-left of the
+screensaver — invisible until you hover it, then fading in over two seconds. It
+opens the same settings in place. On a touchscreen the corner is live whether or
+not anything is drawn there.
+
+All of these are per display, stored on the screen they are set on. Two screens
+in a house can run different effects.
+
+The screensaver *layout* — which widgets, and where — is edited in dashboard edit
+mode, and the editor links to these settings, since arranging a screensaver and
+deciding how it moves are two halves of the same job.
 - **Sign out after**: how long the display can sit untouched before it stops
   being signed in as whoever last used it (5 minutes up to 4 hours, or Never;
   default 30 minutes). Per device, like the other timers here.
