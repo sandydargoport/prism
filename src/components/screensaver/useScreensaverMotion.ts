@@ -40,6 +40,7 @@ const SHORTCUT_KEY = 'prism-screensaver-shortcut';
 const DRIFT_KEY = 'prism-screensaver-drift';
 const CARBONATION_KEY = 'prism-screensaver-carbonation';
 const WOBBLE_KEY = 'prism-screensaver-wobble';
+const SPEED_KEY = 'prism-screensaver-speed';
 export const DEFAULT_FLOOR = 2;
 export const DEFAULT_CEILING = 0;   // 0 = no cap
 
@@ -66,6 +67,7 @@ export function useScreensaverMotion() {
   const [drift, setDriftState] = useState<ScreensaverDrift>('off');
   const [carbonation, setCarbonationState] = useState(true);
   const [wobble, setWobbleState] = useState(1);
+  const [speed, setSpeedState] = useState(1);
 
   // Read after mount, never during render: the server has no localStorage, so
   // reading it in the initialiser makes the first client render disagree with
@@ -94,6 +96,9 @@ export function useScreensaverMotion() {
       if (localStorage.getItem(CARBONATION_KEY) === 'off') setCarbonationState(false);
       const wob = Number(localStorage.getItem(WOBBLE_KEY));
       if (Number.isFinite(wob) && wob >= 0 && localStorage.getItem(WOBBLE_KEY) !== null) setWobbleState(wob);
+      const rawSpeed = localStorage.getItem(SPEED_KEY);
+      const sp = rawSpeed === null ? NaN : Number(rawSpeed);
+      if (Number.isFinite(sp) && sp > 0) setSpeedState(sp);
     } catch { /* storage unavailable */ }
   }, []);
 
@@ -170,6 +175,14 @@ export function useScreensaverMotion() {
     } catch { /* storage unavailable */ }
   }, []);
 
+  const setSpeed = useCallback((v: number) => {
+    setSpeedState(v);
+    try {
+      localStorage.setItem(SPEED_KEY, String(v));
+      window.dispatchEvent(new StorageEvent('storage', { key: SPEED_KEY, newValue: String(v) }));
+    } catch { /* storage unavailable */ }
+  }, []);
+
   // Settings and the screensaver are separate trees; the storage event is how
   // a change made in one reaches the other without a reload.
   useEffect(() => {
@@ -188,6 +201,7 @@ export function useScreensaverMotion() {
       }
       if (e.key === CARBONATION_KEY) setCarbonationState(e.newValue !== 'off');
       if (e.key === WOBBLE_KEY) { const n = Number(e.newValue); if (Number.isFinite(n) && n >= 0) setWobbleState(n); }
+      if (e.key === SPEED_KEY) { const n = Number(e.newValue); if (Number.isFinite(n) && n > 0) setSpeedState(n); }
     };
     window.addEventListener('storage', handler);
     return () => window.removeEventListener('storage', handler);
@@ -203,5 +217,6 @@ export function useScreensaverMotion() {
     drift, setDrift,
     carbonation, setCarbonation,
     wobble, setWobble,
+    speed, setSpeed,
   };
 }

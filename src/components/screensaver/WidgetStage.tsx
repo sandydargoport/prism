@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ScreensaverEffect } from './effects';
 import { rasterize, warmRasterCache } from './effects';
+import { scaledDuration } from './screensaverPrefs';
 import { useEffectStage } from './EffectStage';
 
 /**
@@ -66,6 +67,8 @@ export function WidgetStage({
   /** Read synchronously by the resting-style effect, which must not fight a
    *  transition that is already driving this element. */
   const busyRef = useRef(false);
+  /** The effect this element was last styled for. */
+  const lastEffect = useRef<ScreensaverEffect | null>(null);
 
   // Fetch and encode the widget's fonts now, while it is sitting still, rather
   // than at the instant it is meant to burst.
@@ -114,31 +117,9 @@ export function WidgetStage({
 
     const start = (pixels: ImageData | null) => {
       if (dropped) return;
-      // Apply frame zero before handing over, or the element spends one frame
-      // in its resting hidden state — a visible blink right before the swell.
-      if (liveEl) {
-        const s0 = effect.elementStyle?.({
-          progress: 0, phase, width: Math.round(el.getBoundingClientRect().width),
-          height: Math.round(el.getBoundingClientRect().height),
-          dt: 0, now: performance.now(), pixels, state: null,
-        }) ?? null;
-        if (s0) Object.assign(liveEl.style, s0);
-      }
       // Anything better handed to the compositor than driven from our frame
       // loop, applied once. The breath is a CSS animation for exactly this
       // reason: a slow, one-percent motion cannot hide a dropped frame.
-      if (liveEl && effect.shedsCard) {
-        // Out: drop the card. In: put it back, at the same unhurried pace.
-        if (phase === 'out') liveEl.classList.add('prism-shed');
-        else liveEl.classList.remove('prism-shed');
-      }
-      if (liveEl) {
-        const once = effect.startStyle?.(phase, effect.durationMs[phase]) ?? null;
-        if (once) {
-          Object.assign(liveEl.style, once);
-          if (once.animationDuration) liveEl.classList.add('prism-breath');
-        }
-      }
       const box = el.getBoundingClientRect();
       busyRef.current = true;
       setBusy(true);
@@ -166,20 +147,35 @@ export function WidgetStage({
       });
     };
 
-    if (effect.needsPixels && phase === 'out') {
-      // Hold the widget exactly as it was until the transition can actually
-      // begin. Rasterising takes a beat, and React has already applied the
-      // resting hidden state by now — without this the widget blinks out,
-      // comes back for the swell, and then bursts, which looks like a fault
-      // rather than a wind-up.
-      if (liveEl) {
-        const box0 = el.getBoundingClientRect();
-        const hold = effect.elementStyle?.({
-          progress: 0, phase, width: Math.round(box0.width), height: Math.round(box0.height),
-          dt: 0, now: performance.now(), pixels: null, state: null,
-        }) ?? null;
-        if (hold) Object.assign(liveEl.style, hold);
+    // Everything the element needs, applied NOW — before the snapshot, not
+    // after it.
+    //
+    // The resting hidden state is already on the element by the time this runs,
+    // and capturing a widget takes a beat. Doing this afterwards left it
+    // invisible for the whole capture: it blinked out, came back for the
+    // wind-up, and then burst. That was the flash at the start of the sequence.
+    // The wind-up should begin the moment the widget is dropped, which is also
+    // simply when it ought to begin.
+    if (liveEl) {
+      if (effect.shedsCard) {
+        // Out: drop the card. In: put it back, at the same unhurried pace.
+        if (phase === 'out') liveEl.classList.add('prism-shed');
+        else liveEl.classList.remove('prism-shed');
       }
+      const once = effect.startStyle?.(phase, scaledDuration(effect.durationMs[phase])) ?? null;
+      if (once) {
+        Object.assign(liveEl.style, once);
+        if (once.animationDuration) liveEl.classList.add('prism-breath');
+      }
+      const box0 = el.getBoundingClientRect();
+      const hold = effect.elementStyle?.({
+        progress: 0, phase, width: Math.round(box0.width), height: Math.round(box0.height),
+        dt: 0, now: performance.now(), pixels: null, state: null,
+      }) ?? null;
+      if (hold) Object.assign(liveEl.style, hold);
+    }
+
+    if (effect.needsPixels && phase === 'out') {
       rasterize(el, prepare)
         .then(start)
         .catch(() => { /* a widget we cannot snapshot simply skips the effect */ });
@@ -208,7 +204,15 @@ export function WidgetStage({
    */
   useLayoutEffect(() => {
     const el = live.current;
-    if (!el || busyRef.current) return;
+    if (!el) return;
+    // Changing effect always wins over a transition in flight. Otherwise a
+    // widget caught mid-transition keeps whatever the OLD effect had written to
+    // it — a clip-path shaped like a waterline, say — and holds that shape,
+    // frozen, until it next happens to cycle. Within one effect, a running
+    // transition owns the element and this stays out of its way.
+    const changed = lastEffect.current !== effect;
+    lastEffect.current = effect;
+    if (busyRef.current && !changed) return;
     applyResting(el, effect?.css?.(shown) ?? {});
   }, [effect, shown]);
 

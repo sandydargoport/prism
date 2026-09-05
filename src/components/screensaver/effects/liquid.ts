@@ -76,30 +76,25 @@ function waveAt(x: number, level: number, now: number, amp: number): number {
 }
 
 /**
- * How much the CLIP boundary is allowed to wave — not the drawn surface.
+ * How far below the widget's top edge the surface settles when the glass is
+ * full — and the reason the clip never bites.
  *
- * At full, the level sits on the widget's top edge, so a boundary still swinging
- * around it crosses that edge: the clip takes a bite out of the top of the
- * widget and gives it back, over and over. That was the flicker at the end of a
- * fill.
+ * At full the level would otherwise sit exactly on the top edge, so a wave
+ * swinging around it crosses the edge and the clip takes a bite out of the
+ * widget and gives it back. The first fix damped the wave flat as it
+ * approached full, which stopped the bite and cost the waves entirely, because
+ * a settled widget IS full. The second kept the drawn surface waving but left
+ * the clip damped — so near the top the crest you could see and the edge that
+ * was actually cutting no longer agreed, and the disagreement flickered.
  *
- * Damping it flat fixed that and cost the waves entirely, because a settled
- * widget sits at full — which is most of the time, and exactly when you would
- * be looking. So only the boundary settles. The surface carries on.
+ * Now there is one surface. It sits far enough below the top that a full swing
+ * never reaches the edge, so nothing has to be damped and nothing can
+ * disagree — the line you see IS the line that cuts. The inset scales with the
+ * wobble setting, since a choppier surface needs more room.
  */
-function clipAmp(fill: number): number {
-  return Math.sin(Math.PI * Math.min(1, Math.max(0, fill)));
+function settleInset(wobble: number): number {
+  return 5 + 9 * wobble;
 }
-
-/**
- * Where the drawn surface sits, which is not quite where the clip boundary is.
- *
- * As the glass fills, the surface is eased a little way down from the very top
- * edge, so at rest there is still a waterline inside the widget with room to
- * move. Without the offset a full widget's surface is exactly on its top edge
- * and half of every wave is drawn outside it.
- */
-const SETTLE_INSET = 9;
 
 /**
  * How full, 0 to 1.
@@ -159,11 +154,11 @@ export const liquid: ScreensaverEffect = {
 
   elementStyle: (f: EffectFrame) => {
     const level = levelOf(f);
-    const amp = clipAmp(fillOf(f)) * effectPrefs().wobble;
+    const { wobble } = effectPrefs();
     const pts: string[] = [];
     for (let i = 0; i <= POINTS; i++) {
       const x = (f.width * i) / POINTS;
-      const y = waveAt(x, level, f.now, amp);
+      const y = waveAt(x, level + settleInset(wobble) * fillOf(f), f.now, wobble);
       pts.push(`${((x / f.width) * 100).toFixed(2)}% ${((y / f.height) * 100).toFixed(2)}%`);
     }
     pts.push('100% 100%', '0% 100%');
@@ -190,7 +185,7 @@ export const liquid: ScreensaverEffect = {
     // The drawn surface keeps its full swing and sits just below the top once
     // the glass is full, so there is always water moving to look at.
     const { carbonation, wobble } = effectPrefs();
-    const surface = level + SETTLE_INSET * fill;
+    const surface = level + settleInset(wobble) * fill;
     const waveY = (x: number) => waveAt(x, surface, f.now, wobble);
 
     if (f.progress >= 1 && f.phase === 'in') water.settled += f.dt;
@@ -242,8 +237,21 @@ export const liquid: ScreensaverEffect = {
         const y = waveY(x);
         if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       }
+      // Faded out at both ends rather than run hard to the edges.
+      //
+      // Widgets sit directly above and below one another, so two crests can end
+      // up a few pixels apart with nothing between them — and two hard lines
+      // that close together read as one double line rather than as two
+      // surfaces. Easing each to transparent at its ends leaves the middle of
+      // the wave, which is the part worth seeing, and lets the ends stop being
+      // anything in particular.
+      const fade = ctx.createLinearGradient(0, 0, f.width, 0);
+      fade.addColorStop(0, 'rgba(226,242,255,0)');
+      fade.addColorStop(0.18, 'rgba(226,242,255,0.55)');
+      fade.addColorStop(0.82, 'rgba(226,242,255,0.55)');
+      fade.addColorStop(1, 'rgba(226,242,255,0)');
       ctx.globalAlpha = 1;
-      ctx.strokeStyle = 'rgba(226,242,255,0.62)';
+      ctx.strokeStyle = fade;
       ctx.lineWidth = 1.6;
       ctx.stroke();
     }

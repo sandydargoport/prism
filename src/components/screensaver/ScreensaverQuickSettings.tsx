@@ -47,6 +47,7 @@ export function ScreensaverSettingsPanel({
     ceiling, setCeiling,
     outlines, setOutlines,
     drift, setDrift,
+    speed, setSpeed,
     carbonation, setCarbonation,
     wobble, setWobble,
   } = useScreensaverMotion();
@@ -153,6 +154,19 @@ export function ScreensaverSettingsPanel({
                 </label>
               </>
             )}
+              <label className="flex items-center justify-between gap-3">
+                <span className="text-sm text-white/70">Transition length</span>
+                <select
+                  value={speed}
+                  onChange={(e) => setSpeed(Number(e.target.value))}
+                  className={select}
+                >
+                  <option value={0.5}>Brisk</option>
+                  <option value={1}>Normal</option>
+                  <option value={1.6}>Slow</option>
+                  <option value={2.4}>Very slow</option>
+                </select>
+              </label>
               {motion === 'liquid' && (
                 <>
                   <label className="flex items-center justify-between gap-3 cursor-pointer">

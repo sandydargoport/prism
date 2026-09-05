@@ -23,6 +23,7 @@ import { WidgetStage } from './WidgetStage';
 import { EffectStage } from './EffectStage';
 import { ScreensaverQuickSettings } from './ScreensaverQuickSettings';
 import { getEffect } from './effects';
+import { scaledDuration } from './screensaverPrefs';
 import { usePerformanceMode } from '@/lib/hooks/usePerformanceMode';
 
 /**
@@ -216,7 +217,7 @@ function ScreensaverGrid() {
     // every swap interrupted the one before it, transitions piled up and no
     // widget was ever handed back to its resting state. The setting is a
     // minimum gap between changes, not a promise to change that often.
-    const settle = effect ? Math.ceil((effect.durationMs.out + 900) / 1000) : 0;
+    const settle = effect ? Math.ceil((scaledDuration(effect.durationMs.out) + 900) / 1000) : 0;
     const id = window.setInterval(
       () => setShowing((prev) => rotate(widgetIds, prev, Math.random, floor, ceiling)),
       Math.max(4, motionInterval, settle) * 1000,

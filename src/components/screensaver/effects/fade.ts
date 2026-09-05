@@ -1,4 +1,5 @@
 import type { ScreensaverEffect } from './types';
+import { scaledDuration } from '../screensaverPrefs';
 
 /**
  * Opacity, and nothing else.
@@ -19,7 +20,10 @@ export const fade: ScreensaverEffect = {
   durationMs: { in: 2600, out: 3400 },
   css: (shown) => ({
     opacity: shown ? 1 : 0,
-    transition: `opacity ${shown ? 2.6 : 3.4}s ${
+    // Scaled here too: this is the one effect whose timing lives in a CSS
+    // transition rather than in the frame loop, so it would otherwise ignore
+    // the display's speed setting entirely.
+    transition: `opacity ${scaledDuration(shown ? 2600 : 3400) / 1000}s ${
       shown ? 'cubic-bezier(.33,0,.25,1)' : 'cubic-bezier(.45,.05,.55,.95)'
     }`,
   }),

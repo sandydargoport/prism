@@ -4,6 +4,7 @@ import {
   createContext, useCallback, useContext, useEffect, useMemo, useRef,
 } from 'react';
 import type { EffectFrame, EffectPhase, ScreensaverEffect } from './effects';
+import { scaledDuration } from './screensaverPrefs';
 
 /**
  * One canvas for the whole screensaver, not one per widget.
@@ -56,6 +57,23 @@ export function EffectStage({ children }: { children: React.ReactNode }) {
   const active = useRef(new Map<string, Active>());
   const raf = useRef(0);
 
+  /**
+   * Wipe the whole surface.
+   *
+   * Since only the regions in use are cleared each frame, the last thing an
+   * effect drew stays on the canvas after it finishes — and when the effect is
+   * switched away from, or the last widget settles, nothing is left running to
+   * clear it. Water's crest lines sat there frozen until the widget that owned
+   * them happened to cycle again.
+   */
+  const wipe = useCallback(() => {
+    const el = canvas.current;
+    const ctx = el?.getContext('2d');
+    if (!el || !ctx) return;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, el.width, el.height);
+  }, []);
+
   const tick = useCallback((now: number) => {
     const el = canvas.current;
     if (!el) { raf.current = 0; return; }
@@ -88,6 +106,7 @@ export function EffectStage({ children }: { children: React.ReactNode }) {
     });
     if (!due.length) {
       raf.current = active.current.size ? requestAnimationFrame(tick) : 0;
+      if (!raf.current) wipe();
       return;
     }
     for (const [, a] of due) {
@@ -103,7 +122,7 @@ export function EffectStage({ children }: { children: React.ReactNode }) {
     for (const [key, a] of due) {
       const dt = a.drawnAt ? now - a.drawnAt : 16;
       a.drawnAt = now;
-      const duration = a.effect.durationMs[a.phase];
+      const duration = scaledDuration(a.effect.durationMs[a.phase]);
       const progress = a.persistent ? 1 : Math.min(1, (now - a.t0) / duration);
       const frame: EffectFrame = {
         progress, phase: a.phase, width: a.width, height: a.height,
@@ -116,8 +135,13 @@ export function EffectStage({ children }: { children: React.ReactNode }) {
       if (progress >= 1 && !a.persistent) { active.current.delete(key); a.onDone(); }
     }
 
-    raf.current = active.current.size ? requestAnimationFrame(tick) : 0;
-  }, []);
+    if (active.current.size) {
+      raf.current = requestAnimationFrame(tick);
+    } else {
+      raf.current = 0;
+      wipe();
+    }
+  }, [wipe]);
 
   const begin = useCallback<Stage['begin']>((key, a) => {
     const entry: Active = {
@@ -131,8 +155,14 @@ export function EffectStage({ children }: { children: React.ReactNode }) {
     };
     active.current.set(key, entry);
     if (!raf.current) raf.current = requestAnimationFrame(tick);
-    return () => { active.current.delete(key); };
-  }, [tick]);
+    return () => {
+      active.current.delete(key);
+      // Nothing left to redraw over what is on screen, and the loop may have
+      // already stopped, so clear it here rather than waiting for a frame that
+      // is not coming.
+      if (!active.current.size) wipe();
+    };
+  }, [tick, wipe]);
 
   useEffect(() => () => { if (raf.current) cancelAnimationFrame(raf.current); }, []);
 
