@@ -4,6 +4,8 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.24.0] – 2026-09-05
+
 ### Added
 - **Themes now change the shape of the UI, not just its colour.** Five palettes that differed only in hue read as one app with a filter over it — colour alone changes what something is coloured, not what it looks like. A theme can now also state three capped numbers: corner rounding (0 – 1.5rem), density (a 0.75 – 1.5 multiplier on card padding) and border weight (0 – 3px). Density does the most work of the three, because spacing is most of what separates one design language from another. Values outside the range are clamped rather than rejected, so a theme degrades to the nearest legal look instead of failing to load, and a theme only states what it wants to change. The built-ins now differ by more than hue: **Arcade** is square, tight and heavily outlined; **Snow Day** is round and airy with no borders at all; **Clay** is soft and roomy; **Harvest** sits between them; **Prism** is unchanged. Themes are still plain data — three numbers are not code — so they stay shareable through the gallery.
 
