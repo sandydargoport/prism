@@ -70,6 +70,13 @@ export function useScreensaverMotion() {
   const [wobble, setWobbleState] = useState(1);
   const [speed, setSpeedState] = useState(1);
   const [waterClear, setWaterClearState] = useState(false);
+  // Whether the values above are the display's own yet, or still the defaults.
+  //
+  // Worth telling apart, because "not read yet" and "off" are not the same
+  // answer and they render differently: 'off' means show every widget, and the
+  // screensaver would otherwise paint a full board for the frame before the
+  // real setting arrived. See the note in ScreensaverGrid.
+  const [ready, setReady] = useState(false);
 
   // Read after mount, never during render: the server has no localStorage, so
   // reading it in the initialiser makes the first client render disagree with
@@ -103,6 +110,7 @@ export function useScreensaverMotion() {
       const sp = rawSpeed === null ? NaN : Number(rawSpeed);
       if (Number.isFinite(sp) && sp > 0) setSpeedState(sp);
     } catch { /* storage unavailable */ }
+    setReady(true);
   }, []);
 
   const setMotion = useCallback((v: ScreensaverMotion) => {
@@ -231,5 +239,6 @@ export function useScreensaverMotion() {
     wobble, setWobble,
     speed, setSpeed,
     waterClear, setWaterClear,
+    ready,
   };
 }
