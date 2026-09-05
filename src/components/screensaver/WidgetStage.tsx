@@ -83,7 +83,13 @@ export function WidgetStage({
   // wind-up took hold of it. That single frame is the flash.
   useLayoutEffect(() => {
     if (first.current) { first.current = false; return; }
-    if (!effect?.frame || !stage) return;
+    // An effect earns a transition by driving something — a canvas frame, a
+    // per-frame style, or a one-off style at the start. Gating on `frame` alone
+    // meant an effect that only drives the element (smoke, once its canvas
+    // puffs were removed) silently stopped transitioning at all and degraded
+    // into the plain fade underneath it.
+    const drives = effect?.frame || effect?.elementStyle || effect?.startStyle;
+    if (!effect || !drives || !stage) return;
 
     const phase = shown ? 'in' : 'out';
     const el = host.current;

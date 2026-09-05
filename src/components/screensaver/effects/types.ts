@@ -87,6 +87,17 @@ export interface ScreensaverEffect {
   /** Draw onto a canvas laid over the widget. */
   frame?: (ctx: CanvasRenderingContext2D, f: EffectFrame) => void;
   /**
+   * Minimum milliseconds between draws.
+   *
+   * For anything that keeps drawing after its transition has finished. The
+   * water's surface never stops moving, so with four settled widgets the canvas
+   * was compositing continuously for as long as the screensaver was up — the
+   * frame rate sagged, and the five-second colour drain then had so few frames
+   * to render in that it read as a switch being thrown. Water at twenty frames
+   * a second is water; the difference is only visible in a profiler.
+   */
+  frameMs?: number;
+  /**
    * How far beyond its widget this effect draws, in px. The stage clears only
    * the area an effect can reach, so anything drawn outside this is left on
    * screen as a smear.

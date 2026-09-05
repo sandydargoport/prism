@@ -118,6 +118,8 @@ export const liquid: ScreensaverEffect = {
   id: 'liquid',
   label: 'Fill and drain',
   spread: 40,
+  // It never stops moving, so it must not cost a full frame to do it.
+  frameMs: 50,
   durationMs: { in: 10000, out: 10000 },
 
   // A full glass is still carbonated. Without this the surface froze the

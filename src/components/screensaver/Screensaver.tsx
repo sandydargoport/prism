@@ -163,11 +163,11 @@ function giveItBody(clone: HTMLElement) {
     el.style.setProperty('background-color', 'transparent', 'important');
     el.style.setProperty(
       'background-image',
-      'radial-gradient(ellipse 62% 62% at 50% 50%, '
-        + 'rgba(255,255,255,0.34) 0%, '
-        + 'rgba(255,255,255,0.22) 42%, '
-        + 'rgba(255,255,255,0.06) 74%, '
-        + 'rgba(255,255,255,0) 92%)',
+      'radial-gradient(ellipse 58% 58% at 50% 50%, '
+        + 'rgba(255,255,255,0.42) 0%, '
+        + 'rgba(255,255,255,0.30) 30%, '
+        + 'rgba(255,255,255,0.12) 62%, '
+        + 'rgba(255,255,255,0) 88%)',
       'important',
     );
     el.style.setProperty('border-color', 'transparent', 'important');

@@ -54,10 +54,10 @@ const GRAIN_PX = 1;
 const SWELL_FRACTION = 0.62;
 
 /** Kept at the centre of mass. */
-const KEEP_CENTRE = 0.62;
+const KEEP_CENTRE = 0.78;
 
 /** How sharply that falls off toward the edges. Higher empties the rim sooner. */
-const FALLOFF = 1.5;
+const FALLOFF = 2.2;
 
 /**
  * The fraction of the half-diagonal at which nothing is kept at all.
@@ -71,7 +71,7 @@ const FALLOFF = 1.5;
  * disc, which looks manufactured. The widget's own content should still be
  * showing through as irregularity.
  */
-const EDGE = 0.86;
+const EDGE = 0.62;
 
 /**
  * What the fragments cool into as they scatter.
@@ -97,7 +97,7 @@ export function keepAt(r: number): number {
 
 /** Measured mean of keepAt across a rectangle — stable at 0.32 for every aspect
  *  ratio tried, which is what the spacing is chosen against. */
-const MEAN_KEPT = 0.30;
+const MEAN_KEPT = 0.25;
 
 interface Spark {
   x: number; y: number;
@@ -134,6 +134,12 @@ function build(pixels: ImageData, width: number, height: number): Spark[] {
       const oy = y - cy;
       const d = Math.hypot(ox, oy) || 1;
       if (Math.random() > keepAt(d / reach)) continue;
+      // Cubed, with no floor, because acceleration dominates: a fragment at
+      // even a third of full speed still crosses 200px in two seconds. Only
+      // below about 0.15 does one stay anywhere near where it started, so the
+      // distribution has to put a real share of the field down there — roughly
+      // half — or the middle empties and what is left is a ring.
+      const speed = Math.pow(Math.random(), 4) * 1.6;
       sparks.push({
         x: x * sx,
         y: y * sy,
@@ -145,8 +151,16 @@ function build(pixels: ImageData, width: number, height: number): Spark[] {
         // is what makes it read as slow motion rather than as a fast explosion
         // played back slowly. Outer pixels start marginally faster so the field
         // opens outward instead of smearing.
-        v: 6 + (d / reach) * 16,
-        acc: 90 + Math.random() * 130,
+        // Both scaled by where the fragment started, not just its speed roll.
+        //
+        // With a radius-independent acceleration every fragment is flung as
+        // hard as every other, so the middle empties at the same rate the rim
+        // does and the field becomes a ring with nothing in the hole. Tying the
+        // push to the starting radius makes the expansion self-similar: the
+        // field grows without redistributing itself, so the middle stays the
+        // densest part of it, which is where the widget was.
+        v: (2 + (d / reach) * 22) * speed,
+        acc: ((d / reach) * 250 + Math.random() * 26) * speed,
         size: GRAIN_PX,
         r: data[i]!, g: data[i + 1]!, bl: data[i + 2]!, a: a / 255,
         cache: '', bucket: -1,

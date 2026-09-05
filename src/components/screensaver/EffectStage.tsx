@@ -29,6 +29,8 @@ interface Active {
   pixels: ImageData | null;
   state: unknown;
   t0: number;
+  /** When this entry last drew, so a throttled effect can skip frames. */
+  drawnAt: number;
   onFrame: (f: EffectFrame) => void;
   onDone: () => void;
   /**
@@ -40,7 +42,7 @@ interface Active {
 }
 
 interface Stage {
-  begin(key: string, a: Omit<Active, 't0' | 'state'>): () => void;
+  begin(key: string, a: Omit<Active, 't0' | 'state' | 'drawnAt'>): () => void;
 }
 
 const StageContext = createContext<Stage | null>(null);
@@ -53,7 +55,6 @@ export function EffectStage({ children }: { children: React.ReactNode }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const active = useRef(new Map<string, Active>());
   const raf = useRef(0);
-  const last = useRef(0);
 
   const tick = useCallback((now: number) => {
     const el = canvas.current;
@@ -76,11 +77,20 @@ export function EffectStage({ children }: { children: React.ReactNode }) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     const origin = el.getBoundingClientRect();
 
-    // Clear only where something is actually drawing. An effect says how far
-    // beyond its widget it reaches — fireworks throws fragments most of the way
-    // across the screen, water stays in its box — so the cleared area is the
-    // union of what is live rather than the whole display.
-    for (const a of active.current.values()) {
+    // Only the entries that are actually drawing this frame, and only where
+    // they reach. An effect says how far beyond its widget it goes — fireworks
+    // throws fragments most of the way across the screen, water stays in its
+    // box — and a throttled effect leaves its last frame on the canvas rather
+    // than clearing to nothing and redrawing the same thing.
+    const due = [...active.current.entries()].filter(([, a]) => {
+      const gap = a.effect.frameMs ?? 0;
+      return gap <= 0 || now - a.drawnAt >= gap;
+    });
+    if (!due.length) {
+      raf.current = active.current.size ? requestAnimationFrame(tick) : 0;
+      return;
+    }
+    for (const [, a] of due) {
       const pad = a.effect.spread ?? 0;
       ctx.clearRect(
         (a.viewportLeft - origin.left - pad) * dpr,
@@ -90,10 +100,9 @@ export function EffectStage({ children }: { children: React.ReactNode }) {
       );
     }
 
-    const dt = last.current ? now - last.current : 16;
-    last.current = now;
-
-    for (const [key, a] of Array.from(active.current)) {
+    for (const [key, a] of due) {
+      const dt = a.drawnAt ? now - a.drawnAt : 16;
+      a.drawnAt = now;
       const duration = a.effect.durationMs[a.phase];
       const progress = a.persistent ? 1 : Math.min(1, (now - a.t0) / duration);
       const frame: EffectFrame = {
@@ -108,13 +117,13 @@ export function EffectStage({ children }: { children: React.ReactNode }) {
     }
 
     raf.current = active.current.size ? requestAnimationFrame(tick) : 0;
-    if (!raf.current) last.current = 0;
   }, []);
 
   const begin = useCallback<Stage['begin']>((key, a) => {
     const entry: Active = {
       ...a,
       t0: performance.now(),
+      drawnAt: 0,
       state: a.effect.init?.({
         progress: 0, phase: a.phase, width: a.width, height: a.height,
         dt: 0, now: performance.now(), pixels: a.pixels,

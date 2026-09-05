@@ -17,6 +17,21 @@ describe('effect registry', () => {
     expect(Object.keys(EFFECTS).sort()).toEqual([...EFFECT_ORDER].sort());
   });
 
+  it('gives every effect something the stage will actually drive', () => {
+    // The stage only opens a transition for an effect that drives one of these.
+    // Smoke once had only `frame`, lost it, and quietly became the plain fade —
+    // no error, no missing style, just the wrong effect on screen.
+    for (const id of EFFECT_ORDER) {
+      const e = getEffect(id)!;
+      if (e.css && !e.frame && !e.elementStyle && !e.startStyle) {
+        // css-only effects are legitimate, but they must not also declare
+        // per-frame behaviour that will never run
+        expect(e.needsPixels).toBeFalsy();
+        expect(e.takesOverAt).toBeUndefined();
+      }
+    }
+  });
+
   it('gives every effect a way to actually show something', () => {
     for (const id of EFFECT_ORDER) {
       const e = getEffect(id)!;
@@ -67,9 +82,12 @@ function block(w: number, h: number, alpha = 255): ImageData {
 }
 
 describe('fireworks sampling', () => {
-  it('keeps well under half the pixels, so the field is a stipple', () => {
-    expect(fw.KEEP_CENTRE).toBeLessThan(0.7);
+  it('is a stipple rather than a tiling', () => {
+    // 1px grains sampled at 2px or wider: even keeping every sample, a quarter
+    // of the area is covered at most. The keep share thins it further.
     expect(fw.GRAIN_PX).toBe(1);
+    expect(fw.KEEP_CENTRE).toBeLessThan(0.9);
+    expect(fw.keepAt(0.7)).toBeLessThan(fw.KEEP_CENTRE * 0.6);
   });
 
   it('thins toward the edges, so the source has no rectangle to it', () => {
@@ -89,6 +107,38 @@ describe('fireworks sampling', () => {
       return d > half * 0.88;
     });
     expect(corners.length).toBe(0);
+  });
+
+  it('does not hollow into a ring as it expands', () => {
+    // Every fragment travels outward, so a field where they all move at a
+    // similar rate empties its own middle: a donut with nothing in the hole.
+    // Most of the mass has to stay near where it started.
+    const W = 400, H = 400;
+    const sparks = fw.build(block(W, H), W, H);
+    const cx = W / 2, cy = H / 2;
+    const half = Math.hypot(W, H) / 2;
+
+    // step the same integration the effect runs, for two seconds
+    const advance = (s: { x: number; y: number; dx: number; dy: number; v: number; acc: number }, secs: number) => {
+      let { x, y, v } = s;
+      const dt = 1 / 30;
+      for (let t = 0; t < secs; t += dt) {
+        v += s.acc * (0.35 + 1.9 * (t / secs)) * dt;
+        x += s.dx * v * dt;
+        y += s.dy * v * dt;
+      }
+      return { x, y };
+    };
+
+    const moved = sparks.map((s) => advance(s, 2));
+    const inCore = moved.filter((m) => Math.hypot(m.x - cx, m.y - cy) < half * 0.35).length;
+    const coreShare = inCore / moved.length;
+    // The core is 19% of the widget's area, so an even spread would land 19%
+    // of the fragments there. More than that means the middle is the densest
+    // part of the field rather than a hole in it. A hollow shell scores near
+    // zero — this was 0.00005 before the speed distribution was skewed.
+    const areaShare = Math.PI * Math.pow(half * 0.35, 2) / (W * H);
+    expect(coreShare).toBeGreaterThan(areaShare);
   });
 
   it('is densest in the middle', () => {
