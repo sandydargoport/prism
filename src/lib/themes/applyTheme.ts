@@ -84,17 +84,32 @@ const MODE_PROPERTIES = {
       '--event-padding-y': '0.125rem',
       '--event-gap': '0.125rem',
       '--event-font-size': '0.75rem',
+      '--event-font-weight': '500',
       '--agenda-row-padding': '0.375rem',
       '--agenda-row-gap': '0.375rem',
       '--agenda-group-gap': '1rem',
     },
-    // Tight enough to fit a full family's week in a month cell, which is what
-    // a shared wall calendar is actually for.
+    /**
+     * Compact takes its space from the chrome, never from the type.
+     *
+     * The first version of this shrank the text along with everything else,
+     * which is the obvious reading of the word and the wrong one here. This is
+     * a display read from the other side of a kitchen, often by somebody
+     * without their glasses — the same premise the 3:1 contrast floor rests
+     * on. Density that costs legibility buys nothing, because the events
+     * nobody can read from the doorway may as well not be on the wall.
+     *
+     * So the padding goes to zero, the gaps halve, and the text gets *larger*
+     * and heavier than comfortable. A row still ends up shorter — 13px at
+     * leading-tight with no padding is under 17px, against 19px for 12px text
+     * with padding — so more fits, and what fits can be read.
+     */
     compact: {
       '--event-padding-x': '0.1875rem',
       '--event-padding-y': '0',
       '--event-gap': '0.0625rem',
-      '--event-font-size': '0.6875rem',
+      '--event-font-size': '0.8125rem',
+      '--event-font-weight': '600',
       '--agenda-row-padding': '0.1875rem',
       '--agenda-row-gap': '0.125rem',
       '--agenda-group-gap': '0.625rem',

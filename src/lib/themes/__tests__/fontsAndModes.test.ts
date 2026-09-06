@@ -93,8 +93,33 @@ describe('display modes', () => {
     const comfortable = themeCss(theme({ modes: { events: 'comfortable' } }));
     const compact = themeCss(theme({ modes: { events: 'compact' } }));
     expect(comfortable).toContain('--event-font-size:0.75rem');
-    expect(compact).toContain('--event-font-size:0.6875rem');
     expect(compact).toContain('--event-padding-y:0');
+    expect(compact).toContain('--event-gap:0.0625rem');
+  });
+
+  it('takes compact out of the chrome, never out of the type', () => {
+    // The mistake this pins: shrinking the text along with the padding. This
+    // is read from the other side of a kitchen, so density that costs
+    // legibility buys nothing — the events nobody can read from the doorway
+    // may as well not be on the wall.
+    // A zero is emitted unitless, so the rem suffix is optional here.
+    const px = (css: string, prop: string) => {
+      const m = new RegExp(`${prop}:([0-9.]+)(rem)?`).exec(css)!;
+      return Number(m[1]) * (m[2] ? 16 : 1);
+    };
+    const comfortable = themeCss(theme({ modes: { events: 'comfortable' } }));
+    const compact = themeCss(theme({ modes: { events: 'compact' } }));
+
+    expect(px(compact, '--event-font-size')).toBeGreaterThan(px(comfortable, '--event-font-size'));
+    expect(px(compact, '--event-padding-y')).toBeLessThan(px(comfortable, '--event-padding-y'));
+    expect(px(compact, '--event-gap')).toBeLessThan(px(comfortable, '--event-gap'));
+    expect(compact).toContain('--event-font-weight:600');
+
+    // And the row still ends up shorter, which is the claim that makes it
+    // compact at all: bigger type at leading-tight, minus the padding.
+    const row = (css: string) =>
+      px(css, '--event-font-size') * 1.25 + px(css, '--event-padding-y') * 2;
+    expect(row(compact)).toBeLessThan(row(comfortable));
   });
 
   it('emits every mode group whatever the theme says, so nothing is left stale', () => {
