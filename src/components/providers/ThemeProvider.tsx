@@ -19,7 +19,7 @@ import { useSeasonalTheme } from '@/lib/hooks/useSeasonalTheme';
 import { usePerformanceMode } from '@/lib/hooks/usePerformanceMode';
 import { isInstallableTheme, MAX_INSTALLED_THEMES, type Theme } from '@/lib/themes/tokens';
 import { BUILTIN_THEMES, getBuiltinTheme, DEFAULT_THEME_ID } from '@/lib/themes/appThemes';
-import { applyThemeVars, applyThemeShape, themeTokens } from '@/lib/themes/applyTheme';
+import { applyThemeVars, applyThemeChrome, themeTokens } from '@/lib/themes/applyTheme';
 
 /**
  * Theme modes
@@ -255,7 +255,7 @@ export function ThemeProvider({
   useEffect(() => {
     if (!mounted) return;
     applyThemeVars(document.documentElement, themeTokens(palette, resolvedTheme));
-    applyThemeShape(document.documentElement, palette);
+    applyThemeChrome(document.documentElement, palette);
   }, [palette, resolvedTheme, mounted]);
 
   // Read the stored palette once. A failure here is not worth surfacing: the

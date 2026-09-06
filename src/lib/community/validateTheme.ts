@@ -12,7 +12,11 @@
  * 3. This is a family kitchen display. Handled by the metadata limits, and
  *    by a human reading the pull request — see the note on that below.
  */
-import { THEME_TOKENS, isValidTokenValue, isValidShape, normalizeShape, normalizeTokenKeys, SHAPE_LIMITS, type Theme, type ThemeTokens } from '@/lib/themes/tokens';
+import {
+  THEME_TOKENS, isValidTokenValue, isValidShape, normalizeShape, normalizeTokenKeys,
+  isValidFont, normalizeFont, isValidModes, normalizeModes,
+  SHAPE_LIMITS, THEME_FONT_IDS, THEME_MODES, type Theme, type ThemeTokens,
+} from '@/lib/themes/tokens';
 import { checkThemeContrast, type ContrastIssue } from '@/lib/themes/contrast';
 
 export interface ThemeValidationResult {
@@ -165,6 +169,19 @@ export function validateCommunityTheme(data: unknown): ThemeValidationResult {
   const light = normalizeTokenKeys(obj.light);
   const dark = normalizeTokenKeys(obj.dark);
 
+  if (obj.font !== undefined && !isValidFont(obj.font)) {
+    errors.push(`Font must be one of: ${THEME_FONT_IDS.join(', ')}.`);
+  }
+
+  if (obj.modes !== undefined && !isValidModes(obj.modes)) {
+    // Each key listed with its options: a mode is a closed set, so the message
+    // can say exactly what would be accepted rather than describing a shape.
+    const allowed = Object.entries(THEME_MODES)
+      .map(([key, def]) => `${key}: ${def.options.join(' | ')}`)
+      .join('; ');
+    errors.push(`Unknown display mode. Allowed — ${allowed}.`);
+  }
+
   const lightOk = validateTokenSet(light, 'light', errors);
   const darkOk = validateTokenSet(dark, 'dark', errors);
 
@@ -226,6 +243,10 @@ export function projectCommunityTheme(data: unknown, id: string): Theme & {
     // Clamped rather than copied, so an out-of-range value that slipped past
     // validation still cannot reach the page.
     shape: normalizeShape(obj.shape),
+    // Both resolve to a known name or the default, so what is written is
+    // always a value this repository defined — never a string from the file.
+    font: normalizeFont(obj.font),
+    modes: normalizeModes(obj.modes),
   };
 }
 

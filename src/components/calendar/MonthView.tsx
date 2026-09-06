@@ -270,7 +270,9 @@ function MonthDayCell({
           onItemClick={onItemClick}
         />
       ) : (
-        <ul className="flex-1 overflow-y-auto space-y-0.5 list-none m-0 px-1 pb-1 pt-0">
+        // Row gap follows the theme's events mode; the fallback is the
+        // 0.125rem that space-y-0.5 used to hard-code.
+        <ul className="flex-1 overflow-y-auto list-none m-0 px-1 pb-1 pt-0 flex flex-col gap-[var(--event-gap,0.125rem)]">
           {dayEvents.map((event) => (
             <li key={event.id}>
               <InlineCalendarEvent event={event} onClick={onEventClick} />
