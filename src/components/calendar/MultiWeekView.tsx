@@ -307,7 +307,12 @@ function DayCell({
         )}
       >
         <div className="flex items-baseline gap-1.5 min-w-0">
-          <span className={cn('font-bold leading-none', compact ? 'text-base' : 'text-xl')}>
+          {/* The compact branch is the layout saying this cell is small, which
+              stays the layout's call. The roomy branch is the theme's. */}
+          <span className={cn(
+            'font-bold leading-none',
+            compact ? 'text-base' : 'text-[length:var(--daynum-large)]',
+          )}>
             {format(date, 'd')}
           </span>
           <span

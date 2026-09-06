@@ -85,6 +85,15 @@ const MODE_PROPERTIES = {
       '--event-gap': '0.125rem',
       '--event-font-size': '0.75rem',
       '--event-font-weight': '500',
+      // The day number against the event text is the calendar's type ramp, and
+      // it belongs to this mode because the mode is really "how is this read":
+      // at a desk the number is a label, on a wall it is the thing you find
+      // first from the doorway. Comfortable reproduces the sizes that were
+      // hard-coded, so nothing moves for a theme with no opinion.
+      '--daynum-size': '0.75rem',
+      '--daynum-box': '1.25rem',
+      '--daynum-row': '1.75rem',
+      '--daynum-large': '1.25rem',
       '--agenda-row-padding': '0.375rem',
       '--agenda-row-gap': '0.375rem',
       '--agenda-group-gap': '1rem',
@@ -110,6 +119,13 @@ const MODE_PROPERTIES = {
       '--event-gap': '0.0625rem',
       '--event-font-size': '0.8125rem',
       '--event-font-weight': '600',
+      // Bigger, against smaller-feeling events — the gap between the two is
+      // what reads as a wall planner rather than an app. The badge and its row
+      // grow with the number so it does not outgrow the circle it sits in.
+      '--daynum-size': '1rem',
+      '--daynum-box': '1.75rem',
+      '--daynum-row': '2.25rem',
+      '--daynum-large': '1.5rem',
       '--agenda-row-padding': '0.1875rem',
       '--agenda-row-gap': '0.125rem',
       '--agenda-group-gap': '0.625rem',

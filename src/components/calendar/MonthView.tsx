@@ -241,9 +241,10 @@ function MonthDayCell({
       )}
       style={cellBgStyle}
     >
-      <div className="flex h-7 shrink-0 items-center justify-center">
+      <div className="flex shrink-0 items-center justify-center h-[var(--daynum-row)]">
         <span className={cn(
-          'inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-xs font-medium',
+          'inline-flex items-center justify-center rounded-full px-1 font-medium',
+          'h-[var(--daynum-box)] min-w-[var(--daynum-box)] text-[length:var(--daynum-size)]',
           today && 'bg-primary font-bold text-primary-foreground',
           !today && isPast && 'text-muted-foreground',
           !today && !isSameMonth(date, currentDate) && 'text-muted-foreground/55',

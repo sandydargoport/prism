@@ -122,6 +122,32 @@ describe('display modes', () => {
     expect(row(compact)).toBeLessThan(row(comfortable));
   });
 
+  it('opens the gap between the day number and the event text', () => {
+    // The ramp is the point, not the absolute size. On a wall the day number is
+    // what you find first from the doorway; at a desk it is a label. Asserting
+    // the ratio rather than the values leaves the numbers free to be tuned.
+    const rem = (css: string, prop: string) =>
+      Number(new RegExp(`${prop}:([0-9.]+)rem`).exec(css)![1]);
+    const ratio = (css: string) => rem(css, '--daynum-size') / rem(css, '--event-font-size');
+
+    const comfortable = themeCss(theme({ modes: { events: 'comfortable' } }));
+    const compact = themeCss(theme({ modes: { events: 'compact' } }));
+
+    expect(ratio(compact)).toBeGreaterThan(ratio(comfortable));
+    // The badge has to grow with the number, or it outgrows the circle.
+    expect(rem(compact, '--daynum-box')).toBeGreaterThan(rem(comfortable, '--daynum-box'));
+    expect(rem(compact, '--daynum-row')).toBeGreaterThan(rem(comfortable, '--daynum-row'));
+  });
+
+  it('leaves the comfortable ramp exactly where the hard-coded classes had it', () => {
+    // h-7 row, h-5/min-w-5 badge, text-xs number, text-xl in multi-week.
+    const css = themeCss(theme());
+    expect(css).toContain('--daynum-row:1.75rem');
+    expect(css).toContain('--daynum-box:1.25rem');
+    expect(css).toContain('--daynum-size:0.75rem');
+    expect(css).toContain('--daynum-large:1.25rem');
+  });
+
   it('emits every mode group whatever the theme says, so nothing is left stale', () => {
     // A theme switching from compact back to comfortable has to overwrite the
     // properties the previous one set, not merely stop setting them — a
@@ -216,7 +242,7 @@ describe('the modes reach real components', () => {
     const emitted = new Set<string>();
     for (const css of [themeCss(theme({ modes: { events: 'compact', surface: 'flat' } })),
                        themeCss(theme())]) {
-      for (const m of css.matchAll(/(--(?:event|agenda|surface)-[a-z-]+):/g)) emitted.add(m[1]!);
+      for (const m of css.matchAll(/(--(?:event|agenda|surface|daynum)-[a-z-]+):/g)) emitted.add(m[1]!);
     }
 
     expect(emitted.size).toBeGreaterThan(0);

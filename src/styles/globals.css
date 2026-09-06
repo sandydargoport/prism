@@ -47,6 +47,10 @@
     --event-gap: 0.125rem;
     --event-font-size: 0.75rem;
     --event-font-weight: 500;
+    --daynum-size: 0.75rem;
+    --daynum-box: 1.25rem;
+    --daynum-row: 1.75rem;
+    --daynum-large: 1.25rem;
     --agenda-row-padding: 0.375rem;
     --agenda-row-gap: 0.375rem;
     --agenda-group-gap: 1rem;
