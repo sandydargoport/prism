@@ -58,5 +58,5 @@ body:
       options:
         - label: This is my own work, and I grant Prism a licence to distribute it in the community gallery. I keep the rights to it.
           required: true
-        - label: It is not named after, and does not set out to reproduce the look of, a product or franchise. (A season, a feeling or a period is fine — "Arcade" is fine, a console's name is not.)
+        - label: The name describes how it looks rather than naming a product, a franchise or a character, and it does not set out to pass as a real product's interface. (Naming what inspired it in the description is fine — see community/themes/README.md.)
           required: true

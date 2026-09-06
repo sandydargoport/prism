@@ -76,10 +76,16 @@ Every submission becomes a pull request that a maintainer reviews. Themes are
 declined if they are profane, bigoted, politically partisan, or built to divide
 people. This is a display in a family kitchen, and it is read by children.
 
-Themes named after a franchise, or reproducing a recognisable brand's look, are
-also declined — not because a palette can be owned, but because the name is
-what attracts a complaint. Name it after a season, a feeling, or a period.
-"Arcade" is fine; a console's name is not.
+**Name it for what it looks like, not for what it reminds you of.** A palette
+cannot really be owned — nobody has a claim on blue and light blue — so the
+colours are never the problem. The name is, because a name is the thing that
+suggests somebody endorsed it, and that is what attracts a complaint.
+
+So: keep the *name* descriptive, and say what inspired it in the
+*description*. "Blue Bomber" with a description mentioning the games it evokes
+is fine. The same theme called after the character is not, and neither is one
+that sets out to pass as a real product's interface — a name, a wordmark, or a
+copy of a recognisable layout.
 
 If a rights holder ever asks for something to be removed, it is removed. No
 argument, no delay.
