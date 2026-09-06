@@ -16,6 +16,8 @@ import {
 } from '../tokens';
 import { themeCss } from '../applyTheme';
 import { THEME_TOKENS } from '../tokens';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { getBuiltinTheme } from '../appThemes';
 import { checkThemeContrast } from '../contrast';
 
@@ -163,5 +165,46 @@ describe('Notice Board', () => {
     expect(css).toContain('--event-padding-y:0');
     expect(css).toContain('--surface-shadow:none');
     expect(css).toContain('var(--font-rounded)');
+  });
+});
+
+describe('the modes reach real components', () => {
+  /**
+   * A mode that emits properties nothing reads is dead data dressed as a
+   * feature, which is the reason the gallery refuses to adopt a fork's extra
+   * tokens. The same standard has to apply to what we add ourselves, so this
+   * asserts the consuming classes exist rather than trusting that they do.
+   */
+  const read = (file: string) => readFileSync(join(process.cwd(), file), 'utf-8');
+
+  it('every property a mode sets is consumed somewhere', () => {
+    const sources = [
+      'src/components/ui/card.tsx',
+      'src/components/calendar/cells/InlineCalendarEvent.tsx',
+      'src/components/calendar/MonthView.tsx',
+      'src/components/calendar/ThreeMonthView.tsx',
+      'src/components/calendar/MultiWeekView.tsx',
+      'src/components/calendar/TwoWeekView.tsx',
+      'src/components/calendar/AgendaView.tsx',
+    ].map(read).join('\n');
+
+    const emitted = new Set<string>();
+    for (const css of [themeCss(theme({ modes: { events: 'compact', surface: 'flat' } })),
+                       themeCss(theme())]) {
+      for (const m of css.matchAll(/(--(?:event|agenda|surface)-[a-z-]+):/g)) emitted.add(m[1]!);
+    }
+
+    expect(emitted.size).toBeGreaterThan(0);
+    for (const prop of emitted) {
+      expect(sources).toContain(`var(${prop})`);
+    }
+  });
+
+  it('leaves the size-driven compact prop alone', () => {
+    // The `compact` prop means "this cell is small". The theme mode means "this
+    // house likes it tight". Collapsing the two would let a theme override a
+    // decision the layout made about available space.
+    const chip = read('src/components/calendar/cells/InlineCalendarEvent.tsx');
+    expect(chip).toContain("compact ? 'px-0.5 py-px text-[8px]'");
   });
 });

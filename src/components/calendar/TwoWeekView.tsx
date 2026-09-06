@@ -100,14 +100,16 @@ export function TwoWeekView({
         </div>
 
         {/* Events - scrollable, no limit */}
-        <div className={cn('flex-1 overflow-y-auto space-y-0.5', compact ? 'px-0.5 pb-0.5' : 'px-1 pb-1')}>
+        <div className={cn('flex-1 overflow-y-auto flex flex-col gap-[var(--event-gap)]', compact ? 'px-0.5 pb-0.5' : 'px-1 pb-1')}>
           {sorted.map((event) => (
             <button
               key={event.id}
               onClick={(e) => { e.stopPropagation(); onEventClick(event); }}
               className={cn(
                 'w-full text-left rounded truncate hover:opacity-80 hover:ring-1 hover:ring-seasonal-accent/50 transition-all',
-                compact ? 'text-[10px] px-0.5 py-px' : 'text-xs px-1 py-0.5'
+                compact
+                  ? 'text-[10px] px-0.5 py-px'
+                  : 'px-[var(--event-padding-x)] py-[var(--event-padding-y)] text-[length:var(--event-font-size)]'
               )}
               style={event.allDay
                 ? { backgroundColor: event.color + '20', borderLeft: `2px solid ${event.color}` }

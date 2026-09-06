@@ -180,7 +180,7 @@ function MiniMonth({
                   )}
                   {/* Event list — scrollable within day cell */}
                   {inMonth && dayEvents.length > 0 && (
-                    <ul className="flex-1 overflow-y-auto space-y-px mt-0.5 scrollbar-thin list-none m-0 p-0">
+                    <ul className="flex-1 overflow-y-auto mt-0.5 scrollbar-thin list-none m-0 p-0 flex flex-col gap-[var(--event-gap)]">
                       {dayEvents.map((event) => (
                         <li key={event.id}>
                           <InlineCalendarEvent

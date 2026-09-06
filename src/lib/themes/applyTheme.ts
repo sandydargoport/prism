@@ -75,11 +75,18 @@ function shapeProperties(theme: Theme): Array<[string, string]> {
  */
 const MODE_PROPERTIES = {
   events: {
+    // Two scales, because an agenda row and a chip in a month cell are not the
+    // same object. Tightening a list to a month cell's spacing collapses it
+    // into an unreadable block, so the agenda values move by proportion rather
+    // than to the same numbers.
     comfortable: {
       '--event-padding-x': '0.25rem',
       '--event-padding-y': '0.125rem',
       '--event-gap': '0.125rem',
       '--event-font-size': '0.75rem',
+      '--agenda-row-padding': '0.375rem',
+      '--agenda-row-gap': '0.375rem',
+      '--agenda-group-gap': '1rem',
     },
     // Tight enough to fit a full family's week in a month cell, which is what
     // a shared wall calendar is actually for.
@@ -88,6 +95,9 @@ const MODE_PROPERTIES = {
       '--event-padding-y': '0',
       '--event-gap': '0.0625rem',
       '--event-font-size': '0.6875rem',
+      '--agenda-row-padding': '0.1875rem',
+      '--agenda-row-gap': '0.125rem',
+      '--agenda-group-gap': '0.625rem',
     },
   },
   surface: {

@@ -34,6 +34,22 @@
 
     --radius: 0.5rem;
 
+    /* Defaults for the values a theme sets. Every theme emits all of these, so
+       these are what applies before one is resolved — a cached page, or a load
+       where the settings row could not be read. They are the values that were
+       hard-coded in the components before a theme could set them, so nothing
+       moves when no theme has an opinion. */
+    --border-width: 1px;
+    --density: 1;
+    --surface-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --event-padding-x: 0.25rem;
+    --event-padding-y: 0.125rem;
+    --event-gap: 0.125rem;
+    --event-font-size: 0.75rem;
+    --agenda-row-padding: 0.375rem;
+    --agenda-row-gap: 0.375rem;
+    --agenda-group-gap: 1rem;
+
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
