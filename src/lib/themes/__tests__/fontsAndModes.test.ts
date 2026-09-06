@@ -16,6 +16,8 @@ import {
 } from '../tokens';
 import { themeCss } from '../applyTheme';
 import { THEME_TOKENS } from '../tokens';
+import { getBuiltinTheme } from '../appThemes';
+import { checkThemeContrast } from '../contrast';
 
 const tokens = (): ThemeTokens =>
   Object.fromEntries(THEME_TOKENS.map((t) => [t, '210 40% 50%'])) as ThemeTokens;
@@ -47,7 +49,10 @@ describe('font role', () => {
   });
 
   it('never puts a submitted string into the stylesheet', () => {
-    const css = themeCss(theme({ font: 'attack"; } body { display: none' } as Partial<Theme>));
+    // Cast through unknown deliberately: the type forbids this, and the point
+    // of the test is what happens when something that is not type-checked —
+    // a parsed submission — carries it anyway.
+    const css = themeCss(theme({ font: 'attack"; } body { display: none' } as unknown as Partial<Theme>));
     expect(css).not.toContain('display: none');
     expect(css).toContain('--theme-font:var(--font-inter)');
   });
@@ -125,5 +130,38 @@ describe('stored themes', () => {
 
   it('refuses a stored theme carrying an unknown font role', () => {
     expect(isInstallableTheme({ ...theme(), font: 'Papyrus' })).toBe(false);
+  });
+});
+
+describe('Notice Board', () => {
+  /**
+   * The built-in that exists to exercise the two new axes rather than to add
+   * another palette. If it stops setting them, they have no worked example in
+   * the box and the next theme author has nothing to copy.
+   */
+  const noticeBoard = getBuiltinTheme('notice-board')!;
+
+  it('is the built-in that uses both new axes', () => {
+    expect(noticeBoard.font).toBe('rounded');
+    expect(noticeBoard.modes).toEqual({ events: 'compact', surface: 'flat' });
+  });
+
+  it('is borderless on purpose', () => {
+    expect(noticeBoard.shape?.borderWidth).toBe(0);
+  });
+
+  it('has no unreadable text pairs', () => {
+    const { errors, warnings } = checkThemeContrast(noticeBoard);
+    expect(errors).toEqual([]);
+    // Its only warnings are the hairline grid, which is the design. A text
+    // warning here would mean the near-white surfaces went too far.
+    expect(warnings.every((w) => w.kind === 'edge')).toBe(true);
+  });
+
+  it('renders compact spacing rather than the defaults', () => {
+    const css = themeCss(noticeBoard);
+    expect(css).toContain('--event-padding-y:0');
+    expect(css).toContain('--surface-shadow:none');
+    expect(css).toContain('var(--font-rounded)');
   });
 });
