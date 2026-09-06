@@ -20,7 +20,7 @@ import {
   projectCommunityTheme,
   unrecognizedTokens,
 } from '../validateTheme';
-import { THEME_TOKENS } from '@/lib/themes/tokens';
+import { THEME_TOKENS, normalizeTokenKeys } from '@/lib/themes/tokens';
 
 const triple = '210 40% 50%';
 
@@ -131,5 +131,46 @@ describe('unrecognized tokens', () => {
   it('survives a submission with no token sets at all', () => {
     expect(unrecognizedTokens({})).toEqual([]);
     expect(unrecognizedTokens(null)).toEqual([]);
+  });
+});
+
+describe('inherited keys', () => {
+  /**
+   * Reading a submission must not let it supply values through anything but an
+   * own property.
+   *
+   * `JSON.parse` gives `__proto__` back as an ordinary own key, so copying a
+   * payload key by key reaches the setter and repoints the object being built.
+   * Every token then resolves through a prototype the submitter wrote: absent
+   * from Object.keys, so absent from the report of what was carried, and
+   * copied into the committed file regardless. The triple check still applies,
+   * so this was never CSS injection — it is the file a reviewer reads differing
+   * from the theme that installs, which is worse in a different way.
+   */
+  const hostile = (payload: string) => JSON.parse(payload);
+
+  it('ignores a __proto__ key instead of inheriting from it', () => {
+    const light = hostile('{"__proto__": {"background": "1 2% 3%"}}');
+    expect(normalizeTokenKeys(light).background).toBeUndefined();
+    expect(Object.getPrototypeOf(normalizeTokenKeys(light))).toBeNull();
+  });
+
+  it('ignores it under the prefixed spelling too', () => {
+    const light = hostile('{"--__proto__": {"background": "1 2% 3%"}}');
+    expect(normalizeTokenKeys(light).background).toBeUndefined();
+  });
+
+  it('refuses constructor and prototype as token names', () => {
+    const out = normalizeTokenKeys(hostile('{"constructor": "x", "prototype": "y", "background": "1 2% 3%"}'));
+    expect(Object.keys(out)).toEqual(['background']);
+  });
+
+  it('does not let an inherited value reach the committed theme', () => {
+    const light = hostile(`{"__proto__": ${JSON.stringify(tokenSet(false))}}`);
+    const result = validateCommunityTheme(submission(light, tokenSet(false)));
+    // Every token has to be its own property, so this reads as a theme that
+    // supplied none of them.
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('"light" is missing background.');
   });
 });

@@ -153,20 +153,28 @@ export function isValidTokenValue(value: unknown): value is string {
  *
  * Read-side only. What gets written is still the bare form, so the stored
  * shape stays single.
- *
- * A bare key beats a prefixed one, so a file carrying both is read as the
- * canonical spelling rather than by whichever came last in the object.
  */
 export function normalizeTokenKeys(src: unknown): Record<string, unknown> {
-  if (!src || typeof src !== 'object') return {};
-  const out: Record<string, unknown> = {};
+  // Null prototype, and the three inherited names refused outright.
+  //
+  // Without both, `{"__proto__": {"background": "1 2% 3%"}}` in a submission
+  // sets this object's prototype, and `background` then resolves to a value
+  // the submitter supplied without it being an own property — invisible to
+  // Object.keys, so absent from the report of what was carried, yet copied
+  // into the committed file all the same. The value still has to pass the
+  // triple check, so this was never a way to inject CSS; it was a way to make
+  // the file a reviewer reads differ from the theme that gets installed.
+  const out: Record<string, unknown> = Object.create(null);
+  if (!src || typeof src !== 'object') return out;
+
   for (const [key, value] of Object.entries(src as Record<string, unknown>)) {
-    if (key.startsWith('--')) {
-      const bare = key.slice(2);
-      if (!(bare in out)) out[bare] = value;
-    } else {
-      out[key] = value;
-    }
+    const prefixed = key.startsWith('--');
+    const bare = prefixed ? key.slice(2) : key;
+    if (bare === '__proto__' || bare === 'constructor' || bare === 'prototype') continue;
+    // A bare key beats a prefixed one, so a file carrying both is read as the
+    // canonical spelling rather than by whichever came last in the object.
+    if (prefixed && bare in out) continue;
+    out[bare] = value;
   }
   return out;
 }
