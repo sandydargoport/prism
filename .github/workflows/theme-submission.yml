@@ -199,6 +199,19 @@ jobs:
               labels: ['needs-fix']
             });
 
+      # Written from the source of truth rather than retyped below. A built-in
+      # id that this list missed would let a submission shadow a palette every
+      # instance already ships, and the drift would show up only as a theme
+      # that installs and then never appears.
+      - name: List built-in theme ids
+        if: steps.validate.outputs.passed == 'true' && env.VALIDATION_FAILED != 'true'
+        run: |
+          npx tsx -e "
+            const { BUILTIN_THEMES } = require('./src/lib/themes/appThemes');
+            const fs = require('fs');
+            fs.writeFileSync('/tmp/builtin-ids.json', JSON.stringify(BUILTIN_THEMES.map((t) => t.id)));
+          "
+
       - name: Add theme and create PR
         if: steps.validate.outputs.passed == 'true' && env.VALIDATION_FAILED != 'true'
         uses: actions/github-script@v7
@@ -224,7 +237,7 @@ jobs:
             }
 
             // A built-in id would shadow the palette everyone already has.
-            const BUILTIN_IDS = ['prism', 'clay', 'harvest', 'snow-day', 'arcade'];
+            const BUILTIN_IDS = JSON.parse(fs.readFileSync('/tmp/builtin-ids.json', 'utf-8'));
             const filePath = `community/themes/${id}.json`;
             if (BUILTIN_IDS.includes(id) || fs.existsSync(filePath) || index.themes.some((t) => t.id === id)) {
               await github.rest.issues.createComment({

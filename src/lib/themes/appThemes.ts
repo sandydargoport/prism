@@ -278,7 +278,74 @@ const ARCADE: Theme = {
   shape: { radius: 0, density: 0.85, borderWidth: 2 },
 };
 
-export const BUILTIN_THEMES: Theme[] = [PRISM, CLAY, HARVEST, SNOW_DAY, ARCADE];
+/**
+ * The wall-display look: a board, not an app.
+ *
+ * Every other built-in decorates the chrome. This one gets out of the way of
+ * it. A shared family calendar takes its colour from the events themselves —
+ * one hue per person — so the surfaces around them are near-white and the
+ * grid is a hairline, because anything more competes with the only colour on
+ * screen that carries information.
+ *
+ * The three non-colour choices do most of the work here, which is the point of
+ * having them. Compact events fit a family's whole week in a month cell.
+ * A flat surface removes the card shadow that makes a dashboard read as
+ * software. A rounded face keeps it from reading as a spreadsheet.
+ */
+const NOTICE_BOARD: Theme = {
+  id: 'notice-board',
+  name: 'Notice Board',
+  description: 'Near-white and flat, packed tight. The events supply the colour.',
+  light: {
+    background: '210 20% 96%',
+    foreground: '215 28% 14%',
+    card: '0 0% 100%',
+    'card-foreground': '215 28% 14%',
+    popover: '0 0% 100%',
+    'popover-foreground': '215 28% 14%',
+    primary: '190 72% 28%',
+    'primary-foreground': '190 40% 98%',
+    secondary: '210 20% 92%',
+    'secondary-foreground': '215 28% 18%',
+    muted: '210 20% 93%',
+    'muted-foreground': '215 14% 38%',
+    accent: '188 52% 86%',
+    'accent-foreground': '196 45% 16%',
+    destructive: '358 62% 44%',
+    'destructive-foreground': '210 30% 98%',
+    border: '210 16% 87%',
+    input: '210 16% 82%',
+    ring: '190 72% 34%',
+  },
+  dark: {
+    background: '215 28% 9%',
+    foreground: '210 22% 94%',
+    card: '215 25% 13%',
+    'card-foreground': '210 22% 94%',
+    popover: '215 25% 13%',
+    'popover-foreground': '210 22% 94%',
+    primary: '188 62% 62%',
+    'primary-foreground': '215 30% 10%',
+    secondary: '215 20% 18%',
+    'secondary-foreground': '210 22% 94%',
+    muted: '215 20% 17%',
+    'muted-foreground': '212 16% 68%',
+    accent: '192 34% 26%',
+    'accent-foreground': '190 40% 92%',
+    destructive: '358 66% 66%',
+    'destructive-foreground': '358 30% 12%',
+    border: '215 18% 26%',
+    input: '215 18% 30%',
+    ring: '188 62% 58%',
+  },
+  // Borderless and tight. The grid lines a calendar draws for itself are the
+  // only division this look wants.
+  shape: { radius: 0.375, density: 0.85, borderWidth: 0 },
+  font: 'rounded',
+  modes: { events: 'compact', surface: 'flat' },
+};
+
+export const BUILTIN_THEMES: Theme[] = [PRISM, CLAY, HARVEST, SNOW_DAY, ARCADE, NOTICE_BOARD];
 
 export function getBuiltinTheme(id: string): Theme | undefined {
   return BUILTIN_THEMES.find((t) => t.id === id);

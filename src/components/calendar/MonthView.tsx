@@ -241,9 +241,10 @@ function MonthDayCell({
       )}
       style={cellBgStyle}
     >
-      <div className="flex h-7 shrink-0 items-center justify-center">
+      <div className="flex shrink-0 items-center justify-center h-[var(--daynum-row)]">
         <span className={cn(
-          'inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-xs font-medium',
+          'inline-flex items-center justify-center rounded-full px-1 font-medium',
+          'h-[var(--daynum-box)] min-w-[var(--daynum-box)] text-[length:var(--daynum-size)]',
           today && 'bg-primary font-bold text-primary-foreground',
           !today && isPast && 'text-muted-foreground',
           !today && !isSameMonth(date, currentDate) && 'text-muted-foreground/55',
@@ -270,7 +271,9 @@ function MonthDayCell({
           onItemClick={onItemClick}
         />
       ) : (
-        <ul className="flex-1 overflow-y-auto space-y-0.5 list-none m-0 px-1 pb-1 pt-0">
+        // Row gap follows the theme's events mode; the fallback is the
+        // 0.125rem that space-y-0.5 used to hard-code.
+        <ul className="flex-1 overflow-y-auto list-none m-0 px-1 pb-1 pt-0 flex flex-col gap-[var(--event-gap,0.125rem)]">
           {dayEvents.map((event) => (
             <li key={event.id}>
               <InlineCalendarEvent event={event} onClick={onEventClick} />

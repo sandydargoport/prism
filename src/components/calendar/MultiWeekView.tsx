@@ -307,7 +307,12 @@ function DayCell({
         )}
       >
         <div className="flex items-baseline gap-1.5 min-w-0">
-          <span className={cn('font-bold leading-none', compact ? 'text-base' : 'text-xl')}>
+          {/* The compact branch is the layout saying this cell is small, which
+              stays the layout's call. The roomy branch is the theme's. */}
+          <span className={cn(
+            'font-bold leading-none',
+            compact ? 'text-base' : 'text-[length:var(--daynum-large)]',
+          )}>
             {format(date, 'd')}
           </span>
           <span
@@ -345,7 +350,9 @@ function DayCell({
       <div
         ref={cards ? cellRef : undefined}
         className={cn(
-          cards ? 'flex flex-col gap-1 flex-1 min-h-0 overflow-hidden' : 'space-y-0.5',
+          cards
+            ? 'flex flex-col gap-1 flex-1 min-h-0 overflow-hidden'
+            : 'flex flex-col gap-[var(--event-gap)]',
           compact ? 'px-1 pb-1' : 'px-1.5 pb-1.5',
         )}
       >

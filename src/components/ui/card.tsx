@@ -55,8 +55,11 @@ const Card = React.forwardRef<
       // the card.
       'border-border border-[length:var(--border-width,1px)]',
       'rounded-[var(--radius,0.5rem)]',
-      // Shadow for depth (subtle)
-      'shadow-sm',
+      // Depth comes from the theme too. A flat look is not "a card with a
+      // smaller shadow" — it is the difference between reading as software and
+      // reading as a board on a wall, which is most of what separates a
+      // dashboard from a wall display.
+      'shadow-[var(--surface-shadow)]',
       // Allow custom classes to override
       className
     )}
