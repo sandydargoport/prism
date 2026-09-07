@@ -4,6 +4,8 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.25.0] – 2026-09-07
+
 ### Added
 - **A theme can now choose a typeface and how tightly things pack.** Colour and three numbers were the whole vocabulary, and colour alone makes themes read as tints of each other. A theme can now name a typeface by role — sans, serif, rounded or mono — which is the largest identity lever left after density: a rounded geometric and a newspaper serif read as different products in a way no palette swap manages. It can also pick from a small set of display modes: whether calendar events pack *comfortably* or *compact*, and whether panels read as raised cards or flat regions of the page. A theme picks a name from a list; what the name means is decided in Prism, so themes stay pure data. Every one of these is optional, and a theme that sets none of them looks exactly as it did.
 - **A new built-in: Notice Board.** Near-white, flat and packed tight, with a rounded face and no borders at all. It is built for the job a shared wall calendar actually does — the events supply the colour, one hue per person, so everything around them gets out of the way. Compact events fit a family's whole week into a month cell. It is also the worked example of the new controls, for anyone building a theme of their own.
