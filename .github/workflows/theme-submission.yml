@@ -1,0 +1,355 @@
+name: Process Theme Submission
+
+# Mirrors layout-submission.yml. The differences that matter:
+#
+#   - What gets committed is `projectCommunityTheme()`'s output, never the
+#     parsed submission. Every field is copied by name from a fixed list, so a
+#     key the schema does not know about has no path into the repository.
+#   - The index row comes from `buildThemeIndexEntry()` for the same reason:
+#     this file is YAML with JavaScript inside a string, which nothing can
+#     test, so as little as possible is decided here.
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  validate-and-add:
+    if: contains(github.event.issue.labels.*.name, 'theme-submission')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check submission limits
+        uses: actions/github-script@v7
+        id: check-limits
+        with:
+          script: |
+            const author = context.payload.issue.user.login;
+
+            const userResp = await github.rest.users.getByUsername({ username: author });
+            const createdAt = new Date(userResp.data.created_at);
+            const daysSinceCreation = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
+
+            if (daysSinceCreation < 7) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: '❌ **Account too new.** GitHub accounts must be at least 7 days old to submit themes. Please try again later.'
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                state: 'closed'
+              });
+              core.setFailed('Account too new');
+              return;
+            }
+
+            const today = new Date().toISOString().split('T')[0];
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'theme-submission',
+              creator: author,
+              since: `${today}T00:00:00Z`,
+              state: 'all',
+              per_page: 20
+            });
+
+            if (issues.data.length > 12) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: '❌ **Daily limit reached.** You can submit up to 12 themes per day. Please try again tomorrow.'
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                state: 'closed'
+              });
+              core.setFailed('Daily limit reached');
+              return;
+            }
+
+            core.setOutput('passed', 'true');
+
+      - name: Extract theme JSON
+        if: steps.check-limits.outputs.passed == 'true'
+        uses: actions/github-script@v7
+        id: validate
+        with:
+          script: |
+            const body = context.payload.issue.body || '';
+
+            const jsonMatch = body.match(/```json\s*([\s\S]*?)```/)
+              || body.match(/\{[\s\S]*"type"\s*:\s*"prism-theme"[\s\S]*\}/);
+            if (!jsonMatch) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: '❌ **No theme JSON found.** Use the **Share** button under *Settings → Appearance → Palette* in Prism to generate it.'
+              });
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: ['needs-fix']
+              });
+              core.setFailed('No JSON found');
+              return;
+            }
+
+            let themeJson;
+            try {
+              themeJson = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+            } catch (e) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: '❌ **Invalid JSON.** The theme JSON could not be parsed. Please re-export from Prism.'
+              });
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: ['needs-fix']
+              });
+              core.setFailed('Invalid JSON');
+              return;
+            }
+
+            // The Share button puts the author inside the JSON, but somebody
+            // writing the JSON by hand follows the placeholder above it, which
+            // does not show an author key — and then fills the Author name
+            // field right below, which nothing read. The validator requires an
+            // author, so that submission was rejected for omitting something
+            // the form had just collected. Take the field when the JSON is
+            // silent; never let it override a value that is already there.
+            if (themeJson && typeof themeJson === 'object' && !themeJson.author) {
+              const field = body.match(/###\s*Author name\s*\r?\n+([^\r\n]+)/i);
+              const name = field ? field[1].trim() : '';
+              if (name && name !== '_No response_') themeJson.author = name;
+            }
+
+            const fs = require('fs');
+            fs.writeFileSync('/tmp/theme-submission.json', JSON.stringify(themeJson, null, 2));
+            core.setOutput('passed', 'true');
+
+      - name: Run validator
+        if: steps.validate.outputs.passed == 'true'
+        run: |
+          npx tsx -e "
+            const { validateCommunityTheme } = require('./src/lib/community/validateTheme');
+            const fs = require('fs');
+            const theme = JSON.parse(fs.readFileSync('/tmp/theme-submission.json', 'utf-8'));
+            const result = validateCommunityTheme(theme);
+            if (!result.valid) {
+              fs.writeFileSync('/tmp/validation-errors.json', JSON.stringify(result.errors));
+              process.exit(1);
+            }
+            fs.writeFileSync('/tmp/validation-warnings.json', JSON.stringify(result.warnings));
+            fs.writeFileSync('/tmp/validation-unknown.json', JSON.stringify(result.unknownTokens));
+            console.log('VALID');
+          " 2>&1 || echo "VALIDATION_FAILED=true" >> $GITHUB_ENV
+
+      - name: Comment validation failure
+        if: env.VALIDATION_FAILED == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let errorList = '';
+            try {
+              const errors = JSON.parse(fs.readFileSync('/tmp/validation-errors.json', 'utf-8'));
+              errorList = '\n\n**Issues found:**\n' + errors.map(e => `- ${e}`).join('\n');
+            } catch { /* no detailed errors available */ }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `❌ **Theme validation failed.** Fix the issues below and edit the theme JSON in this issue — editing re-runs the check.${errorList}`
+            });
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['needs-fix']
+            });
+
+      - name: Add theme and create PR
+        if: steps.validate.outputs.passed == 'true' && env.VALIDATION_FAILED != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const { execFileSync } = require('child_process');
+            const submission = JSON.parse(fs.readFileSync('/tmp/theme-submission.json', 'utf-8'));
+            const warnings = JSON.parse(fs.readFileSync('/tmp/validation-warnings.json', 'utf-8'));
+            const unknownTokens = JSON.parse(fs.readFileSync('/tmp/validation-unknown.json', 'utf-8'));
+            const index = JSON.parse(fs.readFileSync('./community/themes/index.json', 'utf-8'));
+
+            // This id becomes both a filename and a branch name.
+            const id = submission.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+            if (!/^[a-z0-9][a-z0-9-]{0,48}$/.test(id)) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: '❌ **That name cannot be used as an identifier.** Please include some letters or numbers.'
+              });
+              core.setFailed('Unusable slug');
+              return;
+            }
+
+            // A built-in id would shadow the palette everyone already has.
+            const BUILTIN_IDS = ['prism', 'clay', 'harvest', 'snow-day', 'arcade'];
+            const filePath = `community/themes/${id}.json`;
+            if (BUILTIN_IDS.includes(id) || fs.existsSync(filePath) || index.themes.some((t) => t.id === id)) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: '❌ **A theme with that name already exists.** Please choose a different name.'
+              });
+              core.setFailed('Duplicate id');
+              return;
+            }
+
+            // Project and build the index row in the tested library code, not here.
+            fs.writeFileSync('/tmp/theme-id.txt', id);
+            execFileSync('npx', ['tsx', '-e', `
+              const fs = require('fs');
+              const { projectCommunityTheme, buildThemeIndexEntry } = require('./src/lib/community/validateTheme');
+              const submission = JSON.parse(fs.readFileSync('/tmp/theme-submission.json', 'utf-8'));
+              const warnings = JSON.parse(fs.readFileSync('/tmp/validation-warnings.json', 'utf-8'));
+              const id = fs.readFileSync('/tmp/theme-id.txt', 'utf-8').trim();
+              const projected = projectCommunityTheme(submission, id);
+              const today = new Date().toISOString().split('T')[0];
+              const entry = buildThemeIndexEntry(
+                { id, name: projected.name, description: projected.description,
+                  author: projected.author, tags: projected.tags },
+                warnings, today,
+              );
+              fs.writeFileSync('/tmp/theme-projected.json', JSON.stringify(projected, null, 2) + '\\n');
+              fs.writeFileSync('/tmp/theme-entry.json', JSON.stringify(entry));
+            `], { stdio: 'inherit' });
+
+            const projected = fs.readFileSync('/tmp/theme-projected.json', 'utf-8');
+            const entry = JSON.parse(fs.readFileSync('/tmp/theme-entry.json', 'utf-8'));
+            // Counted off the projection rather than written down here, so it
+            // cannot drift from THEME_TOKENS the next time a token is added.
+            const THEME_TOKEN_COUNT = Object.keys(JSON.parse(projected).light).length;
+
+            fs.writeFileSync(filePath, projected);
+            index.themes.push(entry);
+            fs.writeFileSync('community/themes/index.json', JSON.stringify(index, null, 2) + '\n');
+
+            // spawnSync with an argument array, never a shell string: the name is
+            // submitter-controlled text in a job holding contents:write.
+            const branch = `theme/${id}-${context.issue.number}`;
+            const { spawnSync } = require('child_process');
+            const git = (...args) => {
+              const r = spawnSync('git', args, { encoding: 'utf8' });
+              if (r.status !== 0) throw new Error(`git ${args[0]} failed: ${r.stderr || r.stdout}`);
+              return r;
+            };
+            git('config', 'user.name', 'github-actions[bot]');
+            git('config', 'user.email', 'github-actions[bot]@users.noreply.github.com');
+            spawnSync('git', ['branch', '-D', branch]); // may not exist; ignore
+            git('checkout', '-b', branch);
+            git('add', filePath, 'community/themes/index.json');
+            git('commit', '-m', `Add community theme: ${entry.name}\n\nFrom #${context.issue.number}`);
+            git('push', '--force', 'origin', branch);
+
+            // Surface the warnings in the PR so the reviewer sees what the
+            // installer will see on the card, without opening the file.
+            const textWarnings = warnings.filter((w) => w.kind === 'text');
+            const edgeWarnings = warnings.filter((w) => w.kind === 'edge');
+            const fmt = (list) => list.map((w) => `- ${w.pair} — ${w.ratio.toFixed(2)}:1`).join('\n');
+            const warningSection = [
+              textWarnings.length
+                ? `**Legible but tiring (shown on the card):**\n${fmt(textWarnings)}`
+                : '**No text-contrast warnings.**',
+              edgeWarnings.length
+                ? `\n**Subtle edges** (a style, not a defect — not counted on the card):\n${fmt(edgeWarnings)}`
+                : '',
+              unknownTokens.length
+                ? `\n**${unknownTokens.length} key(s) not carried** (this schema has no such surface): ` +
+                  unknownTokens.map((t) => `\`${t}\``).join(', ')
+                : '',
+            ].join('\n');
+
+            const pr = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Add community theme: ${entry.name}`,
+              body: [
+                `Adds community theme "${entry.name}" by ${entry.author}.`,
+                '',
+                warningSection,
+                '',
+                '**Before merging**, check the things a machine cannot: that the theme is not',
+                'profane, bigoted, partisan or divisive — this is a display in a family',
+                'kitchen, read by children — and that the *name* describes how it looks rather',
+                'than naming a product, franchise or character. Naming the inspiration in the',
+                'description is fine; the name is what suggests an endorsement.',
+                '',
+                `Closes #${context.issue.number}`,
+                '',
+                'Generated from the theme submission workflow.',
+              ].join('\n'),
+              head: branch,
+              base: 'master',
+            });
+
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                name: 'needs-fix',
+              });
+            } catch { /* label may not exist */ }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: [
+                `✅ **Theme validated.** A pull request is open: ${pr.data.html_url}`,
+                '',
+                'A maintainer reads every submission before it merges. Once it does, your theme appears in the gallery.',
+                // Said here rather than only on the pull request: the person who
+                // will notice their theme looking flatter than it does at home
+                // is the submitter, and they may never open the PR.
+                ...(unknownTokens.length ? [
+                  '',
+                  `ℹ️ **${unknownTokens.length} of the keys you sent were not carried over.** Prism themes only set the ${THEME_TOKEN_COUNT} colours listed in \`community/themes/README.md\`; these name surfaces it does not have, so they were left out and your theme will look correspondingly plainer here than it does where you made it:`,
+                  '',
+                  unknownTokens.map((t) => `- \`${t}\``).join('\n'),
+                  '',
+                  'Nothing is wrong with the submission — this is a note, not a problem to fix. If one of these is a surface Prism ought to theme, that is worth its own issue.',
+                ] : []),
+              ].join('\n')
+            });

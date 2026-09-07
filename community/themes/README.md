@@ -4,6 +4,18 @@ A theme is a set of colours. Nineteen values for light mode, nineteen for dark,
 a name and a short description. No CSS, no fonts, no images — a theme cannot
 contain anything but colour values, deliberately.
 
+## Installing one
+
+*Settings → Appearance → Palette → Browse* lists everything in this directory,
+with both light and dark previewed on the card, and installs one in a tap. An
+installed theme is copied into your instance rather than linked, so a display
+that boots without a network still comes up in the palette it was left on. It
+then sits in the palette picker next to the built-in five, marked *Community*,
+and can be removed again from the same place.
+
+Cards say how many colour pairs came out between 3:1 and 4.5:1 — legible, but
+tiring on a screen read from a distance. See *Contrast, in practice* below.
+
 ## Two ways to share one
 
 Pick whichever suits you. They differ in who owns the theme afterwards, and it
@@ -46,16 +58,34 @@ Automatically, on submission:
   Prism is read from across a room, often by someone without their glasses.
 - **Name, description, tags** are length-limited and must be plain text.
 
+Keys may be written either way — `background` or `--background`. The bare form
+is what gets stored, but a theme exported from a fork, or copied out of a
+stylesheet, spells them the way CSS does and there is no reason to reject it
+over a prefix.
+
+A theme may also carry keys this project has no surface for — a fork that
+themes its own weather ramp or widget tints, say. Those are not an error and
+do not block anything; they are named back to you on the submission, and are
+not carried into the gallery copy, so the theme will look plainer here than it
+does where you made it. If one of them is a surface Prism ought to theme, that
+is worth an issue of its own.
+
 By a person, before it merges:
 
 Every submission becomes a pull request that a maintainer reviews. Themes are
 declined if they are profane, bigoted, politically partisan, or built to divide
 people. This is a display in a family kitchen, and it is read by children.
 
-Themes named after a franchise, or reproducing a recognisable brand's look, are
-also declined — not because a palette can be owned, but because the name is
-what attracts a complaint. Name it after a season, a feeling, or a period.
-"Arcade" is fine; a console's name is not.
+**Name it for what it looks like, not for what it reminds you of.** A palette
+cannot really be owned — nobody has a claim on blue and light blue — so the
+colours are never the problem. The name is, because a name is the thing that
+suggests somebody endorsed it, and that is what attracts a complaint.
+
+So: keep the *name* descriptive, and say what inspired it in the
+*description*. "Blue Bomber" with a description mentioning the games it evokes
+is fine. The same theme called after the character is not, and neither is one
+that sets out to pass as a real product's interface — a name, a wordmark, or a
+copy of a recognisable layout.
 
 If a rights holder ever asks for something to be removed, it is removed. No
 argument, no delay.

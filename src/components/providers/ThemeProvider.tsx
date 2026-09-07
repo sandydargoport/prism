@@ -17,7 +17,7 @@ import * as React from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useSeasonalTheme } from '@/lib/hooks/useSeasonalTheme';
 import { usePerformanceMode } from '@/lib/hooks/usePerformanceMode';
-import { isInstallableTheme, type Theme } from '@/lib/themes/tokens';
+import { isInstallableTheme, MAX_INSTALLED_THEMES, type Theme } from '@/lib/themes/tokens';
 import { BUILTIN_THEMES, getBuiltinTheme, DEFAULT_THEME_ID } from '@/lib/themes/appThemes';
 import { applyThemeVars, applyThemeShape, themeTokens } from '@/lib/themes/applyTheme';
 
@@ -42,6 +42,21 @@ interface ThemeContextValue {
   palettes: Theme[];
   /** Switch palette. Persisted to the settings row, not to localStorage. */
   setPalette: (id: string) => void;
+  /** The subset of `palettes` that came from the gallery rather than the box. */
+  installedThemes: Theme[];
+  /**
+   * Add a gallery theme and switch to it.
+   *
+   * Installing and applying are one operation because the API validates them
+   * as one: `paletteId` has to name a builtin or a theme present in the same
+   * write, so there is no request that installs without choosing.
+   *
+   * Resolves false when the write was refused, so the caller can say so rather
+   * than showing an install that vanishes on the next load.
+   */
+  installTheme: (theme: Theme) => Promise<boolean>;
+  /** Remove a gallery theme, falling back to the default if it was in use. */
+  uninstallTheme: (id: string) => Promise<boolean>;
 }
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
@@ -95,6 +110,8 @@ export function ThemeProvider({
   const [palette, setPaletteState] = useState<Theme>(
     () => getBuiltinTheme(DEFAULT_THEME_ID) ?? BUILTIN_THEMES[0]!,
   );
+  const themeRef = React.useRef(theme);
+  themeRef.current = theme;
 
   // On mount, load saved theme from localStorage
   useEffect(() => {
@@ -160,15 +177,74 @@ export function ThemeProvider({
   // Persisted to the database rather than localStorage, because a palette is a
   // household choice: every screen in the house should agree, and a new tablet
   // should pick it up without being configured.
+  //
+  // Always writes all three fields. The settings row is replaced wholesale
+  // rather than merged, so a write that names only `paletteId` deletes the
+  // installed themes — and because the API requires `paletteId` to name a
+  // builtin or a theme in the same write, such a write is also rejected
+  // outright the moment a gallery palette is the one being chosen.
+  const persistTheme = async (paletteId: string, installed: Theme[]): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          // Read through a ref, not the closure. The load effect runs once and
+          // persists from inside its own response handler, where the captured
+          // `theme` is still the pre-mount default — writing it back would
+          // reset the row's mode as a side effect of reading it.
+          key: THEME_SETTING_KEY,
+          value: { mode: themeRef.current, paletteId, installed },
+        }),
+      });
+      return res.ok;
+    } catch {
+      return false; // applied locally; the next load falls back to the server value
+    }
+  };
+
   const setPalette = (id: string) => {
     const next = getBuiltinTheme(id) ?? installedThemes.find((t) => t.id === id);
     if (!next) return;
     setPaletteState(next);
-    fetch('/api/settings', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: THEME_SETTING_KEY, value: { mode: theme, paletteId: id } }),
-    }).catch(() => { /* applied locally; the next load falls back to the server value */ });
+    void persistTheme(id, installedThemes);
+  };
+
+  const installTheme = async (incoming: Theme): Promise<boolean> => {
+    // Re-validated here even though the gallery validated on fetch: this is the
+    // last point before the value is handed to a row that gets rendered into a
+    // <style> element on the server.
+    if (!isInstallableTheme(incoming)) return false;
+    // A builtin id would shadow a palette everyone already has, and the
+    // resolver checks builtins first, so the installed copy would be dead data.
+    if (getBuiltinTheme(incoming.id)) return false;
+
+    const next = [...installedThemes.filter((t) => t.id !== incoming.id), incoming];
+    // The API refuses more than 40. Refusing here too means the caller gets a
+    // reason rather than a 400 it has to interpret.
+    if (next.length > MAX_INSTALLED_THEMES) return false;
+
+    const ok = await persistTheme(incoming.id, next);
+    if (!ok) return false;
+    setInstalledThemes(next);
+    setPaletteState(incoming);
+    return true;
+  };
+
+  const uninstallTheme = async (id: string): Promise<boolean> => {
+    const next = installedThemes.filter((t) => t.id !== id);
+    if (next.length === installedThemes.length) return false;
+
+    // Removing the palette in use would leave `paletteId` naming a theme that
+    // is no longer in the write, which the API rejects. Fall back first.
+    const fallback = getBuiltinTheme(DEFAULT_THEME_ID) ?? BUILTIN_THEMES[0]!;
+    const nextPaletteId = palette.id === id ? fallback.id : palette.id;
+
+    const ok = await persistTheme(nextPaletteId, next);
+    if (!ok) return false;
+    setInstalledThemes(next);
+    if (palette.id === id) setPaletteState(fallback);
+    return true;
   };
 
   // Apply the palette's variables whenever it or the light/dark mode changes.
@@ -182,34 +258,23 @@ export function ThemeProvider({
     applyThemeShape(document.documentElement, palette);
   }, [palette, resolvedTheme, mounted]);
 
-  // Escape hatch for a kiosk that cannot reach Settings: ?theme=default resets
-  // the palette and persists it. A wall display has no keyboard, and a palette
-  // with a broken background/foreground pair makes the Settings page itself
-  // unreadable — which would otherwise mean an SSH session to recover.
-  // Mirrors ?perf=0 in usePerformanceMode, which exists for the same reason.
-  useEffect(() => {
-    if (!mounted) return;
-    if (new URLSearchParams(window.location.search).get('theme') !== 'default') return;
-    const fallback = getBuiltinTheme(DEFAULT_THEME_ID) ?? BUILTIN_THEMES[0]!;
-    setPaletteState(fallback);
-    fetch('/api/settings', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: THEME_SETTING_KEY, value: { mode: theme, paletteId: fallback.id } }),
-    }).catch(() => { /* reset locally at least; the display is usable again */ });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mounted]);
-
   // Read the stored palette once. A failure here is not worth surfacing: the
   // server already rendered a palette, so the visible result of the request
   // never arriving is that the picker shows the default.
+  //
+  // The ?theme=default escape hatch is handled inside this same read rather
+  // than in an effect of its own. It has to rewrite the row, the row is
+  // replaced wholesale, and the installed themes it must carry over are only
+  // known once this response arrives — resetting from a separate effect raced
+  // the read and wrote back an empty `installed`, uninstalling every gallery
+  // theme in the house as the price of fixing one unreadable palette.
   useEffect(() => {
     let cancelled = false;
     fetch('/api/settings')
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (cancelled || !data) return;
-        const stored = data.settings?.[THEME_SETTING_KEY];
+        if (cancelled) return;
+        const stored = data?.settings?.[THEME_SETTING_KEY];
 
         // Themes installed from the gallery are stored inline rather than
         // fetched, so a display that boots without a network still renders the
@@ -217,9 +282,27 @@ export function ThemeProvider({
         // an API that checks, but this is the last point before it becomes CSS
         // and the check costs a regex per token.
         const installed = Array.isArray(stored?.installed)
-          ? (stored.installed as unknown[]).filter(isInstallableTheme)
+          ? (stored.installed as unknown[])
+              .filter(isInstallableTheme)
+              // A row written before installTheme existed, or by hand, can hold
+              // a theme sharing a builtin's id. The resolver checks builtins
+              // first, so the copy is unreachable data — and leaving it in
+              // `palettes` renders two cards with the same id.
+              .filter((t) => !getBuiltinTheme(t.id))
           : [];
         if (installed.length > 0) setInstalledThemes(installed);
+
+        // Escape hatch for a kiosk that cannot reach Settings. A wall display
+        // has no keyboard, and a palette with a broken background/foreground
+        // pair makes the Settings page itself unreadable — which would
+        // otherwise mean an SSH session to recover. Mirrors ?perf=0 in
+        // usePerformanceMode, which exists for the same reason.
+        if (new URLSearchParams(window.location.search).get('theme') === 'default') {
+          const fallback = getBuiltinTheme(DEFAULT_THEME_ID) ?? BUILTIN_THEMES[0]!;
+          setPaletteState(fallback);
+          void persistTheme(fallback.id, installed);
+          return;
+        }
 
         const id = typeof stored?.paletteId === 'string' ? stored.paletteId : null;
         const found = id ? (getBuiltinTheme(id) ?? installed.find((t) => t.id === id)) : undefined;
@@ -243,7 +326,11 @@ export function ThemeProvider({
   if (!mounted) {
     return (
       <ThemeContext.Provider
-        value={{ theme: defaultTheme, resolvedTheme: 'light', setTheme, palette, palettes: [...BUILTIN_THEMES, ...installedThemes], setPalette }}
+        value={{
+          theme: defaultTheme, resolvedTheme: 'light', setTheme, palette,
+          palettes: [...BUILTIN_THEMES, ...installedThemes], setPalette,
+          installedThemes, installTheme, uninstallTheme,
+        }}
       >
         {children}
       </ThemeContext.Provider>
@@ -252,7 +339,11 @@ export function ThemeProvider({
 
   return (
     <ThemeContext.Provider
-      value={{ theme, resolvedTheme, setTheme, palette, palettes: [...BUILTIN_THEMES, ...installedThemes], setPalette }}
+      value={{
+        theme, resolvedTheme, setTheme, palette,
+        palettes: [...BUILTIN_THEMES, ...installedThemes], setPalette,
+        installedThemes, installTheme, uninstallTheme,
+      }}
     >
       {children}
     </ThemeContext.Provider>

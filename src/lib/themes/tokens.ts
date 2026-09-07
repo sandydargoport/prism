@@ -141,6 +141,44 @@ export function isValidTokenValue(value: unknown): value is string {
   return h <= 360 && s <= 100 && l <= 100;
 }
 
+/**
+ * Token keys as a submission spells them, reduced to the bare names used here.
+ *
+ * A theme written by hand — or exported from a fork, or copied out of a
+ * stylesheet or a devtools pane — spells these the way CSS does, with the
+ * leading `--`. Bare names are this project's own convention and nothing tells
+ * a submitter about it, so the prefixed spelling arrived looking like nineteen
+ * missing values rather than one naming difference, and the error listed every
+ * token the file in fact contained.
+ *
+ * Read-side only. What gets written is still the bare form, so the stored
+ * shape stays single.
+ */
+export function normalizeTokenKeys(src: unknown): Record<string, unknown> {
+  // Null prototype, and the three inherited names refused outright.
+  //
+  // Without both, `{"__proto__": {"background": "1 2% 3%"}}` in a submission
+  // sets this object's prototype, and `background` then resolves to a value
+  // the submitter supplied without it being an own property — invisible to
+  // Object.keys, so absent from the report of what was carried, yet copied
+  // into the committed file all the same. The value still has to pass the
+  // triple check, so this was never a way to inject CSS; it was a way to make
+  // the file a reviewer reads differ from the theme that gets installed.
+  const out: Record<string, unknown> = Object.create(null);
+  if (!src || typeof src !== 'object') return out;
+
+  for (const [key, value] of Object.entries(src as Record<string, unknown>)) {
+    const prefixed = key.startsWith('--');
+    const bare = prefixed ? key.slice(2) : key;
+    if (bare === '__proto__' || bare === 'constructor' || bare === 'prototype') continue;
+    // A bare key beats a prefixed one, so a file carrying both is read as the
+    // canonical spelling rather than by whichever came last in the object.
+    if (prefixed && bare in out) continue;
+    out[bare] = value;
+  }
+  return out;
+}
+
 /** True when every token is present and every value is a valid triple. */
 export function isValidTokenSet(value: unknown): value is ThemeTokens {
   if (!value || typeof value !== 'object') return false;
@@ -167,3 +205,15 @@ export function isInstallableTheme(value: unknown): value is Theme {
     (t.shape === undefined || isValidShape(t.shape))
   );
 }
+
+/**
+ * How many gallery themes one instance may keep.
+ *
+ * The cap exists because installed themes are stored inline in a single
+ * settings row that is read on every server render. Forty is well past what a
+ * household picks through and still small enough that the row stays cheap.
+ *
+ * Shared by the API, which refuses a larger write, and by the provider, which
+ * refuses before making one — the same number in both places, from here.
+ */
+export const MAX_INSTALLED_THEMES = 40;

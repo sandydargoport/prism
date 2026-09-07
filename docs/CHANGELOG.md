@@ -4,6 +4,10 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+### Added
+- **The community gallery takes themes, and Prism can install them.** The gallery has held layouts since it opened; a theme had nowhere to go, even though a theme is the easier thing to share — it is pure data, nineteen colours per mode and three capped numbers, with no widget set to line up and no screen size to match. Two halves now exist. **Share**, next to the palettes in *Settings → Appearance*, takes the palette you are looking at, checks it, and hands you a prefilled submission form; nothing leaves the house until you submit it yourself, so a display with no GitHub session has published nothing. **Browse**, beside it, lists what other people have shared with both modes previewed on the card, and installs one in a tap. An installed theme is copied into the house rather than linked, so a display that boots without a network still comes up in the palette it was left on, and it appears in the palette picker beside the built-in five, marked *Community*, and can be removed again.
+- **A submitted theme is checked before a person ever reads it.** Every colour has to be a bare HSL triple — which is what makes a theme unable to carry CSS into a page — and text has to clear 3:1 against its background in both modes, because Prism is read from across a room, often by somebody without their glasses. Below that it is refused with the failing pairs named; between 3:1 and 4.5:1 it is accepted and the card says so, so whoever installs it can judge for themselves. Subtle borders are counted separately and never held against a theme: a borderless look is a style, and Snow Day ships that way on purpose. What survives all that becomes a pull request a maintainer reads, because the part that actually matters — whether a theme belongs on a screen in a family kitchen — is not something a checker can decide.
+
 ## [1.24.0] – 2026-09-05
 
 ### Added

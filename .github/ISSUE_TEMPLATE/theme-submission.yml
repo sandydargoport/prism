@@ -1,0 +1,62 @@
+name: Community Theme Submission
+description: Submit a colour theme to the Prism community gallery
+title: "Community Theme: "
+labels: ["theme-submission"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Submit a theme to the community gallery
+
+        Paste your theme JSON below. The easiest way to produce it is the
+        **Share** button in Prism under *Settings → Appearance → Palette* —
+        it fills this form in for you.
+
+        Submissions are checked automatically: every colour has to be a bare
+        HSL triple, and text has to stay readable (Prism is read from across a
+        room). If those pass, a pull request opens and a maintainer reads it
+        before it merges.
+
+        **This route keeps your theme yours.** You license it to the project
+        for distribution in the gallery and nothing more. If you would rather
+        your theme ship *inside* Prism as one of the built-in palettes, open a
+        pull request against `src/lib/themes/appThemes.ts` instead and sign the
+        CLA — see `community/themes/README.md` for why the two differ.
+
+  - type: textarea
+    id: theme-json
+    attributes:
+      label: Theme JSON
+      description: Paste the complete theme JSON here
+      placeholder: |
+        {
+          "type": "prism-theme",
+          "version": 1,
+          "name": "Harvest",
+          "description": "Warm golds and deep browns, for a kitchen in autumn.",
+          "author": "Your Name",
+          "light": { "background": "38 40% 97%", "...": "..." },
+          "dark": { "background": "28 25% 10%", "...": "..." }
+        }
+      render: json
+    validations:
+      required: true
+
+  - type: input
+    id: author-name
+    attributes:
+      label: Author name
+      description: How should you be credited? (1-50 characters)
+      placeholder: "Your Name"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Terms
+      options:
+        - label: This is my own work, and I grant Prism a licence to distribute it in the community gallery. I keep the rights to it.
+          required: true
+        - label: The name describes how it looks rather than naming a product, a franchise or a character, and it does not set out to pass as a real product's interface. (Naming what inspired it in the description is fine — see community/themes/README.md.)
+          required: true

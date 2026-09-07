@@ -12,7 +12,7 @@
  * 3. This is a family kitchen display. Handled by the metadata limits, and
  *    by a human reading the pull request — see the note on that below.
  */
-import { THEME_TOKENS, isValidTokenValue, isValidShape, normalizeShape, SHAPE_LIMITS, type Theme, type ThemeTokens } from '@/lib/themes/tokens';
+import { THEME_TOKENS, isValidTokenValue, isValidShape, normalizeShape, normalizeTokenKeys, SHAPE_LIMITS, type Theme, type ThemeTokens } from '@/lib/themes/tokens';
 import { checkThemeContrast, type ContrastIssue } from '@/lib/themes/contrast';
 
 export interface ThemeValidationResult {
@@ -20,6 +20,17 @@ export interface ThemeValidationResult {
   errors: string[];
   /** Legible but tiring pairs. Shown on the gallery card, not blocking. */
   warnings: ContrastIssue[];
+  /**
+   * Keys the schema does not know, which the projection will not carry.
+   *
+   * Not an error. A fork can theme surfaces this one does not have — weather
+   * ramps, calendar and widget tints — and such a theme is still a perfectly
+   * good nineteen-token theme underneath. But dropping twenty values in
+   * silence means it merges and then installs looking flatter than it did at
+   * home, with nothing anywhere saying why. Reported so the submitter is told
+   * once, plainly, instead of discovering it.
+   */
+  unknownTokens: string[];
 }
 
 export interface CommunityThemeEntry {
@@ -80,12 +91,32 @@ function validateTokenSet(tokens: unknown, mode: string, errors: string[]): toke
   return ok;
 }
 
+/**
+ * Token keys present in a submission that this schema has no place for.
+ *
+ * Collected across both modes and deduplicated, because a theme that sets a
+ * weather ramp sets it in light and dark and naming each twice reads as forty
+ * problems rather than twenty.
+ */
+export function unrecognizedTokens(data: unknown): string[] {
+  if (!data || typeof data !== 'object') return [];
+  const obj = data as Record<string, unknown>;
+  const known = new Set<string>(THEME_TOKENS);
+  const found = new Set<string>();
+  for (const mode of ['light', 'dark'] as const) {
+    for (const key of Object.keys(normalizeTokenKeys(obj[mode]))) {
+      if (!known.has(key)) found.add(key);
+    }
+  }
+  return [...found].sort();
+}
+
 export function validateCommunityTheme(data: unknown): ThemeValidationResult {
   const errors: string[] = [];
   let warnings: ContrastIssue[] = [];
 
   if (!data || typeof data !== 'object') {
-    return { valid: false, errors: ['Submission is not an object.'], warnings };
+    return { valid: false, errors: ['Submission is not an object.'], warnings, unknownTokens: [] };
   }
   const obj = data as Record<string, unknown>;
 
@@ -127,11 +158,18 @@ export function validateCommunityTheme(data: unknown): ThemeValidationResult {
     );
   }
 
-  const lightOk = validateTokenSet(obj.light, 'light', errors);
-  const darkOk = validateTokenSet(obj.dark, 'dark', errors);
+  // Normalised once, and everything downstream reads these rather than the raw
+  // object. The contrast check used to be handed `obj.light` directly, so a
+  // theme spelling its keys with the CSS prefix validated and then measured
+  // contrast on nineteen undefined values.
+  const light = normalizeTokenKeys(obj.light);
+  const dark = normalizeTokenKeys(obj.dark);
+
+  const lightOk = validateTokenSet(light, 'light', errors);
+  const darkOk = validateTokenSet(dark, 'dark', errors);
 
   if (lightOk && darkOk) {
-    const contrast = checkThemeContrast({ light: obj.light as ThemeTokens, dark: obj.dark as ThemeTokens });
+    const contrast = checkThemeContrast({ light: light as ThemeTokens, dark: dark as ThemeTokens });
     warnings = contrast.warnings;
     for (const issue of contrast.errors) {
       errors.push(
@@ -141,7 +179,12 @@ export function validateCommunityTheme(data: unknown): ThemeValidationResult {
     }
   }
 
-  return { valid: errors.length === 0, errors, warnings };
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings,
+    unknownTokens: unrecognizedTokens(data),
+  };
 }
 
 /**
@@ -164,7 +207,7 @@ export function projectCommunityTheme(data: unknown, id: string): Theme & {
 } {
   const obj = data as Record<string, unknown>;
   const pickTokens = (src: unknown): ThemeTokens => {
-    const s = src as Record<string, unknown>;
+    const s = normalizeTokenKeys(src);
     const out = {} as ThemeTokens;
     for (const token of THEME_TOKENS) out[token] = s[token] as string;
     return out;
@@ -183,5 +226,33 @@ export function projectCommunityTheme(data: unknown, id: string): Theme & {
     // Clamped rather than copied, so an out-of-range value that slipped past
     // validation still cannot reach the page.
     shape: normalizeShape(obj.shape),
+  };
+}
+
+/**
+ * The row that goes into `community/themes/index.json`.
+ *
+ * Lives here rather than in the workflow because the workflow is YAML with
+ * JavaScript embedded in a string, which nothing can test. Everything the
+ * gallery card shows is decided in this function instead.
+ */
+export function buildThemeIndexEntry(
+  theme: { id: string; name: string; description: string; author: string; tags: string[] },
+  warnings: ContrastIssue[],
+  today: string,
+): CommunityThemeEntry {
+  return {
+    id: theme.id,
+    file: `${theme.id}.json`,
+    name: theme.name,
+    description: theme.description,
+    author: theme.author,
+    tags: theme.tags,
+    createdAt: today,
+    // Text pairs only. An edge warning means the borders are subtle, which is
+    // a style rather than a defect — see the note on ContrastIssue.kind. The
+    // README promises this number is about the eight text pairs, so counting
+    // edges here would make the card contradict the documentation.
+    contrastWarnings: warnings.filter((w) => w.kind === 'text').length,
   };
 }
