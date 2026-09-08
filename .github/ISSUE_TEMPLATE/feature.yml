@@ -1,15 +1,15 @@
 name: Feature request
 description: Suggest something Prism should do
 title: "feat: "
-labels: ["enhancement", "roadmap"]
+labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for the idea! Feature requests are filed as **roadmap items** — community 👍 / 👎 reactions on the issue signal priority.
+        Thanks for the idea! Feature requests get a `P1`, `P2` or `P3` label once they're triaged, which is how the queue is ordered.
 
-        See the current roadmap, sorted by votes:
-        https://github.com/sandydargoport/prism/issues?q=is%3Aissue+is%3Aopen+label%3Aroadmap+sort%3Areactions-%2B1-desc
+        See what's queued next:
+        https://github.com/sandydargoport/prism/issues?q=is%3Aissue+is%3Aopen+label%3AP1
 
   - type: textarea
     id: problem

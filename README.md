@@ -76,18 +76,9 @@ If something is missing or broken, open an issue or submit a PR.
 - Star the repo
 - Report issues you encounter
 - Suggest features that would help your family
-- **Vote on the roadmap** (see below)
 - Submit PRs for improvements
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
-
-### Vote on what gets built next
-
-The public roadmap lives in the [**Prism Roadmap** Project](https://github.com/users/sandydargoport/projects/3). Each item is an issue tagged `roadmap`. React with any emoji — 👍, ❤️, 🚀, 🎉 — to signal you want it built. The priority order on the [vote-rank list](https://github.com/sandydargoport/prism/issues?q=is%3Aissue+is%3Aopen+label%3Aroadmap+sort%3Areactions-desc) sums all reactions, so it doesn't matter which one you pick.
-
-**How to react on an issue:** open the issue, look at the bottom-right of the issue body for the small 😊 icon, click it, pick any reaction. Reactions on the issue body count toward the sort; reactions on comments do not.
-
-Your reactions shape what ships next.
 
 ## License
 

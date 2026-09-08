@@ -14,7 +14,7 @@
 3. Run the quality checks (see below)
 4. Submit a pull request
 
-**Not sure what to work on?** The public roadmap is the [Prism Roadmap project](https://github.com/users/sandydargoport/projects/3) (vote with an emoji reaction). Internal planning, the untracked backlog, and the engineering-reference docs are all indexed in [`docs/planning.md`](docs/planning.md).
+**Not sure what to work on?** Open issues are ranked with `P1`, `P2` and `P3` labels: [P1 is what's next](https://github.com/sandydargoport/prism/issues?q=is%3Aissue+is%3Aopen+label%3AP1). Internal planning, the untracked backlog, and the engineering-reference docs are all indexed in [`docs/planning.md`](docs/planning.md).
 
 ## Quality Standards
 

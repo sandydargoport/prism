@@ -1,6 +1,6 @@
 # Planning &amp; project status
 
-A single map of where Prism's planning lives. The roadmap itself is public and community-voted on GitHub — this page **indexes** the internal planning/reference docs and **gathers the backlog** that isn't yet tracked as an issue, so nothing gets lost.
+A single map of where Prism's planning lives. The roadmap itself is public on GitHub, as ranked issues; this page **indexes** the internal planning/reference docs and **gathers the backlog** that isn't yet tracked as an issue, so nothing gets lost.
 
 _Last reviewed: 2026-07-27, after the recipe/meal **sync framework** shipped ([#58](https://github.com/sandydargoport/prism/issues/58))._
 
@@ -21,7 +21,9 @@ Deliberately **deprioritized:** real RRULE recurrence builder ([#59](https://git
 
 ## Roadmap (live, on GitHub)
 
-The authoritative roadmap is the **[Prism Roadmap project](https://github.com/users/sandydargoport/projects/3)** — every item is a [`roadmap`-labeled issue](https://github.com/sandydargoport/prism/issues?q=is%3Aissue+is%3Aopen+label%3Aroadmap+sort%3Areactions-desc), ranked by 👍/❤️/🚀 reaction count. React on an issue to vote for it.
+The authoritative roadmap is the open issues, ranked by label: **[P1](https://github.com/sandydargoport/prism/issues?q=is%3Aissue+is%3Aopen+label%3AP1)** is what gets built next, then `P2`, then `P3` for the unscheduled backlog. `bash scripts/next.sh` prints the whole queue, and anything open without one of those labels is listed as unranked rather than dropping out of sight.
+
+The ranking lives on the issues themselves on purpose. A separate board is a second copy of the truth, and it goes stale silently.
 
 This page **deliberately does not mirror the full list** (a copy would drift). The themed snapshot below is just orientation — GitHub is the source of truth.
 
