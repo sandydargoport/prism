@@ -12,6 +12,7 @@ import { clearPhotoCache } from './photo-cache';
 import { promises as fs } from 'fs';
 import { decrypt, encrypt } from '@/lib/utils/crypto';
 import exifr from 'exifr';
+import { orientationFromDimensions } from '@/lib/utils/photoOrientation';
 
 async function extractGps(buffer: Buffer): Promise<{ latitude: string; longitude: string } | null> {
   try {
@@ -146,6 +147,7 @@ export async function syncOneDriveSource(sourceId: string) {
           longitude: facetLng.toString(),
           isExternal: true,
           usage: '',
+          orientation: orientationFromDimensions(mdWidth, mdHeight),
           dedupeKey: computeDedupeKey(takenAt, mdWidth, mdHeight),
         });
       } else {
@@ -169,6 +171,7 @@ export async function syncOneDriveSource(sourceId: string) {
           latitude: gps?.latitude ?? null,
           longitude: gps?.longitude ?? null,
           isExternal: false,
+          orientation: orientationFromDimensions(result.width, result.height),
           dedupeKey: computeDedupeKey(takenAt, result.width, result.height),
         });
       }
@@ -330,6 +333,7 @@ export async function syncImmichSource(sourceId: string) {
       longitude: asset.longitude != null ? asset.longitude.toString() : null,
       isExternal: true,
       usage: 'wallpaper,gallery,screensaver',
+      orientation: orientationFromDimensions(asset.width, asset.height),
       dedupeKey: computeDedupeKey(takenAt, asset.width, asset.height),
     });
   }

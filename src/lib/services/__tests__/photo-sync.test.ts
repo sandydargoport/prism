@@ -134,6 +134,41 @@ describe('syncOneDriveSource', () => {
     expect(mockInsertValues).toHaveBeenCalledTimes(1);
   });
 
+  it('records orientation on a downloaded photo, so the Photos filter can match it', async () => {
+    mockListPhotos.mockResolvedValue([
+      { id: 'remote-1', name: 'tall.jpg', file: { mimeType: 'image/jpeg' } },
+    ]);
+    mockSelectFrom.mockResolvedValue([]);
+    mockDownloadPhoto.mockResolvedValue(Buffer.from('image-data'));
+    mockSavePhoto.mockResolvedValue({ width: 3024, height: 4032, sizeBytes: 5000, thumbnailPath: 'thumb_tall.jpg' });
+
+    await syncOneDriveSource('source-1');
+
+    expect(mockInsertValues).toHaveBeenCalledWith(
+      expect.objectContaining({ orientation: 'portrait' }),
+    );
+  });
+
+  it('records orientation on a metadata-only photo too', async () => {
+    mockListPhotos.mockResolvedValue([
+      {
+        id: 'remote-1',
+        name: 'wide.jpg',
+        file: { mimeType: 'image/jpeg' },
+        image: { width: 4032, height: 3024 },
+        location: { latitude: 51.5, longitude: -0.12 },
+      },
+    ]);
+    mockSelectFrom.mockResolvedValue([]);
+
+    await syncOneDriveSource('source-1');
+
+    expect(mockDownloadPhoto).not.toHaveBeenCalled();
+    expect(mockInsertValues).toHaveBeenCalledWith(
+      expect.objectContaining({ orientation: 'landscape' }),
+    );
+  });
+
   it('skips photos already in the database', async () => {
     mockListPhotos.mockResolvedValue([
       { id: 'remote-1', name: 'photo1.jpg', file: { mimeType: 'image/jpeg' } },

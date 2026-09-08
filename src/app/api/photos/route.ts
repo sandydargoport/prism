@@ -23,6 +23,7 @@ import { getCached } from '@/lib/cache/redis';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { rateLimitGuard } from '@/lib/cache/rateLimit';
 import { logError } from '@/lib/utils/logError';
+import { orientationFromDimensions } from '@/lib/utils/photoOrientation';
 
 export async function GET(request: NextRequest) {
   const auth = await getDisplayAuth();
@@ -180,13 +181,7 @@ export async function POST(request: NextRequest) {
     const result = await savePhoto(buffer, filename);
     const gps = await extractGps(buffer);
 
-    // Auto-detect orientation from dimensions
-    let orientation: 'landscape' | 'portrait' | 'square' | undefined;
-    if (result.width && result.height) {
-      if (result.width > result.height) orientation = 'landscape';
-      else if (result.height > result.width) orientation = 'portrait';
-      else orientation = 'square';
-    }
+    const orientation = orientationFromDimensions(result.width, result.height);
 
     const [photo] = await db
       .insert(photos)
