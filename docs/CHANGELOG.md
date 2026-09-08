@@ -4,6 +4,9 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+### Fixed
+- **Photos from a synced source now filter by orientation.** Orientation was worked out only for photos uploaded by hand, so anything arriving from OneDrive or Immich was stored without one and the landscape/portrait filter on the Photos page returned nothing for it. That is the filter that keeps phone-shaped photos off a landscape display, and every photo joins the wallpaper rotation by default whatever its shape, so on a synced library there was no practical way to exclude them short of paging through the lot. Existing photos are fixed in place on update, using the dimensions already recorded, so nothing re-syncs and no photos are downloaded again.
+
 ## [1.25.0] – 2026-09-07
 
 ### Added
