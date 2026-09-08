@@ -347,6 +347,7 @@ function DayCell({
         events={spanningEvents}
         onEventClick={onEventClick}
         compact={compact}
+        gap="0.25rem"
       />
 
       {/* Cards / events. In cards mode, meals render at the top of the day's

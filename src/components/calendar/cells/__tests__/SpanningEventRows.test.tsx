@@ -46,6 +46,7 @@ describe('SpanningEventRows', () => {
         rowDates={rowDates}
         events={spans}
         onEventClick={() => {}}
+        gap="1px"
       />,
     );
 
@@ -76,6 +77,7 @@ describe('SpanningEventRows', () => {
         rowDates={rowDates}
         events={[a, b]}
         onEventClick={() => {}}
+        gap="1px"
       />,
     );
 
@@ -109,6 +111,7 @@ describe('SpanningEventRows', () => {
         rowDates={rowDates}
         events={[...done, later]}
         onEventClick={() => {}}
+        gap="1px"
       />,
     );
 
@@ -129,6 +132,7 @@ describe('SpanningEventRows', () => {
             rowDates={rowDates}
             events={[event]}
             onEventClick={() => {}}
+            gap="1px"
           />
         ))}
       </div>
@@ -142,8 +146,8 @@ describe('SpanningEventRows', () => {
     expect(buttons[0]!.style.marginLeft).toBe('');
     expect(buttons[1]!.style.marginLeft).toBe('');
     expect(buttons[2]!.style.marginLeft).toBe('');
-    expect(buttons[0]!.style.width).toBe('calc(100% + 0.25rem)');
-    expect(buttons[1]!.style.width).toBe('calc(100% + 0.25rem)');
+    expect(buttons[0]!.style.width).toBe('calc(100% + 1px)');
+    expect(buttons[1]!.style.width).toBe('calc(100% + 1px)');
     expect(buttons[2]!.style.width).toBe('100%');
   });
 
@@ -164,6 +168,7 @@ describe('SpanningEventRows', () => {
             rowDates={rowDates}
             events={[wrappingEvent]}
             onEventClick={() => {}}
+            gap="1px"
           />
         ))}
       </div>
@@ -191,6 +196,7 @@ describe('SpanningEventRows', () => {
         rowDates={[new Date(2099, 7, 10)]}
         events={[futureEvent]}
         onEventClick={() => {}}
+        gap="1px"
       />
     );
 
@@ -216,13 +222,15 @@ describe('SpanningEventRows', () => {
           rowDates={rowDates}
           events={[timedEvent]}
           onEventClick={() => {}}
-        />
+        gap="1px"
+      />
         <SpanningEventRows
           date={continuationDay}
           rowDates={rowDates}
           events={[timedEvent]}
           onEventClick={() => {}}
-        />
+        gap="1px"
+      />
       </div>
     );
 

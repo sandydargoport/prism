@@ -18,7 +18,17 @@ export type SpanningEventRowsProps = {
   events: CalendarEvent[];
   onEventClick: (event: CalendarEvent) => void;
   compact?: boolean;
-  gap?: string;
+  /**
+   * The column gap this row's cells are laid out with, as a CSS length.
+   *
+   * A continuing slice widens by exactly this much so it meets the next day's
+   * slice across the gap. Required, not defaulted: a default silently
+   * disagreed with MonthView's `gap-px` for as long as it existed, widening
+   * every continuing bar by 3px more than the gap it was bridging, so bars
+   * bled into the neighbouring day. A caller that knows its grid should have
+   * to say so.
+   */
+  gap: string;
 };
 
 /**
@@ -33,7 +43,7 @@ export function SpanningEventRows({
   events,
   onEventClick,
   compact = false,
-  gap = '0.25rem',
+  gap,
 }: SpanningEventRowsProps) {
   const { timeFormat, displayTimezone } = useTimeFormat();
   const column = rowDates.findIndex((candidate) => isSameDay(candidate, date));

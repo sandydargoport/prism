@@ -262,6 +262,7 @@ function MonthDayCell({
         rowDates={rowDates}
         events={spanningEvents}
         onEventClick={onEventClick}
+        gap="1px"
       />
 
       {cards ? (
@@ -354,7 +355,7 @@ function DayCardsCell({
             onEventClick(event);
           }}
           className={cn(
-            'w-full text-left text-[10px] px-1 py-0.5 rounded bg-card/85 backdrop-blur-sm border border-border/40 shadow-sm truncate hover:bg-card transition-colors leading-tight',
+            'w-full text-left text-[10px] px-1 py-0.5 rounded-md bg-card/85 backdrop-blur-sm border border-border/40 shadow-sm truncate hover:bg-card transition-colors leading-tight',
             isCalendarEventPast(
               event.startTime,
               event.endTime,

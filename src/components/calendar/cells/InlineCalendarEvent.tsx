@@ -55,7 +55,7 @@ export function InlineCalendarEvent({
         onClick(event);
       }}
       className={cn(
-        'w-full min-w-0 truncate rounded text-left transition-[background-color,filter,opacity]',
+        'w-full min-w-0 truncate rounded-md text-left transition-[background-color,filter,opacity]',
         'font-[var(--event-font-weight)]',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-seasonal-accent',
         'leading-tight',
