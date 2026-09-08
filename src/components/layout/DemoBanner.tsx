@@ -19,7 +19,7 @@ export function DemoBanner() {
     <div
       role="banner"
       aria-label="Demo mode notice"
-      className="sticky top-0 z-[10000] flex items-center justify-center gap-3 bg-amber-500 px-4 py-2 text-sm font-medium text-amber-950 dark:bg-amber-600 dark:text-amber-50"
+      className="sticky top-0 z-[10000] flex items-center justify-center gap-3 bg-warning px-4 py-2 text-sm font-medium text-warning-foreground"
     >
       <span aria-hidden="true">★</span>
       <span>

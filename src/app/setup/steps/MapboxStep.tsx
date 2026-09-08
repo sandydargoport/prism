@@ -97,7 +97,7 @@ export function MapboxStep({ onNext, onBack }: MapboxStepProps) {
               {saving ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : saved ? (
-                <><CheckCircle2 className="h-4 w-4 text-green-500 mr-1" />Saved</>
+                <><CheckCircle2 className="h-4 w-4 text-success mr-1" />Saved</>
               ) : (
                 'Save'
               )}

@@ -4,6 +4,9 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+### Added
+- **Themes now control the status colours too.** Success, warning and error states were written as literal greens, ambers and reds in the markup, so a theme could not reach them: install a dark, muted palette and the "saved" ticks and "needs attention" banners stayed the same bright factory colours. Around 400 of those hardcoded colours across 66 files now read theme values instead. Two new colours, `success` and `warning`, join the palette a theme may set, alongside the error colour that already existed. Both are **optional**: a theme that says nothing about them keeps Prism's defaults, so every existing theme, including any installed from the gallery, looks exactly as it did. A theme that does set them is contrast-checked on them like any other pair. The per-widget icon colours on the dashboard are deliberately untouched, because those are a set of distinct hues doing a job that one shared colour cannot do.
+
 ### Fixed
 - **Photos from a synced source now filter by orientation.** Orientation was worked out only for photos uploaded by hand, so anything arriving from OneDrive or Immich was stored without one and the landscape/portrait filter on the Photos page returned nothing for it. That is the filter that keeps phone-shaped photos off a landscape display, and every photo joins the wallpaper rotation by default whatever its shape, so on a synced library there was no practical way to exclude them short of paging through the lot. Existing photos are fixed in place on update, using the dimensions already recorded, so nothing re-syncs and no photos are downloaded again.
 

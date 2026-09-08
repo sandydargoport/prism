@@ -141,7 +141,7 @@ export function WeekendPlaceForm({ initial, onSave, onCancel, hideHeader }: Week
             onClick={() => setIsFavorite((v) => !v)}
             className={`text-sm px-3 py-1.5 rounded-lg border transition-colors ${
               isFavorite
-                ? 'border-amber-400 bg-amber-50 dark:bg-amber-950 text-amber-600'
+                ? 'border-warning bg-warning/10 text-warning'
                 : 'border-transparent bg-muted text-muted-foreground hover:bg-accent'
             }`}
           >

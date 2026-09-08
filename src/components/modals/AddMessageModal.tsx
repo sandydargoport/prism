@@ -323,7 +323,7 @@ export function AddMessageModal({
                       {selectedAuthor.name}
                     </span>
                     {pinned && <Pin className="h-3 w-3 text-muted-foreground" />}
-                    {important && <AlertTriangle className="h-3 w-3 text-amber-500" />}
+                    {important && <AlertTriangle className="h-3 w-3 text-warning" />}
                   </div>
                   <p className="text-sm text-foreground">{message}</p>
                 </div>

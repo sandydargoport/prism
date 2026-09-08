@@ -37,8 +37,34 @@ export const THEME_TOKENS = [
 
 export type ThemeToken = (typeof THEME_TOKENS)[number];
 
-/** A complete set of values for one mode. */
-export type ThemeTokens = Record<ThemeToken, string>;
+/**
+ * Status colours a theme MAY set, and does not have to.
+ *
+ * Optional rather than required, for the same reason shape and font are: a
+ * theme states what it wants to change, and every theme written before these
+ * existed stays valid. When a theme omits them the value defined in
+ * globals.css applies, so a status still reads as a status.
+ *
+ * They exist because the codebase already had this vocabulary and had no name
+ * for it. `--destructive` covered danger, while "this succeeded" and "this
+ * needs attention" were spelled as literal greens and ambers in the markup,
+ * which no theme could reach. Naming them is what lets a theme change them.
+ */
+export const OPTIONAL_THEME_TOKENS = [
+  'success',
+  'success-foreground',
+  'warning',
+  'warning-foreground',
+] as const;
+
+export type OptionalThemeToken = (typeof OPTIONAL_THEME_TOKENS)[number];
+
+/** Every token a theme may write, required and optional alike. */
+export const ALL_THEME_TOKENS = [...THEME_TOKENS, ...OPTIONAL_THEME_TOKENS] as const;
+
+/** A complete set of values for one mode, plus any optional ones it chose to set. */
+export type ThemeTokens = Record<ThemeToken, string> &
+  Partial<Record<OptionalThemeToken, string>>;
 
 /**
  * Shape values, which are not colours and do not differ between light and dark.
@@ -269,11 +295,22 @@ export function normalizeTokenKeys(src: unknown): Record<string, unknown> {
   return out;
 }
 
-/** True when every token is present and every value is a valid triple. */
+/**
+ * True when every required token is present and valid, and any optional token
+ * that IS present is valid too.
+ *
+ * An absent optional token is not a failure; a malformed one is. Skipping the
+ * check for optional values would let an unvalidated string reach the same
+ * `setProperty` call the required ones do, which is the single thing this
+ * module exists to prevent.
+ */
 export function isValidTokenSet(value: unknown): value is ThemeTokens {
   if (!value || typeof value !== 'object') return false;
   const obj = value as Record<string, unknown>;
-  return THEME_TOKENS.every((t) => isValidTokenValue(obj[t]));
+  if (!THEME_TOKENS.every((t) => isValidTokenValue(obj[t]))) return false;
+  return OPTIONAL_THEME_TOKENS.every(
+    (t) => obj[t] === undefined || isValidTokenValue(obj[t]),
+  );
 }
 
 /**

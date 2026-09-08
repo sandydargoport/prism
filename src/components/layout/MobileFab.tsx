@@ -160,7 +160,7 @@ export function MobileFab({ user, onLogin, onLogout, uiHidden }: MobileFabProps)
           )}
         </div>
       ) : (
-        <User className="h-5 w-5 text-red-500" />
+        <User className="h-5 w-5 text-destructive" />
       ),
       label: user ? 'Logout' : 'Login',
       onClick: () => {
@@ -303,7 +303,7 @@ export function MobileFab({ user, onLogin, onLogout, uiHidden }: MobileFabProps)
           'transition-all duration-300 ease-in-out',
           'active:scale-95',
           (isOpen || showCards) && 'rotate-45 bg-muted text-muted-foreground',
-          reorderMode && !isOpen && 'bg-amber-500 text-white',
+          reorderMode && !isOpen && 'bg-warning text-white',
           uiHidden && !isOpen && !showCards && 'translate-y-24 opacity-0'
         )}
         style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}

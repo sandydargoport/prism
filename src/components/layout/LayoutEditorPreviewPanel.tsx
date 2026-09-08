@@ -80,9 +80,9 @@ export function LayoutEditorPreviewPanel({
         </div>
       )}
       {validation.warnings.length > 0 && validation.errors.length === 0 && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-md p-2">
+        <div className="bg-warning/10 border border-warning/30 rounded-md p-2">
           {validation.warnings.map((w, i) => (
-            <p key={i} className="text-xs text-amber-600 leading-tight">{w}</p>
+            <p key={i} className="text-xs text-warning leading-tight">{w}</p>
           ))}
         </div>
       )}

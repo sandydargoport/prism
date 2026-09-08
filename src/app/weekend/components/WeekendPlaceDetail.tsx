@@ -30,7 +30,7 @@ export function WeekendPlaceDetail({
       <div className="flex items-start gap-2 px-4 py-3 border-b border-border shrink-0">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
-            {place.isFavorite && <Star className="h-4 w-4 fill-amber-400 text-amber-400 shrink-0" />}
+            {place.isFavorite && <Star className="h-4 w-4 fill-amber-400 text-warning shrink-0" />}
             <h2 className="font-bold text-base leading-tight">{place.name}</h2>
           </div>
           {place.placeName && (
@@ -129,7 +129,7 @@ export function WeekendPlaceDetail({
             onClick={onToggleFavorite}
             variant="outline"
             size="sm"
-            className={cn('flex-1', place.isFavorite && 'border-amber-400 text-amber-500')}
+            className={cn('flex-1', place.isFavorite && 'border-warning text-warning')}
           >
             <Star className={cn('h-4 w-4 mr-1.5', place.isFavorite && 'fill-amber-400')} />
             {place.isFavorite ? 'Unfavorite' : 'Favorite'}

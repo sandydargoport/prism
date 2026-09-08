@@ -4,6 +4,12 @@ A theme is a set of colours. Nineteen values for light mode, nineteen for dark,
 a name and a short description. No CSS, no fonts, no images — a theme cannot
 contain anything but colour values, deliberately.
 
+Four more are optional: `success`, `success-foreground`, `warning` and
+`warning-foreground`, the colours behind "this worked" and "this needs
+attention". Leave them out and Prism's own values apply, so a theme written
+before they existed is still complete and still correct. Set them and they are
+checked for contrast like every other pair.
+
 ## Installing one
 
 *Settings → Appearance → Palette → Browse* lists everything in this directory,

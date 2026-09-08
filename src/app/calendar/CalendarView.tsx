@@ -381,7 +381,7 @@ export function CalendarView() {
                 variant="outline"
                 size="sm"
                 onClick={() => setShowManageCalendars(true)}
-                className="h-9 border-amber-500/50 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+                className="h-9 border-warning/50 text-warning hover:bg-warning/10"
                 title={`${stalledProvider ? `${stalledProvider} calendar sync` : 'Calendar sync'} has stopped — reconnect to resume`}
               >
                 <AlertTriangle className="h-4 w-4 mr-1" />
@@ -393,7 +393,7 @@ export function CalendarView() {
                 variant="outline"
                 size="sm"
                 onClick={() => setShowPendingReview(true)}
-                className="h-9 border-amber-500/50 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+                className="h-9 border-warning/50 text-warning hover:bg-warning/10"
                 title={t('toolbar.reviewTitle')}
               >
                 <AlertTriangle className="h-4 w-4 mr-1" />

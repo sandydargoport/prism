@@ -74,7 +74,7 @@ function SortableStopItem({
       </button>
 
       {!stop.latitude && !stop.longitude && (
-        <span title="No coordinates yet"><MapPin className="h-3 w-3 text-amber-500 shrink-0" /></span>
+        <span title="No coordinates yet"><MapPin className="h-3 w-3 text-warning shrink-0" /></span>
       )}
 
       <button onClick={onDelete} className="shrink-0 text-muted-foreground/40 hover:text-destructive transition-colors">
@@ -212,7 +212,7 @@ export function TripDetail({
 
         {/* Hub tip */}
         {trip.tripStyle === 'hub' && localStops.length > 0 && !localStops.some((s) => s.isHub) && (
-          <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-md px-3 py-2">
+          <p className="text-xs text-warning bg-warning/10 rounded-md px-3 py-2">
             Tip: click a stop and mark it as the Home Base to show spokes on the map.
           </p>
         )}

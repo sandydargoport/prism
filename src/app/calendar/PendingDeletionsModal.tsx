@@ -63,7 +63,7 @@ export function PendingDeletionsModal({
       <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-amber-500" />
+            <AlertTriangle className="h-5 w-5 text-warning" />
             {t('title')}
           </DialogTitle>
         </DialogHeader>

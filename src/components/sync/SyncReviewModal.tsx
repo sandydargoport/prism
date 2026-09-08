@@ -43,7 +43,7 @@ export interface SyncReviewModalProps {
 }
 
 const KIND_META = {
-  add: { label: 'New', icon: Plus, cls: 'text-green-600 dark:text-green-400' },
+  add: { label: 'New', icon: Plus, cls: 'text-success' },
   update: { label: 'Changed', icon: RefreshCw, cls: 'text-blue-600 dark:text-blue-400' },
   delete: { label: 'Removed in source', icon: Trash2, cls: 'text-destructive' },
 } as const;
@@ -119,8 +119,8 @@ export function SyncReviewModal({
           )}
 
           {massDeleteGuardTripped && (
-            <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
-              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
+            <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm">
+              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-warning" />
               <span>
                 {withheldDeletes} {entityLabel} look deleted in the source — held back as a safety
                 check so a source glitch can&apos;t wipe your data. Re-run the sync if that was

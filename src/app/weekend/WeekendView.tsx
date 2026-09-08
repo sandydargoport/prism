@@ -153,11 +153,11 @@ export function WeekendView() {
           className={cn(
             'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors',
             filterFavorites
-              ? 'bg-amber-50 dark:bg-amber-950 border-amber-400 text-amber-600'
+              ? 'bg-warning/10 border-warning text-warning'
               : 'border-transparent bg-muted text-muted-foreground hover:bg-accent'
           )}
         >
-          <Star className={cn('h-3.5 w-3.5', filterFavorites && 'fill-amber-400 text-amber-400')} />
+          <Star className={cn('h-3.5 w-3.5', filterFavorites && 'fill-amber-400 text-warning')} />
           Favorites
         </button>
 

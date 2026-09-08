@@ -344,12 +344,12 @@ function getStatusColor(p: BusPrediction): string {
   switch (p.status) {
     case 'at_stop':
     case 'at_school':
-      return 'bg-green-500';
+      return 'bg-success';
     case 'in_transit':
     case 'cold_start':
-      return 'bg-amber-500';
+      return 'bg-warning';
     case 'overdue':
-      return 'bg-red-500';
+      return 'bg-destructive';
     case 'no_data':
     default:
       return 'bg-muted-foreground/50';

@@ -225,9 +225,9 @@ export function FamilySection() {
                       {member.role}
                     </Badge>
                     {member.hasPin ? (
-                      <span className="text-green-600">PIN set</span>
+                      <span className="text-success">PIN set</span>
                     ) : (
-                      <span className="text-orange-600">No PIN</span>
+                      <span className="text-warning">No PIN</span>
                     )}
                   </div>
                 </div>

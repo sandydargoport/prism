@@ -132,8 +132,8 @@ export function RecipeDetailModal({
                   className={cn(
                     'h-5 w-5 transition-colors',
                     recipe.isFavorite
-                      ? 'fill-red-500 text-red-500'
-                      : 'text-muted-foreground hover:text-red-500'
+                      ? 'fill-red-500 text-destructive'
+                      : 'text-muted-foreground hover:text-destructive'
                   )}
                 />
               </button>

@@ -28,6 +28,14 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
 
+    /* Status colours, the other two thirds of the vocabulary --destructive
+       started. Optional for a theme to set: when it does not, these stand, so
+       a status still reads as a status under any palette. */
+    --success: 142 72% 29%;
+    --success-foreground: 0 0% 100%;
+    --warning: 32 95% 34%;
+    --warning-foreground: 0 0% 100%;
+
     --border: 214 32% 91%;
     --input: 214 32% 91%;
     --ring: 222 47% 31%;
@@ -91,6 +99,14 @@
 
     --destructive: 0 62% 30%;
     --destructive-foreground: 210 40% 98%;
+
+    /* Darker and less saturated, matching how --destructive is treated here:
+       a full-strength status colour on a dark surface glares on a display
+       that is on all evening. */
+    --success: 142 60% 45%;
+    --success-foreground: 142 80% 8%;
+    --warning: 38 92% 55%;
+    --warning-foreground: 26 83% 10%;
 
     --border: 217 33% 25%;
     --input: 217 33% 25%;

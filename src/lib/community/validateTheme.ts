@@ -13,7 +13,8 @@
  *    by a human reading the pull request — see the note on that below.
  */
 import {
-  THEME_TOKENS, isValidTokenValue, isValidShape, normalizeShape, normalizeTokenKeys,
+  THEME_TOKENS, OPTIONAL_THEME_TOKENS, ALL_THEME_TOKENS,
+  isValidTokenValue, isValidShape, normalizeShape, normalizeTokenKeys,
   isValidFont, normalizeFont, isValidModes, normalizeModes,
   SHAPE_LIMITS, THEME_FONT_IDS, THEME_MODES, type Theme, type ThemeTokens,
 } from '@/lib/themes/tokens';
@@ -92,6 +93,17 @@ function validateTokenSet(tokens: unknown, mode: string, errors: string[]): toke
       ok = false;
     }
   }
+  // Optional tokens: absent is fine and takes the built-in default, but a
+  // value that IS supplied has to be a triple like any other. Nothing reaches
+  // a CSS property without passing the same check.
+  for (const token of OPTIONAL_THEME_TOKENS) {
+    const value = obj[token];
+    if (value === undefined) continue;
+    if (!isValidTokenValue(value)) {
+      errors.push(`"${mode}" has an invalid value for ${token}. Expected a bare HSL triple, e.g. "222 47% 11%".`);
+      ok = false;
+    }
+  }
   return ok;
 }
 
@@ -105,7 +117,7 @@ function validateTokenSet(tokens: unknown, mode: string, errors: string[]): toke
 export function unrecognizedTokens(data: unknown): string[] {
   if (!data || typeof data !== 'object') return [];
   const obj = data as Record<string, unknown>;
-  const known = new Set<string>(THEME_TOKENS);
+  const known = new Set<string>(ALL_THEME_TOKENS);
   const found = new Set<string>();
   for (const mode of ['light', 'dark'] as const) {
     for (const key of Object.keys(normalizeTokenKeys(obj[mode]))) {
@@ -227,6 +239,12 @@ export function projectCommunityTheme(data: unknown, id: string): Theme & {
     const s = normalizeTokenKeys(src);
     const out = {} as ThemeTokens;
     for (const token of THEME_TOKENS) out[token] = s[token] as string;
+    // Carried only when supplied, so a theme that says nothing about status
+    // colours stores nothing and inherits the defaults, rather than being
+    // frozen against today's values.
+    for (const token of OPTIONAL_THEME_TOKENS) {
+      if (s[token] !== undefined) out[token] = s[token] as string;
+    }
     return out;
   };
 

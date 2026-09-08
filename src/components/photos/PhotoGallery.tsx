@@ -33,7 +33,7 @@ function usageBadge(usage: Photo['usage']): string {
   return letters.length > 0 ? letters.join('') : '—';
 }
 
-const qualityColors = { green: 'bg-green-500', yellow: 'bg-yellow-500', red: 'bg-red-500' };
+const qualityColors = { green: 'bg-success', yellow: 'bg-warning', red: 'bg-destructive' };
 
 function orientationBadge(width: number | null, height: number | null): string {
   if (!width || !height) return '?';

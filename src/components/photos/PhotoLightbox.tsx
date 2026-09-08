@@ -18,7 +18,7 @@ interface PhotoLightboxProps {
   autoOrientationEnabled?: boolean;
 }
 
-const qualityColors = { green: 'bg-green-500', yellow: 'bg-yellow-500', red: 'bg-red-500' };
+const qualityColors = { green: 'bg-success', yellow: 'bg-warning', red: 'bg-destructive' };
 const usageTags: { value: PhotoUsageTag; label: string }[] = [
   { value: 'wallpaper', label: 'Wallpaper' },
   { value: 'gallery', label: 'Gallery' },

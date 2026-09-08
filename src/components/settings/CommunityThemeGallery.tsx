@@ -259,7 +259,7 @@ function ThemeCard({
           // for a screen read from across a kitchen is exactly the person who
           // needs to know this, and the number is the whole reason the
           // submission pipeline measures contrast in the first place.
-          <p className="mt-1.5 text-[11px] text-amber-600 dark:text-amber-400">
+          <p className="mt-1.5 text-[11px] text-warning">
             {entry.contrastWarnings === 1
               ? '1 colour pair is legible but tiring at a distance.'
               : `${entry.contrastWarnings} colour pairs are legible but tiring at a distance.`}

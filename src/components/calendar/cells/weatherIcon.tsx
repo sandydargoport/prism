@@ -11,9 +11,9 @@ export function weatherIcon(cond: WeatherCondition | undefined, size: 'sm' | 'lg
   const cls = size === 'lg' ? 'h-5 w-5' : 'h-4 w-4';
   switch (cond) {
     case 'sunny':
-      return <Sun className={cn(cls, 'text-amber-400')} aria-hidden />;
+      return <Sun className={cn(cls, 'text-warning')} aria-hidden />;
     case 'partly-cloudy':
-      return <CloudSun className={cn(cls, 'text-amber-300')} aria-hidden />;
+      return <CloudSun className={cn(cls, 'text-warning')} aria-hidden />;
     case 'cloudy':
       return <Cloud className={cn(cls, 'text-slate-400 dark:text-white/70')} aria-hidden />;
     case 'rainy':

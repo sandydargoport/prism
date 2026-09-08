@@ -261,7 +261,7 @@ export function GoalsView() {
                     className={cn(
                       'rounded-lg border p-4 transition-all',
                       goal.fullyAchieved
-                        ? 'border-green-500/50 bg-green-100 dark:bg-green-950'
+                        ? 'border-success/50 bg-success/10'
                         : 'bg-card border-border',
                       isParent && 'cursor-grab active:cursor-grabbing touch-none',
                       draggedGoalId === goal.id && 'opacity-50 scale-95 ring-4 ring-primary/50'
@@ -297,7 +297,7 @@ export function GoalsView() {
                         <div className="flex items-center gap-2">
                           <h3 className="font-semibold truncate">{goal.name}</h3>
                           {goal.fullyAchieved && (
-                            <Check className="h-5 w-5 text-green-500 shrink-0" />
+                            <Check className="h-5 w-5 text-success shrink-0" />
                           )}
                         </div>
                         {goal.description && (
@@ -361,7 +361,7 @@ export function GoalsView() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleReset(goal.id)}
-                            className="text-green-600 hover:text-green-700"
+                            className="text-success hover:text-success"
                           >
                             <RotateCcw className="h-3.5 w-3.5 mr-1" />
                             Reset

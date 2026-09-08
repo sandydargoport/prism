@@ -217,7 +217,7 @@ export function CalDAVConnectDialog({
               <div className={cn(
                 'flex items-center gap-2 p-3 rounded-lg text-sm',
                 testResult.success
-                  ? 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400'
+                  ? 'bg-success/10 text-success'
                   : 'bg-destructive/10 text-destructive'
               )}>
                 {testResult.success ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertCircle className="h-4 w-4 shrink-0" />}

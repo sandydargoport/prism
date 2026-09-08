@@ -68,11 +68,11 @@ const badgeVariants = cva(
 
         // Success - green, for completed items
         success:
-          'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+          'bg-success/10 text-success',
 
         // Warning - yellow/orange, for attention needed
         warning:
-          'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
+          'bg-warning/10 text-warning',
       },
     },
     defaultVariants: {

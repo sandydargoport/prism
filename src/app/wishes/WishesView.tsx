@@ -579,13 +579,13 @@ function WishItemRow({
         )}
         {/* Show who purchased (on other people's lists) */}
         {!isOwnList && item.claimed && item.claimedBy && (
-          <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
+          <p className="text-xs text-success mt-0.5">
             {isClaimedByMe ? 'You purchased this' : `Purchased by ${item.claimedBy.name}`}
           </p>
         )}
         {/* Show self-crossed-off status */}
         {isOwnList && item.claimed && (
-          <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
+          <p className="text-xs text-success mt-0.5">
             Got it myself
           </p>
         )}

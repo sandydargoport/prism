@@ -313,9 +313,9 @@ export function PhotosSettingsSection() {
             </span>
           </div>
           <div className="flex items-center gap-3 text-xs">
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-500" /> &ge; target</span>
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-yellow-500" /> &ge; 75%</span>
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500" /> &lt; 75%</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-success" /> &ge; target</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-warning" /> &ge; 75%</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-destructive" /> &lt; 75%</span>
           </div>
         </CardContent>
       </Card>
@@ -400,7 +400,7 @@ export function PhotosSettingsSection() {
                           {source.photoCount} photos
                           {source.lastSynced && <> · Synced {new Date(source.lastSynced).toLocaleDateString()}</>}
                           {source.type === 'onedrive' && !source.onedriveFolderId && (
-                            <span className="text-amber-600 dark:text-amber-400"> · No folder selected</span>
+                            <span className="text-warning"> · No folder selected</span>
                           )}
                         </p>
                       </div>

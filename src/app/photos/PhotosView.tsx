@@ -279,7 +279,7 @@ export function PhotosView() {
             className="h-8 gap-1.5 shrink-0"
             title="Show only photos below 1920×1080 (yellow/red dots) — low-res for HD wallpaper"
           >
-            <span className="w-2.5 h-2.5 rounded-full bg-yellow-500 ring-1 ring-black/30" />
+            <span className="w-2.5 h-2.5 rounded-full bg-warning ring-1 ring-black/30" />
             Below HD
           </Button>
           {hasActiveFilters && (

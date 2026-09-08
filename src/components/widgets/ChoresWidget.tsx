@@ -231,7 +231,7 @@ function ChoreItem({
         'flex items-start gap-3 p-2 rounded-lg',
         'hover:bg-accent/50 transition-colors',
         'touch-action-manipulation',
-        isPendingApproval && 'bg-amber-500/10 border border-amber-500/30'
+        isPendingApproval && 'bg-warning/10 border border-warning/30'
       )}
     >
       {/* Complete button — stops propagation so the row click doesn't also
@@ -244,7 +244,7 @@ function ChoreItem({
         className={cn(
           'h-8 w-8 shrink-0',
           isOverdue && !isPendingApproval && 'text-destructive hover:text-destructive',
-          isPendingApproval && 'text-amber-500'
+          isPendingApproval && 'text-warning'
         )}
         title={isPendingApproval ? 'Pending approval - click to complete or approve' : 'Mark as complete'}
         aria-label={isPendingApproval ? 'Pending approval' : 'Mark as complete'}
@@ -273,7 +273,7 @@ function ChoreItem({
           {/* Title */}
           <span className={cn(
             'text-sm font-medium truncate',
-            isPendingApproval && 'text-amber-700 dark:text-amber-400'
+            isPendingApproval && 'text-warning'
           )}>{chore.title}</span>
 
           {/* Points badge */}
@@ -285,7 +285,7 @@ function ChoreItem({
 
           {/* Pending approval badge - takes priority over "requires approval" */}
           {isPendingApproval ? (
-            <Badge variant="default" className="text-[10px] px-1.5 py-0 bg-amber-500 hover:bg-amber-500">
+            <Badge variant="default" className="text-[10px] px-1.5 py-0 bg-warning hover:bg-warning">
               Pending
             </Badge>
           ) : chore.requiresApproval && (
@@ -306,7 +306,7 @@ function ChoreItem({
                 size="sm"
                 className="h-4 w-4 text-[8px]"
               />
-              <span className="text-xs text-amber-600 dark:text-amber-400">
+              <span className="text-xs text-warning">
                 Done by {chore.pendingApproval.completedBy.name}
               </span>
             </div>

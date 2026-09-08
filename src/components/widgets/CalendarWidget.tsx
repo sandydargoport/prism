@@ -301,7 +301,7 @@ export const CalendarWidget = React.memo(function CalendarWidget({
       {syncPaused && (
         <Link
           href="/calendar?manage=calendars"
-          className="flex items-center justify-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 py-1 bg-amber-500/10 rounded mb-1 hover:bg-amber-500/20"
+          className="flex items-center justify-center gap-1 text-[10px] text-warning py-1 bg-warning/10 rounded mb-1 hover:bg-warning/20"
           title="Sync has stopped for one or more calendars — reconnect to resume"
         >
           <AlertTriangle className="h-3 w-3 shrink-0" />

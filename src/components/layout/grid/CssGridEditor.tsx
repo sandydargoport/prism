@@ -327,7 +327,7 @@ function DraggableWidget({
   // Ring color: blue for move, orange for resize
   const ringClass = isSelected
     ? inResizeMode
-      ? 'ring-2 ring-orange-500 ring-offset-2 z-[100]'
+      ? 'ring-2 ring-warning ring-offset-2 z-[100]'
       : 'ring-2 ring-blue-500 ring-offset-2 z-[100]'
     : 'touch-manipulation';
 
@@ -351,7 +351,7 @@ function DraggableWidget({
       {/* Border overlay — dashed for move, solid for resize (accessible: pattern + color) */}
       <div className={`absolute inset-0 z-10 border-2 ${
         isSelected
-          ? inResizeMode ? 'border-solid border-orange-500' : 'border-dashed border-blue-500'
+          ? inResizeMode ? 'border-solid border-warning' : 'border-dashed border-blue-500'
           : `border-dashed ${theme.borderDash}`
       } rounded-lg pointer-events-none`} />
 
@@ -373,7 +373,7 @@ function DraggableWidget({
       {/* Mode label — visible when selected */}
       {isSelected && !isDragging && (
         <div className={`absolute top-1 left-1/2 -translate-x-1/2 z-10 text-white rounded-full px-2 py-0.5 flex items-center gap-1 pointer-events-none text-[10px] font-medium shadow-sm ${
-          inResizeMode ? 'bg-orange-500/90' : 'bg-blue-500/90'
+          inResizeMode ? 'bg-warning/90' : 'bg-blue-500/90'
         }`}>
           {inResizeMode ? (
             <>
@@ -440,7 +440,7 @@ function ResizeHandles({ widgetId, onResizeStart }: {
           {/* Visual dot for corners — large and visible */}
           {edge.length === 2 && (
             <div
-              className="absolute bg-orange-500 rounded-full shadow-md border-2 border-white"
+              className="absolute bg-warning rounded-full shadow-md border-2 border-white"
               style={{
                 width: 18,
                 height: 18,
@@ -453,7 +453,7 @@ function ResizeHandles({ widgetId, onResizeStart }: {
           {/* Visual bar for edges — thick and visible */}
           {edge.length === 1 && (
             <div
-              className="absolute bg-orange-500/70 rounded-full"
+              className="absolute bg-warning/70 rounded-full"
               style={{
                 ...(edge === 'n' || edge === 's'
                   ? { width: 56, height: 6, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }

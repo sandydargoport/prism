@@ -229,7 +229,7 @@ export function SideNav({ user, onLogout, onLogin, uiHidden, className }: SideNa
               </>
             ) : (
               <>
-                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-red-500/10 border-2 border-dashed border-red-500 flex-shrink-0">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-destructive/10 border-2 border-dashed border-destructive flex-shrink-0">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="16"
@@ -240,13 +240,13 @@ export function SideNav({ user, onLogout, onLogin, uiHidden, className }: SideNa
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className="text-red-500"
+                    className="text-destructive"
                   >
                     <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
                     <circle cx="12" cy="7" r="4" />
                   </svg>
                 </div>
-                {expanded && <span className="whitespace-nowrap text-red-500">
+                {expanded && <span className="whitespace-nowrap text-destructive">
                   Log in
                 </span>}
               </>

@@ -262,7 +262,7 @@ export function GoogleManualTokenForm({ onSaved }: { onSaved?: () => void }) {
         <li>Paste the Client ID, Client Secret, and Refresh token below.</li>
       </ol>
 
-      <div className="rounded-md border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-100">
+      <div className="rounded-md border border-warning bg-warning/10 p-2.5 text-xs text-warning dark:border-warning/60">
         <span className="font-medium">Keep it from expiring:</span> publish the consent screen to{' '}
         <span className="font-medium">Production</span> (step 2). In <span className="font-medium">Testing</span>{' '}
         mode Google expires refresh tokens after 7 days. Publishing shows a one-time &ldquo;Google

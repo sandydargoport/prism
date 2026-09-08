@@ -12,7 +12,7 @@
  * against.
  */
 import { contrastRatioHex, hslToHex } from '@/lib/utils/color';
-import type { ThemeToken, ThemeTokens } from './tokens';
+import type { OptionalThemeToken, ThemeToken, ThemeTokens } from './tokens';
 
 /** Below this, text is not readable and the theme is rejected. */
 export const CONTRAST_ERROR = 3;
@@ -31,6 +31,19 @@ const TEXT_PAIRS: Array<[ThemeToken, ThemeToken]> = [
   ['muted-foreground', 'muted'],
   ['accent-foreground', 'accent'],
   ['destructive-foreground', 'destructive'],
+];
+
+/**
+ * Status pairs, checked only when a theme actually sets them.
+ *
+ * Optional tokens, so a theme that leaves them out inherits defaults that
+ * already pass and has nothing to answer for. A theme that does set them is
+ * held to the same bar as any other text pair: a success or warning badge is
+ * read from across the room like everything else.
+ */
+const OPTIONAL_TEXT_PAIRS: Array<[OptionalThemeToken, OptionalThemeToken]> = [
+  ['success-foreground', 'success'],
+  ['warning-foreground', 'warning'],
 ];
 
 /** Pairs that only need to be distinguishable, so an edge is visible. */
@@ -62,6 +75,16 @@ export function checkContrast(tokens: ThemeTokens): ContrastIssue[] {
 
   for (const [fg, bg] of TEXT_PAIRS) {
     const ratio = contrastRatioHex(hex(fg), hex(bg));
+    if (ratio < CONTRAST_ERROR) issues.push({ pair: `${fg} on ${bg}`, ratio, level: 'error', kind: 'text' });
+    else if (ratio < CONTRAST_WARN) issues.push({ pair: `${fg} on ${bg}`, ratio, level: 'warning', kind: 'text' });
+  }
+
+  for (const [fg, bg] of OPTIONAL_TEXT_PAIRS) {
+    // Both halves have to be present to compare them. A theme that sets one
+    // and not the other is measured against a default it did not choose, which
+    // would report a problem it has no way to fix.
+    if (tokens[fg] === undefined || tokens[bg] === undefined) continue;
+    const ratio = contrastRatioHex(hslToHex(tokens[fg]), hslToHex(tokens[bg]));
     if (ratio < CONTRAST_ERROR) issues.push({ pair: `${fg} on ${bg}`, ratio, level: 'error', kind: 'text' });
     else if (ratio < CONTRAST_WARN) issues.push({ pair: `${fg} on ${bg}`, ratio, level: 'warning', kind: 'text' });
   }

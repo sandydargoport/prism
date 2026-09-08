@@ -419,7 +419,7 @@ function MessageCard({
         className={cn(
           'p-2 rounded-md border border-border bg-card/50',
           'hover:bg-muted/50 transition-colors group',
-          message.important && 'bg-red-100/50 dark:bg-red-950/50 border-destructive/20'
+          message.important && 'bg-destructive/10 border-destructive/20'
         )}
       >
         <div className="flex items-start justify-between gap-1">
@@ -498,7 +498,7 @@ function MessageCard({
         'p-4 rounded-lg border border-border bg-card/85 backdrop-blur-sm',
         'hover:border-seasonal-accent hover:ring-2 hover:ring-seasonal-accent/50 transition-all',
         'group',
-        message.important && 'bg-red-100/85 dark:bg-red-950/85 border-destructive/20'
+        message.important && 'bg-destructive/10 border-destructive/20'
       )}
     >
       {/* Header: Author and badges */}

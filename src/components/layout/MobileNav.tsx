@@ -177,8 +177,8 @@ export function MobileNav({ user, onLogin, onLogout, uiHidden }: MobileNavProps)
                 </>
               ) : (
                 <>
-                  <User className="h-5 w-5 text-red-500" />
-                  <span className="text-xs text-red-500">Login</span>
+                  <User className="h-5 w-5 text-destructive" />
+                  <span className="text-xs text-destructive">Login</span>
                 </>
               )}
             </button>

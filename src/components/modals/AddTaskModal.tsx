@@ -235,13 +235,13 @@ export function AddTaskModal({
                   <span className="text-muted-foreground">None</span>
                 </SelectItem>
                 <SelectItem value="high">
-                  <span className="text-red-500 font-medium">High</span>
+                  <span className="text-destructive font-medium">High</span>
                 </SelectItem>
                 <SelectItem value="medium">
-                  <span className="text-yellow-500 font-medium">Medium</span>
+                  <span className="text-warning font-medium">Medium</span>
                 </SelectItem>
                 <SelectItem value="low">
-                  <span className="text-green-500 font-medium">Low</span>
+                  <span className="text-success font-medium">Low</span>
                 </SelectItem>
               </SelectContent>
             </Select>

@@ -116,7 +116,7 @@ export function PhotoUpload({ onUploadComplete }: PhotoUploadProps) {
               {uf.status === 'uploading' && (
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-primary" />
               )}
-              {uf.status === 'done' && <CheckCircle className="h-4 w-4 text-green-500" />}
+              {uf.status === 'done' && <CheckCircle className="h-4 w-4 text-success" />}
               {uf.status === 'error' && (
                 <span className="text-xs text-destructive">{uf.error}</span>
               )}

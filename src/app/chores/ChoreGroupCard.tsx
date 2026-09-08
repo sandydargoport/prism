@@ -58,11 +58,11 @@ export function ChoreGroupCard({
       className={cn(
         'p-2 rounded-md border cursor-pointer hover:bg-muted/50 transition-colors group',
         isPendingApproval
-          ? 'bg-amber-50/80 dark:bg-amber-950/30 border-amber-500/50'
+          ? 'bg-warning/10 border-warning/50'
           : isCompletedToday
-          ? 'opacity-60 bg-green-50/50 dark:bg-green-950/20 border-green-500/30'
+          ? 'opacity-60 bg-success/10 border-success/30'
           : isOverdue
-          ? 'border-red-500/50 bg-red-50/50 dark:bg-red-950/20'
+          ? 'border-destructive/50 bg-destructive/10'
           : 'border-border'
       )}
       onClick={async () => {
@@ -84,20 +84,20 @@ export function ChoreGroupCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             {isPendingApproval && (
-              <Hourglass className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+              <Hourglass className="h-3.5 w-3.5 text-warning shrink-0" />
             )}
             <p
               className={cn(
                 'font-medium text-sm truncate',
                 isCompletedToday && !isPendingApproval && 'line-through',
-                isPendingApproval && 'text-amber-700 dark:text-amber-400'
+                isPendingApproval && 'text-warning'
               )}
             >
               {chore.title}
             </p>
           </div>
           {isPendingApproval && chore.pendingApproval && (
-            <div className="flex items-center gap-1 text-xs mt-0.5 text-amber-600 dark:text-amber-400">
+            <div className="flex items-center gap-1 text-xs mt-0.5 text-warning">
               <span>Awaiting approval</span>
               <span className="text-muted-foreground">
                 &middot; {chore.pendingApproval.completedBy.name}
@@ -108,7 +108,7 @@ export function ChoreGroupCard({
             <div
               className={cn(
                 'flex items-center gap-1 text-xs mt-0.5',
-                isOverdue ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
+                isOverdue ? 'text-destructive' : 'text-muted-foreground'
               )}
             >
               <CalendarDays className="h-3 w-3" />
@@ -128,7 +128,7 @@ export function ChoreGroupCard({
           {isPendingApproval && (
             <Badge
               variant="default"
-              className="text-[10px] bg-amber-500 hover:bg-amber-500 px-1.5 py-0"
+              className="text-[10px] bg-warning hover:bg-warning px-1.5 py-0"
             >
               Pending
             </Badge>

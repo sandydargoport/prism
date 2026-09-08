@@ -20,7 +20,7 @@ interface Props {
 }
 
 const GmailIcon = () => (
-  <Mail className="h-6 w-6 text-red-500" aria-hidden="true" />
+  <Mail className="h-6 w-6 text-destructive" aria-hidden="true" />
 );
 
 const handleConnect = () => {

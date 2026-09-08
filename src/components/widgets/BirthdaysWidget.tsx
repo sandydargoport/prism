@@ -41,9 +41,9 @@ function formatDate(dateStr: string, locale: string): string {
 function daysUntilColor(days: number): string {
   // Today is green: it reads as "happening now" against the red/amber urgency
   // ramp used for the days still counting down.
-  if (days === 0) return 'text-green-600 dark:text-green-400 font-bold';
-  if (days < 7) return 'text-red-500 font-semibold';
-  if (days < 30) return 'text-amber-500';
+  if (days === 0) return 'text-success font-bold';
+  if (days < 7) return 'text-destructive font-semibold';
+  if (days < 30) return 'text-warning';
   return 'text-muted-foreground';
 }
 
@@ -117,13 +117,13 @@ export const BirthdaysWidget = React.memo(function BirthdaysWidget({
                   key={item.id}
                   className={cn(
                     'border-b border-border/50 last:border-0',
-                    item.daysUntil === 0 && 'bg-green-500/10'
+                    item.daysUntil === 0 && 'bg-success/10'
                   )}
                 >
                   <td className="py-1.5 pr-2 truncate max-w-[140px]" title={item.name}>
                     {item.name}
                     {item.daysUntil === 0 && (
-                      <span className="ml-1.5 text-[10px] bg-green-600 text-white px-1 py-0.5 rounded">
+                      <span className="ml-1.5 text-[10px] bg-success text-white px-1 py-0.5 rounded">
                         {t('todayBadge')}
                       </span>
                     )}

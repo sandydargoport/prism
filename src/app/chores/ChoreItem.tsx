@@ -70,7 +70,7 @@ export function ChoreItem({
         'flex items-center gap-4 p-4 rounded-lg border border-border bg-card/85 backdrop-blur-sm',
         'hover:border-seasonal-accent hover:ring-2 hover:ring-seasonal-accent/50 transition-all group',
         !chore.enabled && 'opacity-50',
-        isPendingApproval && 'bg-amber-100/85 dark:bg-amber-950/85 border-amber-500/30'
+        isPendingApproval && 'bg-warning/10 border-warning/30'
       )}
     >
       {/* Complete button - always enabled for parents, shows pending state visually */}
@@ -82,7 +82,7 @@ export function ChoreItem({
         className={cn(
           'flex-shrink-0 h-9 w-9',
           isOverdue && !isPendingApproval && 'text-destructive hover:text-destructive',
-          isPendingApproval && 'text-amber-500'
+          isPendingApproval && 'text-warning'
         )}
         title={isPendingApproval ? 'Approve and complete chore' : 'Mark as complete'}
       >
@@ -99,7 +99,7 @@ export function ChoreItem({
           <span className="text-base"><Emoji e={categoryEmoji} /></span>
           <span className={cn(
             'font-medium',
-            isPendingApproval && 'text-amber-700 dark:text-amber-400'
+            isPendingApproval && 'text-warning'
           )}>{chore.title}</span>
 
           {chore.pointValue > 0 && (
@@ -110,7 +110,7 @@ export function ChoreItem({
 
           {/* Show pending badge if pending approval, otherwise show requires approval */}
           {isPendingApproval ? (
-            <Badge variant="default" className="text-xs bg-amber-500 hover:bg-amber-500">
+            <Badge variant="default" className="text-xs bg-warning hover:bg-warning">
               Pending Approval
             </Badge>
           ) : chore.requiresApproval && (
@@ -134,7 +134,7 @@ export function ChoreItem({
                 size="sm"
                 className="h-4 w-4 text-[8px]"
               />
-              <span className="text-amber-600 dark:text-amber-400">
+              <span className="text-warning">
                 Completed by {chore.pendingApproval.completedBy.name}
               </span>
             </div>

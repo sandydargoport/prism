@@ -90,7 +90,7 @@ export function IntegrationsSection() {
       </div>
 
       {setupPrompt && !setupDismissed && (
-        <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-100">
+        <div className="flex items-start gap-3 rounded-lg border border-warning bg-warning/10 p-4 text-warning dark:border-warning/60">
           <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0" />
           <div className="flex-1 text-sm">
             <p className="font-semibold">{setupPrompt.name} isn&apos;t set up yet</p>
@@ -103,7 +103,7 @@ export function IntegrationsSection() {
             </p>
             <Link
               href="/setup/rerun"
-              className="mt-3 inline-flex items-center rounded-md bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700"
+              className="mt-3 inline-flex items-center rounded-md bg-warning px-3 py-1.5 text-xs font-medium text-white hover:bg-warning"
             >
               Open Setup Wizard
             </Link>
@@ -111,7 +111,7 @@ export function IntegrationsSection() {
           <button
             onClick={() => setSetupDismissed(true)}
             aria-label="Dismiss"
-            className="text-amber-700 hover:text-amber-900 dark:text-amber-300 dark:hover:text-amber-100"
+            className="text-warning hover:text-warning"
           >
             <X className="h-4 w-4" />
           </button>

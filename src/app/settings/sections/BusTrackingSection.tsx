@@ -388,7 +388,7 @@ function GmailConnectionCard({
             </div>
           </div>
           {connection.connected ? (
-            <Badge variant="default" className="bg-green-600">Connected</Badge>
+            <Badge variant="default" className="bg-success">Connected</Badge>
           ) : (
             <Badge variant="secondary">Not Connected</Badge>
           )}

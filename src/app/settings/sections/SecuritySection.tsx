@@ -151,11 +151,11 @@ export function SecuritySection() {
                   <div className="font-medium">{member.name}</div>
                   <div className="text-sm text-muted-foreground">
                     {member.hasPin ? (
-                      <span className="text-green-600">
+                      <span className="text-success">
                         PIN set &middot; {member.pinLength ?? DEFAULT_PIN_LENGTH} digits
                       </span>
                     ) : (
-                      <span className="text-orange-600">No PIN set</span>
+                      <span className="text-warning">No PIN set</span>
                     )}
                   </div>
                 </div>
@@ -216,8 +216,8 @@ export function SecuritySection() {
 
           {/* Show newly created token */}
           {createdToken && (
-            <div className="p-3 rounded-md border border-green-500/50 bg-green-50 dark:bg-green-950/20 space-y-2">
-              <p className="text-sm font-medium text-green-700 dark:text-green-400">
+            <div className="p-3 rounded-md border border-success/50 bg-success/10 space-y-2">
+              <p className="text-sm font-medium text-success">
                 Token created! Copy it now — it won&apos;t be shown again.
               </p>
               <div className="flex gap-2">
@@ -252,7 +252,7 @@ export function SecuritySection() {
                       {token.name}
                       <span className={`text-xs px-1.5 py-0.5 rounded font-mono ${
                         token.scopes.includes('*')
-                          ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400'
+                          ? 'bg-warning/15 text-warning'
                           : 'bg-blue-500/15 text-blue-700 dark:text-blue-400'
                       }`}>
                         {token.scopes.join(', ')}

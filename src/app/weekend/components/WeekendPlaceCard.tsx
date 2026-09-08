@@ -33,7 +33,7 @@ export function WeekendPlaceCard({ place, selected, onClick }: WeekendPlaceCardP
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
               {place.isFavorite && (
-                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                <Star className="h-3.5 w-3.5 fill-amber-400 text-warning shrink-0" />
               )}
               <h3 className="font-semibold text-sm leading-tight truncate">{place.name}</h3>
             </div>

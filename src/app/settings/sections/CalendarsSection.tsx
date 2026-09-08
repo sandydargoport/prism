@@ -332,18 +332,18 @@ export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
             <div className="space-y-3">
               {/* Single re-auth banner if any Google calendar needs it */}
               {manageableCalendars.some((c) => c.provider === 'google' && c.syncErrors?.needsReauth) && (
-                <div className="flex items-center gap-3 p-3 rounded-md border border-orange-500/50 bg-orange-50 dark:bg-orange-950/30">
-                  <AlertTriangle className="h-5 w-5 text-orange-500 shrink-0" />
+                <div className="flex items-center gap-3 p-3 rounded-md border border-warning/50 bg-warning/10">
+                  <AlertTriangle className="h-5 w-5 text-warning shrink-0" />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-orange-700 dark:text-orange-400">Google token expired</p>
-                    <p className="text-xs text-orange-600 dark:text-orange-400/80">
+                    <p className="text-sm font-medium text-warning">Google token expired</p>
+                    <p className="text-xs text-warning dark:text-warning/80">
                       Re-authenticate once to refresh all Google calendars.
                     </p>
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="border-orange-500/50 text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-950"
+                    className="border-warning/50 text-warning hover:bg-warning/10"
                     onClick={() => {
                       const firstGoogle = manageableCalendars.find((c) => c.provider === 'google');
                       if (firstGoogle) window.location.href = `/api/auth/google?reauth=${firstGoogle.id}&returnSection=calendars`;
@@ -444,7 +444,7 @@ export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
                                 setEditingCalendarId(null);
                               }}
                             >
-                              <Check className="h-4 w-4 text-green-600" />
+                              <Check className="h-4 w-4 text-success" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -452,7 +452,7 @@ export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
                               className="h-7 w-7"
                               onClick={() => setEditingCalendarId(null)}
                             >
-                              <X className="h-4 w-4 text-red-600" />
+                              <X className="h-4 w-4 text-destructive" />
                             </Button>
                           </div>
                         ) : (
@@ -490,8 +490,8 @@ export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
                         </div>
                         {cal.syncErrors?.needsReauth && (
                           <div className="flex items-center gap-1 mt-1">
-                            <AlertTriangle className="h-3 w-3 text-orange-500 shrink-0" />
-                            <span className="text-xs text-orange-600 dark:text-orange-400">
+                            <AlertTriangle className="h-3 w-3 text-warning shrink-0" />
+                            <span className="text-xs text-warning">
                               Token expired
                             </span>
                           </div>

@@ -40,7 +40,7 @@ export function StatusBanner({
         'p-4 rounded-lg flex items-center gap-3',
         message.type === 'error'
           ? 'bg-destructive/10 text-destructive border border-destructive/20'
-          : 'bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20'
+          : 'bg-success/10 text-success border border-success/20'
       )}
     >
       {message.type === 'error' ? (
@@ -152,7 +152,7 @@ export function SourceRow<S extends BaseSource>({
             </span>
           ) : source.lastSyncAt ? (
             <span className="flex items-center gap-1 text-muted-foreground">
-              <CheckCircle2 className="h-3 w-3 text-green-500" />
+              <CheckCircle2 className="h-3 w-3 text-success" />
               {new Date(source.lastSyncAt).toLocaleString()}
             </span>
           ) : (

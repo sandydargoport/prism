@@ -54,9 +54,9 @@ function SortableChildItem({ child, idx, onSelect, onDelete }: {
         : <MapPin className="h-3.5 w-3.5 text-violet-500 shrink-0" />}
       <button onClick={onSelect} className="flex-1 text-left text-xs font-medium hover:underline truncate">
         {child.name}
-        {!child.latitude && !child.longitude && <span className="text-[10px] text-amber-500 ml-1.5">no location</span>}
+        {!child.latitude && !child.longitude && <span className="text-[10px] text-warning ml-1.5">no location</span>}
       </button>
-      <button onClick={onDelete} className="shrink-0 text-muted-foreground/40 hover:text-red-500 transition-colors" title="Remove">
+      <button onClick={onDelete} className="shrink-0 text-muted-foreground/40 hover:text-destructive transition-colors" title="Remove">
         <X className="h-3 w-3" />
       </button>
     </div>
@@ -200,7 +200,7 @@ export function PinDetail({ pin, childPins, onUpdate, onDelete, onDeleteChild, o
             />
             {!isChildPin && (
               <button onClick={handleToggleBucketList} title={isBucketList ? 'Remove from bucket list' : 'Add to bucket list'} className="shrink-0">
-                <Star className={cn('h-4 w-4', isBucketList ? 'fill-amber-500 text-amber-500' : 'text-muted-foreground/40 hover:text-amber-400')} />
+                <Star className={cn('h-4 w-4', isBucketList ? 'fill-amber-500 text-warning' : 'text-muted-foreground/40 hover:text-warning')} />
               </button>
             )}
           </div>

@@ -38,12 +38,12 @@ const ENTITY_TYPE_OPTIONS = [
 ];
 
 const ACTION_COLORS: Record<string, string> = {
-  create: 'bg-green-500/15 text-green-700 dark:text-green-400',
+  create: 'bg-success/15 text-success',
   update: 'bg-blue-500/15 text-blue-700 dark:text-blue-400',
-  complete: 'bg-green-500/15 text-green-700 dark:text-green-400',
-  delete: 'bg-red-500/15 text-red-700 dark:text-red-400',
-  login: 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-400',
-  logout: 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-400',
+  complete: 'bg-success/15 text-success',
+  delete: 'bg-destructive/15 text-destructive',
+  login: 'bg-warning/15 text-warning',
+  logout: 'bg-warning/15 text-warning',
   toggle: 'bg-purple-500/15 text-purple-700 dark:text-purple-400',
 };
 

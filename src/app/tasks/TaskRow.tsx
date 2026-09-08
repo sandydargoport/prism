@@ -35,8 +35,8 @@ export function TaskRow({
     <div
       className={cn(
         'p-2 rounded-md border cursor-pointer hover:bg-muted/50 transition-colors',
-        task.completed ? 'opacity-60 bg-green-50/50 dark:bg-green-950/20 border-green-500/30' : '',
-        isOverdue ? 'border-red-500/50 bg-red-50/50 dark:bg-red-950/20' : !task.completed ? 'border-border' : ''
+        task.completed ? 'opacity-60 bg-success/10 border-success/30' : '',
+        isOverdue ? 'border-destructive/50 bg-destructive/10' : !task.completed ? 'border-border' : ''
       )}
       onClick={onToggle}
     >
@@ -57,7 +57,7 @@ export function TaskRow({
                 {dueDate && (
                   <div className={cn(
                     'flex items-center gap-1 text-xs',
-                    isOverdue ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
+                    isOverdue ? 'text-destructive' : 'text-muted-foreground'
                   )}>
                     <CalendarDays className="h-3 w-3" />
                     {isOverdue ? (

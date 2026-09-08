@@ -294,7 +294,7 @@ function EmergencyContactCard({ content }: { content: EmergencyContact }) {
         <div className="flex items-center gap-2">
           <span className="font-medium text-white">{content.name}</span>
           {content.isPrimary === 'true' && (
-            <span className="text-xs bg-green-500/30 text-green-300 px-2 py-0.5 rounded">
+            <span className="text-xs bg-success/30 text-success px-2 py-0.5 rounded">
               Primary
             </span>
           )}
@@ -336,8 +336,8 @@ function ChildInfoCard({ content }: { content: ChildInfo }) {
       </div>
       {content.allergies && (
         <div className="flex items-start gap-2">
-          <AlertTriangle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
-          <span className="text-sm text-red-300">
+          <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+          <span className="text-sm text-destructive">
             <strong>Allergies:</strong> {content.allergies}
           </span>
         </div>

@@ -54,7 +54,7 @@ export function PinList({
       {/* Stats bar */}
       <div className="flex items-center gap-4 px-4 py-2.5 border-b border-border bg-muted/30 shrink-0 flex-wrap">
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span className="h-2 w-2 rounded-full bg-emerald-500 inline-block" />
+          <span className="h-2 w-2 rounded-full bg-success inline-block" />
           <span><strong className="text-foreground">{stats.been_there}</strong> visited</span>
         </span>
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -62,7 +62,7 @@ export function PinList({
           <span><strong className="text-foreground">{stats.want_to_go}</strong> want to go</span>
         </span>
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+          <Star className="h-3 w-3 fill-amber-500 text-warning" />
           <span><strong className="text-foreground">{stats.bucket_list}</strong> bucket list</span>
         </span>
         {trips.length > 0 && (
@@ -164,7 +164,7 @@ export function PinList({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
                           <span className="font-medium text-sm truncate">{trip.name}</span>
-                          {trip.isBucketList && <Star className="h-3 w-3 fill-amber-500 text-amber-500 shrink-0" />}
+                          {trip.isBucketList && <Star className="h-3 w-3 fill-amber-500 text-warning shrink-0" />}
                         </div>
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{ background: tripColor + '22', color: tripColor }}>
@@ -227,7 +227,7 @@ export function PinList({
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5">
                               <span className="font-medium text-sm truncate">{pin.name}</span>
-                              {pin.isBucketList && <Star className="h-3 w-3 fill-amber-500 text-amber-500 shrink-0" />}
+                              {pin.isBucketList && <Star className="h-3 w-3 fill-amber-500 text-warning shrink-0" />}
                               {(photoCounts[pin.id] ?? 0) > 0 && (
                                 <span className="text-[10px] text-muted-foreground shrink-0"><Emoji e="📷" /> {photoCounts[pin.id]}</span>
                               )}

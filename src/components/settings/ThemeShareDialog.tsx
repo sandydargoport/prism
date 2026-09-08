@@ -143,14 +143,14 @@ export function ThemeShareDialog({ palette, onClose }: { palette: Theme; onClose
         )}
 
         {warnings.length > 0 && (
-          <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 space-y-1">
-            <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
+          <div className="rounded-md border border-warning/50 bg-warning/10 p-3 space-y-1">
+            <p className="text-xs font-medium text-warning">
               Readable, but worth knowing:
             </p>
             {warnings.map((w) => (
-              <p key={w} className="text-xs text-amber-600 dark:text-amber-400">{w}</p>
+              <p key={w} className="text-xs text-warning">{w}</p>
             ))}
-            <p className="text-xs text-amber-600 dark:text-amber-400">
+            <p className="text-xs text-warning">
               This is shown on the gallery card. Press Share again to submit anyway.
             </p>
           </div>

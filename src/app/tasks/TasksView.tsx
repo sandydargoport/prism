@@ -133,7 +133,7 @@ export function TasksView() {
                 variant="outline"
                 size="sm"
                 onClick={() => setShowPendingReview(true)}
-                className="h-9 border-amber-500/50 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+                className="h-9 border-warning/50 text-warning hover:bg-warning/10"
                 title="Review task removals held for your approval"
               >
                 <AlertTriangle className="h-4 w-4 mr-1" />

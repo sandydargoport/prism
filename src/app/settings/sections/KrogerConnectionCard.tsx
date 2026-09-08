@@ -217,9 +217,9 @@ export function KrogerConnectionCard() {
           </div>
         ) : !status?.configured ? (
           <div className="space-y-3">
-            <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm">
+            <div className="rounded-md border border-warning/40 bg-warning/5 p-3 text-sm">
               <div className="flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                <AlertCircle className="h-4 w-4 text-warning mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="font-medium">Kroger credentials not configured</p>
                   <ol className="mt-2 space-y-1 list-decimal list-inside text-muted-foreground">
@@ -298,7 +298,7 @@ export function KrogerConnectionCard() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm">
-                <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
+                <Check className="h-4 w-4 text-success" />
                 <span>Connected — &quot;Send to Kroger&quot; is live on the Shopping page.</span>
               </div>
               <Button

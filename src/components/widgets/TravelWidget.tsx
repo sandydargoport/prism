@@ -88,7 +88,7 @@ export const TravelWidget = React.memo(function TravelWidget({ className }: Trav
             )}
             {bucketList.length > 0 && (
               <StatChip
-                icon={<Star className="h-3 w-3 fill-amber-500 text-amber-500 shrink-0" />}
+                icon={<Star className="h-3 w-3 fill-amber-500 text-warning shrink-0" />}
                 value={bucketList.length}
                 label="bucket list"
               />
@@ -130,7 +130,7 @@ export const TravelWidget = React.memo(function TravelWidget({ className }: Trav
                         )}
                       </span>
                       {pin.isBucketList && (
-                        <Star className="h-3 w-3 fill-amber-500 text-amber-500 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <Star className="h-3 w-3 fill-amber-500 text-warning shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                       )}
                     </a>
                   </li>
