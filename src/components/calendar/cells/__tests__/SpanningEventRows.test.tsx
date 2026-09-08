@@ -52,28 +52,29 @@ describe('SpanningEventRows', () => {
     expect(container.querySelector('[data-spanning-events]')).toBeNull();
   });
 
-  it('keeps a lane open for a bar drawn below it, so slices stay aligned', () => {
-    const rowDates = [new Date(2026, 8, 20), new Date(2026, 8, 21)];
-    const earlier: CalendarEvent = {
+  it('keeps a lane open when a bar really is drawn below it', () => {
+    // A holds lane 0 on the 20th and 21st; B overlaps it so it takes lane 1 and
+    // keeps it. On the 22nd A is over, but lane 0 stays blank so B does not
+    // jump up a row midway through its own span.
+    const rowDates = [new Date(2026, 8, 20), new Date(2026, 8, 21), new Date(2026, 8, 22)];
+    const a: CalendarEvent = {
       ...event,
-      id: 'lane-0',
+      id: 'a',
       startTime: new Date('2026-09-20T00:00:00.000Z'),
-      endTime: new Date('2026-09-21T00:00:00.000Z'),
+      endTime: new Date('2026-09-22T00:00:00.000Z'),
     };
-    const later: CalendarEvent = {
+    const b: CalendarEvent = {
       ...event,
-      id: 'lane-1',
-      startTime: new Date('2026-09-21T00:00:00.000Z'),
+      id: 'b',
+      startTime: new Date('2026-09-20T00:00:00.000Z'),
       endTime: new Date('2026-09-23T00:00:00.000Z'),
     };
 
-    // On the 21st the first event is over, but it still holds lane 0 so the
-    // second event stays in lane 1 across both days.
     const { container } = render(
       <SpanningEventRows
-        date={new Date(2026, 8, 21)}
+        date={new Date(2026, 8, 22)}
         rowDates={rowDates}
-        events={[earlier, later]}
+        events={[a, b]}
         onEventClick={() => {}}
       />,
     );
@@ -82,6 +83,38 @@ describe('SpanningEventRows', () => {
     expect(wrapper).not.toBeNull();
     expect(wrapper!.children).toHaveLength(2);
     expect(wrapper!.children[0]!.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('reuses a lane an earlier span has finished with', () => {
+    // The bug: lane came from position in the row's list, so a span beginning
+    // after two others had ended still sat in lane 2 and stacked two blank rows
+    // above itself on every day it covered.
+    const rowDates = [new Date(2026, 8, 20), new Date(2026, 8, 21), new Date(2026, 8, 22)];
+    const done: CalendarEvent[] = ['x', 'y'].map((id) => ({
+      ...event,
+      id,
+      startTime: new Date('2026-09-20T00:00:00.000Z'),
+      endTime: new Date('2026-09-21T00:00:00.000Z'),
+    }));
+    const later: CalendarEvent = {
+      ...event,
+      id: 'z',
+      startTime: new Date('2026-09-22T00:00:00.000Z'),
+      endTime: new Date('2026-09-24T00:00:00.000Z'),
+    };
+
+    const { container } = render(
+      <SpanningEventRows
+        date={new Date(2026, 8, 22)}
+        rowDates={rowDates}
+        events={[...done, later]}
+        onEventClick={() => {}}
+      />,
+    );
+
+    const wrapper = container.querySelector('[data-spanning-events]');
+    expect(wrapper!.children).toHaveLength(1);
+    expect(wrapper!.children[0]!.getAttribute('aria-hidden')).toBeNull();
   });
 
   it('bridges day gaps without overlapping adjacent event slices', () => {

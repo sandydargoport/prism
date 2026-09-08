@@ -42,21 +42,49 @@ export function SpanningEventRows({
   const occurs = (event: CalendarEvent, target: Date) =>
     eventOccursOnDisplayDay(event.startTime, event.endTime, event.allDay, target, displayTimezone);
 
-  // A blank lane exists to hold a bar's vertical position steady across the
-  // days it spans, so a slice drawn on Thursday lines up with its own slice on
-  // Wednesday. It only has that job when a bar is actually drawn BELOW it in
-  // this cell.
+  // Which lane each span sits in, packed rather than taken from its position
+  // in the row's list.
   //
-  // Reserving every lane on every day of the row instead pushed a day's own
-  // events down by one row per multi-day event in the week, whether or not any
-  // of them touched that day. A week carrying three spanning events started its
-  // untouched days three rows down, which reads as the events beginning
-  // halfway down the box.
+  // A span has to keep one lane for every day it covers, so its slices line up
+  // across the week. But a span may reuse a lane that an earlier span has
+  // already finished with. Using list position instead means a span starting
+  // on Monday sits in lane 3 all week merely because three others began before
+  // it and ended before it started, leaving three blank rows above it on every
+  // day it covers.
   //
-  // So: nothing at all on a day this row's spans miss, and no trailing blanks
-  // below the last lane a day actually uses.
-  const activeLanes = events.map((event) => occurs(event, date));
-  const lastActiveLane = activeLanes.lastIndexOf(true);
+  // Greedy over spans in start order, lowest free lane each time, which is the
+  // standard packing for intervals and is optimal in lane count. Every cell in
+  // the row computes the same assignment from the same inputs, so the lanes
+  // agree across days without the cells having to share state.
+  const ordered = [...events].sort(
+    (a, b) => a.startTime.getTime() - b.startTime.getTime() || a.id.localeCompare(b.id),
+  );
+  const occupancy: boolean[][] = [];
+  const laneOf = new Map<string, number>();
+  for (const event of ordered) {
+    const covers = rowDates.map((rowDate) => occurs(event, rowDate));
+    let lane = 0;
+    for (;; lane += 1) {
+      if (!occupancy[lane]) occupancy[lane] = rowDates.map(() => false);
+      if (!covers.some((covered, i) => covered && occupancy[lane]![i])) break;
+    }
+    covers.forEach((covered, i) => {
+      if (covered) occupancy[lane]![i] = true;
+    });
+    laneOf.set(event.id, lane);
+  }
+
+  // What this day draws, by lane. A blank lane still holds a bar's position
+  // steady, but only when a bar is drawn BELOW it here, so trailing blanks go
+  // and a day the row's spans all miss renders nothing at all.
+  const byLane: Array<CalendarEvent | null> = Array.from({ length: occupancy.length }, () => null);
+  for (const event of ordered) {
+    if (occurs(event, date)) byLane[laneOf.get(event.id)!] = event;
+  }
+  let lastActiveLane = -1;
+  byLane.forEach((event, lane) => {
+    if (event) lastActiveLane = lane;
+  });
   if (lastActiveLane < 0) return null;
 
   return (
@@ -64,10 +92,15 @@ export function SpanningEventRows({
       data-spanning-events
       className={cn('relative z-20 flex shrink-0 flex-col', compact ? 'gap-px' : 'gap-0.5')}
     >
-      {events.slice(0, lastActiveLane + 1).map((event, lane) => {
-        const active = activeLanes[lane];
-        const continuesFromPrevious = active && occurs(event, addDays(date, -1));
-        const continuesToNext = active && occurs(event, addDays(date, 1));
+      {byLane.slice(0, lastActiveLane + 1).map((laneEvent, lane) => {
+        const rowHeight = compact ? 'h-3.5' : 'h-5';
+        // An empty lane below an occupied one: holds the lane open so the bar
+        // under it keeps the same height on every day it spans.
+        if (!laneEvent) return <div key={`lane-${lane}`} aria-hidden className={rowHeight} />;
+
+        const event = laneEvent;
+        const continuesFromPrevious = occurs(event, addDays(date, -1));
+        const continuesToNext = occurs(event, addDays(date, 1));
         const continuesWithinRow = continuesToNext && column < rowDates.length - 1;
         const continuesBeforeRow = continuesFromPrevious && column === 0;
         const continuesAfterRow = continuesToNext && column === rowDates.length - 1;
@@ -78,9 +111,6 @@ export function SpanningEventRows({
           new Date(),
           displayTimezone
         );
-        const rowHeight = compact ? 'h-3.5' : 'h-5';
-
-        if (!active) return <div key={event.id} aria-hidden className={rowHeight} />;
 
         const startsToday = eventStartsOnDisplayDay(
           event.startTime,
