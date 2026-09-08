@@ -42,13 +42,30 @@ export function SpanningEventRows({
   const occurs = (event: CalendarEvent, target: Date) =>
     eventOccursOnDisplayDay(event.startTime, event.endTime, event.allDay, target, displayTimezone);
 
+  // A blank lane exists to hold a bar's vertical position steady across the
+  // days it spans, so a slice drawn on Thursday lines up with its own slice on
+  // Wednesday. It only has that job when a bar is actually drawn BELOW it in
+  // this cell.
+  //
+  // Reserving every lane on every day of the row instead pushed a day's own
+  // events down by one row per multi-day event in the week, whether or not any
+  // of them touched that day. A week carrying three spanning events started its
+  // untouched days three rows down, which reads as the events beginning
+  // halfway down the box.
+  //
+  // So: nothing at all on a day this row's spans miss, and no trailing blanks
+  // below the last lane a day actually uses.
+  const activeLanes = events.map((event) => occurs(event, date));
+  const lastActiveLane = activeLanes.lastIndexOf(true);
+  if (lastActiveLane < 0) return null;
+
   return (
     <div
       data-spanning-events
       className={cn('relative z-20 flex shrink-0 flex-col', compact ? 'gap-px' : 'gap-0.5')}
     >
-      {events.map((event) => {
-        const active = occurs(event, date);
+      {events.slice(0, lastActiveLane + 1).map((event, lane) => {
+        const active = activeLanes[lane];
         const continuesFromPrevious = active && occurs(event, addDays(date, -1));
         const continuesToNext = active && occurs(event, addDays(date, 1));
         const continuesWithinRow = continuesToNext && column < rowDates.length - 1;

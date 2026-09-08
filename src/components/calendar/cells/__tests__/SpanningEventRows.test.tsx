@@ -27,6 +27,63 @@ const event: CalendarEvent = {
 };
 
 describe('SpanningEventRows', () => {
+  it('reserves no lanes on a day that every span in the row misses', () => {
+    // The bug this guards: a week carrying three multi-day events reserved a
+    // blank lane for each of them on EVERY day of the row, so a day none of
+    // them touched started three rows down and its own events appeared to
+    // begin halfway down the cell.
+    const rowDates = [new Date(2026, 8, 20), new Date(2026, 8, 21), new Date(2026, 8, 22), new Date(2026, 8, 23)];
+    const spans: CalendarEvent[] = [23, 24, 25].map((day, i) => ({
+      ...event,
+      id: `span-${i}`,
+      startTime: new Date(`2026-09-${day}T00:00:00.000Z`),
+      endTime: new Date('2026-09-29T00:00:00.000Z'),
+    }));
+
+    const { container } = render(
+      <SpanningEventRows
+        date={new Date(2026, 8, 21)}
+        rowDates={rowDates}
+        events={spans}
+        onEventClick={() => {}}
+      />,
+    );
+
+    expect(container.querySelector('[data-spanning-events]')).toBeNull();
+  });
+
+  it('keeps a lane open for a bar drawn below it, so slices stay aligned', () => {
+    const rowDates = [new Date(2026, 8, 20), new Date(2026, 8, 21)];
+    const earlier: CalendarEvent = {
+      ...event,
+      id: 'lane-0',
+      startTime: new Date('2026-09-20T00:00:00.000Z'),
+      endTime: new Date('2026-09-21T00:00:00.000Z'),
+    };
+    const later: CalendarEvent = {
+      ...event,
+      id: 'lane-1',
+      startTime: new Date('2026-09-21T00:00:00.000Z'),
+      endTime: new Date('2026-09-23T00:00:00.000Z'),
+    };
+
+    // On the 21st the first event is over, but it still holds lane 0 so the
+    // second event stays in lane 1 across both days.
+    const { container } = render(
+      <SpanningEventRows
+        date={new Date(2026, 8, 21)}
+        rowDates={rowDates}
+        events={[earlier, later]}
+        onEventClick={() => {}}
+      />,
+    );
+
+    const wrapper = container.querySelector('[data-spanning-events]');
+    expect(wrapper).not.toBeNull();
+    expect(wrapper!.children).toHaveLength(2);
+    expect(wrapper!.children[0]!.getAttribute('aria-hidden')).toBe('true');
+  });
+
   it('bridges day gaps without overlapping adjacent event slices', () => {
     const rowDates = [new Date(2026, 7, 10), new Date(2026, 7, 11), new Date(2026, 7, 12)];
 
