@@ -111,7 +111,7 @@
     "react-qr-code": "^2.0.18",
     "recharts": "^2.14.1",
     "redis": "^5.10.0",
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.4",
     "simple-keyboard": "^3.7.3",
     "suncalc": "^1.9.0",
     "tailwind-merge": "^2.5.5",
