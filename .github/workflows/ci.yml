@@ -112,7 +112,7 @@ jobs:
     # around 2026-05-29 and killed the job at the timeout. Image must be
     # kept in lockstep with @playwright/test in package.json.
     container:
-      image: mcr.microsoft.com/playwright:v1.58.2-jammy
+      image: mcr.microsoft.com/playwright:v1.63.0-jammy
 
     services:
       postgres:
@@ -203,7 +203,7 @@ jobs:
 
     # See e2e-modality for why we run inside the Playwright image.
     container:
-      image: mcr.microsoft.com/playwright:v1.58.2-jammy
+      image: mcr.microsoft.com/playwright:v1.63.0-jammy
 
     services:
       postgres:

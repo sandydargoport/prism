@@ -23,7 +23,7 @@ jobs:
     # Official Playwright image so Chromium is preinstalled (kept in lockstep
     # with @playwright/test — see the visual-regression job in ci.yml).
     container:
-      image: mcr.microsoft.com/playwright:v1.58.2-jammy
+      image: mcr.microsoft.com/playwright:v1.63.0-jammy
 
     services:
       postgres:
