@@ -408,8 +408,17 @@ export async function PATCH(
 
         // The field values the event will have once this PATCH applies.
         const effTitle = (updateData.title as string | undefined) ?? existingEvent.title;
-        const effDesc = (updateData.description as string | null | undefined) ?? existingEvent.description;
-        const effLoc = (updateData.location as string | null | undefined) ?? existingEvent.location;
+        // Read the nullable fields by presence in the body, not with ??. A
+        // clear stores null, and `null ?? existingEvent.description` falls
+        // back to the old text — so the clear saved locally but the previous
+        // value went up to Google, and the next sync pulled it straight back.
+        // That is the bug the empty-string rule below exists to prevent.
+        const effDesc = 'description' in body
+          ? (updateData.description as string | null)
+          : existingEvent.description;
+        const effLoc = 'location' in body
+          ? (updateData.location as string | null)
+          : existingEvent.location;
         const effStart = (updateData.startTime as Date | undefined) ?? existingEvent.startTime;
         const effEnd = (updateData.endTime as Date | undefined) ?? existingEvent.endTime;
         const effAllDay = (updateData.allDay as boolean | undefined) ?? existingEvent.allDay;
