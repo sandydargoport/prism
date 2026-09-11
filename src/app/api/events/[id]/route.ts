@@ -493,6 +493,23 @@ export async function PATCH(
         }
       } catch (error) {
         logError('Failed to update event on Google Calendar:', error);
+
+        // Google will not move one occurrence of a repeating event, and the
+        // rows here are occurrences: sync expands series with
+        // singleEvents: true, so externalEventId is an instance id. Google
+        // answers 400 cannotChangeOrganizerOfInstance. Say what happened,
+        // because the generic message below sends people looking at tokens
+        // and permissions for something no retry can fix.
+        if (error instanceof Error && error.message.includes('cannotChangeOrganizerOfInstance')) {
+          return NextResponse.json(
+            {
+              error:
+                'Google does not allow moving a single occurrence of a repeating event to another calendar. Move the whole series in Google Calendar instead.',
+            },
+            { status: 400 }
+          );
+        }
+
         return NextResponse.json(
           {
             error: 'Google Calendar could not be updated. Your local event was left unchanged.',
