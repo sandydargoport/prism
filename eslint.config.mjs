@@ -61,6 +61,11 @@ const eslintConfig = [
   },
 
   {
+    // `next lint` only ever walked the source directories. Calling eslint
+    // directly (Next 16 removed `next lint`) walks everything, and flat config
+    // does not read .gitignore, so generated and vendored output now needs
+    // naming here or a local `npm run lint` fails on third-party minified JS
+    // that was never ours to lint.
     ignores: [
       '.next/**',
       'out/**',
@@ -68,6 +73,18 @@ const eslintConfig = [
       'build/**',
       'node_modules/**',
       'drizzle/**',
+      // mkdocs writes the built docs site here, bundled lunr/glightbox and all.
+      'site/**',
+      // Build output that lands in public/: the next-pwa service worker and its
+      // workbox runtime, and the MapLibre worker copied in by
+      // scripts/copy-maplibre-worker.mjs.
+      'public/sw.js',
+      'public/workbox-*.js',
+      'public/maplibre/**',
+      // Test and coverage artefacts.
+      'coverage/**',
+      'playwright-report/**',
+      'test-results/**',
       '*.config.js',
       '*.config.mjs',
     ],
