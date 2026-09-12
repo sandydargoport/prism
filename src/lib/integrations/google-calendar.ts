@@ -372,6 +372,35 @@ export async function deleteCalendarEvent(
 }
 
 /**
+ * Move an event to a different calendar owned by the same account. Google keeps
+ * the event id stable across a move, so callers can reuse the stored
+ * externalEventId afterwards.
+ */
+export async function moveCalendarEvent(
+  accessToken: string,
+  calendarId: string,
+  eventId: string,
+  destinationCalendarId: string
+): Promise<GoogleCalendarEvent> {
+  const response = await fetch(
+    `${GOOGLE_CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}/move?destination=${encodeURIComponent(destinationCalendarId)}`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to move event: ${error}`);
+  }
+
+  return response.json();
+}
+
+/**
  * Convert Prism's stored start/end instants into Google's all-day wire format:
  * date-only strings with an EXCLUSIVE end date (the day after the last day).
  * Handles both Google-style exclusive-midnight ends and Prism's legacy
