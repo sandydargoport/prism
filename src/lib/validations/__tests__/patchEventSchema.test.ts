@@ -26,8 +26,23 @@ describe('patchEventSchema', () => {
   it('bounds the text fields, which PATCH never did', () => {
     expect(patchEventSchema.safeParse({ description: 'x'.repeat(5000) }).success).toBe(true);
     expect(patchEventSchema.safeParse({ description: 'x'.repeat(5001) }).success).toBe(false);
-    expect(patchEventSchema.safeParse({ location: 'x'.repeat(256) }).success).toBe(false);
+    expect(patchEventSchema.safeParse({ location: 'x'.repeat(5000) }).success).toBe(true);
+    expect(patchEventSchema.safeParse({ location: 'x'.repeat(5001) }).success).toBe(false);
     expect(patchEventSchema.safeParse({ title: '' }).success).toBe(false);
+  });
+
+  // A synced calendar writes location unbounded (the column is `text` and sync
+  // does not use this schema), so a bound that real venue blocks exceed makes
+  // those events uneditable: the form sends the stored value back unchanged and
+  // PATCH refuses it. A 335-character location did exactly that.
+  it('accepts a venue block long enough to come back from a real calendar', () => {
+    const venue = 'Northfield Community Playhouse, 1200 Example Parkway, Suite 400, '
+      + 'Springfield, IL 60000. Parking behind the building off Example Lane; '
+      + 'accessible entrance on the north side. Doors open 30 minutes before curtain. '
+      + 'Late seating at the usher\'s discretion during a scene break. Box office '
+      + 'opens one hour prior on performance days; will-call under the booking name.';
+    expect(venue.length).toBeGreaterThan(300);
+    expect(patchEventSchema.safeParse({ location: venue }).success).toBe(true);
   });
 
   it('still rejects malformed values', () => {
