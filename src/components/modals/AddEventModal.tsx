@@ -379,7 +379,19 @@ export function AddEventModal({
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || t('eventForm.saveFailed'));
+        // A rejected field is worth naming. The API already returns which ones
+        // failed, and dropping that left "Validation failed" on screen with
+        // nothing to act on — an event with an over-long location read as the
+        // save being broken rather than as one field being refused.
+        const fields: string[] = Array.isArray(errorData.details)
+          ? errorData.details
+              .map((i: { path?: (string | number)[] }) => i.path?.join('.'))
+              .filter((p: string | undefined): p is string => !!p)
+          : [];
+        const message = fields.length
+          ? `${errorData.error}: ${[...new Set(fields)].join(', ')}`
+          : errorData.error;
+        throw new Error(message || t('eventForm.saveFailed'));
       }
 
       const savedEvent = await response.json();
