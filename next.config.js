@@ -43,6 +43,11 @@ const withPWA = require('next-pwa')({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Next 16 writes AGENTS.md and CLAUDE.md into the repo root on dev/build.
+  // CLAUDE.md here is gitignored and holds this project's own rules, so that
+  // generation would quietly replace a file with no copy in git. Off.
+  agentRules: false,
+
   output: 'standalone',
   reactStrictMode: true,
   serverExternalPackages: ['undici'],
