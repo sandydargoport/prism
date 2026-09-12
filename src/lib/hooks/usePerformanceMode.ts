@@ -47,8 +47,17 @@ function broadcast(on: boolean): void {
  * Multiple consumer hook instances stay in sync via a 'prism:performance-mode-change'
  * window event; mutations from any instance propagate to all others.
  *
- * Called inside ThemeProvider so the class is applied on first render alongside
- * the dark/light class.
+ * Called inside ThemeProvider. The class itself is applied before the first
+ * paint by the inline script in app/layout.tsx, alongside the dark class —
+ * this hook runs in an effect, which is a frame too late for a display that
+ * has performance mode on. What it still owns is the auto-detect on a display
+ * with nothing stored, the ?perf= URL overrides, and keeping `enabled` in
+ * sync across hook instances.
+ *
+ * `enabled` itself is still false for the first render, so component-level
+ * branches on it (PhotoWidget, TravelGlobe) render their full version for one
+ * frame. The page-wide backdrop-filter cost is the one that mattered and that
+ * is handled above; the rest would need this state hydrated synchronously.
  */
 export function usePerformanceMode() {
   const [enabled, setEnabledState] = useState(false);
