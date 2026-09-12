@@ -35,7 +35,7 @@ function generateRequestId(): string {
  * Non-browser clients (no Origin header) bypass CSRF — they rely on other
  * auth layers (requireAuth, API tokens).
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   // Attach (or propagate) request ID for log correlation
   const requestId = request.headers.get('x-request-id') ?? generateRequestId();
   const response = NextResponse.next({

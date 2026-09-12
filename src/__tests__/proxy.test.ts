@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { middleware } from '../middleware';
+import { proxy } from '../proxy';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -20,11 +20,11 @@ function makeRequest(
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('middleware', () => {
+describe('proxy', () => {
   describe('x-request-id injection', () => {
     it('GET request — response includes x-request-id header', async () => {
       const req = makeRequest('/api/foo');
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       const requestId = res.headers.get('x-request-id');
       expect(requestId).not.toBeNull();
@@ -36,7 +36,7 @@ describe('middleware', () => {
         method: 'POST',
         headers: { host: 'localhost:3000', origin: 'http://localhost:3000' },
       });
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       const requestId = res.headers.get('x-request-id');
       expect(requestId).not.toBeNull();
@@ -52,7 +52,7 @@ describe('middleware', () => {
           'x-request-id': 'existing-id',
         },
       });
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       expect(res.headers.get('x-request-id')).toBe('existing-id');
     });
@@ -67,7 +67,7 @@ describe('middleware', () => {
           origin: 'http://localhost:3000',
         },
       });
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       expect(res.status).not.toBe(403);
       expect(res.headers.get('x-request-id')).not.toBeNull();
@@ -81,7 +81,7 @@ describe('middleware', () => {
           origin: 'http://evil.example.com',
         },
       });
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       expect(res.status).toBe(403);
       expect(res.headers.get('x-request-id')).not.toBeNull();
@@ -92,7 +92,7 @@ describe('middleware', () => {
         method: 'POST',
         headers: { host: 'localhost:3000' },
       });
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       expect(res.status).not.toBe(403);
       expect(res.headers.get('x-request-id')).not.toBeNull();
@@ -106,7 +106,7 @@ describe('middleware', () => {
           origin: 'http://evil.example.com',
         },
       });
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       expect(res.status).not.toBe(403);
       expect(res.headers.get('x-request-id')).not.toBeNull();
@@ -120,7 +120,7 @@ describe('middleware', () => {
           origin: 'http://evil.example.com',
         },
       });
-      const res = await middleware(req);
+      const res = await proxy(req);
 
       expect(res.status).not.toBe(403);
       expect(res.headers.get('x-request-id')).not.toBeNull();
@@ -137,7 +137,7 @@ describe('middleware', () => {
         method: 'POST',
         headers: { host: 'localhost:3000', origin: 'http://localhost:3000' },
       });
-      const res = await middleware(req);
+      const res = await proxy(req);
       expect(res.status).not.toBe(403);
     });
 
@@ -147,7 +147,7 @@ describe('middleware', () => {
         method: 'POST',
         headers: { host: 'localhost:3000', origin: 'http://localhost:3000' },
       });
-      const res = await middleware(req);
+      const res = await proxy(req);
       expect(res.status).toBe(403);
       const body = await res.json();
       expect(body.error).toBe('demo_mode');
@@ -161,7 +161,7 @@ describe('middleware', () => {
         method: 'DELETE',
         headers: { host: 'localhost:3000', origin: 'http://localhost:3000' },
       });
-      const res = await middleware(req);
+      const res = await proxy(req);
       expect(res.status).toBe(403);
       const body = await res.json();
       expect(body.error).toBe('demo_mode');
@@ -173,7 +173,7 @@ describe('middleware', () => {
         method: 'GET',
         headers: { host: 'localhost:3000' },
       });
-      const res = await middleware(req);
+      const res = await proxy(req);
       expect(res.status).not.toBe(403);
     });
 
@@ -183,7 +183,7 @@ describe('middleware', () => {
         method: 'POST',
         headers: { host: 'localhost:3000', origin: 'http://localhost:3000' },
       });
-      const res = await middleware(req);
+      const res = await proxy(req);
       expect(res.status).not.toBe(403);
     });
 
@@ -193,7 +193,7 @@ describe('middleware', () => {
         method: 'POST',
         headers: { host: 'localhost:3000', origin: 'http://localhost:3000' },
       });
-      const res = await middleware(req);
+      const res = await proxy(req);
       expect(res.status).not.toBe(403);
     });
   });
