@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -43,6 +44,61 @@ export function SecuritySection() {
   const [copied, setCopied] = useState(false);
   const [creating, setCreating] = useState(false);
   const [revoking, setRevoking] = useState<string | null>(null);
+
+  // The authentication wall (#339) and this display's exemption from it.
+  const [authWall, setAuthWall] = useState(false);
+  const [wallSaving, setWallSaving] = useState(false);
+  const [trusted, setTrusted] = useState(false);
+  const [trustSaving, setTrustSaving] = useState(false);
+
+  const loadWall = useCallback(async () => {
+    try {
+      const res = await fetch('/api/settings');
+      if (!res.ok) return;
+      const data = await res.json();
+      const security = data?.security ?? data?.settings?.security;
+      setAuthWall(security?.authWall?.enabled === true);
+      setTrusted(document.cookie.includes('prism_trusted_display=1'));
+    } catch {
+      // Leave the toggle showing off rather than guessing.
+    }
+  }, []);
+
+  useEffect(() => { loadWall(); }, [loadWall]);
+
+  const saveAuthWall = useCallback(async (next: boolean) => {
+    setWallSaving(true);
+    try {
+      const res = await fetch('/api/settings');
+      const data = res.ok ? await res.json() : {};
+      const current = data?.security ?? data?.settings?.security ?? {};
+      const save = await fetch('/api/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'security', value: { ...current, authWall: { enabled: next } } }),
+      });
+      if (save.ok) setAuthWall(next);
+    } finally {
+      setWallSaving(false);
+    }
+  }, []);
+
+  const setTrusted_ = useCallback(async (next: boolean) => {
+    setTrustSaving(true);
+    try {
+      const res = await fetch('/api/auth/trust-device', { method: next ? 'POST' : 'DELETE' });
+      if (res.ok) {
+        setTrusted(next);
+        // The signing cookie is httpOnly, so a readable marker tracks it for
+        // the UI only. It grants nothing on its own.
+        document.cookie = next
+          ? 'prism_trusted_display=1; path=/; max-age=157680000'
+          : 'prism_trusted_display=; path=/; max-age=0';
+      }
+    } finally {
+      setTrustSaving(false);
+    }
+  }, []);
 
   const fetchTokens = useCallback(async () => {
     try {
@@ -126,6 +182,53 @@ export function SecuritySection() {
           Manage authentication and access
         </p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Require sign-in</CardTitle>
+          <CardDescription>
+            Off by default, and right for most households. Prism normally serves the
+            family&apos;s calendar, messages, tasks and lists to anything that can reach it,
+            which is what lets a wall display work without anyone touching it. Turn this on
+            and nothing is served without a sign-in. Worth it if this instance is reachable
+            from outside your home network.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="font-medium">Authentication wall</p>
+              <p className="text-sm text-muted-foreground">
+                Every device must sign in, except displays you mark as trusted below.
+              </p>
+            </div>
+            <Switch
+              checked={authWall}
+              disabled={wallSaving}
+              onCheckedChange={saveAuthWall}
+              aria-label="Require sign-in before anything is served"
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-4 border-t pt-4">
+            <div>
+              <p className="font-medium">This display</p>
+              <p className="text-sm text-muted-foreground">
+                {trusted
+                  ? 'Trusted. It stays readable without signing in, even with the wall on.'
+                  : 'Not trusted. With the wall on, this screen will ask for a sign-in.'}
+              </p>
+            </div>
+            <Button
+              variant={trusted ? 'outline' : 'default'}
+              disabled={trustSaving}
+              onClick={() => setTrusted_(!trusted)}
+            >
+              {trusted ? 'Stop trusting' : 'Trust this display'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

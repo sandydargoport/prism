@@ -6,6 +6,7 @@ import { PERMISSIONS, type RolePermissions } from '@/types/user';
 import { db } from '@/lib/db/client';
 import { settings } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { implicitIdentityAllowed } from './authWall';
 
 export interface AuthResult {
   userId: string;
@@ -136,6 +137,14 @@ export function requireRole(
 export async function getDisplayAuth(): Promise<AuthResult | null> {
   const auth = await optionalAuth();
   if (auth) return auth;
+
+  // The implicit display identity is what makes Prism readable by anyone who
+  // can reach the port. With the authentication wall on (#339) it is withdrawn
+  // from everything except a device a parent marked as trusted, which is how
+  // the kitchen screen keeps working. Gating here rather than only in the proxy
+  // is the point: the proxy redirects browsers, this is what stops the API
+  // answering.
+  if (!(await implicitIdentityAllowed())) return null;
 
   try {
     const [setting] = await db
