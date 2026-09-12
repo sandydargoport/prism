@@ -83,6 +83,38 @@ jobs:
       # is not '1' (this job doesn't set it), so a plain jest run is enough.
       - run: npm test -- --ci
 
+  mcp:
+    name: MCP server (build + smoke)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    # The MCP server carries its own manifest and lockfile under /.mcp, and
+    # nothing else in CI looked at it. Dependabot has been opening PRs against
+    # that lockfile all along, and they came back green off the root project's
+    # checks alone — including a major, where the only thing that actually
+    # verified the server still ran was someone building it by hand. Now that
+    # patch and minor updates auto-merge, that had to stop being a manual step.
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: .mcp/package-lock.json
+
+      - run: npm ci
+        working-directory: .mcp
+
+      - run: npm run build
+        working-directory: .mcp
+
+      # Starts the built server over stdio and speaks MCP to it: initialize,
+      # then tools/list, then checks the expected tools are all present. Catches
+      # a dependency that breaks the SDK handshake, which a type-check cannot.
+      - run: npm run smoke
+        working-directory: .mcp
+
   migration-replay:
     name: Migration replay (modality TODO #3)
     runs-on: ubuntu-latest
