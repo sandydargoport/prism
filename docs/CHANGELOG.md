@@ -4,11 +4,31 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.26.0] – 2026-09-12
+
 ### Added
+- **An optional authentication wall.** Prism serves the family's calendar, messages, tasks and lists to anything that can reach it, which is exactly right for a screen on a kitchen wall and wrong for an instance reachable from anywhere else. A new setting in *Settings → Security*, **off by default**, requires a sign-in before anything is served. The screen in the kitchen is the exception: a parent marks that display trusted once, from the display itself, and it keeps working untouched while every other device has to sign in. Left off, nothing changes, guests can still read the board and still cannot alter it. Prism also gains a sign-in page, because signing in has always been a panel over a page that was already on screen, and with the wall on there is nothing underneath.
+- **Event notes now show in the calendar, rendered rather than dumped.** An event carrying directions, a dial-in or a packing list showed nothing at all. Notes now appear in the detail view with their links live, and are sanitised on the way in, since the text arrives from whichever calendar you synced and is not yours.
 - **Themes now control the status colours too.** Success, warning and error states were written as literal greens, ambers and reds in the markup, so a theme could not reach them: install a dark, muted palette and the "saved" ticks and "needs attention" banners stayed the same bright factory colours. Around 400 of those hardcoded colours across 66 files now read theme values instead. Two new colours, `success` and `warning`, join the palette a theme may set, alongside the error colour that already existed. Both are **optional**: a theme that says nothing about them keeps Prism's defaults, so every existing theme, including any installed from the gallery, looks exactly as it did. A theme that does set them is contrast-checked on them like any other pair. The per-widget icon colours on the dashboard are deliberately untouched, because those are a set of distinct hues doing a job that one shared colour cannot do.
 
+### Changed
+- **The month grid was rebuilt around one idea: a lane is a lane.** Multi-day events, all-day events and a day's own entries were three kinds of thing drawn three ways, and every fix to one broke the alignment of another. They are now the same object on the same grid. A run that crosses a week joins into a single pill instead of repeating its title on every row, says how much of it is left, and keeps a rounded cap where it genuinely ends while a chevron still means it continues. A blank lane is a slice like any other, so a day a span misses no longer reserves space it never uses, and a day's own events can use the room above a bar. There is a browser-level geometry suite in CI now, because every bug in this area has been a box in the wrong place, which no unit test can see.
+- **Performance mode applies before the first paint.** A display with it switched on still drew one frame of the expensive version, backdrop blur on every card, and then removed it, on exactly the thin clients that can least afford the frame, and on every page load rather than the first.
+- **A service worker install no longer downloads 3846 emoji.** The emoji set was 91% of what each display cached on install, 18MB fetched as 3846 separate requests, and every update made it do so again. A page uses a few dozen of them; they are now fetched as they are needed. On a thin client this is the difference you feel after an update.
+
 ### Fixed
+- **Calendar reassignment now follows the event to Google.** Moving an event onto a Google calendar saved the change locally and made no API call at all, so it never appeared in Google and nothing said so. Moving one between two Google calendars now moves it there, and moving one away removes the upstream copy instead of leaving it to be re-imported as a duplicate. Moving a single occurrence of a repeating event is something Google refuses outright; that now says so plainly rather than reporting a general failure. Thanks to @sanko-oz.
+- **An event with a long venue address can be edited again.** Calendars put the whole venue block in the location field (name, address, suite, parking notes), and anything past 255 characters made the event impossible to save, rejecting a field you had not touched and naming nothing. The form now also says which field it refused.
+- **Clearing a description, a location or a reminder now sticks.** Emptying a field saved as empty and then came back on the next sync, because an absent value reads as "leave this alone" to the calendar it is being sent to.
+- **The travel globe survives its mapping library's next major.** The upgrade would have left the globe drawing land shading with no water, no borders and no labels, with nothing logged and no error raised.
 - **Photos from a synced source now filter by orientation.** Orientation was worked out only for photos uploaded by hand, so anything arriving from OneDrive or Immich was stored without one and the landscape/portrait filter on the Photos page returned nothing for it. That is the filter that keeps phone-shaped photos off a landscape display, and every photo joins the wallpaper rotation by default whatever its shape, so on a synced library there was no practical way to exclude them short of paging through the lot. Existing photos are fixed in place on update, using the dimensions already recorded, so nothing re-syncs and no photos are downloaded again.
+- **A birthday no longer appears twice for the same person** when one source spells the name possessively and another does not.
+- **A CalDAV event with a stray carriage return in its notes no longer breaks the whole sync.**
+
+### Under the hood
+- Now runs on Next 16. The service worker, the offline behaviour and the dashboard are unchanged; this is the framework underneath.
+- A local deploy no longer overwrites the container's compiled modules with ones built for a different C library, which took an instance down for twenty-two minutes and reported it as an unrelated start-up error.
+- Local database backups now expire on the date in their filename rather than a timestamp that other tools reset, which had the nightly check reporting a failure on backups that were working.
 
 ## [1.25.0] – 2026-09-07
 
