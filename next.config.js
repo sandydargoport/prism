@@ -38,7 +38,19 @@ const withPWA = require('next-pwa')({
   // These live in public/, which next-pwa globs separately from the webpack
   // build, so they need publicExcludes rather than buildExcludes. The default
   // value is ['!noprecache/**/*'] and is repeated here so it is not dropped.
-  publicExcludes: ['!noprecache/**/*', '!maplibre/**/*'],
+  // Twemoji is the same story again, and the biggest instance of it. The set is
+  // 3846 SVGs totalling 18MB, and it was 91% of the precache manifest: every
+  // service-worker install had the display fetch all of it, as 3846 separate
+  // requests, before settling. A deploy invalidates the worker, so a thin
+  // client paid that on every deploy, which reads as "the machine is slow".
+  //
+  // A page renders a few dozen emoji, not 3846. They are <img> tags
+  // (components/ui/Emoji.tsx) and the browser caches them normally on first
+  // use, which is the same on-demand behaviour the Noto font exclusion above
+  // restored. The trade is that emoji not yet seen will not render with no
+  // network at all; the displays are always-on and wired, and 18MB on every
+  // install is the worse end of that bargain.
+  publicExcludes: ['!noprecache/**/*', '!maplibre/**/*', '!twemoji/**/*'],
 });
 
 /** @type {import('next').NextConfig} */
