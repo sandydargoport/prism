@@ -1,0 +1,52 @@
+name: Dependabot auto-merge
+
+# Security advisories do not wait for the weekly schedule in dependabot.yml, so
+# they arrive in batches at any hour. Twenty of them landed in a single day,
+# every one a routine transitive bump that passed all six required checks and
+# was merged by hand. That is not review, it is clicking.
+#
+# This hands the clicking to GitHub. Auto-merge only completes once the ruleset's
+# required checks pass, which is the same bar a manual merge waits for:
+# type-check and lint, unit tests, migration replay, the E2E modality suite,
+# visual regression, and the PII/secret scan.
+#
+# Majors are never auto-merged. Neither are the packages below, where even a
+# minor deserves a person: they set the shape of the app rather than sitting
+# underneath it.
+
+on:
+  pull_request_target:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      # Reads the PR's metadata from the Dependabot API. Deliberately does NOT
+      # check out the pull request's code: this workflow runs with write
+      # permissions on the base repository, and running anything from the branch
+      # under those permissions is how that gets turned against you.
+      - name: Fetch Dependabot metadata
+        id: meta
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge
+        if: |
+          steps.meta.outputs.update-type != 'version-update:semver-major' &&
+          !contains(fromJSON('["next","react","react-dom","drizzle-orm"]'), steps.meta.outputs.dependency-names)
+        run: gh pr merge --auto --merge "${{ github.event.pull_request.html_url }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Say why it was left alone
+        if: |
+          steps.meta.outputs.update-type == 'version-update:semver-major' ||
+          contains(fromJSON('["next","react","react-dom","drizzle-orm"]'), steps.meta.outputs.dependency-names)
+        run: |
+          echo "Left for a person: ${{ steps.meta.outputs.dependency-names }} (${{ steps.meta.outputs.update-type }})"
