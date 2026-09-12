@@ -43,8 +43,28 @@ else
 fi
 
 # Remove backups older than retention period
+# Retention keys off the timestamp in the filename, not mtime.
+#
+# These files get read and copied by things that reset mtime (restore drills,
+# the PII scans, a plain `cp -p`-less copy), and `find -mtime` then treats a
+# month-old dump as new and keeps it forever. Meanwhile the off-site copy still
+# expires on its own schedule at RCLONE_RETENTION_DAYS, so the leftovers show up
+# in the one-way check below as "missing off-site" and the healthcheck goes red
+# on a backup that is completely fine. That happened: 28 dumps back to Aug 8 had
+# all been touched, 5 of them were past the remote retention, and the check
+# failed nightly on them.
+#
+# The filename carries the real backup date and nothing rewrites it.
 echo "[$(date)] Cleaning up backups older than $RETENTION_DAYS days..."
-find "$BACKUP_DIR" -name "prism_*.sql.gz" -type f -mtime +$RETENTION_DAYS -delete
+CUTOFF=$(date -d "@$(( $(date +%s) - RETENTION_DAYS * 86400 ))" +%Y%m%d)
+for f in "$BACKUP_DIR"/prism_*.sql.gz; do
+  [ -e "$f" ] || continue
+  stamp=$(basename "$f" | sed -n 's/^prism_\([0-9]\{8\}\)_.*/\1/p')
+  [ -n "$stamp" ] || continue
+  if [ "$stamp" -lt "$CUTOFF" ]; then
+    rm -f "$f"
+  fi
+done
 
 # List current backups
 echo "[$(date)] Current backups:"
