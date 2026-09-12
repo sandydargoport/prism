@@ -17,7 +17,19 @@ export const isoDateSchema = z.string().datetime();
 const eventBaseSchema = z.object({
   title: z.string().min(1, 'Title is required').max(255),
   description: z.string().max(5000).optional(),
-  location: z.string().max(255).optional(),
+  // 255 was too tight to hold what calendars actually send. Google writes the
+  // whole venue block into location — name, full address, suite, sometimes
+  // parking directions — and the sync path stores it unbounded, because the
+  // column is `text` and sync does not go through this schema. PATCH does, so
+  // any event whose location had grown past 255 could not be saved at all: the
+  // form sends the existing value back untouched and validation rejected it,
+  // with "Validation failed" naming no field. Ten events on one household
+  // instance were uneditable that way, the longest 335 characters.
+  //
+  // Matches description's bound, since both are free text from an external
+  // source landing in a `text` column. The limit is here to refuse absurd
+  // payloads, not to second-guess a venue address.
+  location: z.string().max(5000).optional(),
   startTime: isoDateSchema,
   endTime: isoDateSchema,
   allDay: z.boolean().optional().default(false),
