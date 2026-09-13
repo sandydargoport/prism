@@ -390,6 +390,8 @@ function DayCardsCell({
       {bucket && (
         <div
           onClick={(e) => e.stopPropagation()}
+          // See the note in MultiWeekView: this band is inset on purpose.
+          data-day-overlay
           className={cn(
             'mt-auto',
             overlayItemCount > 0 && 'rounded-md bg-muted/60 px-1.5 py-1 ring-1 ring-border/50',
