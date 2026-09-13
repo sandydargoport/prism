@@ -85,7 +85,20 @@ test.describe('calendar grid geometry', () => {
         }
         return null;
       };
-      const out: Array<{ band: number | null; card: number | null }> = [];
+      // Everything a failure needs in order to name the two boxes it measured.
+      // Without this the report is a bare pair of numbers, and diagnosing it
+      // means guessing which elements produced them.
+      const describe = (el: Element) => {
+        const cs = getComputedStyle(el);
+        return {
+          text: (el.textContent || '').trim().slice(0, 30),
+          cls: el.className.toString().slice(0, 120),
+          left: +el.getBoundingClientRect().left.toFixed(1),
+          padL: cs.paddingLeft,
+          borderL: cs.borderLeftWidth,
+        };
+      };
+      const out: Array<Record<string, unknown>> = [];
       document.querySelectorAll('[data-spanning-events]').forEach((band) => {
         const cell = band.parentElement!;
         const slice = [...band.children].find((e) => e.getBoundingClientRect().width && e.textContent?.trim());
@@ -95,13 +108,20 @@ test.describe('calendar grid geometry', () => {
         // a band title against it compared two unrelated boxes.
         const card = [...cell.querySelectorAll('button')].find(
           (b) => !b.closest('[data-spanning-events]') && !b.hasAttribute('data-day-overflow') && b.textContent?.trim());
-        if (slice && card) out.push({ band: textLeft(slice), card: textLeft(card) });
+        if (slice && card) {
+          out.push({
+            band: textLeft(slice), card: textLeft(card),
+            slice: describe(slice), cardEl: describe(card),
+          });
+        }
       });
       return out;
     });
 
     expect(offsets.length).toBeGreaterThan(0);
-    for (const o of offsets) expect(o.band).toBeCloseTo(o.card!, 0);
+    const misaligned = offsets.filter(
+      (o) => Math.abs((o.band as number) - (o.card as number)) > 0.5);
+    expect(misaligned, `misaligned band/card pairs:\n${JSON.stringify(misaligned, null, 1)}`).toEqual([]);
   });
 
   test('a lane sits at the same height in every column of a row', async ({ page }) => {
