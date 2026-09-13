@@ -102,12 +102,19 @@ test.describe('calendar grid geometry', () => {
       document.querySelectorAll('[data-spanning-events]').forEach((band) => {
         const cell = band.parentElement!;
         const slice = [...band.children].find((e) => e.getBoundingClientRect().width && e.textContent?.trim());
-        // The "+N more" trigger is not one of the day's cards: it is a wider
-        // control with its own padding, and on a day whose events have all
-        // collapsed into it, it is the only button left in the cell. Measuring
-        // a band title against it compared two unrelated boxes.
+        // Two things in a cell are not the day's event cards and must not be
+        // measured against a band title:
+        //   - the "+N more" trigger, a wider control with its own padding, and
+        //     the only button left on a day whose events all collapsed into it;
+        //   - the meals/chores planning group, which is deliberately inset
+        //     inside its own band (p-1.5), so its cards sit 5.25px in.
+        // Both were read as misalignment, and which one a run hit depended on
+        // the date, so the suite passed or failed with the calendar.
         const card = [...cell.querySelectorAll('button')].find(
-          (b) => !b.closest('[data-spanning-events]') && !b.hasAttribute('data-day-overflow') && b.textContent?.trim());
+          (b) => !b.closest('[data-spanning-events]')
+            && !b.closest('[data-day-overlay]')
+            && !b.hasAttribute('data-day-overflow')
+            && b.textContent?.trim());
         if (slice && card) {
           out.push({
             band: textLeft(slice), card: textLeft(card),
@@ -171,12 +178,15 @@ test.describe('calendar grid geometry', () => {
         const cell = trigger.closest('[data-droppable-day]') ?? trigger.closest('div.relative.flex.flex-col');
         if (!cell) continue;
         const cards = [...cell.querySelectorAll('button')].filter(
-          (b) => !b.closest('[data-spanning-events]') && !b.hasAttribute('data-day-overflow'));
+          (b) => !b.closest('[data-spanning-events]')
+            && !b.closest('[data-day-overlay]')
+            && !b.hasAttribute('data-day-overflow'));
         if (!cards.length) continue;
         const cardHeight = Math.max(...cards.map((c) => c.getBoundingClientRect().height));
         // Anything pinned to the bottom of the cell (the meals/chores overlay)
         // is not free space, so measure up to whichever comes first.
-        const floors = [...cell.querySelectorAll('.mt-auto')].map((o) => o.getBoundingClientRect().top);
+        const floors = [...cell.querySelectorAll('[data-day-overlay], .mt-auto')]
+          .map((o) => o.getBoundingClientRect().top);
         const floor = Math.min(cell.getBoundingClientRect().bottom, ...floors);
         out.push({
           label: (trigger.textContent || '').trim(),
