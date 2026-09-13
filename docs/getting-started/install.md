@@ -1,9 +1,10 @@
 # Installing Prism
 
-Prism ships as a Docker Compose application. You have two install paths:
+Prism ships as a Docker Compose application, and as a Home Assistant add-on. You have three install paths:
 
 1. **Clone and build**: for any platform with Docker + git.
 2. **Pull pre-built image**: for amd64 or ARM64 (Raspberry Pi).
+3. **Home Assistant add-on**: if you already run Home Assistant, no terminal or certificate work needed.
 
 After installation, open **<http://localhost:3000>**. A fresh install has no accounts yet, so it opens the **setup wizard** (Welcome → Family → Household → Done), where you create each family member and choose their PIN. (If you loaded the optional demo seed instead, every seeded user has PIN `1234`.)
 
@@ -66,6 +67,25 @@ docker-compose up -d
 
 !!! note "Raspberry Pi"
     Tested on Pi 4 (4 GB+). Works with the pre-built ARM64 image, no compilation needed.
+
+---
+
+## Option 3: Home Assistant add-on
+
+If you already run Home Assistant (OS or Supervised), Prism installs as an add-on. No Docker Compose, no Nginx, no certificates.
+
+1. Go to **Settings → Add-ons → Add-on store**.
+2. Open the **⋮** menu in the top right and choose **Repositories**.
+3. Paste `https://github.com/sandydargoport/prism` and click **Add**.
+4. Find **Prism** in the store and click **Install**.
+5. On the **Info** tab, click **Start**. The add-on panel then links to the web UI on port 3000.
+
+Postgres and Redis run inside the add-on container by default (`bundled_db: true`), and every piece of state lives under Home Assistant's `/data` volume, so add-on updates and HA snapshots preserve your family's history. Point the add-on at an existing Postgres instead by setting `bundled_db: false` plus `database_url`.
+
+!!! note "Add-ons are not HACS"
+    HACS distributes integrations, dashboard cards and themes, not add-ons, so Prism will not appear there. The custom-repository flow above is the install path.
+
+Full option reference, the `/data` layout and add-on troubleshooting are in [`ha-app/README.md`](https://github.com/sandydargoport/prism/blob/master/ha-app/README.md). To connect Google Calendar on a LAN-only add-on install, see [Google Calendar without a public URL](../features/CALENDAR.md#google-calendar-without-a-public-url-oauth-playground).
 
 ---
 

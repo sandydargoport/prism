@@ -46,7 +46,22 @@ docker-compose up -d
 
 </details>
 
-Open **<http://localhost:3000>**. A fresh install boots into the setup wizard, where you create family members and set each member's PIN (4 or 6 digits). The demo seed logs in with PIN `1234` for every account.
+<details>
+<summary><b>Option 3: Home Assistant add-on (no terminal, no certs)</b></summary>
+
+In Home Assistant, go to **Settings → Add-ons → Add-on store**, open the **⋮** menu in the top right, choose **Repositories**, and paste:
+
+```
+https://github.com/sandydargoport/prism
+```
+
+Find **Prism** in the store, click **Install**, then **Start** on the Info tab. Postgres and Redis run inside the add-on container, and all state lives under Home Assistant's `/data` volume, so add-on updates and HA snapshots keep your family's history.
+
+Add-ons are not distributed through HACS, so the custom-repository flow above is the install path. Options, data layout and troubleshooting: [`ha-app/README.md`](ha-app/README.md).
+
+</details>
+
+Open **<http://localhost:3000>** (on the Home Assistant add-on, use the port 3000 link in the add-on panel). A fresh install boots into the setup wizard, where you create family members and set each member's PIN (4 or 6 digits). The demo seed logs in with PIN `1234` for every account.
 
 Full installation notes (HTTPS / Nginx cert prerequisite, Raspberry Pi notes, troubleshooting) are in the [install guide](https://sandydargoport.github.io/prism/getting-started/install/).
 
