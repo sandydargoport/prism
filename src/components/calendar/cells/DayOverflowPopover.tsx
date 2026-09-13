@@ -43,6 +43,11 @@ export function DayOverflowPopover({
       <PopoverTrigger asChild>
         <button
           onClick={(e) => e.stopPropagation()}
+          // The geometry suite has to tell this trigger apart from a day's own
+          // event cards: it is a different control with its own padding, and
+          // its label is translated, so matching on "+N more" only worked on an
+          // English instance.
+          data-day-overflow
           className={cn(
             // Full-width + a taller min-height so it's an easy touch target on a
             // wall display (was min-h-20px / 10px text — fiddly to tap).
