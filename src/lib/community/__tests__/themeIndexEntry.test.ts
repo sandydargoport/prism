@@ -44,7 +44,7 @@ describe('buildThemeIndexEntry', () => {
   it('derives the filename from the id, not the name', () => {
     // The name is submitter-controlled text and may contain anything the name
     // pattern allows, including dots and quotes. The id is already slug-guarded.
-    const entry = buildThemeIndexEntry({ ...theme, name: "O'Brien's v1.2" }, [], '2026-09-05');
+    const entry = buildThemeIndexEntry({ ...theme, name: "Tester's v1.2" }, [], '2026-09-05');
     expect(entry.file).toBe('harvest-dusk.json');
     expect(entry.id).toBe('harvest-dusk');
   });
