@@ -11,7 +11,7 @@
 #   https://github.com/sandydargoport/prism/issues?q=is%3Aissue+is%3Aclosed+label%3Astale
 #
 # Exempt labels (never staled):
-#   roadmap, bug, enhancement, layout-submission, pinned, security
+#   P1, P2, P3, bug, enhancement, layout-submission, pinned, security
 #
 # To exempt a specific issue, apply one of those labels (or add `pinned`).
 
@@ -36,7 +36,7 @@ jobs:
           days-before-issue-close: 14
           stale-issue-label: stale
           close-issue-reason: not_planned
-          exempt-issue-labels: roadmap,bug,enhancement,layout-submission,pinned,security
+          exempt-issue-labels: P1,P2,P3,bug,enhancement,layout-submission,pinned,security
           remove-stale-when-updated: true
           stale-issue-message: |
             This issue has been inactive for 90 days. If it's still relevant, a comment or a 👍 will keep it open — it will otherwise auto-close in 14 days. Reopening is one click.
