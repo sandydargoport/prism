@@ -148,6 +148,36 @@ fs.writeFileSync('docs/CHANGELOG.md', newLines.join('\n'));
 console.log(`✓ CHANGELOG.md: moved ${moved.length} lines from Unreleased to [${version}] – ${today}`);
 NODE
 
+# --- Mirror the new section into ha-app/CHANGELOG.md ------------------
+# HA Supervisor shows this file on the addon's "Update available" prompt, so
+# it has to carry the release notes the user is about to install. Same
+# content as docs/CHANGELOG.md, newest section first, under a fixed header.
+if [[ -f ha-app/CHANGELOG.md ]]; then
+node - "$NEW_VERSION" <<'NODE'
+const fs = require('fs');
+const [version] = process.argv.slice(2);
+
+const full = fs.readFileSync('docs/CHANGELOG.md', 'utf8').split('\n');
+const start = full.findIndex(l => l.startsWith(`## [${version}]`));
+if (start < 0) {
+  console.error(`ERROR: docs/CHANGELOG.md has no "## [${version}]" section to mirror.`);
+  process.exit(1);
+}
+const after = full.findIndex((l, i) => i > start && /^## \[[0-9]/.test(l));
+const section = full.slice(start, after < 0 ? full.length : after)
+  .join('\n').replace(/\s+$/, '');
+
+const addon = fs.readFileSync('ha-app/CHANGELOG.md', 'utf8');
+const firstSection = addon.search(/^## \[/m);
+const header = (firstSection < 0 ? addon : addon.slice(0, firstSection)).replace(/\s+$/, '');
+const rest = firstSection < 0 ? '' : addon.slice(firstSection).replace(/\s+$/, '');
+
+fs.writeFileSync('ha-app/CHANGELOG.md',
+  [header, '', section, '', rest].join('\n').replace(/\n{3,}/g, '\n\n').replace(/\s+$/, '') + '\n');
+console.log(`✓ ha-app/CHANGELOG.md: prepended [${version}]`);
+NODE
+fi
+
 # --- Verify everything agrees ----------------------------------------
 bash scripts/check-version-sync.sh
 
@@ -156,7 +186,7 @@ cat <<MSG
 Release prep complete. Suggested next steps:
 
   git checkout -b chore/release-$NEW_VERSION
-  git add package.json docs/CHANGELOG.md
+  git add package.json docs/CHANGELOG.md ha-app/config.yaml ha-app/CHANGELOG.md
   git commit -m "chore(release): $NEW_VERSION"
   git push -u origin chore/release-$NEW_VERSION
   gh pr create --base master --head chore/release-$NEW_VERSION \\

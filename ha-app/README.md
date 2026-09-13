@@ -1,64 +1,22 @@
-# Prism — Home Assistant addon
+# Prism
 
-Self-hosted family dashboard, packaged as a Home Assistant addon. One-click install, no terminal, no nginx, no certs. Bundled Postgres and Redis run inside the addon container; data persists under HA's `/data` volume so addon updates never wipe your family's history.
+A subscription-free family dashboard for wall-mounted screens and tablets: calendars, chores, shopping lists, meals, photos, weather and more, in one place.
 
-## Install (custom repository)
+Prism connects to the tools your family already uses (Google Calendar, Microsoft To Do, Apple iCloud, OneDrive, Immich, Tandoor, Mealie, Kroger) and pulls them onto a single screen. Nothing leaves your network unless you connect it yourself.
 
-1. In Home Assistant, go to **Settings → Add-ons → Add-on store**.
-2. Click the **⋮** menu in the top-right → **Repositories**.
-3. Paste:
-   ```
-   https://github.com/sandydargoport/prism
-   ```
-4. Find **Prism** in the store, click **Install**.
-5. Once installed, go to the **Info** tab and click **Start**.
-6. Open the Web UI: HA shows a port-3000 link in the addon panel.
+This add-on runs the whole thing in one container. Postgres and Redis are bundled, so there is nothing else to install, and every piece of state lives under Home Assistant's `/data` volume, which means add-on updates and HA snapshots keep your family's history.
 
-> **Note**: Home Assistant **addons** ≠ HACS. HACS distributes integrations and frontend cards. Prism is an addon; the install path is the custom-repository flow above, not HACS.
+## Install
 
-## Options
+1. **Settings → Add-ons → Add-on store**, then **⋮ → Repositories**.
+2. Add `https://github.com/sandydargoport/prism`.
+3. Install **Prism**, then **Start** it on the Info tab.
+4. Open the web UI from the add-on panel. A fresh install opens the setup wizard, where you create family members and choose each PIN.
 
-| Option | Default | Meaning |
-|---|---|---|
-| `log_level` | `info` | HA-standard log level (`trace`/`debug`/`info`/`notice`/`warning`/`error`/`fatal`). |
-| `bundled_db` | `true` | Run Postgres + Redis inside this container. Set to `false` only if you already have an external Postgres + Redis and want Prism to point at them. |
-| `database_url` | `` | Required when `bundled_db=false`. Example: `postgresql://user:pass@host:5432/db`. |
-| `redis_url` | `` | Optional with `bundled_db=false`. Example: `redis://host:6379`. Prism degrades gracefully if absent. |
-| `photos_root` | `/data/photos` | Where photos live on the host. Default works for everyone; override only if you want photos under HA's `/share` or `/media` instead. |
+## More
 
-## Data persistence
+- **[Documentation](DOCS.md)** for options, the `/data` layout, updating and troubleshooting.
+- **[Full docs site](https://sandydargoport.github.io/prism/)** for the user guide and every integration.
+- Issues and feature requests: <https://github.com/sandydargoport/prism/issues>
 
-Everything that matters lives under `/data`, which HA preserves across addon updates and snapshots:
-
-| Path | What's there |
-|---|---|
-| `/data/postgres` | Postgres data directory (the family's whole history). |
-| `/data/redis` | Redis dump. |
-| `/data/photos/{originals,thumbs,cache}` | Photo originals, generated thumbs, OneDrive cache. |
-| `/data/avatars` | Family member avatar images. |
-| `/data/.prism_secrets` | Auto-generated session / encryption keys. **Do not delete** — losing this means sessions and stored OAuth tokens become unrecoverable. |
-| `/data/.prism_db_password` | Auto-generated Postgres password for the bundled DB. |
-
-If you ever need to back up Prism outside of HA's snapshot system: stop the addon, copy `/data`, restart. That's the entire state.
-
-## Updating
-
-When a new Prism version is published, HA Supervisor shows an **Update available** badge in the addon panel. Click **Update** — takes 30 s – 5 min depending on whether the published image is cached. Postgres data and your settings survive every update.
-
-**First install on pre-1.8.5 versions** falls back to building from source on your host (no pre-built image existed yet). Subsequent installs (and any version 1.8.5 or later) pull the pre-built `ghcr.io/sandydargoport/prism-ha-{arch}` image directly.
-
-## Bundled vs external database
-
-The default (`bundled_db: true`) is what most people want — Prism runs as a single self-contained addon, no extra services to install or maintain. The bundled Postgres uses ~50–80 MB RSS with default tuning.
-
-`bundled_db: false` is for users who already run Postgres elsewhere (e.g. the official MariaDB addon doesn't help here — Prism is Postgres-only) and want Prism to point at it. In that mode, the addon container doesn't start its own Postgres or Redis; you supply `database_url` (required) and `redis_url` (optional but recommended). See [the Prism docs](https://sandydargoport.github.io/prism) for `DATABASE_URL` format.
-
-## Troubleshooting
-
-- **"Database connection refused" on first boot** — wait ~10 seconds and refresh. The bundled Postgres takes a moment to initialize on a fresh `/data` volume. Check the addon logs if it persists.
-- **Lost session / can't log in after update** — `/data/.prism_secrets` was wiped. Restoring a Snapshot from before the update should bring it back.
-- **Photos don't appear** — confirm `/data/photos/originals` exists and is writable. If you've changed `photos_root` in options, point it at a writable path under `/data`, `/share`, or `/media`.
-
-## Source
-
-Built from the same source tree as the standalone Docker image. See [github.com/sandydargoport/prism](https://github.com/sandydargoport/prism) — this addon lives in the `ha-app/` directory.
+Prism is licensed under [PolyForm Noncommercial 1.0.0](https://github.com/sandydargoport/prism/blob/master/LICENSE): free for personal and non-commercial use.
