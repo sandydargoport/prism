@@ -420,7 +420,13 @@ function DayCell({
             then meals) floats to the bottom of the cell (mt-auto) inside a faint
             theme-aware band that delineates it from the events. */}
         {cards && bucket && (bucket.meals.length + bucket.chores.length + bucket.tasks.length) > 0 && (
-          <div className="mt-auto flex flex-col gap-1 rounded-md bg-muted/60 p-1.5 ring-1 ring-border/50">
+          <div
+            // The planning group is inset inside its own band on purpose, so
+            // its cards do not share the day's event-list offset. The geometry
+            // suite has to know that, or it reads the inset as a misalignment.
+            data-day-overlay
+            className="mt-auto flex flex-col gap-1 rounded-md bg-muted/60 p-1.5 ring-1 ring-border/50"
+          >
             {(bucket.chores.length > 0 || bucket.tasks.length > 0) && (
               <DroppableOverlayCell
                 date={date}
