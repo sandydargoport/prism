@@ -89,7 +89,12 @@ test.describe('calendar grid geometry', () => {
       document.querySelectorAll('[data-spanning-events]').forEach((band) => {
         const cell = band.parentElement!;
         const slice = [...band.children].find((e) => e.getBoundingClientRect().width && e.textContent?.trim());
-        const card = [...cell.querySelectorAll('button')].find((b) => !b.closest('[data-spanning-events]') && b.textContent?.trim());
+        // The "+N more" trigger is not one of the day's cards: it is a wider
+        // control with its own padding, and on a day whose events have all
+        // collapsed into it, it is the only button left in the cell. Measuring
+        // a band title against it compared two unrelated boxes.
+        const card = [...cell.querySelectorAll('button')].find(
+          (b) => !b.closest('[data-spanning-events]') && !b.hasAttribute('data-day-overflow') && b.textContent?.trim());
         if (slice && card) out.push({ band: textLeft(slice), card: textLeft(card) });
       });
       return out;
@@ -139,13 +144,14 @@ test.describe('calendar grid geometry', () => {
     await openCalendar(page, 'cards');
     const cells = await page.evaluate(() => {
       const out: Array<{ label: string; free: number; cardHeight: number }> = [];
-      const triggers = [...document.querySelectorAll('*')].filter(
-        (e) => e.children.length === 0 && /^\+\s*\d+\s*more$/.test((e.textContent || '').trim()),
-      );
+      // Matching the label text found nothing on a non-English instance, so the
+      // assertion below quietly measured zero cells instead of failing.
+      const triggers = [...document.querySelectorAll('[data-day-overflow]')];
       for (const trigger of triggers) {
         const cell = trigger.closest('[data-droppable-day]') ?? trigger.closest('div.relative.flex.flex-col');
         if (!cell) continue;
-        const cards = [...cell.querySelectorAll('button')].filter((b) => !b.closest('[data-spanning-events]'));
+        const cards = [...cell.querySelectorAll('button')].filter(
+          (b) => !b.closest('[data-spanning-events]') && !b.hasAttribute('data-day-overflow'));
         if (!cards.length) continue;
         const cardHeight = Math.max(...cards.map((c) => c.getBoundingClientRect().height));
         // Anything pinned to the bottom of the cell (the meals/chores overlay)
