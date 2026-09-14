@@ -387,7 +387,13 @@ test.describe('Visual regression', () => {
       await page.waitForSelector('.z-\\[10001\\]', { timeout: 5000 });
       await page.waitForTimeout(400);
 
-      await expect(page).toHaveScreenshot(`pin-modal-${theme}.png`, SCREENSHOT_OPTIONS);
+      // Masked like the other dashboard-route shots: the modal sits over the
+      // live dashboard, so an unmasked capture bakes in the current clock time
+      // and would fail on the next run a minute later.
+      await expect(page).toHaveScreenshot(`pin-modal-${theme}.png`, {
+        ...SCREENSHOT_OPTIONS,
+        mask: dynamicMasks(page),
+      });
     });
   }
 });
