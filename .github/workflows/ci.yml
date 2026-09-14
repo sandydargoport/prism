@@ -343,11 +343,17 @@ jobs:
         if: ${{ steps.check-baselines.outputs.found == 'true' && (github.event_name != 'workflow_dispatch' || inputs.update_visual_baselines != true) }}
         run: npx playwright test e2e/visual-regression.spec.ts --reporter=list
 
-      - name: Skip compare (no Linux baselines yet)
+      # Fail, do not skip. This is a required check: for months it reported
+      # success while comparing nothing, because no Linux baselines existed and
+      # the missing-baseline path exited 0. A gate that passes when it cannot
+      # run is worse than no gate, since it also reports that it ran.
+      - name: Fail when Linux baselines are missing
         if: ${{ steps.check-baselines.outputs.found == 'false' && (github.event_name != 'workflow_dispatch' || inputs.update_visual_baselines != true) }}
         run: |
-          echo "::notice::No Linux visual baselines committed yet."
-          echo "::notice::Trigger this workflow manually with 'update_visual_baselines=true' to generate them."
+          echo "::error::No Linux visual baselines are committed, so nothing was compared."
+          echo "::error::Regenerate them: run this workflow manually with update_visual_baselines=true,"
+          echo "::error::download the visual-regression-linux-baselines artifact, and commit it."
+          exit 1
 
       - name: Run visual regression suite (update baselines)
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.update_visual_baselines == true }}
