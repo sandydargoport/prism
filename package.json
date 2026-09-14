@@ -104,7 +104,7 @@
     "next-pwa": "^5.6.0",
     "node-ical": "^0.27.1",
     "postgres": "^3.4.9",
-    "puppeteer-core": "^24.37.5",
+    "puppeteer-core": "^25.10.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.87.0",
