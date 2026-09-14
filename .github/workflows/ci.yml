@@ -355,9 +355,15 @@ jobs:
           echo "::error::download the visual-regression-linux-baselines artifact, and commit it."
           exit 1
 
+      # `--update-snapshots` alone means "changed": it runs the comparator and
+      # only rewrites a baseline whose diff exceeds maxDiffPixelRatio. With the
+      # ratio at 1% (20,736px of a 1920x1080 frame) a small but wrong region
+      # survives regeneration untouched, which is how the dev-overlay badge
+      # stayed in most baselines through a full re-capture. `=all` rewrites
+      # unconditionally, which is what a deliberate re-capture should mean.
       - name: Run visual regression suite (update baselines)
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.update_visual_baselines == true }}
-        run: npx playwright test e2e/visual-regression.spec.ts --update-snapshots --reporter=list
+        run: npx playwright test e2e/visual-regression.spec.ts --update-snapshots=all --reporter=list
 
       - name: Upload Playwright report on failure
         if: failure()
