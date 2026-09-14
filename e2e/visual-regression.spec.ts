@@ -387,13 +387,15 @@ test.describe('Visual regression', () => {
       await page.waitForSelector('.z-\\[10001\\]', { timeout: 5000 });
       await page.waitForTimeout(400);
 
-      // Masked like the other dashboard-route shots: the modal sits over the
-      // live dashboard, so an unmasked capture bakes in the current clock time
-      // and would fail on the next run a minute later.
-      await expect(page).toHaveScreenshot(`pin-modal-${theme}.png`, {
-        ...SCREENSHOT_OPTIONS,
-        mask: dynamicMasks(page),
-      });
+      // Shoot the modal PANEL, not the viewport. The modal sits over the live
+      // dashboard, so a full-page capture bakes in the current clock time and
+      // fails a minute later. Masking the dashboard does not help either:
+      // Playwright paints masks over the given rectangles regardless of z
+      // order, so the Photo widget's mask lands on top of the centred modal
+      // and hides half of it. `.z-[10001]` is the full-screen backdrop; its
+      // only child is the panel, which is the thing under test.
+      const panel = page.locator('.z-\\[10001\\] > div');
+      await expect(panel).toHaveScreenshot(`pin-modal-${theme}.png`, SCREENSHOT_OPTIONS);
     });
   }
 });
