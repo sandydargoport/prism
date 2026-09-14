@@ -113,7 +113,7 @@
     "redis": "^5.10.0",
     "sharp": "^0.35.4",
     "simple-keyboard": "^3.8.187",
-    "suncalc": "^1.9.0",
+    "suncalc": "^2.0.2",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "tsdav": "^2.3.3",
