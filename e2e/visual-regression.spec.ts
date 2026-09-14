@@ -43,7 +43,7 @@
 
 import { test, expect, Page } from '@playwright/test';
 import { execSync } from 'child_process';
-import { loginViaAPI } from './helpers/auth';
+import { loginViaAPI, verifySettingsPinViaAPI } from './helpers/auth';
 import { resetAll } from './helpers/reset';
 
 /**
@@ -106,8 +106,43 @@ async function setClientFlags(
  */
 const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
 
+/**
+ * Hide the Next.js dev overlay.
+ *
+ * The suite runs against `npm run dev` (see playwright.config.ts), so every
+ * page carries `<nextjs-portal>` — the dev indicator. It renders in the
+ * BOTTOM-LEFT corner, directly on top of the SideNav's avatar/login button,
+ * and it wins the hit test: `page.click('button[aria-label="Log in"]')` used
+ * to retry until the 30s test timeout with
+ *
+ *   <nextjs-portal> ... subtree intercepts pointer events
+ *
+ * It also painted the indicator into every committed baseline, where it is
+ * pure noise — it does not exist in a production build, which is what the
+ * baselines are supposed to represent.
+ *
+ * Hiding the host element removes it from both the screenshot and hit
+ * testing. Injected via addInitScript so it applies before first paint and
+ * survives client-side navigation.
+ */
+async function hideDevOverlay(page: Page) {
+  await page.addInitScript(() => {
+    const style = document.createElement('style');
+    style.textContent = 'nextjs-portal { display: none !important; }';
+    const attach = () => (document.head || document.documentElement).appendChild(style);
+    attach();
+    // The parser can replace <head> after this script runs; re-attach once the
+    // real document is in place so the rule survives.
+    document.addEventListener('DOMContentLoaded', attach, { once: true });
+  });
+}
+
 test.describe('Visual regression', () => {
   let parentName: string;
+
+  test.beforeEach(async ({ page }) => {
+    await hideDevOverlay(page);
+  });
 
   test.beforeAll(() => {
     if (HAS_TEST_DB) {
@@ -164,7 +199,7 @@ test.describe('Visual regression', () => {
     test(`settings - ${theme}`, async ({ page }) => {
       test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
       await setClientFlags(page, { theme });
-      await loginViaAPI(page, parentName);
+      await verifySettingsPinViaAPI(page, parentName);
       await page.goto('/settings');
       await page.waitForLoadState('networkidle');
       await page.waitForTimeout(800);
@@ -175,7 +210,7 @@ test.describe('Visual regression', () => {
     test(`settings - integrations section - ${theme}`, async ({ page }) => {
       test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
       await setClientFlags(page, { theme });
-      await loginViaAPI(page, parentName);
+      await verifySettingsPinViaAPI(page, parentName);
       await page.goto('/settings?section=integrations');
       await page.waitForLoadState('networkidle');
       // Wait for the /api/integrations/status fetch + /api/photo-sources
@@ -269,15 +304,22 @@ test.describe('Visual regression', () => {
   // ─── Settings sub-sections ──────────────────────────────────────────────
   // Settings is split into sections; each has its own layout. Capture the
   // ones most exposed to theme/contrast regressions.
-  const settingsSections = ['family', 'display', 'integrations'] as const;
+  //
+  // `integrations` is deliberately absent: it has its own test above with a
+  // longer settle (it waits on /api/integrations/status). Listing it here too
+  // would point a second test at the same `settings-integrations-*` baseline
+  // file, since snapshot paths are keyed on the name, not the test.
+  const settingsSections = ['family', 'display'] as const;
 
   for (const theme of ['light', 'dark'] as const) {
     for (const section of settingsSections) {
       test(`settings/${section} - ${theme}`, async ({ page }) => {
         test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
         await setClientFlags(page, { theme });
-        await loginViaAPI(page, parentName);
-        await page.goto(`/settings#${section}`);
+        await verifySettingsPinViaAPI(page, parentName);
+        // SettingsView selects the section from `?section=`, not the hash —
+        // `/settings#family` just renders the default section.
+        await page.goto(`/settings?section=${section}`);
         await page.waitForLoadState('networkidle');
         await page.waitForTimeout(800);
 
