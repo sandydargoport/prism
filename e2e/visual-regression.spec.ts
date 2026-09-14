@@ -124,16 +124,26 @@ const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
  * Hiding the host element removes it from both the screenshot and hit
  * testing. Injected via addInitScript so it applies before first paint and
  * survives client-side navigation.
+ *
+ * An init script runs on a document that has no `documentElement` yet, so
+ * there is nothing to append to on the first call — measured, not assumed.
+ * Hence: register the DOMContentLoaded hook FIRST, then try once eagerly.
+ * Reversing those two lines throws on the eager attach and the hook is never
+ * registered, which leaves the overlay in place.
  */
 async function hideDevOverlay(page: Page) {
   await page.addInitScript(() => {
-    const style = document.createElement('style');
-    style.textContent = 'nextjs-portal { display: none !important; }';
-    const attach = () => (document.head || document.documentElement).appendChild(style);
-    attach();
-    // The parser can replace <head> after this script runs; re-attach once the
-    // real document is in place so the rule survives.
+    const STYLE_ID = 'pw-hide-dev-overlay';
+    const attach = () => {
+      const root = document.head || document.documentElement;
+      if (!root || document.getElementById(STYLE_ID)) return;
+      const style = document.createElement('style');
+      style.id = STYLE_ID;
+      style.textContent = 'nextjs-portal { display: none !important; }';
+      root.appendChild(style);
+    };
     document.addEventListener('DOMContentLoaded', attach, { once: true });
+    attach();
   });
 }
 
