@@ -147,10 +147,30 @@ async function hideDevOverlay(page: Page) {
   });
 }
 
+/**
+ * The instant every screenshot is taken at, when CI has asked for one.
+ *
+ * The seeded fixtures are built relative to "now" (see `src/lib/db/seed.ts`),
+ * and the calendar draws itself around today, so a baseline captured on one
+ * date cannot match a run on the next: the day a week grid starts on moves, an
+ * agenda list starts from a different entry, and the "today" marker is in a
+ * different cell. That is not a regression in anything, and it took the whole
+ * calendar half of this suite red the first time it ran after midnight UTC.
+ *
+ * CI seeds with `PRISM_SEED_NOW` and passes the same value here, so the
+ * fixtures and the page agree on what day it is. Unset, nothing is pinned and
+ * a local run behaves as it always did.
+ */
+const FIXED_NOW = process.env.PRISM_SEED_NOW;
+
 test.describe('Visual regression', () => {
   let parentName: string;
 
   test.beforeEach(async ({ page }) => {
+    // setFixedTime, not clock.install: this freezes what the page reads from
+    // Date, and leaves setInterval alone. Prism polls on intervals throughout,
+    // and faking those would change what the suite is looking at.
+    if (FIXED_NOW) await page.clock.setFixedTime(new Date(FIXED_NOW));
     await hideDevOverlay(page);
   });
 
