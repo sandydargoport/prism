@@ -28,7 +28,25 @@ const db = drizzle(client, { schema });
 // ─── Date helpers ──────────────────────────────────────────────────────────
 // All date math goes through these so dates are always relative to "now".
 
-const NOW = new Date();
+/**
+ * "Now" for every seeded date.
+ *
+ * Normally the real clock: a seeded database should look like a house that is
+ * being used today. `PRISM_SEED_NOW` overrides it with a fixed instant, for the
+ * one caller that cannot live with relative dates: the visual regression suite
+ * compares screenshots against committed baselines, and a calendar anchored on
+ * the real date does not match an image captured on a different one. That check
+ * went red for every pull request the first time it ran after midnight UTC.
+ *
+ * The suite pins the browser clock to the same instant, so what the page thinks
+ * today is and what the fixtures were built around agree.
+ */
+const seedNowOverride = process.env.PRISM_SEED_NOW;
+const NOW = seedNowOverride ? new Date(seedNowOverride) : new Date();
+
+if (seedNowOverride && Number.isNaN(NOW.getTime())) {
+  throw new Error(`PRISM_SEED_NOW is not a valid date: ${seedNowOverride}`);
+}
 
 function daysFromNow(n: number): Date {
   const d = new Date(NOW);
