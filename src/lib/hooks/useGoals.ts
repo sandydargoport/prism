@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useVisibilityPolling } from './useVisibilityPolling';
+import { usePollingInterval } from './usePollingInterval';
+import { useCachedMountFetch } from './useCachedMountFetch';
 import { navCacheGet, navCacheSet } from '@/lib/utils/navCache';
 
 export interface Goal {
@@ -68,7 +70,10 @@ interface UseGoalsResult {
 
 export function useGoals(options: { refreshInterval?: number; enabled?: boolean } = {}): UseGoalsResult {
   const { refreshInterval = 2 * 60 * 1000, enabled = true } = options;
-  const cached = navCacheGet<GoalsResponse>('/api/goals');
+  // One refresh interval's worth of age is what this hook already tolerates,
+  // so a cached value that young is current by its own standard.
+  const maxAgeMs = usePollingInterval(refreshInterval);
+  const cached = navCacheGet<GoalsResponse>('/api/goals', maxAgeMs);
   const [goals, setGoals] = useState<Goal[]>(() => cached?.goals ?? []);
   const [progress, setProgress] = useState<Record<string, Record<string, ChildProgress>>>(() => cached?.progress ?? {});
   const [goalChildren, setGoalChildren] = useState<GoalChild[]>(() => cached?.children ?? []);
@@ -76,7 +81,7 @@ export function useGoals(options: { refreshInterval?: number; enabled?: boolean 
   const [error, setError] = useState<string | null>(null);
 
   const fetchGoals = useCallback(async () => {
-    if (!navCacheGet('/api/goals')) setLoading(true);
+    if (!navCacheGet('/api/goals', maxAgeMs)) setLoading(true);
     try {
       setError(null);
       const response = await fetch('/api/goals');
@@ -93,7 +98,7 @@ export function useGoals(options: { refreshInterval?: number; enabled?: boolean 
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [maxAgeMs]);
 
   const createGoal = useCallback(async (data: {
     name: string;
@@ -162,7 +167,20 @@ export function useGoals(options: { refreshInterval?: number; enabled?: boolean 
     await fetchGoals();
   }, [fetchGoals]);
 
-  useEffect(() => { if (enabled) fetchGoals(); }, [fetchGoals, enabled]);
+  const adoptGoals = useCallback((data: GoalsResponse) => {
+    setGoals(data.goals);
+    setProgress(data.progress);
+    setGoalChildren(data.children);
+    setLoading(false);
+  }, []);
+
+  useCachedMountFetch<GoalsResponse>({
+    key: '/api/goals',
+    enabled,
+    maxAgeMs,
+    fetch: fetchGoals,
+    adopt: adoptGoals,
+  });
 
   useVisibilityPolling(fetchGoals, enabled ? refreshInterval : 0);
 

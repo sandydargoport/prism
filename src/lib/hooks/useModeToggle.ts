@@ -35,6 +35,10 @@ export function useModeToggle(options: UseModeToggleOptions): UseModeToggleResul
     initialData: { enabled: false, enabledAt: null, enabledBy: null },
     label,
     refreshInterval,
+    // Away and Babysitter are set from elsewhere in the house, and each one
+    // decides what the display shows instead of the screensaver. Learning
+    // about it only when someone touches the screen defeats the point.
+    pollWhileIdle: true,
   });
 
   const toggle = useCallback(async (enabled: boolean) => {

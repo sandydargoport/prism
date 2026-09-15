@@ -10,6 +10,8 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { addDays, subDays, startOfDay, endOfDay } from 'date-fns';
 import type { CalendarEvent } from '@/types/calendar';
 import { useVisibilityPolling } from '@/lib/hooks/useVisibilityPolling';
+import { usePollingInterval } from '@/lib/hooks/usePollingInterval';
+import { useCachedMountFetch } from '@/lib/hooks/useCachedMountFetch';
 import { navCacheGet, navCacheSet } from '@/lib/utils/navCache';
 import { useLocalDateKey } from '@/lib/hooks/useLocalDateKey';
 
@@ -77,7 +79,10 @@ export function useCalendarEvents(
     // reason. Irrelevant when an explicit range was passed, but harmless.
   }, [daysToShow, rangeStartMs, rangeEndMs, limit, dateKey]);
 
-  const cached = navCacheGet<CalendarEvent[]>(cacheKey);
+  // One refresh interval's worth of age is what this hook already tolerates,
+  // so a cached value that young is current by its own standard.
+  const maxAgeMs = usePollingInterval(refreshInterval);
+  const cached = navCacheGet<CalendarEvent[]>(cacheKey, maxAgeMs);
   const [events, setEvents] = useState<CalendarEvent[]>(() => cached ?? []);
   const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState<string | null>(null);
@@ -87,7 +92,7 @@ export function useCalendarEvents(
    * Fetch events from the API
    */
   const fetchEvents = useCallback(async () => {
-    if (!navCacheGet(cacheKey)) setLoading(true);
+    if (!navCacheGet(cacheKey, maxAgeMs)) setLoading(true);
     try {
       setError(null);
 
@@ -148,7 +153,7 @@ export function useCalendarEvents(
     } finally {
       setLoading(false);
     }
-  }, [cacheKey]);
+  }, [cacheKey, maxAgeMs]);
 
   /**
    * Trigger calendar sync
@@ -182,10 +187,20 @@ export function useCalendarEvents(
     }
   }, [fetchEvents]);
 
-  // Initial fetch (skipped when disabled)
-  useEffect(() => {
-    if (enabled) fetchEvents();
-  }, [fetchEvents, enabled]);
+  const adoptEvents = useCallback((cachedEvents: CalendarEvent[]) => {
+    setEvents(cachedEvents);
+    setLoading(false);
+  }, []);
+
+  // Initial fetch (skipped when disabled, or when the window this hook asks
+  // for was already fetched within one refresh interval)
+  useCachedMountFetch<CalendarEvent[]>({
+    key: cacheKey,
+    enabled,
+    maxAgeMs,
+    fetch: fetchEvents,
+    adopt: adoptEvents,
+  });
 
   // Refetch whenever a calendar sync or add completes anywhere in the app
   // (Settings "Sync Now", adding an iCal subscription, the Calendar page's

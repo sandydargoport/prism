@@ -4,6 +4,9 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+### Changed
+- **Widgets no longer refetch on every screensaver cycle, and stop polling while the screensaver covers them.** Mounting a widget now reads the last value and the time it was fetched, and goes to the network only if that value is older than the widget's own refresh interval, so the copies of the widgets the screensaver draws come up with data instead of loading from cold every time the display goes idle. Polling pauses while the screensaver is up and does one catch-up refresh when the display is woken, rather than one per tick that was missed. The screensaver's own widgets keep polling, because they are the ones on screen. Away Mode and Babysitter Mode keep polling too, since either can be switched on from another device and decides what the display shows. Several live copies of the same endpoint now share one poll between them instead of each running its own timer. Measured on the demo instance: 6.5 minutes of screensaver went from 48 requests to 16, and the screensaver appearing went from 4 requests to 2, with no loading placeholders. ([#336](https://github.com/sandydargoport/prism/issues/336))
+
 ## [1.26.0] – 2026-09-12
 
 ### Added
