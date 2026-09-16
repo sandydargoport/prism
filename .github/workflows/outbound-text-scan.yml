@@ -26,6 +26,19 @@ on:
     types: [created, edited]
   release:
     types: [published, edited]
+  # The rest of the places text becomes public. A review comment is the natural
+  # place to paste a log excerpt, and Discussions are enabled on this repo, so
+  # leaving these out left the most tempting surfaces ungated.
+  pull_request_review:
+    types: [submitted, edited]
+  pull_request_review_comment:
+    types: [created, edited]
+  commit_comment:
+    types: [created]
+  discussion:
+    types: [created, edited]
+  discussion_comment:
+    types: [created, edited]
 
 permissions:
   contents: read
@@ -48,8 +61,8 @@ jobs:
 
       - name: Collect the submitted text
         env:
-          TITLE: ${{ github.event.pull_request.title || github.event.issue.title || github.event.release.name }}
-          BODY: ${{ github.event.pull_request.body || github.event.issue.body || github.event.comment.body || github.event.release.body }}
+          TITLE: ${{ github.event.pull_request.title || github.event.issue.title || github.event.discussion.title || github.event.release.name }}
+          BODY: ${{ github.event.pull_request.body || github.event.issue.body || github.event.comment.body || github.event.review.body || github.event.discussion.body || github.event.release.body }}
         run: |
           # Via the environment, never interpolated into the shell: the text is
           # attacker-controlled on a public repo.
@@ -68,6 +81,17 @@ jobs:
             exit 1
           fi
           python3 scripts/pii-hashes.py scan-text outbound.txt
+
+      - name: Scan against the built-in shape rules
+        env:
+          # Public log: report a position, never the value that matched.
+          PRISM_SCAN_REDACT: "1"
+        run: |
+          # The hashed denylist above only knows the 25 values it was given. The
+          # shape rules catch what nobody enrolled: an unfamiliar email address,
+          # a private IP, a postal code, a coordinate pair. They need no secret,
+          # so they are the half of the check that still works for everyone.
+          bash scripts/scan-text.sh outbound.txt
 
       - name: Shred the collected text
         if: always()

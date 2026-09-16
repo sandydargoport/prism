@@ -58,6 +58,32 @@ jobs:
       - name: Secret-shape scan
         run: bash scripts/scan-secrets.sh
 
+      # Images are the one published surface no scanner in this repo can read.
+      # Every text layer skips binaries outright, and docs/demos/ is rendered on
+      # the public docs site, so a single hand-taken screenshot of the real
+      # dashboard would publish names, events and photos past every control at
+      # once. The generated path (refresh-screenshots.yml, an ephemeral seeded
+      # database) is therefore the only way in, and this enforces that rather
+      # than trusting it.
+      - name: Screenshots may only arrive from the refresh workflow
+        if: github.event_name == 'pull_request' && github.head_ref != 'chore/refresh-screenshots'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE" 2>/dev/null || git fetch --no-tags origin
+          # --diff-filter=d: deletions are always safe, and refusing them would
+          # block the very PR that removes an unwanted image.
+          changed=$(git diff --name-only --diff-filter=d "$BASE" "$HEAD" -- docs/demos/ || true)
+          if [ -n "$changed" ]; then
+            echo "::error::This PR changes docs/demos/, which is published to the docs site and cannot be scanned for personal data."
+            printf '%s\n' "$changed" | sed 's/^/  /'
+            echo "Run the 'Refresh screenshots' workflow instead; it captures against a seeded database and opens its own PR."
+            exit 1
+          fi
+          echo "No docs/demos changes."
+
+
   commits:
     name: Commit messages + metadata
     runs-on: ubuntu-latest

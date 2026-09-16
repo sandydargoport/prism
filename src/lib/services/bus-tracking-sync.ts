@@ -177,7 +177,11 @@ export async function syncBusEmails(): Promise<SyncResult> {
       if (!parsed) {
         result.skipped++;
         result.skippedReasons.push(`Parse failed: "${subject}"`);
-        console.warn(`Bus sync: could not parse email: "${subject}"`);
+        // The subject line of a school-bus notification names a child and a
+        // school or stop. It stays in skippedReasons, which is returned to the
+        // family's own UI, but it does not go to the process log: bug.yml asks
+        // people to paste container logs into a public issue.
+        console.warn(`Bus sync: could not parse email (${date.toISOString()})`);
         continue;
       }
 
@@ -186,7 +190,7 @@ export async function syncBusEmails(): Promise<SyncResult> {
       if (!match) {
         result.skipped++;
         result.skippedReasons.push(`No route match: "${subject}" (student=${parsed.studentName}, hint=${parsed.directionHint})`);
-        console.warn(`Bus sync: no route match for "${subject}" (student=${parsed.studentName}, hint=${parsed.directionHint})`);
+        console.warn(`Bus sync: no route match (hint=${parsed.directionHint})`);
         continue;
       }
 
@@ -201,19 +205,19 @@ export async function syncBusEmails(): Promise<SyncResult> {
             await db.update(busRoutes).set({
               checkpoints: route.checkpoints,
             }).where(eq(busRoutes.id, route.id));
-            console.log(`Bus sync: auto-added checkpoint "${match.checkpointName}" to route ${route.id}`);
+            console.log(`Bus sync: auto-added checkpoint to route ${route.id}`);
           } else if (parsed.type === 'arrived_at_stop' && !route.stopName) {
             route.stopName = match.checkpointName;
             await db.update(busRoutes).set({
               stopName: match.checkpointName,
             }).where(eq(busRoutes.id, route.id));
-            console.log(`Bus sync: auto-set stop name "${match.checkpointName}" for route ${route.id}`);
+            console.log(`Bus sync: auto-set stop name for route ${route.id}`);
           } else if (parsed.type === 'arrived_at_school' && !route.schoolName) {
             route.schoolName = match.checkpointName;
             await db.update(busRoutes).set({
               schoolName: match.checkpointName,
             }).where(eq(busRoutes.id, route.id));
-            console.log(`Bus sync: auto-set school name "${match.checkpointName}" for route ${route.id}`);
+            console.log(`Bus sync: auto-set school name for route ${route.id}`);
           }
         }
       }

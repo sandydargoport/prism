@@ -67,7 +67,11 @@ body:
     id: logs
     attributes:
       label: Relevant logs (optional)
-      description: "Output from `docker logs --tail 200 prism-app` around the time of the bug."
+      description: "Output from `docker logs --tail 200 prism-app` around the time of the bug.
+        This issue is public, so please skim it first and remove anything personal:
+        names, addresses, email subjects, calendar or photo titles, and your local
+        network addresses. Replacing them with [redacted] is fine, we only need the
+        error."
       render: shell
 
   - type: textarea

@@ -25,7 +25,9 @@ async function triggerSyncIfNeeded() {
   try {
     const result = await syncBusEmails();
     if (result.skippedReasons.length > 0) {
-      console.warn('Bus sync skipped emails:', result.skippedReasons);
+      // Count only. Each reason quotes an email subject, which names a child and
+      // a school; the reasons themselves still reach the family's own UI.
+      console.warn(`Bus sync: ${result.skippedReasons.length} email(s) skipped`);
     }
   } finally {
     // Release lock immediately so next poll can sync

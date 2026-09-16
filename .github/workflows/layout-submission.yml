@@ -205,7 +205,15 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const layout = JSON.parse(fs.readFileSync('/tmp/submission.json', 'utf-8'));
+            const { projectCommunityLayout } = require('./src/lib/community/validateLayout');
+            const submitted = JSON.parse(fs.readFileSync('/tmp/submission.json', 'utf-8'));
+            // Project before anything else touches it. validateCommunityLayout
+            // checks the fields it knows about but does not reject unknown ones,
+            // and what used to be committed here was the parsed submission, so
+            // any extra property rode straight into a public file. Copying field
+            // by field is what makes an unknown key impossible rather than merely
+            // unexpected. theme-submission.yml settled on the same approach.
+            const layout = projectCommunityLayout(submitted);
             const index = JSON.parse(fs.readFileSync('./community/layouts/index.json', 'utf-8'));
 
             // Generate ID from name. Two guards, because this id becomes both a

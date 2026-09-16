@@ -147,3 +147,15 @@ lighthouse-*
 
 # Python bytecode from scripts/
 __pycache__/
+
+# The FILLED PII denylist. Its template (scripts/prism-pii-denylist.example.txt)
+# is committed and generic; the filled copy is a concentrated index of a real
+# household and lives at ~/.config/prism-pii-denylist.txt. Committing it would
+# trip Layer 2 on every line, but the cost of that mistake is high enough to
+# name the filename here too.
+prism-pii-denylist.txt
+
+# UI-audit output. board.html base64-inlines every screenshot into one
+# self-contained file, so a local run against a real instance would otherwise
+# leave a committable artifact no text scanner can read.
+e2e/ui-audit-artifacts/

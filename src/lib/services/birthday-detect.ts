@@ -252,7 +252,9 @@ export async function detectBirthdaysFromEvents(): Promise<DetectResult> {
       if (outcome === 'inserted') result.added++;
       else if (outcome === 'updated') result.updated++;
     } catch (err) {
-      console.error('[BirthdayDetect] upsert failed:', parsed.name, err);
+      // The name stays in result.errors, which the user sees in their own app.
+      // It does not go to the process log, for the same reason as bus sync.
+      console.error('[BirthdayDetect] upsert failed:', err);
       result.errors.push(`Failed to upsert ${parsed.name}: ${err}`);
     }
   }

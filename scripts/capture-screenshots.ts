@@ -8,13 +8,16 @@
  *   # ... wait ~90s for first boot ...
  *   npm run screenshots:capture
  *
- * Or point it at any already-running, current-code instance that has the demo
- * seed (for example the demo container on :8091):
- *
- *   PRISM_URL=http://localhost:8091 npm run screenshots:capture
- *
  * IMPORTANT: capture only against an instance running CURRENT master, or the
  * shots will show stale UI.
+ *
+ * This refuses to run without E2E_HAS_TEST_DB=1, the same gate every Playwright
+ * spec carries. Everything it writes lands in docs/demos/, which is tracked and
+ * published to the docs site, and no scanner in this repo can read a pixel. So
+ * the only defence against a shot of the real family dashboard being committed
+ * is that the script cannot be pointed at a real instance in the first place.
+ * The workflow that refreshes these (refresh-screenshots.yml) sets the flag
+ * against an ephemeral seeded database.
  *
  * Photos: the seed does not create photos (they need image bytes), so before
  * capturing this script auto-seeds a handful of Bing daily wallpapers into the
@@ -33,6 +36,23 @@
 import { chromium, Browser, BrowserContext, Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
+
+// Refuse to run against anything that is not a declared test database. This is
+// the same flag e2e/*.spec.ts gate on. It is a deliberate choice rather than a
+// URL allowlist: the person running this knows whether the target is seeded,
+// and a hostname cannot be trusted to say so.
+if (process.env.E2E_HAS_TEST_DB !== '1') {
+  console.error(
+    'capture-screenshots: refusing to run without E2E_HAS_TEST_DB=1.\n' +
+    '\n' +
+    'This writes into docs/demos/, which is committed and published, and no\n' +
+    'scanner here can read an image. Point it at the screenshots stack:\n' +
+    '\n' +
+    '  docker-compose -f docker-compose.screenshots.yml up -d\n' +
+    '  E2E_HAS_TEST_DB=1 npm run screenshots:capture\n'
+  );
+  process.exit(1);
+}
 
 const BASE_URL = process.env.PRISM_URL || 'http://localhost:3010';
 const PIN = '1234';

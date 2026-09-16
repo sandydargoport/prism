@@ -65,3 +65,13 @@ Desktop.ini
 
 *.zip
 *.tar.gz
+
+# Live instance data. docker-compose mounts ./data and ./backups from inside
+# this checkout, so a local `docker compose build` would otherwise copy the
+# family photo library and gzipped database dumps into a builder layer. CI
+# builds from a clean checkout and never sees these, which is precisely why
+# the gap went unnoticed locally.
+data/
+backups/
+*.sql
+*.sql.gz

@@ -29,8 +29,20 @@ set -uo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SCANNER="$REPO_DIR/scripts/scan-text.sh"
 
+# This hook depends on python3 for both JSON parsing and value extraction. If it
+# is missing, the hook cannot inspect anything, and silently allowing the command
+# would mean the one control between an agent and a public repo had quietly
+# stopped existing. Refuse instead.
+command -v python3 >/dev/null 2>&1 || {
+  echo "BLOCKED: guard-outbound.sh needs python3 to inspect outbound text, and it is not on PATH. Install python3 or publish this text by hand after running scripts/scan-text.sh on it." >&2
+  exit 2
+}
+
 payload=$(cat)
 cmd=$(printf '%s' "$payload" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("tool_input",{}).get("command",""))' 2>/dev/null || echo "")
+# An empty command means the payload was not the shape expected. That is a
+# non-publishing call in practice (the matcher is every Bash command), so
+# allowing it is correct; the python3 check above covers the failure that matters.
 [ -n "$cmd" ] || exit 0
 
 # Only guard commands that actually publish to GitHub.
@@ -69,6 +81,15 @@ if grep -qiE 'generated with \[?claude code|co-authored-by:.*claude|🤖 generat
 fi
 
 # --- PII ---------------------------------------------------------------------
+# scan-text.sh warns and still exits 0 when it cannot find the denylist, which is
+# right for a local convenience run and wrong here: this is the last check before
+# text reaches a public repo. Treat "Layer 1 did not run" as a refusal.
+DENYLIST="${PRISM_PII_DENYLIST:-$HOME/.config/prism-pii-denylist.txt}"
+if [ ! -f "$DENYLIST" ]; then
+  echo "BLOCKED: the PII denylist is missing ($DENYLIST), so outbound text can only be checked against generic patterns, not against the values that actually matter. Restore it before publishing." >&2
+  exit 2
+fi
+
 if ! out=$(bash "$SCANNER" "$tmp" 2>&1); then
   echo "BLOCKED: this text would publish maintainer PII to GitHub." >&2
   echo "$out" >&2

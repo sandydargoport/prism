@@ -60,10 +60,16 @@ fail=0
 # security-audit prose. Private IPs there are generic examples, not PII.
 IP_EXCLUDE='(/__tests__/|\.test\.|\.spec\.|^e2e/|src/app/api/recipes/import-url/route\.ts$|src/lib/integrations/(caldav|carddav|immich)\.ts$|src/lib/utils/safeFetch\.ts$|^docs/(audit-|code-review-modalities))'
 
-# Emails that are NOT maintainer PII: the public commit identity, GitHub
-# noreply, RFC2606 example domains, vendor/system addresses the integration code
-# references, and obvious placeholder local-parts (you@, your-apple-id@, etc.).
-EMAIL_ALLOW='(@example\.(com|org|net|edu)|@users\.noreply\.github\.com|sandydargoport@gmail\.com|contacts@group\.v\.calendar\.google\.com|@myfirstview\.com|noreply@|@sentry\.|(your-[a-z-]+|you|me|user|name|email|firstname|lastname|example|test)@)'
+# Emails that are NOT maintainer PII: GitHub noreply identities, RFC2606 example
+# domains, vendor/system addresses the integration code references, and obvious
+# placeholder local-parts (you@, your-apple-id@, etc.).
+#
+# The maintainer's personal address is deliberately NOT listed. It used to be,
+# as "the public commit identity", but commits are authored as
+# <handle>@users.noreply.github.com, so the entry bought nothing and put a real
+# address in a public file. Same reasoning as the note below about domains: a
+# scanner must not become the thing it scans for.
+EMAIL_ALLOW='(@example\.(com|org|net|edu)|@users\.noreply\.github\.com|contacts@group\.v\.calendar\.google\.com|@myfirstview\.com|noreply@|@sentry\.|(your-[a-z-]+|you|me|user|name|email|firstname|lastname|example|test)@)'
 
 builtin=""
 

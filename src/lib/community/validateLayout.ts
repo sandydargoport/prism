@@ -141,6 +141,60 @@ function normalizeWidgets(widgets: CommunityWidget[]): string {
  * @param options - Validation options (community submission mode, existing layouts for duplicate check)
  * @returns ValidationResult with valid flag, errors, and warnings
  */
+/**
+ * Copy a submission into the shape the repository stores, field by field.
+ *
+ * validateCommunityLayout checks types, geometry and content but does not
+ * reject unknown keys, and layout-submission.yml used to commit the parsed
+ * submission itself. So any extra property a submitter included, at the root or
+ * on a widget, was written verbatim into a public file and served to every
+ * instance that browses the gallery.
+ *
+ * Projecting instead of validating-then-trusting is what makes that structural:
+ * a key this function does not name has no path into the repository, whatever
+ * it contains and whoever thought of it. validateTheme.ts settled on the same
+ * approach for the same reason; this is the layout half of it.
+ */
+export function projectCommunityLayout(
+  data: unknown,
+  overrides: { author?: string } = {},
+): CommunityLayoutData {
+  const obj = data as Record<string, unknown>;
+
+  const widgets: CommunityWidget[] = (Array.isArray(obj.widgets) ? obj.widgets : []).map((raw) => {
+    const w = raw as Record<string, unknown>;
+    const widget: CommunityWidget = {
+      i: w.i as string,
+      x: w.x as number,
+      y: w.y as number,
+      w: w.w as number,
+      h: w.h as number,
+    };
+    // Optional, and carried only when supplied, so a layout that says nothing
+    // about a widget's appearance stores nothing rather than being frozen
+    // against today's defaults.
+    if (typeof w.visible === 'boolean') widget.visible = w.visible;
+    if (typeof w.backgroundColor === 'string') widget.backgroundColor = w.backgroundColor;
+    if (typeof w.backgroundOpacity === 'number') widget.backgroundOpacity = w.backgroundOpacity;
+    return widget;
+  });
+
+  return {
+    type: 'prism-layout',
+    version: 1,
+    mode: obj.mode as 'dashboard' | 'screensaver',
+    name: String(obj.name ?? ''),
+    description: String(obj.description ?? ''),
+    author: String(overrides.author ?? obj.author ?? ''),
+    tags: Array.isArray(obj.tags) ? obj.tags.filter((t): t is string => typeof t === 'string') : [],
+    screenSizes: Array.isArray(obj.screenSizes)
+      ? obj.screenSizes.filter((t): t is string => typeof t === 'string')
+      : [],
+    orientation: obj.orientation as 'landscape' | 'portrait',
+    widgets,
+  };
+}
+
 export function validateCommunityLayout(
   data: unknown,
   options: ValidationOptions = {},
