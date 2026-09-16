@@ -9,8 +9,11 @@
  * cleanup on unmount, and disabled behavior.
  */
 
-import { renderHook } from '@testing-library/react';
+import { createElement, type ReactNode } from 'react';
+import { renderHook, act } from '@testing-library/react';
 import { useVisibilityPolling } from '../useVisibilityPolling';
+import { setDisplayIdle } from '../useDisplayIdle';
+import { PollingScopeContext } from '../pollingScope';
 
 // Helper to simulate visibilitychange
 function setDocumentHidden(hidden: boolean) {
@@ -34,6 +37,7 @@ describe('useVisibilityPolling', () => {
 
   afterEach(() => {
     jest.useRealTimers();
+    act(() => setDisplayIdle(false));
   });
 
   it('calls callback at the specified interval', () => {
@@ -138,5 +142,90 @@ describe('useVisibilityPolling', () => {
     expect(addCall).toBeTruthy();
 
     addSpy.mockRestore();
+  });
+});
+
+describe('useVisibilityPolling while the display is idle', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    Object.defineProperty(document, 'hidden', {
+      value: false,
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    act(() => setDisplayIdle(false));
+  });
+
+  const inScreensaver = ({ children }: { children: ReactNode }) =>
+    createElement(PollingScopeContext.Provider, { value: 'screensaver' as const }, children);
+
+  it('pauses when the screensaver comes up', () => {
+    const callback = jest.fn();
+    renderHook(() => useVisibilityPolling(callback, 1000));
+
+    jest.advanceTimersByTime(2000);
+    expect(callback).toHaveBeenCalledTimes(2);
+
+    act(() => setDisplayIdle(true));
+
+    jest.advanceTimersByTime(10_000);
+    expect(callback).toHaveBeenCalledTimes(2);
+  });
+
+  it('refreshes exactly once on wake, not once per missed tick', () => {
+    const callback = jest.fn();
+    renderHook(() => useVisibilityPolling(callback, 1000));
+
+    act(() => setDisplayIdle(true));
+    // Long enough to have missed sixty ticks.
+    jest.advanceTimersByTime(60_000);
+    callback.mockClear();
+
+    act(() => setDisplayIdle(false));
+    expect(callback).toHaveBeenCalledTimes(1);
+
+    jest.advanceTimersByTime(1000);
+    expect(callback).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the screensaver\'s own widgets polling', () => {
+    const callback = jest.fn();
+    renderHook(() => useVisibilityPolling(callback, 1000), { wrapper: inScreensaver });
+
+    act(() => setDisplayIdle(true));
+
+    jest.advanceTimersByTime(3000);
+    expect(callback).toHaveBeenCalledTimes(3);
+  });
+
+  it('still pauses screensaver widgets when the tab itself is hidden', () => {
+    const callback = jest.fn();
+    renderHook(() => useVisibilityPolling(callback, 1000), { wrapper: inScreensaver });
+
+    setDocumentHidden(true);
+    callback.mockClear();
+
+    jest.advanceTimersByTime(5000);
+    expect(callback).not.toHaveBeenCalled();
+  });
+
+  it('keeps polling for a caller that opted out of the idle pause', () => {
+    const callback = jest.fn();
+    renderHook(() => useVisibilityPolling(callback, 1000, { pollWhileIdle: true }));
+
+    act(() => setDisplayIdle(true));
+
+    jest.advanceTimersByTime(3000);
+    expect(callback).toHaveBeenCalledTimes(3);
+  });
+
+  it('does not fire a catch-up on mount', () => {
+    const callback = jest.fn();
+    renderHook(() => useVisibilityPolling(callback, 1000));
+    expect(callback).not.toHaveBeenCalled();
   });
 });

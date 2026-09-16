@@ -45,11 +45,10 @@ REPO_FILES=$(git ls-files | grep -vE '^(scripts/scan-(pii|examples|hostnames|sec
 #
 # Layer 2 is different, and must NOT skip them. The denylist is a list of fixed
 # strings that live outside the repo, so a public file can be checked against it
-# without the file needing to contain one. Excluding these from Layer 2 as well
-# is what let PR #224 write a real household name into this script's own doc
-# comments and ship it: the file skipped its own scan, so CI could not see it,
-# and 12 forks synced that version before #225 removed it. Two of those forks
-# still show it today.
+# without the file needing to contain one. A file excluded from its own scan is
+# a blind spot, and this blind spot has been hit before: a scanner's own doc
+# comments are exactly where an example value gets written while explaining
+# what the scanner catches. Layer 2 therefore covers them.
 SELF_EXCLUDED=$(git ls-files | grep -E '^(scripts/scan-(pii|examples|hostnames|secrets)\.sh|scripts/prism-pii-denylist\.example\.txt|docs/code-review-modalities\.md)$' || true)
 DENYLIST_FILES=$(printf '%s\n%s\n' "$REPO_FILES" "$SELF_EXCLUDED" | grep -v '^$' | sort -u)
 
@@ -124,7 +123,14 @@ if [ -s "$tmpfile" ]; then
   m=$(printf '%s\n' "$DENYLIST_FILES" | xargs -d '\n' grep -iwn -H -F -I -f "$tmpfile" 2>/dev/null || true)
   if [ -n "$m" ]; then
     echo "[scan-pii] DENYLIST MATCHES:"
-    printf '%s\n' "$m" | sed 's/^/  /'
+    # In CI the log is public. Printing the grep output would republish the very
+    # value the denylist exists to keep out of public text, so report location
+    # only and let the maintainer re-run locally for the detail.
+    if [ -n "${CI:-}" ]; then
+      printf '%s\n' "$m" | cut -d: -f1,2 | sed 's/^/  /;s/$/  (value withheld: run scan-pii.sh locally)/'
+    else
+      printf '%s\n' "$m" | sed 's/^/  /'
+    fi
     echo "[scan-pii] Anonymize the offending values before pushing."
     fail=1
   fi
