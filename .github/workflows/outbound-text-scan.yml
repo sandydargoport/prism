@@ -61,8 +61,11 @@ jobs:
           PRISM_PII_SALT: ${{ secrets.PRISM_PII_SALT }}
         run: |
           if [ -z "$PRISM_PII_SALT" ]; then
-            echo "::warning::PRISM_PII_SALT is not set - outbound text was not scanned."
-            exit 0
+            # Fail closed: a warning that passes means a rotated or deleted
+            # secret silently stops this check from checking anything, while
+            # it still reports green. Fork PRs are already excluded above.
+            echo "::error::PRISM_PII_SALT is not set - outbound text was not scanned."
+            exit 1
           fi
           python3 scripts/pii-hashes.py scan-text outbound.txt
 

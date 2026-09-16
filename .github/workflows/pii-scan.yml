@@ -29,6 +29,10 @@ jobs:
     name: PII / secret scan
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # A fork PR receives no secrets, so Layer 2 could not run and now fails
+    # closed. Skip honestly rather than report a green check that verified
+    # only half of what it claims.
+    if: github.event.pull_request.head.repo.fork != true
     steps:
       - uses: actions/checkout@v7
       - name: Hashed denylist (Layer 2, no plaintext anywhere)
@@ -36,8 +40,13 @@ jobs:
           PRISM_PII_SALT: ${{ secrets.PRISM_PII_SALT }}
         run: |
           if [ -z "$PRISM_PII_SALT" ]; then
-            echo "::warning::PRISM_PII_SALT is not set - Layer 2 did not run."
-            exit 0
+            # Fail closed. A missing salt used to warn and pass, so rotating,
+            # renaming or deleting the secret silently turned Layer 2 into a
+            # no-op while this check kept reporting green. A gate that cannot
+            # run has not passed. Fork PRs never receive secrets, so they are
+            # excluded at the job level rather than papered over here.
+            echo "::error::PRISM_PII_SALT is not set - the denylist layer could not run."
+            exit 1
           fi
           python3 scripts/pii-hashes.py scan
 
@@ -48,3 +57,46 @@ jobs:
         run: bash scripts/scan-hostnames.sh
       - name: Secret-shape scan
         run: bash scripts/scan-secrets.sh
+
+  commits:
+    name: Commit messages + metadata
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Same reason as above: this job runs the denylist layer too.
+    if: github.event.pull_request.head.repo.fork != true
+    steps:
+      # The commits being scanned have to be present, and the default
+      # fetch-depth of 1 leaves exactly one of them.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Work out what is new
+        id: range
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          if [ -n "$BASE" ]; then
+            echo "range=$BASE..$HEAD" >> "$GITHUB_OUTPUT"
+          elif [ -n "$BEFORE" ] && ! echo "$BEFORE" | grep -qE '^0{40}$'; then
+            echo "range=$BEFORE..$AFTER" >> "$GITHUB_OUTPUT"
+          else
+            # A brand new branch has no "before". Scan what it adds on top of
+            # the default branch rather than every commit that ever existed.
+            echo "range=origin/${{ github.event.repository.default_branch }}..$AFTER" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Scan commit messages, authors and committers
+        env:
+          PRISM_PII_SALT: ${{ secrets.PRISM_PII_SALT }}
+          # This log is public. Report where a match is, never what it is.
+          PRISM_SCAN_REDACT: "1"
+        run: |
+          if [ -z "$PRISM_PII_SALT" ]; then
+            echo "::error::PRISM_PII_SALT is not set - the denylist layer could not run."
+            exit 1
+          fi
+          bash scripts/scan-commits.sh "${{ steps.range.outputs.range }}"

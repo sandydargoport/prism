@@ -29,6 +29,23 @@
 # ============================================================================
 set -uo pipefail
 
+# Redacted mode: report WHERE a match is, never WHAT it is.
+#
+# The layers below print the matching line so a person fixing a draft can see
+# what tripped it. That is right on a terminal and wrong in CI, where the log
+# is public and printing the line would republish the very value being caught.
+# Set PRISM_SCAN_REDACT=1 to reduce every report to line numbers.
+REDACT="${PRISM_SCAN_REDACT:-0}"
+
+# grep -n prints LINENO:content. Keep the number, drop the content.
+report() {
+  if [ "$REDACT" = "1" ]; then
+    cut -d: -f1 | sed 's/^/    line /;s/$/  (content withheld)/'
+  else
+    sed 's/^/    /'
+  fi
+}
+
 INPUT="${1:-/dev/stdin}"
 [ -r "$INPUT" ] || { echo "[scan-text] cannot read: $INPUT" >&2; exit 2; }
 TEXT=$(cat "$INPUT")
@@ -55,7 +72,7 @@ if [ -f "$DENYLIST" ]; then
     fi
     if [ -n "$hit" ]; then
       echo "[scan-text] DENYLIST MATCH: entry #$n (value withheld)"
-      sed 's/^/    line /' <<<"$hit"
+      report <<<"$hit"
       fail=1
     fi
   done < "$DENYLIST"
@@ -68,7 +85,7 @@ check() {
   local label="$1" pattern="$2"
   if grep -qEi -- "$pattern" <<<"$TEXT"; then
     echo "[scan-text] $label:"
-    grep -nEi -- "$pattern" <<<"$TEXT" | head -3 | sed 's/^/    /'
+    grep -nEi -- "$pattern" <<<"$TEXT" | head -3 | report
     fail=1
   fi
 }
@@ -76,11 +93,22 @@ check() {
 # Private / LAN / Tailscale addresses.
 check "private IP" '\b(10\.[0-9]{1,3}|192\.168|172\.(1[6-9]|2[0-9]|3[01])|100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7]))\.[0-9]{1,3}(\.[0-9]{1,3})?\b'
 # Real-looking emails. grep -E has no lookahead, so match broadly then drop
-# the addresses that are safe by definition (RFC2606 examples, GH noreply).
+# the addresses that are safe by definition: RFC2606 examples, GitHub noreply
+# identities, and GitHub's own support/noreply addresses, which appear in the
+# Signed-off-by trailer of every dependabot commit. GitHub does not issue
+# personal @github.com mailboxes, so naming those two exactly costs nothing.
+# A domain containing consecutive dots is dropped too: that is not a valid
+# address, and it is how a dependency compare URL reads to this pattern. Those
+# URLs end in <name> at <old-version> ... <name> at <new-version>, which has
+# the shape of a local part, an at sign and a dotted "domain". Without this
+# every dependabot commit trips the scan, and a gate that cries wolf is one
+# people learn to click past. (Spelled out in words on purpose: writing the
+# literal here makes this file trip the scanners, which is its own small
+# lesson about examples.)
 if grep -oEi -- '\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b' <<<"$TEXT" \
-     | grep -viE '@(example\.(com|org|net)|.*users\.noreply\.github\.com)$' | grep -q .; then
+     | grep -viE '@(example\.(com|org|net)|.*users\.noreply\.github\.com)$|^(support|noreply)@github\.com$|\.\.' | grep -q .; then
   echo "[scan-text] email address:"
-  grep -nEi -- '\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b' <<<"$TEXT" | head -3 | sed 's/^/    /'
+  grep -nEi -- '\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b' <<<"$TEXT" | head -3 | report
   fail=1
 fi
 # US ZIP+state pairs, the shape that leaked.
