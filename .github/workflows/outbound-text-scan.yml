@@ -52,10 +52,12 @@ jobs:
     name: Outbound text scan
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    # A fork PR never receives secrets, so the salt would be empty and every run
-    # would pass vacuously. Skip honestly rather than report a green check that
-    # verified nothing.
-    if: github.event.pull_request.head.repo.fork != true
+    # This used to skip fork PRs entirely, because the job ran only the hashed
+    # denylist and a fork gets no secret, so the run would have passed
+    # vacuously. That reasoning stopped holding once the shape rules were added:
+    # those need no secret, and a fork PR's body is text that becomes just as
+    # public as anyone else's. The fork condition now sits on the denylist step
+    # alone.
     steps:
       - uses: actions/checkout@v7
 
@@ -70,6 +72,7 @@ jobs:
           echo "Collected $(wc -c < outbound.txt) bytes."
 
       - name: Scan against the hashed denylist
+        if: github.event.pull_request.head.repo.fork != true
         env:
           PRISM_PII_SALT: ${{ secrets.PRISM_PII_SALT }}
         run: |

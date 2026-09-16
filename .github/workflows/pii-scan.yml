@@ -29,10 +29,12 @@ jobs:
     name: PII / secret scan
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    # A fork PR receives no secrets, so Layer 2 could not run and now fails
-    # closed. Skip honestly rather than report a green check that verified
-    # only half of what it claims.
-    if: github.event.pull_request.head.repo.fork != true
+    # NOT skipped on fork PRs. Only ONE step here needs a secret; the pattern
+    # rules, the hostname heuristic, the secret-shape scan and the screenshot
+    # guard are all zero-config. Skipping the whole job on a fork turned "Layer 2
+    # cannot run" into "nothing runs at all", on exactly the PRs written by
+    # people outside the household. The fork condition belongs on the step that
+    # actually depends on the secret, which is where it now sits.
     steps:
       # Full history: the screenshot-provenance step below diffs against the PR
       # base, and the default depth of 1 does not contain it. With a shallow
@@ -41,7 +43,11 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+      # The only step that needs the salt. A fork PR never receives secrets, so
+      # it is skipped there rather than failing closed on a contributor who
+      # could never have satisfied it. Everything below still runs.
       - name: Hashed denylist (Layer 2, no plaintext anywhere)
+        if: github.event.pull_request.head.repo.fork != true
         env:
           PRISM_PII_SALT: ${{ secrets.PRISM_PII_SALT }}
         run: |
@@ -100,8 +106,9 @@ jobs:
     name: Commit messages + metadata
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    # Same reason as above: this job runs the denylist layer too.
-    if: github.event.pull_request.head.repo.fork != true
+    # Also not skipped on forks: scan-commits.sh runs the shape rules with no
+    # secret at all, and a contributor's commit message is precisely the text
+    # worth checking. Only the denylist half needs the salt.
     steps:
       # The commits being scanned have to be present, and the default
       # fetch-depth of 1 leaves exactly one of them.
@@ -133,7 +140,10 @@ jobs:
           # This log is public. Report where a match is, never what it is.
           PRISM_SCAN_REDACT: "1"
         run: |
-          if [ -z "$PRISM_PII_SALT" ]; then
+          # On a fork PR the salt is legitimately absent, and scan-commits.sh
+          # runs the shape rules regardless. Anywhere else, a missing salt means
+          # the denylist layer silently stopped working, which is a failure.
+          if [ -z "$PRISM_PII_SALT" ] && [ "${{ github.event.pull_request.head.repo.fork }}" != "true" ]; then
             echo "::error::PRISM_PII_SALT is not set - the denylist layer could not run."
             exit 1
           fi
