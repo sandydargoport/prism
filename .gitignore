@@ -144,3 +144,6 @@ transcript*.json
 lighthouse-*
 /public/twemoji/
 /public/maplibre/
+
+# Python bytecode from scripts/
+__pycache__/

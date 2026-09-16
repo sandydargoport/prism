@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useVisibilityPolling } from './useVisibilityPolling';
+import { usePollingInterval } from './usePollingInterval';
+import { useCachedMountFetch } from './useCachedMountFetch';
 import { navCacheGet, navCacheSet } from '@/lib/utils/navCache';
 import type { WishItem } from '@/types';
 
@@ -40,13 +42,16 @@ export function useWishItems(
     return `/api/wish-items?${params.toString()}`;
   }, [memberId, viewerId]);
 
-  const cached = navCacheGet<WishItem[]>(cacheKey);
+  // One refresh interval's worth of age is what this hook already tolerates,
+  // so a cached value that young is current by its own standard.
+  const maxAgeMs = usePollingInterval(refreshInterval);
+  const cached = navCacheGet<WishItem[]>(cacheKey, maxAgeMs);
   const [items, setItems] = useState<WishItem[]>(() => cached ?? []);
   const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState<string | null>(null);
 
   const fetchItems = useCallback(async () => {
-    if (!navCacheGet(cacheKey)) setLoading(true);
+    if (!navCacheGet(cacheKey, maxAgeMs)) setLoading(true);
     try {
       setError(null);
       const params = new URLSearchParams();
@@ -70,7 +75,7 @@ export function useWishItems(
     } finally {
       setLoading(false);
     }
-  }, [memberId, viewerId, cacheKey]);
+  }, [memberId, viewerId, cacheKey, maxAgeMs]);
 
   const addItem = useCallback(async (data: {
     memberId: string;
@@ -182,9 +187,17 @@ export function useWishItems(
     }
   }, [fetchItems]);
 
-  useEffect(() => {
-    fetchItems();
-  }, [fetchItems]);
+  const adoptItems = useCallback((cachedItems: WishItem[]) => {
+    setItems(cachedItems);
+    setLoading(false);
+  }, []);
+
+  useCachedMountFetch<WishItem[]>({
+    key: cacheKey,
+    maxAgeMs,
+    fetch: fetchItems,
+    adopt: adoptItems,
+  });
 
   useVisibilityPolling(fetchItems, refreshInterval);
 

@@ -3,14 +3,32 @@
  *
  * Keys are API URLs. On navigation away and back, cached data is returned
  * immediately as initial state so pages render without a loading skeleton.
- * The fetch still runs in the background and updates state when it resolves.
  *
- * TTL is intentionally short (60s) — just long enough to survive a typical
- * subpage visit and return, while still showing fresh data on longer sessions.
+ * Every entry carries the time it was stored, and the reader says how old a
+ * value it is willing to accept. Two readers want different things from the
+ * same entry:
+ *
+ * - *Seed this render.* Default, 60s — long enough to survive a subpage visit
+ *   and return, short enough that a longer session still shows fresh data.
+ * - *Decide whether to fetch at all.* A polling hook passes its own refresh
+ *   interval, because a value younger than one interval is exactly as fresh as
+ *   what that hook would be showing had it never unmounted. That is what makes
+ *   a remount stop being a refetch.
+ *
+ * A stale read therefore does not delete the entry: it is only stale for that
+ * reader. Entries leave on the size cap, or once past MAX_AGE_MS, whichever
+ * comes first.
  */
 
 const store = new Map<string, { data: unknown; ts: number }>();
 const TTL_MS = 60_000;
+
+/**
+ * Oldest an entry can be and still be served to anyone. Bounds how far a
+ * caller's maxAge can reach, so a long poll interval (or a wall display left
+ * alone overnight) cannot resurrect something from hours ago.
+ */
+const MAX_AGE_MS = 15 * 60_000;
 
 /**
  * Cap on stored entries. Eviction was previously lazy — an entry only went
@@ -30,14 +48,39 @@ const MAX_ENTRIES = 100;
  */
 const inFlight = new Map<string, Promise<unknown>>();
 
-export function navCacheGet<T>(key: string): T | undefined {
+/**
+ * The value stored for `key`, if it is younger than `maxAgeMs`.
+ *
+ * @param maxAgeMs How old a value the caller will accept. Capped at
+ *   MAX_AGE_MS. Defaults to the 60s render-seeding window.
+ */
+export function navCacheGet<T>(key: string, maxAgeMs: number = TTL_MS): T | undefined {
   const entry = store.get(key);
   if (!entry) return undefined;
-  if (Date.now() - entry.ts > TTL_MS) {
+  const age = Date.now() - entry.ts;
+  if (age > MAX_AGE_MS) {
     store.delete(key);
     return undefined;
   }
+  if (age > maxAgeMs) return undefined;
   return entry.data as T;
+}
+
+/**
+ * Apply a local correction to a cached value without changing its age.
+ *
+ * For the optimistic-update path: the mutation has been accepted by the
+ * server, so the cached copy is now wrong in a way a refetch would only
+ * confirm. Writing the correction through keeps the entry usable — the age is
+ * deliberately left alone, since nothing new was fetched.
+ *
+ * Does nothing when the key is absent: there is no value to correct, and
+ * inventing one would cache a partial payload.
+ */
+export function navCacheUpdate<T>(key: string, update: (current: T) => T): void {
+  const entry = store.get(key);
+  if (!entry) return;
+  store.set(key, { data: update(entry.data as T), ts: entry.ts });
 }
 
 export function navCacheSet(key: string, data: unknown): void {

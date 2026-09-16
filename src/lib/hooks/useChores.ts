@@ -6,8 +6,10 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useVisibilityPolling } from './useVisibilityPolling';
+import { usePollingInterval } from './usePollingInterval';
+import { useCachedMountFetch } from './useCachedMountFetch';
 import { navCacheGet, navCacheSet } from '@/lib/utils/navCache';
 
 // Re-export Chore type from shared types for consumers that import from this hook
@@ -74,7 +76,10 @@ export function useChores(options: UseChoresOptions = {}): UseChoresResult {
     ...(!showDisabled ? { enabled: 'true' } : {}),
     ...(includeFuture ? { includeFuture: 'true' } : {}),
   }).toString()}`;
-  const cached = navCacheGet<Chore[]>(cacheKey);
+  // One refresh interval's worth of age is what this hook already tolerates,
+  // so a cached value that young is current by its own standard.
+  const maxAgeMs = usePollingInterval(refreshInterval);
+  const cached = navCacheGet<Chore[]>(cacheKey, maxAgeMs);
   const [chores, setChores] = useState<Chore[]>(() => cached ?? []);
   const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState<string | null>(null);
@@ -83,7 +88,7 @@ export function useChores(options: UseChoresOptions = {}): UseChoresResult {
    * Fetch chores from the API
    */
   const fetchChores = useCallback(async () => {
-    if (!navCacheGet(cacheKey)) setLoading(true);
+    if (!navCacheGet(cacheKey, maxAgeMs)) setLoading(true);
     try {
       setError(null);
 
@@ -157,7 +162,7 @@ export function useChores(options: UseChoresOptions = {}): UseChoresResult {
     } finally {
       setLoading(false);
     }
-  }, [assignedTo, showDisabled, cacheKey, includeFuture]);
+  }, [assignedTo, showDisabled, cacheKey, includeFuture, maxAgeMs]);
 
   /**
    * Mark a chore as completed
@@ -226,10 +231,20 @@ export function useChores(options: UseChoresOptions = {}): UseChoresResult {
     [fetchChores]
   );
 
-  // Initial fetch (skipped when disabled)
-  useEffect(() => {
-    if (enabled) fetchChores();
-  }, [fetchChores, enabled]);
+  const adoptChores = useCallback((cachedChores: Chore[]) => {
+    setChores(cachedChores);
+    setLoading(false);
+  }, []);
+
+  // Initial fetch (skipped when disabled, or when the same query was already
+  // fetched within one refresh interval)
+  useCachedMountFetch<Chore[]>({
+    key: cacheKey,
+    enabled,
+    maxAgeMs,
+    fetch: fetchChores,
+    adopt: adoptChores,
+  });
 
   // Set up refresh interval with visibility-based pause (disabled when not enabled)
   useVisibilityPolling(fetchChores, enabled ? refreshInterval : 0);

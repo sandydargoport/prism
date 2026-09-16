@@ -298,9 +298,13 @@ export function QuickPinModal({
               ))}
             </div>
 
-            {/* Error message */}
-            <div className="h-4 flex items-center justify-center">
-              {error && <p className="text-xs text-destructive">{error}</p>}
+            {/* Error message. min-h reserves the line so the pad doesn't jump
+                when there's no error, but the box still has to be allowed to
+                grow: the longer messages (a lockout, or a member with no PIN
+                set) wrap to two lines and a fixed height painted them over the
+                number pad. */}
+            <div className="min-h-4 flex items-center justify-center">
+              {error && <p className="text-xs text-destructive px-1 leading-snug">{error}</p>}
             </div>
 
             {/* Number pad */}

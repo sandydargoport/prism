@@ -4,9 +4,9 @@
 # ============================================================================
 # Catches the bug class that scan-pii.sh and scan-hostnames.sh both miss:
 # a *secret-shaped value* hardcoded into real config or code (NOT a comment,
-# NOT a known denylist word). This is precisely how a personal healthchecks.io
-# ping UUID once shipped baked into the public docker-compose.yml — every
-# clone then pinged the maintainer's check. See backup HC_URL history.
+# NOT a known denylist word). A monitoring ping URL carrying its own identifier
+# is the canonical example: it looks like configuration, it is not on any
+# denylist, and anyone holding it can speak for the service it belongs to.
 #
 # Unlike scan-pii (needs a curated denylist) and scan-hostnames (comment-only,
 # allowlist of hostnames), this scanner is zero-config and pattern-based: it
@@ -37,8 +37,8 @@ UUID='[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12
 # Each rule: a label and an ERE pattern. A match on any is a violation.
 # Patterns are intentionally tight to keep the false-positive rate near zero.
 PATTERNS=(
-  # Dead-man / healthcheck ping URLs carrying a real UUID (the leak that
-  # started all this). Placeholder forms have no UUID, so they don't match.
+  # Dead-man / healthcheck ping URLs carrying a real UUID. Placeholder forms
+  # have no UUID, so they don't match.
   "healthcheck-ping-url|(hc-ping\.com|healthchecks\.io/ping)/${UUID}"
   # Private LAN IPv4 with real octets (192.168.x.x docs use literal 'x.x'
   # which has no digits, so it won't match).

@@ -10,6 +10,7 @@ import {
   navCacheInFlightCount,
   navCacheGet,
   navCacheSet,
+  navCacheUpdate,
 } from '../navCache';
 
 describe('navCacheDedupe', () => {
@@ -69,6 +70,78 @@ describe('navCacheDedupe', () => {
     await navCacheDedupe('/api/clean', () => Promise.resolve(1));
     await navCacheDedupe('/api/clean2', () => Promise.reject(new Error('x'))).catch(() => {});
     expect(navCacheInFlightCount()).toBe(0);
+  });
+});
+
+describe('navCache age windows', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('serves an entry to a reader willing to accept its age, and not to one that is not', () => {
+    navCacheSet('/api/chores', ['sweep']);
+
+    jest.advanceTimersByTime(3 * 60_000);
+
+    // The default window is for seeding a render and has passed...
+    expect(navCacheGet('/api/chores')).toBeUndefined();
+    // ...but a hook polling every five minutes is not asking for anything
+    // fresher than this.
+    expect(navCacheGet('/api/chores', 5 * 60_000)).toEqual(['sweep']);
+  });
+
+  it('does not evict on behalf of the stricter reader', () => {
+    navCacheSet('/api/chores', ['sweep']);
+    jest.advanceTimersByTime(3 * 60_000);
+
+    navCacheGet('/api/chores');
+
+    expect(navCacheGet('/api/chores', 5 * 60_000)).toEqual(['sweep']);
+  });
+
+  it('refuses an entry past the hard ceiling however patient the reader', () => {
+    navCacheSet('/api/chores', ['sweep']);
+
+    jest.advanceTimersByTime(20 * 60_000);
+
+    expect(navCacheGet('/api/chores', 60 * 60_000)).toBeUndefined();
+  });
+});
+
+describe('navCacheUpdate', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('corrects the stored value without making it look newly fetched', () => {
+    navCacheSet('/api/lists', [{ id: 'a', checked: false }]);
+
+    jest.advanceTimersByTime(4 * 60_000);
+    navCacheUpdate<{ id: string; checked: boolean }[]>('/api/lists', (lists) =>
+      lists.map((item) => ({ ...item, checked: true }))
+    );
+
+    expect(navCacheGet('/api/lists', 5 * 60_000)).toEqual([{ id: 'a', checked: true }]);
+
+    // Still four minutes old: a local correction is not a fetch.
+    jest.advanceTimersByTime(2 * 60_000);
+    expect(navCacheGet('/api/lists', 5 * 60_000)).toBeUndefined();
+  });
+
+  it('does nothing for a key that is not cached', () => {
+    const update = jest.fn();
+    navCacheUpdate('/api/absent', update);
+
+    expect(update).not.toHaveBeenCalled();
+    expect(navCacheGet('/api/absent')).toBeUndefined();
   });
 });
 
