@@ -26,7 +26,7 @@
 'use client';
 
 import * as React from 'react';
-import SunCalc from 'suncalc';
+import * as SunCalc from 'suncalc';
 import {
   Cloud,
   CloudRain,

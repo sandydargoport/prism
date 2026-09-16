@@ -9,7 +9,7 @@
  * does not have to know which provider produced the rest of the response.
  */
 
-import SunCalc from 'suncalc';
+import * as SunCalc from 'suncalc';
 
 export type MoonPhaseName =
   | 'New Moon'
