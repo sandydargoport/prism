@@ -79,7 +79,9 @@ jobs:
           if [ -z "$PRISM_PII_SALT" ]; then
             # Fail closed: a warning that passes means a rotated or deleted
             # secret silently stops this check from checking anything, while
-            # it still reports green. Fork PRs are already excluded above.
+            # it still reports green. A fork PR legitimately has no secret, and
+            # the step condition skips it there, so reaching this line anywhere
+            # else means the denylist layer really is broken.
             echo "::error::PRISM_PII_SALT is not set - outbound text was not scanned."
             exit 1
           fi
