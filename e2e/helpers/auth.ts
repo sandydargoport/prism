@@ -55,8 +55,8 @@ export async function getFirstChild(page: Page): Promise<FamilyMember> {
 /** Default PIN — override via E2E_PIN environment variable. */
 const DEFAULT_PIN = process.env.E2E_PIN || '1234';
 
-/** Locator for the QuickPinModal overlay (rendered via portal at z-10001). */
-const MODAL_SELECTOR = '.z-\\[10001\\]';
+/** Locator for the QuickPinModal overlay (rendered via portal). */
+const MODAL_SELECTOR = '[data-testid="pin-modal"]';
 
 /**
  * Login via the UI — clicks "Log in", selects member, enters PIN digit by digit.

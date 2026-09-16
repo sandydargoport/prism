@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { loginViaAPI, loginViaUI, logout, getFirstParent, getFirstChild, FamilyMember } from './helpers/auth';
 import { resetAll } from './helpers/reset';
 
-const MODAL_SELECTOR = '.z-\\[10001\\]';
+const MODAL_SELECTOR = '[data-testid="pin-modal"]';
 
 test.describe('Authentication', () => {
   let parent: FamilyMember;

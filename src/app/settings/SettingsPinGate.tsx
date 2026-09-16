@@ -206,6 +206,7 @@ function SettingsPinPrompt({
 
   return createPortal(
     <div
+      data-testid="pin-modal"
       className="fixed inset-0 bg-black/50 flex items-center justify-center z-10001"
       onClick={onDismiss}
     >

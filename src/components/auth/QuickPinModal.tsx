@@ -216,6 +216,7 @@ export function QuickPinModal({
   // Use portal to escape any stacking context (e.g., backdrop-blur-sm in parent)
   return createPortal(
     <div
+      data-testid="pin-modal"
       className="fixed inset-0 bg-black/50 flex items-center justify-center z-10001"
       onClick={() => onOpenChange(false)}
     >

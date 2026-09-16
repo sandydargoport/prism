@@ -404,7 +404,7 @@ test.describe('Visual regression', () => {
       await page.goto('/');
       await page.waitForLoadState('networkidle');
       await page.click('button[aria-label="Log in"]');
-      await page.waitForSelector('.z-\\[10001\\]', { timeout: 5000 });
+      await page.waitForSelector('[data-testid="pin-modal"]', { timeout: 5000 });
       await page.waitForTimeout(400);
 
       // Shoot the modal PANEL, not the viewport. The modal sits over the live
@@ -412,9 +412,9 @@ test.describe('Visual regression', () => {
       // fails a minute later. Masking the dashboard does not help either:
       // Playwright paints masks over the given rectangles regardless of z
       // order, so the Photo widget's mask lands on top of the centred modal
-      // and hides half of it. `.z-[10001]` is the full-screen backdrop; its
+      // and hides half of it. The modal root is the full-screen backdrop; its
       // only child is the panel, which is the thing under test.
-      const panel = page.locator('.z-\\[10001\\] > div');
+      const panel = page.locator('[data-testid="pin-modal"] > div');
       await expect(panel).toHaveScreenshot(`pin-modal-${theme}.png`, SCREENSHOT_OPTIONS);
     });
   }
