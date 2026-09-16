@@ -87,10 +87,20 @@ describe('projectCommunityLayout', () => {
     });
   });
 
-  it('ignores a submitted type and version, which are ours to assert', () => {
-    const out = projectCommunityLayout({ ...valid, type: 'something-else', version: 99 });
+  it('asserts the type rather than copying it', () => {
+    const out = projectCommunityLayout({ ...valid, type: 'something-else' });
     expect(out.type).toBe('prism-layout');
-    expect(out.version).toBe(1);
+  });
+
+  it('carries a valid version and normalises anything else to the current one', () => {
+    // Every layout in community/layouts is version 2. Pinning this to 1 would
+    // downgrade every new submission to a format nothing else in the gallery
+    // uses, which is the kind of quiet divergence a projection is supposed to
+    // prevent rather than cause.
+    expect(projectCommunityLayout({ ...valid, version: 2 }).version).toBe(2);
+    expect(projectCommunityLayout({ ...valid, version: 1 }).version).toBe(1);
+    expect(projectCommunityLayout({ ...valid, version: 99 }).version).toBe(2);
+    expect(projectCommunityLayout({ ...valid, version: undefined }).version).toBe(2);
   });
 
   it('survives a submission with no widgets array at all', () => {

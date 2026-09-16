@@ -181,7 +181,12 @@ export function projectCommunityLayout(
 
   return {
     type: 'prism-layout',
-    version: 1,
+    // Carried, not hardcoded. Every layout in community/layouts is version 2 and
+    // the validator accepts 1 or 2, so pinning this to 1 would have silently
+    // downgraded every new submission to a format nothing else in the gallery
+    // uses. Still a closed set rather than a copy: an unrecognised version
+    // becomes the current one instead of riding through.
+    version: obj.version === 1 ? 1 : 2,
     mode: obj.mode as 'dashboard' | 'screensaver',
     name: String(obj.name ?? ''),
     description: String(obj.description ?? ''),
