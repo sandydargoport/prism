@@ -293,7 +293,7 @@ export function AddMessageModal({
                 id="expiresIn"
                 value={expiresIn}
                 onChange={(e) => setExpiresIn(e.target.value)}
-                className="h-8 w-[130px] rounded-md border border-input bg-background px-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                className="h-8 w-[130px] rounded-md border border-input bg-background px-2 text-sm ring-offset-background focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2"
               >
                 <option value="never">Never</option>
                 <option value="12h">12 hours</option>

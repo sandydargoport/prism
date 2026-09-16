@@ -21,7 +21,7 @@ export function RenameDashboardDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
+      className="fixed inset-0 z-100 flex items-center justify-center bg-black/50"
       onClick={onClose}
     >
       <div
@@ -35,7 +35,7 @@ export function RenameDashboardDialog({
             type="text"
             value={value}
             onChange={e => onChange(e.target.value)}
-            className="w-full px-2 py-1.5 text-sm bg-muted border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full px-2 py-1.5 text-sm bg-muted border border-border rounded-md focus:outline-hidden focus:ring-2 focus:ring-primary"
             maxLength={100}
             autoFocus
             onKeyDown={e => { if (e.key === 'Enter') onConfirm(); }}

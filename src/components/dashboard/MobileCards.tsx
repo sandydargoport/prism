@@ -46,7 +46,7 @@ function CardShell({ href, icon, title, count, children }: {
 }) {
   const compact = useContext(LayoutCtx) === 'tiles';
   const inner = (
-    <div className={`bg-card/85 backdrop-blur-sm rounded-xl border border-border hover:border-primary/30 transition-colors ${compact ? 'p-3' : 'p-3'}`}>
+    <div className={`bg-card/85 backdrop-blur-xs rounded-xl border border-border hover:border-primary/30 transition-colors ${compact ? 'p-3' : 'p-3'}`}>
       <div className={`flex items-center justify-between ${compact ? '' : 'mb-2'}`}>
         <div className="flex items-center gap-2 min-w-0">
           {icon}
@@ -81,7 +81,7 @@ export function WeatherCard({ data }: { data: DashData['weather'] }) {
     <Cloud className={iconCls} />;
 
   return (
-    <div className="bg-card/85 backdrop-blur-sm rounded-xl border border-border p-3 flex items-center gap-3">
+    <div className="bg-card/85 backdrop-blur-xs rounded-xl border border-border p-3 flex items-center gap-3">
       {icon}
       <span className="text-2xl font-light tabular-nums">{Math.round(cur.temperature)}°{wd.units.temperature}</span>
       <span className="text-sm text-muted-foreground capitalize">{cur.description}</span>
@@ -94,7 +94,7 @@ export function ClockCard() {
   const now = new Date();
   const displayNow = toDisplayDate(now, displayTimezone);
   return (
-    <div className="bg-card/85 backdrop-blur-sm rounded-xl border border-border p-3 flex items-center gap-3">
+    <div className="bg-card/85 backdrop-blur-xs rounded-xl border border-border p-3 flex items-center gap-3">
       <Clock className="h-5 w-5 text-muted-foreground" />
       <span className="text-2xl font-light tabular-nums">{formatDisplayTime(now, timeFormat, {}, displayTimezone)}</span>
       <span className="text-sm text-muted-foreground">{format(displayNow, 'EEEE, MMM d')}</span>

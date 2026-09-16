@@ -303,7 +303,7 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
           <div className="space-y-2">
             {added.map((m) => (
               <div key={m.id} className="flex items-center gap-2 rounded-md border px-3 py-2">
-                <div className="h-3 w-3 rounded-full flex-shrink-0" style={{ background: m.color }} />
+                <div className="h-3 w-3 rounded-full shrink-0" style={{ background: m.color }} />
                 <span className="flex-1 text-sm font-medium">{m.name}</span>
                 <Badge variant="secondary" className="capitalize text-xs">{m.role}</Badge>
                 {m.hasPin && (

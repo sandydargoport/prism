@@ -290,7 +290,7 @@ function DayCell({
         cards && (showAll ? 'min-h-0' : 'min-h-0 h-full'),
         // Cards mode: every cell gets a subtle border, today gets the month's
         // seasonal-accent ring (lavender in April, etc.).
-        cards && !cellBgStyle && 'border border-border bg-card/85 backdrop-blur-sm',
+        cards && !cellBgStyle && 'border border-border bg-card/85 backdrop-blur-xs',
         cards && cellBgStyle && 'border border-border',
         cards && (today || (enableDnd && droppable.isOver)) && 'border-transparent',
         cards && enableDnd && droppable.isOver && 'shadow-lg',
@@ -318,7 +318,7 @@ function DayCell({
               stays the layout's call. The roomy branch is the theme's. */}
           <span className={cn(
             'font-bold leading-none',
-            compact ? 'text-base' : 'text-[length:var(--daynum-large)]',
+            compact ? 'text-base' : 'text-(length:--daynum-large)',
           )}>
             {format(date, 'd')}
           </span>
@@ -365,7 +365,7 @@ function DayCell({
         className={cn(
           cards
             ? 'flex flex-col gap-1 flex-1 min-h-0 overflow-hidden'
-            : 'flex flex-col gap-[var(--event-gap)]',
+            : 'flex flex-col gap-(--event-gap)',
           compact ? 'px-1 pb-1' : 'px-1.5 pb-1.5',
         )}
       >

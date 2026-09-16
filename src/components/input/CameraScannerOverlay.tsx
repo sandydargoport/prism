@@ -162,7 +162,7 @@ export function CameraScannerOverlay({ onClose, onScan }: CameraScannerOverlayPr
   if (!mounted || dismissed) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[9000] flex flex-col bg-black/95">
+    <div className="fixed inset-0 z-9000 flex flex-col bg-black/95">
       <div className="flex items-center justify-between px-4 py-3 text-white">
         <div className="flex items-center gap-2">
           <Camera className="h-5 w-5" />

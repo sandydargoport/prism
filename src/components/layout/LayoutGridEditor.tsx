@@ -420,7 +420,7 @@ export function LayoutGridEditor({
     const widgetHasGrid = registryEntry?.hasGrid === true;
 
     return (
-      <div className="bg-card/95 backdrop-blur-sm border-b border-border relative z-[150]" onPointerDown={(e) => e.stopPropagation()}>
+      <div className="bg-card/95 backdrop-blur-xs border-b border-border relative z-150" onPointerDown={(e) => e.stopPropagation()}>
         {/* Single row: Widget name + property buttons + close */}
         <div className="flex items-center gap-1.5 px-3 py-2">
           <span className="text-sm font-medium mr-1">{displayName}</span>
@@ -454,7 +454,7 @@ export function LayoutGridEditor({
                 </button>
                 {/* Popover */}
                 {isOpen && (
-                  <div className="absolute top-full left-0 mt-1 z-[200] bg-card border border-border rounded-lg shadow-lg min-w-[320px]">
+                  <div className="absolute top-full left-0 mt-1 z-200 bg-card border border-border rounded-lg shadow-lg min-w-[320px]">
                     {renderColorPopover(id)}
                   </div>
                 )}
@@ -490,7 +490,7 @@ export function LayoutGridEditor({
                 </button>
                 {/* Grid popover */}
                 {isOpen && (
-                  <div className="absolute top-full left-0 mt-1 z-[200] bg-card border border-border rounded-lg shadow-lg min-w-[280px] p-2.5 space-y-2.5">
+                  <div className="absolute top-full left-0 mt-1 z-200 bg-card border border-border rounded-lg shadow-lg min-w-[280px] p-2.5 space-y-2.5">
                     {/* Lines opacity */}
                     <div>
                       <div className="text-[10px] text-muted-foreground mb-1 font-medium uppercase tracking-wide">Line Opacity</div>
@@ -609,7 +609,7 @@ export function LayoutGridEditor({
 
     return (
       <div
-        className="absolute pointer-events-none z-[5]"
+        className="absolute pointer-events-none z-5"
         style={{ left: containerPadding, top: containerPadding, width: gridW, height: gridH }}
       >
         <div className="absolute" style={{ left: 0, top: 0, width: rectW, height: rectH }}>

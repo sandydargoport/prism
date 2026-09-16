@@ -148,7 +148,7 @@ export function DashboardLayout({
     <div
       className={cn(
         // Full viewport
-        'min-h-[var(--app-vh,100vh)] w-full',
+        'min-h-(--app-vh,100vh) w-full',
         // Transparent background to allow wallpaper to show through
         // Flex column for header + content
         'flex flex-col',
@@ -215,8 +215,8 @@ export function DashboardHeader({
     <header className={cn(
       // 'relative z-10' is load-bearing: WallpaperBackground is fixed at z-0,
       // and without our own stacking context the toolbar would paint underneath
-      // it whenever backdrop-blur is disabled (e.g. perf mode).
-      'relative z-10 flex-shrink-0 bg-card/95 backdrop-blur-sm px-4 transition-all duration-500 ease-in-out overflow-hidden',
+      // it whenever backdrop-blur-sm is disabled (e.g. perf mode).
+      'relative z-10 shrink-0 bg-card/95 backdrop-blur-xs px-4 transition-all duration-500 ease-in-out overflow-hidden',
       hidden ? 'opacity-0 max-h-0 py-0' : 'max-h-20 py-2 delay-200'
     )}>
       <div className="flex items-center justify-end gap-2">

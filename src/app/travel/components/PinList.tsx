@@ -142,7 +142,7 @@ export function PinList({
         {/* Trips section */}
         {filteredTrips.length > 0 && (
           <div>
-            <div className="sticky top-0 z-10 px-4 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/80 backdrop-blur-sm border-b border-border">
+            <div className="sticky top-0 z-10 px-4 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/80 backdrop-blur-xs border-b border-border">
               Trips
               <span className="ml-1.5 font-normal opacity-60">({filteredTrips.length})</span>
             </div>
@@ -199,14 +199,14 @@ export function PinList({
         ) : groups.every((g) => g.pins.length === 0) ? null : (
           <>
             {trips.length > 0 && (
-              <div className="sticky top-0 z-10 px-4 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/80 backdrop-blur-sm border-b border-border">
+              <div className="sticky top-0 z-10 px-4 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/80 backdrop-blur-xs border-b border-border">
                 Places
               </div>
             )}
             {groups.map((group) => (
               <div key={group.key}>
                 {group.label && (
-                  <div className="sticky top-0 z-10 px-4 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/80 backdrop-blur-sm border-b border-border">
+                  <div className="sticky top-0 z-10 px-4 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/80 backdrop-blur-xs border-b border-border">
                     {group.label}
                     <span className="ml-1.5 font-normal opacity-60">({group.pins.length})</span>
                   </div>

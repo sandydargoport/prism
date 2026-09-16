@@ -327,8 +327,8 @@ function DraggableWidget({
   // Ring color: blue for move, orange for resize
   const ringClass = isSelected
     ? inResizeMode
-      ? 'ring-2 ring-warning ring-offset-2 z-[100]'
-      : 'ring-2 ring-blue-500 ring-offset-2 z-[100]'
+      ? 'ring-2 ring-warning ring-offset-2 z-100'
+      : 'ring-2 ring-blue-500 ring-offset-2 z-100'
     : 'touch-manipulation';
 
   return (
@@ -372,7 +372,7 @@ function DraggableWidget({
 
       {/* Mode label — visible when selected */}
       {isSelected && !isDragging && (
-        <div className={`absolute top-1 left-1/2 -translate-x-1/2 z-10 text-white rounded-full px-2 py-0.5 flex items-center gap-1 pointer-events-none text-[10px] font-medium shadow-sm ${
+        <div className={`absolute top-1 left-1/2 -translate-x-1/2 z-10 text-white rounded-full px-2 py-0.5 flex items-center gap-1 pointer-events-none text-[10px] font-medium shadow-xs ${
           inResizeMode ? 'bg-warning/90' : 'bg-blue-500/90'
         }`}>
           {inResizeMode ? (
@@ -395,7 +395,7 @@ function DraggableWidget({
 
       {/* Hint: tap again to switch mode */}
       {isSelected && !isDragging && (
-        <div className="absolute bottom-1 left-1/2 -translate-x-1/2 z-10 bg-black/60 text-white rounded-full px-2 py-0.5 pointer-events-none text-[9px] shadow-sm whitespace-nowrap">
+        <div className="absolute bottom-1 left-1/2 -translate-x-1/2 z-10 bg-black/60 text-white rounded-full px-2 py-0.5 pointer-events-none text-[9px] shadow-xs whitespace-nowrap">
           Tap to {inResizeMode ? 'deselect' : 'resize'}
         </div>
       )}

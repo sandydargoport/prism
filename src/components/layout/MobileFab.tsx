@@ -267,7 +267,7 @@ export function MobileFab({ user, onLogin, onLogout, uiHidden }: MobileFabProps)
                 className="flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2"
                 style={{ animationDelay: `${i * 50}ms`, animationFillMode: 'both' }}
               >
-                <span className="text-sm font-medium text-foreground bg-card/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-md border border-border">
+                <span className="text-sm font-medium text-foreground bg-card/95 backdrop-blur-xs px-3 py-1.5 rounded-full shadow-md border border-border">
                   {action.label}
                 </span>
                 <div className="w-11 h-11 rounded-full bg-card shadow-lg border border-border flex items-center justify-center text-foreground">

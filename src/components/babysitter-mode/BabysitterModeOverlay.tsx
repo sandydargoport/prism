@@ -76,13 +76,13 @@ export function BabysitterModeOverlay() {
 
   return (
     <div
-      className={`fixed inset-0 z-[9997] bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 transition-opacity duration-1000 cursor-pointer overflow-auto ${
+      className={`fixed inset-0 z-9997 bg-linear-to-br from-blue-900 via-indigo-900 to-purple-900 transition-opacity duration-1000 cursor-pointer overflow-auto ${
         visible ? 'opacity-100' : 'opacity-0'
       }`}
       onClick={handleOverlayClick}
     >
       {/* Header with clock and weather */}
-      <div className="sticky top-0 z-10 bg-black/30 backdrop-blur-sm border-b border-white/10">
+      <div className="sticky top-0 z-10 bg-black/30 backdrop-blur-xs border-b border-white/10">
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-4">
             <BabysitterClock />
@@ -107,7 +107,7 @@ export function BabysitterModeOverlay() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl mx-auto">
             {/* WiFi QR Code */}
             {hasWifiConfig && qrString && (
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+              <div className="bg-white/10 backdrop-blur-xs rounded-xl p-4 border border-white/20">
                 <h2 className="flex items-center gap-2 text-lg font-semibold text-white mb-3">
                   <Wifi className="h-5 w-5" />
                   WiFi
@@ -167,7 +167,7 @@ export function BabysitterModeOverlay() {
       </div>
 
       {/* Footer */}
-      <div className="fixed bottom-0 left-0 right-0 text-center py-4 bg-black/30 backdrop-blur-sm">
+      <div className="fixed bottom-0 left-0 right-0 text-center py-4 bg-black/30 backdrop-blur-xs">
         <p className="text-white/50 text-sm">Tap anywhere to unlock</p>
       </div>
 
@@ -271,7 +271,7 @@ function SectionCard({ title, icon, items, renderItem }: SectionCardProps) {
   if (items.length === 0) return null;
 
   return (
-    <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+    <div className="bg-white/10 backdrop-blur-xs rounded-xl p-4 border border-white/20">
       <h2 className="flex items-center gap-2 text-lg font-semibold text-white mb-3">
         {icon}
         {title}

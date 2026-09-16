@@ -246,9 +246,27 @@ describe('the modes reach real components', () => {
     }
 
     expect(emitted.size).toBeGreaterThan(0);
+    const missing: string[] = [];
     for (const prop of emitted) {
-      expect(sources).toContain(`var(${prop})`);
+      // Two spellings mean the same consumption. Tailwind v4 added a shorthand
+      // for a CSS variable in an arbitrary value, so `px-[var(--x)]` is now
+      // written `px-(--x)`, with the fallback kept as `px-(--x,0.25rem)`. Both
+      // compile to the same `var(--x)` declaration, so accept either rather
+      // than failing on the syntax while the property is genuinely consumed.
+      // Three spellings mean the same consumption, so match the shape rather
+      // than one literal. Tailwind v4 added a shorthand for a CSS variable in
+      // an arbitrary value: `px-[var(--x)]` is now `px-(--x)`, a fallback is
+      // `px-(--x,0.25rem)`, and a type hint is `text-(length:--x)`. All three
+      // compile to the same `var(--x)` declaration.
+      const consumed = new RegExp(
+        `(?:var\\(|\\((?:[a-z-]+:)?)${prop}[,)]`
+      ).test(sources);
+      if (!consumed) missing.push(prop);
     }
+
+    // Name the offender. A bare boolean here said only "false", which is the
+    // least useful thing a guard like this can say.
+    expect(missing).toEqual([]);
   });
 
   it('leaves the size-driven compact prop alone', () => {

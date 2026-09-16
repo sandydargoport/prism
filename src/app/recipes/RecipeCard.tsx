@@ -38,7 +38,7 @@ export function RecipeCard({ recipe, onClick, onToggleFavorite }: RecipeCardProp
               e.stopPropagation();
               onToggleFavorite();
             }}
-            className="flex-shrink-0"
+            className="shrink-0"
             aria-label={recipe.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
           >
             <Heart

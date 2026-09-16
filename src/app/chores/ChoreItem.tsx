@@ -67,7 +67,7 @@ export function ChoreItem({
   return (
     <div
       className={cn(
-        'flex items-center gap-4 p-4 rounded-lg border border-border bg-card/85 backdrop-blur-sm',
+        'flex items-center gap-4 p-4 rounded-lg border border-border bg-card/85 backdrop-blur-xs',
         'hover:border-seasonal-accent hover:ring-2 hover:ring-seasonal-accent/50 transition-all group',
         !chore.enabled && 'opacity-50',
         isPendingApproval && 'bg-warning/10 border-warning/30'
@@ -80,7 +80,7 @@ export function ChoreItem({
         onClick={onComplete}
         disabled={!chore.enabled}
         className={cn(
-          'flex-shrink-0 h-9 w-9',
+          'shrink-0 h-9 w-9',
           isOverdue && !isPendingApproval && 'text-destructive hover:text-destructive',
           isPendingApproval && 'text-warning'
         )}

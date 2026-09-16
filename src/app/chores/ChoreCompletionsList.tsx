@@ -27,7 +27,7 @@ export function ChoreCompletionsList({
     // content layout — instead of sitting stuck right under the heading,
     // which is what a plain block flow (no stretch) previously did.
     <div className="max-w-4xl mx-auto space-y-3 min-h-full flex flex-col">
-      <h2 className="text-lg font-semibold flex items-center gap-2 flex-shrink-0">
+      <h2 className="text-lg font-semibold flex items-center gap-2 shrink-0">
         <History className="h-5 w-5" />
         Recent Completions (Last 14 Days)
       </h2>
@@ -47,7 +47,7 @@ export function ChoreCompletionsList({
             <div
               key={c.id}
               className={cn(
-                'flex items-center gap-3 p-3 rounded-lg border bg-card/85 backdrop-blur-sm',
+                'flex items-center gap-3 p-3 rounded-lg border bg-card/85 backdrop-blur-xs',
                 c.approvedBy
                   ? 'border-border'
                   : 'border-warning/30 bg-warning/10'

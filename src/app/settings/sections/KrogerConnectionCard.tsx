@@ -219,7 +219,7 @@ export function KrogerConnectionCard() {
           <div className="space-y-3">
             <div className="rounded-md border border-warning/40 bg-warning/5 p-3 text-sm">
               <div className="flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 text-warning mt-0.5 flex-shrink-0" />
+                <AlertCircle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
                 <div>
                   <p className="font-medium">Kroger credentials not configured</p>
                   <ol className="mt-2 space-y-1 list-decimal list-inside text-muted-foreground">

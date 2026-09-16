@@ -171,8 +171,8 @@ describe('SpanningEventRows', () => {
     // No fixed height, and padding/type read from the event custom properties,
     // so a bar and an all-day chip are the same object at any theme density.
     expect(bar.className).not.toMatch(/\bh-5\b/);
-    expect(bar.className).toContain('px-[var(--event-padding-x,0.25rem)]');
-    expect(bar.className).toContain('text-[length:var(--event-font-size,0.75rem)]');
+    expect(bar.className).toContain('px-(--event-padding-x,0.25rem)');
+    expect(bar.className).toContain('text-(length:--event-font-size,0.75rem)');
   });
 
   it('holds an empty lane open with an invisible bar, not a fixed height', () => {
@@ -257,7 +257,7 @@ describe('SpanningEventRows', () => {
     // cell boundary, so anything under the seam would show through it.
     expect(bar.className).toContain('bg-card');
     expect(bar.className).not.toContain('bg-card/85');
-    expect(bar.className).toContain('shadow-sm');
+    expect(bar.className).toContain('shadow-xs');
     // The event colour moves to a stripe element built the same way the card's
     // is, rather than a fat left border, so the two line up by construction.
     expect(bar.style.backgroundColor).toBe('');

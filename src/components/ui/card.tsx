@@ -48,18 +48,18 @@ const Card = React.forwardRef<
     ref={ref}
     className={cn(
       // Background and border
-      'bg-card/85 backdrop-blur-sm text-card-foreground',
+      'bg-card/85 backdrop-blur-xs text-card-foreground',
       // Border and rounding come from the active theme rather than a fixed
       // utility. A theme that wants a square, heavily outlined look has to
       // reach the surface people actually see, and on a dashboard that is
       // the card.
-      'border-border border-[length:var(--border-width,1px)]',
-      'rounded-[var(--radius,0.5rem)]',
+      'border-border border-(length:--border-width,1px)',
+      'rounded-(--radius,0.5rem)',
       // Depth comes from the theme too. A flat look is not "a card with a
       // smaller shadow" — it is the difference between reading as software and
       // reading as a board on a wall, which is most of what separates a
       // dashboard from a wall display.
-      'shadow-[var(--surface-shadow)]',
+      'shadow-(--surface-shadow)',
       // Allow custom classes to override
       className
     )}

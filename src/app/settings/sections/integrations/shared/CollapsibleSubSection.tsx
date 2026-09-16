@@ -48,7 +48,7 @@ export function CollapsibleSubSection({
         aria-expanded={isOpen}
         aria-controls={`${id}-body`}
       >
-        {icon && <span className="flex-shrink-0 text-muted-foreground">{icon}</span>}
+        {icon && <span className="shrink-0 text-muted-foreground">{icon}</span>}
         <div className="flex-1 min-w-0">
           <div className="text-sm font-medium">{label}</div>
           {summary && (
@@ -57,7 +57,7 @@ export function CollapsibleSubSection({
         </div>
         <ChevronDown
           className={cn(
-            'h-4 w-4 text-muted-foreground transition-transform flex-shrink-0',
+            'h-4 w-4 text-muted-foreground transition-transform shrink-0',
             isOpen && 'rotate-180',
           )}
         />

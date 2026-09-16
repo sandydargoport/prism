@@ -77,7 +77,7 @@ export function TwoWeekView({
       <div
         className={cn(
           'border border-border rounded-md h-full',
-          !transparentMode && 'bg-card/85 backdrop-blur-sm',
+          !transparentMode && 'bg-card/85 backdrop-blur-xs',
           'flex flex-col overflow-hidden',
           !transparentMode && isPast && 'bg-muted/50 text-muted-foreground',
           today && 'border-primary border-2'
@@ -102,7 +102,7 @@ export function TwoWeekView({
         </div>
 
         {/* Events - scrollable, no limit */}
-        <div className={cn('flex-1 overflow-y-auto flex flex-col gap-[var(--event-gap)]', compact ? 'px-0.5 pb-0.5' : 'px-1 pb-1')}>
+        <div className={cn('flex-1 overflow-y-auto flex flex-col gap-(--event-gap)', compact ? 'px-0.5 pb-0.5' : 'px-1 pb-1')}>
           {sorted.map((event) => (
             <button
               key={event.id}
@@ -111,7 +111,7 @@ export function TwoWeekView({
                 'w-full text-left rounded truncate hover:opacity-80 hover:ring-1 hover:ring-seasonal-accent/50 transition-all',
                 compact
                   ? 'text-[10px] px-0.5 py-px'
-                  : 'px-[var(--event-padding-x)] py-[var(--event-padding-y)] text-[length:var(--event-font-size)]'
+                  : 'px-(--event-padding-x) py-(--event-padding-y) text-(length:--event-font-size)'
               )}
               style={event.allDay
                 ? { backgroundColor: event.color + '20', borderLeft: `2px solid ${event.color}` }

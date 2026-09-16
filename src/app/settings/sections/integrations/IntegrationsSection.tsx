@@ -91,7 +91,7 @@ export function IntegrationsSection() {
 
       {setupPrompt && !setupDismissed && (
         <div className="flex items-start gap-3 rounded-lg border border-warning bg-warning/10 p-4 text-warning dark:border-warning/60">
-          <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0" />
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
           <div className="flex-1 text-sm">
             <p className="font-semibold">{setupPrompt.name} isn&apos;t set up yet</p>
             <p className="mt-1">

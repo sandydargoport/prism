@@ -54,7 +54,7 @@ export function GoogleCredentialsForm({ onSaved }: { onSaved?: () => void }) {
   };
 
   const inputClass =
-    'h-9 w-full rounded-md border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40';
+    'h-9 w-full rounded-md border border-border bg-background px-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary/40';
 
   return (
     <div className="space-y-3">

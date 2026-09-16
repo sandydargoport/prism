@@ -187,7 +187,7 @@ export function DayColumn({
       data-droppable-day={disableDrop ? undefined : droppableId}
       className={cn(
         'flex flex-col rounded-lg',
-        'bg-card/60 backdrop-blur-sm',
+        'bg-card/60 backdrop-blur-xs',
         'border border-border/30',
         profile.containerPadding,
         profile.minHeight,

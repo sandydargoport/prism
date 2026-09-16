@@ -317,7 +317,7 @@ export function WidgetContainer({
     >
       {/* WIDGET HEADER */}
       {showHeader && title && (
-        <CardHeader className="flex-shrink-0 flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="shrink-0 flex flex-row items-center justify-between space-y-0 pb-2">
           <div className="flex items-center gap-2">
             {/* Icon */}
             {icon && (

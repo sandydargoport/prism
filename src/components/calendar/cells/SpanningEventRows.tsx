@@ -226,7 +226,7 @@ export function SpanningEventRows({
     ? 'px-0.5 py-px text-[8px]'
     : cards
       ? 'flex items-stretch gap-2 pr-1 text-[10px]'
-      : 'px-[var(--event-padding-x,0.25rem)] py-[var(--event-padding-y,0.125rem)] text-[length:var(--event-font-size,0.75rem)] font-[var(--event-font-weight)]';
+      : 'px-(--event-padding-x,0.25rem) py-(--event-padding-y,0.125rem) text-(length:--event-font-size,0.75rem) font-(--event-font-weight)';
 
   return (
     <div
@@ -240,7 +240,7 @@ export function SpanningEventRows({
         // Same row gap as the day's own event list, and the same gap again
         // below the block, so a bar and the chip under it are spaced like two
         // chips rather than butting their borders together.
-        compact ? 'gap-px mb-px' : cards ? 'gap-0.5 mb-0.5' : 'gap-[var(--event-gap,0.125rem)] mb-[var(--event-gap,0.125rem)]',
+        compact ? 'gap-px mb-px' : cards ? 'gap-0.5 mb-0.5' : 'gap-(--event-gap,0.125rem) mb-(--event-gap,0.125rem)',
       )}
     >
       {byLane.slice(startLane, lastActiveLane + 1).map((laneEvent, laneOffset) => {
@@ -300,7 +300,7 @@ export function SpanningEventRows({
             className={cn(
               'relative z-20 block w-full truncate text-left font-medium leading-tight',
               cards ? 'hover:bg-card transition-colors' : 'hover:brightness-95',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-seasonal-accent',
+              'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-seasonal-accent',
               barMetrics,
               // An edge is capped whenever it is actually visible; the only
               // ones that are not are those a neighbouring slice covers. Radius
@@ -310,7 +310,7 @@ export function SpanningEventRows({
               // Opaque, unlike the 85% single-day cards: a spanning pill is the
               // one card that crosses a cell boundary, so anything under the
               // seam would show through it. The Today ring did exactly that.
-              cards && 'bg-card border shadow-sm text-foreground',
+              cards && 'bg-card border shadow-xs text-foreground',
               // Mid-run edges carry no border, so a run reads as one object.
               cards && reachesBack && 'border-l-0',
               cards && continuesWithinRow && 'border-r-0',

@@ -33,7 +33,7 @@ export function ProviderCardShell({
     <Card id={id} className="scroll-mt-20 overflow-hidden">
       <CardContent className="p-0">
         <div className="flex items-start gap-3 p-4">
-          <div className="flex-shrink-0 mt-0.5">{icon}</div>
+          <div className="shrink-0 mt-0.5">{icon}</div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="font-semibold text-base">{name}</h3>
@@ -43,7 +43,7 @@ export function ProviderCardShell({
               <p className="text-sm text-muted-foreground mt-1">{description}</p>
             )}
           </div>
-          {primaryAction && <div className="flex-shrink-0">{primaryAction}</div>}
+          {primaryAction && <div className="shrink-0">{primaryAction}</div>}
         </div>
         {children && <div>{children}</div>}
       </CardContent>

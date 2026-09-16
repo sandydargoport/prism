@@ -109,7 +109,7 @@ describe('fireworks sampling', () => {
     expect(corners.length).toBe(0);
   });
 
-  it('does not hollow into a ring as it expands', () => {
+  it('does not hollow into a ring-3 as it expands', () => {
     // Every fragment travels outward, so a field where they all move at a
     // similar rate empties its own middle: a donut with nothing in the hole.
     // Most of the mass has to stay near where it started.

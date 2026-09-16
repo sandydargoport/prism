@@ -89,7 +89,7 @@ export function SaveAsDialog({
 
   return (
     <>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/50" onClick={onClose}>
         <div className="bg-popover border border-border rounded-lg shadow-xl p-4 max-w-sm w-full mx-4 space-y-3" onClick={e => e.stopPropagation()}>
           <div className="text-sm font-medium">Save As</div>
 
@@ -126,7 +126,7 @@ export function SaveAsDialog({
                 value={newName}
                 onChange={e => setNewName(e.target.value)}
                 placeholder="New dashboard name"
-                className="flex-1 px-2 py-1.5 text-sm bg-muted border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                className="flex-1 px-2 py-1.5 text-sm bg-muted border border-border rounded-md focus:outline-hidden focus:ring-2 focus:ring-primary"
                 maxLength={100}
                 onKeyDown={e => { if (e.key === 'Enter') handleCreateNew(); }}
               />
@@ -184,7 +184,7 @@ export function CreateDashboardDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50" onClick={onClose}>
+    <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div className="bg-popover border border-border rounded-lg shadow-xl p-4 max-w-sm w-full mx-4 space-y-3" onClick={e => e.stopPropagation()}>
         <div className="text-sm font-medium">New Dashboard</div>
         <div>
@@ -194,7 +194,7 @@ export function CreateDashboardDialog({
             value={createForm.name}
             onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))}
             placeholder="e.g. Kitchen Display"
-            className="w-full px-2 py-1.5 text-sm bg-muted border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full px-2 py-1.5 text-sm bg-muted border border-border rounded-md focus:outline-hidden focus:ring-2 focus:ring-primary"
             maxLength={100}
             autoFocus
             onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }}

@@ -336,7 +336,7 @@ export function PinDetail({ pin, childPins, onUpdate, onDelete, onDeleteChild, o
                   onChange={e => setGeoQuery(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleGeoSearch()}
                   placeholder="Search for a new location…"
-                  className="flex-1 h-7 rounded-md border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                  className="flex-1 h-7 rounded-md border border-border bg-background px-2 text-xs focus:outline-hidden focus:ring-1 focus:ring-ring"
                 />
                 <button
                   onClick={handleGeoSearch}
@@ -347,7 +347,7 @@ export function PinDetail({ pin, childPins, onUpdate, onDelete, onDeleteChild, o
                 </button>
               </div>
               {geoResults.length > 0 && (
-                <div className="rounded-md border border-border bg-background shadow-sm max-h-40 overflow-y-auto">
+                <div className="rounded-md border border-border bg-background shadow-xs max-h-40 overflow-y-auto">
                   {geoResults.map((r, i) => (
                     <button
                       key={i}

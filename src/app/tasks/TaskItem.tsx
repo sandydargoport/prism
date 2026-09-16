@@ -40,7 +40,7 @@ export function TaskItem({
   return (
     <div
       className={cn(
-        'group flex items-center gap-4 p-4 rounded-lg border border-border bg-card/85 backdrop-blur-sm',
+        'group flex items-center gap-4 p-4 rounded-lg border border-border bg-card/85 backdrop-blur-xs',
         'hover:border-seasonal-accent hover:ring-2 hover:ring-seasonal-accent/50 transition-all',
         task.completed && 'opacity-60'
       )}
@@ -49,7 +49,7 @@ export function TaskItem({
       <Checkbox
         checked={task.completed}
         onCheckedChange={onToggle}
-        className="flex-shrink-0"
+        className="shrink-0"
         style={task.assignedTo ? { borderColor: task.assignedTo.color } : undefined}
       />
 

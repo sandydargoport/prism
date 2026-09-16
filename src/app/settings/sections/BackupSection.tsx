@@ -138,7 +138,7 @@ export function BackupSection() {
                 window.location.reload();
               }
             }}
-            className="ml-4 flex-shrink-0"
+            className="ml-4 shrink-0"
           >
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
@@ -383,7 +383,7 @@ export function BackupSection() {
               value={challengeInput}
               onChange={(e) => setChallengeInput(e.target.value)}
               placeholder={TRUNCATE_CHALLENGE}
-              className="w-full px-3 py-2 rounded-md border border-destructive bg-background text-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-destructive"
+              className="w-full px-3 py-2 rounded-md border border-destructive bg-background text-foreground font-mono text-sm focus:outline-hidden focus:ring-2 focus:ring-destructive"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && challengeInput === TRUNCATE_CHALLENGE) handleTruncate();
@@ -440,7 +440,7 @@ export function BackupSection() {
               value={challengeInput}
               onChange={(e) => setChallengeInput(e.target.value)}
               placeholder={SEED_CHALLENGE}
-              className="w-full px-3 py-2 rounded-md border border-warning bg-background text-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-warning"
+              className="w-full px-3 py-2 rounded-md border border-warning bg-background text-foreground font-mono text-sm focus:outline-hidden focus:ring-2 focus:ring-warning"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && challengeInput === SEED_CHALLENGE) handleSeed();

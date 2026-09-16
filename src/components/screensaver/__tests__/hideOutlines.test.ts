@@ -51,7 +51,7 @@ describe('hide widget outlines', () => {
     const code = screensaver
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/^\s*\/\/.*$/gm, '');
-    // `[&_*]:!border-transparent` is the shape that wiped the inner rules
+    // `**:border-transparent!` is the shape that wiped the inner rules
     expect(code).not.toMatch(/\[&_\*\]:!border/);
   });
 });

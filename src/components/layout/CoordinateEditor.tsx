@@ -219,7 +219,7 @@ export function CoordinateEditor({ widgets, onWidgetsChange, mode, onFocusedWidg
                     className="w-full text-left px-3 py-1 text-xs hover:bg-accent transition-colors flex items-center gap-2"
                   >
                     <span
-                      className="inline-block w-2 h-2 rounded-full flex-shrink-0"
+                      className="inline-block w-2 h-2 rounded-full shrink-0"
                       style={{ backgroundColor: color }}
                     />
                     {reg?.label || id}
@@ -261,7 +261,7 @@ function CoordInput({
       }}
       onFocus={onFocus}
       onBlur={onBlur}
-      className="w-full text-center text-xs px-1 py-0.5 rounded border transition-colors bg-muted border-border text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+      className="w-full text-center text-xs px-1 py-0.5 rounded border transition-colors bg-muted border-border text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
     />
   );
 }

@@ -78,7 +78,7 @@ export function AwayModeOverlay() {
 
   return (
     <div
-      className={`fixed inset-0 z-[9998] bg-black transition-opacity duration-1000 cursor-pointer ${
+      className={`fixed inset-0 z-9998 bg-black transition-opacity duration-1000 cursor-pointer ${
         visible ? 'opacity-100' : 'opacity-0'
       }`}
       onClick={handleOverlayClick}
@@ -98,7 +98,7 @@ export function AwayModeOverlay() {
       <div className="absolute inset-0 bg-black/40" />
 
       {/* Header bar — clock left, weather right */}
-      <div className="absolute top-0 left-0 right-0 z-10 bg-black/30 backdrop-blur-sm border-b border-white/10">
+      <div className="absolute top-0 left-0 right-0 z-10 bg-black/30 backdrop-blur-xs border-b border-white/10">
         <div className="flex items-center justify-between px-6 py-4">
           <AwayModeClock />
           <AwayModeWeather />

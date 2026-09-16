@@ -229,7 +229,7 @@ function DayRow({ day, date, meals, isToday, isPast, onAddMeal, onMarkCooked, on
     <div
       data-meal-day={day}
       className={cn(
-        'border border-border rounded-lg p-4 bg-card/85 backdrop-blur-sm transition-colors',
+        'border border-border rounded-lg p-4 bg-card/85 backdrop-blur-xs transition-colors',
         isToday && 'bg-accent/80 dark:bg-accent/50 border-primary',
         isPast && !isToday && 'bg-muted/70 dark:bg-muted/55',
         dragOver && 'border-primary border-2',
@@ -313,7 +313,7 @@ function MealCard({ meal, onMarkCooked, onUnmarkCooked, onEdit, onDelete, onDrop
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       className={cn(
-        'flex items-start gap-3 p-3 rounded-md border border-border/50 bg-card/85 backdrop-blur-sm',
+        'flex items-start gap-3 p-3 rounded-md border border-border/50 bg-card/85 backdrop-blur-xs',
         'hover:border-seasonal-accent hover:ring-2 hover:ring-seasonal-accent/50 transition-all group cursor-grab active:cursor-grabbing',
         isCooked && 'opacity-60',
         touchDragging && 'opacity-50 scale-95'

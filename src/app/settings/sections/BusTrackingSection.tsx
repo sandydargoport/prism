@@ -469,12 +469,12 @@ function SortableRouteRow({
         <button
           {...attributes}
           {...listeners}
-          className="cursor-grab active:cursor-grabbing touch-none p-0.5 text-muted-foreground hover:text-foreground flex-shrink-0"
+          className="cursor-grab active:cursor-grabbing touch-none p-0.5 text-muted-foreground hover:text-foreground shrink-0"
           style={{ touchAction: 'none' }}
         >
           <GripVertical className="h-5 w-5" />
         </button>
-        <Bus className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+        <Bus className="h-5 w-5 text-muted-foreground shrink-0" />
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="font-medium text-sm truncate">{route.label}</span>
@@ -488,7 +488,7 @@ function SortableRouteRow({
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="flex items-center gap-2 shrink-0">
         <Switch checked={route.enabled} onCheckedChange={onToggle} />
         <Button size="icon" variant="ghost" className="h-8 w-8" onClick={onEdit}>
           <Pencil className="h-4 w-4" />
@@ -527,24 +527,24 @@ function SortableCheckpointItem({
       <button
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing touch-none flex-shrink-0 text-muted-foreground hover:text-foreground"
+        className="cursor-grab active:cursor-grabbing touch-none shrink-0 text-muted-foreground hover:text-foreground"
         style={{ touchAction: 'none' }}
       >
         <GripVertical className="h-4 w-4" />
       </button>
-      <span className="text-xs text-muted-foreground w-5 flex-shrink-0">{index + 1}.</span>
+      <span className="text-xs text-muted-foreground w-5 shrink-0">{index + 1}.</span>
       <Input
         value={cp.name}
         onChange={e => onNameChange(index, e.target.value)}
         className="flex-1 h-7 text-sm"
       />
       {isStop && (
-        <Badge variant="outline" className="text-[10px] flex-shrink-0">stop</Badge>
+        <Badge variant="outline" className="text-[10px] shrink-0">stop</Badge>
       )}
       <Button
         size="icon"
         variant="ghost"
-        className="h-6 w-6 text-destructive flex-shrink-0"
+        className="h-6 w-6 text-destructive shrink-0"
         onClick={() => onRemove(index)}
       >
         <X className="h-3 w-3" />

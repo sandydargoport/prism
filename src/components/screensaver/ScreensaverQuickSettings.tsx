@@ -70,7 +70,7 @@ export function ScreensaverSettingsPanel({
   return (
     <div
       data-screensaver-keep
-      className="fixed inset-0 z-[10000] pointer-events-auto flex items-center justify-center bg-black/45"
+      className="fixed inset-0 z-10000 pointer-events-auto flex items-center justify-center bg-black/45"
     >
 
       <div className="w-[min(30rem,92vw)] rounded-2xl border border-white/15 bg-neutral-900/95 p-5 text-white shadow-2xl">

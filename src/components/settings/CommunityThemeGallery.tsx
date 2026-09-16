@@ -133,7 +133,7 @@ export function CommunityThemeGallery({ onClose }: { onClose: () => void }) {
   }, [uninstallTheme]);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50" onClick={onClose}>
+    <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div
         className="bg-popover border border-border rounded-lg shadow-xl p-4 max-w-2xl w-full mx-4 space-y-3 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
@@ -235,7 +235,7 @@ function ThemeCard({
 
   return (
     <div className="flex flex-col rounded-lg border border-border bg-muted/30 p-3">
-      <div className="min-h-[3.25rem] space-y-1.5">
+      <div className="min-h-13 space-y-1.5">
         {preview ? (
           <>
             <Swatches tokens={preview.light} label="Light" />

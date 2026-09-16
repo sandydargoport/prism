@@ -290,7 +290,7 @@ export function MessagesView() {
               {messagesByAuthor.map(({ member, messages: msgs }) => (
                 <div
                   key={member.id}
-                  className="flex flex-col border-2 rounded-lg overflow-hidden bg-card/90 backdrop-blur-sm"
+                  className="flex flex-col border-2 rounded-lg overflow-hidden bg-card/90 backdrop-blur-xs"
                   style={{ borderColor: member.color }}
                 >
                   <div
@@ -431,7 +431,7 @@ function MessageCard({
                   value={editText}
                   onChange={(e) => setEditText(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  className="w-full text-sm rounded-md border border-border bg-background p-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full text-sm rounded-md border border-border bg-background p-1.5 resize-none focus:outline-hidden focus:ring-1 focus:ring-primary"
                   rows={2}
                   maxLength={500}
                   disabled={saving}
@@ -495,7 +495,7 @@ function MessageCard({
   return (
     <div
       className={cn(
-        'p-4 rounded-lg border border-border bg-card/85 backdrop-blur-sm',
+        'p-4 rounded-lg border border-border bg-card/85 backdrop-blur-xs',
         'hover:border-seasonal-accent hover:ring-2 hover:ring-seasonal-accent/50 transition-all',
         'group',
         message.important && 'bg-destructive/10 border-destructive/20'
@@ -581,7 +581,7 @@ function MessageCard({
             value={editText}
             onChange={(e) => setEditText(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="w-full text-sm rounded-md border border-border bg-background p-2 resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full text-sm rounded-md border border-border bg-background p-2 resize-none focus:outline-hidden focus:ring-2 focus:ring-primary"
             rows={3}
             maxLength={500}
             disabled={saving}

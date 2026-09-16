@@ -359,7 +359,7 @@ export function TravelView() {
                   onClick={() => setShowAllChildren((v) => !v)}
                   title={showAllChildren ? 'Hide all sub-locations' : 'Show all sub-locations on map'}
                   className={cn(
-                    'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium shadow transition-colors',
+                    'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium shadow-sm transition-colors',
                     showAllChildren ? 'bg-primary text-primary-foreground' : 'bg-background/90 text-foreground border border-border hover:bg-muted'
                   )}
                 >
@@ -368,7 +368,7 @@ export function TravelView() {
                 </button>
                 <button
                   onClick={() => setGlobeDarkMode((v) => !v)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium shadow transition-colors bg-background/90 text-foreground border border-border hover:bg-muted"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium shadow-sm transition-colors bg-background/90 text-foreground border border-border hover:bg-muted"
                 >
                   {globeDarkMode ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
                 </button>
@@ -389,7 +389,7 @@ export function TravelView() {
                         onClick={() => setOverlay({ mode: 'add', latLng: overlay.mode === 'add' ? overlay.latLng : undefined })}
                         className={cn(
                           'flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors',
-                          overlay.mode === 'add' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'
+                          overlay.mode === 'add' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
                         )}
                       >
                         <MapPin className="h-3 w-3" />Place
@@ -398,7 +398,7 @@ export function TravelView() {
                         onClick={() => setOverlay({ mode: 'trip-add' })}
                         className={cn(
                           'flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors',
-                          overlay.mode === 'trip-add' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'
+                          overlay.mode === 'trip-add' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
                         )}
                       >
                         <Route className="h-3 w-3" />Trip

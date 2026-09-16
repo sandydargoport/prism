@@ -139,7 +139,7 @@ export function ExitBabysitterModeModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 flex items-center justify-center z-[10000]"
+      className="fixed inset-0 bg-black/70 flex items-center justify-center z-10000"
       onClick={(e) => {
         e.stopPropagation();
         onOpenChange(false);

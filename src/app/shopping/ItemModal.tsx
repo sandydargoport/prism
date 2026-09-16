@@ -79,7 +79,7 @@ export function ItemModal({
                 <select
                   value={selectedListId}
                   onChange={(e) => setSelectedListId(e.target.value)}
-                  className="w-full h-10 pl-3 pr-10 text-sm bg-background border border-input rounded-md appearance-none focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="w-full h-10 pl-3 pr-10 text-sm bg-background border border-input rounded-md appearance-none focus:outline-hidden focus:ring-2 focus:ring-ring"
                 >
                   {lists.map((list) => (
                     <option key={list.id} value={list.id}>

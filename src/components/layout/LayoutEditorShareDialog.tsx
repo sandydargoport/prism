@@ -131,7 +131,7 @@ export function LayoutEditorShareDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50" onClick={onClose}>
+    <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div className="bg-popover border border-border rounded-lg shadow-xl p-4 max-w-2xl w-full mx-4 space-y-3" onClick={e => e.stopPropagation()}>
         <div className="text-sm font-medium">Share to Community</div>
         <p className="text-xs text-muted-foreground">
@@ -144,7 +144,7 @@ export function LayoutEditorShareDialog({
               type="text"
               value={shareForm.name}
               onChange={e => setShareForm(f => ({ ...f, name: e.target.value }))}
-              className="w-full px-2 py-1 text-sm bg-muted border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-full px-2 py-1 text-sm bg-muted border border-border rounded-md focus:outline-hidden focus:ring-1 focus:ring-primary"
               maxLength={100}
             />
           </div>
@@ -154,7 +154,7 @@ export function LayoutEditorShareDialog({
               type="text"
               value={shareForm.author}
               onChange={e => setShareForm(f => ({ ...f, author: e.target.value }))}
-              className="w-full px-2 py-1 text-sm bg-muted border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-full px-2 py-1 text-sm bg-muted border border-border rounded-md focus:outline-hidden focus:ring-1 focus:ring-primary"
               maxLength={50}
             />
           </div>
@@ -165,7 +165,7 @@ export function LayoutEditorShareDialog({
             type="text"
             value={shareForm.description}
             onChange={e => setShareForm(f => ({ ...f, description: e.target.value }))}
-            className="w-full px-2 py-1 text-sm bg-muted border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+            className="w-full px-2 py-1 text-sm bg-muted border border-border rounded-md focus:outline-hidden focus:ring-1 focus:ring-primary"
           />
         </div>
         <div className="flex items-center gap-4">
@@ -195,7 +195,7 @@ export function LayoutEditorShareDialog({
             value={shareForm.tags}
             onChange={e => setShareForm(f => ({ ...f, tags: e.target.value }))}
             placeholder="e.g. family, minimal, kitchen"
-            className="w-full px-2 py-1 text-sm bg-muted border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+            className="w-full px-2 py-1 text-sm bg-muted border border-border rounded-md focus:outline-hidden focus:ring-1 focus:ring-primary"
           />
         </div>
         {shareErrors.length > 0 && (

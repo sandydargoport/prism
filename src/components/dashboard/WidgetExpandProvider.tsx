@@ -101,7 +101,7 @@ export function WidgetExpandProvider({ renderMagnified, children }: ProviderProp
         <>
           <div
             data-keep-bg
-            className="fixed inset-0 z-40 bg-black/45 backdrop-blur-sm"
+            className="fixed inset-0 z-40 bg-black/45 backdrop-blur-xs"
             onClick={collapse}
             aria-hidden
           />

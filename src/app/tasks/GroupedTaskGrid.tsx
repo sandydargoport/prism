@@ -91,7 +91,7 @@ export function GroupedTaskGrid({
             key={group.key}
             {...(!isTouch && !isMobile ? getDragProps(group.key) : {})}
             className={cn(
-              'flex flex-col border-2 rounded-lg overflow-hidden bg-card/90 backdrop-blur-sm transition-all',
+              'flex flex-col border-2 rounded-lg overflow-hidden bg-card/90 backdrop-blur-xs transition-all',
               !isTouch && !isMobile && 'cursor-grab active:cursor-grabbing touch-none',
               isDragging && 'opacity-50 scale-95 ring-4 ring-primary/50',
               isCarousel && 'snap-start'

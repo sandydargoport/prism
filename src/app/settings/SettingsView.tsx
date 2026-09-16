@@ -206,7 +206,7 @@ export function SettingsView() {
   return (
     <PageWrapper>
       <div className="h-screen flex flex-col">
-        <header className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-4">
+        <header className="shrink-0 border-b border-border bg-card/85 backdrop-blur-xs px-4">
           <div className="flex items-center gap-4 h-16">
             <Button variant="ghost" size="icon" asChild>
               <Link href="/" aria-label="Back to dashboard">
@@ -221,7 +221,7 @@ export function SettingsView() {
         </header>
 
         <div className="flex-1 flex overflow-hidden">
-          <nav className="hidden md:block w-64 flex-shrink-0 border-r border-border bg-card/85 backdrop-blur-sm p-4">
+          <nav className="hidden md:block w-64 shrink-0 border-r border-border bg-card/85 backdrop-blur-xs p-4">
             <div className="space-y-1">
               {sections.map((section) => {
                 const Icon = section.icon;
@@ -258,7 +258,7 @@ export function SettingsView() {
                 id="settings-section-select"
                 value={activeSection}
                 onChange={(e) => setActiveSection(e.target.value)}
-                className="w-full rounded-md border border-border bg-card px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full rounded-md border border-border bg-card px-3 py-2 text-base focus:outline-hidden focus:ring-2 focus:ring-primary"
               >
                 {sections.map((section) => (
                   <option key={section.id} value={section.id}>

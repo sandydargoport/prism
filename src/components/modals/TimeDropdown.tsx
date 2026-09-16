@@ -135,7 +135,7 @@ export function TimeDropdown({ value, onChange, minTime, disabled, className }: 
               onKeyDown={handleKeyDown}
               onBlur={commitDraft}
               placeholder={t('timeHint')}
-              className="w-full text-xs px-2 py-1.5 rounded-md bg-muted/50 placeholder:text-muted-foreground/50 outline-none focus:ring-1 focus:ring-primary"
+              className="w-full text-xs px-2 py-1.5 rounded-md bg-muted/50 placeholder:text-muted-foreground/50 outline-hidden focus:ring-1 focus:ring-primary"
             />
           </div>
           <ul ref={listRef} className="max-h-56 overflow-y-auto py-1">

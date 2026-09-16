@@ -181,7 +181,7 @@ export function LayoutPreview({
       {safeZones.map(zone => (
         <div
           key={zone.name}
-          className="absolute pointer-events-none z-[2]"
+          className="absolute pointer-events-none z-2"
           style={{
             left: 0,
             top: 0,
@@ -236,7 +236,7 @@ export function LayoutPreview({
       {/* Viewport indicator ("you are here" window) — clips at content edges via overflow:hidden */}
       {visibleRows != null && scrollY != null && (
         <div
-          className="absolute pointer-events-none z-[3] border-2 border-black/70 dark:border-white/80 bg-white/25 dark:bg-white/15"
+          className="absolute pointer-events-none z-3 border-2 border-black/70 dark:border-white/80 bg-white/25 dark:bg-white/15"
           style={{
             left: (scrollX ?? 0) * scale,
             top: scrollY * scale,

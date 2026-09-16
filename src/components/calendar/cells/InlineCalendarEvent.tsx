@@ -56,10 +56,10 @@ export function InlineCalendarEvent({
       }}
       className={cn(
         'w-full min-w-0 truncate rounded-md text-left transition-[background-color,filter,opacity]',
-        'font-[var(--event-font-weight)]',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-seasonal-accent',
+        'font-(--event-font-weight)',
+        'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-seasonal-accent',
         'leading-tight',
-        compact ? 'px-0.5 py-px text-[8px]' : 'px-[var(--event-padding-x,0.25rem)] py-[var(--event-padding-y,0.125rem)] text-[length:var(--event-font-size,0.75rem)]',
+        compact ? 'px-0.5 py-px text-[8px]' : 'px-(--event-padding-x,0.25rem) py-(--event-padding-y,0.125rem) text-(length:--event-font-size,0.75rem)',
         event.allDay ? 'block hover:brightness-95' : 'flex items-center gap-1 hover:bg-accent/60',
         past && 'opacity-55 saturate-[0.65]',
         className

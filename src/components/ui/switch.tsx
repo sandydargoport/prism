@@ -70,7 +70,7 @@ const Switch = React.forwardRef<
       // Border
       'border-2 border-transparent',
       // Focus state
-      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+      'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
       // Disabled state
       'disabled:cursor-not-allowed disabled:opacity-50',
       // Default state (unchecked)

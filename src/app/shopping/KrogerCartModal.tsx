@@ -472,10 +472,10 @@ export function KrogerCartModal({ items, onClose }: KrogerCartModalProps) {
                           <img
                             src={c.imageUrl}
                             alt=""
-                            className="h-12 w-12 sm:h-14 sm:w-14 object-contain rounded bg-white flex-shrink-0"
+                            className="h-12 w-12 sm:h-14 sm:w-14 object-contain rounded bg-white shrink-0"
                           />
                         ) : (
-                          <div className="h-12 w-12 sm:h-14 sm:w-14 rounded bg-muted flex-shrink-0" />
+                          <div className="h-12 w-12 sm:h-14 sm:w-14 rounded bg-muted shrink-0" />
                         )}
                         <div className="flex-1 min-w-0 flex flex-col justify-center">
                           {/* Wrap name to 2 lines instead of truncating —
@@ -488,7 +488,7 @@ export function KrogerCartModal({ items, onClose }: KrogerCartModalProps) {
                             <div className="text-xs text-muted-foreground truncate mt-0.5">{c.size}</div>
                           )}
                         </div>
-                        <div className="flex-shrink-0 flex flex-col items-end justify-center min-w-[3.5rem]">
+                        <div className="shrink-0 flex flex-col items-end justify-center min-w-14">
                           {c.priceDisplay ? (
                             <>
                               <span className="text-sm font-semibold tabular-nums whitespace-nowrap">{c.priceDisplay}</span>
@@ -503,7 +503,7 @@ export function KrogerCartModal({ items, onClose }: KrogerCartModalProps) {
                             <span className="text-[10px] text-muted-foreground">no price</span>
                           )}
                         </div>
-                        {selected && <Check className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0 self-center" />}
+                        {selected && <Check className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0 self-center" />}
                       </button>
                     </li>
                   );
@@ -543,7 +543,7 @@ export function KrogerCartModal({ items, onClose }: KrogerCartModalProps) {
                   >
                     −
                   </Button>
-                  <span className="min-w-[2rem] text-center text-base font-semibold tabular-nums">
+                  <span className="min-w-8 text-center text-base font-semibold tabular-nums">
                     {quantities.get(current.id) ?? 1}
                   </span>
                   <Button
@@ -579,16 +579,16 @@ export function KrogerCartModal({ items, onClose }: KrogerCartModalProps) {
                 return (
                   <li key={r.id} className="flex items-start gap-2 min-w-0">
                     {cand ? (
-                      <Check className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                      <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                     ) : (
-                      <X className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                      <X className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                     )}
                     <div className="flex-1 min-w-0">
-                      <div className="text-muted-foreground break-words">
+                      <div className="text-muted-foreground wrap-break-word">
                         {parsedByItemId.get(r.id)?.original ?? r.query}
                       </div>
                       {cand && (
-                        <div className="text-xs text-muted-foreground break-words">
+                        <div className="text-xs text-muted-foreground wrap-break-word">
                           → {cand.brand ? `${cand.brand} ` : ''}{cand.description}
                           {(quantities.get(r.id) ?? 1) > 1 && (
                             <span className="ml-1 font-medium text-foreground">

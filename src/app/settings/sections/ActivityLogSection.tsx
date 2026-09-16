@@ -178,7 +178,7 @@ export function ActivityLogSection() {
                     color={log.userColor || '#888'}
                     imageUrl={log.userAvatarUrl ?? undefined}
                     size="sm"
-                    className="h-8 w-8 flex-shrink-0 mt-0.5"
+                    className="h-8 w-8 shrink-0 mt-0.5"
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -198,7 +198,7 @@ export function ActivityLogSection() {
                       {log.summary}
                     </p>
                   </div>
-                  <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
+                  <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
                     {relativeTime(log.createdAt)}
                   </span>
                 </div>

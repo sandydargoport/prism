@@ -89,11 +89,11 @@ export function LayoutEditorImportDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50" onClick={onClose}>
+    <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div className="bg-popover border border-border rounded-lg shadow-xl p-4 max-w-lg w-full mx-4 space-y-3" onClick={e => e.stopPropagation()}>
         <div className="text-sm font-medium">Import Layout</div>
         <textarea
-          className="w-full h-32 text-xs font-mono bg-muted text-foreground border border-border rounded-md p-2 resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+          className="w-full h-32 text-xs font-mono bg-muted text-foreground border border-border rounded-md p-2 resize-none focus:outline-hidden focus:ring-2 focus:ring-primary"
           placeholder='Paste exported layout JSON here...'
           value={importText}
           onChange={(e) => { setImportText(e.target.value); setImportError(''); }}

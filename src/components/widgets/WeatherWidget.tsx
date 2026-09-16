@@ -437,7 +437,7 @@ export const WeatherWidget = React.memo(function WeatherWidget({
             {/* Multi-day summary — the day list fills the remaining space and
                 clips to WHOLE rows (maxDayRows) so a day is never half-cut. */}
             <div className="flex-1 min-h-0 flex flex-col">
-              <span className="flex-shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {shownForecast.length}-Day Forecast
               </span>
               <div ref={dayListRef} className="flex-1 min-h-0 overflow-hidden">
@@ -453,7 +453,7 @@ export const WeatherWidget = React.memo(function WeatherWidget({
                 row (CurrentConditions), so the arc renders without a
                 duplicate label strip. */}
             {showSunArc && (
-              <div className="flex-shrink-0 flex flex-col gap-1">
+              <div className="shrink-0 flex flex-col gap-1">
                 <SunriseSunsetArc
                   sunrise={weatherData.sunrise!}
                   sunset={weatherData.sunset!}
@@ -469,7 +469,7 @@ export const WeatherWidget = React.memo(function WeatherWidget({
 
             {/* Precipitation chart — replaces sunrise/sunset arc when rain is coming in the next hour */}
             {showPrecipChart && (
-              <div className="flex-shrink-0 flex flex-col gap-1">
+              <div className="shrink-0 flex flex-col gap-1">
                 <PrecipitationChart minutely={weatherData.minutely!} />
               </div>
             )}
@@ -515,7 +515,7 @@ function CurrentConditions({
       <div className="flex items-center gap-3">
         <WeatherIcon
           condition={weather.condition}
-          className="h-10 w-10 text-primary flex-shrink-0"
+          className="h-10 w-10 text-primary shrink-0"
         />
         <div>
           <div className="text-4xl font-bold leading-none">{temp}</div>
@@ -623,21 +623,21 @@ function DayHeader({
           <div key={i} data-day-row className="flex items-center gap-2 py-1">
 
             {/* Day label + precip % + weather icon + moon phase glyph */}
-            <div className="flex items-center gap-1.5 w-28 flex-shrink-0">
-              <div className="w-12 flex-shrink-0 h-8 flex flex-col justify-center">
+            <div className="flex items-center gap-1.5 w-28 shrink-0">
+              <div className="w-12 shrink-0 h-8 flex flex-col justify-center">
                 <div className="text-[11px] font-bold tracking-wide text-foreground leading-tight whitespace-nowrap">
                   {label}
                 </div>
                 {day.precipProbability !== undefined && (
                   <div className="flex items-center gap-0.5 text-[10px] text-blue-500 leading-tight">
-                    <Droplets className="h-2.5 w-2.5 flex-shrink-0" />
+                    <Droplets className="h-2.5 w-2.5 shrink-0" />
                     <span>{day.precipProbability}%</span>
                   </div>
                 )}
               </div>
               <WeatherIcon
                 condition={day.condition}
-                className="h-5 w-5 flex-shrink-0 text-muted-foreground"
+                className="h-5 w-5 shrink-0 text-muted-foreground"
               />
               <MoonGlyph phase={dayPhase} size={14} />
             </div>
@@ -647,7 +647,7 @@ function DayHeader({
                 inside. Low and high temps sit at fixed left/right positions so
                 they line up across days too. */}
             <div className="flex-1 flex items-center gap-1.5 min-w-0">
-              <span className="text-[11px] text-muted-foreground tabular-nums w-7 text-right flex-shrink-0">
+              <span className="text-[11px] text-muted-foreground tabular-nums w-7 text-right shrink-0">
                 {fmt(day.low)}°
               </span>
               <div className="flex-1 relative h-4 rounded-full bg-black/10 dark:bg-white/15 ring-1 ring-inset ring-black/10 dark:ring-white/15 overflow-hidden min-w-0">
@@ -660,7 +660,7 @@ function DayHeader({
                   }}
                 />
               </div>
-              <span className="text-[11px] font-semibold tabular-nums w-7 text-left flex-shrink-0">
+              <span className="text-[11px] font-semibold tabular-nums w-7 text-left shrink-0">
                 {fmt(day.high)}°
               </span>
             </div>

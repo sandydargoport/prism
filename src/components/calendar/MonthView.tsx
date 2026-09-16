@@ -121,7 +121,7 @@ export function MonthView({
       {cards && <CardHeightProbe size="xs" onMeasure={setCardHeight} />}
       {showMonthHeader && (
         <div
-          className="shrink-0 text-center py-1 font-semibold text-sm text-white rounded-t-md shadow-sm"
+          className="shrink-0 text-center py-1 font-semibold text-sm text-white rounded-t-md shadow-xs"
           style={{ backgroundColor: monthColor }}
         >
           {d.monthYear(currentDate)}
@@ -250,16 +250,16 @@ function MonthDayCell({
       onClick={() => onDateClick(date)}
       className={cn(
         'relative cursor-pointer overflow-visible',
-        !transparentMode && !cellBgStyle && 'bg-card/85 backdrop-blur-sm',
+        !transparentMode && !cellBgStyle && 'bg-card/85 backdrop-blur-xs',
         'flex flex-col min-h-0',
         cards && enableDnd && droppable.isOver && 'ring-2 ring-seasonal-accent shadow-lg',
       )}
       style={cellBgStyle}
     >
-      <div className="flex shrink-0 items-center justify-center h-[var(--daynum-row)]">
+      <div className="flex shrink-0 items-center justify-center h-(--daynum-row)">
         <span className={cn(
           'inline-flex items-center justify-center rounded-full px-1 font-medium',
-          'h-[var(--daynum-box)] min-w-[var(--daynum-box)] text-[length:var(--daynum-size)]',
+          'h-(--daynum-box) min-w-(--daynum-box) text-(length:--daynum-size)',
           today && 'bg-primary font-bold text-primary-foreground',
           !today && isPast && 'text-muted-foreground',
           !today && !isSameMonth(date, currentDate) && 'text-muted-foreground/55',
@@ -289,7 +289,7 @@ function MonthDayCell({
       ) : (
         // Row gap follows the theme's events mode; the fallback is the
         // 0.125rem that space-y-0.5 used to hard-code.
-        <ul className="flex-1 overflow-y-auto list-none m-0 px-1 pb-1 pt-0 flex flex-col gap-[var(--event-gap,0.125rem)]">
+        <ul className="flex-1 overflow-y-auto list-none m-0 px-1 pb-1 pt-0 flex flex-col gap-(--event-gap,0.125rem)">
           {dayEvents.map((event) => (
             <li key={event.id}>
               <InlineCalendarEvent event={event} onClick={onEventClick} />
@@ -366,7 +366,7 @@ function DayCardsCell({
             onEventClick(event);
           }}
           className={cn(
-            'w-full text-left text-[10px] px-1 py-0.5 rounded-md bg-card/85 backdrop-blur-sm border border-border/40 shadow-sm truncate hover:bg-card transition-colors leading-tight',
+            'w-full text-left text-[10px] px-1 py-0.5 rounded-md bg-card/85 backdrop-blur-xs border border-border/40 shadow-xs truncate hover:bg-card transition-colors leading-tight',
             isCalendarEventPast(
               event.startTime,
               event.endTime,

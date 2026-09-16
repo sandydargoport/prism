@@ -104,11 +104,11 @@ const ScrollBar = React.forwardRef<
       // Orientation-specific styles
       orientation === 'vertical' && [
         // Vertical: positioned on the right
-        'h-full w-2.5 border-l border-l-transparent p-[1px]',
+        'h-full w-2.5 border-l border-l-transparent p-px',
       ],
       orientation === 'horizontal' && [
         // Horizontal: positioned on the bottom
-        'h-2.5 flex-col border-t border-t-transparent p-[1px]',
+        'h-2.5 flex-col border-t border-t-transparent p-px',
       ],
       className
     )}

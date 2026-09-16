@@ -533,14 +533,14 @@ export function GoalCelebration({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm cursor-pointer animate-in fade-in duration-300"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs cursor-pointer animate-in fade-in duration-300"
       onClick={handleDismiss}
     >
       <div className="flex flex-col items-center gap-4 animate-in zoom-in-75 duration-500">
         <div className="w-72 h-52 sm:w-96 sm:h-72">
           {scene}
         </div>
-        <div className="bg-card/95 backdrop-blur-sm rounded-xl px-6 py-3 shadow-lg border border-border">
+        <div className="bg-card/95 backdrop-blur-xs rounded-xl px-6 py-3 shadow-lg border border-border">
           <p className="text-lg font-bold text-center">{message}</p>
         </div>
         <p className="text-xs text-white/60">Tap to dismiss</p>

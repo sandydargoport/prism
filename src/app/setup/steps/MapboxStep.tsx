@@ -49,7 +49,7 @@ export function MapboxStep({ onNext, onBack }: MapboxStepProps) {
         {/* Steps */}
         <ol className="space-y-3 text-sm">
           <li className="flex gap-3">
-            <span className="flex-shrink-0 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-bold mt-0.5">1</span>
+            <span className="shrink-0 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-bold mt-0.5">1</span>
             <span>
               Sign up at{' '}
               <a
@@ -64,13 +64,13 @@ export function MapboxStep({ onNext, onBack }: MapboxStepProps) {
             </span>
           </li>
           <li className="flex gap-3">
-            <span className="flex-shrink-0 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-bold mt-0.5">2</span>
+            <span className="shrink-0 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-bold mt-0.5">2</span>
             <span>
               After signing in, go to <strong>Account → Tokens</strong>. Copy your <strong>Default public token</strong> — it starts with <code className="bg-muted px-1 rounded text-xs">pk.</code>
             </span>
           </li>
           <li className="flex gap-3">
-            <span className="flex-shrink-0 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-bold mt-0.5">3</span>
+            <span className="shrink-0 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-bold mt-0.5">3</span>
             <span>Paste it below and click Save.</span>
           </li>
         </ol>

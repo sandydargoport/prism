@@ -119,7 +119,7 @@ export function PhotoLightbox({
       <div className="absolute bottom-4 left-4 right-4 flex flex-col items-center gap-3 z-20">
         {/* Usage tags row - large touch-friendly buttons */}
         {onUpdateUsage && (
-          <div className="flex flex-col items-center gap-3 bg-black/70 backdrop-blur-sm rounded-2xl px-6 py-4">
+          <div className="flex flex-col items-center gap-3 bg-black/70 backdrop-blur-xs rounded-2xl px-6 py-4">
             <span className="text-white/60 text-sm font-medium">Tag for:</span>
             <div className="flex items-center gap-3">
               {usageTags.map((opt) => {
@@ -155,7 +155,7 @@ export function PhotoLightbox({
         )}
 
         {/* Info row */}
-        <div className="flex items-center gap-4 bg-black/60 backdrop-blur-sm rounded-xl px-4 py-2.5">
+        <div className="flex items-center gap-4 bg-black/60 backdrop-blur-xs rounded-xl px-4 py-2.5">
           <button
             onClick={async () => {
               if (await confirm('Delete this photo?', 'This action cannot be undone.')) {

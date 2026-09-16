@@ -43,7 +43,7 @@ export function KeyboardToggleButton() {
       size="icon"
       aria-label="Open keyboard"
       className={cn(
-        'fixed z-[8500] rounded-xl shadow-lg',
+        'fixed z-8500 rounded-xl shadow-lg',
         'h-12 w-12',
         'transition-opacity duration-150',
         show ? 'opacity-100' : 'opacity-0 pointer-events-none',

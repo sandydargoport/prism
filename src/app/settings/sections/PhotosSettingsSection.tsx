@@ -708,7 +708,7 @@ function PinnedPhotosCard() {
           {pinnedWallpaperPhoto ? (
             <div className="flex items-center gap-3 p-2 rounded-md border">
               <div
-                className="w-16 h-10 rounded bg-cover bg-center flex-shrink-0"
+                className="w-16 h-10 rounded bg-cover bg-center shrink-0"
                 style={{ backgroundImage: `url(/api/photos/${pinnedWallpaperPhoto.id}/file)` }}
               />
               <span className="text-sm truncate flex-1">{pinnedWallpaperPhoto.originalFilename}</span>
@@ -737,7 +737,7 @@ function PinnedPhotosCard() {
           {pinnedScreensaverPhoto ? (
             <div className="flex items-center gap-3 p-2 rounded-md border">
               <div
-                className="w-16 h-10 rounded bg-cover bg-center flex-shrink-0"
+                className="w-16 h-10 rounded bg-cover bg-center shrink-0"
                 style={{ backgroundImage: `url(/api/photos/${pinnedScreensaverPhoto.id}/file)` }}
               />
               <span className="text-sm truncate flex-1">{pinnedScreensaverPhoto.originalFilename}</span>

@@ -75,7 +75,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           // Placeholder styling
           'placeholder:text-muted-foreground',
           // Focus state
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+          'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
           // Disabled state
           'disabled:cursor-not-allowed disabled:opacity-50',
           // File input specific styling

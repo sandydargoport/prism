@@ -125,7 +125,7 @@ export function HouseholdStep({ onNext, onBack }: HouseholdStepProps) {
               value={timezone}
               disabled={tzLoading}
               onChange={(e) => setTimezone(e.target.value)}
-              className="h-9 flex-1 min-w-[14rem] rounded-md border border-border bg-background px-3 text-sm"
+              className="h-9 flex-1 min-w-56 rounded-md border border-border bg-background px-3 text-sm"
             >
               {tzOptions.map((tz) => (
                 <option key={tz} value={tz}>

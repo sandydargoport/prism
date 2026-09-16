@@ -146,7 +146,7 @@ export function PlaneCelebration({
               </text>
             </svg>
 
-            {/* Banner shadow/depth */}
+            {/* Banner shadow */}
             <div className="absolute inset-0 -z-10 translate-y-1 opacity-20">
               <svg viewBox="0 0 300 60" className="h-14 w-auto">
                 <path

@@ -548,7 +548,7 @@ export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
+                      className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
                       onClick={async () => {
                         if (!await confirm(`Remove "${cal.dashboardCalendarName}"?`, 'This will remove the calendar and all its events.')) return;
                         setUpdatingCalendar(cal.id);

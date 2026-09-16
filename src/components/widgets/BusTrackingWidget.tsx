@@ -152,14 +152,14 @@ function RouteStatusCard({ route, compact }: { route: BusRouteStatus; compact: b
       {/* Header row: label + scheduled time */}
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium truncate">{route.label}</span>
-        <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+        <span className="text-xs text-muted-foreground shrink-0 ml-2">
           {route.scheduledTime}
         </span>
       </div>
 
       {/* Status text with color indicator */}
       <div className="flex items-center gap-2">
-        <div data-keep-bg className={cn('h-2 w-2 rounded-full flex-shrink-0', statusColor)} />
+        <div data-keep-bg className={cn('h-2 w-2 rounded-full shrink-0', statusColor)} />
         <span className="text-xs text-muted-foreground">{statusText}</span>
       </div>
 

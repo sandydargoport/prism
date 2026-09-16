@@ -76,7 +76,7 @@ export function ShoppingCategoryCard({
       onTouchMove={!isMobile ? onTouchMove : undefined}
       onTouchEnd={!isMobile ? onTouchEnd : undefined}
       className={cn(
-        'border-2 rounded-lg overflow-hidden bg-card/90 backdrop-blur-sm',
+        'border-2 rounded-lg overflow-hidden bg-card/90 backdrop-blur-xs',
         'flex flex-col transition-all',
         !isMobile && 'cursor-grab active:cursor-grabbing touch-none',
         isDragging && 'opacity-50 scale-95 ring-4 ring-primary/50'

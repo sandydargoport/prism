@@ -40,7 +40,7 @@ const SelectTrigger = React.forwardRef<
       'rounded-md border border-input bg-background px-3 py-2',
       'text-sm ring-offset-background',
       'placeholder:text-muted-foreground',
-      'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+      'focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2',
       'disabled:cursor-not-allowed disabled:opacity-50',
       '[&>span]:line-clamp-1',
       className
@@ -102,7 +102,7 @@ const SelectContent = React.forwardRef<
         // (its popper collision var) so the list never overflows a constrained
         // container like a modal — it shrinks and scrolls instead of "running
         // out of space". Falls back to 24rem when the var isn't set.
-        'relative z-50 max-h-[min(24rem,var(--radix-select-content-available-height,24rem))] min-w-[8rem] overflow-hidden',
+        'relative z-50 max-h-[min(24rem,var(--radix-select-content-available-height,24rem))] min-w-32 overflow-hidden',
         'rounded-md border bg-popover text-popover-foreground shadow-md',
         'data-[state=open]:animate-in data-[state=closed]:animate-out',
         'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
@@ -126,7 +126,7 @@ const SelectContent = React.forwardRef<
           // list to a single row. Let it size to its items (up to the content
           // cap above), matching the trigger width.
           position === 'popper' &&
-            'w-full min-w-[var(--radix-select-trigger-width)]'
+            'w-full min-w-(--radix-select-trigger-width)'
         )}
       >
         {children}
@@ -157,9 +157,9 @@ const SelectItem = React.forwardRef<
     ref={ref}
     className={cn(
       'relative flex w-full cursor-default select-none items-center',
-      'rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none',
+      'rounded-sm py-1.5 pl-8 pr-2 text-sm outline-hidden',
       'focus:bg-accent focus:text-accent-foreground',
-      'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+      'data-disabled:pointer-events-none data-disabled:opacity-50',
       className
     )}
     {...props}

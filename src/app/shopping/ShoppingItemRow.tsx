@@ -44,7 +44,7 @@ export function ShoppingItemRow({
           </span>
 
           {item.source === 'scan' && (
-            <ScanBarcode className="h-3 w-3 text-muted-foreground/60 flex-shrink-0" aria-label="Added by scanner" />
+            <ScanBarcode className="h-3 w-3 text-muted-foreground/60 shrink-0" aria-label="Added by scanner" />
           )}
           {quantityDisplay && (
             <Badge variant="secondary" className="text-xs">

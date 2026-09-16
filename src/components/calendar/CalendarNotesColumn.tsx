@@ -38,7 +38,7 @@ export function CalendarNotesColumn({
               dateKey={dateKey}
               content={note?.content || ''}
               onNoteChange={onNoteChange}
-              className="px-3 pb-3 min-h-[48px]"
+              className="px-3 pb-3 min-h-touch"
             />
           </div>
         );

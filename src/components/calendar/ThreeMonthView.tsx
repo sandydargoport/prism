@@ -103,20 +103,20 @@ function MiniMonth({
   return (
     <div className={cn(
       'flex flex-col flex-1 rounded-lg overflow-hidden',
-      !transparentMode && 'bg-card/85 backdrop-blur-sm',
+      !transparentMode && 'bg-card/85 backdrop-blur-xs',
       isCenter && 'ring-2 ring-primary/30'
     )}>
       {/* Month header with themed color — compact band so the three minis
           can use more vertical space for actual day cells. */}
       <div
-        className="text-center py-1 font-semibold text-sm flex-shrink-0 text-white shadow-sm"
+        className="text-center py-1 font-semibold text-sm shrink-0 text-white shadow-xs"
         style={{ backgroundColor: monthColor }}
       >
         {d.monthYear(month)}
       </div>
 
       {/* Day name headers */}
-      <div className="grid grid-cols-7 gap-px px-1 flex-shrink-0">
+      <div className="grid grid-cols-7 gap-px px-1 shrink-0">
         {dayIndices.map((index) => (
           <div key={index} className="text-center text-[10px] font-medium text-muted-foreground py-1">
             {d.weekdayByIndex(index, 'weekdayNarrow')}
@@ -167,7 +167,7 @@ function MiniMonth({
                     !inMonth && 'text-muted-foreground/40',
                   )}
                 >
-                  <div className="flex h-4 flex-shrink-0 items-center justify-center">
+                  <div className="flex h-4 shrink-0 items-center justify-center">
                     <span className={cn(
                       'inline-flex h-4 min-w-4 items-center justify-center rounded-full px-0.5 text-[10px] leading-tight',
                       today && 'bg-primary font-bold text-primary-foreground',
@@ -186,7 +186,7 @@ function MiniMonth({
                   )}
                   {/* Event list — scrollable within day cell */}
                   {inMonth && dayEvents.length > 0 && (
-                    <ul className="flex-1 overflow-y-auto mt-0.5 scrollbar-thin list-none m-0 p-0 flex flex-col gap-[var(--event-gap)]">
+                    <ul className="flex-1 overflow-y-auto mt-0.5 scrollbar-thin list-none m-0 p-0 flex flex-col gap-(--event-gap)">
                       {dayEvents.map((event) => (
                         <li key={event.id}>
                           <InlineCalendarEvent

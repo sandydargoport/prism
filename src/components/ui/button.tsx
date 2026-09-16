@@ -52,7 +52,7 @@ const buttonVariants = cva(
     // Transitions (smooth hover/focus effects)
     'transition-colors duration-200',
     // Focus state (accessibility)
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+    'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
     // Disabled state
     'disabled:pointer-events-none disabled:opacity-50',
     // Touch optimization
@@ -68,19 +68,19 @@ const buttonVariants = cva(
       variant: {
         // Primary action - most prominent
         default:
-          'bg-primary text-primary-foreground shadow hover:bg-primary/90 active:bg-primary/80',
+          'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 active:bg-primary/80',
 
         // Destructive action - delete, remove, etc.
         destructive:
-          'bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 active:bg-destructive/80',
+          'bg-destructive text-destructive-foreground shadow-xs hover:bg-destructive/90 active:bg-destructive/80',
 
         // Secondary action - less prominent than default
         secondary:
-          'bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80 active:bg-secondary/70',
+          'bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80 active:bg-secondary/70',
 
         // Outlined button - bordered, transparent background
         outline:
-          'border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground active:bg-accent/80',
+          'border border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground active:bg-accent/80',
 
         // Ghost button - minimal, for toolbars and icon buttons
         ghost:

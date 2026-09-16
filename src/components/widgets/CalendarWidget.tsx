@@ -245,7 +245,7 @@ export const CalendarWidget = React.memo(function CalendarWidget({
           className={cn(
             'px-2 py-1 rounded-full text-[10px] font-medium transition-colors inline-flex items-center gap-1 leading-none',
             selectedCalendarIds.has(group.id) || selectedCalendarIds.has('all')
-              ? isLightColor(group.color) ? '!text-black' : '!text-white'
+              ? isLightColor(group.color) ? 'text-black!' : 'text-white!'
               : transparentMode ? 'text-current/60 hover:text-current' : 'bg-muted text-muted-foreground hover:bg-accent'
           )}
           style={

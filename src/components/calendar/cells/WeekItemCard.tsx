@@ -185,8 +185,8 @@ export function WeekItemCard({
         className={cn(
           'group relative flex w-full items-center gap-2',
           'overflow-hidden rounded-md',
-          'bg-card/85 backdrop-blur-sm',
-          'border border-border/40 shadow-sm',
+          'bg-card/85 backdrop-blur-xs',
+          'border border-border/40 shadow-xs',
           'text-left text-foreground',
           'transition-colors duration-150',
           interactive && 'cursor-pointer hover:bg-card',
@@ -234,8 +234,8 @@ export function WeekItemCard({
       className={cn(
         'group relative flex w-full items-stretch gap-2',
         'overflow-hidden rounded-md',
-        'bg-card/85 backdrop-blur-sm',
-        'border border-border/40 shadow-sm',
+        'bg-card/85 backdrop-blur-xs',
+        'border border-border/40 shadow-xs',
         'text-left text-foreground',
         'transition-colors duration-150',
         interactive && 'cursor-pointer hover:bg-card',

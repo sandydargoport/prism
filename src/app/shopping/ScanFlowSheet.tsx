@@ -33,7 +33,7 @@ export function ScanFlowSheet({
 
   if (scan.step === 'loading') {
     return (
-      <div className="fixed inset-0 z-[9100] flex items-center justify-center bg-black/40">
+      <div className="fixed inset-0 z-9100 flex items-center justify-center bg-black/40">
         <div className="bg-card rounded-2xl p-6 flex flex-col items-center gap-3 shadow-xl">
           <Spinner size="sm" />
           <p className="text-sm text-muted-foreground">Looking up product…</p>
@@ -46,7 +46,7 @@ export function ScanFlowSheet({
   if (!product) return null;
 
   return (
-    <div className="fixed inset-0 z-[9100] flex items-end justify-center bg-black/60" onClick={onClear}>
+    <div className="fixed inset-0 z-9100 flex items-end justify-center bg-black/60" onClick={onClear}>
       <div className="w-full max-w-lg bg-card rounded-t-2xl p-4 pb-8 shadow-xl" onClick={e => e.stopPropagation()}>
         <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-3" />
         <p className="font-semibold text-center mb-1">{product.name}</p>

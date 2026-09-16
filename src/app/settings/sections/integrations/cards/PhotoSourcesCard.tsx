@@ -20,7 +20,7 @@ interface PhotoSourceSummary {
 }
 
 const PhotosIcon = () => (
-  <div className="h-6 w-6 flex items-center justify-center rounded bg-gradient-to-br from-blue-500 to-purple-500">
+  <div className="h-6 w-6 flex items-center justify-center rounded bg-linear-to-br from-blue-500 to-purple-500">
     <ImageIcon className="h-4 w-4 text-white" aria-hidden="true" />
   </div>
 );
@@ -109,7 +109,7 @@ export function PhotoSourcesCard({ forceSubSectionOpen }: Props) {
                 >
                   {iconForType(s.type)}
                   <span className="truncate flex-1">{s.name}</span>
-                  <span className="text-xs text-muted-foreground flex-shrink-0">
+                  <span className="text-xs text-muted-foreground shrink-0">
                     {s.photoCount} photos
                   </span>
                 </li>

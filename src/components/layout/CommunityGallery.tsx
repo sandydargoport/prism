@@ -117,7 +117,7 @@ export function CommunityGallery({ mode, onApplyLayout, currentOrientation }: Co
               if (e.key === 'Enter') setSearch(pendingSearch);
             }}
             placeholder="Search layouts… (Enter)"
-            className="px-2.5 py-1.5 pr-7 text-sm bg-muted/60 border border-border rounded-lg w-52 focus:outline-none focus:ring-1 focus:ring-primary focus:bg-muted"
+            className="px-2.5 py-1.5 pr-7 text-sm bg-muted/60 border border-border rounded-lg w-52 focus:outline-hidden focus:ring-1 focus:ring-primary focus:bg-muted"
           />
           {pendingSearch && (
             <button
@@ -224,7 +224,7 @@ function CommunityLayoutCard({
             width={previewPx}
             height={previewPx}
             showGrid={false}
-            className="!bg-transparent"
+            className="bg-transparent!"
           />
         )}
       </div>
@@ -232,7 +232,7 @@ function CommunityLayoutCard({
       {/* Meta */}
       <div className="flex flex-1 flex-col px-0.5 pt-2">
         <div className="truncate text-[13px] font-semibold leading-tight">{entry.name}</div>
-        <p className="mt-0.5 line-clamp-2 min-h-[2rem] text-xs leading-snug text-muted-foreground">
+        <p className="mt-0.5 line-clamp-2 min-h-8 text-xs leading-snug text-muted-foreground">
           {entry.description}
         </p>
         <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">

@@ -14,8 +14,8 @@ interface MeasureBarProps {
  */
 export function LayoutEditorMeasureBar({ measureHideNav, onToggleNav, onExit }: MeasureBarProps) {
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[200] flex flex-col items-center gap-2">
-      <div className="flex items-center gap-2 bg-card/90 backdrop-blur-sm border border-border rounded-full px-4 py-2 shadow-lg">
+    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-200 flex flex-col items-center gap-2">
+      <div className="flex items-center gap-2 bg-card/90 backdrop-blur-xs border border-border rounded-full px-4 py-2 shadow-lg">
         <button
           onClick={onToggleNav}
           className={`px-3 py-1.5 text-xs rounded-full transition-colors whitespace-nowrap ${

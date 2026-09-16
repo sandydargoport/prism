@@ -194,7 +194,7 @@ export function VirtualKeyboard() {
     <div
       data-virtual-keyboard
       className={cn(
-        'fixed bottom-0 left-0 right-0 z-[9000]',
+        'fixed bottom-0 left-0 right-0 z-9000',
         'bg-background border-t border-border shadow-2xl',
         isListening && 'is-listening',
         visible && (isExiting ? 'animate-keyboard-out' : 'animate-keyboard-in'),

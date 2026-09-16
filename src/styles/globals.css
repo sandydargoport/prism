@@ -1,6 +1,433 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@plugin 'tailwindcss-animate';
+
+@custom-variant dark (&:is(.dark *));
+
+/* `inline` is required, not cosmetic. Every colour here resolves through a
+   variable the theme system rewrites at runtime (--background, --radius,
+   --theme-font and the rest), and a plain @theme snapshots those against
+   :root, so .dark and every installed theme would stop taking effect. Nothing
+   outside this file reads the generated color or radius names. */
+@theme inline {
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-success: hsl(var(--success));
+  --color-success-foreground: hsl(var(--success-foreground));
+
+  --color-warning: hsl(var(--warning));
+  --color-warning-foreground: hsl(var(--warning-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-seasonal-accent: hsl(var(--seasonal-accent));
+  --color-seasonal-accent-foreground: hsl(var(--seasonal-accent-foreground));
+  --color-seasonal-highlight: hsl(var(--seasonal-highlight));
+  --color-seasonal-subtle: hsl(var(--seasonal-subtle));
+
+  --color-family-member1: #3b82f6;
+  --color-family-member2: #ec4899;
+  --color-family-member3: #10b981;
+  --color-family-member4: #f59e0b;
+  --color-family-member5: #8b5cf6;
+  --color-family-member6: #ef4444;
+
+  --color-status-pending: #f59e0b;
+  --color-status-approved: #10b981;
+  --color-status-overdue: #ef4444;
+
+  --color-priority-high: #ef4444;
+  --color-priority-medium: #f59e0b;
+  --color-priority-low: #3b82f6;
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --font-sans:
+    var(--theme-font, var(--font-inter, Inter)), Inter Fallback, system-ui,
+    -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial,
+    sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol,
+    Noto Color Emoji;
+  --font-mono:
+    JetBrains Mono, Menlo, Monaco, Consolas, Liberation Mono, Courier New,
+    monospace;
+
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: 2.25rem;
+  --text-4xl: 2.25rem;
+  --text-4xl--line-height: 2.5rem;
+  --text-5xl: 3rem;
+  --text-5xl--line-height: 1;
+  --text-6xl: 3.75rem;
+  --text-6xl--line-height: 1;
+  --text-7xl: 4.5rem;
+  --text-7xl--line-height: 1;
+  --text-8xl: 6rem;
+  --text-8xl--line-height: 1;
+  --text-9xl: 8rem;
+  --text-9xl--line-height: 1;
+
+  --spacing-touch-sm: 44px;
+  --spacing-touch: 48px;
+  --spacing-touch-lg: 60px;
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-fade-in: fade-in 0.2s ease-out;
+  --animate-slide-up: slide-up 0.2s ease-out;
+  --animate-slide-down: slide-down 0.2s ease-out;
+  --animate-scale-up: scale-up 0.15s ease-out;
+  --animate-spin: spin 1s linear infinite;
+  --animate-pulse: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-bounce: bounce 1s infinite;
+  --animate-confetti: confetti 3s ease-out forwards;
+  --animate-shake: shake 0.5s ease-in-out;
+
+  --breakpoint-xs: 480px;
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+  --breakpoint-3xl: 1920px;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes slide-up {
+    from {
+      transform: translateY(10px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  @keyframes slide-down {
+    from {
+      transform: translateY(-10px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  @keyframes scale-up {
+    from {
+      transform: scale(0.95);
+    }
+    to {
+      transform: scale(1);
+    }
+  }
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+  @keyframes bounce {
+    0%,
+    100% {
+      transform: translateY(-5%);
+      animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+    }
+    50% {
+      transform: translateY(0);
+      animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+    }
+  }
+  @keyframes confetti {
+    0% {
+      transform: translateY(0) rotate(0deg);
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(100vh) rotate(720deg);
+      opacity: 0;
+    }
+  }
+  @keyframes shake {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+      transform: translateX(-4px);
+    }
+    20%,
+    40%,
+    60%,
+    80% {
+      transform: translateX(4px);
+    }
+  }
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+@utility touch-target {
+  /* Touch targets: Apple HIG 44px minimum — only enforced on touch devices */
+  @apply min-h-[32px] min-w-[32px];
+
+  @media (pointer: coarse) {
+    @apply min-h-[44px] min-w-[44px];
+  }
+}
+
+@utility touch-target-lg {
+  @apply min-h-[36px] min-w-[36px];
+
+  @media (pointer: coarse) {
+    @apply min-h-[48px] min-w-[48px];
+  }
+}
+
+@utility touch-target-xl {
+  @apply min-h-[44px] min-w-[44px];
+
+  @media (pointer: coarse) {
+    @apply min-h-[60px] min-w-[60px];
+  }
+}
+
+@utility text-truncate {
+  @apply truncate;
+}
+
+@utility text-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@utility text-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@utility full-screen {
+  @apply min-h-screen w-full;
+}
+
+@utility center {
+  @apply flex items-center justify-center;
+}
+
+@utility stack {
+  @apply flex flex-col gap-4;
+}
+
+@utility row {
+  @apply flex flex-row items-center gap-4;
+}
+
+@utility no-animations {
+  /* Respect the OS-level "reduce motion" accessibility preference. Disables
+   * animations and collapses transitions site-wide. Standard accessible
+   * pattern — keeps a 0.01ms animation-duration so animations still "fire"
+   * (so callbacks like onAnimationEnd run) but are imperceptible. */
+
+  & * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@utility performance-mode {
+  /* Performance mode: minimum-viable stylesheet. The only CSS effect
+   * we are confident gives a meaningful perf win on weak GPUs is
+   * disabling backdrop-filter, and only on elements that actually
+   * declare it (the .backdrop-blur* utility classes). An earlier
+   * version applied this to a universal `*` selector and that turned
+   * out to make toolbar SVG icons render invisibly in light theme on
+   * Chrome — applying `backdrop-filter: none` to descendants that
+   * never had backdrop-filter set creates new stacking contexts and
+   * compositor layers that can change rendering in subtle ways.
+   * Bigger perf wins come from JS-side changes (polling stretch, photo
+   * widget lite, structural-shared polling). */
+  &html .backdrop-blur {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  & html .backdrop-blur-sm {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  & html .backdrop-blur-md {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  & html .backdrop-blur-lg {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  & html .backdrop-blur-xl {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  & html .backdrop-blur-2xl {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  & html .backdrop-blur-3xl {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+@utility backdrop-blur {
+  /* Performance mode: minimum-viable stylesheet. The only CSS effect
+   * we are confident gives a meaningful perf win on weak GPUs is
+   * disabling backdrop-filter, and only on elements that actually
+   * declare it (the .backdrop-blur* utility classes). An earlier
+   * version applied this to a universal `*` selector and that turned
+   * out to make toolbar SVG icons render invisibly in light theme on
+   * Chrome — applying `backdrop-filter: none` to descendants that
+   * never had backdrop-filter set creates new stacking contexts and
+   * compositor layers that can change rendering in subtle ways.
+   * Bigger perf wins come from JS-side changes (polling stretch, photo
+   * widget lite, structural-shared polling). */
+  html.performance-mode & {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+@utility backdrop-blur-sm {
+  html.performance-mode & {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+@utility backdrop-blur-md {
+  html.performance-mode & {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+@utility backdrop-blur-lg {
+  html.performance-mode & {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+@utility backdrop-blur-xl {
+  html.performance-mode & {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+@utility backdrop-blur-2xl {
+  html.performance-mode & {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+@utility backdrop-blur-3xl {
+  html.performance-mode & {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
 
 @layer base {
   :root {
@@ -198,7 +625,7 @@
   }
 
   *:focus {
-    @apply outline-none;
+    @apply outline-hidden;
   }
 
   *:focus-visible {
@@ -246,71 +673,6 @@
 }
 
 @layer utilities {
-  /* Touch targets: Apple HIG 44px minimum — only enforced on touch devices */
-  .touch-target {
-    @apply min-h-[32px] min-w-[32px];
-  }
-
-  .touch-target-lg {
-    @apply min-h-[36px] min-w-[36px];
-  }
-
-  .touch-target-xl {
-    @apply min-h-[44px] min-w-[44px];
-  }
-
-  @media (pointer: coarse) {
-    .touch-target {
-      @apply min-h-[44px] min-w-[44px];
-    }
-
-    .touch-target-lg {
-      @apply min-h-[48px] min-w-[48px];
-    }
-
-    .touch-target-xl {
-      @apply min-h-[60px] min-w-[60px];
-    }
-  }
-
-  .text-truncate {
-    @apply truncate;
-  }
-
-  .text-clamp-2 {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .text-clamp-3 {
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .full-screen {
-    @apply min-h-screen w-full;
-  }
-
-  .center {
-    @apply flex items-center justify-center;
-  }
-
-  .stack {
-    @apply flex flex-col gap-4;
-  }
-
-  .row {
-    @apply flex flex-row items-center gap-4;
-  }
-
-  /* Respect the OS-level "reduce motion" accessibility preference. Disables
-   * animations and collapses transitions site-wide. Standard accessible
-   * pattern — keeps a 0.01ms animation-duration so animations still "fire"
-   * (so callbacks like onAnimationEnd run) but are imperceptible. */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -320,33 +682,6 @@
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
-  }
-
-  .no-animations * {
-    animation: none !important;
-    transition: none !important;
-  }
-
-  /* Performance mode: minimum-viable stylesheet. The only CSS effect
-   * we are confident gives a meaningful perf win on weak GPUs is
-   * disabling backdrop-filter, and only on elements that actually
-   * declare it (the .backdrop-blur* utility classes). An earlier
-   * version applied this to a universal `*` selector and that turned
-   * out to make toolbar SVG icons render invisibly in light theme on
-   * Chrome — applying `backdrop-filter: none` to descendants that
-   * never had backdrop-filter set creates new stacking contexts and
-   * compositor layers that can change rendering in subtle ways.
-   * Bigger perf wins come from JS-side changes (polling stretch, photo
-   * widget lite, structural-shared polling). */
-  html.performance-mode .backdrop-blur,
-  html.performance-mode .backdrop-blur-sm,
-  html.performance-mode .backdrop-blur-md,
-  html.performance-mode .backdrop-blur-lg,
-  html.performance-mode .backdrop-blur-xl,
-  html.performance-mode .backdrop-blur-2xl,
-  html.performance-mode .backdrop-blur-3xl {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
   }
 }
 

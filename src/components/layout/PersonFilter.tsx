@@ -47,7 +47,7 @@ export function PersonFilter({ members, selected, onSelect, className }: PersonF
             )}
           >
             <span
-              className="h-3 w-3 rounded-full flex-shrink-0"
+              className="h-3 w-3 rounded-full shrink-0"
               style={{ backgroundColor: member.color }}
             />
             <span className="hidden sm:inline">{member.name}</span>

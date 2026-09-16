@@ -16,7 +16,7 @@ export function FilterBar({ children, className }: FilterBarProps) {
 
   if (isMobile) {
     return (
-      <div className={cn('flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm', className)}>
+      <div className={cn('shrink-0 border-b border-border bg-card/85 backdrop-blur-xs', className)}>
         <button
           onClick={() => setExpanded(!expanded)}
           className="flex items-center justify-between w-full px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -39,7 +39,7 @@ export function FilterBar({ children, className }: FilterBarProps) {
   }
 
   return (
-    <div className={cn('flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-3 py-1.5 max-h-24 overflow-y-auto', className)}>
+    <div className={cn('shrink-0 border-b border-border bg-card/85 backdrop-blur-xs px-3 py-1.5 max-h-24 overflow-y-auto', className)}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
         {children}
       </div>

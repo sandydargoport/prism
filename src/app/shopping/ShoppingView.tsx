@@ -222,7 +222,7 @@ export function ShoppingView() {
             />
 
             {isMobile && lists.length > 1 ? (
-              <div className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-2 py-1">
+              <div className="shrink-0 border-b border-border bg-card/85 backdrop-blur-xs px-2 py-1">
                 <div className="flex items-center justify-between gap-2">
                   <Button size="icon" variant="ghost" onClick={goPrevList}
                     disabled={currentListIdx <= 0} aria-label="Previous list" className="h-8 w-8 shrink-0">
@@ -246,7 +246,7 @@ export function ShoppingView() {
                 </div>
               </div>
             ) : !isMobile ? (
-              <div className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-3 py-1">
+              <div className="shrink-0 border-b border-border bg-card/85 backdrop-blur-xs px-3 py-1">
                 <div className="overflow-x-auto">
                   <div className="flex gap-1 items-center min-w-max">
                     {lists.map((list) => {
@@ -271,7 +271,7 @@ export function ShoppingView() {
         )}
 
         {shoppingMode && (
-          <header className="flex-shrink-0 border-b border-border bg-card/85 backdrop-blur-sm px-3 py-1 safe-area-top">
+          <header className="shrink-0 border-b border-border bg-card/85 backdrop-blur-xs px-3 py-1 safe-area-top">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ShoppingCart className="h-4 w-4 text-primary" />
@@ -289,7 +289,7 @@ export function ShoppingView() {
         )}
 
         {activeList && totalItems > 0 && !shoppingMode && (
-          <div className="flex-shrink-0 px-3 py-1 bg-card/85 backdrop-blur-sm">
+          <div className="shrink-0 px-3 py-1 bg-card/85 backdrop-blur-xs">
             <div className="max-w-6xl mx-auto flex items-center gap-3">
               <Progress value={progress} className="h-2 flex-1" />
               <span className="text-sm text-muted-foreground whitespace-nowrap">
@@ -370,7 +370,7 @@ export function ShoppingView() {
                 <div className="mt-6 space-y-4">
                   <h3 className="text-lg font-semibold text-muted-foreground">Other Items</h3>
                   {otherItems.map(([category, items]) => (
-                    <div key={category} className="border rounded-lg p-3 bg-card/90 backdrop-blur-sm">
+                    <div key={category} className="border rounded-lg p-3 bg-card/90 backdrop-blur-xs">
                       <h4 className="text-base font-semibold text-muted-foreground mb-2 capitalize flex items-center gap-2">
                         <span><Emoji e={getDynCategoryEmoji(category)} /></span><span>{category}</span>
                       </h4>

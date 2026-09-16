@@ -379,7 +379,7 @@ export function PhotosView() {
 
       {galleryMode && photos.length > 0 && (
         <div
-          className="fixed inset-0 z-[9999] bg-black cursor-pointer"
+          className="fixed inset-0 z-9999 bg-black cursor-pointer"
           onClick={() => setGalleryMode(false)}
         >
           <SlideshowCore photos={photos} interval={10} transition="fade" />

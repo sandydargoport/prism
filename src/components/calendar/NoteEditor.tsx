@@ -106,7 +106,7 @@ export function NoteEditor({
       onKeyDown={editable ? handleKeyDown : undefined}
       onBeforeInput={editable ? handleBeforeInput : undefined}
       className={cn(
-        'text-sm outline-none',
+        'text-sm outline-hidden',
         editable && 'empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/40 empty:before:pointer-events-none',
         className,
       )}

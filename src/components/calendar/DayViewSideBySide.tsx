@@ -168,7 +168,7 @@ export function DayViewSideBySide({
       data-droppable-day={cards && enableDnd ? droppable.droppableId : undefined}
       className={cn(
         'h-full rounded-md overflow-hidden',
-        !transparentMode && 'bg-card/85 backdrop-blur-sm',
+        !transparentMode && 'bg-card/85 backdrop-blur-xs',
         cards && enableDnd && droppable.isOver && 'ring-2 ring-seasonal-accent shadow-lg',
       )}
     >
@@ -177,7 +177,7 @@ export function DayViewSideBySide({
           {/* Sticky all-day / group-label header */}
           <div className={cn('flex sticky top-0 z-20', !transparentMode && 'bg-card/95')}>
             {/* Time column header with toggle button */}
-            <div className="w-16 flex-shrink-0 flex items-center justify-center">
+            <div className="w-16 shrink-0 flex items-center justify-center">
               <button
                 onClick={toggleHidden}
                 data-screensaver-keep
@@ -237,7 +237,7 @@ export function DayViewSideBySide({
                           onClick={() => onEventClick(event)}
                           className={cn(
                             'w-full text-left text-xs px-1 py-0.5 rounded truncate hover:opacity-80 hover:ring-2 hover:ring-seasonal-accent/50 transition-all',
-                            cards && 'bg-card/85 backdrop-blur-sm border border-border/40 shadow-sm text-foreground',
+                            cards && 'bg-card/85 backdrop-blur-xs border border-border/40 shadow-xs text-foreground',
                           )}
                           style={
                             cards
@@ -286,7 +286,7 @@ export function DayViewSideBySide({
           {/* Hourly grid — flex-1 fills remaining space; 1fr rows stretch when hours are hidden */}
           <div className="flex-1 flex">
             {/* Time column */}
-            <div className="w-16 flex-shrink-0 h-full grid" style={{ gridTemplateRows: `repeat(${hours.length}, 1fr)` }}>
+            <div className="w-16 shrink-0 h-full grid" style={{ gridTemplateRows: `repeat(${hours.length}, 1fr)` }}>
               {hours.map((hour) => {
                 const isPastHour = isPastDay || (isCurrentDay && hour < currentHour);
                 const isNowHour = isCurrentDay && hour === currentHour;
@@ -363,7 +363,7 @@ export function DayViewSideBySide({
                               onClick={() => onEventClick(event)}
                               className={cn(
                                 'absolute p-0.5 rounded text-left text-xs z-10 overflow-hidden hover:opacity-90 hover:ring-2 hover:ring-seasonal-accent/50 transition-all flex flex-col items-start',
-                                cards && 'bg-card/85 backdrop-blur-sm border border-border/40 shadow-sm',
+                                cards && 'bg-card/85 backdrop-blur-xs border border-border/40 shadow-xs',
                               )}
                               style={
                                 cards
