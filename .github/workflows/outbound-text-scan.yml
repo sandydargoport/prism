@@ -1,0 +1,71 @@
+name: Outbound text scan
+
+# The gap every local hook leaves open.
+#
+# pre-commit covers tracked files, commit-msg covers commit messages, and the
+# guard-outbound PreToolUse hook covers `gh` calls made from a Claude Code
+# session. None of them can see text typed straight into github.com: a PR body,
+# an issue comment, a release note, a squash-merge message typed in the merge
+# box. That is how a contributor's email address reached a public issue body
+# years after the scanners existed, and nothing noticed until an audit.
+#
+# This cannot stop the keystroke. It fails within seconds, while the body is
+# still editable, which is the difference between a leak you fix and a leak you
+# discover much later in a fork.
+#
+# It compares against .github/pii-hashes.txt, keyed by PRISM_PII_SALT, so the
+# values themselves are never in the repo, never in a secret, and never printed
+# into this public log.
+
+on:
+  pull_request:
+    types: [opened, edited, reopened]
+  issues:
+    types: [opened, edited]
+  issue_comment:
+    types: [created, edited]
+  release:
+    types: [published, edited]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: outbound-${{ github.event_name }}-${{ github.event.number || github.event.issue.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    name: Outbound text scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # A fork PR never receives secrets, so the salt would be empty and every run
+    # would pass vacuously. Skip honestly rather than report a green check that
+    # verified nothing.
+    if: github.event.pull_request.head.repo.fork != true
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Collect the submitted text
+        env:
+          TITLE: ${{ github.event.pull_request.title || github.event.issue.title || github.event.release.name }}
+          BODY: ${{ github.event.pull_request.body || github.event.issue.body || github.event.comment.body || github.event.release.body }}
+        run: |
+          # Via the environment, never interpolated into the shell: the text is
+          # attacker-controlled on a public repo.
+          printf '%s\n%s\n' "$TITLE" "$BODY" > outbound.txt
+          echo "Collected $(wc -c < outbound.txt) bytes."
+
+      - name: Scan against the hashed denylist
+        env:
+          PRISM_PII_SALT: ${{ secrets.PRISM_PII_SALT }}
+        run: |
+          if [ -z "$PRISM_PII_SALT" ]; then
+            echo "::warning::PRISM_PII_SALT is not set - outbound text was not scanned."
+            exit 0
+          fi
+          python3 scripts/pii-hashes.py scan-text outbound.txt
+
+      - name: Shred the collected text
+        if: always()
+        run: rm -f outbound.txt

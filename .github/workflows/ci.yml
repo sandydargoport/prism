@@ -291,6 +291,14 @@ jobs:
       ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
       E2E_HAS_TEST_DB: '1'
       E2E_PIN: '1234'
+      # Freeze what "today" means for this job, for the seed and the browser
+      # alike. The fixtures are built relative to now and the calendar draws
+      # itself around today, so without this a baseline captured on one date
+      # cannot match a run on the next, and the calendar half of the suite went
+      # red for every pull request after the first midnight UTC. A Wednesday
+      # mid-month, so month grids show a full picture and nothing sits on a
+      # month or week boundary.
+      PRISM_SEED_NOW: '2026-06-17T09:30:00Z'
 
     steps:
       - uses: actions/checkout@v7
@@ -341,28 +349,52 @@ jobs:
       #     manual commit.
       - name: Run visual regression suite (compare)
         if: ${{ steps.check-baselines.outputs.found == 'true' && (github.event_name != 'workflow_dispatch' || inputs.update_visual_baselines != true) }}
-        run: npx playwright test e2e/visual-regression.spec.ts --reporter=list
+        # list AND html: `--reporter=list` alone replaces the config's html
+        # reporter, so playwright-report/ was empty and the upload below
+        # produced no artifact. A failing run said which shots differed and
+        # nothing about how, which is the one thing a pixel diff is for.
+        run: npx playwright test e2e/visual-regression.spec.ts --reporter=list,html
 
-      - name: Skip compare (no Linux baselines yet)
+      # Fail, do not skip. This is a required check: for months it reported
+      # success while comparing nothing, because no Linux baselines existed and
+      # the missing-baseline path exited 0. A gate that passes when it cannot
+      # run is worse than no gate, since it also reports that it ran.
+      - name: Fail when Linux baselines are missing
         if: ${{ steps.check-baselines.outputs.found == 'false' && (github.event_name != 'workflow_dispatch' || inputs.update_visual_baselines != true) }}
         run: |
-          echo "::notice::No Linux visual baselines committed yet."
-          echo "::notice::Trigger this workflow manually with 'update_visual_baselines=true' to generate them."
+          echo "::error::No Linux visual baselines are committed, so nothing was compared."
+          echo "::error::Regenerate them: run this workflow manually with update_visual_baselines=true,"
+          echo "::error::download the visual-regression-linux-baselines artifact, and commit it."
+          exit 1
 
+      # `--update-snapshots` alone means "changed": it runs the comparator and
+      # only rewrites a baseline whose diff exceeds maxDiffPixelRatio. With the
+      # ratio at 1% (20,736px of a 1920x1080 frame) a small but wrong region
+      # survives regeneration untouched, which is how the dev-overlay badge
+      # stayed in most baselines through a full re-capture. `=all` rewrites
+      # unconditionally, which is what a deliberate re-capture should mean.
       - name: Run visual regression suite (update baselines)
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.update_visual_baselines == true }}
-        run: npx playwright test e2e/visual-regression.spec.ts --update-snapshots --reporter=list
+        run: npx playwright test e2e/visual-regression.spec.ts --update-snapshots=all --reporter=list
 
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: visual-regression-report
-          path: playwright-report/
+          # test-results/ carries the actual/expected/diff PNGs for each failed
+          # comparison. The html report links to them but does not contain them.
+          path: |
+            playwright-report/
+            test-results/
           retention-days: 7
 
+      # always(): Playwright exits non-zero when it writes a snapshot that did
+      # not exist, which is exactly what a baseline-generation run does. Without
+      # this the job stops at that failure and the baselines it just produced
+      # are thrown away, so the documented bootstrap path could never complete.
       - name: Upload regenerated Linux baselines
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.update_visual_baselines == true }}
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.update_visual_baselines == true }}
         uses: actions/upload-artifact@v4
         with:
           name: visual-regression-linux-baselines

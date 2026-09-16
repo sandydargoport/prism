@@ -43,7 +43,7 @@
 
 import { test, expect, Page } from '@playwright/test';
 import { execSync } from 'child_process';
-import { loginViaAPI } from './helpers/auth';
+import { loginViaAPI, verifySettingsPinViaAPI } from './helpers/auth';
 import { resetAll } from './helpers/reset';
 
 /**
@@ -106,8 +106,73 @@ async function setClientFlags(
  */
 const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
 
+/**
+ * Hide the Next.js dev overlay.
+ *
+ * The suite runs against `npm run dev` (see playwright.config.ts), so every
+ * page carries `<nextjs-portal>` — the dev indicator. It renders in the
+ * BOTTOM-LEFT corner, directly on top of the SideNav's avatar/login button,
+ * and it wins the hit test: `page.click('button[aria-label="Log in"]')` used
+ * to retry until the 30s test timeout with
+ *
+ *   <nextjs-portal> ... subtree intercepts pointer events
+ *
+ * It also painted the indicator into every committed baseline, where it is
+ * pure noise — it does not exist in a production build, which is what the
+ * baselines are supposed to represent.
+ *
+ * Hiding the host element removes it from both the screenshot and hit
+ * testing. Injected via addInitScript so it applies before first paint and
+ * survives client-side navigation.
+ *
+ * An init script runs on a document that has no `documentElement` yet, so
+ * there is nothing to append to on the first call — measured, not assumed.
+ * Hence: register the DOMContentLoaded hook FIRST, then try once eagerly.
+ * Reversing those two lines throws on the eager attach and the hook is never
+ * registered, which leaves the overlay in place.
+ */
+async function hideDevOverlay(page: Page) {
+  await page.addInitScript(() => {
+    const STYLE_ID = 'pw-hide-dev-overlay';
+    const attach = () => {
+      const root = document.head || document.documentElement;
+      if (!root || document.getElementById(STYLE_ID)) return;
+      const style = document.createElement('style');
+      style.id = STYLE_ID;
+      style.textContent = 'nextjs-portal { display: none !important; }';
+      root.appendChild(style);
+    };
+    document.addEventListener('DOMContentLoaded', attach, { once: true });
+    attach();
+  });
+}
+
+/**
+ * The instant every screenshot is taken at, when CI has asked for one.
+ *
+ * The seeded fixtures are built relative to "now" (see `src/lib/db/seed.ts`),
+ * and the calendar draws itself around today, so a baseline captured on one
+ * date cannot match a run on the next: the day a week grid starts on moves, an
+ * agenda list starts from a different entry, and the "today" marker is in a
+ * different cell. That is not a regression in anything, and it took the whole
+ * calendar half of this suite red the first time it ran after midnight UTC.
+ *
+ * CI seeds with `PRISM_SEED_NOW` and passes the same value here, so the
+ * fixtures and the page agree on what day it is. Unset, nothing is pinned and
+ * a local run behaves as it always did.
+ */
+const FIXED_NOW = process.env.PRISM_SEED_NOW;
+
 test.describe('Visual regression', () => {
   let parentName: string;
+
+  test.beforeEach(async ({ page }) => {
+    // setFixedTime, not clock.install: this freezes what the page reads from
+    // Date, and leaves setInterval alone. Prism polls on intervals throughout,
+    // and faking those would change what the suite is looking at.
+    if (FIXED_NOW) await page.clock.setFixedTime(new Date(FIXED_NOW));
+    await hideDevOverlay(page);
+  });
 
   test.beforeAll(() => {
     if (HAS_TEST_DB) {
@@ -164,7 +229,7 @@ test.describe('Visual regression', () => {
     test(`settings - ${theme}`, async ({ page }) => {
       test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
       await setClientFlags(page, { theme });
-      await loginViaAPI(page, parentName);
+      await verifySettingsPinViaAPI(page, parentName);
       await page.goto('/settings');
       await page.waitForLoadState('networkidle');
       await page.waitForTimeout(800);
@@ -175,7 +240,7 @@ test.describe('Visual regression', () => {
     test(`settings - integrations section - ${theme}`, async ({ page }) => {
       test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
       await setClientFlags(page, { theme });
-      await loginViaAPI(page, parentName);
+      await verifySettingsPinViaAPI(page, parentName);
       await page.goto('/settings?section=integrations');
       await page.waitForLoadState('networkidle');
       // Wait for the /api/integrations/status fetch + /api/photo-sources
@@ -269,15 +334,22 @@ test.describe('Visual regression', () => {
   // ─── Settings sub-sections ──────────────────────────────────────────────
   // Settings is split into sections; each has its own layout. Capture the
   // ones most exposed to theme/contrast regressions.
-  const settingsSections = ['family', 'display', 'integrations'] as const;
+  //
+  // `integrations` is deliberately absent: it has its own test above with a
+  // longer settle (it waits on /api/integrations/status). Listing it here too
+  // would point a second test at the same `settings-integrations-*` baseline
+  // file, since snapshot paths are keyed on the name, not the test.
+  const settingsSections = ['family', 'display'] as const;
 
   for (const theme of ['light', 'dark'] as const) {
     for (const section of settingsSections) {
       test(`settings/${section} - ${theme}`, async ({ page }) => {
         test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
         await setClientFlags(page, { theme });
-        await loginViaAPI(page, parentName);
-        await page.goto(`/settings#${section}`);
+        await verifySettingsPinViaAPI(page, parentName);
+        // SettingsView selects the section from `?section=`, not the hash —
+        // `/settings#family` just renders the default section.
+        await page.goto(`/settings?section=${section}`);
         await page.waitForLoadState('networkidle');
         await page.waitForTimeout(800);
 
@@ -335,7 +407,15 @@ test.describe('Visual regression', () => {
       await page.waitForSelector('.z-\\[10001\\]', { timeout: 5000 });
       await page.waitForTimeout(400);
 
-      await expect(page).toHaveScreenshot(`pin-modal-${theme}.png`, SCREENSHOT_OPTIONS);
+      // Shoot the modal PANEL, not the viewport. The modal sits over the live
+      // dashboard, so a full-page capture bakes in the current clock time and
+      // fails a minute later. Masking the dashboard does not help either:
+      // Playwright paints masks over the given rectangles regardless of z
+      // order, so the Photo widget's mask lands on top of the centred modal
+      // and hides half of it. `.z-[10001]` is the full-screen backdrop; its
+      // only child is the panel, which is the thing under test.
+      const panel = page.locator('.z-\\[10001\\] > div');
+      await expect(panel).toHaveScreenshot(`pin-modal-${theme}.png`, SCREENSHOT_OPTIONS);
     });
   }
 });

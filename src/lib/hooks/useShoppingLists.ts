@@ -6,9 +6,11 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useVisibilityPolling } from './useVisibilityPolling';
-import { navCacheGet, navCacheSet } from '@/lib/utils/navCache';
+import { usePollingInterval } from './usePollingInterval';
+import { useCachedMountFetch } from './useCachedMountFetch';
+import { navCacheGet, navCacheSet, navCacheUpdate } from '@/lib/utils/navCache';
 
 // Re-export types from shared types for consumers that import from this hook
 export type { ShoppingItem, ShoppingList } from '@/types';
@@ -48,7 +50,10 @@ export function useShoppingLists(options: UseShoppingListsOptions = {}): UseShop
   } = options;
 
   const CACHE_KEY = '/api/shopping-lists?includeItems=true';
-  const cached = navCacheGet<ShoppingList[]>(CACHE_KEY);
+  // One refresh interval's worth of age is what this hook already tolerates,
+  // so a cached value that young is current by its own standard.
+  const maxAgeMs = usePollingInterval(refreshInterval);
+  const cached = navCacheGet<ShoppingList[]>(CACHE_KEY, maxAgeMs);
   const [lists, setLists] = useState<ShoppingList[]>(() => cached ?? []);
   const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +62,7 @@ export function useShoppingLists(options: UseShoppingListsOptions = {}): UseShop
    * Fetch shopping lists from the API
    */
   const fetchLists = useCallback(async () => {
-    if (!navCacheGet(CACHE_KEY)) setLoading(true);
+    if (!navCacheGet(CACHE_KEY, maxAgeMs)) setLoading(true);
     try {
       setError(null);
 
@@ -134,22 +139,31 @@ export function useShoppingLists(options: UseShoppingListsOptions = {}): UseShop
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [maxAgeMs]);
 
   /**
    * Toggle shopping item checked status
    */
   const toggleItem = useCallback(
     async (itemId: string, checked: boolean) => {
-      // Optimistically update UI immediately
-      setLists((prev) =>
-        prev.map((list) => ({
+      const setChecked = (value: boolean) => (lists: ShoppingList[]) =>
+        lists.map((list) => ({
           ...list,
           items: list.items.map((item) =>
-            item.id === itemId ? { ...item, checked } : item
+            item.id === itemId ? { ...item, checked: value } : item
           ),
-        }))
-      );
+        }));
+
+      // Optimistically update UI immediately.
+      //
+      // Written through to the shared cache as well as to state, because this
+      // is the one mutation here that never refetches. State and cache would
+      // otherwise disagree until the next poll, and a widget mounting in
+      // between — the screensaver's copy, most often — would read the cache and
+      // show the item unticked again. The entry keeps its original age: nothing
+      // was fetched, a local correction was applied.
+      setLists(setChecked(checked));
+      navCacheUpdate<ShoppingList[]>(CACHE_KEY, setChecked(checked));
 
       try {
         const response = await fetch(`/api/shopping-items/${itemId}`, {
@@ -165,14 +179,8 @@ export function useShoppingLists(options: UseShoppingListsOptions = {}): UseShop
       } catch (err) {
         console.error('Error updating item:', err);
         // Revert optimistic update on failure
-        setLists((prev) =>
-          prev.map((list) => ({
-            ...list,
-            items: list.items.map((item) =>
-              item.id === itemId ? { ...item, checked: !checked } : item
-            ),
-          }))
-        );
+        setLists(setChecked(!checked));
+        navCacheUpdate<ShoppingList[]>(CACHE_KEY, setChecked(!checked));
         throw err;
       }
     },
@@ -261,10 +269,20 @@ export function useShoppingLists(options: UseShoppingListsOptions = {}): UseShop
     [fetchLists]
   );
 
-  // Initial fetch (skipped when disabled)
-  useEffect(() => {
-    if (enabled) fetchLists();
-  }, [fetchLists, enabled]);
+  const adoptLists = useCallback((cachedLists: ShoppingList[]) => {
+    setLists(cachedLists);
+    setLoading(false);
+  }, []);
+
+  // Initial fetch (skipped when disabled, or when the cache was filled within
+  // one refresh interval)
+  useCachedMountFetch<ShoppingList[]>({
+    key: CACHE_KEY,
+    enabled,
+    maxAgeMs,
+    fetch: fetchLists,
+    adopt: adoptLists,
+  });
 
   // Set up refresh interval with visibility-based pause (disabled when not enabled)
   useVisibilityPolling(fetchLists, enabled ? refreshInterval : 0);

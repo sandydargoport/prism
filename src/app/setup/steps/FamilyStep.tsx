@@ -89,6 +89,13 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
   // was selected).
   const pinMatchesLength = pin.length === 0 || pin.length === memberPinLength;
 
+  // Saving a parent with no PIN is allowed and stays allowed, but it is what
+  // decides whether Settings is protected at all. "(optional)" on its own read
+  // as "costs nothing", and someone who skipped it had no way to find out
+  // otherwise (#481).
+  const parentWillHaveNoPin =
+    role === 'parent' && pin.length === 0 && (removePin || !editingMember?.hasPin);
+
   // Names must be unique (case-insensitive, trimmed) — two members with the
   // same name break login/admin member selection. The server enforces this
   // too (it's the source of truth for members added in a prior wizard run),
@@ -435,6 +442,13 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
             {pin.length > 0 && pin.length !== memberPinLength && (
               <p className="text-xs text-destructive">
                 PIN must be exactly {memberPinLength} digits
+              </p>
+            )}
+            {parentWillHaveNoPin && (
+              <p className="text-xs text-muted-foreground">
+                Without a PIN, {trimmedName || 'this parent'} can&apos;t unlock Settings, and
+                Settings stays unprotected unless another parent has one. You can add a PIN
+                later in Settings, Family Members.
               </p>
             )}
             {editingMember?.hasPin && (

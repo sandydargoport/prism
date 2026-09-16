@@ -4,8 +4,17 @@ name: PII / Secret Scan
 # be bypassed with --no-verify, CI cannot. Runs the built-in PII pattern rules
 # (maintainer domain, non-allowlisted emails, private/Tailscale IPs), the
 # hostname-in-comment heuristic, and the secret-shape scan on every PR and push
-# to master. The per-maintainer denylist file is absent in CI, which is fine:
-# the built-in rules still run.
+# to master.
+#
+# Layer 2, the per-maintainer denylist, runs here as HASHES. The list itself
+# never reaches GitHub: .github/pii-hashes.txt holds HMAC-SHA256 of each entry
+# keyed by PRISM_PII_SALT, so the file is unusable without the salt and the
+# salt is meaningless without the file. Storing the plaintext list as a secret
+# would have put a concentrated index of a real household inside GitHub, which
+# is the opposite of what the list exists to do.
+#
+# Matches report file and line only, never the value, so a hit cannot
+# republish into this public log.
 on:
   pull_request:
   push:
@@ -22,8 +31,19 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
-      - name: PII denylist + pattern rules
+      - name: Hashed denylist (Layer 2, no plaintext anywhere)
+        env:
+          PRISM_PII_SALT: ${{ secrets.PRISM_PII_SALT }}
+        run: |
+          if [ -z "$PRISM_PII_SALT" ]; then
+            echo "::warning::PRISM_PII_SALT is not set - Layer 2 did not run."
+            exit 0
+          fi
+          python3 scripts/pii-hashes.py scan
+
+      - name: PII pattern rules (Layer 1)
         run: bash scripts/scan-pii.sh
+
       - name: Hostname-in-comment heuristic
         run: bash scripts/scan-hostnames.sh
       - name: Secret-shape scan

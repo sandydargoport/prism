@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/avatar';
 import { useFamily, useAuth } from '@/components/providers';
 import { DEFAULT_PIN_LENGTH } from '@/lib/constants';
+import { pinErrorMessage } from '@/lib/utils/pinErrorMessage';
 import { SettingsView } from './SettingsView';
 
 type GateState = 'checking' | 'prompt' | 'verified';
@@ -23,7 +24,16 @@ export function SettingsPinGate() {
     fetch('/api/auth/settings-verified')
       .then((res) => res.json())
       .then((data) => {
-        setState(data.verified ? 'verified' : 'prompt');
+        // `pinRequired: false` means no parent has a PIN at all, so the prompt
+        // below could never be satisfied by any input. Settings is the only
+        // place a PIN can be set, so prompting there locks the household out of
+        // its own instance (#481). Compared against `false` explicitly: a
+        // response without the field falls through to the prompt.
+        if (data.verified || data.pinRequired === false) {
+          setState('verified');
+          return;
+        }
+        setState('prompt');
       })
       .catch(() => setState('prompt'));
   }, []);
@@ -170,8 +180,11 @@ function SettingsPinPrompt({
           const data = await response.json();
           onVerified(data.user);
         } else {
-          const data = await response.json();
-          setError(data.error || 'Incorrect PIN');
+          // Read the body rather than assuming a wrong PIN. This pad lists every
+          // parent, including any without a PIN, and it is also the one place a
+          // lockout refuses the CORRECT PIN. Same helper as the login pad.
+          const body = await response.json().catch(() => null);
+          setError(pinErrorMessage(response.status, body));
           setIsShaking(true);
           setTimeout(() => setIsShaking(false), 500);
           setPin([]);
@@ -274,9 +287,13 @@ function SettingsPinPrompt({
                 ))}
               </div>
 
-              {/* Error message */}
-              <div className="h-4 flex items-center justify-center">
-                {error && <p className="text-xs text-destructive">{error}</p>}
+              {/* Error message. min-h reserves the line so the pad doesn't jump
+                  when there's no error, but the box still has to be allowed to
+                  grow: the longer messages (a lockout, or a member with no PIN
+                  set) wrap to two lines and a fixed height painted them over
+                  the number pad. */}
+              <div className="min-h-4 flex items-center justify-center">
+                {error && <p className="text-xs text-destructive px-1 leading-snug">{error}</p>}
               </div>
 
               {/* Number pad */}

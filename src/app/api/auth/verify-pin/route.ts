@@ -72,7 +72,14 @@ export async function POST(request: NextRequest) {
     }
 
     if (!user.pin) {
-      return NextResponse.json({ error: 'No PIN set for this user' }, { status: 400 });
+      // `pinRequired` is what turns this into wording a person can act on
+      // (pinErrorMessage), and it matches what /api/auth/login already returns
+      // for the same case. The fact is the member's own, and the login pad
+      // already discloses it one member at a time.
+      return NextResponse.json(
+        { error: 'No PIN set for this user', pinRequired: true },
+        { status: 400 }
+      );
     }
 
     const isValidPin = await bcrypt.compare(pin, user.pin);

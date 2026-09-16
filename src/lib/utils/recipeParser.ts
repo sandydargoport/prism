@@ -8,6 +8,8 @@
  * Reference: https://schema.org/Recipe
  */
 
+import { safeFetch, validatePublicUrl, UnsafeUrlError } from './safeFetch';
+
 export interface ParsedRecipe {
   name: string;
   description?: string;
@@ -207,38 +209,29 @@ function findRecipeJsonLd(html: string): SchemaOrgRecipe | null {
  * @throws Error if fetch fails or URL is blocked
  */
 export async function parseRecipeFromUrl(url: string): Promise<ParsedRecipe | null> {
-  // Validate URL
-  let parsedUrl: URL;
+  // Validate up front so the caller keeps the specific messages the UI shows,
+  // then let safeFetch re-validate every redirect hop below.
   try {
-    parsedUrl = new URL(url);
-  } catch {
-    throw new Error('Invalid URL');
+    validatePublicUrl(url, { isProduction: true });
+  } catch (err) {
+    if (err instanceof UnsafeUrlError) {
+      if (err.message.includes('not parseable') || err.message.includes('URL is required')) {
+        throw new Error('Invalid URL');
+      }
+      if (err.message.includes('Protocol')) {
+        throw new Error('Only HTTP/HTTPS URLs are supported');
+      }
+      throw new Error('URL points to a blocked address');
+    }
+    throw err;
   }
 
-  // Only allow HTTP/HTTPS
-  if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
-    throw new Error('Only HTTP/HTTPS URLs are supported');
-  }
-
-  // Block internal/private IP ranges to prevent SSRF attacks
-  const hostname = parsedUrl.hostname.toLowerCase();
-  const blockedPatterns = [
-    /^localhost$/i,
-    /^127\.\d+\.\d+\.\d+$/,           // 127.0.0.0/8 loopback
-    /^10\.\d+\.\d+\.\d+$/,            // 10.0.0.0/8 private
-    /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/, // 172.16.0.0/12 private
-    /^192\.168\.\d+\.\d+$/,           // 192.168.0.0/16 private
-    /^169\.254\.\d+\.\d+$/,           // 169.254.0.0/16 link-local
-    /^0\.0\.0\.0$/,                   // 0.0.0.0
-    /^\[::1\]$/,                      // IPv6 loopback
-    /^\[fe80:/i,                      // IPv6 link-local
-    /^\[fc00:/i,                      // IPv6 unique local
-    /^\[fd00:/i,                      // IPv6 unique local
-  ];
-
-  if (blockedPatterns.some((pattern) => pattern.test(hostname))) {
-    throw new Error('URL points to a blocked address');
-  }
+  // URL validation and redirect safety are delegated to safeFetch. This used
+  // to be a hand-rolled hostname blocklist, which drifted from the shared guard
+  // in two ways that mattered: it was missing the CGNAT (100.64.0.0/10) and
+  // IPv4-mapped-IPv6 ranges, and it validated only the URL the user supplied.
+  // The fetch below then followed redirects, so a public URL that 302'd to an
+  // internal address bypassed the check entirely.
 
   // Fetch the page — try plain fetch first, fall back to headless browser on 403
   let html: string;
@@ -248,7 +241,7 @@ export async function parseRecipeFromUrl(url: string): Promise<ParsedRecipe | nu
 
   let response: Response;
   try {
-    response = await fetch(url, {
+    response = await safeFetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
@@ -261,11 +254,16 @@ export async function parseRecipeFromUrl(url: string): Promise<ParsedRecipe | nu
         'Upgrade-Insecure-Requests': '1',
       },
       signal: controller.signal,
-      redirect: 'follow',
-    });
+    }, { isProduction: true });
   } catch (err: unknown) {
     if (err instanceof Error && err.name === 'AbortError') {
       throw new Error('Failed to fetch URL: request timed out');
+    }
+    // Keep the guard's own message: it names which hop was refused, which is
+    // the difference between "that site is down" and "that site redirected
+    // somewhere it should not".
+    if (err instanceof UnsafeUrlError) {
+      throw new Error(`URL points to a blocked address: ${err.message}`);
     }
     throw new Error(`Failed to fetch URL: ${err instanceof Error ? err.message : 'network error'}`);
   } finally {
