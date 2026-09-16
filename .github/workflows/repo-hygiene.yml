@@ -1,0 +1,71 @@
+name: Repo hygiene
+
+# What the project itself needs checked on every change, and nothing more.
+#
+# This file used to run a second set of scanners built around one household's
+# denylist: the maintainer's names, addresses and network literals, hashed into
+# a committed file and keyed by a repository secret. Those protected one person
+# and gated everybody, so they have moved out of this repository entirely.
+#
+# What remains is what a fork actually benefits from. A committed credential is
+# every self-hoster's problem, and docs/demos/ is published to the docs site
+# where no text scanner can read what a screenshot contains.
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+concurrency:
+  group: repo-hygiene-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  hygiene:
+    name: Repo hygiene
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Full history: the screenshot step below diffs against the PR base, and
+      # the default depth of 1 does not contain it. A shallow checkout makes
+      # that diff fail, and a swallowed failure reads as "nothing changed",
+      # which is the one result this check must never produce.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Secret-shape scan
+        run: bash scripts/scan-secrets.sh
+
+      # Images are the one published surface no scanner here can read. Every
+      # text rule skips binaries outright, and docs/demos/ is rendered on the
+      # public docs site, so a single hand-taken screenshot of a real instance
+      # would publish names, events and photos past every control at once. The
+      # generated path (refresh-screenshots.yml, an ephemeral seeded database)
+      # is therefore the only way in, and this enforces that rather than
+      # trusting it.
+      - name: Screenshots may only arrive from the refresh workflow
+        if: github.event_name == 'pull_request' && github.head_ref != 'chore/refresh-screenshots'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # No `|| true`. If the comparison cannot be made, that is a failure of
+          # the check, not a pass: the first version of this step swallowed a
+          # "bad object" from a shallow checkout and reported clean.
+          if ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            echo "::error::Cannot resolve the PR base ($BASE), so docs/demos changes could not be checked."
+            exit 1
+          fi
+          # --diff-filter=d: deletions are always safe, and refusing them would
+          # block the very PR that removes an unwanted image.
+          changed=$(git diff --name-only --diff-filter=d "$BASE" "$HEAD" -- docs/demos/)
+          if [ -n "$changed" ]; then
+            echo "::error::This PR changes docs/demos/, which is published to the docs site and cannot be scanned for personal data."
+            printf '%s\n' "$changed" | sed 's/^/  /'
+            echo "Run the 'Refresh screenshots' workflow instead; it captures against a seeded database and opens its own PR."
+            exit 1
+          fi
+          echo "No docs/demos changes."

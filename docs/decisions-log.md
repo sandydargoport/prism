@@ -19,7 +19,9 @@ Format per entry: what it was, why it's gone, and the specific lessons worth not
 - Denylist entries must match on **word boundaries**, not substrings. A first-pass substring matcher fired inside "install", "Locale" and "milestone". A scanner that cries wolf is one people learn to ignore, which is worse than no scanner.
 - Verification has to sweep every surface, not just the one that leaked: PR/issue **bodies, comments, and edit histories**, discussions, releases, commit messages, file history across all refs, and private repos.
 
-**What now enforces it:** `scripts/scan-text.sh` (scans arbitrary outbound text against the same denylist) and `scripts/guard-outbound.sh` (a `PreToolUse` hook that reads a proposed `gh` command, extracts what it would publish, and refuses the call). Rules alone had already failed once; the hook is the part that actually prevents.
+**What now enforces it:** a text scanner and a `PreToolUse` hook that reads a proposed `gh` command, extracts whatever it would publish, and refuses the call. Rules alone had already failed once; the hook is the part that actually prevents.
+
+**Where that lives (2026-09-16):** not here. It needs the maintainer's list of their own real values to work at all, so it protects one person while gating every contributor, and a fork inherited machinery it had no way to use. It moved to the maintainer's own tooling outside this repository. What stayed is what a fork benefits from: the secret-shape scan, and the rule that screenshots may only be generated against a seeded database.
 
 ---
 

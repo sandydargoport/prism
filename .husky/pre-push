@@ -1,3 +1,6 @@
-bash scripts/scan-pii.sh
-bash scripts/scan-hostnames.sh
 bash scripts/scan-secrets.sh
+
+# Per-machine hooks, untracked and gitignored. See .husky/pre-commit.
+if [ -x .husky/local/pre-push ]; then
+  .husky/local/pre-push "$@"
+fi

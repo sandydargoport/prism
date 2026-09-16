@@ -25,8 +25,8 @@ Real Prism bugs in this class that survived adversarial review and were caught b
 | `/api/family` POST blocked initial setup wizard | User-flow |
 | Auto-hide UI making toolbar appear "broken" | User-flow |
 | A test fixture that read as fictional but wasn't | Cross-artifact (PII) |
-| `scan-pii.sh` couldn't find the denylist when run via npm-spawned bash on WSL | Cross-environment (path resolution) |
-| `scan-pii.sh` ran 30+ seconds on a 50-entry denylist (per-entry loop instead of single-pass `grep -f`) | Performance / algorithmic |
+| A scanner couldn't find its config file when run via npm-spawned bash on WSL | Cross-environment (path resolution) |
+| A scanner ran 30+ seconds over a 50-entry list (per-entry loop instead of single-pass `grep -f`) | Performance / algorithmic |
 
 The fix is **not "more adversarial review."** A 50-LLM panel and a 5-LLM panel are reading the same input. Making reviewers stricter doesn't add modalities; it sharpens the one modality already in use. The structural blind spot remains.
 
@@ -44,8 +44,7 @@ For any non-trivial change, the relevant modalities below must sign off before t
 | Reverse-proxy deployment | HTTPS detection, secure cookie handling, `x-forwarded-proto`-dependent code | `e2e/reverse-proxy.spec.ts` — runs in CI ("E2E modality suite") |
 | Migration replay | Idempotency, recovery from partial failure | `npm run test:migration-replay` (`scripts/test-migration-replay.sh`) — runs in CI |
 | Visual regression | Color contrast, layout regressions across themes, accidental rendering changes | `e2e/visual-regression.spec.ts` — spec runs in CI; **Linux baselines still needed** (see below) |
-| PII denylist scan | Real names / addresses / phones in fixtures that look fictional but aren't | `npm run scan:pii` (`scripts/scan-pii.sh`; per-maintainer denylist) |
-| Placeholder / example audit | Real-data-derived placeholders the maintainer didn't realize were specific to their life | `npm run scan:examples` (`scripts/scan-examples.sh`) |
+| Secret-shape scan | Committed API keys, tokens and private-key blocks | `npm run scan:secrets` (`scripts/scan-secrets.sh`) |
 
 ## Operational rules
 
@@ -71,29 +70,17 @@ A Playwright suite that boots nginx in front of the app with a self-signed cert,
 
 Boots a fresh DB container, applies all migrations, applies them a second time, and asserts both runs succeed without error. Catches non-idempotent `CREATE FUNCTION`, missing `IF NOT EXISTS`, and migration-recovery regressions. Run locally with `npm run test:migration-replay`; CI job: "Migration replay".
 
-### PII denylist scan — `scripts/scan-pii.sh`
+### Secret-shape scan — `scripts/scan-secrets.sh`
 
-Whole-word, fixed-string grep that fails if any tracked file contains items from a maintainer-curated personal denylist. Catches the leak class where a test fixture reads as fictional but isn't: a reviewer has no way to tell an invented name from one that belongs to someone. This is a local / pre-push tool, not a CI gate — the denylist lives outside the repo and is per-maintainer.
+Fails if a tracked file contains something shaped like a credential: an AWS or
+GitHub or Slack or OpenAI key, a private-key block, a connection string with a
+password in it. Run `npm run scan:secrets`; it also runs pre-commit, pre-push
+and in CI ("Repo hygiene").
 
-**Setup (one-time):**
-
-1. Create `~/.config/prism-pii-denylist.txt` — one entry per line (`#` comments). Categories to consider: real first / last names of household members, street addresses, school / employer names, phone numbers outside the `555-01xx` reserved-for-fiction range, non-public email addresses, personal GPS coordinates (for the travel feature).
-2. (Optional) install the pre-push hook so it runs before every `git push`: `npm run scan:pii:install-hook`.
-3. Run manually anytime: `npm run scan:pii`.
-
-The denylist file MUST live outside the repo and MUST NOT be committed — committed values would defeat the purpose. The script exits cleanly (with a warning) when the file is absent, so contributors who haven't set one up don't have their pushes blocked. Why it catches what LLM review misses: an LLM has no way of knowing whether a given first name is fictional or refers to a real family member; a maintainer-curated denylist closes that gap with one deterministic grep.
-
-### Placeholder / example audit — `scripts/scan-examples.sh`
-
-Surfaces every `placeholder="..."` and "e.g." / "for example" instance in the tracked codebase for human review. Maintainers naturally write these from their own real data ("e.g. Lincoln Park Zoo" because the maintainer lives in Chicago; "e.g., Grandma Helen" because their kid actually has a Grandma Helen). Run `npm run scan:examples` (always exits 0 — a review tool, not a gate) before each release tag and after merging large feature work; eyeball each line and ask **does this string come from my real life?**
-
-Complementary to `scan-pii.sh`: scan-pii is high-precision / low-recall (only finds what you knew to denylist); scan-examples is low-precision / high-recall (surfaces candidate spots you didn't realize were specific to your life). Suggested generic replacements:
-
-- Names → first names like "Alex", "Emma", "Jordan", "Sophie" (matches Prism's anonymized seed)
-- Cities / landmarks → a multi-region rotation ("Kauai, Rome, Banff") rather than one city only
-- Schools / employers → never a real one
-- Phone numbers → `(555) 01xx-xxxx` (reserved-for-fiction range)
-- Email addresses → `name@example.com` (reserved-for-documentation domain)
+Scanning for a project maintainer's own personal data is a different job with a
+different owner, and it is not done here. It needs a list of that person's real
+values, which is theirs to hold and not something a repository should carry on
+their behalf, so it lives in their own tooling outside this repo.
 
 ### Remaining gap — Linux visual-regression baselines
 
@@ -124,8 +111,8 @@ Any script that resolves a path under the user's home directory on Windows must 
 
 Plus: `$USERPROFILE` may or may not be propagated into bash's environment depending on how bash was spawned (npm scripts on Windows often spawn bash *without* `USERPROFILE`).
 
-Robust path discovery: try `$PRISM_PII_DENYLIST`, then `$HOME/...`, then `$USERPROFILE/...` (if set), then ask `cmd.exe /c "echo %USERPROFILE%"` and try BOTH `/c/...` and `/mnt/c/...` derivations of the result. See `scripts/scan-pii.sh` for a worked example.
+Robust path discovery: try the script's own environment variable, then `$HOME/...`, then `$USERPROFILE/...` (if set), then ask `cmd.exe /c "echo %USERPROFILE%"` and try BOTH `/c/...` and `/mnt/c/...` derivations of the result.
 
 ### Scripts that loop over entries × files are O(N×M)
 
-The first version of `scan-pii.sh` ran one `grep -wF -- "$entry"` per denylist entry. With ~50 entries and ~1500 tracked files, that's 75,000 file scans and ran 30+ seconds. The fix is `grep -f tempfile` to read all patterns from a single file and do **one** Aho-Corasick pass. Same correctness, ~10× faster. Whenever a script's body is "for each entry, scan all files," look for the single-pass equivalent before shipping.
+One scanner here began as a `grep -wF -- "$entry"` per list entry. With ~50 entries and ~1500 tracked files, that's 75,000 file scans and ran 30+ seconds. The fix is `grep -f tempfile` to read all patterns from a single file and do **one** Aho-Corasick pass. Same correctness, ~10× faster. Whenever a script's body is "for each entry, scan all files," look for the single-pass equivalent before shipping.

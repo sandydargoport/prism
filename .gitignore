@@ -13,6 +13,11 @@
 .dev.vars
 .claude/settings.local.json
 
+# Per-machine git hooks. .husky/pre-commit and friends call these when they
+# exist, so a checkout can add its own checks without the repository carrying
+# them for everyone.
+.husky/local/
+
 # Dependencies
 node_modules/
 

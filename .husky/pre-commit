@@ -1,3 +1,8 @@
-bash scripts/scan-pii.sh
-bash scripts/scan-hostnames.sh
 bash scripts/scan-secrets.sh
+
+# Per-machine hooks, untracked and gitignored. A check that matters to one
+# person is not a check everybody who clones this should inherit, so anything
+# local hangs off here instead of being committed.
+if [ -x .husky/local/pre-commit ]; then
+  .husky/local/pre-commit "$@"
+fi
