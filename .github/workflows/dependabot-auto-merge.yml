@@ -6,7 +6,9 @@ name: Dependabot auto-merge
 # was merged by hand. That is not review, it is clicking.
 #
 # This hands the clicking to GitHub. Auto-merge only completes once the ruleset's
-# required checks pass, which is the same bar a manual merge waits for:
+# required checks pass, and once the approving review master requires, which
+# this workflow supplies for the updates that qualify. The bar is the same one a
+# manual merge waits for:
 # type-check and lint, unit tests, migration replay, the E2E modality suite,
 # visual regression, and the PII/secret scan.
 #
@@ -35,6 +37,20 @@ jobs:
         uses: dependabot/fetch-metadata@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # master now requires an approving review. The maintainer bypasses that
+      # rule, a bot does not, so without this step every dependabot pull
+      # request would sit waiting for a human to click approve, which is the
+      # clicking this workflow exists to remove. Same conditions as the merge
+      # below: a major, or a package that sets the shape of the app, is never
+      # approved here and waits for a person on purpose.
+      - name: Approve the ones that qualify
+        if: |
+          steps.meta.outputs.update-type != 'version-update:semver-major' &&
+          !contains(fromJSON('["next","react","react-dom","drizzle-orm"]'), steps.meta.outputs.dependency-names)
+        run: gh pr review --approve "${{ github.event.pull_request.html_url }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Enable auto-merge
         if: |
