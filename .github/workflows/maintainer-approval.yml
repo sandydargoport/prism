@@ -1,0 +1,40 @@
+name: Maintainer PR approval
+
+# master requires one approving review. That rule exists for contributions from
+# other people: nothing from outside should merge without the maintainer having
+# looked at it, and until now that was a habit rather than a rule.
+#
+# It should cost the maintainer nothing on their own pull requests. The obvious
+# way to arrange that is a ruleset bypass, and it does not work here: on a
+# user-owned repository the repository-admin bypass does not match the owner,
+# verified by trying every repository-role id and having the merge refused each
+# time. So the approval is supplied instead of waived.
+#
+# This is not review theatre. A person cannot approve their own pull request on
+# GitHub at all, so the alternative was either `--admin` on every merge, which
+# is an override that bypasses the checks as well, or no review rule at all.
+# This keeps the rule real for everyone else and keeps the maintainer's own flow
+# automated.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  approve:
+    name: Approve the maintainer's own pull request
+    # Only the repository owner. A contribution from anyone else needs a real
+    # approval, which is the entire point of the rule.
+    if: github.event.pull_request.user.login == github.repository_owner
+    runs-on: ubuntu-latest
+    steps:
+      # Deliberately does not check out the pull request. This workflow runs
+      # with write permissions against the base repository, and running code
+      # from the branch under those permissions is how that gets turned around.
+      - name: Approve
+        run: gh pr review --approve "${{ github.event.pull_request.html_url }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
