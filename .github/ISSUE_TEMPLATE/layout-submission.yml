@@ -1,7 +1,6 @@
 name: Community Layout Submission
 description: Submit a layout to the Prism community gallery
 title: "Community Layout: "
-labels: ["layout-submission"]
 body:
   - type: markdown
     attributes:
@@ -10,7 +9,9 @@ body:
 
         Paste your layout JSON below. You can generate this using the **Share to Community** button in Prism's layout editor.
 
-        All submissions are automatically validated. If validation passes, your layout will be added to the gallery automatically.
+        A maintainer reads every submission first. Once they label it, the
+        validation runs automatically and opens the pull request for you, so
+        expect a short wait rather than an instant reply.
 
   - type: textarea
     id: layout-json

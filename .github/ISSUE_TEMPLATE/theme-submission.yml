@@ -1,7 +1,6 @@
 name: Community Theme Submission
 description: Submit a colour theme to the Prism community gallery
 title: "Community Theme: "
-labels: ["theme-submission"]
 body:
   - type: markdown
     attributes:
@@ -11,6 +10,9 @@ body:
         Paste your theme JSON below. The easiest way to produce it is the
         **Share** button in Prism under *Settings → Appearance → Palette* —
         it fills this form in for you.
+
+        A maintainer reads every submission first, and labels it to start the
+        automation, so expect a short wait rather than an instant reply.
 
         Submissions are checked automatically: every colour has to be a bare
         HSL triple, and text has to stay readable (Prism is read from across a
