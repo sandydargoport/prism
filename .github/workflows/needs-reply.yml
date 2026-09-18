@@ -32,10 +32,15 @@ jobs:
   triage:
     runs-on: ubuntu-latest
     steps:
+      # No `env:` block here, on purpose. This step used to set an env var to
+      # the whole event serialised as JSON, and never read it: the script
+      # below uses expression syntax directly. The runner prints every
+      # step-level env value into the log, and Actions logs on a public
+      # repository are world-readable, so the whole triggering payload,
+      # including the issue or pull request body, was published verbatim on
+      # every run for four months. Do not reintroduce it.
       - name: Compute actor and target
         id: ctx
-        env:
-          GH_EVENT: ${{ toJson(github.event) }}
         run: |
           # Actor: who triggered the event (commenter / opener / reviewer)
           ACTOR="${{ github.event.comment.user.login || github.event.review.user.login || github.event.sender.login }}"

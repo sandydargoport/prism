@@ -54,10 +54,14 @@ PATTERNS=(
   "private-key-block|-----BEGIN ([A-Z]+ )?PRIVATE KEY-----"
 )
 
-# Files to scan: every tracked file except binaries, lockfiles, snapshots,
-# and the scanners themselves (which contain these patterns as literals).
+# Files to scan: every tracked file except binaries, lockfiles, snapshots, and
+# this scanner itself, which holds these patterns as literals.
+#
+# The list used to name several scripts and a doc that no longer exist here.
+# An exclusion list outliving the files it excludes is how a blind spot opens:
+# it reads as deliberate long after it has stopped being about anything.
 TARGETS=$(git ls-files \
-  | grep -v -E '^(scripts/scan-(pii|examples|hostnames|secrets)\.sh|scripts/prism-pii-denylist\.example\.txt|docs/code-review-modalities\.md|package-lock\.json|.*\.lock|.*\.snap)$' \
+  | grep -v -E '^(scripts/scan-secrets\.sh|package-lock\.json|.*\.lock|.*\.snap)$' \
   || true)
 
 if [ -z "$TARGETS" ]; then
