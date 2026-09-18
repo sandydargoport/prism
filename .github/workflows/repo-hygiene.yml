@@ -36,8 +36,45 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Secret-shape scan
+      # Two secret scanners, deliberately. Ours knows two shapes that are
+      # secrets because of who runs this instance, not because of how they look:
+      # a private LAN address (exempted under src/, where the SSRF guard names
+      # RFC1918 ranges legitimately) and a monitoring ping URL. No public
+      # catalogue ships either, and it never will.
+      - name: Secret-shape scan (project rules)
         run: bash scripts/scan-secrets.sh
+
+      # And a maintained catalogue for the 485 shapes nobody here thought of.
+      # Pinned by version AND by the tarball's checksum: an unpinned scanner is
+      # a third party that can change what blocks your merges overnight.
+      #
+      # --no-validate matters. Validation is ON by default and confirms a
+      # finding by sending the candidate to the provider's API, which would
+      # mean this repository's contents leaving the runner to a third party on
+      # every push. A scan that has to publish the thing it found to tell you
+      # it found it is not a scan this project wants.
+      - name: Secret scan (Kingfisher, full history)
+        env:
+          KINGFISHER_VERSION: '2.4.0'
+          KINGFISHER_SHA256: 'fecee4c46e0303672c4db8be2050936ea8b16a8f204e38c4ba64f25d95e585ad'
+        run: |
+          curl -sSL -o kingfisher.tgz \
+            "https://github.com/mongodb/kingfisher/releases/download/v${KINGFISHER_VERSION}/kingfisher-linux-x64.tgz"
+          echo "${KINGFISHER_SHA256}  kingfisher.tgz" | sha256sum -c -
+          tar xzf kingfisher.tgz
+          # fetch-depth: 0 above, so this really is every commit. It takes
+          # seconds: the point of a maintained catalogue is finding the
+          # eleventh shape, and history is where an old one would still be.
+          ./kingfisher scan . \
+            --git-history full \
+            --no-validate \
+            --no-update-check \
+            --baseline-file .github/kingfisher-baseline.yml
+          rm -f kingfisher kingfisher.tgz CHECKSUM-linux-x64.txt
+          rm -rf notices
+          # Note for whoever reads a red run: kingfisher exits 200, not 1, when
+          # it finds something. Any non-zero fails the step, which is what we
+          # want; do not "fix" the odd number with `|| true`.
 
       # Images are the one published surface no scanner here can read. Every
       # text rule skips binaries outright, and docs/demos/ is rendered on the
