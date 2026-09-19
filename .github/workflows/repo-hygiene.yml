@@ -32,7 +32,7 @@ jobs:
       # the default depth of 1 does not contain it. A shallow checkout makes
       # that diff fail, and a swallowed failure reads as "nothing changed",
       # which is the one result this check must never produce.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
           fetch-depth: 0
 
