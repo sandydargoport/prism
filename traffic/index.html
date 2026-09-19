@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prism — Traffic Stats</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #0d1117; color: #e6edf3; padding: 2rem; }
+    h1 { font-size: 1.4rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .sub { color: #8b949e; font-size: 0.85rem; margin-bottom: 2rem; }
+    .stats { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 2.5rem; }
+    .stat { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1rem 1.5rem; min-width: 140px; }
+    .stat-label { color: #8b949e; font-size: 0.75rem; text-transform: uppercase; letter-spacing: .05em; }
+    .stat-value { font-size: 2rem; font-weight: 700; margin-top: 0.2rem; }
+    .chart-wrap { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem; }
+    .chart-title { font-size: 0.85rem; font-weight: 600; color: #8b949e; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: .05em; }
+    canvas { max-height: 220px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th { text-align: left; color: #8b949e; font-weight: 500; padding: 0.4rem 0.75rem; border-bottom: 1px solid #30363d; }
+    td { padding: 0.4rem 0.75rem; border-bottom: 1px solid #21262d; }
+    tr:last-child td { border-bottom: none; }
+    .badge { display: inline-block; background: #1f6feb33; color: #58a6ff; border-radius: 4px; padding: 0.1rem 0.45rem; font-size: 0.75rem; }
+  </style>
+</head>
+<body>
+  <h1>Prism — Repository Traffic</h1>
+  <p class="sub" id="updated">Loading…</p>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-label">Total Views</div><div class="stat-value" id="totalViews">—</div></div>
+    <div class="stat"><div class="stat-label">Visitor-Days</div><div class="stat-value" id="totalUniques">—</div></div>
+    <div class="stat" title="Estimate: sum of GitHub's 14-day rolling window uniques sampled at non-overlapping intervals. Approximates total unique visitors since tracking began. A visitor spanning two windows may double-count.">
+      <div class="stat-label">Est. Unique Visitors</div>
+      <div class="stat-value" id="cumUniqueEstimate">—</div>
+    </div>
+    <div class="stat"><div class="stat-label">Days Tracked</div><div class="stat-value" id="daysTracked">—</div></div>
+    <div class="stat"><div class="stat-label">Total Clones</div><div class="stat-value" id="totalClones">—</div></div>
+  </div>
+
+  <div class="chart-wrap">
+    <div class="chart-title">Daily Views</div>
+    <canvas id="viewsChart"></canvas>
+  </div>
+
+  <div class="chart-wrap">
+    <div class="chart-title">Top Referrers (last 14 days)</div>
+    <table id="referrersTable">
+      <thead><tr><th>Source</th><th>Views</th><th>Unique</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="chart-wrap" id="newReferrersWrap" style="display:none">
+    <div class="chart-title">First-Time Referrer Sources</div>
+    <table id="newReferrersTable">
+      <thead><tr><th>Source</th><th>First Seen</th><th>Views on First Day</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    function setStatus(msg) {
+      const el = document.getElementById('updated');
+      if (el) el.textContent = msg;
+    }
+    async function main() {
+      // history.json lives on the orphan `traffic-data` branch (see
+      // .github/workflows/traffic.yml — the daily workflow can't push
+      // to master because of branch protection). Falls back to a local
+      // copy when opened from a clone of the repo.
+      const TRAFFIC_DATA_URL = 'https://raw.githubusercontent.com/sandydargoport/prism/traffic-data/traffic/history.json';
+      let res;
+      try {
+        setStatus('Fetching traffic data…');
+        res = await fetch(TRAFFIC_DATA_URL, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`remote fetch ${res.status}`);
+      } catch (e) {
+        try {
+          setStatus('Remote fetch failed, trying local copy…');
+          res = await fetch('history.json');
+          if (!res.ok) throw new Error(`local fetch ${res.status}`);
+        } catch (e2) {
+          throw new Error(`Could not load history.json: ${e2.message || e2}`);
+        }
+      }
+      const data = await res.json();
+
+      // Summary stats
+      const viewDates = Object.keys(data.views).sort();
+      const totalViews   = Object.values(data.views).reduce((s, d) => s + d.count,   0);
+      const totalUniques = Object.values(data.views).reduce((s, d) => s + d.uniques, 0);
+      const totalClones  = Object.values(data.clones || {}).reduce((s, d) => s + d.count, 0);
+
+      document.getElementById('totalViews').textContent   = totalViews.toLocaleString();
+      document.getElementById('totalUniques').textContent = totalUniques.toLocaleString();
+      document.getElementById('daysTracked').textContent  = viewDates.length;
+      document.getElementById('totalClones').textContent  = totalClones.toLocaleString();
+      document.getElementById('updated').textContent      = `Updated ${new Date(data.updated_at).toLocaleString()}`;
+
+      // Cumulative-unique estimate — the metric that actually uses our
+      // historical archive (the thing that differentiates us from
+      // GitHub's built-in Insights, which only shows last 14 days).
+      //
+      // Algorithm: walk window_uniques chronologically. Each entry is
+      // GitHub's 14-day rolling deduped count snapshotted on that day,
+      // so it represents uniques across that day's PRIOR 14 days. Pick
+      // anchor samples at non-overlapping 14-day intervals (anchor +14d,
+      // +28d, ...) and sum across the anchors. This approximates
+      // "unique visitors since tracking began." Imperfect — a visitor
+      // returning across a window boundary can double-count — but it's
+      // the only honest estimate we can compute without per-visitor IDs.
+      // Falls back to "—" until we have at least one window snapshot.
+      const windowUniques = data.window_uniques || {};
+      const windowDates = Object.keys(windowUniques).sort();
+      let cumEstimate = 0;
+      let lastAnchorIdx = -1;
+      for (let i = 0; i < windowDates.length; i++) {
+        if (lastAnchorIdx < 0) {
+          cumEstimate += windowUniques[windowDates[i]] || 0;
+          lastAnchorIdx = i;
+          continue;
+        }
+        const daysSinceAnchor = (new Date(windowDates[i]) - new Date(windowDates[lastAnchorIdx])) / 86400000;
+        if (daysSinceAnchor >= 14) {
+          cumEstimate += windowUniques[windowDates[i]] || 0;
+          lastAnchorIdx = i;
+        }
+      }
+      document.getElementById('cumUniqueEstimate').textContent =
+        windowDates.length > 0 ? `~${cumEstimate.toLocaleString()}` : '—';
+
+      // Views chart — three datasets:
+      //   - Total Views (bar, blue): raw view count per day
+      //   - Unique Visitors (bar, green): GitHub's per-day unique count
+      //   - New This Period (line, amber): day-over-day increment in the
+      //     14-day rolling-window unique count. Positive = visitors GitHub
+      //     hadn't seen in the prior 14 days (effectively "new" relative to
+      //     the rolling window). Empty before window_uniques tracking
+      //     starts capturing data, then fills in over time.
+      // windowUniques + windowDates already declared above (cumulative-est calc).
+      const newThisPeriodSeries = viewDates.map(d => {
+        if (!(d in windowUniques)) return null;
+        const idx = windowDates.indexOf(d);
+        if (idx <= 0) return null;
+        const prev = windowUniques[windowDates[idx - 1]];
+        const cur  = windowUniques[d];
+        return Math.max(0, cur - prev);
+      });
+      new Chart(document.getElementById('viewsChart'), {
+        type: 'bar',
+        data: {
+          labels: viewDates,
+          datasets: [
+            {
+              label: 'Total Views',
+              data: viewDates.map(d => data.views[d].count),
+              backgroundColor: '#1f6feb88',
+              borderColor: '#58a6ff',
+              borderWidth: 1,
+            },
+            {
+              label: 'Unique Visitors',
+              data: viewDates.map(d => data.views[d].uniques),
+              backgroundColor: '#2ea04388',
+              borderColor: '#3fb950',
+              borderWidth: 1,
+            },
+            {
+              type: 'line',
+              label: 'New This Period (14d window Δ)',
+              data: newThisPeriodSeries,
+              borderColor: '#d29922',
+              backgroundColor: '#d2992233',
+              tension: 0.3,
+              spanGaps: false,
+              pointRadius: 3,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { labels: { color: '#e6edf3', font: { size: 12 } } } },
+          scales: {
+            x: { ticks: { color: '#8b949e', maxTicksLimit: 20 }, grid: { color: '#21262d' } },
+            y: { ticks: { color: '#8b949e' }, grid: { color: '#21262d' }, beginAtZero: true },
+          },
+        },
+      });
+
+      // Referrers table
+      const tbody = document.querySelector('#referrersTable tbody');
+      (data.referrers || []).forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r.referrer}</td><td><span class="badge">${r.count}</span></td><td>${r.uniques}</td>`;
+        tbody.appendChild(tr);
+      });
+      if (!data.referrers?.length) {
+        tbody.innerHTML = '<tr><td colspan="3" style="color:#8b949e">No referrer data yet</td></tr>';
+      }
+
+      // First-time referrers — walk referrer_history chronologically, track
+      // the set of ever-seen sources, and surface ones that newly appeared
+      // on each day. Useful for spotting fresh channels (HN, Reddit post,
+      // someone blogged about us, etc.) instead of just the rolling top-10.
+      const refHistory = data.referrer_history || {};
+      const refDates = Object.keys(refHistory).sort();
+      const seenSources = new Set();
+      const newSources = [];
+      for (const date of refDates) {
+        const todays = refHistory[date] || [];
+        for (const r of todays) {
+          if (!seenSources.has(r.referrer)) {
+            seenSources.add(r.referrer);
+            newSources.push({ referrer: r.referrer, firstSeen: date, count: r.count });
+          }
+        }
+      }
+      if (newSources.length > 0) {
+        document.getElementById('newReferrersWrap').style.display = '';
+        const ntbody = document.querySelector('#newReferrersTable tbody');
+        // Most recent first — that's the "what's new" reading order.
+        newSources.reverse().forEach(r => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${r.referrer}</td><td>${r.firstSeen}</td><td><span class="badge">${r.count}</span></td>`;
+          ntbody.appendChild(tr);
+        });
+      }
+    }
+    main().catch(e => {
+      setStatus(`Failed to load: ${e.message || e}`);
+      console.error('[traffic page]', e);
+    });
+  </script>
+</body>
+</html>
