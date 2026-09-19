@@ -77,10 +77,10 @@ GitHub or Slack or OpenAI key, a private-key block, a connection string with a
 password in it. Run `npm run scan:secrets`; it also runs pre-commit, pre-push
 and in CI ("Repo hygiene").
 
-Scanning for a project maintainer's own personal data is a different job with a
-different owner, and it is not done here. It needs a list of that person's real
-values, which is theirs to hold and not something a repository should carry on
-their behalf, so it lives in their own tooling outside this repo.
+Checks that depend on a list of values held by one person are a different job
+with a different owner, and they are not done here. Such a list is theirs to
+hold, not something a repository should carry on their behalf, so it lives in
+their own tooling outside this repo.
 
 ### Remaining gap — Linux visual-regression baselines
 

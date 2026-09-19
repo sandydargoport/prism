@@ -2,10 +2,9 @@ name: Repo hygiene
 
 # What the project itself needs checked on every change, and nothing more.
 #
-# This file used to run a second set of scanners built around one household's
-# denylist: the maintainer's names, addresses and network literals, hashed into
-# a committed file and keyed by a repository secret. Those protected one person
-# and gated everybody, so they have moved out of this repository entirely.
+# This file used to run a second set of checks that depended on inputs no fork
+# and no contributor could supply. They gated everybody and could pass for
+# nobody else, so they have moved out of this repository entirely.
 #
 # What remains is what a fork actually benefits from. A committed credential is
 # every self-hoster's problem, and docs/demos/ is published to the docs site

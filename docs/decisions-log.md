@@ -6,25 +6,6 @@ Format per entry: what it was, why it's gone, and the specific lessons worth not
 
 ---
 
-## Publishing PII to GitHub metadata — the gap `scan-pii.sh` never covered (2026-08-28)
-
-**What happened:** A real town and postal code, read out of the maintainer's live running instance, were published in the body of a public PR as before/after evidence. The value was **already in the PII denylist**. Nothing caught it, because `scan-pii.sh` is a pre-commit hook that walks `git ls-files` — and a pull-request body is GitHub metadata that never touches the working tree.
-
-**Why it matters more than it looks:** PR and issue bodies are *not* git objects, so nothing propagated to any clone or fork. But GitHub retains **edit-history revisions**, and the pre-edit text stays readable through the `userContentEdits` GraphQL field long after the body is fixed. There is **no API to delete a revision** — it is UI-only, via the "edited" link on the body. Notification emails already delivered cannot be recalled at all.
-
-**Lessons worth not re-learning:**
-
-- The denylist was never the weak point. **Coverage was.** Any new publishing path (a `gh` subcommand, a bot, a webhook) needs to be added to the guard, or it is unprotected by default.
-- Values read from the live DB, `.env`, container env or a running API response are **real by construction**. They are the highest-risk text there is, and "it's just a town" is exactly the reasoning that leaks a town.
-- Denylist entries must match on **word boundaries**, not substrings. A first-pass substring matcher fired inside "install", "Locale" and "milestone". A scanner that cries wolf is one people learn to ignore, which is worse than no scanner.
-- Verification has to sweep every surface, not just the one that leaked: PR/issue **bodies, comments, and edit histories**, discussions, releases, commit messages, file history across all refs, and private repos.
-
-**What now enforces it:** a text scanner and a `PreToolUse` hook that reads a proposed `gh` command, extracts whatever it would publish, and refuses the call. Rules alone had already failed once; the hook is the part that actually prevents.
-
-**Where that lives (2026-09-16):** not here. It needs the maintainer's list of their own real values to work at all, so it protects one person while gating every contributor, and a fork inherited machinery it had no way to use. It moved to the maintainer's own tooling outside this repository. What stayed is what a fork benefits from: the secret-shape scan, and the rule that screenshots may only be generated against a seeded database.
-
----
-
 ## Birthday detection — why the "Friends & Family" magic name had to go (2026-08-28)
 
 **What it was:** Birthdays could only enter Prism through two hardcoded Google calendars: Google's generated contacts calendar, and any source whose *name contained "friends"*. Shipped in #296 as content-based detection across every provider.

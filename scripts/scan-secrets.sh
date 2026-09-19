@@ -2,15 +2,13 @@
 # ============================================================================
 # Prism — Secret / Personal-Endpoint Scanner
 # ============================================================================
-# Catches the bug class that scan-pii.sh and scan-hostnames.sh both miss:
-# a *secret-shaped value* hardcoded into real config or code (NOT a comment,
-# NOT a known denylist word). A monitoring ping URL carrying its own identifier
-# is the canonical example: it looks like configuration, it is not on any
-# denylist, and anyone holding it can speak for the service it belongs to.
+# Catches a *secret-shaped value* hardcoded into real config or code. The hard
+# case is the one that looks like ordinary configuration and appears on no list
+# of known-bad strings, while anyone holding it can speak for the service it
+# belongs to.
 #
-# Unlike scan-pii (needs a curated denylist) and scan-hostnames (comment-only,
-# allowlist of hostnames), this scanner is zero-config and pattern-based: it
-# looks for value SHAPES that are almost never legitimate in a public repo —
+# This scanner is zero-config and pattern-based: it looks for value SHAPES that
+# are almost never legitimate in a public repo,
 # dead-man ping URLs carrying a real UUID, private LAN IPs with real octets,
 # cloud-provider tokens, private keys, etc.
 #
