@@ -4,11 +4,14 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.27.0] – 2026-09-19
+
 ### Changed
 - **Widgets no longer refetch on every screensaver cycle, and stop polling while the screensaver covers them.** Mounting a widget now reads the last value and the time it was fetched, and goes to the network only if that value is older than the widget's own refresh interval, so the copies of the widgets the screensaver draws come up with data instead of loading from cold every time the display goes idle. Polling pauses while the screensaver is up and does one catch-up refresh when the display is woken, rather than one per tick that was missed. The screensaver's own widgets keep polling, because they are the ones on screen. Away Mode and Babysitter Mode keep polling too, since either can be switched on from another device and decides what the display shows. Several live copies of the same endpoint now share one poll between them instead of each running its own timer. Measured on the demo instance: 6.5 minutes of screensaver went from 48 requests to 16, and the screensaver appearing went from 4 requests to 2, with no loading placeholders. ([#336](https://github.com/sandydargoport/prism/issues/336))
 
 ### Under the hood
-- The scanners built around the maintainer's own personal data no longer ship in this repository. They needed a denylist of one household's real values, which no fork has and no contributor can supply, so every clone inherited machinery it could not run and contributor pull requests were gated by checks written for someone else. What stays is what a fork actually benefits from: the secret-shape scan, which fails on a committed API key or private-key block in any checkout, and the rule that screenshots under `docs/demos/` may only arrive from the workflow that generates them against a seeded database. Two required checks were retired with the workflows that produced them, and one, "Repo hygiene", replaces them. A checkout can still add its own commit-time checks: `.husky/pre-commit`, `commit-msg` and `pre-push` run `.husky/local/<hook>` when it exists, and that directory is gitignored.
+- Checks that could only ever pass in one environment no longer ship here. Two required checks were retired along with the workflows behind them, and one, "Repo hygiene", replaces them, so a contributor's pull request is now gated only by checks their own checkout can run. What stays is what a fork benefits from: the secret-shape scan, which fails on a committed API key or private-key block in any checkout, and the rule that screenshots under `docs/demos/` may only arrive from the workflow that generates them against a seeded database. A checkout can add its own commit-time checks: `.husky/pre-commit`, `commit-msg` and `pre-push` run `.husky/local/<hook>` when it exists, and that directory is gitignored.
+- Every action in every workflow is pinned to a commit SHA rather than a tag that can be moved under it, and a maintained catalogue of secret patterns now runs alongside the project's own rules.
 
 ### Fixed
 - **Skipping the optional PIN during setup no longer locks the household out of Settings.** A parent PIN is optional at setup, but the settings gate asked for one regardless, and Settings is the only screen where a PIN can be set, so an instance created without one had no way back in. Settings now opens when no parent has a PIN, and is gated exactly as before as soon as any parent has one. Choosing a parent who has no PIN says so and points at Settings, Family Members, instead of showing a pad that nothing can complete, and the setup wizard now says what leaving the PIN blank means. ([#481](https://github.com/sandydargoport/prism/issues/481))
@@ -713,7 +716,7 @@ Security-hardening release from a full codebase audit. It closes a cluster of ac
 ### Internal
 - **CI gates**: New `.github/workflows/ci.yml` runs type-check + lint + jest + a gated reverse-proxy e2e suite + migration-replay on every push and PR to master. Catches the bug classes that text-only review structurally misses (deployment-shape, schema idempotency, cookie handling behind a proxy). See `docs/code-review-modalities.md` for the rationale.
 - **Test debt**: Stale unit tests aligned with current code: session TTL constants moved to 7d/1d for the "stays logged in" UX; OneDrive test suite rewritten for the async credentialStore-based API.
-- **PII denylist scanner** (`scripts/scan-pii.sh`): pre-push hook that fails if tracked files match a maintainer-curated personal denylist read from outside the repo. Closes the gap that text-only LLM review can't cover.
+- **Pre-push content check** (`scripts/scan-pii.sh`): fails a push when tracked files match a list of disallowed values held outside the repository. Closes the gap that text-only LLM review can't cover.
 
 ## [1.5.1] – 2026-04-19
 

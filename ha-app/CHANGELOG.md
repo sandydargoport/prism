@@ -4,6 +4,18 @@ The add-on ships the same Prism release as the standalone Docker image, so these
 notes are the release notes for the whole app. Earlier releases are on the
 [full changelog](https://sandydargoport.github.io/prism/CHANGELOG/).
 
+## [1.27.0] – 2026-09-19
+
+### Changed
+- **Widgets no longer refetch on every screensaver cycle, and stop polling while the screensaver covers them.** Mounting a widget now reads the last value and the time it was fetched, and goes to the network only if that value is older than the widget's own refresh interval, so the copies of the widgets the screensaver draws come up with data instead of loading from cold every time the display goes idle. Polling pauses while the screensaver is up and does one catch-up refresh when the display is woken, rather than one per tick that was missed. The screensaver's own widgets keep polling, because they are the ones on screen. Away Mode and Babysitter Mode keep polling too, since either can be switched on from another device and decides what the display shows. Several live copies of the same endpoint now share one poll between them instead of each running its own timer. Measured on the demo instance: 6.5 minutes of screensaver went from 48 requests to 16, and the screensaver appearing went from 4 requests to 2, with no loading placeholders. ([#336](https://github.com/sandydargoport/prism/issues/336))
+
+### Under the hood
+- Checks that could only ever pass in one environment no longer ship here. Two required checks were retired along with the workflows behind them, and one, "Repo hygiene", replaces them, so a contributor's pull request is now gated only by checks their own checkout can run. What stays is what a fork benefits from: the secret-shape scan, which fails on a committed API key or private-key block in any checkout, and the rule that screenshots under `docs/demos/` may only arrive from the workflow that generates them against a seeded database. A checkout can add its own commit-time checks: `.husky/pre-commit`, `commit-msg` and `pre-push` run `.husky/local/<hook>` when it exists, and that directory is gitignored.
+- Every action in every workflow is pinned to a commit SHA rather than a tag that can be moved under it, and a maintained catalogue of secret patterns now runs alongside the project's own rules.
+
+### Fixed
+- **Skipping the optional PIN during setup no longer locks the household out of Settings.** A parent PIN is optional at setup, but the settings gate asked for one regardless, and Settings is the only screen where a PIN can be set, so an instance created without one had no way back in. Settings now opens when no parent has a PIN, and is gated exactly as before as soon as any parent has one. Choosing a parent who has no PIN says so and points at Settings, Family Members, instead of showing a pad that nothing can complete, and the setup wizard now says what leaving the PIN blank means. ([#481](https://github.com/sandydargoport/prism/issues/481))
+
 ## [1.26.0] – 2026-09-12
 
 ### Added
@@ -29,4 +41,3 @@ notes are the release notes for the whole app. Earlier releases are on the
 - Now runs on Next 16. The service worker, the offline behaviour and the dashboard are unchanged; this is the framework underneath.
 - A local deploy no longer overwrites the container's compiled modules with ones built for a different C library, which took an instance down for twenty-two minutes and reported it as an unrelated start-up error.
 - Local database backups now expire on the date in their filename rather than a timestamp that other tools reset, which had the nightly check reporting a failure on backups that were working.
-
