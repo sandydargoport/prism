@@ -10,6 +10,10 @@
 # anyone for. Regenerate deliberately, never to silence something unexamined:
 #   kingfisher scan . --git-history full --no-validate --no-update-check \
 #     --baseline-file .github/kingfisher-baseline.yml --manage-baseline
+#
+# The count grows when a file holding one of them is edited for an unrelated
+# reason: a new blob is a new fingerprint, so pinning the actions added four
+# entries for the same CI password that was already accepted.
 version: 2
 fingerprint_algorithm: kingfisher-v1
 repositories:
@@ -34,11 +38,17 @@ repositories:
     first_seen_at: 2026-09-18T17:12:28.183547771+00:00
     last_updated_at: 2026-09-18T17:12:28.183547771+00:00
   - path: .github/workflows/ci.yml
-    fingerprint: '16383732648515097149'
+    fingerprint: '17854328529709435563'
     rule_id: betterleaks.generic-credential-uri
     line: 195
-    first_seen_at: 2026-09-18T17:12:28.183547771+00:00
-    last_updated_at: 2026-09-18T17:12:28.183547771+00:00
+    first_seen_at: 2026-09-19T19:54:04.446547806+00:00
+    last_updated_at: 2026-09-19T19:54:04.446547806+00:00
+  - path: .github/workflows/ci.yml
+    fingerprint: '5207978519387340755'
+    rule_id: betterleaks.generic-credential-uri
+    line: 195
+    first_seen_at: 2026-09-19T19:54:04.446547806+00:00
+    last_updated_at: 2026-09-19T19:54:04.446547806+00:00
   - path: .github/workflows/ci.yml
     fingerprint: '16646550520413967893'
     rule_id: betterleaks.generic-credential-uri
@@ -70,11 +80,17 @@ repositories:
     first_seen_at: 2026-09-18T17:12:28.183547771+00:00
     last_updated_at: 2026-09-18T17:12:28.183547771+00:00
   - path: .github/workflows/ci.yml
-    fingerprint: '16633073652057226405'
+    fingerprint: '12587696870359833060'
     rule_id: betterleaks.generic-credential-uri
     line: 285
-    first_seen_at: 2026-09-18T17:12:28.183547771+00:00
-    last_updated_at: 2026-09-18T17:12:28.183547771+00:00
+    first_seen_at: 2026-09-19T19:54:04.446547806+00:00
+    last_updated_at: 2026-09-19T19:54:04.446547806+00:00
+  - path: .github/workflows/ci.yml
+    fingerprint: '4988989123768133565'
+    rule_id: betterleaks.generic-credential-uri
+    line: 285
+    first_seen_at: 2026-09-19T19:54:04.446547806+00:00
+    last_updated_at: 2026-09-19T19:54:04.446547806+00:00
   - path: .github/workflows/ci.yml
     fingerprint: '5347169893588808675'
     rule_id: betterleaks.generic-credential-uri
@@ -88,17 +104,23 @@ repositories:
     first_seen_at: 2026-09-18T17:12:28.183547771+00:00
     last_updated_at: 2026-09-18T17:12:28.183547771+00:00
   - path: .github/workflows/refresh-screenshots.yml
+    fingerprint: '14168753589008234711'
+    rule_id: betterleaks.generic-credential-uri
+    line: 77
+    first_seen_at: 2026-09-19T19:54:04.446547806+00:00
+    last_updated_at: 2026-09-19T19:54:04.446547806+00:00
+  - path: .github/workflows/refresh-screenshots.yml
     fingerprint: '17985989646585527507'
     rule_id: betterleaks.generic-credential-uri
     line: 77
     first_seen_at: 2026-09-18T17:12:28.183547771+00:00
     last_updated_at: 2026-09-18T17:12:28.183547771+00:00
   - path: .github/workflows/refresh-screenshots.yml
-    fingerprint: '333986707702427998'
+    fingerprint: '4160473030462884885'
     rule_id: betterleaks.generic-credential-uri
     line: 77
-    first_seen_at: 2026-09-18T17:12:28.183547771+00:00
-    last_updated_at: 2026-09-18T17:12:28.183547771+00:00
+    first_seen_at: 2026-09-19T19:54:04.446547806+00:00
+    last_updated_at: 2026-09-19T19:54:04.446547806+00:00
   - path: .github/workflows/ui-audit.yml
     fingerprint: '6215202335353064098'
     rule_id: betterleaks.generic-credential-uri
@@ -106,17 +128,23 @@ repositories:
     first_seen_at: 2026-09-18T17:12:28.183547771+00:00
     last_updated_at: 2026-09-18T17:12:28.183547771+00:00
   - path: .github/workflows/ui-audit.yml
-    fingerprint: '10436880212441814930'
+    fingerprint: '17606390242598925919'
     rule_id: betterleaks.generic-credential-uri
     line: 72
-    first_seen_at: 2026-09-18T17:12:28.183547771+00:00
-    last_updated_at: 2026-09-18T17:12:28.183547771+00:00
+    first_seen_at: 2026-09-19T19:54:04.446547806+00:00
+    last_updated_at: 2026-09-19T19:54:04.446547806+00:00
   - path: .github/workflows/ui-audit.yml
     fingerprint: '690389854169507113'
     rule_id: betterleaks.generic-credential-uri
     line: 72
     first_seen_at: 2026-09-18T17:12:28.183547771+00:00
     last_updated_at: 2026-09-18T17:12:28.183547771+00:00
+  - path: .github/workflows/ui-audit.yml
+    fingerprint: '8251226666345795587'
+    rule_id: betterleaks.generic-credential-uri
+    line: 72
+    first_seen_at: 2026-09-19T19:54:04.446547806+00:00
+    last_updated_at: 2026-09-19T19:54:04.446547806+00:00
   - path: docker-compose.screenshots.yml
     fingerprint: '8151713744727801916'
     rule_id: betterleaks.generic-credential-uri
