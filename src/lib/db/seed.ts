@@ -89,11 +89,17 @@ async function seed() {
 
   const usersResult = await db
     .insert(schema.users)
+    // `sortOrder` is explicit, and distinct, for the same reason every other
+    // seeded collection sets it: it is the display order. Leaving it at the
+    // default gave four members the same position and the same createdAt, so
+    // the list had no defined order at all, and the PIN pad's numbering could
+    // differ between two reads of it. A real install, where members are added
+    // one at a time, never looks like that.
     .values([
-      { name: 'Alex',   role: 'parent', color: '#3B82F6', pin: hashedPin, email: 'alex@example.com',   preferences: { theme: 'system' } },
-      { name: 'Jordan', role: 'parent', color: '#EC4899', pin: hashedPin, email: 'jordan@example.com', preferences: { theme: 'system' } },
-      { name: 'Emma',   role: 'child',  color: '#10B981', pin: hashedPin, preferences: {} },
-      { name: 'Sophie', role: 'child',  color: '#F59E0B', pin: hashedPin, preferences: {} },
+      { name: 'Alex',   role: 'parent', color: '#3B82F6', pin: hashedPin, email: 'alex@example.com',   sortOrder: 0, preferences: { theme: 'system' } },
+      { name: 'Jordan', role: 'parent', color: '#EC4899', pin: hashedPin, email: 'jordan@example.com', sortOrder: 1, preferences: { theme: 'system' } },
+      { name: 'Emma',   role: 'child',  color: '#10B981', pin: hashedPin, sortOrder: 2, preferences: {} },
+      { name: 'Sophie', role: 'child',  color: '#F59E0B', pin: hashedPin, sortOrder: 3, preferences: {} },
     ])
     .returning();
 
