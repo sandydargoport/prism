@@ -5,6 +5,7 @@ All notable changes to Prism are documented in this file.
 ## Unreleased
 
 ### Fixed
+- **The German calendar's schedule view is now labelled "Terminplan".** "Zeitplan" reads as a generic timetable rather than a list of appointments. Thanks to @Buanz.
 - **The PIN pad can no longer sign a person in as somebody else.** The login pad is served the family as a numbered list rather than as user ids, and the server turns the number it is given back into a member by asking for that list again. The list was ordered by display position and creation time, neither of which is unique: members written in one statement, which is what a seed or a restore does, share both, and the database is free to return rows that tie in any order it likes. The two lists could then disagree, so the pad could show one member, send their position, and have the server resolve it to a different member and accept that member's PIN. The ordering now ends with the member's own id, which nothing else shares, so there is no tie left to resolve and both ends always see the same list. ([#484](https://github.com/sandydargoport/prism/issues/484))
 
 ## [1.27.0] – 2026-09-19
