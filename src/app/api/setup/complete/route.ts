@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
 import { settings, users } from '@/lib/db/schema';
-import { eq, sql, asc } from 'drizzle-orm';
+import { memberOrder } from '@/lib/db/memberOrder';
+import { eq, sql } from 'drizzle-orm';
 
 export async function POST() {
   try {
@@ -13,7 +14,7 @@ export async function POST() {
     const memberRows = await db
       .select({ id: users.id, role: users.role })
       .from(users)
-      .orderBy(asc(users.sortOrder), asc(users.createdAt));
+      .orderBy(...memberOrder);
     if (memberRows.length === 0) {
       return NextResponse.json(
         { error: 'Add at least one family member before finishing setup.' },

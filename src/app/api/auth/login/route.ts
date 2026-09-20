@@ -26,7 +26,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
 import { users } from '@/lib/db/schema';
-import { asc, eq } from 'drizzle-orm';
+import { memberOrder } from '@/lib/db/memberOrder';
+import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
 import { logError } from '@/lib/utils/logError';
@@ -113,7 +114,7 @@ export async function POST(request: NextRequest) {
       const results = await db
         .select(userSelect)
         .from(users)
-        .orderBy(asc(users.sortOrder), asc(users.createdAt))
+        .orderBy(...memberOrder)
         .limit(1)
         .offset(index);
       const found = results[0];

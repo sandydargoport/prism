@@ -16,6 +16,7 @@
 import { eq } from 'drizzle-orm';
 import { getTestDb, closeTestDb } from './testDb';
 import * as schema from '../schema';
+import { memberOrder } from '../memberOrder';
 
 const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
 const describeIf = HAS_TEST_DB ? describe : describe.skip;
@@ -336,6 +337,46 @@ describeIf('Auth: session lifecycle', () => {
       expect(result.ok).toBe(false);
     } finally {
       process.env.REDIS_URL = originalRedisUrl;
+    }
+  });
+});
+
+// ─── Family member ordering ──────────────────────────────────────────────────
+
+describeIf('Family member ordering', () => {
+  it('orders members tied on sortOrder and createdAt deterministically', async () => {
+    // One statement, so every row lands with the same sortOrder and the same
+    // createdAt: the shape a seed or a restore produces, and the shape that
+    // used to leave the login ordinal free to point at a different member on
+    // the next query.
+    const createdAt = new Date('2026-01-01T00:00:00Z');
+    await db.insert(schema.users).values(
+      ['Alex', 'Jordan', 'Emma', 'Sophie'].map((name) => ({
+        name,
+        role: 'parent' as const,
+        color: '#3B82F6',
+        sortOrder: 0,
+        createdAt,
+        updatedAt: createdAt,
+      }))
+    );
+
+    const readIds = async () =>
+      (
+        await db.select({ id: schema.users.id }).from(schema.users).orderBy(...memberOrder)
+      ).map((row) => row.id);
+
+    const ids = await readIds();
+    expect(ids).toHaveLength(4);
+
+    // The tiebreak is the primary key, so the order is the ids ascending.
+    expect(ids).toEqual([...ids].sort());
+
+    // And it is the same order every time, which is the property the login
+    // ordinal depends on: /api/family numbers this list and the two auth
+    // routes resolve that number against it.
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      expect(await readIds()).toEqual(ids);
     }
   });
 });

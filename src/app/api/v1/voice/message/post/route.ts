@@ -3,7 +3,8 @@ import { withAuth } from '@/lib/api/withAuth';
 import { voiceOk, voiceError } from '@/lib/api/voiceResponse';
 import { db } from '@/lib/db/client';
 import { familyMessages, users } from '@/lib/db/schema';
-import { eq, asc } from 'drizzle-orm';
+import { memberOrder } from '@/lib/db/memberOrder';
+import { eq } from 'drizzle-orm';
 import { voiceMessagePostSchema, validateRequest } from '@/lib/validations';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logError } from '@/lib/utils/logError';
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
         .select({ id: users.id, name: users.name })
         .from(users)
         .where(eq(users.role, 'parent'))
-        .orderBy(asc(users.sortOrder))
+        .orderBy(...memberOrder)
         .limit(1);
 
       if (!defaultAuthor) {

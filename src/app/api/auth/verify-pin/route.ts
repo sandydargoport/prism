@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db/client';
 import { users } from '@/lib/db/schema';
-import { asc, eq } from 'drizzle-orm';
+import { memberOrder } from '@/lib/db/memberOrder';
+import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { createSession, isLoginLockedOut, recordFailedLogin, clearLoginAttempts } from '@/lib/auth/session';
 import { setSettingsVerified } from '@/lib/auth/settingsAuth';
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
       const allUsers = await db
         .select({ id: users.id, name: users.name, role: users.role, color: users.color, avatarUrl: users.avatarUrl, pin: users.pin })
         .from(users)
-        .orderBy(asc(users.sortOrder), asc(users.createdAt));
+        .orderBy(...memberOrder);
       user = allUsers[index];
       if (user) {
         const lockoutStatus = await isLoginLockedOut(user.id);

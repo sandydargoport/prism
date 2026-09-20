@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireRole, optionalAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { users } from '@/lib/db/schema';
+import { memberOrder } from '@/lib/db/memberOrder';
 
 import bcrypt from 'bcryptjs';
 import { getCached } from '@/lib/cache/redis';
@@ -97,7 +98,7 @@ export async function GET(request: NextRequest) {
             pinLength: users.pinLength,
           })
           .from(users)
-          .orderBy(users.sortOrder, users.createdAt);
+          .orderBy(...memberOrder);
         const members = rows.map((user) => ({
           id: user.id,
           name: user.name,
@@ -121,7 +122,7 @@ export async function GET(request: NextRequest) {
             pinLength: users.pinLength,
           })
           .from(users)
-          .orderBy(users.sortOrder, users.createdAt);
+          .orderBy(...memberOrder);
 
         const members: PublicFamilyMemberResponse[] = results.map((user, index) => {
           // The type is keyed off PUBLIC_MEMBER_FIELDS, so adding a property
@@ -165,7 +166,7 @@ export async function GET(request: NextRequest) {
           createdAt: users.createdAt,
         })
         .from(users)
-        .orderBy(users.sortOrder, users.createdAt);
+        .orderBy(...memberOrder);
 
       let filteredResults = results;
       if (role && ['parent', 'child', 'guest'].includes(role)) {

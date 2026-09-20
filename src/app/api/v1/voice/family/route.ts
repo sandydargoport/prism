@@ -3,7 +3,8 @@ import { voiceOk, voiceError } from '@/lib/api/voiceResponse';
 import { phraseFamilyMembers } from '@/lib/api/voicePhrases';
 import { db } from '@/lib/db/client';
 import { users } from '@/lib/db/schema';
-import { ne, asc } from 'drizzle-orm';
+import { memberOrder } from '@/lib/db/memberOrder';
+import { ne } from 'drizzle-orm';
 import { logError } from '@/lib/utils/logError';
 
 /**
@@ -24,7 +25,7 @@ export async function GET() {
         })
         .from(users)
         .where(ne(users.role, 'guest'))
-        .orderBy(asc(users.sortOrder));
+        .orderBy(...memberOrder);
 
       const spoken = phraseFamilyMembers(members.map((m) => m.name));
 
