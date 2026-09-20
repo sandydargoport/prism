@@ -5,6 +5,7 @@ All notable changes to Prism are documented in this file.
 ## Unreleased
 
 ### Fixed
+- **A list on the Shopping page can be scrolled past again on a touchscreen.** Every list card told the browser not to scroll for a gesture that began on it, and a finger landing anywhere on a card started a reorder, so on a display where the lists cover the width there was no background left to push: trying to scroll the page picked a list up and moved it. The card header, which is the part carrying the grip, is now the handle, and the rest of the card scrolls like any other part of the page. ([#501](https://github.com/sandydargoport/prism/issues/501))
 - **The German calendar's schedule view is now labelled "Terminplan".** "Zeitplan" reads as a generic timetable rather than a list of appointments. Thanks to @Buanz.
 
 ## [1.27.0] – 2026-09-19

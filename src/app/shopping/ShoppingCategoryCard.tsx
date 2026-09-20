@@ -72,19 +72,35 @@ export function ShoppingCategoryCard({
       onDragStart={!isMobile ? onDragStart : undefined}
       onDragOver={!isMobile ? onDragOver : undefined}
       onDragEnd={!isMobile ? onDragEnd : undefined}
-      onTouchStart={!isMobile ? onTouchStart : undefined}
-      onTouchMove={!isMobile ? onTouchMove : undefined}
-      onTouchEnd={!isMobile ? onTouchEnd : undefined}
       className={cn(
         'border-2 rounded-lg overflow-hidden bg-card/90 backdrop-blur-xs',
         'flex flex-col transition-all',
-        !isMobile && 'cursor-grab active:cursor-grabbing touch-none',
         isDragging && 'opacity-50 scale-95 ring-4 ring-primary/50'
       )}
       style={{ borderColor: categoryColor }}
     >
+      {/*
+        The header is the drag handle on a touchscreen, and the rest of the
+        card is not. Touching anywhere on the card used to begin a reorder,
+        and the card carried `touch-none`, which tells the browser not to
+        scroll for a gesture that starts on it. On a wall-sized display the
+        lists cover the width, so there was no background left to push: every
+        attempt to scroll the page grabbed a list and moved it instead.
+
+        This has to be a handle rather than a press-and-hold. `touch-action`
+        is read when a gesture begins, so a card that decides mid-gesture that
+        it is being dragged cannot stop the page scrolling under it by then.
+        A handle decides before the finger lands. The grip icon is what says
+        which part it is.
+      */}
       <div
-        className="px-2 py-1 flex items-center gap-1 select-none"
+        onTouchStart={!isMobile ? onTouchStart : undefined}
+        onTouchMove={!isMobile ? onTouchMove : undefined}
+        onTouchEnd={!isMobile ? onTouchEnd : undefined}
+        className={cn(
+          'px-2 py-1 flex items-center gap-1 select-none',
+          !isMobile && 'cursor-grab active:cursor-grabbing touch-none'
+        )}
         style={{ backgroundColor: categoryColor + '20' }}
       >
         <GripVertical className="h-4 w-4 text-muted-foreground/50 shrink-0 hidden md:block" />
