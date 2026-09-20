@@ -4,6 +4,9 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+### Fixed
+- **The German calendar's schedule view is now labelled "Terminplan".** "Zeitplan" reads as a generic timetable rather than a list of appointments. Thanks to @Buanz.
+
 ## [1.27.0] – 2026-09-19
 
 ### Changed
