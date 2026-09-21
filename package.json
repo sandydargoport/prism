@@ -114,7 +114,7 @@
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "tsdav": "^2.3.3",
-    "undici": "^6.28.0",
+    "undici": "^8.10.2",
     "zod": "^3.24.1"
   },
   "devDependencies": {
