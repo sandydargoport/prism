@@ -34,6 +34,13 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ARG PRISM_TELEMETRY_URL=""
 ENV PRISM_TELEMETRY_URL=${PRISM_TELEMETRY_URL}
 
+# The commit this image was built from, so "what is actually deployed" is one
+# command away instead of a BUILD_ID comparison. Empty for builds that do not
+# pass it (CI, a plain `docker build`), which is why nothing depends on it
+# being set.
+ARG PRISM_GIT_SHA=""
+ENV PRISM_GIT_SHA=${PRISM_GIT_SHA}
+
 RUN apk add --no-cache postgresql-client chromium nss freetype harfbuzz ca-certificates ttf-freefont
 
 RUN addgroup --system --gid 1001 nodejs

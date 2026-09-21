@@ -1,125 +1,110 @@
 #!/bin/bash
-# Local deploy: copy fresh build artifacts into the running container.
-# Avoids docker-compose build (which fails on this host due to credential store issues).
-# Run from project root after: npm run build
+# Local deploy: rebuild the image, then recreate the container from it.
+#
+# WHY THIS CHANGED (2026-09-21)
+# -----------------------------
+# This script used to `docker cp` a locally built bundle into the RUNNING
+# container. That writes to the container's ephemeral writable layer, so any
+# recreate threw the deploy away: `compose down`/`up`, a `docker rm`, or a host
+# reboot that recreates rather than restarts.
+#
+# It happened. A `compose down`/`up` on 2026-09-16 reverted production to the
+# image built on 2026-06-28, and it served three-month-old code for five days
+# before anyone noticed. Nothing caught it, because every signal a deploy is
+# normally judged by still passed: /api/health returned ok, every page returned
+# 200, and the dashboard rendered correctly in a screenshot. A rolled-back build
+# is a working build. Only the BUILD_ID said otherwise, and nothing compared it.
+#
+# The original reason for copying was that `docker compose build` failed on this
+# host over docker credential-store issues. That is no longer true: there is no
+# ~/.docker/config.json and no credential helper installed, and a build was
+# verified working before this script was rewritten. So the workaround outlived
+# the problem, and the workaround is what broke.
+#
+# Building the image also fixes what the copy approach had to manage by hand:
+# native modules compile against Alpine's musl instead of being stripped out to
+# avoid a glibc/musl mismatch (so sharp stops lagging package.json), public/ and
+# .next/static ship via the Dockerfile, and file ownership is correct on arrival
+# rather than being chown'd back afterwards.
+#
+# MIGRATIONS ARE STILL SEPARATE. The image carries drizzle/ and migrate.js, but
+# this script does not run them. A schema-changing deploy still needs its own
+# step; see the local-deploy-migrations note.
 
 set -e
 
-echo "Building..."
-npm run build
+cd "$(dirname "$0")/.."
 
-echo "Deploying to container..."
+SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+DIRTY=""
+if ! git diff --quiet 2>/dev/null || ! git diff --cached --quiet 2>/dev/null; then
+  DIRTY=" (working tree has uncommitted changes)"
+fi
+echo "Deploying ${SHA}${DIRTY}"
 
-# Native modules must come from the image, never from this host.
-#
-# The container is Alpine (musl libc); this host is Ubuntu (glibc). The
-# standalone bundle carries node_modules with it, so copying it wholesale
-# overwrites the container's native builds with ones it cannot load. That is
-# exactly what took the instance down on 2026-09-11: a sharp bump (0.34.5 ->
-# 0.35.4) produced @img/sharp-linux-x64 on this host and no musl variant, so
-# sharp failed to load in the container. Nothing said "sharp" — the app died
-# with
-#   An error occurred while loading instrumentation hook:
-#   Cannot read properties of undefined (reading 'output')
-# because instrumentation.ts starts the photo cron, which imports sharp, and
-# every route then 500'd.
-#
-# The image's node_modules already hold musl builds of these, so the fix is to
-# leave them out of the copy and let the container keep what it has.
-NATIVE_MODULES="sharp @img"
-
-# Stage the bundle and strip those out. cp -al hardlinks rather than copies, so
-# this costs no real time or disk even though the bundle is ~260MB, and the rm
-# below only drops the staged link — the real build is untouched.
-STAGE=.next/deploy-staging
-rm -rf "$STAGE"
-cp -al .next/standalone "$STAGE"
-trap 'rm -rf "$STAGE"' EXIT
-
-for m in $NATIVE_MODULES; do
-  rm -rf "${STAGE:?}/node_modules/$m"
-done
-
-# Guard against a *new* native dependency quietly reintroducing the same bug.
-# Anything shipping .node binaries that we are not already excluding gets
-# named here rather than discovered later as an unrelated-looking 500.
-unexpected=$(find "$STAGE/node_modules" -name '*.node' -type f 2>/dev/null \
-  | sed "s|^$STAGE/node_modules/||" \
-  | awk -F/ '{print $1}' \
-  | sort -u)
-if [ -n "$unexpected" ]; then
-  echo "WARNING: native (.node) binaries built for this host are about to be"
-  echo "         copied into the Alpine container, which may not load them:"
-  echo "$unexpected" | sed 's/^/           /'
-  echo "         Add them to NATIVE_MODULES in $0 if the container provides its own."
+# Tag whatever is currently deployed so there is somewhere to go back to. The
+# image is about to be replaced under the same name, and without this the only
+# rollback is rebuilding from an older commit.
+if docker image inspect prism-app >/dev/null 2>&1; then
+  docker tag prism-app "prism-app:rollback-$(date +%Y%m%d-%H%M%S)"
+  echo "Tagged the outgoing image for rollback."
 fi
 
-# Leaving the container's copies in place means they can lag package.json after
-# a bump, so say when they have rather than letting it drift silently. Fixing a
-# drift needs the image rebuilt (or musl builds installed into it); it is not
-# something this script can do.
-for m in $NATIVE_MODULES; do
-  [ "$m" = "@img" ] && continue
-  want=$(node -p "require('./package.json').dependencies['$m'] || ''" 2>/dev/null | tr -d '^~')
-  have=$(docker exec prism-app node -p "require('/app/node_modules/$m/package.json').version" 2>/dev/null)
-  if [ -n "$want" ] && [ -n "$have" ] && [ "$want" != "$have" ]; then
-    echo "NOTE: container keeps $m $have; package.json asks for $want."
-    echo "      Native modules come from the image by design (see above);"
-    echo "      rebuild the image to close the gap."
-  fi
-done
+echo "Building image..."
+docker compose build --build-arg "PRISM_GIT_SHA=${SHA}" app
 
-# Copy server-side standalone files (native modules excluded, see above)
-docker cp "$STAGE/." prism-app:/app/
+echo "Recreating container..."
+# Only the app service. The database and redis keep running; recreating those
+# is never part of a code deploy.
+docker compose up -d --no-deps app
 
-# Remove old static dir (as root to avoid permission issues from prior cp operations)
-# then copy contents (trailing /.) so they land at /app/.next/static/* not nested deeper
-docker exec --user root prism-app sh -c "rm -rf /app/.next/static && mkdir -p /app/.next/static"
-docker cp .next/static/. prism-app:/app/.next/static/
-
-# Public assets, incl. the PWA service worker. Next.js standalone output does
-# NOT bundle public/, so without this the container keeps the image's stale
-# sw.js — its precache manifest points at old chunk hashes, so browsers keep
-# serving an outdated app (and can't cleanly update) after every deploy.
-docker cp public/. prism-app:/app/public/
-docker exec --user root prism-app chown -R nextjs:nodejs /app/public
-
-# The standalone bundle ships empty data/ dirs (recipe-images, photos). The
-# docker cp above lays them over the bind-mounted /app/data, resetting it to
-# the host uid so the container user (nextjs) can no longer write uploads
-# (recipe images, imported photos). Restore app ownership after every copy.
-docker exec --user root prism-app chown -R nextjs:nodejs /app/data
-
-# docker cp writes as root, and the standalone bundle carries .env and .next
-# with it. The app runs as nextjs, so without this it cannot read its own
-# environment (EACCES on /app/.env) or write its render cache (EACCES on
-# /app/.next/cache) — which surfaces later as pages failing to load rather than
-# as anything that looks like a deploy problem.
-docker exec --user root prism-app sh -c "
-  chown -R nextjs:nodejs /app/.next /app/.env 2>/dev/null || true
-  mkdir -p /app/.next/cache && chown -R nextjs:nodejs /app/.next/cache" 
-
-echo "Restarting app..."
-docker compose restart app
-
-# Wait for the app to actually come up, rather than guessing at 5 seconds.
-# The old fixed sleep was shorter than a cold start, so it printed the same
-# warning after a perfectly good deploy as after a broken one — which is how a
-# genuinely broken deploy got waved through on 2026-09-11.
-echo "Done. Waiting for health check..."
-for _ in $(seq 1 30); do
+# Wait for the app to actually come up, rather than guessing at a fixed sleep.
+# A sleep shorter than a cold start printed the same warning after a good deploy
+# as after a broken one, which is how a genuinely broken deploy got waved
+# through on 2026-09-11.
+echo "Waiting for health check..."
+healthy=""
+for _ in $(seq 1 40); do
   if curl -sf -m 5 http://localhost:3000/api/health/ready >/dev/null 2>&1; then
-    echo "App is healthy: $(curl -s -m 5 http://localhost:3000/api/health/ready)"
-    exit 0
+    healthy=1
+    break
   fi
   sleep 3
 done
 
-echo "WARNING: app did not become healthy within 90s."
-echo "--- last 20 log lines ---"
-docker logs prism-app --tail 20 2>&1
-# A native module that will not load is the likeliest cause and the hardest to
-# read from the logs, so name it directly.
-echo "--- native module check ---"
-docker exec prism-app node -e "require('sharp'); console.log('sharp loads OK')" 2>&1 | tail -3
-exit 1
+if [ -z "$healthy" ]; then
+  echo "WARNING: app did not become healthy within 120s."
+  echo "--- last 20 log lines ---"
+  docker logs prism-app --tail 20 2>&1
+  # A native module that will not load is the likeliest cause and the hardest to
+  # read out of the logs, so name it directly.
+  echo "--- native module check ---"
+  docker exec prism-app node -e "require('sharp'); console.log('sharp loads OK')" 2>&1 | tail -3
+  echo
+  echo "To go back, retag the most recent rollback image and recreate:"
+  docker images --format '  docker tag {{.Repository}}:{{.Tag}} prism-app && docker compose up -d --no-deps app' \
+    --filter 'reference=prism-app:rollback-*' | head -1
+  exit 1
+fi
+
+echo "App is healthy: $(curl -s -m 5 http://localhost:3000/api/health/ready)"
+
+# Prove the running container is the thing just built, rather than trusting that
+# it is. This is the check whose absence hid a five-day rollback: under the old
+# copy-based model the container's BUILD_ID matching the image's meant NO deploy
+# was applied; under this one it is exactly what success looks like.
+img_build=$(docker run --rm --entrypoint sh prism-app -c 'cat /app/.next/BUILD_ID' 2>/dev/null)
+run_build=$(docker exec prism-app sh -c 'cat /app/.next/BUILD_ID' 2>/dev/null)
+run_sha=$(docker exec prism-app printenv PRISM_GIT_SHA 2>/dev/null || echo "")
+
+if [ -n "$img_build" ] && [ "$img_build" != "$run_build" ]; then
+  echo "WARNING: the running container is not the image that was just built."
+  echo "         image=$img_build running=$run_build"
+  echo "         Something recreated it from a different image, or the build did not take."
+  exit 1
+fi
+
+echo "Deployed ${run_sha:-$SHA} (build ${run_build})."
+echo
+echo "The wall display caches a service worker. To pick this up there:"
+echo "  Settings -> Backup -> Clear Cache & Reload"
