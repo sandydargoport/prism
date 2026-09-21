@@ -106,7 +106,7 @@
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.88.0",
     "react-qr-code": "^2.2.0",
-    "recharts": "^2.14.1",
+    "recharts": "^3.10.1",
     "redis": "^6.2.1",
     "sharp": "^0.35.4",
     "simple-keyboard": "^3.8.190",
