@@ -19,6 +19,41 @@ import { CALENDAR_BROWSER_SCOPES } from '@/lib/integrations/googleScopes';
 
 const GOOGLE_CALENDAR_API = 'https://www.googleapis.com/calendar/v3';
 
+/**
+ * Every call in this file goes out over the network with no deadline of its own.
+ *
+ * That is fine for the sync cron, which nobody is waiting on, and wrong for the
+ * write-back: it runs inside a user's save request, so a Google call that
+ * stalls turns into a request that never returns. The proxy in front of the app
+ * eventually gives up and answers with its own HTML error page, which means the
+ * user gets a gateway timeout instead of the reason, the app never reaches its
+ * own error handling, and nothing is logged about what Google was doing.
+ *
+ * A deadline converts that into an ordinary failure: the call throws, the route
+ * returns its 502 with a JSON body explaining that the local event was left
+ * unchanged, and the Google response text reaches the log where it can be read.
+ *
+ * 20s is well past a healthy Google response (~150ms here) and well inside the
+ * proxy's patience, so the app loses the race to its own timeout rather than to
+ * someone else's.
+ */
+const GOOGLE_TIMEOUT_MS = 20_000;
+
+async function googleFetch(input: string, init: RequestInit = {}): Promise<Response> {
+  try {
+    return await fetch(input, { ...init, signal: AbortSignal.timeout(GOOGLE_TIMEOUT_MS) });
+  } catch (error) {
+    // A timeout arrives as an AbortError/TimeoutError, whose default message
+    // says nothing about who timed out. Name it, because this string is what
+    // ends up in the log and in the route's error branch.
+    if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
+      throw new Error(`Google Calendar did not respond within ${GOOGLE_TIMEOUT_MS / 1000}s`);
+    }
+    throw error;
+  }
+}
+
+
 /** Required scopes for Google Calendar access. Defined in googleScopes.ts. */
 const SCOPES = CALENDAR_BROWSER_SCOPES;
 
@@ -117,7 +152,7 @@ export async function getGoogleAuthUrl(state?: string, redirectUriOverride?: str
 export async function exchangeCodeForTokens(code: string, redirectUriOverride?: string): Promise<GoogleTokens> {
   const { clientId, clientSecret, redirectUri } = await getConfig();
 
-  const response = await fetch(GOOGLE_TOKEN_URL, {
+  const response = await googleFetch(GOOGLE_TOKEN_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -160,7 +195,7 @@ export async function refreshAccessToken(
   // yet-stored credentials; every other caller uses the stored config.
   const { clientId, clientSecret } = credentialsOverride ?? (await getConfig());
 
-  const response = await fetch(GOOGLE_TOKEN_URL, {
+  const response = await googleFetch(GOOGLE_TOKEN_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -194,7 +229,7 @@ export async function fetchCalendarList(accessToken: string): Promise<GoogleCale
   // decoupled from Google's list visibility — so hiding a calendar in Google no
   // longer makes it vanish from Prism. Newly-discovered hidden calendars are
   // added disabled by the callers (see enabled: !calendar.hidden).
-  const response = await fetch(`${GOOGLE_CALENDAR_API}/users/me/calendarList?showHidden=true`, {
+  const response = await googleFetch(`${GOOGLE_CALENDAR_API}/users/me/calendarList?showHidden=true`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -249,7 +284,7 @@ export async function fetchCalendarEvents(
       params.set('pageToken', pageToken);
     }
 
-    const response = await fetch(
+    const response = await googleFetch(
       `${GOOGLE_CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events?${params}`,
       {
         headers: {
@@ -286,7 +321,7 @@ export async function createCalendarEvent(
     end: { dateTime?: string; date?: string; timeZone?: string };
   }
 ): Promise<GoogleCalendarEvent> {
-  const response = await fetch(
+  const response = await googleFetch(
     `${GOOGLE_CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events`,
     {
       method: 'POST',
@@ -327,7 +362,7 @@ export async function updateCalendarEvent(
     end: { dateTime?: string; date?: string; timeZone?: string };
   }>
 ): Promise<GoogleCalendarEvent> {
-  const response = await fetch(
+  const response = await googleFetch(
     `${GOOGLE_CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
     {
       method: 'PATCH',
@@ -355,7 +390,7 @@ export async function deleteCalendarEvent(
   calendarId: string,
   eventId: string
 ): Promise<void> {
-  const response = await fetch(
+  const response = await googleFetch(
     `${GOOGLE_CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
     {
       method: 'DELETE',
@@ -382,7 +417,7 @@ export async function moveCalendarEvent(
   eventId: string,
   destinationCalendarId: string
 ): Promise<GoogleCalendarEvent> {
-  const response = await fetch(
+  const response = await googleFetch(
     `${GOOGLE_CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}/move?destination=${encodeURIComponent(destinationCalendarId)}`,
     {
       method: 'POST',
