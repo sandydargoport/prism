@@ -25,6 +25,7 @@ import { useAuth, useTimeFormat } from '@/components/providers';
 import { fromDisplayDateTime, toDisplayDate } from '@/lib/utils/timeFormat';
 import { toast } from '@/components/ui/use-toast';
 import { TimeDropdown } from './TimeDropdown';
+import { readResponseError } from '@/lib/utils/responseError';
 import {
   Dialog,
   DialogContent,
@@ -378,20 +379,14 @@ export function AddEventModal({
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        // A rejected field is worth naming. The API already returns which ones
-        // failed, and dropping that left "Validation failed" on screen with
-        // nothing to act on — an event with an over-long location read as the
-        // save being broken rather than as one field being refused.
-        const fields: string[] = Array.isArray(errorData.details)
-          ? errorData.details
-              .map((i: { path?: (string | number)[] }) => i.path?.join('.'))
-              .filter((p: string | undefined): p is string => !!p)
-          : [];
-        const message = fields.length
-          ? `${errorData.error}: ${[...new Set(fields)].join(', ')}`
-          : errorData.error;
-        throw new Error(message || t('eventForm.saveFailed'));
+        // Reads the body only if the server said it is JSON, and names the
+        // refused fields when it is. Previously this called .json() on whatever
+        // came back, so an HTML error page (a 404 from an unrouted path, a
+        // proxy 502, a stale client) surfaced as
+        // `Unexpected token '<', "<!DOCTYPE "...` and the real status never
+        // reached the person trying to save.
+        const { message } = await readResponseError(response, t('eventForm.saveFailed'));
+        throw new Error(message);
       }
 
       const savedEvent = await response.json();

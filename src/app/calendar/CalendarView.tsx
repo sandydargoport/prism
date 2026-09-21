@@ -70,6 +70,7 @@ import { useChoreModals } from '@/app/chores/useChoreModals';
 import type { OverlayItemRef } from '@/components/calendar/cells';
 import type { Chore, Task, Meal } from '@/types';
 import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
+import { readResponseError } from '@/lib/utils/responseError';
 
 const MEAL_TYPE_ORDER = { breakfast: 0, lunch: 1, snack: 2, dinner: 3 } as const;
 const EMPTY_EVENTS: CalendarEvent[] = [];
@@ -722,7 +723,10 @@ export function CalendarView() {
                     listId: updated.listId,
                   }),
                 });
-                if (!res.ok) throw new Error(t('errors.updateTaskFailed'));
+                if (!res.ok) {
+                  const { message } = await readResponseError(res, t('errors.updateTaskFailed'));
+                  throw new Error(message);
+                }
                 await refreshAllTasks();
                 await refreshBuckets();
               } catch (err) {
@@ -749,7 +753,10 @@ export function CalendarView() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(updates),
                   });
-                  if (!res.ok) throw new Error(t('errors.updateMealFailed'));
+                  if (!res.ok) {
+                    const { message } = await readResponseError(res, t('errors.updateMealFailed'));
+                    throw new Error(message);
+                  }
                   await refreshAllMeals();
                   await refreshBuckets();
                 } catch (err) {
@@ -785,8 +792,10 @@ function EventDetailModal({ event, onClose, onEdit, onDeleted }: {
     try {
       const response = await fetch(`/api/events/${event.id}`, { method: 'DELETE' });
       if (!response.ok) {
-        const err = await response.json();
-        toast({ title: err.error || t('errors.deleteFailed'), variant: 'destructive' });
+        // Same reason as the save path: .json() on an HTML error page threw a
+        // parser complaint that replaced the real status.
+        const { message } = await readResponseError(response, t('errors.deleteFailed'));
+        toast({ title: message, variant: 'destructive' });
         return;
       }
       onDeleted();
