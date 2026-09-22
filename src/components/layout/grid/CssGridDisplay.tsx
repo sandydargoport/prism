@@ -6,6 +6,7 @@ import { getWidgetStyle, getWidgetContentStyle, getTextColorClass } from './grid
 import { useSquareCells } from './useSquareCells';
 import { useViewportSize } from '@/lib/hooks/useViewportSize';
 import { GRID_COLS } from '@/lib/constants/grid';
+import { resolveFitMode } from './fitMode';
 import type { CssGridDisplayProps } from './gridEditorTypes';
 
 /**
@@ -66,24 +67,12 @@ export function CssGridDisplay({
     return { fitCols: maxCol, fitRows: maxRow };
   }, [visibleWidgets]);
 
-  const fit = (!!targetRows || containMode) && !fillHeight;
-  // Decide stretch-vs-letterbox from the CONTENT'S OWN SHAPE, not a stored
-  // orientation label (which can drift from the actual widgets — e.g. a layout
-  // saved as "portrait" but laid out landscape). A wide design on a wide screen
-  // (or tall on tall) stretches to fill; a genuine orientation mismatch (wide
-  // design on a tall screen or vice-versa) would be a ~2× skew, so it letterboxes
-  // to preserve proportions. `designOrientation` is kept only as a fallback for
-  // an empty/degenerate layout.
-  const designWide = fitCols !== fitRows
-    ? fitCols > fitRows
-    : (designOrientation ? designOrientation === 'landscape' : true);
   const screenWide = viewportWidth >= viewportHeight;
-  const sameOrientation = designWide === screenWide;
-  // containMode always scales-to-fit (screensaver — sparse ambient layout that
-  // should fit any screen without clipping); otherwise stretch when orientation
-  // matches and letterbox only on a genuine mismatch.
-  const stretch = fit && sameOrientation && !containMode;
-  const contain = fit && (!sameOrientation || containMode);
+  const mode = resolveFitMode({
+    fitCols, fitRows, targetRows, designOrientation, screenWide, containMode, fillHeight,
+  });
+  const stretch = mode === 'stretch';
+  const contain = mode === 'contain';
 
   // Available box below the real chrome. Uses the measured grid top when we have
   // it (real header height) and the reactive viewport height so F11/fullscreen,
@@ -145,6 +134,7 @@ export function CssGridDisplay({
   // Resolve the container box + grid template for the active mode.
   let containerHeight: number | string;
   let centerContain = false;
+  let scrollY = false;
   let gridStyle: React.CSSProperties;
 
   if (stretch) {
@@ -166,8 +156,14 @@ export function CssGridDisplay({
   } else if (contain) {
     // Fixed-size, proportion-preserving canvas centered in the available box
     // (letterbox/pillarbox) — used only on an orientation mismatch.
+    const containH = fitRows * containCell + (fitRows - 1) * margin + 2 * containerPadding;
     containerHeight = availH;
-    centerContain = true;
+    // Past the cell floor the canvas can be taller than the box. Centering it
+    // then pushes the top above the box as well as the bottom below it, so
+    // anchor it to the top and let it scroll instead.
+    const overflows = containH > availH;
+    centerContain = !overflows;
+    scrollY = overflows;
     gridStyle = {
       display: 'grid',
       gridTemplateColumns: `repeat(${fitCols}, ${containCell}px)`,
@@ -175,7 +171,21 @@ export function CssGridDisplay({
       gap: `${margin}px`,
       padding: `${containerPadding}px`,
       width: fitCols * containCell + (fitCols - 1) * margin + 2 * containerPadding,
-      height: fitRows * containCell + (fitRows - 1) * margin + 2 * containerPadding,
+      height: containH,
+      ...(overflows ? { marginInline: 'auto' } : {}),
+    };
+  } else if (mode === 'scroll') {
+    // Longer than one screen: fill width with square cells at the content's
+    // full height and scroll the grid inside the available box. The page itself
+    // never scrolls on the desktop dashboard, so the scroll has to live here.
+    containerHeight = availH;
+    scrollY = true;
+    gridStyle = {
+      display: 'grid',
+      gridTemplateColumns: `repeat(${cols}, 1fr)`,
+      gridTemplateRows: `repeat(${fitRows}, ${widthCellSize}px)`,
+      gap: `${margin}px`,
+      padding: `${containerPadding}px`,
     };
   } else {
     // Legacy: fill width, square cells, adaptive rows.
@@ -195,7 +205,7 @@ export function CssGridDisplay({
   return (
     <div
       ref={containerRef}
-      className={`relative overflow-hidden ${className || ''}`}
+      className={`relative ${scrollY ? 'overflow-x-hidden overflow-y-auto' : 'overflow-hidden'} ${className || ''}`}
       style={{
         height: containerHeight,
         ...(centerContain ? { display: 'flex', alignItems: 'center', justifyContent: 'center' } : {}),
