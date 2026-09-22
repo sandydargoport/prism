@@ -7,6 +7,11 @@ import 'simple-keyboard/build/css/index.css';
 import { Mic, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useGlobalInput } from '@/lib/hooks/useGlobalInput';
+import {
+  KEYBOARD_HEIGHT_VH,
+  KEYBOARD_MAX_HEIGHT_PX,
+  KEYBOARD_MIN_HEIGHT_PX,
+} from '@/lib/input/keyboardLayout';
 
 const layout = {
   default: [
@@ -200,7 +205,10 @@ export function VirtualKeyboard() {
         visible && (isExiting ? 'animate-keyboard-out' : 'animate-keyboard-in'),
       )}
       style={{
-        height: '38vh', minHeight: 320, maxHeight: 480,
+        // Same numbers the provider uses to lift the field above the keyboard.
+        height: `${KEYBOARD_HEIGHT_VH}vh`,
+        minHeight: KEYBOARD_MIN_HEIGHT_PX,
+        maxHeight: KEYBOARD_MAX_HEIGHT_PX,
         display: visible ? undefined : 'none',
         // A Radix *modal* dialog (e.g. the Add-Message compose box) sets
         // pointer-events:none on everything outside its content. This keyboard

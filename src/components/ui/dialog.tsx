@@ -57,6 +57,8 @@ const DialogContent = React.forwardRef<
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
+      // Lifted above the on-screen keyboard while it is open (globals.css).
+      data-keyboard-aware-dialog=""
       // The on-screen virtual keyboard portals to <body>, outside this dialog.
       // Without this guard, tapping a key counts as an "outside" interaction and
       // Radix closes the dialog — so a keystroke into any dialog field would shut

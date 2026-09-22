@@ -955,6 +955,16 @@
   animation: mic-pulse 1s infinite;
 }
 
+/* While the on-screen keyboard is open, centre dialogs in the space above it
+   and cap their height to that space, so the field being typed into can be
+   scrolled into view instead of sitting behind the keys (#499). Applies only
+   while the provider sets data-virtual-keyboard-open; otherwise dialogs keep
+   their own top and max-height. */
+html[data-virtual-keyboard-open] [data-keyboard-aware-dialog] {
+  top: calc((100vh - var(--keyboard-height, 0px)) / 2);
+  max-height: calc(100vh - var(--keyboard-height, 0px) - 2rem);
+}
+
 /* simple-keyboard theme — scoped to [data-virtual-keyboard]
    Selectors include .hg-theme-default so we beat the library stylesheet
    (same 0,2,0 specificity, and that CSS is imported from VirtualKeyboard
