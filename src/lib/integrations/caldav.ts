@@ -8,6 +8,7 @@
 import { createDAVClient, type DAVCalendar, type DAVObject } from 'tsdav';
 import ICAL from 'ical.js';
 import { validatePublicUrl, UnsafeUrlError } from '@/lib/utils/safeFetch';
+import { localDateToFloatingAllDay } from '@/lib/utils/timeFormat';
 
 /**
  * Guard a user-supplied CalDAV server URL before handing it to tsdav.
@@ -275,17 +276,19 @@ function parseICalObject(
           const occurrence = event.getOccurrenceDetails(next);
           const start = occurrence.startDate.toJSDate();
           const end = occurrence.endDate.toJSDate();
+          const allDay = isAllDay(vevent);
 
           if (start > rangeEnd) break;
           if (end >= rangeStart) {
             events.push({
+              // Keyed on the raw start so existing rows keep their id.
               uid: `${event.uid}_${start.toISOString()}`,
               title: event.summary,
               description: event.description || null,
               location: event.location || null,
-              startTime: start,
-              endTime: end,
-              allDay: isAllDay(vevent),
+              startTime: allDay ? localDateToFloatingAllDay(start) : start,
+              endTime: allDay ? localDateToFloatingAllDay(end) : end,
+              allDay,
               color: null,
               recurring: true,
               recurrenceRule: vevent.getFirstPropertyValue('rrule')?.toString() || null,
@@ -315,14 +318,17 @@ function makeEvent(
   href: string | null,
   etag: string | null,
 ): CalDAVEvent {
+  const allDay = isAllDay(vevent);
+  const start = event.startDate.toJSDate();
+  const end = event.endDate.toJSDate();
   return {
     uid: event.uid,
     title: event.summary,
     description: event.description || null,
     location: event.location || null,
-    startTime: event.startDate.toJSDate(),
-    endTime: event.endDate.toJSDate(),
-    allDay: isAllDay(vevent),
+    startTime: allDay ? localDateToFloatingAllDay(start) : start,
+    endTime: allDay ? localDateToFloatingAllDay(end) : end,
+    allDay,
     color: null,
     recurring: false,
     recurrenceRule: null,
@@ -441,8 +447,9 @@ function parseVTodoObject(obj: DAVObject): CalDAVTask | null {
 function isAllDay(vevent: ICAL.Component): boolean {
   const dtstart = vevent.getFirstProperty('dtstart');
   if (!dtstart) return false;
-  const type = dtstart.getParameter('value');
-  return type === 'date' || type === 'DATE';
+  // ical.js consumes VALUE=DATE into the property type; it is never left as a
+  // parameter, so getParameter('value') is always undefined here.
+  return dtstart.type === 'date';
 }
 
 function formatICalDate(date: Date): string {
@@ -502,8 +509,11 @@ function buildVEventICalString(ev: CalDAVEventWrite): string {
   dtstamp.zone = ICAL.Timezone.utcTimezone;
   vevent.updatePropertyWithValue('dtstamp', dtstamp);
 
-  const start = ICAL.Time.fromJSDate(ev.startTime, !ev.allDay);
-  const end = ICAL.Time.fromJSDate(ev.endTime, !ev.allDay);
+  // All-day dates are floating UTC midnights (see localDateToFloatingAllDay),
+  // so read their UTC fields; local fields would write the previous day west
+  // of UTC.
+  const start = ICAL.Time.fromJSDate(ev.startTime, true);
+  const end = ICAL.Time.fromJSDate(ev.endTime, true);
   if (ev.allDay) {
     start.isDate = true;
     end.isDate = true;
