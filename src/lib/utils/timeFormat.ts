@@ -85,6 +85,16 @@ function getUtcDateKey(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+/**
+ * Convert a DATE value that a parser built at server-local midnight (node-ical
+ * and ical.js both do) into the floating all-day form the helpers below read:
+ * UTC midnight of the same calendar date. Server-side only, since the local
+ * fields are the process timezone's.
+ */
+export function localDateToFloatingAllDay(date: Date): Date {
+  return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+}
+
 function nextUtcDateKey(date: Date): string {
   return getUtcDateKey(new Date(Date.UTC(
     date.getUTCFullYear(),
