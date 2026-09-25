@@ -17,7 +17,7 @@ type Widget = { i: string; x: number; y: number; w: number; h: number };
 function seedDefaultLayoutWidgets(): Widget[] {
   const sql = fs.readFileSync(path.join(__dirname, '..', 'init', '03-seed.sql'), 'utf8');
   const match = sql.match(/\('Default Dashboard',[^']*'landscape',\s*'(\[[^']*\])'/);
-  if (!match) throw new Error("03-seed.sql: 'Default Dashboard' insert not found in the expected shape");
+  if (!match?.[1]) throw new Error("03-seed.sql: 'Default Dashboard' insert not found in the expected shape");
   return JSON.parse(match[1]) as Widget[];
 }
 
