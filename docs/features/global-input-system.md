@@ -129,10 +129,27 @@ const target = e.target as Element;
 if (!shouldShowKeyboard(target)) { activeInputRef.current = null; setKeyboardVisible(false); return; }
 activeInputRef.current = target as HTMLInputElement | HTMLTextAreaElement;
 if (lastPointerType === 'touch' && !isMobile && !suppressedForScan && virtualKeyboardEnabled) {
-  setKeyboardVisible(true);
-  scrollInputIntoView(target);
+  suppressOsKeyboard(target);   // inputmode="none", see "OS keyboard suppression"
+  setKeyboardVisible(true);     // the keyboardVisible effect lifts the field (§7)
+} else {
+  releaseOsKeyboard();          // mouse, phone width, disabled: OS keyboard as normal
 }
 ```
+
+**OS keyboard suppression (#498).** On a touch tablet or a 2-in-1 in tablet
+mode, Chrome raises its own soft keyboard on a tapped field, so without this
+both keyboards appear stacked. While Prism's keyboard serves a field, the field
+carries `inputmode="none"`, the standard signal that the page supplies its own
+keyboard. It is set on the touch `pointerdown`, before the field takes focus,
+so the OS keyboard never starts to open; again in `focusin`; and when the
+toggle button opens the keyboard. The field's previous `inputmode` is recorded
+and put back exactly (or the attribute removed, if it had none) when the field
+loses focus or focus moves elsewhere. Mouse focus, phone widths and a disabled
+keyboard never get the attribute, so the OS keyboard works as before there.
+
+Since the OS keyboard stays down, re-tapping the field that already has focus
+after Enter or a physical key closed Prism's keyboard reopens Prism's keyboard
+from `pointerdown` (no `focusin` fires for an already-focused field).
 
 **`focusout`:**
 ```ts
@@ -145,9 +162,10 @@ if (pointerOnKeyboardRef.current) {
   const el = activeContentEditableRef.current ?? activeInputRef.current;
   if (el) { el.focus({ preventScroll: true }); return; }
 }
+releaseOsKeyboard();              // put the field's own inputmode back
 activeInputRef.current = null;
 setKeyboardVisible(false);
-restoreScroll();
+releaseView(!textInjectedWhileOpen); // drop added padding; scroll back if nothing was typed
 ```
 
 `isInsideKeyboard(el)` checks `el.closest('[data-virtual-keyboard]')`.
@@ -244,12 +262,16 @@ bottom: 0
 left: 0
 right: 0
 z-index: 9000
-height: 32vh
+height: 38vh
 min-height: 320px
 max-height: 480px
 ```
 
-> Note: the scroll math (§7) and the `--keyboard-height` CSS var both use **32vh**. The `VirtualKeyboard.tsx` container style still hardcodes `38vh`, so the visual height and scroll math don't yet agree. Reconcile to 32vh.
+These numbers live in one place, `src/lib/input/keyboardLayout.ts`
+(`KEYBOARD_HEIGHT_VH`, `KEYBOARD_MIN_HEIGHT_PX`, `KEYBOARD_MAX_HEIGHT_PX`,
+`keyboardHeightPx()`). The container style, the scroll math (§7) and the
+`--keyboard-height` CSS var all read them, so the drawn height and the space
+the field is lifted clear of cannot drift apart again.
 
 Key height ≥ 52px, key font size 18px. Sized for comfortable use on 24" 1080p display.
 
@@ -541,43 +563,32 @@ Tapping calls `setKeyboardVisible(true)`. Fade in/out 150ms.
 
 ## 7. Scroll-into-View
 
-### Algorithm
+### File: `src/lib/input/keyboardLayout.ts`
 
-```ts
-const KEYBOARD_HEIGHT_VH = 32;
-const SCROLL_MARGIN_PX = 16;
-let originalScrollY: number | null = null;
+The keyboard is a fixed overlay, so the browser neither shrinks the viewport
+nor scrolls the focused field into view for it. When the keyboard opens, or
+focus moves to another field while it is open, the provider:
 
-function scrollInputIntoView(el: Element) {
-  const rect = el.getBoundingClientRect();
-  const keyboardTop = window.innerHeight * (1 - KEYBOARD_HEIGHT_VH / 100);
-  if (rect.bottom + SCROLL_MARGIN_PX > keyboardTop) {
-    originalScrollY = window.scrollY;
-    const scrollNeeded = rect.bottom + SCROLL_MARGIN_PX - keyboardTop;
-    getScrollParent(el).scrollBy({ top: scrollNeeded, behavior: 'smooth' });
-  }
-}
+1. Sets `--keyboard-height` (in px, from `keyboardHeightPx()`) and the
+   `data-virtual-keyboard-open` attribute on `<html>`. A rule in `globals.css`,
+   active only under that attribute, centres dialogs
+   (`[data-keyboard-aware-dialog]`, set by `DialogContent`) in the space above
+   the keyboard and caps their height to it. With the keyboard closed, dialogs
+   keep their own `top` and `max-height`.
+2. Calls `revealAboveKeyboard(field, keyboardTop)`. It walks the scrollable
+   ancestors from the nearest outward and scrolls each by what is still needed
+   to put the field's bottom 16px above the keyboard (or above that scroller's
+   own visible bottom, when that is higher). It stops at the first
+   `position: fixed` ancestor, since a fixed dialog does not move when the page
+   behind it scrolls. Otherwise it scrolls the page last.
+3. When a scroller's content ends too soon to scroll that far (the last field
+   of a full-height page, e.g. shopping's inline "Add item" row), it extends
+   that scroller's `padding-bottom` for as long as the keyboard is open.
 
-function restoreScroll() {
-  if (originalScrollY !== null) {
-    window.scrollTo({ top: originalScrollY, behavior: 'smooth' });
-    originalScrollY = null;
-  }
-}
+On close, `restoreReveal()` removes the added padding and, if nothing was typed
+while the keyboard was open, scrolls each scroller back to where it was.
 
-function getScrollParent(el: Element): Element | Window {
-  let parent = el.parentElement;
-  while (parent) {
-    if (['auto', 'scroll'].includes(getComputedStyle(parent).overflowY)) return parent;
-    parent = parent.parentElement;
-  }
-  return window;
-}
-```
-
-Uses `getScrollParent` to handle pages with `overflow: hidden` on the body (dashboard, shopping).
-
-**`AppShell` padding:** Consider exposing `--keyboard-height: 32vh` as a CSS custom property on `:root` (set when keyboard is open, `0px` otherwise) so inner scroll containers can consume it directly rather than relying on padding on `<main>`.
+Phones (§8) use the OS keyboard only and are left to the browser.
 
 ---
 

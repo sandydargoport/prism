@@ -13,6 +13,12 @@ import { useIsMobile } from './useIsMobile';
 import { useSpeechRecognition } from './useSpeechRecognition';
 import { toast } from '@/components/ui/use-toast';
 import { isVirtualKeyboardTarget } from '@/lib/input/keyboardTarget';
+import {
+  keyboardHeightPx,
+  restoreReveal,
+  revealAboveKeyboard,
+  type RevealRecord,
+} from '@/lib/input/keyboardLayout';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -52,14 +58,13 @@ function isInsideKeyboard(el: Element): boolean {
   return isVirtualKeyboardTarget(el);
 }
 
-function getScrollParent(el: Element): Element | Window {
-  let parent = el.parentElement;
-  while (parent) {
-    const style = getComputedStyle(parent);
-    if (['auto', 'scroll'].includes(style.overflowY)) return parent;
-    parent = parent.parentElement;
-  }
-  return window;
+/** The element that takes focus for `el`: itself, or its contenteditable host. */
+function editableHost(el: Element): HTMLElement | null {
+  if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) return el;
+  if (!(el instanceof HTMLElement) || !el.isContentEditable) return null;
+  let host: HTMLElement = el;
+  while (host.parentElement?.isContentEditable) host = host.parentElement;
+  return host;
 }
 
 function isRealKeyboardEvent(e: KeyboardEvent): boolean {
@@ -72,9 +77,6 @@ function isRealKeyboardEvent(e: KeyboardEvent): boolean {
 // Provider
 // ---------------------------------------------------------------------------
 
-const KEYBOARD_HEIGHT_VH = 32;
-const SCROLL_MARGIN_PX = 16;
-
 export function GlobalInputProvider({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile();
   const [keyboardVisible, setKeyboardVisibleState] = useState(false);
@@ -82,7 +84,13 @@ export function GlobalInputProvider({ children }: { children: React.ReactNode })
 
   const activeInputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const activeContentEditableRef = useRef<HTMLElement | null>(null);
-  const originalScrollY = useRef<number | null>(null);
+  // Scroll and padding changes made to lift the field above the keyboard (#499).
+  const revealRecordsRef = useRef<RevealRecord[]>([]);
+  // The field currently carrying inputmode="none", and its attribute before.
+  // While Prism's keyboard serves a field, the OS soft keyboard must stay down
+  // or both appear stacked (#498). inputmode="none" is the standard way to tell
+  // the browser a page supplies its own keyboard.
+  const osKeyboardSuppressedRef = useRef<{ el: HTMLElement; prev: string | null } | null>(null);
   const suppressedForScan = useRef(false);
   const lastPointerTypeRef = useRef<'touch' | 'mouse' | 'keyboard'>('mouse');
   const textInjectedWhileOpen = useRef(false);
@@ -207,57 +215,90 @@ export function GlobalInputProvider({ children }: { children: React.ReactNode })
 
   const speech = useSpeechRecognition(handleSpeechResult);
 
-  // ---- scroll helpers ----
-  const scrollInputIntoView = useCallback((el: Element) => {
-    const rect = el.getBoundingClientRect();
-    const keyboardTop = window.innerHeight * (1 - KEYBOARD_HEIGHT_VH / 100);
-    if (rect.bottom + SCROLL_MARGIN_PX > keyboardTop) {
-      originalScrollY.current = window.scrollY;
-      const scrollNeeded = rect.bottom + SCROLL_MARGIN_PX - keyboardTop;
-      const scrollParent = getScrollParent(el);
-      if (scrollParent === window) {
-        window.scrollBy({ top: scrollNeeded, behavior: 'smooth' });
-      } else {
-        (scrollParent as Element).scrollBy({ top: scrollNeeded, behavior: 'smooth' });
-      }
-    }
+  // ---- OS keyboard suppression (#498) ----
+  const releaseOsKeyboard = useCallback(() => {
+    const s = osKeyboardSuppressedRef.current;
+    if (!s) return;
+    osKeyboardSuppressedRef.current = null;
+    if (s.prev === null) s.el.removeAttribute('inputmode');
+    else s.el.setAttribute('inputmode', s.prev);
   }, []);
 
-  const restoreScroll = useCallback(() => {
-    if (originalScrollY.current !== null) {
-      window.scrollTo({ top: originalScrollY.current, behavior: 'smooth' });
-      originalScrollY.current = null;
-    }
+  const suppressOsKeyboard = useCallback((el: HTMLElement) => {
+    if (osKeyboardSuppressedRef.current?.el === el) return;
+    releaseOsKeyboard();
+    osKeyboardSuppressedRef.current = { el, prev: el.getAttribute('inputmode') };
+    el.setAttribute('inputmode', 'none');
+  }, [releaseOsKeyboard]);
+
+  // ---- scroll helpers (#499) ----
+  const releaseView = useCallback((restorePosition: boolean) => {
+    restoreReveal(revealRecordsRef.current, restorePosition);
+    revealRecordsRef.current = [];
   }, []);
+
+  const scrollInputIntoView = useCallback((el: Element) => {
+    // Moving to another field while the keyboard stays open: drop the old
+    // padding but leave the view where it is.
+    releaseView(false);
+    const keyboardTop = window.innerHeight - keyboardHeightPx(window.innerHeight);
+    revealRecordsRef.current = revealAboveKeyboard(el, keyboardTop);
+  }, [releaseView]);
 
   // ---- setKeyboardVisible (public) ----
   const setKeyboardVisible = useCallback((visible: boolean) => {
     setKeyboardVisibleState(visible);
     if (visible) {
       textInjectedWhileOpen.current = false;
+      // Opened from the toggle button on a field focused without touch.
+      const el = activeContentEditableRef.current ?? activeInputRef.current;
+      if (el) suppressOsKeyboard(el);
     } else {
       // Explicit close (↓ dismiss / Enter). Clear the keyboard-tap flag so the
       // blur those keys trigger isn't caught by the focusout refocus guard,
       // which would otherwise immediately reopen the keyboard.
       pointerOnKeyboardRef.current = false;
-      if (!textInjectedWhileOpen.current) restoreScroll();
+      releaseView(!textInjectedWhileOpen.current);
       textInjectedWhileOpen.current = false;
     }
-  }, [restoreScroll]);
+  }, [releaseView, suppressOsKeyboard]);
 
-  // ---- keyboard height CSS var ----
+  // ---- keyboard height CSS var, and lifting the field above it ----
+  // `data-virtual-keyboard-open` + `--keyboard-height` let CSS move dialogs
+  // into the space above the keyboard (globals.css). Both are set before the
+  // reveal so it measures the dialog in its lifted position.
   useEffect(() => {
-    document.documentElement.style.setProperty(
-      '--keyboard-height',
-      keyboardVisible ? `${KEYBOARD_HEIGHT_VH}vh` : '0px',
-    );
-  }, [keyboardVisible]);
+    const root = document.documentElement;
+    if (!keyboardVisible) {
+      root.style.setProperty('--keyboard-height', '0px');
+      root.removeAttribute('data-virtual-keyboard-open');
+      return;
+    }
+    const applyHeight = () => {
+      root.style.setProperty('--keyboard-height', `${keyboardHeightPx(window.innerHeight)}px`);
+    };
+    applyHeight();
+    root.setAttribute('data-virtual-keyboard-open', '');
+    const el = activeContentEditableRef.current ?? activeInputRef.current;
+    if (el) scrollInputIntoView(el);
+    window.addEventListener('resize', applyHeight);
+    return () => window.removeEventListener('resize', applyHeight);
+  }, [keyboardVisible, scrollInputIntoView]);
+
+  // Put the field's own inputmode back if the provider goes away.
+  useEffect(() => releaseOsKeyboard, [releaseOsKeyboard]);
 
   // ---- barcode buffer ----
   const barcodeBuffer = useRef<{ char: string; time: number }[]>([]);
 
   // ---- document event listeners ----
   useEffect(() => {
+    const prismKeyboardApplies = () =>
+      lastPointerTypeRef.current === 'touch' &&
+      !isMobile &&
+      !suppressedForScan.current &&
+      virtualKeyboardEnabled;
+
     const onPointerDown = (e: PointerEvent) => {
       if (e.pointerType === 'touch') {
         lastPointerTypeRef.current = 'touch';
@@ -266,11 +307,30 @@ export function GlobalInputProvider({ children }: { children: React.ReactNode })
       }
       const t = e.target;
       pointerOnKeyboardRef.current = t instanceof Element && isInsideKeyboard(t);
+
+      // A touch on a field Prism's keyboard will serve. Set inputmode="none"
+      // now, BEFORE the field takes focus, so the OS keyboard never starts to
+      // open (#498).
+      if (e.pointerType !== 'touch' || !(t instanceof Element) || !shouldShowKeyboard(t)) return;
+      if (!prismKeyboardApplies()) return;
+      const host = editableHost(t);
+      if (!host) return;
+      suppressOsKeyboard(host);
+      // Re-tapping the field that already has focus (the keyboard was closed
+      // by Enter, or by a physical key) fires no focusin. With the OS keyboard
+      // suppressed, reopen Prism's here, or the tap would bring up nothing.
+      const active = activeContentEditableRef.current ?? activeInputRef.current;
+      if (host === active && document.activeElement === host && !keyboardVisibleRef.current) {
+        textInjectedWhileOpen.current = false;
+        setKeyboardVisibleState(true);
+      }
     };
 
     const onFocusIn = (e: FocusEvent) => {
       const target = e.target as Element;
+      const previous = activeContentEditableRef.current ?? activeInputRef.current;
       if (!shouldShowKeyboard(target)) {
+        releaseOsKeyboard();
         activeInputRef.current = null;
         activeContentEditableRef.current = null;
         setIsInputFocused(false);
@@ -285,17 +345,18 @@ export function GlobalInputProvider({ children }: { children: React.ReactNode })
         activeContentEditableRef.current = null;
       }
       setIsInputFocused(true);
-      if (
-        lastPointerTypeRef.current === 'touch' &&
-        !isMobile &&
-        !suppressedForScan.current &&
-        virtualKeyboardEnabled
-      ) {
+      if (prismKeyboardApplies()) {
+        const host = editableHost(target);
+        if (host) suppressOsKeyboard(host);
         const wasVisible = keyboardVisibleRef.current;
         setKeyboardVisibleState(true);
-        // Don't re-scroll when this focusin is the restore-focus that follows a
-        // keyboard key tap — the keyboard is already open and in place.
-        if (!wasVisible) scrollInputIntoView(target);
+        // Opening: the keyboardVisible effect lifts the field. Already open:
+        // lift it here, unless this focusin is the restore-focus that follows
+        // a key tap, where the field is already in place.
+        if (wasVisible && target !== previous) scrollInputIntoView(target);
+      } else {
+        // Mouse, phone width, keyboard disabled: leave the OS keyboard alone.
+        releaseOsKeyboard();
       }
     };
 
@@ -316,11 +377,12 @@ export function GlobalInputProvider({ children }: { children: React.ReactNode })
         const el = activeContentEditableRef.current ?? activeInputRef.current;
         if (el) { el.focus({ preventScroll: true }); return; }
       }
+      releaseOsKeyboard();
       activeInputRef.current = null;
       activeContentEditableRef.current = null;
       setIsInputFocused(false);
       setKeyboardVisibleState(false);
-      if (!textInjectedWhileOpen.current) restoreScroll();
+      releaseView(!textInjectedWhileOpen.current);
       textInjectedWhileOpen.current = false;
     };
 
@@ -368,7 +430,7 @@ export function GlobalInputProvider({ children }: { children: React.ReactNode })
       document.removeEventListener('keydown', onKeyDown);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMobile, virtualKeyboardEnabled, scrollInputIntoView, restoreScroll]);
+  }, [isMobile, virtualKeyboardEnabled, scrollInputIntoView, releaseView, suppressOsKeyboard, releaseOsKeyboard]);
 
   const value = useMemo<GlobalInputContextValue>(() => ({
     keyboardVisible,

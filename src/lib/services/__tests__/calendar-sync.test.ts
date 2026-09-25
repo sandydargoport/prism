@@ -626,3 +626,80 @@ describe('syncIcalCalendarSource', () => {
     expect(mockIcalFromURL).not.toHaveBeenCalled();
   });
 });
+
+// --- iCal all-day events under a non-UTC server timezone (#518) ---
+
+describe('syncIcalCalendarSource all-day dates', () => {
+  const { eventOccursOnDisplayDay } = jest.requireActual('@/lib/utils/timeFormat') as typeof import('@/lib/utils/timeFormat');
+  const realIcal = jest.requireActual('node-ical') as typeof import('node-ical');
+  // Jest sandboxes process.env, so the zone cannot be switched per test. The
+  // suite runs in the runner's zone; `npm run test:tz` repeats it in zones
+  // on both sides of UTC, where node-ical builds DATE values off midnight.
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  const ICS = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'BEGIN:VEVENT',
+    'UID:one-day@example.com',
+    'DTSTART;VALUE=DATE:20260906',
+    'DTEND;VALUE=DATE:20260907',
+    'SUMMARY:Sample birthday',
+    'END:VEVENT',
+    'BEGIN:VEVENT',
+    'UID:weekly@example.com',
+    'DTSTART;VALUE=DATE:20260901',
+    'DTEND;VALUE=DATE:20260902',
+    'RRULE:FREQ=WEEKLY;COUNT=3',
+    'EXDATE;VALUE=DATE:20260908',
+    'SUMMARY:Sample weekly',
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].join('\r\n');
+
+  describe(`in the runner's zone (${tz})`, () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      mockFindMany.mockResolvedValue([]);
+      mockFindFirst.mockResolvedValue(makeIcalSource());
+      // Parse under the zone, as the server would: node-ical builds DATE
+      // values at local midnight.
+      mockIcalFromURL.mockResolvedValue(realIcal.sync.parseICS(ICS));
+    });
+
+    async function syncedRows() {
+      await syncIcalCalendarSource('ical-source-1', {
+        timeMin: new Date('2026-08-01T00:00:00Z'),
+        timeMax: new Date('2026-10-01T00:00:00Z'),
+      });
+      return mockInsertValues.mock.calls.map(([row]) => row as {
+        externalEventId: string; startTime: Date; endTime: Date; allDay: boolean;
+      });
+    }
+
+    it('stores a one-day VALUE=DATE event as a floating UTC-midnight range', async () => {
+      const row = (await syncedRows()).find((r) => r.externalEventId === 'one-day@example.com')!;
+      expect(row.allDay).toBe(true);
+      expect(row.startTime.toISOString()).toBe('2026-09-06T00:00:00.000Z');
+      expect(row.endTime.toISOString()).toBe('2026-09-07T00:00:00.000Z');
+    });
+
+    it('renders the one-day event on its own day only', async () => {
+      const row = (await syncedRows()).find((r) => r.externalEventId === 'one-day@example.com')!;
+      const on = (d: number) => eventOccursOnDisplayDay(row.startTime, row.endTime, true, new Date(2026, 8, d), tz);
+      expect([on(5), on(6), on(7)]).toEqual([false, true, false]);
+    });
+
+    it('stores expanded all-day occurrences at UTC midnight and honours EXDATE', async () => {
+      const rows = (await syncedRows()).filter((r) => r.externalEventId.startsWith('weekly@example.com'));
+      expect(rows.map((r) => r.startTime.toISOString())).toEqual([
+        '2026-09-01T00:00:00.000Z',
+        '2026-09-15T00:00:00.000Z',
+      ]);
+      expect(rows.map((r) => r.endTime.toISOString())).toEqual([
+        '2026-09-02T00:00:00.000Z',
+        '2026-09-16T00:00:00.000Z',
+      ]);
+    });
+  });
+});
