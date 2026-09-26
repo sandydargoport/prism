@@ -15,6 +15,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as bcrypt from 'bcryptjs';
 import * as schema from './schema';
+import { DB_SESSION_PARAMS } from './client';
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -22,7 +23,7 @@ if (!connectionString) {
   throw new Error('DATABASE_URL environment variable is not set');
 }
 
-const client = postgres(connectionString);
+const client = postgres(connectionString, { connection: DB_SESSION_PARAMS });
 const db = drizzle(client, { schema });
 
 // ─── Date helpers ──────────────────────────────────────────────────────────

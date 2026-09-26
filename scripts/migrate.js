@@ -56,7 +56,14 @@ async function waitForDatabase(sql) {
 }
 
 async function main() {
-  const sql = postgres(DATABASE_URL, { max: 1, connect_timeout: 10, onnotice: () => {} });
+  // Run in UTC, as the app's client does (DB_SESSION_PARAMS in
+  // src/lib/db/client.ts), so a migration's now() matches the app's.
+  const sql = postgres(DATABASE_URL, {
+    max: 1,
+    connect_timeout: 10,
+    onnotice: () => {},
+    connection: { TimeZone: 'UTC' },
+  });
 
   try {
     await waitForDatabase(sql);

@@ -36,6 +36,12 @@ import * as schema from './schema';
  * We use lazy initialization to avoid errors during Next.js build time.
  * The database connection is only established when first accessed at runtime.
  */
+/**
+ * Server parameters sent when each connection opens. scripts/migrate.js sends
+ * the same, so migrations and the app agree on what now() means.
+ */
+export const DB_SESSION_PARAMS = { TimeZone: 'UTC' } as const;
+
 let _client: ReturnType<typeof postgres> | null = null;
 let _db: ReturnType<typeof drizzle<typeof schema>> | null = null;
 
@@ -63,6 +69,11 @@ function getClient(): ReturnType<typeof postgres> {
       connect_timeout: 10,
       // Prepare statements for better performance
       prepare: true,
+      // Every session runs in UTC. The timestamp columns carry no zone, and
+      // Drizzle reads them back as UTC, but a column default of now() is
+      // written in the session's zone. A server set to local time would
+      // store local clock time that then reads back hours off.
+      connection: DB_SESSION_PARAMS,
       // Transform options for consistent data handling
       transform: {
         undefined: null,

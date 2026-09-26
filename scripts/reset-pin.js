@@ -33,7 +33,13 @@ const MAX_PIN_LENGTH = 6;
 
 async function main() {
   const args = process.argv.slice(2);
-  const sql = postgres(DATABASE_URL, { max: 1, connect_timeout: 10, onnotice: () => {} });
+  // UTC, as the app's client does, since this writes updated_at = NOW().
+  const sql = postgres(DATABASE_URL, {
+    max: 1,
+    connect_timeout: 10,
+    onnotice: () => {},
+    connection: { TimeZone: 'UTC' },
+  });
 
   try {
     const members = await sql`
