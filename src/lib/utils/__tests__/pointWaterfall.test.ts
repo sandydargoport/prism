@@ -1,10 +1,12 @@
 import { computeWaterfall, getGoalPeriodKey } from '../pointWaterfall';
 
-// Helper to create dates relative to a fixed "now"
-// Use midday UTC so local-time conversion (date-fns uses local) stays on the same calendar day
-const NOW = new Date('2026-02-16T18:00:00Z'); // a Monday
-const THIS_WEEK_MON = new Date('2026-02-16T15:00:00Z');
-const LAST_WEEK_MON = new Date('2026-02-09T15:00:00Z');
+// Week, month and year boundaries are computed in the process zone, so every
+// fixture is a local wall time (no Z suffix, and no date-only string, which
+// parses as UTC). A UTC instant lands on a different local day east or west of
+// UTC, and the suite failed under Asia/Tokyo and Pacific/Kiritimati.
+const NOW = new Date('2026-02-16T18:00:00'); // a Monday
+const THIS_WEEK_MON = new Date('2026-02-16T15:00:00');
+const LAST_WEEK_MON = new Date('2026-02-09T15:00:00');
 
 function makeGoal(overrides: Partial<{
   id: string;
@@ -20,7 +22,7 @@ function makeGoal(overrides: Partial<{
     priority: overrides.priority ?? 1,
     recurring: overrides.recurring ?? false,
     recurrencePeriod: overrides.recurrencePeriod ?? null,
-    lastResetAt: overrides.lastResetAt ?? new Date('2026-01-01'),
+    lastResetAt: overrides.lastResetAt ?? new Date('2026-01-01T00:00:00'),
   };
 }
 
@@ -32,9 +34,9 @@ describe('computeWaterfall', () => {
   describe('earned counters', () => {
     it('counts weekly/monthly/yearly earned points from completions', () => {
       const completions = [
-        makeCompletion(5, new Date('2026-02-16T10:00:00Z')),  // this week + month + year
-        makeCompletion(3, new Date('2026-02-10T10:00:00Z')),  // last week but this month + year
-        makeCompletion(7, new Date('2026-01-15T10:00:00Z')),  // last month but this year
+        makeCompletion(5, new Date('2026-02-16T10:00:00')),  // this week + month + year
+        makeCompletion(3, new Date('2026-02-10T10:00:00')),  // last week but this month + year
+        makeCompletion(7, new Date('2026-01-15T10:00:00')),  // last month but this year
       ];
 
       const result = computeWaterfall([makeGoal()], completions, NOW);
@@ -46,8 +48,8 @@ describe('computeWaterfall', () => {
 
     it('treats null pointsAwarded as 0', () => {
       const completions = [
-        { pointsAwarded: null, completedAt: new Date('2026-02-16T10:00:00Z') },
-        makeCompletion(5, new Date('2026-02-16T11:00:00Z')),
+        { pointsAwarded: null, completedAt: new Date('2026-02-16T10:00:00') },
+        makeCompletion(5, new Date('2026-02-16T11:00:00')),
       ];
 
       const result = computeWaterfall([makeGoal()], completions, NOW);
@@ -290,12 +292,12 @@ describe('computeWaterfall', () => {
 
     it('weekStartsOn=0: Saturday completion counts in current week (Sun-Sat)', () => {
       // Saturday Feb 21 is within the Sun Feb 15 – Sat Feb 21 week
-      const saturdayCompletion = new Date('2026-02-21T12:00:00Z');
+      const saturdayCompletion = new Date('2026-02-21T12:00:00');
       const completions = [makeCompletion(5, saturdayCompletion)];
       const goal = makeGoal({ pointCost: 10, recurring: false });
 
       // Use a "now" that is also in that week but after Saturday
-      const nowSat = new Date('2026-02-21T18:00:00Z'); // Saturday evening
+      const nowSat = new Date('2026-02-21T18:00:00'); // Saturday evening
       const result = computeWaterfall([goal], completions, nowSat, 0);
 
       expect(result.weeklyEarned).toBe(5);
@@ -304,11 +306,11 @@ describe('computeWaterfall', () => {
 
     it('weekStartsOn=1: Sunday completion counts in current week (Mon-Sun)', () => {
       // Sunday Feb 22 is the last day of the Mon Feb 16 – Sun Feb 22 week
-      const sundayCompletion = new Date('2026-02-22T12:00:00Z');
+      const sundayCompletion = new Date('2026-02-22T12:00:00');
       const completions = [makeCompletion(5, sundayCompletion)];
       const goal = makeGoal({ pointCost: 10, recurring: false });
 
-      const nowSun = new Date('2026-02-22T18:00:00Z'); // Sunday evening
+      const nowSun = new Date('2026-02-22T18:00:00'); // Sunday evening
       const result = computeWaterfall([goal], completions, nowSun, 1);
 
       expect(result.weeklyEarned).toBe(5);
@@ -318,8 +320,8 @@ describe('computeWaterfall', () => {
     it('weekly earned respects weekStartsOn boundary across different weeks', () => {
       // With weekStartsOn=0 (Sunday): Sun Feb 15 starts a new week
       // So Sat Feb 14 is in the PREVIOUS week, Sun Feb 15 starts the current week
-      const satFeb14 = new Date('2026-02-14T12:00:00Z'); // Saturday
-      const sunFeb15 = new Date('2026-02-15T12:00:00Z'); // Sunday
+      const satFeb14 = new Date('2026-02-14T12:00:00'); // Saturday
+      const sunFeb15 = new Date('2026-02-15T12:00:00'); // Sunday
 
       const completions = [
         makeCompletion(3, satFeb14),
@@ -341,8 +343,8 @@ describe('computeWaterfall', () => {
     it('recurring weekly goal resets based on weekStartsOn boundary', () => {
       // With weekStartsOn=0 (Sunday): week starts Sun Feb 15
       // With weekStartsOn=1 (Monday): week starts Mon Feb 16
-      const sunFeb15 = new Date('2026-02-15T12:00:00Z'); // Sunday
-      const monFeb16 = new Date('2026-02-16T12:00:00Z'); // Monday
+      const sunFeb15 = new Date('2026-02-15T12:00:00'); // Sunday
+      const monFeb16 = new Date('2026-02-16T12:00:00'); // Monday
 
       const goal = makeGoal({
         pointCost: 5,
@@ -390,7 +392,7 @@ describe('getGoalPeriodKey', () => {
   });
 
   it('returns lastResetAt for non-recurring goal', () => {
-    const resetDate = new Date('2026-01-15T10:00:00Z');
+    const resetDate = new Date('2026-01-15T10:00:00');
     const goal = makeGoal({ recurring: false, lastResetAt: resetDate });
     const key = getGoalPeriodKey(goal, NOW);
     expect(key).toBe('2026-01-15');

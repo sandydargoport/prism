@@ -51,14 +51,16 @@ export function formatDateStyle(date: Date, style: DateStyle, locale: string): s
 /**
  * Weekday name for a day index (0 = Sunday, matching Date.getDay() and
  * DAYS_SHORT_ARRAY), for column headers that have a weekday but no date.
- * 2024-01-07 was a Sunday; UTC noon keeps the offset from shifting the day.
+ * 2024-01-07 was a Sunday. The formatter renders in the local zone, so the
+ * date is built at local noon: UTC noon is already the next day at UTC+13 and
+ * +14, which named every column one day late there.
  */
 export function weekdayNameByIndex(
   index: number,
   locale: string,
   style: 'weekdayShort' | 'weekdayLong' | 'weekdayNarrow' = 'weekdayShort',
 ): string {
-  return formatDateStyle(new Date(Date.UTC(2024, 0, 7 + index, 12)), style, locale);
+  return formatDateStyle(new Date(2024, 0, 7 + index, 12), style, locale);
 }
 
 /**

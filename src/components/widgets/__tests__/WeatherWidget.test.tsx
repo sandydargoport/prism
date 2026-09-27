@@ -80,14 +80,21 @@ afterEach(() => {
 // Test data helpers
 // ---------------------------------------------------------------------------
 
-// Anchor to noon tomorrow so the past-day filter never drops fixture dates.
-const NOON_MS = new Date().setHours(12, 0, 0, 0);
-const TOMORROW_NOON = new Date(NOON_MS + 86_400_000);
-const DAY_MS = 86_400_000;
+// Providers store forecast.date as UTC midnight of the location's calendar
+// day, and the widget reads it with getUTC*. So a fixture is UTC midnight of
+// the local date `offset` days from today. Local noon only matched that
+// contract near UTC: at UTC+14 tomorrow's local noon is still today in UTC,
+// and the first column read TODAY instead of its weekday.
+function forecastDate(offset: number): Date {
+  const now = new Date();
+  return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate() + offset));
+}
+// Tomorrow, so the past-day filter never drops fixture dates.
+const TOMORROW = forecastDate(1);
 
 function makeForecastDay(overrides: Partial<ForecastDay> = {}): ForecastDay {
   return {
-    date: TOMORROW_NOON,
+    date: TOMORROW,
     dayName: 'Tue',
     high: 72,
     low: 55,
@@ -129,7 +136,7 @@ function makeWeatherData(overrides: Partial<WeatherData> = {}): WeatherData {
   // Start from tomorrow so no entry lands on "today" (which renders as 'TODAY'
   // rather than the dayName, breaking tests that check for specific day labels).
   const forecast: ForecastDay[] = DAY_NAMES.slice(0, 5).map((dayName, i) => ({
-    date: new Date(NOON_MS + (1 + i) * DAY_MS),
+    date: forecastDate(1 + i),
     dayName,
     high: 70 + i,
     low:  50 + i,
@@ -215,8 +222,8 @@ describe('day summary header', () => {
     const data = makeWeatherData({
       forecast: [
         makeForecastDay({ dayName: 'Mon' }),
-        makeForecastDay({ dayName: 'Tue', date: new Date(NOON_MS + 2 * DAY_MS) }),
-        makeForecastDay({ dayName: 'Wed', date: new Date(NOON_MS + 3 * DAY_MS) }),
+        makeForecastDay({ dayName: 'Tue', date: forecastDate(2) }),
+        makeForecastDay({ dayName: 'Wed', date: forecastDate(3) }),
       ],
     });
     render(<WeatherWidget data={data} forecastDays={3} />);
@@ -306,7 +313,7 @@ describe('forecastDays prop', () => {
     const data = makeWeatherData({
       forecast: [
         makeForecastDay({ dayName: 'Mon' }),
-        makeForecastDay({ dayName: 'Tue', date: new Date(NOON_MS + 2 * DAY_MS) }),
+        makeForecastDay({ dayName: 'Tue', date: forecastDate(2) }),
       ],
     });
     render(<WeatherWidget data={data} forecastDays={5} />);

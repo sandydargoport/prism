@@ -633,8 +633,8 @@ describe('syncIcalCalendarSource all-day dates', () => {
   const { eventOccursOnDisplayDay } = jest.requireActual('@/lib/utils/timeFormat') as typeof import('@/lib/utils/timeFormat');
   const realIcal = jest.requireActual('node-ical') as typeof import('node-ical');
   // Jest sandboxes process.env, so the zone cannot be switched per test. The
-  // suite runs in the runner's zone; `npm run test:tz` repeats it in zones
-  // on both sides of UTC, where node-ical builds DATE values off midnight.
+  // suite runs in the runner's zone; `npm run test:tz` (and CI) repeats it in
+  // zones on both sides of UTC, where node-ical builds DATE values off midnight.
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   const ICS = [

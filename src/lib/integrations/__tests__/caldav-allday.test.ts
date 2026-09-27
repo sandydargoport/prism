@@ -5,7 +5,7 @@
  * all-day ranges as floating UTC midnights with an exclusive end, so the read
  * path converts and the write path must read the UTC fields back. Jest
  * sandboxes process.env, so the zone is the runner's; `npm run test:tz`
- * repeats this suite in zones on both sides of UTC.
+ * (and CI) repeats this suite in zones on both sides of UTC.
  */
 
 const mockFetchCalendarObjects = jest.fn();

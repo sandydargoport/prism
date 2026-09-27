@@ -81,7 +81,12 @@ jobs:
       # Integration tests (src/lib/db/__tests__/integration.test.ts) require
       # a real Postgres + seeded schema. They self-skip when E2E_HAS_TEST_DB
       # is not '1' (this job doesn't set it), so a plain jest run is enough.
-      - run: npm test -- --ci
+      #
+      # Once per time zone (see scripts/test-tz.sh for the list). The runner is
+      # UTC, and a date bug that only shows away from UTC passed here every
+      # time. Sequential steps in one job rather than a matrix, because a
+      # matrix renames the check and "Unit tests (jest)" is a required one.
+      - run: npm run test:tz -- --ci
 
   mcp:
     name: MCP server (build + smoke)

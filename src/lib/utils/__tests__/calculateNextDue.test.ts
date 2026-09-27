@@ -2,9 +2,10 @@ import { calculateNextDue } from '../calculateNextDue';
 
 /**
  * All tests use a fixed reference date to avoid flaky results.
- * Wednesday, 2026-03-11
+ * Wednesday, 2026-03-11, as a local wall time: the function reads the day in
+ * the process zone, and noon UTC is already the 12th at UTC+14.
  */
-const REF = new Date('2026-03-11T12:00:00Z');
+const REF = new Date('2026-03-11T12:00:00');
 
 describe('calculateNextDue', () => {
   // --- daily ---
