@@ -202,5 +202,65 @@ describe('PATCH /api/settings', () => {
       expect(mockInsert).not.toHaveBeenCalled();
       expect(mockUpdate).not.toHaveBeenCalled();
     });
+
+    // The household step and the Done step of the wizard write these before
+    // any parent session exists. They were refused, and the screen still
+    // showed the choice as made.
+    it.each([
+      ['timezone', 'America/Chicago'],
+      ['weekStartsOn', '1'],
+      ['location', { lat: 41.9, lon: -87.6, displayName: 'Springfield' }],
+      ['location', null],
+      ['telemetry.enabled', false],
+    ])('allows writing %s before setup is complete', async (key, value) => {
+      mockIsSetupComplete.mockResolvedValue(false);
+      mockWhere.mockResolvedValueOnce([]);
+
+      const res = await PATCH(makePatchRequest({ key, value }));
+      expect(res.status).toBe(200);
+      expect(mockInsert).toHaveBeenCalled();
+      expect(mockLogActivity).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['timezone', 'America/Chicago'],
+      ['telemetry.enabled', false],
+    ])('rejects writing %s once setup is complete', async (key, value) => {
+      mockIsSetupComplete.mockResolvedValue(true);
+
+      const res = await PATCH(makePatchRequest({ key, value }));
+      expect(res.status).toBe(401);
+      expect(mockInsert).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['location', 'Springfield'],
+      ['location', { lat: 200, lon: 0, displayName: 'x' }],
+      ['telemetry.enabled', 'false'],
+    ])('rejects a malformed %s on the setup path', async (key, value) => {
+      mockIsSetupComplete.mockResolvedValue(false);
+
+      const res = await PATCH(makePatchRequest({ key, value }));
+      expect(res.status).toBe(400);
+      expect(mockInsert).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('value checks that apply to every caller', () => {
+    it.each(['Not/AZone', '', 42])('rejects the time zone %p', async (value) => {
+      const res = await PATCH(makePatchRequest({ key: 'timezone', value }));
+      expect(res.status).toBe(400);
+      expect(mockInsert).not.toHaveBeenCalled();
+    });
+
+    it('accepts a real IANA time zone', async () => {
+      const res = await PATCH(makePatchRequest({ key: 'timezone', value: 'Asia/Kolkata' }));
+      expect(res.status).toBe(200);
+    });
+
+    it.each(['2', 1, 'monday'])('rejects the week start %p', async (value) => {
+      const res = await PATCH(makePatchRequest({ key: 'weekStartsOn', value }));
+      expect(res.status).toBe(400);
+    });
   });
 });

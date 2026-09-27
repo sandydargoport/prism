@@ -27,6 +27,40 @@ interface TimeFormatContextValue {
   setDisplayTimezoneMode: (next: DisplayTimezoneMode) => void;
 }
 
+const BACKFILL_ATTEMPTED_KEY = 'prism:timezone-backfill-attempted';
+
+/**
+ * Installs set up before the wizard could save a time zone have no household
+ * zone on the server, which then has nothing but its own process zone to work
+ * out "today" from. Save the zone this device is already showing as the
+ * household one: a choice it cached from Settings, else what it detects. Only
+ * a parent session can write it, so on a logged-out wall display this is one
+ * refused request per page load and nothing else. UTC is never saved:
+ * it is what a kiosk with an unset clock reports, and a real UTC household
+ * can still pick it in Settings.
+ */
+function backfillHouseholdTimezone() {
+  try {
+    if (sessionStorage.getItem(BACKFILL_ATTEMPTED_KEY)) return;
+  } catch {
+    return;
+  }
+  const zone = localStorage.getItem(TIMEZONE_CACHE_KEY) || detectBrowserTimezone();
+  if (!zone || zone === 'UTC' || zone.startsWith('Etc/')) return;
+  fetch('/api/settings', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key: TIMEZONE_SETTING_KEY, value: zone }),
+  })
+    .then((response) => {
+      // A 401 is a logged-out display: leave the attempt open so a parent who
+      // signs in later in this tab still saves it. Anything else is final.
+      if (response.status === 401) return;
+      try { sessionStorage.setItem(BACKFILL_ATTEMPTED_KEY, '1'); } catch { /* ignore */ }
+    })
+    .catch(() => {});
+}
+
 const TimeFormatContext = React.createContext<TimeFormatContextValue | undefined>(undefined);
 
 export function TimeFormatProvider({ children }: { children: React.ReactNode }) {
@@ -56,6 +90,8 @@ export function TimeFormatProvider({ children }: { children: React.ReactNode }) 
         if (active && typeof savedTimezone === 'string' && savedTimezone) {
           setHouseholdTimezone(savedTimezone);
           localStorage.setItem(TIMEZONE_CACHE_KEY, savedTimezone);
+        } else if (data?.settings) {
+          backfillHouseholdTimezone();
         }
       })
       .catch(() => {});

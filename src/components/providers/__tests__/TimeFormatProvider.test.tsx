@@ -17,12 +17,13 @@ describe('TimeFormatProvider', () => {
     fetchMock.mockReset();
     global.fetch = fetchMock;
     localStorage.clear();
+    sessionStorage.clear();
   });
 
   it('loads the saved family-wide preference', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({ settings: { timeFormat: '24h' } }),
+      json: async () => ({ settings: { timeFormat: '24h', timezone: 'Europe/Warsaw' } }),
     });
 
     const { result } = renderHook(() => useTimeFormat(), { wrapper });
@@ -34,7 +35,7 @@ describe('TimeFormatProvider', () => {
     fetchMock
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ settings: { timeFormat: '12h' } }),
+        json: async () => ({ settings: { timeFormat: '12h', timezone: 'Europe/Warsaw' } }),
       })
       .mockResolvedValueOnce({ ok: true });
 
@@ -55,7 +56,7 @@ describe('TimeFormatProvider', () => {
     fetchMock
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ settings: { timeFormat: '12h' } }),
+        json: async () => ({ settings: { timeFormat: '12h', timezone: 'Europe/Warsaw' } }),
       })
       .mockResolvedValueOnce({ ok: false });
 
@@ -96,5 +97,66 @@ describe('TimeFormatProvider', () => {
     expect(result.current.displayTimezone).toBe(result.current.deviceTimezone);
     expect(localStorage.getItem('prism:display-timezone-mode')).toBe('device');
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  // The zone comes from the local cache in these tests, so they do not depend
+  // on the zone the test process runs in.
+  describe('household time zone backfill', () => {
+    const noZone = { ok: true, json: async () => ({ settings: { timeFormat: '12h' } }) };
+    const patchCalls = () => fetchMock.mock.calls.filter(([, init]) => init?.method === 'PATCH');
+
+    it('saves the zone this device shows when the server has none', async () => {
+      localStorage.setItem('prism:timezone', 'America/Chicago');
+      fetchMock.mockResolvedValueOnce(noZone).mockResolvedValueOnce({ ok: true, status: 200 });
+
+      renderHook(() => useTimeFormat(), { wrapper });
+
+      await waitFor(() => expect(patchCalls()).toHaveLength(1));
+      expect(patchCalls()[0]![1].body).toBe(JSON.stringify({ key: 'timezone', value: 'America/Chicago' }));
+      await waitFor(() => expect(sessionStorage.getItem('prism:timezone-backfill-attempted')).toBe('1'));
+    });
+
+    it('does nothing when the server already has a zone', async () => {
+      localStorage.setItem('prism:timezone', 'America/Chicago');
+      fetchMock.mockResolvedValue({ ok: true, json: async () => ({ settings: { timezone: 'Asia/Tokyo' } }) });
+
+      const { result } = renderHook(() => useTimeFormat(), { wrapper });
+
+      await waitFor(() => expect(result.current.householdTimezone).toBe('Asia/Tokyo'));
+      expect(patchCalls()).toHaveLength(0);
+    });
+
+    it.each(['UTC', 'Etc/GMT+5'])('never saves %s', async (zone) => {
+      localStorage.setItem('prism:timezone', zone);
+      fetchMock.mockResolvedValue(noZone);
+
+      renderHook(() => useTimeFormat(), { wrapper });
+
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+      await new Promise((r) => setTimeout(r, 0));
+      expect(patchCalls()).toHaveLength(0);
+    });
+
+    it('tries again later when a logged-out display is refused', async () => {
+      localStorage.setItem('prism:timezone', 'America/Chicago');
+      fetchMock.mockResolvedValueOnce(noZone).mockResolvedValueOnce({ ok: false, status: 401 });
+
+      renderHook(() => useTimeFormat(), { wrapper });
+
+      await waitFor(() => expect(patchCalls()).toHaveLength(1));
+      await new Promise((r) => setTimeout(r, 0));
+      expect(sessionStorage.getItem('prism:timezone-backfill-attempted')).toBeNull();
+    });
+
+    it('does not try when the settings request itself failed', async () => {
+      localStorage.setItem('prism:timezone', 'America/Chicago');
+      fetchMock.mockResolvedValue({ ok: false, status: 401 });
+
+      renderHook(() => useTimeFormat(), { wrapper });
+
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+      await new Promise((r) => setTimeout(r, 0));
+      expect(patchCalls()).toHaveLength(0);
+    });
   });
 });

@@ -48,6 +48,15 @@ export function HouseholdStep({ onNext, onBack }: HouseholdStepProps) {
 
   const { weekStartsOn, setWeekStartsOn } = useWeekStartsOn();
 
+  // The pickers only save on change, so a household that accepts the detected
+  // zone and the default week start would otherwise never store either, and
+  // the server would have no household zone to work out "today" from. Save
+  // what is on screen when leaving the step, skipped or not.
+  const saveAndNext = async () => {
+    await Promise.all([setTimezone(timezone), setWeekStartsOn(weekStartsOn)]);
+    onNext();
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -170,13 +179,13 @@ export function HouseholdStep({ onNext, onBack }: HouseholdStepProps) {
 
         <div className="flex gap-3 pt-1">
           <Button variant="ghost" onClick={onBack} className="flex-1">Back</Button>
-          <Button onClick={onNext} className="flex-1">
+          <Button onClick={saveAndNext} className="flex-1">
             Continue <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </div>
 
         <p className="text-xs text-center text-muted-foreground -mt-1">
-          <button type="button" onClick={onNext} className="hover:underline">
+          <button type="button" onClick={saveAndNext} className="hover:underline">
             Skip for now
           </button>
         </p>

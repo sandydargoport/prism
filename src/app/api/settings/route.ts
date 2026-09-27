@@ -11,6 +11,35 @@ import { PIN_LENGTH_SETTING_KEY } from '@/lib/constants';
 import { isSetupComplete } from '@/lib/setup';
 import { getBuiltinTheme } from '@/lib/themes/appThemes';
 import { isInstallableTheme, MAX_INSTALLED_THEMES } from '@/lib/themes/tokens';
+import { isValidTimezone } from '@/lib/utils/timezone';
+import { TELEMETRY_SETTING_KEYS } from '@/lib/telemetry/constants';
+
+/**
+ * Settings the setup wizard writes before any parent account has a session.
+ * Only these, and only until setup is complete; everything else needs a
+ * parent. Without them the wizard's own choices 401'd and were dropped while
+ * the screen showed them as saved: the household time zone, week start and
+ * location never reached the server, and the update-check opt-out did not
+ * take effect.
+ */
+const SETUP_BOOTSTRAP_KEYS = new Set<string>([
+  PIN_LENGTH_SETTING_KEY,
+  'timezone',
+  'weekStartsOn',
+  'location',
+  TELEMETRY_SETTING_KEYS.enabled,
+]);
+
+function isLocationValue(value: unknown): boolean {
+  if (value === null) return true;
+  if (typeof value !== 'object') return false;
+  const { lat, lon, displayName } = value as Record<string, unknown>;
+  return (
+    typeof lat === 'number' && Number.isFinite(lat) && Math.abs(lat) <= 90 &&
+    typeof lon === 'number' && Number.isFinite(lon) && Math.abs(lon) <= 180 &&
+    typeof displayName === 'string' && displayName.length <= 300
+  );
+}
 
 export async function GET() {
   const auth = await getDisplayAuth();
@@ -54,18 +83,15 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (authResult instanceof NextResponse) {
-      // Bootstrap exception, narrowly scoped to the family-wide PIN length.
-      // The setup wizard's Family step lets a brand-new install choose this
-      // *before* any parent account/session exists to authenticate as. Every
-      // other setting still requires a parent session — but without this
-      // carve-out, the wizard's PATCH here silently 401s, so the choice never
-      // reaches the settings table. Member creation (/api/family, which
-      // already has this same bootstrap allowance) then validates PINs
-      // against the default length instead of what's on screen, letting a
-      // too-short PIN save — and once the real value is later persisted,
-      // that member's PIN can never satisfy the login pad again (lockout).
+      // Bootstrap exception for the settings the setup wizard asks for
+      // (SETUP_BOOTSTRAP_KEYS), before any parent account/session exists to
+      // authenticate as. The PIN length is the sharpest case: member creation
+      // (/api/family, which has the same bootstrap allowance) validates PINs
+      // against it, so if it is dropped a too-short PIN saves, and once the
+      // real value is later persisted that member's PIN can never satisfy the
+      // login pad again (lockout).
       const allowUnauthedSetup =
-        body.key === PIN_LENGTH_SETTING_KEY && !(await isSetupComplete());
+        SETUP_BOOTSTRAP_KEYS.has(body.key) && !(await isSetupComplete());
       if (!allowUnauthedSetup) return authResult;
       // auth stays null — proceed as an unauthenticated setup-bootstrap write.
     } else {
@@ -79,6 +105,29 @@ export async function PATCH(request: NextRequest) {
     // element in the root layout — so an unchecked value there is not a bad
     // setting, it is markup in the page. Never trust the row on the render
     // path; refuse it on the way in as well.
+    if (body.key === 'timezone') {
+      // The server reads this as the household's "today", so a value the
+      // runtime cannot resolve would fail every date calculation downstream.
+      if (typeof body.value !== 'string' || !isValidTimezone(body.value)) {
+        return NextResponse.json({ error: 'Invalid time zone' }, { status: 400 });
+      }
+    }
+
+    if (body.key === 'weekStartsOn' && body.value !== '0' && body.value !== '1') {
+      return NextResponse.json({ error: 'Invalid week start' }, { status: 400 });
+    }
+
+    // The two below are checked only on the unauthenticated setup path, where
+    // anything written is written by nobody in particular. A parent's writes
+    // keep the shapes they have always been allowed.
+    if (!auth && body.key === 'location' && !isLocationValue(body.value)) {
+      return NextResponse.json({ error: 'Invalid location' }, { status: 400 });
+    }
+
+    if (!auth && body.key === TELEMETRY_SETTING_KEYS.enabled && typeof body.value !== 'boolean') {
+      return NextResponse.json({ error: 'Invalid value' }, { status: 400 });
+    }
+
     if (body.key === 'theme') {
       const value = (body.value ?? {}) as { paletteId?: unknown; installed?: unknown };
 

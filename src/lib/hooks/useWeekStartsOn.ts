@@ -11,7 +11,7 @@ const STORAGE_KEY = 'prism:week-starts-on';
  */
 export function useWeekStartsOn(): {
   weekStartsOn: 0 | 1;
-  setWeekStartsOn: (value: 0 | 1) => void;
+  setWeekStartsOn: (value: 0 | 1) => Promise<void>;
   loading: boolean;
 } {
   const [value, setValue] = useState<0 | 1>(() => {

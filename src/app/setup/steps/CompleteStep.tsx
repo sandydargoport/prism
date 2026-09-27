@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -17,28 +17,58 @@ export function CompleteStep() {
   const toggleTelemetry = async (next: boolean) => {
     setTelemetryOn(next); // optimistic
     try {
-      await fetch('/api/settings', {
+      const res = await fetch('/api/settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key: 'telemetry.enabled', value: next }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
     } catch {
-      setTelemetryOn(!next); // revert
+      setTelemetryOn(!next); // revert: the switch must not show a choice that was not saved
     }
   };
 
-  // Mark setup complete on mount
+  // Setup is marked complete when the person leaves this step, not when it
+  // appears. First-run setup has no session, and the settings route accepts
+  // the switch above only while setup is incomplete, so marking it complete
+  // on mount refused the opt-out while the switch showed it as off. Closing
+  // the tab instead of pressing a button still completes it, via a beacon.
+  const completed = useRef(false);
+
+  const markComplete = async () => {
+    if (completed.current) return;
+    completed.current = true;
+    setMarking(true);
+    try {
+      await fetch('/api/setup/complete', { method: 'POST' });
+    } finally {
+      setMarking(false);
+    }
+  };
+
   useEffect(() => {
-    const markComplete = async () => {
-      setMarking(true);
-      try {
-        await fetch('/api/setup/complete', { method: 'POST' });
-      } finally {
-        setMarking(false);
-      }
+    const onPageHide = () => {
+      if (completed.current) return;
+      completed.current = true;
+      navigator.sendBeacon('/api/setup/complete');
     };
-    markComplete();
+    window.addEventListener('pagehide', onPageHide);
+    return () => window.removeEventListener('pagehide', onPageHide);
   }, []);
+
+  // Hard navigation (not router.push): the wizard added family members etc.
+  // while FamilyProvider/AuthProvider were already mounted (Providers wraps
+  // /setup too), and those providers fetch their state once on mount with no
+  // refresh hook for "setup just finished". A client-side route change reuses
+  // that same mounted tree, so the dashboard would land with stale (pre-setup)
+  // family/session state, e.g. the PIN login member list rendering empty,
+  // until something else happened to trigger a refetch. A full navigation
+  // forces every provider to remount and re-fetch fresh, so the first paint
+  // after setup is always correct.
+  const finishTo = async (href: string) => {
+    await markComplete();
+    window.location.href = href;
+  };
 
   return (
     <Card>
@@ -59,20 +89,7 @@ export function CompleteStep() {
 
         <div className="flex flex-col gap-3">
           <Button
-            onClick={() => {
-              // Hard navigation (not router.push): the wizard added family
-              // members etc. while FamilyProvider/AuthProvider were already
-              // mounted (Providers wraps /setup too), and those providers
-              // fetch their state once on mount with no refresh hook for
-              // "setup just finished". A client-side route change reuses
-              // that same mounted tree, so the dashboard would land with
-              // stale (pre-setup) family/session state — e.g. the PIN
-              // login member list rendering empty — until something else
-              // happened to trigger a refetch. A full navigation forces
-              // every provider to remount and re-fetch fresh, so the first
-              // paint after setup is always correct.
-              window.location.href = '/';
-            }}
+            onClick={() => finishTo('/')}
             disabled={marking}
             size="lg"
             className="w-full"
@@ -81,7 +98,7 @@ export function CompleteStep() {
           </Button>
           <Button
             variant="outline"
-            onClick={() => { window.location.href = '/settings'; }}
+            onClick={() => finishTo('/settings')}
             disabled={marking}
             className="w-full"
           >

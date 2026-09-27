@@ -22,7 +22,7 @@ export function detectBrowserTimezone(): string {
  */
 export function useTimezone(): {
   timezone: string;
-  setTimezone: (value: string) => void;
+  setTimezone: (value: string) => Promise<void>;
   loading: boolean;
 } {
   const [value, setValue] = useState<string>(() => {
