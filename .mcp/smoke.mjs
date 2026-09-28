@@ -63,7 +63,7 @@ try {
   const tools = list.result?.tools ?? [];
   console.log(`✓ tools/list OK — ${tools.length} tools`);
 
-  const expected = ['list_family', 'list_chores', 'add_shopping_item', 'complete_chore', 'get_weather', 'list_recipes'];
+  const expected = ['list_family', 'list_chores', 'add_shopping_item', 'complete_chore', 'get_weather', 'list_recipes', 'get_household_time'];
   const missing = expected.filter(name => !tools.some(t => t.name === name));
   if (missing.length) throw new Error(`missing expected tools: ${missing.join(', ')}`);
   console.log(`✓ all expected tools present`);

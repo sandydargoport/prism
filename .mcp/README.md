@@ -99,6 +99,7 @@ In Gemini Code Assist, enable **agent mode** in chat. Use `/mcp` to confirm Pris
 
 | Tool | Description |
 |---|---|
+| `get_household_time` | The household time zone, today's date there, the local time and the week start |
 | `list_chores` | List all chores (filter by user, enabled status) |
 | `create_chore` | Create a new chore |
 | `update_chore` | Update a chore (title, frequency, assignment, etc.) |
@@ -121,17 +122,43 @@ In Gemini Code Assist, enable **agent mode** in chat. Use `/mcp` to confirm Pris
 | `post_message` | Post a message to the board |
 | `delete_message` | Delete a message |
 | `list_family` | List family members with their UUIDs and roles |
-| `list_meals` | List meal plan entries |
-| `create_meal` | Add a meal to the plan |
+| `list_meals` | List meal plan entries between two dates |
+| `create_meal` | Add a meal to the plan on a date |
 | `delete_meal` | Remove a meal |
-| `list_goals` | List chore-point reward goals |
-| `create_goal` | Create a goal |
+| `list_goals` | List family goals (rewards bought with chore points) |
+| `create_goal` | Create a goal (name and point cost) |
 | `get_weather` | Get current weather and today's forecast |
 | `list_recipes` | List saved recipes |
 | `import_recipe_url` | Import a recipe from a URL |
-| `list_maintenance` | List home maintenance items |
-| `create_maintenance_item` | Create a maintenance item |
+| `list_maintenance` | List home maintenance reminders |
+| `create_maintenance_item` | Create a maintenance reminder |
 | `get_points` | Get chore point totals for all family members |
+
+## Dates and times
+
+Times are read in the household time zone, the one set in Prism's settings. `get_household_time` returns it along with today's date there, so a client can work out "3 PM tomorrow" without guessing.
+
+Anywhere a tool takes a date-time (`startTime`, `endTime`, `startDate`, `endDate`, `expiresAt`), it accepts:
+
+| Form | Example | Read as |
+|---|---|---|
+| Wall time, no offset | `2026-10-04T15:00` | 3 PM in the household time zone |
+| ISO date-time with offset | `2026-10-04T15:00:00-05:00`, `...Z` | that exact instant |
+| Date | `2026-10-04` | the whole household day (`list_events` range), or a day of an all-day event |
+
+For an all-day event pass `allDay: true` with dates: `startTime` is the first day and `endTime` the last day, inclusive (omit it for a one-day event). Events come back with `startTime`/`endTime` in UTC plus `localStart`/`localEnd` in the household zone.
+
+Task, chore and meal dates are already plain `YYYY-MM-DD` with an `HH:mm` time where they have one, both in the household zone.
+
+A Prism server older than `/api/household-time` cannot report its zone: send times with an explicit offset to it.
+
+## Tests
+
+```bash
+npm run build && npm test
+```
+
+`npm test` calls every tool through an MCP client against a recording fake of the API, checking the fields each one sends against its route, and covers the time conversion, including daylight-saving changes.
 
 ## Finding user UUIDs
 

@@ -120,6 +120,11 @@ jobs:
       - run: npm run smoke
         working-directory: .mcp
 
+      # Calls every tool against a recording fake of the API and checks the
+      # fields it sends match its route, plus the household time conversion.
+      - run: npm test
+        working-directory: .mcp
+
   migration-replay:
     name: Migration replay (modality TODO #3)
     runs-on: ubuntu-latest
