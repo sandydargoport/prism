@@ -39,6 +39,7 @@ import { Button, Badge, UserAvatar } from '@/components/ui';
  */
 // Chore type imported from shared types
 import type { Chore } from '@/types';
+import { useLocalDateKey } from '@/lib/hooks/useLocalDateKey';
 export type { Chore };
 
 /**
@@ -98,6 +99,9 @@ export const ChoresWidget = React.memo(function ChoresWidget({
   titleHref,
   className,
 }: ChoresWidgetProps) {
+  // Re-render at midnight so "Today" and "Tomorrow" move on with the date;
+  // the item labels below are computed from the clock on each render.
+  useLocalDateKey();
   // Use provided chores (no demo data fallback in production)
   const allChores = externalChores || [];
 

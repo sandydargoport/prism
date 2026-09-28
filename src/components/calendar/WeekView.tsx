@@ -29,6 +29,7 @@ import {
   formatDisplayTime,
   formatDisplayTimeRange,
   toDisplayDate,
+  wallClockMinutesBetween,
 } from '@/lib/utils/timeFormat';
 import { eventsOverlappingRange } from '@/lib/utils/calendarRange';
 import { useDateLabels } from '@/lib/hooks/useDateLabels';
@@ -216,7 +217,7 @@ export function WeekView({
                   const pos = dayPositions.get(event.id);
                   if (!pos) return null;
                   const css = positionToCSS(pos);
-                  const durationMin = ((event.endTime?.getTime() ?? (event.startTime.getTime() + 3600000)) - event.startTime.getTime()) / 60000;
+                  const durationMin = wallClockMinutesBetween(event.startTime, event.endTime ?? event.startTime.getTime() + 3600000, displayTimezone);
                   const heightPct = Math.max((durationMin / 60) * 100, 20);
                   return (
                     <button
@@ -490,7 +491,7 @@ export function WeekView({
                           const pos = dayPositions.get(event.id);
                           if (!pos) return null;
                           const css = positionToCSS(pos);
-                          const durationMin = ((event.endTime?.getTime() ?? (event.startTime.getTime() + 3600000)) - event.startTime.getTime()) / 60000;
+                          const durationMin = wallClockMinutesBetween(event.startTime, event.endTime ?? event.startTime.getTime() + 3600000, displayTimezone);
                           const heightPct = Math.max((durationMin / 60) * 100, 20);
                           return (
                             <button

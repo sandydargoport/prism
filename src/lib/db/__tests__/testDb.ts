@@ -10,6 +10,7 @@ import path from 'path';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from '../schema';
+import { DB_SESSION_PARAMS } from '../client';
 
 function getDbPassword(): string {
   // If already set in environment, use it
@@ -57,6 +58,9 @@ export function getTestDb(): ReturnType<typeof drizzle<typeof schema>> {
       idle_timeout: 10,
       connect_timeout: 10,
       prepare: false, // avoid prepared statement conflicts between tests
+      // The same session zone as the app, so now() defaults on zone-less
+      // columns are UTC here too, whatever the test database's default is.
+      connection: DB_SESSION_PARAMS,
     });
 
     _testDb = drizzle(_testClient, { schema });

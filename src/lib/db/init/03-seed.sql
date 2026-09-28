@@ -24,6 +24,11 @@ DECLARE
     next_week DATE := CURRENT_DATE + 7;
     next_month DATE := CURRENT_DATE + INTERVAL '1 month';
     week_start DATE := CURRENT_DATE - EXTRACT(DOW FROM CURRENT_DATE)::INTEGER;
+    -- Dates above are this session's, which is the container's zone. Event
+    -- times are wall times in that zone too, and timestamp columns hold UTC
+    -- (the app opens every connection with TimeZone=UTC), so each is
+    -- converted on the way in rather than stored as written.
+    seed_tz TEXT := current_setting('TimeZone');
 BEGIN
 
     -- Skip if already seeded
@@ -66,7 +71,7 @@ BEGIN
         ('Buy birthday gift for Grandma', NULL, alex_id, next_week, 'medium', 'Shopping', alex_id);
 
     INSERT INTO tasks (title, assigned_to, due_date, priority, category, completed, completed_at, completed_by, created_by)
-    VALUES ('Return library books', emma_id, tomorrow, 'low', 'Errands', true, now(), emma_id, jordan_id);
+    VALUES ('Return library books', emma_id, tomorrow, 'low', 'Errands', true, now() AT TIME ZONE 'UTC', emma_id, jordan_id);
 
     RAISE NOTICE '  Created 6 tasks';
 
@@ -86,13 +91,13 @@ BEGIN
     -- ========================================================================
     INSERT INTO events (title, location, start_time, end_time, color, created_by) VALUES
         ('Soccer Practice', 'Community Park',
-            (today + TIME '16:00')::timestamp, (today + TIME '17:30')::timestamp,
+            (((today + TIME '16:00') AT TIME ZONE seed_tz) AT TIME ZONE 'UTC'), (((today + TIME '17:30') AT TIME ZONE seed_tz) AT TIME ZONE 'UTC'),
             '#10B981', jordan_id),
         ('Dentist Appointment', 'Dr. Smith''s Office',
-            (tomorrow + TIME '09:00')::timestamp, (tomorrow + TIME '10:00')::timestamp,
+            (((tomorrow + TIME '09:00') AT TIME ZONE seed_tz) AT TIME ZONE 'UTC'), (((tomorrow + TIME '10:00') AT TIME ZONE seed_tz) AT TIME ZONE 'UTC'),
             '#3B82F6', alex_id),
         ('Family Movie Night', NULL,
-            ((today + 3) + TIME '18:00')::timestamp, ((today + 3) + TIME '20:00')::timestamp,
+            ((((today + 3) + TIME '18:00') AT TIME ZONE seed_tz) AT TIME ZONE 'UTC'), ((((today + 3) + TIME '20:00') AT TIME ZONE seed_tz) AT TIME ZONE 'UTC'),
             '#EC4899', jordan_id);
 
     UPDATE events SET description = 'Vote on the movie by Friday!' WHERE title = 'Family Movie Night';

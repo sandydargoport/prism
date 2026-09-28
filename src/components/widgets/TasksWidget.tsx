@@ -41,6 +41,7 @@ import { compareTaskDue, dueLocalDate, isTaskOverdue } from '@/lib/utils/taskDue
  */
 // Task type imported from shared types
 import type { Task } from '@/types';
+import { useLocalDateKey } from '@/lib/hooks/useLocalDateKey';
 export type { Task };
 
 
@@ -102,6 +103,9 @@ export const TasksWidget = React.memo(function TasksWidget({
   titleHref,
   className,
 }: TasksWidgetProps) {
+  // Re-render at midnight so "Today" and "Tomorrow" move on with the date;
+  // the item labels below are computed from the clock on each render.
+  useLocalDateKey();
   const allTasks = externalTasks || [];
 
   const { filteredTasks, displayTasks } = useMemo(() => {

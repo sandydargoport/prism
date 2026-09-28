@@ -10,6 +10,7 @@ import {
   getDisplayDateKey,
   isCalendarEventPast,
   toDisplayDate,
+  wallClockMinutesBetween,
 } from '../timeFormat';
 
 describe('time format utilities', () => {
@@ -179,5 +180,48 @@ describe('formatDisplayDateTime', () => {
   it('shows the date and time in the display zone, not the device\'s', () => {
     expect(formatDisplayDateTime(instant, '12h', 'America/Chicago')).toBe('Sep 28, 2026, 8:30 PM');
     expect(formatDisplayDateTime(instant, '24h', 'Asia/Tokyo')).toBe('Sep 29, 2026, 10:30');
+  });
+});
+
+describe('time labels on a DST change day', () => {
+  // 02:30 UTC on 8 March 2026 is inside Chicago's spring-forward gap (02:00
+  // to 03:00 local). A device in Chicago showing a UTC display zone has no
+  // local 02:30 that day, so a label built through a local Date read 03:30.
+  const inGap = new Date('2026-03-08T02:30:00Z');
+
+  it('shows the display zone\'s wall time whatever the device zone', () => {
+    expect(formatDisplayTime(inGap, '24h', {}, 'UTC')).toBe('02:30');
+    expect(formatDisplayTime(inGap, '12h', { showSeconds: true }, 'UTC')).toBe('2:30:00 AM');
+    expect(formatDisplayHour(inGap, '12h', {}, 'UTC')).toBe('2 AM');
+    expect(formatDisplayHour(inGap, '12h', { compact: true }, 'UTC')).toBe('2AM');
+    expect(formatDisplayTimeRange(inGap, new Date('2026-03-08T02:45:00Z'), '12h', 'UTC')).toBe('2:30–2:45 AM');
+  });
+
+  it('labels both 01:30s of a fall-back night as 01:30', () => {
+    expect(formatDisplayTime(new Date('2026-11-01T06:30:00Z'), '24h', {}, 'America/Chicago')).toBe('01:30');
+    expect(formatDisplayTime(new Date('2026-11-01T07:30:00Z'), '24h', {}, 'America/Chicago')).toBe('01:30');
+  });
+
+  it('formats midnight and noon in 12-hour time', () => {
+    expect(formatDisplayTime(new Date('2026-06-01T00:05:00Z'), '12h', {}, 'UTC')).toBe('12:05 AM');
+    expect(formatDisplayHour(new Date('2026-06-01T12:00:00Z'), '12h', {}, 'UTC')).toBe('12 PM');
+    expect(formatDisplayHour(new Date('2026-06-01T12:00:00Z'), '24h', {}, 'UTC')).toBe('12:00');
+  });
+});
+
+describe('wallClockMinutesBetween', () => {
+  it('measures a spring-forward morning by the wall clock the grid is drawn in', () => {
+    // 01:00 CST to 03:00 CDT on 8 March: one hour elapsed, two hours of grid.
+    expect(wallClockMinutesBetween(new Date('2026-03-08T07:00:00Z'), new Date('2026-03-08T08:00:00Z'), 'America/Chicago')).toBe(120);
+  });
+
+  it('measures a fall-back night by the wall clock too', () => {
+    // 00:30 CDT to 02:30 CST on 1 November: three hours elapsed, two of grid.
+    expect(wallClockMinutesBetween(new Date('2026-11-01T05:30:00Z'), new Date('2026-11-01T08:30:00Z'), 'America/Chicago')).toBe(120);
+  });
+
+  it('is the elapsed time on an ordinary day, or without a zone', () => {
+    expect(wallClockMinutesBetween(new Date('2026-06-01T15:00:00Z'), new Date('2026-06-01T16:30:00Z'), 'America/Chicago')).toBe(90);
+    expect(wallClockMinutesBetween(new Date('2026-06-01T15:00:00Z'), new Date('2026-06-01T16:30:00Z'))).toBe(90);
   });
 });

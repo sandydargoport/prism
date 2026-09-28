@@ -65,8 +65,13 @@ function atTime(date: Date, hours: number, minutes = 0): Date {
   return d;
 }
 
-function ymd(date: Date): string {
-  return date.toISOString().split('T')[0] ?? '';
+/**
+ * An all-day boundary: UTC midnight of the local date ("floating"), the form
+ * the app stores and reads back with the UTC getters. Local midnight would
+ * be the previous day's evening west of UTC once read that way.
+ */
+function allDayAt(date: Date): Date {
+  return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
 }
 
 /** The date key of `date` on the local clock, for date columns. */
@@ -216,11 +221,11 @@ async function seed() {
     { calendarSourceId: calSophie.id, title: 'Piano Recital',        location: 'School Auditorium',  startTime: atTime(daysFromNow(1), 18, 0), endTime: atTime(daysFromNow(1), 19, 30), color: '#F59E0B', createdBy: jordan.id },
     // This week
     { calendarSourceId: calAlex.id,   title: 'Team Offsite',         location: 'Downtown',           startTime: atTime(daysFromNow(2), 10, 0), endTime: atTime(daysFromNow(2), 16, 0), color: '#3B82F6', createdBy: alex.id },
-    { calendarSourceId: calFamily.id, title: 'Grandma Arrives',     allDay: true, startTime: atTime(daysFromNow(3), 0, 0), endTime: atTime(daysFromNow(5), 0, 0), color: '#EC4899', createdBy: jordan.id },
+    { calendarSourceId: calFamily.id, title: 'Grandma Arrives',     allDay: true, startTime: allDayAt(daysFromNow(3)), endTime: allDayAt(daysFromNow(5)), color: '#EC4899', createdBy: jordan.id },
     { calendarSourceId: calEmma.id,   title: 'Science Fair',         location: 'Maple Elementary', startTime: atTime(daysFromNow(5), 13, 0), endTime: atTime(daysFromNow(5), 15, 0), color: '#10B981', createdBy: jordan.id },
     // Next week
     { calendarSourceId: calJordan.id, title: "Jordan's Book Club",   location: "Coffee shop",        startTime: atTime(daysFromNow(8), 19, 0), endTime: atTime(daysFromNow(8), 21, 0), color: '#EC4899', createdBy: jordan.id },
-    { calendarSourceId: calFamily.id, title: 'Spring Break Starts',  allDay: true, startTime: atTime(daysFromNow(14), 0, 0), endTime: atTime(daysFromNow(21), 0, 0), color: '#EC4899', createdBy: jordan.id },
+    { calendarSourceId: calFamily.id, title: 'Spring Break Starts',  allDay: true, startTime: allDayAt(daysFromNow(14)), endTime: allDayAt(daysFromNow(21)), color: '#EC4899', createdBy: jordan.id },
     // Past (for historic views)
     { calendarSourceId: calFamily.id, title: 'Parent-Teacher Conference', location: 'Maple Elementary', startTime: atTime(daysAgo(7), 16, 0), endTime: atTime(daysAgo(7), 17, 0), color: '#EC4899', createdBy: jordan.id },
   ]);
@@ -269,7 +274,7 @@ async function seed() {
       startTime: atTime(daysFromNow(((1 - NOW.getDay()) + 7) % 7), 8, 0),
       endTime:   atTime(daysFromNow(((1 - NOW.getDay()) + 7) % 7), 8, 30),
       recurring: true,
-      recurrenceRule: 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;UNTIL=' + ymd(daysFromNow(45)).replace(/-/g, '') + 'T000000Z',
+      recurrenceRule: 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;UNTIL=' + localKey(daysFromNow(45)).replace(/-/g, '') + 'T000000Z',
       color: '#3B82F6',
       createdBy: alex.id,
     },
@@ -298,17 +303,17 @@ async function seed() {
     // ── This week and next ──────────────────────────────────────────────────
     { calendarSourceId: calSophie.id, title: 'Piano Lesson',             startTime: atTime(daysFromNow(2), 16, 0),  endTime: atTime(daysFromNow(2), 16, 45), color: '#F59E0B', createdBy: jordan.id },
     { calendarSourceId: calEmma.id,   title: 'Art Class',                location: 'Community Center',  startTime: atTime(daysFromNow(3), 16, 0),  endTime: atTime(daysFromNow(3), 17, 0),  color: '#10B981', createdBy: jordan.id },
-    { calendarSourceId: calFamily.id, title: 'No School: Teacher Workday', allDay: true, startTime: atTime(daysFromNow(4), 0, 0), endTime: atTime(daysFromNow(5), 0, 0), color: '#EC4899', createdBy: jordan.id },
+    { calendarSourceId: calFamily.id, title: 'No School: Teacher Workday', allDay: true, startTime: allDayAt(daysFromNow(4)), endTime: allDayAt(daysFromNow(5)), color: '#EC4899', createdBy: jordan.id },
     { calendarSourceId: calFamily.id, title: 'Neighborhood BBQ',         startTime: atTime(daysFromNow(6), 12, 0),  endTime: atTime(daysFromNow(6), 15, 0),  color: '#EC4899', createdBy: alex.id },
     { calendarSourceId: calSophie.id, title: 'Birthday Party for Lucas', startTime: atTime(daysFromNow(7), 14, 0),  endTime: atTime(daysFromNow(7), 16, 0),  color: '#F59E0B', createdBy: jordan.id },
     // ── Two to three weeks out ──────────────────────────────────────────────
-    { calendarSourceId: calAlex.id,   title: 'Work Conference',          location: 'Chicago',           allDay: true, startTime: atTime(daysFromNow(9), 0, 0), endTime: atTime(daysFromNow(12), 0, 0), color: '#3B82F6', createdBy: alex.id },
-    { calendarSourceId: calEmma.id,   title: 'Field Trip: Science Museum', allDay: true, startTime: atTime(daysFromNow(11), 0, 0), endTime: atTime(daysFromNow(12), 0, 0), color: '#10B981', createdBy: jordan.id },
+    { calendarSourceId: calAlex.id,   title: 'Work Conference',          location: 'Chicago',           allDay: true, startTime: allDayAt(daysFromNow(9)), endTime: allDayAt(daysFromNow(12)), color: '#3B82F6', createdBy: alex.id },
+    { calendarSourceId: calEmma.id,   title: 'Field Trip: Science Museum', allDay: true, startTime: allDayAt(daysFromNow(11)), endTime: allDayAt(daysFromNow(12)), color: '#10B981', createdBy: jordan.id },
     { calendarSourceId: calFamily.id, title: 'Family Movie Night',       startTime: atTime(daysFromNow(13), 19, 0), endTime: atTime(daysFromNow(13), 21, 0), color: '#EC4899', createdBy: alex.id },
     // ── A few weeks out ─────────────────────────────────────────────────────
-    { calendarSourceId: calFamily.id, title: 'Beach Trip',               location: 'Coastline',         allDay: true, startTime: atTime(daysFromNow(16), 0, 0), endTime: atTime(daysFromNow(19), 0, 0), color: '#EC4899', createdBy: alex.id },
+    { calendarSourceId: calFamily.id, title: 'Beach Trip',               location: 'Coastline',         allDay: true, startTime: allDayAt(daysFromNow(16)), endTime: allDayAt(daysFromNow(19)), color: '#EC4899', createdBy: alex.id },
     { calendarSourceId: calEmma.id,   title: 'Piano Recital',            location: 'School Auditorium', startTime: atTime(daysFromNow(26), 18, 0), endTime: atTime(daysFromNow(26), 19, 30), color: '#10B981', createdBy: jordan.id },
-    { calendarSourceId: calFamily.id, title: 'Camping Weekend',          location: 'State Park',        allDay: true, startTime: atTime(daysFromNow(34), 0, 0), endTime: atTime(daysFromNow(36), 0, 0), color: '#EC4899', createdBy: alex.id },
+    { calendarSourceId: calFamily.id, title: 'Camping Weekend',          location: 'State Park',        allDay: true, startTime: allDayAt(daysFromNow(34)), endTime: allDayAt(daysFromNow(36)), color: '#EC4899', createdBy: alex.id },
   ]);
 
   console.log(`  Created 25 events (20 one-off + 5 recurring)`);
@@ -317,9 +322,9 @@ async function seed() {
   console.log('Creating calendar notes...');
 
   await db.insert(schema.calendarNotes).values([
-    { date: ymd(daysFromNow(0)), content: 'Pickup line will be a mess after the science fair — leave early', createdBy: jordan.id },
-    { date: ymd(daysFromNow(3)), content: '<b>Grandma\'s allergies:</b> peanuts, shellfish. Plan meals accordingly.', createdBy: jordan.id },
-    { date: ymd(daysFromNow(14)), content: 'Spring break itinerary draft — confirm hotel by Monday', createdBy: alex.id },
+    { date: localKey(daysFromNow(0)), content: 'Pickup line will be a mess after the science fair — leave early', createdBy: jordan.id },
+    { date: localKey(daysFromNow(3)), content: '<b>Grandma\'s allergies:</b> peanuts, shellfish. Plan meals accordingly.', createdBy: jordan.id },
+    { date: localKey(daysFromNow(14)), content: 'Spring break itinerary draft — confirm hotel by Monday', createdBy: alex.id },
   ]);
 
   console.log(`  Created 3 calendar notes`);
@@ -330,14 +335,14 @@ async function seed() {
   const choresResult = await db
     .insert(schema.chores)
     .values([
-      { title: 'Empty dishwasher',  description: 'Put away all clean dishes',     category: 'dishes',  assignedTo: emma.id,   frequency: 'daily',  pointValue: 5,  requiresApproval: false, nextDue: ymd(daysFromNow(0)), createdBy: jordan.id },
-      { title: 'Make bed',          description: 'Make your bed and tidy up',     category: 'cleaning', frequency: 'weekly', pointValue: 2,  requiresApproval: false, nextDue: ymd(daysFromNow(2)), createdBy: jordan.id, startDay: String((NOW.getDay() + 2) % 7) },
-      { title: 'Feed the pets',     description: 'Feed the fish and cat',         category: 'pets',     assignedTo: sophie.id, frequency: 'daily',  pointValue: 3,  requiresApproval: false, nextDue: ymd(daysFromNow(0)), createdBy: alex.id },
-      { title: 'Clean room',        description: 'Tidy up and vacuum your room',  category: 'cleaning', assignedTo: emma.id,   frequency: 'weekly', pointValue: 10, requiresApproval: true,  nextDue: ymd(daysFromNow(2)), createdBy: jordan.id, startDay: '0' },
-      { title: 'Take out trash',    description: 'Curb by 7am Friday',            category: 'trash',    assignedTo: emma.id,   frequency: 'weekly', pointValue: 5,  requiresApproval: false, nextDue: ymd(daysFromNow(((5 - NOW.getDay()) + 7) % 7)), createdBy: alex.id, startDay: '5' },
-      { title: 'Sweep front porch', description: 'Sweep and water the plants',    category: 'yard',     assignedTo: sophie.id, frequency: 'weekly', pointValue: 5,  requiresApproval: false, nextDue: ymd(daysFromNow(3)), createdBy: alex.id, startDay: '6' },
-      { title: 'Load + run washer', description: 'Family colors load',            category: 'laundry',  assignedTo: jordan.id, frequency: 'weekly', pointValue: 0,  requiresApproval: false, nextDue: ymd(daysFromNow(1)), createdBy: jordan.id },
-      { title: 'Clean bathroom',    description: 'Sink, toilet, mirror',          category: 'cleaning', assignedTo: emma.id,   frequency: 'weekly', pointValue: 15, requiresApproval: true,  nextDue: ymd(daysFromNow(4)), createdBy: jordan.id },
+      { title: 'Empty dishwasher',  description: 'Put away all clean dishes',     category: 'dishes',  assignedTo: emma.id,   frequency: 'daily',  pointValue: 5,  requiresApproval: false, nextDue: localKey(daysFromNow(0)), createdBy: jordan.id },
+      { title: 'Make bed',          description: 'Make your bed and tidy up',     category: 'cleaning', frequency: 'weekly', pointValue: 2,  requiresApproval: false, nextDue: localKey(daysFromNow(2)), createdBy: jordan.id, startDay: String((NOW.getDay() + 2) % 7) },
+      { title: 'Feed the pets',     description: 'Feed the fish and cat',         category: 'pets',     assignedTo: sophie.id, frequency: 'daily',  pointValue: 3,  requiresApproval: false, nextDue: localKey(daysFromNow(0)), createdBy: alex.id },
+      { title: 'Clean room',        description: 'Tidy up and vacuum your room',  category: 'cleaning', assignedTo: emma.id,   frequency: 'weekly', pointValue: 10, requiresApproval: true,  nextDue: localKey(daysFromNow(2)), createdBy: jordan.id, startDay: '0' },
+      { title: 'Take out trash',    description: 'Curb by 7am Friday',            category: 'trash',    assignedTo: emma.id,   frequency: 'weekly', pointValue: 5,  requiresApproval: false, nextDue: localKey(daysFromNow(((5 - NOW.getDay()) + 7) % 7)), createdBy: alex.id, startDay: '5' },
+      { title: 'Sweep front porch', description: 'Sweep and water the plants',    category: 'yard',     assignedTo: sophie.id, frequency: 'weekly', pointValue: 5,  requiresApproval: false, nextDue: localKey(daysFromNow(3)), createdBy: alex.id, startDay: '6' },
+      { title: 'Load + run washer', description: 'Family colors load',            category: 'laundry',  assignedTo: jordan.id, frequency: 'weekly', pointValue: 0,  requiresApproval: false, nextDue: localKey(daysFromNow(1)), createdBy: jordan.id },
+      { title: 'Clean bathroom',    description: 'Sink, toilet, mirror',          category: 'cleaning', assignedTo: emma.id,   frequency: 'weekly', pointValue: 15, requiresApproval: true,  nextDue: localKey(daysFromNow(4)), createdBy: jordan.id },
     ])
     .returning();
 
@@ -714,8 +719,8 @@ async function seed() {
   // ─── MEALS (this + next week, linked to recipes) ──────────────────────────
   console.log('Creating meal plans...');
 
-  const thisWeek = ymd(startOfWeek(NOW));
-  const nextWeekStart = ymd(startOfWeek(daysFromNow(7)));
+  const thisWeek = localKey(startOfWeek(NOW));
+  const nextWeekStart = localKey(startOfWeek(daysFromNow(7)));
 
   // Absolute date for each seed meal (weekOf is a Sunday, so date = Sunday +
   // day index). Mirrors src/lib/utils/mealDate.ts, inlined so the esbuild
@@ -753,11 +758,11 @@ async function seed() {
   console.log('Creating maintenance reminders...');
 
   await db.insert(schema.maintenanceReminders).values([
-    { title: 'Change furnace filter',  category: 'home', description: 'Replace the HVAC filter',                    schedule: 'quarterly', nextDue: ymd(daysFromNow(20)), assignedTo: alex.id, createdBy: alex.id },
-    { title: 'Car oil change',         category: 'car',  description: 'Family car — regular oil change',           schedule: 'quarterly', nextDue: ymd(daysFromNow(45)), assignedTo: alex.id, createdBy: alex.id },
-    { title: 'Test smoke detectors',   category: 'home',                                                            schedule: 'monthly',   nextDue: ymd(daysFromNow(15)),                       createdBy: jordan.id },
-    { title: 'Clean gutters',          category: 'home', description: 'Front and back gutters before winter',      schedule: 'custom',    customIntervalDays: 180, nextDue: ymd(daysFromNow(60)), assignedTo: alex.id, createdBy: alex.id },
-    { title: 'Service AC',             category: 'home', description: 'Spring AC tune-up',                          schedule: 'annually',  nextDue: ymd(daysFromNow(90)), assignedTo: alex.id, createdBy: alex.id },
+    { title: 'Change furnace filter',  category: 'home', description: 'Replace the HVAC filter',                    schedule: 'quarterly', nextDue: localKey(daysFromNow(20)), assignedTo: alex.id, createdBy: alex.id },
+    { title: 'Car oil change',         category: 'car',  description: 'Family car — regular oil change',           schedule: 'quarterly', nextDue: localKey(daysFromNow(45)), assignedTo: alex.id, createdBy: alex.id },
+    { title: 'Test smoke detectors',   category: 'home',                                                            schedule: 'monthly',   nextDue: localKey(daysFromNow(15)),                       createdBy: jordan.id },
+    { title: 'Clean gutters',          category: 'home', description: 'Front and back gutters before winter',      schedule: 'custom',    customIntervalDays: 180, nextDue: localKey(daysFromNow(60)), assignedTo: alex.id, createdBy: alex.id },
+    { title: 'Service AC',             category: 'home', description: 'Spring AC tune-up',                          schedule: 'annually',  nextDue: localKey(daysFromNow(90)), assignedTo: alex.id, createdBy: alex.id },
   ]);
 
   console.log(`  Created 5 maintenance reminders`);
@@ -895,14 +900,14 @@ async function seed() {
   console.log('Creating weekend places...');
 
   await db.insert(schema.weekendPlaces).values([
-    { name: 'Forest Park trails',       description: 'Big shaded trails — kids can ride scooters',   tags: ['outdoor', 'hike', 'nature'],   status: 'visited',  isFavorite: true,  rating: 5, visitCount: 8, lastVisitedDate: ymd(daysAgo(10)), createdBy: alex.id },
-    { name: 'Children\'s Museum',       description: 'Indoor backup for rainy days',                 tags: ['museum', 'kids'],              status: 'visited',  isFavorite: false, rating: 4, visitCount: 3, lastVisitedDate: ymd(daysAgo(30)), createdBy: jordan.id },
-    { name: 'Lavender Farm',            description: 'Late-June bloom, picnic spot',                 tags: ['farm', 'outdoor', 'food'],    status: 'visited',  isFavorite: true,  rating: 5, visitCount: 2, lastVisitedDate: ymd(daysAgo(220)), createdBy: jordan.id },
+    { name: 'Forest Park trails',       description: 'Big shaded trails — kids can ride scooters',   tags: ['outdoor', 'hike', 'nature'],   status: 'visited',  isFavorite: true,  rating: 5, visitCount: 8, lastVisitedDate: localKey(daysAgo(10)), createdBy: alex.id },
+    { name: 'Children\'s Museum',       description: 'Indoor backup for rainy days',                 tags: ['museum', 'kids'],              status: 'visited',  isFavorite: false, rating: 4, visitCount: 3, lastVisitedDate: localKey(daysAgo(30)), createdBy: jordan.id },
+    { name: 'Lavender Farm',            description: 'Late-June bloom, picnic spot',                 tags: ['farm', 'outdoor', 'food'],    status: 'visited',  isFavorite: true,  rating: 5, visitCount: 2, lastVisitedDate: localKey(daysAgo(220)), createdBy: jordan.id },
     { name: 'Wildlife Sanctuary',       description: 'Free entry, walking trails, rescued animals',  tags: ['outdoor', 'nature', 'free'],   status: 'backlog',  isFavorite: false, createdBy: emma.id },
     { name: 'Drive-in movie theater',   description: 'Open weekends only May-Oct',                   tags: ['movie', 'family'],            status: 'backlog',  isFavorite: true,  createdBy: alex.id },
     { name: 'Indoor trampoline park',   description: 'Sophie has been asking',                       tags: ['indoor', 'kids'],              status: 'backlog',  isFavorite: false, createdBy: sophie.id },
-    { name: 'Pumpkin Patch (Hillview)', description: 'Hayrides + cider donuts in October',          tags: ['outdoor', 'seasonal', 'farm'],  status: 'visited',  isFavorite: true,  rating: 5, visitCount: 4, lastVisitedDate: ymd(daysAgo(180)), createdBy: jordan.id },
-    { name: 'Local diner',              description: 'Best Sunday breakfast in town',                tags: ['food'],                        status: 'visited',  isFavorite: true,  rating: 5, visitCount: 12, lastVisitedDate: ymd(daysAgo(7)), createdBy: alex.id },
+    { name: 'Pumpkin Patch (Hillview)', description: 'Hayrides + cider donuts in October',          tags: ['outdoor', 'seasonal', 'farm'],  status: 'visited',  isFavorite: true,  rating: 5, visitCount: 4, lastVisitedDate: localKey(daysAgo(180)), createdBy: jordan.id },
+    { name: 'Local diner',              description: 'Best Sunday breakfast in town',                tags: ['food'],                        status: 'visited',  isFavorite: true,  rating: 5, visitCount: 12, lastVisitedDate: localKey(daysAgo(7)), createdBy: alex.id },
   ]);
 
   console.log(`  Created 8 weekend places`);

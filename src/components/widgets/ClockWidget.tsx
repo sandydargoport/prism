@@ -32,7 +32,7 @@ import { useLocale } from 'next-intl';
 import { Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTimeFormat } from '@/components/providers';
-import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
+import { formatDisplayTime, getDisplayDateKey, toDisplayDate } from '@/lib/utils/timeFormat';
 import { WidgetContainer } from './WidgetContainer';
 
 
@@ -158,7 +158,7 @@ export const ClockWidget = React.memo(function ClockWidget({
         {/* DATE DISPLAY */}
         {showDate && (
           <time
-            dateTime={currentTime.toISOString().split('T')[0]}
+            dateTime={getDisplayDateKey(currentTime, displayTimezone)}
             className={cn(
               'text-muted-foreground mt-1',
               dateStyles[size]

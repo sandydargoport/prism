@@ -41,6 +41,11 @@ export function getWallClockFormatter(timeZone: string): Intl.DateTimeFormat {
  * Return a presentation-only Date whose local fields match `date` in
  * `timeZone`. This is useful with date-fns, whose formatters always use the
  * browser timezone. Never persist or send the returned Date to an API.
+ *
+ * A wall time that falls in the device's own spring-forward gap does not
+ * exist as a local Date and comes back an hour later. Its date is still
+ * right; for a time label use formatDisplayTime, which reads the zone's
+ * clock directly.
  */
 export function toDisplayDate(date: Date | number, timeZone?: string): Date {
   const source = new Date(date);
@@ -62,6 +67,29 @@ export function toDisplayDate(date: Date | number, timeZone?: string): Date {
     );
   } catch {
     return source;
+  }
+}
+
+/**
+ * Minutes between two instants as the wall clock in `timeZone` reads them,
+ * for drawing a timed event on an hour grid. On a DST change day this differs
+ * from the elapsed time: 01:00 to 03:00 on a spring-forward morning is one
+ * hour long but covers two rows of the grid, and a block sized by elapsed
+ * time stopped at 02:00. Falls back to elapsed minutes for an unknown zone.
+ */
+export function wallClockMinutesBetween(start: Date | number, end: Date | number, timeZone?: string): number {
+  const elapsed = (new Date(end).getTime() - new Date(start).getTime()) / 60000;
+  if (!timeZone) return elapsed;
+  try {
+    const wallMs = (date: Date | number) => {
+      const parts = getWallClockFormatter(timeZone).formatToParts(new Date(date));
+      const value = (type: Intl.DateTimeFormatPartTypes) =>
+        Number(parts.find((part) => part.type === type)?.value);
+      return Date.UTC(value('year'), value('month') - 1, value('day'), value('hour'), value('minute'), value('second'));
+    };
+    return (wallMs(end) - wallMs(start)) / 60000;
+  } catch {
+    return elapsed;
   }
 }
 
@@ -285,6 +313,31 @@ export function fromDisplayDateTime(
   }
 }
 
+/**
+ * Hour, minute and second on the wall clock in `timeZone`, or on the device's
+ * clock without one. Read from the zone directly rather than through
+ * toDisplayDate: a wall time in the device's spring-forward gap does not exist
+ * as a local Date, so 02:30 in the display zone came out as 03:30.
+ */
+function wallClockTime(date: Date | number, timeZone?: string): { hour: number; minute: number; second: number } {
+  const source = new Date(date);
+  if (timeZone && !Number.isNaN(source.getTime())) {
+    try {
+      const parts = getWallClockFormatter(timeZone).formatToParts(source);
+      const value = (type: Intl.DateTimeFormatPartTypes) =>
+        Number(parts.find((part) => part.type === type)?.value);
+      return { hour: value('hour'), minute: value('minute'), second: value('second') };
+    } catch {
+      // An unknown zone: fall through to the device's clock, as toDisplayDate does.
+    }
+  }
+  return { hour: source.getHours(), minute: source.getMinutes(), second: source.getSeconds() };
+}
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+const hour12 = (hour: number) => (hour % 12 === 0 ? 12 : hour % 12);
+const meridiem = (hour: number) => (hour < 12 ? 'AM' : 'PM');
+
 export function formatDisplayTime(
   date: Date | number,
   timeFormat: TimeFormat,
@@ -292,10 +345,11 @@ export function formatDisplayTime(
   timeZone?: string,
 ): string {
   const { showSeconds = false } = options;
-  const pattern = timeFormat === '24h'
-    ? showSeconds ? 'HH:mm:ss' : 'HH:mm'
-    : showSeconds ? 'h:mm:ss a' : 'h:mm a';
-  return format(toDisplayDate(date, timeZone), pattern);
+  const { hour, minute, second } = wallClockTime(date, timeZone);
+  const seconds = showSeconds ? `:${pad2(second)}` : '';
+  return timeFormat === '24h'
+    ? `${pad2(hour)}:${pad2(minute)}${seconds}`
+    : `${hour12(hour)}:${pad2(minute)}${seconds} ${meridiem(hour)}`;
 }
 
 /**
@@ -318,10 +372,9 @@ export function formatDisplayHour(
   timeZone?: string,
 ): string {
   const { compact = false } = options;
-  const pattern = timeFormat === '24h'
-    ? compact ? 'HH' : 'HH:mm'
-    : compact ? 'ha' : 'h a';
-  return format(toDisplayDate(date, timeZone), pattern);
+  const { hour, minute } = wallClockTime(date, timeZone);
+  if (timeFormat === '24h') return compact ? pad2(hour) : `${pad2(hour)}:${pad2(minute)}`;
+  return compact ? `${hour12(hour)}${meridiem(hour)}` : `${hour12(hour)} ${meridiem(hour)}`;
 }
 
 export function formatDisplayTimeRange(
@@ -330,10 +383,10 @@ export function formatDisplayTimeRange(
   timeFormat: TimeFormat,
   timeZone?: string,
 ): string {
-  const displayStart = toDisplayDate(start, timeZone);
-  const displayEnd = toDisplayDate(end, timeZone);
+  const s = wallClockTime(start, timeZone);
+  const e = wallClockTime(end, timeZone);
   if (timeFormat === '24h') {
-    return `${format(displayStart, 'HH:mm')}–${format(displayEnd, 'HH:mm')}`;
+    return `${pad2(s.hour)}:${pad2(s.minute)}–${pad2(e.hour)}:${pad2(e.minute)}`;
   }
-  return `${format(displayStart, 'h:mm')}–${format(displayEnd, 'h:mm a')}`;
+  return `${hour12(s.hour)}:${pad2(s.minute)}–${hour12(e.hour)}:${pad2(e.minute)} ${meridiem(e.hour)}`;
 }

@@ -25,7 +25,8 @@
 'use client';
 
 import * as React from 'react';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistance } from 'date-fns';
+import { useNow } from '@/lib/hooks/useNow';
 import { MessageSquare, Pin, Plus, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { WidgetContainer, WidgetEmpty } from './WidgetContainer';
@@ -95,6 +96,8 @@ export const MessagesWidget = React.memo(function MessagesWidget({
   onDeleteClick,
   className,
 }: MessagesWidgetProps) {
+  // Keeps "5 minutes ago" moving between fetches.
+  const now = useNow();
   // Use provided messages (no demo data fallback in production)
   const allMessages = externalMessages || [];
 
@@ -152,6 +155,7 @@ export const MessagesWidget = React.memo(function MessagesWidget({
               <MessageItem
                 key={message.id}
                 message={message}
+                now={now}
                 onClick={() => onMessageClick?.(message)}
                 onDelete={onDeleteClick ? () => onDeleteClick(message.id) : undefined}
               />
@@ -177,14 +181,16 @@ export const MessagesWidget = React.memo(function MessagesWidget({
  */
 function MessageItem({
   message,
+  now,
   onClick,
   onDelete,
 }: {
   message: FamilyMessage;
+  now: Date;
   onClick?: () => void;
   onDelete?: () => void;
 }) {
-  const timeAgo = formatDistanceToNow(message.createdAt, { addSuffix: true });
+  const timeAgo = formatDistance(message.createdAt, now, { addSuffix: true });
 
   return (
     <div

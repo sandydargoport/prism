@@ -20,6 +20,26 @@ describe('TimeFormatProvider', () => {
     sessionStorage.clear();
   });
 
+  it('uses the cached household zone and display mode on the first render', () => {
+    // Nothing resolves: whatever the first render shows is all there is to see.
+    fetchMock.mockReturnValue(new Promise(() => {}));
+    localStorage.setItem('prism:timezone', 'Asia/Tokyo');
+
+    const renders: string[] = [];
+    renderHook(() => {
+      const value = useTimeFormat();
+      renders.push(value.displayTimezone);
+      return value;
+    }, { wrapper });
+    expect(renders[0]).toBe('Asia/Tokyo');
+
+    localStorage.setItem('prism:display-timezone-mode', 'device');
+    const device = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const { result } = renderHook(() => useTimeFormat(), { wrapper });
+    expect(result.current.displayTimezone).toBe(device);
+    expect(result.current.householdTimezone).toBe('Asia/Tokyo');
+  });
+
   it('loads the saved family-wide preference', async () => {
     fetchMock.mockResolvedValue({
       ok: true,

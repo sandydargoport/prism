@@ -64,23 +64,33 @@ function backfillHouseholdTimezone() {
     .catch(() => {});
 }
 
+function readLocal(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
 const TimeFormatContext = React.createContext<TimeFormatContextValue | undefined>(undefined);
 
 export function TimeFormatProvider({ children }: { children: React.ReactNode }) {
   const [timeFormat, setTimeFormatState] = React.useState<TimeFormat>(DEFAULT_TIME_FORMAT);
-  const [deviceTimezone, setDeviceTimezone] = React.useState('UTC');
-  const [householdTimezone, setHouseholdTimezone] = React.useState('UTC');
-  const [displayTimezoneMode, setDisplayTimezoneModeState] = React.useState<DisplayTimezoneMode>(
-    DEFAULT_DISPLAY_TIMEZONE_MODE,
+  // Read synchronously on the first client render. Starting from 'UTC' and
+  // correcting in an effect painted every time and date in UTC first, then
+  // moved them: a visible jump, and a wrong "today" for that first frame.
+  // The server render (no window) still starts from UTC; no zone-dependent
+  // text is rendered there.
+  const [deviceTimezone] = React.useState(() =>
+    typeof window === 'undefined' ? 'UTC' : detectBrowserTimezone(),
   );
-
-  React.useEffect(() => {
-    const detected = detectBrowserTimezone();
-    setDeviceTimezone(detected);
-    setHouseholdTimezone(localStorage.getItem(TIMEZONE_CACHE_KEY) || detected);
-    const savedMode = localStorage.getItem(DISPLAY_TIMEZONE_MODE_KEY);
-    if (isDisplayTimezoneMode(savedMode)) setDisplayTimezoneModeState(savedMode);
-  }, []);
+  const [householdTimezone, setHouseholdTimezone] = React.useState(() =>
+    typeof window === 'undefined' ? 'UTC' : readLocal(TIMEZONE_CACHE_KEY) || detectBrowserTimezone(),
+  );
+  const [displayTimezoneMode, setDisplayTimezoneModeState] = React.useState<DisplayTimezoneMode>(() => {
+    const savedMode = typeof window === 'undefined' ? null : readLocal(DISPLAY_TIMEZONE_MODE_KEY);
+    return isDisplayTimezoneMode(savedMode) ? savedMode : DEFAULT_DISPLAY_TIMEZONE_MODE;
+  });
 
   React.useEffect(() => {
     let active = true;
