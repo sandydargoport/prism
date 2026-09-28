@@ -20,6 +20,8 @@ import {
 } from '@/lib/integrations/gmail';
 import { parseBusEmail } from '@/lib/integrations/bus-email-parser';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
+import { getHouseholdTimezone } from '@/lib/householdTimezone';
+import { wallTimeAt } from '@/lib/utils/zonedDate';
 import { getBusGmailLabel } from '@/lib/services/bus-tracking-sync';
 
 const FIRSTVIEW_QUERY = 'from:support@myfirstview.com subject:"First View"';
@@ -108,6 +110,7 @@ export async function POST() {
 
       // Parse each email and group by student+tripId
       const routeMap = new Map<string, DiscoveredRoute>();
+      const timeZone = await getHouseholdTimezone();
 
       for (const ref of messageRefs) {
         try {
@@ -119,8 +122,9 @@ export async function POST() {
 
           // Use direction hint from email content (trip string or time range)
           // Fall back to event time hour only if no hint available
+          // (the household's hour: the server's is UTC on a default install)
           const direction = parsed.directionHint
-            ?? (parsed.eventTime.getHours() < 12 ? 'AM' : 'PM');
+            ?? (Number(wallTimeAt(timeZone, parsed.eventTime).slice(0, 2)) < 12 ? 'AM' : 'PM');
           const key = `${parsed.studentName.toLowerCase()}|${parsed.tripId}|${direction}`;
 
           if (!routeMap.has(key)) {

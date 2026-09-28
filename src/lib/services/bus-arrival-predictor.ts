@@ -5,6 +5,9 @@
 
 import { db } from '@/lib/db/client';
 import { busGeofenceLog, busRoutes } from '@/lib/db/schema';
+import { getHouseholdTimezone } from '@/lib/householdTimezone';
+import { todayKey, weekdayOfKey } from '@/lib/utils/zonedDate';
+import { scheduledInstantToday } from './bus-tracking-sync';
 import { eq, and, gte, desc } from 'drizzle-orm';
 
 export type BusStatus =
@@ -69,14 +72,16 @@ export async function predictArrival(routeId: string): Promise<ArrivalPrediction
 
   // Check if today is an active day for this route (default weekdays [1-5])
   const activeDays = (route.activeDays as number[]) || [1, 2, 3, 4, 5];
-  const todayDow = new Date().getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  // The household's today and weekday, not the server's (UTC on a default
+  // install, where a US evening is already tomorrow).
+  const timeZone = await getHouseholdTimezone();
+  const todayStr = todayKey(timeZone);
+  const todayDow = weekdayOfKey(todayStr); // 0=Sun, 1=Mon, ..., 6=Sat
   if (!activeDays.includes(todayDow)) {
     return emptyPrediction(totalCheckpoints);
   }
 
   // Get today's events for this route
-  const today = new Date();
-  const todayStr = formatDateStr(today);
   const todayEvents = await db.select()
     .from(busGeofenceLog)
     .where(and(
@@ -87,7 +92,7 @@ export async function predictArrival(routeId: string): Promise<ArrivalPrediction
 
   if (todayEvents.length === 0) {
     // Check if overdue
-    if (isOverdue(route.scheduledTime)) {
+    if (isOverdue(route.scheduledTime, timeZone)) {
       return { ...emptyPrediction(totalCheckpoints), status: 'overdue' };
     }
     return emptyPrediction(totalCheckpoints);
@@ -342,20 +347,10 @@ function emptyPrediction(totalCheckpoints: number): ArrivalPrediction {
   };
 }
 
-function isOverdue(scheduledTime: string): boolean {
-  const parts = scheduledTime.split(':').map(Number);
-  const hours = parts[0] ?? 0;
-  const minutes = parts[1] ?? 0;
-  const now = new Date();
-  const scheduled = new Date(now);
-  scheduled.setHours(hours, minutes, 0, 0);
+/** Scheduled times are household wall-clock times (HH:mm). */
+function isOverdue(scheduledTime: string, timeZone: string): boolean {
+  const scheduled = scheduledInstantToday(scheduledTime, timeZone);
   // Overdue if more than 30 minutes past scheduled time
-  return now.getTime() > scheduled.getTime() + 30 * 60000;
+  return scheduled !== null && Date.now() > scheduled.getTime() + 30 * 60000;
 }
 
-function formatDateStr(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}

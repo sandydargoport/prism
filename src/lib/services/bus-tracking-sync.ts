@@ -17,6 +17,8 @@ import {
 } from '@/lib/integrations/gmail';
 import { parseBusEmail, matchEmailToRoute } from '@/lib/integrations/bus-email-parser';
 import type { BusRoute } from '@/lib/integrations/bus-email-parser';
+import { getHouseholdTimezone } from '@/lib/householdTimezone';
+import { addDaysToKey, todayKey, wallTimeToday, weekdayOfKey } from '@/lib/utils/zonedDate';
 import { invalidateCache } from '@/lib/cache/redis';
 
 const FIRSTVIEW_QUERY = 'from:support@myfirstview.com subject:"First View"';
@@ -96,6 +98,7 @@ async function ensureFreshToken(creds: {
  */
 export async function syncBusEmails(): Promise<SyncResult> {
   const result: SyncResult = { processed: 0, newEvents: 0, skipped: 0, errors: [], skippedReasons: [] };
+  const timeZone = await getHouseholdTimezone();
 
   // Get Gmail credentials
   const creds = await getGmailCredentials();
@@ -122,9 +125,8 @@ export async function syncBusEmails(): Promise<SyncResult> {
   const gmailLabel = await getBusGmailLabel();
 
   // Use date filter to limit search window (today minus 1 day) instead of is:unread
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const afterDate = `${yesterday.getFullYear()}/${String(yesterday.getMonth() + 1).padStart(2, '0')}/${String(yesterday.getDate()).padStart(2, '0')}`;
+  // Yesterday in the household's calendar, as Gmail's YYYY/MM/DD.
+  const afterDate = addDaysToKey(todayKey(timeZone), -1).replace(/-/g, '/');
 
   // Fetch FirstView emails using label + date filter, relying on DB dedup
   let messageRefs: { id: string; threadId: string }[];
@@ -222,16 +224,18 @@ export async function syncBusEmails(): Promise<SyncResult> {
         }
       }
 
-      // Insert into geofence log
+      // Insert into geofence log. The trip's date and weekday are the
+      // household's: a 4 PM Chicago drop-off is already tomorrow in UTC.
       const eventTime = parsed.eventTime;
+      const tripDate = todayKey(timeZone, eventTime);
       await db.insert(busGeofenceLog).values({
         routeId: match.routeId,
         eventType: parsed.type,
         checkpointName: match.checkpointName,
         checkpointIndex: match.checkpointIndex,
         eventTime,
-        dayOfWeek: eventTime.getDay(),
-        tripDate: formatDateStr(eventTime),
+        dayOfWeek: weekdayOfKey(tripDate),
+        tripDate,
         gmailMessageId: ref.id,
         rawData: {
           subject,
@@ -262,16 +266,29 @@ export async function syncBusEmails(): Promise<SyncResult> {
 }
 
 /**
+ * The instant a route's scheduled time (household wall clock, HH:mm) falls
+ * today in `timeZone`, or null if the time is malformed. setHours() on the
+ * server's clock made a 07:30 bus 07:30 UTC, 02:30 in Chicago.
+ */
+export function scheduledInstantToday(scheduledTime: string, timeZone: string, now: Date = new Date()): Date | null {
+  try {
+    return wallTimeToday(scheduledTime, timeZone, now);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Check if current time is within a bus route's active window (±30 min of scheduled time).
  */
-export function isWithinBusWindow(scheduledTime: string, bufferMinutes: number = 30): boolean {
-  const parts = scheduledTime.split(':').map(Number);
-  const hours = parts[0] ?? 0;
-  const minutes = parts[1] ?? 0;
-  const now = new Date();
-  const scheduled = new Date(now);
-  scheduled.setHours(hours, minutes, 0, 0);
-
+export function isWithinBusWindow(
+  scheduledTime: string,
+  timeZone: string,
+  bufferMinutes: number = 30,
+  now: Date = new Date(),
+): boolean {
+  const scheduled = scheduledInstantToday(scheduledTime, timeZone, now);
+  if (!scheduled) return false;
   const diff = Math.abs(now.getTime() - scheduled.getTime());
   return diff <= bufferMinutes * 60 * 1000;
 }
@@ -286,12 +303,6 @@ export async function isGmailConnected(): Promise<boolean> {
   return !!cred;
 }
 
-function formatDateStr(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
 
 /**
  * Read the Gmail label name for bus emails from settings.

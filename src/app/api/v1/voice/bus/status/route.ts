@@ -6,6 +6,8 @@ import { db } from '@/lib/db/client';
 import { busRoutes } from '@/lib/db/schema';
 import { eq, ilike } from 'drizzle-orm';
 import { predictArrival } from '@/lib/services/bus-arrival-predictor';
+import { getHouseholdTimezone } from '@/lib/householdTimezone';
+import { todayKey, weekdayOfKey } from '@/lib/utils/zonedDate';
 import { logError } from '@/lib/utils/logError';
 
 /**
@@ -15,7 +17,8 @@ import { logError } from '@/lib/utils/logError';
  * Optional `student` filter narrows to routes whose `studentName` matches
  * (case-insensitive substring).
  *
- * Today-active is determined by the route's `activeDays` array (1=Mon..5=Fri).
+ * Today-active is determined by the route's `activeDays` array (0=Sun..6=Sat),
+ * on the household's date.
  */
 export async function GET(request: NextRequest) {
   return withAuth(async () => {
@@ -28,11 +31,12 @@ export async function GET(request: NextRequest) {
         .from(busRoutes)
         .where(eq(busRoutes.enabled, true));
 
-      // Map JS Date.getDay() (0=Sun..6=Sat) to schema convention (1=Mon..7=Sun).
-      const today = new Date().getDay();
-      const todayKey = today === 0 ? 7 : today;
+      // The household's weekday, 0=Sun..6=Sat, the convention the route
+      // settings and the predictor use (this route mapped Sunday to 7, so a
+      // Sunday route never showed as active).
+      const todayDow = weekdayOfKey(todayKey(await getHouseholdTimezone()));
 
-      let activeToday = all.filter((r) => Array.isArray(r.activeDays) && r.activeDays.includes(todayKey));
+      let activeToday = all.filter((r) => Array.isArray(r.activeDays) && r.activeDays.includes(todayDow));
 
       if (student) {
         const studentLower = student.toLowerCase();
