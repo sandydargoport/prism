@@ -244,6 +244,54 @@ export async function fetchCalDAVEvents(
   return events;
 }
 
+/** Most instances one recurring event contributes to a sync range. */
+const MAX_INSTANCES_IN_RANGE = 5_000;
+/** Most iterator steps spent on one recurring event, in or out of range. */
+const MAX_EXPANSION_STEPS = 10_000;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Where to start expanding a recurring event, or undefined for its DTSTART.
+ *
+ * Iterating from DTSTART costs one step per instance since the series began,
+ * so a daily series from decades ago is slow to reach the range. A DAILY or
+ * WEEKLY rule repeats with a fixed period in wall-clock days, so moving the
+ * start forward by whole periods (keeping its wall time, so DST does not
+ * shift it) yields the same instances. The moved start is kept at least one
+ * period plus the event's length before the range, so an instance that ends
+ * inside the range is not skipped, and the moved start itself, which the
+ * iterator always returns first, falls before the range and is dropped.
+ *
+ * Not applied to a COUNT rule (instances are counted from DTSTART), to RDATE
+ * or several RRULEs, or to other frequencies, which are cheap to walk.
+ */
+function recurrenceAnchor(
+  event: ICAL.Event,
+  vevent: ICAL.Component,
+  allDay: boolean,
+  rangeStart: Date,
+  timeZone: string,
+): ICAL.Time | undefined {
+  const rules = vevent.getAllProperties('rrule');
+  if (rules.length !== 1 || vevent.hasProperty('rdate')) return undefined;
+  const rule = rules[0]!.getFirstValue() as ICAL.Recur;
+  if (rule.count) return undefined;
+  if (rule.freq !== 'DAILY' && rule.freq !== 'WEEKLY') return undefined;
+
+  const periodDays = (rule.interval || 1) * (rule.freq === 'WEEKLY' ? 7 : 1);
+  const startMs = icalTimeToDate(event.startDate, allDay, timeZone).getTime();
+  const lengthMs = Math.max(0, icalTimeToDate(event.endDate, allDay, timeZone).getTime() - startMs);
+  // Two spare days cover DST and zone offsets between wall and UTC days.
+  const latest = rangeStart.getTime() - lengthMs - (periodDays + 2) * DAY_MS;
+  const periods = Math.floor((latest - startMs) / (periodDays * DAY_MS));
+  if (periods <= 0) return undefined;
+
+  const anchor = event.startDate.clone();
+  anchor.adjust(periods * periodDays, 0, 0, 0);
+  return anchor;
+}
+
 /**
  * Parse a single iCalendar object into one or more events.
  * Handles recurring events by expanding instances within the time range.
@@ -278,19 +326,29 @@ function parseICalObject(
     if (isRecurring && !event.isRecurrenceException()) {
       // Expand recurring event instances within the range
       try {
-        const iterator = event.iterator();
+        const allDay = isAllDay(vevent);
+        const iterator = event.iterator(
+          recurrenceAnchor(event, vevent, allDay, rangeStart, timeZone),
+        );
         let next = iterator.next();
-        let count = 0;
-        const maxInstances = 100;
+        let steps = 0;
+        let inRange = 0;
 
-        while (next && count < maxInstances) {
+        // Instances before the range are skipped without counting toward
+        // the in-range cap, so a series that began long ago still yields
+        // its current occurrences.
+        while (next) {
+          if (++steps > MAX_EXPANSION_STEPS || inRange >= MAX_INSTANCES_IN_RANGE) {
+            console.warn(`CalDAV: stopped expanding a recurring event after ${steps - 1} instances`);
+            break;
+          }
           const occurrence = event.getOccurrenceDetails(next);
-          const allDay = isAllDay(vevent);
           const start = icalTimeToDate(occurrence.startDate, allDay, timeZone);
           const end = icalTimeToDate(occurrence.endDate, allDay, timeZone);
 
           if (start > rangeEnd) break;
           if (end >= rangeStart) {
+            inRange++;
             // Keyed on the stored start, which does not depend on the
             // server's zone. Older builds keyed on the parser's instant,
             // server-local midnight for an all-day date, so a row may still
@@ -315,7 +373,6 @@ function parseICalObject(
           }
 
           next = iterator.next();
-          count++;
         }
       } catch {
         // If recurrence expansion fails, add the base event
