@@ -44,6 +44,7 @@ import { DAYS_SHORT_ARRAY } from '@/lib/constants/days';
 import { WidgetContainer } from './WidgetContainer';
 import { useTranslations, useLocale } from 'next-intl';
 import { useTimeFormat } from '@/components/providers';
+import { useLocalDateKey } from '@/lib/hooks/useLocalDateKey';
 import { formatDisplayHour, formatDisplayTime } from '@/lib/utils/timeFormat';
 
 /**
@@ -97,6 +98,11 @@ function localizeDayName(dayName: string, locale: string): string {
 const altitudeToRadians = (degrees: number): number => degrees * Math.PI / 180;
 
 export interface ForecastDay {
+  /**
+   * UTC midnight of the forecast's calendar date at the weather location
+   * ("floating"): read it with the UTC getters or floatingUtcToDateKey, never
+   * the local ones, which put it on the previous day west of UTC.
+   */
   date: Date;
   dayName: string;
   high: number;
@@ -618,9 +624,10 @@ function DayHeader({
 
         // Moon phase for this calendar day — global (no lat/lon needed since
         // phase is the same anywhere on Earth at a given instant). Sampled at
-        // local noon to avoid edge-of-day phase rollover artifacts.
+        // noon UTC of the forecast date: day.date is that date's UTC midnight,
+        // so setHours() would have sampled the previous day west of UTC.
         const dayNoon = new Date(day.date);
-        dayNoon.setHours(12, 0, 0, 0);
+        dayNoon.setUTCHours(12, 0, 0, 0);
         const dayPhase = SunCalc.getMoonIllumination(dayNoon).phase;
 
         return (
@@ -961,7 +968,12 @@ function SunriseSunsetArc({
   const ryBot    = H - horizonY - 10;  // pixels representing antizenith (alt = -π/2)
   const dayMs    = 24 * 3_600_000;
 
-  const today = React.useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
+  // Rolls over at midnight: a wall display is never reloaded, and with an
+  // empty dependency list the arc stayed on the day the page was opened.
+  const dateKey = useLocalDateKey();
+  // dateKey is the trigger, not an input.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const today = React.useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, [dateKey]);
   const midnightMs = today.getTime();
   const nowMs = Date.now();
 

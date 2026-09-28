@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { addDays, format, isSameDay, startOfWeek } from 'date-fns';
+import { addDays, format, startOfWeek } from 'date-fns';
 import { useCalendarEvents } from './useCalendarEvents';
 import { useMeals } from './useMeals';
 import { useChores } from './useChores';
@@ -13,6 +13,7 @@ import type { Chore, Meal } from '@/types';
 import type { Task } from '@/components/widgets/TasksWidget';
 import type { ForecastDay } from '@/components/widgets/WeatherWidget';
 import { useTimeFormat } from '@/components/providers';
+import { floatingUtcToDateKey } from '@/lib/utils/zonedDate';
 import { eventOccursOnDisplayDay } from '@/lib/utils/timeFormat';
 
 export interface DayBucket {
@@ -124,7 +125,9 @@ export function useWeekViewData({
           return order[a.priority] - order[b.priority];
         });
 
-      const dayWeather = weather?.forecast.find((f) => isSameDay(f.date, date));
+      // forecast.date is UTC midnight of the forecast's date: compare dates,
+      // not local days, or the weather sits a column early west of UTC.
+      const dayWeather = weather?.forecast.find((f) => floatingUtcToDateKey(f.date) === format(date, 'yyyy-MM-dd'));
 
       return {
         date,

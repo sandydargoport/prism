@@ -37,6 +37,7 @@ import type {
 } from '@/components/widgets/WeatherWidget';
 import type { LocationParam, WeatherOptions } from './weather';
 import { getMoonData } from './moon';
+import { dayWindowUtc, todayKey } from '@/lib/utils/zonedDate';
 import { DAYS_SHORT_ARRAY } from '@/lib/constants/days';
 
 function defaultImperialUnits(): WeatherUnits {
@@ -388,7 +389,8 @@ export async function fetchWeatherData(
   }
 
   // ── Moon (local computation — Open-Meteo doesn't expose moon data) ────────
-  const moon = getMoonData(config.lat, config.lon);
+  // Rise and set for the location's day, not the server's (see moon.ts).
+  const moon = getMoonData(config.lat, config.lon, new Date(), dayWindowUtc(todayKey(timezone), timezone).start);
 
   return {
     location: config.locationName,

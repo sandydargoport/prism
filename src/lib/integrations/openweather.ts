@@ -20,6 +20,7 @@ import type {
   HourlyForecast,
 } from '@/components/widgets/WeatherWidget';
 import type { LocationParam, WeatherOptions } from './weather';
+import { dateOnlyToFloatingUtc } from '@/lib/utils/zonedDate';
 import { getMoonData } from './moon';
 
 /**
@@ -226,6 +227,8 @@ async function fetchForecastRaw(
 ): Promise<{
   forecast: ForecastDay[];
   raw: OpenWeatherForecast['list'];
+  /** The location's UTC offset in seconds (OpenWeather's city.timezone). */
+  tzOffsetSec: number;
   hourly: HourlyForecast[];
   locationName: string;
 }> {
@@ -314,7 +317,9 @@ async function fetchForecastRaw(
     const [yr, mo, dy] = dateKey.split('-').map(Number);
     const dayIndex = new Date(Date.UTC(yr!, mo! - 1, dy!)).getUTCDay();
     forecast.push({
-      date: dayData.date,
+      // UTC midnight of the location's date (the ForecastDay.date contract),
+      // not the first 3-hour sample, which can fall on the previous UTC day.
+      date: dateOnlyToFloatingUtc(dateKey),
       dayName: dayNames[dayIndex] || 'Day',
       high: tempFromKelvin(high, units),
       low: tempFromKelvin(low, units),
@@ -341,6 +346,7 @@ async function fetchForecastRaw(
   return {
     forecast,
     raw: data.list,
+    tzOffsetSec,
     hourly,
     locationName: `${data.city.name}, ${data.city.country}`,
   };
@@ -360,13 +366,20 @@ export async function fetchForecast(location?: LocationParam): Promise<{
 /**
  * Extract today's period forecasts (Morning/Afternoon/Evening)
  * from the 3-hour forecast data.
+ *
+ * Hours and "today" are the weather location's, from its UTC offset
+ * (`city.timezone`, seconds): the server's own clock is UTC on a default
+ * install, which put Chicago's 8 AM in "Afternoon".
  */
 function extractPeriods(
   forecastList: OpenWeatherForecast['list'],
   units: WeatherUnits,
+  tzOffsetSec: number,
 ): ForecastPeriod[] {
-  const now = new Date();
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  // A Date shifted by the offset reads the location's wall clock with the
+  // UTC getters.
+  const local = (unixSec: number) => new Date((unixSec + tzOffsetSec) * 1000);
+  const todayStr = local(Math.floor(Date.now() / 1000)).toISOString().slice(0, 10);
   const periods: ForecastPeriod[] = [];
 
   // Morning: 6am-12pm, Afternoon: 12pm-6pm, Evening: 6pm-12am
@@ -378,9 +391,9 @@ function extractPeriods(
 
   for (const def of periodDefs) {
     const matching = forecastList.filter((item) => {
-      const d = new Date(item.dt * 1000);
-      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      const hour = d.getHours();
+      const d = local(item.dt);
+      const dateStr = d.toISOString().slice(0, 10);
+      const hour = d.getUTCHours();
       return dateStr === todayStr && hour >= def.minHour && hour < def.maxHour;
     });
 
@@ -412,7 +425,7 @@ export async function fetchWeatherData(
     fetchForecastRaw(location, units),
   ]);
 
-  const periods = extractPeriods(forecastData.raw, units);
+  const periods = extractPeriods(forecastData.raw, units, forecastData.tzOffsetSec);
 
   // Override the currently-active hourly interval with observed current conditions,
   // since the forecast model can disagree with what's actually happening right now.
@@ -424,7 +437,12 @@ export async function fetchWeatherData(
   );
 
   const { lat, lon } = resolveLatLon(location);
-  const moon = getMoonData(lat, lon);
+  // Rise and set for the location's day, not the server's (see moon.ts): its
+  // midnight from the UTC offset, the only zone information OpenWeather gives.
+  const offsetMs = forecastData.tzOffsetSec * 1000;
+  const dayMs = 24 * 3_600_000;
+  const localMidnight = new Date(Math.floor((nowMs + offsetMs) / dayMs) * dayMs - offsetMs);
+  const moon = getMoonData(lat, lon, new Date(), localMidnight);
 
   return {
     location: currentData.locationName,

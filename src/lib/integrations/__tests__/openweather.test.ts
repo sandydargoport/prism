@@ -461,3 +461,29 @@ describe('fetchForecast — errors', () => {
     await expect(fetchForecast()).rejects.toThrow('Failed to fetch forecast');
   });
 });
+
+describe('the location zone, not the server clock', () => {
+  // 8 AM, 2 PM and 8 PM CDT on Fri 1 May; 8 PM is already 2 May in UTC.
+  const items = [
+    forecastItem(SEC(Date.UTC(2026, 4, 1, 13)), 283),
+    forecastItem(SEC(Date.UTC(2026, 4, 1, 19)), 293),
+    forecastItem(SEC(Date.UTC(2026, 4, 2, 1)), 288),
+  ];
+
+  it('anchors each forecast date at UTC midnight of the local date', async () => {
+    mockFetch(forecastResponse(items));
+    const { fetchForecast } = await import('../openweather');
+    const { forecast } = await fetchForecast();
+    expect(forecast[0]!.date.toISOString()).toBe('2026-05-01T00:00:00.000Z');
+    expect(forecast).toHaveLength(1);
+  });
+
+  it('buckets morning, afternoon and evening by the location hour', async () => {
+    jest.spyOn(global, 'fetch' as never)
+      .mockResolvedValueOnce({ ok: true, json: async () => currentResponse() } as never)
+      .mockResolvedValueOnce({ ok: true, json: async () => forecastResponse(items) } as never);
+    const { fetchWeatherData } = await import('../openweather');
+    const result = await fetchWeatherData();
+    expect(result.periods?.map((p) => p.label)).toEqual(['Morn', 'Aft', 'Eve']);
+  });
+});

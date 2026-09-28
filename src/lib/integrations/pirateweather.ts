@@ -26,6 +26,7 @@ import type {
   MinutelyData,
 } from '@/components/widgets/WeatherWidget';
 import type { LocationParam, WeatherOptions } from './weather';
+import { dateOnlyToFloatingUtc, dayWindowUtc, todayKey } from '@/lib/utils/zonedDate';
 import { getMoonData } from './moon';
 
 // ---------------------------------------------------------------------------
@@ -211,10 +212,13 @@ export async function fetchWeatherData(
     .filter((d) => localDateFmt.format(new Date(d.time * 1000)) >= todayLocalStr)
     .slice(0, 7)
     .map((d) => {
-      const date = new Date(d.time * 1000);
+      const instant = new Date(d.time * 1000);
       return {
-        date,
-        dayName: dayNameFmt.format(date),
+        // UTC midnight of the location's date (the ForecastDay.date contract);
+        // d.time is the location's midnight as an instant, a day early west
+        // of UTC when read that way.
+        date: dateOnlyToFloatingUtc(localDateFmt.format(instant)),
+        dayName: dayNameFmt.format(instant),
         high: Math.round(d.temperatureHigh),
         low: Math.round(d.temperatureLow),
         condition: mapIcon(d.icon),
@@ -247,7 +251,9 @@ export async function fetchWeatherData(
   );
 
   // ── Periods (Morning / Afternoon / Evening) ───────────────────────────────
-  const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local
+  // Bucket by the location's zone, not the server's (UTC on a default install,
+  // where Chicago's 8 AM fell into "Afternoon"), as openmeteo.ts does.
+  const hourInTz = new Intl.DateTimeFormat('en-GB', { timeZone: timezone, hour: '2-digit', hourCycle: 'h23' });
   const periodDefs = [
     { label: 'Morn', minHour: 6, maxHour: 12 },
     { label: 'Aft', minHour: 12, maxHour: 18 },
@@ -257,10 +263,11 @@ export async function fetchWeatherData(
   for (const def of periodDefs) {
     const matching = hourly.data.filter((h) => {
       const d = new Date(h.time * 1000);
+      const localHour = parseInt(hourInTz.format(d), 10);
       return (
-        d.toLocaleDateString('en-CA') === todayStr &&
-        d.getHours() >= def.minHour &&
-        d.getHours() < def.maxHour
+        localDateFmt.format(d) === todayLocalStr &&
+        localHour >= def.minHour &&
+        localHour < def.maxHour
       );
     });
     if (matching.length > 0) {
@@ -277,7 +284,8 @@ export async function fetchWeatherData(
   const minutelyData: MinutelyData[] | undefined = minutely?.data;
 
   // ── Moon (local computation — Pirate Weather has phase but not rise/set) ──
-  const moon = getMoonData(config.lat, config.lon);
+  // Rise and set for the location's day, not the server's (see moon.ts).
+  const moon = getMoonData(config.lat, config.lon, new Date(), dayWindowUtc(todayKey(timezone), timezone).start);
 
   return {
     location: config.locationName,

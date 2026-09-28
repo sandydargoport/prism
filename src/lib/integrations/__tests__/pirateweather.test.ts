@@ -562,3 +562,28 @@ describe('error handling', () => {
     await expect(fetchWeatherData()).rejects.toThrow(/Pirate Weather network error: ECONNREFUSED/);
   });
 });
+
+describe('the location zone, not the server clock', () => {
+  it('anchors each forecast date at UTC midnight of the local date', async () => {
+    // Pirate's daily time is the location's midnight: 05:00Z on 1 May in Chicago.
+    mockFetch(buildResponse({ dailyData: [daily(SEC(Date.UTC(2026, 4, 1, 5, 0, 0)))] }));
+    const { fetchWeatherData } = await import('../pirateweather');
+    const result = await fetchWeatherData();
+    expect(result.forecast[0]!.date.toISOString()).toBe('2026-05-01T00:00:00.000Z');
+  });
+
+  it('buckets morning, afternoon and evening by the location hour', async () => {
+    // 8 AM, 2 PM and 8 PM CDT on 1 May. On a UTC server the old code put 8 AM
+    // in "Afternoon" and dropped 8 PM, which is already 2 May in UTC.
+    mockFetch(buildResponse({
+      hourlyData: [
+        hourly(SEC(Date.UTC(2026, 4, 1, 13)), { temperature: 50 }),
+        hourly(SEC(Date.UTC(2026, 4, 1, 19)), { temperature: 70 }),
+        hourly(SEC(Date.UTC(2026, 4, 2, 1)), { temperature: 60 }),
+      ],
+    }));
+    const { fetchWeatherData } = await import('../pirateweather');
+    const result = await fetchWeatherData();
+    expect(result.periods?.map((p) => [p.label, p.temp])).toEqual([['Morn', 50], ['Aft', 70], ['Eve', 60]]);
+  });
+});
