@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { dueLocalDate, isTaskOverdue } from '@/lib/utils/taskDue';
 import { calendarDaysBetween } from '@/lib/utils/zonedDate';
+import { useDisplayToday } from '@/components/providers';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
@@ -53,8 +54,9 @@ export function ChoreGroupCard({
   const nextDue = dueKey ? dueLocalDate(dueKey, chore.nextDueTime) : null;
   // Chores share the task due shape: overdue after the due time, or from the
   // day after a date-only due.
-  const isOverdue = isTaskOverdue({ dueDate: dueKey, dueTime: chore.nextDueTime });
-  const daysUntil = dueKey ? calendarDaysBetween(format(new Date(), 'yyyy-MM-dd'), dueKey) : null;
+  const { today, timeZone } = useDisplayToday();
+  const isOverdue = isTaskOverdue({ dueDate: dueKey, dueTime: chore.nextDueTime }, new Date(), timeZone);
+  const daysUntil = dueKey ? calendarDaysBetween(today, dueKey) : null;
   const isCompletedToday =
     chore.lastCompleted &&
     new Date(chore.lastCompleted) > new Date(Date.now() - 24 * 60 * 60 * 1000);

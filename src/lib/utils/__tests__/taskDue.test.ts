@@ -120,3 +120,24 @@ describe('compareTaskDue', () => {
     ]);
   });
 });
+
+describe('isTaskOverdue in a display zone', () => {
+  // 03:30Z on 29 Sep: 22:30 on the 28th in Chicago, 12:30 on the 29th in Tokyo.
+  const now = new Date('2026-09-29T03:30:00Z');
+
+  it('judges a date-only task by the display zone\'s date, not the device\'s', () => {
+    expect(isTaskOverdue({ dueDate: '2026-09-28' }, now, 'America/Chicago')).toBe(false);
+    expect(isTaskOverdue({ dueDate: '2026-09-28' }, now, 'Asia/Tokyo')).toBe(true);
+  });
+
+  it('judges a timed task by the display zone\'s wall clock', () => {
+    expect(isTaskOverdue({ dueDate: '2026-09-28', dueTime: '22:00' }, now, 'America/Chicago')).toBe(true);
+    expect(isTaskOverdue({ dueDate: '2026-09-28', dueTime: '23:00' }, now, 'America/Chicago')).toBe(false);
+    expect(isTaskOverdue({ dueDate: '2026-09-29', dueTime: '12:00' }, now, 'Asia/Tokyo')).toBe(true);
+    expect(isTaskOverdue({ dueDate: '2026-09-29', dueTime: '13:00' }, now, 'Asia/Tokyo')).toBe(false);
+  });
+
+  it('falls back to the device clock for an unknown zone', () => {
+    expect(isTaskOverdue({ dueDate: '2000-01-01' }, now, 'Not/AZone')).toBe(true);
+  });
+});

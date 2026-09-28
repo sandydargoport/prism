@@ -124,15 +124,27 @@ export function dueLocalDate(dueDate: string, dueTime?: string | null): Date {
 }
 
 /**
- * Past due on the device's clock: a timed task once its time has passed, a
- * date-only task from the day after its date. A date-only task is not
- * overdue on its own day.
+ * Past due: a timed task once its time has passed, a date-only task from the
+ * day after its date. A date-only task is not overdue on its own day.
+ *
+ * Read on the wall clock of `timeZone` (normally the display zone), or on the
+ * device's clock without one.
  */
 export function isTaskOverdue(
   task: { dueDate?: string | null; dueTime?: string | null },
   now: Date = new Date(),
+  timeZone?: string,
 ): boolean {
   if (!task.dueDate) return false;
+  if (timeZone) {
+    try {
+      const today = todayKey(timeZone, now);
+      if (task.dueDate !== today) return task.dueDate < today;
+      return task.dueTime ? task.dueTime < wallTimeAt(timeZone, now) : false;
+    } catch {
+      // An unknown zone name: fall through to the device's clock.
+    }
+  }
   if (task.dueTime) return dueLocalDate(task.dueDate, task.dueTime).getTime() < now.getTime();
   return task.dueDate < format(now, 'yyyy-MM-dd');
 }

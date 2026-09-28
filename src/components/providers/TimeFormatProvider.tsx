@@ -13,6 +13,7 @@ import {
   type TimeFormat,
 } from '@/lib/utils/timeFormat';
 import { DISPLAY_TIMEZONE_MODE_KEY, detectBrowserTimezone } from '@/lib/hooks/useTimezone';
+import { useLocalDateKey } from '@/lib/hooks/useLocalDateKey';
 import { isHouseholdZoneCandidate } from '@/lib/utils/timezone';
 
 const SETTING_KEY = 'timeFormat';
@@ -195,4 +196,13 @@ export function useDisplayTimestampFormat(): {
     dateTime: (date) => formatDisplayDateTime(new Date(date), timeFormat, displayTimezone),
     date: (date) => format(toDisplayDate(new Date(date), displayTimezone), 'MMM d, yyyy'),
   }), [timeFormat, displayTimezone]);
+}
+
+/**
+ * Today's date key in the display zone, changing at that zone's midnight, and
+ * the zone itself. Outside a TimeFormatProvider both fall back to the device.
+ */
+export function useDisplayToday(): { today: string; timeZone: string | undefined } {
+  const timeZone = React.useContext(TimeFormatContext)?.displayTimezone;
+  return { today: useLocalDateKey(timeZone), timeZone };
 }

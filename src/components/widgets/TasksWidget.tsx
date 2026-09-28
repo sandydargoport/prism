@@ -27,7 +27,7 @@
 
 import * as React from 'react';
 import { useMemo, useCallback } from 'react';
-import { format, isToday, isTomorrow, isPast } from 'date-fns';
+import { format } from 'date-fns';
 import { CheckSquare, Plus, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { WidgetContainer, WidgetEmpty } from './WidgetContainer';
@@ -41,7 +41,8 @@ import { compareTaskDue, dueLocalDate, isTaskOverdue } from '@/lib/utils/taskDue
  */
 // Task type imported from shared types
 import type { Task } from '@/types';
-import { useLocalDateKey } from '@/lib/hooks/useLocalDateKey';
+import { addDaysToKey } from '@/lib/utils/zonedDate';
+import { useDisplayToday } from '@/components/providers';
 export type { Task };
 
 
@@ -103,9 +104,6 @@ export const TasksWidget = React.memo(function TasksWidget({
   titleHref,
   className,
 }: TasksWidgetProps) {
-  // Re-render at midnight so "Today" and "Tomorrow" move on with the date;
-  // the item labels below are computed from the clock on each render.
-  useLocalDateKey();
   const allTasks = externalTasks || [];
 
   const { filteredTasks, displayTasks } = useMemo(() => {
@@ -211,10 +209,13 @@ function TaskItem({
   onClick?: () => void;
 }) {
   // Format due date
-  const dueDateDisplay = task.dueDate ? formatDueDate(dueLocalDate(task.dueDate)) : null;
+  // Re-renders at the display zone's midnight, so "Today" and "Tomorrow" move
+  // on with the date.
+  const { today, timeZone } = useDisplayToday();
+  const dueDateDisplay = task.dueDate ? formatDueDate(task.dueDate, today) : null;
 
   // Check if overdue
-  const isOverdue = isTaskOverdue(task) && !completed;
+  const isOverdue = isTaskOverdue(task, new Date(), timeZone) && !completed;
 
   return (
     <div
@@ -309,10 +310,11 @@ function TaskItem({
  * FORMAT DUE DATE
  * Formats a due date in a human-friendly way.
  */
-function formatDueDate(date: Date): string {
-  if (isToday(date)) return 'Today';
-  if (isTomorrow(date)) return 'Tomorrow';
-  if (isPast(date)) return format(date, 'MMM d'); // Overdue
+function formatDueDate(dueDate: string, today: string): string {
+  if (dueDate === today) return 'Today';
+  if (dueDate === addDaysToKey(today, 1)) return 'Tomorrow';
+  const date = dueLocalDate(dueDate);
+  if (dueDate < today) return format(date, 'MMM d'); // Overdue
   return format(date, 'EEE, MMM d'); // e.g., "Mon, Jan 21"
 }
 

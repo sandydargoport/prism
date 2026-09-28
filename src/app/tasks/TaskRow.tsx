@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import type { Task } from '@/types';
 import { dueLocalDate, isTaskOverdue } from '@/lib/utils/taskDue';
 import { calendarDaysBetween } from '@/lib/utils/zonedDate';
+import { useDisplayToday } from '@/components/providers';
 
 export function TaskRow({
   task,
@@ -28,12 +29,11 @@ export function TaskRow({
   showList?: boolean;
   taskLists?: Array<{ id: string; name: string; color?: string | null }>;
 }) {
+  const { today, timeZone } = useDisplayToday();
   const dueDate = task.dueDate ? dueLocalDate(task.dueDate, task.dueTime) : null;
-  const isOverdue = !task.completed && isTaskOverdue(task);
+  const isOverdue = !task.completed && isTaskOverdue(task, new Date(), timeZone);
   // Calendar days, not 24-hour spans: a task due tomorrow morning is "tomorrow".
-  const daysUntil = task.dueDate
-    ? calendarDaysBetween(format(new Date(), 'yyyy-MM-dd'), task.dueDate)
-    : null;
+  const daysUntil = task.dueDate ? calendarDaysBetween(today, task.dueDate) : null;
   const taskList = showList ? taskLists.find(l => l.id === (task as typeof task & { listId?: string }).listId) : null;
 
   return (

@@ -1,6 +1,6 @@
 'use client';
 
-import { isPast, isToday, isTomorrow, parseISO, format } from 'date-fns';
+import { parseISO, format } from 'date-fns';
 import { Emoji } from '@/components/ui/Emoji';
 import {
   AlertCircle,
@@ -16,6 +16,8 @@ import { UserAvatar } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
 import type { Chore } from '@/types';
 import { isTaskOverdue } from '@/lib/utils/taskDue';
+import { addDaysToKey } from '@/lib/utils/zonedDate';
+import { useDisplayToday } from '@/components/providers';
 
 export function getCategoryEmoji(category: string): string {
   switch (category) {
@@ -43,16 +45,17 @@ export function ChoreItem({
   onDelete: () => void;
 }) {
   // Not overdue on its own day: "Due today" is not an alert.
-  const isOverdue = isTaskOverdue({ dueDate: chore.nextDue?.slice(0, 10), dueTime: chore.nextDueTime });
+  const { today, timeZone } = useDisplayToday();
+  const isOverdue = isTaskOverdue({ dueDate: chore.nextDue?.slice(0, 10), dueTime: chore.nextDueTime }, new Date(), timeZone);
   const isPendingApproval = !!chore.pendingApproval;
   const categoryEmoji = getCategoryEmoji(chore.category);
 
   const formatDueDate = (dateString: string) => {
-    const date = parseISO(dateString);
-    if (isToday(date)) return 'Due today';
-    if (isTomorrow(date)) return 'Due tomorrow';
-    if (isPast(date)) return 'Overdue';
-    return `Due ${format(date, 'MMM d')}`;
+    const dueKey = dateString.slice(0, 10);
+    if (dueKey === today) return 'Due today';
+    if (dueKey === addDaysToKey(today, 1)) return 'Due tomorrow';
+    if (dueKey < today) return 'Overdue';
+    return `Due ${format(parseISO(dueKey), 'MMM d')}`;
   };
 
   const formatFrequency = (frequency: string, customDays?: number | null) => {
