@@ -136,6 +136,11 @@ describe('POST /api/chores/[id]/complete', () => {
     queryResults = [];
     queryIndex = 0;
     mockRequireAuth.mockResolvedValue(parentAuth);
+    // Mirror requireRole: parents pass by role, tokens by scope.
+    mockRequireRole.mockImplementation((auth: { role: string; scopes?: string[] }) => {
+      const allowed = auth.scopes !== undefined ? auth.scopes.includes('*') : auth.role === 'parent';
+      return allowed ? null : NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    });
   });
 
   it('parent completing chore auto-approves and awards points', async () => {
@@ -172,6 +177,36 @@ describe('POST /api/chores/[id]/complete', () => {
       sampleChore.frequency, sampleChore.customIntervalDays, sampleChore.startDay,
       todayKey('America/Chicago'),
     );
+  });
+
+  it('a voice-scoped token cannot self-approve, though tokens carry the parent role', async () => {
+    mockRequireAuth.mockResolvedValue({ ...parentAuth, scopes: ['voice'] });
+    queryResults = [
+      [sampleChore],
+      [{ id: 'child-1', name: 'Timmy', role: 'child' }],
+      [{ assignedTo: 'child-1' }],
+      [], // no pending
+    ];
+
+    let inserted: Record<string, unknown> | undefined;
+    mockTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+      return fn({
+        insert: () => ({
+          values: (v: Record<string, unknown>) => {
+            inserted = v;
+            return { returning: jest.fn().mockResolvedValue([{ ...v, id: 'comp-3' }]) };
+          },
+        }),
+        update: () => { throw new Error('a pending completion must not move the schedule'); },
+      });
+    });
+
+    const res = await completeChore(makeRequest({ completedBy: 'child-1' }), routeParams);
+    const data = await res.json();
+
+    expect(res.status).toBe(201);
+    expect(data.approved).toBe(false);
+    expect(inserted).toMatchObject({ approvedBy: null, approvedAt: null, pointsAwarded: 5 });
   });
 
   it('child completing chore creates pending completion', async () => {

@@ -3,32 +3,32 @@
  * ENDPOINT: /api/chores/[id]/complete
  * - POST: Mark a chore as completed
  *
- * APPROVAL WORKFLOW:
- * Children ALWAYS require parent approval for chore completions.
- * Parents auto-approve their own completions (unless chore.requiresApproval).
- *
- * If requiresApproval is true (chore setting) OR completing user is a child:
- *   - Completion is created with approvedBy = null
- *   - Parent must approve via separate API call
- * If requiresApproval is false AND completing user is a parent:
- *   - Completion is auto-approved
- *   - Points are immediately awarded
+ * APPROVAL WORKFLOW (src/lib/services/choreCompletion.ts):
+ * The completion is auto-approved, with the caller as approver, when the
+ * authenticated caller can approve chores (a parent session, or an API token
+ * with the '*' scope). Otherwise it is created pending (approvedBy = null) and
+ * a parent approves it via POST /api/chores/[id]/approve. The chore's
+ * requiresApproval flag does not change this decision in the app.
  *
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireRole } from '@/lib/auth';
-import { PERMISSIONS } from '@/types/user';
 import { db } from '@/lib/db/client';
 import { chores, choreCompletions, users } from '@/lib/db/schema';
-import { eq, and, isNull, desc } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import { completeChoreSchema, validateRequest } from '@/lib/validations';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { rateLimitGuard } from '@/lib/cache/rateLimit';
 import { calculateNextDue } from '@/lib/utils/calculateNextDue';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { todayKey } from '@/lib/utils/zonedDate';
-import { logActivity } from '@/lib/services/auditLog';
+import {
+  approverForNewCompletion,
+  callerCanApproveChores,
+  findPendingCompletion,
+  recordChoreCompletion,
+} from '@/lib/services/choreCompletion';
 import { logError } from '@/lib/utils/logError';
 
 /**
@@ -147,18 +147,7 @@ export async function POST(
 
     // CHECK FOR EXISTING PENDING COMPLETION
     // Prevent children from creating duplicate completions while one is pending
-    const [existingPendingCompletion] = await db
-      .select({
-        id: choreCompletions.id,
-        completedBy: choreCompletions.completedBy,
-      })
-      .from(choreCompletions)
-      .where(
-        and(
-          eq(choreCompletions.choreId, choreId),
-          isNull(choreCompletions.approvedBy)
-        )
-      );
+    const existingPendingCompletion = await findPendingCompletion(choreId);
 
     if (existingPendingCompletion) {
       // If a child tries to complete a chore that's already pending, reject it
@@ -177,64 +166,31 @@ export async function POST(
     // Determine if approval is required based on the AUTHENTICATED caller, not
     // the client-supplied completedBy. Otherwise a child could pass a parent's
     // id to make needsApproval=false and auto-approve their own completion,
-    // bypassing parental approval. Only callers who can approve chores (parents)
-    // self-approve; everyone else's completion is created pending.
-    const callerCanApprove = PERMISSIONS[auth.role].canApproveChores;
-    const needsApproval = !callerCanApprove;
+    // bypassing parental approval. Only callers who can approve chores (parents,
+    // and API tokens scoped to approve) self-approve; everyone else's
+    // completion is created pending. See src/lib/services/choreCompletion.ts.
+    const approvedBy = approverForNewCompletion({
+      userId: auth.userId,
+      canApprove: callerCanApproveChores(auth),
+    });
+    const needsApproval = approvedBy === null;
 
-    // Create completion + conditionally update chore atomically
-    const today = todayKey(await getHouseholdTimezone());
-    const completion = await db.transaction(async (tx) => {
-      const [comp] = await tx
-        .insert(choreCompletions)
-        .values({
-          choreId,
-          completedBy,
-          completedAt: new Date(),
-          photoUrl: photoUrl || null,
-          notes: notes || null,
-          pointsAwarded: chore.pointValue,
-          approvedBy: needsApproval ? null : auth.userId,
-          approvedAt: needsApproval ? null : new Date(),
-        })
-        .returning();
-
-      if (!comp) throw new Error('Failed to create completion record');
-
-      // If auto-approved (parent completing), update chore's lastCompleted and nextDue
-      if (!needsApproval) {
-        const nextDue = calculateNextDue(chore.frequency, chore.customIntervalDays, chore.startDay, today);
-        await tx
-          .update(chores)
-          .set({
-            lastCompleted: comp.completedAt,
-            nextDue: nextDue,
-            updatedAt: new Date(),
-          })
-          .where(eq(chores.id, choreId));
-      }
-
-      return comp;
+    const completion = await recordChoreCompletion({
+      chore,
+      completedBy,
+      approvedBy,
+      actorUserId: auth.userId,
+      photoUrl,
+      notes,
     });
 
     // Generate appropriate message
     let message: string;
-    if (isChild) {
+    if (needsApproval) {
       message = `Great job, ${completingUser.name}! Your chore is pending parent approval.`;
     } else {
-      // Parents always self-approve
       message = `Chore completed! ${chore.pointValue} points awarded.`;
     }
-
-    await invalidateEntity('chores');
-
-    logActivity({
-      userId: auth.userId,
-      action: 'complete',
-      entityType: 'chore',
-      entityId: choreId,
-      summary: `Completed chore: ${chore.title}`,
-    });
 
     return NextResponse.json({
       id: completion.id,

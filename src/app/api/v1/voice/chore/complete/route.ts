@@ -2,10 +2,15 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/api/withAuth';
 import { voiceOk, voiceError } from '@/lib/api/voiceResponse';
 import { db } from '@/lib/db/client';
-import { chores, choreCompletions, users } from '@/lib/db/schema';
+import { chores, users } from '@/lib/db/schema';
 import { ilike, eq, and } from 'drizzle-orm';
 import { voiceChoreCompleteSchema, validateRequest } from '@/lib/validations';
-import { invalidateEntity } from '@/lib/cache/cacheKeys';
+import { PERMISSIONS } from '@/types/user';
+import {
+  approverForNewCompletion,
+  findPendingCompletion,
+  recordChoreCompletion,
+} from '@/lib/services/choreCompletion';
 import { logError } from '@/lib/utils/logError';
 
 /**
@@ -17,13 +22,19 @@ import { logError } from '@/lib/utils/logError';
  * - Fuzzy-matches chore by name (case-insensitive substring on title).
  * - If multiple matches exist across distinct assignees and no `assignee`
  *   is supplied, returns ok:false with a disambiguation prompt + candidates.
- * - completedBy ALWAYS inherits from chore.assignedTo — voice cannot
+ * - completedBy ALWAYS inherits from chore.assignedTo: voice cannot
  *   claim someone else's points.
- * - If chore.requiresApproval, the completion is created pending
- *   (no approvedBy/approvedAt). Voice can never approve.
+ * - Approval follows the app's rule (src/lib/services/choreCompletion.ts)
+ *   with the assignee as the person acting, since the speaker is not
+ *   identified and the completion is recorded as theirs. A child's
+ *   completion is pending, as it is when a child completes in the app, and a
+ *   second one is refused while one is pending. A parent's completion is
+ *   approved by that parent, as it is in the app.
+ * - Voice never approves a chore flagged requiresApproval: the speaker cannot
+ *   be verified, so that completion is pending even for a parent.
  */
 export async function POST(request: NextRequest) {
-  return withAuth(async () => {
+  return withAuth(async (auth) => {
     try {
       const body = await request.json().catch(() => ({}));
       const validation = validateRequest(voiceChoreCompleteSchema, body);
@@ -40,8 +51,12 @@ export async function POST(request: NextRequest) {
           title: chores.title,
           assignedTo: chores.assignedTo,
           assigneeName: users.name,
+          assigneeRole: users.role,
           requiresApproval: chores.requiresApproval,
           pointValue: chores.pointValue,
+          frequency: chores.frequency,
+          customIntervalDays: chores.customIntervalDays,
+          startDay: chores.startDay,
           enabled: chores.enabled,
         })
         .from(chores)
@@ -102,18 +117,31 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const isPending = target.requiresApproval;
+      const assigneeId = target.assignedTo;
+      const assigneeCanApprove =
+        target.assigneeRole !== null && PERMISSIONS[target.assigneeRole].canApproveChores;
 
-      const [completion] = await db
-        .insert(choreCompletions)
-        .values({
-          choreId: target.id,
-          completedBy: target.assignedTo,
-          pointsAwarded: isPending ? null : target.pointValue,
-        })
-        .returning();
+      // Same guard as the app: a child cannot stack a second completion on
+      // one that is still waiting for a parent.
+      if (target.assigneeRole === 'child' && (await findPendingCompletion(target.id))) {
+        return voiceError(
+          `${target.title} is already waiting for a parent to approve it in the app.`,
+          409,
+        );
+      }
 
-      await invalidateEntity('chores');
+      const approvedBy = approverForNewCompletion({
+        userId: assigneeId,
+        canApprove: assigneeCanApprove && !target.requiresApproval,
+      });
+      const isPending = approvedBy === null;
+
+      const completion = await recordChoreCompletion({
+        chore: target,
+        completedBy: assigneeId,
+        approvedBy,
+        actorUserId: auth.userId,
+      });
 
       const spoken = isPending
         ? `Marked ${target.title} complete. A parent will need to approve in the app.`
@@ -121,8 +149,8 @@ export async function POST(request: NextRequest) {
 
       return voiceOk(spoken, {
         choreId: target.id,
-        completionId: completion!.id,
-        completedBy: target.assignedTo,
+        completionId: completion.id,
+        completedBy: assigneeId,
         pending: isPending,
       });
     } catch (error) {
