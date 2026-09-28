@@ -186,7 +186,7 @@ export const CalendarWidget = React.memo(function CalendarWidget({
       else if (variant === 'event') {
         const ev = events.find((e) => e.id === itemId);
         if (!ev) return;
-        await moveEvent(itemId, ev.startTime, ev.endTime, targetBucket.date);
+        await moveEvent(ev, targetBucket.date);
       }
     } catch (err) {
       setMoveError(err instanceof Error ? err.message : t('errors.moveFailed'));

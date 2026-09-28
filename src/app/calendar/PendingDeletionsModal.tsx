@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import type { PendingDeletion } from '@/lib/hooks/usePendingDeletions';
 import { useTimeFormat } from '@/components/providers';
-import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
+import { eventStartDisplayDate, formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
 import { useDateLabels } from '@/lib/hooks/useDateLabels';
 
 /**
@@ -105,7 +105,7 @@ export function PendingDeletionsModal({
                     <span className="font-medium">{p.title}</span>
                     <span className="block text-xs text-muted-foreground">
                       {p.allDay
-                        ? d.weekdayMonthDay(toDisplayDate(parseISO(p.startTime), displayTimezone))
+                        ? d.weekdayMonthDay(eventStartDisplayDate(parseISO(p.startTime), true))
                         : `${d.weekdayMonthDay(toDisplayDate(parseISO(p.startTime), displayTimezone))} · ${formatDisplayTime(parseISO(p.startTime), timeFormat, {}, displayTimezone)}`}
                     </span>
                     <span className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap">

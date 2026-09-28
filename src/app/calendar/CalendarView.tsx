@@ -69,7 +69,7 @@ import { TaskModal } from '@/app/tasks/TaskModal';
 import { useChoreModals } from '@/app/chores/useChoreModals';
 import type { OverlayItemRef } from '@/components/calendar/cells';
 import type { Chore, Task, Meal } from '@/types';
-import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
+import { eventStartDisplayDate, formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
 import { readResponseError } from '@/lib/utils/responseError';
 
 const MEAL_TYPE_ORDER = { breakfast: 0, lunch: 1, snack: 2, dinner: 3 } as const;
@@ -321,7 +321,7 @@ export function CalendarView() {
       else if (variant === 'event') {
         const ev = events.find((e) => e.id === itemId);
         if (!ev) return;
-        await moveEvent(itemId, ev.startTime, ev.endTime, targetBucket.date);
+        await moveEvent(ev, targetBucket.date);
       }
     } catch (err) {
       setMoveError(err instanceof Error ? err.message : t('errors.moveFailed'));
@@ -807,7 +807,7 @@ function EventDetailModal({ event, onClose, onEdit, onDeleted }: {
         <h2 className="text-xl font-bold mb-2">{event.title}</h2>
         <p className="text-sm text-muted-foreground mb-1">
           {event.allDay
-            ? d.weekdayLongMonthDay(toDisplayDate(event.startTime, displayTimezone))
+            ? d.weekdayLongMonthDay(eventStartDisplayDate(event.startTime, true))
             : t('dateAtTime', {
                 date: d.weekdayLongMonthDay(toDisplayDate(event.startTime, displayTimezone)),
                 time: formatDisplayTime(event.startTime, timeFormat, {}, displayTimezone),

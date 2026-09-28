@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, createContext } from 'react'
 import { addDays, addWeeks, addMonths, subDays, subWeeks, subMonths } from 'date-fns';
 import type { OverlayFlags } from '@/lib/hooks/useDayBucketsForRange';
 import { useTimeFormat } from '@/components/providers';
+import { useFollowToday } from '@/lib/hooks/useFollowToday';
 import { toDisplayDate } from '@/lib/utils/timeFormat';
 
 /**
@@ -106,6 +107,7 @@ export function useCalendarWidgetPrefs(gridW: number, gridH: number, scope = '')
   useEffect(() => {
     setCurrentDate(toDisplayDate(new Date(), displayTimezone));
   }, [displayTimezone]);
+  useFollowToday(currentDate, setCurrentDate, displayTimezone);
   const [widgetBordered, setWidgetBordered] = useState(
     () => typeof window !== 'undefined' && localStorage.getItem(`prism-calendar-bordered${suffix}`) === 'true'
   );

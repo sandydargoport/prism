@@ -30,7 +30,7 @@ import type { useDashboardData } from './useDashboardData';
 import type { CalendarEvent } from '@/types/calendar';
 import type { BusRouteStatus, BusPrediction } from '@/lib/hooks/useBusTracking';
 import { useTimeFormat } from '@/components/providers';
-import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
+import { eventStartDisplayDate, formatDisplayTime, isCalendarEventPast, toDisplayDate } from '@/lib/utils/timeFormat';
 import { useLocalDateKey } from '@/lib/hooks/useLocalDateKey';
 
 type DashData = ReturnType<typeof useDashboardData>;
@@ -108,11 +108,13 @@ export function CalendarCard({ data }: { data: DashData['calendar'] }) {
   const upcoming = useMemo(() => {
     if (!data.events) return [];
     const now = new Date();
+    // All-day ends are floating dates: compared as instants, today's all-day
+    // event vanished at 7 PM west of UTC and lingered into tomorrow east of it.
     return data.events
-      .filter((e: CalendarEvent) => e.endTime > now)
+      .filter((e: CalendarEvent) => !isCalendarEventPast(e.startTime, e.endTime, e.allDay, now, displayTimezone))
       .sort((a: CalendarEvent, b: CalendarEvent) => a.startTime.getTime() - b.startTime.getTime())
       .slice(0, 3);
-  }, [data.events]);
+  }, [data.events, displayTimezone]);
 
   return (
     <CardShell href="/calendar" icon={<Calendar className="h-4 w-4 text-blue-500" />} title="Calendar" count={upcoming.length}>
@@ -121,16 +123,19 @@ export function CalendarCard({ data }: { data: DashData['calendar'] }) {
       ) : (
         <div className="space-y-1">
           {upcoming.map((e: CalendarEvent) => {
-            const displayStart = toDisplayDate(e.startTime, displayTimezone);
+            const displayStart = eventStartDisplayDate(e.startTime, e.allDay, displayTimezone);
             const displayNow = toDisplayDate(new Date(), displayTimezone);
+            // An all-day event has no time to show; its stored midnight would
+            // read as the previous evening west of UTC.
+            const time = e.allDay ? 'All day' : formatDisplayTime(e.startTime, timeFormat, {}, displayTimezone);
             return (
             <div key={e.id} className="flex items-center gap-2 text-xs">
               <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: e.color }} />
               <span className="truncate flex-1">{e.title}</span>
               <span className="text-muted-foreground shrink-0">
-                {isSameDay(displayStart, displayNow) ? formatDisplayTime(e.startTime, timeFormat, {}, displayTimezone) :
-                 isSameDay(displayStart, addDays(displayNow, 1)) ? `Tomorrow ${formatDisplayTime(e.startTime, timeFormat, {}, displayTimezone)}` :
-                 `${format(displayStart, 'EEE')} ${formatDisplayTime(e.startTime, timeFormat, {}, displayTimezone)}`}
+                {isSameDay(displayStart, displayNow) ? time :
+                 isSameDay(displayStart, addDays(displayNow, 1)) ? `Tomorrow ${time}` :
+                 `${format(displayStart, 'EEE')} ${time}`}
               </span>
             </div>
             );

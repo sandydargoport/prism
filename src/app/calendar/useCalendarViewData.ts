@@ -19,6 +19,7 @@ import { deduplicateEvents } from '@/lib/utils/calendarDedup';
 import { getFullCalendarRange, MAX_CALENDAR_EVENTS } from '@/lib/utils/calendarRange';
 import type { CalendarEvent } from '@/types/calendar';
 import { useTimeFormat } from '@/components/providers';
+import { useFollowToday } from '@/lib/hooks/useFollowToday';
 import { toDisplayDate } from '@/lib/utils/timeFormat';
 
 export type CalendarViewType = 'agenda' | 'day' | 'week' | 'weekVertical' | 'multiWeek' | 'month' | 'threeMonth';
@@ -40,6 +41,7 @@ export function useCalendarViewData() {
   useEffect(() => {
     setCurrentDate(toDisplayDate(new Date(), displayTimezone));
   }, [displayTimezone]);
+  useFollowToday(currentDate, setCurrentDate, displayTimezone);
   const [viewType, setViewTypeState] = useState<CalendarViewType>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('prism-calendar-view-type') as CalendarViewType | null;

@@ -1,9 +1,11 @@
 'use client';
 
 import { useCallback } from 'react';
-import { format, startOfWeek, startOfDay } from 'date-fns';
+import { format, startOfWeek } from 'date-fns';
 import { DAYS_OF_WEEK, type DayOfWeek } from '@/lib/constants/days';
 import { useWeekStartsOn } from '@/lib/hooks/useWeekStartsOn';
+import { useTimeFormat } from '@/components/providers';
+import { moveEventToDay } from '@/lib/utils/eventMove';
 
 interface UseWeekMutationsOptions {
   /** Called after a successful mutation to re-fetch upstream data. */
@@ -12,9 +14,12 @@ interface UseWeekMutationsOptions {
 
 interface UseWeekMutationsResult {
   moveChore: (choreId: string, targetDate: Date) => Promise<void>;
-  moveTask: (taskId: string, targetDate: Date, originalDue?: Date | null) => Promise<void>;
+  moveTask: (taskId: string, targetDate: Date) => Promise<void>;
   moveMeal: (mealId: string, targetDate: Date) => Promise<void>;
-  moveEvent: (eventId: string, originalStart: Date, originalEnd: Date, targetDate: Date) => Promise<void>;
+  moveEvent: (
+    event: { id: string; startTime: Date; endTime: Date; allDay: boolean },
+    targetDate: Date,
+  ) => Promise<void>;
 }
 
 async function patchJson(url: string, body: unknown): Promise<void> {
@@ -35,6 +40,7 @@ async function patchJson(url: string, body: unknown): Promise<void> {
 
 export function useWeekMutations({ refresh }: UseWeekMutationsOptions): UseWeekMutationsResult {
   const { weekStartsOn } = useWeekStartsOn();
+  const { displayTimezone } = useTimeFormat();
 
   const moveChore = useCallback(
     async (choreId: string, targetDate: Date) => {
@@ -71,18 +77,19 @@ export function useWeekMutations({ refresh }: UseWeekMutationsOptions): UseWeekM
   );
 
   const moveEvent = useCallback(
-    async (eventId: string, originalStart: Date, originalEnd: Date, targetDate: Date) => {
-      // Preserve time-of-day; shift only the date portion to the target.
-      const dayOffsetMs = startOfDay(targetDate).getTime() - startOfDay(originalStart).getTime();
-      const newStart = new Date(originalStart.getTime() + dayOffsetMs);
-      const newEnd = new Date(originalEnd.getTime() + dayOffsetMs);
-      await patchJson(`/api/events/${eventId}`, {
-        startTime: newStart.toISOString(),
-        endTime: newEnd.toISOString(),
+    async (
+      event: { id: string; startTime: Date; endTime: Date; allDay: boolean },
+      targetDate: Date,
+    ) => {
+      // The grid day is a date; keep the event's time of day (see eventMove.ts).
+      const moved = moveEventToDay(event, format(targetDate, 'yyyy-MM-dd'), displayTimezone);
+      await patchJson(`/api/events/${event.id}`, {
+        startTime: moved.startTime.toISOString(),
+        endTime: moved.endTime.toISOString(),
       });
       await refresh();
     },
-    [refresh],
+    [refresh, displayTimezone],
   );
 
   return { moveChore, moveTask, moveMeal, moveEvent };

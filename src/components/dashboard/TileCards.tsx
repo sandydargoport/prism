@@ -14,7 +14,7 @@ import { DAYS_OF_WEEK } from '@/lib/constants/days';
 import type { useDashboardData } from './useDashboardData';
 import type { BusRouteStatus, BusPrediction } from '@/lib/hooks/useBusTracking';
 import { useTimeFormat } from '@/components/providers';
-import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
+import { formatDisplayTime, isCalendarEventPast, toDisplayDate } from '@/lib/utils/timeFormat';
 import { useLocalDateKey } from '@/lib/hooks/useLocalDateKey';
 
 type DashData = ReturnType<typeof useDashboardData>;
@@ -93,13 +93,15 @@ export function ClockTile() {
 }
 
 export function CalendarTile({ data }: { data: DashData['calendar'] }) {
+  const { displayTimezone } = useTimeFormat();
   const upcoming = useMemo(() => {
     if (!data.events) return [];
     const now = new Date();
+    // All-day ends are floating dates, not instants (see isCalendarEventPast).
     return data.events
-      .filter((e) => new Date(e.endTime) >= now)
+      .filter((e) => !isCalendarEventPast(e.startTime, e.endTime, e.allDay, now, displayTimezone))
       .slice(0, 2);
-  }, [data.events]);
+  }, [data.events, displayTimezone]);
   return (
     <TileShell href="/calendar" icon={<Calendar className="h-4 w-4 text-blue-500" />} title="Calendar">
       {upcoming.length === 0

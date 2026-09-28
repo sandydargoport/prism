@@ -91,6 +91,19 @@ function getUtcDateKey(date: Date): string {
  * UTC midnight of the same calendar date. Server-side only, since the local
  * fields are the process timezone's.
  */
+/**
+ * A local Date for labelling the day an event starts on. An all-day event's
+ * start is UTC midnight of its date, read here with the UTC getters: through
+ * toDisplayDate it would be the previous evening west of UTC, and its label
+ * a day early. A timed event is its wall clock in `timeZone`.
+ */
+export function eventStartDisplayDate(startTime: Date, allDay: boolean, timeZone?: string): Date {
+  if (allDay) {
+    return new Date(startTime.getUTCFullYear(), startTime.getUTCMonth(), startTime.getUTCDate());
+  }
+  return toDisplayDate(startTime, timeZone);
+}
+
 export function localDateToFloatingAllDay(date: Date): Date {
   return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
 }
