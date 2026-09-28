@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useMemo, createContext, useContext } from 'react';
-import { DAYS_OF_WEEK } from '@/lib/constants/days';
 import type { MobileLayoutMode } from '@/lib/hooks/useMobileLayout';
-import { addDays, format, isSameDay, parseISO, startOfWeek } from 'date-fns';
+import { addDays, format, isSameDay, parseISO } from 'date-fns';
 import Link from 'next/link';
 import {
   Calendar,
@@ -206,15 +205,14 @@ export function ShoppingCard({ data }: { data: DashData['shopping'] }) {
 }
 
 export function MealsCard({ data }: { data: DashData['meals'] }) {
+  const today = useLocalDateKey();
   const todayMeal = useMemo(() => {
     if (!data.meals) return null;
-    const todayDay = DAYS_OF_WEEK[new Date().getDay()];
-    const currentWeekOf = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
-    const thisWeek = data.meals.filter((m) => m.weekOf === currentWeekOf);
-    return thisWeek.find((m) => m.dayOfWeek === todayDay && m.mealType === 'dinner')
-      || thisWeek.find((m) => m.dayOfWeek === todayDay)
-      || null;
-  }, [data.meals]);
+    // Match on the absolute date: weekOf depends on the week-start setting
+    // the meal was saved under, so it cannot be recomputed here.
+    const todays = data.meals.filter((m) => m.date === today);
+    return todays.find((m) => m.mealType === 'dinner') || todays[0] || null;
+  }, [data.meals, today]);
 
   return (
     <CardShell href="/meals" icon={<UtensilsCrossed className="h-4 w-4 text-amber-500" />} title="Meals">

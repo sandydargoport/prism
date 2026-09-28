@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { format, startOfWeek } from 'date-fns';
+import { format } from 'date-fns';
 import Link from 'next/link';
 import {
   Calendar, Cloud, Sun, CloudRain, CloudSnow, CloudSun,
@@ -10,7 +10,6 @@ import {
   Image as ImageIcon, ChefHat, ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { DAYS_OF_WEEK } from '@/lib/constants/days';
 import type { useDashboardData } from './useDashboardData';
 import type { BusRouteStatus, BusPrediction } from '@/lib/hooks/useBusTracking';
 import { useTimeFormat } from '@/components/providers';
@@ -163,15 +162,14 @@ export function ShoppingTile({ data }: { data: DashData['shopping'] }) {
 }
 
 export function MealsTile({ data }: { data: DashData['meals'] }) {
+  const today = useLocalDateKey();
   const todayMeal = useMemo(() => {
     if (!data.meals) return null;
-    const todayDay = DAYS_OF_WEEK[new Date().getDay()];
-    const currentWeekOf = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
-    const thisWeek = data.meals.filter((m) => m.weekOf === currentWeekOf);
-    return thisWeek.find((m) => m.dayOfWeek === todayDay && m.mealType === 'dinner')
-      ?? thisWeek.find((m) => m.dayOfWeek === todayDay)
-      ?? null;
-  }, [data.meals]);
+    // Match on the absolute date: weekOf depends on the week-start setting
+    // the meal was saved under, so it cannot be recomputed here.
+    const todays = data.meals.filter((m) => m.date === today);
+    return todays.find((m) => m.mealType === 'dinner') ?? todays[0] ?? null;
+  }, [data.meals, today]);
   return (
     <TileShell href="/meals" icon={<UtensilsCrossed className="h-4 w-4 text-pink-500" />} title="Meals">
       {todayMeal

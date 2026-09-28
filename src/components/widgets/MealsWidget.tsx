@@ -4,10 +4,11 @@ import * as React from 'react';
 import { Emoji } from '@/components/ui/Emoji';
 import { DAYS_OF_WEEK_MON_FIRST, DAYS_OF_WEEK, type DayOfWeek } from '@/lib/constants/days';
 import { useState, useMemo, useCallback } from 'react';
-import { format, startOfWeek, addDays, parseISO } from 'date-fns';
+import { format, startOfWeek, addDays, parseISO, differenceInCalendarDays } from 'date-fns';
 import { UtensilsCrossed, Plus, ChevronLeft, ChevronRight, Clock, CheckCircle2, Undo2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWeekStartsOn } from '@/lib/hooks/useWeekStartsOn';
+import { useLocalDateKey } from '@/lib/hooks/useLocalDateKey';
 import { WidgetContainer, WidgetEmpty } from './WidgetContainer';
 import { Button, Badge, UserAvatar } from '@/components/ui';
 import { Input } from '@/components/ui/input';
@@ -47,17 +48,22 @@ export const MealsWidget = React.memo(function MealsWidget({
   className,
 }: MealsWidgetProps) {
   const { weekStartsOn } = useWeekStartsOn();
-  const today = new Date();
+  const todayKey = useLocalDateKey();
+  const today = parseISO(todayKey);
   const defaultWeekStart = startOfWeek(today, { weekStartsOn });
-  const [currentWeek, setCurrentWeek] = useState<Date>(
-    weekOf ? startOfWeek(parseISO(weekOf), { weekStartsOn }) : defaultWeekStart
+  // Weeks away from the current one, not an absolute week: a wall display is
+  // never reloaded, and an absolute week captured at mount would keep showing
+  // it after midnight moves "today" into the next week.
+  const [weekOffset, setWeekOffset] = useState(() =>
+    weekOf ? Math.round(differenceInCalendarDays(parseISO(weekOf), defaultWeekStart) / 7) : 0
   );
+  const currentWeek = addDays(defaultWeekStart, weekOffset * 7);
   const [showAddModal, setShowAddModal] = useState(false);
 
   const allMeals = externalMeals || [];
   const weekOfString = format(currentWeek, 'yyyy-MM-dd');
   const weekEndString = format(addDays(currentWeek, 6), 'yyyy-MM-dd');
-  const isCurrentWeek = weekOfString === format(defaultWeekStart, 'yyyy-MM-dd');
+  const isCurrentWeek = weekOffset === 0;
 
   const { weekMeals, mealsByDay } = useMemo(() => {
     // Filter by the meal's absolute date within the visible 7-day window. This
@@ -71,19 +77,17 @@ export const MealsWidget = React.memo(function MealsWidget({
   }, [allMeals, weekOfString, weekEndString]);
 
   const goToPreviousWeek = useCallback(() => {
-    const newWeek = addDays(currentWeek, -7);
-    setCurrentWeek(newWeek);
-    onWeekChange?.(format(newWeek, 'yyyy-MM-dd'));
+    setWeekOffset((o) => o - 1);
+    onWeekChange?.(format(addDays(currentWeek, -7), 'yyyy-MM-dd'));
   }, [currentWeek, onWeekChange]);
 
   const goToNextWeek = useCallback(() => {
-    const newWeek = addDays(currentWeek, 7);
-    setCurrentWeek(newWeek);
-    onWeekChange?.(format(newWeek, 'yyyy-MM-dd'));
+    setWeekOffset((o) => o + 1);
+    onWeekChange?.(format(addDays(currentWeek, 7), 'yyyy-MM-dd'));
   }, [currentWeek, onWeekChange]);
 
   const goToThisWeek = useCallback(() => {
-    setCurrentWeek(defaultWeekStart);
+    setWeekOffset(0);
     onWeekChange?.(format(defaultWeekStart, 'yyyy-MM-dd'));
   }, [defaultWeekStart, onWeekChange]);
 
@@ -149,7 +153,7 @@ export const MealsWidget = React.memo(function MealsWidget({
                 const dayDate = addDays(currentWeek, index);
                 const day = DAYS_OF_WEEK[dayDate.getDay()]!; // getDay() is 0–6
                 const dayMeals = mealsByDay[day] || [];
-                const isToday = format(dayDate, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd');
+                const isToday = format(dayDate, 'yyyy-MM-dd') === todayKey;
                 return (
                   <DaySection
                     key={day}

@@ -3,41 +3,23 @@ import { voiceOk, voiceError } from '@/lib/api/voiceResponse';
 import { phraseTodayMeals } from '@/lib/api/voicePhrases';
 import { db } from '@/lib/db/client';
 import { meals } from '@/lib/db/schema';
-import { and, eq, gte, lte } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { logError } from '@/lib/utils/logError';
-
-const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
-type DayName = (typeof DAY_NAMES)[number];
-
-function todayDayName(now = new Date()): DayName {
-  return DAY_NAMES[now.getDay()]!;
-}
-
-function localDateString(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
+import { getHouseholdTimezone } from '@/lib/householdTimezone';
+import { todayKey } from '@/lib/utils/zonedDate';
 
 /**
  * GET /api/v1/voice/meals/today
  *
  * Returns today's planned meals (breakfast, lunch, dinner, snack), ordered.
- * Looks for meal entries whose `dayOfWeek` matches today's day name and
- * whose `weekOf` falls within the surrounding ±7 days. This works regardless
- * of whether the household configures the week to start on Sunday or Monday.
+ * "Today" is the household's date, and meals match on their absolute `date`,
+ * so the result does not depend on the server's zone or on which weekday the
+ * household's week starts.
  */
 export async function GET() {
   return withAuth(async () => {
     try {
-      const now = new Date();
-      const dayName = todayDayName(now);
-
-      const minus7 = new Date(now);
-      minus7.setDate(minus7.getDate() - 7);
-      const plus1 = new Date(now);
-      plus1.setDate(plus1.getDate() + 1);
+      const today = todayKey(await getHouseholdTimezone());
 
       const rows = await db
         .select({
@@ -47,13 +29,7 @@ export async function GET() {
           mealTime: meals.mealTime,
         })
         .from(meals)
-        .where(
-          and(
-            eq(meals.dayOfWeek, dayName),
-            gte(meals.weekOf, localDateString(minus7)),
-            lte(meals.weekOf, localDateString(plus1)),
-          ),
-        );
+        .where(eq(meals.date, today));
 
       // Order by mealType (breakfast → lunch → dinner → snack) for spoken output.
       const order: Record<string, number> = { breakfast: 0, lunch: 1, dinner: 2, snack: 3 };

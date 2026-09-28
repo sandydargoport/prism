@@ -49,7 +49,7 @@ export function AddToMealPlanSection({ recipe }: { recipe: Recipe }) {
     if (!await requireAuth('Add to Meal Plan', 'Please log in to add meals')) return;
     setSaving(true);
     try {
-      const weekOf = format(startOfWeek(selectedDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+      const weekOf = format(startOfWeek(selectedDate, { weekStartsOn }), 'yyyy-MM-dd');
       const dayOfWeek = format(selectedDate, 'EEEE').toLowerCase();
       const res = await fetch('/api/meals', {
         method: 'POST',
