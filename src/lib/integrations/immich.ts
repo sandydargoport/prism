@@ -79,6 +79,11 @@ export interface ImmichAsset {
   originalMimeType: string;
   type: 'IMAGE' | 'VIDEO' | 'OTHER';
   fileCreatedAt: string;
+  /**
+   * When the photo was taken on the camera's clock, written as if it were UTC
+   * (Immich's localDateTime). The same form OneDrive gives takenDateTime in.
+   */
+  localDateTime: string | null;
   width: number | null;
   height: number | null;
   latitude: number | null;
@@ -153,6 +158,7 @@ interface RawAsset {
   originalMimeType: string;
   type: 'IMAGE' | 'VIDEO' | 'AUDIO' | 'OTHER';
   fileCreatedAt: string;
+  localDateTime?: string | null;
   width?: number | null;
   height?: number | null;
   exifInfo?: { latitude?: number | null; longitude?: number | null } | null;
@@ -175,6 +181,7 @@ function mapAssets(rawAssets: RawAsset[]): ImmichAsset[] {
       originalMimeType: a.originalMimeType,
       type: a.type === 'IMAGE' || a.type === 'VIDEO' || a.type === 'OTHER' ? a.type : 'OTHER',
       fileCreatedAt: a.fileCreatedAt,
+      localDateTime: a.localDateTime ?? null,
       width: a.width ?? null,
       height: a.height ?? null,
       latitude: a.exifInfo?.latitude ?? null,

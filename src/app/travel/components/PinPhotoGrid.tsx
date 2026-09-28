@@ -3,6 +3,17 @@
 import { useEffect, useState } from 'react';
 import { Image as ImageIcon, MapPin, RefreshCw } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { floatingUtcToDateKey } from '@/lib/utils/zonedDate';
+
+/**
+ * The day a photo was taken, for its label. takenAt is the camera's clock
+ * time written as UTC, so its date is the UTC one; read on the local clock
+ * it moved an evening photo to the next day east of UTC and a morning one to
+ * the previous day west of it.
+ */
+function takenDate(takenAt: string): Date {
+  return parseISO(floatingUtcToDateKey(new Date(takenAt)));
+}
 import { cn } from '@/lib/utils';
 
 interface NearbyPhoto {
@@ -98,7 +109,7 @@ export function PinPhotoGrid({ pinId, radiusKm }: PinPhotoGridProps) {
               key={photo.id}
               onClick={() => setLightbox(photo)}
               className="relative aspect-square rounded overflow-hidden bg-muted hover:opacity-90 transition-opacity focus-visible:ring-2 focus-visible:ring-primary"
-              title={photo.takenAt ? format(parseISO(photo.takenAt), 'MMM d, yyyy') : undefined}
+              title={photo.takenAt ? format(takenDate(photo.takenAt), 'MMM d, yyyy') : undefined}
             >
               {photo.thumbnailPath ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -132,7 +143,7 @@ export function PinPhotoGrid({ pinId, radiusKm }: PinPhotoGridProps) {
               className="max-h-[80vh] max-w-full rounded-lg object-contain"
             />
             <div className="text-white/80 text-xs text-center">
-              {lightbox.takenAt && format(parseISO(lightbox.takenAt), 'MMMM d, yyyy')}
+              {lightbox.takenAt && format(takenDate(lightbox.takenAt), 'MMMM d, yyyy')}
               {' · '}
               {lightbox.latitude.toFixed(4)}, {lightbox.longitude.toFixed(4)}
             </div>

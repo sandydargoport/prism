@@ -11,6 +11,7 @@ const mockSelectFrom = jest.fn();
 const mockInsertValues = jest.fn().mockResolvedValue(undefined);
 const mockDeleteWhere = jest.fn().mockResolvedValue(undefined);
 const mockUpdateSetWhere = jest.fn().mockResolvedValue(undefined);
+const mockUpdateSet = jest.fn();
 
 jest.mock('@/lib/db/client', () => ({
   db: {
@@ -22,7 +23,7 @@ jest.mock('@/lib/db/client', () => ({
     select: () => ({ from: () => ({ where: (...args: unknown[]) => mockSelectFrom(...args) }) }),
     insert: () => ({ values: (...args: unknown[]) => mockInsertValues(...args) }),
     delete: () => ({ where: (...args: unknown[]) => mockDeleteWhere(...args) }),
-    update: () => ({ set: () => ({ where: (...args: unknown[]) => mockUpdateSetWhere(...args) }) }),
+    update: () => ({ set: (v: unknown) => { mockUpdateSet(v); return { where: (...args: unknown[]) => mockUpdateSetWhere(...args) }; } }),
   },
 }));
 
@@ -76,7 +77,7 @@ jest.mock('@/lib/utils/crypto', () => ({
   encrypt: jest.fn((val: string) => `encrypted-${val}`),
 }));
 
-import { syncOneDriveSource, syncImmichSource } from '../photo-sync';
+import { syncOneDriveSource, syncImmichSource, immichTakenAt } from '../photo-sync';
 
 const validSource = {
   id: 'source-1',
@@ -425,6 +426,43 @@ describe('syncImmichSource', () => {
     // The GPS backfill update + the final lastSynced update both go through
     // mockUpdateSetWhere; both should fire.
     expect(mockUpdateSetWhere).toHaveBeenCalled();
+  });
+
+  describe('takenAt on the camera clock', () => {
+    // Taken at 21:30 on 1 June by a camera in Chicago: Immich's localDateTime
+    // is that wall time written as UTC, fileCreatedAt the true instant.
+    const local = '2025-06-01T21:30:00.000Z';
+    const instant = '2025-06-02T02:30:00.000Z';
+
+    it('stores localDateTime, the form OneDrive uses, so dedupe keys match', async () => {
+      mockFetchSharedLink.mockResolvedValue({
+        albumId: 'album-1', albumName: null, allowDownload: true, hasPassword: false,
+        assets: [makeAsset({ id: 'a1', localDateTime: local, fileCreatedAt: instant })],
+      });
+      await syncImmichSource('immich-source-1');
+      const row = mockInsertValues.mock.calls[0][0];
+      expect(row.takenAt.toISOString()).toBe(local);
+      expect(row.dedupeKey).toBe(`${local}_4032x3024`);
+    });
+
+    it('falls back to fileCreatedAt when there is no local time', () => {
+      expect(immichTakenAt({ fileCreatedAt: instant })?.toISOString()).toBe(instant);
+      expect(immichTakenAt({ localDateTime: null, fileCreatedAt: '' })).toBeNull();
+    });
+
+    it('corrects a row synced with the instant, and its dedupe key', async () => {
+      mockFetchSharedLink.mockResolvedValue({
+        albumId: 'album-1', albumName: null, allowDownload: true, hasPassword: false,
+        assets: [makeAsset({ id: 'a1', localDateTime: local, fileCreatedAt: instant, latitude: 1, longitude: 2 })],
+      });
+      mockSelectFrom.mockResolvedValue([
+        { id: 'photo-1', externalId: 'a1', takenAt: new Date(instant), width: 4032, height: 3024, latitude: '1', longitude: '2' },
+      ]);
+      await syncImmichSource('immich-source-1');
+      const fix = mockUpdateSet.mock.calls.map((c) => c[0]).find((v) => v.takenAt);
+      expect(fix.takenAt.toISOString()).toBe(local);
+      expect(fix.dedupeKey).toBe(`${local}_4032x3024`);
+    });
   });
 
   it('caches the album ID on first successful sync', async () => {

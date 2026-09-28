@@ -1283,7 +1283,9 @@ export const photos = pgTable('photos', {
   height: integer('height'),
   sizeBytes: integer('size_bytes'),
 
-  // When the photo was taken (from EXIF or file date)
+  // When the photo was taken (from EXIF or file date), on the camera's clock
+  // written as UTC: EXIF carries no zone, and OneDrive reports it this way.
+  // Read its date and time with the UTC getters (see immichTakenAt).
   takenAt: timestamp('taken_at'),
 
   // External ID for synced photos (e.g., OneDrive item ID)

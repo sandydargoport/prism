@@ -58,6 +58,20 @@ export function computeDedupeKey(
   return `${ts.toISOString()}_${width}x${height}`;
 }
 
+/**
+ * When an Immich photo was taken, in the form photos.takenAt holds: the
+ * camera's clock time written as UTC. That is what OneDrive's takenDateTime
+ * is, and matching it is what lets computeDedupeKey find the same photo in
+ * both. fileCreatedAt, the true instant, is the fallback when Immich has no
+ * local time.
+ */
+export function immichTakenAt(asset: { localDateTime?: string | null; fileCreatedAt?: string | null }): Date | null {
+  const raw = asset.localDateTime || asset.fileCreatedAt;
+  if (!raw) return null;
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 export async function syncOneDriveSource(sourceId: string) {
   // Fetch the source
   const source = await db.query.photoSources.findFirst({
@@ -289,6 +303,7 @@ export async function syncImmichSource(sourceId: string) {
   // Only sync image assets — video/other types aren't displayed in the gallery.
   const remoteImages = link.assets.filter((a) => a.type === 'IMAGE');
   const remoteIds = new Set(remoteImages.map((a) => a.id));
+  const remoteById = new Map(remoteImages.map((a) => [a.id, a]));
 
   const existingPhotos = await db
     .select()
@@ -316,7 +331,7 @@ export async function syncImmichSource(sourceId: string) {
     if (existingExternalIds.has(asset.id)) continue;
     if (excludedIds.has(asset.id)) continue;
 
-    const takenAt = asset.fileCreatedAt ? new Date(asset.fileCreatedAt) : null;
+    const takenAt = immichTakenAt(asset);
 
     await db.insert(photos).values({
       sourceId,
@@ -336,6 +351,20 @@ export async function syncImmichSource(sourceId: string) {
       orientation: orientationFromDimensions(asset.width, asset.height),
       dedupeKey: computeDedupeKey(takenAt, asset.width, asset.height),
     });
+  }
+
+  // Rows synced before takenAt used the camera clock hold the UTC instant,
+  // which gives a different dedupe key from the same photo on OneDrive.
+  // Correct them as they are seen.
+  for (const existing of existingPhotos) {
+    const remote = existing.externalId ? remoteById.get(existing.externalId) : undefined;
+    if (!remote) continue;
+    const takenAt = immichTakenAt(remote);
+    if (!takenAt || existing.takenAt?.getTime() === takenAt.getTime()) continue;
+    await db
+      .update(photos)
+      .set({ takenAt, dedupeKey: computeDedupeKey(takenAt, existing.width, existing.height) })
+      .where(eq(photos.id, existing.id));
   }
 
   // Backfill GPS for existing rows whose coordinates are still null but
