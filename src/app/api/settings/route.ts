@@ -12,6 +12,7 @@ import { isSetupComplete } from '@/lib/setup';
 import { getBuiltinTheme } from '@/lib/themes/appThemes';
 import { isInstallableTheme, MAX_INSTALLED_THEMES } from '@/lib/themes/tokens';
 import { isValidTimezone } from '@/lib/utils/timezone';
+import { invalidateHouseholdTimezoneCache } from '@/lib/householdTimezone';
 import { TELEMETRY_SETTING_KEYS } from '@/lib/telemetry/constants';
 
 /**
@@ -187,6 +188,9 @@ export async function PATCH(request: NextRequest) {
     // Invalidate related caches when specific settings change
     if (body.key === 'location') {
       await invalidateEntity('weather');
+    }
+    if (body.key === 'timezone') {
+      invalidateHouseholdTimezoneCache();
     }
 
     return NextResponse.json({ key: body.key, value: body.value });

@@ -19,7 +19,7 @@ export function isDisplayTimezoneMode(value: unknown): value is DisplayTimezoneM
 // a formatter per call turns a month view into seconds of jank. Cache one
 // formatter per timezone; formatToParts on a cached instance is cheap.
 const wallClockFormatterCache = new Map<string, Intl.DateTimeFormat>();
-function getWallClockFormatter(timeZone: string): Intl.DateTimeFormat {
+export function getWallClockFormatter(timeZone: string): Intl.DateTimeFormat {
   let formatter = wallClockFormatterCache.get(timeZone);
   if (!formatter) {
     formatter = new Intl.DateTimeFormat('en-GB', {
