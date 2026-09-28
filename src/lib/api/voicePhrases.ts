@@ -138,15 +138,32 @@ export function phraseBusStatus(routes: SpeakableBusRoute[], opts: { student?: s
 interface SpeakableBirthday {
   name: string;
   eventType: string;
-  next: Date;
+  /** Date key (YYYY-MM-DD) of the next occurrence. */
+  next: string;
+  /** Whole calendar days from today to `next`. */
+  daysUntil: number;
   turning: number | null;
 }
 
-export function phraseUpcomingBirthdays(items: SpeakableBirthday[], now = new Date()): string {
+/**
+ * relativeDayLabel for a date key. Reads the date with the UTC getters so the
+ * label names the date as stored, whatever zone the server runs in.
+ */
+function relativeDateKeyLabel(dateKey: string, daysUntil: number): string {
+  if (daysUntil === 0) return 'today';
+  if (daysUntil === 1) return 'tomorrow';
+  const date = new Date(`${dateKey}T00:00:00Z`);
+  if (daysUntil < 7) {
+    return `on ${date.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' })}`;
+  }
+  return `on ${date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' })}`;
+}
+
+export function phraseUpcomingBirthdays(items: SpeakableBirthday[]): string {
   if (items.length === 0) return 'No upcoming birthdays.';
 
   const parts = items.map((b) => {
-    const day = relativeDayLabel(b.next, now);
+    const day = relativeDateKeyLabel(b.next, b.daysUntil);
     const what = b.eventType === 'birthday' ? 'birthday' : b.eventType;
     const turning = b.turning ? `, turning ${b.turning}` : '';
     return `${b.name}'s ${what} ${day}${turning}`;

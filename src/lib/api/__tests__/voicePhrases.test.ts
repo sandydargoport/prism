@@ -224,31 +224,38 @@ describe('phraseBusStatus', () => {
 });
 
 describe('phraseUpcomingBirthdays', () => {
-  const now = new Date('2026-05-02T12:00:00');
-  const at = (offset: number) => {
-    const d = new Date(now);
-    d.setDate(d.getDate() + offset);
-    return d;
-  };
-
   it('handles empty', () => {
-    expect(phraseUpcomingBirthdays([], now)).toBe('No upcoming birthdays.');
+    expect(phraseUpcomingBirthdays([])).toBe('No upcoming birthdays.');
   });
 
   it('renders a single birthday with turning age', () => {
     const out = phraseUpcomingBirthdays([
-      { name: 'Emma', eventType: 'birthday', next: at(2), turning: 8 },
-    ], now);
-    expect(out).toMatch(/Coming up: Emma's birthday on/);
-    expect(out).toContain('turning 8');
+      { name: 'Emma', eventType: 'birthday', next: '2026-05-04', daysUntil: 2, turning: 8 },
+    ]);
+    expect(out).toBe("Coming up: Emma's birthday on Monday, turning 8.");
+  });
+
+  it('says today and tomorrow from daysUntil', () => {
+    const out = phraseUpcomingBirthdays([
+      { name: 'Emma', eventType: 'birthday', next: '2026-05-02', daysUntil: 0, turning: null },
+      { name: 'Sophie', eventType: 'anniversary', next: '2026-05-03', daysUntil: 1, turning: null },
+    ]);
+    expect(out).toBe("Coming up: Emma's birthday today and Sophie's anniversary tomorrow.");
+  });
+
+  it('names the stored date, whatever the process zone', () => {
+    const out = phraseUpcomingBirthdays([
+      { name: 'Alex', eventType: 'birthday', next: '2026-05-22', daysUntil: 20, turning: null },
+    ]);
+    expect(out).toBe("Coming up: Alex's birthday on May 22.");
   });
 
   it('joins multiple with Oxford comma', () => {
     const out = phraseUpcomingBirthdays([
-      { name: 'Emma', eventType: 'birthday', next: at(2), turning: null },
-      { name: 'Sophie', eventType: 'birthday', next: at(10), turning: null },
-      { name: 'Alex', eventType: 'birthday', next: at(20), turning: null },
-    ], now);
+      { name: 'Emma', eventType: 'birthday', next: '2026-05-04', daysUntil: 2, turning: null },
+      { name: 'Sophie', eventType: 'birthday', next: '2026-05-12', daysUntil: 10, turning: null },
+      { name: 'Alex', eventType: 'birthday', next: '2026-05-22', daysUntil: 20, turning: null },
+    ]);
     expect(out).toContain(', and ');
   });
 });

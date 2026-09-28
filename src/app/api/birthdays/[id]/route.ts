@@ -15,6 +15,9 @@ import { dismissBirthday } from '@/lib/services/birthday-detect';
 import { eq } from 'drizzle-orm';
 import { createBirthdaySchema, validateRequest } from '@/lib/validations';
 import { logError } from '@/lib/utils/logError';
+import { getHouseholdTimezone } from '@/lib/householdTimezone';
+import { todayKey } from '@/lib/utils/zonedDate';
+import { birthdayOccurrence } from '@/lib/utils/birthdayOccurrence';
 
 /**
  * Route params type
@@ -58,25 +61,18 @@ export async function GET(
       );
     }
 
-    // Calculate age and days until
-    const birthDate = new Date(birthdayWithUser.birthDate);
-    const today = new Date();
-    const currentYear = today.getFullYear();
-    const age = currentYear - birthDate.getFullYear();
-
-    const nextBirthday = new Date(currentYear, birthDate.getMonth(), birthDate.getDate());
-    if (nextBirthday < today) {
-      nextBirthday.setFullYear(currentYear + 1);
-    }
-    const daysUntil = Math.ceil((nextBirthday.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    const occurrence = birthdayOccurrence(
+      birthdayWithUser.birthDate,
+      todayKey(await getHouseholdTimezone()),
+    );
 
     return NextResponse.json({
       id: birthdayWithUser.id,
       name: birthdayWithUser.name,
       birthDate: birthdayWithUser.birthDate,
-      age,
-      daysUntil,
-      nextBirthday: nextBirthday.toISOString().split('T')[0],
+      age: occurrence?.age ?? null,
+      daysUntil: occurrence?.daysUntil ?? null,
+      nextBirthday: occurrence?.nextBirthday ?? null,
       giftIdeas: birthdayWithUser.giftIdeas,
       sendCardDaysBefore: birthdayWithUser.sendCardDaysBefore,
       createdAt: birthdayWithUser.createdAt.toISOString(),
@@ -178,25 +174,18 @@ export async function PATCH(
       );
     }
 
-    // Calculate age and days until
-    const birthDate = new Date(updatedBirthdayWithUser.birthDate);
-    const today = new Date();
-    const currentYear = today.getFullYear();
-    const age = currentYear - birthDate.getFullYear();
-
-    const nextBirthday = new Date(currentYear, birthDate.getMonth(), birthDate.getDate());
-    if (nextBirthday < today) {
-      nextBirthday.setFullYear(currentYear + 1);
-    }
-    const daysUntil = Math.ceil((nextBirthday.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    const occurrence = birthdayOccurrence(
+      updatedBirthdayWithUser.birthDate,
+      todayKey(await getHouseholdTimezone()),
+    );
 
     return NextResponse.json({
       id: updatedBirthdayWithUser.id,
       name: updatedBirthdayWithUser.name,
       birthDate: updatedBirthdayWithUser.birthDate,
-      age,
-      daysUntil,
-      nextBirthday: nextBirthday.toISOString().split('T')[0],
+      age: occurrence?.age ?? null,
+      daysUntil: occurrence?.daysUntil ?? null,
+      nextBirthday: occurrence?.nextBirthday ?? null,
       giftIdeas: updatedBirthdayWithUser.giftIdeas,
       sendCardDaysBefore: updatedBirthdayWithUser.sendCardDaysBefore,
       createdAt: updatedBirthdayWithUser.createdAt.toISOString(),

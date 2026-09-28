@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { format, differenceInDays, parseISO, startOfWeek } from 'date-fns';
+import { format, startOfWeek } from 'date-fns';
 import Link from 'next/link';
 import {
   Calendar, Cloud, Sun, CloudRain, CloudSnow, CloudSun,
@@ -201,9 +201,9 @@ export function MessagesTile({ data }: { data: DashData['messages'] }) {
 export function BirthdaysTile({ data }: { data: DashData['birthdays'] }) {
   const next = useMemo(() => {
     if (!data.birthdays?.length) return null;
-    const b = data.birthdays[0] as { name: string; nextBirthday?: string };
-    if (!b.nextBirthday) return null;
-    const days = differenceInDays(parseISO(b.nextBirthday), new Date());
+    const b = data.birthdays[0]!;
+    // Calendar days, counted by the server in the household zone.
+    const days = b.daysUntil;
     const label = days === 0 ? 'Today!' : days === 1 ? 'Tomorrow' : `In ${days} days`;
     return { name: b.name, label };
   }, [data.birthdays]);

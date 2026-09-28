@@ -3,7 +3,7 @@
 import React, { useMemo, createContext, useContext } from 'react';
 import { DAYS_OF_WEEK } from '@/lib/constants/days';
 import type { MobileLayoutMode } from '@/lib/hooks/useMobileLayout';
-import { addDays, format, isSameDay, startOfWeek } from 'date-fns';
+import { addDays, format, isSameDay, parseISO, startOfWeek } from 'date-fns';
 import Link from 'next/link';
 import {
   Calendar,
@@ -242,7 +242,7 @@ export function BirthdaysCard({ data }: { data: DashData['birthdays'] }) {
       <div className="space-y-1">
         {upcoming.map((b) => (
           <p key={b.id} className="text-xs text-muted-foreground">
-            {b.name} — {b.nextBirthday ? format(new Date(b.nextBirthday), 'MMM d') : ''}
+            {b.name} — {b.nextBirthday ? format(parseISO(b.nextBirthday), 'MMM d') : ''}
           </p>
         ))}
       </div>

@@ -20,6 +20,9 @@ import { birthdays, users } from '@/lib/db/schema';
 import { eq, asc } from 'drizzle-orm';
 import { createBirthdaySchema, validateRequest } from '@/lib/validations';
 import { logError } from '@/lib/utils/logError';
+import { getHouseholdTimezone } from '@/lib/householdTimezone';
+import { todayKey } from '@/lib/utils/zonedDate';
+import { birthdayOccurrence } from '@/lib/utils/birthdayOccurrence';
 
 /**
  * GET /api/birthdays
@@ -56,48 +59,20 @@ export async function GET(request: NextRequest) {
 
     const results = await query;
 
-    // Calculate age and days until for each birthday
-    // Midnight-normalised. `nextBirthday` below is built at 00:00, so comparing
-    // against a `new Date()` that carries the current time made a birthday that
-    // falls TODAY compare as already past — it rolled to next year and vanished
-    // from the upcoming list. Zeroing the clock also makes daysUntil an exact
-    // whole number of days rather than a ceil() of a fractional one.
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const currentYear = today.getFullYear();
+    // "Today" is the household's calendar date, not the server's.
+    const today = todayKey(await getHouseholdTimezone());
 
-    let formattedBirthdays = results.map(birthday => {
-      const birthDate = new Date(birthday.birthDate);
-      const birthYear = birthDate.getFullYear();
-
-      // Only calculate age if a real year is present (not a placeholder/sentinel)
-      // Synced events without a known year use 1904; manually created ones may have real years
-      const hasYear = birthYear >= 1910 && birthYear <= currentYear;
+    let formattedBirthdays = results.flatMap(birthday => {
+      const occurrence = birthdayOccurrence(birthday.birthDate, today);
+      if (!occurrence) return [];
       const eventType = (birthday.eventType || 'birthday') as 'birthday' | 'anniversary' | 'milestone';
 
-      // Calculate next occurrence
-      const nextBirthday = new Date(currentYear, birthDate.getMonth(), birthDate.getDate());
-      if (nextBirthday < today) {
-        nextBirthday.setFullYear(currentYear + 1);
-      }
-
-      const daysUntil = Math.ceil((nextBirthday.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-      // For birthdays: turning age. For anniversaries/milestones: number of years.
-      let age: number | null = null;
-      if (hasYear) {
-        const nextYear = nextBirthday.getFullYear();
-        age = nextYear - birthYear;
-      }
-
-      return {
+      return [{
         id: birthday.id,
         name: birthday.name,
         birthDate: birthday.birthDate,
         eventType,
-        age,
-        daysUntil,
-        nextBirthday: nextBirthday.toISOString().split('T')[0],
+        ...occurrence,
         giftIdeas: birthday.giftIdeas,
         sendCardDaysBefore: birthday.sendCardDaysBefore,
         createdAt: birthday.createdAt.toISOString(),
@@ -106,7 +81,7 @@ export async function GET(request: NextRequest) {
           name: birthday.userName,
           color: birthday.userColor,
         } : null,
-      };
+      }];
     });
 
     // Filter for upcoming if requested

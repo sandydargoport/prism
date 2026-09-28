@@ -5,14 +5,16 @@ import { phraseUpcomingBirthdays } from '@/lib/api/voicePhrases';
 import { db } from '@/lib/db/client';
 import { birthdays } from '@/lib/db/schema';
 import { logError } from '@/lib/utils/logError';
+import { getHouseholdTimezone } from '@/lib/householdTimezone';
+import { todayKey } from '@/lib/utils/zonedDate';
+import { birthdayOccurrence } from '@/lib/utils/birthdayOccurrence';
 
 /**
  * GET /api/v1/voice/birthdays/upcoming?days=N
  *
  * Returns upcoming birthdays in the next N days (default 30, clamped 1..365).
- * Birthdays are stored as ISO dates with possibly-historic years; we
- * compare on month/day rather than full date to surface upcoming
- * occurrences regardless of original birth year.
+ * "Today" is the household's calendar date. Birthdays with no known year
+ * (stored as 1904) have a null `turning`.
  */
 export async function GET(request: NextRequest) {
   return withAuth(async () => {
@@ -23,35 +25,26 @@ export async function GET(request: NextRequest) {
 
       const all = await db.select().from(birthdays);
 
-      const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const horizon = new Date(today);
-      horizon.setDate(horizon.getDate() + days);
+      const today = todayKey(await getHouseholdTimezone());
 
-      // Build the next occurrence for each entry. If month/day is later this
-      // year it falls in the current year; otherwise it rolls to next year.
       const upcoming = all
         .map((b) => {
-          // birthDate stored as YYYY-MM-DD or as a Date in some drivers; normalize.
-          const raw = typeof b.birthDate === 'string' ? b.birthDate : new Date(b.birthDate).toISOString();
-          const [, monthStr, dayStr] = raw.split('-');
-          const month = parseInt(monthStr ?? '', 10) - 1;
-          const day = parseInt(dayStr ?? '', 10);
-          if (Number.isNaN(month) || Number.isNaN(day)) return null;
-
-          let next = new Date(today.getFullYear(), month, day);
-          if (next < today) next = new Date(today.getFullYear() + 1, month, day);
-
-          const original = parseInt(raw.slice(0, 4), 10);
-          const turning = Number.isFinite(original) && original > 1900 ? next.getFullYear() - original : null;
-
-          return { id: b.id, name: b.name, eventType: b.eventType, next, turning };
+          const occurrence = birthdayOccurrence(b.birthDate, today);
+          if (!occurrence) return null;
+          return {
+            id: b.id,
+            name: b.name,
+            eventType: b.eventType,
+            next: occurrence.nextBirthday,
+            daysUntil: occurrence.daysUntil,
+            turning: occurrence.age,
+          };
         })
         .filter((x): x is NonNullable<typeof x> => x !== null)
-        .filter((x) => x.next <= horizon)
-        .sort((a, b) => a.next.getTime() - b.next.getTime());
+        .filter((x) => x.daysUntil <= days)
+        .sort((a, b) => a.daysUntil - b.daysUntil);
 
-      const spoken = phraseUpcomingBirthdays(upcoming, now);
+      const spoken = phraseUpcomingBirthdays(upcoming);
 
       return voiceOk(spoken, {
         count: upcoming.length,
@@ -59,7 +52,7 @@ export async function GET(request: NextRequest) {
           id: u.id,
           name: u.name,
           eventType: u.eventType,
-          nextOccurrence: u.next.toISOString().slice(0, 10),
+          nextOccurrence: u.next,
           turning: u.turning,
         })),
       });
