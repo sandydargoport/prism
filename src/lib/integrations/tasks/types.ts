@@ -16,7 +16,8 @@ export interface ExternalTask {
   listId: string;
   title: string;
   description?: string | null;
-  dueDate?: Date | null;
+  /** YYYY-MM-DD. Providers here keep a due date but no due time. */
+  dueDate?: string | null;
   completed: boolean;
   completedAt?: Date | null;
   priority?: 'high' | 'medium' | 'low' | null;
@@ -28,14 +29,16 @@ export interface CreateTaskInput {
   listId: string;
   title: string;
   description?: string | null;
-  dueDate?: Date | null;
+  /** YYYY-MM-DD */
+  dueDate?: string | null;
   priority?: 'high' | 'medium' | 'low' | null;
 }
 
 export interface UpdateTaskInput {
   title?: string;
   description?: string | null;
-  dueDate?: Date | null;
+  /** YYYY-MM-DD */
+  dueDate?: string | null;
   completed?: boolean;
   priority?: 'high' | 'medium' | 'low' | null;
 }

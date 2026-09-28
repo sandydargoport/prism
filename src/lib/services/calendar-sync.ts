@@ -26,6 +26,7 @@ import { decrypt, encrypt } from '@/lib/utils/crypto';
 import { validatePublicUrl, UnsafeUrlError } from '@/lib/utils/safeFetch';
 import { isGoogleCalendarWebLink, GOOGLE_WEB_LINK_ERROR } from '@/lib/utils/googleCalendarLink';
 import { localDateToFloatingAllDay } from '@/lib/utils/timeFormat';
+import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { async as icalAsync, type VEvent, type CalendarResponse } from 'node-ical';
 
 /**
@@ -1064,6 +1065,7 @@ export async function syncCalDAVTasks(
       config.username,
       password,
       source.sourceCalendarId,
+      await getHouseholdTimezone(),
     );
 
     // Apple iCloud injects metadata VTODOs into reminder lists whose data
@@ -1131,7 +1133,8 @@ export async function syncCalDAVTasks(
       const taskData = {
         title: task.title,
         description: task.description,
-        dueDate: task.dueDate || null,
+        dueDate: task.dueDate,
+        dueTime: task.dueTime,
         completed: task.completed,
         completedAt: task.completedAt,
         priority: (task.priority || 'medium') as 'high' | 'medium' | 'low',

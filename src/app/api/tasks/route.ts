@@ -10,6 +10,19 @@ import { getCached } from '@/lib/cache/redis';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
+import { getHouseholdTimezone } from '@/lib/householdTimezone';
+import { parseTaskDueInput } from '@/lib/utils/taskDue';
+import { parseDateOnly, todayKey } from '@/lib/utils/zonedDate';
+
+/**
+ * A dueBefore/dueAfter bound as a date key. Takes YYYY-MM-DD, or an ISO
+ * date-time from an older client, read as its date in the household zone.
+ */
+function dueBoundKey(value: string, timeZone: string): string | null {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return parseDateOnly(value);
+  const instant = new Date(value);
+  return Number.isNaN(instant.getTime()) ? null : todayKey(timeZone, instant);
+}
 
 
 export async function GET(request: NextRequest) {
@@ -30,7 +43,17 @@ export async function GET(request: NextRequest) {
     const sort = searchParams.get('sort') || 'dueDate';
     const order = searchParams.get('order') || 'asc';
 
-    const cacheKey = `tasks:${userId ?? 'all'}:${completed ?? 'any'}:${priority ?? 'any'}:${dueBefore ?? ''}:${dueAfter ?? ''}:${sort}:${order}:${limit}:${offset}`;
+    const timeZone = dueBefore || dueAfter ? await getHouseholdTimezone() : null;
+    const dueBeforeKey = dueBefore && timeZone ? dueBoundKey(dueBefore, timeZone) : null;
+    const dueAfterKey = dueAfter && timeZone ? dueBoundKey(dueAfter, timeZone) : null;
+    if ((dueBefore && !dueBeforeKey) || (dueAfter && !dueAfterKey)) {
+      return NextResponse.json(
+        { error: 'dueBefore and dueAfter must be YYYY-MM-DD dates' },
+        { status: 400 }
+      );
+    }
+
+    const cacheKey = `tasks:${userId ?? 'all'}:${completed ?? 'any'}:${priority ?? 'any'}:${dueBeforeKey ?? ''}:${dueAfterKey ?? ''}:${sort}:${order}:${limit}:${offset}`;
 
     const result = await getCached(cacheKey, async () => {
       const conditions = [];
@@ -47,12 +70,12 @@ export async function GET(request: NextRequest) {
         conditions.push(eq(tasks.priority, priority as 'high' | 'medium' | 'low'));
       }
 
-      if (dueBefore) {
-        conditions.push(lte(tasks.dueDate, new Date(dueBefore)));
+      if (dueBeforeKey) {
+        conditions.push(lte(tasks.dueDate, dueBeforeKey));
       }
 
-      if (dueAfter) {
-        conditions.push(gte(tasks.dueDate, new Date(dueAfter)));
+      if (dueAfterKey) {
+        conditions.push(gte(tasks.dueDate, dueAfterKey));
       }
 
       const getSortColumn = () => {
@@ -73,6 +96,7 @@ export async function GET(request: NextRequest) {
           title: tasks.title,
           description: tasks.description,
           dueDate: tasks.dueDate,
+          dueTime: tasks.dueTime,
           priority: tasks.priority,
           category: tasks.category,
           completed: tasks.completed,
@@ -95,7 +119,13 @@ export async function GET(request: NextRequest) {
         // limit and silently dropped from the fetch — they'd never appear in the
         // list. The client re-sorts for display, so this only affects which rows
         // are fetched, not their on-screen order.
-        .orderBy(asc(tasks.completed), sortFn(getSortColumn()), desc(tasks.createdAt))
+        .orderBy(
+          asc(tasks.completed),
+          sortFn(getSortColumn()),
+          // Same day: timed tasks in time order, then date-only ones.
+          ...(getSortColumn() === tasks.dueDate ? [sortFn(tasks.dueTime)] : []),
+          desc(tasks.createdAt),
+        )
         .limit(limit)
         .offset(offset);
 
@@ -140,13 +170,24 @@ export async function POST(request: NextRequest) {
 
       const data = parsed.data;
 
+      const dueInput = parseTaskDueInput(data, await getHouseholdTimezone());
+      if (!dueInput.ok) {
+        return NextResponse.json({ error: dueInput.error }, { status: 400 });
+      }
+      const dueDate = dueInput.due.dueDate ?? null;
+      const dueTime = dueInput.due.dueTime ?? null;
+      if (dueTime && !dueDate) {
+        return NextResponse.json({ error: 'dueTime needs a dueDate' }, { status: 400 });
+      }
+
       const [newTask] = await db
         .insert(tasks)
         .values({
           title: data.title.trim(),
           description: data.description?.trim() || null,
           assignedTo: data.assignedTo || null,
-          dueDate: data.dueDate ? new Date(data.dueDate) : null,
+          dueDate,
+          dueTime,
           priority: data.priority || null,
           category: data.category?.trim() || null,
           createdBy: data.createdBy || auth.userId,
@@ -169,6 +210,7 @@ export async function POST(request: NextRequest) {
           title: tasks.title,
           description: tasks.description,
           dueDate: tasks.dueDate,
+          dueTime: tasks.dueTime,
           priority: tasks.priority,
           category: tasks.category,
           completed: tasks.completed,

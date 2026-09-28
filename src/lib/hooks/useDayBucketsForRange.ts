@@ -187,7 +187,7 @@ export function useDayBucketsForRange({
         .sort((a, b) => a.title.localeCompare(b.title));
 
       const dayTasks = safeTasks
-        .filter((t) => t.dueDate && isSameDay(t.dueDate, date))
+        .filter((t) => t.dueDate === key)
         .sort((a, b) => {
           const order = { high: 0, medium: 1, low: 2 } as const;
           return order[a.priority] - order[b.priority];

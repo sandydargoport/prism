@@ -15,6 +15,10 @@ import type {
   CreateTaskInput,
   UpdateTaskInput,
 } from './types';
+import { getHouseholdTimezone } from '@/lib/householdTimezone';
+import { dueFromInstant } from '@/lib/utils/taskDue';
+import { isValidTimezone } from '@/lib/utils/timezone';
+import { parseDateOnly, zonedWallTimeToUtc } from '@/lib/utils/zonedDate';
 
 const GRAPH_API_BASE = 'https://graph.microsoft.com/v1.0';
 
@@ -82,13 +86,43 @@ function mapPriorityToImportance(priority: 'high' | 'medium' | 'low' | null | un
   }
 }
 
-function parseGraphTask(task: MsGraphTask, listId: string): ExternalTask {
+/**
+ * The due date of a Graph task as a date key in `timeZone`.
+ *
+ * To Do keeps a date and sends it as midnight in some zone: the To Do apps
+ * write the user's midnight, which Graph returns in UTC (a Chicago task due
+ * the 28th arrives as 05:00 UTC on the 28th). Reading that as a wall time in
+ * the zone it names and taking the household date gets the 28th back. A value
+ * at exactly UTC midnight keeps its date as written, the same rule as
+ * dueFromInstant, since that is how a date-only value sent in UTC looks.
+ */
+function graphDueDate(due: MsGraphTask['dueDateTime'], timeZone: string): string | null {
+  if (!due) return null;
+  const dateKey = parseDateOnly(due.dateTime);
+  if (!dateKey) return null;
+  // A Windows zone name, or none: nothing to convert with, keep the date.
+  if (!due.timeZone || !isValidTimezone(due.timeZone)) return dateKey;
+  const hhmm = /T(\d{2}:\d{2})/.exec(due.dateTime)?.[1] ?? '00:00';
+  return dueFromInstant(zonedWallTimeToUtc(dateKey, hhmm, due.timeZone), timeZone).dueDate;
+}
+
+/**
+ * A due date as the To Do apps write one: midnight on that date in the
+ * household zone, expressed in UTC. Sent in UTC because Graph's zone names
+ * are Windows ones, and that is also the shape graphDueDate reads back.
+ */
+function graphDueDateTime(dueDate: string, timeZone: string): { dateTime: string; timeZone: string } {
+  const midnight = zonedWallTimeToUtc(dueDate, '00:00', timeZone);
+  return { dateTime: midnight.toISOString().slice(0, 19), timeZone: 'UTC' };
+}
+
+function parseGraphTask(task: MsGraphTask, listId: string, timeZone: string): ExternalTask {
   return {
     id: task.id,
     listId,
     title: task.title,
     description: task.body?.content || null,
-    dueDate: task.dueDateTime ? new Date(task.dueDateTime.dateTime) : null,
+    dueDate: graphDueDate(task.dueDateTime, timeZone),
     completed: task.status === 'completed',
     completedAt: task.completedDateTime ? new Date(task.completedDateTime.dateTime) : null,
     priority: mapImportance(task.importance),
@@ -121,10 +155,12 @@ export const microsoftTodoProvider: TaskProvider = {
       tokens
     );
 
-    return response.value.map((task) => parseGraphTask(task, listId));
+    const timeZone = await getHouseholdTimezone();
+    return response.value.map((task) => parseGraphTask(task, listId, timeZone));
   },
 
   async createTask(tokens: TaskProviderTokens, task: CreateTaskInput): Promise<ExternalTask> {
+    const timeZone = await getHouseholdTimezone();
     const body: Record<string, unknown> = {
       title: task.title,
     };
@@ -137,10 +173,7 @@ export const microsoftTodoProvider: TaskProvider = {
     }
 
     if (task.dueDate) {
-      body.dueDateTime = {
-        dateTime: task.dueDate.toISOString(),
-        timeZone: 'UTC',
-      };
+      body.dueDateTime = graphDueDateTime(task.dueDate, timeZone);
     }
 
     if (task.priority) {
@@ -156,7 +189,7 @@ export const microsoftTodoProvider: TaskProvider = {
       }
     );
 
-    return parseGraphTask(response, task.listId);
+    return parseGraphTask(response, task.listId, timeZone);
   },
 
   async updateTask(
@@ -176,6 +209,7 @@ export const microsoftTodoProvider: TaskProvider = {
       throw new Error('Task ID must include list ID (format: listId:taskId)');
     }
 
+    const timeZone = await getHouseholdTimezone();
     const body: Record<string, unknown> = {};
 
     if (updates.title !== undefined) {
@@ -190,7 +224,7 @@ export const microsoftTodoProvider: TaskProvider = {
 
     if (updates.dueDate !== undefined) {
       body.dueDateTime = updates.dueDate
-        ? { dateTime: updates.dueDate.toISOString(), timeZone: 'UTC' }
+        ? graphDueDateTime(updates.dueDate, timeZone)
         : null;
     }
 
@@ -211,7 +245,7 @@ export const microsoftTodoProvider: TaskProvider = {
       }
     );
 
-    return parseGraphTask(response, listId);
+    return parseGraphTask(response, listId, timeZone);
   },
 
   async deleteTask(tokens: TaskProviderTokens, taskId: string): Promise<void> {

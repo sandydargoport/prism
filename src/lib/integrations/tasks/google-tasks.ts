@@ -8,6 +8,7 @@
  */
 
 import { getGoogleCredentials } from '@/lib/integrations/credentialStore';
+import { parseDateOnly } from '@/lib/utils/zonedDate';
 import type {
   TaskProvider,
   TaskProviderTokens,
@@ -69,7 +70,9 @@ function parseGoogleTask(task: GoogleTask, listId: string): ExternalTask {
     listId,
     title: task.title || '(untitled)',
     description: task.notes || null,
-    dueDate: task.due ? new Date(task.due) : null,
+    // Google keeps only the date and sends it as UTC midnight: take the date
+    // as written, never through a zone.
+    dueDate: parseDateOnly(task.due),
     completed: task.status === 'completed',
     completedAt: task.completed ? new Date(task.completed) : null,
     priority: null, // Google Tasks has no priority field
@@ -135,7 +138,7 @@ export const googleTasksProvider: TaskProvider = {
 
     if (task.dueDate) {
       // Google Tasks expects date-only in RFC 3339 format (midnight UTC)
-      body.due = task.dueDate.toISOString().split('T')[0] + 'T00:00:00.000Z';
+      body.due = `${task.dueDate}T00:00:00.000Z`;
     }
 
     const response = await googleFetch<GoogleTask>(
@@ -175,9 +178,7 @@ export const googleTasksProvider: TaskProvider = {
     }
 
     if (updates.dueDate !== undefined) {
-      body.due = updates.dueDate
-        ? updates.dueDate.toISOString().split('T')[0] + 'T00:00:00.000Z'
-        : null;
+      body.due = updates.dueDate ? `${updates.dueDate}T00:00:00.000Z` : null;
     }
 
     if (updates.completed !== undefined) {

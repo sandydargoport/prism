@@ -69,6 +69,12 @@ function ymd(date: Date): string {
   return date.toISOString().split('T')[0] ?? '';
 }
 
+/** The date key of `date` on the local clock, for date columns. */
+function localKey(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
 function startOfWeek(date: Date): Date {
   const d = new Date(date);
   d.setDate(d.getDate() - d.getDay()); // Sunday
@@ -138,20 +144,20 @@ async function seed() {
 
   await db.insert(schema.tasks).values([
     // Overdue (visible at top of list)
-    { title: 'Return library books',          listId: listFamily.id, assignedTo: emma.id,   dueDate: daysAgo(2),   priority: 'low',    category: 'Errands',   createdBy: jordan.id },
+    { title: 'Return library books',          listId: listFamily.id, assignedTo: emma.id,   dueDate: localKey(daysAgo(2)),   priority: 'low',    category: 'Errands',   createdBy: jordan.id },
     // Today
-    { title: 'Practice piano (30 min)',       listId: listSchool.id, assignedTo: sophie.id, dueDate: daysFromNow(0), priority: 'medium', category: 'Activities', createdBy: jordan.id },
-    { title: 'Submit field-trip permission',  listId: listSchool.id, assignedTo: jordan.id, dueDate: daysFromNow(0), priority: 'high',   category: 'School',     createdBy: jordan.id },
+    { title: 'Practice piano (30 min)',       listId: listSchool.id, assignedTo: sophie.id, dueDate: localKey(daysFromNow(0)), priority: 'medium', category: 'Activities', createdBy: jordan.id },
+    { title: 'Submit field-trip permission',  listId: listSchool.id, assignedTo: jordan.id, dueDate: localKey(daysFromNow(0)), priority: 'high',   category: 'School',     createdBy: jordan.id },
     // Tomorrow
-    { title: 'Fix leaky bathroom faucet',     listId: listHome.id,   assignedTo: alex.id,   dueDate: daysFromNow(1), priority: 'high',   category: 'Home', description: 'Upstairs faucet is dripping', createdBy: jordan.id },
-    { title: 'Pick up dry cleaning',          listId: listFamily.id, assignedTo: alex.id,   dueDate: daysFromNow(1), priority: 'medium', category: 'Errands',  createdBy: alex.id },
+    { title: 'Fix leaky bathroom faucet',     listId: listHome.id,   assignedTo: alex.id,   dueDate: localKey(daysFromNow(1)), priority: 'high',   category: 'Home', description: 'Upstairs faucet is dripping', createdBy: jordan.id },
+    { title: 'Pick up dry cleaning',          listId: listFamily.id, assignedTo: alex.id,   dueDate: localKey(daysFromNow(1)), priority: 'medium', category: 'Errands',  createdBy: alex.id },
     // This week
-    { title: 'Schedule dentist appointments', listId: listFamily.id, assignedTo: jordan.id, dueDate: daysFromNow(4), priority: 'medium', category: 'Health',   description: 'Book checkups for the whole family', createdBy: jordan.id },
-    { title: 'Science project research',      listId: listSchool.id, assignedTo: emma.id,   dueDate: daysFromNow(5), priority: 'high',   category: 'School',   description: 'Research the solar system', createdBy: emma.id },
+    { title: 'Schedule dentist appointments', listId: listFamily.id, assignedTo: jordan.id, dueDate: localKey(daysFromNow(4)), priority: 'medium', category: 'Health',   description: 'Book checkups for the whole family', createdBy: jordan.id },
+    { title: 'Science project research',      listId: listSchool.id, assignedTo: emma.id,   dueDate: localKey(daysFromNow(5)), priority: 'high',   category: 'School',   description: 'Research the solar system', createdBy: emma.id },
     // Next week
-    { title: 'Buy birthday gift for Grandma', listId: listFamily.id, assignedTo: alex.id,   dueDate: daysFromNow(8), priority: 'medium', category: 'Shopping', createdBy: alex.id },
-    { title: 'Renew car registration',        listId: listHome.id,   assignedTo: alex.id,   dueDate: daysFromNow(12), priority: 'high',  category: 'Errands',  createdBy: alex.id },
-    { title: 'Quarterly budget review',       listId: listWork.id,   assignedTo: alex.id,   dueDate: daysFromNow(14), priority: 'medium', category: 'Finance', createdBy: alex.id },
+    { title: 'Buy birthday gift for Grandma', listId: listFamily.id, assignedTo: alex.id,   dueDate: localKey(daysFromNow(8)), priority: 'medium', category: 'Shopping', createdBy: alex.id },
+    { title: 'Renew car registration',        listId: listHome.id,   assignedTo: alex.id,   dueDate: localKey(daysFromNow(12)), priority: 'high',  category: 'Errands',  createdBy: alex.id },
+    { title: 'Quarterly budget review',       listId: listWork.id,   assignedTo: alex.id,   dueDate: localKey(daysFromNow(14)), priority: 'medium', category: 'Finance', createdBy: alex.id },
     // No date / inbox
     { title: 'Research family vacation ideas', listId: listInbox.id,  assignedTo: jordan.id, priority: 'low',  category: 'Planning', createdBy: jordan.id },
     // Recently completed (shown briefly, then settles in history)

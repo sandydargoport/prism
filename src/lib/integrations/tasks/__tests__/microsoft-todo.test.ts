@@ -1,3 +1,7 @@
+jest.mock('@/lib/householdTimezone', () => ({
+  getHouseholdTimezone: jest.fn(async () => 'America/Chicago'),
+}));
+
 import { microsoftTodoProvider } from '../microsoft-todo';
 import type { TaskProviderTokens } from '../types';
 
@@ -48,6 +52,26 @@ describe('microsoftTodoProvider', () => {
   });
 
   describe('fetchTasks', () => {
+    it.each([
+      // What the To Do apps write for a Chicago user: their midnight, in UTC.
+      ['2026-09-28T05:00:00.0000000', 'UTC', '2026-09-28'],
+      // A date-only value sent as UTC midnight keeps its date.
+      ['2026-09-28T00:00:00.0000000', 'UTC', '2026-09-28'],
+      ['2026-09-28T00:00:00.0000000', 'America/Chicago', '2026-09-28'],
+      // A Windows zone name cannot be converted; the date is kept as written.
+      ['2026-09-28T00:00:00.0000000', 'Central Standard Time', '2026-09-28'],
+    ])('reads due %s %s as %s in the household zone', async (dateTime, timeZone, expected) => {
+      mockFetch.mockReturnValueOnce(jsonResponse({
+        value: [{
+          id: 'task-1', title: 'T', status: 'notStarted', importance: 'normal',
+          dueDateTime: { dateTime, timeZone },
+          createdDateTime: '2026-09-01T00:00:00Z', lastModifiedDateTime: '2026-09-01T00:00:00Z',
+        }],
+      }));
+      const [task] = await microsoftTodoProvider.fetchTasks(TOKENS, 'list-1');
+      expect(task!.dueDate).toBe(expected);
+    });
+
     it('parses Graph tasks with all fields', async () => {
       mockFetch.mockReturnValueOnce(jsonResponse({
         value: [
@@ -73,7 +97,7 @@ describe('microsoftTodoProvider', () => {
         listId: 'list-1',
         title: 'Buy groceries',
         description: 'From the store',
-        dueDate: new Date('2026-03-01T00:00:00'),
+        dueDate: '2026-03-01',
         completed: false,
         completedAt: null,
         priority: 'high',
@@ -163,14 +187,15 @@ describe('microsoftTodoProvider', () => {
         listId: 'list-1',
         title: 'New task',
         description: 'Details',
-        dueDate: new Date('2026-03-01T00:00:00Z'),
+        dueDate: '2026-03-01',
         priority: 'high',
       });
 
       const sentBody = JSON.parse(mockFetch.mock.calls[0][1].body);
       expect(sentBody.title).toBe('New task');
       expect(sentBody.body).toEqual({ content: 'Details', contentType: 'text' });
-      expect(sentBody.dueDateTime.dateTime).toContain('2026-03-01');
+      // Midnight on the 1st in Chicago, sent the way the To Do apps send it.
+      expect(sentBody.dueDateTime).toEqual({ dateTime: '2026-03-01T06:00:00', timeZone: 'UTC' });
       expect(sentBody.importance).toBe('high');
     });
 

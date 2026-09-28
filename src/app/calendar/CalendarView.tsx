@@ -316,10 +316,7 @@ export function CalendarView() {
 
     try {
       if (variant === 'chore') await moveChore(itemId, targetBucket.date);
-      else if (variant === 'task') {
-        const t = allTasksList.find((x) => x.id === itemId);
-        await moveTask(itemId, targetBucket.date, t?.dueDate ? new Date(t.dueDate) : null);
-      }
+      else if (variant === 'task') await moveTask(itemId, targetBucket.date);
       else if (variant === 'meal') await moveMeal(itemId, targetBucket.date);
       else if (variant === 'event') {
         const ev = events.find((e) => e.id === itemId);
@@ -718,7 +715,8 @@ export function CalendarView() {
                     priority: updated.priority,
                     category: updated.category,
                     assignedTo: updated.assignedTo?.id,
-                    dueDate: updated.dueDate === null ? null : updated.dueDate.toISOString(),
+                    dueDate: updated.dueDate,
+                    dueTime: updated.dueTime,
                     completed: updated.completed,
                     listId: updated.listId,
                   }),

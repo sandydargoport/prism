@@ -47,20 +47,11 @@ export function useWeekMutations({ refresh }: UseWeekMutationsOptions): UseWeekM
   );
 
   const moveTask = useCallback(
-    async (taskId: string, targetDate: Date, originalDue?: Date | null) => {
-      // Preserve the existing time-of-day if the caller supplies the prior
-      // dueDate; otherwise default to end-of-day (legacy behavior, also the
-      // server-side "no time" sentinel — see TaskModal).
-      const useExisting = originalDue && !Number.isNaN(originalDue.getTime());
-      const iso = new Date(
-        targetDate.getFullYear(),
-        targetDate.getMonth(),
-        targetDate.getDate(),
-        useExisting ? originalDue.getHours()   : 23,
-        useExisting ? originalDue.getMinutes() : 59,
-        useExisting ? originalDue.getSeconds() : 59,
-      ).toISOString();
-      await patchJson(`/api/tasks/${taskId}`, { dueDate: iso });
+    async (taskId: string, targetDate: Date) => {
+      // A date alone: the server keeps the task's due time, if it has one.
+      await patchJson(`/api/tasks/${taskId}`, {
+        dueDate: format(targetDate, 'yyyy-MM-dd'),
+      });
       await refresh();
     },
     [refresh],

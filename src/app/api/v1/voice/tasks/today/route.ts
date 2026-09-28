@@ -3,37 +3,36 @@ import { voiceOk, voiceError } from '@/lib/api/voiceResponse';
 import { phraseTaskList } from '@/lib/api/voicePhrases';
 import { db } from '@/lib/db/client';
 import { tasks } from '@/lib/db/schema';
-import { and, gte, lt, eq, asc } from 'drizzle-orm';
+import { and, eq, asc } from 'drizzle-orm';
 import { logError } from '@/lib/utils/logError';
+import { getHouseholdTimezone } from '@/lib/householdTimezone';
+import { todayKey } from '@/lib/utils/zonedDate';
 
 /**
  * GET /api/v1/voice/tasks/today
  *
- * Returns incomplete tasks whose dueDate falls within today (server local time).
+ * Returns incomplete tasks due today in the household time zone.
  */
 export async function GET() {
   return withAuth(async () => {
     try {
-      const now = new Date();
-      const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const dayEnd = new Date(dayStart);
-      dayEnd.setDate(dayEnd.getDate() + 1);
+      const today = todayKey(await getHouseholdTimezone());
 
       const dueToday = await db
         .select({
           id: tasks.id,
           title: tasks.title,
           dueDate: tasks.dueDate,
+          dueTime: tasks.dueTime,
           priority: tasks.priority,
           assignedTo: tasks.assignedTo,
         })
         .from(tasks)
         .where(and(
-          gte(tasks.dueDate, dayStart),
-          lt(tasks.dueDate, dayEnd),
+          eq(tasks.dueDate, today),
           eq(tasks.completed, false),
         ))
-        .orderBy(asc(tasks.dueDate));
+        .orderBy(asc(tasks.dueTime), asc(tasks.title));
 
       const spoken = phraseTaskList(dueToday.map((t) => t.title));
 
@@ -42,7 +41,8 @@ export async function GET() {
         tasks: dueToday.map((t) => ({
           id: t.id,
           title: t.title,
-          dueDate: t.dueDate?.toISOString() ?? null,
+          dueDate: t.dueDate,
+          dueTime: t.dueTime,
           priority: t.priority,
           assignedTo: t.assignedTo,
         })),

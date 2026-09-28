@@ -99,9 +99,9 @@ Returns the next `N` events ordered by start time (default 3, clamped to 1..10).
 
 ### `GET /api/v1/voice/tasks/today`
 
-Incomplete tasks whose `dueDate` falls within today (server local time).
+Incomplete tasks due today in the household time zone.
 
-**Response data**: `{ count, tasks: [{ id, title, dueDate, priority, assignedTo }] }`
+**Response data**: `{ count, tasks: [{ id, title, dueDate, dueTime, priority, assignedTo }] }`. `dueDate` is `YYYY-MM-DD`; `dueTime` is `HH:mm`, or null for a task due any time that day.
 
 **Spoken**: `"You have 2 tasks today: Fix leaky faucet, and Practice piano."`
 

@@ -191,8 +191,8 @@ server.tool(
     userId: z.string().uuid().optional().describe('Filter by assigned user UUID'),
     completed: z.boolean().optional().describe('Filter by completion status'),
     priority: z.enum(['high', 'medium', 'low']).optional(),
-    dueBefore: z.string().datetime().optional().describe('ISO datetime upper bound for due date'),
-    dueAfter: z.string().datetime().optional().describe('ISO datetime lower bound for due date'),
+    dueBefore: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('Due on or before this date, YYYY-MM-DD'),
+    dueAfter: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('Due on or after this date, YYYY-MM-DD'),
     limit: z.number().int().min(1).max(100).optional().default(50),
     offset: z.number().int().min(0).optional().default(0),
   },
@@ -216,7 +216,8 @@ server.tool(
     title: z.string().min(1).max(255),
     description: z.string().optional(),
     assignedTo: z.string().uuid().optional().describe('User UUID'),
-    dueDate: z.string().datetime().optional().describe('ISO datetime'),
+    dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('Due date, YYYY-MM-DD'),
+    dueTime: z.string().regex(/^\d{2}:\d{2}$/).optional().describe('Due time HH:mm in the household time zone; omit for any time that day'),
     priority: z.enum(['high', 'medium', 'low']).optional(),
     listId: z.string().uuid().nullable().optional().describe('Task list UUID'),
   },
@@ -231,12 +232,14 @@ server.tool(
     title: z.string().min(1).max(255).optional(),
     description: z.string().optional(),
     assignedTo: z.string().uuid().nullable().optional(),
-    dueDate: z.string().datetime().nullable().optional(),
+    dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional().describe('YYYY-MM-DD; null clears the due date and time'),
+    dueTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional().describe('HH:mm; null for any time that day; omit to keep'),
     priority: z.enum(['high', 'medium', 'low']).nullable().optional(),
     completed: z.boolean().optional(),
     listId: z.string().uuid().nullable().optional(),
   },
-  async ({ id, ...body }) => ok(await api('PUT', `/api/tasks/${id}`, body))
+  // The route has no PUT; PATCH is the partial update this tool describes.
+  async ({ id, ...body }) => ok(await api('PATCH', `/api/tasks/${id}`, body))
 );
 
 server.tool(

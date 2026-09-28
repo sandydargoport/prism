@@ -19,7 +19,10 @@ export interface Task {
   title: string;
   description?: string;
   completed: boolean;
-  dueDate?: Date;
+  /** YYYY-MM-DD, a calendar date (see src/lib/utils/taskDue.ts). */
+  dueDate?: string;
+  /** HH:mm on dueDate; absent for a task due any time that day. */
+  dueTime?: string;
   priority: 'high' | 'medium' | 'low';
   category?: string;
   completedAt?: string | null;

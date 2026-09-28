@@ -319,6 +319,11 @@ async function performSync(
                 title: remoteTask.title,
                 description: remoteTask.description || null,
                 dueDate: remoteTask.dueDate || null,
+                // Providers keep no due time, so keep Prism's while the day
+                // is unchanged and drop it when the remote moved the task.
+                dueTime: remoteTask.dueDate && remoteTask.dueDate === localTask.dueDate
+                  ? localTask.dueTime
+                  : null,
                 priority: remoteTask.priority || null,
                 completed: remoteTask.completed,
                 completedAt: remoteTask.completedAt || null,

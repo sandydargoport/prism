@@ -61,7 +61,7 @@ const mockChore: Chore = {
 
 const mockTask: Task = {
   id: 't1', title: 'Buy milk', priority: 'medium', completed: false,
-  dueDate: new Date('2026-04-10'),
+  dueDate: '2026-04-10',
   assignedTo: { id: 'u1', name: 'Alice', color: '#f00', avatarUrl: null },
 };
 

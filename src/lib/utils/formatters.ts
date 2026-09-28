@@ -11,7 +11,8 @@ export function formatTaskRow(row: {
   id: string;
   title: string;
   description: string | null;
-  dueDate: Date | null;
+  dueDate: string | null;
+  dueTime: string | null;
   priority: 'high' | 'medium' | 'low' | null;
   category: string | null;
   completed: boolean;
@@ -29,7 +30,8 @@ export function formatTaskRow(row: {
     id: row.id,
     title: row.title,
     description: row.description,
-    dueDate: row.dueDate?.toISOString() || null,
+    dueDate: row.dueDate,
+    dueTime: row.dueTime,
     priority: row.priority,
     category: row.category,
     completed: row.completed,

@@ -9,6 +9,9 @@ import { createDAVClient, type DAVCalendar, type DAVObject } from 'tsdav';
 import ICAL from 'ical.js';
 import { validatePublicUrl, UnsafeUrlError } from '@/lib/utils/safeFetch';
 import { localDateToFloatingAllDay } from '@/lib/utils/timeFormat';
+import { dueFromInstant, wallDue, type TaskDue } from '@/lib/utils/taskDue';
+import { isValidTimezone } from '@/lib/utils/timezone';
+import { todayKey, wallTimeAt, zonedWallTimeToUtc } from '@/lib/utils/zonedDate';
 
 /**
  * Guard a user-supplied CalDAV server URL before handing it to tsdav.
@@ -61,7 +64,10 @@ export interface CalDAVTask {
   uid: string;
   title: string;
   description: string | null;
-  dueDate: Date | null;
+  /** YYYY-MM-DD */
+  dueDate: string | null;
+  /** HH:mm in the household zone, or null for a date-only DUE. */
+  dueTime: string | null;
   completed: boolean;
   completedAt: Date | null;
   priority: 'high' | 'medium' | 'low' | null;
@@ -345,6 +351,7 @@ export async function fetchCalDAVTasks(
   username: string,
   password: string,
   calendarHref: string,
+  timeZone: string,
 ): Promise<CalDAVTask[]> {
   assertSafeCalDAVUrl(serverUrl);
 
@@ -384,7 +391,7 @@ export async function fetchCalDAVTasks(
 
   for (const obj of objects) {
     try {
-      const parsed = parseVTodoObject(obj);
+      const parsed = parseVTodoObject(obj, timeZone);
       if (parsed) {
         tasks.push(parsed);
         parsedCount++;
@@ -399,10 +406,54 @@ export async function fetchCalDAVTasks(
   return tasks;
 }
 
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+/**
+ * A VTODO's DUE as a task due in the household zone.
+ *
+ * DUE;VALUE=DATE is a date and stays one (toJSDate would make it midnight in
+ * the server's zone, a day early for a household west of it). A timed DUE in
+ * UTC or a known zone is converted to the household's wall clock; a floating
+ * one is a wall time already and is kept as written.
+ */
+export function vtodoDue(due: unknown, timeZone: string): TaskDue {
+  if (!due) return { dueDate: null, dueTime: null };
+  if (!(due instanceof ICAL.Time)) {
+    const instant = new Date(String(due));
+    return Number.isNaN(instant.getTime())
+      ? { dueDate: null, dueTime: null }
+      : dueFromInstant(instant, timeZone);
+  }
+
+  const dateKey = `${String(due.year).padStart(4, '0')}-${pad2(due.month)}-${pad2(due.day)}`;
+  if (due.isDate) return { dueDate: dateKey, dueTime: null };
+
+  const hhmm = `${pad2(due.hour)}:${pad2(due.minute)}`;
+  const inHousehold = (instant: Date) =>
+    wallDue(todayKey(timeZone, instant), wallTimeAt(timeZone, instant));
+
+  if (due.zone === ICAL.Timezone.utcTimezone) {
+    return inHousehold(new Date(Date.UTC(due.year, due.month - 1, due.day, due.hour, due.minute)));
+  }
+  // An unregistered TZID leaves the zone floating and the name in `timezone`,
+  // which the typings omit.
+  const tzid = (due as ICAL.Time & { timezone?: string }).timezone || due.zone?.tzid;
+  if (tzid && isValidTimezone(tzid)) {
+    return inHousehold(zonedWallTimeToUtc(dateKey, hhmm, tzid));
+  }
+  if (due.zone && due.zone !== ICAL.Timezone.localTimezone) {
+    // A VTIMEZONE in the object under a non-IANA name ("Central Standard Time").
+    return inHousehold(due.toJSDate());
+  }
+  return wallDue(dateKey, hhmm);
+}
+
 /**
  * Parse a VTODO iCalendar object into a task.
  */
-function parseVTodoObject(obj: DAVObject): CalDAVTask | null {
+function parseVTodoObject(obj: DAVObject, timeZone: string): CalDAVTask | null {
   const data = obj.data;
   if (!data) return null;
 
@@ -436,7 +487,7 @@ function parseVTodoObject(obj: DAVObject): CalDAVTask | null {
     uid: String(uid || `vtodo-${Date.now()}`),
     title: String(summary),
     description: description ? String(description) : null,
-    dueDate: due ? (due instanceof ICAL.Time ? due.toJSDate() : new Date(String(due))) : null,
+    ...vtodoDue(due, timeZone),
     completed: status === 'COMPLETED' || !!completed,
     completedAt: completed ? (completed instanceof ICAL.Time ? completed.toJSDate() : new Date(String(completed))) : null,
     priority: prismPriority,

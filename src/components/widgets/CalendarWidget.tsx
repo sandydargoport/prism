@@ -181,14 +181,7 @@ export const CalendarWidget = React.memo(function CalendarWidget({
     if (!targetBucket) return;
     try {
       if (variant === 'chore') await moveChore(itemId, targetBucket.date);
-      else if (variant === 'task') {
-        let originalDue: Date | null = null;
-        for (const b of bucketsByDate.values()) {
-          const t = b.tasks.find((x) => x.id === itemId);
-          if (t?.dueDate) { originalDue = new Date(t.dueDate); break; }
-        }
-        await moveTask(itemId, targetBucket.date, originalDue);
-      }
+      else if (variant === 'task') await moveTask(itemId, targetBucket.date);
       else if (variant === 'meal') await moveMeal(itemId, targetBucket.date);
       else if (variant === 'event') {
         const ev = events.find((e) => e.id === itemId);

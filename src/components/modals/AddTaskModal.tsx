@@ -45,7 +45,10 @@ export interface CreatedTask {
   id: string;
   title: string;
   description: string | null;
+  /** YYYY-MM-DD */
   dueDate: string | null;
+  /** HH:mm, or null for any time that day */
+  dueTime: string | null;
   priority: 'high' | 'medium' | 'low' | null;
   assignedTo: {
     id: string;
@@ -123,7 +126,8 @@ export function AddTaskModal({
           title: title.trim(),
           description: description.trim() || undefined,
           assignedTo: assignedTo || undefined,
-          dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
+          // The date input's own yyyy-MM-dd: a date, not UTC midnight of it.
+          dueDate: dueDate || undefined,
           priority: priority || undefined,
         }),
       });

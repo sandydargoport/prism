@@ -230,7 +230,8 @@ export function TasksView() {
                   body: JSON.stringify({
                     title: task.title, description: task.description, priority: task.priority,
                     category: task.category, assignedTo: task.assignedTo?.id,
-                    dueDate: task.dueDate ? task.dueDate.toISOString() : undefined,
+                    dueDate: task.dueDate ?? undefined,
+                    dueTime: task.dueTime ?? undefined,
                     listId: task.listId,
                   }),
                 });
@@ -266,7 +267,8 @@ export function TasksView() {
                     title: updatedTask.title, description: updatedTask.description, priority: updatedTask.priority,
                     category: updatedTask.category, assignedTo: updatedTask.assignedTo?.id,
                     // null forwards as JSON null and triggers the server-side clear branch.
-                    dueDate: updatedTask.dueDate === null ? null : updatedTask.dueDate.toISOString(),
+                    dueDate: updatedTask.dueDate,
+                    dueTime: updatedTask.dueTime,
                     completed: updatedTask.completed,
                     listId: updatedTask.listId,
                   }),

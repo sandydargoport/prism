@@ -82,7 +82,11 @@ export const createTaskSchema = z.object({
   title: z.string().min(1, 'Title is required').max(255),
   description: z.string().max(5000).optional(),
   assignedTo: uuidSchema.optional(),
-  dueDate: isoDateSchema.optional(),
+  // YYYY-MM-DD, or an ISO date-time from an older client. Checked and
+  // converted by parseTaskDueInput (src/lib/utils/taskDue.ts).
+  dueDate: z.string().max(40).optional().nullable(),
+  // HH:mm wall-clock time on dueDate; null or absent for "any time that day".
+  dueTime: z.string().max(12).optional().nullable(),
   priority: z.enum(['high', 'medium', 'low']).optional(),
   category: z.string().max(100).optional(),
   createdBy: uuidSchema.optional(),

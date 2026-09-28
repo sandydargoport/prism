@@ -5,7 +5,8 @@ describe('formatTaskRow', () => {
     id: 'task-1',
     title: 'Buy groceries',
     description: 'Get milk and eggs',
-    dueDate: new Date('2026-03-01T10:00:00Z'),
+    dueDate: '2026-03-01',
+    dueTime: '10:00',
     priority: 'high' as const,
     category: 'shopping',
     completed: false,
@@ -20,9 +21,10 @@ describe('formatTaskRow', () => {
     assignedUserAvatar: '/avatars/alex.png',
   };
 
-  it('converts dates to ISO strings', () => {
+  it('converts timestamps to ISO strings and passes the due through', () => {
     const result = formatTaskRow(baseRow);
-    expect(result.dueDate).toBe('2026-03-01T10:00:00.000Z');
+    expect(result.dueDate).toBe('2026-03-01');
+    expect(result.dueTime).toBe('10:00');
     expect(result.createdAt).toBe('2026-02-20T08:00:00.000Z');
     expect(result.updatedAt).toBe('2026-02-20T09:00:00.000Z');
   });
@@ -49,7 +51,7 @@ describe('formatTaskRow', () => {
   });
 
   it('converts null dates to null strings', () => {
-    const result = formatTaskRow({ ...baseRow, dueDate: null, completedAt: null });
+    const result = formatTaskRow({ ...baseRow, dueDate: null, dueTime: null, completedAt: null });
     expect(result.dueDate).toBeNull();
     expect(result.completedAt).toBeNull();
   });

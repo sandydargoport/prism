@@ -32,6 +32,7 @@ import { CheckSquare, Plus, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { WidgetContainer, WidgetEmpty } from './WidgetContainer';
 import { Button, Checkbox, Badge, UserAvatar } from '@/components/ui';
+import { compareTaskDue, dueLocalDate, isTaskOverdue } from '@/lib/utils/taskDue';
 
 
 /**
@@ -111,7 +112,7 @@ export const TasksWidget = React.memo(function TasksWidget({
     filtered = [...filtered].sort((a, b) => {
       const diff = priorityOrder[a.priority] - priorityOrder[b.priority];
       if (diff !== 0) return diff;
-      if (a.dueDate && b.dueDate) return a.dueDate.getTime() - b.dueDate.getTime();
+      if (a.dueDate && b.dueDate) return compareTaskDue(a, b);
       return 0;
     });
     return { filteredTasks: filtered, displayTasks: filtered.slice(0, maxTasks) };
@@ -206,10 +207,10 @@ function TaskItem({
   onClick?: () => void;
 }) {
   // Format due date
-  const dueDateDisplay = task.dueDate ? formatDueDate(task.dueDate) : null;
+  const dueDateDisplay = task.dueDate ? formatDueDate(dueLocalDate(task.dueDate)) : null;
 
   // Check if overdue
-  const isOverdue = task.dueDate && isPast(task.dueDate) && !completed;
+  const isOverdue = isTaskOverdue(task) && !completed;
 
   return (
     <div

@@ -26,18 +26,11 @@ export function getChoreTime(chore: Chore): string | null {
 }
 
 /**
- * Effective HH:mm for a task. Tasks store a full timestamp; tasks moved
- * via the legacy 23:59:59 path are treated as "no time" so they don't all
- * stack in the last hour of the day.
+ * Effective HH:mm for a task, or null when it is due any time that day
+ * (renders at the top of the day like an all-day item).
  */
 export function getTaskTime(task: Task): string | null {
-  if (!task.dueDate) return null;
-  const d = task.dueDate instanceof Date ? task.dueDate : new Date(task.dueDate);
-  const h = d.getHours();
-  const m = d.getMinutes();
-  // 23:59 sentinel = "due today, no specific time" — treat as floating.
-  if (h === 23 && m >= 58) return null;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  return (task.dueDate && task.dueTime) || null;
 }
 
 /**

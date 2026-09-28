@@ -1,6 +1,6 @@
 'use client';
 
-import { isToday, isTomorrow, isPast, format } from 'date-fns';
+import { isToday, isTomorrow, format } from 'date-fns';
 import { AlertCircle, Trash2, Edit2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { UserAvatar } from '@/components/ui/avatar';
 import type { Task } from '@/types';
+import { dueLocalDate, isTaskOverdue } from '@/lib/utils/taskDue';
 
 interface TaskList {
   id: string;
@@ -29,9 +30,10 @@ export function TaskItem({
   taskLists?: TaskList[];
 }) {
   const taskList = taskLists.find(l => l.id === task.listId);
-  const isOverdue = task.dueDate && isPast(task.dueDate) && !task.completed;
+  const isOverdue = isTaskOverdue(task) && !task.completed;
 
-  const formatDueDate = (date: Date | string) => {
+  const formatDueDate = (dueDate: string) => {
+    const date = dueLocalDate(dueDate);
     if (isToday(date)) return 'Today';
     if (isTomorrow(date)) return 'Tomorrow';
     return format(date, 'MMM d');

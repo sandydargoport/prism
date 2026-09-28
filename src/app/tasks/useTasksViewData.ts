@@ -8,6 +8,7 @@ import { toast } from '@/components/ui/use-toast';
 import { pushUndo } from '@/lib/hooks/useUndoStack';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import type { Task } from '@/types';
+import { compareTaskDue } from '@/lib/utils/taskDue';
 import { usePersistedState, useSessionScopedState, oneOf, isBoolean } from '@/lib/hooks/usePersistedState';
 
 const AUTO_SYNC_STALE_MINUTES = 5; // Sync if last sync > 5 min ago
@@ -122,10 +123,7 @@ export function useTasksViewData() {
   }, [autoSync]);
 
   useEffect(() => {
-    setTasks(apiTasks.map(t => ({
-      ...t,
-      dueDate: t.dueDate instanceof Date ? t.dueDate : (t.dueDate ? new Date(t.dueDate) : undefined),
-    })));
+    setTasks(apiTasks);
   }, [apiTasks]);
 
   const filteredTasks = useMemo(() => {
@@ -149,10 +147,7 @@ export function useTasksViewData() {
     result.sort((a, b) => {
       switch (sortBy) {
         case 'dueDate':
-          if (!a.dueDate && !b.dueDate) return 0;
-          if (!a.dueDate) return 1;
-          if (!b.dueDate) return -1;
-          return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+          return compareTaskDue(a, b);
         case 'priority': {
           const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
           return (priorityOrder[a.priority ?? 'low'] ?? 2) - (priorityOrder[b.priority ?? 'low'] ?? 2);

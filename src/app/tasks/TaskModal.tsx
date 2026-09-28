@@ -34,7 +34,11 @@ export function TaskModal({
   onDelete?: () => void;
   // dueDate may be `null` to signal explicit clearing (server distinguishes
   // null = clear from undefined = leave untouched).
-  onSave: (task: Omit<Task, 'id' | 'dueDate'> & { dueDate: Date | null; listId?: string }) => void;
+  onSave: (task: Omit<Task, 'id' | 'dueDate' | 'dueTime'> & {
+    dueDate: string | null;
+    dueTime: string | null;
+    listId?: string;
+  }) => void;
   familyMembers: FamilyMember[];
   taskLists?: TaskList[];
   defaultListId?: string | null;
@@ -44,19 +48,10 @@ export function TaskModal({
   const [assignedTo, setAssignedTo] = useState(task?.assignedTo?.id || '');
   const [category, setCategory] = useState(task?.category || '');
   const [listId, setListId] = useState((task as Task & { listId?: string })?.listId || defaultListId || '');
-  // dueDate is stored as a full timestamp; split for the form into a date
-  // (yyyy-MM-dd) and a time (HH:mm). We treat 23:59 as the "no time" sentinel.
-  const initialDue = task?.dueDate ? new Date(task.dueDate) : null;
-  const [dueDate, setDueDate] = useState<string>(
-    initialDue
-      ? `${initialDue.getFullYear()}-${String(initialDue.getMonth() + 1).padStart(2, '0')}-${String(initialDue.getDate()).padStart(2, '0')}`
-      : ''
-  );
-  const [dueTime, setDueTime] = useState<string>(
-    initialDue && !(initialDue.getHours() === 23 && initialDue.getMinutes() >= 58)
-      ? `${String(initialDue.getHours()).padStart(2, '0')}:${String(initialDue.getMinutes()).padStart(2, '0')}`
-      : ''
-  );
+  // The due is a date (yyyy-MM-dd) and an optional time (HH:mm), the same
+  // strings the date and time inputs use.
+  const [dueDate, setDueDate] = useState<string>(task?.dueDate ?? '');
+  const [dueTime, setDueTime] = useState<string>(task?.dueTime ?? '');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,22 +59,16 @@ export function TaskModal({
 
     const selectedMember = familyMembers.find((m) => m.id === assignedTo);
 
-    let combinedDue: Date | undefined;
-    if (dueDate) {
-      const [yy, mm, dd] = dueDate.split('-').map(Number);
-      const [hh, mi] = (dueTime || '23:59').split(':').map(Number);
-      combinedDue = new Date(yy!, (mm || 1) - 1, dd || 1, hh ?? 23, mi ?? 59, 0, 0);
-    }
-
     onSave({
       title: title.trim(),
       priority,
       category: category.trim() || undefined,
       assignedTo: selectedMember || undefined,
       completed: task?.completed || false,
-      // null = user cleared the field; Date = user set it. Don't fall back to
-      // task?.dueDate or clearing becomes impossible.
-      dueDate: combinedDue ?? null,
+      // null = user cleared the field. Don't fall back to task?.dueDate or
+      // clearing becomes impossible.
+      dueDate: dueDate || null,
+      dueTime: dueDate && dueTime ? dueTime : null,
       listId: listId || undefined,
     });
   };

@@ -121,6 +121,12 @@ export function todayKey(timeZone: string, now: Date | number = Date.now()): str
   return keyFromParts(w.year, w.month, w.day);
 }
 
+/** The wall-clock time in `timeZone` at `instant`, as `HH:mm`. */
+export function wallTimeAt(timeZone: string, instant: Date | number): string {
+  const w = wallClockAt(new Date(instant).getTime(), timeZone);
+  return `${pad2(w.hour)}:${pad2(w.minute)}`;
+}
+
 /**
  * The instant at which the wall clock in `timeZone` reads `hhmm` on `dateKey`.
  *

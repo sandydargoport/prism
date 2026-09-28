@@ -25,6 +25,8 @@ import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
 import { resolveTaskProviderAuth } from '@/lib/integrations/tasks/providerAuth';
+import { getHouseholdTimezone } from '@/lib/householdTimezone';
+import { parseTaskDueInput } from '@/lib/utils/taskDue';
 
 /**
  * Remove a synced task from its provider. Best-effort by design: a failure
@@ -100,6 +102,7 @@ export async function GET(
         title: tasks.title,
         description: tasks.description,
         dueDate: tasks.dueDate,
+        dueTime: tasks.dueTime,
         priority: tasks.priority,
         category: tasks.category,
         completed: tasks.completed,
@@ -151,7 +154,8 @@ export async function GET(
  *   title?: string
  *   description?: string | null
  *   assignedTo?: string | null
- *   dueDate?: string | null
+ *   dueDate?: string | null     (YYYY-MM-DD; null clears the due and its time)
+ *   dueTime?: string | null     (HH:mm; absent keeps the stored time)
  *   priority?: "high" | "medium" | "low" | null
  *   category?: string | null
  *   completed?: boolean
@@ -185,6 +189,7 @@ export async function PATCH(
         id: tasks.id,
         assignedTo: tasks.assignedTo,
         createdBy: tasks.createdBy,
+        dueDate: tasks.dueDate,
       })
       .from(tasks)
       .where(eq(tasks.id, id));
@@ -234,19 +239,19 @@ export async function PATCH(
       updateData.assignedTo = body.assignedTo || null;
     }
 
-    if ('dueDate' in body) {
-      if (body.dueDate === null) {
-        updateData.dueDate = null;
-      } else if (body.dueDate) {
-        const date = new Date(body.dueDate);
-        if (isNaN(date.getTime())) {
-          return NextResponse.json(
-            { error: 'Invalid dueDate format' },
-            { status: 400 }
-          );
-        }
-        updateData.dueDate = date;
+    if ('dueDate' in body || 'dueTime' in body) {
+      const dueInput = parseTaskDueInput(body, await getHouseholdTimezone());
+      if (!dueInput.ok) {
+        return NextResponse.json({ error: dueInput.error }, { status: 400 });
       }
+      const { due } = dueInput;
+      const nextDueDate = due.dueDate !== undefined ? due.dueDate : existingTask.dueDate;
+      if (due.dueTime && !nextDueDate) {
+        return NextResponse.json({ error: 'dueTime needs a dueDate' }, { status: 400 });
+      }
+      // A new date alone keeps the stored time (a calendar drag moves the day).
+      if (due.dueDate !== undefined) updateData.dueDate = due.dueDate;
+      if (due.dueTime !== undefined) updateData.dueTime = due.dueTime;
     }
 
     if ('priority' in body) {
@@ -296,6 +301,7 @@ export async function PATCH(
         title: tasks.title,
         description: tasks.description,
         dueDate: tasks.dueDate,
+        dueTime: tasks.dueTime,
         priority: tasks.priority,
         category: tasks.category,
         completed: tasks.completed,

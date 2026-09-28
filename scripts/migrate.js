@@ -69,6 +69,13 @@ async function main() {
     await waitForDatabase(sql);
     console.log('[migrate] Connected');
 
+    // The zone this process runs in (TZ; UTC unless set, the host's zone on
+    // Home Assistant). A migration that converts stored instants to wall
+    // times reads it when the household has no time zone setting, which is
+    // the same fallback getHouseholdTimezone() uses.
+    const processZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    await sql`SELECT set_config('prism.process_timezone', ${processZone}, false)`;
+
     await sql`
       CREATE TABLE IF NOT EXISTS public.__prism_migrations (
         id SERIAL PRIMARY KEY,

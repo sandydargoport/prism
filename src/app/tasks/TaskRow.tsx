@@ -1,12 +1,14 @@
 'use client';
 
-import { format, isPast, differenceInDays, formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { CalendarDays, Settings, Trash2 } from 'lucide-react';
 import { UserAvatar } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { Task } from '@/types';
+import { dueLocalDate, isTaskOverdue } from '@/lib/utils/taskDue';
+import { calendarDaysBetween } from '@/lib/utils/zonedDate';
 
 export function TaskRow({
   task,
@@ -26,9 +28,12 @@ export function TaskRow({
   showList?: boolean;
   taskLists?: Array<{ id: string; name: string; color?: string | null }>;
 }) {
-  const dueDate = task.dueDate ? new Date(task.dueDate) : null;
-  const isOverdue = dueDate && !task.completed && isPast(dueDate);
-  const daysUntil = dueDate ? differenceInDays(dueDate, new Date()) : null;
+  const dueDate = task.dueDate ? dueLocalDate(task.dueDate, task.dueTime) : null;
+  const isOverdue = !task.completed && isTaskOverdue(task);
+  // Calendar days, not 24-hour spans: a task due tomorrow morning is "tomorrow".
+  const daysUntil = task.dueDate
+    ? calendarDaysBetween(format(new Date(), 'yyyy-MM-dd'), task.dueDate)
+    : null;
   const taskList = showList ? taskLists.find(l => l.id === (task as typeof task & { listId?: string }).listId) : null;
 
   return (

@@ -20,6 +20,7 @@ function transformTasks(json: unknown): Task[] {
       description: string | null;
       completed: boolean;
       dueDate: string | null;
+      dueTime: string | null;
       priority: 'high' | 'medium' | 'low' | null;
       category: string | null;
       listId: string | null;
@@ -37,7 +38,8 @@ function transformTasks(json: unknown): Task[] {
     title: task.title,
     description: task.description || undefined,
     completed: task.completed,
-    dueDate: task.dueDate ? new Date(task.dueDate) : undefined,
+    dueDate: task.dueDate || undefined,
+    dueTime: task.dueTime || undefined,
     priority: task.priority || 'medium',
     category: task.category || undefined,
     listId: task.listId || undefined,

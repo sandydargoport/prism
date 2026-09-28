@@ -120,7 +120,7 @@ export function useWeekViewData({
         .sort((a, b) => a.title.localeCompare(b.title));
 
       const dayTasks = (tasks ?? [])
-        .filter((t) => t.dueDate && isSameDay(t.dueDate, date))
+        .filter((t) => t.dueDate === format(date, 'yyyy-MM-dd'))
         .sort((a, b) => {
           const order = { high: 0, medium: 1, low: 2 } as const;
           return order[a.priority] - order[b.priority];
