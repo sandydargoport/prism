@@ -2,6 +2,7 @@ import {
   eventOccursOnDisplayDay,
   eventStartsOnDisplayDay,
   eventSpansMultipleDisplayDays,
+  formatDisplayDateTime,
   formatDisplayHour,
   formatDisplayTime,
   formatDisplayTimeRange,
@@ -168,5 +169,15 @@ describe('time format utilities', () => {
       .toBe(false);
     expect(isCalendarEventPast(start, end, false, new Date('2026-08-20T08:00:00.000Z')))
       .toBe(true);
+  });
+});
+
+describe('formatDisplayDateTime', () => {
+  // 01:30Z on 29 Sep: the evening of the 28th in Chicago.
+  const instant = new Date('2026-09-29T01:30:00Z');
+
+  it('shows the date and time in the display zone, not the device\'s', () => {
+    expect(formatDisplayDateTime(instant, '12h', 'America/Chicago')).toBe('Sep 28, 2026, 8:30 PM');
+    expect(formatDisplayDateTime(instant, '24h', 'Asia/Tokyo')).toBe('Sep 29, 2026, 10:30');
   });
 });

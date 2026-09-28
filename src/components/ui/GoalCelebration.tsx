@@ -2,13 +2,15 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useShouldSkipMotion } from '@/lib/hooks/useShouldSkipMotion';
+import { useTimeFormat } from '@/components/providers';
+import { toDisplayDate } from '@/lib/utils/timeFormat';
 
 /**
  * Check if today falls within a date window (inclusive).
- * month is 0-indexed, day is 1-indexed.
+ * month is 0-indexed, day is 1-indexed. `now` is a display date (its local
+ * fields are the display zone's wall clock), as are the ones built here.
  */
-function isInWindow(startMonth: number, startDay: number, endMonth: number, endDay: number): boolean {
-  const now = new Date();
+function isInWindow(now: Date, startMonth: number, startDay: number, endMonth: number, endDay: number): boolean {
   const year = now.getFullYear();
   const start = new Date(year, startMonth, startDay);
   const end = new Date(year, endMonth, endDay, 23, 59, 59);
@@ -39,8 +41,7 @@ function getEasterDate(year: number): Date {
 /**
  * Check if today is within ±3 days of Easter.
  */
-function isEasterWeek(): boolean {
-  const now = new Date();
+function isEasterWeek(now: Date): boolean {
   const easter = getEasterDate(now.getFullYear());
   const start = new Date(easter);
   start.setDate(start.getDate() - 3);
@@ -60,8 +61,7 @@ function getThanksgivingDate(year: number): Date {
   return new Date(year, 10, firstThursday + 21); // 4th Thursday = first + 21
 }
 
-function isThanksgivingWeek(): boolean {
-  const now = new Date();
+function isThanksgivingWeek(now: Date): boolean {
   const tg = getThanksgivingDate(now.getFullYear());
   const start = new Date(tg);
   start.setDate(start.getDate() - 3);
@@ -75,27 +75,27 @@ function isThanksgivingWeek(): boolean {
  * Determine the active holiday (if any) based on the current date.
  * Returns a key or null. Checked in priority order.
  */
-function getActiveHoliday(): string | null {
+function getActiveHoliday(now: Date): string | null {
   // Valentine's Day: Feb 11-17
-  if (isInWindow(1, 11, 1, 17)) return 'valentines';
+  if (isInWindow(now, 1, 11, 1, 17)) return 'valentines';
   // St. Patrick's Day: Mar 14-20
-  if (isInWindow(2, 14, 2, 20)) return 'stpatricks';
+  if (isInWindow(now, 2, 14, 2, 20)) return 'stpatricks';
   // Easter: ±3 days (moves each year)
-  if (isEasterWeek()) return 'easter';
+  if (isEasterWeek(now)) return 'easter';
   // Mother's Day week: May 8-14 (second Sunday is between 8-14)
-  if (isInWindow(4, 8, 4, 14)) return 'spring';
+  if (isInWindow(now, 4, 8, 4, 14)) return 'spring';
   // Memorial Day / late May: May 24-31
-  if (isInWindow(4, 24, 4, 31)) return 'memorial';
+  if (isInWindow(now, 4, 24, 4, 31)) return 'memorial';
   // Independence Day: Jun 30 - Jul 7
-  if (isInWindow(5, 30, 6, 7)) return 'july4th';
+  if (isInWindow(now, 5, 30, 6, 7)) return 'july4th';
   // Halloween: Oct 25 - Nov 1
-  if (isInWindow(9, 25, 10, 1)) return 'halloween';
+  if (isInWindow(now, 9, 25, 10, 1)) return 'halloween';
   // Thanksgiving: ±3 days
-  if (isThanksgivingWeek()) return 'thanksgiving';
+  if (isThanksgivingWeek(now)) return 'thanksgiving';
   // Christmas/Holiday: Dec 18-31
-  if (isInWindow(11, 18, 11, 31)) return 'christmas';
+  if (isInWindow(now, 11, 18, 11, 31)) return 'christmas';
   // New Year's: Jan 1-3
-  if (isInWindow(0, 1, 0, 3)) return 'newyear';
+  if (isInWindow(now, 0, 1, 0, 3)) return 'newyear';
   return null;
 }
 
@@ -387,7 +387,7 @@ function christmasScene() {
   );
 }
 
-function newYearScene() {
+function newYearScene(now: Date) {
   return (
     <svg viewBox="0 0 400 300" className="w-full h-full">
       {/* Fireworks */}
@@ -408,7 +408,7 @@ function newYearScene() {
       <rect x="340" y="115" width="9" height="5" rx="2" fill="#FBBF24" className="animate-bounce" style={{ animationDelay: '0.1s' }} transform="rotate(-35 344 117)" />
       {/* Year text */}
       <text x="200" y="210" textAnchor="middle" fill="#FFD700" style={{ fontSize: '60px', fontWeight: 'bold', fontFamily: 'system-ui' }} className="animate-pulse">
-        {new Date().getFullYear()}
+        {now.getFullYear()}
       </text>
       {/* Party hat */}
       <g className="animate-wiggle" style={{ transformOrigin: '200px 160px' }}>
@@ -450,7 +450,7 @@ function defaultScene() {
 
 // ---------- Message + scene mapping ----------
 
-const HOLIDAY_CONFIG: Record<string, { message: (g: string) => string; scene: () => JSX.Element }> = {
+const HOLIDAY_CONFIG: Record<string, { message: (g: string) => string; scene: (now: Date) => JSX.Element }> = {
   valentines:    { message: g => `Love wins! ${g} earned!`,               scene: valentinesScene },
   stpatricks:    { message: g => `Caught the leprechaun! ${g} earned!`,   scene: stpatricksScene },
   easter:        { message: g => `The Easter Bunny delivered! ${g} earned!`, scene: easterScene },
@@ -463,11 +463,11 @@ const HOLIDAY_CONFIG: Record<string, { message: (g: string) => string; scene: ()
   newyear:       { message: g => `Happy New Year! ${g} earned!`,          scene: newYearScene },
 };
 
-function getSeasonalContent(goalName: string) {
-  const holiday = getActiveHoliday();
+function getSeasonalContent(goalName: string, now: Date) {
+  const holiday = getActiveHoliday(now);
   if (holiday && HOLIDAY_CONFIG[holiday]) {
     const cfg = HOLIDAY_CONFIG[holiday];
-    return { message: cfg.message(goalName), scene: cfg.scene() };
+    return { message: cfg.message(goalName), scene: cfg.scene(now) };
   }
   return { message: `Goal achieved! ${goalName} earned!`, scene: defaultScene() };
 }
@@ -487,6 +487,7 @@ export function GoalCelebration({
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const onCompleteRef = useRef(onComplete);
   const skipMotion = useShouldSkipMotion();
+  const { displayTimezone } = useTimeFormat();
 
   useEffect(() => {
     onCompleteRef.current = onComplete;
@@ -529,7 +530,7 @@ export function GoalCelebration({
 
   if (!visible) return null;
 
-  const { message, scene } = getSeasonalContent(goalName);
+  const { message, scene } = getSeasonalContent(goalName, toDisplayDate(new Date(), displayTimezone));
 
   return (
     <div

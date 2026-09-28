@@ -13,12 +13,13 @@ import { Badge } from '@/components/ui/badge';
 import { RemovedItemsManager } from '@/components/settings/RemovedItemsManager';
 import { Switch } from '@/components/ui/switch';
 import { useCalendarSources } from '@/lib/hooks';
-import { useFamily } from '@/components/providers';
+import { useDisplayTimestampFormat, useFamily } from '@/components/providers';
 import { CalendarColorPicker } from '../components/CalendarColorPicker';
 import { useHiddenHours } from '@/lib/hooks/useHiddenHours';
 import { useOAuthConfigStatus } from './integrations/shared/useOAuthConfigStatus';
 
 export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
+  const stamp = useDisplayTimestampFormat();
   const { confirm, dialogProps: confirmDialogProps } = useConfirmDialog();
   const { members: familyMembers } = useFamily();
   const { calendars, loading: calendarsLoading, refresh: refreshCalendars } = useCalendarSources();
@@ -484,7 +485,7 @@ export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
                           )}
                           {cal.lastSynced && (
                             <span className="ml-2">
-                              Synced: {new Date(cal.lastSynced).toLocaleString()}
+                              Synced: {stamp.dateTime(cal.lastSynced)}
                             </span>
                           )}
                         </div>

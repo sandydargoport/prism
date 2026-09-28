@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { dayWindowUtc, addDaysToKey, todayKey } from '@/lib/utils/zonedDate';
 
 /**
  * A value that changes when the local date does.
@@ -34,32 +35,74 @@ export function msUntilNextLocalMidnight(now: Date = new Date()): number {
   return Math.max(1000, next.getTime() - now.getTime());
 }
 
-export function useLocalDateKey(): string {
-  const [key, setKey] = useState(() => localDateKey());
+/**
+ * The date key in `timeZone` at `now`, or in the device zone when there is no
+ * zone or it is not a valid one.
+ */
+export function zonedDateKey(timeZone?: string, now: Date = new Date()): string {
+  if (timeZone) {
+    try {
+      return todayKey(timeZone, now);
+    } catch {
+      // An unknown zone name: fall through to the device's date.
+    }
+  }
+  return localDateKey(now);
+}
+
+/**
+ * Milliseconds until the next midnight in `timeZone`, plus a second of slack.
+ * The device's midnight when there is no zone or it is not a valid one.
+ */
+export function msUntilNextMidnight(timeZone?: string, now: Date = new Date()): number {
+  if (timeZone) {
+    try {
+      const tomorrow = addDaysToKey(todayKey(timeZone, now), 1);
+      const next = dayWindowUtc(tomorrow, timeZone).start.getTime() + 1000;
+      return Math.max(1000, next - now.getTime());
+    } catch {
+      // An unknown zone name: fall through to the device's midnight.
+    }
+  }
+  return msUntilNextLocalMidnight(now);
+}
+
+/**
+ * The current date key, changing at midnight. With `timeZone` (normally the
+ * display zone from useTimeFormat) it is that zone's date and changes at that
+ * zone's midnight; without one, the device's.
+ */
+export function useLocalDateKey(timeZone?: string): string {
+  // Bumped at each midnight and on wake. The key is derived from the clock
+  // rather than stored, so a change of zone after mount (the household zone
+  // arriving from the server, or the display mode being switched) is taken
+  // up on the next render.
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
 
     const schedule = () => {
       timer = setTimeout(() => {
-        // Recomputed from the clock rather than incremented, so a device that
-        // slept through midnight still lands on the correct date.
-        setKey(localDateKey());
+        // The key is read from the clock, not counted, so a device that slept
+        // through midnight still lands on the correct date.
+        setTick((n) => n + 1);
         schedule();
-      }, msUntilNextLocalMidnight());
+      }, msUntilNextMidnight(timeZone));
     };
 
     schedule();
 
     // A machine waking from sleep may have missed the timer entirely.
-    const onWake = () => setKey(localDateKey());
+    const onWake = () => setTick((n) => n + 1);
     document.addEventListener('visibilitychange', onWake);
 
     return () => {
       clearTimeout(timer);
       document.removeEventListener('visibilitychange', onWake);
     };
-  }, []);
+  }, [timeZone]);
 
-  return key;
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- tick is the clock
+  return useMemo(() => zonedDateKey(timeZone), [timeZone, tick]);
 }

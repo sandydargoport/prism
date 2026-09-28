@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { addDays, format, isSameDay, isPast, startOfDay, startOfWeek } from 'date-fns';
+import { addDays, format, isBefore, isSameDay, parseISO, startOfWeek } from 'date-fns';
 import { CalendarPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toast } from '@/components/ui/use-toast';
-import { useAuth } from '@/components/providers';
+import { useAuth, useTimeFormat } from '@/components/providers';
+import { useLocalDateKey } from '@/lib/hooks/useLocalDateKey';
 import { getWeekStartsOn } from '@/lib/hooks/useWeekStartsOn';
 import type { Recipe } from '@/lib/hooks/useRecipes';
 
@@ -36,7 +37,9 @@ const DAY_HEADERS_MON = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 export function AddToMealPlanSection({ recipe }: { recipe: Recipe }) {
   const { requireAuth } = useAuth();
   const weekStartsOn = getWeekStartsOn();
-  const today = startOfDay(new Date());
+  // Today in the display zone, as a local-midnight Date for date-fns.
+  const { displayTimezone } = useTimeFormat();
+  const today = parseISO(useLocalDateKey(displayTimezone));
   const weeks = buildCalendarWeeks(today, weekStartsOn);
   const dayHeaders = weekStartsOn === 1 ? DAY_HEADERS_MON : DAY_HEADERS_SUN;
 
@@ -91,7 +94,7 @@ export function AddToMealPlanSection({ recipe }: { recipe: Recipe }) {
           <div key={wi} className="grid grid-cols-7">
             {week.map((date) => {
               const isToday = isSameDay(date, today);
-              const isPastDay = isPast(date) && !isToday;
+              const isPastDay = isBefore(date, today);
               const isSelected = selectedDate ? isSameDay(date, selectedDate) : false;
               return (
                 <div key={date.toISOString()} className="flex flex-col items-center py-0.5">

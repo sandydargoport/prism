@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useMemo, useCallback, useState, useContext, lazy, Suspense } from 'react';
-import { format, isToday, isTomorrow, startOfWeek, endOfWeek, addDays, addWeeks, startOfMonth, endOfMonth } from 'date-fns';
+import { format, startOfWeek, endOfWeek, addDays, addWeeks, startOfMonth, endOfMonth } from 'date-fns';
 import {
   DndContext,
   PointerSensor,
@@ -21,9 +21,11 @@ import { deduplicateEvents } from '@/lib/utils/calendarDedup';
 import { WidgetContainer, useWidgetBgOverride } from './WidgetContainer';
 import { useCalendarEvents, useCalendarFilter, useCalendarNotes } from '@/lib/hooks';
 import { useDateLabels } from '@/lib/hooks/useDateLabels';
+import { useLocalDateKey } from '@/lib/hooks/useLocalDateKey';
+import { addDaysToKey } from '@/lib/utils/zonedDate';
 import { useDayBucketsForRange } from '@/lib/hooks/useDayBucketsForRange';
 import { useWeekMutations } from '@/lib/hooks/useWeekMutations';
-import { useAuth } from '@/components/providers';
+import { useAuth, useTimeFormat } from '@/components/providers';
 import { useWeekStartsOn } from '@/lib/hooks/useWeekStartsOn';
 import { useCalendarWidgetPrefs, VIEW_OPTIONS, CalendarPrefsScopeContext } from '@/lib/hooks/useCalendarWidgetPrefs';
 import { useCalendarSyncHealth } from '@/lib/hooks/useCalendarSyncHealth';
@@ -435,10 +437,16 @@ export const CalendarWidget = React.memo(function CalendarWidget({
 function useDayHeaderFormatter(): (date: Date) => string {
   const t = useTranslations('calendar');
   const d = useDateLabels();
+  // The day dates are display-zone dates, so "today" is the display zone's
+  // too: the device's isToday would label the wrong day for part of the day
+  // on a device in another zone.
+  const { displayTimezone } = useTimeFormat();
+  const todayKey = useLocalDateKey(displayTimezone);
   return (date: Date) => {
     const dayName = d.fullDate(date);
-    if (isToday(date)) return t('dayHeader', { label: t('today'), date: dayName });
-    if (isTomorrow(date)) return t('dayHeader', { label: t('tomorrow'), date: dayName });
+    const key = format(date, 'yyyy-MM-dd');
+    if (key === todayKey) return t('dayHeader', { label: t('today'), date: dayName });
+    if (key === addDaysToKey(todayKey, 1)) return t('dayHeader', { label: t('tomorrow'), date: dayName });
     return dayName;
   };
 }

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Calendar, ListTodo, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
+import { useDisplayTimestampFormat } from '@/components/providers';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { ProviderCardShell } from '../shared/ProviderCardShell';
@@ -59,6 +60,7 @@ export function GoogleProviderCard({
   forceSubSectionOpen,
 }: Props) {
   const { confirm, dialogProps } = useConfirmDialog();
+  const stamp = useDisplayTimestampFormat();
   const [disconnecting, setDisconnecting] = React.useState(false);
   const oauthStatus = useOAuthConfigStatus();
   // Treat "still loading" as configured so the common case (already set up)
@@ -144,7 +146,7 @@ export function GoogleProviderCard({
   const calendarCount = g?.calendarCount ?? 0;
   const taskCount = g?.taskSourceCount ?? 0;
   const lastSyncedLabel = g?.lastSynced
-    ? `Last synced ${new Date(g.lastSynced).toLocaleString()}`
+    ? `Last synced ${stamp.dateTime(g.lastSynced)}`
     : null;
   const connectedAs = connectedAsLabel(g?.accountEmail ?? null, g?.accountEmails ?? []);
 

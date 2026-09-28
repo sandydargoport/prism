@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useDateLabels } from '@/lib/hooks/useDateLabels';
 import { sanitizeEventDescription } from '@/lib/utils/eventDescriptionHtml';
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays, addWeeks, startOfDay } from 'date-fns';
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays, addWeeks } from 'date-fns';
 import {
   DndContext,
   DragOverlay,
@@ -52,7 +52,7 @@ import { useCalendarNotes } from '@/lib/hooks/useCalendarNotes';
 import { useDayBucketsForRange } from '@/lib/hooks/useDayBucketsForRange';
 import type { DayBucket } from '@/lib/hooks/useWeekViewData';
 import type { CalendarEvent } from '@/types/calendar';
-import { WeekItemCard } from '@/components/calendar/cells';
+import { WeekItemCard, choreStripeColor } from '@/components/calendar/cells';
 import { useIsMobile, useSwipeNavigation, useCalendarSources } from '@/lib/hooks';
 import { useAuth } from '@/components/providers';
 import { useWeekStartsOn } from '@/lib/hooks/useWeekStartsOn';
@@ -851,9 +851,6 @@ const PRIORITY_COLORS = {
   low: '#3b82f6',
 } as const;
 
-const CHORE_PENDING_APPROVAL_COLOR = '#a855f7';
-const CHORE_OVERDUE_COLOR = '#ef4444';
-const CHORE_PENDING_COLOR = '#f59e0b';
 const MEAL_FALLBACK_COLOR = '#10b981';
 
 /**
@@ -919,23 +916,7 @@ function CalendarDragPreview({
     } else if (variant === 'chore') {
       const chore = bucket.chores.find((c) => String(c.id) === itemId);
       if (chore) {
-        // Parse nextDue (YYYY-MM-DD DATE column) as a local date and compare
-        // to startOfDay(today). new Date('YYYY-MM-DD') is parsed as UTC and
-        // would mark today's chore as overdue in negative-UTC zones — same
-        // bug fixed in DayColumn.choreStripeColor and useDayBucketsForRange.
-        let isOverdue = false;
-        if (chore.nextDue) {
-          const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(chore.nextDue);
-          if (m) {
-            const due = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-            isOverdue = due < startOfDay(new Date());
-          }
-        }
-        const stripeColor = chore.pendingApproval
-          ? CHORE_PENDING_APPROVAL_COLOR
-          : isOverdue
-            ? CHORE_OVERDUE_COLOR
-            : CHORE_PENDING_COLOR;
+        const stripeColor = choreStripeColor(chore, displayTimezone);
         return (
           <div className="w-56 opacity-90">
             <WeekItemCard

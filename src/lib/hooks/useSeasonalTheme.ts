@@ -2,11 +2,14 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { seasonalPalettes, type SeasonalThemeKey } from '@/lib/themes/seasonalThemes';
+import { useLocalDateKey } from './useLocalDateKey';
+import { readStoredDisplayTimezone } from './useTimezone';
 
 const STORAGE_KEY = 'prism-seasonal-theme';
 
-function getCurrentMonth(): number {
-  return new Date().getMonth() + 1; // 1-12
+/** The month (1-12) of a YYYY-MM-DD date key. */
+function monthOfKey(dateKey: string): number {
+  return Number(dateKey.slice(5, 7));
 }
 
 function loadSetting(): SeasonalThemeKey {
@@ -40,10 +43,16 @@ function applySeasonalVars(month: number | null, isDark: boolean) {
 
 export function useSeasonalTheme(mode?: 'light' | 'dark') {
   const [setting, setSetting] = useState<SeasonalThemeKey>(loadSetting);
+  // The month in the display zone, changing at its midnight on the 1st. This
+  // runs above TimeFormatProvider, so the zone comes from the device's cache.
+  const [displayTimezone] = useState(() =>
+    typeof window === 'undefined' ? undefined : readStoredDisplayTimezone(),
+  );
+  const dateKey = useLocalDateKey(displayTimezone);
 
   const activeMonth: number | null =
     setting === 'none' ? null :
-    setting === 'auto' ? getCurrentMonth() :
+    setting === 'auto' ? monthOfKey(dateKey) :
     setting;
 
   const setSeasonalTheme = useCallback((value: SeasonalThemeKey) => {

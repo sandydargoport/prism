@@ -19,7 +19,7 @@ import { usePersistedState, useSessionScopedState, isBoolean, isStringArray } fr
 import { toast } from '@/components/ui/use-toast';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
-import { formatDistanceToNow, format } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import {
   MessageSquare,
   Plus,
@@ -38,7 +38,8 @@ import { Badge } from '@/components/ui/badge';
 import { UserAvatar } from '@/components/ui/avatar';
 import { PageWrapper, SubpageHeader, FilterBar, PersonFilter } from '@/components/layout';
 import { useMessages } from '@/lib/hooks';
-import { useAuth } from '@/components/providers';
+import { useAuth, useTimeFormat } from '@/components/providers';
+import { formatDisplayDateTime } from '@/lib/utils/timeFormat';
 import { useFamily } from '@/components/providers';
 import { AddMessageModal } from '@/components/modals/AddMessageModal';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -410,8 +411,9 @@ function MessageCard({
     }
   };
 
+  const { timeFormat, displayTimezone } = useTimeFormat();
   const timeAgo = formatDistanceToNow(message.createdAt, { addSuffix: true });
-  const fullDate = format(message.createdAt, 'PPp');
+  const fullDate = formatDisplayDateTime(message.createdAt, timeFormat, displayTimezone);
 
   if (compact) {
     return (

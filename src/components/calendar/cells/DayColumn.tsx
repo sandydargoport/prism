@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { format, isSameDay, startOfDay } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import { useDroppable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
 import { WeekItemCard, type WeekItemSize, type WeekItemLayout } from './WeekItemCard';
@@ -10,7 +10,7 @@ import type { DayBucket } from '@/lib/hooks/useWeekViewData';
 import { useTranslations } from 'next-intl';
 import { useTimeFormat } from '@/components/providers';
 import { useDateLabels, type DateLabels } from '@/lib/hooks/useDateLabels';
-import { formatDisplayTime, toDisplayDate, type TimeFormat } from '@/lib/utils/timeFormat';
+import { formatDisplayTime, getDisplayDateKey, toDisplayDate, type TimeFormat } from '@/lib/utils/timeFormat';
 
 const PRIORITY_COLORS = {
   high: '#ef4444',
@@ -68,18 +68,15 @@ function timeLabel(
   return startStr;
 }
 
-function choreStripeColor(chore: { pendingApproval?: unknown; nextDue?: string }): string {
+export function choreStripeColor(
+  chore: { pendingApproval?: unknown; nextDue?: string },
+  displayTimezone: string,
+): string {
   if (chore.pendingApproval) return CHORE_PENDING_APPROVAL_COLOR;
-  if (chore.nextDue) {
-    // Parse YYYY-MM-DD as local-date; new Date(yyyy-mm-dd) parses as UTC and
-    // shifts to the previous day in negative-UTC zones, marking today's chore
-    // as overdue.
-    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(chore.nextDue);
-    if (m) {
-      const due = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-      if (due < startOfDay(new Date())) return CHORE_OVERDUE_COLOR;
-    }
-  }
+  // nextDue is a date column (YYYY-MM-DD). Date keys compare as strings, and
+  // today is the display zone's, like the columns it is drawn in.
+  const dueKey = chore.nextDue ? /^\d{4}-\d{2}-\d{2}/.exec(chore.nextDue)?.[0] : undefined;
+  if (dueKey && dueKey < getDisplayDateKey(new Date(), displayTimezone)) return CHORE_OVERDUE_COLOR;
   return CHORE_PENDING_COLOR;
 }
 
@@ -267,7 +264,7 @@ export function DayColumn({
             variant="chore"
             size={profile.itemSize}
             layout={itemLayout}
-            stripeColor={choreStripeColor(chore)}
+            stripeColor={choreStripeColor(chore, displayTimezone)}
             title={chore.title}
             subtitle={chore.assignedTo?.name}
             muted={Boolean(chore.pendingApproval)}

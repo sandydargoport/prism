@@ -14,16 +14,14 @@ import { getDisplayDateKey, toDisplayDate } from '@/lib/utils/timeFormat';
  * showing the previous day moves to the new one; one the user has navigated
  * elsewhere is left where it is.
  *
- * The check runs at the device's midnight (useLocalDateKey). With a display
- * zone other than the device's it runs at the wrong hour but still lands on
- * the display zone's date.
+ * The check runs at the display zone's midnight.
  */
 export function useFollowToday(
   currentDate: Date,
   setCurrentDate: (date: Date) => void,
   displayTimezone: string,
 ): void {
-  const tick = useLocalDateKey();
+  const tick = useLocalDateKey(displayTimezone);
   const shownToday = useRef<string | null>(null);
   const latest = useRef(currentDate);
   latest.current = currentDate;

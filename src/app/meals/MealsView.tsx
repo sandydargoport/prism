@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useState } from 'react';
 import Link from 'next/link';
 import { Emoji } from '@/components/ui/Emoji';
-import { format, addDays, isBefore, startOfDay } from 'date-fns';
+import { format, addDays, isBefore } from 'date-fns';
 import {
   UtensilsCrossed,
   Plus,
@@ -177,7 +177,7 @@ export function MealsView() {
                 const allDayMeals = mealsByDay[day] || [];
                 const dayMeals = filterMealTypes.size > 0 ? allDayMeals.filter(m => filterMealTypes.has(m.mealType)) : allDayMeals;
                 const isDayToday = format(dayDate, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd');
-                const isPast = isBefore(dayDate, startOfDay(new Date())) && !isDayToday;
+                const isPast = isBefore(dayDate, today) && !isDayToday;
                 return (
                   <DayRow key={day} day={day} date={dayDate} meals={dayMeals} isToday={isDayToday} isPast={isPast}
                     onAddMeal={() => handleAddWithAuth(day)}

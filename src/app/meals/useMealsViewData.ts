@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { format, startOfWeek, addDays } from 'date-fns';
+import { format, startOfWeek, addDays, parseISO } from 'date-fns';
 import { toast } from '@/components/ui/use-toast';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { useAuth } from '@/components/providers/AuthProvider';
+import { useTimeFormat } from '@/components/providers';
+import { useLocalDateKey } from '@/lib/hooks/useLocalDateKey';
 import { useWeekStartsOn } from '@/lib/hooks/useWeekStartsOn';
 import type { Meal } from '@/types';
 
@@ -14,7 +16,10 @@ const mealTypeOrder: Record<string, number> = { breakfast: 0, lunch: 1, snack: 2
 
 export function useMealsViewData() {
   const { weekStartsOn } = useWeekStartsOn();
-  const today = new Date();
+  // Today in the display zone, as a local-midnight Date for date-fns. The
+  // days on the page are dates, not instants, so the device zone has no say.
+  const { displayTimezone } = useTimeFormat();
+  const today = parseISO(useLocalDateKey(displayTimezone));
   const defaultWeekStart = startOfWeek(today, { weekStartsOn });
   const { requireAuth } = useAuth();
   const { confirm, dialogProps: confirmDialogProps } = useConfirmDialog();

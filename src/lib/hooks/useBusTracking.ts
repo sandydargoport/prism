@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useVisibilityPolling } from './useVisibilityPolling';
+import { useTimeFormat } from '@/components/providers';
+import { todayKey, wallTimeToday, weekdayOfKey } from '@/lib/utils/zonedDate';
 
 export interface BusCheckpoint {
   name: string;
@@ -40,19 +42,24 @@ interface BusStatusResponse {
 
 const DISPLAY_WINDOW_MS = 60 * 60 * 1000; // ±60 min of scheduledTime
 
-/** Returns true if the route should be visible right now. */
-function isRouteVisible(route: BusRouteStatus): boolean {
-  const now = new Date();
-  // Check activeDays (1=Mon..5=Fri; getDay() is 0=Sun..6=Sat)
-  const todayDow = now.getDay();
+/**
+ * Returns true if the route should be visible right now. A route's weekdays
+ * and scheduled time are household wall-clock values, so both are read in the
+ * household zone, as the server does, not the device's.
+ */
+export function isRouteVisible(route: BusRouteStatus, timeZone: string, now: Date = new Date()): boolean {
+  let scheduled: Date;
+  let todayDow: number;
+  try {
+    // Check activeDays (1=Mon..5=Fri; 0=Sun..6=Sat)
+    todayDow = weekdayOfKey(todayKey(timeZone, now));
+    scheduled = wallTimeToday(route.scheduledTime.slice(0, 5), timeZone, now);
+  } catch {
+    return false;
+  }
   if (!route.activeDays?.includes(todayDow)) return false;
 
   // Check ±60 min window around scheduledTime
-  const parts = route.scheduledTime.split(':').map(Number);
-  const hours = parts[0] ?? 0;
-  const minutes = parts[1] ?? 0;
-  const scheduled = new Date(now);
-  scheduled.setHours(hours, minutes, 0, 0);
   const diffMs = Math.abs(now.getTime() - scheduled.getTime());
   return diffMs <= DISPLAY_WINDOW_MS;
 }
@@ -70,7 +77,8 @@ function getPollingInterval(routes: BusRouteStatus[]): number {
   if (routes.length === 0) return 0;
 
   // Check if any route is within its bus window
-  const activeRoutes = routes.filter(isRouteVisible);
+  // Already filtered to the visible routes by the caller.
+  const activeRoutes = routes;
 
   if (activeRoutes.length === 0) return 0; // Outside bus window
 
@@ -98,6 +106,7 @@ function getPollingInterval(routes: BusRouteStatus[]): number {
 }
 
 export function useBusTracking() {
+  const { householdTimezone } = useTimeFormat();
   const [routes, setRoutes] = useState<BusRouteStatus[]>([]);
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -124,7 +133,10 @@ export function useBusTracking() {
   }, [fetchStatus]);
 
   // Filter to routes that are active today and within the ±60 min display window
-  const visibleRoutes = useMemo(() => routes.filter(isRouteVisible), [routes]);
+  const visibleRoutes = useMemo(
+    () => routes.filter((route) => isRouteVisible(route, householdTimezone)),
+    [routes, householdTimezone],
+  );
 
   // Adaptive polling
   const pollingInterval = useMemo(() => getPollingInterval(visibleRoutes), [visibleRoutes]);

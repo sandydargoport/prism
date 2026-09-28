@@ -298,6 +298,19 @@ export function formatDisplayTime(
   return format(toDisplayDate(date, timeZone), pattern);
 }
 
+/**
+ * A date and time, e.g. "Sep 28, 2026, 8:30 PM", in `timeZone` and the
+ * household's 12/24-hour format. For timestamps the server recorded (a sync,
+ * a backup, a message), which toLocaleString would show in the device zone.
+ */
+export function formatDisplayDateTime(
+  date: Date | number,
+  timeFormat: TimeFormat,
+  timeZone?: string,
+): string {
+  return `${format(toDisplayDate(date, timeZone), 'MMM d, yyyy')}, ${formatDisplayTime(date, timeFormat, {}, timeZone)}`;
+}
+
 export function formatDisplayHour(
   date: Date | number,
   timeFormat: TimeFormat,

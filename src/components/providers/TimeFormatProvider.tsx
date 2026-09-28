@@ -1,21 +1,23 @@
 'use client';
 
 import * as React from 'react';
+import { format } from 'date-fns';
 import {
   DEFAULT_DISPLAY_TIMEZONE_MODE,
   DEFAULT_TIME_FORMAT,
+  formatDisplayDateTime,
   isDisplayTimezoneMode,
   isTimeFormat,
+  toDisplayDate,
   type DisplayTimezoneMode,
   type TimeFormat,
 } from '@/lib/utils/timeFormat';
-import { detectBrowserTimezone } from '@/lib/hooks/useTimezone';
+import { DISPLAY_TIMEZONE_MODE_KEY, detectBrowserTimezone } from '@/lib/hooks/useTimezone';
 import { isHouseholdZoneCandidate } from '@/lib/utils/timezone';
 
 const SETTING_KEY = 'timeFormat';
 const TIMEZONE_SETTING_KEY = 'timezone';
 const TIMEZONE_CACHE_KEY = 'prism:timezone';
-const DISPLAY_TIMEZONE_MODE_KEY = 'prism:display-timezone-mode';
 export const TIMEZONE_CHANGED_EVENT = 'prism:timezone-changed';
 
 interface TimeFormatContextValue {
@@ -167,4 +169,20 @@ export function useTimeFormat(): TimeFormatContextValue {
   const context = React.useContext(TimeFormatContext);
   if (!context) throw new Error('useTimeFormat must be used within a TimeFormatProvider');
   return context;
+}
+
+/**
+ * Formatters for a timestamp the server recorded (a last sync, say), in the
+ * display zone and the household's 12/24-hour format. toLocaleString would
+ * use the device zone and the browser's clock style.
+ */
+export function useDisplayTimestampFormat(): {
+  dateTime: (date: Date | number | string) => string;
+  date: (date: Date | number | string) => string;
+} {
+  const { timeFormat, displayTimezone } = useTimeFormat();
+  return React.useMemo(() => ({
+    dateTime: (date) => formatDisplayDateTime(new Date(date), timeFormat, displayTimezone),
+    date: (date) => format(toDisplayDate(new Date(date), displayTimezone), 'MMM d, yyyy'),
+  }), [timeFormat, displayTimezone]);
 }

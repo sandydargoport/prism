@@ -9,7 +9,14 @@
  * "today" on screen quietly stops being today — and nobody notices, because
  * the dashboard still looks like a dashboard.
  */
-import { localDateKey, msUntilNextLocalMidnight } from '../useLocalDateKey';
+import { renderHook, act } from '@testing-library/react';
+import {
+  localDateKey,
+  msUntilNextLocalMidnight,
+  msUntilNextMidnight,
+  useLocalDateKey,
+  zonedDateKey,
+} from '../useLocalDateKey';
 
 describe('localDateKey', () => {
   it('changes when the local date changes', () => {
@@ -64,5 +71,64 @@ describe('msUntilNextLocalMidnight', () => {
     const now = new Date(2028, 1, 28, 22, 0, 0);
     const next = new Date(now.getTime() + msUntilNextLocalMidnight(now));
     expect(localDateKey(next)).toBe('2028-02-29');
+  });
+});
+
+describe('in an explicit zone', () => {
+  // 01:30Z on 29 Sep is still the 28th in Chicago and already the 29th in Tokyo,
+  // whatever zone the test process runs in.
+  const instant = new Date('2026-09-29T01:30:00Z');
+
+  it('is that zone\'s date, not the device\'s', () => {
+    expect(zonedDateKey('America/Chicago', instant)).toBe('2026-09-28');
+    expect(zonedDateKey('Asia/Tokyo', instant)).toBe('2026-09-29');
+  });
+
+  it('falls back to the device date for an unknown zone', () => {
+    expect(zonedDateKey('Not/AZone', instant)).toBe(localDateKey(instant));
+    expect(zonedDateKey(undefined, instant)).toBe(localDateKey(instant));
+  });
+
+  it('counts down to that zone\'s midnight', () => {
+    // Chicago is 20:30 CDT, so midnight is 3.5 hours (plus the second of slack) away.
+    expect(msUntilNextMidnight('America/Chicago', instant)).toBe(3.5 * 60 * 60 * 1000 + 1000);
+    // Tokyo is 10:30 JST: 13.5 hours.
+    expect(msUntilNextMidnight('Asia/Tokyo', instant)).toBe(13.5 * 60 * 60 * 1000 + 1000);
+  });
+
+  it('lands on the next day on a 25-hour fall-back day', () => {
+    const now = new Date('2026-11-01T05:00:00Z'); // 00:00 CDT, the day is 25h long
+    const next = new Date(now.getTime() + msUntilNextMidnight('America/Chicago', now));
+    expect(zonedDateKey('America/Chicago', next)).toBe('2026-11-02');
+  });
+
+  it('lands on the next day on a 23-hour spring-forward day', () => {
+    const now = new Date('2026-03-08T06:00:00Z'); // 00:00 CST, the day is 23h long
+    const next = new Date(now.getTime() + msUntilNextMidnight('America/Chicago', now));
+    expect(zonedDateKey('America/Chicago', next)).toBe('2026-03-09');
+  });
+});
+
+describe('useLocalDateKey with a zone', () => {
+  afterEach(() => jest.useRealTimers());
+
+  it('rolls over at that zone\'s midnight', () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-09-29T04:59:00Z')); // 23:59 CDT on the 28th
+    const { result } = renderHook(() => useLocalDateKey('America/Chicago'));
+    expect(result.current).toBe('2026-09-28');
+    act(() => { jest.advanceTimersByTime(2 * 60 * 1000); });
+    expect(result.current).toBe('2026-09-29');
+  });
+
+  it('follows a change of zone', () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-09-29T01:30:00Z'));
+    const { result, rerender } = renderHook(({ zone }) => useLocalDateKey(zone), {
+      initialProps: { zone: 'America/Chicago' },
+    });
+    expect(result.current).toBe('2026-09-28');
+    rerender({ zone: 'Asia/Tokyo' });
+    expect(result.current).toBe('2026-09-29');
   });
 });

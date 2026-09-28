@@ -17,8 +17,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useBackups } from '@/lib/hooks/useBackups';
 import { useTimeFormat } from '@/components/providers';
-import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
-import { format } from 'date-fns';
+import { formatDisplayDateTime } from '@/lib/utils/timeFormat';
 
 type DangerStep = null | 'warn-truncate' | 'confirm-truncate' | 'warn-seed' | 'confirm-seed';
 
@@ -47,10 +46,7 @@ export function BackupSection() {
   // Formatted here rather than by the server, whose clock may be in another
   // zone (UTC on a default Docker install).
   const { timeFormat, displayTimezone } = useTimeFormat();
-  const formatBackupTime = (iso: string) => {
-    const created = new Date(iso);
-    return `${format(toDisplayDate(created, displayTimezone), 'MMM d, yyyy')}, ${formatDisplayTime(created, timeFormat, {}, displayTimezone)}`;
-  };
+  const formatBackupTime = (iso: string) => formatDisplayDateTime(new Date(iso), timeFormat, displayTimezone);
 
   // Older ones are collapsed rather than dropped: nothing is deleted here, and
   // an old backup is still restorable. The list has no retention policy, so it

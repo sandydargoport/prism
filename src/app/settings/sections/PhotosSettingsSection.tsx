@@ -5,6 +5,7 @@ import { Plus, RefreshCw, Trash2, Cloud, HardDrive, Pin, X, FolderOpen, MapPin, 
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { cn } from '@/lib/utils';
+import { useDisplayTimestampFormat } from '@/components/providers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -31,6 +32,7 @@ interface OneDriveFolder {
 }
 
 export function PhotosSettingsSection() {
+  const stamp = useDisplayTimestampFormat();
   const { confirm, dialogProps: confirmDialogProps } = useConfirmDialog();
   const [sources, setSources] = React.useState<PhotoSource[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -398,7 +400,7 @@ export function PhotosSettingsSection() {
                         <p className="font-medium text-sm truncate">{source.name}</p>
                         <p className="text-xs text-muted-foreground">
                           {source.photoCount} photos
-                          {source.lastSynced && <> · Synced {new Date(source.lastSynced).toLocaleDateString()}</>}
+                          {source.lastSynced && <> · Synced {stamp.date(source.lastSynced)}</>}
                           {source.type === 'onedrive' && !source.onedriveFolderId && (
                             <span className="text-warning"> · No folder selected</span>
                           )}

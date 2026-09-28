@@ -10,6 +10,7 @@ import {
   Cloud,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useDisplayTimestampFormat } from '@/components/providers';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -82,6 +83,7 @@ export function SourceRow<S extends BaseSource>({
   badge: { label: string; value: string };
   extraActions?: React.ReactNode;
 }) {
+  const stamp = useDisplayTimestampFormat();
   return (
     <div
       className={cn(
@@ -153,7 +155,7 @@ export function SourceRow<S extends BaseSource>({
           ) : source.lastSyncAt ? (
             <span className="flex items-center gap-1 text-muted-foreground">
               <CheckCircle2 className="h-3 w-3 text-success" />
-              {new Date(source.lastSyncAt).toLocaleString()}
+              {stamp.dateTime(source.lastSyncAt)}
             </span>
           ) : (
             <span className="text-muted-foreground">Never synced</span>
