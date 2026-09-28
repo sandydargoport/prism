@@ -5,6 +5,9 @@ export const metadata = {
   title: 'Dashboard',
   description: 'Your family dashboard - view calendars, tasks, weather, and more.',
 };
+// Render per request: nothing else here marks the page dynamic, so it was
+// prerendered at build time (no database, fontScale 100) and never updated.
+export const dynamic = 'force-dynamic';
 
 // Named dashboards at /d/[slug] wrap their content in a zoom container driven
 // by `layouts.fontScale`. The default dashboard at `/` was missing the same
