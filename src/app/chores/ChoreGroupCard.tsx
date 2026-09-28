@@ -1,7 +1,6 @@
 'use client';
 
-import { format } from 'date-fns';
-import { isPast, differenceInDays, formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import {
   CalendarDays,
   Hourglass,
@@ -9,6 +8,8 @@ import {
   Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { dueLocalDate, isTaskOverdue } from '@/lib/utils/taskDue';
+import { calendarDaysBetween } from '@/lib/utils/zonedDate';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
@@ -22,6 +23,7 @@ export interface ChoreCardData {
   title: string;
   pointValue: number;
   nextDue?: string | null;
+  nextDueTime?: string | null;
   lastCompleted?: string | null;
   pendingApproval?: PendingApproval | null;
 }
@@ -45,9 +47,14 @@ export function ChoreGroupCard({
   onDelete,
   setCelebratingUser,
 }: ChoreGroupCardProps) {
-  const nextDue = chore.nextDue ? new Date(chore.nextDue) : null;
-  const isOverdue = nextDue && isPast(nextDue);
-  const daysUntil = nextDue ? differenceInDays(nextDue, new Date()) : null;
+  // nextDue is a date column (YYYY-MM-DD): read it as a local date, never as
+  // UTC midnight, which is the previous evening west of UTC.
+  const dueKey = chore.nextDue ? chore.nextDue.slice(0, 10) : null;
+  const nextDue = dueKey ? dueLocalDate(dueKey, chore.nextDueTime) : null;
+  // Chores share the task due shape: overdue after the due time, or from the
+  // day after a date-only due.
+  const isOverdue = isTaskOverdue({ dueDate: dueKey, dueTime: chore.nextDueTime });
+  const daysUntil = dueKey ? calendarDaysBetween(format(new Date(), 'yyyy-MM-dd'), dueKey) : null;
   const isCompletedToday =
     chore.lastCompleted &&
     new Date(chore.lastCompleted) > new Date(Date.now() - 24 * 60 * 60 * 1000);

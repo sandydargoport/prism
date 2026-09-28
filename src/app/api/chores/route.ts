@@ -19,8 +19,9 @@ import { db } from '@/lib/db/client';
 import { chores, users, choreCompletions } from '@/lib/db/schema';
 import { eq, and, desc, isNull, or, lte } from 'drizzle-orm';
 import { createChoreSchema, validateRequest } from '@/lib/validations';
-import { format } from 'date-fns';
 import { getCached } from '@/lib/cache/redis';
+import { getHouseholdTimezone } from '@/lib/householdTimezone';
+import { todayKey } from '@/lib/utils/zonedDate';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logActivity } from '@/lib/services/auditLog';
 import { formatChoreRow } from '@/lib/utils/formatters';
@@ -45,7 +46,10 @@ export async function GET(request: NextRequest) {
     // The chores list page omits this and gets only currently-due items.
     const includeFuture = searchParams.get('includeFuture') === 'true';
 
-    const cacheKey = `chores:${assignedTo || 'all'}:${enabledOnly}:future=${includeFuture}`;
+    // The household's today, not the server's. In the key so the cached list
+    // rolls over at the household's midnight.
+    const today = todayKey(await getHouseholdTimezone());
+    const cacheKey = `chores:${assignedTo || 'all'}:${enabledOnly}:future=${includeFuture}:${today}`;
 
     const data = await getCached(cacheKey, async () => {
       // First, get all pending completions
@@ -126,7 +130,6 @@ export async function GET(request: NextRequest) {
       // 3. Were completed within the last 24 hours (so they still appear as "done" in the UI)
       // When includeFuture=true (calendar overlay), skip the date filter so
       // future-dated chores remain visible after a drag-and-drop reschedule.
-      const today = format(new Date(), 'yyyy-MM-dd');
       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
       const filteredResults = includeFuture
         ? results

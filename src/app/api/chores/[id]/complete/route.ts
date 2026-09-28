@@ -26,6 +26,8 @@ import { completeChoreSchema, validateRequest } from '@/lib/validations';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { rateLimitGuard } from '@/lib/cache/rateLimit';
 import { calculateNextDue } from '@/lib/utils/calculateNextDue';
+import { getHouseholdTimezone } from '@/lib/householdTimezone';
+import { todayKey } from '@/lib/utils/zonedDate';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
 
@@ -181,6 +183,7 @@ export async function POST(
     const needsApproval = !callerCanApprove;
 
     // Create completion + conditionally update chore atomically
+    const today = todayKey(await getHouseholdTimezone());
     const completion = await db.transaction(async (tx) => {
       const [comp] = await tx
         .insert(choreCompletions)
@@ -200,7 +203,7 @@ export async function POST(
 
       // If auto-approved (parent completing), update chore's lastCompleted and nextDue
       if (!needsApproval) {
-        const nextDue = calculateNextDue(chore.frequency, chore.customIntervalDays, chore.startDay);
+        const nextDue = calculateNextDue(chore.frequency, chore.customIntervalDays, chore.startDay, today);
         await tx
           .update(chores)
           .set({
@@ -289,6 +292,7 @@ export async function DELETE(
 
     // Undo the completion, then rebuild the chore's schedule fields from
     // whichever completion (if any) is now the most recent.
+    const today = todayKey(await getHouseholdTimezone());
     await db.transaction(async (tx) => {
       await tx.delete(choreCompletions).where(eq(choreCompletions.id, latest.id));
 
@@ -308,7 +312,7 @@ export async function DELETE(
           lastCompleted: mostRecent?.completedAt ?? null,
           nextDue:
             mostRecent && chore
-              ? calculateNextDue(chore.frequency, chore.customIntervalDays, chore.startDay)
+              ? calculateNextDue(chore.frequency, chore.customIntervalDays, chore.startDay, today)
               : null,
           updatedAt: new Date(),
         })

@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { UserAvatar } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
 import type { Chore } from '@/types';
+import { isTaskOverdue } from '@/lib/utils/taskDue';
 
 export function getCategoryEmoji(category: string): string {
   switch (category) {
@@ -41,7 +42,8 @@ export function ChoreItem({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const isOverdue = chore.nextDue && isPast(parseISO(chore.nextDue));
+  // Not overdue on its own day: "Due today" is not an alert.
+  const isOverdue = isTaskOverdue({ dueDate: chore.nextDue?.slice(0, 10), dueTime: chore.nextDueTime });
   const isPendingApproval = !!chore.pendingApproval;
   const categoryEmoji = getCategoryEmoji(chore.category);
 

@@ -31,6 +31,7 @@ import type { CalendarEvent } from '@/types/calendar';
 import type { BusRouteStatus, BusPrediction } from '@/lib/hooks/useBusTracking';
 import { useTimeFormat } from '@/components/providers';
 import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
+import { useLocalDateKey } from '@/lib/hooks/useLocalDateKey';
 
 type DashData = ReturnType<typeof useDashboardData>;
 
@@ -141,12 +142,14 @@ export function CalendarCard({ data }: { data: DashData['calendar'] }) {
 }
 
 export function ChoresCard({ data }: { data: DashData['chores'] }) {
+  const today = useLocalDateKey();
   const dueCount = useMemo(() => {
     if (!data.chores) return 0;
     return data.chores.filter((c: { enabled: boolean; nextDue?: string }) =>
-      c.enabled && (!c.nextDue || new Date(c.nextDue) <= new Date())
+      // Date keys compare as strings; see ChoresTile.
+      c.enabled && (!c.nextDue || c.nextDue.slice(0, 10) <= today)
     ).length;
-  }, [data.chores]);
+  }, [data.chores, today]);
 
   return (
     <CardShell href="/chores" icon={<ClipboardList className="h-4 w-4 text-orange-500" />} title="Chores" count={dueCount}>

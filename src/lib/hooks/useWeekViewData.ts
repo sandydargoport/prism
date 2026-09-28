@@ -65,11 +65,9 @@ function eventOnDay(event: CalendarEvent, day: Date, displayTimezone: string): b
 }
 
 function choreNextDueOnDay(chore: Chore, day: Date): boolean {
-  if (!chore.nextDue) return false;
-  // nextDue is stored as YYYY-MM-DD or ISO; compare on date-only basis
-  const due = new Date(chore.nextDue);
-  if (Number.isNaN(due.getTime())) return false;
-  return isSameDay(due, day);
+  // nextDue is a YYYY-MM-DD date column. Compare it as a date key: parsed with
+  // new Date() it is UTC midnight, the previous evening west of UTC.
+  return !!chore.nextDue && chore.nextDue.slice(0, 10) === format(day, 'yyyy-MM-dd');
 }
 
 export function useWeekViewData({

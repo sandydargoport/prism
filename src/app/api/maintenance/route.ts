@@ -18,6 +18,8 @@ import { maintenanceReminders, users } from '@/lib/db/schema';
 import { eq, and, lte, asc } from 'drizzle-orm';
 import { createMaintenanceSchema, validateRequest } from '@/lib/validations';
 import { logError } from '@/lib/utils/logError';
+import { getHouseholdTimezone } from '@/lib/householdTimezone';
+import { addDaysToKey, todayKey } from '@/lib/utils/zonedDate';
 
 /**
  * GET /api/maintenance
@@ -68,9 +70,8 @@ export async function GET(request: NextRequest) {
     }
     if (upcomingOnly) {
       // Show items due within the next 30 days
-      const thirtyDaysFromNow = new Date();
-      thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-      conditions.push(lte(maintenanceReminders.nextDue, thirtyDaysFromNow.toISOString().split('T')[0]!));
+      const thirtyDaysFromNow = addDaysToKey(todayKey(await getHouseholdTimezone()), 30);
+      conditions.push(lte(maintenanceReminders.nextDue, thirtyDaysFromNow));
     }
 
     const results = conditions.length > 0

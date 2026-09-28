@@ -91,9 +91,15 @@ jest.mock('@/lib/utils/calculateNextDue', () => ({
   calculateNextDue: jest.fn().mockReturnValue('2026-03-01'),
 }));
 
+jest.mock('@/lib/householdTimezone', () => ({
+  getHouseholdTimezone: jest.fn().mockResolvedValue('America/Chicago'),
+}));
+
 // Import routes after mocks
 import { POST as completeChore } from '../[id]/complete/route';
 import { POST as approveChore } from '../[id]/approve/route';
+import { calculateNextDue } from '@/lib/utils/calculateNextDue';
+import { todayKey } from '@/lib/utils/zonedDate';
 
 // --- Helpers ---
 
@@ -161,6 +167,11 @@ describe('POST /api/chores/[id]/complete', () => {
     expect(data.requiresApproval).toBe(false);
     expect(data.pointsAwarded).toBe(5);
     expect(data.message).toContain('points awarded');
+    // Scheduled from the household's today, not the server's.
+    expect(calculateNextDue).toHaveBeenLastCalledWith(
+      sampleChore.frequency, sampleChore.customIntervalDays, sampleChore.startDay,
+      todayKey('America/Chicago'),
+    );
   });
 
   it('child completing chore creates pending completion', async () => {
@@ -287,6 +298,10 @@ describe('POST /api/chores/[id]/approve', () => {
     expect(data.completion.approvedBy.id).toBe('parent-1');
     expect(data.completion.completedBy.name).toBe('Timmy');
     expect(data.completion.pointsAwarded).toBe(5);
+    expect(calculateNextDue).toHaveBeenLastCalledWith(
+      sampleChore.frequency, sampleChore.customIntervalDays, sampleChore.startDay,
+      todayKey('America/Chicago'),
+    );
   });
 
   it('returns 403 when non-parent tries to approve', async () => {

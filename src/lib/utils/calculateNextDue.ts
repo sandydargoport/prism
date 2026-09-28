@@ -18,8 +18,8 @@ import {
   getMonth,
   getYear,
   isBefore,
-  startOfDay,
 } from 'date-fns';
+import { parseDateOnly } from './zonedDate';
 
 const dayFunctions = [nextSunday, nextMonday, nextTuesday, nextWednesday, nextThursday, nextFriday, nextSaturday];
 
@@ -35,15 +35,23 @@ export type ChoreFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quar
  * @param frequency - The chore frequency
  * @param customIntervalDays - For 'custom' frequency, number of days between occurrences
  * @param startDay - Override for target day (varies by frequency type)
- * @param referenceDate - The date to calculate from (defaults to now, useful for testing)
+ * @param fromKey - Today as a date key (YYYY-MM-DD). Server callers pass
+ *   todayKey(getHouseholdTimezone()), so a chore completed in the evening is
+ *   scheduled from the household's today, not the server's.
  */
 export function calculateNextDue(
   frequency: ChoreFrequency,
-  customIntervalDays?: number | null,
-  startDay?: string | null,
-  referenceDate?: Date
+  customIntervalDays: number | null | undefined,
+  startDay: string | null | undefined,
+  fromKey: string,
 ): string {
-  const today = startOfDay(referenceDate ?? new Date());
+  const key = parseDateOnly(fromKey);
+  if (!key) throw new RangeError(`Invalid date key: ${fromKey}`);
+  // The arithmetic below reads and writes only the calendar date, on the
+  // local clock. Noon keeps it clear of any zone whose DST change falls at
+  // midnight, so the result is the same in every process zone.
+  const [y, m, d] = key.split('-').map(Number);
+  const today = new Date(y!, m! - 1, d!, 12);
   let nextDate: Date;
 
   switch (frequency) {

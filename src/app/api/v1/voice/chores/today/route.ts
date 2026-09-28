@@ -6,18 +6,13 @@ import { db } from '@/lib/db/client';
 import { chores, users } from '@/lib/db/schema';
 import { and, eq, lte, isNull, or, ilike } from 'drizzle-orm';
 import { logError } from '@/lib/utils/logError';
-
-function localDateString(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
+import { getHouseholdTimezone } from '@/lib/householdTimezone';
+import { todayKey } from '@/lib/utils/zonedDate';
 
 /**
  * GET /api/v1/voice/chores/today?assignee=Emma
  *
- * Returns enabled chores due today or overdue. When `assignee` is given,
+ * Returns enabled chores due today or overdue, in the household time zone. When `assignee` is given,
  * only chores assigned to that family member (case-insensitive name match)
  * are returned, plus chores with no assignee (anyone-can-do).
  */
@@ -26,7 +21,7 @@ export async function GET(request: NextRequest) {
     try {
       const url = new URL(request.url);
       const assignee = url.searchParams.get('assignee')?.trim();
-      const today = localDateString(new Date());
+      const today = todayKey(await getHouseholdTimezone());
 
       // Resolve the assignee name to a user id when present.
       let assigneeId: string | null = null;

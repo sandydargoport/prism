@@ -15,6 +15,8 @@ import { maintenanceReminders, maintenanceCompletions } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { completeMaintenanceSchema, validateRequest } from '@/lib/validations';
 import { logError } from '@/lib/utils/logError';
+import { getHouseholdTimezone } from '@/lib/householdTimezone';
+import { addDaysToKey, floatingUtcToDateKey, parseDateOnly, todayKey } from '@/lib/utils/zonedDate';
 
 /**
  * Route params type
@@ -24,36 +26,21 @@ interface RouteParams {
 }
 
 /**
- * Calculate next due date based on schedule
+ * Calculate next due date based on schedule, counted from `fromKey` (today in
+ * the household zone). Works on the calendar date alone, so it gives the same
+ * answer in every server zone.
  */
-function calculateNextDue(schedule: string, customIntervalDays: number | null): string {
-  const today = new Date();
-  const nextDue = new Date(today);
-
-  switch (schedule) {
-    case 'monthly':
-      nextDue.setMonth(nextDue.getMonth() + 1);
-      break;
-    case 'quarterly':
-      nextDue.setMonth(nextDue.getMonth() + 3);
-      break;
-    case 'annually':
-      nextDue.setFullYear(nextDue.getFullYear() + 1);
-      break;
-    case 'custom':
-      if (customIntervalDays) {
-        nextDue.setDate(nextDue.getDate() + customIntervalDays);
-      } else {
-        // Default to 30 days if custom interval not specified
-        nextDue.setDate(nextDue.getDate() + 30);
-      }
-      break;
-    default:
-      // Default to monthly
-      nextDue.setMonth(nextDue.getMonth() + 1);
+function calculateNextDue(schedule: string, customIntervalDays: number | null, fromKey: string): string {
+  if (schedule === 'custom') {
+    // Default to 30 days if custom interval not specified
+    return addDaysToKey(fromKey, customIntervalDays || 30);
   }
 
-  return nextDue.toISOString().split('T')[0]!;
+  const months = schedule === 'quarterly' ? 3 : schedule === 'annually' ? 12 : 1; // default monthly
+  const [y, m, d] = parseDateOnly(fromKey)!.split('-').map(Number);
+  // Date.UTC rolls an overflowing day forward (31 January + 1 month is
+  // 3 March), as the setMonth this replaced did.
+  return floatingUtcToDateKey(new Date(Date.UTC(y!, m! - 1 + months, d!)));
 }
 
 /**
@@ -130,7 +117,11 @@ export async function POST(
     }
 
     // Calculate next due date
-    const nextDue = calculateNextDue(reminder.schedule, reminder.customIntervalDays);
+    const nextDue = calculateNextDue(
+      reminder.schedule,
+      reminder.customIntervalDays,
+      todayKey(await getHouseholdTimezone()),
+    );
 
     // Update reminder with lastCompleted and new nextDue
     await db

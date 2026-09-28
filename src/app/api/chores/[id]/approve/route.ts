@@ -15,6 +15,8 @@ import { eq, and, isNull } from 'drizzle-orm';
 import { requireAuth, requireRole } from '@/lib/auth';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { calculateNextDue } from '@/lib/utils/calculateNextDue';
+import { getHouseholdTimezone } from '@/lib/householdTimezone';
+import { todayKey } from '@/lib/utils/zonedDate';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
 
@@ -135,7 +137,12 @@ export async function POST(
 
     // Approve completion + update chore atomically
     const now = new Date();
-    const nextDue = calculateNextDue(chore.frequency, chore.customIntervalDays, chore.startDay);
+    const nextDue = calculateNextDue(
+      chore.frequency,
+      chore.customIntervalDays,
+      chore.startDay,
+      todayKey(await getHouseholdTimezone()),
+    );
 
     await db.transaction(async (tx) => {
       await tx

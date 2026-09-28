@@ -15,6 +15,7 @@ import type { useDashboardData } from './useDashboardData';
 import type { BusRouteStatus, BusPrediction } from '@/lib/hooks/useBusTracking';
 import { useTimeFormat } from '@/components/providers';
 import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
+import { useLocalDateKey } from '@/lib/hooks/useLocalDateKey';
 
 type DashData = ReturnType<typeof useDashboardData>;
 
@@ -112,12 +113,15 @@ export function CalendarTile({ data }: { data: DashData['calendar'] }) {
 }
 
 export function ChoresTile({ data }: { data: DashData['chores'] }) {
+  const today = useLocalDateKey();
   const due = useMemo(() => {
     if (!data.chores) return 0;
     return data.chores.filter((c: { enabled: boolean; nextDue?: string }) =>
-      c.enabled && c.nextDue && new Date(c.nextDue) <= new Date()
+      // Date keys compare as strings; new Date(nextDue) is UTC midnight,
+      // which counted tomorrow's chores as due from the evening before.
+      c.enabled && c.nextDue && c.nextDue.slice(0, 10) <= today
     ).length;
-  }, [data.chores]);
+  }, [data.chores, today]);
   return (
     <TileShell href="/chores" icon={<ClipboardList className="h-4 w-4 text-orange-500" />} title="Chores"
       accent={due > 0 ? 'text-orange-600 dark:text-orange-400' : undefined}>
