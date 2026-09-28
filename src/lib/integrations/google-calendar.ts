@@ -16,6 +16,7 @@
 const GOOGLE_OAUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 import { CALENDAR_BROWSER_SCOPES } from '@/lib/integrations/googleScopes';
+import { normalizeAllDayRange } from '@/lib/utils/allDayRange';
 
 const GOOGLE_CALENDAR_API = 'https://www.googleapis.com/calendar/v3';
 
@@ -442,11 +443,22 @@ export async function moveCalendarEvent(
  * inclusive 23:59:59 ends, and guards against Google rejecting a zero-length
  * range by coercing malformed/legacy rows to a single day.
  */
-export function toGoogleAllDayRange(startTime: Date, endTime: Date): {
+export function toGoogleAllDayRange(startTime: Date, endTime: Date, timeZone: string): {
   start: { date: string };
   end: { date: string };
 } {
   const dateOnly = (date: Date) => date.toISOString().slice(0, 10);
+
+  // A start that is not UTC midnight is an older row written at local
+  // midnight, often with a local 23:59:59 end. Its dates are the household
+  // zone's; read in UTC, the end ran a day long (and east of UTC the start
+  // was a day early).
+  if (startTime.getUTCHours() !== 0 || startTime.getUTCMinutes() !== 0
+    || startTime.getUTCSeconds() !== 0 || startTime.getUTCMilliseconds() !== 0) {
+    const range = normalizeAllDayRange(startTime, endTime, timeZone);
+    return { start: { date: dateOnly(range.start) }, end: { date: dateOnly(range.end) } };
+  }
+
   const addUtcDay = (date: string) => {
     const value = new Date(`${date}T00:00:00.000Z`);
     value.setUTCDate(value.getUTCDate() + 1);

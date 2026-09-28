@@ -701,5 +701,35 @@ describe('syncIcalCalendarSource all-day dates', () => {
         '2026-09-16T00:00:00.000Z',
       ]);
     });
+
+    it('keys expanded all-day occurrences on their date, not server-local midnight', async () => {
+      const ids = (await syncedRows())
+        .map((r) => r.externalEventId)
+        .filter((id) => id.startsWith('weekly@example.com'));
+      expect(ids).toEqual([
+        'weekly@example.com_2026-09-01T00:00:00.000Z',
+        'weekly@example.com_2026-09-15T00:00:00.000Z',
+      ]);
+    });
+
+    it('renames a row stored under the older server-local id instead of replacing it', async () => {
+      const legacyId = `weekly@example.com_${new Date(2026, 8, 1).toISOString()}`;
+      const currentId = 'weekly@example.com_2026-09-01T00:00:00.000Z';
+      mockFindMany.mockResolvedValue([{
+        externalEventId: legacyId,
+        title: 'Sample weekly',
+        description: null,
+        location: null,
+        startTime: new Date('2026-09-01T00:00:00Z'),
+        endTime: new Date('2026-09-02T00:00:00Z'),
+        allDay: true,
+        recurring: true,
+        recurrenceRule: null,
+      }]);
+      await syncedRows();
+      const renamed = mockUpdateSet.mock.calls.some(([set]) => set?.externalEventId === currentId);
+      // On a UTC server the two ids are the same string and nothing moves.
+      expect(renamed).toBe(legacyId !== currentId);
+    });
   });
 });

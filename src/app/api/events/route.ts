@@ -375,7 +375,7 @@ export async function POST(request: NextRequest) {
               .where(eq(calendarSources.id, calendarSourceId));
           }
 
-          const allDayRange = allDay ? toGoogleAllDayRange(startTime, endTime) : null;
+          const allDayRange = allDay ? toGoogleAllDayRange(startTime, endTime, await getHouseholdTimezone()) : null;
 
           // Create event on Google Calendar
           const googleEvent = await createCalendarEvent(

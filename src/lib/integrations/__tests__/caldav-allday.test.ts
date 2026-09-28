@@ -39,7 +39,7 @@ const ICS = [
 async function readEvents() {
   return fetchCalDAVEvents(
     'https://dav.example.com', 'user', 'pass', CAL,
-    new Date('2026-08-01T00:00:00Z'), new Date('2026-10-01T00:00:00Z'),
+    new Date('2026-08-01T00:00:00Z'), new Date('2026-10-01T00:00:00Z'), tz,
   );
 }
 

@@ -5,10 +5,26 @@ import {
 } from '../google-calendar';
 
 describe('toGoogleAllDayRange', () => {
+  it('reads an older local-midnight row in the household zone', () => {
+    // Written in Chicago as 00:00 to 23:59:59 local on 19 Aug.
+    expect(toGoogleAllDayRange(
+      new Date('2026-08-19T05:00:00.000Z'),
+      new Date('2026-08-20T04:59:59.000Z'),
+      'America/Chicago',
+    )).toEqual({ start: { date: '2026-08-19' }, end: { date: '2026-08-20' } });
+    // Written in Tokyo: local midnight is the previous day in UTC.
+    expect(toGoogleAllDayRange(
+      new Date('2026-08-18T15:00:00.000Z'),
+      new Date('2026-08-20T15:00:00.000Z'),
+      'Asia/Tokyo',
+    )).toEqual({ start: { date: '2026-08-19' }, end: { date: '2026-08-21' } });
+  });
+
   it('advances an inclusive same-day end to Google’s exclusive next day', () => {
     expect(toGoogleAllDayRange(
       new Date('2026-08-19T00:00:00.000Z'),
       new Date('2026-08-19T23:59:59.000Z'),
+      'Asia/Tokyo',
     )).toEqual({ start: { date: '2026-08-19' }, end: { date: '2026-08-20' } });
   });
 
@@ -16,6 +32,7 @@ describe('toGoogleAllDayRange', () => {
     expect(toGoogleAllDayRange(
       new Date('2026-08-19T00:00:00.000Z'),
       new Date('2026-08-20T00:00:00.000Z'),
+      'Asia/Tokyo',
     )).toEqual({ start: { date: '2026-08-19' }, end: { date: '2026-08-20' } });
   });
 
@@ -23,6 +40,7 @@ describe('toGoogleAllDayRange', () => {
     expect(toGoogleAllDayRange(
       new Date('2026-08-19T00:00:00.000Z'),
       new Date('2026-08-21T23:59:59.000Z'),
+      'Asia/Tokyo',
     )).toEqual({ start: { date: '2026-08-19' }, end: { date: '2026-08-22' } });
   });
 });

@@ -8,7 +8,6 @@
 import { createDAVClient, type DAVCalendar, type DAVObject } from 'tsdav';
 import ICAL from 'ical.js';
 import { validatePublicUrl, UnsafeUrlError } from '@/lib/utils/safeFetch';
-import { localDateToFloatingAllDay } from '@/lib/utils/timeFormat';
 import { dueFromInstant, wallDue, type TaskDue } from '@/lib/utils/taskDue';
 import { isValidTimezone } from '@/lib/utils/timezone';
 import { todayKey, wallTimeAt, zonedWallTimeToUtc } from '@/lib/utils/zonedDate';
@@ -58,6 +57,10 @@ export interface CalDAVEvent {
    *  object's href — write-back is single-event-only, so that's acceptable. */
   href: string | null;
   etag: string | null;
+  /** A recurring instance's id as older builds keyed it, when it differs
+   *  from `uid`: the sync renames a row stored under it rather than deleting
+   *  and recreating it. */
+  legacyUid?: string;
 }
 
 export interface CalDAVTask {
@@ -198,6 +201,7 @@ export async function fetchCalDAVEvents(
   calendarHref: string,
   timeMin: Date,
   timeMax: Date,
+  timeZone: string,
 ): Promise<CalDAVEvent[]> {
   assertSafeCalDAVUrl(serverUrl);
 
@@ -230,7 +234,7 @@ export async function fetchCalDAVEvents(
 
   for (const obj of objects) {
     try {
-      const parsed = parseICalObject(obj, timeMin, timeMax);
+      const parsed = parseICalObject(obj, timeMin, timeMax, timeZone);
       events.push(...parsed);
     } catch (error) {
       console.error('Failed to parse CalDAV event:', error instanceof Error ? error.message : error);
@@ -248,6 +252,7 @@ function parseICalObject(
   obj: DAVObject,
   rangeStart: Date,
   rangeEnd: Date,
+  timeZone: string,
 ): CalDAVEvent[] {
   const data = obj.data;
   if (!data) return [];
@@ -280,20 +285,26 @@ function parseICalObject(
 
         while (next && count < maxInstances) {
           const occurrence = event.getOccurrenceDetails(next);
-          const start = occurrence.startDate.toJSDate();
-          const end = occurrence.endDate.toJSDate();
           const allDay = isAllDay(vevent);
+          const start = icalTimeToDate(occurrence.startDate, allDay, timeZone);
+          const end = icalTimeToDate(occurrence.endDate, allDay, timeZone);
 
           if (start > rangeEnd) break;
           if (end >= rangeStart) {
+            // Keyed on the stored start, which does not depend on the
+            // server's zone. Older builds keyed on the parser's instant,
+            // server-local midnight for an all-day date, so a row may still
+            // carry that id.
+            const uid = `${event.uid}_${start.toISOString()}`;
+            const legacyUid = `${event.uid}_${occurrence.startDate.toJSDate().toISOString()}`;
             events.push({
-              // Keyed on the raw start so existing rows keep their id.
-              uid: `${event.uid}_${start.toISOString()}`,
+              uid,
+              ...(legacyUid !== uid ? { legacyUid } : {}),
               title: event.summary,
               description: event.description || null,
               location: event.location || null,
-              startTime: allDay ? localDateToFloatingAllDay(start) : start,
-              endTime: allDay ? localDateToFloatingAllDay(end) : end,
+              startTime: start,
+              endTime: end,
               allDay,
               color: null,
               recurring: true,
@@ -308,14 +319,43 @@ function parseICalObject(
         }
       } catch {
         // If recurrence expansion fails, add the base event
-        events.push(makeEvent(event, vevent, href, etag));
+        events.push(makeEvent(event, vevent, href, etag, timeZone));
       }
     } else {
-      events.push(makeEvent(event, vevent, href, etag));
+      events.push(makeEvent(event, vevent, href, etag, timeZone));
     }
   }
 
   return events;
+}
+
+/**
+ * A VEVENT DTSTART/DTEND as the Date Prism stores.
+ *
+ * An all-day date is UTC midnight of that date ("floating"), built from its
+ * fields rather than through toJSDate, which would make it midnight in the
+ * server's zone. A time in UTC or in a zone the object defines is that
+ * instant. A floating time (no TZID, no Z) is a wall time, read in the
+ * household zone, as is a TZID naming an IANA zone the object carries no
+ * VTIMEZONE for: toJSDate would read both in the server's zone.
+ */
+export function icalTimeToDate(time: ICAL.Time, allDay: boolean, timeZone: string): Date {
+  if (allDay || time.isDate) return new Date(Date.UTC(time.year, time.month - 1, time.day));
+  if (time.zone === ICAL.Timezone.utcTimezone) return time.toJSDate();
+
+  const dateKey = `${String(time.year).padStart(4, '0')}-${pad2(time.month)}-${pad2(time.day)}`;
+  const wall = (zone: string) =>
+    new Date(zonedWallTimeToUtc(dateKey, `${pad2(time.hour)}:${pad2(time.minute)}`, zone).getTime()
+      + time.second * 1000);
+
+  // An unregistered TZID leaves the zone floating and the name in `timezone`,
+  // which the typings omit.
+  const tzid = (time as ICAL.Time & { timezone?: string }).timezone;
+  if (tzid && isValidTimezone(tzid) && (!time.zone || time.zone === ICAL.Timezone.localTimezone)) {
+    return wall(tzid);
+  }
+  if (time.zone && time.zone !== ICAL.Timezone.localTimezone) return time.toJSDate();
+  return wall(timeZone);
 }
 
 function makeEvent(
@@ -323,17 +363,16 @@ function makeEvent(
   vevent: ICAL.Component,
   href: string | null,
   etag: string | null,
+  timeZone: string,
 ): CalDAVEvent {
   const allDay = isAllDay(vevent);
-  const start = event.startDate.toJSDate();
-  const end = event.endDate.toJSDate();
   return {
     uid: event.uid,
     title: event.summary,
     description: event.description || null,
     location: event.location || null,
-    startTime: allDay ? localDateToFloatingAllDay(start) : start,
-    endTime: allDay ? localDateToFloatingAllDay(end) : end,
+    startTime: icalTimeToDate(event.startDate, allDay, timeZone),
+    endTime: icalTimeToDate(event.endDate, allDay, timeZone),
     allDay,
     color: null,
     recurring: false,

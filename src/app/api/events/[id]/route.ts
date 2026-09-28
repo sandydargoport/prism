@@ -76,7 +76,8 @@ function buildGoogleFieldUpdate(
   effLoc: string | null | undefined,
   effStart: Date,
   effEnd: Date,
-  effAllDay: boolean
+  effAllDay: boolean,
+  timeZone: string,
 ): Record<string, unknown> | null {
   const googleUpdate: Record<string, unknown> = {};
 
@@ -86,7 +87,7 @@ function buildGoogleFieldUpdate(
 
   if ('startTime' in body || 'endTime' in body || 'allDay' in body) {
     if (effAllDay) {
-      const range = toGoogleAllDayRange(effStart, effEnd);
+      const range = toGoogleAllDayRange(effStart, effEnd, timeZone);
       googleUpdate.start = range.start;
       googleUpdate.end = range.end;
     } else {
@@ -444,7 +445,7 @@ export async function PATCH(
           (reassigning && oldSource?.provider !== 'google');
 
         if (needsCreate) {
-          const allDayRange = effAllDay ? toGoogleAllDayRange(effStart, effEnd) : null;
+          const allDayRange = effAllDay ? toGoogleAllDayRange(effStart, effEnd, await getHouseholdTimezone()) : null;
           const created = await createCalendarEvent(
             accessToken,
             targetSource.sourceCalendarId,
@@ -483,7 +484,7 @@ export async function PATCH(
             targetSource.sourceCalendarId
           );
 
-          const googleUpdate = buildGoogleFieldUpdate(body, effTitle, effDesc, effLoc, effStart, effEnd, effAllDay);
+          const googleUpdate = buildGoogleFieldUpdate(body, effTitle, effDesc, effLoc, effStart, effEnd, effAllDay, await getHouseholdTimezone());
           if (googleUpdate) {
             await updateCalendarEvent(
               accessToken,
@@ -494,7 +495,7 @@ export async function PATCH(
           }
         } else if (existingEvent.externalEventId) {
           // Same Google calendar as before: push the field changes.
-          const googleUpdate = buildGoogleFieldUpdate(body, effTitle, effDesc, effLoc, effStart, effEnd, effAllDay);
+          const googleUpdate = buildGoogleFieldUpdate(body, effTitle, effDesc, effLoc, effStart, effEnd, effAllDay, await getHouseholdTimezone());
           if (googleUpdate) {
             await updateCalendarEvent(
               accessToken,

@@ -74,7 +74,7 @@ describe('exported functions throw UnsafeUrlError on a private serverUrl', () =>
   });
   it('fetchCalDAVEvents', async () => {
     await expect(
-      fetchCalDAVEvents('http://127.0.0.1', 'u', 'p', '/cal', new Date(), new Date()),
+      fetchCalDAVEvents('http://127.0.0.1', 'u', 'p', '/cal', new Date(), new Date(), 'UTC'),
     ).rejects.toBeInstanceOf(UnsafeUrlError);
     expect(mockCreateDAVClient).not.toHaveBeenCalled();
   });
