@@ -1,4 +1,10 @@
-import { startOfWeek, startOfMonth, startOfYear, isBefore, addWeeks, addMonths, addYears, format } from 'date-fns';
+import {
+  startOfMonthKey,
+  startOfWeekKey,
+  startOfYearKey,
+  todayKey,
+  zonedWallTimeToUtc,
+} from './zonedDate';
 
 interface GoalDef {
   id: string;
@@ -27,20 +33,37 @@ export interface WaterfallResult {
   yearlyEarned: number;
 }
 
-function getPeriodStart(date: Date, period: 'weekly' | 'monthly' | 'yearly', weekStartsOn: 0 | 1 = 0): Date {
+function periodStartKey(dateKey: string, period: 'weekly' | 'monthly' | 'yearly', weekStartsOn: 0 | 1): string {
   switch (period) {
-    case 'weekly': return startOfWeek(date, { weekStartsOn });
-    case 'monthly': return startOfMonth(date);
-    case 'yearly': return startOfYear(date);
+    case 'weekly': return startOfWeekKey(dateKey, weekStartsOn);
+    case 'monthly': return startOfMonthKey(dateKey);
+    case 'yearly': return startOfYearKey(dateKey);
   }
 }
 
-function getNextPeriodStart(date: Date, period: 'weekly' | 'monthly' | 'yearly'): Date {
-  switch (period) {
-    case 'weekly': return addWeeks(date, 1);
-    case 'monthly': return addMonths(date, 1);
-    case 'yearly': return addYears(date, 1);
-  }
+export interface PeriodStarts {
+  /** Date key of the first day of the current week. */
+  weekKey: string;
+  week: Date;
+  month: Date;
+  year: Date;
+}
+
+/**
+ * The instants the current week, month and year began in `timeZone`: the
+ * household's midnight, not the server's. Points earned at 20:00 on a
+ * Saturday in Chicago belong to that week, though it is already Sunday UTC.
+ */
+export function currentPeriodStarts(now: Date, weekStartsOn: 0 | 1, timeZone: string): PeriodStarts {
+  const today = todayKey(timeZone, now);
+  const midnight = (key: string) => zonedWallTimeToUtc(key, '00:00', timeZone);
+  const weekKey = startOfWeekKey(today, weekStartsOn);
+  return {
+    weekKey,
+    week: midnight(weekKey),
+    month: midnight(startOfMonthKey(today)),
+    year: midnight(startOfYearKey(today)),
+  };
 }
 
 /**
@@ -49,19 +72,21 @@ function getNextPeriodStart(date: Date, period: 'weekly' | 'monthly' | 'yearly')
  * Goals are processed in ascending priority order. Each week's earned points
  * fill recurring goals first (they reset each period), then overflow into
  * non-recurring goals (which accumulate across weeks).
+ *
+ * Weeks, months and years are the household's, in `timeZone`.
  */
 export function computeWaterfall(
   goals: GoalDef[],
   completions: Completion[],
-  now: Date = new Date(),
-  weekStartsOn: 0 | 1 = 0,
+  now: Date,
+  weekStartsOn: 0 | 1,
+  timeZone: string,
 ): WaterfallResult {
   const sorted = [...goals].sort((a, b) => a.priority - b.priority);
 
   // Compute counters
-  const weekStart = startOfWeek(now, { weekStartsOn });
-  const monthStart = startOfMonth(now);
-  const yearStart = startOfYear(now);
+  const { weekKey, week: weekStart, month: monthStart, year: yearStart } =
+    currentPeriodStarts(now, weekStartsOn, timeZone);
 
   let weeklyEarned = 0;
   let monthlyEarned = 0;
@@ -74,12 +99,12 @@ export function computeWaterfall(
     if (c.completedAt >= yearStart) yearlyEarned += pts;
   }
 
-  // Group completions by week (Monday-based)
+  // Group completions by the household week they fell in
   const weekBuckets = new Map<string, number>();
   for (const c of completions) {
     const pts = c.pointsAwarded ?? 0;
     if (pts <= 0) continue;
-    const wk = format(startOfWeek(c.completedAt, { weekStartsOn }), 'yyyy-MM-dd');
+    const wk = startOfWeekKey(todayKey(timeZone, c.completedAt), weekStartsOn);
     weekBuckets.set(wk, (weekBuckets.get(wk) || 0) + pts);
   }
 
@@ -116,8 +141,7 @@ export function computeWaterfall(
   }
 
   // Build result: current period progress for recurring, cumulative for non-recurring
-  const currentWeekKey = format(weekStart, 'yyyy-MM-dd');
-  const currentWeekPts = weekBuckets.get(currentWeekKey) || 0;
+  const currentWeekPts = weekBuckets.get(weekKey) || 0;
 
   // Re-run waterfall just for current week to get recurring goal progress
   let currentRemaining = currentWeekPts;
@@ -148,11 +172,12 @@ export function computeWaterfall(
 }
 
 /**
- * Get the period start string for a goal (used for achievement records).
+ * Get the period start string for a goal (used for achievement records): a
+ * date key in the household zone.
  */
-export function getGoalPeriodKey(goal: GoalDef, now: Date = new Date(), weekStartsOn: 0 | 1 = 0): string {
+export function getGoalPeriodKey(goal: GoalDef, now: Date, weekStartsOn: 0 | 1, timeZone: string): string {
   if (goal.recurring && goal.recurrencePeriod) {
-    return format(getPeriodStart(now, goal.recurrencePeriod, weekStartsOn), 'yyyy-MM-dd');
+    return periodStartKey(todayKey(timeZone, now), goal.recurrencePeriod, weekStartsOn);
   }
-  return format(goal.lastResetAt, 'yyyy-MM-dd');
+  return todayKey(timeZone, goal.lastResetAt);
 }

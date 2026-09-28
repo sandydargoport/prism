@@ -115,6 +115,28 @@ export function calendarDaysBetween(fromKey: string, toKey: string): number {
   return Math.round((to - from) / MS_PER_DAY);
 }
 
+/** Day of the week of a date key: 0 = Sunday ... 6 = Saturday. */
+export function weekdayOfKey(dateKey: string): number {
+  return dateOnlyToFloatingUtc(dateKey).getUTCDay();
+}
+
+/** The date key of the first day of the week containing `dateKey`. */
+export function startOfWeekKey(dateKey: string, weekStartsOn: 0 | 1): string {
+  return addDaysToKey(dateKey, -((weekdayOfKey(dateKey) - weekStartsOn + 7) % 7));
+}
+
+/** The date key of the first day of the month containing `dateKey`. */
+export function startOfMonthKey(dateKey: string): string {
+  const [y, m] = splitDateKey(dateKey);
+  return keyFromParts(y, m, 1);
+}
+
+/** The date key of 1 January of the year containing `dateKey`. */
+export function startOfYearKey(dateKey: string): string {
+  const [y] = splitDateKey(dateKey);
+  return keyFromParts(y, 1, 1);
+}
+
 /** The calendar date in `timeZone` at `now`, as a date key. */
 export function todayKey(timeZone: string, now: Date | number = Date.now()): string {
   const w = wallClockAt(new Date(now).getTime(), timeZone);

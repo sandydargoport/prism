@@ -6,8 +6,13 @@ import {
   floatingUtcToDateKey,
   nextAnnualOccurrence,
   parseDateOnly,
+  startOfMonthKey,
+  startOfWeekKey,
+  startOfYearKey,
   todayKey,
+  wallTimeAt,
   wallTimeToday,
+  weekdayOfKey,
   zonedWallTimeToUtc,
 } from '../zonedDate';
 
@@ -220,5 +225,39 @@ describe('nextAnnualOccurrence', () => {
 
   it.each(['02-30', '13-01', 'June 15', ''])('rejects %p', (input) => {
     expect(() => nextAnnualOccurrence(input, '2026-06-15')).toThrow(RangeError);
+  });
+});
+
+describe('week, month and year starts', () => {
+  it('reads the weekday from the key alone', () => {
+    expect(weekdayOfKey('2026-02-15')).toBe(0); // Sunday
+    expect(weekdayOfKey('2026-02-16')).toBe(1); // Monday
+  });
+
+  it.each([
+    // [date, weekStartsOn, expected]
+    ['2026-02-16', 0, '2026-02-15'],
+    ['2026-02-15', 0, '2026-02-15'],
+    ['2026-02-16', 1, '2026-02-16'],
+    ['2026-02-15', 1, '2026-02-09'],
+    // Across a month and a year boundary.
+    ['2026-01-01', 0, '2025-12-28'],
+    ['2026-03-01', 1, '2026-02-23'],
+  ] as const)('start of the week of %s (weekStartsOn %s) is %s', (key, wso, expected) => {
+    expect(startOfWeekKey(key, wso)).toBe(expected);
+  });
+
+  it('gives the month and year starts', () => {
+    expect(startOfMonthKey('2026-02-16')).toBe('2026-02-01');
+    expect(startOfYearKey('2026-02-16')).toBe('2026-01-01');
+  });
+});
+
+describe('wallTimeAt', () => {
+  it('reads the wall clock in the zone', () => {
+    const instant = new Date('2026-09-29T01:30:00Z');
+    expect(wallTimeAt(CHICAGO, instant)).toBe('20:30');
+    expect(wallTimeAt(TOKYO, instant)).toBe('10:30');
+    expect(wallTimeAt(KIRITIMATI, instant)).toBe('15:30');
   });
 });

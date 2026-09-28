@@ -10,6 +10,7 @@ import { rateLimitGuard } from '@/lib/cache/rateLimit';
 import { computeWaterfall, getGoalPeriodKey } from '@/lib/utils/pointWaterfall';
 import { formatGoalRow } from '@/lib/utils/formatters';
 import { logError } from '@/lib/utils/logError';
+import { getHouseholdTimezone } from '@/lib/householdTimezone';
 
 export async function GET(request: NextRequest) {
   const auth = await getDisplayAuth();
@@ -21,6 +22,7 @@ export async function GET(request: NextRequest) {
     const data = await getCached('goals:progress', async () => {
       const [wso] = await db.select().from(settings).where(eq(settings.key, 'weekStartsOn'));
       const weekStartsOn: 0 | 1 = wso?.value === '1' ? 1 : 0;
+      const timeZone = await getHouseholdTimezone();
 
       // Fetch active goals sorted by priority
       const goalRows = await db
@@ -73,7 +75,7 @@ export async function GET(request: NextRequest) {
             completedAt: c.completedAt,
           }));
 
-        const result = computeWaterfall(goalDefs, childCompletions, now, weekStartsOn);
+        const result = computeWaterfall(goalDefs, childCompletions, now, weekStartsOn, timeZone);
 
         const childProgress: Record<string, { allocated: number; achieved: boolean }> = {};
         for (const gp of result.goals) {
@@ -81,7 +83,8 @@ export async function GET(request: NextRequest) {
           const periodKey = getGoalPeriodKey(
             goalDefs.find((g) => g.id === gp.goalId)!,
             now,
-            weekStartsOn
+            weekStartsOn,
+            timeZone,
           );
           const hasAchievement = achievements.some(
             (a) => a.goalId === gp.goalId && a.userId === child.id && a.periodStart === periodKey

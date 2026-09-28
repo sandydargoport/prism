@@ -4,8 +4,9 @@ import { db } from '@/lib/db/client';
 import { users, choreCompletions, settings } from '@/lib/db/schema';
 import { eq, and, isNotNull } from 'drizzle-orm';
 import { getCached } from '@/lib/cache/redis';
-import { startOfWeek, startOfMonth, startOfYear } from 'date-fns';
 import { logError } from '@/lib/utils/logError';
+import { getHouseholdTimezone } from '@/lib/householdTimezone';
+import { currentPeriodStarts } from '@/lib/utils/pointWaterfall';
 
 export async function GET() {
   const auth = await getDisplayAuth();
@@ -23,10 +24,9 @@ export async function GET() {
         .from(users)
         .where(eq(users.role, 'child'));
 
-      const now = new Date();
-      const weekStart = startOfWeek(now, { weekStartsOn });
-      const monthStart = startOfMonth(now);
-      const yearStart = startOfYear(now);
+      // The household's week, month and year, not the server's.
+      const { week: weekStart, month: monthStart, year: yearStart } =
+        currentPeriodStarts(new Date(), weekStartsOn, await getHouseholdTimezone());
 
       const summaries = await Promise.all(
         children.map(async (child) => {
