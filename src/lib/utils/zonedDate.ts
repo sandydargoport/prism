@@ -87,6 +87,17 @@ export function parseDateOnly(value: string | null | undefined): string | null {
   return keyFromParts(year, month, day);
 }
 
+/**
+ * The year of a date-only value (`YYYY-MM-DD` or an ISO string's date part),
+ * as written, or null if it is not a date. `new Date(value).getFullYear()`
+ * reads UTC midnight on the local clock: 1 January is the previous year west
+ * of UTC.
+ */
+export function yearOfDate(value: string | null | undefined): number | null {
+  const key = parseDateOnly(value);
+  return key ? Number(key.slice(0, 4)) : null;
+}
+
 /** The floating Date for a date key: UTC midnight of that calendar date. */
 export function dateOnlyToFloatingUtc(dateKey: string): Date {
   const [y, m, d] = splitDateKey(dateKey);

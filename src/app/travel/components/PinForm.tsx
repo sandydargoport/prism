@@ -18,6 +18,7 @@ import {
 import { cn } from '@/lib/utils';
 import type { TravelPin, PinStatus, PinType, GeocodeResult } from '../types';
 import { STATUS_CONFIG } from '../types';
+import { yearOfDate } from '@/lib/utils/zonedDate';
 import { NPS_UNITS } from '../constants/nationalParks';
 
 export interface PendingStop {
@@ -232,7 +233,7 @@ export function PinForm({ pin, initialLatLng, parentId, pinType = 'location', ch
           placeName: placeName.trim() || null,
           visitedDate: visitedDate || null,
           visitedEndDate: visitedEndDate || null,
-          year: visitedDate ? new Date(visitedDate).getFullYear() : null,
+          year: yearOfDate(visitedDate),
           tags,
           stops: [],
           nationalParks: [],

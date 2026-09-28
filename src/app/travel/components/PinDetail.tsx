@@ -21,6 +21,7 @@ import type { TravelPin, PinType, PinStatus } from '../types';
 import { STATUS_CONFIG, NPS_COLOR } from '../types';
 import type { PinPendingChildren } from './PinForm';
 import { InlineChildAdd } from './InlineChildAdd';
+import { yearOfDate } from '@/lib/utils/zonedDate';
 import { PinPhotoGrid } from './PinPhotoGrid';
 
 interface PinDetailProps {
@@ -108,7 +109,7 @@ export function PinDetail({ pin, childPins, onUpdate, onDelete, onDeleteChild, o
         isBucketList,
         visitedDate: visitedDate || null,
         visitedEndDate: visitedEndDate || null,
-        year: visitedDate ? new Date(visitedDate).getFullYear() : null,
+        year: yearOfDate(visitedDate),
         description: description.trim() || null,
         tags,
       });

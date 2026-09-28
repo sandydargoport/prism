@@ -6,6 +6,7 @@ import { eq, getTableColumns } from 'drizzle-orm';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
+import { yearOfDate } from '@/lib/utils/zonedDate';
 import { z } from 'zod';
 
 const patchTripSchema = z.object({
@@ -93,7 +94,7 @@ export async function PATCH(
 
     const d = parsed.data;
     const year = d.year !== undefined ? d.year
-      : d.visitedDate ? new Date(d.visitedDate).getFullYear()
+      : d.visitedDate ? yearOfDate(d.visitedDate)
       : undefined;
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };

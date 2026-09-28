@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { TravelPin } from '../types';
+import { yearOfDate } from '@/lib/utils/zonedDate';
 import { getCountryFromPlaceName, countryWithFlag } from './countryFlag';
 
 export type FilterTab = 'all' | 'been_there' | 'want_to_go' | 'bucket_list' | 'has_national_park';
@@ -51,9 +52,8 @@ export function usePinListFilter(pins: TravelPin[], pinsWithNpIds: Set<string>) 
     if (groupBy === 'year') {
       const map = new Map<string, TravelPin[]>();
       for (const p of filtered) {
-        const y = p.visitedDate
-          ? String(new Date(p.visitedDate).getFullYear())
-          : 'No date';
+        const year = yearOfDate(p.visitedDate);
+        const y = year !== null ? String(year) : 'No date';
         if (!map.has(y)) map.set(y, []);
         map.get(y)!.push(p);
       }

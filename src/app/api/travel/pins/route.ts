@@ -13,6 +13,7 @@ import { getCached } from '@/lib/cache/redis';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
+import { yearOfDate } from '@/lib/utils/zonedDate';
 import { z } from 'zod';
 
 const createPinSchema = z.object({
@@ -113,7 +114,7 @@ export async function POST(request: NextRequest) {
     }
 
     const d = parsed.data;
-    const year = d.year ?? (d.visitedDate ? new Date(d.visitedDate).getFullYear() : null);
+    const year = d.year ?? yearOfDate(d.visitedDate);
 
     const rows = await db
       .insert(travelPins)

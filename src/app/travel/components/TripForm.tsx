@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import type { TravelTrip, TripStyle } from '../types';
+import { yearOfDate } from '@/lib/utils/zonedDate';
 import { TRIP_STYLE_CONFIG } from '../types';
 
 interface TripFormProps {
@@ -41,7 +42,7 @@ export function TripForm({ initialData, hideHeader, onSave, onCancel }: TripForm
         emoji: null,
         visitedDate: visitedDate || null,
         visitedEndDate: visitedEndDate || null,
-        year: visitedDate ? new Date(visitedDate).getFullYear() : null,
+        year: yearOfDate(visitedDate),
         memberIds: [],
         tags: [],
         sortOrder: 0,

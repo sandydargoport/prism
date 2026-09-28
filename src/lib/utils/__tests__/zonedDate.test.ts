@@ -13,6 +13,7 @@ import {
   wallTimeAt,
   wallTimeToday,
   weekdayOfKey,
+  yearOfDate,
   zonedWallTimeToUtc,
 } from '../zonedDate';
 
@@ -259,5 +260,18 @@ describe('wallTimeAt', () => {
     expect(wallTimeAt(CHICAGO, instant)).toBe('20:30');
     expect(wallTimeAt(TOKYO, instant)).toBe('10:30');
     expect(wallTimeAt(KIRITIMATI, instant)).toBe('15:30');
+  });
+});
+
+describe('yearOfDate', () => {
+  it('takes the year as written, 1 January included', () => {
+    expect(yearOfDate('2026-01-01')).toBe(2026);
+    expect(yearOfDate('2025-12-31T23:00:00.000Z')).toBe(2025);
+  });
+
+  it('is null for a value that is not a date', () => {
+    expect(yearOfDate('')).toBeNull();
+    expect(yearOfDate(null)).toBeNull();
+    expect(yearOfDate('2026-02-30')).toBeNull();
   });
 });
