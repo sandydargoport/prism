@@ -13,7 +13,10 @@
 #
 # The count grows when a file holding one of them is edited for an unrelated
 # reason: a new blob is a new fingerprint, so pinning the actions added four
-# entries for the same CI password that was already accepted.
+# entries for the same CI password that was already accepted, and the unit
+# test step added in #528 moved it again (lines 200 and 290). A finding that is
+# only the same value at a new line can pass or fail depending on which copy
+# the scan reports, so a missed regeneration shows up as a flaky failure.
 version: 2
 fingerprint_algorithm: kingfisher-v1
 repositories:
@@ -97,6 +100,30 @@ repositories:
     line: 285
     first_seen_at: 2026-09-18T17:12:28.183547771+00:00
     last_updated_at: 2026-09-18T17:12:28.183547771+00:00
+  - path: .github/workflows/ci.yml
+    fingerprint: '17506998951858577102'
+    rule_id: betterleaks.generic-credential-uri
+    line: 200
+    first_seen_at: 2026-09-28T14:44:06.189953226+00:00
+    last_updated_at: 2026-09-28T14:44:06.189953226+00:00
+  - path: .github/workflows/ci.yml
+    fingerprint: '9443608221776569226'
+    rule_id: betterleaks.generic-credential-uri
+    line: 200
+    first_seen_at: 2026-09-28T14:44:06.189953226+00:00
+    last_updated_at: 2026-09-28T14:44:06.189953226+00:00
+  - path: .github/workflows/ci.yml
+    fingerprint: '41038298913559504'
+    rule_id: betterleaks.generic-credential-uri
+    line: 290
+    first_seen_at: 2026-09-28T14:44:06.189953226+00:00
+    last_updated_at: 2026-09-28T14:44:06.189953226+00:00
+  - path: .github/workflows/ci.yml
+    fingerprint: '5193438431676403908'
+    rule_id: betterleaks.generic-credential-uri
+    line: 290
+    first_seen_at: 2026-09-28T14:44:06.189953226+00:00
+    last_updated_at: 2026-09-28T14:44:06.189953226+00:00
   - path: .github/workflows/refresh-screenshots.yml
     fingerprint: '2353394124801989468'
     rule_id: betterleaks.generic-credential-uri
