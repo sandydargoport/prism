@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthWallEnabled, verifyTrustedDeviceToken, TRUSTED_DEVICE_COOKIE } from '@/lib/auth/authWall';
 import { validateSession } from '@/lib/auth/session';
+import { validateApiToken } from '@/lib/auth/apiTokens';
 
 /**
  * Paths that stay reachable with the authentication wall on (#339). Without
@@ -67,6 +68,22 @@ function lockedOutResponse(request: NextRequest, requestId: string): NextRespons
 /** A session cookie that actually validates, or a device a parent trusted. */
 async function callerMayPass(request: NextRequest): Promise<boolean> {
   if (verifyTrustedDeviceToken(request.cookies.get(TRUSTED_DEVICE_COOKIE)?.value)) return true;
+
+  // API tokens: voice, Home Assistant, the MCP server. They carry no cookie,
+  // so without this every token caller was locked out while the wall was on.
+  // Only a token that validates passes; each route still applies its scopes.
+  const authHeader = request.headers.get('authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    const rawToken = authHeader.slice(7);
+    if (!rawToken) return false;
+    try {
+      return (await validateApiToken(rawToken)) !== null;
+    } catch {
+      // Database unreachable: the same reasoning as the session store below.
+      // The route's own requireAuth still validates the token.
+      return true;
+    }
+  }
 
   const token = request.cookies.get('prism_session')?.value;
   if (!token) return false;
