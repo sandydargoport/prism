@@ -23,10 +23,12 @@ import { MobileDashboard } from './MobileDashboard';
 import dynamic from 'next/dynamic';
 
 const LayoutEditor = dynamic(() => import('@/components/layout/LayoutEditor').then(m => ({ default: m.LayoutEditor })), { ssr: false });
-const AddTaskModal = dynamic(() => import('@/components/modals/AddTaskModal').then(m => ({ default: m.AddTaskModal })));
-const AddMessageModal = dynamic(() => import('@/components/modals/AddMessageModal').then(m => ({ default: m.AddMessageModal })));
-const AddChoreModal = dynamic(() => import('@/components/modals/AddChoreModal').then(m => ({ default: m.AddChoreModal })));
-const AddShoppingItemModal = dynamic(() => import('@/components/modals/AddShoppingItemModal').then(m => ({ default: m.AddShoppingItemModal })));
+// ssr: false gives each modal its own Suspense boundary, so the first open
+// doesn't suspend up to DashboardClient's full-screen loading fallback.
+const AddTaskModal = dynamic(() => import('@/components/modals/AddTaskModal').then(m => ({ default: m.AddTaskModal })), { ssr: false });
+const AddMessageModal = dynamic(() => import('@/components/modals/AddMessageModal').then(m => ({ default: m.AddMessageModal })), { ssr: false });
+const AddChoreModal = dynamic(() => import('@/components/modals/AddChoreModal').then(m => ({ default: m.AddChoreModal })), { ssr: false });
+const AddShoppingItemModal = dynamic(() => import('@/components/modals/AddShoppingItemModal').then(m => ({ default: m.AddShoppingItemModal })), { ssr: false });
 // Edit modals — same pattern as CalendarView's overlay click-to-edit. Lazy-
 // loaded so the dashboard initial bundle stays small.
 const ChoreModal = lazy(() => import('@/app/chores/ChoreModal').then(m => ({ default: m.ChoreModal })));
