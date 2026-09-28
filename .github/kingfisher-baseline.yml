@@ -15,7 +15,7 @@
 # reason: a new blob is a new fingerprint, so pinning the actions added four
 # entries for the same CI password that was already accepted, and the unit
 # test step added in #528 moved it again (lines 200 and 290), and the MCP test
-# step moved it once more (line 295). A finding that is
+# step moved it once more (lines 295 and 300). A finding that is
 # only the same value at a new line can pass or fail depending on which copy
 # the scan reports, so a missed regeneration shows up as a flaky failure.
 version: 2
@@ -131,6 +131,12 @@ repositories:
     line: 295
     first_seen_at: 2026-09-28T19:20:38.000000000+00:00
     last_updated_at: 2026-09-28T19:20:38.000000000+00:00
+  - path: .github/workflows/ci.yml
+    fingerprint: '10442758234010773317'
+    rule_id: betterleaks.generic-credential-uri
+    line: 300
+    first_seen_at: 2026-09-28T19:22:05.000000000+00:00
+    last_updated_at: 2026-09-28T19:22:05.000000000+00:00
   - path: .github/workflows/refresh-screenshots.yml
     fingerprint: '2353394124801989468'
     rule_id: betterleaks.generic-credential-uri
