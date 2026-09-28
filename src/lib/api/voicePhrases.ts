@@ -2,31 +2,56 @@
  * Pure functions that turn structured data into natural-language strings
  * for the Voice API's `spoken` field. Kept separate from route handlers so
  * they can be unit-tested without HTTP/DB plumbing.
+ *
+ * Times and days are spoken in the household zone, passed in by the route:
+ * the server's own zone is UTC on a default install, which would read a 9 AM
+ * Chicago event as "2 PM".
  */
+
+import {
+  calendarDaysBetween,
+  dateOnlyToFloatingUtc,
+  floatingUtcToDateKey,
+  todayKey,
+  wallTimeAt,
+} from '@/lib/utils/zonedDate';
 
 type SpeakableEvent = {
   title: string;
+  /** An instant, or for an all-day event UTC midnight of its date. */
   startTime: Date;
   allDay: boolean;
 };
 
-function formatTime(d: Date): string {
-  return d.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: d.getMinutes() === 0 ? undefined : '2-digit',
-  });
+/** "4 PM" or "12:30 PM" on the wall clock in `timeZone`. */
+function formatTime(d: Date, timeZone: string): string {
+  const [h, m] = wallTimeAt(timeZone, d).split(':').map(Number);
+  const hour12 = ((h! + 11) % 12) + 1;
+  const period = h! >= 12 ? 'PM' : 'AM';
+  return m === 0 ? `${hour12} ${period}` : `${hour12}:${String(m).padStart(2, '0')} ${period}`;
 }
 
-/** Days of week for labels relative to `now`. */
-function relativeDayLabel(target: Date, now: Date): string {
-  const oneDay = 86400000;
-  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const diffDays = Math.round((startOfDay(target) - startOfDay(now)) / oneDay);
+/** The household date an event falls on: its own date if all-day. */
+function eventDateKey(e: SpeakableEvent, timeZone: string): string {
+  return e.allDay ? floatingUtcToDateKey(e.startTime) : todayKey(timeZone, e.startTime);
+}
+
+/** "Tuesday" or "May 5" for a date key, read without any zone. */
+function dateKeyLabel(dateKey: string, style: 'weekday' | 'monthDay'): string {
+  const options: Intl.DateTimeFormatOptions = style === 'weekday'
+    ? { weekday: 'long', timeZone: 'UTC' }
+    : { month: 'long', day: 'numeric', timeZone: 'UTC' };
+  return dateOnlyToFloatingUtc(dateKey).toLocaleDateString('en-US', options);
+}
+
+/** Days of week for labels relative to today. */
+function relativeDayLabel(targetKey: string, todayDateKey: string): string {
+  const diffDays = calendarDaysBetween(todayDateKey, targetKey);
 
   if (diffDays === 0) return 'today';
   if (diffDays === 1) return 'tomorrow';
-  if (diffDays < 7) return `on ${target.toLocaleDateString('en-US', { weekday: 'long' })}`;
-  return `on ${target.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`;
+  if (diffDays < 7) return `on ${dateKeyLabel(targetKey, 'weekday')}`;
+  return `on ${dateKeyLabel(targetKey, 'monthDay')}`;
 }
 
 /** Joins a list with Oxford commas: ["a","b","c"] → "a, b, and c". */
@@ -38,23 +63,24 @@ function oxfordJoin(parts: string[]): string {
   return `${parts.slice(0, -1).join(', ')}, and ${last}`;
 }
 
-export function phraseEventList(items: SpeakableEvent[]): string {
+export function phraseEventList(items: SpeakableEvent[], timeZone: string): string {
   if (items.length === 0) return 'You have no events today.';
 
   const parts = items.map((e) =>
-    e.allDay ? `${e.title}, all day` : `${e.title} at ${formatTime(e.startTime)}`
+    e.allDay ? `${e.title}, all day` : `${e.title} at ${formatTime(e.startTime, timeZone)}`
   );
 
   return `Today you have ${oxfordJoin(parts)}.`;
 }
 
-export function phraseUpcomingEvents(items: SpeakableEvent[], now = new Date()): string {
+export function phraseUpcomingEvents(items: SpeakableEvent[], now: Date, timeZone: string): string {
   if (items.length === 0) return 'You have no upcoming events.';
 
+  const today = todayKey(timeZone, now);
   const parts = items.map((e) => {
-    const day = relativeDayLabel(e.startTime, now);
+    const day = relativeDayLabel(eventDateKey(e, timeZone), today);
     if (e.allDay) return `${e.title} ${day}, all day`;
-    return `${e.title} ${day} at ${formatTime(e.startTime)}`;
+    return `${e.title} ${day} at ${formatTime(e.startTime, timeZone)}`;
   });
 
   return `Coming up: ${oxfordJoin(parts)}.`;
@@ -210,22 +236,21 @@ type SpeakableMessage = {
  * Past-leaning version of relativeDayLabel: messages are always already
  * sent, so "yesterday" / "on Friday" reads better than "tomorrow."
  */
-function pastDayLabel(target: Date, now: Date): string {
-  const oneDay = 86400000;
-  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const diffDays = Math.round((startOfDay(now) - startOfDay(target)) / oneDay);
+function pastDayLabel(targetKey: string, todayDateKey: string): string {
+  const diffDays = calendarDaysBetween(targetKey, todayDateKey);
 
   if (diffDays === 0) return 'today';
   if (diffDays === 1) return 'yesterday';
-  if (diffDays < 7) return `on ${target.toLocaleDateString('en-US', { weekday: 'long' })}`;
-  return `on ${target.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`;
+  if (diffDays < 7) return `on ${dateKeyLabel(targetKey, 'weekday')}`;
+  return `on ${dateKeyLabel(targetKey, 'monthDay')}`;
 }
 
-export function phraseRecentMessages(items: SpeakableMessage[], now = new Date()): string {
+export function phraseRecentMessages(items: SpeakableMessage[], now: Date, timeZone: string): string {
   if (items.length === 0) return 'No recent family messages.';
 
+  const today = todayKey(timeZone, now);
   const lines = items.map((m) => {
-    const day = pastDayLabel(m.createdAt, now);
+    const day = pastDayLabel(todayKey(timeZone, m.createdAt), today);
     const who = m.authorName ? `${m.authorName} ${day}` : day;
     return `${who}: ${m.message}`;
   });

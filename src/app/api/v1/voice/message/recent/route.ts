@@ -5,6 +5,7 @@ import { phraseRecentMessages } from '@/lib/api/voicePhrases';
 import { db } from '@/lib/db/client';
 import { familyMessages, users } from '@/lib/db/schema';
 import { desc, eq, isNull, or, gt } from 'drizzle-orm';
+import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { logError } from '@/lib/utils/logError';
 
 /**
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
         .orderBy(desc(familyMessages.createdAt))
         .limit(count);
 
-      const spoken = phraseRecentMessages(rows);
+      const spoken = phraseRecentMessages(rows, new Date(), await getHouseholdTimezone());
 
       return voiceOk(spoken, {
         count: rows.length,

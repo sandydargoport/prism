@@ -26,6 +26,8 @@ import { pushCalDAVEventDelete } from '@/lib/services/calendar-sync';
 import { decrypt, encrypt } from '@/lib/utils/crypto';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
+import { getHouseholdTimezone } from '@/lib/householdTimezone';
+import { normalizeAllDayRange } from '@/lib/utils/allDayRange';
 
 
 interface RouteParams {
@@ -350,13 +352,24 @@ export async function PATCH(
     // POST refuses an end before its start; PATCH did not, so moving one edge
     // of an existing event could invert it. Compare against what the event will
     // actually be, not only against what this request carries.
-    const effectiveStart = (updateData.startTime as Date | undefined) ?? existingEvent.startTime;
-    const effectiveEnd = (updateData.endTime as Date | undefined) ?? existingEvent.endTime;
+    let effectiveStart = (updateData.startTime as Date | undefined) ?? existingEvent.startTime;
+    let effectiveEnd = (updateData.endTime as Date | undefined) ?? existingEvent.endTime;
     if (effectiveEnd < effectiveStart) {
       return NextResponse.json(
         { error: 'End time must be after start time' },
         { status: 400 }
       );
+    }
+
+    // An all-day range is stored in the floating form (see allDayRange.ts),
+    // whatever shape the caller sent, including when a timed event becomes
+    // all-day.
+    const effectiveAllDay = (updateData.allDay as boolean | undefined) ?? existingEvent.allDay;
+    if (effectiveAllDay && ('startTime' in body || 'endTime' in body || 'allDay' in body)) {
+      ({ start: effectiveStart, end: effectiveEnd } =
+        normalizeAllDayRange(effectiveStart, effectiveEnd, await getHouseholdTimezone()));
+      updateData.startTime = effectiveStart;
+      updateData.endTime = effectiveEnd;
     }
 
     // Google is the only provider with a write path from this route. An event

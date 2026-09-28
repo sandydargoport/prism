@@ -3,22 +3,29 @@ import { voiceOk, voiceError } from '@/lib/api/voiceResponse';
 import { phraseEventList } from '@/lib/api/voicePhrases';
 import { db } from '@/lib/db/client';
 import { events } from '@/lib/db/schema';
-import { and, gte, lt, asc } from 'drizzle-orm';
+import { and, eq, gt, lt, lte, or, asc, desc } from 'drizzle-orm';
 import { logError } from '@/lib/utils/logError';
+import { getHouseholdTimezone } from '@/lib/householdTimezone';
+import { dateOnlyToFloatingUtc, dayWindowUtc, todayKey } from '@/lib/utils/zonedDate';
 
 /**
  * GET /api/v1/voice/calendar/today
  *
- * Returns today's events shaped for natural-language playback.
+ * Returns today's events, in the household time zone, shaped for
+ * natural-language playback.
  * Auth: any valid session OR API token. Rate-limited per caller.
  */
 export async function GET() {
   return withAuth(async () => {
     try {
-      const now = new Date();
-      const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const dayEnd = new Date(dayStart);
-      dayEnd.setDate(dayEnd.getDate() + 1);
+      const timeZone = await getHouseholdTimezone();
+      const today = todayKey(timeZone);
+      // Timed events are instants: take those overlapping the household's
+      // day. All-day events are stored as UTC midnight of their dates with
+      // an exclusive end, so they are matched by date, not by that window,
+      // which would drop today's west of UTC and pick up tomorrow's.
+      const { start: dayStart, end: dayEnd } = dayWindowUtc(today, timeZone);
+      const floatingToday = dateOnlyToFloatingUtc(today);
 
       const todayEvents = await db
         .select({
@@ -30,10 +37,14 @@ export async function GET() {
           location: events.location,
         })
         .from(events)
-        .where(and(gte(events.startTime, dayStart), lt(events.startTime, dayEnd)))
-        .orderBy(asc(events.startTime));
+        .where(or(
+          and(eq(events.allDay, false), lt(events.startTime, dayEnd), gt(events.endTime, dayStart)),
+          and(eq(events.allDay, true), lte(events.startTime, floatingToday), gt(events.endTime, floatingToday)),
+        ))
+        // All-day first, then timed in start order.
+        .orderBy(desc(events.allDay), asc(events.startTime));
 
-      const spoken = phraseEventList(todayEvents);
+      const spoken = phraseEventList(todayEvents, timeZone);
 
       return voiceOk(spoken, {
         count: todayEvents.length,

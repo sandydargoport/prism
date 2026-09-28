@@ -32,6 +32,8 @@ import { decrypt, encrypt } from '@/lib/utils/crypto';
 import { formatEventRow } from '@/lib/utils/formatters';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
+import { getHouseholdTimezone } from '@/lib/householdTimezone';
+import { normalizeAllDayRange } from '@/lib/utils/allDayRange';
 import { MAX_CALENDAR_EVENTS } from '@/lib/utils/calendarRange';
 
 // Cache events for 5 minutes
@@ -315,9 +317,14 @@ export async function POST(request: NextRequest) {
       createdBy,
     } = validation.data;
 
-    // Convert ISO strings to Date objects
-    const startTime = new Date(startTimeStr);
-    const endTime = new Date(endTimeStr);
+    // Convert ISO strings to Date objects. An all-day range is stored in the
+    // floating form (see allDayRange.ts), whatever shape the caller sent.
+    let startTime = new Date(startTimeStr);
+    let endTime = new Date(endTimeStr);
+    if (allDay) {
+      ({ start: startTime, end: endTime } =
+        normalizeAllDayRange(startTime, endTime, await getHouseholdTimezone()));
+    }
 
     let externalEventId: string | null = null;
     let googleWarning: string | null = null;

@@ -10,35 +10,38 @@ import {
   phraseBusStatus,
   phraseUpcomingBirthdays,
 } from '../voicePhrases';
+import { addDaysToKey, zonedWallTimeToUtc } from '@/lib/utils/zonedDate';
 
-const at = (h: number, m = 0) => {
-  const d = new Date('2026-01-01T00:00:00');
-  d.setHours(h, m);
-  return d;
-};
+// Spoken times and days are the household's, so fixtures are wall times in
+// an explicit zone and every call passes it.
+const TZ = 'America/Chicago';
+const wall = (dateKey: string, h: number, m = 0) =>
+  zonedWallTimeToUtc(dateKey, `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`, TZ);
+
+const at = (h: number, m = 0) => wall('2026-01-01', h, m);
 
 describe('phraseEventList', () => {
   it('says no events when list is empty', () => {
-    expect(phraseEventList([])).toBe('You have no events today.');
+    expect(phraseEventList([], TZ)).toBe('You have no events today.');
   });
 
   it('renders a single timed event', () => {
     expect(phraseEventList([
       { title: 'Soccer Practice', startTime: at(16), allDay: false },
-    ])).toBe('Today you have Soccer Practice at 4 PM.');
+    ], TZ)).toBe('Today you have Soccer Practice at 4 PM.');
   });
 
   it('renders an all-day event without a time', () => {
     expect(phraseEventList([
       { title: 'Beach Day', startTime: at(0), allDay: true },
-    ])).toBe('Today you have Beach Day, all day.');
+    ], TZ)).toBe('Today you have Beach Day, all day.');
   });
 
   it('renders two events joined with "and"', () => {
     expect(phraseEventList([
       { title: 'Standup', startTime: at(9), allDay: false },
       { title: 'Lunch', startTime: at(12, 30), allDay: false },
-    ])).toBe('Today you have Standup at 9 AM and Lunch at 12:30 PM.');
+    ], TZ)).toBe('Today you have Standup at 9 AM and Lunch at 12:30 PM.');
   });
 
   it('renders three or more events with Oxford comma', () => {
@@ -46,39 +49,35 @@ describe('phraseEventList', () => {
       { title: 'A', startTime: at(8), allDay: false },
       { title: 'B', startTime: at(10), allDay: false },
       { title: 'C', startTime: at(14), allDay: false },
-    ])).toBe('Today you have A at 8 AM, B at 10 AM, and C at 2 PM.');
+    ], TZ)).toBe('Today you have A at 8 AM, B at 10 AM, and C at 2 PM.');
   });
 
   it('omits zero minutes from the spoken time', () => {
     expect(phraseEventList([
       { title: 'Meeting', startTime: at(9, 0), allDay: false },
-    ])).toBe('Today you have Meeting at 9 AM.');
+    ], TZ)).toBe('Today you have Meeting at 9 AM.');
   });
 
   it('includes non-zero minutes', () => {
     expect(phraseEventList([
       { title: 'Meeting', startTime: at(9, 15), allDay: false },
-    ])).toBe('Today you have Meeting at 9:15 AM.');
+    ], TZ)).toBe('Today you have Meeting at 9:15 AM.');
   });
 });
 
 describe('phraseUpcomingEvents', () => {
-  const now = new Date('2026-05-02T12:00:00');
-  const onDay = (offset: number, h: number) => {
-    const d = new Date(now);
-    d.setDate(d.getDate() + offset);
-    d.setHours(h, 0);
-    return d;
-  };
+  const now = wall('2026-05-02', 12);
+  const onDay = (offset: number, h: number) => wall(addDaysToKey('2026-05-02', offset), h);
 
   it('says no upcoming when list is empty', () => {
-    expect(phraseUpcomingEvents([], now)).toBe('You have no upcoming events.');
+    expect(phraseUpcomingEvents([], now, TZ)).toBe('You have no upcoming events.');
   });
 
   it('uses "today" for events on the same day', () => {
     expect(phraseUpcomingEvents(
       [{ title: 'Soccer', startTime: onDay(0, 16), allDay: false }],
       now,
+      TZ,
     )).toBe('Coming up: Soccer today at 4 PM.');
   });
 
@@ -86,6 +85,7 @@ describe('phraseUpcomingEvents', () => {
     expect(phraseUpcomingEvents(
       [{ title: 'Dentist', startTime: onDay(1, 9), allDay: false }],
       now,
+      TZ,
     )).toBe('Coming up: Dentist tomorrow at 9 AM.');
   });
 
@@ -94,6 +94,7 @@ describe('phraseUpcomingEvents', () => {
     const out = phraseUpcomingEvents(
       [{ title: 'Movie', startTime: onDay(3, 18), allDay: false }],
       now,
+      TZ,
     );
     expect(out).toMatch(/Coming up: Movie on (Sun|Mon|Tue|Wed|Thu|Fri|Sat)\w+ at 6 PM\./);
   });
@@ -106,9 +107,39 @@ describe('phraseUpcomingEvents', () => {
         { title: 'C', startTime: onDay(2, 12), allDay: false },
       ],
       now,
+      TZ,
     );
     expect(out).toContain(', and ');
     expect(out.startsWith('Coming up: ')).toBe(true);
+  });
+});
+
+describe('voice phrasing in the household zone', () => {
+  it('speaks a timed event at its household wall time, not the server clock', () => {
+    // 14:00 UTC is 9 AM in Chicago in summer; the old code said "2 PM" on a UTC server.
+    expect(phraseEventList(
+      [{ title: 'Dentist', startTime: new Date('2026-07-01T14:00:00Z'), allDay: false }],
+      TZ,
+    )).toBe('Today you have Dentist at 9 AM.');
+  });
+
+  it('dates an all-day event by its own date, not the instant', () => {
+    // Stored as UTC midnight of 3 May: 7 PM on 2 May in Chicago, but it is 3 May's event.
+    const now = wall('2026-05-02', 12);
+    expect(phraseUpcomingEvents(
+      [{ title: 'Field Day', startTime: new Date('2026-05-03T00:00:00Z'), allDay: true }],
+      now,
+      TZ,
+    )).toBe('Coming up: Field Day tomorrow, all day.');
+  });
+
+  it('keeps an evening event on its household day, though it is tomorrow in UTC', () => {
+    const now = wall('2026-05-02', 12);
+    expect(phraseUpcomingEvents(
+      [{ title: 'Movie', startTime: wall('2026-05-02', 20), allDay: false }],
+      now,
+      TZ,
+    )).toBe('Coming up: Movie today at 8 PM.');
   });
 });
 
@@ -305,7 +336,7 @@ describe('phraseTodayChores', () => {
 });
 
 describe('phraseRecentMessages', () => {
-  const now = new Date('2026-05-02T12:00:00');
+  const now = wall('2026-05-02', 12);
   const at = (offset: number) => {
     const d = new Date(now);
     d.setDate(d.getDate() - offset);
@@ -313,13 +344,14 @@ describe('phraseRecentMessages', () => {
   };
 
   it('handles empty list', () => {
-    expect(phraseRecentMessages([], now)).toBe('No recent family messages.');
+    expect(phraseRecentMessages([], now, TZ)).toBe('No recent family messages.');
   });
 
   it('renders a single message', () => {
     const out = phraseRecentMessages(
       [{ message: 'soccer at 4', authorName: 'Alex', createdAt: at(0) }],
       now,
+      TZ,
     );
     expect(out).toBe('Latest message from Alex today: soccer at 4.');
   });
@@ -328,6 +360,7 @@ describe('phraseRecentMessages', () => {
     const out = phraseRecentMessages(
       [{ message: 'hello', authorName: null, createdAt: at(0) }],
       now,
+      TZ,
     );
     expect(out).toBe('Latest message from today: hello.');
   });
@@ -339,6 +372,7 @@ describe('phraseRecentMessages', () => {
         { message: 'second', authorName: 'Jordan', createdAt: at(1) },
       ],
       now,
+      TZ,
     );
     expect(out).toBe('Recent messages: Alex today: first and Jordan yesterday: second.');
   });
