@@ -327,106 +327,23 @@
   }
 }
 
-@utility performance-mode {
-  /* Performance mode: minimum-viable stylesheet. The only CSS effect
-   * we are confident gives a meaningful perf win on weak GPUs is
-   * disabling backdrop-filter, and only on elements that actually
-   * declare it (the .backdrop-blur* utility classes). An earlier
-   * version applied this to a universal `*` selector and that turned
-   * out to make toolbar SVG icons render invisibly in light theme on
-   * Chrome — applying `backdrop-filter: none` to descendants that
-   * never had backdrop-filter set creates new stacking contexts and
-   * compositor layers that can change rendering in subtle ways.
-   * Bigger perf wins come from JS-side changes (polling stretch, photo
-   * widget lite, structural-shared polling). */
-  &html .backdrop-blur {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-  & html .backdrop-blur-sm {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-  & html .backdrop-blur-md {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-  & html .backdrop-blur-lg {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-  & html .backdrop-blur-xl {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-  & html .backdrop-blur-2xl {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-  & html .backdrop-blur-3xl {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-}
-
-@utility backdrop-blur {
-  /* Performance mode: minimum-viable stylesheet. The only CSS effect
-   * we are confident gives a meaningful perf win on weak GPUs is
-   * disabling backdrop-filter, and only on elements that actually
-   * declare it (the .backdrop-blur* utility classes). An earlier
-   * version applied this to a universal `*` selector and that turned
-   * out to make toolbar SVG icons render invisibly in light theme on
-   * Chrome — applying `backdrop-filter: none` to descendants that
-   * never had backdrop-filter set creates new stacking contexts and
-   * compositor layers that can change rendering in subtle ways.
-   * Bigger perf wins come from JS-side changes (polling stretch, photo
-   * widget lite, structural-shared polling). */
-  html.performance-mode & {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-}
-
-@utility backdrop-blur-sm {
-  html.performance-mode & {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-}
-
-@utility backdrop-blur-md {
-  html.performance-mode & {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-}
-
-@utility backdrop-blur-lg {
-  html.performance-mode & {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-}
-
-@utility backdrop-blur-xl {
-  html.performance-mode & {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-}
-
-@utility backdrop-blur-2xl {
-  html.performance-mode & {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-}
-
-@utility backdrop-blur-3xl {
-  html.performance-mode & {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
+/* Performance mode: minimum-viable stylesheet. The only CSS effect
+ * we are confident gives a meaningful perf win on weak GPUs is
+ * disabling backdrop-filter, and only on elements that actually
+ * declare it (the .backdrop-blur* utility classes). An earlier
+ * version applied this to a universal `*` selector and that turned
+ * out to make toolbar SVG icons render invisibly in light theme on
+ * Chrome — applying `backdrop-filter: none` to descendants that
+ * never had backdrop-filter set creates new stacking contexts and
+ * compositor layers that can change rendering in subtle ways.
+ * Bigger perf wins come from JS-side changes (polling stretch, photo
+ * widget lite, structural-shared polling).
+ *
+ * Match any backdrop-blur-* size, so a renamed size cannot slip through.
+ * Keep -webkit- first: the minifier keeps only the last of the two. */
+html.performance-mode [class*="backdrop-blur"] {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
 }
 
 @layer base {
