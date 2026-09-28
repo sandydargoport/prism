@@ -54,7 +54,6 @@ export interface BackupInfo {
   size: number;
   sizeFormatted: string;
   createdAt: Date;
-  createdAtFormatted: string;
 }
 
 function formatBytes(bytes: number): string {
@@ -63,16 +62,6 @@ function formatBytes(bytes: number): string {
   const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
-}
-
-function formatDate(date: Date): string {
-  return date.toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 }
 
 /**
@@ -106,7 +95,6 @@ export async function listBackups(): Promise<BackupInfo[]> {
           size: stat.size,
           sizeFormatted: formatBytes(stat.size),
           createdAt: stat.mtime,
-          createdAtFormatted: formatDate(stat.mtime),
         });
       }
     }

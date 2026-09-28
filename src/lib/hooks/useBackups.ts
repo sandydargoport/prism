@@ -7,7 +7,6 @@ export interface BackupInfo {
   size: number;
   sizeFormatted: string;
   createdAt: string;
-  createdAtFormatted: string;
 }
 
 export function useBackups() {
