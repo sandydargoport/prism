@@ -10,6 +10,7 @@ import {
   type TimeFormat,
 } from '@/lib/utils/timeFormat';
 import { detectBrowserTimezone } from '@/lib/hooks/useTimezone';
+import { isHouseholdZoneCandidate } from '@/lib/utils/timezone';
 
 const SETTING_KEY = 'timeFormat';
 const TIMEZONE_SETTING_KEY = 'timezone';
@@ -46,7 +47,7 @@ function backfillHouseholdTimezone() {
     return;
   }
   const zone = localStorage.getItem(TIMEZONE_CACHE_KEY) || detectBrowserTimezone();
-  if (!zone || zone === 'UTC' || zone.startsWith('Etc/')) return;
+  if (!isHouseholdZoneCandidate(zone)) return;
   fetch('/api/settings', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },

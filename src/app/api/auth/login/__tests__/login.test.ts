@@ -59,6 +59,10 @@ jest.mock('bcryptjs', () => ({
 jest.mock('@/lib/services/auditLog', () => ({ logActivity: jest.fn() }));
 jest.mock('@/lib/utils/logError', () => ({ logError: jest.fn() }));
 jest.mock('drizzle-orm', () => ({ eq: jest.fn(), asc: jest.fn() }));
+const mockSaveHouseholdTimezone = jest.fn();
+jest.mock('@/lib/householdTimezone', () => ({
+  saveHouseholdTimezoneIfMissing: (...a: unknown[]) => mockSaveHouseholdTimezone(...a),
+}));
 
 import { POST } from '../route';
 
@@ -181,5 +185,28 @@ describe('POST /api/auth/login', () => {
     mockCreateSession.mockResolvedValue(null);
     const res = await POST(makeRequest({ userId: 'parent-1', pin: '1234' }));
     expect(res.status).toBe(500);
+  });
+
+  // --- household time zone from a parent's device ---
+
+  it("passes a parent's device zone on to be stored if none is saved", async () => {
+    setupUserQuery(PARENT_USER);
+    const res = await POST(makeRequest({ userId: 'parent-1', pin: '1234', timeZone: 'America/Denver' }));
+    expect(res.status).toBe(200);
+    expect(mockSaveHouseholdTimezone).toHaveBeenCalledWith('America/Denver');
+  });
+
+  it("does not use a child's device zone", async () => {
+    setupUserQuery({ ...PARENT_USER, id: 'child-1', role: 'child' });
+    const res = await POST(makeRequest({ userId: 'child-1', pin: '1234', timeZone: 'America/Denver' }));
+    expect(res.status).toBe(200);
+    expect(mockSaveHouseholdTimezone).not.toHaveBeenCalled();
+  });
+
+  it('does not touch the zone on a failed sign-in', async () => {
+    setupUserQuery(PARENT_USER);
+    mockBcryptCompare.mockResolvedValue(false);
+    await POST(makeRequest({ userId: 'parent-1', pin: '0000', timeZone: 'America/Denver' }));
+    expect(mockSaveHouseholdTimezone).not.toHaveBeenCalled();
   });
 });

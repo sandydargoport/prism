@@ -27,6 +27,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
 import { users } from '@/lib/db/schema';
 import { memberOrder } from '@/lib/db/memberOrder';
+import { saveHouseholdTimezoneIfMissing } from '@/lib/householdTimezone';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
@@ -287,6 +288,9 @@ export async function POST(request: NextRequest) {
       expires: session.expiresAt,
       path: '/',
     });
+
+    // A parent's device supplies the household zone when none is stored yet.
+    if (role === 'parent') await saveHouseholdTimezoneIfMissing(body.timeZone);
 
     logActivity({
       userId: user.id,

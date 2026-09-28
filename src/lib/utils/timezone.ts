@@ -57,6 +57,22 @@ export function isValidTimezone(tz: string): boolean {
 }
 
 /**
+ * Whether a device-reported zone is worth saving as the household's when none
+ * is stored. UTC and the Etc/ zones are what a kiosk with an unset clock
+ * reports, so they are never taken on a device's word; a household that really
+ * is on UTC can still pick it in Settings.
+ */
+export function isHouseholdZoneCandidate(tz: unknown): tz is string {
+  return (
+    typeof tz === 'string' &&
+    tz !== 'UTC' &&
+    tz !== 'GMT' &&
+    !tz.startsWith('Etc/') &&
+    isValidTimezone(tz)
+  );
+}
+
+/**
  * The full IANA zone list when the runtime supports it (Node 18+/modern
  * browsers), else a curated common set. Used to populate the settings dropdown.
  */

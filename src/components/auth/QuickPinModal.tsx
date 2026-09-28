@@ -28,6 +28,7 @@ import { UserAvatar } from '@/components/ui/avatar';
 import { useFamily } from '@/components/providers';
 import { DEFAULT_PIN_LENGTH } from '@/lib/constants';
 import { pinErrorMessage } from '@/lib/utils/pinErrorMessage';
+import { detectBrowserTimezone } from '@/lib/hooks/useTimezone';
 
 /**
  * FAMILY MEMBER TYPE
@@ -169,6 +170,8 @@ export function QuickPinModal({
           body: JSON.stringify({
             ...(selectedMember.id ? { userId: selectedMember.id } : { memberIndex: selectedMember.loginIndex }),
             pin: enteredPin,
+            // Lets a parent's sign-in store the household zone when none is saved.
+            timeZone: detectBrowserTimezone(),
           }),
         });
 
