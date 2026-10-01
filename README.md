@@ -101,4 +101,4 @@ Prism is open-source under the [PolyForm Noncommercial 1.0.0](LICENSE) license. 
 
 ## Acknowledgments
 
-Built with Claude Code. Inspired by frustration with existing solutions. Made better by the self-hosting community.
+Built with Claude Code.
