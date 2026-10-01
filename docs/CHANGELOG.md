@@ -4,7 +4,7 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
-## [1.28.0] – 2026-09-28
+## [1.28.0] – 2026-10-01
 
 Dates and times now follow the household's time zone wherever Prism decides what day or hour it is, instead of whichever zone the server or the viewing device happens to run in. Ships three database migrations, applied automatically on start: task due dates move to a date plus an optional time, older iCal and CalDAV all-day events are converted to the form the calendar reads, and timestamps a non-UTC database wrote in its own zone are converted to UTC. The last one only changes anything where the database's default zone is not UTC, as on some Home Assistant installs.
 
