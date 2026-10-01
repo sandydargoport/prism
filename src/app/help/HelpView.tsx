@@ -577,7 +577,7 @@ function SettingsHelp({ isMobile }: { isMobile: boolean }) {
       {!isMobile && (
         <>
           <H3>Text Size</H3>
-          <P>Wallpaper and per-display kiosk options.</P>
+          <P>How large everything reads on each dashboard. It scales the whole board at once, separately from the per-widget text size in the layout editor, and does not change other pages.</P>
         </>
       )}
       <H3>Photos</H3>
