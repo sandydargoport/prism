@@ -7,7 +7,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { UserAvatar } from '@/components/ui/avatar';
-import { useFamily } from '@/components/providers';
+import { useAuth, useFamily } from '@/components/providers';
+import { parentCanResetPin } from '@/lib/auth/pinReset';
 import { DEFAULT_PIN_LENGTH } from '@/lib/constants';
 import { PinEditModal } from '../components/PinEditModal';
 import type { FamilyMember } from '../components/PinEditModal';
@@ -34,6 +35,7 @@ const SCOPE_DESCRIPTIONS: Record<TokenScopeChoice, string> = {
 
 export function SecuritySection() {
   const { members: familyMembers, refresh: refreshFamily } = useFamily();
+  const { activeUser } = useAuth();
   const [editingPinMember, setEditingPinMember] = useState<FamilyMember | null>(null);
 
   // API Tokens state
@@ -424,6 +426,7 @@ export function SecuritySection() {
       {editingPinMember && (
         <PinEditModal
           member={editingPinMember}
+          canReset={!!activeUser && parentCanResetPin(activeUser, editingPinMember)}
           onClose={() => setEditingPinMember(null)}
           onSaved={() => {
             refreshFamily();

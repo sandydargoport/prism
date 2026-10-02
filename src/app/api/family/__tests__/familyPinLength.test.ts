@@ -89,6 +89,8 @@ describe('PATCH /api/family/[id] PIN length', () => {
   });
 
   it('keeps everything when the current PIN is wrong', async () => {
+    // A co-parent: the one case where another member's current PIN is still needed.
+    mockWhere.mockResolvedValue([{ ...member, role: 'parent' }]);
     mockCompare.mockResolvedValue(false);
     const res = await patch({ pinLength: 6, pin: '123456', currentPin: '9999' });
     expect(res.status).toBe(401);
@@ -116,5 +118,49 @@ describe('PATCH /api/family/[id] PIN length', () => {
   it('allows an edit that resends the unchanged length', async () => {
     const res = await patch({ pinLength: 4 });
     expect(res.status).toBe(200);
+  });
+});
+
+describe('PATCH /api/family/[id] parent PIN reset', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockRequireAuth.mockResolvedValue({ userId: 'parent-1', role: 'parent' });
+    mockWhere.mockResolvedValue([member]);
+    mockCompare.mockResolvedValue(false);
+  });
+
+  it("lets a parent set a child's PIN without the current one", async () => {
+    const res = await patch({ pin: '5678' });
+    expect(res.status).toBe(200);
+    expect(mockCompare).not.toHaveBeenCalled();
+    expect(mockSet).toHaveBeenCalledWith(expect.objectContaining({ pin: '$2b$new-hash' }));
+  });
+
+  it("lets a parent set a guest's PIN and length without the current one", async () => {
+    mockWhere.mockResolvedValue([{ ...member, role: 'guest' }]);
+    const res = await patch({ pinLength: 6, pin: '567890' });
+    expect(res.status).toBe(200);
+    expect(mockSet).toHaveBeenCalledWith(expect.objectContaining({ pinLength: 6 }));
+  });
+
+  it("still needs a co-parent's current PIN", async () => {
+    mockWhere.mockResolvedValue([{ ...member, role: 'parent' }]);
+    const res = await patch({ pin: '5678' });
+    expect(res.status).toBe(400);
+    expect(mockSet).not.toHaveBeenCalled();
+  });
+
+  it("still needs a parent's own current PIN", async () => {
+    mockRequireAuth.mockResolvedValue({ userId: 'child-1', role: 'parent' });
+    mockWhere.mockResolvedValue([{ ...member, role: 'parent' }]);
+    const res = await patch({ pin: '5678' });
+    expect(res.status).toBe(400);
+  });
+
+  it('never lets an API token skip the current PIN', async () => {
+    mockRequireAuth.mockResolvedValue({ userId: 'parent-1', role: 'parent', scopes: ['*'] });
+    const res = await patch({ pin: '5678' });
+    expect(res.status).toBe(400);
+    expect(mockSet).not.toHaveBeenCalled();
   });
 });

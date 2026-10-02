@@ -9,6 +9,7 @@ import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
 import { MIN_PIN_LENGTH, MAX_PIN_LENGTH } from '@/lib/constants';
 import { isSetupComplete } from '@/lib/setup';
+import { parentCanResetPin } from '@/lib/auth/pinReset';
 
 export async function GET(
   request: NextRequest,
@@ -202,7 +203,14 @@ export async function PATCH(
       // see above) — there's no "co-parent" to protect yet, and requiring the
       // exact PIN just (mis)typed a moment ago to fix a typo would defeat the
       // point of in-wizard editing.
-      if (currentMember.pin && auth) {
+      //
+      // Exception: a parent setting a child's or guest's PIN (see
+      // parentCanResetPin), so a forgotten PIN is fixed from Settings.
+      const parentReset = auth !== null && parentCanResetPin(
+        { id: auth.userId, role: auth.role, viaApiToken: auth.scopes !== undefined },
+        { id: currentMember.id, role: currentMember.role },
+      );
+      if (currentMember.pin && auth && !parentReset) {
         if (!body.currentPin) {
           return NextResponse.json(
             { error: 'Current PIN is required to change PIN' },

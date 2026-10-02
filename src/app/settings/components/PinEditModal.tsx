@@ -16,10 +16,14 @@ export type { FamilyMember };
 
 export function PinEditModal({
   member,
+  canReset = false,
   onClose,
   onSaved,
 }: {
   member: FamilyMember;
+  /** A parent setting a child's or guest's PIN: no current PIN needed
+   *  (parentCanResetPin). */
+  canReset?: boolean;
   onClose: () => void;
   onSaved: (hasPin: boolean) => void;
 }) {
@@ -53,7 +57,7 @@ export function PinEditModal({
         pin: newPin || null,
       };
 
-      if (member.hasPin) {
+      if (member.hasPin && !canReset) {
         body.currentPin = currentPin;
       }
 
@@ -86,7 +90,7 @@ export function PinEditModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {member.hasPin && (
+          {member.hasPin && !canReset && (
             <div>
               <label className="text-sm font-medium">Current PIN</label>
               <Input
@@ -112,7 +116,7 @@ export function PinEditModal({
               value={newPin}
               onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ''))}
               placeholder={`${pinLength} digits`}
-              autoFocus={!member.hasPin}
+              autoFocus={!member.hasPin || canReset}
             />
             <p className="text-xs text-muted-foreground mt-1">
               Leave blank to remove PIN (not recommended)

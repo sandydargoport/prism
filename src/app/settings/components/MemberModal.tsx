@@ -42,10 +42,13 @@ export interface MemberModalSaveData {
 
 export function MemberModal({
   member,
+  canResetPin = false,
   onClose,
   onSave,
 }: {
   member?: FamilyMember;
+  /** A parent editing a child or guest: a new PIN needs no current one. */
+  canResetPin?: boolean;
   onClose: () => void;
   onSave: (member: MemberModalSaveData) => void;
 }) {
@@ -117,7 +120,7 @@ export function MemberModal({
     if (!name.trim()) return;
 
     if (lengthChanged) {
-      if (!currentPin) {
+      if (!canResetPin && !currentPin) {
         setPinError('Enter the current PIN');
         return;
       }
@@ -139,7 +142,7 @@ export function MemberModal({
       avatarUrl: avatarFile ? null : avatarUrl,
       avatarFile,
       pinLength,
-      ...(lengthChanged ? { pin: newPin, currentPin } : {}),
+      ...(lengthChanged ? { pin: newPin, ...(canResetPin ? {} : { currentPin }) } : {}),
     });
   };
 
@@ -294,6 +297,7 @@ export function MemberModal({
               <p className="text-sm text-muted-foreground">
                 A {pinLength}-digit length needs a new {pinLength}-digit PIN.
               </p>
+              {!canResetPin && (
               <div>
                 <label className="text-sm font-medium">Current PIN</label>
                 <Input
@@ -306,6 +310,7 @@ export function MemberModal({
                   placeholder="Enter current PIN"
                 />
               </div>
+              )}
               <div>
                 <label className="text-sm font-medium">New PIN</label>
                 <Input

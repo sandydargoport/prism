@@ -11,6 +11,7 @@ import { UserAvatar } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { useAuth, useFamily } from '@/components/providers';
 import { MemberModal } from '../components/MemberModal';
+import { parentCanResetPin } from '@/lib/auth/pinReset';
 import type { MemberModalSaveData } from '../components/MemberModal';
 import type { FamilyMember } from '../components/PinEditModal';
 
@@ -261,6 +262,7 @@ export function FamilySection() {
       {(showAddMember || editingMember) && (
         <MemberModal
           member={editingMember || undefined}
+          canResetPin={!!(activeUser && editingMember && parentCanResetPin(activeUser, editingMember))}
           onClose={() => {
             setShowAddMember(false);
             setEditingMember(null);
