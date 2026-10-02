@@ -109,7 +109,8 @@ export async function GET(request: NextRequest) {
       and(lte(events.startTime, startDate), gte(events.endTime, endDate))
     );
 
-    const conditions = [dateRangeCondition];
+    // A hidden event (#592) stays in the database so a sync cannot re-add it.
+    const conditions = [dateRangeCondition, isNull(events.hiddenAt)];
 
     if (calendarId) {
       conditions.push(eq(events.calendarSourceId, calendarId));

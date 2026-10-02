@@ -242,6 +242,16 @@ Toggle visibility with the **clock button** in calendar views. It dims when acti
 
 ---
 
+## Hiding an event
+
+A parent can hide an event without deleting it: click the event and tick **Hide in Prism**. It disappears from every view, widget and voice answer at once, and a toast offers **Undo**. The event stays in its source calendar, and a later sync does not bring it back.
+
+Hidden events are listed under **Hidden events** in the **Manage** overlay on the Calendar page (Settings → Calendars), with **Unhide** to show one again.
+
+Hide is different from **Delete**, which removes the event from Prism and, for Google and single CalDAV events, from the source calendar too.
+
+---
+
 ## Color coding
 
 Events inherit their color from the calendar source they belong to. When calendars are assigned to family members, each person's events show in their column with the calendar's color. Override per-calendar in the **Manage** overlay on the Calendar page.
@@ -287,6 +297,7 @@ This is intentional: full grid views don't fit comfortably on a phone, and the a
 2. Tap **Sync** to force a refresh.
 3. Check *Settings → Integrations*. Is Google still connected? (OAuth tokens can expire if revoked from the Google side.)
 4. The server-side sync cron also runs every 10 minutes. Wait one cycle.
+5. Check **Hidden events** in the **Manage** overlay. A hidden event stays hidden after every sync.
 
 ### Events appearing in the wrong person's column
 

@@ -14,6 +14,7 @@
 
 const mockFindFirst = jest.fn();
 const mockFindMany = jest.fn();
+const mockFindFirstEvent = jest.fn();
 const mockInsert = jest.fn();
 const mockUpdate = jest.fn();
 const mockDelete = jest.fn();
@@ -36,7 +37,10 @@ jest.mock('@/lib/db/client', () => ({
   db: {
     query: {
       calendarSources: { findFirst: (...args: unknown[]) => mockFindFirst(...args), findMany: (...args: unknown[]) => mockFindMany(...args) },
-      events: { findMany: (...args: unknown[]) => mockFindMany(...args) },
+      events: {
+        findMany: (...args: unknown[]) => mockFindMany(...args),
+        findFirst: (...args: unknown[]) => mockFindFirstEvent(...args),
+      },
     },
     select: (...args: unknown[]) => mockSelect(...args),
     insert: (...args: unknown[]) => mockInsert(...args),
@@ -67,6 +71,16 @@ jest.mock('@/lib/utils/crypto', () => ({
 }));
 
 const mockIcalFromURL = jest.fn();
+const mockFetchCalDAVEvents = jest.fn();
+
+jest.mock('@/lib/integrations/caldav', () => ({
+  fetchCalDAVEvents: (...args: unknown[]) => mockFetchCalDAVEvents(...args),
+  fetchCalDAVTasks: jest.fn(),
+}));
+
+jest.mock('@/lib/householdTimezone', () => ({
+  getHouseholdTimezone: jest.fn().mockResolvedValue('UTC'),
+}));
 
 jest.mock('node-ical', () => ({
   async: {
@@ -82,6 +96,7 @@ import {
   syncGoogleCalendarSource,
   syncAllGoogleCalendars,
   syncIcalCalendarSource,
+  syncCalDAVCalendarSource,
 } from '../calendar-sync';
 
 // --- Helpers ---
@@ -731,5 +746,64 @@ describe('syncIcalCalendarSource all-day dates', () => {
       // On a UTC server the two ids are the same string and nothing moves.
       expect(renamed).toBe(legacyId !== currentId);
     });
+  });
+});
+
+// A hidden event (#592) keeps hidden_at only because no sync path writes it.
+// Each provider names the columns it overwrites; these pin that it never names
+// hiddenAt, so a sync cannot unhide what a parent hid.
+describe('sync leaves hiddenAt alone', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockFindMany.mockResolvedValue([]);
+  });
+
+  it('Google: neither the insert nor the conflict update touches hiddenAt', async () => {
+    mockFindFirst.mockResolvedValue(makeSource());
+    mockFetchCalendarEvents.mockResolvedValue([{ id: 'event-1', summary: 'Meeting' }]);
+    mockConvertEvent.mockReturnValue({
+      externalEventId: 'event-1', title: 'Meeting', startTime: new Date(), endTime: new Date(),
+    });
+
+    await syncGoogleCalendarSource('source-1');
+
+    expect(mockOnConflictDoUpdate).toHaveBeenCalledTimes(1);
+    expect(mockInsertValues.mock.calls[0][0]).not.toHaveProperty('hiddenAt');
+    expect(mockOnConflictDoUpdate.mock.calls[0][0].set).not.toHaveProperty('hiddenAt');
+  });
+
+  it('iCal: neither the insert nor the conflict update touches hiddenAt', async () => {
+    mockFindFirst.mockResolvedValue(makeIcalSource());
+    mockIcalFromURL.mockResolvedValue({ 'event-uid-1': makeVEvent() });
+
+    await syncIcalCalendarSource('ical-source-1');
+
+    expect(mockOnConflictDoUpdate).toHaveBeenCalledTimes(1);
+    expect(mockInsertValues.mock.calls[0][0]).not.toHaveProperty('hiddenAt');
+    expect(mockOnConflictDoUpdate.mock.calls[0][0].set).not.toHaveProperty('hiddenAt');
+  });
+
+  it('CalDAV: updating an existing row does not touch hiddenAt', async () => {
+    mockFindFirst.mockResolvedValue({
+      id: 'caldav-1',
+      provider: 'caldav',
+      accessToken: 'enc',
+      sourceCalendarId: '/cal/',
+      providerConfig: { serverUrl: 'https://dav.example.test', username: 'someone' },
+    });
+    const start = new Date(Date.now() + 86_400_000);
+    mockFetchCalDAVEvents.mockResolvedValue([{
+      uid: 'uid-1', title: 'Swim practice', startTime: start, endTime: new Date(start.getTime() + 3_600_000),
+      allDay: false, recurring: false, recurrenceRule: null, href: '/cal/uid-1.ics', etag: '"1"',
+    }]);
+    mockFindFirstEvent.mockResolvedValue({ id: 'row-1', title: 'Swim practice', hiddenAt: new Date() });
+
+    await syncCalDAVCalendarSource('caldav-1');
+
+    const eventWrites = mockUpdateSet.mock.calls
+      .map(([v]) => v as Record<string, unknown>)
+      .filter((v) => 'title' in v);
+    expect(eventWrites).toHaveLength(1);
+    expect(eventWrites[0]).not.toHaveProperty('hiddenAt');
   });
 });

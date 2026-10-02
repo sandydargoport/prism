@@ -29,7 +29,8 @@
       "next": "Weiter",
       "done": "Fertig",
       "search": "Suchen",
-      "loading": "Wird geladen"
+      "loading": "Wird geladen",
+      "undo": "Rückgängig"
     }
   },
   "calendar": {
@@ -118,7 +119,11 @@
     },
     "event": {
       "deleteConfirmTitle": "Diesen Termin löschen?",
-      "deleteConfirmBody": "Soll dieser Termin wirklich gelöscht werden?"
+      "deleteConfirmBody": "Soll dieser Termin wirklich gelöscht werden?",
+      "hideInPrism": "In Prism ausblenden",
+      "hideInPrismHint": "Der Termin bleibt in seinem Kalender. Unter Einstellungen > Kalender wieder einblenden.",
+      "hiddenToast": "„{title}“ ausgeblendet",
+      "hiddenToastBody": "Unter Einstellungen > Kalender wieder einblenden."
     },
     "eventForm": {
       "titleNew": "Neuer Termin",
@@ -172,7 +177,9 @@
       "pageTitle": "Kalenderfehler",
       "pageBody": "Der Kalender konnte nicht geladen werden. Bitte erneut versuchen.",
       "tryAgain": "Erneut versuchen",
-      "backToDashboard": "Zurück zur Übersicht"
+      "backToDashboard": "Zurück zur Übersicht",
+      "hideFailed": "Termin konnte nicht ausgeblendet werden",
+      "unhideFailed": "Termin konnte nicht wieder eingeblendet werden"
     }
   },
   "birthdays": {

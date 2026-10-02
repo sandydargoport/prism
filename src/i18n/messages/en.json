@@ -29,7 +29,8 @@
       "next": "Next",
       "done": "Done",
       "search": "Search",
-      "loading": "Loading"
+      "loading": "Loading",
+      "undo": "Undo"
     }
   },
   "calendar": {
@@ -118,7 +119,11 @@
     },
     "event": {
       "deleteConfirmTitle": "Delete this event?",
-      "deleteConfirmBody": "Are you sure you want to delete this event?"
+      "deleteConfirmBody": "Are you sure you want to delete this event?",
+      "hideInPrism": "Hide in Prism",
+      "hideInPrismHint": "It stays in its calendar. Unhide it in Settings > Calendars.",
+      "hiddenToast": "Hid \"{title}\"",
+      "hiddenToastBody": "Unhide it in Settings > Calendars."
     },
     "eventForm": {
       "titleNew": "New Event",
@@ -172,7 +177,9 @@
       "pageTitle": "Calendar Error",
       "pageBody": "Failed to load the calendar. Please try again.",
       "tryAgain": "Try again",
-      "backToDashboard": "Back to Dashboard"
+      "backToDashboard": "Back to Dashboard",
+      "hideFailed": "Failed to hide event",
+      "unhideFailed": "Failed to unhide event"
     }
   },
   "birthdays": {

@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { RemovedItemsManager } from '@/components/settings/RemovedItemsManager';
+import { HiddenEventsCard } from './HiddenEventsCard';
 import { Switch } from '@/components/ui/switch';
 import { useCalendarSources } from '@/lib/hooks';
 import { useDisplayTimestampFormat, useFamily } from '@/components/providers';
@@ -666,6 +667,8 @@ export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
         onRestore={handleRestoreCalendar}
         restoringId={restoringId}
       />
+
+      <HiddenEventsCard />
 
       {/* Calendar Groups */}
       <Card>

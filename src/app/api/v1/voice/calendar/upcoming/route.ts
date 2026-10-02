@@ -4,7 +4,7 @@ import { voiceOk, voiceError } from '@/lib/api/voiceResponse';
 import { phraseUpcomingEvents } from '@/lib/api/voicePhrases';
 import { db } from '@/lib/db/client';
 import { events } from '@/lib/db/schema';
-import { and, eq, gte, asc } from 'drizzle-orm';
+import { and, eq, gte, isNull, asc } from 'drizzle-orm';
 import { logError } from '@/lib/utils/logError';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { addDaysToKey, dateOnlyToFloatingUtc, floatingUtcToDateKey, todayKey, zonedWallTimeToUtc } from '@/lib/utils/zonedDate';
@@ -36,10 +36,10 @@ export async function GET(request: NextRequest) {
       };
       const [timed, allDay] = await Promise.all([
         db.select(columns).from(events)
-          .where(and(eq(events.allDay, false), gte(events.startTime, now)))
+          .where(and(eq(events.allDay, false), isNull(events.hiddenAt), gte(events.startTime, now)))
           .orderBy(asc(events.startTime)).limit(count),
         db.select(columns).from(events)
-          .where(and(eq(events.allDay, true), gte(events.startTime, dateOnlyToFloatingUtc(tomorrow))))
+          .where(and(eq(events.allDay, true), isNull(events.hiddenAt), gte(events.startTime, dateOnlyToFloatingUtc(tomorrow))))
           .orderBy(asc(events.startTime)).limit(count),
       ]);
 

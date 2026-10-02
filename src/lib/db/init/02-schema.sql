@@ -302,6 +302,7 @@ CREATE TABLE IF NOT EXISTS public.events (
     reminder_minutes integer,
     last_synced timestamp without time zone,
     pending_deletion timestamp without time zone,
+    hidden_at timestamp without time zone,
     caldav_href character varying(1024),
     caldav_etag character varying(255),
     created_at timestamp without time zone DEFAULT now() NOT NULL,

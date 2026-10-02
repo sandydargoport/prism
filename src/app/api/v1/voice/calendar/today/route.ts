@@ -3,7 +3,7 @@ import { voiceOk, voiceError } from '@/lib/api/voiceResponse';
 import { phraseEventList } from '@/lib/api/voicePhrases';
 import { db } from '@/lib/db/client';
 import { events } from '@/lib/db/schema';
-import { and, eq, gt, lt, lte, or, asc, desc } from 'drizzle-orm';
+import { and, eq, gt, isNull, lt, lte, or, asc, desc } from 'drizzle-orm';
 import { logError } from '@/lib/utils/logError';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { dateOnlyToFloatingUtc, dayWindowUtc, todayKey } from '@/lib/utils/zonedDate';
@@ -37,9 +37,12 @@ export async function GET() {
           location: events.location,
         })
         .from(events)
-        .where(or(
-          and(eq(events.allDay, false), lt(events.startTime, dayEnd), gt(events.endTime, dayStart)),
-          and(eq(events.allDay, true), lte(events.startTime, floatingToday), gt(events.endTime, floatingToday)),
+        .where(and(
+          isNull(events.hiddenAt),
+          or(
+            and(eq(events.allDay, false), lt(events.startTime, dayEnd), gt(events.endTime, dayStart)),
+            and(eq(events.allDay, true), lte(events.startTime, floatingToday), gt(events.endTime, floatingToday)),
+          ),
         ))
         // All-day first, then timed in start order.
         .orderBy(desc(events.allDay), asc(events.startTime));

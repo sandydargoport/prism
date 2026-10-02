@@ -17,6 +17,8 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core';
 import { toast } from '@/components/ui/use-toast';
+import { ToastAction } from '@/components/ui/toast';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import {
@@ -645,6 +647,8 @@ export function CalendarView() {
             onClose={() => setSelectedEvent(null)}
             onEdit={() => { setEditingEvent(selectedEvent); setSelectedEvent(null); }}
             onDeleted={() => { setSelectedEvent(null); refreshEvents(); }}
+            canHide={activeUser?.role === 'parent'}
+            onHiddenChange={() => { setSelectedEvent(null); refreshEvents(); }}
           />
         )}
 
@@ -772,17 +776,62 @@ export function CalendarView() {
 }
 
 
-function EventDetailModal({ event, onClose, onEdit, onDeleted }: {
+function EventDetailModal({ event, onClose, onEdit, onDeleted, canHide, onHiddenChange }: {
   event: { id: string; title: string; startTime: Date; endTime: Date; allDay: boolean; color: string; location?: string; description?: string; calendarName: string };
   onClose: () => void;
   onEdit: () => void;
   onDeleted: () => void;
+  /** Parents only (#592); the hide route refuses anyone else. */
+  canHide: boolean;
+  /** Called after a hide, and again after its Undo. */
+  onHiddenChange: () => void;
 }) {
   const { timeFormat, displayTimezone } = useTimeFormat();
   const t = useTranslations('calendar');
   const tActions = useTranslations('common.actions');
   const d = useDateLabels();
   const { confirm, dialogProps } = useConfirmDialog();
+  const [hiding, setHiding] = useState(false);
+
+  // Hide in Prism (#592): applies at once, like the rest of the app, with an
+  // Undo in the toast. The event stays in its source calendar.
+  const setHidden = (hidden: boolean) =>
+    fetch(`/api/events/${event.id}/hidden`, { method: hidden ? 'PUT' : 'DELETE' });
+
+  const handleHide = async () => {
+    setHiding(true);
+    try {
+      const response = await setHidden(true);
+      if (!response.ok) {
+        const { message } = await readResponseError(response, t('errors.hideFailed'));
+        toast({ title: message, variant: 'destructive' });
+        setHiding(false);
+        return;
+      }
+      onHiddenChange();
+      toast({
+        title: t('event.hiddenToast', { title: event.title }),
+        description: t('event.hiddenToastBody'),
+        action: (
+          <ToastAction
+            altText={tActions('undo')}
+            onClick={async () => {
+              try {
+                const undo = await setHidden(false);
+                if (!undo.ok) throw new Error(String(undo.status));
+                onHiddenChange();
+              } catch { toast({ title: t('errors.unhideFailed'), variant: 'destructive' }); }
+            }}
+          >
+            {tActions('undo')}
+          </ToastAction>
+        ),
+      });
+    } catch {
+      toast({ title: t('errors.hideFailed'), variant: 'destructive' });
+      setHiding(false);
+    }
+  };
 
   const handleDelete = async () => {
     const ok = await confirm(t('event.deleteConfirmTitle'), t('event.deleteConfirmBody'));
@@ -830,6 +879,19 @@ function EventDetailModal({ event, onClose, onEdit, onDeleted }: {
           />
         )}
         <p className="text-xs text-muted-foreground">{event.calendarName}</p>
+        {canHide && (
+          <label className="flex items-start gap-3 mt-4 cursor-pointer">
+            <Checkbox
+              checked={hiding}
+              disabled={hiding}
+              onCheckedChange={(checked) => { if (checked === true) handleHide(); }}
+            />
+            <span className="text-sm">
+              <span className="block font-medium">{t('event.hideInPrism')}</span>
+              <span className="block text-muted-foreground">{t('event.hideInPrismHint')}</span>
+            </span>
+          </label>
+        )}
         <div className="flex justify-between mt-6">
           <Button variant="destructive" onClick={handleDelete}>
             {tActions('delete')}

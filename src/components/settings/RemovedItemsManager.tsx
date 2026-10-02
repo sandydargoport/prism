@@ -22,12 +22,16 @@ export function RemovedItemsManager({
   items,
   onRestore,
   restoringId,
+  restoreLabel = 'Restore',
+  restoringLabel = 'Restoring…',
 }: {
   title: string;
   description?: string;
   items: RemovedItem[];
   onRestore: (id: string) => void;
   restoringId?: string | null;
+  restoreLabel?: string;
+  restoringLabel?: string;
 }) {
   if (items.length === 0) return null;
 
@@ -53,7 +57,7 @@ export function RemovedItemsManager({
                 onClick={() => onRestore(item.id)}
               >
                 <RotateCcw className="h-4 w-4 mr-1.5" />
-                {restoringId === item.id ? 'Restoring…' : 'Restore'}
+                {restoringId === item.id ? restoringLabel : restoreLabel}
               </Button>
             </li>
           ))}

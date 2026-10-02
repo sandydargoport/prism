@@ -172,6 +172,11 @@ export const events = pgTable('events', {
   // (deletes-only review). Null = not pending.
   pendingDeletion: timestamp('pending_deletion'),
 
+  // Set when a parent hides the event in Prism (#592). The event stays in its
+  // source calendar and every read path leaves it out. The sync upserts name
+  // the columns they overwrite, so a sync never unhides it. Null = shown.
+  hiddenAt: timestamp('hidden_at'),
+
   // CalDAV calendar-object href + ETag, captured at sync time. A CalDAV DELETE
   // targets the object by href (not UID), so we need it to propagate a local
   // delete upstream to the source server (single-event scope; recurring events
