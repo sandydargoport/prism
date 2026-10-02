@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { EFFECT_ORDER, getEffect } from './effects';
 import { useScreensaverMotion, type ScreensaverMotion, type ScreensaverDrift } from './useScreensaverMotion';
@@ -67,13 +68,16 @@ export function ScreensaverSettingsPanel({
 
   const select = 'border border-white/25 rounded px-2 py-1 text-sm bg-black/50 text-white';
 
-  return (
+  // Portal to the body: the layout editor's toolbar has backdrop-blur, which
+  // makes it the containing block for `fixed`, so rendered in place the
+  // overlay was toolbar-sized and the panel rose off the top of the window.
+  return createPortal(
     <div
       data-screensaver-keep
-      className="fixed inset-0 z-10000 pointer-events-auto flex items-center justify-center bg-black/45"
+      className="fixed inset-0 z-10000 pointer-events-auto flex items-center justify-center bg-black/45 p-4"
     >
 
-      <div className="w-[min(30rem,92vw)] rounded-2xl border border-white/15 bg-neutral-900/95 p-5 text-white shadow-2xl">
+      <div className="w-[min(30rem,92vw)] max-h-full overflow-y-auto rounded-2xl border border-white/15 bg-neutral-900/95 p-5 text-white shadow-2xl">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-medium">Screensaver</h2>
             <button
@@ -258,7 +262,8 @@ export function ScreensaverSettingsPanel({
             Everything here applies to this display only.
           </p>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
