@@ -41,10 +41,8 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "@next/bundle-analyzer"
         update-types: ["version-update:semver-major"]
-      # ioredis 6 and jest 30 are real API breaks. Remove when someone is
-      # actually doing that upgrade rather than reviewing a weekly PR for it.
-      - dependency-name: "ioredis"
-        update-types: ["version-update:semver-major"]
+      # jest 30 is a real API break. Remove when someone is actually doing
+      # that upgrade rather than reviewing a weekly PR for it.
       - dependency-name: "jest"
         update-types: ["version-update:semver-major"]
       - dependency-name: "@types/jest"
