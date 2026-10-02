@@ -140,7 +140,7 @@ describe('ShoppingWidget — behavioral', () => {
   describe('Uncheck item', () => {
     it('calls onItemToggle with correct itemId and false when unchecking a checked item', () => {
       const onItemToggle = jest.fn();
-      render(<ShoppingWidget lists={[makeList()]} onItemToggle={onItemToggle} />);
+      render(<ShoppingWidget lists={[makeList()]} onItemToggle={onItemToggle} showChecked />);
 
       // Milk (i2) is checked — it's the second checkbox
       const checkboxes = getCheckboxes();
@@ -151,6 +151,60 @@ describe('ShoppingWidget — behavioral', () => {
 
       expect(onItemToggle).toHaveBeenCalledTimes(1);
       expect(onItemToggle).toHaveBeenCalledWith('i2', false);
+    });
+  });
+
+  describe('Checked items', () => {
+    afterEach(() => jest.useRealTimers());
+
+    it('hides items that are already checked by default', () => {
+      render(<ShoppingWidget lists={[makeList()]} />);
+      expect(screen.getByText('Apples')).toBeTruthy();
+      expect(screen.queryByText('Milk')).toBeNull();
+    });
+
+    it('still counts hidden checked items in the progress line', () => {
+      render(<ShoppingWidget lists={[makeList()]} />);
+      expect(screen.getByText('1 of 2 checked')).toBeTruthy();
+    });
+
+    it('shows checked items when showChecked is set', () => {
+      render(<ShoppingWidget lists={[makeList()]} showChecked />);
+      expect(screen.getByText('Milk')).toBeTruthy();
+    });
+
+    it('keeps an item ticked here on screen briefly, then hides it', () => {
+      jest.useFakeTimers();
+      render(<ShoppingWidget lists={[makeList()]} onItemToggle={jest.fn()} />);
+
+      fireEvent.click(getCheckboxes()[0]!); // Apples
+      expect(screen.getByText('Apples')).toBeTruthy();
+      expect(getCheckboxes()[0]!.checked).toBe(true);
+
+      React.act(() => { jest.advanceTimersByTime(5000); });
+      expect(screen.queryByText('Apples')).toBeNull();
+    });
+
+    it('lets a mis-tap be undone during the grace period', () => {
+      jest.useFakeTimers();
+      const onItemToggle = jest.fn();
+      render(<ShoppingWidget lists={[makeList()]} onItemToggle={onItemToggle} />);
+
+      fireEvent.click(getCheckboxes()[0]!);
+      React.act(() => { jest.advanceTimersByTime(2000); });
+      fireEvent.click(getCheckboxes()[0]!);
+      React.act(() => { jest.advanceTimersByTime(5000); });
+
+      expect(onItemToggle).toHaveBeenLastCalledWith('i1', false);
+      expect(screen.getByText('Apples')).toBeTruthy();
+    });
+
+    it('says so when every item is checked off', () => {
+      const allChecked = makeList({
+        items: makeList().items.map((i) => ({ ...i, checked: true })),
+      });
+      render(<ShoppingWidget lists={[allChecked]} />);
+      expect(screen.getByText('Everything is checked off')).toBeTruthy();
     });
   });
 

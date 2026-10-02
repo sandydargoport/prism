@@ -8,6 +8,7 @@
  * - Categories (produce, dairy, etc.)
  * - Quick add item button
  * - Progress indicator (X of Y checked)
+ * - Checked items are hidden unless showChecked is set
  *
  * INTERACTION:
  * - Tap checkbox to mark item as purchased
@@ -24,7 +25,7 @@
 
 import * as React from 'react';
 import { Emoji } from '@/components/ui/Emoji';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { ShoppingCart, Plus, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { WidgetContainer, WidgetEmpty } from './WidgetContainer';
@@ -43,6 +44,9 @@ import {
 import type { ShoppingItem, ShoppingList } from '@/types';
 export type { ShoppingItem, ShoppingList };
 
+/** How long an item ticked on the widget stays visible before it is hidden. */
+const TICK_GRACE_MS = 5000;
+
 /**
  * SHOPPING WIDGET PROPS
  */
@@ -55,6 +59,9 @@ export interface ShoppingWidgetProps {
   loading?: boolean;
   /** Error message */
   error?: string | null;
+  /** Show items that are already checked off. Off by default: a display
+   *  wants what is left to buy, as the Tasks widget hides finished tasks. */
+  showChecked?: boolean;
   /** Callback when item is toggled */
   onItemToggle?: (itemId: string, checked: boolean) => void;
   /** Callback when add button is clicked */
@@ -88,6 +95,7 @@ export const ShoppingWidget = React.memo(function ShoppingWidget({
   listId,
   loading = false,
   error = null,
+  showChecked = false,
   onItemToggle,
   onAddClick,
   onListChange,
@@ -105,10 +113,30 @@ export const ShoppingWidget = React.memo(function ShoppingWidget({
   // Local state for optimistic updates
   const [localChecked, setLocalChecked] = useState<Record<string, boolean>>({});
 
+  // An item ticked here stays on screen, struck through, for a few seconds
+  // before it is hidden, so a mis-tap on a wall display can be undone.
+  const [justTicked, setJustTicked] = useState<ReadonlySet<string>>(() => new Set());
+  const tickTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  useEffect(() => {
+    const timers = tickTimers.current;
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
   const handleToggle = useCallback((itemId: string, currentChecked: boolean) => {
     const newChecked = !currentChecked;
     setLocalChecked((prev) => ({ ...prev, [itemId]: newChecked }));
     onItemToggle?.(itemId, newChecked);
+
+    clearTimeout(tickTimers.current.get(itemId));
+    setJustTicked((prev) => new Set(prev).add(itemId));
+    tickTimers.current.set(itemId, setTimeout(() => {
+      tickTimers.current.delete(itemId);
+      setJustTicked((prev) => {
+        const next = new Set(prev);
+        next.delete(itemId);
+        return next;
+      });
+    }, TICK_GRACE_MS));
   }, [onItemToggle]);
 
   const handleListChange = useCallback((newListId: string) => {
@@ -116,14 +144,17 @@ export const ShoppingWidget = React.memo(function ShoppingWidget({
     onListChange?.(newListId);
   }, [onListChange]);
 
-  const { items, checkedCount, totalCount, progress } = useMemo(() => {
+  const { items, visibleItems, checkedCount, totalCount, progress } = useMemo(() => {
     const items = activeList?.items || [];
-    const checkedCount = items.filter(
-      (item) => localChecked[item.id] !== undefined ? localChecked[item.id] : item.checked
-    ).length;
+    const isChecked = (item: ShoppingItem) =>
+      localChecked[item.id] !== undefined ? localChecked[item.id] : item.checked;
+    const checkedCount = items.filter(isChecked).length;
     const totalCount = items.length;
-    return { items, checkedCount, totalCount, progress: totalCount > 0 ? (checkedCount / totalCount) * 100 : 0 };
-  }, [activeList, localChecked]);
+    const visibleItems = showChecked
+      ? items
+      : items.filter((item) => !isChecked(item) || justTicked.has(item.id));
+    return { items, visibleItems, checkedCount, totalCount, progress: totalCount > 0 ? (checkedCount / totalCount) * 100 : 0 };
+  }, [activeList, localChecked, showChecked, justTicked]);
 
   return (
     <WidgetContainer
@@ -202,8 +233,13 @@ export const ShoppingWidget = React.memo(function ShoppingWidget({
           )}
 
           <div className="overflow-auto h-full -mr-2 pr-2">
+            {visibleItems.length === 0 && (
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                Everything is checked off
+              </p>
+            )}
             <div className="space-y-2">
-              {items.map((item) => {
+              {visibleItems.map((item) => {
                 const isChecked: boolean =
                   localChecked[item.id] !== undefined
                     ? localChecked[item.id]!

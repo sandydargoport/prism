@@ -144,7 +144,7 @@ describe('ShoppingWidget', () => {
   });
 
   it('renders shopping items', () => {
-    render(<ShoppingWidget lists={[mockList]} />);
+    render(<ShoppingWidget lists={[mockList]} showChecked />);
     expect(screen.getByText('Apples')).toBeTruthy();
     expect(screen.getByText('Milk')).toBeTruthy();
   });
