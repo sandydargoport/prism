@@ -2,6 +2,9 @@
 # per-machine hook can: $1 is the path to the drafted message.
 #
 # Untracked and gitignored, like the other .husky/local hooks.
-if [ -x .husky/local/commit-msg ]; then
-  .husky/local/commit-msg "$@"
+# Resolved through the shared git dir, so a linked worktree (which has no
+# .husky/local of its own) runs the main checkout's hooks too.
+local_hooks="$(git rev-parse --path-format=absolute --git-common-dir)/../.husky/local"
+if [ -x "$local_hooks/commit-msg" ]; then
+  "$local_hooks/commit-msg" "$@"
 fi

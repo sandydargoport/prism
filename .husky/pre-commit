@@ -3,6 +3,9 @@ bash scripts/scan-secrets.sh
 # Per-machine hooks, untracked and gitignored. A check that matters to one
 # person is not a check everybody who clones this should inherit, so anything
 # local hangs off here instead of being committed.
-if [ -x .husky/local/pre-commit ]; then
-  .husky/local/pre-commit "$@"
+# Resolved through the shared git dir, so a linked worktree (which has no
+# .husky/local of its own) runs the main checkout's hooks too.
+local_hooks="$(git rev-parse --path-format=absolute --git-common-dir)/../.husky/local"
+if [ -x "$local_hooks/pre-commit" ]; then
+  "$local_hooks/pre-commit" "$@"
 fi
