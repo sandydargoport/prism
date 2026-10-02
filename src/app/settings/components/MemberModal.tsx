@@ -14,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { PIN_LENGTH_OPTIONS, DEFAULT_PIN_LENGTH } from '@/lib/constants';
+import { PIN_LENGTH_OPTIONS, DEFAULT_PIN_LENGTH, MAX_PIN_LENGTH } from '@/lib/constants';
 import type { FamilyMember } from './PinEditModal';
 
 const EmojiPicker = dynamic(
@@ -34,6 +34,10 @@ export interface MemberModalSaveData {
   avatarUrl?: string | null;
   avatarFile?: File | null;
   pinLength: number;
+  /** Sent with a length change on a member who has a PIN: the new PIN, and
+   *  the current one the server needs to allow it. */
+  pin?: string;
+  currentPin?: string;
 }
 
 export function MemberModal({
@@ -53,6 +57,14 @@ export function MemberModal({
   // them. Each member's own choice is the source of truth; there is no
   // family-wide default any more.
   const [pinLength, setPinLength] = useState(member?.pinLength ?? DEFAULT_PIN_LENGTH);
+  // A new length strands the PIN this member already has, so it is only
+  // saved together with a new PIN of that length (the server refuses it
+  // otherwise).
+  const lengthChanged = !!member?.hasPin && pinLength !== (member.pinLength ?? DEFAULT_PIN_LENGTH);
+  const [currentPin, setCurrentPin] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [pinError, setPinError] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(member?.avatarUrl || null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -104,15 +116,21 @@ export function MemberModal({
     e.preventDefault();
     if (!name.trim()) return;
 
-    // Changing PIN length on a member who already has a PIN set will strand
-    // that PIN — every pad now requires exactly the NEW length before it will
-    // even submit, so the old (differently-sized) PIN can never match again.
-    if (member?.hasPin && pinLength !== (member.pinLength ?? DEFAULT_PIN_LENGTH)) {
-      const confirmed = window.confirm(
-        `Changing ${member.name}'s PIN length to ${pinLength} digits means their current PIN will stop working — they'll need to set a new ${pinLength}-digit PIN. Continue?`
-      );
-      if (!confirmed) return;
+    if (lengthChanged) {
+      if (!currentPin) {
+        setPinError('Enter the current PIN');
+        return;
+      }
+      if (!new RegExp(`^\\d{${pinLength}}$`).test(newPin)) {
+        setPinError(`The new PIN must be exactly ${pinLength} digits`);
+        return;
+      }
+      if (newPin !== confirmPin) {
+        setPinError('The new PINs do not match');
+        return;
+      }
     }
+    setPinError(null);
 
     onSave({
       name: name.trim(),
@@ -121,6 +139,7 @@ export function MemberModal({
       avatarUrl: avatarFile ? null : avatarUrl,
       avatarFile,
       pinLength,
+      ...(lengthChanged ? { pin: newPin, currentPin } : {}),
     });
   };
 
@@ -269,6 +288,55 @@ export function MemberModal({
               How many digits {member ? `${name || 'this member'}'s` : "this member's"} PIN pad will require.
             </p>
           </div>
+
+          {lengthChanged && (
+            <div className="space-y-3 rounded-md border border-border p-3">
+              <p className="text-sm text-muted-foreground">
+                A {pinLength}-digit length needs a new {pinLength}-digit PIN.
+              </p>
+              <div>
+                <label className="text-sm font-medium">Current PIN</label>
+                <Input
+                  type="password"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={MAX_PIN_LENGTH}
+                  value={currentPin}
+                  onChange={(e) => setCurrentPin(e.target.value.replace(/\D/g, ''))}
+                  placeholder="Enter current PIN"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">New PIN</label>
+                <Input
+                  type="password"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={pinLength}
+                  value={newPin}
+                  onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ''))}
+                  placeholder={`${pinLength} digits`}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Confirm New PIN</label>
+                <Input
+                  type="password"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={pinLength}
+                  value={confirmPin}
+                  onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))}
+                  placeholder="Re-enter new PIN"
+                />
+              </div>
+              {pinError && (
+                <div className="text-sm text-destructive p-2 bg-destructive/10 rounded">
+                  {pinError}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>

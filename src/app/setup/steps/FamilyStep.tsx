@@ -141,18 +141,17 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
 
     if (editingMember) {
       // Changing PIN length without also supplying a new matching PIN would
-      // silently strand the member's existing PIN (the pad will require the
-      // new length, but the stored hash was made for the old one).
+      // strand the member's existing PIN (the pad will require the new
+      // length, but the stored hash was made for the old one). The server
+      // refuses it too; asking here says what to do instead.
       if (
         editingMember.hasPin &&
         memberPinLength !== editingMember.pinLength &&
         !removePin &&
         !pin.trim()
       ) {
-        const confirmed = window.confirm(
-          `Changing ${trimmedName}'s PIN length to ${memberPinLength} digits means their current PIN will stop working — they'll need a new ${memberPinLength}-digit PIN. Continue?`
-        );
-        if (!confirmed) return null;
+        toast({ title: `Enter a new ${memberPinLength}-digit PIN to change the length`, variant: 'warning' });
+        return null;
       }
 
       setSaving(true);

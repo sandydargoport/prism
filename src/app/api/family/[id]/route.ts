@@ -174,6 +174,22 @@ export async function PATCH(
       updates.pinLength = n;
     }
 
+    // A new length on its own strands an existing PIN: every pad then waits for
+    // the new number of digits, and the stored hash was made from the old one,
+    // so nothing typed can match. The length and the new PIN go together (or
+    // the PIN is removed in the same call).
+    if (
+      updates.pinLength !== undefined &&
+      updates.pinLength !== currentMember.pinLength &&
+      currentMember.pin &&
+      body.pin === undefined
+    ) {
+      return NextResponse.json(
+        { error: `Changing the PIN length needs a new ${updates.pinLength}-digit PIN in the same change` },
+        { status: 400 }
+      );
+    }
+
     // Handle PIN change
     if (body.pin !== undefined) {
       // Changing an existing PIN requires proving the current one — including
