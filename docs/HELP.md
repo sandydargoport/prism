@@ -93,7 +93,7 @@ School bus arrival predictions via Gmail/FirstView email parsing. Adaptive polli
 
 ### [Display Modes](features/DISPLAY-MODES.md)
 
-Screensaver, Away Mode, and Babysitter Mode: three overlay modes that layer on top of the dashboard for idle, privacy, and caregiver scenarios.
+Screensaver, Away Mode, and Babysitter Mode: three overlay modes that layer on top of the dashboard for idle, privacy, and caregiver scenarios. While Babysitter Mode is on, the sitter can leave a note for the family on the Messages board.
 
 ### [Themes](features/THEMES.md)
 

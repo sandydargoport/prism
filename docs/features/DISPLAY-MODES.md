@@ -240,6 +240,15 @@ Anyone with the URL can access the babysitter view. Use cases:
 
 The public URL respects the sensitive-section gating: sensitive sections still require PIN unlock when viewed via the public URL.
 
+### Leaving a note for the family
+
+While Babysitter Mode is on, the Babysitter Mode screen has a **Leave a note for the family** box. The screen covers every page while the mode is on, so a sitter who opens `/babysitter` on their phone gets the box too. The sitter types a note (up to 500 characters) and, if they like, their name, and taps **Send**. The note goes on the [Messages](MESSAGES.md) board marked as from the babysitter, for example "Everyone ate dinner. One of the kids bumped an elbow, Band-Aid on."
+
+- Notes are accepted only while a parent has Babysitter Mode on. When it is turned off, the screen and the box go away and the server refuses new notes.
+- No login or PIN is needed, so anyone who can open `/babysitter` during that time can post. Up to 10 notes an hour are accepted for the whole household.
+- The sitter cannot read the Messages board. Only a parent can edit or delete a sitter's note.
+- With the authentication wall on, the note box only works on a trusted device, like the rest of `/babysitter`.
+
 ### Exiting
 
 Tap anywhere → PIN keypad → enter parent PIN → returns to the dashboard.
@@ -286,7 +295,7 @@ In Performance Mode:
 | Dashboard | Everything (calendars, tasks, etc.) | Yes, but read-only |
 | Screensaver | Photos + configured widgets | Same as dashboard |
 | Away Mode | Photos + clock + weather only | After timeout / manual activation |
-| Babysitter Mode | House info + contacts + child notes | Yes, via `/babysitter` URL |
+| Babysitter Mode | House info + contacts + child notes, sitter can leave a note | Yes, via `/babysitter` URL |
 
 If you're worried about what a casual passerby can see: Away mode is the answer. Set the auto-activation to a duration that matches your usage patterns.
 

@@ -3,6 +3,7 @@
 import { useCallback } from 'react';
 import { useFetch } from './useFetch';
 import type { FamilyMessage } from '@/components/widgets/MessagesWidget';
+import type { GuestKind } from '@/lib/messages/guestNotes';
 
 interface UseMessagesOptions {
   limit?: number;
@@ -19,6 +20,7 @@ function transformMessages(json: unknown): FamilyMessage[] {
       important: boolean;
       createdAt: string;
       expiresAt?: string | null;
+      guest?: GuestKind | null;
       author: {
         id: string;
         name: string;
@@ -34,6 +36,7 @@ function transformMessages(json: unknown): FamilyMessage[] {
     important: msg.important,
     createdAt: new Date(msg.createdAt),
     expiresAt: msg.expiresAt ? new Date(msg.expiresAt) : null,
+    guest: msg.guest ?? null,
     author: {
       id: msg.author.id,
       name: msg.author.name,

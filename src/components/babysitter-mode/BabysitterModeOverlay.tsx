@@ -10,6 +10,7 @@ import { useBabysitterMode } from '@/lib/hooks/useBabysitterMode';
 import { useBabysitterInfo, type BabysitterSection, type BabysitterInfoItem } from '@/lib/hooks/useBabysitterInfo';
 import { useWifiConfig } from '@/lib/hooks/useWifiConfig';
 import { ExitBabysitterModeModal } from './ExitBabysitterModeModal';
+import { GuestNoteBox } from './GuestNoteBox';
 import { WifiQRCode } from '@/components/ui/WifiQRCode';
 import { cn } from '@/lib/utils';
 import { useTimeFormat } from '@/components/providers';
@@ -164,6 +165,8 @@ export function BabysitterModeOverlay() {
             />
           </div>
         )}
+
+        <GuestNoteBox className="max-w-6xl mx-auto mt-6" />
       </div>
 
       {/* Footer */}

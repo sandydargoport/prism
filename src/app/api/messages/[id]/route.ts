@@ -15,6 +15,7 @@ import { familyMessages, users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { requireAuth, requireRole } from '@/lib/auth';
 import { formatMessageRow } from '@/lib/utils/formatters';
+import { messageWithAuthorColumns } from '@/lib/messages/messageColumns';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
 
@@ -39,20 +40,9 @@ export async function GET(
     const { id } = await params;
 
     const [messageWithAuthor] = await db
-      .select({
-        id: familyMessages.id,
-        message: familyMessages.message,
-        pinned: familyMessages.pinned,
-        important: familyMessages.important,
-        expiresAt: familyMessages.expiresAt,
-        createdAt: familyMessages.createdAt,
-        authorId: users.id,
-        authorName: users.name,
-        authorColor: users.color,
-        authorAvatar: users.avatarUrl,
-      })
+      .select(messageWithAuthorColumns)
       .from(familyMessages)
-      .innerJoin(users, eq(familyMessages.authorId, users.id))
+      .leftJoin(users, eq(familyMessages.authorId, users.id))
       .where(eq(familyMessages.id, id));
 
     if (!messageWithAuthor) {
@@ -170,20 +160,9 @@ export async function PATCH(
 
     // Fetch and return updated message
     const [updatedMessage] = await db
-      .select({
-        id: familyMessages.id,
-        message: familyMessages.message,
-        pinned: familyMessages.pinned,
-        important: familyMessages.important,
-        expiresAt: familyMessages.expiresAt,
-        createdAt: familyMessages.createdAt,
-        authorId: users.id,
-        authorName: users.name,
-        authorColor: users.color,
-        authorAvatar: users.avatarUrl,
-      })
+      .select(messageWithAuthorColumns)
       .from(familyMessages)
-      .innerJoin(users, eq(familyMessages.authorId, users.id))
+      .leftJoin(users, eq(familyMessages.authorId, users.id))
       .where(eq(familyMessages.id, id));
 
     if (!updatedMessage) {

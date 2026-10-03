@@ -26,6 +26,10 @@ Two ways:
 
 Both require login. The author is auto-set to the logged-in user; you can't impersonate someone else.
 
+### Notes from the babysitter
+
+While Babysitter Mode is on, the babysitter can leave a note from the Babysitter Mode screen or the `/babysitter` page, without logging in. It appears on the board as **Babysitter** (or **Babysitter (Sam)** if they gave a name) with a 🍼 avatar. See [Display Modes](DISPLAY-MODES.md#leaving-a-note-for-the-family).
+
 ---
 
 ## Expiration
@@ -88,6 +92,7 @@ Trash icon on each message (visible on hover/long-press):
 - **Authors** can delete their own messages.
 - **Parents** can delete any message.
 - Children cannot delete others' messages.
+- Notes from the babysitter can be edited or deleted by a parent only.
 
 A confirmation dialog ("Delete this message?" / "This action cannot be undone.") appears before the message is removed. Deletion is permanent. There is no undo.
 
@@ -151,7 +156,7 @@ Sometimes you and your spouse need a shared note that's more durable than a text
 
 ## Privacy
 
-Messages are family-internal: only logged-in family members see them. The babysitter and away-mode views do not show messages.
+Messages are family-internal: only logged-in family members see them. The babysitter and away-mode views do not show messages. A babysitter can add a note while Babysitter Mode is on, but cannot read the board, including their own notes.
 
 Messages live in your Prism database. No external sync to MS To Do, Google, or anywhere else (intentionally: messages are ephemeral; they're not lists, they don't belong in a task-tracking system).
 

@@ -318,7 +318,9 @@ CREATE TABLE IF NOT EXISTS public.events (
 CREATE TABLE IF NOT EXISTS public.family_messages (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     message text NOT NULL,
-    author_id uuid NOT NULL,
+    author_id uuid,
+    guest_kind character varying(20),
+    guest_name character varying(40),
     pinned boolean DEFAULT false NOT NULL,
     important boolean DEFAULT false NOT NULL,
     expires_at timestamp without time zone,

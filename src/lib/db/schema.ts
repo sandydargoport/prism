@@ -735,9 +735,14 @@ export const familyMessages = pgTable('family_messages', {
 
   message: text('message').notNull(),
 
+  // Null for a note from someone without an account (#497); guestKind then
+  // says who it was and guestName is the name they gave, if any.
   authorId: uuid('author_id')
-    .references(() => users.id, { onDelete: 'cascade' })
-    .notNull(),
+    .references(() => users.id, { onDelete: 'cascade' }),
+
+  guestKind: varchar('guest_kind', { length: 20 }).$type<'babysitter'>(),
+
+  guestName: varchar('guest_name', { length: 40 }),
 
   pinned: boolean('pinned').default(false).notNull(),
 

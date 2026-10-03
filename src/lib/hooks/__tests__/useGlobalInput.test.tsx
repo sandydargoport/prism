@@ -17,6 +17,11 @@ jest.mock('../useSpeechRecognition', () => ({
   useSpeechRecognition: () => ({ isListening: false, start: jest.fn(), stop: jest.fn() }),
 }));
 jest.mock('@/components/ui/use-toast', () => ({ toast: jest.fn() }));
+const mockReveal = jest.fn((..._a: unknown[]) => []);
+jest.mock('@/lib/input/keyboardLayout', () => ({
+  ...jest.requireActual('@/lib/input/keyboardLayout'),
+  revealAboveKeyboard: (...a: unknown[]) => mockReveal(...a),
+}));
 
 import { GlobalInputProvider, useGlobalInput } from '../useGlobalInput';
 import { writeKeyboardDevicePref } from '@/lib/input/keyboardDevicePref';
@@ -25,6 +30,7 @@ let settingValue: unknown = null;
 
 beforeEach(() => {
   mockIsMobile = false;
+  mockReveal.mockClear();
   settingValue = null;
   window.localStorage.clear();
   global.fetch = jest.fn(async () => ({
@@ -182,6 +188,26 @@ describe('keyboard lifecycle around the suppression', () => {
     act(() => { field.blur(); });
     expect(root.hasAttribute('data-virtual-keyboard-open')).toBe(false);
     expect(root.style.getPropertyValue('--keyboard-height')).toBe('0px');
+  });
+
+  it('lifts just the field by default', async () => {
+    const { field } = await setup();
+    tap(field, 'touch');
+    expect(mockReveal).toHaveBeenCalledWith(field, expect.any(Number));
+  });
+
+  it('lifts the whole group when the field is inside data-keyboard-reveal (#497)', async () => {
+    const utils = render(
+      <GlobalInputProvider>
+        <div data-testid="group" data-keyboard-reveal>
+          <textarea data-testid="note" />
+          <button type="button">Send</button>
+        </div>
+      </GlobalInputProvider>,
+    );
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    tap(utils.getByTestId('note'), 'touch');
+    expect(mockReveal).toHaveBeenCalledWith(utils.getByTestId('group'), expect.any(Number));
   });
 });
 

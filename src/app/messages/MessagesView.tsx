@@ -45,12 +45,29 @@ import { AddMessageModal } from '@/components/modals/AddMessageModal';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageLoader } from '@/components/ui/spinner';
 import type { FamilyMessage } from '@/components/widgets/MessagesWidget';
+import { guestAuthor, isGuestAuthorId } from '@/lib/messages/guestNotes';
 import type { FamilyMember } from '@/types';
 
 
 /**
  * MESSAGES VIEW COMPONENT
  */
+/**
+ * The author a message is grouped and filtered under. Guest notes share one
+ * group whatever name the sitter typed, so "Babysitter (Sam)" and
+ * "Babysitter" do not become two people (#497).
+ */
+function groupAuthor(msg: FamilyMessage) {
+  return msg.guest ? guestAuthor(msg.guest, null) : msg.author;
+}
+
+/** The start of the "you cannot change this" toast: who besides a parent may. */
+function postedBy(msg: FamilyMessage) {
+  return msg.guest
+    ? `This note is from the ${guestAuthor(msg.guest, null).name.toLowerCase()}. Only a parent`
+    : `This message was posted by ${msg.author.name}. Only they or a parent`;
+}
+
 export function MessagesView() {
 
   const { activeUser, requireAuth } = useAuth();
@@ -76,11 +93,8 @@ export function MessagesView() {
     const authorMap = new Map<string, FamilyMember>();
     messages.forEach((msg) => {
       if (!authorMap.has(msg.author.id)) {
-        authorMap.set(msg.author.id, {
-          id: msg.author.id,
-          name: msg.author.name,
-          color: msg.author.color,
-        });
+        const author = groupAuthor(msg);
+        authorMap.set(author.id, { id: author.id, name: author.name, color: author.color });
       }
     });
     return Array.from(authorMap.values());
@@ -128,9 +142,9 @@ export function MessagesView() {
     // Any authors not in family members (shouldn't happen but be safe)
     for (const [authorId, msgs] of memberMap) {
       if (!familyMembers.some(m => m.id === authorId)) {
-        const author = msgs[0]!.author;
+        const author = groupAuthor(msgs[0]!);
         groups.push({
-          member: { id: author.id, name: author.name, color: author.color },
+          member: { id: author.id, name: author.name, color: author.color, avatarUrl: author.avatarUrl },
           messages: msgs,
         });
       }
@@ -159,7 +173,7 @@ export function MessagesView() {
     const isOwnMessage = message.author.id === user.id;
 
     if (!isParent && !isOwnMessage) {
-      toast({ title: `This message was posted by ${message.author.name}. Only they or a parent can delete it.`, variant: 'warning' });
+      toast({ title: `${postedBy(message)} can delete it.`, variant: 'warning' });
       return;
     }
 
@@ -180,7 +194,7 @@ export function MessagesView() {
     const isOwnMessage = message.author.id === user.id;
 
     if (!isParent && !isOwnMessage) {
-      toast({ title: `This message was posted by ${message.author.name}. Only they or a parent can edit it.`, variant: 'warning' });
+      toast({ title: `${postedBy(message)} can edit it.`, variant: 'warning' });
       return false;
     }
 
@@ -301,6 +315,7 @@ export function MessagesView() {
                     <UserAvatar
                       name={member.name}
                       color={member.color}
+                      imageUrl={isGuestAuthorId(member.id) ? (member.avatarUrl ?? undefined) : undefined}
                       size="sm"
                       className="h-7 w-7"
                     />

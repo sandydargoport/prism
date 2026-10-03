@@ -187,9 +187,16 @@ export function VirtualKeyboard() {
     }
   });
 
+  const activeInput = activeInputRef.current;
   const isPassword =
-    activeInputRef.current instanceof HTMLInputElement &&
-    activeInputRef.current.type === 'password';
+    activeInput instanceof HTMLInputElement &&
+    activeInput.type === 'password';
+
+  // A field on a full-screen overlay (the Babysitter Mode note box, #497) sits
+  // above this keyboard's usual layer, so the keyboard opened behind it. Such a
+  // field marks a container with data-keyboard-above-overlays and the keyboard
+  // lifts for it alone; everywhere else the scanner sheets stay on top.
+  const aboveOverlays = Boolean(activeInput?.closest('[data-keyboard-above-overlays]'));
 
   if (!mounted || isMobile) return null;
 
@@ -199,7 +206,8 @@ export function VirtualKeyboard() {
     <div
       data-virtual-keyboard
       className={cn(
-        'fixed bottom-0 left-0 right-0 z-9000',
+        'fixed bottom-0 left-0 right-0',
+        aboveOverlays ? 'z-9998' : 'z-9000',
         'bg-background border-t border-border shadow-2xl',
         isListening && 'is-listening',
         visible && (isExiting ? 'animate-keyboard-out' : 'animate-keyboard-in'),

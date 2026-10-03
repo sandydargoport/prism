@@ -5,32 +5,15 @@ import { settings } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
-
-const BABYSITTER_MODE_KEY = 'babysitterMode';
-
-interface BabysitterModeState {
-  enabled: boolean;
-  enabledAt: string | null;
-  enabledBy: string | null;
-}
+import {
+  BABYSITTER_MODE_KEY,
+  getBabysitterModeState,
+  type BabysitterModeState,
+} from '@/lib/services/babysitterMode';
 
 export async function GET() {
   try {
-    const [row] = await db
-      .select()
-      .from(settings)
-      .where(eq(settings.key, BABYSITTER_MODE_KEY));
-
-    if (!row) {
-      return NextResponse.json({
-        enabled: false,
-        enabledAt: null,
-        enabledBy: null,
-      });
-    }
-
-    const state = row.value as BabysitterModeState;
-    return NextResponse.json(state);
+    return NextResponse.json(await getBabysitterModeState());
   } catch (error) {
     logError('Error fetching babysitter mode state:', error);
     return NextResponse.json(

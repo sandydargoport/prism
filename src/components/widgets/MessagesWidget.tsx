@@ -31,6 +31,7 @@ import { MessageSquare, Pin, Plus, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { WidgetContainer, WidgetEmpty } from './WidgetContainer';
 import { Button, UserAvatar } from '@/components/ui';
+import type { GuestKind } from '@/lib/messages/guestNotes';
 
 
 /**
@@ -50,6 +51,8 @@ export interface FamilyMessage {
   pinned: boolean;
   important: boolean;
   expiresAt?: Date | null;
+  /** Set when someone without an account wrote it, e.g. the babysitter (#497). */
+  guest?: GuestKind | null;
 }
 
 

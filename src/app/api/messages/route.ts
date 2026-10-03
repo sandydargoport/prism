@@ -21,6 +21,7 @@ import { db } from '@/lib/db/client';
 import { familyMessages, users } from '@/lib/db/schema';
 import { eq, desc, asc, and, gt, isNull, or, sql } from 'drizzle-orm';
 import { formatMessageRow } from '@/lib/utils/formatters';
+import { messageWithAuthorColumns } from '@/lib/messages/messageColumns';
 import { getCached } from '@/lib/cache/redis';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logActivity } from '@/lib/services/auditLog';
@@ -99,20 +100,9 @@ export async function GET(request: NextRequest) {
       // Execute query with joins
       // Sort by pinned (desc so true comes first), then by createdAt (desc)
       const results = await db
-        .select({
-          id: familyMessages.id,
-          message: familyMessages.message,
-          pinned: familyMessages.pinned,
-          important: familyMessages.important,
-          expiresAt: familyMessages.expiresAt,
-          createdAt: familyMessages.createdAt,
-          authorId: users.id,
-          authorName: users.name,
-          authorColor: users.color,
-          authorAvatar: users.avatarUrl,
-        })
+        .select(messageWithAuthorColumns)
         .from(familyMessages)
-        .innerJoin(users, eq(familyMessages.authorId, users.id))
+        .leftJoin(users, eq(familyMessages.authorId, users.id))
         .where(conditions.length > 0 ? and(...conditions) : undefined)
         .orderBy(desc(familyMessages.pinned), desc(familyMessages.createdAt))
         .limit(limit)
@@ -243,20 +233,9 @@ export async function POST(request: NextRequest) {
 
     // Fetch with author data
     const [messageWithAuthor] = await db
-      .select({
-        id: familyMessages.id,
-        message: familyMessages.message,
-        pinned: familyMessages.pinned,
-        important: familyMessages.important,
-        expiresAt: familyMessages.expiresAt,
-        createdAt: familyMessages.createdAt,
-        authorId: users.id,
-        authorName: users.name,
-        authorColor: users.color,
-        authorAvatar: users.avatarUrl,
-      })
+      .select(messageWithAuthorColumns)
       .from(familyMessages)
-      .innerJoin(users, eq(familyMessages.authorId, users.id))
+      .leftJoin(users, eq(familyMessages.authorId, users.id))
       .where(eq(familyMessages.id, newMessage.id));
 
     if (!messageWithAuthor) {

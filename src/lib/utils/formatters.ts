@@ -4,6 +4,8 @@
  * formatting logic across GET, POST, and PATCH endpoints.
  */
 
+import { guestAuthor, type GuestKind } from '@/lib/messages/guestNotes';
+
 /**
  * Format a task database row (with joined user data) into an API response object.
  */
@@ -53,6 +55,7 @@ export function formatTaskRow(row: {
 
 /**
  * Format a message database row (with joined author data) into an API response object.
+ * A guest note (#497) has no user row, so its author comes from guestAuthor().
  */
 export function formatMessageRow(row: {
   id: string;
@@ -61,11 +64,14 @@ export function formatMessageRow(row: {
   important: boolean;
   expiresAt: Date | null;
   createdAt: Date;
-  authorId: string;
-  authorName: string;
-  authorColor: string;
+  guestKind?: GuestKind | null;
+  guestName?: string | null;
+  authorId: string | null;
+  authorName: string | null;
+  authorColor: string | null;
   authorAvatar: string | null;
 }) {
+  const isGuest = !row.authorId;
   return {
     id: row.id,
     message: row.message,
@@ -73,12 +79,15 @@ export function formatMessageRow(row: {
     important: row.important,
     expiresAt: row.expiresAt?.toISOString() || null,
     createdAt: row.createdAt.toISOString(),
-    author: {
-      id: row.authorId,
-      name: row.authorName,
-      color: row.authorColor,
-      avatarUrl: row.authorAvatar,
-    },
+    guest: isGuest ? (row.guestKind ?? 'babysitter') : null,
+    author: isGuest
+      ? guestAuthor(row.guestKind ?? null, row.guestName ?? null)
+      : {
+          id: row.authorId as string,
+          name: row.authorName ?? '',
+          color: row.authorColor ?? '',
+          avatarUrl: row.authorAvatar,
+        },
   };
 }
 

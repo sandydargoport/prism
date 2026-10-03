@@ -254,7 +254,10 @@ export function GlobalInputProvider({ children }: { children: React.ReactNode })
     // padding but leave the view where it is.
     releaseView(false);
     const keyboardTop = window.innerHeight - keyboardHeightPx(window.innerHeight);
-    revealRecordsRef.current = revealAboveKeyboard(el, keyboardTop);
+    // A form whose button sits below the field (the Babysitter Mode note box)
+    // marks itself data-keyboard-reveal, so the whole of it comes up.
+    const target = el.closest('[data-keyboard-reveal]') ?? el;
+    revealRecordsRef.current = revealAboveKeyboard(target, keyboardTop);
   }, [releaseView]);
 
   // ---- setKeyboardVisible (public) ----
