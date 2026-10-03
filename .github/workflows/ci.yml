@@ -183,7 +183,9 @@ jobs:
         image: postgres:15-alpine
         env:
           POSTGRES_USER: prism
-          POSTGRES_PASSWORD: ci_test_password
+          # No password: a credential in a connection URL is a secret-scanner
+          # finding, and every edit to this file would add a new copy of it.
+          POSTGRES_HOST_AUTH_METHOD: trust
           POSTGRES_DB: prism
         options: >-
           --health-cmd "pg_isready -U prism"
@@ -202,7 +204,7 @@ jobs:
     env:
       # Inside container jobs services are reached by their alias on the
       # docker network, not via localhost port forwards.
-      DATABASE_URL: postgresql://prism:ci_test_password@postgres:5432/prism
+      DATABASE_URL: postgresql://prism@postgres:5432/prism
       REDIS_URL: redis://redis:6379
       PORT: '3000'
       APP_URL: http://localhost:3000
@@ -233,8 +235,6 @@ jobs:
         run: rm -f /etc/apt/sources.list.d/nodesource* && apt-get update && apt-get install -y --no-install-recommends postgresql-client
 
       - name: Apply base schema
-        env:
-          PGPASSWORD: ci_test_password
         run: psql -h postgres -U prism -d prism -v ON_ERROR_STOP=1 -f src/lib/db/init/02-schema.sql
 
       - name: Apply migrations
@@ -280,7 +280,9 @@ jobs:
         image: postgres:15-alpine
         env:
           POSTGRES_USER: prism
-          POSTGRES_PASSWORD: ci_test_password
+          # No password: a credential in a connection URL is a secret-scanner
+          # finding, and every edit to this file would add a new copy of it.
+          POSTGRES_HOST_AUTH_METHOD: trust
           POSTGRES_DB: prism
         options: >-
           --health-cmd "pg_isready -U prism"
@@ -297,7 +299,7 @@ jobs:
           --health-retries 5
 
     env:
-      DATABASE_URL: postgresql://prism:ci_test_password@postgres:5432/prism
+      DATABASE_URL: postgresql://prism@postgres:5432/prism
       REDIS_URL: redis://redis:6379
       PORT: '3000'
       APP_URL: http://localhost:3000
@@ -332,8 +334,6 @@ jobs:
         run: rm -f /etc/apt/sources.list.d/nodesource* && apt-get update && apt-get install -y --no-install-recommends postgresql-client redis-tools
 
       - name: Apply base schema
-        env:
-          PGPASSWORD: ci_test_password
         run: psql -h postgres -U prism -d prism -v ON_ERROR_STOP=1 -f src/lib/db/init/02-schema.sql
 
       - name: Apply migrations
