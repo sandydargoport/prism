@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from '@/components/ui/use-toast';
+import { useKeyboardDevicePref, type KeyboardDevicePref } from '@/lib/input/keyboardDevicePref';
 
 interface ShoppingListOption {
   id: string;
@@ -21,6 +22,7 @@ interface ShoppingListOption {
 
 export function InputSection() {
   const [keyboardEnabled, setKeyboardEnabled] = useState(true);
+  const devicePref = useKeyboardDevicePref();
   const [scannerEnabled, setScannerEnabled] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [soundStyle, setSoundStyle] = useState<'beep' | 'scan'>('beep');
@@ -101,17 +103,46 @@ export function InputSection() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <Label htmlFor="kb-enabled">Enable on-screen keyboard</Label>
-            <Switch
-              id="kb-enabled"
-              checked={keyboardEnabled}
-              onCheckedChange={v => {
-                setKeyboardEnabled(v);
-                save('input.virtualKeyboardEnabled', v);
-              }}
-            />
+        <CardContent className="space-y-4">
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="kb-enabled">Enable on-screen keyboard</Label>
+              <Switch
+                id="kb-enabled"
+                checked={keyboardEnabled}
+                onCheckedChange={v => {
+                  setKeyboardEnabled(v);
+                  save('input.virtualKeyboardEnabled', v);
+                }}
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              The household setting. Applies to every device that uses it.
+            </p>
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="kb-device">On-screen keyboard on this device</Label>
+            <Select
+              value={devicePref.pref}
+              onValueChange={v => devicePref.setPref(v as KeyboardDevicePref)}
+              disabled={!devicePref.ready}
+            >
+              <SelectTrigger id="kb-device">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="household">
+                  Use household setting ({keyboardEnabled ? 'on' : 'off'})
+                </SelectItem>
+                <SelectItem value="always">Always</SelectItem>
+                <SelectItem value="never">Never</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-muted-foreground">
+              Saved in this browser only. Choose Never on a tablet to use its own keyboard,
+              or Always on a display that has no other keyboard.
+            </p>
           </div>
         </CardContent>
       </Card>

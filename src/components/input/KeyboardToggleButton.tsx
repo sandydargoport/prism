@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { useGlobalInput } from '@/lib/hooks/useGlobalInput';
 
 export function KeyboardToggleButton() {
-  const { keyboardVisible, setKeyboardVisible, isInputFocused, isMobile } =
+  const { keyboardVisible, setKeyboardVisible, isInputFocused, isMobile, virtualKeyboardEnabled } =
     useGlobalInput();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
@@ -29,6 +29,8 @@ export function KeyboardToggleButton() {
 
   const show =
     mounted &&
+    // Off for this device or the household (#525), or not known yet.
+    virtualKeyboardEnabled &&
     hasTouchScreen &&
     !isMobile &&
     !keyboardVisible &&

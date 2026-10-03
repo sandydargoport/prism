@@ -132,7 +132,7 @@ if (lastPointerType === 'touch' && !isMobile && !suppressedForScan && virtualKey
   suppressOsKeyboard(target);   // inputmode="none", see "OS keyboard suppression"
   setKeyboardVisible(true);     // the keyboardVisible effect lifts the field (§7)
 } else {
-  releaseOsKeyboard();          // mouse, phone width, disabled: OS keyboard as normal
+  releaseOsKeyboard();          // mouse, phone width, off for this device: OS keyboard as normal
 }
 ```
 
@@ -633,7 +633,28 @@ Auto-dismiss is synchronous and runs before the barcode buffer check, so USB bar
 | `scanner.defaultListId` | string\|null | `null` | UUID of default list; null = auto-select "Groceries" |
 | `scanner.soundEnabled` | boolean | `true` | Audio feedback on scan |
 | `scanner.soundStyle` | `"beep"\|"scan"` | `"beep"` | Which tone to play |
-| `input.virtualKeyboardEnabled` | boolean | `true` | Master switch for virtual keyboard |
+| `input.virtualKeyboardEnabled` | boolean | `true` | Household switch for the virtual keyboard; a device can override it (below) |
+
+### Per-device keyboard choice (#525)
+
+Each browser can override the household switch: **Use household setting**
+(default) / **Always** / **Never**, stored in `localStorage` as
+`prism:keyboard-on-this-device` (`src/lib/input/keyboardDevicePref.ts`).
+A kiosk display with no system keyboard can keep Prism's while a tablet uses
+its own. The provider's `virtualKeyboardEnabled` is the effective value:
+
+- Always: on, even with the household switch off.
+- Never: off. No auto-open, no `inputmode="none"`, the toggle button is hidden
+  and `setKeyboardVisible(true)` is refused, so the system keyboard is untouched.
+- Use household setting: the household switch.
+
+The touch-only and phone-width rules still apply under Always.
+
+Both values load after mount. Until the stored choice has been read and, when
+it defers to the household, the setting fetch has settled, the effective value
+is `false`, so a device set to Never never briefly behaves as Always. Changing
+the choice in Settings applies at once (a window event, plus `storage` for
+other tabs) and closes the keyboard if it was open.
 
 ### Settings UI
 
@@ -648,7 +669,8 @@ New section: `{ id: 'input', label: 'Input', icon: Keyboard }`. Add to sections 
 - Sound style (Select: Short beep / Scanner chirp, disabled when sound off)
 
 **Card 2: Virtual Keyboard**
-- Enable on-screen keyboard (Switch)
+- Enable on-screen keyboard (Switch, household)
+- On-screen keyboard on this device (Select: Use household setting / Always / Never, stored in the browser)
 - Description: "Shows a touch keyboard when tapping text fields. Disable if using a physical keyboard."
 
 ---

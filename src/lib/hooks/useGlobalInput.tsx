@@ -19,6 +19,7 @@ import {
   revealAboveKeyboard,
   type RevealRecord,
 } from '@/lib/input/keyboardLayout';
+import { effectiveKeyboardEnabled, useKeyboardDevicePref } from '@/lib/input/keyboardDevicePref';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -36,6 +37,10 @@ interface GlobalInputContextValue {
   injectText: (text: string) => void;
   startListening: () => void;
   stopListening: () => void;
+  /**
+   * Whether Prism's keyboard is on for this device: the device's own choice,
+   * else the household setting (#525). False until both are known.
+   */
   virtualKeyboardEnabled: boolean;
 }
 
@@ -104,16 +109,23 @@ export function GlobalInputProvider({ children }: { children: React.ReactNode })
   const pointerOnKeyboardRef = useRef(false);
   const keyboardVisibleRef = useRef(false);
 
-  // Read virtual keyboard setting (default enabled)
-  const [virtualKeyboardEnabled, setVirtualKeyboardEnabled] = useState(true);
+  // The household setting, null until the fetch settles. A failed fetch
+  // counts as the default (on), as it always has.
+  const [householdEnabled, setHouseholdEnabled] = useState<boolean | null>(null);
   useEffect(() => {
     fetch('/api/settings?key=input.virtualKeyboardEnabled')
       .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data?.value === false) setVirtualKeyboardEnabled(false);
-      })
-      .catch(() => {});
+      .then(data => setHouseholdEnabled(data?.value !== false))
+      .catch(() => setHouseholdEnabled(true));
   }, []);
+  // This device's choice overrides it (#525). Until both are known the
+  // keyboard stays out of the way: opening it, or setting inputmode="none",
+  // on a device set to Never would take its system keyboard away.
+  const devicePref = useKeyboardDevicePref();
+  const virtualKeyboardEnabled =
+    effectiveKeyboardEnabled(devicePref.pref, devicePref.ready, householdEnabled) === true;
+  const virtualKeyboardEnabledRef = useRef(virtualKeyboardEnabled);
+  useEffect(() => { virtualKeyboardEnabledRef.current = virtualKeyboardEnabled; }, [virtualKeyboardEnabled]);
 
   // ---- injectText ----
   const injectText = useCallback((text: string) => {
@@ -247,6 +259,9 @@ export function GlobalInputProvider({ children }: { children: React.ReactNode })
 
   // ---- setKeyboardVisible (public) ----
   const setKeyboardVisible = useCallback((visible: boolean) => {
+    // The toggle button is hidden when the keyboard is off, but refuse here
+    // too: opening it would also suppress the system keyboard.
+    if (visible && !virtualKeyboardEnabledRef.current) return;
     setKeyboardVisibleState(visible);
     if (visible) {
       textInjectedWhileOpen.current = false;
@@ -284,6 +299,14 @@ export function GlobalInputProvider({ children }: { children: React.ReactNode })
     window.addEventListener('resize', applyHeight);
     return () => window.removeEventListener('resize', applyHeight);
   }, [keyboardVisible, scrollInputIntoView]);
+
+  // Turned off on this device while open (from Settings in another view):
+  // close it and give the field its own keyboard back.
+  useEffect(() => {
+    if (virtualKeyboardEnabled) return;
+    releaseOsKeyboard();
+    setKeyboardVisibleState(false);
+  }, [virtualKeyboardEnabled, releaseOsKeyboard]);
 
   // Put the field's own inputmode back if the provider goes away.
   useEffect(() => releaseOsKeyboard, [releaseOsKeyboard]);

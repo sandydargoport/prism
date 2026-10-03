@@ -143,7 +143,7 @@ A short tour of *Settings*. (Each section's deep behavior is documented in the l
 - **Appearance**: Color Scheme (Light / Dark / System), Theme Palette, Seasonal Theme, Performance Mode, Screensaver (start delay, photo rotation, widget transition effect and its options, drift), Auto-Hide Navigation / Away Mode / sign-out timers, Orientation Override.
 - **Photos**: manage sources (Local, OneDrive, Immich); folder picker; display filters (orientation, resolution); GPS backfill; pinned wallpaper / screensaver.
 - **Bus Tracking**: Gmail connection, route configuration, route auto-discovery, Gmail label filter.
-- **Input**: on-screen keyboard and barcode-scanner toggles.
+- **Input**: on-screen keyboard and barcode-scanner toggles. The keyboard has a household switch and a per-device choice (Use household setting / Always / Never), so a tablet can use its own keyboard while a wall display keeps Prism's.
 - **Babysitter Info**: emergency contacts, house info (WiFi password stored AES-256-GCM encrypted), child info, house rules.
 - **Features**: show / hide individual nav pages.
 - **Security**: PINs + API tokens (with Voice / Full scope picker).
