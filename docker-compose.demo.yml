@@ -30,6 +30,11 @@ services:
       - DEMO_MODE=true
       - NEXT_PUBLIC_DEMO_MODE=true
 
+  # Load the fictional demo family when the database is first created.
+  db:
+    environment:
+      - PRISM_DEMO_SEED=true
+
   # The backup sidecar isn't useful for the demo — every night's data is
   # discarded and reseeded. Override its command to keep it from running.
   backup:

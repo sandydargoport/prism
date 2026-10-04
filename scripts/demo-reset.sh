@@ -4,7 +4,7 @@
 # ============================================================================
 #
 # Wipes all user-modifiable data from the demo database and reseeds it from
-# the canonical 03-seed.sql. Designed to run nightly via cron on the demo
+# the canonical demo/seed.sql. Designed to run nightly via cron on the demo
 # host so visitors always start from a known-good state.
 #
 # Usage (from demo host):
@@ -15,7 +15,7 @@
 #
 # Assumes:
 #   - The DEMO compose stack is running
-#   - 03-seed.sql is mounted at /docker-entrypoint-initdb.d/03-seed.sql
+#   - demo/seed.sql is mounted at /docker-entrypoint-initdb.d/demo/seed.sql
 #     (this is already true via docker-compose.yml volume mount)
 #
 # SAFETY
@@ -82,7 +82,7 @@ echo "  - tables truncated"
 
 # 2. Reapply seed (the seed has its own "skip if users exist" guard, but we
 #    just truncated users so it will run).
-docker exec "$DB_CONTAINER" psql -U prism -d prism -f /docker-entrypoint-initdb.d/03-seed.sql
+docker exec "$DB_CONTAINER" psql -U prism -d prism -f /docker-entrypoint-initdb.d/demo/seed.sql
 
 echo "  - seed reapplied"
 

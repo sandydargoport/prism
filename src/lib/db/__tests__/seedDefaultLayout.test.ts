@@ -1,6 +1,6 @@
 /**
- * The Docker init seed (03-seed.sql) writes the first dashboard a fresh
- * Compose install shows. It is plain SQL, so nothing type-checks it against
+ * The demo seed (init/demo/seed.sql) writes the first dashboard the demo
+ * instance shows. It is plain SQL, so nothing type-checks it against
  * the layout grid. It once carried a layout in the old four-column units,
  * which the load-time migration in useLayouts scales up to a tall 48x72 grid
  * that letterboxes and overflows a landscape screen.
@@ -15,13 +15,13 @@ import { DEFAULT_TEMPLATE } from '@/lib/constants/layoutTemplates';
 type Widget = { i: string; x: number; y: number; w: number; h: number };
 
 function seedDefaultLayoutWidgets(): Widget[] {
-  const sql = fs.readFileSync(path.join(__dirname, '..', 'init', '03-seed.sql'), 'utf8');
+  const sql = fs.readFileSync(path.join(__dirname, '..', 'init', 'demo', 'seed.sql'), 'utf8');
   const match = sql.match(/\('Default Dashboard',[^']*'landscape',\s*'(\[[^']*\])'/);
-  if (!match?.[1]) throw new Error("03-seed.sql: 'Default Dashboard' insert not found in the expected shape");
+  if (!match?.[1]) throw new Error("demo/seed.sql: 'Default Dashboard' insert not found in the expected shape");
   return JSON.parse(match[1]) as Widget[];
 }
 
-describe('03-seed.sql default layout', () => {
+describe('demo seed default layout', () => {
   const widgets = seedDefaultLayoutWidgets();
 
   it('matches DEFAULT_TEMPLATE', () => {

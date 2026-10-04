@@ -1,6 +1,7 @@
 -- ============================================================================
 -- Prism Demo Data Seed
--- Runs automatically on first PostgreSQL container creation.
+-- Runs on first PostgreSQL container creation only when PRISM_DEMO_SEED=true
+-- (see ../03-demo-seed.sh). scripts/demo-reset.sh reapplies it nightly.
 -- Creates a demo family with sample data for all features.
 --
 -- Demo PINs: 1234 (all users)

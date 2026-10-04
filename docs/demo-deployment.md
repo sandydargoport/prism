@@ -12,7 +12,7 @@ A read-only public Prism instance seeded with **synthetic** data: fictional fami
 
 Three things need to be true for the demo to be safe to leave running on the open internet:
 
-1. **No real PII.** The seed file `src/lib/db/init/03-seed.sql` only ever contained fictional data. Demo deployments never receive `.env` keys for real Google Calendar / OneDrive / Gmail, so even if a visitor tried to connect external accounts, the integration credentials don't exist.
+1. **No real PII.** The seed file `src/lib/db/init/demo/seed.sql` only ever contained fictional data. Demo deployments never receive `.env` keys for real Google Calendar / OneDrive / Gmail, so even if a visitor tried to connect external accounts, the integration credentials don't exist.
 2. **Visitors can't trash it for everyone else.** `DEMO_MODE=true` is checked in `src/middleware.ts`. Every `POST/PUT/PATCH/DELETE` returns 403 with a `demo_mode` error code, except auth login/logout/session (so visitors can switch between Alex/Jordan/Emma/Sophie to see role-based UI).
 3. **State drift is bounded.** A nightly cron job runs `scripts/demo-reset.sh`, which truncates every table in the public schema (except migration bookkeeping) and reapplies the seed. Worst case, the demo is wrong for ≤24 hours.
 
@@ -208,7 +208,7 @@ sudo chown prism /var/log/prism-demo-reset.log
 /opt/prism/scripts/demo-reset.sh
 ```
 
-The reset truncates every table in the public schema, reapplies `03-seed.sql`, and flushes Redis. Visit the demo afterward to confirm it's back to baseline.
+The reset truncates every table in the public schema, reapplies `demo/seed.sql`, and flushes Redis. Visit the demo afterward to confirm it's back to baseline.
 
 ### 10. (Optional) Add the demo URL to your README
 

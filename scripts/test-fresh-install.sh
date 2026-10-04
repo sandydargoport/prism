@@ -73,7 +73,7 @@ success "Health endpoint responding"
 log "Step 5/6: Testing database..."
 USER_COUNT=$(docker exec prism-db psql -U prism -d prism -t -c "SELECT COUNT(*) FROM users;" | tr -d ' ')
 if [ "$USER_COUNT" = "0" ]; then
-    warn "No users found - database may not be seeded"
+    success "No users yet, the setup wizard will create the family"
 else
     success "Database has $USER_COUNT user(s)"
 fi

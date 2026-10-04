@@ -63,6 +63,8 @@ services:
       - POSTGRES_DB=prism
       - POSTGRES_USER=prism
       - POSTGRES_PASSWORD=${DB_PASSWORD}
+      # true loads the fictional demo family on first start (empty volume only)
+      - PRISM_DEMO_SEED=${PRISM_DEMO_SEED:-false}
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./src/lib/db/init:/docker-entrypoint-initdb.d

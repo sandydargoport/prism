@@ -96,7 +96,7 @@ if [ "$KEEP_USERS" = true ]; then
   echo ""
   echo "💡 Family members were preserved."
   echo "   Run seed to add sample data:"
-  echo "   docker exec prism-db psql -U prism -d prism -f /docker-entrypoint-initdb.d/seed.sql"
+  echo "   docker exec prism-db psql -U prism -d prism -f /docker-entrypoint-initdb.d/demo/seed.sql"
 else
   echo ""
   echo "💡 All data cleared including users."

@@ -61,7 +61,7 @@ Add-ons are not distributed through HACS, so the custom-repository flow above is
 
 </details>
 
-Open **<http://localhost:3000>** (on the Home Assistant add-on, use the port 3000 link in the add-on panel). A fresh install boots into the setup wizard, where you create family members and set each member's PIN (4 or 6 digits). The demo seed logs in with PIN `1234` for every account.
+Open **<http://localhost:3000>** (on the Home Assistant add-on, use the port 3000 link in the add-on panel). A fresh install boots into the setup wizard, where you create family members and set each member's PIN (4 or 6 digits). To try Prism with a fictional demo family instead, set `PRISM_DEMO_SEED=true` in `.env` before the first `docker compose up`; every demo account uses PIN `1234`.
 
 Full installation notes (HTTPS / Nginx cert prerequisite, Raspberry Pi notes, troubleshooting) are in the [install guide](https://sandydargoport.github.io/prism/getting-started/install/).
 
