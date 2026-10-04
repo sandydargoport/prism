@@ -3,7 +3,8 @@
  * ENDPOINT: /api/birthdays/[id]
  * - GET:    Get a specific birthday by ID
  * - PATCH:  Update a specific birthday
- * - DELETE: Delete a specific birthday
+ * - DELETE: Delete a specific birthday (parents only; tombstoned so sync
+ *           does not re-add it, undone via /api/birthdays/dismissed/[id])
  *
  */
 
@@ -15,6 +16,7 @@ import { dismissBirthday } from '@/lib/services/birthday-detect';
 import { eq } from 'drizzle-orm';
 import { createBirthdaySchema, validateRequest } from '@/lib/validations';
 import { logError } from '@/lib/utils/logError';
+import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { todayKey } from '@/lib/utils/zonedDate';
 import { birthdayOccurrence } from '@/lib/utils/birthdayOccurrence';
@@ -247,6 +249,7 @@ export async function DELETE(
       await db
         .delete(birthdays)
         .where(eq(birthdays.id, id));
+      await invalidateEntity('birthdays');
 
       return NextResponse.json({
         message: 'Birthday deleted successfully',
@@ -262,5 +265,5 @@ export async function DELETE(
         { status: 500 }
       );
     }
-  });
+  }, { permission: 'canModifySettings' });
 }
