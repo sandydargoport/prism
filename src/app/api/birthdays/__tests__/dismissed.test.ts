@@ -38,7 +38,7 @@ jest.mock('@/lib/db/client', () => ({
   },
 }));
 jest.mock('@/lib/db/schema', () => ({
-  birthdays: { id: 'id', name: 'name', birthDate: 'bd', eventType: 'et' },
+  birthdays: { id: 'id', name: 'name', birthDate: 'bd', eventType: 'et', googleCalendarSource: 'gcs' },
   users: { id: 'id' },
   dismissedBirthdays: { id: 'id', normalizedName: 'nn', birthMonth: 'bm', birthDay: 'bday', eventType: 'et' },
 }));
@@ -61,19 +61,27 @@ const req = (url: string) => new NextRequest(`http://localhost${url}`, { method:
 beforeEach(() => {
   jest.clearAllMocks();
   mockRequireAuth.mockResolvedValue({ userId: 'p1', role: 'parent' });
-  mockSelectWhere.mockResolvedValue([{ id: 'b1', name: 'Pat Example', birthDate: '2010-04-02', eventType: 'birthday' }]);
+  mockSelectWhere.mockResolvedValue([{ id: 'b1', name: 'Pat Example', birthDate: '2010-04-02', eventType: 'birthday', source: 'Family' }]);
   mockSelectOrderBy.mockResolvedValue([{ id: 'd1', name: 'pat example', month: 4, day: 2, eventType: 'birthday' }]);
   mockDeleteReturning.mockResolvedValue([{ id: 'd1' }]);
   mockDetect.mockResolvedValue({ added: 1, updated: 0, total: 1, errors: [] });
 });
 
 describe('DELETE /api/birthdays/[id]', () => {
-  it('tombstones, deletes and refreshes the cached list', async () => {
+  it('tombstones a synced one, deletes it and refreshes the cached list', async () => {
     const res = await DELETE_BIRTHDAY(req('/api/birthdays/b1'), ctx);
     expect(res.status).toBe(200);
     expect(mockDismiss).toHaveBeenCalledWith({ name: 'Pat Example', birthDate: '2010-04-02', eventType: 'birthday' });
     expect(mockDeleteWhere).toHaveBeenCalled();
     expect(mockInvalidate).toHaveBeenCalledWith('birthdays');
+  });
+
+  it('deletes a hand-entered one outright, with no tombstone', async () => {
+    mockSelectWhere.mockResolvedValue([{ id: 'b1', name: 'Pat Example', birthDate: '2010-04-02', eventType: 'birthday', source: null }]);
+    const res = await DELETE_BIRTHDAY(req('/api/birthdays/b1'), ctx);
+    expect(res.status).toBe(200);
+    expect(mockDismiss).not.toHaveBeenCalled();
+    expect(mockDeleteWhere).toHaveBeenCalled();
   });
 
   it.each(['child', 'guest'])('refuses a %s', async (role) => {

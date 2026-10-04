@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { useBackups } from '@/lib/hooks/useBackups';
 import { useTimeFormat } from '@/components/providers';
 import { formatDisplayDateTime } from '@/lib/utils/timeFormat';
+import { DemoDataCard } from './DemoDataCard';
 
 type DangerStep = null | 'warn-truncate' | 'confirm-truncate' | 'warn-seed' | 'confirm-seed';
 
@@ -350,6 +351,8 @@ export function BackupSection() {
         Backups contain all database data including family members, chores, tasks, calendar events, and settings.
         Restoring a backup will overwrite all current data.
       </p>
+
+      <DemoDataCard />
 
       {/* Danger Zone */}
       <div className="border border-destructive/40 rounded-lg p-4 space-y-4">

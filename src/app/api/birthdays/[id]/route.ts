@@ -226,6 +226,7 @@ export async function DELETE(
           name: birthdays.name,
           birthDate: birthdays.birthDate,
           eventType: birthdays.eventType,
+          source: birthdays.googleCalendarSource,
         })
         .from(birthdays)
         .where(eq(birthdays.id, id));
@@ -237,14 +238,17 @@ export async function DELETE(
         );
       }
 
-      // Tombstone first, then delete. Detection re-reads every calendar on
-      // each sync, so without this the row is simply re-added on the next run
-      // and the delete appears not to have worked.
-      await dismissBirthday({
-        name: existingBirthday.name,
-        birthDate: existingBirthday.birthDate,
-        eventType: existingBirthday.eventType,
-      });
+      // A synced birthday is tombstoned first: detection re-reads every
+      // calendar on each sync, so without this the row is simply re-added on
+      // the next run. A hand-entered one (no source) has nothing to come back
+      // from, so it is deleted outright and leaves no Removed entry behind.
+      if (existingBirthday.source !== null) {
+        await dismissBirthday({
+          name: existingBirthday.name,
+          birthDate: existingBirthday.birthDate,
+          eventType: existingBirthday.eventType,
+        });
+      }
 
       await db
         .delete(birthdays)
