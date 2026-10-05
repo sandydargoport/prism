@@ -391,7 +391,7 @@ export const chores = pgTable('chores', {
 
   pointValue: integer('point_value').default(0).notNull(),
 
-  requiresApproval: boolean('requires_approval').default(false).notNull(),
+  requiresApproval: boolean('requires_approval').default(true).notNull(),
 
   enabled: boolean('enabled').default(true).notNull(),
 

@@ -209,6 +209,45 @@ fi
 log "Scenario C: PASS"
 
 # ----------------------------------------------------------------------------
+# Scenario D: 0033 flags existing chores once.
+# An install from before 0033 has requires_approval DEFAULT false, and its
+# chores must come out flagged. A chore a parent unflags afterwards must stay
+# unflagged when the migrations replay.
+# ----------------------------------------------------------------------------
+log "=== Scenario D: 0033 flags existing chores once ==="
+
+log "Simulate a pre-0033 install with one unflagged chore..."
+psql_exec "
+ALTER TABLE chores ALTER COLUMN requires_approval SET DEFAULT false;
+INSERT INTO chores (title, category, frequency) VALUES ('Replay chore', 'other', 'daily');
+DELETE FROM public.__prism_migrations;
+"
+run_migrate
+
+FLAG=$(docker exec "$CONTAINER_NAME" psql -U prism -d prism -t -A -c \
+  "SELECT requires_approval FROM chores WHERE title = 'Replay chore'")
+if [ "$FLAG" != "t" ]; then
+  echo "ERROR: 0033 did not flag an existing chore (got '$FLAG')" >&2
+  exit 1
+fi
+
+log "Unflag it, then replay every migration..."
+psql_exec "
+UPDATE chores SET requires_approval = false WHERE title = 'Replay chore';
+DELETE FROM public.__prism_migrations;
+"
+run_migrate
+
+FLAG=$(docker exec "$CONTAINER_NAME" psql -U prism -d prism -t -A -c \
+  "SELECT requires_approval FROM chores WHERE title = 'Replay chore'")
+if [ "$FLAG" != "f" ]; then
+  echo "ERROR: replaying 0033 re-flagged a chore that was unflagged (got '$FLAG')" >&2
+  exit 1
+fi
+
+log "Scenario D: PASS"
+
+# ----------------------------------------------------------------------------
 echo
 echo "=========================================="
 echo "  All migration-replay scenarios passed"

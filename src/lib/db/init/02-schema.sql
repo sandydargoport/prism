@@ -272,7 +272,7 @@ CREATE TABLE IF NOT EXISTS public.chores (
     last_completed timestamp without time zone,
     next_due date,
     point_value integer DEFAULT 0 NOT NULL,
-    requires_approval boolean DEFAULT false NOT NULL,
+    requires_approval boolean DEFAULT true NOT NULL,
     enabled boolean DEFAULT true NOT NULL,
     created_by uuid,
     created_at timestamp without time zone DEFAULT now() NOT NULL,

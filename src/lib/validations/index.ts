@@ -108,7 +108,7 @@ export const createChoreSchema = z.object({
   customIntervalDays: z.number().int().min(1).max(365).optional(),
   startDay: z.string().max(10).optional().nullable(),
   pointValue: z.number().int().min(0).max(1000).optional().default(0),
-  requiresApproval: z.boolean().optional().default(false),
+  requiresApproval: z.boolean().optional().default(true),
   createdBy: uuidSchema.optional(),
   // Optional initial due date/time. When omitted, server computes nextDue
   // from frequency.

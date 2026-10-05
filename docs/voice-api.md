@@ -204,7 +204,7 @@ Voice cannot escalate privileges. Specifically:
 
 - **Chore completions inherit the chore's `assignedTo`** as the completer. Voice does not let one family member claim another's points.
 - **Ambiguous chore names require disambiguation.** If a fuzzy name match returns multiple chores assigned to different family members (e.g. both Emma and Sophie have "Feed the dog"), the endpoint returns `ok: false` with a `spoken` prompt asking for the assignee (*"Multiple chores match 'feed the dog'. Which family member?"*) and `data.candidates: [...]`. The caller resends with `assignee` in the body. A single match completes immediately.
-- **Approval follows the in-app rule, with the assignee as the person acting.** A completion is approved at once only when the assignee is a parent, as when a parent completes their own chore in the app. A child's completion is created *pending*, as it is when a child completes in the app, and a second one is refused (HTTP 409) while one is still pending. Pending completions keep their points, which count once a parent approves.
+- **A chore without `requiresApproval` is approved at once**, with the assignee recorded as approver, as it is in the app. A child cannot add a second completion (HTTP 409) while one is still pending. Pending completions keep their points, which count once a parent approves.
 - **Chores with `requiresApproval: true` are always *pending*** when completed via voice, even a parent's. The `spoken` response makes this explicit (e.g. *"Marked feed the dog complete. A parent will need to approve in the app."*).
 - **Approval is in-app only**, behind the Parent PIN. Voice has no way to approve a pending chore: there is no way to verify the speaker is a parent.
 

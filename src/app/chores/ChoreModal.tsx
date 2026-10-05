@@ -42,7 +42,7 @@ export function ChoreModal({
   const [frequency, setFrequency] = useState<Chore['frequency']>(chore?.frequency || 'weekly');
   const [startDay, setStartDay] = useState(chore?.startDay || '');
   const [pointValue, setPointValue] = useState(chore?.pointValue || 5);
-  const [requiresApproval, setRequiresApproval] = useState(chore?.requiresApproval || false);
+  const [requiresApproval, setRequiresApproval] = useState(chore?.requiresApproval ?? true);
   const [enabled, setEnabled] = useState(chore?.enabled ?? true);
   const [assignedTo, setAssignedTo] = useState(chore?.assignedTo?.id || defaultAssignedTo || '');
   const [nextDue, setNextDue] = useState<string>(chore?.nextDue || '');
@@ -226,6 +226,7 @@ export function ChoreModal({
             />
             <label className="text-sm font-medium">Requires approval</label>
           </div>
+          <p className="text-xs text-muted-foreground -mt-2">When off, a child&apos;s completion counts right away.</p>
 
           {chore && (
             <div className="flex items-center gap-2">

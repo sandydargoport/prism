@@ -120,7 +120,7 @@ export function AddChoreModal({
   const [customIntervalDays, setCustomIntervalDays] = useState<number>(7);
   const [startDay, setStartDay] = useState<string>('');
   const [pointValue, setPointValue] = useState(5);
-  const [requiresApproval, setRequiresApproval] = useState(false);
+  const [requiresApproval, setRequiresApproval] = useState(true);
   const [assignedTo, setAssignedTo] = useState<string>('');
 
   // Loading/error state
@@ -155,7 +155,7 @@ export function AddChoreModal({
       setCustomIntervalDays(7);
       setStartDay('');
       setPointValue(5);
-      setRequiresApproval(false);
+      setRequiresApproval(true);
       setAssignedTo('');
       setError(null);
     }
@@ -382,6 +382,7 @@ export function AddChoreModal({
               Requires approval
             </Label>
           </div>
+          <p className="text-xs text-muted-foreground -mt-2">When off, a child&apos;s completion counts right away.</p>
 
           {/* Assign To */}
           <div className="space-y-2">

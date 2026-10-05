@@ -239,6 +239,40 @@ describe('POST /api/chores/[id]/complete', () => {
     expect(data.message).toContain('pending parent approval');
   });
 
+  it('child completing a chore not flagged requiresApproval is approved at once', async () => {
+    mockRequireAuth.mockResolvedValue(childAuth);
+    queryResults = [
+      [{ ...sampleChore, requiresApproval: false }],
+      [{ id: 'child-1', name: 'Timmy', role: 'child' }],
+      [{ assignedTo: 'child-1' }],
+      [], // no pending
+    ];
+
+    let inserted: Record<string, unknown> | undefined;
+    let scheduleMoved = false;
+    mockTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+      return fn({
+        insert: () => ({
+          values: (v: Record<string, unknown>) => {
+            inserted = v;
+            return { returning: jest.fn().mockResolvedValue([{ ...v, id: 'comp-4', completedAt: new Date() }]) };
+          },
+        }),
+        update: () => ({ set: () => ({ where: jest.fn().mockImplementation(async () => { scheduleMoved = true; }) }) }),
+      });
+    });
+
+    const res = await completeChore(makeRequest({ completedBy: 'child-1' }), routeParams);
+    const data = await res.json();
+
+    expect(res.status).toBe(201);
+    expect(data.approved).toBe(true);
+    expect(data.requiresApproval).toBe(false);
+    expect(data.message).toContain('points awarded');
+    expect(inserted).toMatchObject({ completedBy: 'child-1', approvedBy: 'child-1', pointsAwarded: 5 });
+    expect(scheduleMoved).toBe(true);
+  });
+
   it('rejects completion of disabled chore', async () => {
     queryResults = [
       [{ ...sampleChore, enabled: false }],

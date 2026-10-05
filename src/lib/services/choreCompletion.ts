@@ -3,9 +3,10 @@
  * app's complete route and the voice API.
  *
  * APPROVAL RULE:
- * A completion is approved at the moment it is recorded only when the person
- * acting can approve chores, and that person is recorded as the approver.
- * Everyone else's completion is created pending and waits for a parent on
+ * A completion is approved at the moment it is recorded, with the person
+ * acting recorded as the approver, when that person can approve chores or the
+ * chore is not flagged requiresApproval. A completion of a flagged chore by
+ * anyone else is created pending and waits for a parent on
  * POST /api/chores/[id]/approve.
  *
  * Points are always recorded on the completion (`pointsAwarded`), approved or
@@ -45,14 +46,15 @@ export function callerCanApproveChores(auth: AuthResult): boolean {
 }
 
 /**
- * The approver for a new completion: the actor when they can approve chores,
- * otherwise null (pending).
+ * The approver for a new completion: the actor when they can approve chores
+ * or the chore does not require approval, otherwise null (pending).
  */
 export function approverForNewCompletion(actor: {
   userId: string;
   canApprove: boolean;
+  requiresApproval: boolean;
 }): string | null {
-  return actor.canApprove ? actor.userId : null;
+  return actor.canApprove || !actor.requiresApproval ? actor.userId : null;
 }
 
 /** A pending (unapproved) completion for a chore, if there is one. */

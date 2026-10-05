@@ -170,7 +170,7 @@ export async function GET(request: NextRequest) {
  *   schedule: 'daily' | 'weekly' | 'monthly' | 'custom'
  *   scheduleDays?: number[] (for custom schedules, 0=Sun)
  *   points?: number (default: 0)
- *   requiresApproval?: boolean (default: false)
+ *   requiresApproval?: boolean (default: true)
  *   createdBy?: string (user UUID)
  * }
  */
@@ -224,7 +224,7 @@ export async function POST(request: NextRequest) {
         customIntervalDays: customIntervalDays || null,
         startDay: startDay || null,
         pointValue: pointValue || 0,
-        requiresApproval: requiresApproval || false,
+        requiresApproval: requiresApproval ?? true,
         createdBy: createdBy || null,
         nextDue: nextDue || undefined,
         nextDueTime: nextDueTime ?? null,

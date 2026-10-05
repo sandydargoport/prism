@@ -6,9 +6,9 @@
  * APPROVAL WORKFLOW (src/lib/services/choreCompletion.ts):
  * The completion is auto-approved, with the caller as approver, when the
  * authenticated caller can approve chores (a parent session, or an API token
- * with the '*' scope). Otherwise it is created pending (approvedBy = null) and
- * a parent approves it via POST /api/chores/[id]/approve. The chore's
- * requiresApproval flag does not change this decision in the app.
+ * with the '*' scope) or the chore is not flagged requiresApproval. Otherwise
+ * it is created pending (approvedBy = null) and a parent approves it via
+ * POST /api/chores/[id]/approve.
  *
  */
 
@@ -166,12 +166,14 @@ export async function POST(
     // Determine if approval is required based on the AUTHENTICATED caller, not
     // the client-supplied completedBy. Otherwise a child could pass a parent's
     // id to make needsApproval=false and auto-approve their own completion,
-    // bypassing parental approval. Only callers who can approve chores (parents,
-    // and API tokens scoped to approve) self-approve; everyone else's
+    // bypassing parental approval. Callers who can approve chores (parents,
+    // and API tokens scoped to approve) self-approve, and so does anyone
+    // completing a chore not flagged requiresApproval; everyone else's
     // completion is created pending. See src/lib/services/choreCompletion.ts.
     const approvedBy = approverForNewCompletion({
       userId: auth.userId,
       canApprove: callerCanApproveChores(auth),
+      requiresApproval: chore.requiresApproval,
     });
     const needsApproval = approvedBy === null;
 

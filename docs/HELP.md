@@ -31,7 +31,7 @@ Tap your avatar, enter your PIN (4 or 6 digits, depending on how it was set). Th
 | Action | Parent | Child |
 |---|---|---|
 | View dashboard & pages | Yes | Yes |
-| Complete chores | Yes (auto-approved) | Yes (pending parent approval) |
+| Complete chores | Yes (auto-approved) | Yes (pending parent approval when the chore requires approval, otherwise approved at once) |
 | Approve chores | Yes | No |
 | Edit settings | Yes | No |
 | Manage family members | Yes | No |

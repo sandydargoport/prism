@@ -14,7 +14,7 @@ Points come from approved chore completions:
 
 1. A parent creates a chore with a `pointValue` (any integer, 0+).
 2. A child marks the chore complete.
-3. The completion sits in "Pending approval": points haven't been awarded yet. A child's completion always waits for a parent, whether it was marked in the app or by voice.
+3. If the chore is flagged **Requires approval** (the default for new chores), the completion sits in "Pending approval": points haven't been awarded yet. It waits for a parent whether it was marked in the app or by voice. A chore without the flag is approved as soon as the child completes it, and steps 3 and 4 are skipped.
 4. A parent approves. Points hit the child's running totals.
 5. If a parent marks the chore complete (for themselves, or crediting the child), it is approved at once and step 4 is instant. By voice, a chore flagged `requiresApproval` always waits for in-app approval, because the speaker cannot be verified.
 

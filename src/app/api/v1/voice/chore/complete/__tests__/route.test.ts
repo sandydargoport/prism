@@ -1,11 +1,11 @@
 /**
  * @jest-environment node
  *
- * Voice chore completion follows the app's approval rule with the assignee as
- * the person acting (#530): a parent's completion is approved by that parent
- * and moves the schedule on, a child's is pending, and a chore flagged
- * requiresApproval is always pending by voice. Every completion records its
- * points, so a pending one counts once a parent approves it.
+ * Voice chore completion (#530, #597): a chore not flagged requiresApproval is
+ * approved at once by its assignee and moves the schedule on, and a flagged
+ * one is always pending by voice, even a parent's, since the speaker cannot be
+ * verified. Every completion records its points, so a pending one counts once
+ * a parent approves it.
  */
 
 import { NextRequest } from 'next/server';
@@ -121,8 +121,20 @@ describe('POST /api/v1/voice/chore/complete', () => {
     expect(invalidateEntity).toHaveBeenCalledWith('chores');
   });
 
-  it("leaves a child's chore pending, with its points recorded for approval", async () => {
+  it("approves a child's chore at once when it is not flagged requiresApproval", async () => {
     queryResults = [[baseChore], []]; // match, then no pending completion
+
+    const res = await POST(request());
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.data.pending).toBe(false);
+    expect(inserted).toMatchObject({ completedBy: 'member-1', approvedBy: 'member-1', pointsAwarded: 5 });
+    expect(scheduleUpdate).toMatchObject({ nextDue: '2026-10-05' });
+  });
+
+  it("leaves a child's flagged chore pending, with its points recorded for approval", async () => {
+    queryResults = [[{ ...baseChore, requiresApproval: true }], []]; // match, then no pending completion
 
     const res = await POST(request());
     const body = await res.json();

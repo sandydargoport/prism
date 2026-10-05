@@ -5,7 +5,6 @@ import { db } from '@/lib/db/client';
 import { chores, users } from '@/lib/db/schema';
 import { ilike, eq, and } from 'drizzle-orm';
 import { voiceChoreCompleteSchema, validateRequest } from '@/lib/validations';
-import { PERMISSIONS } from '@/types/user';
 import {
   approverForNewCompletion,
   findPendingCompletion,
@@ -24,14 +23,11 @@ import { logError } from '@/lib/utils/logError';
  *   is supplied, returns ok:false with a disambiguation prompt + candidates.
  * - completedBy ALWAYS inherits from chore.assignedTo: voice cannot
  *   claim someone else's points.
- * - Approval follows the app's rule (src/lib/services/choreCompletion.ts)
- *   with the assignee as the person acting, since the speaker is not
- *   identified and the completion is recorded as theirs. A child's
- *   completion is pending, as it is when a child completes in the app, and a
- *   second one is refused while one is pending. A parent's completion is
- *   approved by that parent, as it is in the app.
+ * - A chore not flagged requiresApproval is approved at once, with the
+ *   assignee recorded as the approver, as it is in the app.
  * - Voice never approves a chore flagged requiresApproval: the speaker cannot
- *   be verified, so that completion is pending even for a parent.
+ *   be verified, so that completion is pending even for a parent. A child
+ *   cannot stack a second completion on one that is still pending.
  */
 export async function POST(request: NextRequest) {
   return withAuth(async (auth) => {
@@ -118,8 +114,6 @@ export async function POST(request: NextRequest) {
       }
 
       const assigneeId = target.assignedTo;
-      const assigneeCanApprove =
-        target.assigneeRole !== null && PERMISSIONS[target.assigneeRole].canApproveChores;
 
       // Same guard as the app: a child cannot stack a second completion on
       // one that is still waiting for a parent.
@@ -132,7 +126,8 @@ export async function POST(request: NextRequest) {
 
       const approvedBy = approverForNewCompletion({
         userId: assigneeId,
-        canApprove: assigneeCanApprove && !target.requiresApproval,
+        canApprove: false,
+        requiresApproval: target.requiresApproval,
       });
       const isPending = approvedBy === null;
 
