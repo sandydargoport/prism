@@ -2,49 +2,43 @@
 
 This guide covers two ways to connect Prism with Home Assistant:
 
-1. **Embed Prism** as an iframe panel in the HA sidebar
+1. **Show Prism** in the HA sidebar as a Webpage dashboard
 2. **Pull Prism data** into HA sensors via REST API
 
 ---
 
-## 1. Embedding Prism as an HA Panel
+## 1. Showing Prism in the HA sidebar
 
-### Allow iframe embedding
+Home Assistant can show any web page as a sidebar entry. Prism refuses to be shown inside another site unless that site is on its allowlist, so there are two steps.
 
-By default, Prism blocks iframe embedding for security. To allow Home Assistant to embed it, set the `ALLOWED_FRAME_ANCESTORS` environment variable in your `.env`:
+### Allow Home Assistant to show Prism
+
+Add the address you open Home Assistant at, exactly as it appears in the browser (scheme, host and port):
+
+- **Home Assistant add-on:** *Settings → Add-ons → Prism → Configuration*, set **allowed_frame_ancestors** to e.g. `http://homeassistant.local:8123`, save, and restart the add-on.
+- **Docker:** set `ALLOWED_FRAME_ANCESTORS` in your `.env`, then `docker compose up -d app`:
 
 ```env
 ALLOWED_FRAME_ANCESTORS=http://homeassistant.local:8123
 ```
 
-Multiple origins (comma-separated):
+If you reach Home Assistant at more than one address, list each, separated by commas:
+
 ```env
 ALLOWED_FRAME_ANCESTORS=http://homeassistant.local:8123, https://ha.example.com
 ```
 
-Restart the Prism container after changing:
-```bash
-docker-compose restart app
-```
+### Add the sidebar entry
 
-### Add the panel in HA
+In Home Assistant: *Settings → Dashboards → Add dashboard → Webpage*. Give it a title and icon, and set the URL to Prism's address, for example `http://homeassistant.local:3000`. To open a particular dashboard, use its address, e.g. `http://homeassistant.local:3000/d/kitchen`. Leave **Show in sidebar** on.
 
-In your Home Assistant `configuration.yaml`:
+Older guides use `panel_iframe` in `configuration.yaml`. Home Assistant replaced it with Webpage dashboards in 2024.4.
 
-```yaml
-panel_iframe:
-  prism:
-    title: "Family Dashboard"
-    url: "http://prism.local:3000"
-    icon: mdi:view-dashboard
-```
+### Limits
 
-Restart Home Assistant. Prism will appear in the sidebar.
-
-To show a specific dashboard (e.g. the kitchen layout):
-```yaml
-    url: "http://prism.local:3000/d/kitchen"
-```
+- **https and http do not mix.** If you open Home Assistant over `https://` (for example through Nabu Casa or a reverse proxy), the browser will not show a plain `http://` Prism inside it. Prism needs an `https://` address too.
+- **It does not give remote access.** The page is loaded by your browser from Prism's own address, so it only works where that address is reachable, usually your home network.
+- **Wall displays should open Prism directly**, not through Home Assistant, so the on-screen keyboard, screensaver and full-screen mode behave normally.
 
 ---
 
@@ -240,9 +234,10 @@ See [docs/voice-api.md](voice-api.md) for the full endpoint reference, request/r
 - Make sure the `Authorization` header includes `Bearer ` (with a space) before the token
 - Verify the token hasn't been revoked in Settings → Security → API Tokens
 
-**iframe shows blank/refuses to connect**
-- Check `ALLOWED_FRAME_ANCESTORS` is set in `.env` and the container was restarted
-- Verify the URL matches exactly (including port)
+**Sidebar page is blank or "refused to connect"**
+- Check the allowlist is set (add-on option `allowed_frame_ancestors`, or `ALLOWED_FRAME_ANCESTORS` in `.env`) and Prism was restarted
+- The entry must match the address in your browser's bar exactly, including `http`/`https` and the port
+- If Home Assistant is on `https://` and Prism on `http://`, the browser blocks it; see Limits above
 
 **Sensors show "unknown"**
 - Check the Prism container is running: `docker ps`

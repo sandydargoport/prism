@@ -1,7 +1,8 @@
 /**
  * Builds security headers for Next.js config.
  *
- * Iframe embedding is controlled via the ALLOWED_FRAME_ANCESTORS env var:
+ * Iframe embedding is controlled via the ALLOWED_FRAME_ANCESTORS env var, read
+ * at request time by src/proxy.ts:
  *   - Not set:          Only same-origin embedding allowed (X-Frame-Options: SAMEORIGIN)
  *   - Comma-separated:  Specific origins allowed (e.g., "http://homeassistant.local:8123")
  *   - "*":              Any origin can embed (no X-Frame-Options, frame-ancestors *)
@@ -9,19 +10,23 @@
  * Example for Home Assistant:
  *   ALLOWED_FRAME_ANCESTORS=http://homeassistant.local:8123
  */
-function buildSecurityHeaders() {
-  /** @type {{ key: string; value: string }[]} */
-  const headers = [];
-
-  // ---------------------------------------------------------------------------
-  // Content-Security-Policy
-  // Note: Next.js 15 App Router requires 'unsafe-inline' for script/style
-  // (hydration and Tailwind). The meaningful protections here are object-src,
-  // base-uri, and frame-src.
-  // ---------------------------------------------------------------------------
-
-  const allowedAncestors = process.env.ALLOWED_FRAME_ANCESTORS?.trim();
+/**
+ * The frame policy for a given ALLOWED_FRAME_ANCESTORS value: the full
+ * Content-Security-Policy, and X-Frame-Options when only same-origin framing
+ * is allowed (null otherwise).
+ *
+ * next.config.js headers are computed when the image is BUILT, so they only
+ * ever see the build's environment. src/proxy.ts calls this again per request
+ * with the running container's value, which is what makes the variable work
+ * on a published image or the Home Assistant add-on.
+ *
+ * @param {string | undefined} allowedAncestorsRaw
+ * @returns {{ csp: string; xFrameOptions: string | null }}
+ */
+function buildFramePolicy(allowedAncestorsRaw) {
+  const allowedAncestors = allowedAncestorsRaw?.trim();
   let frameAncestors;
+  let xFrameOptions = null;
 
   if (allowedAncestors === '*') {
     frameAncestors = 'frame-ancestors *';
@@ -32,10 +37,13 @@ function buildSecurityHeaders() {
       .filter(Boolean);
     frameAncestors = `frame-ancestors 'self' ${origins.join(' ')}`;
   } else {
-    headers.push({ key: 'X-Frame-Options', value: 'SAMEORIGIN' });
+    xFrameOptions = 'SAMEORIGIN';
     frameAncestors = "frame-ancestors 'self'";
   }
 
+  // Note: Next.js 15 App Router requires 'unsafe-inline' for script/style
+  // (hydration and Tailwind). The meaningful protections here are object-src,
+  // base-uri, and frame-src.
   const csp = [
     "default-src 'self'",
     // Next.js requires unsafe-inline for hydration; unsafe-eval for dev HMR
@@ -61,6 +69,18 @@ function buildSecurityHeaders() {
     frameAncestors,
   ].join('; ');
 
+  return { csp, xFrameOptions };
+}
+
+function buildSecurityHeaders() {
+  /** @type {{ key: string; value: string }[]} */
+  const headers = [];
+
+  // X-Frame-Options is set only by src/proxy.ts, at request time: a header
+  // added here cannot be removed there, so a build-time SAMEORIGIN would
+  // outlive a runtime ALLOWED_FRAME_ANCESTORS. The CSP here is the build's
+  // default, and the proxy replaces it with the runtime one.
+  const { csp } = buildFramePolicy(process.env.ALLOWED_FRAME_ANCESTORS);
   headers.push({ key: 'Content-Security-Policy', value: csp });
 
   // ---------------------------------------------------------------------------
@@ -87,4 +107,4 @@ function buildSecurityHeaders() {
   return headers;
 }
 
-module.exports = { buildSecurityHeaders };
+module.exports = { buildSecurityHeaders, buildFramePolicy };

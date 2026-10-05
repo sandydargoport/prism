@@ -1,5 +1,5 @@
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { buildSecurityHeaders } = require('../securityHeaders');
+const { buildSecurityHeaders, buildFramePolicy } = require('../securityHeaders');
 
 describe('buildSecurityHeaders', () => {
   const originalEnv = process.env;
@@ -14,11 +14,14 @@ describe('buildSecurityHeaders', () => {
   });
 
   describe('default behavior (no env var)', () => {
-    it('sets X-Frame-Options to SAMEORIGIN', () => {
+    it('the frame policy asks for X-Frame-Options SAMEORIGIN', () => {
+      expect(buildFramePolicy(undefined).xFrameOptions).toBe('SAMEORIGIN');
+    });
+
+    it('never puts X-Frame-Options in the build-time headers, which the proxy could not remove', () => {
       const headers = buildSecurityHeaders();
       const xfo = headers.find((h: { key: string; value: string }) => h.key === 'X-Frame-Options');
-      expect(xfo).toBeDefined();
-      expect(xfo!.value).toBe('SAMEORIGIN');
+      expect(xfo).toBeUndefined();
     });
 
     it('sets frame-ancestors to self only', () => {
@@ -58,11 +61,8 @@ describe('buildSecurityHeaders', () => {
       expect(csp!.value).toContain("frame-ancestors 'self' http://ha.local:8123 https://my-ha.example.com");
     });
 
-    it('removes X-Frame-Options when custom origins are set', () => {
-      process.env.ALLOWED_FRAME_ANCESTORS = 'http://ha.local:8123';
-      const headers = buildSecurityHeaders();
-      const xfo = headers.find((h: { key: string; value: string }) => h.key === 'X-Frame-Options');
-      expect(xfo).toBeUndefined();
+    it('drops X-Frame-Options when custom origins are set', () => {
+      expect(buildFramePolicy('http://ha.local:8123').xFrameOptions).toBeNull();
     });
 
     it('trims whitespace from origins', () => {

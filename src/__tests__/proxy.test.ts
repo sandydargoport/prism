@@ -197,4 +197,28 @@ describe('proxy', () => {
       expect(res.status).not.toBe(403);
     });
   });
+
+  describe('frame policy read at request time', () => {
+    const original = process.env.ALLOWED_FRAME_ANCESTORS;
+    afterEach(() => {
+      if (original === undefined) delete process.env.ALLOWED_FRAME_ANCESTORS;
+      else process.env.ALLOWED_FRAME_ANCESTORS = original;
+    });
+
+    it('allows same-origin framing only when ALLOWED_FRAME_ANCESTORS is unset', async () => {
+      delete process.env.ALLOWED_FRAME_ANCESTORS;
+      const res = await proxy(makeRequest('/'));
+      expect(res.headers.get('X-Frame-Options')).toBe('SAMEORIGIN');
+      expect(res.headers.get('Content-Security-Policy')).toContain("frame-ancestors 'self'");
+    });
+
+    it('uses the running value, so a published image can be embedded in Home Assistant', async () => {
+      process.env.ALLOWED_FRAME_ANCESTORS = 'http://ha.example.test:8123';
+      const res = await proxy(makeRequest('/'));
+      expect(res.headers.get('X-Frame-Options')).toBeNull();
+      expect(res.headers.get('Content-Security-Policy')).toContain(
+        "frame-ancestors 'self' http://ha.example.test:8123",
+      );
+    });
+  });
 });

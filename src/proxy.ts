@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAuthWallEnabled, verifyTrustedDeviceToken, TRUSTED_DEVICE_COOKIE } from '@/lib/auth/authWall';
 import { validateSession } from '@/lib/auth/session';
 import { validateApiToken } from '@/lib/auth/apiTokens';
+import { buildFramePolicy } from '@/lib/utils/securityHeaders';
 
 /**
  * Paths that stay reachable with the authentication wall on (#339). Without
@@ -125,6 +126,18 @@ function generateRequestId(): string {
 }
 
 /**
+ * ALLOWED_FRAME_ANCESTORS, read from the running container. next.config.js
+ * bakes the frame policy in when the image is built, so on a published image
+ * or the Home Assistant add-on the variable would otherwise do nothing and
+ * Prism could not be embedded in a Home Assistant Webpage dashboard.
+ */
+function applyRuntimeFramePolicy(response: NextResponse): void {
+  const { csp, xFrameOptions } = buildFramePolicy(process.env.ALLOWED_FRAME_ANCESTORS);
+  response.headers.set('Content-Security-Policy', csp);
+  if (xFrameOptions) response.headers.set('X-Frame-Options', xFrameOptions);
+}
+
+/**
  * CSRF protection + request ID injection.
  *
  * Adds x-request-id to all API responses for log correlation.
@@ -139,6 +152,7 @@ export async function proxy(request: NextRequest) {
     request: { headers: new Headers({ ...Object.fromEntries(request.headers), 'x-request-id': requestId }) },
   });
   response.headers.set('x-request-id', requestId);
+  applyRuntimeFramePolicy(response);
 
   const { pathname } = request.nextUrl;
 

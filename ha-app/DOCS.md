@@ -26,6 +26,14 @@ Self-hosted family dashboard, packaged as a Home Assistant add-on. One-click ins
 | `redis_url` | `` | Optional with `bundled_db=false`. Example: `redis://host:6379`. Prism degrades gracefully if absent. |
 | `photos_root` | `/data/photos` | Where photos live on the host. Default works for everyone; override only if you want photos under HA's `/share` or `/media` instead. |
 | `anonymous_stats` | `true` | Opt-out install counter and update check. See the [telemetry notes](https://sandydargoport.github.io/prism/features/TELEMETRY/). |
+| `allowed_frame_ancestors` | `` | Home Assistant addresses allowed to show Prism inside them, comma-separated, e.g. `http://homeassistant.local:8123`. Needed for a sidebar entry; see below. |
+
+## Prism in the Home Assistant sidebar
+
+1. Set **allowed_frame_ancestors** (above) to the address you open Home Assistant at, exactly as the browser shows it, and restart the add-on.
+2. *Settings → Dashboards → Add dashboard → Webpage*, with the URL `http://<your-ha-host>:3000`.
+
+This shows Prism inside Home Assistant on your home network. If Home Assistant is opened over `https://`, the browser will not show an `http://` Prism inside it. Wall displays should open Prism's address directly. Details in [Home Assistant integration](https://sandydargoport.github.io/prism/home-assistant/).
 
 ## Data persistence
 

@@ -36,6 +36,7 @@ options:
   redis_url: ""
   photos_root: /data/photos
   anonymous_stats: true
+  allowed_frame_ancestors: ""
 schema:
   log_level: list(trace|debug|info|notice|warning|error|fatal)
   bundled_db: bool
@@ -43,3 +44,4 @@ schema:
   redis_url: str?
   photos_root: str
   anonymous_stats: bool
+  allowed_frame_ancestors: str?

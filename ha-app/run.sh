@@ -36,6 +36,7 @@ EXTERNAL_DB_URL="$(opt database_url || echo '')"
 EXTERNAL_REDIS_URL="$(opt redis_url || echo '')"
 PHOTOS_ROOT="$(opt photos_root || echo /data/photos)"
 ANON_STATS="$(opt anonymous_stats || echo true)"
+FRAME_ANCESTORS="$(opt allowed_frame_ancestors || echo '')"
 
 log "log_level=$LOG_LEVEL bundled_db=$BUNDLED_DB photos_root=$PHOTOS_ROOT anonymous_stats=$ANON_STATS"
 
@@ -43,6 +44,12 @@ log "log_level=$LOG_LEVEL bundled_db=$BUNDLED_DB photos_root=$PHOTOS_ROOT anonym
 # from the Configuration tab (maps to the app's PRISM_DISABLE_TELEMETRY).
 if [ "$ANON_STATS" = "false" ]; then
     export PRISM_DISABLE_TELEMETRY=true
+fi
+
+# Lets Home Assistant show Prism in a Webpage dashboard (sidebar). Prism
+# refuses to be framed by other sites unless they are listed here.
+if [ -n "$FRAME_ANCESTORS" ]; then
+    export ALLOWED_FRAME_ANCESTORS="$FRAME_ANCESTORS"
 fi
 
 mkdir -p "$PHOTOS_ROOT"
