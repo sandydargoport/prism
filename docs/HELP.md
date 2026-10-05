@@ -51,9 +51,11 @@ A third **guest** role also exists for shared-display / kiosk use: a read-only s
 
 Multiple sources (Google OAuth + iCal subscriptions), ten view modes (Agenda / Day / List / Schedule / 1W-4W / Month / 3 Months), drag-and-drop, click-to-edit from the dashboard widget, server-side sync cron, calendar notes, hidden hours, view options menu. Mobile collapses to Agenda only.
 
+A parent can hide an event in Prism without deleting it from its calendar (**Hide in Prism** in the event detail), and on a recurring Google, iCal or CalDAV event can hide the whole series. Hidden events and series are listed under *Settings → Calendars*, with Unhide. The same card lists birthdays and milestones, each with Remove; a removed synced birthday can be restored from **Removed birthdays**.
+
 ### [Shopping](features/SHOPPING.md)
 
-Multiple lists with category layouts, per-person attribution, camera + USB barcode scanning, Microsoft To Do bidirectional sync, and one-click push to your online Kroger cart at any banner.
+Multiple lists with category layouts, per-person attribution, camera + USB barcode scanning, Microsoft To Do bidirectional sync, and one-click push to your online Kroger cart at any banner. The dashboard and screensaver widget hide checked items; one ticked by mistake stays for five seconds so it can be unticked.
 
 ### [Recipes](features/RECIPES.md)
 
@@ -117,7 +119,7 @@ A few smaller surfaces are documented here rather than on dedicated pages.
 
 ### Chores
 
-The flip side of [Goals & Points](features/GOALS.md). Parents create chores with a frequency (daily / weekly / biweekly / monthly / quarterly / semi-annually / annually) and a point value. Kids mark complete; parent approves; points flow into the goals waterfall. Each chore can have a custom reset day (which day of the week for weekly chores, which day of the month for monthly, MM-DD for annual).
+The flip side of [Goals & Points](features/GOALS.md). Parents create chores with a frequency (daily / weekly / biweekly / monthly / quarterly / semi-annually / annually) and a point value. Kids mark complete; on a chore with **Requires approval** on (the default) a parent approves, and on one with it off the points count at once; points flow into the goals waterfall. Each chore can have a custom reset day (which day of the week for weekly chores, which day of the month for monthly, MM-DD for annual).
 
 Views: **Group by Person** (cards per family member), **List view** (sortable), **History** (recent completions with approval status). Approved chores stay visible for 24 hours.
 
@@ -147,7 +149,7 @@ A short tour of *Settings*. (Each section's deep behavior is documented in the l
 - **Babysitter Info**: emergency contacts, house info (WiFi password stored AES-256-GCM encrypted), child info, house rules.
 - **Features**: show / hide individual nav pages.
 - **Security**: PINs + API tokens (with Voice / Full scope picker).
-- **Backups & Data**: create, download, restore, or delete database backups. Includes dangerous operations (Truncate, Seed demo data) gated behind explicit confirmation.
+- **Backups & Data**: create, download, restore, or delete database backups. Includes dangerous operations (Truncate, Seed demo data) gated behind explicit confirmation. On an install that started with the demo family, a **Demo data** card purges it.
 - **Activity Log**: filterable log of every action taken in the app.
 - **About**: version, links, re-run the setup wizard.
 
@@ -195,7 +197,7 @@ Common gotchas:
 
 ### Forgot PIN
 
-Ask a parent to reset in *Settings → Security → Member PINs.*
+A parent can set a new PIN for a child or guest without the old one, in *Settings → Security → Change PIN*. A parent's own PIN, and a co-parent's, still need the current one; a parent who forgot theirs can be reset with `scripts/reset-pin.js` on the server.
 
 ### Stuck in Away or Babysitter Mode
 

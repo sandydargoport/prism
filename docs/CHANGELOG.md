@@ -4,6 +4,31 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.29.0] – 2026-10-05
+
+Ships four database migrations, applied automatically on start: hidden events, hidden event series, notes from guests, and the chore approval default. The last one switches **Requires approval** on for every existing chore, because the switch now does something (see Changed); nothing else about approval changes on upgrade.
+
+### Added
+- **Hide an event in Prism without deleting it.** A parent can tick **Hide in Prism** in an event's detail, and on a recurring event choose this event or every event in the series. Hidden events leave the calendar, the widgets, voice and birthday detection, sync does not bring them back, and nothing is changed in Google, iCal or CalDAV. *Settings → Calendars* lists what is hidden, with Unhide. ([#592](https://github.com/sandydargoport/prism/issues/592))
+- **The babysitter can leave a note for the family.** While Babysitter Mode is on, its screen has a box for a note and an optional name, with no login needed. The note appears on the Messages board as from the babysitter, and only a parent can edit or delete it. The on-screen keyboard now opens above the Babysitter Mode screen and keeps the Send button in view. Thanks @yeojwal for the idea. ([#497](https://github.com/sandydargoport/prism/issues/497))
+- **Choose the on-screen keyboard per device.** *Settings → Input* adds Use household setting, Always or Never for this device, so a tablet can use its own keyboard while a wall display keeps Prism's. ([#525](https://github.com/sandydargoport/prism/issues/525))
+- **Remove and restore birthdays.** *Settings → Calendars* lists birthdays and milestones with Remove. A removed synced birthday is listed under Removed birthdays, where Restore brings it back. Removing one is now parents only. Thanks @zambonichief1721 for the report. ([#605](https://github.com/sandydargoport/prism/issues/605))
+- **Purge the demo family.** Installs that started with the demo data get a **Demo data** card in *Settings → Backups & Data*. It lists what is left and deletes it all after a confirm, including tasks, chores, events and birthdays that removing the members left behind. Layouts and settings are kept. ([#605](https://github.com/sandydargoport/prism/issues/605))
+- **A parent can set a child's or guest's PIN without the old one.** In *Settings → Security → Change PIN* and when changing a PIN's length. A parent's own PIN, and a co-parent's, still need the current one.
+
+### Changed
+- **Requires approval on a chore now decides whether a child's completion waits.** Before, every child completion waited for a parent and the switch only showed a badge. A chore with it on still waits; a chore with it off is approved as soon as it is completed and its points count at once. New chores start with it on, and upgrading turns it on for every existing chore, so a parent turns it off for the chores they trust. By voice a chore with it on always waits, as before. ([#597](https://github.com/sandydargoport/prism/issues/597))
+- **A new Docker Compose install starts empty.** The demo family is no longer loaded on first start. Set `PRISM_DEMO_SEED=true` to get it, as the demo compose file does. Existing installs are not affected. Thanks @zambonichief1721 for the report. ([#605](https://github.com/sandydargoport/prism/issues/605))
+- **The shopping widget hides checked items** on the dashboard and screensaver. An item ticked by mistake stays, struck through, for five seconds so it can be unticked. The Shopping page is unchanged.
+
+### Fixed
+- **Pages in portrait no longer run under the bottom navigation.** Full-height pages such as Travel, Calendar and Chores now end at the top of the bar, so the globe's zoom buttons and the last rows of each page can be reached. ([#594](https://github.com/sandydargoport/prism/issues/594))
+- **A dashboard taller than the screen fits instead of being cut off.** A layout in the old grid units letterboxed on a landscape screen and lost rows at the top and bottom once the gaps alone needed more height than the screen had. Cells, gaps and padding now shrink together until it fits; a layout that already fit is unchanged. Thanks @flightlinefoundation for the report. ([#519](https://github.com/sandydargoport/prism/issues/519))
+- **Edited occurrences of recurring CalDAV events show once, in their slot.** The original time also showed next to the edit, every edit of a series shared one id, and deleting an edited occurrence in Prism deleted the whole series on the server. ([#593](https://github.com/sandydargoport/prism/issues/593))
+- **Edited occurrences in subscribed iCal feeds show as edited.** They showed at their original time and title, and a cancelled occurrence still showed.
+- **Changing a PIN's length asks for the new PIN.** It saved only the length, after which no PIN could match and the member was locked out until a server-side reset. Edit Member and the setup wizard now take the new PIN in the same step.
+- **The screensaver's Timing & motion panel stays inside the window** when opened from the layout editor, instead of rising off the top.
+
 ## [1.28.0] – 2026-10-01
 
 Dates and times now follow the household's time zone wherever Prism decides what day or hour it is, instead of whichever zone the server or the viewing device happens to run in. Ships three database migrations, applied automatically on start: task due dates move to a date plus an optional time, older iCal and CalDAV all-day events are converted to the form the calendar reads, and timestamps a non-UTC database wrote in its own zone are converted to UTC. The last one only changes anything where the database's default zone is not UTC, as on some Home Assistant installs.
