@@ -37,20 +37,20 @@ export function SubpageHeader({ icon, title, badge, actions, overflow }: Subpage
 
   return (
     <header className="shrink-0 border-b border-border bg-card/85 backdrop-blur-xs px-4 safe-area-top">
-      <div className={cn('flex items-center justify-between', isMobile ? 'h-11' : 'h-12 pointer-coarse:h-16')}>
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild className="hidden md:inline-flex">
+      <div className={cn('flex items-center justify-between gap-2', isMobile ? 'h-11' : 'h-12 pointer-coarse:h-16')}>
+        <div className="flex items-center gap-4 min-w-0">
+          <Button variant="ghost" size="icon" asChild className="hidden md:inline-flex shrink-0">
             <Link href="/" aria-label="Back to dashboard">
               <Home className="h-5 w-5" />
             </Link>
           </Button>
-          <div className="flex items-center gap-2">
-            {!isMobile && icon}
-            <h1 className={cn('font-bold', isMobile ? 'text-base' : 'text-xl')}>{title}</h1>
+          <div className="flex items-center gap-2 min-w-0">
+            {!isMobile && icon && <span className="shrink-0 flex">{icon}</span>}
+            <h1 className={cn('font-bold truncate', isMobile ? 'text-base' : 'text-xl')}>{title}</h1>
             {badge}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {actions}
           {overflow && overflow.length > 0 && (
             <DropdownMenu>

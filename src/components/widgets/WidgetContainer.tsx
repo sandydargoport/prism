@@ -317,30 +317,31 @@ export function WidgetContainer({
     >
       {/* WIDGET HEADER */}
       {showHeader && title && (
-        <CardHeader className="shrink-0 flex flex-row items-center justify-between space-y-0 pb-2">
-          <div className="flex items-center gap-2">
+        <CardHeader className="shrink-0 min-w-0 flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+          {/* The title gives way first, so the actions keep their size at large text. */}
+          <div className="flex items-center gap-2 min-w-0">
             {/* Icon */}
             {icon && (
-              <span className="text-seasonal-accent">
+              <span className="text-seasonal-accent shrink-0">
                 {icon}
               </span>
             )}
             {/* Title - clickable link if titleHref provided */}
             {titleHref ? (
-              <Link href={titleHref} className="hover:underline">
-                <CardTitle className="text-base font-medium">
+              <Link href={titleHref} className="hover:underline min-w-0">
+                <CardTitle className="text-base font-medium truncate">
                   {title}
                 </CardTitle>
               </Link>
             ) : (
-              <CardTitle className="text-base font-medium">
+              <CardTitle className="text-base font-medium truncate">
                 {title}
               </CardTitle>
             )}
           </div>
           {/* Action buttons */}
           {actions && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 shrink-0">
               {actions}
             </div>
           )}
