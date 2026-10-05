@@ -858,4 +858,52 @@ describe('sync records the series key', () => {
 
     expect(mockInsertValues.mock.calls[0][0]).toMatchObject({ seriesKey: null });
   });
+
+  const caldavSource = {
+    id: 'caldav-1',
+    provider: 'caldav',
+    accessToken: 'enc',
+    sourceCalendarId: '/cal/',
+    providerConfig: { serverUrl: 'https://dav.example.test', username: 'someone' },
+  };
+  const caldavOccurrence = (over: Record<string, unknown> = {}) => {
+    const start = new Date(Date.now() + 86_400_000);
+    return {
+      uid: `swim@example.com_${start.toISOString()}`, title: 'Swim practice', description: null, location: null,
+      startTime: start, endTime: new Date(start.getTime() + 3_600_000), allDay: false, color: null,
+      recurring: true, recurrenceRule: 'FREQ=WEEKLY', href: '/cal/swim.ics', etag: '"1"',
+      seriesKey: 'swim@example.com', ...over,
+    };
+  };
+
+  it('CalDAV: writes the series key on insert', async () => {
+    mockFindFirst.mockResolvedValue(caldavSource);
+    mockFetchCalDAVEvents.mockResolvedValue([caldavOccurrence()]);
+    mockFindFirstEvent.mockResolvedValue(undefined);
+
+    await syncCalDAVCalendarSource('caldav-1');
+
+    expect(mockInsertValues.mock.calls[0][0]).toMatchObject({ seriesKey: 'swim@example.com' });
+  });
+
+  // Older builds stored an edited occurrence under the bare UID (#593). The
+  // row is renamed in place, so a hide already set on it survives.
+  it('CalDAV: renames an edit stored under the bare UID and adds the series key', async () => {
+    const occ = caldavOccurrence({ legacyUid: 'swim@example.com' });
+    mockFindFirst.mockResolvedValue(caldavSource);
+    mockFetchCalDAVEvents.mockResolvedValue([occ]);
+    mockFindFirstEvent
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({ id: 'row-1', title: 'Swim practice', hiddenAt: new Date() });
+
+    await syncCalDAVCalendarSource('caldav-1');
+
+    expect(mockInsertValues).not.toHaveBeenCalled();
+    const eventWrites = mockUpdateSet.mock.calls
+      .map(([v]) => v as Record<string, unknown>)
+      .filter((v) => 'title' in v);
+    expect(eventWrites).toHaveLength(1);
+    expect(eventWrites[0]).toMatchObject({ externalEventId: occ.uid, seriesKey: 'swim@example.com', recurring: true });
+    expect(eventWrites[0]).not.toHaveProperty('hiddenAt');
+  });
 });

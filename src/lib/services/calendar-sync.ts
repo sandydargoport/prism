@@ -986,6 +986,7 @@ export async function syncCalDAVCalendarSource(
         color: event.color || source.color,
         recurring: event.recurring,
         recurrenceRule: event.recurrenceRule,
+        seriesKey: event.seriesKey,
         calendarSourceId: sourceId,
         externalEventId: event.uid,
         // Persist the object href + ETag so a local delete can propagate

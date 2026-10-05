@@ -61,6 +61,10 @@ export interface CalDAVEvent {
    *  from `uid`: the sync renames a row stored under it rather than deleting
    *  and recreating it. */
   legacyUid?: string;
+  /** The master VEVENT's UID for every occurrence of a recurring series,
+   *  edited ones included; null for a single event. Lets Prism hide a whole
+   *  series (#592). */
+  seriesKey: string | null;
 }
 
 export interface CalDAVTask {
@@ -316,14 +320,46 @@ function parseICalObject(
   const href = obj.url || null;
   const etag = obj.etag || null;
 
-  for (const vevent of vevents) {
-    const event = new ICAL.Event(vevent);
+  // An edited occurrence of a recurring event is its own VEVENT with the
+  // master's UID and a RECURRENCE-ID naming the slot it replaces (#593).
+  // Relate each to its master so the master's expansion yields the edited
+  // details in that slot, instead of the original slot plus a second copy.
+  const parsed = vevents.map((vevent) => ({ vevent, event: new ICAL.Event(vevent) }));
+  const masters = new Map<string, ICAL.Event>();
+  for (const { vevent, event } of parsed) {
+    if (!event.isRecurrenceException() && vevent.getFirstPropertyValue('rrule')) masters.set(event.uid, event);
+  }
+  const related = new Set<ICAL.Event>();
+  for (const { event } of parsed) {
+    const master = event.isRecurrenceException() ? masters.get(event.uid) : undefined;
+    if (master) {
+      master.relateException(event);
+      related.add(event);
+    }
+  }
+
+  for (const { vevent, event } of parsed) {
+    // Expanded through its master below.
+    if (related.has(event)) continue;
+
+    if (event.isRecurrenceException()) {
+      // An edited occurrence whose master is not in this object (a server
+      // may send it alone). Still keyed on the slot it replaces.
+      if (!event.summary || isCancelled(event)) continue;
+      const allDay = isAllDay(vevent);
+      events.push({
+        ...makeEvent(event, vevent, href, etag, timeZone),
+        uid: `${event.uid}_${icalTimeToDate(event.recurrenceId, allDay, timeZone).toISOString()}`,
+        legacyUid: event.uid,
+        recurring: true,
+        seriesKey: event.uid,
+      });
+      continue;
+    }
 
     if (!event.summary) continue;
 
-    const isRecurring = event.isRecurrenceException() || !!vevent.getFirstPropertyValue('rrule');
-
-    if (isRecurring && !event.isRecurrenceException()) {
+    if (vevent.getFirstPropertyValue('rrule')) {
       // Expand recurring event instances within the range
       try {
         const allDay = isAllDay(vevent);
@@ -342,25 +378,34 @@ function parseICalObject(
             console.warn(`CalDAV: stopped expanding a recurring event after ${steps - 1} instances`);
             break;
           }
+          // For an edited slot, `item` is the edited VEVENT and the dates are
+          // its moved ones; the slot itself is `next`, the RECURRENCE-ID.
           const occurrence = event.getOccurrenceDetails(next);
+          const slot = icalTimeToDate(next, allDay, timeZone);
           const start = icalTimeToDate(occurrence.startDate, allDay, timeZone);
           const end = icalTimeToDate(occurrence.endDate, allDay, timeZone);
+          const item = occurrence.item;
+          const edited = item !== event;
 
-          if (start > rangeEnd) break;
-          if (end >= rangeStart) {
+          // Slots come in order; an edited one may have moved, so stop on
+          // the slot, and include on where the occurrence actually lands.
+          if (slot > rangeEnd) break;
+          if (end >= rangeStart && start <= rangeEnd && !(edited && isCancelled(item))) {
             inRange++;
-            // Keyed on the stored start, which does not depend on the
-            // server's zone. Older builds keyed on the parser's instant,
-            // server-local midnight for an all-day date, so a row may still
-            // carry that id.
-            const uid = `${event.uid}_${start.toISOString()}`;
-            const legacyUid = `${event.uid}_${occurrence.startDate.toJSDate().toISOString()}`;
+            // Keyed on the slot's stored start, which does not depend on the
+            // server's zone and stays put when the occurrence is edited, so
+            // an edit replaces its slot. Older builds keyed on the parser's
+            // instant (server-local midnight for an all-day date), and stored
+            // an edited occurrence under the bare UID, so a row may still
+            // carry one of those.
+            const uid = `${event.uid}_${slot.toISOString()}`;
+            const legacyUid = edited ? event.uid : `${event.uid}_${next.toJSDate().toISOString()}`;
             events.push({
               uid,
               ...(legacyUid !== uid ? { legacyUid } : {}),
-              title: event.summary,
-              description: event.description || null,
-              location: event.location || null,
+              title: item.summary || event.summary,
+              description: item.description || null,
+              location: item.location || null,
               startTime: start,
               endTime: end,
               allDay,
@@ -369,6 +414,7 @@ function parseICalObject(
               recurrenceRule: vevent.getFirstPropertyValue('rrule')?.toString() || null,
               href,
               etag,
+              seriesKey: event.uid,
             });
           }
 
@@ -376,7 +422,7 @@ function parseICalObject(
         }
       } catch {
         // If recurrence expansion fails, add the base event
-        events.push(makeEvent(event, vevent, href, etag, timeZone));
+        events.push({ ...makeEvent(event, vevent, href, etag, timeZone), seriesKey: event.uid });
       }
     } else {
       events.push(makeEvent(event, vevent, href, etag, timeZone));
@@ -436,7 +482,14 @@ function makeEvent(
     recurrenceRule: null,
     href,
     etag,
+    seriesKey: null,
   };
+}
+
+/** STATUS:CANCELLED on an edited occurrence removes that one slot. */
+function isCancelled(event: ICAL.Event): boolean {
+  const status = event.component.getFirstPropertyValue('status');
+  return typeof status === 'string' && status.toUpperCase() === 'CANCELLED';
 }
 
 /**
