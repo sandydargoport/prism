@@ -291,3 +291,15 @@ repositories:
     line: 249
     first_seen_at: 2026-09-18T17:12:28.183547771+00:00
     last_updated_at: 2026-09-18T17:12:28.183547771+00:00
+  - path: docs/home-assistant.md
+    fingerprint: '13222670538398908603'
+    rule_id: betterleaks.curl-auth-header
+    line: 244
+    first_seen_at: 2026-10-05T17:01:23.920535062+00:00
+    last_updated_at: 2026-10-05T17:01:23.920535062+00:00
+  - path: docs/home-assistant.md
+    fingerprint: '1977604028129011483'
+    rule_id: betterleaks.curl-auth-header
+    line: 244
+    first_seen_at: 2026-10-05T17:01:23.920535062+00:00
+    last_updated_at: 2026-10-05T17:01:23.920535062+00:00
