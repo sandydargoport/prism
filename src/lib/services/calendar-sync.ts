@@ -655,12 +655,13 @@ export async function syncIcalCalendarSource(
       // ranges as floating UTC midnights with an exclusive end, like Google.
       // Length is counted in whole days so a DST change between the master and
       // an occurrence cannot shorten it.
-      const allDayLengthDays = Math.max(1, Math.round(baseDurationMs / (24 * 60 * 60 * 1000)));
+      const lengthDays = (start: Date, end: Date) =>
+        Math.max(1, Math.round((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)));
       const storedRange = (inst: { start: Date; end: Date }) => {
         if (!allDay) return { startTime: inst.start, endTime: inst.end };
         const startTime = localDateToFloatingAllDay(inst.start);
         const endTime = new Date(startTime);
-        endTime.setUTCDate(endTime.getUTCDate() + allDayLengthDays);
+        endTime.setUTCDate(endTime.getUTCDate() + lengthDays(inst.start, inst.end));
         return { startTime, endTime };
       };
 
@@ -672,24 +673,66 @@ export async function syncIcalCalendarSource(
         }
       }
 
-      const instances: Array<{ start: Date; end: Date; externalId: string; legacyExternalId?: string }> = [];
+      const title = readIcalString(vevent.summary) || '(no title)';
+      const description = readIcalString(vevent.description);
+      const location = readIcalString(vevent.location);
+
+      type Instance = {
+        start: Date;
+        end: Date;
+        externalId: string;
+        legacyExternalId?: string;
+        title: string;
+        description: string | null;
+        location: string | null;
+      };
+      const instances: Instance[] = [];
       const isRecurring = !!vevent.rrule;
 
       if (vevent.rrule) {
-        // Expand recurring instances within the sync window
-        const occurrences = vevent.rrule.between(timeMin, timeMax, true);
-        for (const occ of occurrences) {
-          if (exdates.has(occ.getTime())) continue;
-          // Older builds keyed an all-day instance on the parser's value,
-          // server-local midnight, so its row may still carry that id.
-          const externalId = instanceExternalId(uid, allDay ? localDateToFloatingAllDay(occ) : occ);
-          const legacyExternalId = instanceExternalId(uid, occ);
+        // An edited occurrence (a VEVENT with RECURRENCE-ID) is not a
+        // top-level item: node-ical files it under the master's
+        // `recurrences`, keyed by the slot it replaces (#593's iCal twin).
+        // Each slot takes its edit when there is one, so it shows the moved
+        // time and edited details, and a cancelled edit drops the slot.
+        const recurrences = (vevent.recurrences ?? {}) as Record<string, VEvent | undefined>;
+        const editFor = (slot: Date): VEvent | undefined => (allDay
+          ? recurrences[`${slot.getFullYear()}-${String(slot.getMonth() + 1).padStart(2, '0')}-${String(slot.getDate()).padStart(2, '0')}`]
+          : recurrences[slot.toISOString()]);
+        const addSlot = (slot: Date, edit: VEvent | undefined) => {
+          if (edit?.status === 'CANCELLED') return;
+          // Keyed on the slot, so an edit keeps the id of the occurrence it
+          // replaces. Older builds keyed an all-day instance on the parser's
+          // value, server-local midnight, so its row may still carry that id.
+          const externalId = instanceExternalId(uid, allDay ? localDateToFloatingAllDay(slot) : slot);
+          const legacyExternalId = instanceExternalId(uid, slot);
+          const start = edit?.start ?? slot;
+          const end = edit?.end ?? new Date(start.getTime() + baseDurationMs);
           instances.push({
-            start: occ,
-            end: new Date(occ.getTime() + baseDurationMs),
+            start,
+            end,
             externalId,
             ...(legacyExternalId !== externalId ? { legacyExternalId } : {}),
+            title: (edit && readIcalString(edit.summary)) || title,
+            description: edit ? readIcalString(edit.description) : description,
+            location: edit ? readIcalString(edit.location) : location,
           });
+        };
+
+        // Expand recurring instances within the sync window
+        const handled = new Set<VEvent>();
+        for (const occ of vevent.rrule.between(timeMin, timeMax, true)) {
+          if (exdates.has(occ.getTime())) continue;
+          const edit = editFor(occ);
+          if (edit) handled.add(edit);
+          addSlot(occ, edit);
+        }
+        // An edit whose slot is outside the window but which was moved into
+        // it. Each edit is filed under two keys, hence the set.
+        for (const edit of new Set(Object.values(recurrences))) {
+          if (!edit || handled.has(edit) || !edit.recurrenceid || !edit.start || !edit.end) continue;
+          if (edit.end < timeMin || edit.start > timeMax) continue;
+          addSlot(edit.recurrenceid, edit);
         }
       } else {
         // Single event — only sync if it overlaps the window at all
@@ -698,6 +741,9 @@ export async function syncIcalCalendarSource(
             start: vevent.start,
             end: vevent.end,
             externalId: uid,
+            title,
+            description,
+            location,
           });
         }
       }
@@ -712,11 +758,9 @@ export async function syncIcalCalendarSource(
       const recurrenceRule = null;
       // Every expanded occurrence belongs to the master's series (#592).
       const seriesKey = isRecurring ? uid : null;
-      const title = readIcalString(vevent.summary) || '(no title)';
-      const description = readIcalString(vevent.description);
-      const location = readIcalString(vevent.location);
 
       for (const inst of instances) {
+        const { title, description, location } = inst;
         const legacyId = inst.legacyExternalId;
         if (dismissed.has(inst.externalId) || (legacyId && dismissed.has(legacyId))) continue;
         externalIds.add(inst.externalId);
