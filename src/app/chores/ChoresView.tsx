@@ -155,7 +155,7 @@ export function ChoresView() {
 
   return (
     <PageWrapper>
-      <div className="h-screen flex flex-col">
+      <div className="h-page flex flex-col">
         <SubpageHeader
           icon={<ClipboardList className="h-5 w-5 text-primary" />}
           title="Chores"

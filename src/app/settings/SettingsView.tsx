@@ -205,7 +205,7 @@ export function SettingsView() {
 
   return (
     <PageWrapper>
-      <div className="h-screen flex flex-col">
+      <div className="h-page flex flex-col">
         <header className="shrink-0 border-b border-border bg-card/85 backdrop-blur-xs px-4">
           <div className="flex items-center gap-4 h-16">
             <Button variant="ghost" size="icon" asChild>

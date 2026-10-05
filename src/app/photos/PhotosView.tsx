@@ -218,7 +218,7 @@ export function PhotosView() {
 
   return (
     <PageWrapper>
-      <div className="h-screen flex flex-col">
+      <div className="h-page flex flex-col">
         <SubpageHeader
           icon={<ImageIcon className="h-5 w-5 text-primary" />}
           title="Photos"

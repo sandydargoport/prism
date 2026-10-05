@@ -303,6 +303,12 @@
   @apply min-h-screen w-full;
 }
 
+/* A page that fills the screen above the portrait bottom nav. AppShell sets
+   --nav-bottom only while that nav is showing. */
+@utility h-page {
+  height: calc(100vh - var(--nav-bottom, 0px));
+}
+
 @utility center {
   @apply flex items-center justify-center;
 }

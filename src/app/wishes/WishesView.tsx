@@ -229,13 +229,13 @@ export function WishesView() {
   return (
     <PageWrapper>
       {/*
-        h-screen + flex-col so the inner flex-1 overflow-auto content area
+        h-page + flex-col so the inner flex-1 overflow-auto content area
         fills remaining vertical space. Without this wrapper the toolbar
         and content stack at natural heights and the per-member columns
         collapse to their content — matches the Tasks / Chores / Shopping
         pattern.
       */}
-      <div className="h-screen flex flex-col">
+      <div className="h-page flex flex-col">
       <SubpageHeader
         title="Wishes"
         icon={<Gift className="h-6 w-6" />}

@@ -173,7 +173,7 @@ export function ShoppingView() {
 
   return (
     <PageWrapper>
-      <div className="h-screen flex flex-col">
+      <div className="h-page flex flex-col">
         {!shoppingMode && (
           <>
             <SubpageHeader

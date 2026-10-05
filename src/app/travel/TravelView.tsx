@@ -307,7 +307,7 @@ export function TravelView() {
 
   return (
     <PageWrapper>
-      <div className="flex flex-col h-screen overflow-hidden">
+      <div className="flex flex-col h-page overflow-hidden">
         {/* Tab bar */}
         <div className="flex items-center gap-1 px-4 pt-3 pb-0 border-b border-border shrink-0 bg-background">
           <button

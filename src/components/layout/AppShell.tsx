@@ -119,6 +119,7 @@ export function AppShell({
   const showSideNav = !isMobile && orientation === 'landscape';
   const showPortraitNav = !isMobile && orientation === 'portrait';
   const showMobileNav = isMobile;
+  const portraitNavShown = !hideNav && showPortraitNav && !measureHideNav && !uiHidden;
 
   return (
     <div className={cn('relative min-h-(--app-vh,100vh)', !showWallpaper && 'bg-background')}>
@@ -139,9 +140,17 @@ export function AppShell({
           // The nav itself slides smoothly via GPU-composited transform; the content
           // just needs to reflow once when the class changes.
           !hideNav && showSideNav && !measureHideNav && !uiHidden && 'ml-16',
-          !hideNav && showPortraitNav && !measureHideNav && !uiHidden && 'pb-24',
+          portraitNavShown && 'pb-(--nav-bottom)',
           className
         )}
+        // Height of the fixed bottom nav (PortraitNav: h-20, a 1px top border and
+        // the safe area). Full-height pages size themselves with `h-page`, which
+        // subtracts it, so nothing sits under the nav.
+        style={
+          portraitNavShown
+            ? ({ '--nav-bottom': 'calc(5rem + 1px + env(safe-area-inset-bottom, 0px))' } as React.CSSProperties)
+            : undefined
+        }
       >
         {children}
       </main>
