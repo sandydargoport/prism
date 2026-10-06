@@ -87,7 +87,9 @@ describe('ThemeProvider — gallery themes', () => {
     await waitFor(() => expect(lastWrite(fetchMock).value.paletteId).toBe('clay'));
     // The regression: this used to be absent, and the API replaces the row.
     expect(lastWrite(fetchMock).value.installed).toHaveLength(1);
-    expect(result.current.installedThemes).toHaveLength(1);
+    // The palette starts as the default, so the waits above can pass before the
+    // load commits; wait for the state rather than reading it the same tick.
+    await waitFor(() => expect(result.current.installedThemes).toHaveLength(1));
   });
 
   it('sends the palette and the theme in one write, as the API requires', async () => {
@@ -196,7 +198,9 @@ describe('ThemeProvider — gallery themes', () => {
     await waitFor(() => expect(result.current.palette.id).toBe('prism'));
     await waitFor(() => expect(lastWrite(fetchMock).value.paletteId).toBe('prism'));
     expect(lastWrite(fetchMock).value.installed).toHaveLength(1);
-    expect(result.current.installedThemes).toHaveLength(1);
+    // The palette starts as the default, so the waits above can pass before the
+    // load commits; wait for the state rather than reading it the same tick.
+    await waitFor(() => expect(result.current.installedThemes).toHaveLength(1));
 
     window.history.replaceState({}, '', '/');
   });

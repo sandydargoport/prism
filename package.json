@@ -102,8 +102,8 @@
     "node-ical": "^0.27.2",
     "postgres": "^3.4.9",
     "puppeteer-core": "^25.12.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "react-qr-code": "^2.2.0",
     "redis": "^6.3.0",
     "sharp": "^0.35.5",
@@ -125,8 +125,8 @@
     "@types/bcryptjs": "^3.0.0",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.10.2",
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "drizzle-kit": "^0.31.11",
     "eslint": "^9.16.0",
     "eslint-config-next": "^16.3.8",
@@ -143,5 +143,10 @@
   },
   "engines": {
     "node": ">=24.0.0"
+  },
+  "overrides": {
+    "@emoji-mart/react": {
+      "react": "$react"
+    }
   }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, type JSX } from 'react';
 import { useShouldSkipMotion } from '@/lib/hooks/useShouldSkipMotion';
 import { useTimeFormat } from '@/components/providers';
 import { toDisplayDate } from '@/lib/utils/timeFormat';
