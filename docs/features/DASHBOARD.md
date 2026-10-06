@@ -80,10 +80,13 @@ The gallery has a separate **dashboard** and **screensaver** mode, so screensave
 
 Made a board worth sharing? Open the **More** menu and click **Share**, fill in a name, description, author, and orientation, then submit. Prism opens a pre-filled submission for you (this works from any instance, including hosted ones), and once it's approved your layout appears in everyone's Community gallery.
 
+Submitting to the gallery needs a GitHub account. Without one, use **Download file** in the same dialog and send the file however you like; the other household loads it through **Import**.
+
 ### Export & Import
 
 - **Export** (More → Export): copy your current layout as JSON to hand to someone directly.
-- **Import** (More → Import): paste a layout JSON to load someone else's design.
+- **Share → Download file**: save the layout as a `.json` file instead.
+- **Import** (More → Import): paste a layout JSON, or **Choose file…** to load a downloaded one.
 
 ---
 

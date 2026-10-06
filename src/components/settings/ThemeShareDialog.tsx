@@ -18,7 +18,8 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { validateCommunityTheme } from '@/lib/community/validateTheme';
-import { normalizeShape } from '@/lib/themes/tokens';
+import { buildThemeFile } from '@/lib/community/themeFile';
+import { downloadJson, slugify } from '@/lib/utils/downloadJson';
 import type { Theme } from '@/lib/themes/tokens';
 
 const REPO_ISSUE_URL = 'https://github.com/sandydargoport/prism/issues/new';
@@ -33,18 +34,24 @@ export function ThemeShareDialog({ palette, onClose }: { palette: Theme; onClose
   const [errors, setErrors] = useState<string[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
 
+  // A file needs no GitHub account: it goes to whoever the person sends it to,
+  // and imports through Settings, Display, Palette, Import. Checked the same
+  // way as a submission so the file would also pass the gallery. Contrast
+  // warnings do not hold it up, since nobody else reviews it first.
+  const handleDownload = () => {
+    const file = buildThemeFile(palette, form);
+    const result = validateCommunityTheme(file);
+    if (!result.valid) {
+      setErrors(result.errors);
+      setWarnings([]);
+      return;
+    }
+    downloadJson(`prism-theme-${slugify(file.name) || 'palette'}.json`, file);
+    onClose();
+  };
+
   const handleSubmit = () => {
-    const submission = {
-      type: 'prism-theme' as const,
-      version: 1 as const,
-      name: form.name.trim(),
-      description: form.description.trim(),
-      author: form.author.trim(),
-      tags: form.tags.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean),
-      light: palette.light,
-      dark: palette.dark,
-      shape: normalizeShape(palette.shape),
-    };
+    const submission = buildThemeFile(palette, form);
 
     const result = validateCommunityTheme(submission);
     if (!result.valid) {
@@ -157,11 +164,14 @@ export function ThemeShareDialog({ palette, onClose }: { palette: Theme; onClose
         )}
 
         <p className="text-xs text-muted-foreground">
-          Opens a prefilled form on GitHub. Nothing is sent until you submit it there.
+          Share opens a prefilled form on GitHub. Nothing is sent until you submit it there.
+          No GitHub account? Download the file and send it however you like. It
+          installs through <span className="font-medium">Import</span> next to Browse.
         </p>
 
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" size="sm" onClick={handleDownload}>Download file</Button>
           <Button size="sm" onClick={handleSubmit}>
             {warnings.length ? 'Share anyway' : 'Share'}
           </Button>

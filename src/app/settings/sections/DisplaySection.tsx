@@ -12,6 +12,7 @@ import { useSeasonalTheme } from '@/lib/hooks/useSeasonalTheme';
 import { MONTH_NAMES, seasonalPalettes } from '@/lib/themes/seasonalThemes';
 import { ThemeShareDialog } from '@/components/settings/ThemeShareDialog';
 import { CommunityThemeGallery } from '@/components/settings/CommunityThemeGallery';
+import { ThemeImportButton } from '@/components/settings/ThemeImportButton';
 import { useWallpaperSettings, useAutoOrientationSetting, useScreensaverInterval } from '@/components/layout/WallpaperBackground';
 import { useScreenOrientation } from '@/lib/hooks/useScreenOrientation';
 import { useOrientationOverride } from '../SettingsView';
@@ -42,6 +43,7 @@ export function DisplaySection() {
   const { seasonalTheme, setSeasonalTheme, palette } = useSeasonalTheme();
   const [sharing, setSharing] = useState(false);
   const [browsing, setBrowsing] = useState(false);
+  const [importErrors, setImportErrors] = useState<string[]>([]);
 
   const mode: 'auto' | 'manual' | 'off' =
     seasonalTheme === 'none' ? 'off' :
@@ -104,19 +106,20 @@ export function DisplaySection() {
           </div>
 
           <div className="mt-6 space-y-3">
-            <div className="flex items-start justify-between gap-3">
-              <div>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-48 flex-1">
                 <h4 className="text-sm font-medium">Palette</h4>
                 <p className="text-xs text-muted-foreground mt-1">
                   Applies to every screen in the house. Light and dark above stay
                   per-screen.
                 </p>
               </div>
-              <div className="flex shrink-0 gap-2">
+              <div className="flex shrink-0 flex-wrap justify-end gap-2">
                 <Button variant="outline" size="sm" onClick={() => setBrowsing(true)}>
                   <Store className="h-4 w-4 mr-1" />
                   Browse
                 </Button>
+                <ThemeImportButton onErrors={setImportErrors} />
                 {/* Shares the palette in use, so what you submit is what you are
                     looking at. */}
                 <Button variant="outline" size="sm" onClick={() => setSharing(true)}>
@@ -125,6 +128,13 @@ export function DisplaySection() {
                 </Button>
               </div>
             </div>
+            {importErrors.length > 0 && (
+              <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 p-3 space-y-1">
+                {importErrors.map((e) => (
+                  <p key={e} className="text-xs text-destructive">{e}</p>
+                ))}
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               {palettes.map((p) => {
                 const preview = resolvedTheme === 'dark' ? p.dark : p.light;

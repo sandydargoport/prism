@@ -54,16 +54,23 @@ which would otherwise mean opening a terminal to recover a colour choice.
 ## Sharing a theme
 
 A theme is nothing but colour values, so it can be passed between households.
-Two ways, and they differ in what happens to your work:
+Three ways, and they differ in what happens to your work:
 
-- **Through the gallery** — anyone can install it, and it stays yours.
-- **As a contribution** — it ships with Prism for everyone, which needs the
+- **As a file**: *Settings → Display → Palette → Share → Download file* saves
+  the palette in use as a `.json` file. Send it however you like; the other
+  household installs it with **Import**, next to Browse. No GitHub account is
+  needed, and the file goes only to the people you send it to.
+- **Through the gallery**: anyone can install it, and it stays yours.
+  Submitting needs a GitHub account.
+- **As a contribution**: it ships with Prism for everyone, which needs the
   Contributor License Agreement, because Prism then distributes it.
 
-Neither is better. `community/themes/README.md` has the detail, including what
-is checked and what is not allowed.
+Neither of the last two is better. `community/themes/README.md` has the
+detail, including what is checked and what is not allowed.
 
-The submission side is not finished yet.
+An imported file gets the same checks as a gallery theme. It is refused if its
+name matches a built-in palette or a theme already installed, so an import
+never replaces one; remove the old one first or rename the theme in the file.
 
 ## Beyond colour
 

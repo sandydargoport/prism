@@ -1,6 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+
+// Far larger than any real layout, small enough to refuse a wrong file unread.
+const MAX_FILE_BYTES = 256 * 1024;
 
 interface LayoutExportV2 {
   type: 'prism-layout';
@@ -55,8 +58,20 @@ export function LayoutEditorImportDialog({
 }) {
   const [importText, setImportText] = useState('');
   const [importError, setImportError] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
 
   if (!open) return null;
+
+  // Reads a downloaded layout file into the box, so it goes through the same
+  // checks as pasted text and the person can see what they are applying.
+  const handleFile = async (file: File) => {
+    setImportError('');
+    if (file.size > MAX_FILE_BYTES) {
+      setImportError('This file is too large to be a Prism layout.');
+      return;
+    }
+    setImportText(await file.text());
+  };
 
   const handleImportApply = () => {
     try {
@@ -94,7 +109,7 @@ export function LayoutEditorImportDialog({
         <div className="text-sm font-medium">Import Layout</div>
         <textarea
           className="w-full h-32 text-xs font-mono bg-muted text-foreground border border-border rounded-md p-2 resize-none focus:outline-hidden focus:ring-2 focus:ring-primary"
-          placeholder='Paste exported layout JSON here...'
+          placeholder='Paste exported layout JSON here, or choose a file below'
           value={importText}
           onChange={(e) => { setImportText(e.target.value); setImportError(''); }}
         />
@@ -102,6 +117,24 @@ export function LayoutEditorImportDialog({
           <p className="text-xs text-destructive">{importError}</p>
         )}
         <div className="flex gap-2 justify-end">
+          <button
+            onClick={() => fileRef.current?.click()}
+            className="mr-auto px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"
+          >
+            Choose file…
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".json,application/json"
+            className="hidden"
+            data-testid="layout-import-input"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = '';
+              if (file) void handleFile(file);
+            }}
+          />
           <button
             onClick={onClose}
             className="px-3 py-1.5 text-sm rounded-md bg-muted hover:bg-accent transition-colors"

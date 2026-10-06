@@ -4,6 +4,9 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+### Added
+- **Share a layout or a theme as a file, with no GitHub account.** The Share dialogs for layouts and palettes have **Download file**, which saves the same checked `.json` a gallery submission would carry. A layout file loads through **More → Import → Choose file…**, and a theme file through the new **Import** button in *Settings → Display → Palette*. An imported theme gets the gallery's checks and never replaces a palette that is already there. Submitting to the gallery itself still needs a GitHub account. ([#338](https://github.com/sandydargoport/prism/issues/338))
+
 ## [1.29.0] – 2026-10-05
 
 Ships four database migrations, applied automatically on start: hidden events, hidden event series, notes from guests, and the chore approval default. The last one switches **Requires approval** on for every existing chore, because the switch now does something (see Changed); nothing else about approval changes on upgrade.
