@@ -1,0 +1,13 @@
+# Order WITHIN each priority level for scripts/next.sh.
+#
+# One issue number per line, most important first. The P1-P4 label still
+# decides the level; this file only decides the order inside it. An open issue
+# not listed here comes after the listed ones in its level, newest first. A
+# closed issue is simply skipped, so this file never needs cleaning up.
+508
+447
+340
+52
+57
+59
+53

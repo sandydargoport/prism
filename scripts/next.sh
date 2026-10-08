@@ -5,6 +5,9 @@
 # second copy to go stale: closing an issue removes it from this list, and a new
 # issue shows up under "unranked" until someone ranks it.
 #
+# Inside a level, scripts/next-order.txt sets the order. It only orders; it
+# never decides the level, so it cannot disagree with the labels.
+#
 #   bash scripts/next.sh          # the whole ranked queue
 #   bash scripts/next.sh 1        # just P1
 #   bash scripts/next.sh 4        # P4, parked: ranked, but left out of the queue
@@ -18,11 +21,22 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 1
 fi
 
+# The order file as a JSON array, e.g. [508,447]. Digits only, so it is safe to
+# put straight into the query below.
+order_file="$(dirname "$0")/next-order.txt"
+order="[]"
+if [[ -f "$order_file" ]]; then
+  order="[$(grep -E '^[0-9]+$' "$order_file" | paste -sd, -)]"
+fi
+
 show() {
   local label="$1" heading="$2"
   local out
+  # Listed issues first, in file order; the rest after, newest first.
   out=$(gh issue list --state open --label "$label" --limit 100 \
-        --json number,title -q '.[] | "  #\(.number)  \(.title)"' 2>/dev/null || true)
+        --json number,title -q "$order as \$o
+          | sort_by(. as \$i | (\$o | index(\$i.number)) // (100000 - \$i.number))
+          | .[] | \"  #\\(.number)  \\(.title)\"" 2>/dev/null || true)
   if [[ -n "$out" ]]; then
     printf '\n%s\n%s\n' "$heading" "$out"
   fi
