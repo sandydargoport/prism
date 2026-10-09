@@ -124,7 +124,7 @@
     "@testing-library/react": "^16.3.3",
     "@types/bcryptjs": "^3.0.0",
     "@types/jest": "^29.5.14",
-    "@types/node": "^22.10.2",
+    "@types/node": "^26.6.4",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "drizzle-kit": "^0.31.11",
