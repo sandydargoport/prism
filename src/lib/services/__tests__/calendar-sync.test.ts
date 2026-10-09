@@ -53,16 +53,20 @@ jest.mock('@/lib/db/schema', () => ({
   calendarSources: { id: 'id', provider: 'provider', enabled: 'enabled' },
   events: { calendarSourceId: 'calendarSourceId', externalEventId: 'externalEventId', startTime: 'startTime', id: 'id', pendingDeletion: 'pendingDeletion' },
   dismissedEvents: { calendarSourceId: 'calendarSourceId', externalEventId: 'externalEventId' },
+  settings: { key: 'key' },
 }));
 
 const mockFetchCalendarEvents = jest.fn();
 const mockRefreshAccessToken = jest.fn();
 const mockConvertEvent = jest.fn();
+const mockFetchCalendarList = jest.fn();
 
 jest.mock('@/lib/integrations/google-calendar', () => ({
   fetchCalendarEvents: (...args: unknown[]) => mockFetchCalendarEvents(...args),
+  fetchCalendarList: (...args: unknown[]) => mockFetchCalendarList(...args),
   refreshAccessToken: (...args: unknown[]) => mockRefreshAccessToken(...args),
   convertGoogleEventToInternal: (...args: unknown[]) => mockConvertEvent(...args),
+  DISMISSED_GOOGLE_CALENDARS_KEY: 'dismissedGoogleCalendarIds',
 }));
 
 jest.mock('@/lib/utils/crypto', () => ({
@@ -422,6 +426,79 @@ describe('syncAllGoogleCalendars', () => {
 
     // First source synced fine, second had error, but both were attempted
     expect(result.errors.length).toBeGreaterThan(0);
+  });
+
+  it('discovers a calendar newly shared with the account and inserts it', async () => {
+    // One known source for this Google account ("primary"). Google now also
+    // reports a second calendar ("shared-cal") that has no row yet — e.g.
+    // someone just shared it with this account.
+    const knownSource = makeSource({ id: 'source-1', sourceCalendarId: 'primary', dashboardCalendarName: 'Kosta' });
+    mockFindMany.mockResolvedValueOnce([knownSource]); // enabled sources
+    mockFindMany.mockResolvedValueOnce([knownSource]); // all google sources (dedup set)
+    mockFindFirst.mockResolvedValue(makeSource({ id: 'source-1', sourceCalendarId: 'primary' }));
+    mockFetchCalendarList.mockResolvedValue([
+      { id: 'primary', summary: 'Kosta', accessRole: 'owner', hidden: false },
+      { id: 'shared-cal', summary: 'Sandra', accessRole: 'owner', hidden: false },
+    ]);
+
+    await syncAllGoogleCalendars();
+
+    expect(mockInsertValues).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: 'google',
+        sourceCalendarId: 'shared-cal',
+        dashboardCalendarName: 'Sandra',
+        enabled: true,
+      })
+    );
+    // The already-known calendar must not be re-inserted.
+    expect(mockInsertValues).not.toHaveBeenCalledWith(
+      expect.objectContaining({ sourceCalendarId: 'primary' })
+    );
+  });
+
+  it('does not re-insert a calendar that exists but is disabled', async () => {
+    // "weeknum" was discovered previously and then disabled in Manage
+    // Calendars, so it's absent from the enabled-only `sources` list but
+    // still has a row — it must not be treated as newly-discovered.
+    const enabledSource = makeSource({ id: 'source-1', sourceCalendarId: 'primary' });
+    const disabledSource = makeSource({ id: 'source-2', sourceCalendarId: 'weeknum', enabled: false });
+    mockFindMany.mockResolvedValueOnce([enabledSource]); // enabled sources only
+    mockFindMany.mockResolvedValueOnce([enabledSource, disabledSource]); // all google sources
+    mockFindFirst.mockResolvedValue(enabledSource);
+    mockFetchCalendarList.mockResolvedValue([
+      { id: 'primary', summary: 'Kosta', accessRole: 'owner', hidden: false },
+      { id: 'weeknum', summary: 'Kalenderwochen', accessRole: 'reader', hidden: false },
+    ]);
+
+    await syncAllGoogleCalendars();
+
+    expect(mockInsertValues).not.toHaveBeenCalledWith(
+      expect.objectContaining({ sourceCalendarId: 'weeknum' })
+    );
+  });
+
+  it('does not resurrect a calendar the user previously dismissed', async () => {
+    const knownSource = makeSource({ id: 'source-1', sourceCalendarId: 'primary' });
+    mockFindMany.mockResolvedValueOnce([knownSource]);
+    mockFindMany.mockResolvedValueOnce([knownSource]);
+    mockFindFirst.mockResolvedValue(knownSource);
+    mockFetchCalendarList.mockResolvedValue([
+      { id: 'primary', summary: 'Kosta', accessRole: 'owner', hidden: false },
+      { id: 'dismissed-cal', summary: 'Removed One', accessRole: 'reader', hidden: false },
+    ]);
+    // settings.select(...).from(...).where(...) — dismissed tombstone list
+    mockSelect.mockReturnValueOnce({
+      from: jest.fn().mockReturnValue({
+        where: jest.fn().mockResolvedValue([{ value: [{ id: 'dismissed-cal', name: 'Removed One' }] }]),
+      }),
+    });
+
+    await syncAllGoogleCalendars();
+
+    expect(mockInsertValues).not.toHaveBeenCalledWith(
+      expect.objectContaining({ sourceCalendarId: 'dismissed-cal' })
+    );
   });
 });
 

@@ -20,8 +20,10 @@ import {
   refreshAccessToken,
   convertGoogleEventToInternal,
   TokenRevokedError,
+  DISMISSED_GOOGLE_CALENDARS_KEY,
   type GoogleCalendarEvent,
 } from '@/lib/integrations/google-calendar';
+import { tombstoneIdSet } from '@/lib/services/settingsTombstone';
 import { decrypt, encrypt } from '@/lib/utils/crypto';
 import { validatePublicUrl, UnsafeUrlError } from '@/lib/utils/safeFetch';
 import { isGoogleCalendarWebLink, GOOGLE_WEB_LINK_ERROR } from '@/lib/utils/googleCalendarLink';
@@ -418,8 +420,29 @@ export async function syncAllGoogleCalendars(
   // Build a combined role map across all Google accounts
   const combinedRoleMap = new Map<string, string>();
   const checkedSourceIds = new Set<string>();
+  let discovered = 0;
 
-  for (const [, group] of tokenGroups) {
+  // Calendars the user previously removed from Prism — never silently
+  // resurrected by discovery below.
+  const dismissedSet = await tombstoneIdSet(DISMISSED_GOOGLE_CALENDARS_KEY);
+
+  // Dedup discovery against every Google source regardless of enabled
+  // state. `sources` above is enabled-only (that's what gets synced), so
+  // using it as the "already known" set would re-insert a calendar the
+  // user had previously discovered and then disabled (e.g. "Kalenderwochen"
+  // switched off in Manage Calendars) as a duplicate row every 10 minutes.
+  const allGoogleSources = await db.query.calendarSources.findMany({
+    where: eq(calendarSources.provider, 'google'),
+  });
+  const knownIdsByRefreshToken = new Map<string, Set<string>>();
+  for (const s of allGoogleSources) {
+    if (!s.refreshToken) continue;
+    const set = knownIdsByRefreshToken.get(s.refreshToken) || new Set<string>();
+    set.add(s.sourceCalendarId);
+    knownIdsByRefreshToken.set(s.refreshToken, set);
+  }
+
+  for (const [refreshTokenKey, group] of tokenGroups) {
     const representative = group[0];
     if (!representative?.accessToken) continue;
 
@@ -437,9 +460,47 @@ export async function syncAllGoogleCalendars(
       for (const s of group) {
         checkedSourceIds.add(s.id);
       }
+
+      // Discover calendars that appeared after the initial connect — most
+      // commonly one someone else just shared with this account. Previously
+      // this loop only ever updated/disabled *existing* sources; a calendar
+      // Google now lists but that has no row here was never inserted until
+      // the user manually disconnected and reconnected Google Calendar.
+      const knownIds = knownIdsByRefreshToken.get(refreshTokenKey) || new Set<string>();
+      for (const cal of googleCalendars) {
+        if (knownIds.has(cal.id) || dismissedSet.has(cal.id)) continue;
+
+        const calendarName = (cal.summary || 'Untitled Calendar').slice(0, 255);
+        const isWritable = cal.accessRole === 'writer' || cal.accessRole === 'owner';
+        await db.insert(calendarSources).values({
+          userId: representative.userId,
+          provider: 'google',
+          sourceCalendarId: cal.id,
+          dashboardCalendarName: calendarName,
+          displayName: calendarName,
+          color: cal.backgroundColor || undefined,
+          // Calendars hidden in the user's Google list come in disabled, so
+          // they're available in Manage Calendars without cluttering the board.
+          enabled: !cal.hidden,
+          showInEventModal: isWritable,
+          accessToken: representative.accessToken,
+          refreshToken: representative.refreshToken,
+          tokenExpiresAt: representative.tokenExpiresAt,
+          accountEmail: representative.accountEmail,
+        });
+        // Just-inserted calendar must count as known for any other token
+        // group sharing this id (shouldn't normally happen, but keeps a
+        // double-insert impossible within the same sync run).
+        knownIds.add(cal.id);
+        discovered++;
+      }
     } catch (error) {
       console.error(`[Sync] Failed to fetch calendar list for account group:`, error);
     }
+  }
+
+  if (discovered > 0) {
+    console.log(`[Sync] Discovered ${discovered} new Google calendar(s) not previously connected`);
   }
 
   // Now check each source against the combined map
