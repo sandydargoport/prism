@@ -60,6 +60,7 @@ export function ImportUrlModal({ onClose, onImport }: ImportUrlModalProps) {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://www.allrecipes.com/recipe/..."
+              autoCapitalize="none"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && url.trim()) {
                   handleImport();

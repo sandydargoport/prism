@@ -337,6 +337,7 @@ export function PinDetail({ pin, childPins, onUpdate, onDelete, onDeleteChild, o
                   onChange={e => setGeoQuery(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleGeoSearch()}
                   placeholder="Search for a new location…"
+                  autoCapitalize="none"
                   className="flex-1 h-7 rounded-md border border-border bg-background px-2 text-xs focus:outline-hidden focus:ring-1 focus:ring-ring"
                 />
                 <button

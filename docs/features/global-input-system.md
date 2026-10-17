@@ -306,6 +306,52 @@ keyboardRef.current = new Keyboard(containerRef.current, {
 keyboardRef.current?.setInput(activeInputRef.current?.value ?? '');
 ```
 
+### Auto-capitalization (#635)
+
+**File:** `src/lib/input/autoCapitalize.ts` (pure functions, unit-tested)
+
+The keyboard behaves like a phone's: the next letter is a capital at the start
+of a field, after `.`, `!` or `?` followed by whitespace (closing quotes and
+brackets allowed in between), and at the start of a line in a textarea or
+contenteditable. It is one-shot: once that letter is typed the keyboard drops
+back to lowercase. `shouldAutoShift(value, caret, fieldInfo)` makes the call
+from the text before the caret.
+
+The automatic capital uses its own `autoshift` layout, the default rows with
+only the letters uppercased, so a digit typed at the start of a field ("3
+eggs") is still a digit, not the shifted `#`.
+
+**The field decides** (`autoCapitalizeMode(fieldInfo)`):
+
+| Field | Mode |
+|---|---|
+| `type` password, email, url, number, tel | off, always (the spec exempts these) |
+| `autocapitalize="off"` / `"none"` | off |
+| `autocapitalize="sentences"` / `"on"` / `"words"` / `"characters"` | as named |
+| `inputmode` numeric, decimal, tel, email or url | off |
+| `autocomplete` username, email, url, one-time-code, tel*, passwords | off |
+| `type="search"` | off |
+| anything else (text, textarea, contenteditable) | sentences |
+
+The attribute is read from the field, else its form. Since the provider swaps
+the field's `inputmode` for `"none"` while it serves it (#498), the keyboard
+asks the provider for the declared value (`declaredInputMode(el)`).
+
+Search boxes and URL, ID or credential fields in the app are plain
+`type="text"` inputs, so they carry `autoCapitalize="none"`. A new field of
+that kind needs the same, or it starts with a capital.
+
+**Manual Shift and Caps Lock win.** Both stay sticky toggles as before, and
+the automatic capital never overrides them. Tapping Shift while the automatic
+capital is showing turns it off for that letter (as on a phone); Caps Lock
+there locks capitals on. Turning a manual shift off also holds the automatic
+one back until the next edit, caret move or field change, so it does not
+reappear under the finger.
+
+It re-evaluates after every keystroke (using simple-keyboard's own caret), on
+a tap that moves the caret, on a move to another field while the keyboard is
+open, on text that arrives another way (voice), and when the keyboard opens.
+
 ### Animation
 
 Slide in from bottom on open, slide out on close. `translateY(100%) → translateY(0)` over 200ms ease-out. Use a controlled `isExiting` state to trigger exit animation before unmounting.
@@ -702,6 +748,7 @@ New section: `{ id: 'input', label: 'Input', icon: Keyboard }`. Add to sections 
 | `src/app/settings/sections/InputSection.tsx` | Scanner + keyboard settings UI. |
 | `src/components/input/CameraScannerOverlay.tsx` | Full-screen camera scanner UI (`BarcodeDetector` + `@zxing/browser` fallback). |
 | `src/lib/hooks/useCameraScanner.ts` | Camera-scan decode loop / stream management. |
+| `src/lib/input/autoCapitalize.ts` | Auto-capitalization (#635): `shouldAutoShift`, `autoCapitalizeMode`, the shift state, and the field/caret readers. |
 
 ### Modified Files
 

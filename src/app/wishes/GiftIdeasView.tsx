@@ -318,7 +318,7 @@ function EditGiftIdeaModal({
           </div>
           <div>
             <label className="text-sm font-medium">Link (optional)</label>
-            <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." />
+            <Input value={url} onChange={(e) => setUrl(e.target.value)} autoCapitalize="none" placeholder="https://..." />
           </div>
           <div>
             <label className="text-sm font-medium">Price (optional)</label>

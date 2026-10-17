@@ -81,6 +81,7 @@ export function MicrosoftCredentialsForm({ onSaved }: { onSaved?: () => void }) 
           value={clientId}
           onChange={(e) => setClientId(e.target.value)}
           placeholder="00000000-0000-0000-0000-000000000000"
+          autoCapitalize="none"
           autoComplete="off"
           spellCheck={false}
         />

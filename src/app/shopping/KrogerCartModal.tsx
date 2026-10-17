@@ -432,6 +432,7 @@ export function KrogerCartModal({ items, onClose }: KrogerCartModalProps) {
                   onChange={(e) => setEditQuery(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') retrySearch(); }}
                   placeholder="Search Kroger…"
+                  autoCapitalize="none"
                   className="h-8 pl-7 text-sm"
                 />
               </div>

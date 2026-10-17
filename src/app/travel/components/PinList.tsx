@@ -85,6 +85,7 @@ export function PinList({
           <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             placeholder="Search places & trips…"
+            autoCapitalize="none"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-7 h-8 text-sm"

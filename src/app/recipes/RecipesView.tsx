@@ -159,7 +159,7 @@ export function RecipesView() {
           <div className="relative min-w-[180px] max-w-md shrink-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search recipes..." className="pl-9 h-8" />
+              autoCapitalize="none" placeholder="Search recipes..." className="pl-9 h-8" />
           </div>
           <div className="w-px h-5 bg-border shrink-0" />
           <div className="flex items-center gap-1 shrink-0">

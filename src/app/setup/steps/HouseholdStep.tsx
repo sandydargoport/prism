@@ -102,6 +102,7 @@ export function HouseholdStep({ onNext, onBack }: HouseholdStepProps) {
                 onChange={(e) => setQuery(e.target.value)}
                 onFocus={() => candidates.length > 0 && setOpen(true)}
                 placeholder="Search city or ZIP…"
+                autoCapitalize="none"
                 className="pl-9"
                 autoComplete="off"
               />

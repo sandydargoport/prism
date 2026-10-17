@@ -170,6 +170,7 @@ export function CalDAVConnectDialog({
                 value={serverUrl}
                 onChange={e => setServerUrl(e.target.value)}
                 placeholder="https://caldav.icloud.com"
+                autoCapitalize="none"
               />
               <div className="text-xs text-muted-foreground space-y-0.5">
                 <p className="flex items-center gap-2">

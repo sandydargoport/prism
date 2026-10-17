@@ -109,6 +109,7 @@ export function HelpView() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search help topics..."
+              autoCapitalize="none"
               className="pl-9"
             />
           </div>

@@ -117,6 +117,7 @@ export function CommunityGallery({ mode, onApplyLayout, currentOrientation }: Co
               if (e.key === 'Enter') setSearch(pendingSearch);
             }}
             placeholder="Search layouts… (Enter)"
+            autoCapitalize="none"
             className="px-2.5 py-1.5 pr-7 text-sm bg-muted/60 border border-border rounded-lg w-52 focus:outline-hidden focus:ring-1 focus:ring-primary focus:bg-muted"
           />
           {pendingSearch && (

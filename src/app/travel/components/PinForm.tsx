@@ -276,6 +276,7 @@ export function PinForm({ pin, initialLatLng, parentId, pinType = 'location', ch
               <div className="p-2 border-b border-border">
                 <Input
                   placeholder="Search parks…"
+                  autoCapitalize="none"
                   value={npSearch}
                   onChange={(e) => setNpSearch(e.target.value)}
                   className="h-8 text-sm"
@@ -444,6 +445,7 @@ export function PinForm({ pin, initialLatLng, parentId, pinType = 'location', ch
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search for a stop, city, or island…"
+                    autoCapitalize="none"
                     value={stopQuery}
                     onChange={(e) => setStopQuery(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addStopByName(); } }}

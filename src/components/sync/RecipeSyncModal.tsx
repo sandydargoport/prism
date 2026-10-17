@@ -254,6 +254,7 @@ export function RecipeSyncModal({ entity, onClose, onSynced }: RecipeSyncModalPr
           value={serverUrl}
           onChange={(e) => setServerUrl(e.target.value)}
           placeholder="http://192.168.1.x:port"
+          autoCapitalize="none"
           autoComplete="off"
         />
       </div>

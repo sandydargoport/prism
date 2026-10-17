@@ -439,6 +439,7 @@ export function MealModal({ weekOf, meal, defaultDay, dayOptions, recipes, onClo
                         value={recipeSearch}
                         onChange={(e) => setRecipeSearch(e.target.value)}
                         placeholder="Search recipes..."
+                        autoCapitalize="none"
                         className="pl-8 h-8"
                         autoFocus
                       />

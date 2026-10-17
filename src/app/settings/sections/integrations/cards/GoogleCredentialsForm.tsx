@@ -85,6 +85,7 @@ export function GoogleCredentialsForm({ onSaved }: { onSaved?: () => void }) {
           value={clientId}
           onChange={(e) => setClientId(e.target.value)}
           placeholder="1234567890-abc123.apps.googleusercontent.com"
+          autoCapitalize="none"
           autoComplete="off"
           spellCheck={false}
         />

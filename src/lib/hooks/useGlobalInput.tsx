@@ -42,6 +42,11 @@ interface GlobalInputContextValue {
    * else the household setting (#525). False until both are known.
    */
   virtualKeyboardEnabled: boolean;
+  /**
+   * The field's own `inputmode`, even while the provider has replaced it with
+   * "none" to keep the OS keyboard down (#498). Read by auto-capitalization.
+   */
+  declaredInputMode: (el: HTMLElement) => string | null;
 }
 
 const GlobalInputContext = createContext<GlobalInputContextValue | null>(null);
@@ -242,6 +247,11 @@ export function GlobalInputProvider({ children }: { children: React.ReactNode })
     osKeyboardSuppressedRef.current = { el, prev: el.getAttribute('inputmode') };
     el.setAttribute('inputmode', 'none');
   }, [releaseOsKeyboard]);
+
+  const declaredInputMode = useCallback((el: HTMLElement) => {
+    const s = osKeyboardSuppressedRef.current;
+    return s?.el === el ? s.prev : el.getAttribute('inputmode');
+  }, []);
 
   // ---- scroll helpers (#499) ----
   const releaseView = useCallback((restorePosition: boolean) => {
@@ -480,9 +490,11 @@ export function GlobalInputProvider({ children }: { children: React.ReactNode })
     startListening: speech.start,
     stopListening: speech.stop,
     virtualKeyboardEnabled,
+    declaredInputMode,
   }), [
     keyboardVisible, speech.isListening, speech.start, speech.stop,
     isInputFocused, isMobile, setKeyboardVisible, injectText, virtualKeyboardEnabled,
+    declaredInputMode,
   ]);
 
   return (

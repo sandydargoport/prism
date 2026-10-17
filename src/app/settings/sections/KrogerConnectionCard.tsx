@@ -266,6 +266,7 @@ export function KrogerConnectionCard() {
                     value={credClientId}
                     onChange={(e) => setCredClientId(e.target.value)}
                     placeholder="Application Id from Kroger dev portal"
+                    autoCapitalize="none"
                     className="h-8"
                   />
                 </div>

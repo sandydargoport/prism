@@ -159,6 +159,7 @@ export function CommunityThemeGallery({ onClose }: { onClose: () => void }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name, author or tag…"
+            autoCapitalize="none"
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
           />
         )}

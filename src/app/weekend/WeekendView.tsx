@@ -170,6 +170,7 @@ export function WeekendView() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search places…"
+            autoCapitalize="none"
             className="pl-7 h-7 text-xs"
           />
           {search && (

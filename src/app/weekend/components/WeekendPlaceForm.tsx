@@ -101,6 +101,7 @@ export function WeekendPlaceForm({ initial, onSave, onCancel, hideHeader }: Week
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://..."
+            autoCapitalize="none"
             className="mt-1"
           />
         </div>
