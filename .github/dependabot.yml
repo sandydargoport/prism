@@ -47,6 +47,11 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "@types/jest"
         update-types: ["version-update:semver-major"]
+      # The types have to describe the Node that runs Prism (engines, CI and
+      # the Dockerfile are all 24), or code can use APIs production lacks and
+      # type-check still passes. Raise both together when Node moves.
+      - dependency-name: "@types/node"
+        versions: [">=25"]
 
   # The MCP server carries its own manifest and lockfile, and nothing in the
   # root install reaches it.
