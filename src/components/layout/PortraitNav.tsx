@@ -2,7 +2,8 @@
  * Portrait Bottom Navigation
  *
  * A bottom navigation bar for portrait mode on web (tablets/desktop).
- * Shows all navigation items in a horizontally scrollable row, centered.
+ * Shows all navigation items in a horizontally scrollable row, centered
+ * when they fit.
  */
 
 'use client';
@@ -45,7 +46,12 @@ export function PortraitNav({ user, onLogin, onLogout, uiHidden }: PortraitNavPr
       'transition-[transform,opacity] duration-300 ease-in-out',
       uiHidden ? 'translate-y-full opacity-0 delay-100' : 'translate-y-0 opacity-100 delay-0'
     )}>
-      <div className="flex items-center justify-center h-20 overflow-x-auto scrollbar-none px-4">
+      {/* Centred with auto margins on the first and last item, not
+          justify-center: a centred row that overflows spills off both
+          edges and the left part cannot be scrolled to. Auto margins
+          collapse to zero when the row overflows, so it scrolls from the
+          first item instead (#637). */}
+      <div className="flex items-center h-20 overflow-x-auto scrollbar-none px-4 [&>:first-child]:ms-auto [&>:last-child]:me-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.href);
