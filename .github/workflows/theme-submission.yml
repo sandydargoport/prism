@@ -36,7 +36,7 @@ jobs:
         run: npm ci
 
       - name: Check submission limits
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b  # v7
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
         id: check-limits
         with:
           script: |
@@ -95,7 +95,7 @@ jobs:
 
       - name: Extract theme JSON
         if: steps.check-limits.outputs.passed == 'true'
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b  # v7
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
         id: validate
         with:
           script: |
@@ -176,7 +176,7 @@ jobs:
 
       - name: Comment validation failure
         if: env.VALIDATION_FAILED == 'true'
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b  # v7
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
         with:
           script: |
             const fs = require('fs');
@@ -214,7 +214,7 @@ jobs:
 
       - name: Add theme and create PR
         if: steps.validate.outputs.passed == 'true' && env.VALIDATION_FAILED != 'true'
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b  # v7
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
         with:
           script: |
             const fs = require('fs');
