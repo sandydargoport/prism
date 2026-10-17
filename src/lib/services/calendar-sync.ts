@@ -20,8 +20,10 @@ import {
   refreshAccessToken,
   convertGoogleEventToInternal,
   TokenRevokedError,
+  DISMISSED_GOOGLE_CALENDARS_KEY,
   type GoogleCalendarEvent,
 } from '@/lib/integrations/google-calendar';
+import { tombstoneIdSet } from '@/lib/services/settingsTombstone';
 import { decrypt, encrypt } from '@/lib/utils/crypto';
 import { validatePublicUrl, UnsafeUrlError } from '@/lib/utils/safeFetch';
 import { isGoogleCalendarWebLink, GOOGLE_WEB_LINK_ERROR } from '@/lib/utils/googleCalendarLink';
@@ -418,6 +420,22 @@ export async function syncAllGoogleCalendars(
   // Build a combined role map across all Google accounts
   const combinedRoleMap = new Map<string, string>();
   const checkedSourceIds = new Set<string>();
+  let discovered = 0;
+
+  // Calendars the user previously removed from Prism, never silently
+  // resurrected by discovery below.
+  const dismissedSet = await tombstoneIdSet(DISMISSED_GOOGLE_CALENDARS_KEY);
+
+  // Every Google calendar Prism already has, under ANY account and whether
+  // enabled or not. A calendar id is unique to the household, not to one
+  // login: a family calendar connected through one parent's account is also
+  // listed by the other's, and checking per account would add it twice. And
+  // `sources` above is enabled-only, so using it would re-add a calendar the
+  // user switched off. Same scope as the reconnect path in the OAuth callback.
+  const allGoogleSources = await db.query.calendarSources.findMany({
+    where: eq(calendarSources.provider, 'google'),
+  });
+  const knownCalendarIds = new Set(allGoogleSources.map((s) => s.sourceCalendarId));
 
   for (const [, group] of tokenGroups) {
     const representative = group[0];
@@ -437,9 +455,45 @@ export async function syncAllGoogleCalendars(
       for (const s of group) {
         checkedSourceIds.add(s.id);
       }
+
+      // Discover calendars that appeared after the initial connect, most
+      // often one someone just shared with this account. Without this a new
+      // calendar only appeared after a disconnect and reconnect.
+      for (const cal of googleCalendars) {
+        if (knownCalendarIds.has(cal.id) || dismissedSet.has(cal.id)) continue;
+
+        const calendarName = (cal.summary || 'Untitled Calendar').slice(0, 255);
+        const isWritable = cal.accessRole === 'writer' || cal.accessRole === 'owner';
+        await db.insert(calendarSources).values({
+          userId: representative.userId,
+          provider: 'google',
+          sourceCalendarId: cal.id,
+          dashboardCalendarName: calendarName,
+          displayName: calendarName,
+          color: cal.backgroundColor || undefined,
+          // Arrives switched off. Unlike a reconnect, nobody chose this: a
+          // calendar shared with one person would otherwise appear on the
+          // family display unasked. It waits in Manage Calendars instead.
+          enabled: false,
+          showInEventModal: isWritable,
+          // Copied from a row of the same account: still encrypted, as stored.
+          accessToken: representative.accessToken,
+          refreshToken: representative.refreshToken,
+          tokenExpiresAt: representative.tokenExpiresAt,
+          accountEmail: representative.accountEmail,
+        });
+        // Counts as known for the other accounts in this run, which may list
+        // the same shared calendar.
+        knownCalendarIds.add(cal.id);
+        discovered++;
+      }
     } catch (error) {
       console.error(`[Sync] Failed to fetch calendar list for account group:`, error);
     }
+  }
+
+  if (discovered > 0) {
+    console.log(`[Sync] Discovered ${discovered} new Google calendar(s); added switched off`);
   }
 
   // Now check each source against the combined map
