@@ -41,6 +41,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageLoader } from '@/components/ui/spinner';
 import { useMealsViewData } from './useMealsViewData';
+import { useMealTouchDrag } from './useMealTouchDrag';
 import { useRecipes, type Recipe } from '@/lib/hooks/useRecipes';
 import { useAuth } from '@/components/providers';
 import type { Meal } from '@/types';
@@ -268,50 +269,12 @@ function MealCard({ meal, onMarkCooked, onUnmarkCooked, onEdit, onDelete, onDrop
 }) {
   const isCooked = !!meal.cookedAt;
   const totalTime = (meal.prepTime || 0) + (meal.cookTime || 0);
-  const [touchDragging, setTouchDragging] = React.useState(false);
-  const touchRef = React.useRef<{ startY: number; mealId: string } | null>(null);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    const t = e.touches[0];
-    if (!t) return;
-    touchRef.current = { startY: t.clientY, mealId: meal.id };
-  };
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!touchRef.current) return;
-    const t = e.touches[0];
-    if (!t) return;
-    const dy = Math.abs(t.clientY - touchRef.current.startY);
-    if (dy > 10 && !touchDragging) setTouchDragging(true);
-    if (touchDragging) {
-      // Highlight the DayRow under the touch point
-      const els = document.elementsFromPoint(t.clientX, t.clientY);
-      document.querySelectorAll('[data-meal-day]').forEach(el => el.classList.remove('ring-2', 'ring-primary'));
-      const dayEl = els.find(el => el.hasAttribute('data-meal-day'));
-      if (dayEl) dayEl.classList.add('ring-2', 'ring-primary');
-    }
-  };
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchDragging && touchRef.current && onDropMeal) {
-      const touch = e.changedTouches[0];
-      if (!touch) { setTouchDragging(false); touchRef.current = null; return; }
-      const els = document.elementsFromPoint(touch.clientX, touch.clientY);
-      const dayEl = els.find(el => el.hasAttribute('data-meal-day'));
-      if (dayEl) {
-        const targetDay = dayEl.getAttribute('data-meal-day') as Meal['dayOfWeek'];
-        onDropMeal(touchRef.current.mealId, targetDay);
-      }
-    }
-    document.querySelectorAll('[data-meal-day]').forEach(el => el.classList.remove('ring-2', 'ring-primary'));
-    setTouchDragging(false);
-    touchRef.current = null;
-  };
+  const { ref: touchRef, dragging: touchDragging } = useMealTouchDrag<HTMLDivElement>(meal.id, onDropMeal);
 
   return (
     <div
       draggable onDragStart={(e) => { e.dataTransfer.setData('text/meal-id', meal.id); e.dataTransfer.effectAllowed = 'move'; }}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
+      ref={touchRef}
       className={cn(
         'flex items-start gap-3 p-3 rounded-md border border-border/50 bg-card/85 backdrop-blur-xs',
         'hover:border-seasonal-accent hover:ring-2 hover:ring-seasonal-accent/50 transition-all group cursor-grab active:cursor-grabbing',
