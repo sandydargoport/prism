@@ -249,6 +249,15 @@ While Babysitter Mode is on, the Babysitter Mode screen has a **Leave a note for
 - The sitter cannot read the Messages board. Only a parent can edit or delete a sitter's note.
 - With the authentication wall on, the note box only works on a trusted device, like the rest of `/babysitter`.
 
+### Today's meals
+
+While Babysitter Mode is on, the Babysitter Mode screen shows a **Today's Meals** card with what the meal planner has for today: each meal's name and whether it is breakfast, lunch, snack or dinner, in that order. It is read-only. The screen covers every page while the mode is on, so a sitter on `/babysitter` sees it too.
+
+- Only today, by the household's time zone. Other days stay on the family's meal planner.
+- Only the name and the slot. Recipes, ingredients, descriptions and who cooked it are not shown.
+- Nothing planned today, no card. When the mode is turned off, the server stops answering for the card.
+- Changes to the plan show up within about five minutes.
+
 ### Exiting
 
 Tap anywhere → PIN keypad → enter parent PIN → returns to the dashboard.
@@ -295,7 +304,7 @@ In Performance Mode:
 | Dashboard | Everything (calendars, tasks, etc.) | Yes, but read-only |
 | Screensaver | Photos + configured widgets | Same as dashboard |
 | Away Mode | Photos + clock + weather only | After timeout / manual activation |
-| Babysitter Mode | House info + contacts + child notes, sitter can leave a note | Yes, via `/babysitter` URL |
+| Babysitter Mode | House info + contacts + child notes + today's meals, sitter can leave a note | Yes, via `/babysitter` URL |
 
 If you're worried about what a casual passerby can see: Away mode is the answer. Set the auto-activation to a duration that matches your usage patterns.
 

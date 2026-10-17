@@ -78,6 +78,7 @@ Documents the authentication requirement for each API route. There are three acc
 | `/api/away-mode` | Public | Auth (manual), Public (auto-activate same-origin) |
 | `/api/babysitter-mode` | Public | Auth |
 | `/api/babysitter-info` | Display (non-sensitive) / Auth (sensitive) | Auth |
+| `/api/guest-meals` | Public while Babysitter Mode is on (today's meal names and slots only), 403 otherwise | n/a |
 
 ### Bus Tracking
 | Route | GET | POST/PATCH/DELETE |
