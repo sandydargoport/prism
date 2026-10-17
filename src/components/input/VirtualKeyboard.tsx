@@ -15,6 +15,7 @@ import {
 import {
   INITIAL_SHIFT_STATE,
   applyAutoShift,
+  consumeShift,
   autoShiftLayout,
   caretOf,
   fieldInfoFor,
@@ -226,6 +227,10 @@ export function VirtualKeyboard() {
       onKeyPress: (button: string) => {
         if (button === '{shift}' || button === '{lock}') {
           setShiftState(pressShiftKey(shiftRef.current, button === '{shift}' ? 'shift' : 'lock'));
+        } else if (!button.startsWith('{')) {
+          // `button` is already the shifted character, so a one-shot Shift
+          // can be cleared before the edit is applied.
+          setShiftState(consumeShift(shiftRef.current));
         }
         const activeInput = activeInputRef2.current.current;
         const activeContentEditable = activeContentEditableRef2.current.current;

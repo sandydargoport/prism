@@ -341,12 +341,13 @@ Search boxes and URL, ID or credential fields in the app are plain
 `type="text"` inputs, so they carry `autoCapitalize="none"`. A new field of
 that kind needs the same, or it starts with a capital.
 
-**Manual Shift and Caps Lock win.** Both stay sticky toggles as before, and
-the automatic capital never overrides them. Tapping Shift while the automatic
-capital is showing turns it off for that letter (as on a phone); Caps Lock
-there locks capitals on. Turning a manual shift off also holds the automatic
-one back until the next edit, caret move or field change, so it does not
-reappear under the finger.
+**Manual Shift and Caps Lock win.** Shift gives one capital and the next
+character clears it; Caps Lock stays on until Shift or Caps Lock is tapped
+again, as on a phone (before #635 Shift was sticky too). The automatic capital
+never overrides either. Tapping Shift while the automatic capital is showing
+turns it off for that letter; Caps Lock there locks capitals on. Turning a
+manual capital off also holds the automatic one back until the next edit,
+caret move or field change, so it does not reappear under the finger.
 
 It re-evaluates after every keystroke (using simple-keyboard's own caret), on
 a tap that moves the caret, on a move to another field while the keyboard is

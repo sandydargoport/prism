@@ -138,6 +138,15 @@ describe('VirtualKeyboard auto-capitalization', () => {
     expect(field.value).toBe('ok');
   });
 
+  it('Shift gives one capital, then lowercase again, as on a phone', () => {
+    const field = makeField('<input type="text">');
+    openFor(field);
+    typeText('a ');
+    tap('{shift}');
+    typeText('bc');
+    expect(field.value).toBe('A Bc');
+  });
+
   it("the user's Caps Lock wins over the automatic lowercase", () => {
     const field = makeField('<input type="text">');
     openFor(field);

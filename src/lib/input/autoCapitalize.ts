@@ -97,8 +97,13 @@ export function shouldAutoShift(value: string, caret: number | null, field: Fiel
 // ---------------------------------------------------------------------------
 
 export type ShiftState = {
-  /** Shift or Caps Lock tapped by the user. Sticky, and it always wins. */
+  /**
+   * Shift or Caps Lock tapped by the user. It always wins over the automatic
+   * capital. Shift is one-shot, as on a phone: the next character clears it.
+   */
   manual: boolean;
+  /** Caps Lock: `manual` stays on until Shift or Caps Lock is tapped again. */
+  locked: boolean;
   /** The one-shot automatic capital is armed. */
   auto: boolean;
   /**
@@ -109,20 +114,31 @@ export type ShiftState = {
   autoCancelled: boolean;
 };
 
-export const INITIAL_SHIFT_STATE: ShiftState = { manual: false, auto: false, autoCancelled: false };
+export const INITIAL_SHIFT_STATE: ShiftState = { manual: false, locked: false, auto: false, autoCancelled: false };
+
+const OFF_HELD: ShiftState = { manual: false, locked: false, auto: false, autoCancelled: true };
 
 export type ShiftLayoutName = 'default' | 'shift' | 'autoshift';
 
 /**
- * A tap on Shift or Caps Lock. Shift while the automatic capital is armed
- * turns it off for this letter, as on a phone; otherwise both toggle the
- * sticky shift they always have. Turning the sticky shift off also holds the
- * automatic one back, so it does not reappear under the user's finger.
+ * A tap on Shift or Caps Lock. Shift gives one capital and Caps Lock locks
+ * them, as on a phone. Either one, tapped while any capital is on (manual,
+ * locked or the automatic one), turns capitals off, and holds the automatic
+ * one back so it does not reappear under the user's finger.
  */
 export function pressShiftKey(state: ShiftState, key: 'shift' | 'lock'): ShiftState {
-  if (state.manual) return { manual: false, auto: false, autoCancelled: true };
-  if (state.auto && key === 'shift') return { manual: false, auto: false, autoCancelled: true };
-  return { manual: true, auto: false, autoCancelled: false };
+  if (state.manual) return OFF_HELD;
+  if (state.auto && key === 'shift') return OFF_HELD;
+  return { manual: true, locked: key === 'lock', auto: false, autoCancelled: false };
+}
+
+/**
+ * A character was typed. A one-shot Shift is used up by it; Caps Lock and the
+ * automatic capital are left to `applyAutoShift`, which runs after the edit.
+ */
+export function consumeShift(state: ShiftState): ShiftState {
+  if (state.manual && !state.locked) return { ...INITIAL_SHIFT_STATE };
+  return state;
 }
 
 /**
@@ -130,8 +146,8 @@ export function pressShiftKey(state: ShiftState, key: 'shift' | 'lock'): ShiftSt
  * `shouldAutoShift(...)` for the new position.
  */
 export function applyAutoShift(state: ShiftState, wanted: boolean): ShiftState {
-  if (state.manual) return { manual: true, auto: false, autoCancelled: false };
-  return { manual: false, auto: wanted, autoCancelled: false };
+  if (state.manual) return { manual: true, locked: state.locked, auto: false, autoCancelled: false };
+  return { manual: false, locked: false, auto: wanted, autoCancelled: false };
 }
 
 /** The simple-keyboard layout for a shift state. */

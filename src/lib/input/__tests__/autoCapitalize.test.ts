@@ -9,6 +9,7 @@
 import {
   INITIAL_SHIFT_STATE,
   applyAutoShift,
+  consumeShift,
   autoCapitalizeMode,
   autoShiftLayout,
   fieldInfoFor,
@@ -152,13 +153,20 @@ describe('shift state', () => {
     expect(layoutNameFor(locked)).toBe('shift');
   });
 
-  it('a manual Shift stays on through edits and wins over the automatic one', () => {
+  it('a manual Shift wins over the automatic one until a character uses it up', () => {
     let s = pressShiftKey(INITIAL_SHIFT_STATE, 'shift');
     expect(layoutNameFor(s)).toBe('shift');
     s = applyAutoShift(s, false);
     expect(layoutNameFor(s)).toBe('shift');
-    s = applyAutoShift(s, true);
+    s = consumeShift(s);
+    expect(layoutNameFor(applyAutoShift(s, false))).toBe('default');
+  });
+
+  it('Caps Lock is not used up by a character', () => {
+    let s = pressShiftKey(INITIAL_SHIFT_STATE, 'lock');
+    s = applyAutoShift(consumeShift(s), false);
     expect(layoutNameFor(s)).toBe('shift');
+    expect(layoutNameFor(pressShiftKey(s, 'shift'))).toBe('default');
   });
 
   it('turning a manual Shift off does not bring the automatic one straight back', () => {
