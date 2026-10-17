@@ -11,6 +11,7 @@ import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
 import { MIN_PIN_LENGTH, MAX_PIN_LENGTH, DEFAULT_PIN_LENGTH } from '@/lib/constants';
 import { isSetupComplete } from '@/lib/setup';
+import { isHexColor } from '@/lib/constants/memberColors';
 import type { PublicMemberField } from './publicShape';
 
 interface FamilyMemberResponse {
@@ -250,7 +251,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!body.color || !/^#[0-9A-Fa-f]{6}$/.test(body.color)) {
+    if (!isHexColor(body.color)) {
       return NextResponse.json(
         { error: 'Color must be a valid hex color (e.g., #3B82F6)' },
         { status: 400 }

@@ -4,7 +4,6 @@ import { useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { toast } from '@/components/ui/use-toast';
 import { Upload, Trash2, Smile } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { UserAvatar } from '@/components/ui/avatar';
@@ -15,17 +14,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { PIN_LENGTH_OPTIONS, DEFAULT_PIN_LENGTH, MAX_PIN_LENGTH } from '@/lib/constants';
+import { MemberColorPicker, type TakenMemberColor } from '@/components/ui/MemberColorPicker';
+import { nextFreeMemberColor } from '@/lib/constants/memberColors';
 import type { FamilyMember } from './PinEditModal';
 
 const EmojiPicker = dynamic(
   () => import('@emoji-mart/react').then((m) => ({ default: m.default as React.ComponentType<Record<string, unknown>> })),
   { ssr: false },
 );
-
-const colorOptions = [
-  '#3B82F6', '#EC4899', '#10B981', '#F59E0B',
-  '#8B5CF6', '#EF4444', '#06B6D4', '#84CC16',
-];
 
 export interface MemberModalSaveData {
   name: string;
@@ -43,10 +39,13 @@ export interface MemberModalSaveData {
 export function MemberModal({
   member,
   canResetPin = false,
+  takenColors = [],
   onClose,
   onSave,
 }: {
   member?: FamilyMember;
+  /** Colours the other members already use, marked on the swatches. */
+  takenColors?: readonly TakenMemberColor[];
   /** A parent editing a child or guest: a new PIN needs no current one. */
   canResetPin?: boolean;
   onClose: () => void;
@@ -54,7 +53,10 @@ export function MemberModal({
 }) {
   const [name, setName] = useState(member?.name || '');
   const [role, setRole] = useState<'parent' | 'child' | 'guest'>(member?.role || 'child');
-  const [color, setColor] = useState(member?.color || colorOptions[0] || '#3B82F6');
+  // A new member starts on the first colour nobody has yet.
+  const [color, setColor] = useState(
+    () => member?.color || nextFreeMemberColor(takenColors.map((t) => t.color)),
+  );
   // A new member defaults to a plain 4-digit PIN length — editing an
   // existing member starts from whatever length is already persisted on
   // them. Each member's own choice is the source of truth; there is no
@@ -254,20 +256,12 @@ export function MemberModal({
 
           <div>
             <label className="text-sm font-medium">Color</label>
-            <div className="flex gap-2 mt-1 flex-wrap">
-              {colorOptions.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setColor(c)}
-                  className={cn(
-                    'w-8 h-8 rounded-full border-2 transition-transform',
-                    color === c ? 'border-foreground scale-110' : 'border-transparent'
-                  )}
-                  style={{ backgroundColor: c }}
-                />
-              ))}
-            </div>
+            <MemberColorPicker
+              className="mt-1"
+              value={color}
+              onChange={setColor}
+              taken={takenColors}
+            />
           </div>
 
           <div>

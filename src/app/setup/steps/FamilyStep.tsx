@@ -10,11 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Users, Plus, Pencil, Trash2, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PIN_LENGTH_OPTIONS, DEFAULT_PIN_LENGTH } from '@/lib/constants';
-
-const COLOR_OPTIONS = [
-  '#3B82F6', '#EC4899', '#10B981', '#F59E0B',
-  '#8B5CF6', '#EF4444', '#06B6D4', '#84CC16',
-];
+import { MemberColorPicker } from '@/components/ui/MemberColorPicker';
+import { DEFAULT_MEMBER_COLOR, isHexColor, nextFreeMemberColor } from '@/lib/constants/memberColors';
 
 interface AddedMember {
   id: string;
@@ -33,7 +30,7 @@ interface FamilyStepProps {
 export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
   const [name, setName] = useState('');
   const [role, setRole] = useState<'parent' | 'child'>('parent');
-  const [color, setColor] = useState(COLOR_OPTIONS[0]!);
+  const [color, setColor] = useState(DEFAULT_MEMBER_COLOR);
   const [pin, setPin] = useState('');
   const [removePin, setRemovePin] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -61,17 +58,20 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
           ? data
           : (data.members ?? []);
         if (cancelled) return;
-        setAdded(
-          members
-            .filter((m) => typeof m.id === 'string' && m.id)
-            .map((m) => ({
-              id: m.id as string,
-              name: m.name as string,
-              role: m.role === 'child' ? 'child' : 'parent',
-              color: (m.color as string) ?? COLOR_OPTIONS[0]!,
-              hasPin: !!m.hasPin,
-              pinLength: (m.pinLength as number) ?? DEFAULT_PIN_LENGTH,
-            })),
+        const existing: AddedMember[] = members
+          .filter((m) => typeof m.id === 'string' && m.id)
+          .map((m) => ({
+            id: m.id as string,
+            name: m.name as string,
+            role: m.role === 'child' ? 'child' : 'parent',
+            color: isHexColor(m.color) ? m.color : DEFAULT_MEMBER_COLOR,
+            hasPin: !!m.hasPin,
+            pinLength: (m.pinLength as number) ?? DEFAULT_PIN_LENGTH,
+          }));
+        setAdded(existing);
+        // Offer the next member a colour nobody has, unless one was already picked.
+        setColor((current) =>
+          current === DEFAULT_MEMBER_COLOR ? nextFreeMemberColor(existing.map((m) => m.color)) : current,
         );
       } catch {
         /* ignore — start with an empty list */
@@ -109,13 +109,15 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
 
   const canSubmit = trimmedName.length > 0 && pinMatchesLength && !isDuplicateName;
 
-  const resetForm = () => {
+  // `members` is the list as it will be after the change that triggered the
+  // reset: `added` in this closure is still the list from before it.
+  const resetForm = (members: AddedMember[] = added) => {
     setEditingId(null);
     setName('');
     setPin('');
     setRemovePin(false);
     setRole('child');
-    setColor(COLOR_OPTIONS[added.length % COLOR_OPTIONS.length] ?? COLOR_OPTIONS[0]!);
+    setColor(nextFreeMemberColor(members.map((m) => m.color)));
     setMemberPinLength(DEFAULT_PIN_LENGTH);
   };
 
@@ -184,7 +186,7 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
         };
         setAdded((prev) => prev.map((m) => (m.id === editingMember.id ? updatedMember : m)));
         toast({ title: `Updated ${trimmedName}` });
-        resetForm();
+        resetForm(added.map((m) => (m.id === editingMember.id ? updatedMember : m)));
         return updatedMember;
       } finally {
         setSaving(false);
@@ -217,7 +219,7 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
       const newMember: AddedMember = { id: created.id, name: trimmedName, role, color, hasPin: !!pin.trim(), pinLength: memberPinLength };
       setAdded((prev) => [...prev, newMember]);
       toast({ title: `Added ${trimmedName}` });
-      resetForm();
+      resetForm([...added, newMember]);
       return newMember;
     } finally {
       setSaving(false);
@@ -237,7 +239,7 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
         return;
       }
       setAdded((prev) => prev.filter((m) => m.id !== member.id));
-      if (editingId === member.id) resetForm();
+      if (editingId === member.id) resetForm(added.filter((m) => m.id !== member.id));
       toast({ title: `Removed ${member.name}` });
     } finally {
       setDeletingId(null);
@@ -380,20 +382,13 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
 
           <div className="space-y-1">
             <Label>Color</Label>
-            <div className="flex gap-2 flex-wrap">
-              {COLOR_OPTIONS.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setColor(c)}
-                  className={cn(
-                    'h-7 w-7 rounded-full transition-transform',
-                    color === c ? 'ring-2 ring-primary ring-offset-2 scale-110' : '',
-                  )}
-                  style={{ background: c }}
-                  aria-label={c}
-                />
-              ))}
-            </div>
+            <MemberColorPicker
+              value={color}
+              onChange={setColor}
+              taken={added
+                .filter((m) => m.id !== editingId)
+                .map((m) => ({ color: m.color, name: m.name }))}
+            />
           </div>
 
           <div className="space-y-1">

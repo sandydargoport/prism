@@ -10,6 +10,7 @@ import { logError } from '@/lib/utils/logError';
 import { MIN_PIN_LENGTH, MAX_PIN_LENGTH } from '@/lib/constants';
 import { isSetupComplete } from '@/lib/setup';
 import { parentCanResetPin } from '@/lib/auth/pinReset';
+import { isHexColor } from '@/lib/constants/memberColors';
 
 export async function GET(
   request: NextRequest,
@@ -143,7 +144,15 @@ export async function PATCH(
       updates.role = body.role;
     }
 
-    if (body.color && /^#[0-9A-Fa-f]{6}$/.test(body.color)) {
+    // The colour lands in style attributes all over the app, so anything that
+    // is not exactly #RRGGBB is refused rather than dropped without a word.
+    if (body.color !== undefined) {
+      if (!isHexColor(body.color)) {
+        return NextResponse.json(
+          { error: 'Color must be a valid hex color (e.g., #3B82F6)' },
+          { status: 400 }
+        );
+      }
       updates.color = body.color;
     }
 

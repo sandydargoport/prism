@@ -32,6 +32,7 @@ import * as React from 'react';
 import * as AvatarPrimitive from '@radix-ui/react-avatar';
 import { cn } from '@/lib/utils';
 import { Emoji } from '@/components/ui/Emoji';
+import { isTooLightForWhiteText } from '@/lib/constants/memberColors';
 
 
 /**
@@ -200,7 +201,9 @@ export function UserAvatar({
         <AvatarImage src={imageUrl} alt={name} />
       )}
       <AvatarFallback
-        style={color ? { backgroundColor: color, color: 'white' } : undefined}
+        // White initials, as always, except on a custom colour too light for
+        // them to show. Every preset keeps white (see memberColors.ts).
+        style={color ? { backgroundColor: color, color: isTooLightForWhiteText(color) ? '#000000' : 'white' } : undefined}
       >
         {initials}
       </AvatarFallback>

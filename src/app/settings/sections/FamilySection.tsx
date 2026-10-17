@@ -263,6 +263,9 @@ export function FamilySection() {
         <MemberModal
           member={editingMember || undefined}
           canResetPin={!!(activeUser && editingMember && parentCanResetPin(activeUser, editingMember))}
+          takenColors={familyMembers
+            .filter((m) => m.id !== editingMember?.id)
+            .map((m) => ({ color: m.color, name: m.name }))}
           onClose={() => {
             setShowAddMember(false);
             setEditingMember(null);

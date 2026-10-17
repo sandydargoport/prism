@@ -138,7 +138,7 @@ Auto-enabled on devices reporting ≤2 GB RAM or ≤4 CPU cores. Stretches polli
 A short tour of *Settings*. (Each section's deep behavior is documented in the linked feature pages above where relevant.)
 
 - **Account & Profile**: current session and default display user.
-- **Family Members**: add / edit / remove members. Names, colors, avatars, roles, sort order.
+- **Family Members**: add / edit / remove members. Names, colors, avatars, roles, sort order. Pick a color from the 18 presets or tap the rainbow swatch for any custom color. Presets another member already uses show that member's initial; they can still be shared.
 - **General**: weather location (city or postal code), time zone, Week Starts On.
 - **Integrations**: one card per provider brand: Google (Calendar, Tasks), Microsoft (To Do, OneDrive), Gmail (bus tracking), Apple / CalDAV, Kroger (shopping cart push), plus Photo Sources. Per-list Task / Shopping / Wish List sync is mapped inside the Microsoft or Google provider card.
 - **Text Size**: how large everything reads on each dashboard.
