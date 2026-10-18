@@ -9,6 +9,7 @@ All notable changes to Prism are documented in this file.
 - **The on-screen keyboard capitalizes like a phone's.** It starts with a capital at the beginning of a field, after a full stop and after a new line, then drops to lowercase. Search, email, web address, password and number fields stay lowercase. Thanks @yeojwal for the idea. ([#635](https://github.com/sandydargoport/prism/issues/635))
 - **Today's meals on the Babysitter Mode screen.** While the mode is on, its screen lists the day's meals, read-only, by name and meal. Recipes and other days stay private, and nothing is shown once the mode is off. Thanks @yeojwal for the idea. ([#638](https://github.com/sandydargoport/prism/issues/638))
 - **Double space for a full stop on the on-screen keyboard.** Two quick taps of space after a word type ". ", and the next word starts with a capital, as on a phone. Search, email and password fields keep both spaces.
+- **Copy the dashboard to the screensaver, or back.** The layout editor's **More** menu has **Copy to screensaver** (or **Copy to dashboard** while editing the screensaver). It replaces the other layout and switches to it, to Save or Cancel. Widgets the screensaver cannot show are left out, and the confirmation names them.
 - **More member colours, and any colour you like.** The colour picker has 18 colours, spaced to be easier to tell apart, and its last swatch opens a panel for any colour, with Done and Cancel, that shows the colour beside every other member's. A colour another member already uses, preset or custom, shows their initial. Every existing member keeps their colour. Thanks @yeojwal for the idea. ([#640](https://github.com/sandydargoport/prism/issues/640))
 
 ### Changed
@@ -25,6 +26,7 @@ All notable changes to Prism are documented in this file.
 - **`ALLOWED_FRAME_ANCESTORS` works on published images and the Home Assistant add-on.** It was read when the image was built, so the value set on a running container was ignored and Prism could not be shown inside Home Assistant. It is now read at runtime, the add-on has a matching `allowed_frame_ancestors` option, and the Home Assistant guide uses a Webpage dashboard in place of the retired `panel_iframe`.
 - **Widget and page header buttons keep their full size at large text sizes.** The Add buttons were squashed when the text size was raised. ([#595](https://github.com/sandydargoport/prism/issues/595))
 - **The keyboard's microphone says why it cannot listen.** On a plain `http://` address the browser blocks the microphone, and with Siri & Dictation off Safari refuses it; both used to fail with nothing on screen. Every recognition error now shows a message.
+- **Cancel in the layout editor puts the screensaver back too.** Screensaver changes made while editing survived Cancel; they are now undone with the rest.
 
 ## [1.29.0] – 2026-10-05
 

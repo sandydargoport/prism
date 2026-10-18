@@ -23,6 +23,8 @@ interface ToolbarRightProps {
   onExport: () => void;
   onImportOpen: () => void;
   onShareOpen: () => void;
+  /** Copy this layout over the other one (dashboard <-> screensaver). */
+  onCopyToOther?: () => void;
   onDeleteDashboard?: () => void;
   onHandleDelete: () => void;
 }
@@ -49,6 +51,7 @@ export function LayoutEditorToolbarRight({
   onExport,
   onImportOpen,
   onShareOpen,
+  onCopyToOther,
   onDeleteDashboard,
   onHandleDelete,
 }: ToolbarRightProps) {
@@ -175,6 +178,17 @@ export function LayoutEditorToolbarRight({
           </button>
           <button onClick={onImportOpen} className={moreItemClass}>Import</button>
           <button onClick={onShareOpen} className={moreItemClass}>Share</button>
+          {onCopyToOther && (
+            <>
+              <div className="border-t border-border my-1" />
+              <button
+                onClick={() => { onCopyToOther(); onTogglePopover('more'); }}
+                className={moreItemClass}
+              >
+                {editingScreensaver ? 'Copy to dashboard' : 'Copy to screensaver'}
+              </button>
+            </>
+          )}
         </div>
       </PopoverButton>
 

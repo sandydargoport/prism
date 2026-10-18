@@ -15,6 +15,7 @@ import { LayoutEditorToolbarRight } from './LayoutEditorToolbarRight';
 import { useMeasureMode } from './useMeasureMode';
 import { useLayoutEditorState } from './useLayoutEditorState';
 import type { LayoutEditorProps } from './LayoutEditorTypes';
+import { copyLayoutToOther } from './copyLayout';
 
 export type { SavedLayout, DashboardInfo, LayoutEditorProps } from './LayoutEditorTypes';
 
@@ -117,6 +118,28 @@ export function LayoutEditor({
     if (measureMode) setActivePopover(null);
   }, [measureMode]);
 
+  // Copy this layout over the other one and switch to it, so the result is
+  // in front of the user to Save or Cancel like any other edit.
+  const handleCopyToOther = async () => {
+    const copy = copyLayoutToOther(
+      editingScreensaver ? (screensaverWidgets ?? []) : widgets,
+      editingScreensaver ? 'dashboard' : 'screensaver',
+    );
+    const target = editingScreensaver ? 'dashboard' : 'screensaver';
+    const leftOut = copy.leftOut.length
+      ? ` Left out, because the screensaver cannot show them: ${copy.leftOut.join(', ')}.`
+      : '';
+    const ok = await confirmDelete(
+      `Copy to ${target}?`,
+      `This replaces the ${target}'s layout with these ${copy.widgets.length} widgets.${leftOut} You will see the result next; Save keeps it and Cancel puts the old one back.`,
+      { confirmLabel: 'Copy', variant: 'default' },
+    );
+    if (!ok) return;
+    if (editingScreensaver) onWidgetsChange(copy.widgets);
+    else onSelectScreensaverTemplate?.(copy.widgets);
+    onToggleScreensaverEdit?.();
+  };
+
   if (measureMode) {
     return (
       <LayoutEditorMeasureBar
@@ -184,6 +207,7 @@ export function LayoutEditor({
             onExport={state.handleExport}
             onImportOpen={() => { state.setShowImportDialog(true); setActivePopover(null); }}
             onShareOpen={() => { state.setShowShareDialog(true); setActivePopover(null); }}
+            onCopyToOther={onToggleScreensaverEdit ? handleCopyToOther : undefined}
             onDeleteDashboard={onDeleteDashboard}
             onHandleDelete={state.handleDelete}
           />

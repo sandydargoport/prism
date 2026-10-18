@@ -82,6 +82,10 @@ Made a board worth sharing? Open the **More** menu and click **Share**, fill in 
 
 Submitting to the gallery needs a GitHub account. Without one, use **Download file** in the same dialog and send the file however you like; the other household loads it through **Import**.
 
+### Copy between the dashboard and the screensaver
+
+**More → Copy to screensaver** replaces the screensaver's layout with the dashboard you are editing, and switches to the screensaver so you can check it; **Save** keeps it and **Cancel** puts the old one back. While editing the screensaver the same item reads **Copy to dashboard**. The screensaver shows fewer kinds of widget than the dashboard, so any it cannot show are left out, and the confirmation says which.
+
 ### Export & Import
 
 - **Export** (More → Export): copy your current layout as JSON to hand to someone directly.

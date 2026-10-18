@@ -27,6 +27,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
   const [isEditing, setIsEditing] = useState(false);
   const [editingWidgets, setEditingWidgets] = useState<WidgetConfig[]>([]);
   const preEditWidgetsRef = useRef<WidgetConfig[]>([]);
+  const preEditSsRef = useRef<WidgetConfig[] | null>(null);
   const [editingScreensaver, setEditingScreensaver] = useState(false);
 
   // Resolve active layout: by slug if provided, otherwise default
@@ -98,9 +99,10 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     if (!user || user.role !== 'parent') return;
     const current = activeLayout?.widgets ?? DEFAULT_TEMPLATE.widgets;
     preEditWidgetsRef.current = current;
+    preEditSsRef.current = ssLayout;
     setEditingWidgets(current);
     setIsEditing(true);
-  }, [activeLayout, activeUser, requireAuth]);
+  }, [activeLayout, activeUser, requireAuth, ssLayout]);
 
   const handleSave = useCallback(async (name?: string) => {
     try {
@@ -165,6 +167,14 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
 
   const handleCancel = useCallback(() => {
     setEditingWidgets(preEditWidgetsRef.current);
+    // Screensaver edits apply as they are made (the running screensaver reads
+    // them), so Cancel has to put the layout from before editing back too,
+    // or a copy from the dashboard would survive it.
+    if (preEditSsRef.current) {
+      setSsLayout(preEditSsRef.current);
+      saveScreensaverLayout(preEditSsRef.current);
+      preEditSsRef.current = null;
+    }
     setIsEditing(false);
   }, []);
 
