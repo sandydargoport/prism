@@ -15,6 +15,9 @@ import {
 import {
   INITIAL_SHIFT_STATE,
   applyAutoShift,
+  autoCapitalizeMode,
+  doubleSpacePeriod,
+  DOUBLE_SPACE_MS,
   consumeShift,
   autoShiftLayout,
   caretOf,
@@ -107,6 +110,14 @@ export function VirtualKeyboard() {
   stopListeningRef.current = stopListening;
   const declaredInputModeRef = useRef(declaredInputMode);
   declaredInputModeRef.current = declaredInputMode;
+
+  // Double space for a full stop: when the last space was tapped, and whether
+  // the space being applied now is the second of a pair.
+  const lastSpaceAtRef = useRef(0);
+  const doubleSpaceRef = useRef(false);
+  /** Whether the active field wants sentence punctuation help at all. */
+  const allowsDoubleSpace = (el: HTMLElement | null) =>
+    !!el && autoCapitalizeMode(fieldInfoFor(el, declaredInputModeRef.current(el))) !== 'off';
 
   /** Apply a new shift state, re-rendering the keys only when the layout changes. */
   const setShiftState = useCallback((next: ShiftState) => {
@@ -216,6 +227,17 @@ export function VirtualKeyboard() {
     const kb = new Keyboard(containerRef.current, {
       onChange: (input) => {
         if (isContentEditableRef.current) return;
+        if (doubleSpaceRef.current) {
+          doubleSpaceRef.current = false;
+          const caret = kb.getCaretPosition() ?? input.length;
+          const period = allowsDoubleSpace(activeInputRef2.current.current)
+            ? doubleSpacePeriod(input.slice(0, caret))
+            : null;
+          if (period) {
+            input = period + input.slice(caret);
+            kb.setInput(input);
+          }
+        }
         injectingRef.current = true;
         try {
           injectTextRef.current(input);
@@ -225,6 +247,15 @@ export function VirtualKeyboard() {
         evaluateAutoShift(kb.getCaretPosition());
       },
       onKeyPress: (button: string) => {
+        if (button === '{space}') {
+          const now = Date.now();
+          doubleSpaceRef.current = now - lastSpaceAtRef.current < DOUBLE_SPACE_MS;
+          // A third quick tap is a plain space again, not another full stop.
+          lastSpaceAtRef.current = doubleSpaceRef.current ? 0 : now;
+        } else {
+          lastSpaceAtRef.current = 0;
+          doubleSpaceRef.current = false;
+        }
         if (button === '{shift}' || button === '{lock}') {
           setShiftState(pressShiftKey(shiftRef.current, button === '{shift}' ? 'shift' : 'lock'));
         } else if (!button.startsWith('{')) {
@@ -259,7 +290,15 @@ export function VirtualKeyboard() {
             document.execCommand('insertParagraph');
           } else if (button === '{space}') {
             el.focus();
-            document.execCommand('insertText', false, ' ');
+            const before = textBeforeCaret(el);
+            if (doubleSpaceRef.current && before !== null && allowsDoubleSpace(el)
+              && doubleSpacePeriod(`${before} `)) {
+              document.execCommand('delete');
+              document.execCommand('insertText', false, '. ');
+            } else {
+              document.execCommand('insertText', false, ' ');
+            }
+            doubleSpaceRef.current = false;
           } else if (button === '{tab}') {
             el.focus();
             document.execCommand('insertText', false, '\t');

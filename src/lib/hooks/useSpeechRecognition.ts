@@ -45,6 +45,17 @@ export function useSpeechRecognition(
     ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
 
   const start = useCallback(() => {
+    // Browsers only allow the microphone on a secure page. On a plain http://
+    // address (a LAN IP, say) recognition fails with no visible reason, so say
+    // why up front.
+    if (typeof window !== 'undefined' && window.isSecureContext === false) {
+      toast({
+        title: 'Voice input needs a secure (https://) address.',
+        description: 'The browser blocks the microphone on an http:// page. Open Prism through its https address to use the mic.',
+        variant: 'destructive',
+      });
+      return;
+    }
     if (!isSupported) {
       toast({ title: 'Voice input not supported in this browser.', variant: 'destructive' });
       return;
@@ -76,16 +87,25 @@ export function useSpeechRecognition(
         'not-allowed': 'Microphone permission denied. Check browser settings.',
         'network': 'Speech recognition needs an internet connection.',
         'audio-capture': 'No microphone found.',
+        // Safari's answer when dictation is off, or the page is not allowed it.
+        'service-not-allowed': 'Voice input is turned off for this browser. On an iPad or iPhone, turn on Siri & Dictation in Settings.',
       };
-      if (e.error !== 'aborted' && messages[e.error]) {
-        toast({ title: messages[e.error], variant: 'destructive' });
+      // Any other error still says something, rather than nothing happening.
+      if (e.error !== 'aborted') {
+        toast({ title: messages[e.error] ?? `Voice input stopped (${e.error}).`, variant: 'destructive' });
       }
     };
 
     rec.onend = () => setIsListening(false);
 
     recRef.current = rec;
-    rec.start();
+    try {
+      rec.start();
+    } catch (err) {
+      // Some browsers throw here instead of firing onerror.
+      toast({ title: 'Voice input could not start.', description: String(err), variant: 'destructive' });
+      return;
+    }
     setIsListening(true);
     setError(null);
   }, [isListening, isSupported, onResult]);

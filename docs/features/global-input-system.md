@@ -58,7 +58,10 @@ KeyboardToggleButton (Component)
   └── calls setKeyboardVisible(true) on tap
 
 useSpeechRecognition (Hook)
-  └── wraps webkitSpeechRecognition
+  └── wraps webkitSpeechRecognition. Needs a secure page: on a plain http://
+      address it says so instead of trying, and every recognition error
+      (including Safari's service-not-allowed, when Siri & Dictation is off)
+      shows a message rather than failing silently.
   └── appends final results via injectText()
 ```
 
@@ -348,6 +351,12 @@ never overrides either. Tapping Shift while the automatic capital is showing
 turns it off for that letter; Caps Lock there locks capitals on. Turning a
 manual capital off also holds the automatic one back until the next edit,
 caret move or field change, so it does not reappear under the finger.
+
+**Double space for a full stop.** Two taps of space within 500ms after a
+letter or digit become ". ", as on a phone, and the automatic capital then arms
+for the next word. A third quick tap is a plain space. It follows the same
+field rules: a field where auto-capitalization is off (search, email, URL,
+password) keeps both spaces. `doubleSpacePeriod()` in `autoCapitalize.ts`.
 
 It re-evaluates after every keystroke (using simple-keyboard's own caret), on
 a tap that moves the caret, on a move to another field while the keyboard is

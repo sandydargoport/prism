@@ -117,7 +117,7 @@ export function ShoppingView() {
   const {
     draggedCategory,
     handleDragStart, handleDragOver, handleDragEnd,
-    handleTouchStart, handleTouchMove, handleTouchEnd,
+    startTouchDrag, moveTouchDrag, endTouchDrag,
   } = useShoppingDragReorder({ categoryOrder, dynamicCategories, reorderCategories });
 
   const {
@@ -349,9 +349,9 @@ export function ShoppingView() {
                       onDragStart={() => handleDragStart(category)}
                       onDragOver={(e) => handleDragOver(e, category)}
                       onDragEnd={handleDragEnd}
-                      onTouchStart={(e) => handleTouchStart(e, category)}
-                      onTouchMove={handleTouchMove}
-                      onTouchEnd={handleTouchEnd}
+                      onTouchDragStart={() => startTouchDrag(category)}
+                      onTouchDragMove={moveTouchDrag}
+                      onTouchDragEnd={endTouchDrag}
                       onToggleItem={(itemId) => toggleItem(itemId)}
                       onEditItem={handleEditItem}
                       onDeleteItem={(itemId) => handleDeleteItem(itemId)}

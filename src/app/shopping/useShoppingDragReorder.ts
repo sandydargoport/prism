@@ -15,7 +15,6 @@ export function useShoppingDragReorder({
   reorderCategories,
 }: UseShoppingDragReorderProps) {
   const [draggedCategory, setDraggedCategory] = useState<string | null>(null);
-  const touchStartRef = useRef<{ x: number; y: number; element: HTMLElement | null }>({ x: 0, y: 0, element: null });
 
   const saveCategoryOrder = useCallback((order: string[]) => {
     const reordered = order.map(id => dynamicCategories.find(c => c.id === id)).filter(Boolean) as typeof dynamicCategories;
@@ -45,44 +44,39 @@ export function useShoppingDragReorder({
     setDraggedCategory(null);
   }, []);
 
-  const handleTouchStart = useCallback((e: React.TouchEvent, category: string) => {
-    const touch = e.touches[0];
-    if (!touch) return;
-    touchStartRef.current = {
-      x: touch.clientX,
-      y: touch.clientY,
-      element: e.currentTarget as HTMLElement,
-    };
+  // Touch drags come through useLongPressDrag on each card (press-and-hold,
+  // like meals). The dragged id is also kept in a ref: the first move can
+  // arrive before React has re-rendered with the new state.
+  const touchDraggedRef = useRef<string | null>(null);
+
+  const startTouchDrag = useCallback((category: string) => {
+    touchDraggedRef.current = category;
     setDraggedCategory(category);
   }, []);
 
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!draggedCategory) return;
-    const touch = e.touches[0];
-    if (!touch) return;
-
-    const elements = document.elementsFromPoint(touch.clientX, touch.clientY);
-    for (const el of elements) {
-      const categoryAttr = el.getAttribute('data-category');
-      if (categoryAttr && categoryAttr !== draggedCategory) {
-        const targetCategory = categoryAttr;
+  const moveTouchDrag = useCallback((x: number, y: number) => {
+    const dragged = touchDraggedRef.current;
+    if (!dragged || typeof document.elementsFromPoint !== 'function') return;
+    for (const el of document.elementsFromPoint(x, y)) {
+      const target = el.getAttribute('data-category');
+      if (!target) continue;
+      if (target !== dragged) {
         const newOrder = [...categoryOrder];
-        const draggedIndex = newOrder.indexOf(draggedCategory);
-        const targetIndex = newOrder.indexOf(targetCategory);
-
+        const draggedIndex = newOrder.indexOf(dragged);
+        const targetIndex = newOrder.indexOf(target);
         if (draggedIndex !== -1 && targetIndex !== -1 && draggedIndex !== targetIndex) {
           newOrder.splice(draggedIndex, 1);
-          newOrder.splice(targetIndex, 0, draggedCategory);
+          newOrder.splice(targetIndex, 0, dragged);
           saveCategoryOrder(newOrder);
         }
-        break;
       }
+      break;
     }
-  }, [draggedCategory, categoryOrder, saveCategoryOrder]);
+  }, [categoryOrder, saveCategoryOrder]);
 
-  const handleTouchEnd = useCallback(() => {
+  const endTouchDrag = useCallback(() => {
+    touchDraggedRef.current = null;
     setDraggedCategory(null);
-    touchStartRef.current = { x: 0, y: 0, element: null };
   }, []);
 
   return {
@@ -90,8 +84,8 @@ export function useShoppingDragReorder({
     handleDragStart,
     handleDragOver,
     handleDragEnd,
-    handleTouchStart,
-    handleTouchMove,
-    handleTouchEnd,
+    startTouchDrag,
+    moveTouchDrag,
+    endTouchDrag,
   };
 }

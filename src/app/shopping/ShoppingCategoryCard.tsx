@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ShoppingItemRow } from '@/app/shopping/ShoppingItemRow';
 import { cn } from '@/lib/utils';
+import { useLongPressDrag } from '@/lib/hooks/useLongPressDrag';
 import type { ShoppingItem } from '@/types';
 import type { KeyboardEvent, FocusEvent, MutableRefObject } from 'react';
 
@@ -24,9 +25,10 @@ interface ShoppingCategoryCardProps {
   onDragStart: () => void;
   onDragOver: (e: React.DragEvent) => void;
   onDragEnd: () => void;
-  onTouchStart: (e: React.TouchEvent) => void;
-  onTouchMove: (e: React.TouchEvent) => void;
-  onTouchEnd: () => void;
+  /** Touch reorder, after a press-and-hold on the card (useLongPressDrag). */
+  onTouchDragStart: () => void;
+  onTouchDragMove: (x: number, y: number) => void;
+  onTouchDragEnd: () => void;
   onToggleItem: (itemId: string) => void;
   onEditItem: (item: ShoppingItem) => void;
   onDeleteItem: (itemId: string) => void;
@@ -52,9 +54,9 @@ export function ShoppingCategoryCard({
   onDragStart,
   onDragOver,
   onDragEnd,
-  onTouchStart,
-  onTouchMove,
-  onTouchEnd,
+  onTouchDragStart,
+  onTouchDragMove,
+  onTouchDragEnd,
   onToggleItem,
   onEditItem,
   onDeleteItem,
@@ -65,8 +67,15 @@ export function ShoppingCategoryCard({
   onAddExtraRows,
   isMobile = false,
 }: ShoppingCategoryCardProps) {
+  // Phones get their own layout and do not reorder by touch.
+  const { ref: touchRef } = useLongPressDrag<HTMLDivElement>(
+    { onStart: onTouchDragStart, onMove: onTouchDragMove, onEnd: onTouchDragEnd },
+    { enabled: !isMobile },
+  );
+
   return (
     <div
+      ref={touchRef}
       data-category={category}
       draggable={!isMobile}
       onDragStart={!isMobile ? onDragStart : undefined}
@@ -80,26 +89,19 @@ export function ShoppingCategoryCard({
       style={{ borderColor: categoryColor }}
     >
       {/*
-        The header is the drag handle on a touchscreen, and the rest of the
-        card is not. Touching anywhere on the card used to begin a reorder,
-        and the card carried `touch-none`, which tells the browser not to
-        scroll for a gesture that starts on it. On a wall-sized display the
-        lists cover the width, so there was no background left to push: every
-        attempt to scroll the page grabbed a list and moved it instead.
-
-        This has to be a handle rather than a press-and-hold. `touch-action`
-        is read when a gesture begins, so a card that decides mid-gesture that
-        it is being dragged cannot stop the page scrolling under it by then.
-        A handle decides before the finger lands. The grip icon is what says
-        which part it is.
+        On a touchscreen a list is reordered by pressing and holding anywhere
+        on it, then dragging, as meals are moved (useLongPressDrag). A swipe
+        that moves first is a scroll, so a wall-sized display whose lists
+        cover the width can still be scrolled. The header used to be an
+        instant-grab handle with `touch-none`, on the belief that a drag
+        decided mid-gesture could not stop the page scrolling; a non-passive
+        touchmove that prevents once the drag is live can. The grip icon
+        still says the list can be moved.
       */}
       <div
-        onTouchStart={!isMobile ? onTouchStart : undefined}
-        onTouchMove={!isMobile ? onTouchMove : undefined}
-        onTouchEnd={!isMobile ? onTouchEnd : undefined}
         className={cn(
           'px-2 py-1 flex items-center gap-1 select-none',
-          !isMobile && 'cursor-grab active:cursor-grabbing touch-none'
+          !isMobile && 'cursor-grab active:cursor-grabbing'
         )}
         style={{ backgroundColor: categoryColor + '20' }}
       >

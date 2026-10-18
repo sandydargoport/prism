@@ -236,3 +236,21 @@ export function textBeforeCaret(host: HTMLElement): string | null {
   }
   return text;
 }
+
+// ---------------------------------------------------------------------------
+// Double space for a full stop, as on a phone
+// ---------------------------------------------------------------------------
+
+/** Two taps of space within this window count as a double space. */
+export const DOUBLE_SPACE_MS = 500;
+
+/**
+ * The text before the caret after a double space, with the two spaces turned
+ * into ". ", or null when it does not apply. Only after a letter or digit, so
+ * "Done.  " or a run of spaces is left alone. The automatic capital then arms
+ * for the next sentence on its own.
+ */
+export function doubleSpacePeriod(textBefore: string): string | null {
+  if (!/[\p{L}\p{N}] {2}$/u.test(textBefore)) return null;
+  return `${textBefore.slice(0, -2)}. `;
+}

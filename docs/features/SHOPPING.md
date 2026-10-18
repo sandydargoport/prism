@@ -43,7 +43,7 @@ For non-grocery lists, categories are open-ended: you can use any string (`cloth
 
 ### Drag-to-reorder
 
-Grab the **grip icon** (⋮⋮) on a category header to drag categories into the order that matches your store. The order persists to localStorage as `prism:grocery-category-order` and applies to all grocery lists.
+With a mouse, drag a category by its header (the **grip icon** ⋮⋮ marks it). On a touchscreen, press and hold anywhere on a category for half a second, then drag it, the same as moving a meal; a swipe that moves straight away scrolls the page instead. Put categories in the order that matches your store. The order persists to localStorage as `prism:grocery-category-order` and applies to all grocery lists.
 
 ### Empty rows
 

@@ -147,6 +147,42 @@ describe('VirtualKeyboard auto-capitalization', () => {
     expect(field.value).toBe('A Bc');
   });
 
+  it('a quick double space types a full stop and capitalizes the next word', () => {
+    const field = makeField('<input type="text">');
+    openFor(field);
+    typeText('ok');
+    tap('{space}');
+    tap('{space}');
+    expect(field.value).toBe('Ok. ');
+    typeText('next');
+    expect(field.value).toBe('Ok. Next');
+  });
+
+  it('two slow spaces stay two spaces', () => {
+    const now = jest.spyOn(Date, 'now');
+    try {
+      const field = makeField('<input type="text">');
+      openFor(field);
+      typeText('ok');
+      now.mockReturnValue(1_000);
+      tap('{space}');
+      now.mockReturnValue(2_000);
+      tap('{space}');
+      expect(field.value).toBe('Ok  ');
+    } finally {
+      now.mockRestore();
+    }
+  });
+
+  it('no full stop in a field that opts out, such as a search box', () => {
+    const field = makeField('<input type="text" autocapitalize="none">');
+    openFor(field);
+    typeText('ok');
+    tap('{space}');
+    tap('{space}');
+    expect(field.value).toBe('ok  ');
+  });
+
   it("the user's Caps Lock wins over the automatic lowercase", () => {
     const field = makeField('<input type="text">');
     openFor(field);

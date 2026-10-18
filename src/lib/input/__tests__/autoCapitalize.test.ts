@@ -10,6 +10,7 @@ import {
   INITIAL_SHIFT_STATE,
   applyAutoShift,
   consumeShift,
+  doubleSpacePeriod,
   autoCapitalizeMode,
   autoShiftLayout,
   fieldInfoFor,
@@ -256,5 +257,19 @@ describe('textBeforeCaret', () => {
     document.body.innerHTML = '<div id="h">Note</div><p id="o">Other</p>';
     caretAt(document.getElementById('o')!.firstChild!, 2);
     expect(textBeforeCaret(document.getElementById('h')!)).toBeNull();
+  });
+});
+
+describe('doubleSpacePeriod', () => {
+  it('turns a double space after a word into a full stop and a space', () => {
+    expect(doubleSpacePeriod('buy milk  ')).toBe('buy milk. ');
+    expect(doubleSpacePeriod('room 12  ')).toBe('room 12. ');
+  });
+
+  it('leaves it alone after punctuation, a single space, or only spaces', () => {
+    expect(doubleSpacePeriod('done.  ')).toBeNull();
+    expect(doubleSpacePeriod('buy ')).toBeNull();
+    expect(doubleSpacePeriod('  ')).toBeNull();
+    expect(doubleSpacePeriod('buy   ')).toBeNull();
   });
 });
