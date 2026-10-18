@@ -1192,3 +1192,26 @@ html[data-virtual-keyboard-open] [data-keyboard-aware-dialog] {
 .prism-water-clear [class*="bg-card"] {
   padding-top: 30px;
 }
+
+/* Member colour picker sliders (#640): the track is the gradient set inline,
+   so only the thumb needs drawing. Large enough to drag with a finger. */
+.member-color-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 2px solid rgb(0 0 0 / 0.5);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.4);
+}
+.member-color-slider::-moz-range-thumb {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 2px solid rgb(0 0 0 / 0.5);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.4);
+}
+.member-color-slider::-moz-range-track {
+  background: transparent;
+}
