@@ -13,7 +13,6 @@ import {
 import type { WidgetConfig, Layout } from '@/lib/hooks/useLayouts';
 import { findNextFreeSlot } from '@/lib/utils/widgetPlacement';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { toast } from '@/components/ui/use-toast';
 
 interface LayoutsData {
   savedLayout: Layout | null;
@@ -24,7 +23,7 @@ interface LayoutsData {
 }
 
 export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
-  const { activeUser } = useAuth();
+  const { activeUser, requireAuth } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editingWidgets, setEditingWidgets] = useState<WidgetConfig[]>([]);
   const preEditWidgetsRef = useRef<WidgetConfig[]>([]);
@@ -91,24 +90,17 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     : activeLayout?.widgets
       ?? (layouts.loading ? [] : DEFAULT_TEMPLATE.widgets);
 
-  const handleEditStart = useCallback(() => {
-    // Auth gate: only logged-in parents can edit. Signed-out users get a
-    // toast reminder; signed-in non-parents are quietly blocked (their
-    // edit button is already hidden, so this is just a safety net).
-    if (!activeUser) {
-      toast({
-        title: 'Sign in to edit',
-        description: 'Log in as a parent to edit the dashboard layout.',
-        duration: 3000,
-      });
-      return;
-    }
-    if (activeUser.role !== 'parent') return;
+  const handleEditStart = useCallback(async () => {
+    // Auth gate: only parents can edit. Signed out, the PIN box opens and
+    // editing starts once a parent signs in; a non-parent is quietly
+    // blocked (their edit button is already hidden, so this is a safety net).
+    const user = activeUser ?? await requireAuth('Sign in to edit', "Enter a parent's PIN to edit the dashboard layout.");
+    if (!user || user.role !== 'parent') return;
     const current = activeLayout?.widgets ?? DEFAULT_TEMPLATE.widgets;
     preEditWidgetsRef.current = current;
     setEditingWidgets(current);
     setIsEditing(true);
-  }, [activeLayout, activeUser]);
+  }, [activeLayout, activeUser, requireAuth]);
 
   const handleSave = useCallback(async (name?: string) => {
     try {

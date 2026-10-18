@@ -5,12 +5,16 @@ import { useVisibilityPolling } from '@/lib/hooks/useVisibilityPolling';
 import type { TravelPin, TravelTrip } from './types';
 
 export class TravelAuthError extends Error {
-  constructor() { super('Not logged in'); this.name = 'TravelAuthError'; }
+  /** 401: nobody is signed in (AuthProvider opens the PIN box). 403: signed in, not allowed. */
+  constructor(public readonly status: 401 | 403 = 401) {
+    super(status === 401 ? 'Not logged in' : 'Not allowed');
+    this.name = 'TravelAuthError';
+  }
 }
 
 function checkResponse(res: Response, action: string): void {
   if (!res.ok) {
-    if (res.status === 401 || res.status === 403) throw new TravelAuthError();
+    if (res.status === 401 || res.status === 403) throw new TravelAuthError(res.status);
     throw new Error(`Failed to ${action}`);
   }
 }

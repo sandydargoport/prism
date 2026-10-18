@@ -5,12 +5,16 @@ import { useVisibilityPolling } from '@/lib/hooks/useVisibilityPolling';
 import type { WeekendPlace } from './types';
 
 export class WeekendAuthError extends Error {
-  constructor() { super('Not logged in'); this.name = 'WeekendAuthError'; }
+  /** 401: nobody is signed in (AuthProvider opens the PIN box). 403: signed in, not allowed. */
+  constructor(public readonly status: 401 | 403 = 401) {
+    super(status === 401 ? 'Not logged in' : 'Not allowed');
+    this.name = 'WeekendAuthError';
+  }
 }
 
 function checkResponse(res: Response, action: string): void {
   if (!res.ok) {
-    if (res.status === 401 || res.status === 403) throw new WeekendAuthError();
+    if (res.status === 401 || res.status === 403) throw new WeekendAuthError(res.status);
     throw new Error(`Failed to ${action}`);
   }
 }

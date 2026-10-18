@@ -28,7 +28,6 @@ import * as React from 'react';
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { QuickPinModal, type QuickPinMember } from '@/components/auth';
 import { useVisibilityPolling } from '@/lib/hooks/useVisibilityPolling';
-import { toast } from '@/components/ui/use-toast';
 
 /**
  * AUTH CONTEXT TYPE
@@ -130,30 +129,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return () => window.removeEventListener('prism:auth-expired', handleAuthExpired);
   }, []);
 
-  // Global "sign-in required" toast for mutation 401s.
+  // Global sign-in prompt for mutation 401s.
   //
   // When a signed-out user edits a field, ticks a chore, adds a shopping
   // item, etc., the underlying /api/* mutation returns 401. Without an
-  // interceptor, the UI just silently fails to update — confusing, since
-  // there's no signal that auth is the cause. We wrap window.fetch once
-  // here so every mutation response gets checked and a single toast fires
-  // the same way the dashboard edit-button click does.
+  // interceptor, the UI just silently fails to update. We wrap window.fetch
+  // once here so every mutation response gets checked, and a 401 opens the
+  // PIN box: the way through, rather than a toast describing it.
   //
   // Constraints:
   // - Only /api/* paths (don't interfere with third-party fetches like
   //   Google Maps tiles, OneDrive image proxies, etc.).
   // - Only mutation methods (POST/PUT/PATCH/DELETE). GETs to /api/* can
   //   legitimately return 401 during the initial session check.
-  // - Debounced: a save burst (e.g. 10 chore updates) fires one toast,
-  //   not ten.
-  // - Suppressed while the PIN modal is open — requireAuth() already
-  //   toasted and is prompting; double-toast would be noise.
+  // - Debounced: a save burst (e.g. 10 chore updates) prompts once.
+  // - Skipped while the PIN box is already open, e.g. from requireAuth().
   const showModalRef = useRef(false);
   showModalRef.current = showModal;
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const originalFetch = window.fetch;
-    let lastToastAt = 0;
+    let lastPromptAt = 0;
     const DEBOUNCE_MS = 2500;
 
     window.fetch = async (input, init) => {
@@ -167,13 +163,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const isMutation = method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS';
         const isApi = url.includes('/api/');
         const now = Date.now();
-        if (isMutation && isApi && !showModalRef.current && now - lastToastAt > DEBOUNCE_MS) {
-          lastToastAt = now;
-          toast({
-            title: 'Sign in to make changes',
-            description: 'Enter your PIN to save edits.',
-            duration: 3000,
-          });
+        if (isMutation && isApi && !showModalRef.current && now - lastPromptAt > DEBOUNCE_MS) {
+          lastPromptAt = now;
+          // Open the PIN box rather than describing it in a toast. The refused
+          // change is not replayed: a write that failed once could apply twice,
+          // so it is tapped again after signing in.
+          setModalTitle('Sign in to make changes');
+          setModalDescription('Enter your PIN, then try that again.');
+          setShowModal(true);
         }
       }
       return response;
@@ -200,14 +197,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return sessionUser;
         }
       }
-
-      // No active session — briefly remind the user why the sign-in modal is appearing,
-      // then show it. The toast gives context before the modal takes focus.
-      toast({
-        title: 'Sign in required',
-        description: 'Enter your PIN to make changes.',
-        duration: 3000,
-      });
 
       return new Promise((resolve) => {
         setModalTitle(title || "Who's there?");

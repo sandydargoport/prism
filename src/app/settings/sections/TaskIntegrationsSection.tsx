@@ -247,9 +247,8 @@ export function TaskIntegrationsSection({
       setShowNewListModal(false);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to create list';
-      if (message.includes('401') || message.includes('unauthorized')) {
-        toast({ title: 'Please log in first to create a task list.', variant: 'warning' });
-      } else {
+      // Not signed in: AuthProvider has already opened the PIN box.
+      if (!/401|unauthorized/i.test(message)) {
         toast({ title: message, variant: 'destructive' });
       }
     } finally {

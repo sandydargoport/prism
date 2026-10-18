@@ -42,7 +42,10 @@ export function TravelView() {
 
   const handleMutationError = useCallback((err: unknown) => {
     if (err instanceof TravelAuthError) {
-      toast({ title: 'Log in to make changes', description: 'Enter your PIN to add, edit, or delete places.', variant: 'destructive' });
+      // Not signed in: AuthProvider has already opened the PIN box.
+      if (err.status === 403) {
+        toast({ title: "You can't change places", description: 'Ask a parent to make this change.', variant: 'destructive' });
+      }
     } else {
       toast({ title: 'Something went wrong', description: 'Please try again.', variant: 'destructive' });
     }

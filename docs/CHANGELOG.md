@@ -12,6 +12,7 @@ All notable changes to Prism are documented in this file.
 - **More member colours, and any colour you like.** The colour picker has 18 colours, spaced to be easier to tell apart, and its last swatch opens a panel for any colour, with Done and Cancel, that shows the colour beside every other member's. A colour another member already uses, preset or custom, shows their initial. Every existing member keeps their colour. Thanks @yeojwal for the idea. ([#640](https://github.com/sandydargoport/prism/issues/640))
 
 ### Changed
+- **Signing in is offered, not described.** Where Prism used to show a "sign in" toast, it now opens the PIN box: Edit layout while signed out (editing starts once a parent signs in), a change refused because nobody is signed in, and the Travel, Weekend and task-list screens. The toast that appeared alongside the PIN box is gone. A change that was refused is tapped again after signing in, rather than replayed.
 - **Shopping lists are moved by press-and-hold on a touchscreen,** like meals. Hold anywhere on a category for half a second, then drag; a swipe that moves at once scrolls the page. Before, touching a category's header grabbed it straight away.
 - **Shift on the on-screen keyboard gives one capital.** The next letter clears it, as on a phone; Caps Lock still locks capitals. Before, Shift stayed on like Caps Lock. ([#635](https://github.com/sandydargoport/prism/issues/635))
 - **Prism runs on React 19.** React, React DOM and their types move together. Nothing changes in use.
