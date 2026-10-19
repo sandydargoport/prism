@@ -39,8 +39,6 @@ export function AwayModeToggle({
       return;
     }
     await toggle(true);
-    // Dispatch event to immediately update all listeners (including overlay)
-    window.dispatchEvent(new Event('prism:away-mode-change'));
   };
 
   if (isAway || loading) {

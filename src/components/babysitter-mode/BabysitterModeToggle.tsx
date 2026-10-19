@@ -39,8 +39,6 @@ export function BabysitterModeToggle({
       return;
     }
     await toggle(true);
-    // Dispatch event to immediately update all listeners (including overlay)
-    window.dispatchEvent(new Event('prism:babysitter-mode-change'));
   };
 
   if (isActive || loading) {

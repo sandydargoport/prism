@@ -57,12 +57,19 @@ export function useModeToggle(options: UseModeToggleOptions): UseModeToggleResul
 
       const result: ModeState = await response.json();
       setData(result);
+      // Every state change broadcasts, so each other instance of this mode (the
+      // dashboard toggle button keeps its own copy) refreshes at once instead
+      // of waiting out its poll interval. This lives here, on the one path all
+      // changes flow through, rather than at each call site: enabling used to
+      // dispatch it and exiting forgot to, so the button stayed hidden for up
+      // to a poll after exit (#665). Here it covers both directions, both modes.
+      window.dispatchEvent(new Event(eventName));
     } catch (err) {
       console.error(`Error toggling ${label}:`, err);
       setToggleError(err instanceof Error ? err.message : `Failed to toggle ${label}`);
       throw err;
     }
-  }, [endpoint, label, setData]);
+  }, [endpoint, eventName, label, setData]);
 
   useEffect(() => {
     const handler = () => { refresh(); };
