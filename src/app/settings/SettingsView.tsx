@@ -26,6 +26,7 @@ import {
   KeyboardIcon,
   Monitor,
   Wand2,
+  ChevronLeft,
 } from 'lucide-react';
 import { PrismIcon } from '@/components/ui/PrismIcon';
 import { cn } from '@/lib/utils';
@@ -54,6 +55,7 @@ import { ActivityLogSection } from './sections/ActivityLogSection';
 
 import { DisplaysSection } from './sections/DisplaysSection';
 import { IntegrationsSection } from './sections/integrations/IntegrationsSection';
+import { useLayouts } from '@/lib/hooks/useLayouts';
 
 
 // Exported hooks (consumed by other components)
@@ -163,6 +165,38 @@ export function SettingsView() {
     }
   }, [requestedSection, searchParams, router]);
 
+  // Settings is a single, instance-wide page, so it has no `/d/<slug>` twin.
+  // It carries the display it was opened from as a `?from=` return token
+  // instead, so leaving Settings lands back on that display's layout rather
+  // than the default one (#660). The nav reads the same token to keep its tabs
+  // scoped while you are here.
+  const fromSlug = searchParams.get('from');
+  const { layouts } = useLayouts();
+  const fromLayout = fromSlug ? layouts.find((l) => l.slug === fromSlug) ?? null : null;
+  const backHref = fromSlug ? `/d/${fromSlug}` : '/';
+  // The display's own name once layouts load; the slug is a readable stand-in
+  // until then. Null when the visit did not come from a display.
+  const backName = fromLayout?.name ?? fromSlug ?? null;
+
+  // Keep the return token in the URL across the paths that rewrite the query
+  // without it: cross-section deep links inside Settings. Sidebar and mobile
+  // section switching is React state and never touches the URL, so the token
+  // survives normal browsing on its own; this only heals the rewriting paths.
+  // A full-page OAuth round trip loses it unavoidably, and the calendars bounce
+  // leaves Settings entirely, so both are left alone.
+  const returnSlugRef = React.useRef<string | null>(null);
+  useEffect(() => {
+    if (fromSlug) returnSlugRef.current = fromSlug;
+  }, [fromSlug]);
+  useEffect(() => {
+    if (requestedSection === 'calendars') return;
+    if (returnSlugRef.current && !searchParams.get('from')) {
+      const qs = new URLSearchParams(searchParams.toString());
+      qs.set('from', returnSlugRef.current);
+      router.replace(`/settings?${qs.toString()}`, { scroll: false });
+    }
+  }, [searchParams, router, requestedSection]);
+
   const initialSection = normalizeSection(searchParams.get('section'));
   const [activeSection, setActiveSection] = useState<string>(initialSection);
 
@@ -208,11 +242,24 @@ export function SettingsView() {
       <div className="h-page flex flex-col">
         <header className="shrink-0 border-b border-border bg-card/85 backdrop-blur-xs px-4">
           <div className="flex items-center gap-4 h-16">
-            <Button variant="ghost" size="icon" asChild>
-              <Link href="/" aria-label="Back to dashboard">
-                <Home className="h-5 w-5" />
-              </Link>
-            </Button>
+            {backName ? (
+              <Button variant="ghost" size="sm" asChild>
+                <Link
+                  href={backHref}
+                  aria-label={`Back to ${backName}`}
+                  className="flex items-center gap-1"
+                >
+                  <ChevronLeft className="h-5 w-5 shrink-0" />
+                  <span className="max-w-[12ch] truncate">{backName}</span>
+                </Link>
+              </Button>
+            ) : (
+              <Button variant="ghost" size="icon" asChild>
+                <Link href="/" aria-label="Back to dashboard">
+                  <Home className="h-5 w-5" />
+                </Link>
+              </Button>
+            )}
             <div className="flex items-center gap-2">
               <Settings className="h-5 w-5 text-primary" />
               <h1 className="text-xl font-bold">Settings</h1>

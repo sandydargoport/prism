@@ -13,7 +13,8 @@ import * as React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { scopedHref, isNavActive } from '@/lib/utils/dashboardScope';
+import { useReturnSlug } from '@/lib/hooks/useReturnSlug';
+import { scopedHref, isNavActive, RETURN_PARAM } from '@/lib/utils/dashboardScope';
 import { User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
@@ -34,11 +35,13 @@ export interface PortraitNavProps {
 
 export function PortraitNav({ user, onLogin, onLogout, uiHidden }: PortraitNavProps) {
   const pathname = usePathname();
+  const returnSlug = useReturnSlug();
+  const search = returnSlug ? { get: (k: string) => (k === RETURN_PARAM ? returnSlug : null) } : null;
   const { filterNavItems } = useHiddenPages();
   const navItems = filterNavItems(ALL_NAV_ITEMS);
   const t = useTranslations('common');
 
-  const isActive = (href: string) => isNavActive(href, pathname);
+  const isActive = (href: string) => isNavActive(href, pathname, search);
 
   return (
     <nav className={cn(
@@ -58,7 +61,7 @@ export function PortraitNav({ user, onLogin, onLogout, uiHidden }: PortraitNavPr
           return (
             <Link
               key={item.href}
-              href={scopedHref(item.href, pathname)}
+              href={scopedHref(item.href, pathname, search)}
               className={cn(
                 'flex flex-col items-center gap-1 py-2 px-4 min-w-[72px] shrink-0 transition-colors',
                 active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
