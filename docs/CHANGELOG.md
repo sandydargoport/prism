@@ -4,6 +4,10 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.30.0] – 2026-10-19
+
+Moves Prism to React 19. No database migrations.
+
 ### Added
 - **Share a layout or a theme as a file, with no GitHub account.** The Share dialogs for layouts and palettes have **Download file**, which saves the same checked `.json` a gallery submission would carry. A layout file loads through **More → Import → Choose file…**, and a theme file through the new **Import** button in *Settings → Display → Palette*. An imported theme gets the gallery's checks and never replaces a palette that is already there. Submitting to the gallery itself still needs a GitHub account. ([#338](https://github.com/sandydargoport/prism/issues/338))
 - **The on-screen keyboard capitalizes like a phone's.** It starts with a capital at the beginning of a field, after a full stop and after a new line, then drops to lowercase. Search, email, web address, password and number fields stay lowercase. Thanks @yeojwal for the idea. ([#635](https://github.com/sandydargoport/prism/issues/635))

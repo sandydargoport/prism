@@ -4,6 +4,34 @@ The add-on ships the same Prism release as the standalone Docker image, so these
 notes are the release notes for the whole app. Earlier releases are on the
 [full changelog](https://sandydargoport.github.io/prism/CHANGELOG/).
 
+## [1.30.0] – 2026-10-19
+
+Moves Prism to React 19. No database migrations.
+
+### Added
+- **Share a layout or a theme as a file, with no GitHub account.** The Share dialogs for layouts and palettes have **Download file**, which saves the same checked `.json` a gallery submission would carry. A layout file loads through **More → Import → Choose file…**, and a theme file through the new **Import** button in *Settings → Display → Palette*. An imported theme gets the gallery's checks and never replaces a palette that is already there. Submitting to the gallery itself still needs a GitHub account. ([#338](https://github.com/sandydargoport/prism/issues/338))
+- **The on-screen keyboard capitalizes like a phone's.** It starts with a capital at the beginning of a field, after a full stop and after a new line, then drops to lowercase. Search, email, web address, password and number fields stay lowercase. Thanks @yeojwal for the idea. ([#635](https://github.com/sandydargoport/prism/issues/635))
+- **Today's meals on the Babysitter Mode screen.** While the mode is on, its screen lists the day's meals, read-only, by name and meal. Recipes and other days stay private, and nothing is shown once the mode is off. Thanks @yeojwal for the idea. ([#638](https://github.com/sandydargoport/prism/issues/638))
+- **Double space for a full stop on the on-screen keyboard.** Two quick taps of space after a word type ". ", and the next word starts with a capital, as on a phone. Search, email and password fields keep both spaces.
+- **Copy the dashboard to the screensaver, or back.** The layout editor's **More** menu has **Copy to screensaver** (or **Copy to dashboard** while editing the screensaver). It replaces the other layout and switches to it, to Save or Cancel. Widgets the screensaver cannot show are left out, and the confirmation names them.
+- **More member colours, and any colour you like.** The colour picker has 18 colours, spaced to be easier to tell apart, and its last swatch opens a panel for any colour, with Done and Cancel, that shows the colour beside every other member's. A colour another member already uses, preset or custom, shows their initial. Every existing member keeps their colour. Thanks @yeojwal for the idea. ([#640](https://github.com/sandydargoport/prism/issues/640))
+
+### Changed
+- **Signing in is offered, not described.** Where Prism used to show a "sign in" toast, it now opens the PIN box: Edit layout while signed out (editing starts once a parent signs in), a change refused because nobody is signed in, and the Travel, Weekend and task-list screens. The toast that appeared alongside the PIN box is gone. A change that was refused is tapped again after signing in, rather than replayed.
+- **Shopping lists are moved by press-and-hold on a touchscreen,** like meals. Hold anywhere on a category for half a second, then drag; a swipe that moves at once scrolls the page. Before, touching a category's header grabbed it straight away.
+- **Shift on the on-screen keyboard gives one capital.** The next letter clears it, as on a phone; Caps Lock still locks capitals. Before, Shift stayed on like Caps Lock. ([#635](https://github.com/sandydargoport/prism/issues/635))
+- **Prism runs on React 19.** React, React DOM and their types move together. Nothing changes in use.
+
+### Fixed
+- **A Google calendar shared with you after connecting now shows up without reconnecting.** The regular sync adds any calendar Google newly lists, switched off, so it waits in *Manage Calendars* for a parent to turn on rather than appearing on the display unasked. A calendar removed from Prism stays removed, and one already connected through another family member's account is not added twice. Thanks @sanko-oz. ([#625](https://github.com/sandydargoport/prism/pull/625))
+- **The on-screen keyboard now opens on devices set to Always, even when touch is reported as a mouse pointer.** Some Chromium/Wayland builds, including Raspberry Pi OS, never report a touchscreen's events as `touch`, so the keyboard stayed closed regardless of the per-device setting. Always now also opens Prism's keyboard on a pointer event reported as `mouse`; this also means a real mouse click opens it on a device explicitly set to Always. Thanks @theg00se1030 for the report and @biggdawg320 for the fix. ([#627](https://github.com/sandydargoport/prism/issues/627))
+- **A scroll on the meal planner no longer moves a meal.** On a touchscreen, a meal now needs a half-second press-and-hold before it can be dragged, as chores and tasks already did, so a swipe that starts on a meal scrolls the page. Thanks @yeojwal for the report. ([#636](https://github.com/sandydargoport/prism/issues/636))
+- **Every item in the portrait bottom bar can be reached.** With many features on, the bar is wider than the screen, and its first items (Dashboard, Calendar, Tasks) were cut off past the left edge where scrolling could not reach. Thanks @yeojwal for the report. ([#637](https://github.com/sandydargoport/prism/issues/637))
+- **`ALLOWED_FRAME_ANCESTORS` works on published images and the Home Assistant add-on.** It was read when the image was built, so the value set on a running container was ignored and Prism could not be shown inside Home Assistant. It is now read at runtime, the add-on has a matching `allowed_frame_ancestors` option, and the Home Assistant guide uses a Webpage dashboard in place of the retired `panel_iframe`.
+- **Widget and page header buttons keep their full size at large text sizes.** The Add buttons were squashed when the text size was raised. ([#595](https://github.com/sandydargoport/prism/issues/595))
+- **The keyboard's microphone says why it cannot listen.** On a plain `http://` address the browser blocks the microphone, and with Siri & Dictation off Safari refuses it; both used to fail with nothing on screen. Every recognition error now shows a message.
+- **Cancel in the layout editor puts the screensaver back too.** Screensaver changes made while editing survived Cancel; they are now undone with the rest.
+
 ## [1.29.0] – 2026-10-05
 
 Ships four database migrations, applied automatically on start: hidden events, hidden event series, notes from guests, and the chore approval default. The last one switches **Requires approval** on for every existing chore, because the switch now does something (see Changed); nothing else about approval changes on upgrade.
