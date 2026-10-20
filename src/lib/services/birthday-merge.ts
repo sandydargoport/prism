@@ -27,7 +27,7 @@
  */
 
 import { db } from '@/lib/db/client';
-import { birthdays } from '@/lib/db/schema';
+import { birthdays, dismissedBirthdays } from '@/lib/db/schema';
 import { and, eq, sql } from 'drizzle-orm';
 import { normalizePersonName } from '@/lib/utils/normalizePersonName';
 
@@ -86,6 +86,23 @@ export async function upsertBirthday(opts: UpsertOpts): Promise<'inserted' | 'up
   const [yearStr, mo, dy] = birthDate.split('-');
   if (!mo || !dy || !yearStr) return 'skipped';
   const newYear = parseInt(yearStr, 10);
+
+  // Honour a removal from every sync path, not just detection. A dismissed
+  // birthday must not be resurrected by a later sync. The tombstone check used
+  // to live only in detectBirthdaysFromEvents, so the CardDAV contacts sync,
+  // which calls this directly, re-added anything the user removed. This is the
+  // one place every sync insert flows through, so the guard belongs here.
+  const dismissed = await db
+    .select({ id: dismissedBirthdays.id })
+    .from(dismissedBirthdays)
+    .where(and(
+      eq(dismissedBirthdays.normalizedName, normalize(name).slice(0, 100)),
+      eq(dismissedBirthdays.birthMonth, parseInt(mo, 10)),
+      eq(dismissedBirthdays.birthDay, parseInt(dy, 10)),
+      eq(dismissedBirthdays.eventType, eventType),
+    ))
+    .limit(1);
+  if (dismissed.length > 0) return 'skipped';
 
   const candidates = await db.query.birthdays.findMany({
     where: and(
