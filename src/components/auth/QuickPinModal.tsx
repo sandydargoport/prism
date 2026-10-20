@@ -217,10 +217,17 @@ export function QuickPinModal({
   if (!open) return null;
 
   // Use portal to escape any stacking context (e.g., backdrop-blur-sm in parent)
+  //
+  // pointer-events-auto is required, not cosmetic: this portal mounts on
+  // document.body, outside any open dialog. A modal Radix dialog (e.g. Manage
+  // calendars) sets `pointer-events: none` on the body while it is open, which
+  // this portal inherits, so every tap fell through to the dialog underneath
+  // and the PIN box could neither be used nor dismissed. Re-enabling pointer
+  // events here keeps the sign-in prompt usable on top of any dialog.
   return createPortal(
     <div
       data-testid="pin-modal"
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-10001"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-10001 pointer-events-auto"
       onClick={() => onOpenChange(false)}
     >
       <div

@@ -207,7 +207,10 @@ function SettingsPinPrompt({
   return createPortal(
     <div
       data-testid="pin-modal"
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-10001"
+      // pointer-events-auto: this portal mounts on document.body, so a modal
+      // dialog that sets body `pointer-events: none` would otherwise make the
+      // PIN box unusable and undismissable (see QuickPinModal for the full why).
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-10001 pointer-events-auto"
       onClick={onDismiss}
     >
       <div
