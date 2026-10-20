@@ -4,6 +4,16 @@ The add-on ships the same Prism release as the standalone Docker image, so these
 notes are the release notes for the whole app. Earlier releases are on the
 [full changelog](https://sandydargoport.github.io/prism/CHANGELOG/).
 
+## [1.30.1] – 2026-10-20
+
+A hotfix release. Four bug fixes, no database migrations.
+
+### Fixed
+- **The Babysitter Mode button comes back as soon as you exit.** Leaving Babysitter Mode left the button to re-enter it hidden until the next background refresh, about a minute and a half, so it looked like the mode could not be re-entered without a page reload. It now returns at once. Away Mode's button behaved the same way and is fixed with it. Thanks @yeojwal for the report. ([#665](https://github.com/sandydargoport/prism/issues/665))
+- **A device's own layout stays in the address when you open Settings.** A display pinned to its own layout dropped back to the default layout after a visit to Settings, because the layout left the URL and every tab afterwards lost it. The tabs now keep the display's layout, and Settings shows a button back to that display. Thanks @yeojwal for the report. ([#660](https://github.com/sandydargoport/prism/issues/660))
+- **The sign-in PIN box works when it opens over a dialog.** Signing in from a flow with a dialog already open, such as **Manage calendars → Sync**, showed the PIN box but let no tap reach it, so it could neither be used nor dismissed. ([#673](https://github.com/sandydargoport/prism/issues/673))
+- **A removed birthday stays removed.** A birthday that was also in your contacts came back on the next contacts sync and then showed in both the list and its Removed entry. A removal is now honoured by every sync, not just the calendar scan. ([#675](https://github.com/sandydargoport/prism/issues/675))
+
 ## [1.30.0] – 2026-10-19
 
 Moves Prism to React 19. No database migrations.
