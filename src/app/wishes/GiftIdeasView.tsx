@@ -29,9 +29,14 @@ import type { GiftIdea, FamilyMember } from '@/types';
 interface GiftIdeasViewProps {
   /** PersonFilter selection from the parent. null/empty = show all members. */
   selectedMemberIds?: string[] | null;
+  /** When false (the default), show one combined list; when true, one column
+   *  per person. Driven by the shared "Group" control in WishesView. */
+  groupByUser?: boolean;
+  /** Hide ideas already marked purchased. */
+  hidePurchased?: boolean;
 }
 
-export function GiftIdeasView({ selectedMemberIds }: GiftIdeasViewProps = {}) {
+export function GiftIdeasView({ selectedMemberIds, groupByUser = false, hidePurchased = false }: GiftIdeasViewProps = {}) {
   const { members } = useFamily();
   const { activeUser, requireAuth } = useAuth();
   const { ideas, loading, error, addIdea, updateIdea, deleteIdea, togglePurchased } = useGiftIdeas(activeUser?.id);
@@ -42,6 +47,10 @@ export function GiftIdeasView({ selectedMemberIds }: GiftIdeasViewProps = {}) {
 
   const [editingIdea, setEditingIdea] = useState<GiftIdea | null>(null);
   const [quickAddByUser, setQuickAddByUser] = useState<Record<string, string>>({});
+  // Flat-view quick add: unlike the per-person columns, the flat list has no
+  // column to type into, so it carries its own recipient picker + input.
+  const [flatAddName, setFlatAddName] = useState('');
+  const [flatRecipient, setFlatRecipient] = useState<string>('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const otherMembers = useMemo(() => {
@@ -54,15 +63,35 @@ export function GiftIdeasView({ selectedMemberIds }: GiftIdeasViewProps = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [members, selectedMemberIds?.join(','), activeUser?.id]);
 
-  // Group ideas by forUserId
+  // Apply the "Hide purchased" toggle once, up front.
+  const visibleIdeas = useMemo(
+    () => (hidePurchased ? ideas.filter(i => !i.purchased) : ideas),
+    [ideas, hidePurchased],
+  );
+
+  // Group ideas by forUserId (for the per-person column view)
   const ideasByUser = useMemo(() => {
     const map: Record<string, GiftIdea[]> = {};
-    for (const idea of ideas) {
+    for (const idea of visibleIdeas) {
       if (!map[idea.forUserId]) map[idea.forUserId] = [];
       map[idea.forUserId]!.push(idea);
     }
     return map;
-  }, [ideas]);
+  }, [visibleIdeas]);
+
+  // Flat (ungrouped) list — every visible recipient's ideas in one list, with
+  // an owner tag per row. Ordered to follow the member order on screen.
+  const flatIdeas = useMemo(() => {
+    const order = new Map(otherMembers.map((m, i) => [m.id, i]));
+    return visibleIdeas
+      .filter(i => order.has(i.forUserId))
+      .sort((a, b) => (order.get(a.forUserId)! - order.get(b.forUserId)!));
+  }, [visibleIdeas, otherMembers]);
+
+  // Default the flat-view recipient to the one filtered person, else the first.
+  const flatRecipientId = flatRecipient && otherMembers.some(m => m.id === flatRecipient)
+    ? flatRecipient
+    : otherMembers[0]?.id || '';
 
   const handleQuickAdd = async (forUserId: string) => {
     const name = (quickAddByUser[forUserId] || '').trim();
@@ -72,6 +101,19 @@ export function GiftIdeasView({ selectedMemberIds }: GiftIdeasViewProps = {}) {
     try {
       await addIdea({ forUserId, name });
       setQuickAddByUser((prev) => ({ ...prev, [forUserId]: '' }));
+    } catch (err) {
+      toast({ title: err instanceof Error ? err.message : 'Failed to add', variant: 'destructive' });
+    }
+  };
+
+  const handleFlatAdd = async () => {
+    const name = flatAddName.trim();
+    if (!name || !flatRecipientId) return;
+    const user = await requireAuth("Who's adding this idea?");
+    if (!user) return;
+    try {
+      await addIdea({ forUserId: flatRecipientId, name });
+      setFlatAddName('');
     } catch (err) {
       toast({ title: err instanceof Error ? err.message : 'Failed to add', variant: 'destructive' });
     }
@@ -123,6 +165,20 @@ export function GiftIdeasView({ selectedMemberIds }: GiftIdeasViewProps = {}) {
     : 'minmax(220px, 1fr)';
   return (
     <>
+      {!groupByUser ? (
+        <GiftIdeasFlatList
+          ideas={flatIdeas}
+          otherMembers={otherMembers}
+          recipientId={flatRecipientId}
+          onRecipientChange={setFlatRecipient}
+          addName={flatAddName}
+          onAddNameChange={setFlatAddName}
+          onAdd={handleFlatAdd}
+          onTogglePurchased={handleTogglePurchased}
+          onEdit={setEditingIdea}
+          onDelete={handleDelete}
+        />
+      ) : (
       <div className="relative h-full">
       <div
         ref={scrollRef}
@@ -198,6 +254,7 @@ export function GiftIdeasView({ selectedMemberIds }: GiftIdeasViewProps = {}) {
       </div>
         {isCarousel && !isMobile && <CarouselArrows scrollRef={scrollRef} />}
       </div>
+      )}
 
       {/* Edit modal (inline for simplicity) */}
       {editingIdea && (
@@ -221,13 +278,104 @@ export function GiftIdeasView({ selectedMemberIds }: GiftIdeasViewProps = {}) {
   );
 }
 
+/** Flat (ungrouped) gift-ideas list: one combined list with an owner tag per
+ *  row, plus a recipient picker beside the add box (there's no per-person
+ *  column to type into here). */
+function GiftIdeasFlatList({
+  ideas,
+  otherMembers,
+  recipientId,
+  onRecipientChange,
+  addName,
+  onAddNameChange,
+  onAdd,
+  onTogglePurchased,
+  onEdit,
+  onDelete,
+}: {
+  ideas: GiftIdea[];
+  otherMembers: FamilyMember[];
+  recipientId: string;
+  onRecipientChange: (id: string) => void;
+  addName: string;
+  onAddNameChange: (v: string) => void;
+  onAdd: () => void;
+  onTogglePurchased: (idea: GiftIdea) => void;
+  onEdit: (idea: GiftIdea) => void;
+  onDelete: (idea: GiftIdea) => void;
+}) {
+  const membersById = useMemo(
+    () => new Map(otherMembers.map(m => [m.id, m])),
+    [otherMembers],
+  );
+  // The owner tag only earns its place when more than one recipient is in view.
+  const showOwner = otherMembers.length > 1;
+
+  if (otherMembers.length === 0) {
+    return (
+      <div className="py-8">
+        <EmptyState icon={<Lightbulb />} title="No one to add gift ideas for" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2 max-w-2xl mx-auto">
+      {/* Add box with a recipient picker */}
+      <div className="flex gap-2">
+        <select
+          value={recipientId}
+          onChange={(e) => onRecipientChange(e.target.value)}
+          aria-label="Gift idea recipient"
+          className="h-8 shrink-0 rounded-md border border-input bg-background px-2 text-sm"
+        >
+          {otherMembers.map((m) => (
+            <option key={m.id} value={m.id}>{m.name}</option>
+          ))}
+        </select>
+        <Input
+          placeholder="Add a gift idea..."
+          value={addName}
+          onChange={(e) => onAddNameChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              onAdd();
+            }
+          }}
+          className="h-8 text-sm"
+        />
+      </div>
+
+      {ideas.length === 0 ? (
+        <EmptyState icon={<Lightbulb />} title="No gift ideas yet" />
+      ) : (
+        ideas.map((idea) => (
+          <GiftIdeaRow
+            key={idea.id}
+            idea={idea}
+            owner={showOwner ? membersById.get(idea.forUserId) : undefined}
+            onTogglePurchased={() => onTogglePurchased(idea)}
+            onEdit={() => onEdit(idea)}
+            onDelete={() => onDelete(idea)}
+          />
+        ))
+      )}
+    </div>
+  );
+}
+
 function GiftIdeaRow({
   idea,
+  owner,
   onTogglePurchased,
   onEdit,
   onDelete,
 }: {
   idea: GiftIdea;
+  /** Shown as a small name/color tag in the flat (ungrouped) list, where the
+   *  recipient isn't implied by a per-person column. */
+  owner?: FamilyMember;
   onTogglePurchased: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -243,6 +391,15 @@ function GiftIdeaRow({
     >
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
+          {owner && (
+            <span
+              className="inline-flex items-center gap-1 shrink-0 text-xs font-medium rounded-full px-1.5 py-0.5"
+              style={{ backgroundColor: owner.color + '20', color: owner.color }}
+            >
+              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: owner.color }} />
+              {owner.name}
+            </span>
+          )}
           <span className={cn('font-medium text-sm truncate', idea.purchased && 'line-through text-muted-foreground')}>
             {idea.name}
           </span>

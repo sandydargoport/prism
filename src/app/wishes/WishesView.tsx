@@ -57,6 +57,15 @@ export function WishesView() {
   const [groupByUser, setGroupByUser] = usePersistedState(
     'prism-wishes-group-by-user', false, isBoolean,
   );
+  // Hide done items, matching Tasks' "Show Completed" and Shopping's "Hide
+  // Checked Items". Kept per-tab because the two tabs hold different things:
+  // a Wish is "claimed" (crossed off / bought), a Gift Idea is "purchased".
+  const [hideClaimed, setHideClaimed] = usePersistedState(
+    'prism-wishes-hide-completed', false, isBoolean,
+  );
+  const [hidePurchased, setHidePurchased] = usePersistedState(
+    'prism-gift-ideas-hide-purchased', false, isBoolean,
+  );
   const viewerId = activeUser?.id || undefined;
 
   // Single selection optimises fetch; multi/none fetches all
@@ -125,27 +134,34 @@ export function WishesView() {
     [orderedMembers, showingAll, selectedMemberIds]
   );
 
-  // Group items by member — always computed from `items` (already scoped to
-  // the current PersonFilter selection by useWishItems' fetch), not gated on
-  // `showingAll`. Previously this returned null whenever a filter was
+  // Apply the "Hide completed" toggle once, so both the grouped and flat
+  // views below work from the same already-filtered set.
+  const shownItems = useMemo(
+    () => (hideClaimed ? items.filter(i => !i.claimed) : items),
+    [items, hideClaimed],
+  );
+
+  // Group items by member — always computed from `shownItems` (already scoped
+  // to the current PersonFilter selection by useWishItems' fetch), not gated
+  // on `showingAll`. Previously this returned null whenever a filter was
   // active, which made every per-person column render empty even though
   // the fetch itself had the right data.
   const groupedItems = useMemo(() => {
     const groups: Record<string, WishItem[]> = {};
-    for (const item of items) {
+    for (const item of shownItems) {
       const key = item.memberId;
       if (!groups[key]) groups[key] = [];
       groups[key]!.push(item);
     }
     return groups;
-  }, [items]);
+  }, [shownItems]);
 
   // Flat (ungrouped) view — every visible member's items in one list, with
   // an owner tag on each row when more than one person is in view.
   const flatItems = useMemo(() => {
     const allowedIds = new Set(visibleMembers.map(m => m.id));
-    return items.filter(i => allowedIds.has(i.memberId));
-  }, [items, visibleMembers]);
+    return shownItems.filter(i => allowedIds.has(i.memberId));
+  }, [shownItems, visibleMembers]);
 
   const isOwnList = (memberId: string) => memberId === viewerId;
 
@@ -247,6 +263,11 @@ export function WishesView() {
             </Button>
           )}
         </>}
+        overflow={[
+          activeTab === 'ideas'
+            ? { label: 'Hide purchased', checked: hidePurchased, onClick: () => setHidePurchased(!hidePurchased) }
+            : { label: 'Hide completed', checked: hideClaimed, onClick: () => setHideClaimed(!hideClaimed) },
+        ]}
       />
 
       {/* Tab toggle */}
@@ -283,26 +304,30 @@ export function WishesView() {
             selected={selectedMemberIds}
             onSelect={setSelectedMemberIds}
           />
-          {activeTab === 'wishes' && (
-            <>
-              <div className="w-px h-5 bg-border shrink-0" />
-              <FilterDropdown
-                label="Group"
-                options={[{ value: 'none', label: 'None' }, { value: 'person', label: 'Person' }]}
-                selected={new Set([groupByUser ? 'person' : 'none'])}
-                onSelectionChange={(s) => setGroupByUser(s.size > 0 && [...s][0] === 'person')}
-                mode="single"
-                icon={<Users className="h-4 w-4" />}
-              />
-            </>
-          )}
+          {/* Group None/Person on both tabs. Default None (flat) so the common
+              view is a single list and a person's name appears once, not once
+              in this filter row and again as a per-person column header.
+              Person is the opt-in side-by-side layout for gift shopping. */}
+          <div className="w-px h-5 bg-border shrink-0" />
+          <FilterDropdown
+            label="Group"
+            options={[{ value: 'none', label: 'None' }, { value: 'person', label: 'Person' }]}
+            selected={new Set([groupByUser ? 'person' : 'none'])}
+            onSelectionChange={(s) => setGroupByUser(s.size > 0 && [...s][0] === 'person')}
+            mode="single"
+            icon={<Users className="h-4 w-4" />}
+          />
         </FilterBar>
       )}
 
       {/* Content */}
       <div className="flex-1 overflow-auto px-4 pb-4">
         {activeTab === 'ideas' ? (
-          <GiftIdeasView selectedMemberIds={selectedMemberIds} />
+          <GiftIdeasView
+            selectedMemberIds={selectedMemberIds}
+            groupByUser={groupByUser}
+            hidePurchased={hidePurchased}
+          />
         ) : loading || familyLoading ? (
           <PageLoader className="py-8" />
         ) : error ? (
