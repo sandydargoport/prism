@@ -3,13 +3,17 @@
 import { useEffect, useRef } from 'react';
 import { maplibregl, MAP_LABEL_FONT } from '@/lib/map/maplibreSetup';
 import { busMapStyleUrl, type BusMapCamera, type BusMapStyle } from '@/lib/map/busMapOptions';
-import { CAMERA_TICK_MS, CLOSE_ZOOM, MANUAL_HOLD_MS, cameraView } from '@/lib/map/busCamera';
+import { CAMERA_TICK_MS, CLOSE_ZOOM, MANUAL_HOLD_MS, REFRAME_MS, cameraView, needsReframe } from '@/lib/map/busCamera';
 import {
-  CATCH_UP_MS, buildPath, extrapolate, freshness, isExtrapolating, isPathDone, poseAt, speedBetween,
-  type Motion, type Path, type Pose,
+  CATCH_UP_MS, buildPath, extrapolate, freshness, headingDelta, isExtrapolating, isPathDone, metresAhead,
+  poseAt, shouldHold, speedBetween, type Motion, type Path, type Pose,
 } from '@/lib/map/busTween';
 import type { LiveTrack } from '@/lib/hooks/useBusLive';
-import { SEASON_EMOJI, busMarkerDrawing, busMarkerSvg, type BusMarker } from '@/lib/map/busMarkers';
+import { SEASON_EMOJI, busMarkerDrawing, busMarkerSvg, kidSvg, type BusMarker } from '@/lib/map/busMarkers';
+import {
+  buildStreetGraph, metresPerPixel, moveToGraph, runnerPosition, scare, spawnRunner, stepRunner,
+  type LngLat, type Runner, type StreetGraph,
+} from '@/lib/map/streetRunners';
 import { toCodePoint } from '@/components/ui/Emoji';
 
 interface BusLiveMapProps {
@@ -30,6 +34,18 @@ const FRAME_MS = 33;
 const TRACE = 'bus-trace';
 const STOPS = 'bus-stops';
 const STOP_LABELS = 'bus-stop-labels';
+/** Going back to where the bus really is, after waiting for it, takes this long. */
+const GLIDE_BACK_MS = 3_000;
+
+/** The kids chasing the chomper: how many, and how fast in screen pixels a second. */
+const KID_COUNT = 3;
+const KID_FRAME_MS = 66;
+const KID_CHASE_PX_S = 14;
+const KID_FLEE_PX_S = 24;
+/** Closer than this to the bus, a kid is caught. */
+const KID_CATCH_PX = 16;
+/** Streets kids run on: not motorways, paths or railways. */
+const KID_ROADS = new Set(['minor', 'service', 'tertiary', 'secondary', 'primary', 'residential', 'unclassified', 'living_street']);
 
 /** A theme token ("222 47% 11%") as a colour MapLibre can parse. */
 function themeColor(token: string, fallback: string): string {
@@ -40,19 +56,42 @@ function themeColor(token: string, fallback: string): string {
 }
 
 /** The marker's contents: the chosen vehicle, and for the seasonal one, its roof decoration. */
-function busMarkerHtml(kind: BusMarker, month: number): string {
+function busMarkerHtml(kind: BusMarker, month: number, animated: boolean): string {
   const d = busMarkerDrawing(kind);
   const emoji = kind === 'seasonal' ? SEASON_EMOJI[month] : undefined;
   const roof = emoji
     ? `<img src="/twemoji/${toCodePoint(emoji)}.svg" alt="" draggable="false" style="position:absolute;left:50%;top:52%;width:14px;height:14px;transform:translate(-50%,-50%)"/>`
     : '';
-  return `<div style="position:relative;width:${d.width}px;height:${d.height}px;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.45))">${busMarkerSvg(kind)}${roof}</div>`;
+  return `<div style="position:relative;width:${d.width}px;height:${d.height}px;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.45))">${busMarkerSvg(kind, 1, animated)}${roof}</div>`;
+}
+
+/** The road lines in the tiles already loaded, from the basemap's vector source. */
+function streetLines(map: maplibregl.Map): LngLat[][] {
+  const source = Object.entries(map.getStyle().sources ?? {}).find(([, s]) => s.type === 'vector')?.[0];
+  if (!source) return [];
+  const lines: LngLat[][] = [];
+  for (const f of map.querySourceFeatures(source, { sourceLayer: 'transportation' })) {
+    if (!KID_ROADS.has(String(f.properties?.class))) continue;
+    if (f.geometry.type === 'LineString') lines.push(f.geometry.coordinates as LngLat[]);
+    else if (f.geometry.type === 'MultiLineString') lines.push(...(f.geometry.coordinates as LngLat[][]));
+  }
+  return lines;
+}
+
+function kidElement(index: number): HTMLDivElement {
+  const el = document.createElement('div');
+  el.setAttribute('aria-hidden', 'true');
+  el.style.pointerEvents = 'none';
+  el.innerHTML = kidSvg(index, false);
+  return el;
 }
 
 function busElement(): HTMLDivElement {
   const el = document.createElement('div');
   el.setAttribute('aria-label', 'Bus');
   el.style.transition = 'opacity 400ms';
+  // Above the kids running after it.
+  el.style.zIndex = '2';
   return el;
 }
 
@@ -171,6 +210,9 @@ export function BusLiveMap({
   const cameraRef = useRef(camera);
   cameraRef.current = camera;
   const manualUntilRef = useRef(0);
+  // Where the marker is drawn, and since when it has been waiting for the bus.
+  const shownRef = useRef<Pose | null>(null);
+  const heldSinceRef = useRef<number | null>(null);
 
   const setTrace = (untilTs: number) => {
     const source = mapRef.current?.getSource(TRACE) as maplibregl.GeoJSONSource | undefined;
@@ -180,16 +222,16 @@ export function BusLiveMap({
   /**
    * Aim the camera for the chosen mode. Bounds get room for the labels, which
    * hang below and to both sides of their dot. Skipped for a minute after a
-   * tap on the zoom buttons, so a zoom by hand is not undone at once.
+   * tap on the zoom buttons, so a zoom by hand is not undone at once. Unless
+   * forced, it moves only when needsReframe says so, then glides there.
    */
-  const aim = (animate: boolean) => {
+  const aim = (animate: boolean, force = !animate) => {
     const map = mapRef.current;
     if (!map || !readyRef.current || Date.now() < manualUntilRef.current) return;
     const t = trackRef.current;
     const bus = anchorRef.current ? current() : null;
     const points = cameraView(cameraRef.current, bus, t.stops, t.riderStopKey);
     if (!points) return;
-    const duration = animate && !reducedMotion ? 1000 : 0;
     const { clientWidth: w, clientHeight: h } = map.getContainer();
     // At least the bus marker's own length, so it is never half off the edge.
     const side = Math.max(48, Math.min(90, w * 0.2));
@@ -198,11 +240,45 @@ export function BusLiveMap({
       (b, p) => b.extend(p),
       new maplibregl.LngLatBounds(points[0]!, points[0]!),
     );
-    map.fitBounds(bounds, { padding: { left: side, right: side, top, bottom: top + 16 }, maxZoom: CLOSE_ZOOM, duration });
+    const bottom = top + 16;
+    const fit = map.cameraForBounds(bounds, { padding: { left: side, right: side, top, bottom }, maxZoom: CLOSE_ZOOM });
+    if (!fit) return;
+    const zoom = fit.zoom ?? map.getZoom();
+    if (!force) {
+      const screen = points.map((p) => { const q = map.project(p); return [q.x, q.y] as [number, number]; });
+      // Half the padding: the bus may drift into the margin before the camera follows.
+      const box = { left: side / 2, top: top / 2, right: w - side / 2, bottom: h - bottom / 2 };
+      if (!needsReframe(screen, box, map.getZoom(), zoom)) return;
+    }
+    map.easeTo({ center: fit.center, zoom, duration: animate && !reducedMotion ? REFRAME_MS : 0 });
   };
 
   const place = (pose: Pose) => {
+    shownRef.current = pose;
     markerRef.current?.setLngLat([pose.lng, pose.lat]).setRotation(pose.heading);
+  };
+
+  /**
+   * Place the marker at a guess, but never step it backwards (see
+   * shouldHold): wait for the bus to come level, and if it has not by the
+   * end of the wait, glide back rather than jump.
+   */
+  const placeForward = (target: Pose) => {
+    const shown = shownRef.current;
+    const now = Date.now();
+    if (shown && shouldHold(shown, target, heldSinceRef.current, now)) {
+      heldSinceRef.current ??= now;
+      return;
+    }
+    const waited = heldSinceRef.current !== null;
+    heldSinceRef.current = null;
+    if (waited && shown && !reducedMotion && metresAhead(shown, target) < 0
+      && Math.abs(headingDelta(shown.heading, target.heading)) <= 120) {
+      // Still facing the way it was going, so it backs up rather than turns round.
+      pathRef.current = { points: [shown, { ...target, heading: shown.heading }], at: [0, 1], start: now, duration: GLIDE_BACK_MS };
+      return;
+    }
+    place(target);
   };
 
   // Fix times are the server's clock; the display's may drift from it.
@@ -242,8 +318,9 @@ export function BusLiveMap({
             setTrace(shownTsRef.current ?? serverNow());
           }
           const g = guess();
-          if (g) place(g);
-          if (!anchorRef.current || !isExtrapolating(anchorRef.current.motion, serverNow())) {
+          if (g) placeForward(g);
+          const waiting = heldSinceRef.current !== null || (pathRef.current !== null && !isPathDone(pathRef.current, Date.now()));
+          if (!waiting && (!anchorRef.current || !isExtrapolating(anchorRef.current.motion, serverNow()))) {
             frameRef.current = null;
             return;
           }
@@ -304,8 +381,20 @@ export function BusLiveMap({
     const anchorPose = through.points[through.points.length - 1]!;
     anchorRef.current = { pose: anchorPose, motion };
     const end = extrapolate(anchorPose, motion, serverNow() + CATCH_UP_MS, nextStop());
+    if (!reducedMotion && shouldHold(from, end, heldSinceRef.current, now)) {
+      // The marker is already ahead of where the bus will be: wait for it there.
+      heldSinceRef.current ??= now;
+      pathRef.current = null;
+      shownTsRef.current = latestTs;
+      setTrace(latestTs);
+      animate();
+      return;
+    }
+    heldSinceRef.current = null;
+    // Fixes the marker has already passed would only pull it back and forth.
+    const ahead = fresh.filter((f) => metresAhead(from, f) > 0);
     pathRef.current = {
-      ...buildPath(from, [...fresh, { ts: latestTs, ...end }], shownTsRef.current, now),
+      ...buildPath(from, [...ahead, { ts: latestTs, ...end }], shownTsRef.current, now),
       duration: reducedMotion ? 0 : CATCH_UP_MS,
     };
     // The trace stops where the marker starts, and catches up when it arrives.
@@ -386,12 +475,83 @@ export function BusLiveMap({
   }, [styleUrl]);
 
   // A new camera choice shows at once rather than at the next tick.
-  useEffect(() => { manualUntilRef.current = 0; aim(true); }, [camera]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { manualUntilRef.current = 0; aim(true, true); }, [camera]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const el = markerRef.current?.getElement();
-    if (el) el.innerHTML = busMarkerHtml(marker, month);
-  }, [marker, month]);
+    if (el) el.innerHTML = busMarkerHtml(marker, month, !reducedMotion);
+  }, [marker, month, reducedMotion]);
+
+  // The chomper's kids who missed the bus, running after it along the streets.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (marker !== 'chomper' || reducedMotion || !map) return;
+    let graph: StreetGraph | null = null;
+    let kids: { runner: Runner; marker: maplibregl.Marker; scared: boolean }[] = [];
+    let last = Date.now();
+
+    // The streets change only when the map moves or loads tiles, which ends in 'idle'.
+    const rebuild = () => {
+      const next = buildStreetGraph(streetLines(map));
+      if (next.nodes.length === 0) return;
+      const old = graph;
+      kids = kids.flatMap((k) => {
+        const runner = old ? moveToGraph(next, k.runner, runnerPosition(old, k.runner), Math.random) : null;
+        if (runner) return [{ ...k, runner }];
+        k.marker.remove();
+        return [];
+      });
+      graph = next;
+    };
+
+    const tick = () => {
+      const now = Date.now();
+      const dt = Math.min(0.5, (now - last) / 1000);
+      last = now;
+      const busMarker = markerRef.current;
+      if (!graph || document.hidden || !readyRef.current || !busMarker?.getElement().isConnected) return;
+      const ll = busMarker.getLngLat();
+      const bus: LngLat = [ll.lng, ll.lat];
+      const perPx = metresPerPixel(map.getZoom(), ll.lat);
+      const { clientWidth: w, clientHeight: h } = map.getContainer();
+      const busPx = map.project(bus);
+
+      while (kids.length < KID_COUNT) {
+        const runner = spawnRunner(graph, bus, 60 * perPx, 0.45 * Math.max(w, h) * perPx, Math.random);
+        if (!runner) return;
+        const el = kidElement(kids.length);
+        kids.push({ runner, scared: false, marker: new maplibregl.Marker({ element: el }).setLngLat(runnerPosition(graph, runner)).addTo(map) });
+      }
+
+      kids = kids.map((k, i) => {
+        const speed = (k.runner.mode === 'flee' ? KID_FLEE_PX_S : KID_CHASE_PX_S) * perPx * dt;
+        let runner = stepRunner(graph!, k.runner, speed, bus, now, Math.random);
+        let pos = runnerPosition(graph!, runner);
+        const px = map.project(pos);
+        if (runner.mode === 'chase' && Math.hypot(px.x - busPx.x, px.y - busPx.y) < KID_CATCH_PX) {
+          runner = scare(graph!, runner, now);
+        }
+        // Run off well past the edge: start again somewhere in sight.
+        if (px.x < -w * 0.5 || px.x > w * 1.5 || px.y < -h * 0.5 || px.y > h * 1.5) {
+          runner = spawnRunner(graph!, bus, 60 * perPx, 0.45 * Math.max(w, h) * perPx, Math.random) ?? runner;
+          pos = runnerPosition(graph!, runner);
+        }
+        const scared = runner.mode === 'flee';
+        if (scared !== k.scared) k.marker.getElement().innerHTML = kidSvg(i, scared);
+        k.marker.setLngLat(pos);
+        return { runner, scared, marker: k.marker };
+      });
+    };
+
+    map.on('idle', rebuild);
+    if (readyRef.current && map.loaded()) rebuild();
+    const timer = setInterval(tick, KID_FRAME_MS);
+    return () => {
+      clearInterval(timer);
+      map.off('idle', rebuild);
+      for (const k of kids) k.marker.remove();
+    };
+  }, [marker, reducedMotion]);
 
   // Dim the bus once its position is old enough to mislead.
   useEffect(() => {

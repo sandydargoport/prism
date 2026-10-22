@@ -1,4 +1,4 @@
-import { cameraView } from '../busCamera';
+import { cameraView, needsReframe } from '../busCamera';
 import { busMapStyleUrl, isBusMapCamera, isBusMapStyle } from '../busMapOptions';
 
 const stops = [
@@ -37,5 +37,16 @@ describe('map options', () => {
     expect(isBusMapCamera('route')).toBe(true);
     expect(isBusMapCamera('alternate')).toBe(false);
     expect(isBusMapCamera(1)).toBe(false);
+  });
+});
+
+describe('needsReframe', () => {
+  const box = { left: 20, top: 20, right: 380, bottom: 280 };
+  it('leaves the camera alone while everything is in view', () => {
+    expect(needsReframe([[100, 100], [300, 200]], box, 14, 14.6)).toBe(false);
+  });
+  it('moves when a point nears the edge, or a whole zoom level is to be had', () => {
+    expect(needsReframe([[10, 100]], box, 14, 14)).toBe(true);
+    expect(needsReframe([[100, 100]], box, 14, 15)).toBe(true);
   });
 });

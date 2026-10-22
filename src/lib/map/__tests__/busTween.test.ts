@@ -1,6 +1,6 @@
 import {
-  MAX_EXTRAPOLATE_MS, MAX_TWEEN_MS, MIN_TWEEN_MS, buildPath, extrapolate, freshness, headingDelta,
-  isExtrapolating, isPathDone, metresBetween, poseAt, speedBetween,
+  HOLD_MAX_MS, MAX_EXTRAPOLATE_MS, MAX_TWEEN_MS, MIN_TWEEN_MS, buildPath, extrapolate, freshness, headingDelta,
+  coastMetres, isExtrapolating, isPathDone, metresAhead, metresBetween, poseAt, shouldHold, speedBetween,
 } from '../busTween';
 
 const start = { lat: 39.74, lng: -104.99, heading: 90 };
@@ -71,16 +71,18 @@ describe('extrapolate', () => {
   const pose = { lat: 39.74, lng: -104.99, heading: 90 };
   const motion = { ts: 0, speed: 10 };
 
-  it('carries the bus on at its speed and heading', () => {
+  it('carries the bus on along its heading, easing off', () => {
     const p = extrapolate(pose, motion, 5_000);
-    expect(metresBetween(pose, p)).toBeCloseTo(50, 0);
+    expect(metresBetween(pose, p)).toBeCloseTo(coastMetres(10, 5), 0);
+    expect(coastMetres(10, 5)).toBeGreaterThan(38);
+    expect(coastMetres(10, 5)).toBeLessThan(50);
     expect(p.lat).toBeCloseTo(pose.lat, 6);
     expect(p.lng).toBeGreaterThan(pose.lng);
   });
 
   it('guesses no further than MAX_EXTRAPOLATE_MS past the fix', () => {
     const far = extrapolate(pose, motion, 120_000);
-    expect(metresBetween(pose, far)).toBeCloseTo(10 * (MAX_EXTRAPOLATE_MS / 1000), 0);
+    expect(metresBetween(pose, far)).toBeCloseTo(coastMetres(10, MAX_EXTRAPOLATE_MS / 1000), 0);
     expect(isExtrapolating(motion, MAX_EXTRAPOLATE_MS - 1)).toBe(true);
     expect(isExtrapolating(motion, MAX_EXTRAPOLATE_MS)).toBe(false);
   });
@@ -89,7 +91,7 @@ describe('extrapolate', () => {
     const ahead = { lat: 39.74, lng: -104.9895 }; // ~43 m east
     expect(metresBetween(pose, extrapolate(pose, motion, 10_000, ahead))).toBeCloseTo(43, 0);
     const behind = { lat: 39.74, lng: -104.9905 };
-    expect(metresBetween(pose, extrapolate(pose, motion, 10_000, behind))).toBeCloseTo(100, 0);
+    expect(metresBetween(pose, extrapolate(pose, motion, 10_000, behind))).toBeCloseTo(coastMetres(10, 10), 0);
   });
 
   it('holds while stopped, parked or with the doors open', () => {
@@ -103,5 +105,28 @@ describe('extrapolate', () => {
   it('works out a speed from two fixes when the provider sends none', () => {
     expect(speedBetween({ ts: 0, ...start }, { ts: 10_000, ...east })).toBeCloseTo(8.6, 0);
     expect(speedBetween({ ts: 0, ...start }, { ts: 500, ...east })).toBeNull();
+  });
+});
+
+describe('never backwards', () => {
+  const shown = { lat: 39.74, lng: -104.99, heading: 90 };
+  const east = (m: number, heading = 90) => ({ lat: 39.74, lng: -104.99 + m / (111_320 * Math.cos((39.74 * Math.PI) / 180)), heading });
+
+  it('measures ahead and behind along the heading', () => {
+    expect(metresAhead(shown, east(20))).toBeCloseTo(20, 0);
+    expect(metresAhead(shown, east(-20))).toBeCloseTo(-20, 0);
+  });
+
+  it('waits rather than sliding back a little', () => {
+    expect(shouldHold(shown, east(-15), null, 0)).toBe(true);
+    expect(shouldHold(shown, east(-15), 0, HOLD_MAX_MS - 1)).toBe(true);
+    expect(shouldHold(shown, east(-15), 0, HOLD_MAX_MS)).toBe(false);
+  });
+
+  it('moves on for a step forward, GPS wobble, a turnaround or a guess far out', () => {
+    expect(shouldHold(shown, east(15), null, 0)).toBe(false);
+    expect(shouldHold(shown, east(-2), null, 0)).toBe(false);
+    expect(shouldHold(shown, east(-15, 270), null, 0)).toBe(false);
+    expect(shouldHold(shown, east(-200), null, 0)).toBe(false);
   });
 });

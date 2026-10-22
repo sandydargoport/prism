@@ -12,7 +12,7 @@
 
 export const BUS_MARKER_SETTING = 'busMarker';
 
-export const BUS_MARKERS = ['school', 'seasonal', 'night', 'submarine', 'saucer', 'wedge', 'cruiser'] as const;
+export const BUS_MARKERS = ['school', 'seasonal', 'night', 'submarine', 'saucer', 'wedge', 'cruiser', 'chomper'] as const;
 export type BusMarker = (typeof BUS_MARKERS)[number];
 export const DEFAULT_BUS_MARKER: BusMarker = 'school';
 
@@ -24,6 +24,7 @@ export const BUS_MARKER_LABELS: Record<BusMarker, string> = {
   saucer: 'Flying saucer',
   wedge: 'Steel wedge truck',
   cruiser: 'Night cruiser',
+  chomper: 'Chomper, chased by kids who missed the bus',
 };
 
 export function isBusMarker(value: unknown): value is BusMarker {
@@ -50,6 +51,20 @@ const SCHOOL = `
   <line x1="21" y1="14" x2="21" y2="45" stroke="#1f2937" stroke-width="1.2"/>
   <rect x="4" y="45" width="3" height="1.5" fill="#dc2626"/>
   <rect x="17" y="45" width="3" height="1.5" fill="#dc2626"/>`;
+
+/**
+ * The chomper's mouth, opening toward the front (the top). `half` is half the
+ * opening in degrees; the outline runs from one lip round the back to the other.
+ */
+function mouth(half: number): string {
+  const r = (half * Math.PI) / 180;
+  const x = (13 * Math.sin(r)).toFixed(2);
+  const y = (15 - 13 * Math.cos(r)).toFixed(2);
+  return `M15 15 L${(15 + Number(x)).toFixed(2)} ${y} A13 13 0 1 1 ${(15 - Number(x)).toFixed(2)} ${y} Z`;
+}
+
+const CHOMP_OPEN = mouth(38);
+const CHOMP_SHUT = mouth(4);
 
 const DRAWINGS: Record<Exclude<BusMarker, 'seasonal'>, Drawing> = {
   school: { width: 24, height: 48, svg: SCHOOL },
@@ -100,15 +115,60 @@ const DRAWINGS: Record<Exclude<BusMarker, 'seasonal'>, Drawing> = {
       <rect x="8" y="42.5" width="4" height="1.5" fill="#ef4444"/>
       <rect x="16" y="42.5" width="4" height="1.5" fill="#ef4444"/>`,
   },
+  // Round and green with headlights and a bus stripe, chomping as it goes.
+  chomper: {
+    width: 30, height: 30, svg: `
+      <path d="${CHOMP_OPEN}" fill="#16a34a" ${OUTLINE}>
+        <animate attributeName="d" values="${CHOMP_OPEN};${CHOMP_SHUT};${CHOMP_OPEN}" dur="0.4s" repeatCount="indefinite"/>
+      </path>
+      <path d="M4 18 A11 11 0 0 0 26 18" fill="none" stroke="#f5b800" stroke-width="2.2"/>
+      <circle cx="9.5" cy="10" r="2.2" fill="#fff"/><circle cx="9.8" cy="9.4" r="1.1" fill="#1f2937"/>
+      <circle cx="20.5" cy="10" r="2.2" fill="#fff"/><circle cx="20.2" cy="9.4" r="1.1" fill="#1f2937"/>
+      <circle cx="4.2" cy="13.5" r="1.3" fill="#fde047" ${OUTLINE}/>
+      <circle cx="25.8" cy="13.5" r="1.3" fill="#fde047" ${OUTLINE}/>`,
+  },
 };
+
+/** Shirt colours for the kids running after the chomper. */
+const KID_SHIRTS = ['#ef4444', '#8b5cf6', '#0ea5e9', '#f97316'];
+
+/**
+ * A kid who missed the bus, seen from the front (kids do not turn with the
+ * road). Scared, they go pale blue with their arms up, running away.
+ */
+export function kidSvg(index: number, scared: boolean, animated = true): string {
+  const shirt = scared ? '#93c5fd' : KID_SHIRTS[index % KID_SHIRTS.length]!;
+  const skin = scared ? '#dbeafe' : '#f2c9a0';
+  const arms = scared
+    ? '<path d="M4 11 L1.5 6 M14 11 L16.5 6" stroke="#1f2937" stroke-width="1.3" stroke-linecap="round"/>'
+    : '<path d="M4 11 L2 15 M14 11 L16 15" stroke="#1f2937" stroke-width="1.3" stroke-linecap="round"/>';
+  const eyes = scared
+    ? '<circle cx="7.3" cy="5.5" r="1.1" fill="#fff" stroke="#1f2937" stroke-width="0.5"/><circle cx="10.7" cy="5.5" r="1.1" fill="#fff" stroke="#1f2937" stroke-width="0.5"/><ellipse cx="9" cy="8" rx="1" ry="0.8" fill="#1f2937"/>'
+    : '<circle cx="7.4" cy="5.6" r="0.7" fill="#1f2937"/><circle cx="10.6" cy="5.6" r="0.7" fill="#1f2937"/>';
+  const bob = animated
+    ? `<animateTransform attributeName="transform" type="translate" values="0 0;0 -1.2;0 0" dur="${scared ? 0.22 : 0.32}s" begin="${(index * 0.11).toFixed(2)}s" repeatCount="indefinite"/>`
+    : '';
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 22" width="18" height="22"><g>${bob}
+    <rect x="11.5" y="9.5" width="4" height="6" rx="1.2" fill="#facc15" ${OUTLINE}/>
+    ${arms}
+    <path d="M7 16 L6 21 M11 16 L12 21" stroke="#1f2937" stroke-width="1.6" stroke-linecap="round"/>
+    <rect x="4.5" y="9" width="9" height="8" rx="2.5" fill="${shirt}" ${OUTLINE}/>
+    <circle cx="9" cy="5.5" r="4" fill="${skin}" ${OUTLINE}/>
+    <path d="M5 4.5 C6 1 12 1 13 4.5 C11 3.2 7 3.2 5 4.5 Z" fill="#78350f"/>
+    ${eyes}</g></svg>`;
+}
 
 /** The drawing's markup and its on-map size in px. */
 export function busMarkerDrawing(kind: BusMarker): Drawing {
   return DRAWINGS[kind === 'seasonal' ? 'school' : kind];
 }
 
-/** A full <svg> element as a string, at the given scale. */
-export function busMarkerSvg(kind: BusMarker, scale = 1): string {
+/**
+ * A full <svg> element as a string, at the given scale. With `animated`
+ * false (reduced motion) anything that moves on its own stands still.
+ */
+export function busMarkerSvg(kind: BusMarker, scale = 1, animated = true): string {
   const d = busMarkerDrawing(kind);
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${d.width} ${d.height}" width="${d.width * scale}" height="${d.height * scale}">${d.svg}</svg>`;
+  const svg = animated ? d.svg : d.svg.replace(/<animate[^>]*\/>/g, '');
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${d.width} ${d.height}" width="${d.width * scale}" height="${d.height * scale}">${svg}</svg>`;
 }

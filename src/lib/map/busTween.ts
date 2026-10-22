@@ -46,6 +46,12 @@ export const CATCH_UP_MS = 1_500;
  * the provider has not reported), so the marker holds.
  */
 export const MAX_EXTRAPOLATE_MS = 20_000;
+/**
+ * The guess eases off the longer it goes without a fix: buses slow for
+ * lights, corners and stops far more often than they speed up, and a guess
+ * that ran ahead has to come back. Seconds.
+ */
+const COAST_TAU_S = 12;
 /** Slower than this is stopped, not moving. */
 const MOVING_MPS = 1;
 /** A stop further off the heading than this is not ahead of the bus. */
@@ -132,9 +138,14 @@ function offset(from: Pose, metres: number): Pose {
   };
 }
 
+/** Metres covered `seconds` after a fix at `speed`, slowing gently as the guess ages. */
+export function coastMetres(speed: number, seconds: number): number {
+  return speed * COAST_TAU_S * (1 - Math.exp(-seconds / COAST_TAU_S));
+}
+
 /**
- * Where the bus most likely is at `now`, from its newest fix: carried on at
- * the same speed and heading, for at most MAX_EXTRAPOLATE_MS, and never past
+ * Where the bus most likely is at `now`, from its newest fix: carried on along
+ * the same heading, easing off, for at most MAX_EXTRAPOLATE_MS, and never past
  * the next stop when that stop lies ahead.
  */
 export function extrapolate(
@@ -146,7 +157,7 @@ export function extrapolate(
   const speed = motion.speed ?? 0;
   if (speed < MOVING_MPS || motion.moving === false || motion.doorOpen) return pose;
   const seconds = Math.min(Math.max(0, now - motion.ts), MAX_EXTRAPOLATE_MS) / 1000;
-  let metres = speed * seconds;
+  let metres = coastMetres(speed, seconds);
   if (nextStop) {
     const off = Math.abs(headingDelta(pose.heading, bearing(pose, nextStop)));
     if (off < AHEAD_DEG) {
@@ -154,6 +165,34 @@ export function extrapolate(
     }
   }
   return metres > 0 ? offset(pose, metres) : pose;
+}
+
+/** Metres from `from` to `to` along `from`'s heading; negative is behind it. */
+export function metresAhead(from: Pose, to: { lat: number; lng: number }): number {
+  const d = metresBetween(from, to);
+  if (d === 0) return 0;
+  return d * Math.cos((headingDelta(from.heading, bearing(from, to)) * Math.PI) / 180);
+}
+
+/** GPS wobble: a target this little behind is not a step back. */
+const BACK_TOLERANCE_M = 3;
+/** Further behind than this, the guess was wrong and the marker goes back. */
+const FAR_BEHIND_M = 80;
+/** The longest the marker waits for the bus to come level with it. */
+export const HOLD_MAX_MS = 10_000;
+
+/**
+ * Whether the marker should wait where it is rather than move back to
+ * `target`. A bus seldom reverses, so a marker sliding backwards is nearly
+ * always the guess having run ahead; waiting a few seconds lets the real bus
+ * catch up to it. A real turnaround (the heading flips) or a guess far out
+ * moves it back at once, and no wait lasts longer than HOLD_MAX_MS.
+ */
+export function shouldHold(shown: Pose, target: Pose, heldSince: number | null, now: number): boolean {
+  const ahead = metresAhead(shown, target);
+  if (ahead >= -BACK_TOLERANCE_M || ahead < -FAR_BEHIND_M) return false;
+  if (Math.abs(headingDelta(shown.heading, target.heading)) > 120) return false;
+  return heldSince === null || now - heldSince < HOLD_MAX_MS;
 }
 
 /** Whether `extrapolate` would still move the marker after `now`. */

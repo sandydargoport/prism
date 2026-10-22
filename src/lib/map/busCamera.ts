@@ -40,3 +40,24 @@ export function cameraView(
   if (!target) return all;
   return [[bus.lng, bus.lat], [target.lng, target.lat]];
 }
+
+/** Zoom in only once the frame could close in by this much (one level is twice as close). */
+export const ZOOM_IN_STEP = 1;
+/** A reframe glides this long, slow enough not to jolt. */
+export const REFRAME_MS = 2_000;
+
+/**
+ * Whether the camera should move. Re-fitting on every tick zooms in a little
+ * each time as the bus closes on the stop, which looks restless. So it waits
+ * until something it frames reaches the edge `box` (screen px), or the fit
+ * would be at least ZOOM_IN_STEP closer, and then moves once.
+ */
+export function needsReframe(
+  screenPoints: [number, number][],
+  box: { left: number; top: number; right: number; bottom: number },
+  zoom: number,
+  fitZoom: number,
+): boolean {
+  const outside = screenPoints.some(([x, y]) => x < box.left || x > box.right || y < box.top || y > box.bottom);
+  return outside || fitZoom - zoom >= ZOOM_IN_STEP;
+}
