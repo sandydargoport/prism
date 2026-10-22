@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { and, asc, count, desc, eq, gt, inArray, isNotNull, lt } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, lt, min, or } from 'drizzle-orm';
 import { getDisplayAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { busRoutes, busStopVisits, settings, vehicleFixes, vehicleTracks } from '@/lib/db/schema';
@@ -78,6 +78,23 @@ async function usualPath(routeId: string, before: string): Promise<LngLat[] | nu
   return thinPath(points.map((p): LngLat => [p.lng, p.lat]));
 }
 
+/** At this speed or more a fix counts as moving, for a provider that sends no flag. */
+const MOVING_MPS = 2;
+
+/** When each track's bus first moved today: the start of the trip proper. */
+async function firstMoves(trackIds: string[]): Promise<Map<string, Date>> {
+  if (trackIds.length === 0) return new Map();
+  const rows = await db
+    .select({ trackId: vehicleFixes.trackId, at: min(vehicleFixes.ts) })
+    .from(vehicleFixes)
+    .where(and(
+      inArray(vehicleFixes.trackId, trackIds),
+      or(eq(vehicleFixes.moving, true), gte(vehicleFixes.speed, MOVING_MPS)),
+    ))
+    .groupBy(vehicleFixes.trackId);
+  return new Map(rows.flatMap((r) => (r.at ? [[r.trackId, r.at] as const] : [])));
+}
+
 async function driverNames(): Promise<DriverNames> {
   try {
     const [row] = await db.select().from(settings).where(eq(settings.key, BUS_DRIVER_NAMES_SETTING));
@@ -124,7 +141,7 @@ export async function GET(request: NextRequest) {
         usual.set(routeId, await usualPath(routeId, today).catch(() => null));
       }
     }
-    const [visits, fixes, unit, display, names] = await Promise.all([
+    const [visits, fixes, unit, display, names, moved] = await Promise.all([
       ids.length
         ? db.select().from(busStopVisits).where(inArray(busStopVisits.trackId, ids))
         : Promise.resolve([]),
@@ -140,6 +157,7 @@ export async function GET(request: NextRequest) {
       speedUnit(),
       mapDisplay(),
       driverNames(),
+      firstMoves(ids),
     ]);
 
     // With nothing new the cursor stays put; stepping back every time would
@@ -159,6 +177,7 @@ export async function GET(request: NextRequest) {
         visits.filter((v) => v.trackId === track.id),
         track.progress,
         now,
+        { plannedStart: track.plannedStart, departedAt: moved.get(track.id) ?? null },
       );
       return {
         id: track.id,

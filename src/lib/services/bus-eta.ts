@@ -32,6 +32,12 @@ export interface StopTiming {
   passed: boolean;
 }
 
+/** How the trip began: its planned start, and when the bus first moved. */
+export interface TripStart {
+  plannedStart: Date | null;
+  departedAt: Date | null;
+}
+
 export interface Projection {
   stops: StopTiming[];
   /** How far behind plan the bus is running, in ms (negative = early). Null with nothing to go on. */
@@ -61,6 +67,7 @@ export function projectStops(
   visits: StopVisitTimes[],
   progress: { lastVisitedStop: number } | null | undefined,
   now: Date,
+  start: TripStart | null = null,
 ): Projection {
   const ordered = [...stops].sort((a, b) => a.order - b.order);
   const byKey = new Map(visits.map((v) => [v.stopKey, v]));
@@ -81,6 +88,15 @@ export function projectStops(
       shiftMs = arrived.getTime() - new Date(s.plannedAt).getTime();
       break;
     }
+  }
+
+  // Before the first stop, the start says it: a bus that leaves the depot
+  // late seldom makes the time up, so a late start shifts every stop at once.
+  // Still parked past the planned start, it is at least that late already.
+  if (shiftMs === null && lastPassed < 0 && start?.plannedStart) {
+    const planned = start.plannedStart.getTime();
+    if (start.departedAt) shiftMs = start.departedAt.getTime() - planned;
+    else if (now.getTime() > planned) shiftMs = now.getTime() - planned;
   }
 
   // If the next stop is already overdue on that shift, the bus is later than

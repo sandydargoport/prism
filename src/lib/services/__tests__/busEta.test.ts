@@ -45,6 +45,25 @@ describe('projectStops', () => {
     expect(late.stops[0]!.projectedAt).toBe(new Date(at('13:02')).toISOString());
   });
 
+  it('shifts every stop by a late start from the depot', () => {
+    const start = { plannedStart: new Date(at('12:45')), departedAt: new Date(at('12:52')) };
+    const p = projectStops(stops, [], null, new Date(at('12:53')), start);
+    expect(p.shiftMs).toBe(7 * 60_000);
+    expect(p.stops[2]!.projectedAt).toBe(new Date(at('13:17')).toISOString());
+  });
+
+  it('counts a bus still parked past its start as late by at least that much', () => {
+    const p = projectStops(stops, [], null, new Date(at('12:50')), { plannedStart: new Date(at('12:45')), departedAt: null });
+    expect(p.shiftMs).toBe(5 * 60_000);
+    expect(p.stops[0]!.projectedAt).toBe(new Date(at('13:05')).toISOString());
+  });
+
+  it('lets the first stop reached overrule the start', () => {
+    const start = { plannedStart: new Date(at('12:45')), departedAt: new Date(at('12:52')) };
+    const p = projectStops(stops, [visit('a', '13:02')], null, new Date(at('13:03')), start);
+    expect(p.shiftMs).toBe(2 * 60_000);
+  });
+
   it('takes the provider progress count as passed even without arrival events', () => {
     const p = projectStops(stops, [visit('a', '13:01')], { lastVisitedStop: 2 }, new Date(at('13:06')));
     expect(p.stops.map((s) => s.passed)).toEqual([true, true, false, false]);

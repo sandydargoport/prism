@@ -154,7 +154,9 @@ Prism can also take live bus positions from a **position provider**: a small pro
 
 While a linked trip is running, the Bus Tracker widget shows a map with the bus moving along today's route, each upcoming stop labelled with its projected time, and a panel with the arrival time at your stop, how late the bus is running, the next stop, the bus and driver, and when the last update arrived. A small widget shows the panel only. With no live data, the widget shows the route's scheduled time as before.
 
-Projected times start from the provider's planned stop times, moved by how late or early the bus reached its most recent stop. They never show a time earlier than now.
+Projected times start from the provider's planned stop times, moved by how late or early the bus reached its most recent stop. Before the first stop, the start of the trip sets it: a bus that leaves the depot late, or is still parked past its planned start, moves every stop later at once, since a late start is seldom made up. They never show a time earlier than now.
+
+Ahead of the bus, a dashed line shows the road still to come, along the route as the bus drove it on its last trip (mornings and afternoons each follow their own). Before there is an earlier trip it joins the remaining stops with straight lines. The solid line behind the bus is only positions it actually reported.
 
 Positions arrive every few seconds and are already a little old when they do, so the marker shows where the bus most likely is now rather than where it last reported: it carries on along the last heading, easing off the longer it goes without an update, for up to 20 seconds, never past the next stop, and not at all while the bus is stopped or its doors are open. It never slides backwards for a small correction: if the next update is a little behind it, the marker waits up to 10 seconds for the bus to come level, then backs up gently if it has to. A real turnaround moves it at once. Showing the bus behind where it really is would suggest there is more time than there is. After 90 seconds with no update the marker fades.
 
