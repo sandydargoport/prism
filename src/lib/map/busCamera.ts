@@ -24,6 +24,8 @@ export const CLOSE_ZOOM = 16;
 
 /** Follow keeps this much road in view past the bus, the way it is facing. */
 export const LEAD_M = 200;
+/** Closer than this to the stop it is headed for, the stop after it comes into view too. */
+export const ONWARD_M = 400;
 
 /** The point `m` metres from `from` on compass `heading`. */
 function ahead(from: LngLat, heading: number, m: number): LngLat {
@@ -38,7 +40,7 @@ function ahead(from: LngLat, heading: number, m: number): LngLat {
  * The points the map should frame. Following, that is the bus, the road it
  * is about to take (`road`, the dashed line) and the stop it is headed for,
  * plus a little road past the bus, so a close zoom near our stop never cuts
- * off where the bus is going.
+ * off where the bus is going. Nearly there, the stop after shows the way on.
  */
 export function cameraView(
   mode: BusMapCamera,
@@ -60,6 +62,8 @@ export function cameraView(
   const at: LngLat = [bus.lng, bus.lat];
   const points: LngLat[] = [at, [target.lng, target.lat], ...(road ?? [])];
   if (typeof bus.heading === 'number') points.push(ahead(at, bus.heading, LEAD_M));
+  const onward = stops.slice(stops.indexOf(target) + 1).find((s) => !s.passed);
+  if (onward && metres(at, [target.lng, target.lat]) <= ONWARD_M) points.push([onward.lng, onward.lat]);
   return points;
 }
 

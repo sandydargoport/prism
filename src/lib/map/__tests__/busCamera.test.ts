@@ -27,6 +27,18 @@ describe('cameraView', () => {
     expect(metres([1.5, 1], lead)).toBeCloseTo(LEAD_M, 0);
   });
 
+  it('brings the stop after into view once the bus is nearly at its stop', () => {
+    const near = [
+      { key: 'a', lat: 40, lng: -105, passed: true },
+      { key: 'mine', lat: 40.002, lng: -105, passed: false },
+      { key: 'next', lat: 40.002, lng: -104.99, passed: false },
+    ];
+    const far = { lat: 39.99, lng: -105 };
+    const close = { lat: 40.0005, lng: -105 };
+    expect(cameraView('follow', far, near, 'mine')).not.toContainEqual([-104.99, 40.002]);
+    expect(cameraView('follow', close, near, 'mine')).toContainEqual([-104.99, 40.002]);
+  });
+
   it('shows the whole route, with the bus, when asked or when there is nothing to follow', () => {
     expect(cameraView('route', bus, stops, 'mine')).toHaveLength(5);
     expect(cameraView('follow', null, stops, 'mine')).toHaveLength(4);
