@@ -168,6 +168,16 @@ function BusLivePanel({
 
   const rows: [string, React.ReactNode][] = [];
   if (late) rows.push(['Running', late]);
+  // High in the list, beside how late it is: how fresh the position is
+  // decides how far to trust everything else, so it is never the row dropped.
+  if (lastFixMs === null) {
+    rows.push(['Updated', 'No position yet']);
+  } else if (age === 'live') {
+    rows.push(['Updated', `${formatAge(now - lastFixMs)} ago`]);
+  } else {
+    // Same short label as when live, so it fits the narrow layout; the colour says it is old.
+    rows.push(['Updated', <span key="seen" className="text-warning">{formatAge(now - lastFixMs)} ago</span>]);
+  }
   if (next && next.key !== rider?.key) {
     rows.push(['Next', `${next.name ?? 'Stop'}${next.projectedAt ? ` · ${formatTime(next.projectedAt)}` : ''}`]);
   }
@@ -183,12 +193,6 @@ function BusLivePanel({
     const motion = moving ? formatSpeed(latest.speed!, speedUnit) : 'Stopped';
     rows.push(['Now', latest.doorOpen ? `${motion} · doors open` : motion]);
   }
-
-  const updated = lastFixMs === null
-    ? 'No position yet'
-    : age === 'live'
-      ? `Updated ${formatAge(now - lastFixMs)} ago`
-      : `Last seen ${formatAge(now - lastFixMs)} ago`;
 
   return (
     <div className={cn('min-h-0 min-w-0 flex flex-col gap-2 overflow-hidden', className)}>
@@ -207,9 +211,6 @@ function BusLivePanel({
           </div>
         ))}
       </dl>
-      <div className={cn('text-[11px] mt-auto shrink-0', age === 'live' ? 'text-muted-foreground' : 'text-warning')}>
-        {updated}
-      </div>
     </div>
   );
 }
