@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { maplibregl, MAP_LABEL_FONT, MAP_STYLE_URL } from '@/lib/map/maplibreSetup';
+import { maplibregl, MAP_LABEL_FONT } from '@/lib/map/maplibreSetup';
+import { busMapStyleUrl, type BusMapCamera, type BusMapStyle } from '@/lib/map/busMapOptions';
+import { CAMERA_TICK_MS, CLOSE_ZOOM, MANUAL_HOLD_MS, cameraView } from '@/lib/map/busCamera';
 import {
   CATCH_UP_MS, buildPath, extrapolate, freshness, isExtrapolating, isPathDone, poseAt, speedBetween,
   type Motion, type Path, type Pose,
@@ -19,6 +21,8 @@ interface BusLiveMapProps {
   marker: BusMarker;
   /** 1-12, for the seasonal marker's decoration. */
   month: number;
+  mapStyle: BusMapStyle;
+  camera: BusMapCamera;
 }
 
 /** ~30 fps is smooth for a bus and kind to a wall display's CPU. */
@@ -139,15 +143,17 @@ function addLayers(map: maplibregl.Map) {
 /**
  * Today's trip on a map: the trace so far, each stop labelled with its actual
  * (passed) or projected (upcoming) time, and the bus where it most likely is
- * now (see busTween). Not interactive: on a wall display a drag belongs to the
- * dashboard.
+ * now (see busTween). Zoom is by the + and - buttons only: on a wall display a
+ * drag or pinch belongs to the dashboard.
  */
-export function BusLiveMap({ track, formatTime, darkMode, reducedMotion, clockOffsetMs, marker, month }: BusLiveMapProps) {
+export function BusLiveMap({
+  track, formatTime, darkMode, reducedMotion, clockOffsetMs, marker, month, mapStyle, camera,
+}: BusLiveMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markerRef = useRef<maplibregl.Marker | null>(null);
   const readyRef = useRef(false);
-  const boundsRef = useRef<maplibregl.LngLatBounds | null>(null);
+  const aimedRef = useRef(false);
   const pathRef = useRef<Path | null>(null);
   const shownTsRef = useRef<number | null>(null);
   // The newest fix, as the point the marker is extrapolated from.
@@ -160,43 +166,49 @@ export function BusLiveMap({ track, formatTime, darkMode, reducedMotion, clockOf
   trackRef.current = track;
   const formatRef = useRef(formatTime);
   formatRef.current = formatTime;
+  const styleUrl = busMapStyleUrl(mapStyle, darkMode);
+  const styleUrlRef = useRef(styleUrl);
+  // Moving the camera every 10 seconds is motion a reduced-motion setting asks
+  // to avoid, so alternating falls back to following.
+  const cameraMode: BusMapCamera = reducedMotion && camera === 'alternate' ? 'follow' : camera;
+  const cameraRef = useRef(cameraMode);
+  cameraRef.current = cameraMode;
+  const manualUntilRef = useRef(0);
 
   const setTrace = (untilTs: number) => {
     const source = mapRef.current?.getSource(TRACE) as maplibregl.GeoJSONSource | undefined;
     source?.setData(traceFeature(trackRef.current, untilTs));
   };
 
-  // The whole route in view. Redone when the widget resizes, since nobody can
-  // pan this map and a fit made at the old size would crop the end stops.
-  const fit = () => {
+  /**
+   * Aim the camera for the chosen mode. Bounds get room for the labels, which
+   * hang below and to both sides of their dot. Skipped for a minute after a
+   * tap on the zoom buttons, so a zoom by hand is not undone at once.
+   */
+  const aim = (animate: boolean) => {
     const map = mapRef.current;
-    if (!map || !boundsRef.current) return;
+    if (!map || !readyRef.current || Date.now() < manualUntilRef.current) return;
+    const t = trackRef.current;
+    const bus = anchorRef.current ? current() : null;
+    const view = cameraView(cameraRef.current, Date.now(), bus, t.stops, t.riderStopKey);
+    if (!view) return;
+    const duration = animate && !reducedMotion ? 1000 : 0;
+    if (view.kind === 'center') {
+      map.easeTo({ center: view.center, zoom: CLOSE_ZOOM, duration });
+      return;
+    }
     const { clientWidth: w, clientHeight: h } = map.getContainer();
-    // Labels hang below and to both sides of their dot, so the sides and
-    // bottom get more room than the top.
     const side = Math.max(40, Math.min(90, w * 0.2));
     const top = Math.max(16, Math.min(40, h * 0.08));
-    map.fitBounds(boundsRef.current, {
-      padding: { left: side, right: side, top, bottom: top + 16 },
-      maxZoom: 15,
-      duration: 0,
-    });
+    const bounds = view.points.reduce(
+      (b, p) => b.extend(p),
+      new maplibregl.LngLatBounds(view.points[0]!, view.points[0]!),
+    );
+    map.fitBounds(bounds, { padding: { left: side, right: side, top, bottom: top + 16 }, maxZoom: CLOSE_ZOOM, duration });
   };
 
   const place = (pose: Pose) => {
     markerRef.current?.setLngLat([pose.lng, pose.lat]).setRotation(pose.heading);
-  };
-
-  // Keep the bus in view: pan only when it nears the edge, never every frame.
-  const follow = (pose: Pose) => {
-    const map = mapRef.current;
-    if (!map) return;
-    const p = map.project([pose.lng, pose.lat]);
-    const { clientWidth: w, clientHeight: h } = map.getContainer();
-    const inset = Math.min(w, h) * 0.12;
-    if (p.x < inset || p.y < inset || p.x > w - inset || p.y > h - inset) {
-      map.easeTo({ center: [pose.lng, pose.lat], duration: reducedMotion ? 0 : 800 });
-    }
   };
 
   // Fix times are the server's clock; the display's may drift from it.
@@ -239,7 +251,6 @@ export function BusLiveMap({ track, formatTime, darkMode, reducedMotion, clockOf
           if (g) place(g);
           if (!anchorRef.current || !isExtrapolating(anchorRef.current.motion, serverNow())) {
             frameRef.current = null;
-            if (g) follow(g);
             return;
           }
         }
@@ -256,14 +267,13 @@ export function BusLiveMap({ track, formatTime, darkMode, reducedMotion, clockOf
     (map.getSource(STOPS) as maplibregl.GeoJSONSource | undefined)?.setData(stopFeatures(t, formatRef.current));
 
     const latest = t.fixes[t.fixes.length - 1];
-    if (!boundsRef.current && (t.stops.length > 0 || latest)) {
-      const points = t.stops.map((s) => [s.lng, s.lat] as [number, number]);
-      if (latest) points.push([latest.lng, latest.lat]);
-      boundsRef.current = points.reduce(
-        (b, p) => b.extend(p),
-        new maplibregl.LngLatBounds(points[0]!, points[0]!),
-      );
-      fit();
+    if (!aimedRef.current && (t.stops.length > 0 || latest)) {
+      aimedRef.current = true;
+      // Placed first so the first view can include the bus.
+      if (latest) {
+        anchorRef.current ??= { pose: { lat: latest.lat, lng: latest.lng, heading: latest.heading ?? 0 }, motion: { ts: new Date(latest.ts).getTime(), speed: null } };
+      }
+      aim(false);
     }
     if (!latest) return;
 
@@ -311,7 +321,6 @@ export function BusLiveMap({ track, formatTime, darkMode, reducedMotion, clockOf
     if (reducedMotion) {
       place(guess()!);
       setTrace(latestTs);
-      follow(guess()!);
     } else {
       animate();
     }
@@ -321,36 +330,46 @@ export function BusLiveMap({ track, formatTime, darkMode, reducedMotion, clockOf
     if (!containerRef.current || mapRef.current) return;
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: MAP_STYLE_URL,
+      style: styleUrl,
       center: [0, 0],
       zoom: 1,
       interactive: false,
       attributionControl: false,
     });
     map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+    // A tap on + or - is someone looking closer: hold the camera for a while.
+    containerRef.current.querySelectorAll('.maplibregl-ctrl-zoom-in, .maplibregl-ctrl-zoom-out').forEach((button) => {
+      button.addEventListener('click', () => { manualUntilRef.current = Date.now() + MANUAL_HOLD_MS; });
+    });
     markerRef.current = new maplibregl.Marker({
       element: busElement(),
       rotationAlignment: 'map',
       pitchAlignment: 'map',
     });
-    map.on('load', () => {
+    // Runs on the first style and again whenever the style is swapped (light
+    // to dark, simple to detailed), which drops every layer we added.
+    map.on('style.load', () => {
       quietBasemap(map);
       addLayers(map);
       // Compact attribution starts expanded and only folds on a drag, which
       // this map never gets.
       containerRef.current?.querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
-      markerRef.current!.setLngLat([0, 0]).addTo(map);
+      if (!markerRef.current!.getElement().isConnected) markerRef.current!.setLngLat([0, 0]).addTo(map);
       readyRef.current = true;
       sync();
+      if (shownTsRef.current !== null) setTrace(shownTsRef.current);
     });
     mapRef.current = map;
 
     // The widget resizes with the layout, not the window.
-    const observer = new ResizeObserver(() => { map.resize(); fit(); });
+    const observer = new ResizeObserver(() => { map.resize(); aim(false); });
     observer.observe(containerRef.current);
+    const tick = setInterval(() => aim(true), CAMERA_TICK_MS);
 
     return () => {
       observer.disconnect();
+      clearInterval(tick);
       if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
       markerRef.current?.remove();
       map.remove();
@@ -360,6 +379,17 @@ export function BusLiveMap({ track, formatTime, darkMode, reducedMotion, clockOf
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { sync(); }, [track]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || styleUrl === styleUrlRef.current) return;
+    styleUrlRef.current = styleUrl;
+    readyRef.current = false;
+    map.setStyle(styleUrl);
+  }, [styleUrl]);
+
+  // A new camera choice shows at once rather than at the next tick.
+  useEffect(() => { manualUntilRef.current = 0; aim(true); }, [cameraMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const el = markerRef.current?.getElement();
@@ -375,14 +405,6 @@ export function BusLiveMap({ track, formatTime, darkMode, reducedMotion, clockOf
   }, [track, clockOffsetMs]);
 
   return (
-    <>
-      <style>{`
-        .bus-map-dark .maplibregl-canvas-container { filter: brightness(0.72) saturate(0.55) contrast(1.08) hue-rotate(5deg); }
-      `}</style>
-      <div
-        ref={containerRef}
-        className={`h-full w-full rounded-md overflow-hidden${darkMode ? ' bus-map-dark' : ''}`}
-      />
-    </>
+    <div ref={containerRef} className="h-full w-full rounded-md overflow-hidden" />
   );
 }

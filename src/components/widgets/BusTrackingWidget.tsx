@@ -41,7 +41,7 @@ export const BusTrackingWidget = React.memo(function BusTrackingWidget({ classNa
         size="medium"
         className={className}
       >
-        <BusLiveView track={liveTrack} speedUnit={live.speedUnit} clockOffsetMs={live.clockOffsetMs} marker={live.marker} />
+        <BusLiveView track={liveTrack} speedUnit={live.speedUnit} clockOffsetMs={live.clockOffsetMs} marker={live.marker} mapStyle={live.mapStyle} camera={live.camera} />
       </WidgetContainer>
     );
   }

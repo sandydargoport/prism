@@ -8,6 +8,10 @@ import { todayKey } from '@/lib/utils/zonedDate';
 import { pickRiderStop, projectStops } from '@/lib/services/bus-eta';
 import { logError } from '@/lib/utils/logError';
 import { BUS_DRIVER_NAMES_SETTING, driverLabel, isDriverNames, type DriverNames } from '@/lib/services/bus-driver-names';
+import {
+  BUS_MAP_CAMERA_SETTING, BUS_MAP_STYLE_SETTING, DEFAULT_BUS_MAP_CAMERA, DEFAULT_BUS_MAP_STYLE,
+  isBusMapCamera, isBusMapStyle,
+} from '@/lib/map/busMapOptions';
 import { BUS_MARKER_SETTING, DEFAULT_BUS_MARKER, isBusMarker, type BusMarker } from '@/lib/map/busMarkers';
 
 /**
@@ -30,12 +34,23 @@ async function speedUnit(): Promise<'mph' | 'km/h'> {
   return (process.env.WEATHER_UNITS ?? '').toLowerCase() === 'metric' ? 'km/h' : 'mph';
 }
 
-async function busMarker(): Promise<BusMarker> {
+/** How the map looks: the marker, style and camera from Live Tracking settings. */
+async function mapDisplay() {
+  const display = {
+    marker: DEFAULT_BUS_MARKER as BusMarker,
+    mapStyle: DEFAULT_BUS_MAP_STYLE,
+    camera: DEFAULT_BUS_MAP_CAMERA,
+  };
   try {
-    const [row] = await db.select().from(settings).where(eq(settings.key, BUS_MARKER_SETTING));
-    if (isBusMarker(row?.value)) return row.value;
-  } catch { /* fall through */ }
-  return DEFAULT_BUS_MARKER;
+    const rows = await db.select().from(settings)
+      .where(inArray(settings.key, [BUS_MARKER_SETTING, BUS_MAP_STYLE_SETTING, BUS_MAP_CAMERA_SETTING]));
+    for (const row of rows) {
+      if (row.key === BUS_MARKER_SETTING && isBusMarker(row.value)) display.marker = row.value;
+      if (row.key === BUS_MAP_STYLE_SETTING && isBusMapStyle(row.value)) display.mapStyle = row.value;
+      if (row.key === BUS_MAP_CAMERA_SETTING && isBusMapCamera(row.value)) display.camera = row.value;
+    }
+  } catch { /* defaults */ }
+  return display;
 }
 
 async function driverNames(): Promise<DriverNames> {
@@ -76,7 +91,7 @@ export async function GET(request: NextRequest) {
       ));
 
     const ids = rows.map((r) => r.track.id);
-    const [visits, fixes, unit, marker, names] = await Promise.all([
+    const [visits, fixes, unit, display, names] = await Promise.all([
       ids.length
         ? db.select().from(busStopVisits).where(inArray(busStopVisits.trackId, ids))
         : Promise.resolve([]),
@@ -90,7 +105,7 @@ export async function GET(request: NextRequest) {
           .limit(MAX_FIXES)
         : Promise.resolve([]),
       speedUnit(),
-      busMarker(),
+      mapDisplay(),
       driverNames(),
     ]);
 
@@ -143,7 +158,7 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({ serverTime: now.toISOString(), cursor, speedUnit: unit, marker, tracks });
+    return NextResponse.json({ serverTime: now.toISOString(), cursor, speedUnit: unit, ...display, tracks });
   } catch (error) {
     logError('Failed to get live bus tracks:', error);
     return NextResponse.json({ error: 'Failed to get live bus tracks' }, { status: 500 });
