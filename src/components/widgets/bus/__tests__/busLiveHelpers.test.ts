@@ -45,7 +45,7 @@ describe('mergeFixes', () => {
 const track = (over: Partial<LiveTrack>): LiveTrack => ({
   id: 't', routeId: 'r', routeLabel: 'AM', direction: 'AM', label: null, status: 'live',
   vehicle: null, driverLabel: null, progress: null, plannedStart: null, plannedEnd: null,
-  lastFixAt: '2026-03-02T13:00:00Z', riderStopKey: 's', shiftMs: null, stops: [], fixes: [],
+  lastFixAt: '2026-03-02T13:00:00Z', riderStopKey: 's', shiftMs: null, stops: [], fixes: [], usualPath: null,
   ...over,
 });
 const now = new Date('2026-03-02T13:02:00Z').getTime();

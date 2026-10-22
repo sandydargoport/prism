@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { and, asc, eq, gt, inArray, isNotNull } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, inArray, isNotNull, lt } from 'drizzle-orm';
 import { getDisplayAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { busRoutes, busStopVisits, settings, vehicleFixes, vehicleTracks } from '@/lib/db/schema';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { todayKey } from '@/lib/utils/zonedDate';
+import { thinPath, type LngLat } from '@/lib/map/routeAhead';
 import { pickRiderStop, projectStops } from '@/lib/services/bus-eta';
 import { logError } from '@/lib/utils/logError';
 import { BUS_DRIVER_NAMES_SETTING, driverLabel, isDriverNames, type DriverNames } from '@/lib/services/bus-driver-names';
@@ -50,6 +51,33 @@ async function mapDisplay() {
   return display;
 }
 
+/** A trip with fewer fixes than this did not record enough of the route to follow. */
+const MIN_USUAL_FIXES = 20;
+
+/**
+ * The route as the bus last drove it: the trace of the most recent earlier
+ * trip on this route that recorded enough of it, thinned for drawing. The
+ * widget draws the road ahead along it. Null before there is such a trip.
+ */
+async function usualPath(routeId: string, before: string): Promise<LngLat[] | null> {
+  const recent = await db
+    .select({ id: vehicleTracks.id, fixes: count(vehicleFixes.id) })
+    .from(vehicleTracks)
+    .innerJoin(vehicleFixes, eq(vehicleFixes.trackId, vehicleTracks.id))
+    .where(and(eq(vehicleTracks.routeId, routeId), lt(vehicleTracks.tripDate, before)))
+    .groupBy(vehicleTracks.id, vehicleTracks.tripDate)
+    .orderBy(desc(vehicleTracks.tripDate))
+    .limit(5);
+  const last = recent.find((t) => t.fixes >= MIN_USUAL_FIXES);
+  if (!last) return null;
+  const points = await db
+    .select({ lat: vehicleFixes.lat, lng: vehicleFixes.lng })
+    .from(vehicleFixes)
+    .where(eq(vehicleFixes.trackId, last.id))
+    .orderBy(asc(vehicleFixes.ts));
+  return thinPath(points.map((p): LngLat => [p.lng, p.lat]));
+}
+
 async function driverNames(): Promise<DriverNames> {
   try {
     const [row] = await db.select().from(settings).where(eq(settings.key, BUS_DRIVER_NAMES_SETTING));
@@ -88,6 +116,14 @@ export async function GET(request: NextRequest) {
       ));
 
     const ids = rows.map((r) => r.track.id);
+    const today = todayKey(timeZone, now);
+    // Sent once, with the first full load; later polls only bring new fixes.
+    const usual = new Map<string, LngLat[] | null>();
+    if (!since) {
+      for (const routeId of new Set(rows.map((r) => r.route.id))) {
+        usual.set(routeId, await usualPath(routeId, today).catch(() => null));
+      }
+    }
     const [visits, fixes, unit, display, names] = await Promise.all([
       ids.length
         ? db.select().from(busStopVisits).where(inArray(busStopVisits.trackId, ids))
@@ -140,6 +176,7 @@ export async function GET(request: NextRequest) {
         riderStopKey: pickRiderStop(track.stops, route.stopName),
         shiftMs: projection.shiftMs,
         stops: projection.stops,
+        ...(since ? {} : { usualPath: usual.get(route.id) ?? null }),
         fixes: fixes
           .filter((f) => f.trackId === track.id)
           .map((f) => ({

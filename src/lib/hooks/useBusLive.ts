@@ -40,6 +40,11 @@ export interface LiveTrack {
   stops: StopTiming[];
   /** Every fix received today, oldest first. */
   fixes: LiveFix[];
+  /**
+   * The route as the bus last drove it, [lng, lat], for drawing the road
+   * ahead. Sent with the first load only; null before there is an earlier trip.
+   */
+  usualPath: [number, number][] | null;
 }
 
 interface LiveResponse {
@@ -48,7 +53,7 @@ interface LiveResponse {
   speedUnit: 'mph' | 'km/h';
   mapStyle: BusMapStyle;
   camera: BusMapCamera;
-  tracks: LiveTrack[];
+  tracks: (Omit<LiveTrack, 'usualPath'> & { usualPath?: LiveTrack['usualPath'] })[];
 }
 
 /** Poll this often while a bus is moving: the feed itself is ~10s. */
@@ -113,6 +118,7 @@ export function useBusLive(enabled: boolean) {
       const next = data.tracks.map((t) => ({
         ...t,
         fixes: mergeFixes(held.get(t.id)?.fixes ?? [], t.fixes),
+        usualPath: t.usualPath !== undefined ? t.usualPath : held.get(t.id)?.usualPath ?? null,
       }));
       tracksRef.current = next;
       cursorRef.current = data.cursor;

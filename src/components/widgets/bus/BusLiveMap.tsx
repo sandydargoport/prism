@@ -9,6 +9,7 @@ import {
   poseAt, shouldHold, speedBetween, type Motion, type Path, type Pose,
 } from '@/lib/map/busTween';
 import type { LiveTrack } from '@/lib/hooks/useBusLive';
+import { routeAhead } from '@/lib/map/routeAhead';
 
 interface BusLiveMapProps {
   track: LiveTrack;
@@ -23,6 +24,9 @@ interface BusLiveMapProps {
 /** ~30 fps is smooth for a bus and kind to a wall display's CPU. */
 const FRAME_MS = 33;
 const TRACE = 'bus-trace';
+const AHEAD = 'bus-ahead';
+/** How often the dashed road ahead is redrawn from where the bus is shown. */
+const AHEAD_EVERY_MS = 500;
 const STOPS = 'bus-stops';
 const STOP_LABELS = 'bus-stop-labels';
 /** Going back to where the bus really is, after waiting for it, takes this long. */
@@ -109,7 +113,14 @@ function addLayers(map: maplibregl.Map) {
   const background = themeColor('background', '#ffffff');
   const foreground = themeColor('foreground', '#0f172a');
 
+  map.addSource(AHEAD, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
   map.addSource(TRACE, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+  // Dashed and lighter: the road still to come, never a reported position.
+  map.addLayer({
+    id: AHEAD, type: 'line', source: AHEAD,
+    layout: { 'line-join': 'round', 'line-cap': 'butt' },
+    paint: { 'line-color': primary, 'line-width': 3, 'line-opacity': 0.55, 'line-dasharray': [2, 1.5] },
+  });
   map.addSource(STOPS, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
   map.addLayer({
     id: TRACE, type: 'line', source: TRACE,
@@ -222,9 +233,25 @@ export function BusLiveMap({
     map.easeTo({ center: fit.center, zoom, duration: animate && !reducedMotion ? REFRAME_MS : 0 });
   };
 
+  const aheadAtRef = useRef(0);
+  const setAhead = (pose: Pose | null) => {
+    const source = mapRef.current?.getSource(AHEAD) as maplibregl.GeoJSONSource | undefined;
+    if (!source) return;
+    const t = trackRef.current;
+    const line = pose ? routeAhead(t.usualPath, t.stops, t.riderStopKey, [pose.lng, pose.lat], pose.heading) : null;
+    source.setData(line && line.length >= 2
+      ? { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: line } }
+      : { type: 'FeatureCollection', features: [] });
+  };
+
   const place = (pose: Pose) => {
     shownRef.current = pose;
     markerRef.current?.setLngLat([pose.lng, pose.lat]).setRotation(pose.heading);
+    const now = Date.now();
+    if (now - aheadAtRef.current >= AHEAD_EVERY_MS) {
+      aheadAtRef.current = now;
+      setAhead(pose);
+    }
   };
 
   /**
@@ -305,6 +332,7 @@ export function BusLiveMap({
     const t = trackRef.current;
     if (!map || !readyRef.current) return;
     (map.getSource(STOPS) as maplibregl.GeoJSONSource | undefined)?.setData(stopFeatures(t, formatRef.current));
+    if (shownRef.current) setAhead(shownRef.current);
 
     const latest = t.fixes[t.fixes.length - 1];
     if (!aimedRef.current && (t.stops.length > 0 || latest)) {
