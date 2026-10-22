@@ -35,16 +35,19 @@ describe('pathAhead', () => {
 
   it('matches the pass that heads the way the bus does', () => {
     // Out east along one street, back west along it, then north to the stop.
-    const out: LngLat[] = Array.from({ length: 11 }, (_, i) => [i * 0.0001, 0]);
-    const back: LngLat[] = Array.from({ length: 10 }, (_, i) => [0.0009 - i * 0.0001, 0.00002]);
-    const up: LngLat[] = Array.from({ length: 10 }, (_, i) => [0, 0.00002 + (i + 1) * 0.0001]);
+    // Points are a step (~11 m) apart; the way back runs a fifth of a step north.
+    const step = 1e-4;
+    const out: LngLat[] = Array.from({ length: 11 }, (_, i) => [i * step, 0]);
+    const back: LngLat[] = Array.from({ length: 10 }, (_, i) => [(9 - i) * step, step / 5]);
+    const up: LngLat[] = Array.from({ length: 10 }, (_, i) => [0, step / 5 + (i + 1) * step]);
     const loop = [...out, ...back, ...up];
-    const stopAt: LngLat = [0, 0.001];
+    const stopAt: LngLat = [0, 10 * step];
+    const bus: LngLat = [5 * step, step / 10];
     // Heading west, the bus is on the way back: the line skips the trip out.
-    const west = pathAhead(loop, [0.0005, 0.00001], stopAt, 270)!;
+    const west = pathAhead(loop, bus, stopAt, 270)!;
     expect(west.length).toBeLessThan(18);
     // Heading east, it is on the way out and has the whole loop ahead.
-    const eastbound = pathAhead(loop, [0.0005, 0.00001], stopAt, 90)!;
+    const eastbound = pathAhead(loop, bus, stopAt, 90)!;
     expect(eastbound.length).toBeGreaterThan(west.length);
   });
 

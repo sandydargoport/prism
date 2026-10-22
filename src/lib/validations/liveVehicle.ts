@@ -27,7 +27,7 @@ export const liveStopSchema = z.object({
   lng,
   plannedAt: isoTime.optional(),
   kind: z.enum(['stop', 'school', 'depot']).optional(),
-  // The household's own stop, the one the widget gives an arrival time for.
+  // The rider's stop, the one the widget gives an arrival time for.
   // Without it, the stop whose name matches the route's stop name is used.
   rider: z.boolean().optional(),
 });
