@@ -198,8 +198,9 @@ export function BusLiveMap({
       return;
     }
     const { clientWidth: w, clientHeight: h } = map.getContainer();
-    const side = Math.max(40, Math.min(90, w * 0.2));
-    const top = Math.max(16, Math.min(40, h * 0.08));
+    // At least the bus marker's own length, so it is never half off the edge.
+    const side = Math.max(48, Math.min(90, w * 0.2));
+    const top = Math.max(40, Math.min(56, h * 0.1));
     const bounds = view.points.reduce(
       (b, p) => b.extend(p),
       new maplibregl.LngLatBounds(view.points[0]!, view.points[0]!),
@@ -349,12 +350,15 @@ export function BusLiveMap({
     });
     // Runs on the first style and again whenever the style is swapped (light
     // to dark, simple to detailed), which drops every layer we added.
+    // Compact attribution opens on every style load and only folds on a drag,
+    // which this map never gets, so fold it whenever the map settles.
+    map.on('idle', () => {
+      containerRef.current?.querySelector('.maplibregl-ctrl-attrib.maplibregl-compact-show')
+        ?.classList.remove('maplibregl-compact-show');
+    });
     map.on('style.load', () => {
       quietBasemap(map);
       addLayers(map);
-      // Compact attribution starts expanded and only folds on a drag, which
-      // this map never gets.
-      containerRef.current?.querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
       if (!markerRef.current!.getElement().isConnected) markerRef.current!.setLngLat([0, 0]).addTo(map);
       readyRef.current = true;
       sync();
