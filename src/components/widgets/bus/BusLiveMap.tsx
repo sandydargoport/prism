@@ -6,10 +6,10 @@ import { busMapStyleUrl, type BusMapCamera, type BusMapStyle } from '@/lib/map/b
 import { CAMERA_TICK_MS, CLOSE_ZOOM, MANUAL_HOLD_MS, REFRAME_MS, cameraView, needsReframe } from '@/lib/map/busCamera';
 import {
   CATCH_UP_MS, buildPath, extrapolate, freshness, headingDelta, isExtrapolating, isPathDone, metresAhead,
-  poseAt, shouldHold, speedBetween, type Motion, type Path, type Pose,
+  metresBetween, poseAt, shouldHold, speedBetween, type Motion, type Path, type Pose,
 } from '@/lib/map/busTween';
 import type { LiveTrack } from '@/lib/hooks/useBusLive';
-import { routeAhead } from '@/lib/map/routeAhead';
+import { pointAlong, routeAhead, type LngLat } from '@/lib/map/routeAhead';
 
 interface BusLiveMapProps {
   track: LiveTrack;
@@ -25,8 +25,6 @@ interface BusLiveMapProps {
 const FRAME_MS = 33;
 const TRACE = 'bus-trace';
 const AHEAD = 'bus-ahead';
-/** How often the dashed road ahead is redrawn from where the bus is shown. */
-const AHEAD_EVERY_MS = 500;
 const STOPS = 'bus-stops';
 const STOP_LABELS = 'bus-stop-labels';
 /** Going back to where the bus really is, after waiting for it, takes this long. */
@@ -233,25 +231,28 @@ export function BusLiveMap({
     map.easeTo({ center: fit.center, zoom, duration: animate && !reducedMotion ? REFRAME_MS : 0 });
   };
 
-  const aheadAtRef = useRef(0);
-  const setAhead = (pose: Pose | null) => {
-    const source = mapRef.current?.getSource(AHEAD) as maplibregl.GeoJSONSource | undefined;
-    if (!source) return;
+  /**
+   * The road ahead, from the newest reported position, which is where the
+   * solid line ends: the dashes fill the stretch the marker is only guessing
+   * at, and the solid line eats them as positions arrive. Redrawn only when
+   * that position or the stops change, never as the marker moves.
+   */
+  const aheadLineRef = useRef<LngLat[] | null>(null);
+  const drawAhead = () => {
+    const anchor = anchorRef.current;
     const t = trackRef.current;
-    const line = pose ? routeAhead(t.usualPath, t.stops, t.riderStopKey, [pose.lng, pose.lat], pose.heading) : null;
-    source.setData(line && line.length >= 2
-      ? { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: line } }
+    const line = anchor
+      ? routeAhead(t.usualPath, t.stops, t.riderStopKey, [anchor.pose.lng, anchor.pose.lat], anchor.pose.heading)
+      : null;
+    aheadLineRef.current = line && line.length >= 2 ? line : null;
+    (mapRef.current?.getSource(AHEAD) as maplibregl.GeoJSONSource | undefined)?.setData(aheadLineRef.current
+      ? { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: aheadLineRef.current } }
       : { type: 'FeatureCollection', features: [] });
   };
 
   const place = (pose: Pose) => {
     shownRef.current = pose;
     markerRef.current?.setLngLat([pose.lng, pose.lat]).setRotation(pose.heading);
-    const now = Date.now();
-    if (now - aheadAtRef.current >= AHEAD_EVERY_MS) {
-      aheadAtRef.current = now;
-      setAhead(pose);
-    }
   };
 
   /**
@@ -282,10 +283,21 @@ export function BusLiveMap({
 
   const nextStop = () => trackRef.current.stops.find((s) => !s.passed) ?? null;
 
-  const guess = (): Pose | null => {
+  /**
+   * Where the bus most likely is at `at`: as far on as `extrapolate` says,
+   * but along the dashed road ahead, so it turns where the road turns.
+   */
+  const guessAt = (at: number): Pose | null => {
     const anchor = anchorRef.current;
-    return anchor ? extrapolate(anchor.pose, anchor.motion, serverNow(), nextStop()) : null;
+    if (!anchor) return null;
+    const straight = extrapolate(anchor.pose, anchor.motion, at, nextStop());
+    const line = aheadLineRef.current;
+    const m = metresBetween(anchor.pose, straight);
+    if (!line || m < 1) return straight;
+    const { point, heading } = pointAlong(line, m);
+    return { lng: point[0], lat: point[1], heading };
   };
+  const guess = () => guessAt(serverNow());
 
   /** Where the marker is drawn right now. */
   const current = (): Pose => {
@@ -332,7 +344,7 @@ export function BusLiveMap({
     const t = trackRef.current;
     if (!map || !readyRef.current) return;
     (map.getSource(STOPS) as maplibregl.GeoJSONSource | undefined)?.setData(stopFeatures(t, formatRef.current));
-    if (shownRef.current) setAhead(shownRef.current);
+    drawAhead();
 
     const latest = t.fixes[t.fixes.length - 1];
     if (!aimedRef.current && (t.stops.length > 0 || latest)) {
@@ -361,6 +373,7 @@ export function BusLiveMap({
       anchorRef.current = { pose: { lat: latest.lat, lng: latest.lng, heading: latest.heading ?? 0 }, motion };
       shownTsRef.current = latestTs;
       setTrace(latestTs);
+      drawAhead();
       place(guess()!);
       animate();
       return;
@@ -377,7 +390,8 @@ export function BusLiveMap({
     const through = buildPath(from, fresh, shownTsRef.current, now);
     const anchorPose = through.points[through.points.length - 1]!;
     anchorRef.current = { pose: anchorPose, motion };
-    const end = extrapolate(anchorPose, motion, serverNow() + CATCH_UP_MS, nextStop());
+    drawAhead();
+    const end = guessAt(serverNow() + CATCH_UP_MS)!;
     if (!reducedMotion && shouldHold(from, end, heldSinceRef.current, now)) {
       // The marker is already ahead of where the bus will be: wait for it there.
       heldSinceRef.current ??= now;

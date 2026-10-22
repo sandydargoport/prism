@@ -123,3 +123,25 @@ export function routeAhead(
   if (!target) return null;
   return (usual && pathAhead(usual, bus, [target.lng, target.lat], heading)) ?? stopsAhead(stops, bus, target);
 }
+
+/**
+ * The point `m` metres along `line` and the way the line runs there, so a
+ * guess between real positions follows the road round a corner instead of
+ * running straight on. Stops at the end of the line.
+ */
+export function pointAlong(line: LngLat[], m: number): { point: LngLat; heading: number } {
+  let left = Math.max(0, m);
+  for (let i = 1; i < line.length; i++) {
+    const a = line[i - 1]!;
+    const b = line[i]!;
+    const len = metres(a, b);
+    if (len === 0) continue;
+    if (left <= len) {
+      const t = left / len;
+      return { point: [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t], heading: bearing(a, b) };
+    }
+    left -= len;
+  }
+  const n = line.length;
+  return { point: line[n - 1]!, heading: n >= 2 ? bearing(line[n - 2]!, line[n - 1]!) : 0 };
+}

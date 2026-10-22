@@ -1,4 +1,4 @@
-import { aheadTarget, metres, pathAhead, routeAhead, stopsAhead, thinPath, type LngLat } from '../routeAhead';
+import { aheadTarget, metres, pathAhead, pointAlong, routeAhead, stopsAhead, thinPath, type LngLat } from '../routeAhead';
 
 // An L-shaped usual path at the equator, a point every ~11 m: east 0.003°, then north.
 const east: LngLat[] = Array.from({ length: 31 }, (_, i) => [i * 0.0001, 0]);
@@ -64,5 +64,20 @@ describe('routeAhead', () => {
 
   it('uses the usual path when the bus is on it', () => {
     expect(routeAhead(usual, stops, 'mine', [0.001, 0])!.length).toBeGreaterThan(10);
+  });
+});
+
+describe('pointAlong', () => {
+  const corner: LngLat[] = [[0, 0], [0.001, 0], [0.001, 0.001]]; // east ~111 m, then north
+  it('walks the line and turns with it', () => {
+    const before = pointAlong(corner, 50);
+    expect(before.heading).toBeCloseTo(90, 0);
+    expect(metres(before.point, [0, 0])).toBeCloseTo(50, 0);
+    const after = pointAlong(corner, 161);
+    expect(after.heading).toBeCloseTo(0, 0);
+    expect(metres(after.point, [0.001, 0])).toBeCloseTo(161 - metres([0, 0], [0.001, 0]), 0);
+  });
+  it('stops at the end', () => {
+    expect(pointAlong(corner, 10_000).point).toEqual([0.001, 0.001]);
   });
 });
