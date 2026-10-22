@@ -13,7 +13,7 @@
  */
 
 import { createHmac } from 'crypto';
-import { and, asc, eq, gte, inArray, isNotNull, isNull, lt, min, or } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, isNull, lt } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import {
   busStopVisits, busTrips, vehicleFixes, vehicleTracks, type LiveTrackStop,
@@ -21,6 +21,7 @@ import {
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { todayKey, weekdayOfKey } from '@/lib/utils/zonedDate';
 import { metresBetween } from '@/lib/map/busTween';
+import { checkFixes } from '@/lib/map/busFixCheck';
 
 /** At this speed or more a fix counts as moving, for a provider that sends no flag. */
 export const MOVING_MPS = 2;
@@ -102,18 +103,29 @@ export function driverKey(name: string | null | undefined, secret = process.env.
   return createHmac('sha256', secret).update(`bus-driver:${clean}`).digest('hex').slice(0, 16);
 }
 
-/** When each track's bus first moved: the start of the trip proper. */
+/**
+ * When each track's bus first moved: the start of the trip proper. Read from
+ * checked fixes, so a provider's broken speed or motion flag cannot start a
+ * trip early; with no usable speed it falls back to what the positions show.
+ */
 export async function firstMoves(trackIds: string[]): Promise<Map<string, Date>> {
   if (trackIds.length === 0) return new Map();
   const rows = await db
-    .select({ trackId: vehicleFixes.trackId, at: min(vehicleFixes.ts) })
+    .select({
+      trackId: vehicleFixes.trackId, ts: vehicleFixes.ts, lat: vehicleFixes.lat, lng: vehicleFixes.lng,
+      speed: vehicleFixes.speed, moving: vehicleFixes.moving, doorOpen: vehicleFixes.doorOpen,
+    })
     .from(vehicleFixes)
-    .where(and(
-      inArray(vehicleFixes.trackId, trackIds),
-      or(eq(vehicleFixes.moving, true), gte(vehicleFixes.speed, MOVING_MPS)),
-    ))
-    .groupBy(vehicleFixes.trackId);
-  return new Map(rows.flatMap((r) => (r.at ? [[r.trackId, r.at] as const] : [])));
+    .where(inArray(vehicleFixes.trackId, trackIds))
+    .orderBy(asc(vehicleFixes.ts));
+  const byTrack = new Map<string, typeof rows>();
+  for (const r of rows) byTrack.set(r.trackId, [...(byTrack.get(r.trackId) ?? []), r]);
+  const moved = new Map<string, Date>();
+  for (const [trackId, fixes] of byTrack) {
+    const first = checkFixes(fixes).find((f) => (f.speed ?? 0) >= MOVING_MPS || (f.speed === null && f.moving === true));
+    if (first) moved.set(trackId, first.ts);
+  }
+  return moved;
 }
 
 /**
@@ -147,15 +159,19 @@ export async function summarizeFinishedTrips(now: Date = new Date()): Promise<nu
       db.select({ stopKey: busStopVisits.stopKey, arrivedAt: busStopVisits.arrivedAt })
         .from(busStopVisits)
         .where(and(eq(busStopVisits.routeId, track.routeId!), eq(busStopVisits.tripDate, track.tripDate))),
-      db.select({ ts: vehicleFixes.ts, lat: vehicleFixes.lat, lng: vehicleFixes.lng, doorOpen: vehicleFixes.doorOpen })
+      db.select({
+        ts: vehicleFixes.ts, lat: vehicleFixes.lat, lng: vehicleFixes.lng,
+        speed: vehicleFixes.speed, moving: vehicleFixes.moving, doorOpen: vehicleFixes.doorOpen,
+      })
         .from(vehicleFixes)
-        .where(eq(vehicleFixes.trackId, track.id)),
+        .where(eq(vehicleFixes.trackId, track.id))
+        .orderBy(asc(vehicleFixes.ts)),
     ]);
     const summary = summarizeTrip({
       stops: track.stops,
       visits,
       progress: track.progress ?? null,
-      fixes,
+      fixes: checkFixes(fixes),
       firstMove: moved.get(track.id) ?? null,
     });
     const weather = track.weather as { condition?: unknown; temperatureC?: unknown } | null;

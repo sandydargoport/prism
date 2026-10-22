@@ -5,6 +5,7 @@ import { useVisibilityPolling } from './useVisibilityPolling';
 import type { StopTiming } from '@/lib/services/bus-eta';
 import type { LiveTrackVehicle } from '@/lib/db/schema';
 import { LOST_MS } from '@/lib/map/busTween';
+import { checkFixes } from '@/lib/map/busFixCheck';
 import {
   DEFAULT_BUS_MAP_CAMERA, DEFAULT_BUS_MAP_STYLE, type BusMapCamera, type BusMapStyle,
 } from '@/lib/map/busMapOptions';
@@ -122,7 +123,8 @@ export function useBusLive(enabled: boolean) {
       }));
       tracksRef.current = next;
       cursorRef.current = data.cursor;
-      setTracks(next);
+      // The raw fixes are kept for merging; what is shown has been checked.
+      setTracks(next.map((t) => ({ ...t, fixes: checkFixes(t.fixes) })));
       setSpeedUnit(data.speedUnit);
       setMapStyle(data.mapStyle ?? DEFAULT_BUS_MAP_STYLE);
       setCamera(data.camera ?? DEFAULT_BUS_MAP_CAMERA);
