@@ -18,8 +18,12 @@ const BusLiveMap = dynamic(() => import('./BusLiveMap').then((m) => m.BusLiveMap
 
 type Layout = 'wide' | 'tall' | 'small';
 
+/** Below this a map is a strip that shows nothing useful. */
+const MIN_MAP_PX = 160;
+
 /** Wide puts the panel beside the map, tall under it; small has no room for a map. */
 export function chooseLayout(width: number, height: number): Layout {
+  if (height < MIN_MAP_PX) return 'small';
   if (width >= 440 && width >= height * 1.15) return 'wide';
   if (height >= 300 && width >= 220) return 'tall';
   return 'small';

@@ -12,6 +12,8 @@ describe('chooseLayout', () => {
     expect(chooseLayout(600, 300)).toBe('wide');
     expect(chooseLayout(320, 480)).toBe('tall');
     expect(chooseLayout(300, 200)).toBe('small');
+    // Wide but too short for a map to show anything.
+    expect(chooseLayout(800, 120)).toBe('small');
   });
 });
 
