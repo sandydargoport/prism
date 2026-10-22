@@ -27,14 +27,13 @@ export function busMapStyleUrl(style: BusMapStyle, dark: boolean): string {
   return `https://tiles.openfreemap.org/styles/${STYLE_URLS[style][dark ? 'dark' : 'light']}`;
 }
 
-export const BUS_MAP_CAMERAS = ['follow', 'route', 'alternate'] as const;
+export const BUS_MAP_CAMERAS = ['follow', 'route'] as const;
 export type BusMapCamera = (typeof BUS_MAP_CAMERAS)[number];
 export const DEFAULT_BUS_MAP_CAMERA: BusMapCamera = 'follow';
 
 export const BUS_MAP_CAMERA_LABELS: Record<BusMapCamera, string> = {
   follow: 'Follow: the bus and your stop, closer as it approaches',
   route: 'Whole route: the full trip stays in view',
-  alternate: 'Alternate: close on the bus, then the whole route, every 10 seconds',
 };
 
 export function isBusMapStyle(value: unknown): value is BusMapStyle {

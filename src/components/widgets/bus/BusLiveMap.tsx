@@ -168,11 +168,8 @@ export function BusLiveMap({
   formatRef.current = formatTime;
   const styleUrl = busMapStyleUrl(mapStyle, darkMode);
   const styleUrlRef = useRef(styleUrl);
-  // Moving the camera every 10 seconds is motion a reduced-motion setting asks
-  // to avoid, so alternating falls back to following.
-  const cameraMode: BusMapCamera = reducedMotion && camera === 'alternate' ? 'follow' : camera;
-  const cameraRef = useRef(cameraMode);
-  cameraRef.current = cameraMode;
+  const cameraRef = useRef(camera);
+  cameraRef.current = camera;
   const manualUntilRef = useRef(0);
 
   const setTrace = (untilTs: number) => {
@@ -190,20 +187,16 @@ export function BusLiveMap({
     if (!map || !readyRef.current || Date.now() < manualUntilRef.current) return;
     const t = trackRef.current;
     const bus = anchorRef.current ? current() : null;
-    const view = cameraView(cameraRef.current, Date.now(), bus, t.stops, t.riderStopKey);
-    if (!view) return;
+    const points = cameraView(cameraRef.current, bus, t.stops, t.riderStopKey);
+    if (!points) return;
     const duration = animate && !reducedMotion ? 1000 : 0;
-    if (view.kind === 'center') {
-      map.easeTo({ center: view.center, zoom: CLOSE_ZOOM, duration });
-      return;
-    }
     const { clientWidth: w, clientHeight: h } = map.getContainer();
     // At least the bus marker's own length, so it is never half off the edge.
     const side = Math.max(48, Math.min(90, w * 0.2));
     const top = Math.max(40, Math.min(56, h * 0.1));
-    const bounds = view.points.reduce(
+    const bounds = points.reduce(
       (b, p) => b.extend(p),
-      new maplibregl.LngLatBounds(view.points[0]!, view.points[0]!),
+      new maplibregl.LngLatBounds(points[0]!, points[0]!),
     );
     map.fitBounds(bounds, { padding: { left: side, right: side, top, bottom: top + 16 }, maxZoom: CLOSE_ZOOM, duration });
   };
@@ -393,7 +386,7 @@ export function BusLiveMap({
   }, [styleUrl]);
 
   // A new camera choice shows at once rather than at the next tick.
-  useEffect(() => { manualUntilRef.current = 0; aim(true); }, [cameraMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { manualUntilRef.current = 0; aim(true); }, [camera]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const el = markerRef.current?.getElement();
