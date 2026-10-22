@@ -68,13 +68,16 @@ export function LiveTrackingCard({ routes, onBound }: { routes: RouteOption[]; o
   const [camera, setCamera] = useState<string>(DEFAULT_BUS_MAP_CAMERA);
   const [driverNames, setDriverNames] = useState<DriverNames>({});
   const [savedDriverNames, setSavedDriverNames] = useState<DriverNames>({});
+  const [accuracy, setAccuracy] = useState<RouteAccuracy[]>([]);
 
   const load = useCallback(async () => {
     try {
-      const [tracksRes, settingsRes] = await Promise.all([
+      const [tracksRes, settingsRes, accuracyRes] = await Promise.all([
         fetch('/api/bus-tracking/live/tracks'),
         fetch('/api/settings'),
+        fetch('/api/bus-tracking/accuracy'),
       ]);
+      if (accuracyRes.ok) setAccuracy((await accuracyRes.json()).routes ?? []);
       if (tracksRes.ok) {
         const data = await tracksRes.json();
         setTracks(data.tracks);
@@ -327,6 +330,8 @@ export function LiveTrackingCard({ routes, onBound }: { routes: RouteOption[]; o
           </p>
         </div>
 
+        <AccuracySection routes={accuracy} />
+
         <div className="space-y-2">
           <Label className="text-xs">Keep history</Label>
           <div className="flex flex-wrap items-end gap-3">
@@ -394,6 +399,81 @@ function ChoiceList<T extends string>({
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+interface HorizonAccuracy {
+  horizonMin: number;
+  trips: number;
+  typicalMin: number | null;
+  within80Min: number | null;
+  biasMin: number | null;
+}
+
+interface RouteAccuracy {
+  routeId: string;
+  label: string | null;
+  horizons: HorizonAccuracy[];
+}
+
+/** Below this many scored trips a lead time shows as still collecting. */
+const MIN_SCORED_TRIPS = 3;
+
+const minutes = (m: number) => (m < 1 ? 'under 1 min' : `${Math.round(m)} min`);
+
+/** Which way the projection leans, in words: positive bias means the bus came later than shown. */
+function leaning(bias: number | null): string {
+  if (bias === null || Math.abs(bias) < 0.5) return 'on target';
+  return bias > 0 ? `bus ${minutes(bias)} later` : `bus ${minutes(-bias)} earlier`;
+}
+
+/**
+ * How close the arrival times have been, per route and lead time, measured
+ * against when the bus actually reached the stop.
+ */
+function AccuracySection({ routes }: { routes: RouteAccuracy[] }) {
+  const scored = routes.filter((r) => r.horizons.some((h) => h.trips > 0));
+  return (
+    <div className="space-y-2">
+      <Label className="text-xs">Arrival time accuracy</Label>
+      {scored.length === 0 ? (
+        <p className="text-[11px] text-muted-foreground">
+          Nothing measured yet. Each trip that reaches your stop is scored at 20, 15, 10, 5 and 2 minutes out; days without a bus are not counted.
+        </p>
+      ) : scored.map((route) => (
+        <div key={route.routeId} className="space-y-1">
+          {scored.length > 1 && <div className="text-xs font-medium">{route.label ?? 'Route'}</div>}
+          <table className="w-full text-xs">
+            <thead className="text-muted-foreground">
+              <tr className="text-left">
+                <th className="font-normal pr-2">Shown</th>
+                <th className="font-normal pr-2">Trips</th>
+                <th className="font-normal pr-2">Typical miss</th>
+                <th className="font-normal pr-2">4 in 5 within</th>
+                <th className="font-normal">Leans</th>
+              </tr>
+            </thead>
+            <tbody>
+              {route.horizons.map((h) => {
+                const enough = h.trips >= MIN_SCORED_TRIPS;
+                return (
+                  <tr key={h.horizonMin}>
+                    <td className="pr-2">{h.horizonMin} min out</td>
+                    <td className="pr-2 tabular-nums">{h.trips}</td>
+                    <td className="pr-2">{enough && h.typicalMin !== null ? minutes(h.typicalMin) : '...'}</td>
+                    <td className="pr-2">{enough && h.within80Min !== null ? minutes(h.within80Min) : '...'}</td>
+                    <td>{enough ? leaning(h.biasMin) : 'collecting'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ))}
+      <p className="text-[11px] text-muted-foreground">
+        Scored only on trips that reached your stop, never on days without a bus. Shown after {MIN_SCORED_TRIPS} trips.
+      </p>
     </div>
   );
 }

@@ -204,9 +204,15 @@ PRISM_URL=http://localhost:3000 PRISM_INGEST_TOKEN=<token> npx tsx scripts/fake-
 Two settings under *Live Tracking → Keep history*:
 
 - **Exact route**, 30 days by default: every position, which is where the bus was minute by minute.
-- **Stop times**, 365 days by default: only when the bus reached and left each stop, which is what arrival predictions learn from.
+- **Stop times**, 365 days by default: when the bus reached and left each stop, one summary per trip, and the arrival-time checks below. This is what arrival predictions learn from.
+
+Each day, before anything is deleted, every trip from the day before is summarised: whether it ran all the way, only partly, or not at all, how many stops it reached and how many it passed without opening the doors, when it started and finished, the bus number, the weather, and the driver as a code that tells drivers apart without keeping a name. A day with no bus (a weekend, a holiday, a snow day) has no summary at all, and a trip that was reported but never ran is marked as not run. Neither is ever counted as a trip that took no time.
 
 A daily job deletes anything older. Both stay on your server.
+
+### Arrival time accuracy
+
+While a trip runs, the arrival time shown for your stop is saved at 20, 15, 10, 5 and 2 minutes out, and compared with when the bus actually got there. *Live Tracking → Arrival time accuracy* shows, for each lead time, the typical miss, the margin four trips in five land within, and which way it leans (a bus that tends to come later or earlier than shown). Only trips that reached your stop are scored; a lead time shows once it has three.
 
 ## Privacy
 

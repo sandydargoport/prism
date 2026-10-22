@@ -1753,6 +1753,61 @@ export const busStopVisits = pgTable('bus_stop_visits', {
   tripDateIdx: index('bus_stop_visits_trip_date_idx').on(table.tripDate),
 }));
 
+/**
+ * One row per route per day the provider reported a trip, written once the
+ * day is over. `outcome` says whether the bus ran, so a cancelled trip is
+ * recorded as not having run rather than as one that took no time, and a day
+ * the provider reported nothing has no row at all. No coordinates or names.
+ */
+export const busTrips = pgTable('bus_trips', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  routeId: uuid('route_id')
+    .references(() => busRoutes.id, { onDelete: 'cascade' })
+    .notNull(),
+  tripDate: date('trip_date').notNull(),
+  dayOfWeek: integer('day_of_week').notNull(), // 0=Sun, 6=Sat
+  direction: varchar('direction', { length: 10 }).$type<'AM' | 'PM'>(),
+  outcome: varchar('outcome', { length: 10 }).notNull().$type<'ran' | 'partial' | 'none'>(),
+  stopsVisited: integer('stops_visited').notNull(),
+  totalStops: integer('total_stops').notNull(),
+  // Null when the provider sends no door state.
+  stopsSkipped: integer('stops_skipped'),
+  startedAt: timestamp('started_at'),
+  finishedAt: timestamp('finished_at'),
+  // The vehicle number as reported, and the driver as a keyed hash.
+  vehicleKey: varchar('vehicle_key', { length: 64 }),
+  driverKey: varchar('driver_key', { length: 64 }),
+  weather: varchar('weather', { length: 10 }).$type<'dry' | 'rain' | 'snow'>(),
+  temperatureC: real('temperature_c'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  routeDateIdx: uniqueIndex('bus_trips_route_date_idx').on(table.routeId, table.tripDate),
+  tripDateIdx: index('bus_trips_trip_date_idx').on(table.tripDate),
+}));
+
+/**
+ * The projected arrival at the household's stop at fixed lead times, to
+ * measure the projection against what happened. The actual arrival is read
+ * from bus_stop_visits, not copied here.
+ */
+export const busEtaSnapshots = pgTable('bus_eta_snapshots', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  routeId: uuid('route_id')
+    .references(() => busRoutes.id, { onDelete: 'cascade' })
+    .notNull(),
+  tripDate: date('trip_date').notNull(),
+  stopKey: varchar('stop_key', { length: 128 }).notNull(),
+  horizonMin: integer('horizon_min').notNull(),
+  madeAt: timestamp('made_at').notNull(),
+  predictedAt: timestamp('predicted_at').notNull(),
+  model: varchar('model', { length: 20 }).default('planned').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  routeDateStopHorizonIdx: uniqueIndex('bus_eta_snapshots_route_date_stop_horizon_idx')
+    .on(table.routeId, table.tripDate, table.stopKey, table.horizonMin),
+  tripDateIdx: index('bus_eta_snapshots_trip_date_idx').on(table.tripDate),
+}));
+
 // ─── CALENDAR NOTES ────────────────────────────────────────────────
 export const calendarNotes = pgTable('calendar_notes', {
   id: uuid('id').defaultRandom().primaryKey(),

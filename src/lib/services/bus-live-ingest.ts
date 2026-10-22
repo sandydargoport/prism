@@ -22,6 +22,7 @@ import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { addDaysToKey, todayKey, weekdayOfKey } from '@/lib/utils/zonedDate';
 import type { LiveTrackInput, LiveVehiclePayload } from '@/lib/validations/liveVehicle';
 import { getTraceRetentionDays } from './bus-live-retention';
+import { recordEtaSnapshots } from './bus-eta-snapshots';
 
 /** A fix stamped further ahead than this is a clock fault, not a position. */
 const MAX_FUTURE_MS = 5 * 60 * 1000;
@@ -275,6 +276,15 @@ export async function ingestLivePayload(
     await db.update(vehicleTracks)
       .set({ progress: { lastVisitedStop: p.lastVisitedStop, totalStops: p.totalStops } })
       .where(eq(vehicleTracks.id, track.id));
+  }
+
+  // Measuring the projection must never cost a position, so a failure here
+  // is logged and the payload still counts as stored.
+  const bound = [...tracks.values()].filter((t) => t.routeId).map((t) => t.id);
+  try {
+    await recordEtaSnapshots(bound, now);
+  } catch (err) {
+    console.error('[bus-live] ETA snapshot failed:', err);
   }
 
   result.unknownTracks = unknown.size;

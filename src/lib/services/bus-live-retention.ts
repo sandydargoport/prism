@@ -7,7 +7,7 @@
 
 import { eq, lt } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
-import { busStopVisits, settings, vehicleTracks } from '@/lib/db/schema';
+import { busEtaSnapshots, busStopVisits, busTrips, settings, vehicleTracks } from '@/lib/db/schema';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { addDaysToKey, todayKey } from '@/lib/utils/zonedDate';
 
@@ -39,8 +39,9 @@ export const getTraceRetentionDays = () => readDays('trace');
 export const getHistoryRetentionDays = () => readDays('history');
 
 /**
- * Deletes tracks (and, by cascade, their fixes) and stop visits older than
- * their windows. Days are the household's calendar days.
+ * Deletes tracks (and, by cascade, their fixes) older than the trace window,
+ * and stop visits, trip summaries and ETA snapshots older than the history
+ * window. Days are the household's calendar days.
  */
 export async function cleanupLiveTracking(now: Date = new Date()): Promise<{ tracks: number; visits: number }> {
   const today = todayKey(await getHouseholdTimezone(), now);
@@ -53,6 +54,8 @@ export async function cleanupLiveTracking(now: Date = new Date()): Promise<{ tra
   const visits = await db.delete(busStopVisits)
     .where(lt(busStopVisits.tripDate, historyCutoff))
     .returning({ id: busStopVisits.id });
+  await db.delete(busTrips).where(lt(busTrips.tripDate, historyCutoff));
+  await db.delete(busEtaSnapshots).where(lt(busEtaSnapshots.tripDate, historyCutoff));
 
   return { tracks: tracks.length, visits: visits.length };
 }

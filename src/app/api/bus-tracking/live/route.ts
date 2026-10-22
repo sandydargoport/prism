@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, lt, min, or } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, inArray, isNotNull, lt } from 'drizzle-orm';
 import { getDisplayAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { busRoutes, busStopVisits, settings, vehicleFixes, vehicleTracks } from '@/lib/db/schema';
@@ -7,6 +7,7 @@ import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { todayKey } from '@/lib/utils/zonedDate';
 import { thinPath, type LngLat } from '@/lib/map/routeAhead';
 import { pickRiderStop, projectStops } from '@/lib/services/bus-eta';
+import { firstMoves } from '@/lib/services/bus-history';
 import { logError } from '@/lib/utils/logError';
 import { BUS_DRIVER_NAMES_SETTING, driverLabel, isDriverNames, type DriverNames } from '@/lib/services/bus-driver-names';
 import {
@@ -76,23 +77,6 @@ async function usualPath(routeId: string, before: string): Promise<LngLat[] | nu
     .where(eq(vehicleFixes.trackId, last.id))
     .orderBy(asc(vehicleFixes.ts));
   return thinPath(points.map((p): LngLat => [p.lng, p.lat]));
-}
-
-/** At this speed or more a fix counts as moving, for a provider that sends no flag. */
-const MOVING_MPS = 2;
-
-/** When each track's bus first moved today: the start of the trip proper. */
-async function firstMoves(trackIds: string[]): Promise<Map<string, Date>> {
-  if (trackIds.length === 0) return new Map();
-  const rows = await db
-    .select({ trackId: vehicleFixes.trackId, at: min(vehicleFixes.ts) })
-    .from(vehicleFixes)
-    .where(and(
-      inArray(vehicleFixes.trackId, trackIds),
-      or(eq(vehicleFixes.moving, true), gte(vehicleFixes.speed, MOVING_MPS)),
-    ))
-    .groupBy(vehicleFixes.trackId);
-  return new Map(rows.flatMap((r) => (r.at ? [[r.trackId, r.at] as const] : [])));
 }
 
 async function driverNames(): Promise<DriverNames> {
