@@ -11,6 +11,8 @@ describe('chooseLayout', () => {
   it('puts the panel beside a wide map, under a tall one, and drops the map when small', () => {
     expect(chooseLayout(600, 300)).toBe('wide');
     expect(chooseLayout(320, 480)).toBe('tall');
+    // A narrow column at a large text scale still gets a map.
+    expect(chooseLayout(217, 560)).toBe('tall');
     expect(chooseLayout(300, 200)).toBe('small');
     // Wide but too short for a map to show anything.
     expect(chooseLayout(800, 120)).toBe('small');

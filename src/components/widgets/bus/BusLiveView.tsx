@@ -25,7 +25,7 @@ const MIN_MAP_PX = 160;
 export function chooseLayout(width: number, height: number): Layout {
   if (height < MIN_MAP_PX) return 'small';
   if (width >= 440 && width >= height * 1.15) return 'wide';
-  if (height >= 300 && width >= 220) return 'tall';
+  if (height >= 300 && width >= 180) return 'tall';
   return 'small';
 }
 
