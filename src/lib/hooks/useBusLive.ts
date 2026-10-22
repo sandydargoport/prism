@@ -5,7 +5,6 @@ import { useVisibilityPolling } from './useVisibilityPolling';
 import type { StopTiming } from '@/lib/services/bus-eta';
 import type { LiveTrackVehicle } from '@/lib/db/schema';
 import { LOST_MS } from '@/lib/map/busTween';
-import { DEFAULT_BUS_MARKER, type BusMarker } from '@/lib/map/busMarkers';
 import {
   DEFAULT_BUS_MAP_CAMERA, DEFAULT_BUS_MAP_STYLE, type BusMapCamera, type BusMapStyle,
 } from '@/lib/map/busMapOptions';
@@ -47,7 +46,6 @@ interface LiveResponse {
   serverTime: string;
   cursor: string | null;
   speedUnit: 'mph' | 'km/h';
-  marker: BusMarker;
   mapStyle: BusMapStyle;
   camera: BusMapCamera;
   tracks: LiveTrack[];
@@ -94,7 +92,6 @@ export function mergeFixes(held: LiveFix[], incoming: LiveFix[]): LiveFix[] {
 export function useBusLive(enabled: boolean) {
   const [tracks, setTracks] = useState<LiveTrack[]>([]);
   const [speedUnit, setSpeedUnit] = useState<'mph' | 'km/h'>('mph');
-  const [marker, setMarker] = useState<BusMarker>(DEFAULT_BUS_MARKER);
   const [mapStyle, setMapStyle] = useState<BusMapStyle>(DEFAULT_BUS_MAP_STYLE);
   const [camera, setCamera] = useState<BusMapCamera>(DEFAULT_BUS_MAP_CAMERA);
   // Server time minus device time, so "updated 8s ago" is right on a display
@@ -121,7 +118,6 @@ export function useBusLive(enabled: boolean) {
       cursorRef.current = data.cursor;
       setTracks(next);
       setSpeedUnit(data.speedUnit);
-      setMarker(data.marker ?? DEFAULT_BUS_MARKER);
       setMapStyle(data.mapStyle ?? DEFAULT_BUS_MAP_STYLE);
       setCamera(data.camera ?? DEFAULT_BUS_MAP_CAMERA);
       setClockOffsetMs(new Date(data.serverTime).getTime() - Date.now());
@@ -137,5 +133,5 @@ export function useBusLive(enabled: boolean) {
   const anyLive = tracks.some((t) => isTrackLive(t, Date.now() + clockOffsetMs));
   useVisibilityPolling(fetchLive, enabled ? (anyLive ? LIVE_POLL_MS : IDLE_POLL_MS) : 0);
 
-  return { tracks, speedUnit, clockOffsetMs, marker, mapStyle, camera };
+  return { tracks, speedUnit, clockOffsetMs, mapStyle, camera };
 }

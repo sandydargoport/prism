@@ -12,7 +12,6 @@ import {
   BUS_MAP_CAMERA_SETTING, BUS_MAP_STYLE_SETTING, DEFAULT_BUS_MAP_CAMERA, DEFAULT_BUS_MAP_STYLE,
   isBusMapCamera, isBusMapStyle,
 } from '@/lib/map/busMapOptions';
-import { BUS_MARKER_SETTING, DEFAULT_BUS_MARKER, isBusMarker, type BusMarker } from '@/lib/map/busMarkers';
 
 /**
  * Fixes are fetched by when they were received, not by their own time, so a
@@ -34,18 +33,16 @@ async function speedUnit(): Promise<'mph' | 'km/h'> {
   return (process.env.WEATHER_UNITS ?? '').toLowerCase() === 'metric' ? 'km/h' : 'mph';
 }
 
-/** How the map looks: the marker, style and camera from Live Tracking settings. */
+/** How the map looks: the style and camera from Live Tracking settings. */
 async function mapDisplay() {
   const display = {
-    marker: DEFAULT_BUS_MARKER as BusMarker,
     mapStyle: DEFAULT_BUS_MAP_STYLE,
     camera: DEFAULT_BUS_MAP_CAMERA,
   };
   try {
     const rows = await db.select().from(settings)
-      .where(inArray(settings.key, [BUS_MARKER_SETTING, BUS_MAP_STYLE_SETTING, BUS_MAP_CAMERA_SETTING]));
+      .where(inArray(settings.key, [BUS_MAP_STYLE_SETTING, BUS_MAP_CAMERA_SETTING]));
     for (const row of rows) {
-      if (row.key === BUS_MARKER_SETTING && isBusMarker(row.value)) display.marker = row.value;
       if (row.key === BUS_MAP_STYLE_SETTING && isBusMapStyle(row.value)) display.mapStyle = row.value;
       if (row.key === BUS_MAP_CAMERA_SETTING && isBusMapCamera(row.value)) display.camera = row.value;
     }

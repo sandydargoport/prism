@@ -9,12 +9,6 @@ import {
   poseAt, shouldHold, speedBetween, type Motion, type Path, type Pose,
 } from '@/lib/map/busTween';
 import type { LiveTrack } from '@/lib/hooks/useBusLive';
-import { SEASON_EMOJI, busMarkerDrawing, busMarkerSvg, kidSvg, type BusMarker } from '@/lib/map/busMarkers';
-import {
-  buildStreetGraph, metresPerPixel, moveToGraph, runnerPosition, scare, spawnRunner, stepRunner,
-  type LngLat, type Runner, type StreetGraph,
-} from '@/lib/map/streetRunners';
-import { toCodePoint } from '@/components/ui/Emoji';
 
 interface BusLiveMapProps {
   track: LiveTrack;
@@ -22,9 +16,6 @@ interface BusLiveMapProps {
   darkMode: boolean;
   reducedMotion: boolean;
   clockOffsetMs: number;
-  marker: BusMarker;
-  /** 1-12, for the seasonal marker's decoration. */
-  month: number;
   mapStyle: BusMapStyle;
   camera: BusMapCamera;
 }
@@ -37,15 +28,6 @@ const STOP_LABELS = 'bus-stop-labels';
 /** Going back to where the bus really is, after waiting for it, takes this long. */
 const GLIDE_BACK_MS = 3_000;
 
-/** The kids chasing the chomper: how many, and how fast in screen pixels a second. */
-const KID_COUNT = 3;
-const KID_FRAME_MS = 66;
-const KID_CHASE_PX_S = 14;
-const KID_FLEE_PX_S = 24;
-/** Closer than this to the bus, a kid is caught. */
-const KID_CATCH_PX = 16;
-/** Streets kids run on: not motorways, paths or railways. */
-const KID_ROADS = new Set(['minor', 'service', 'tertiary', 'secondary', 'primary', 'residential', 'unclassified', 'living_street']);
 
 /** A theme token ("222 47% 11%") as a colour MapLibre can parse. */
 function themeColor(token: string, fallback: string): string {
@@ -55,43 +37,29 @@ function themeColor(token: string, fallback: string): string {
   return m ? `hsl(${m[1]}, ${m[2]}, ${m[3]})` : fallback;
 }
 
-/** The marker's contents: the chosen vehicle, and for the seasonal one, its roof decoration. */
-function busMarkerHtml(kind: BusMarker, month: number, animated: boolean): string {
-  const d = busMarkerDrawing(kind);
-  const emoji = kind === 'seasonal' ? SEASON_EMOJI[month] : undefined;
-  const roof = emoji
-    ? `<img src="/twemoji/${toCodePoint(emoji)}.svg" alt="" draggable="false" style="position:absolute;left:50%;top:52%;width:14px;height:14px;transform:translate(-50%,-50%)"/>`
-    : '';
-  return `<div style="position:relative;width:${d.width}px;height:${d.height}px;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.45))">${busMarkerSvg(kind, 1, animated)}${roof}</div>`;
-}
-
-/** The road lines in the tiles already loaded, from the basemap's vector source. */
-function streetLines(map: maplibregl.Map): LngLat[][] {
-  const source = Object.entries(map.getStyle().sources ?? {}).find(([, s]) => s.type === 'vector')?.[0];
-  if (!source) return [];
-  const lines: LngLat[][] = [];
-  for (const f of map.querySourceFeatures(source, { sourceLayer: 'transportation' })) {
-    if (!KID_ROADS.has(String(f.properties?.class))) continue;
-    if (f.geometry.type === 'LineString') lines.push(f.geometry.coordinates as LngLat[]);
-    else if (f.geometry.type === 'MultiLineString') lines.push(...(f.geometry.coordinates as LngLat[][]));
-  }
-  return lines;
-}
-
-function kidElement(index: number): HTMLDivElement {
-  const el = document.createElement('div');
-  el.setAttribute('aria-hidden', 'true');
-  el.style.pointerEvents = 'none';
-  el.innerHTML = kidSvg(index, false);
-  return el;
+/**
+ * The bus as a beacon: a dot in the theme colour, a soft cone showing which
+ * way it is heading, and a slow pulse while it is live. The whole marker
+ * turns with the heading, so the cone is drawn pointing up.
+ */
+function beaconHtml(color: string): string {
+  const cone = `bus-cone-${Math.random().toString(36).slice(2, 8)}`;
+  const dot = 'position:absolute;left:50%;top:50%;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;box-sizing:border-box';
+  return `
+    <div data-pulse style="${dot};background:${color};opacity:0"></div>
+    <svg viewBox="0 0 56 56" width="56" height="56" style="position:absolute;inset:0">
+      <defs><linearGradient id="${cone}" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0" stop-color="${color}" stop-opacity="0.5"/><stop offset="1" stop-color="${color}" stop-opacity="0"/>
+      </linearGradient></defs>
+      <path d="M28 28 L17 4 A26 26 0 0 1 39 4 Z" fill="url(#${cone})"/>
+    </svg>
+    <div style="${dot};background:${color};border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>`;
 }
 
 function busElement(): HTMLDivElement {
   const el = document.createElement('div');
   el.setAttribute('aria-label', 'Bus');
-  el.style.transition = 'opacity 400ms';
-  // Above the kids running after it.
-  el.style.zIndex = '2';
+  el.style.cssText = 'position:relative;width:56px;height:56px;pointer-events:none;transition:opacity 400ms';
   return el;
 }
 
@@ -151,14 +119,14 @@ function addLayers(map: maplibregl.Map) {
   map.addLayer({
     id: STOPS, type: 'circle', source: STOPS,
     paint: {
-      'circle-radius': ['case', ['get', 'rider'], 7, ['get', 'school'], 6, 4.5],
+      // Our stop is a thick ring, never a filled dot: the filled dot is the bus.
+      'circle-radius': ['case', ['get', 'rider'], 6, ['get', 'school'], 6, 4.5],
       'circle-color': ['case',
         ['get', 'passed'], muted,
-        ['get', 'rider'], primary,
         ['get', 'school'], school,
         background],
       'circle-stroke-color': ['case', ['get', 'passed'], muted, primary],
-      'circle-stroke-width': 2,
+      'circle-stroke-width': ['case', ['get', 'rider'], 3.5, 2],
     },
   });
   map.addLayer({
@@ -186,7 +154,7 @@ function addLayers(map: maplibregl.Map) {
  * drag or pinch belongs to the dashboard.
  */
 export function BusLiveMap({
-  track, formatTime, darkMode, reducedMotion, clockOffsetMs, marker, month, mapStyle, camera,
+  track, formatTime, darkMode, reducedMotion, clockOffsetMs, mapStyle, camera,
 }: BusLiveMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -213,6 +181,7 @@ export function BusLiveMap({
   // Where the marker is drawn, and since when it has been waiting for the bus.
   const shownRef = useRef<Pose | null>(null);
   const heldSinceRef = useRef<number | null>(null);
+  const pulseRef = useRef<Animation | null>(null);
 
   const setTrace = (untilTs: number) => {
     const source = mapRef.current?.getSource(TRACE) as maplibregl.GeoJSONSource | undefined;
@@ -477,81 +446,18 @@ export function BusLiveMap({
   // A new camera choice shows at once rather than at the next tick.
   useEffect(() => { manualUntilRef.current = 0; aim(true, true); }, [camera]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Drawn again when the theme changes, so the beacon matches it.
   useEffect(() => {
     const el = markerRef.current?.getElement();
-    if (el) el.innerHTML = busMarkerHtml(marker, month, !reducedMotion);
-  }, [marker, month, reducedMotion]);
-
-  // The chomper's kids who missed the bus, running after it along the streets.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (marker !== 'chomper' || reducedMotion || !map) return;
-    let graph: StreetGraph | null = null;
-    let kids: { runner: Runner; marker: maplibregl.Marker; scared: boolean }[] = [];
-    let last = Date.now();
-
-    // The streets change only when the map moves or loads tiles, which ends in 'idle'.
-    const rebuild = () => {
-      const next = buildStreetGraph(streetLines(map));
-      if (next.nodes.length === 0) return;
-      const old = graph;
-      kids = kids.flatMap((k) => {
-        const runner = old ? moveToGraph(next, k.runner, runnerPosition(old, k.runner), Math.random) : null;
-        if (runner) return [{ ...k, runner }];
-        k.marker.remove();
-        return [];
-      });
-      graph = next;
-    };
-
-    const tick = () => {
-      const now = Date.now();
-      const dt = Math.min(0.5, (now - last) / 1000);
-      last = now;
-      const busMarker = markerRef.current;
-      if (!graph || document.hidden || !readyRef.current || !busMarker?.getElement().isConnected) return;
-      const ll = busMarker.getLngLat();
-      const bus: LngLat = [ll.lng, ll.lat];
-      const perPx = metresPerPixel(map.getZoom(), ll.lat);
-      const { clientWidth: w, clientHeight: h } = map.getContainer();
-      const busPx = map.project(bus);
-
-      while (kids.length < KID_COUNT) {
-        const runner = spawnRunner(graph, bus, 60 * perPx, 0.45 * Math.max(w, h) * perPx, Math.random);
-        if (!runner) return;
-        const el = kidElement(kids.length);
-        kids.push({ runner, scared: false, marker: new maplibregl.Marker({ element: el }).setLngLat(runnerPosition(graph, runner)).addTo(map) });
-      }
-
-      kids = kids.map((k, i) => {
-        const speed = (k.runner.mode === 'flee' ? KID_FLEE_PX_S : KID_CHASE_PX_S) * perPx * dt;
-        let runner = stepRunner(graph!, k.runner, speed, bus, now, Math.random);
-        let pos = runnerPosition(graph!, runner);
-        const px = map.project(pos);
-        if (runner.mode === 'chase' && Math.hypot(px.x - busPx.x, px.y - busPx.y) < KID_CATCH_PX) {
-          runner = scare(graph!, runner, now);
-        }
-        // Run off well past the edge: start again somewhere in sight.
-        if (px.x < -w * 0.5 || px.x > w * 1.5 || px.y < -h * 0.5 || px.y > h * 1.5) {
-          runner = spawnRunner(graph!, bus, 60 * perPx, 0.45 * Math.max(w, h) * perPx, Math.random) ?? runner;
-          pos = runnerPosition(graph!, runner);
-        }
-        const scared = runner.mode === 'flee';
-        if (scared !== k.scared) k.marker.getElement().innerHTML = kidSvg(i, scared);
-        k.marker.setLngLat(pos);
-        return { runner, scared, marker: k.marker };
-      });
-    };
-
-    map.on('idle', rebuild);
-    if (readyRef.current && map.loaded()) rebuild();
-    const timer = setInterval(tick, KID_FRAME_MS);
-    return () => {
-      clearInterval(timer);
-      map.off('idle', rebuild);
-      for (const k of kids) k.marker.remove();
-    };
-  }, [marker, reducedMotion]);
+    if (!el) return;
+    el.innerHTML = beaconHtml(themeColor('primary', '#2563eb'));
+    pulseRef.current?.cancel();
+    pulseRef.current = reducedMotion ? null : el.querySelector('[data-pulse]')?.animate(
+      [{ transform: 'scale(1)', opacity: 0.45 }, { transform: 'scale(3)', opacity: 0 }],
+      { duration: 2000, iterations: Infinity, easing: 'ease-out' },
+    ) ?? null;
+    return () => pulseRef.current?.cancel();
+  }, [darkMode, reducedMotion]);
 
   // Dim the bus once its position is old enough to mislead.
   useEffect(() => {
@@ -559,6 +465,9 @@ export function BusLiveMap({
     if (!el) return;
     const age = freshness(track.lastFixAt ? new Date(track.lastFixAt).getTime() : null, Date.now() + clockOffsetMs);
     el.style.opacity = age === 'live' ? '1' : '0.45';
+    // A pulse says "live"; an old position should not claim it.
+    if (age === 'live') pulseRef.current?.play();
+    else pulseRef.current?.pause();
   }, [track, clockOffsetMs]);
 
   return (

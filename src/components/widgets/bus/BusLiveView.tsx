@@ -8,9 +8,7 @@ import { useShouldSkipMotion } from '@/lib/hooks/useShouldSkipMotion';
 import { formatDisplayTime } from '@/lib/utils/timeFormat';
 import { freshness } from '@/lib/map/busTween';
 import type { LiveTrack } from '@/lib/hooks/useBusLive';
-import type { BusMarker } from '@/lib/map/busMarkers';
 import type { BusMapCamera, BusMapStyle } from '@/lib/map/busMapOptions';
-import { todayKey } from '@/lib/utils/zonedDate';
 
 const BusLiveMap = dynamic(() => import('./BusLiveMap').then((m) => m.BusLiveMap), {
   ssr: false,
@@ -55,13 +53,12 @@ interface BusLiveViewProps {
   track: LiveTrack;
   speedUnit: 'mph' | 'km/h';
   clockOffsetMs: number;
-  marker: BusMarker;
   mapStyle: BusMapStyle;
   camera: BusMapCamera;
 }
 
 /** A live trip in the bus widget: map and panel, laid out to fit the widget. */
-export function BusLiveView({ track, speedUnit, clockOffsetMs, marker, mapStyle, camera }: BusLiveViewProps) {
+export function BusLiveView({ track, speedUnit, clockOffsetMs, mapStyle, camera }: BusLiveViewProps) {
   const rootRef = React.useRef<HTMLDivElement>(null);
   const [layout, setLayout] = React.useState<Layout>('small');
   // Two columns of rows under a tall map, only when each still fits its value.
@@ -109,10 +106,8 @@ export function BusLiveView({ track, speedUnit, clockOffsetMs, marker, mapStyle,
             darkMode={resolvedTheme === 'dark'}
             reducedMotion={reducedMotion}
             clockOffsetMs={clockOffsetMs}
-            marker={marker}
             mapStyle={mapStyle}
             camera={camera}
-            month={Number(todayKey(displayTimezone).slice(5, 7))}
           />
         </div>
       )}
