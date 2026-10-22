@@ -1,4 +1,4 @@
-import { chooseLayout, formatSpeed, lateness } from '../BusLiveView';
+import { cardCover, chooseLayout, formatSpeed, lateness } from '../BusLiveView';
 import { isTrackLive, mergeFixes, pickLiveTrack, type LiveFix, type LiveTrack } from '@/lib/hooks/useBusLive';
 
 jest.mock('next/dynamic', () => () => () => null);
@@ -8,14 +8,24 @@ const fix = (id: string, ts: string): LiveFix => ({
 });
 
 describe('chooseLayout', () => {
-  it('puts the panel beside a wide map, under a tall one, and drops the map when small', () => {
-    expect(chooseLayout(600, 300)).toBe('wide');
-    expect(chooseLayout(320, 480)).toBe('tall');
+  it('fills the widget with the map when there is room, and drops it when small', () => {
+    expect(chooseLayout(600, 300)).toBe('map');
+    expect(chooseLayout(320, 480)).toBe('map');
     // A narrow column at a large text scale still gets a map.
-    expect(chooseLayout(217, 560)).toBe('tall');
+    expect(chooseLayout(217, 560)).toBe('map');
     expect(chooseLayout(300, 200)).toBe('small');
     // Wide but too short for a map to show anything.
     expect(chooseLayout(800, 120)).toBe('small');
+  });
+});
+
+describe('cardCover', () => {
+  it('keeps clear whichever band the card takes less of the map in', () => {
+    // A wide map: the card is a small slice of its width, a large one of its height.
+    expect(cardCover({ width: 200, height: 120 }, { width: 900, height: 300 })).toEqual({ left: 200, top: 0 });
+    // A tall, narrow map: the other way round.
+    expect(cardCover({ width: 200, height: 120 }, { width: 260, height: 700 })).toEqual({ left: 0, top: 120 });
+    expect(cardCover({ width: 200, height: 120 }, { width: 0, height: 0 })).toEqual({ left: 0, top: 0 });
   });
 });
 

@@ -15,19 +15,34 @@ const BusLiveMap = dynamic(() => import('./BusLiveMap').then((m) => m.BusLiveMap
   loading: () => <div className="h-full w-full rounded-md bg-muted/40" />,
 });
 
-type Layout = 'wide' | 'tall' | 'small';
+type Layout = 'map' | 'small';
 
-const TWO_COLUMN_PX = 380;
+/** Below this a map is too cramped beside its card to show anything useful. */
+const MIN_MAP_W = 200;
+const MIN_MAP_H = 240;
 
-/** Below this a map is a strip that shows nothing useful. */
-const MIN_MAP_PX = 160;
+/** From this size the card has room for the bus, driver and stop rows too. */
+const ROOMY_W = 480;
+const ROOMY_H = 360;
 
-/** Wide puts the panel beside the map, tall under it; small has no room for a map. */
+/** The map fills the widget with the panel as a card over it; small has no room for a map. */
 export function chooseLayout(width: number, height: number): Layout {
-  if (height < MIN_MAP_PX) return 'small';
-  if (width >= 440 && width >= height * 1.15) return 'wide';
-  if (height >= 300 && width >= 180) return 'tall';
-  return 'small';
+  return width >= MIN_MAP_W && height >= MIN_MAP_H ? 'map' : 'small';
+}
+
+/**
+ * The part of the map the card hides, for the camera to keep clear: the card
+ * sits in the top-left corner, so it is the cheaper of a band down the left
+ * or a band across the top.
+ */
+export function cardCover(
+  card: { width: number; height: number },
+  map: { width: number; height: number },
+): { left: number; top: number } {
+  if (map.width <= 0 || map.height <= 0) return { left: 0, top: 0 };
+  return card.width / map.width < card.height / map.height
+    ? { left: card.width, top: 0 }
+    : { left: 0, top: card.height };
 }
 
 const MS_PER_MIN = 60_000;
@@ -57,12 +72,13 @@ interface BusLiveViewProps {
   camera: BusMapCamera;
 }
 
-/** A live trip in the bus widget: map and panel, laid out to fit the widget. */
+/** A live trip in the bus widget: the map with a card over it, or the panel alone when small. */
 export function BusLiveView({ track, speedUnit, clockOffsetMs, mapStyle, camera }: BusLiveViewProps) {
   const rootRef = React.useRef<HTMLDivElement>(null);
+  const cardRef = React.useRef<HTMLDivElement>(null);
   const [layout, setLayout] = React.useState<Layout>('small');
-  // Two columns of rows under a tall map, only when each still fits its value.
-  const [twoColumn, setTwoColumn] = React.useState(false);
+  const [roomy, setRoomy] = React.useState(false);
+  const [cover, setCover] = React.useState({ left: 0, top: 0 });
   const { timeFormat, displayTimezone } = useTimeFormat();
   const { resolvedTheme } = useTheme();
   const reducedMotion = useShouldSkipMotion();
@@ -80,61 +96,80 @@ export function BusLiveView({ track, speedUnit, clockOffsetMs, mapStyle, camera 
     if (!el) return;
     const measure = () => {
       setLayout(chooseLayout(el.clientWidth, el.clientHeight));
-      setTwoColumn(el.clientWidth >= TWO_COLUMN_PX);
+      setRoomy(el.clientWidth >= ROOMY_W && el.clientHeight >= ROOMY_H);
+      const card = cardRef.current;
+      setCover(card
+        ? cardCover({ width: card.offsetLeft + card.offsetWidth, height: card.offsetTop + card.offsetHeight },
+          { width: el.clientWidth, height: el.clientHeight })
+        : { left: 0, top: 0 });
     };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(el);
+    if (cardRef.current) observer.observe(cardRef.current);
     return () => observer.disconnect();
-  }, []);
+  }, [layout]);
 
   const formatTime = React.useCallback(
     (iso: string) => formatDisplayTime(new Date(iso), timeFormat, {}, displayTimezone),
     [timeFormat, displayTimezone],
   );
 
+  if (layout === 'small') {
+    return (
+      <div ref={rootRef} className="flex-1 w-full min-h-0 flex">
+        <BusLivePanel track={track} speedUnit={speedUnit} now={now} formatTime={formatTime} className="flex-1" />
+      </div>
+    );
+  }
+
   return (
-    <div
-      ref={rootRef}
-      className={cn('flex-1 w-full min-h-0 flex gap-3', layout === 'tall' ? 'flex-col' : 'flex-row')}
-    >
-      {layout !== 'small' && (
-        <div className={cn('min-h-0 min-w-0', layout === 'wide' ? 'flex-[3]' : 'flex-1')}>
-          <BusLiveMap
-            track={track}
-            formatTime={formatTime}
-            darkMode={resolvedTheme === 'dark'}
-            reducedMotion={reducedMotion}
-            clockOffsetMs={clockOffsetMs}
-            mapStyle={mapStyle}
-            camera={camera}
-          />
-        </div>
-      )}
-      <BusLivePanel
-        track={track}
-        speedUnit={speedUnit}
-        now={now}
-        formatTime={formatTime}
-        className={layout === 'wide' ? 'flex-[2] min-w-[170px]' : 'shrink-0'}
-        twoColumn={layout === 'tall' && twoColumn}
-        roomy={layout === 'wide'}
-      />
+    <div ref={rootRef} className="relative flex-1 w-full min-h-0">
+      <div className="absolute inset-0">
+        <BusLiveMap
+          track={track}
+          formatTime={formatTime}
+          darkMode={resolvedTheme === 'dark'}
+          reducedMotion={reducedMotion}
+          clockOffsetMs={clockOffsetMs}
+          mapStyle={mapStyle}
+          camera={camera}
+          cover={cover}
+        />
+      </div>
+      {/* Clear of the zoom buttons (top right) and the map credit (bottom left). */}
+      <div
+        ref={cardRef}
+        className={cn(
+          'absolute left-2 top-2 z-10 rounded-md border border-border bg-card/90 px-3 py-2 shadow-sm backdrop-blur-sm',
+          roomy ? 'w-60' : 'max-w-[calc(100%-4rem)]',
+        )}
+      >
+        <BusLivePanel
+          track={track}
+          speedUnit={speedUnit}
+          now={now}
+          formatTime={formatTime}
+          detail={roomy}
+        />
+      </div>
     </div>
   );
 }
 
+/** Which rows the card over the map keeps: how late, how fresh, and what the bus is doing. */
+const CARD_ROWS = new Set(['Running', 'Updated', 'Now']);
+
 function BusLivePanel({
-  track, speedUnit, now, formatTime, className, twoColumn, roomy,
+  track, speedUnit, now, formatTime, className, detail = true,
 }: {
   track: LiveTrack;
   speedUnit: 'mph' | 'km/h';
   now: number;
   formatTime: (iso: string) => string;
   className?: string;
-  twoColumn: boolean;
-  /** Wide enough for the longer row labels. */
-  roomy: boolean;
+  /** Every row; without it only CARD_ROWS, for a small card over the map. */
+  detail?: boolean;
 }) {
   const rider = track.stops.find((s) => s.key === track.riderStopKey) ?? null;
   const next = track.stops.find((s) => !s.passed) ?? null;
@@ -186,7 +221,7 @@ function BusLivePanel({
   if (bus) rows.push(['Bus', bus]);
   if (track.driverLabel) {
     const notes = [v?.substitute && 'substitute', v?.changedMidDay && 'changed today'].filter(Boolean).join(', ');
-    rows.push([roomy ? 'Today\'s driver' : 'Driver', notes ? `${track.driverLabel} (${notes})` : track.driverLabel]);
+    rows.push(['Driver', notes ? `${track.driverLabel} (${notes})` : track.driverLabel]);
   }
   if (latest && age === 'live') {
     const moving = latest.speed !== null && latest.speed > 0.5;
@@ -194,19 +229,18 @@ function BusLivePanel({
     rows.push(['Now', latest.doorOpen ? `${motion} · doors open` : motion]);
   }
 
+  const shown = detail ? rows : rows.filter(([label]) => CARD_ROWS.has(label));
+
   return (
     <div className={cn('min-h-0 min-w-0 flex flex-col gap-2 overflow-hidden', className)}>
       {headline && <div className="space-y-0.5 shrink-0">{headline}</div>}
       {/* Rows run most to least useful. In one column they wrap rather than
           clip: a row that does not fit moves to a second column, out of
           sight, so a short widget drops whole rows from the end. */}
-      <dl className={cn(
-        'text-xs min-h-0 overflow-hidden gap-y-1',
-        twoColumn ? 'grid grid-cols-2 gap-x-4' : 'flex flex-col flex-wrap content-start',
-      )}>
-        {rows.map(([label, value]) => (
+      <dl className="text-xs min-h-0 overflow-hidden gap-y-1 flex flex-col flex-wrap content-start">
+        {shown.map(([label, value]) => (
           <div key={label} className="flex w-full min-w-0 gap-3">
-            <dt className={cn('shrink-0 text-muted-foreground', roomy ? 'w-24' : 'w-12')}>{label}</dt>
+            <dt className="shrink-0 text-muted-foreground w-14">{label}</dt>
             <dd className="min-w-0 truncate">{value}</dd>
           </div>
         ))}

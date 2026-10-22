@@ -19,7 +19,11 @@ interface BusLiveMapProps {
   clockOffsetMs: number;
   mapStyle: BusMapStyle;
   camera: BusMapCamera;
+  /** Pixels hidden by something drawn over the map's left or top edge, kept clear by the camera. */
+  cover?: { left: number; top: number };
 }
+
+const NO_COVER = { left: 0, top: 0 };
 
 /** ~30 fps is smooth for a bus and kind to a wall display's CPU. */
 const FRAME_MS = 33;
@@ -163,7 +167,7 @@ function addLayers(map: maplibregl.Map) {
  * drag or pinch belongs to the dashboard.
  */
 export function BusLiveMap({
-  track, formatTime, darkMode, reducedMotion, clockOffsetMs, mapStyle, camera,
+  track, formatTime, darkMode, reducedMotion, clockOffsetMs, mapStyle, camera, cover = NO_COVER,
 }: BusLiveMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -186,6 +190,8 @@ export function BusLiveMap({
   const styleUrlRef = useRef(styleUrl);
   const cameraRef = useRef(camera);
   cameraRef.current = camera;
+  const coverRef = useRef(cover);
+  coverRef.current = cover;
   const manualUntilRef = useRef(0);
   // Where the marker is drawn, and since when it has been waiting for the bus.
   const shownRef = useRef<Pose | null>(null);
@@ -222,13 +228,17 @@ export function BusLiveMap({
       new maplibregl.LngLatBounds(points[0]!, points[0]!),
     );
     const bottom = top + 16;
-    const fit = map.cameraForBounds(bounds, { padding: { left: side, right: side, top, bottom }, maxZoom: CLOSE_ZOOM });
+    const { left: coverLeft, top: coverTop } = coverRef.current;
+    const left = side + coverLeft;
+    const topPad = top + coverTop;
+    const fit = map.cameraForBounds(bounds, { padding: { left, right: side, top: topPad, bottom }, maxZoom: CLOSE_ZOOM });
     if (!fit) return;
     const zoom = fit.zoom ?? map.getZoom();
     if (!force) {
       const screen = points.map((p) => { const q = map.project(p); return [q.x, q.y] as [number, number]; });
       // Half the padding: the bus may drift into the margin before the camera follows.
-      const box = { left: side / 2, top: top / 2, right: w - side / 2, bottom: h - bottom / 2 };
+      // Nothing gets the margin's grace under the cover: hidden is out of view.
+      const box = { left: coverLeft + side / 2, top: coverTop + top / 2, right: w - side / 2, bottom: h - bottom / 2 };
       if (!needsReframe(screen, box, map.getZoom(), zoom)) return;
     }
     map.easeTo({ center: fit.center, zoom, duration: animate && !reducedMotion ? REFRAME_MS : 0 });
@@ -489,6 +499,7 @@ export function BusLiveMap({
 
   // A new camera choice shows at once rather than at the next tick.
   useEffect(() => { manualUntilRef.current = 0; aim(true, true); }, [camera]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { aim(true); }, [cover.left, cover.top]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Drawn again when the theme changes, so the beacon matches it.
   useEffect(() => {
