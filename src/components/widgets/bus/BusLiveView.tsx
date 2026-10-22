@@ -18,6 +18,8 @@ const BusLiveMap = dynamic(() => import('./BusLiveMap').then((m) => m.BusLiveMap
 
 type Layout = 'wide' | 'tall' | 'small';
 
+const TWO_COLUMN_PX = 380;
+
 /** Below this a map is a strip that shows nothing useful. */
 const MIN_MAP_PX = 160;
 
@@ -59,6 +61,8 @@ interface BusLiveViewProps {
 export function BusLiveView({ track, speedUnit, clockOffsetMs, marker }: BusLiveViewProps) {
   const rootRef = React.useRef<HTMLDivElement>(null);
   const [layout, setLayout] = React.useState<Layout>('small');
+  // Two columns of rows under a tall map, only when each still fits its value.
+  const [twoColumn, setTwoColumn] = React.useState(false);
   const { timeFormat, displayTimezone } = useTimeFormat();
   const { resolvedTheme } = useTheme();
   const reducedMotion = useShouldSkipMotion();
@@ -74,7 +78,10 @@ export function BusLiveView({ track, speedUnit, clockOffsetMs, marker }: BusLive
   React.useLayoutEffect(() => {
     const el = rootRef.current;
     if (!el) return;
-    const measure = () => setLayout(chooseLayout(el.clientWidth, el.clientHeight));
+    const measure = () => {
+      setLayout(chooseLayout(el.clientWidth, el.clientHeight));
+      setTwoColumn(el.clientWidth >= TWO_COLUMN_PX);
+    };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(el);
@@ -110,7 +117,7 @@ export function BusLiveView({ track, speedUnit, clockOffsetMs, marker }: BusLive
         now={now}
         formatTime={formatTime}
         className={layout === 'wide' ? 'flex-[2] min-w-[170px]' : 'shrink-0'}
-        twoColumn={layout === 'tall'}
+        twoColumn={layout === 'tall' && twoColumn}
         roomy={layout === 'wide'}
       />
     </div>
