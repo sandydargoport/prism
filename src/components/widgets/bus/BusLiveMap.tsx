@@ -197,6 +197,9 @@ export function BusLiveMap({
     source?.setData(traceFeature(trackRef.current, untilTs));
   };
 
+  /** The dashed road ahead as last drawn, which the camera also frames. */
+  const aheadLineRef = useRef<LngLat[] | null>(null);
+
   /**
    * Aim the camera for the chosen mode. Bounds get room for the labels, which
    * hang below and to both sides of their dot. Skipped for a minute after a
@@ -208,7 +211,7 @@ export function BusLiveMap({
     if (!map || !readyRef.current || Date.now() < manualUntilRef.current) return;
     const t = trackRef.current;
     const bus = anchorRef.current ? current() : null;
-    const points = cameraView(cameraRef.current, bus, t.stops, t.riderStopKey);
+    const points = cameraView(cameraRef.current, bus, t.stops, t.riderStopKey, aheadLineRef.current);
     if (!points) return;
     const { clientWidth: w, clientHeight: h } = map.getContainer();
     // At least the bus marker's own length, so it is never half off the edge.
@@ -237,7 +240,6 @@ export function BusLiveMap({
    * at, and the solid line eats them as positions arrive. Redrawn only when
    * that position or the stops change, never as the marker moves.
    */
-  const aheadLineRef = useRef<LngLat[] | null>(null);
   const drawAhead = () => {
     const anchor = anchorRef.current;
     const t = trackRef.current;

@@ -4,6 +4,7 @@
  */
 
 import type { BusMapCamera } from './busMapOptions';
+import { metres } from './routeAhead';
 
 type LngLat = [number, number];
 
@@ -21,12 +22,30 @@ export const MANUAL_HOLD_MS = 60_000;
 /** Closest the camera zooms: a few blocks around the bus. */
 export const CLOSE_ZOOM = 16;
 
-/** The points the map should frame. */
+/** Follow keeps this much road in view past the bus, the way it is facing. */
+export const LEAD_M = 200;
+
+/** The point `m` metres from `from` on compass `heading`. */
+function ahead(from: LngLat, heading: number, m: number): LngLat {
+  const rad = (heading * Math.PI) / 180;
+  const metresPerDeg = metres(from, [from[0], from[1] + 1]);
+  const dLat = (m * Math.cos(rad)) / metresPerDeg;
+  const dLng = (m * Math.sin(rad)) / (metresPerDeg * Math.cos((from[1] * Math.PI) / 180));
+  return [from[0] + dLng, from[1] + dLat];
+}
+
+/**
+ * The points the map should frame. Following, that is the bus, the road it
+ * is about to take (`road`, the dashed line) and the stop it is headed for,
+ * plus a little road past the bus, so a close zoom near our stop never cuts
+ * off where the bus is going.
+ */
 export function cameraView(
   mode: BusMapCamera,
-  bus: { lat: number; lng: number } | null,
+  bus: { lat: number; lng: number; heading?: number | null } | null,
   stops: CameraStop[],
   riderStopKey: string | null,
+  road: LngLat[] | null = null,
 ): LngLat[] | null {
   const all: LngLat[] = stops.map((s) => [s.lng, s.lat]);
   if (bus) all.push([bus.lng, bus.lat]);
@@ -38,7 +57,10 @@ export function cameraView(
   const rider = stops.find((s) => s.key === riderStopKey && !s.passed);
   const target = rider ?? stops.find((s) => !s.passed);
   if (!target) return all;
-  return [[bus.lng, bus.lat], [target.lng, target.lat]];
+  const at: LngLat = [bus.lng, bus.lat];
+  const points: LngLat[] = [at, [target.lng, target.lat], ...(road ?? [])];
+  if (typeof bus.heading === 'number') points.push(ahead(at, bus.heading, LEAD_M));
+  return points;
 }
 
 /** Zoom in only once the frame could close in by this much (one level is twice as close). */

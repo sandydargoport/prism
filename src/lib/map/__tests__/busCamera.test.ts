@@ -1,4 +1,5 @@
-import { cameraView, needsReframe } from '../busCamera';
+import { LEAD_M, cameraView, needsReframe } from '../busCamera';
+import { metres } from '../routeAhead';
 import { busMapStyleUrl, isBusMapCamera, isBusMapStyle } from '../busMapOptions';
 
 const stops = [
@@ -14,6 +15,16 @@ describe('cameraView', () => {
     expect(cameraView('follow', bus, stops, 'mine')).toEqual([[1.5, 1], [3, 1]]);
     const after = stops.map((s) => (s.key === 'school' ? s : { ...s, passed: true }));
     expect(cameraView('follow', bus, after, 'mine')).toEqual([[1.5, 1], [4, 1]]);
+  });
+
+  it('also frames the road ahead and a stretch past the bus the way it faces', () => {
+    const road: [number, number][] = [[1.5, 1], [1.5, 1.2], [3, 1]];
+    const view = cameraView('follow', { ...bus, heading: 0 }, stops, 'mine', road)!;
+    expect(view).toEqual(expect.arrayContaining(road));
+    const lead = view[view.length - 1]!;
+    expect(lead[0]).toBeCloseTo(1.5, 6);
+    expect(lead[1]).toBeGreaterThan(1);
+    expect(metres([1.5, 1], lead)).toBeCloseTo(LEAD_M, 0);
   });
 
   it('shows the whole route, with the bus, when asked or when there is nothing to follow', () => {
