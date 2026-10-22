@@ -21,6 +21,7 @@ import {
   BUS_MARKERS, BUS_MARKER_LABELS, BUS_MARKER_SETTING, DEFAULT_BUS_MARKER, SEASON_EMOJI,
   busMarkerSvg, isBusMarker, type BusMarker,
 } from '@/lib/map/busMarkers';
+import { BUS_DRIVER_NAMES_SETTING, isDriverNames, type DriverNames } from '@/lib/services/bus-driver-names';
 
 interface LiveTrack {
   id: string;
@@ -30,6 +31,7 @@ interface LiveTrack {
   tripDate: string;
   routeId: string | null;
   lastFixAt: string | null;
+  driverName: string | null;
 }
 
 interface RouteOption {
@@ -64,6 +66,8 @@ export function LiveTrackingCard({ routes, onBound }: { routes: RouteOption[]; o
   const [historyDays, setHistoryDays] = useState('365');
   const [savedDays, setSavedDays] = useState({ trace: '30', history: '365' });
   const [marker, setMarker] = useState<BusMarker>(DEFAULT_BUS_MARKER);
+  const [driverNames, setDriverNames] = useState<DriverNames>({});
+  const [savedDriverNames, setSavedDriverNames] = useState<DriverNames>({});
 
   const load = useCallback(async () => {
     try {
@@ -85,6 +89,10 @@ export function LiveTrackingCard({ routes, onBound }: { routes: RouteOption[]; o
         setHistoryDays(history);
         setSavedDays({ trace, history });
         if (isBusMarker(all.busMarker)) setMarker(all.busMarker);
+        if (isDriverNames(all.busDriverNames)) {
+          setDriverNames(all.busDriverNames);
+          setSavedDriverNames(all.busDriverNames);
+        }
       }
     } catch {
       // Leave the defaults showing.
@@ -94,6 +102,10 @@ export function LiveTrackingCard({ routes, onBound }: { routes: RouteOption[]; o
   useEffect(() => { load(); }, [load]);
 
   const trips = useMemo(() => groupTracks(tracks), [tracks]);
+  const drivers = useMemo(
+    () => [...new Set(tracks.map(t => t.driverName).filter((n): n is string => Boolean(n)))].sort(),
+    [tracks],
+  );
 
   const handleCreateToken = async () => {
     setCreating(true);
@@ -163,6 +175,24 @@ export function LiveTrackingCard({ routes, onBound }: { routes: RouteOption[]; o
     } catch {
       setMarker(previous);
       toast({ title: 'Failed to save the bus', variant: 'destructive' });
+    }
+  };
+
+  const saveDriverName = async (reported: string) => {
+    if ((driverNames[reported] ?? '') === (savedDriverNames[reported] ?? '')) return;
+    const next = { ...savedDriverNames, [reported]: (driverNames[reported] ?? '').trim() };
+    if (!next[reported]) delete next[reported];
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: BUS_DRIVER_NAMES_SETTING, value: next }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setSavedDriverNames(next);
+      toast({ title: 'Driver name saved' });
+    } catch {
+      toast({ title: 'Failed to save driver name', variant: 'destructive' });
     }
   };
 
@@ -250,6 +280,31 @@ export function LiveTrackingCard({ routes, onBound }: { routes: RouteOption[]; o
             </div>
           )}
         </div>
+
+        {drivers.length > 0 && (
+          <div className="space-y-2">
+            <Label className="text-xs">Drivers this week</Label>
+            <div className="space-y-1.5">
+              {drivers.map(reported => (
+                <div key={reported} className="flex items-center gap-3">
+                  <span className="w-40 truncate text-sm" title={reported}>{reported}</span>
+                  <Input
+                    value={driverNames[reported] ?? ''}
+                    onChange={e => setDriverNames(d => ({ ...d, [reported]: e.target.value }))}
+                    onBlur={() => saveDriverName(reported)}
+                    placeholder="Shown as, e.g. Mr. Lastname"
+                    maxLength={60}
+                    className="h-8 w-56 text-sm"
+                    aria-label={`How to show ${reported}`}
+                  />
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              How each driver appears on the display. Left blank, the name shows as the provider reports it.
+            </p>
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label className="text-xs">Bus on the map</Label>

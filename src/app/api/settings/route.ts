@@ -16,6 +16,7 @@ import { invalidateHouseholdTimezoneCache } from '@/lib/householdTimezone';
 import { TELEMETRY_SETTING_KEYS } from '@/lib/telemetry/constants';
 import { BUS_RETENTION_KEYS, isValidRetention } from '@/lib/services/bus-live-retention';
 import { BUS_MARKER_SETTING, isBusMarker } from '@/lib/map/busMarkers';
+import { BUS_DRIVER_NAMES_SETTING, isDriverNames } from '@/lib/services/bus-driver-names';
 
 /**
  * Settings the setup wizard writes before any parent account has a session.
@@ -128,6 +129,9 @@ export async function PATCH(request: NextRequest) {
     }
     if (body.key === BUS_MARKER_SETTING && !isBusMarker(body.value)) {
       return NextResponse.json({ error: 'Invalid bus marker' }, { status: 400 });
+    }
+    if (body.key === BUS_DRIVER_NAMES_SETTING && !isDriverNames(body.value)) {
+      return NextResponse.json({ error: 'Invalid driver names' }, { status: 400 });
     }
 
     // The two below are checked only on the unauthenticated setup path, where

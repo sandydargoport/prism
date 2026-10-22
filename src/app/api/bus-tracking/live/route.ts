@@ -7,6 +7,7 @@ import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { todayKey } from '@/lib/utils/zonedDate';
 import { pickRiderStop, projectStops } from '@/lib/services/bus-eta';
 import { logError } from '@/lib/utils/logError';
+import { BUS_DRIVER_NAMES_SETTING, driverLabel, isDriverNames, type DriverNames } from '@/lib/services/bus-driver-names';
 import { BUS_MARKER_SETTING, DEFAULT_BUS_MARKER, isBusMarker, type BusMarker } from '@/lib/map/busMarkers';
 
 /**
@@ -35,6 +36,14 @@ async function busMarker(): Promise<BusMarker> {
     if (isBusMarker(row?.value)) return row.value;
   } catch { /* fall through */ }
   return DEFAULT_BUS_MARKER;
+}
+
+async function driverNames(): Promise<DriverNames> {
+  try {
+    const [row] = await db.select().from(settings).where(eq(settings.key, BUS_DRIVER_NAMES_SETTING));
+    if (isDriverNames(row?.value)) return row.value;
+  } catch { /* fall through */ }
+  return {};
 }
 
 /**
@@ -67,7 +76,7 @@ export async function GET(request: NextRequest) {
       ));
 
     const ids = rows.map((r) => r.track.id);
-    const [visits, fixes, unit, marker] = await Promise.all([
+    const [visits, fixes, unit, marker, names] = await Promise.all([
       ids.length
         ? db.select().from(busStopVisits).where(inArray(busStopVisits.trackId, ids))
         : Promise.resolve([]),
@@ -82,6 +91,7 @@ export async function GET(request: NextRequest) {
         : Promise.resolve([]),
       speedUnit(),
       busMarker(),
+      driverNames(),
     ]);
 
     // With nothing new the cursor stays put; stepping back every time would
@@ -110,6 +120,7 @@ export async function GET(request: NextRequest) {
         label: track.label,
         status: track.status,
         vehicle: track.vehicle,
+        driverLabel: driverLabel(track.vehicle?.driverName, names),
         progress: track.progress,
         plannedStart: track.plannedStart?.toISOString() ?? null,
         plannedEnd: track.plannedEnd?.toISOString() ?? null,

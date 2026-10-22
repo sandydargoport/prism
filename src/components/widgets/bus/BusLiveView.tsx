@@ -107,13 +107,14 @@ export function BusLiveView({ track, speedUnit, clockOffsetMs, marker }: BusLive
         formatTime={formatTime}
         className={layout === 'wide' ? 'flex-[2] min-w-[170px]' : 'shrink-0'}
         twoColumn={layout === 'tall'}
+        roomy={layout === 'wide'}
       />
     </div>
   );
 }
 
 function BusLivePanel({
-  track, speedUnit, now, formatTime, className, twoColumn,
+  track, speedUnit, now, formatTime, className, twoColumn, roomy,
 }: {
   track: LiveTrack;
   speedUnit: 'mph' | 'km/h';
@@ -121,6 +122,8 @@ function BusLivePanel({
   formatTime: (iso: string) => string;
   className?: string;
   twoColumn: boolean;
+  /** Wide enough for the longer row labels. */
+  roomy: boolean;
 }) {
   const rider = track.stops.find((s) => s.key === track.riderStopKey) ?? null;
   const next = track.stops.find((s) => !s.passed) ?? null;
@@ -160,9 +163,9 @@ function BusLivePanel({
   if (track.stops.length > 0) rows.push(['Stops', `${passedCount} of ${track.stops.length}`]);
   const bus = [v?.number && `Bus ${v.number}`, v?.color].filter(Boolean).join(' · ');
   if (bus) rows.push(['Bus', bus]);
-  if (v?.driverName) {
-    const notes = [v.substitute && 'substitute', v.changedMidDay && 'changed today'].filter(Boolean).join(', ');
-    rows.push(['Driver', notes ? `${v.driverName} (${notes})` : v.driverName]);
+  if (track.driverLabel) {
+    const notes = [v?.substitute && 'substitute', v?.changedMidDay && 'changed today'].filter(Boolean).join(', ');
+    rows.push([roomy ? 'Today\'s driver' : 'Driver', notes ? `${track.driverLabel} (${notes})` : track.driverLabel]);
   }
   if (latest && age === 'live') {
     const moving = latest.speed !== null && latest.speed > 0.5;
@@ -188,7 +191,7 @@ function BusLivePanel({
       )}>
         {rows.map(([label, value]) => (
           <div key={label} className="flex w-full min-w-0 gap-3">
-            <dt className="w-12 shrink-0 text-muted-foreground">{label}</dt>
+            <dt className={cn('shrink-0 text-muted-foreground', roomy ? 'w-24' : 'w-12')}>{label}</dt>
             <dd className="min-w-0 truncate">{value}</dd>
           </div>
         ))}

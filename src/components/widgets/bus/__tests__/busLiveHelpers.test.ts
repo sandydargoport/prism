@@ -40,7 +40,7 @@ describe('mergeFixes', () => {
 
 const track = (over: Partial<LiveTrack>): LiveTrack => ({
   id: 't', routeId: 'r', routeLabel: 'AM', direction: 'AM', label: null, status: 'live',
-  vehicle: null, progress: null, plannedStart: null, plannedEnd: null,
+  vehicle: null, driverLabel: null, progress: null, plannedStart: null, plannedEnd: null,
   lastFixAt: '2026-03-02T13:00:00Z', riderStopKey: 's', shiftMs: null, stops: [], fixes: [],
   ...over,
 });

@@ -27,6 +27,8 @@ export interface LiveTrack {
   label: string | null;
   status: string | null;
   vehicle: LiveTrackVehicle | null;
+  /** The driver as the family chose to show them, else as reported. */
+  driverLabel: string | null;
   progress: { lastVisitedStop: number; totalStops: number } | null;
   plannedStart: string | null;
   plannedEnd: string | null;

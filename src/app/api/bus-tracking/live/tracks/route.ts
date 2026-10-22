@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { and, desc, eq, gte, isNull, max } from 'drizzle-orm';
+import { and, desc, eq, gte, isNull, max, sql } from 'drizzle-orm';
 import { withAuth } from '@/lib/api/withAuth';
 import { db } from '@/lib/db/client';
 import { busRoutes, vehicleTracks } from '@/lib/db/schema';
@@ -30,6 +30,7 @@ export async function GET() {
           tripDate: vehicleTracks.tripDate,
           routeId: vehicleTracks.routeId,
           lastFixAt: vehicleTracks.lastFixAt,
+          driverName: sql<string | null>`${vehicleTracks.vehicle}->>'driverName'`,
           updatedAt: vehicleTracks.updatedAt,
         })
         .from(vehicleTracks)

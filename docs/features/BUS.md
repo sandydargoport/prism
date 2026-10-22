@@ -163,7 +163,8 @@ Positions arrive every few seconds and are already a little old when they do, so
 1. *Settings → Bus Tracking → Live Tracking → Create provider token.* The token has the `bus:ingest` scope, so it can post positions and do nothing else. It is shown once.
 2. Point your provider at `https://<your-prism>/api/bus-tracking/live/ingest` with the header `Authorization: Bearer <token>`.
 3. Optionally pick how the bus looks on the map under *Bus on the map*: a school bus, one dressed for the month, a night double-decker, a submarine, a flying saucer, a steel wedge truck or a night cruiser. Speed shows in mph or km/h following *Settings → Display → Units*.
-4. Once the provider sends today's trips, they appear under *Trips reported this week*. Pick the route each one belongs to. Prism remembers the trip's provider, label and direction, so the next day's trip links itself.
+4. Once a provider reports drivers, *Drivers this week* lists them. Type how each should appear on the display (say "Mr. Lastname"); wide widgets read "Today's driver: Mr. Lastname". Prism never picks a title itself, and a blank entry shows the name as reported.
+5. Once the provider sends today's trips, they appear under *Trips reported this week*. Pick the route each one belongs to. Prism remembers the trip's provider, label and direction, so the next day's trip links itself.
 
 ### The format
 
