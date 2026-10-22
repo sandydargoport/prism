@@ -148,6 +148,56 @@ Active days aren't currently editable from the route dialog, so routes that only
 
 ---
 
+## Live tracking from a position provider
+
+Prism can also take live bus positions from a **position provider**: a small program you run that reads positions from your bus service and posts them to Prism. Prism does not include a provider for any particular vendor. It defines the format, stores what arrives, and keeps the history.
+
+The widget map that shows the bus moving arrives in a following release. For now Prism receives and stores the positions and the stop times.
+
+### Setup
+
+1. *Settings → Bus Tracking → Live Tracking → Create provider token.* The token has the `bus:ingest` scope, so it can post positions and do nothing else. It is shown once.
+2. Point your provider at `https://<your-prism>/api/bus-tracking/live/ingest` with the header `Authorization: Bearer <token>`.
+3. Once the provider sends today's trips, they appear under *Trips reported this week*. Pick the route each one belongs to. Prism remembers the trip's provider, label and direction, so the next day's trip links itself.
+
+### The format
+
+One JSON body, any mix of four parts. A provider normally sends `tracks` once in the morning and again when something changes, then a `fixes` entry for each position:
+
+```json
+{
+  "provider": "my-provider",
+  "tracks": [{
+    "key": "any-stable-id-for-today", "date": "2026-03-02", "direction": "AM", "label": "Route 7",
+    "vehicle": { "number": "14", "color": "Yellow", "driverName": "Sam Example" },
+    "stops": [{ "key": "s1", "order": 0, "lat": 39.7392, "lng": -104.9903, "plannedAt": "2026-03-02T07:31:00-07:00", "kind": "stop" }]
+  }],
+  "fixes": [{ "track": "any-stable-id-for-today", "eventId": "e1", "ts": "2026-03-02T07:29:40-07:00",
+              "lat": 39.7390, "lng": -104.9910, "heading": 90, "speed": 8.5, "moving": true, "doorOpen": false }],
+  "stopEvents": [{ "track": "any-stable-id-for-today", "stop": "s1", "kind": "arrived", "at": "2026-03-02T07:31:20-07:00" }],
+  "progress": [{ "track": "any-stable-id-for-today", "lastVisitedStop": 1, "totalStops": 5 }]
+}
+```
+
+- `key` is yours to choose. It only has to stay the same for the day; Prism never needs to know what it stands for.
+- `ts` is when the bus was there, with a time zone. Fixes can arrive late or out of order. One stamped more than five minutes in the future is dropped.
+- Sending the same `eventId` twice stores it once, so a provider can safely retry.
+
+The full schema is `src/lib/validations/liveVehicle.ts`. `scripts/fake-bus-provider.ts` plays a made-up trip into a Prism instance and is the reference example of a provider:
+
+```bash
+PRISM_URL=http://localhost:3000 PRISM_INGEST_TOKEN=<token> npx tsx scripts/fake-bus-provider.ts --speed 20
+```
+
+### How long it is kept
+
+Two settings under *Live Tracking → Keep history*:
+
+- **Exact route**, 30 days by default: every position, which is where the bus was minute by minute.
+- **Stop times**, 365 days by default: only when the bus reached and left each stop, which is what arrival predictions learn from.
+
+A daily job deletes anything older. Both stay on your server.
+
 ## Privacy
 
 Bus tracking is your data, on your instance. The only external service involved is Gmail. Prism's read-only access lets it parse the FirstView emails you already receive.

@@ -48,5 +48,8 @@ export async function register() {
 
     const { startTelemetryCron } = await import('./lib/server/telemetryCron');
     startTelemetryCron();
+
+    const { startBusRetentionCron } = await import('./lib/server/busRetentionCron');
+    startBusRetentionCron();
   }
 }

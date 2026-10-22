@@ -310,6 +310,12 @@ export const createBusRouteSchema = z.object({
   schoolName: z.string().max(255).optional(),
   enabled: z.boolean().optional().default(true),
   sortOrder: z.number().int().min(0).optional().default(0),
+  // Which live provider track is this route's (see bus-live-ingest.ts).
+  liveMatch: z.object({
+    provider: z.string().min(1).max(50),
+    label: z.string().max(100).optional(),
+    direction: z.enum(['AM', 'PM']).optional(),
+  }).nullable().optional(),
 });
 
 export const updateBusRouteSchema = createBusRouteSchema.partial();
@@ -330,11 +336,13 @@ export const calendarNotesQuerySchema = z.object({
 
 /**
  * Known token scopes. `*` grants full account access (the legacy default).
- * `voice` is restricted to the `/api/v1/voice/*` namespace. New scopes
+ * `voice` is restricted to the `/api/v1/voice/*` namespace. `bus:ingest`
+ * only lets a live position provider post to /api/bus-tracking/live/ingest.
+ * New scopes
  * should be added here AND enforced by `withAuth({ tokenScope: ... })`
  * on the endpoints they cover.
  */
-export const TOKEN_SCOPES = ['*', 'voice'] as const;
+export const TOKEN_SCOPES = ['*', 'voice', 'bus:ingest'] as const;
 export type TokenScope = (typeof TOKEN_SCOPES)[number];
 
 export const createApiTokenSchema = z.object({

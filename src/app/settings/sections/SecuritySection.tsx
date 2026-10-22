@@ -21,15 +21,17 @@ interface ApiToken {
   createdAt: string;
 }
 
-type TokenScopeChoice = 'voice' | '*';
+type TokenScopeChoice = 'voice' | 'bus:ingest' | '*';
 
 const SCOPE_LABELS: Record<TokenScopeChoice, string> = {
   voice: 'Voice API only (recommended)',
+  'bus:ingest': 'Live bus position provider',
   '*': 'Full access (legacy)',
 };
 
 const SCOPE_DESCRIPTIONS: Record<TokenScopeChoice, string> = {
   voice: 'Limited to /api/v1/voice/* — for Alexa skills, Home Assistant, voice agents.',
+  'bus:ingest': 'Can only post bus positions to /api/bus-tracking/live/ingest.',
   '*': 'Grants parent-level access to every endpoint. Use only for tools that need full control.',
 };
 
@@ -305,7 +307,7 @@ export function SecuritySection() {
                 onChange={(e) => setNewTokenScope(e.target.value as TokenScopeChoice)}
                 aria-label="Token scope"
               >
-                {(['voice', '*'] as const).map((scope) => (
+                {(['voice', 'bus:ingest', '*'] as const).map((scope) => (
                   <option key={scope} value={scope}>{SCOPE_LABELS[scope]}</option>
                 ))}
               </select>

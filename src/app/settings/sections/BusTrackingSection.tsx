@@ -53,6 +53,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from '@/components/ui/use-toast';
 import { useFamily } from '@/components/providers';
+import { LiveTrackingCard } from './bus/LiveTrackingCard';
 
 interface BusRoute {
   id: string;
@@ -267,6 +268,11 @@ export function BusTrackingSection() {
           Track school bus arrivals by connecting to your Gmail for FirstView notifications.
         </p>
       </div>
+
+      <LiveTrackingCard
+        routes={routes.map(r => ({ id: r.id, label: r.label }))}
+        onBound={fetchData}
+      />
 
       <GmailConnectionCard
         connection={connection}

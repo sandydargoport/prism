@@ -7,6 +7,8 @@ import {
   boolean,
   integer,
   decimal,
+  doublePrecision,
+  real,
   jsonb,
   date,
   index,
@@ -1607,6 +1609,11 @@ export const busRoutes = pgTable('bus_routes', {
   enabled: boolean('enabled').default(true).notNull(),
   sortOrder: integer('sort_order').default(0).notNull(),
 
+  // Which live provider track belongs to this route. Tracks arrive daily with
+  // opaque keys, so the binding is by provider + label + direction instead.
+  liveMatch: jsonb('live_match')
+    .$type<{ provider: string; label?: string; direction?: 'AM' | 'PM' }>(),
+
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
@@ -1646,6 +1653,104 @@ export const busGeofenceLog = pgTable('bus_geofence_log', {
   eventTimeIdx: index('bus_geofence_log_event_time_idx').on(table.eventTime),
 }));
 
+
+
+// Live vehicle positions, from any provider that speaks the neutral contract
+// in src/lib/validations/liveVehicle.ts. A track is one vehicle doing one trip
+// on one day. Tracks and fixes are the exact trace and are kept for the trace
+// retention window only; bus_stop_visits holds the coarse timings, kept longer.
+
+export type LiveTrackVehicle = {
+  number?: string;
+  plate?: string;
+  color?: string;
+  model?: string;
+  driverName?: string;
+  substitute?: boolean;
+  changedMidDay?: boolean;
+};
+
+export type LiveTrackStop = {
+  key: string;
+  name?: string;
+  order: number;
+  lat: number;
+  lng: number;
+  plannedAt?: string;
+  kind?: 'stop' | 'school' | 'depot';
+};
+
+export const vehicleTracks = pgTable('vehicle_tracks', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  provider: varchar('provider', { length: 50 }).notNull(),
+  // Opaque, provider-chosen key, stable for the day.
+  externalKey: varchar('external_key', { length: 128 }).notNull(),
+  tripDate: date('trip_date').notNull(),
+  direction: varchar('direction', { length: 10 }).$type<'AM' | 'PM'>(),
+  label: varchar('label', { length: 100 }),
+  routeId: uuid('route_id').references(() => busRoutes.id, { onDelete: 'set null' }),
+  vehicle: jsonb('vehicle').$type<LiveTrackVehicle>(),
+  stops: jsonb('stops').default([]).notNull().$type<LiveTrackStop[]>(),
+  plannedStart: timestamp('planned_start'),
+  plannedEnd: timestamp('planned_end'),
+  status: varchar('status', { length: 30 }),
+  progress: jsonb('progress').$type<{ lastVisitedStop: number; totalStops: number }>(),
+  weather: jsonb('weather').$type<Record<string, unknown>>(),
+  lastFixAt: timestamp('last_fix_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  providerKeyDateIdx: uniqueIndex('vehicle_tracks_provider_key_date_idx')
+    .on(table.provider, table.externalKey, table.tripDate),
+  tripDateIdx: index('vehicle_tracks_trip_date_idx').on(table.tripDate),
+  routeIdIdx: index('vehicle_tracks_route_id_idx').on(table.routeId),
+}));
+
+export const vehicleFixes = pgTable('vehicle_fixes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  trackId: uuid('track_id')
+    .references(() => vehicleTracks.id, { onDelete: 'cascade' })
+    .notNull(),
+  // The fix's own time (when the vehicle was there), not when it arrived here.
+  ts: timestamp('ts').notNull(),
+  receivedAt: timestamp('received_at').defaultNow().notNull(),
+  lat: doublePrecision('lat').notNull(),
+  lng: doublePrecision('lng').notNull(),
+  heading: real('heading'),
+  speed: real('speed'),
+  moving: boolean('moving'),
+  doorOpen: boolean('door_open'),
+  ignition: boolean('ignition'),
+  // Provider event id, or the fix time when the provider has none.
+  eventId: varchar('event_id', { length: 128 }).notNull(),
+}, (table) => ({
+  trackEventIdx: uniqueIndex('vehicle_fixes_track_event_idx').on(table.trackId, table.eventId),
+  trackTsIdx: index('vehicle_fixes_track_ts_idx').on(table.trackId, table.ts),
+}));
+
+export const busStopVisits = pgTable('bus_stop_visits', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  routeId: uuid('route_id')
+    .references(() => busRoutes.id, { onDelete: 'cascade' })
+    .notNull(),
+  // Cleared when the trace is deleted; the visit outlives it.
+  trackId: uuid('track_id').references(() => vehicleTracks.id, { onDelete: 'set null' }),
+  tripDate: date('trip_date').notNull(),
+  dayOfWeek: integer('day_of_week').notNull(), // 0=Sun, 6=Sat
+  stopKey: varchar('stop_key', { length: 128 }).notNull(),
+  stopOrder: integer('stop_order').notNull(),
+  kind: varchar('kind', { length: 10 }).$type<'stop' | 'school' | 'depot'>(),
+  plannedAt: timestamp('planned_at'),
+  arrivedAt: timestamp('arrived_at'),
+  departedAt: timestamp('departed_at'),
+  source: varchar('source', { length: 10 }).default('vendor').notNull()
+    .$type<'vendor' | 'door' | 'geofence'>(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  routeDateStopIdx: uniqueIndex('bus_stop_visits_route_date_stop_idx')
+    .on(table.routeId, table.tripDate, table.stopKey),
+  tripDateIdx: index('bus_stop_visits_trip_date_idx').on(table.tripDate),
+}));
 
 // ─── CALENDAR NOTES ────────────────────────────────────────────────
 export const calendarNotes = pgTable('calendar_notes', {
