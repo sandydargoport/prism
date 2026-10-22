@@ -29,7 +29,7 @@ export function CssGridDisplay({
   className,
 }: CssGridDisplayProps) {
   const { containerRef, cellSize: widthCellSize, width, top, zoom, remeasure } = useSquareCells(cols, containerPadding, margin, fillHeight);
-  const { width: viewportWidth, height: viewportHeight } = useViewportSize();
+  const { width: viewportWidth, height: viewportHeight, visibleHeight } = useViewportSize();
 
   // Re-read the grid's real top whenever the chrome offset changes (a toolbar
   // show/hide is a position change the ResizeObserver never sees), so the fill
@@ -100,11 +100,8 @@ export function CssGridDisplay({
   // Some kiosk browsers over-report window.innerHeight vs the actually-visible
   // area (a device/browser bottom bar), which let the bottom row clip on a real
   // touch display even when the math looked right. Prefer the visual-viewport
-  // height whenever it's smaller.
-  const visualH = (typeof window !== 'undefined' && window.visualViewport)
-    ? Math.min(viewportHeight, window.visualViewport.height)
-    : viewportHeight;
-  const localH = visualH / zoom;
+  // height whenever it's smaller (useViewportSize tracks it, so it stays current).
+  const localH = visibleHeight / zoom;
   const bottomSafety = chromeTop > 0 ? Math.round(margin * 1.5) : 0;
   const availH = Math.max(120, localH - chromeTop - bottomOffset - bottomSafety);
 

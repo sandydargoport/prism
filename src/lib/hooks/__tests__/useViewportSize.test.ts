@@ -25,7 +25,7 @@ describe('useViewportSize', () => {
 
   it('returns the initial viewport size on mount', () => {
     const { result } = renderHook(() => useViewportSize());
-    expect(result.current).toEqual({ width: 1024, height: 768 });
+    expect(result.current).toEqual({ width: 1024, height: 768, visibleHeight: 768 });
   });
 
   it('updates when the window is resized', () => {
@@ -36,7 +36,7 @@ describe('useViewportSize', () => {
       window.dispatchEvent(new Event('resize'));
     });
 
-    expect(result.current).toEqual({ width: 800, height: 600 });
+    expect(result.current).toEqual({ width: 800, height: 600, visibleHeight: 600 });
   });
 
   it('updates on orientationchange', () => {
@@ -47,7 +47,7 @@ describe('useViewportSize', () => {
       window.dispatchEvent(new Event('orientationchange'));
     });
 
-    expect(result.current).toEqual({ width: 600, height: 800 });
+    expect(result.current).toEqual({ width: 600, height: 800, visibleHeight: 800 });
   });
 
   it('catches the viewport changing between mount and effect attaching', () => {
@@ -58,7 +58,7 @@ describe('useViewportSize', () => {
     const { result } = renderHook(() => useViewportSize());
 
     // Sanity: initial state took the {1024, 768} reading.
-    expect(result.current).toEqual({ width: 1024, height: 768 });
+    expect(result.current).toEqual({ width: 1024, height: 768, visibleHeight: 768 });
 
     // Simulate the window manager finalizing its work area after mount but
     // before the user resizes — happens on Wyse cold boot.
@@ -67,7 +67,7 @@ describe('useViewportSize', () => {
       window.dispatchEvent(new Event('resize'));
     });
 
-    expect(result.current).toEqual({ width: 1920, height: 1080 });
+    expect(result.current).toEqual({ width: 1920, height: 1080, visibleHeight: 1080 });
   });
 
   it('removes listeners on unmount', () => {
@@ -91,5 +91,38 @@ describe('useViewportSize', () => {
     });
 
     expect(result.current).toBe(initial);
+  });
+
+  describe('visible height', () => {
+    afterEach(() => {
+      Object.defineProperty(window, 'visualViewport', { value: undefined, configurable: true });
+    });
+
+    const setVisual = (height: number) => {
+      const target = new EventTarget();
+      Object.defineProperty(window, 'visualViewport', {
+        value: Object.assign(target, { height }),
+        configurable: true,
+      });
+      return target as EventTarget & { height: number };
+    };
+
+    it('uses the visual viewport when it is smaller', () => {
+      setVisual(700);
+      const { result } = renderHook(() => useViewportSize());
+      expect(result.current.visibleHeight).toBe(700);
+    });
+
+    it('ignores a visual viewport of 0 and follows it once it is real', () => {
+      const visual = setVisual(0);
+      const { result } = renderHook(() => useViewportSize());
+      expect(result.current.visibleHeight).toBe(768);
+
+      act(() => {
+        visual.height = 740;
+        visual.dispatchEvent(new Event('resize'));
+      });
+      expect(result.current.visibleHeight).toBe(740);
+    });
   });
 });
