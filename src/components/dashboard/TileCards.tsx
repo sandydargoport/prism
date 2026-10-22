@@ -12,6 +12,8 @@ import {
 import { cn } from '@/lib/utils';
 import type { useDashboardData } from './useDashboardData';
 import type { BusRouteStatus, BusPrediction } from '@/lib/hooks/useBusTracking';
+import type { LiveTrack } from '@/lib/hooks/useBusLive';
+import { LiveBusSummary } from '@/components/widgets/bus/BusLiveView';
 import { useTimeFormat } from '@/components/providers';
 import { formatDisplayTime, isCalendarEventPast, toDisplayDate } from '@/lib/utils/timeFormat';
 import { useLocalDateKey } from '@/lib/hooks/useLocalDateKey';
@@ -251,7 +253,15 @@ export function PhotosTile() {
   );
 }
 
-export function BusTrackingTile({ routes }: { routes: BusRouteStatus[] | null }) {
+export function BusTrackingTile({ routes, live }: { routes: BusRouteStatus[] | null; live?: LiveTrack | null }) {
+  if (live) {
+    return (
+      <TileShell icon={<Bus className="h-4 w-4 text-amber-500" />} title="Bus">
+        <TileLine><LiveBusSummary track={live} /></TileLine>
+        <TileLine dim>{live.routeLabel}</TileLine>
+      </TileShell>
+    );
+  }
   const first = routes?.[0];
   const pred: BusPrediction | undefined = first?.prediction;
   const statusLabel = !first ? 'No routes'

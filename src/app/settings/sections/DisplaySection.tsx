@@ -376,13 +376,13 @@ function WeatherUnitsCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Weather units</CardTitle>
+        <CardTitle>Units</CardTitle>
         <CardDescription>
-          Imperial shows °F, mph, and inches. Metric shows °C, km/h, and mm. Applies to every place weather is rendered (widget, mobile cards, away mode, babysitter mode).
+          Imperial shows °F, mph, and inches. Metric shows °C, km/h, and mm. Applies to weather everywhere it is shown (widget, mobile cards, away mode, babysitter mode) and to the live bus speed.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="inline-flex rounded-md border border-input p-0.5" role="radiogroup" aria-label="Weather units">
+        <div className="inline-flex rounded-md border border-input p-0.5" role="radiogroup" aria-label="Units">
           <button
             type="button"
             role="radio"

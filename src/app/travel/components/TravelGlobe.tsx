@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import * as maplibregl from 'maplibre-gl';
-import 'maplibre-gl/dist/maplibre-gl.css';
+import { maplibregl, MAP_STYLE_URL } from '@/lib/map/maplibreSetup';
 import type { TravelPin, TravelTrip } from '../types';
 import { STATUS_CONFIG, NPS_COLOR } from '../types';
 import { createPinElement, getZoomTier } from './globeMarkers';
@@ -11,19 +10,7 @@ import { addTripLinesLayer, buildTripFeatures, buildTripContextMap } from './glo
 import { useGlobeRotation } from './useGlobeRotation';
 import { fitGlobeZoom } from './globeFit';
 
-const STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/liberty';
 const DEFAULT_ZOOM = 2.8;
-
-// maplibre-gl v6 is ESM-only and finds its worker via
-// `new URL('./maplibre-gl-worker.mjs', import.meta.url)`. Webpack does not
-// preserve import.meta.url, so in a Next build that resolves to '' and the
-// worker is constructed against the page itself and dies immediately. Nothing
-// throws: the map still draws its raster sources, so the globe comes up with
-// land shading but no water, boundaries or labels.
-//
-// scripts/copy-maplibre-worker.mjs puts the worker (and the shared chunk it
-// imports) under public/maplibre at build time; this points MapLibre at it.
-maplibregl.config.WORKER_URL = '/maplibre/maplibre-gl-worker.mjs';
 
 interface TravelGlobeProps {
   pins: TravelPin[];
@@ -67,7 +54,7 @@ export function TravelGlobe({
     if (!containerRef.current || mapRef.current) return;
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: STYLE_LIGHT,
+      style: MAP_STYLE_URL,
       zoom: DEFAULT_ZOOM, center: [0, 20], pitchWithRotate: false, attributionControl: false,
     });
 

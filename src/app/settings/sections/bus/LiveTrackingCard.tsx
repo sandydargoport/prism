@@ -15,6 +15,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from '@/components/ui/use-toast';
+import { Emoji } from '@/components/ui/Emoji';
+import { cn } from '@/lib/utils';
+import {
+  BUS_MARKERS, BUS_MARKER_LABELS, BUS_MARKER_SETTING, DEFAULT_BUS_MARKER, SEASON_EMOJI,
+  busMarkerSvg, isBusMarker, type BusMarker,
+} from '@/lib/map/busMarkers';
 
 interface LiveTrack {
   id: string;
@@ -57,6 +63,7 @@ export function LiveTrackingCard({ routes, onBound }: { routes: RouteOption[]; o
   const [traceDays, setTraceDays] = useState('30');
   const [historyDays, setHistoryDays] = useState('365');
   const [savedDays, setSavedDays] = useState({ trace: '30', history: '365' });
+  const [marker, setMarker] = useState<BusMarker>(DEFAULT_BUS_MARKER);
 
   const load = useCallback(async () => {
     try {
@@ -77,6 +84,7 @@ export function LiveTrackingCard({ routes, onBound }: { routes: RouteOption[]; o
         setTraceDays(trace);
         setHistoryDays(history);
         setSavedDays({ trace, history });
+        if (isBusMarker(all.busMarker)) setMarker(all.busMarker);
       }
     } catch {
       // Leave the defaults showing.
@@ -139,6 +147,22 @@ export function LiveTrackingCard({ routes, onBound }: { routes: RouteOption[]; o
       toast({ title: 'Retention saved' });
     } catch {
       toast({ title: 'Failed to save retention', description: 'Use whole days: trace 1 to 365, history 1 to 1825.', variant: 'destructive' });
+    }
+  };
+
+  const handleMarker = async (next: BusMarker) => {
+    const previous = marker;
+    setMarker(next);
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: BUS_MARKER_SETTING, value: next }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    } catch {
+      setMarker(previous);
+      toast({ title: 'Failed to save the bus', variant: 'destructive' });
     }
   };
 
@@ -225,6 +249,34 @@ export function LiveTrackingCard({ routes, onBound }: { routes: RouteOption[]; o
               ))}
             </div>
           )}
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs">Bus on the map</Label>
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Bus on the map">
+            {BUS_MARKERS.map(kind => (
+              <button
+                key={kind}
+                type="button"
+                role="radio"
+                aria-checked={marker === kind}
+                title={BUS_MARKER_LABELS[kind]}
+                onClick={() => handleMarker(kind)}
+                className={cn(
+                  'relative flex h-16 w-16 items-center justify-center rounded-md border transition-colors',
+                  marker === kind ? 'border-primary ring-2 ring-primary/40 bg-accent' : 'border-border hover:bg-accent',
+                )}
+              >
+                {/* Fixed markup from busMarkers.ts, never user input. */}
+                <span aria-hidden dangerouslySetInnerHTML={{ __html: busMarkerSvg(kind, 0.9) }} />
+                {kind === 'seasonal' && (
+                  <Emoji e={SEASON_EMOJI[new Date().getMonth() + 1]!} className="absolute h-3.5 w-3.5" />
+                )}
+                <span className="sr-only">{BUS_MARKER_LABELS[kind]}</span>
+              </button>
+            ))}
+          </div>
+          <p className="text-[11px] text-muted-foreground">{BUS_MARKER_LABELS[marker]}</p>
         </div>
 
         <div className="space-y-2">

@@ -152,13 +152,18 @@ Active days aren't currently editable from the route dialog, so routes that only
 
 Prism can also take live bus positions from a **position provider**: a small program you run that reads positions from your bus service and posts them to Prism. Prism does not include a provider for any particular vendor. It defines the format, stores what arrives, and keeps the history.
 
-The widget map that shows the bus moving arrives in a following release. For now Prism receives and stores the positions and the stop times.
+While a linked trip is running, the Bus Tracker widget shows a map with the bus moving along today's route, each upcoming stop labelled with its projected time, and a panel with the arrival time at your stop, how late the bus is running, the next stop, the bus and driver, and when the last update arrived. A small widget shows the panel only. With no live data, the widget shows the route's scheduled time as before.
+
+Projected times start from the provider's planned stop times, moved by how late or early the bus reached its most recent stop. They never show a time earlier than now.
+
+Positions arrive every few seconds and are already a little old when they do, so the marker shows where the bus most likely is now rather than where it last reported: it carries on at the last speed and heading for up to 20 seconds, never past the next stop, and not at all while the bus is stopped or its doors are open. Showing the bus behind where it really is would suggest there is more time than there is. After 90 seconds with no update the marker fades.
 
 ### Setup
 
 1. *Settings → Bus Tracking → Live Tracking → Create provider token.* The token has the `bus:ingest` scope, so it can post positions and do nothing else. It is shown once.
 2. Point your provider at `https://<your-prism>/api/bus-tracking/live/ingest` with the header `Authorization: Bearer <token>`.
-3. Once the provider sends today's trips, they appear under *Trips reported this week*. Pick the route each one belongs to. Prism remembers the trip's provider, label and direction, so the next day's trip links itself.
+3. Optionally pick how the bus looks on the map under *Bus on the map*: a school bus, one dressed for the month, a night double-decker, a submarine, a flying saucer, a steel wedge truck or a night cruiser. Speed shows in mph or km/h following *Settings → Display → Units*.
+4. Once the provider sends today's trips, they appear under *Trips reported this week*. Pick the route each one belongs to. Prism remembers the trip's provider, label and direction, so the next day's trip links itself.
 
 ### The format
 
@@ -170,7 +175,7 @@ One JSON body, any mix of four parts. A provider normally sends `tracks` once in
   "tracks": [{
     "key": "any-stable-id-for-today", "date": "2026-03-02", "direction": "AM", "label": "Route 7",
     "vehicle": { "number": "14", "color": "Yellow", "driverName": "Sam Example" },
-    "stops": [{ "key": "s1", "order": 0, "lat": 39.7392, "lng": -104.9903, "plannedAt": "2026-03-02T07:31:00-07:00", "kind": "stop" }]
+    "stops": [{ "key": "s1", "order": 0, "lat": 39.7392, "lng": -104.9903, "plannedAt": "2026-03-02T07:31:00-07:00", "kind": "stop", "rider": true }]
   }],
   "fixes": [{ "track": "any-stable-id-for-today", "eventId": "e1", "ts": "2026-03-02T07:29:40-07:00",
               "lat": 39.7390, "lng": -104.9910, "heading": 90, "speed": 8.5, "moving": true, "doorOpen": false }],
@@ -182,6 +187,8 @@ One JSON body, any mix of four parts. A provider normally sends `tracks` once in
 - `key` is yours to choose. It only has to stay the same for the day; Prism never needs to know what it stands for.
 - `ts` is when the bus was there, with a time zone. Fixes can arrive late or out of order. One stamped more than five minutes in the future is dropped.
 - Sending the same `eventId` twice stores it once, so a provider can safely retry.
+- `heading` is degrees clockwise from north; `speed` is metres per second.
+- `rider: true` marks your stop, the one the widget gives an arrival time for. Without it, the stop whose name matches the route's *Stop name* is used, and failing that the last stop.
 
 The full schema is `src/lib/validations/liveVehicle.ts`. `scripts/fake-bus-provider.ts` plays a made-up trip into a Prism instance and is the reference example of a provider:
 

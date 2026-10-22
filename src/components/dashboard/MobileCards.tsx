@@ -28,6 +28,8 @@ import {
 import type { useDashboardData } from './useDashboardData';
 import type { CalendarEvent } from '@/types/calendar';
 import type { BusRouteStatus, BusPrediction } from '@/lib/hooks/useBusTracking';
+import type { LiveTrack } from '@/lib/hooks/useBusLive';
+import { LiveBusSummary } from '@/components/widgets/bus/BusLiveView';
 import { useTimeFormat } from '@/components/providers';
 import { eventStartDisplayDate, formatDisplayTime, isCalendarEventPast, toDisplayDate } from '@/lib/utils/timeFormat';
 import { useLocalDateKey } from '@/lib/hooks/useLocalDateKey';
@@ -332,7 +334,20 @@ function busStatusText(p: BusPrediction): string {
   }
 }
 
-export function BusTrackingCard({ routes }: { routes: BusRouteStatus[] }) {
+export function BusTrackingCard({ routes, live }: { routes: BusRouteStatus[]; live?: LiveTrack | null }) {
+  if (live) {
+    return (
+      <CardShell icon={<Bus className="h-4 w-4 text-amber-600" />} title="Bus Tracker" count={1}>
+        <div className="space-y-0.5">
+          <span className="text-xs font-medium truncate block">{live.routeLabel}</span>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full shrink-0 bg-amber-500" />
+            <LiveBusSummary track={live} className="text-[11px] text-muted-foreground" />
+          </div>
+        </div>
+      </CardShell>
+    );
+  }
   if (!routes || routes.length === 0) return null;
 
   const active = routes.filter((r) => r.prediction.status !== 'no_data');

@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 // FE0F variation selector unless the sequence contains a ZWJ (U+200D).
 const U200D = '‍';
 const VS16 = /️/g;
-function toCodePoint(str: string): string {
+export function toCodePoint(str: string): string {
   const clean = str.indexOf(U200D) < 0 ? str.replace(VS16, '') : str;
   const out: string[] = [];
   let hi = 0;

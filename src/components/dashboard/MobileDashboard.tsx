@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils';
 import type { useDashboardData } from './useDashboardData';
 import { useMobileCardOrder, loadHiddenCards } from './useMobileCardOrder';
 import { useBusTracking } from '@/lib/hooks/useBusTracking';
+import { pickLiveTrack, useBusLive } from '@/lib/hooks/useBusLive';
 import {
   WeatherCard, ClockCard, CalendarCard, ChoresCard, TasksCard,
   ShoppingCard, MealsCard, MessagesCard, BirthdaysCard, PointsCard,
@@ -72,7 +73,9 @@ export interface MobileDashboardProps {
 
 export const MobileDashboard = memo(function MobileDashboard({ data }: MobileDashboardProps) {
   const { order, setOrder } = useMobileCardOrder();
-  const { routes: busRoutes } = useBusTracking();
+  const { routes: busRoutes, allRoutes: allBusRoutes } = useBusTracking();
+  const busLive = useBusLive(allBusRoutes.length > 0);
+  const liveBus = pickLiveTrack(busLive.tracks, Date.now() + busLive.clockOffsetMs);
   const [hiddenCards] = useState(loadHiddenCards);
   const [reorderMode, setReorderMode] = useState(false);
 
@@ -117,8 +120,8 @@ export const MobileDashboard = memo(function MobileDashboard({ data }: MobileDas
     wishes: <WishesTile />,
     photos: <PhotosTile />,
     recipes: <RecipesTile />,
-    busTracking: <BusTrackingTile routes={busRoutes} />,
-  }), [data, busRoutes]);
+    busTracking: <BusTrackingTile routes={busRoutes} live={liveBus} />,
+  }), [data, busRoutes, liveBus]);
 
   const cardMap: Record<string, React.ReactNode> = useMemo(() => ({
     weather: <WeatherCard data={data.weather} />,
@@ -134,8 +137,8 @@ export const MobileDashboard = memo(function MobileDashboard({ data }: MobileDas
     wishes: <WishesCard />,
     photos: <PhotosCard />,
     recipes: <RecipesCard />,
-    busTracking: <BusTrackingCard routes={busRoutes} />,
-  }), [data, busRoutes]);
+    busTracking: <BusTrackingCard routes={busRoutes} live={liveBus} />,
+  }), [data, busRoutes, liveBus]);
 
   const cardHasContent: Record<string, boolean> = useMemo(() => ({
     weather: !data.weather.loading && !!data.weather.data,
@@ -151,8 +154,8 @@ export const MobileDashboard = memo(function MobileDashboard({ data }: MobileDas
     wishes: true,
     photos: true,
     recipes: true,
-    busTracking: (busRoutes?.length ?? 0) > 0,
-  }), [data, busRoutes]);
+    busTracking: (busRoutes?.length ?? 0) > 0 || liveBus !== null,
+  }), [data, busRoutes, liveBus]);
 
   const visibleOrder = useMemo(
     () => order.filter((id) => !hiddenCards.includes(id) && cardHasContent[id] !== false),

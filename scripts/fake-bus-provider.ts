@@ -14,12 +14,12 @@
  * driver are invented; the coordinates are a few streets in central Denver.
  */
 
-interface Stop { key: string; name: string; lat: number; lng: number; kind: 'stop' | 'school' }
+interface Stop { key: string; name: string; lat: number; lng: number; kind: 'stop' | 'school'; rider?: boolean }
 
 const STOPS: Stop[] = [
   { key: 's1', name: 'Maple & 1st', lat: 39.7392, lng: -104.9903, kind: 'stop' },
   { key: 's2', name: 'Cedar Ct', lat: 39.7392, lng: -104.9800, kind: 'stop' },
-  { key: 's3', name: 'Willow Ln', lat: 39.7460, lng: -104.9800, kind: 'stop' },
+  { key: 's3', name: 'Willow Ln', lat: 39.7460, lng: -104.9800, kind: 'stop', rider: true },
   { key: 's4', name: 'Aspen Way', lat: 39.7460, lng: -104.9700, kind: 'stop' },
   { key: 'school', name: 'Example Elementary', lat: 39.7530, lng: -104.9700, kind: 'school' },
 ];

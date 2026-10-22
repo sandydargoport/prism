@@ -1678,6 +1678,7 @@ export type LiveTrackStop = {
   lng: number;
   plannedAt?: string;
   kind?: 'stop' | 'school' | 'depot';
+  rider?: boolean;
 };
 
 export const vehicleTracks = pgTable('vehicle_tracks', {

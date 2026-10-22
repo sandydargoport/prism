@@ -27,6 +27,9 @@ export const liveStopSchema = z.object({
   lng,
   plannedAt: isoTime.optional(),
   kind: z.enum(['stop', 'school', 'depot']).optional(),
+  // The household's own stop, the one the widget gives an arrival time for.
+  // Without it, the stop whose name matches the route's stop name is used.
+  rider: z.boolean().optional(),
 });
 
 export const liveTrackSchema = z.object({
@@ -56,8 +59,10 @@ export const liveFixSchema = z.object({
   ts: isoTime,
   lat,
   lng,
+  // Degrees clockwise from north.
   heading: z.number().min(0).max(360).optional(),
-  speed: z.number().min(0).max(300).optional(),
+  // Metres per second.
+  speed: z.number().min(0).max(100).optional(),
   moving: z.boolean().optional(),
   doorOpen: z.boolean().optional(),
   ignition: z.boolean().optional(),
