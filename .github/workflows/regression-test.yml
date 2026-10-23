@@ -1,0 +1,66 @@
+name: Regression test
+
+# A fix or feature lands with the test that fails if it is reverted. Without
+# one, a later refactor can undo the change and nothing notices.
+#
+# This asks the question rather than judging the answer: a fix: or feat: pull
+# request passes when it changes a test file, or when its body says in one line
+# why it has none ("No regression test: <reason>"). Dependency bumps, docs and
+# other prefixes are not checked.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+concurrency:
+  group: regression-test-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  regression-test:
+    name: Regression test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Title and body arrive through the event payload, never interpolated
+      # into a script, since both are written by whoever opened the PR.
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            if (pr.user.login === 'dependabot[bot]') {
+              core.info('Dependency bump: not checked.');
+              return;
+            }
+            if (!/^(fix|feat)(\([^)]*\))?!?:/.test(pr.title)) {
+              core.info(`Not a fix: or feat: title, not checked: ${pr.title}`);
+              return;
+            }
+
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+            const isTest = (f) => /(__tests__\/|\.test\.[jt]sx?$|\.spec\.[jt]sx?$|^e2e\/)/.test(f);
+            const tests = files.map((f) => f.filename).filter(isTest);
+            if (tests.length > 0) {
+              core.info(`Test files changed:\n  ${tests.join('\n  ')}`);
+              return;
+            }
+
+            const reason = (pr.body || '').match(/^\s*No regression test:\s*(\S.*)$/im);
+            if (reason) {
+              core.info(`No test, with a reason: ${reason[1]}`);
+              return;
+            }
+
+            core.setFailed(
+              'This fix:/feat: PR changes no test file. Add the test that fails if this ' +
+              'change is reverted, or add one line to the PR body: ' +
+              '"No regression test: <why>".'
+            );

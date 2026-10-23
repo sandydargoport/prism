@@ -26,6 +26,12 @@ Two things are worth knowing before you scroll past this:
 <!-- What you actually ran or clicked. "Typecheck passes" and "I used it on my
      wall display for a day" are both useful; they are just different. -->
 
+**Regression test:** <!-- The test that fails if this change is reverted, e.g.
+`src/lib/__tests__/thing.test.ts`. Layout and sizing fixes need a Playwright
+spec that measures, since jest cannot see layout. If there is genuinely no
+testable behaviour, replace this line with "No regression test: <why>". A
+fix: or feat: PR without either fails the Regression test check. -->
+
 - [ ] `npx tsc --noEmit`
 - [ ] `npx jest`
 - [ ] `npx next lint` (pre-existing warnings are fine, new ones are not)
