@@ -62,16 +62,30 @@ export function pickRiderStop(stops: LiveTrackStop[], routeStopName?: string | n
   return [...stops].sort((a, b) => a.order - b.order).at(-1)!.key;
 }
 
+/**
+ * How many of OUR stops the provider's progress count says the bus has
+ * visited. The count is over the provider's whole route, while a track holds
+ * only the stops that matter here (FirstView: 22 on the route, 2 on the
+ * track), so stop 2 of 22 is not our second stop. The two only line up when
+ * the totals agree; otherwise the count says nothing about our stops.
+ */
+export function visitedOfOurStops(
+  progress: { lastVisitedStop: number; totalStops: number } | null | undefined,
+  stopCount: number,
+): number {
+  return progress && progress.totalStops === stopCount ? progress.lastVisitedStop : 0;
+}
+
 export function projectStops(
   stops: LiveTrackStop[],
   visits: StopVisitTimes[],
-  progress: { lastVisitedStop: number } | null | undefined,
+  progress: { lastVisitedStop: number; totalStops: number } | null | undefined,
   now: Date,
   start: TripStart | null = null,
 ): Projection {
   const ordered = [...stops].sort((a, b) => a.order - b.order);
   const byKey = new Map(visits.map((v) => [v.stopKey, v]));
-  const visitedCount = progress?.lastVisitedStop ?? 0;
+  const visitedCount = visitedOfOurStops(progress, ordered.length);
 
   // A stop is passed once the bus reached it, or the provider's progress
   // count says so (it can run ahead of the arrival events).

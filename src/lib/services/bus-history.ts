@@ -22,6 +22,7 @@ import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { todayKey, weekdayOfKey } from '@/lib/utils/zonedDate';
 import { metresBetween } from '@/lib/map/busTween';
 import { checkFixes } from '@/lib/map/busFixCheck';
+import { visitedOfOurStops } from '@/lib/services/bus-eta';
 
 /** At this speed or more a fix counts as moving, for a provider that sends no flag. */
 export const MOVING_MPS = 2;
@@ -57,7 +58,7 @@ export function summarizeTrip(f: TripFacts): TripSummary {
   const totalStops = ordered.length || f.progress?.totalStops || 0;
   const arrived = f.visits.filter((v) => v.arrivedAt);
   const reached = new Set(arrived.map((v) => v.stopKey));
-  const stopsVisited = Math.max(reached.size, f.progress?.lastVisitedStop ?? 0);
+  const stopsVisited = Math.max(reached.size, visitedOfOurStops(f.progress, totalStops));
 
   const last = ordered[ordered.length - 1];
   const reachedEnd = (last && reached.has(last.key)) || (totalStops > 0 && stopsVisited >= totalStops);

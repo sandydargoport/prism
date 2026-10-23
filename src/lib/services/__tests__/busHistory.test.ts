@@ -33,6 +33,13 @@ describe('summarizeTrip', () => {
     expect(summarizeTrip(facts({ visits: arrived('a'), progress: { lastVisitedStop: 4, totalStops: 4 } })).outcome).toBe('ran');
   });
 
+  it('does not finish a trip on a count over the provider\'s whole route', () => {
+    // 14 of 22 on the provider's route says nothing about our four stops.
+    const s = summarizeTrip(facts({ visits: arrived('a'), progress: { lastVisitedStop: 14, totalStops: 22 } }));
+    expect(s.outcome).toBe('partial');
+    expect(s.stopsVisited).toBe(1);
+  });
+
   it('times the trip from the first move to the last arrival', () => {
     const s = summarizeTrip(facts({ visits: arrived('a', 'b', 'c', 'school'), firstMove: at('12:50') }));
     expect(s.startedAt).toEqual(at('12:50'));

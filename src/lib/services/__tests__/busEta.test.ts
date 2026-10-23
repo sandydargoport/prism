@@ -65,10 +65,17 @@ describe('projectStops', () => {
   });
 
   it('takes the provider progress count as passed even without arrival events', () => {
-    const p = projectStops(stops, [visit('a', '13:01')], { lastVisitedStop: 2 }, new Date(at('13:06')));
+    const p = projectStops(stops, [visit('a', '13:01')], { lastVisitedStop: 2, totalStops: 4 }, new Date(at('13:06')));
     expect(p.stops.map((s) => s.passed)).toEqual([true, true, false, false]);
     // b has no arrival time, so the lateness comes from a.
     expect(p.shiftMs).toBe(60_000);
+  });
+
+  it('ignores a progress count over the provider\'s whole route', () => {
+    // FirstView counts all 22 stops on the route; the track holds only ours.
+    // Stop 2 of 22 is the first stop after the school, not our second stop.
+    const p = projectStops(stops, [], { lastVisitedStop: 2, totalStops: 22 }, new Date(at('12:55')));
+    expect(p.stops.map((s) => s.passed)).toEqual([false, false, false, false]);
   });
 
   it('sorts by stop order and leaves stops without a plan unprojected', () => {
