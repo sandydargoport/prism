@@ -37,6 +37,22 @@ export function loadScreensaverLayout(): WidgetConfig[] {
   } catch { return DEFAULT_SCREENSAVER_LAYOUT; }
 }
 
+/**
+ * The screensaver a dashboard shows: its own when it has saved one, else the
+ * default. The one exception is the upgrade from a single screensaver kept in
+ * this browser to one per dashboard: while no dashboard has saved one yet, the
+ * stored one carries over, so the upgrade does not lose it. Without that check
+ * a dashboard with none would inherit whatever the last dashboard left here.
+ */
+export function screensaverForDashboard(
+  active: { screensaverWidgets?: WidgetConfig[] | null },
+  all: { screensaverWidgets?: WidgetConfig[] | null }[],
+): WidgetConfig[] {
+  if (active.screensaverWidgets) return active.screensaverWidgets;
+  const upgrading = !all.some((l) => l.screensaverWidgets);
+  return upgrading ? loadScreensaverLayout() : DEFAULT_SCREENSAVER_LAYOUT;
+}
+
 export function saveScreensaverLayout(layout: WidgetConfig[]) {
   localStorage.setItem(SCREENSAVER_LAYOUT_KEY, JSON.stringify(layout));
 }

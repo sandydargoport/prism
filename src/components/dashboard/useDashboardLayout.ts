@@ -6,6 +6,7 @@ import {
   loadScreensaverLayout,
   saveScreensaverLayout,
   DEFAULT_SCREENSAVER_LAYOUT,
+  screensaverForDashboard,
   getScreensaverPresets,
   saveScreensaverPreset,
   deleteScreensaverPreset,
@@ -36,8 +37,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     : layouts.savedLayout;
 
   const [ssLayout, setSsLayout] = useState<WidgetConfig[]>(() => {
-    // Initialize from DB if available, otherwise from localStorage
-    if (activeLayout?.screensaverWidgets) return activeLayout.screensaverWidgets;
+    if (activeLayout) return screensaverForDashboard(activeLayout, layouts.allLayouts);
     return loadScreensaverLayout();
   });
   const [ssPresets, setSsPresets] = useState(() =>
@@ -52,15 +52,10 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     if (bridgedLayoutId.current === activeLayout.id) return;
     bridgedLayoutId.current = activeLayout.id;
 
-    if (activeLayout.screensaverWidgets) {
-      setSsLayout(activeLayout.screensaverWidgets);
-      saveScreensaverLayout(activeLayout.screensaverWidgets);
-    } else {
-      // First load: migrate localStorage screensaver to this dashboard
-      const fromLocal = loadScreensaverLayout();
-      setSsLayout(fromLocal);
-    }
-  }, [activeLayout]);
+    const widgets = screensaverForDashboard(activeLayout, layouts.allLayouts);
+    setSsLayout(widgets);
+    saveScreensaverLayout(widgets);
+  }, [activeLayout, layouts.allLayouts]);
 
   // Re-enter edit mode after dashboard switch (sessionStorage flag).
   // Only re-enter when the active user is still a parent — guards against a
