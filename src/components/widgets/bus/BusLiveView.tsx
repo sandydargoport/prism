@@ -157,10 +157,21 @@ export function BusLiveView({ track, speedUnit, clockOffsetMs, mapStyle, camera 
   );
 }
 
-/** Which rows the card over the map keeps: how late, how fresh, and what the bus is doing. */
-const CARD_ROWS = new Set(['Running', 'Updated', 'Now']);
+/** Which rows the card over the map keeps: how late, how fresh, how far along, and what the bus is doing. */
+const CARD_ROWS = new Set(['Running', 'Updated', 'Stops', 'Now']);
 
-function BusLivePanel({
+/**
+ * How far along the route the bus is: the provider's count over its whole
+ * route when it sends one ("14 of 22"), else the passed stops of the track.
+ */
+export function stopProgress(track: Pick<LiveTrack, 'progress' | 'stops'>): string | null {
+  const p = track.progress;
+  if (p && p.totalStops > 0) return `${p.lastVisitedStop} of ${p.totalStops}`;
+  if (track.stops.length === 0) return null;
+  return `${track.stops.filter((s) => s.passed).length} of ${track.stops.length}`;
+}
+
+export function BusLivePanel({
   track, speedUnit, now, formatTime, className, detail = true,
 }: {
   track: LiveTrack;
@@ -173,7 +184,6 @@ function BusLivePanel({
 }) {
   const rider = track.stops.find((s) => s.key === track.riderStopKey) ?? null;
   const next = track.stops.find((s) => !s.passed) ?? null;
-  const passedCount = track.stops.filter((s) => s.passed).length;
   const latest = track.fixes[track.fixes.length - 1] ?? null;
   const lastFixMs = track.lastFixAt ? new Date(track.lastFixAt).getTime() : null;
   const age = freshness(lastFixMs, now);
@@ -216,7 +226,8 @@ function BusLivePanel({
   if (next && next.key !== rider?.key) {
     rows.push(['Next', `${next.name ?? 'Stop'}${next.projectedAt ? ` · ${formatTime(next.projectedAt)}` : ''}`]);
   }
-  if (track.stops.length > 0) rows.push(['Stops', `${passedCount} of ${track.stops.length}`]);
+  const progress = stopProgress(track);
+  if (progress) rows.push(['Stops', progress]);
   const bus = [v?.number && `Bus ${v.number}`, v?.color].filter(Boolean).join(' · ');
   if (bus) rows.push(['Bus', bus]);
   if (track.driverLabel) {
