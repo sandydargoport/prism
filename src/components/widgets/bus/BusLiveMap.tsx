@@ -10,6 +10,7 @@ import {
 } from '@/lib/map/busTween';
 import type { LiveTrack } from '@/lib/hooks/useBusLive';
 import { pointAlong, routeAhead, type LngLat } from '@/lib/map/routeAhead';
+import { traceCoordinates } from '@/lib/map/busTrace';
 
 interface BusLiveMapProps {
   track: LiveTrack;
@@ -93,9 +94,7 @@ function stopFeatures(track: LiveTrack, formatTime: (iso: string) => string): Ge
 }
 
 function traceFeature(track: LiveTrack, untilTs: number): GeoJSON.Feature {
-  const coordinates = track.fixes
-    .filter((f) => new Date(f.ts).getTime() <= untilTs)
-    .map((f) => [f.lng, f.lat]);
+  const coordinates = traceCoordinates(track.fixes, track.stops, untilTs);
   return { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates } };
 }
 
