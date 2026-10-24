@@ -20,8 +20,13 @@
  * - Animations are disabled via `reducedMotion: 'reduce'` to remove timing flakiness.
  * - The dynamic widgets (Clock, Weather, Photo) are masked because they show
  *   live time / live weather / a rotating photo and would never compare equal.
- * - `maxDiffPixelRatio` is set to 1% to absorb sub-pixel font rendering
- *   differences across hosts. Tighten over time as flakes are eliminated.
+ * - The tolerance is an absolute pixel count, not a share of the frame. Two
+ *   captures of the same commit in CI differed by at most 1 pixel on every
+ *   shot that rendered, while the old 1% (20,736 px at 1080p) let a light
+ *   page that had not drawn at all pass as the real one, and let every event
+ *   row in the month grid grow 3 px without a failure (#508).
+ * - Every shot first waits for the page to have painted (`expectPainted`): a
+ *   blank page holds still, so Playwright's own "stable" check accepts it.
  * - Tests reset all data + flush Redis + login fresh in beforeAll so the
  *   visible state depends only on the seed, not on prior test runs.
  *
@@ -41,7 +46,7 @@
  *   against this seed — never against a live local deployment.
  */
 
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, Page, type Locator } from '@playwright/test';
 import { execSync } from 'child_process';
 import { loginViaAPI, verifySettingsPinViaAPI } from './helpers/auth';
 import { resetAll } from './helpers/reset';
@@ -78,7 +83,9 @@ function dynamicMasks(page: Page) {
 }
 
 const SCREENSHOT_OPTIONS = {
-  maxDiffPixelRatio: 0.01,
+  // About 50x the run-to-run noise measured for #508, and well under one
+  // moved word.
+  maxDiffPixels: 50,
   animations: 'disabled' as const,
   fullPage: false,
 };
@@ -98,6 +105,17 @@ async function setClientFlags(
     },
     [theme, perfMode],
   );
+}
+
+/**
+ * Wait until the page has drawn its content, then for `marker` if given.
+ *
+ * Network idle plus a fixed pause is not enough: in CI a first visit can still
+ * be compiling, and two baselines were once captured as blank white pages.
+ */
+async function expectPainted(page: Page, marker?: Locator) {
+  await page.waitForFunction(() => (document.body?.innerText ?? '').trim().length > 40, null, { timeout: 30000 });
+  if (marker) await expect(marker).toBeVisible({ timeout: 30000 });
 }
 
 /**
@@ -195,6 +213,7 @@ test.describe('Visual regression', () => {
       await page.waitForLoadState('networkidle');
       await page.waitForTimeout(800); // let theme + seasonal vars settle
 
+      await expectPainted(page, page.locator('.widget-cell').first());
       await expect(page).toHaveScreenshot(`dashboard-${theme}.png`, {
         ...SCREENSHOT_OPTIONS,
         mask: dynamicMasks(page),
@@ -209,6 +228,7 @@ test.describe('Visual regression', () => {
       await page.waitForLoadState('networkidle');
       await page.waitForTimeout(800);
 
+      await expectPainted(page, page.locator('.widget-cell').first());
       await expect(page).toHaveScreenshot(`dashboard-perf-${theme}.png`, {
         ...SCREENSHOT_OPTIONS,
         mask: dynamicMasks(page),
@@ -223,6 +243,7 @@ test.describe('Visual regression', () => {
       await page.waitForLoadState('networkidle');
       await page.waitForTimeout(800);
 
+      await expectPainted(page, page.getByRole('button', { name: 'Add Event' }));
       await expect(page).toHaveScreenshot(`calendar-${theme}.png`, SCREENSHOT_OPTIONS);
     });
 
@@ -234,6 +255,7 @@ test.describe('Visual regression', () => {
       await page.waitForLoadState('networkidle');
       await page.waitForTimeout(800);
 
+      await expectPainted(page);
       await expect(page).toHaveScreenshot(`settings-${theme}.png`, SCREENSHOT_OPTIONS);
     });
 
@@ -247,6 +269,7 @@ test.describe('Visual regression', () => {
       // fetch to settle so the cards render their final descriptions.
       await page.waitForTimeout(1200);
 
+      await expectPainted(page);
       await expect(page).toHaveScreenshot(`settings-integrations-${theme}.png`, SCREENSHOT_OPTIONS);
     });
   }
@@ -303,6 +326,7 @@ test.describe('Visual regression', () => {
         await page.waitForLoadState('networkidle');
         await page.waitForTimeout(800);
 
+        await expectPainted(page, page.getByRole('button', { name: 'Add Event' }));
         await expect(page).toHaveScreenshot(`calendar-${cfg.label}-${theme}.png`, {
           ...SCREENSHOT_OPTIONS,
           mask: dynamicMasks(page),
@@ -327,6 +351,7 @@ test.describe('Visual regression', () => {
       await page.waitForSelector('text=/Add Event|New Event/i', { timeout: 5000 });
       await page.waitForTimeout(400);
 
+      await expectPainted(page);
       await expect(page).toHaveScreenshot(`add-event-modal-${theme}.png`, SCREENSHOT_OPTIONS);
     });
   }
@@ -340,6 +365,7 @@ test.describe('Visual regression', () => {
   // would point a second test at the same `settings-integrations-*` baseline
   // file, since snapshot paths are keyed on the name, not the test.
   const settingsSections = ['family', 'display'] as const;
+  const SECTION_HEADINGS = { family: 'Family Members', display: 'Appearance' } as const;
 
   for (const theme of ['light', 'dark'] as const) {
     for (const section of settingsSections) {
@@ -353,6 +379,7 @@ test.describe('Visual regression', () => {
         await page.waitForLoadState('networkidle');
         await page.waitForTimeout(800);
 
+        await expectPainted(page, page.getByRole('heading', { name: SECTION_HEADINGS[section] }));
         await expect(page).toHaveScreenshot(`settings-${section}-${theme}.png`, SCREENSHOT_OPTIONS);
       });
     }
@@ -374,6 +401,7 @@ test.describe('Visual regression', () => {
       await page.waitForLoadState('networkidle');
       await page.waitForTimeout(800);
 
+      await expectPainted(page);
       await expect(page).toHaveScreenshot(`mobile-calendar-agenda-${theme}.png`, {
         ...SCREENSHOT_OPTIONS,
         mask: dynamicMasks(page),
@@ -392,6 +420,7 @@ test.describe('Visual regression', () => {
       await page.waitForLoadState('networkidle');
       await page.waitForTimeout(600);
 
+      await expectPainted(page);
       await expect(page).toHaveScreenshot(`login-landing-${theme}.png`, {
         ...SCREENSHOT_OPTIONS,
         mask: dynamicMasks(page),
@@ -415,6 +444,7 @@ test.describe('Visual regression', () => {
       // and hides half of it. The modal root is the full-screen backdrop; its
       // only child is the panel, which is the thing under test.
       const panel = page.locator('[data-testid="pin-modal"] > div');
+      await expect(panel).toBeVisible();
       await expect(panel).toHaveScreenshot(`pin-modal-${theme}.png`, SCREENSHOT_OPTIONS);
     });
   }
