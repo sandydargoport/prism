@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { useLatestRef } from '@/lib/hooks/useLatestRef';
 import { maplibregl, MAP_LABEL_FONT } from '@/lib/map/maplibreSetup';
 import { busMapStyleUrl, type BusMapCamera, type BusMapStyle } from '@/lib/map/busMapOptions';
 import { CAMERA_TICK_MS, CLOSE_ZOOM, MANUAL_HOLD_MS, REFRAME_MS, cameraView, needsReframe } from '@/lib/map/busCamera';
@@ -179,18 +180,14 @@ export function BusLiveMap({
   const anchorRef = useRef<{ pose: Pose; motion: Motion } | null>(null);
   const frameRef = useRef<number | null>(null);
   const traceCaughtUpRef = useRef(true);
-  const offsetRef = useRef(clockOffsetMs);
-  offsetRef.current = clockOffsetMs;
-  const trackRef = useRef(track);
-  trackRef.current = track;
-  const formatRef = useRef(formatTime);
-  formatRef.current = formatTime;
+  // The latest props, for the map's own callbacks and timers.
+  const offsetRef = useLatestRef(clockOffsetMs);
+  const trackRef = useLatestRef(track);
+  const formatRef = useLatestRef(formatTime);
   const styleUrl = busMapStyleUrl(mapStyle, darkMode);
   const styleUrlRef = useRef(styleUrl);
-  const cameraRef = useRef(camera);
-  cameraRef.current = camera;
-  const coverRef = useRef(cover);
-  coverRef.current = cover;
+  const cameraRef = useLatestRef(camera);
+  const coverRef = useLatestRef(cover);
   const manualUntilRef = useRef(0);
   // Where the marker is drawn, and since when it has been waiting for the bus.
   const shownRef = useRef<Pose | null>(null);
@@ -213,9 +210,9 @@ export function BusLiveMap({
    */
   const aim = (animate: boolean, force = !animate) => {
     const map = mapRef.current;
-    // aim runs only from effects, timers and the resize observer, never while
-    // rendering; the compiler cannot follow those calls. Revisit with the refs
-    // findings in this file (#447).
+    // aim runs only from effects, timers, the resize observer and the map's
+    // own callbacks, never while rendering; the compiler cannot follow those
+    // calls, through sync() in particular.
     // eslint-disable-next-line react-hooks/purity
     if (!map || !readyRef.current || Date.now() < manualUntilRef.current) return;
     const t = trackRef.current;

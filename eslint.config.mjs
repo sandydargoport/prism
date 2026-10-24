@@ -65,9 +65,6 @@ const eslintConfig = [
   {
     files: [
       'src/components/input/VirtualKeyboard.tsx',
-      'src/components/widgets/bus/BusLiveMap.tsx',
-      'src/components/layout/LayoutGridEditor.tsx',
-      'src/components/layout/grid/CssGridEditor.tsx',
     ],
     rules: {
       'react-hooks/refs': 'warn',

@@ -195,16 +195,12 @@ export function LayoutGridEditor({
     );
   }, []);
 
-  const layoutRef = useRef(layout);
   const layoutJson = JSON.stringify(layout);
-  const stableLayout = useMemo(() => {
-    layoutRef.current = layout;
-    return layout;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [layoutJson]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const stableLayout = useMemo(() => layout, [layoutJson]);
 
   const updateWidgetColor = useCallback((widgetId: string, updates: { backgroundColor?: string | null; backgroundOpacity?: number; outlineColor?: string | null; outlineOpacity?: number; textColor?: string | null; textOpacity?: number; textScale?: number; gridLineOpacity?: number; cellBackgroundColor?: string | null; cellBackgroundOpacity?: number }) => {
-    const updated = layoutRef.current.map(w => {
+    const updated = stableLayout.map(w => {
       if (w.i === widgetId) {
         return {
           ...w,
@@ -223,7 +219,7 @@ export function LayoutGridEditor({
       return w;
     });
     onLayoutChange(updated);
-  }, [onLayoutChange]);
+  }, [stableLayout, onLayoutChange]);
 
   // Clear selection when widget becomes invisible
   useEffect(() => {
@@ -233,7 +229,7 @@ export function LayoutGridEditor({
   }, [selectedWidget, layout]);
 
   const selectedWidgetConfig = selectedWidget
-    ? layoutRef.current.find(w => w.i === selectedWidget && w.visible !== false)
+    ? stableLayout.find(w => w.i === selectedWidget && w.visible !== false)
     : null;
 
   // Get current color value for whichever target is active
@@ -361,7 +357,7 @@ export function LayoutGridEditor({
             <button onClick={() => colorPickerRef.current?.click()} onPointerDown={(e) => e.stopPropagation()}
               className="w-7 h-7 rounded-full border border-gray-400 transition-transform hover:scale-110 touch-manipulation overflow-hidden"
               style={{ background: 'conic-gradient(red, yellow, lime, aqua, blue, magenta, red)' }} title="Custom" />
-            <input ref={(el) => { (colorPickerRef as React.MutableRefObject<HTMLInputElement | null>).current = el; }}
+            <input ref={colorPickerRef}
               type="color" className="sr-only" value={color || '#3B82F6'} onChange={(e) => apply(e.target.value)} />
           </div>
         </div>

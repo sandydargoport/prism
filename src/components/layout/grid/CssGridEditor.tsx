@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useRef, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback } from 'react';
+import { useLatestRef } from '@/lib/hooks/useLatestRef';
 import {
   DndContext,
   useDraggable,
@@ -60,19 +61,17 @@ export function CssGridEditor({
     x: number; y: number; w: number; h: number;
   } | null>(null);
 
-  const layoutRef = useRef(layout);
-  layoutRef.current = layout;
+  // Read by the drag and resize handlers, which outlive the render they start in.
+  const layoutRef = useLatestRef(layout);
 
   const step = cellSize + margin;
 
   // Custom grid snap modifier — snaps drag overlay to grid cells
-  const stepRef = useRef(step);
-  stepRef.current = step;
   const gridSnapModifier: Modifier = useCallback(({ transform }) => ({
     ...transform,
-    x: Math.round(transform.x / stepRef.current) * stepRef.current,
-    y: Math.round(transform.y / stepRef.current) * stepRef.current,
-  }), []);
+    x: Math.round(transform.x / step) * step,
+    y: Math.round(transform.y / step) * step,
+  }), [step]);
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
@@ -123,7 +122,7 @@ export function CssGridEditor({
       return w;
     });
     onLayoutChange(updated);
-  }, [step, onLayoutChange]);
+  }, [step, onLayoutChange, layoutRef]);
 
   const handleDragCancel = useCallback(() => {
     setActiveId(null);
@@ -140,7 +139,7 @@ export function CssGridEditor({
     const orig = { x: widget.x, y: widget.y, w: widget.w, h: widget.h };
     const startX = e.clientX;
     const startY = e.clientY;
-    const currentStep = stepRef.current;
+    const currentStep = step;
 
     setResizePreview({ widgetId, ...orig });
 
@@ -189,7 +188,7 @@ export function CssGridEditor({
 
     document.addEventListener('pointermove', onMove);
     document.addEventListener('pointerup', onUp);
-  }, [widgetConstraints, onLayoutChange]);
+  }, [widgetConstraints, onLayoutChange, layoutRef, step]);
 
   // Get widget position — may be overridden during resize
   const getWidgetPos = useCallback((w: WidgetConfig) => {
