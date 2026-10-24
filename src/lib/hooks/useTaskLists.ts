@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
+import { useFetchOnMount } from './useFetchOnMount';
 
 export interface TaskList {
   id: string;
@@ -50,9 +51,7 @@ export function useTaskLists() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchLists();
-  }, [fetchLists]);
+  useFetchOnMount(fetchLists);
 
   const createList = useCallback(async (input: CreateTaskListInput): Promise<TaskList> => {
     const res = await fetch('/api/task-lists', {

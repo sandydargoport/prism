@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import { useFetchOnMount } from './useFetchOnMount';
 
 /** Why an apply failed, so the UI can say so rather than doing nothing. */
 export type ApplyResult = { ok: true } | { ok: false; reason: string };
@@ -40,9 +41,7 @@ export function usePendingTaskDeletions() {
     }
   }, []);
 
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  useFetchOnMount(refresh);
 
   const apply = useCallback(
     async (taskIds: string[], action: 'delete' | 'keep'): Promise<ApplyResult> => {

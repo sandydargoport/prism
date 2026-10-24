@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Check, Copy, KeyRound, Radio } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -21,6 +21,7 @@ import {
   BUS_MAP_STYLE_SETTING, DEFAULT_BUS_MAP_CAMERA, DEFAULT_BUS_MAP_STYLE, isBusMapCamera, isBusMapStyle,
 } from '@/lib/map/busMapOptions';
 import { BUS_DRIVER_NAMES_SETTING, isDriverNames, type DriverNames } from '@/lib/services/bus-driver-names';
+import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
 
 interface LiveTrack {
   id: string;
@@ -103,7 +104,7 @@ export function LiveTrackingCard({ routes, onBound }: { routes: RouteOption[]; o
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useFetchOnMount(load);
 
   const trips = useMemo(() => groupTracks(tracks), [tracks]);
   const drivers = useMemo(

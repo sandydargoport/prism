@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { useVisibilityPolling } from '@/lib/hooks/useVisibilityPolling';
 import type { FamilyMember } from '@/types';
+import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
 
 interface FamilyContextValue {
   members: FamilyMember[];
@@ -84,9 +85,7 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Initial fetch
-  useEffect(() => {
-    fetchMembers();
-  }, [fetchMembers]);
+  useFetchOnMount(fetchMembers);
 
   // Refresh every 10 minutes with visibility-based pause
   useVisibilityPolling(fetchMembers, 10 * 60 * 1000);

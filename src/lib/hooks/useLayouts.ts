@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import { useFetchOnMount } from './useFetchOnMount';
 
 export interface WidgetConfig {
   i: string;
@@ -152,9 +153,7 @@ export function useLayouts(): UseLayoutsResult {
     [fetchLayouts]
   );
 
-  useEffect(() => {
-    fetchLayouts();
-  }, [fetchLayouts]);
+  useFetchOnMount(fetchLayouts);
 
   const activeLayout = layouts.find(l => l.isDefault) || layouts[0] || null;
 

@@ -10,6 +10,7 @@ import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import type { Task } from '@/types';
 import { compareTaskDue } from '@/lib/utils/taskDue';
 import { usePersistedState, useSessionScopedState, oneOf, isBoolean } from '@/lib/hooks/usePersistedState';
+import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
 
 const AUTO_SYNC_STALE_MINUTES = 5; // Sync if last sync > 5 min ago
 const AUTO_SYNC_INTERVAL_MS = 5 * 60 * 1000; // Background sync every 5 min
@@ -90,9 +91,7 @@ export function useTasksViewData() {
   }, [refreshTasks, activeUser]);
 
   // Auto-sync on mount
-  useEffect(() => {
-    autoSync();
-  }, [autoSync]);
+  useFetchOnMount(autoSync);
 
   // Background sync interval with visibility-based pause
   useEffect(() => {

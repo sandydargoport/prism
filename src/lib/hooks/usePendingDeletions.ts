@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import { useFetchOnMount } from './useFetchOnMount';
 
 export interface PendingDeletion {
   id: string;
@@ -36,9 +37,7 @@ export function usePendingDeletions() {
     }
   }, []);
 
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  useFetchOnMount(refresh);
 
   const apply = useCallback(
     async (eventIds: string[], action: 'delete' | 'keep') => {

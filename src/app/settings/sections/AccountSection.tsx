@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { UserAvatar } from '@/components/ui/avatar';
 import { useFamily } from '@/components/providers/FamilyProvider';
+import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
 
 export function AccountSection() {
   const [currentUser, setCurrentUser] = useState<{
@@ -111,9 +112,7 @@ function DefaultDisplayUserCard() {
     setLoaded(true);
   }, []);
 
-  useEffect(() => {
-    fetchSetting();
-  }, [fetchSetting]);
+  useFetchOnMount(fetchSetting);
 
   const handleChange = async (value: string) => {
     setDisplayUserId(value);

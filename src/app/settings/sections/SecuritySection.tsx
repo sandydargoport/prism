@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -12,6 +12,7 @@ import { parentCanResetPin } from '@/lib/auth/pinReset';
 import { DEFAULT_PIN_LENGTH } from '@/lib/constants';
 import { PinEditModal } from '../components/PinEditModal';
 import type { FamilyMember } from '../components/PinEditModal';
+import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
 
 interface ApiToken {
   id: string;
@@ -68,7 +69,7 @@ export function SecuritySection() {
     }
   }, []);
 
-  useEffect(() => { loadWall(); }, [loadWall]);
+  useFetchOnMount(loadWall);
 
   const saveAuthWall = useCallback(async (next: boolean) => {
     setWallSaving(true);
@@ -116,9 +117,7 @@ export function SecuritySection() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchTokens();
-  }, [fetchTokens]);
+  useFetchOnMount(fetchTokens);
 
   const handleCreateToken = async () => {
     if (!newTokenName.trim()) return;

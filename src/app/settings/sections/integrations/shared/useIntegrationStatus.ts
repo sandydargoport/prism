@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
 
 export interface IntegrationStatus {
   google: {
@@ -65,9 +66,7 @@ export function useIntegrationStatus(): UseIntegrationStatusResult {
     }
   }, []);
 
-  useEffect(() => {
-    refetch();
-  }, [refetch]);
+  useFetchOnMount(refetch);
 
   return { status, loading, refetch };
 }

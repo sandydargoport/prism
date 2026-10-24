@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { ALL_DEFAULT_CATEGORIES, type ShoppingCategoryPreset } from '@/lib/constants/shoppingPresets';
+import { useFetchOnMount } from './useFetchOnMount';
 
 // Re-export shared types and helpers for consumers
 export type ShoppingCategoryDef = ShoppingCategoryPreset;
@@ -54,9 +55,7 @@ export function useShoppingCategories() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
+  useFetchOnMount(fetchCategories);
 
   const saveCategories = useCallback(async (newCategories: ShoppingCategoryDef[]) => {
     setCategories(newCategories);

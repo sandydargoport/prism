@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
+import { useFetchOnMount } from './useFetchOnMount';
 
 export interface BackupInfo {
   filename: string;
@@ -34,9 +35,7 @@ export function useBackups() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchBackups();
-  }, [fetchBackups]);
+  useFetchOnMount(fetchBackups);
 
   const createBackup = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
     try {

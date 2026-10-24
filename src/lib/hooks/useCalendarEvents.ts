@@ -14,6 +14,7 @@ import { usePollingInterval } from '@/lib/hooks/usePollingInterval';
 import { useCachedMountFetch } from '@/lib/hooks/useCachedMountFetch';
 import { navCacheGet, navCacheSet } from '@/lib/utils/navCache';
 import { useLocalDateKey } from '@/lib/hooks/useLocalDateKey';
+import { useFetchOnMount } from './useFetchOnMount';
 
 interface UseCalendarEventsOptions {
   /** Number of days to fetch events for (used only when rangeStart/rangeEnd are omitted). */
@@ -306,9 +307,7 @@ export function useCalendarSources() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchCalendars();
-  }, [fetchCalendars]);
+  useFetchOnMount(fetchCalendars);
 
   return {
     calendars,

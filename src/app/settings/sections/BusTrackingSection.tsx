@@ -54,6 +54,7 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { useFamily } from '@/components/providers';
 import { LiveTrackingCard } from './bus/LiveTrackingCard';
+import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
 
 interface BusRoute {
   id: string;
@@ -115,7 +116,7 @@ export function BusTrackingSection() {
     }
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useFetchOnMount(fetchData);
 
   const handleSync = async () => {
     setSyncing(true);

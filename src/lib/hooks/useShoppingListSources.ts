@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import { useFetchOnMount } from './useFetchOnMount';
 
 interface ShoppingListSource {
   id: string;
@@ -63,9 +64,7 @@ export function useShoppingListSources(userId?: string) {
     }
   }, [userId]);
 
-  useEffect(() => {
-    fetchSources();
-  }, [fetchSources]);
+  useFetchOnMount(fetchSources);
 
   const createSource = useCallback(async (input: CreateShoppingListSourceInput): Promise<ShoppingListSource> => {
     const response = await fetch('/api/shopping-list-sources', {

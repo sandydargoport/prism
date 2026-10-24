@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { navCacheGet, navCacheSet } from '@/lib/utils/navCache';
+import { useFetchOnMount } from './useFetchOnMount';
 
 /**
  * A line in a recipe's ingredient list. Either:
@@ -125,9 +126,7 @@ export function useRecipes(options: UseRecipesOptions = {}) {
     }
   }, [cacheKey]);
 
-  useEffect(() => {
-    fetchRecipes();
-  }, [fetchRecipes]);
+  useFetchOnMount(fetchRecipes);
 
   const createRecipe = useCallback(async (input: CreateRecipeInput): Promise<Recipe> => {
     const res = await fetch('/api/recipes', {

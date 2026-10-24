@@ -1,11 +1,12 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Cloud, HardDrive, RefreshCw, Trash2, FolderOpen } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { cn } from '@/lib/utils';
+import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
 
 interface PhotoSource {
   id: string;
@@ -43,9 +44,7 @@ export function SourceManager() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchSources();
-  }, [fetchSources]);
+  useFetchOnMount(fetchSources);
 
   const handleSync = async (sourceId: string) => {
     setSyncing(sourceId);

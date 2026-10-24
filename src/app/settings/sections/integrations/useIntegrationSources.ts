@@ -5,6 +5,7 @@ import { toast } from '@/components/ui/use-toast';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { useSearchParams } from 'next/navigation';
 import type { BaseSource, IntegrationConfig, MsList } from './types';
+import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
 
 export interface UseIntegrationSourcesResult<S extends BaseSource> {
   sources: S[];
@@ -207,9 +208,7 @@ export function useIntegrationSources<S extends BaseSource>(
     }
   }, [config.apiBase]);
 
-  useEffect(() => {
-    fetchSources();
-  }, [fetchSources]);
+  useFetchOnMount(fetchSources);
 
   const fetchMsLists = async (entityId: string) => {
     setPendingEntityId(entityId);

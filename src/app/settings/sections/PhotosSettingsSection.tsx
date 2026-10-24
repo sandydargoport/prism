@@ -13,6 +13,7 @@ import { useDisplayContextFilters, useTargetResolution } from '../SettingsView';
 import { usePinnedPhoto } from '@/components/layout/WallpaperBackground';
 import { usePhotos } from '@/lib/hooks/usePhotos';
 import { toast } from '@/components/ui/use-toast';
+import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
 
 interface PhotoSource {
   id: string;
@@ -62,9 +63,7 @@ export function PhotosSettingsSection() {
     }
   }, []);
 
-  React.useEffect(() => {
-    fetchSources();
-  }, [fetchSources]);
+  useFetchOnMount(fetchSources);
 
   // Auto-open folder picker after OAuth redirect
   React.useEffect(() => {

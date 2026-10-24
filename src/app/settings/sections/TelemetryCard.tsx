@@ -4,6 +4,7 @@ import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
+import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
 
 type TelemetryStatus = {
   enabled: boolean;
@@ -39,9 +40,7 @@ export function TelemetryCard() {
     }
   }, []);
 
-  React.useEffect(() => {
-    load();
-  }, [load]);
+  useFetchOnMount(load);
 
   const toggle = async (next: boolean) => {
     if (!status) return;
