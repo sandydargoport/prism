@@ -14,10 +14,11 @@
 'use client';
 
 import * as React from 'react';
-import { createContext, useContext, useEffect, useEffectEvent, useState } from 'react';
+import { createContext, useContext, useEffect, useEffectEvent, useState, useSyncExternalStore } from 'react';
 import { useLatestRef } from '@/lib/hooks/useLatestRef';
 import { useSeasonalTheme } from '@/lib/hooks/useSeasonalTheme';
 import { usePerformanceMode } from '@/lib/hooks/usePerformanceMode';
+import { useHydrated, useStoredString, writeStored } from '@/lib/hooks/useStoredValue';
 import { isInstallableTheme, MAX_INSTALLED_THEMES, type Theme } from '@/lib/themes/tokens';
 import { BUILTIN_THEMES, getBuiltinTheme, DEFAULT_THEME_ID } from '@/lib/themes/appThemes';
 import { applyThemeVars, applyThemeChrome, themeTokens } from '@/lib/themes/applyTheme';
@@ -74,12 +75,25 @@ const STORAGE_KEY = 'prism-theme';
  */
 const THEME_SETTING_KEY = 'theme';
 
-/**
- * Get the system theme preference
- */
-function getSystemTheme(): 'light' | 'dark' {
-  if (typeof window === 'undefined') return 'light';
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+const DARK_QUERY = '(prefers-color-scheme: dark)';
+
+function subscribeSystemTheme(onChange: () => void): () => void {
+  const mq = window.matchMedia(DARK_QUERY);
+  mq.addEventListener('change', onChange);
+  return () => mq.removeEventListener('change', onChange);
+}
+
+/** Whether the system is in dark mode, following it as it changes. */
+function useSystemDark(): boolean {
+  return useSyncExternalStore(
+    subscribeSystemTheme,
+    () => window.matchMedia(DARK_QUERY).matches,
+    () => false,
+  );
+}
+
+function isThemeMode(v: string | null): v is ThemeMode {
+  return v === 'light' || v === 'dark' || v === 'system';
 }
 
 /**
@@ -104,9 +118,13 @@ export function ThemeProvider({
   children,
   defaultTheme = 'system',
 }: ThemeProviderProps) {
-  const [theme, setThemeState] = useState<ThemeMode>(defaultTheme);
-  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
-  const [mounted, setMounted] = useState(false);
+  // The mode is per display, in localStorage; the palette below is per
+  // household, in the database. Both are the server's defaults while hydrating.
+  const storedMode = useStoredString(STORAGE_KEY);
+  const theme: ThemeMode = isThemeMode(storedMode) ? storedMode : defaultTheme;
+  const systemDark = useSystemDark();
+  const resolvedTheme: 'light' | 'dark' = theme === 'system' ? (systemDark ? 'dark' : 'light') : theme;
+  const mounted = useHydrated();
   const [installedThemes, setInstalledThemes] = useState<Theme[]>([]);
   const [palette, setPaletteState] = useState<Theme>(
     () => getBuiltinTheme(DEFAULT_THEME_ID) ?? BUILTIN_THEMES[0]!,
@@ -115,66 +133,16 @@ export function ThemeProvider({
   // handlers as well as the load effect.
   const themeRef = useLatestRef(theme);
 
-  // On mount, load saved theme from localStorage
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
-    if (stored && ['light', 'dark', 'system'].includes(stored)) {
-      setThemeState(stored);
-    }
-    setMounted(true);
-  }, []);
-
-  // Apply theme to document and resolve system theme
+  // Apply the light/dark class. Not while hydrating: the inline script in
+  // app/layout.tsx already set it from the same stored value before the first
+  // paint, and the server's 'light' would take it off for a frame.
   useEffect(() => {
     if (!mounted) return;
-
-    const root = document.documentElement;
-
-    // Determine the actual theme to apply
-    let actualTheme: 'light' | 'dark';
-    if (theme === 'system') {
-      actualTheme = getSystemTheme();
-    } else {
-      actualTheme = theme;
-    }
-
-    // Apply or remove dark class
-    if (actualTheme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-
-    setResolvedTheme(actualTheme);
-  }, [theme, mounted]);
-
-  // Listen for system theme changes when in "system" mode
-  useEffect(() => {
-    if (!mounted || theme !== 'system') return;
-
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-
-    const handleChange = (e: MediaQueryListEvent) => {
-      const newTheme = e.matches ? 'dark' : 'light';
-      setResolvedTheme(newTheme);
-
-      const root = document.documentElement;
-      if (newTheme === 'dark') {
-        root.classList.add('dark');
-      } else {
-        root.classList.remove('dark');
-      }
-    };
-
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, [theme, mounted]);
+    document.documentElement.classList.toggle('dark', resolvedTheme === 'dark');
+  }, [resolvedTheme, mounted]);
 
   // Update theme and persist to localStorage
-  const setTheme = (newTheme: ThemeMode) => {
-    setThemeState(newTheme);
-    localStorage.setItem(STORAGE_KEY, newTheme);
-  };
+  const setTheme = (newTheme: ThemeMode) => writeStored(STORAGE_KEY, newTheme);
 
   // Persisted to the database rather than localStorage, because a palette is a
   // household choice: every screen in the house should agree, and a new tablet
@@ -323,22 +291,6 @@ export function ThemeProvider({
   useSeasonalTheme(resolvedTheme);
   // Apply performance-mode class on <html> from localStorage preference
   usePerformanceMode();
-
-  // Prevent flash of wrong theme during SSR
-  // Return null or a loading state until mounted
-  if (!mounted) {
-    return (
-      <ThemeContext.Provider
-        value={{
-          theme: defaultTheme, resolvedTheme: 'light', setTheme, palette,
-          palettes: [...BUILTIN_THEMES, ...installedThemes], setPalette,
-          installedThemes, installTheme, uninstallTheme,
-        }}
-      >
-        {children}
-      </ThemeContext.Provider>
-    );
-  }
 
   return (
     <ThemeContext.Provider

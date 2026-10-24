@@ -12,6 +12,7 @@
  */
 
 import * as React from 'react';
+import { hydrateRoot } from 'react-dom/client';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { ThemeProvider, useTheme } from '../ThemeProvider';
 import { THEME_TOKENS, type Theme, type ThemeTokens } from '@/lib/themes/tokens';
@@ -203,5 +204,74 @@ describe('ThemeProvider — gallery themes', () => {
     await waitFor(() => expect(result.current.installedThemes).toHaveLength(1));
 
     window.history.replaceState({}, '', '/');
+  });
+});
+
+/**
+ * The light/dark mode is per display, in localStorage. The inline script in
+ * app/layout.tsx sets the dark class before the first paint, so hydrating with
+ * the server's 'light' must not take it off, even for a frame.
+ */
+describe('ThemeProvider — light and dark mode', () => {
+  const root = document.documentElement;
+  let systemDark = false;
+  let onSystemChange: (() => void) | null = null;
+
+  beforeEach(() => {
+    global.fetch = jest.fn(() => Promise.resolve({ ok: false } as Response)) as unknown as typeof fetch;
+    localStorage.clear();
+    window.dispatchEvent(new StorageEvent('storage', { key: null }));
+    root.classList.remove('dark');
+    systemDark = false;
+    onSystemChange = null;
+    window.matchMedia = jest.fn(() => ({
+      get matches() { return systemDark; },
+      addEventListener: (_: string, cb: () => void) => { onSystemChange = cb; },
+      removeEventListener: jest.fn(),
+    })) as unknown as typeof window.matchMedia;
+  });
+
+  it('keeps the dark class the inline script set, through hydration', async () => {
+    localStorage.setItem('prism-theme', 'dark');
+    root.classList.add('dark'); // what the inline script does
+    const toggle = jest.spyOn(root.classList, 'toggle');
+
+    function Probe() {
+      return <span>{useTheme().resolvedTheme}</span>;
+    }
+    const container = document.createElement('div');
+    container.innerHTML = '<span>light</span>';
+    const errors: unknown[] = [];
+    await act(async () => {
+      hydrateRoot(container, <ThemeProvider><Probe /></ThemeProvider>, {
+        onRecoverableError: (e) => errors.push(e),
+      });
+    });
+
+    expect(errors).toEqual([]);
+    expect(container.textContent).toBe('dark');
+    expect(toggle).not.toHaveBeenCalledWith('dark', false);
+    expect(root.classList.contains('dark')).toBe(true);
+    toggle.mockRestore();
+  });
+
+  it('follows the system setting in system mode', () => {
+    const { result } = renderHook(() => useTheme(), { wrapper });
+    expect(result.current.resolvedTheme).toBe('light');
+
+    act(() => {
+      systemDark = true;
+      onSystemChange?.();
+    });
+    expect(result.current.resolvedTheme).toBe('dark');
+    expect(root.classList.contains('dark')).toBe(true);
+  });
+
+  it('a chosen mode is stored and applied', () => {
+    const { result } = renderHook(() => useTheme(), { wrapper });
+    act(() => result.current.setTheme('dark'));
+    expect(localStorage.getItem('prism-theme')).toBe('dark');
+    expect(result.current.theme).toBe('dark');
+    expect(root.classList.contains('dark')).toBe(true);
   });
 });
