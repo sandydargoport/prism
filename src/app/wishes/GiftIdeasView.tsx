@@ -53,15 +53,17 @@ export function GiftIdeasView({ selectedMemberIds, groupByUser = false, hidePurc
   const [flatRecipient, setFlatRecipient] = useState<string>('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Keyed on the ids themselves, so a new array with the same people does not
+  // recompute the columns.
+  const selectedKey = selectedMemberIds?.join(',') ?? '';
   const otherMembers = useMemo(() => {
     // Gift ideas are tracked for OTHER people — never render a self-column
     // (the API already excludes the active user, so a self-column is blank).
     const withoutSelf = members.filter((m) => m.id !== activeUser?.id);
-    const hasFilter = selectedMemberIds && selectedMemberIds.length > 0;
-    if (!hasFilter) return withoutSelf;
-    return withoutSelf.filter((m) => selectedMemberIds!.includes(m.id));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [members, selectedMemberIds?.join(','), activeUser?.id]);
+    if (!selectedKey) return withoutSelf;
+    const selected = selectedKey.split(',');
+    return withoutSelf.filter((m) => selected.includes(m.id));
+  }, [members, selectedKey, activeUser?.id]);
 
   // Apply the "Hide purchased" toggle once, up front.
   const visibleIdeas = useMemo(

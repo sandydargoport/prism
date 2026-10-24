@@ -45,6 +45,7 @@ import { WidgetContainer } from './WidgetContainer';
 import { useTranslations, useLocale } from 'next-intl';
 import { useTimeFormat } from '@/components/providers';
 import { useLocalDateKey } from '@/lib/hooks/useLocalDateKey';
+import { useNow } from '@/lib/hooks/useNow';
 import { formatDisplayHour, formatDisplayTime } from '@/lib/utils/timeFormat';
 
 /**
@@ -716,7 +717,7 @@ function HourlyTimeline({ hourly, units, timezone }: { hourly: HourlyForecast[];
   const { timeFormat } = useTimeFormat();
   // Start at the hour whose endTime is still in the future ("Now" card).
   // Take 8 hours so the row stays readable at the default widget width.
-  const nowMs = Date.now();
+  const nowMs = useNow().getTime();
   const upcoming = hourly
     .filter((h) => h.time.getTime() + 60 * 60_000 >= nowMs)
     .slice(0, 8);
@@ -975,7 +976,7 @@ function SunriseSunsetArc({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const today = React.useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, [dateKey]);
   const midnightMs = today.getTime();
-  const nowMs = Date.now();
+  const nowMs = useNow().getTime();
 
   // X helper — frac 0..1 of today's 24h window maps to the SVG width.
   const xOf = (frac: number) => pad + frac * arcWidth;

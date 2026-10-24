@@ -7,6 +7,7 @@ import { WidgetContainer, WidgetEmpty } from './WidgetContainer';
 import { useBusTracking } from '@/lib/hooks/useBusTracking';
 import type { BusRouteStatus, BusPrediction } from '@/lib/hooks/useBusTracking';
 import { pickLiveTrack, useBusLive } from '@/lib/hooks/useBusLive';
+import { useNow } from '@/lib/hooks/useNow';
 import { BusLiveView } from './bus/BusLiveView';
 
 function formatMinutes(m: number): string {
@@ -28,7 +29,9 @@ export const BusTrackingWidget = React.memo(function BusTrackingWidget({ classNa
   const isCompact = !gridW || gridW < 12;
 
   // A live trip takes the whole widget, whatever its scheduled window says.
-  const liveTrack = pickLiveTrack(live.tracks, Date.now() + live.clockOffsetMs);
+  // useNow ticks, so a trip that ends between polls stops taking the widget.
+  const now = useNow();
+  const liveTrack = pickLiveTrack(live.tracks, now.getTime() + live.clockOffsetMs);
 
   // In compact mode, show only the most relevant route (closest to scheduled time)
   const displayRoutes = isCompact ? getBestRoute(routes) : routes;

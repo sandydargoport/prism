@@ -213,6 +213,10 @@ export function BusLiveMap({
    */
   const aim = (animate: boolean, force = !animate) => {
     const map = mapRef.current;
+    // aim runs only from effects, timers and the resize observer, never while
+    // rendering; the compiler cannot follow those calls. Revisit with the refs
+    // findings in this file (#447).
+    // eslint-disable-next-line react-hooks/purity
     if (!map || !readyRef.current || Date.now() < manualUntilRef.current) return;
     const t = trackRef.current;
     const bus = anchorRef.current ? current() : null;

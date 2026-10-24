@@ -8,6 +8,7 @@ import { toast } from '@/components/ui/use-toast';
 
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { usePersistedState, useSessionScopedState, oneOf, isBoolean, isStringArray } from '@/lib/hooks/usePersistedState';
+import { useNow } from '@/lib/hooks/useNow';
 import type { Chore } from '@/types';
 
 export interface ChoreCompletion {
@@ -92,6 +93,8 @@ export function useChoresViewData() {
     }
   }, [apiChores]);
 
+  // Ticks, so "hide completed" lets a chore back in once its 24 hours are up.
+  const now = useNow();
   const filteredChores = useMemo(() => {
     let result = [...chores];
     if (filterPerson && filterPerson.length > 0) {
@@ -104,7 +107,7 @@ export function useChoresViewData() {
       result = result.filter((chore) => chore.enabled);
     }
     if (hideCompleted) {
-      const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+      const oneDayAgo = now.getTime() - 24 * 60 * 60 * 1000;
       result = result.filter((chore) => {
         if (!chore.lastCompleted) return true;
         return new Date(chore.lastCompleted).getTime() <= oneDayAgo;
@@ -128,7 +131,7 @@ export function useChoresViewData() {
       }
     });
     return result;
-  }, [chores, filterPerson, filterCategory, showDisabled, hideCompleted, sortBy]);
+  }, [chores, filterPerson, filterCategory, showDisabled, hideCompleted, sortBy, now]);
 
   const completeChore = async (choreId: string): Promise<boolean> => {
     const chore = chores.find((c) => c.id === choreId);

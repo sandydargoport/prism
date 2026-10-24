@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useCallback, useState, useMemo } from 'react';
 import { usePersistedState, oneOf } from '@/lib/hooks/usePersistedState';
 import { toast } from '@/components/ui/use-toast';
 import type { Task } from '@/types';
@@ -29,13 +29,17 @@ export function useTaskGrouping({
   // for unselected people entirely (not just empty them). Matches Chores and
   // Wishes. Also suppresses the "Unassigned" bucket — the user has explicitly
   // asked to see only those people.
-  const personFilterActive = filterPerson !== null && filterPerson.length > 0;
-  const isMemberAllowed = (id: string) =>
-    !personFilterActive || filterPerson!.includes(id);
+  // Keyed on the ids themselves, so a new array with the same people does not
+  // recompute the groups below.
+  const filterKey = filterPerson?.join(',') ?? '';
+  const personFilterActive = filterKey !== '';
+  const isMemberAllowed = useCallback(
+    (id: string) => !filterKey || filterKey.split(',').includes(id),
+    [filterKey]
+  );
   const allowedMembers = useMemo(
     () => familyMembers.filter(m => !m.id || isMemberAllowed(m.id)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [familyMembers, personFilterActive, filterPerson?.join(',')]
+    [familyMembers, isMemberAllowed]
   );
   // Defaults to the flat/ungrouped list — matches Chores (and the rest of
   // the list pages): group-by-person previously opened by default, which
@@ -135,8 +139,7 @@ export function useTaskGrouping({
     }
 
     return groups;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupMode, filteredTasks, familyMembers, personFilterActive, filterPerson?.join(',')]);
+  }, [groupMode, filteredTasks, familyMembers, personFilterActive, isMemberAllowed]);
 
   // Group tasks by list
   const tasksByList = useMemo(() => {

@@ -26,6 +26,7 @@ import type { useDashboardData } from './useDashboardData';
 import { useMobileCardOrder, loadHiddenCards } from './useMobileCardOrder';
 import { useBusTracking } from '@/lib/hooks/useBusTracking';
 import { pickLiveTrack, useBusLive } from '@/lib/hooks/useBusLive';
+import { useNow } from '@/lib/hooks/useNow';
 import {
   WeatherCard, ClockCard, CalendarCard, ChoresCard, TasksCard,
   ShoppingCard, MealsCard, MessagesCard, BirthdaysCard, PointsCard,
@@ -75,7 +76,8 @@ export const MobileDashboard = memo(function MobileDashboard({ data }: MobileDas
   const { order, setOrder } = useMobileCardOrder();
   const { routes: busRoutes, allRoutes: allBusRoutes } = useBusTracking();
   const busLive = useBusLive(allBusRoutes.length > 0);
-  const liveBus = pickLiveTrack(busLive.tracks, Date.now() + busLive.clockOffsetMs);
+  const now = useNow();
+  const liveBus = pickLiveTrack(busLive.tracks, now.getTime() + busLive.clockOffsetMs);
   const [hiddenCards] = useState(loadHiddenCards);
   const [reorderMode, setReorderMode] = useState(false);
 

@@ -7,7 +7,7 @@
  */
 
 import React from 'react';
-import { render as rtlRender, screen, type RenderOptions } from '@testing-library/react';
+import { act, render as rtlRender, screen, type RenderOptions } from '@testing-library/react';
 import { TimeFormatProvider } from '@/components/providers';
 import * as SunCalc from 'suncalc';
 
@@ -204,6 +204,26 @@ describe('hourly forecast cards', () => {
   it('renders nothing for the hourly section when no hourly data', () => {
     render(<WeatherWidget data={makeWeatherData({ hourly: [] })} />);
     expect(screen.queryByText(/Next .* Hours/)).toBeNull();
+  });
+
+  it('moves the "Now" card along as time passes, without new data', () => {
+    // A wall display keeps the same forecast for a while between fetches, so
+    // the row has to follow the clock rather than the last render.
+    jest.useFakeTimers({ now: new Date('2026-06-15T10:30:00Z') });
+    const base = new Date('2026-06-15T10:00:00Z').getTime();
+    const hourly = Array.from({ length: 24 }, (_, i) => ({
+      time: new Date(base + i * 60 * 60_000),
+      condition: 'sunny' as WeatherCondition,
+      temp: 100 + i, // unique per hour, and clear of every other temp shown
+    }));
+    render(<WeatherWidget data={makeWeatherData({ hourly })} />);
+    expect(screen.queryAllByText(/^100°/).length).toBeGreaterThan(0);
+
+    act(() => { jest.advanceTimersByTime(2 * 60 * 60_000); });
+
+    expect(screen.queryAllByText(/^100°/)).toHaveLength(0);
+    expect(screen.queryAllByText(/^101°/)).toHaveLength(0);
+    expect(screen.queryAllByText(/^102°/).length).toBeGreaterThan(0);
   });
 
   it('hides the hourly section when showForecast=false', () => {

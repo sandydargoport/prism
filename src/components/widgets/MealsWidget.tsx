@@ -97,7 +97,7 @@ export const MealsWidget = React.memo(function MealsWidget({
     } else if (onAddClick) {
       onAddClick();
     }
-  }, [onAddMeal, onAddClick]);
+  }, [onAddMeal, onAddClick, setShowAddModal]);
 
   return (
     <>

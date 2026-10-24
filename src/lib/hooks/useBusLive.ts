@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useVisibilityPolling } from './useVisibilityPolling';
+import { useNow } from './useNow';
 import type { StopTiming } from '@/lib/services/bus-eta';
 import type { LiveTrackVehicle } from '@/lib/db/schema';
 import { LOST_MS } from '@/lib/map/busTween';
@@ -138,7 +139,8 @@ export function useBusLive(enabled: boolean) {
 
   // A new day starts from scratch: yesterday's tracks drop out of the
   // response, and their fixes go with them since nothing merges into them.
-  const anyLive = tracks.some((t) => isTrackLive(t, Date.now() + clockOffsetMs));
+  const now = useNow();
+  const anyLive = tracks.some((t) => isTrackLive(t, now.getTime() + clockOffsetMs));
   useVisibilityPolling(fetchLive, enabled ? (anyLive ? LIVE_POLL_MS : IDLE_POLL_MS) : 0);
 
   return { tracks, speedUnit, clockOffsetMs, mapStyle, camera };

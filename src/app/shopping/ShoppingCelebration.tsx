@@ -7,6 +7,8 @@ interface Confetti {
   x: number;
   delay: number;
   color: string;
+  round: boolean;
+  rotate: number;
 }
 
 export function ShoppingCelebration({ show, onComplete }: { show: boolean; onComplete?: () => void }) {
@@ -28,6 +30,8 @@ export function ShoppingCelebration({ show, onComplete }: { show: boolean; onCom
           x: Math.random() * 100,
           delay: Math.random() * 0.5,
           color: colors[Math.floor(Math.random() * colors.length)]!,
+          round: Math.random() > 0.5,
+          rotate: Math.random() * 360,
         });
       }
       setConfetti(particles);
@@ -124,8 +128,8 @@ export function ShoppingCelebration({ show, onComplete }: { show: boolean; onCom
             left: `${particle.x}%`,
             backgroundColor: particle.color,
             animationDelay: `${particle.delay}s`,
-            borderRadius: Math.random() > 0.5 ? '50%' : '2px',
-            transform: `rotate(${Math.random() * 360}deg)`,
+            borderRadius: particle.round ? '50%' : '2px',
+            transform: `rotate(${particle.rotate}deg)`,
           }}
         />
       ))}

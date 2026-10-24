@@ -47,16 +47,17 @@ const eslintConfig = [
   // These are NOT noise to be silenced. set-state-in-effect in particular
   // describes a pattern this codebase has been bitten by before (per-display
   // preferences loading after mount, so the first paint renders the wrong
-  // thing and then undoes it). They want working through deliberately, then
-  // promoting back to error.
+  // thing and then undoes it). They are being worked through by rule (#447),
+  // and each goes back to error once it has no findings left, so a fixed rule
+  // cannot slip back.
   {
     rules: {
       'react-hooks/set-state-in-effect': 'warn',
       'react-hooks/refs': 'warn',
       'react-hooks/immutability': 'warn',
-      'react-hooks/purity': 'warn',
-      'react-hooks/use-memo': 'warn',
-      'react-hooks/preserve-manual-memoization': 'warn',
+      'react-hooks/purity': 'error',
+      'react-hooks/use-memo': 'error',
+      'react-hooks/preserve-manual-memoization': 'error',
     },
   },
 
