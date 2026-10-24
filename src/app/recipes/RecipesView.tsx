@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { toast } from '@/components/ui/use-toast';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -31,6 +31,7 @@ import { ImportPaprikaModal } from './ImportPaprikaModal';
 import { ImportTextModal } from './ImportTextModal';
 import { RecipeSyncModal } from '@/components/sync/RecipeSyncModal';
 import type { ParsedRecipeText } from '@/lib/utils/recipeTextParser';
+import { latestRecord } from '@/lib/utils/latestRecord';
 
 type ViewMode = 'all' | 'favorites';
 
@@ -40,7 +41,7 @@ export function RecipesView() {
   const searchParams = useSearchParams();
 
   const [viewMode, setViewMode] = useState<ViewMode>('all');
-  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+  const [pickedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportUrlModal, setShowImportUrlModal] = useState(false);
   const [showImportPaprikaModal, setShowImportPaprikaModal] = useState(false);
@@ -63,12 +64,9 @@ export function RecipesView() {
 
   const { lists: shoppingLists, addItem: addShoppingItem } = useShoppingLists();
 
-  // Keep selectedRecipe in sync (for favorite toggle, etc.)
-  useEffect(() => {
-    if (!selectedRecipe) return;
-    const updated = recipes.find(r => r.id === selectedRecipe.id);
-    if (updated && updated.isFavorite !== selectedRecipe.isFavorite) setSelectedRecipe(updated);
-  }, [recipes, selectedRecipe]);
+  // The open recipe as the list has it now, so a favourite toggle or an edit
+  // shows straight away.
+  const selectedRecipe = pickedRecipe ? latestRecord(recipes, pickedRecipe) : null;
 
   // Auto-open recipe from ?recipe=<id> search param (e.g. linked from meals page)
   // Once, when the recipes have loaded: a later refresh keeps the same key, so

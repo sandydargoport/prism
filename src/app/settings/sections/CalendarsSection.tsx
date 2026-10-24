@@ -19,6 +19,7 @@ import { useDisplayTimestampFormat, useFamily } from '@/components/providers';
 import { CalendarColorPicker } from '../components/CalendarColorPicker';
 import { useHiddenHours } from '@/lib/hooks/useHiddenHours';
 import { useOAuthConfigStatus } from './integrations/shared/useOAuthConfigStatus';
+import { useLocalCopy, keepLocalOrder } from '@/lib/hooks/useLocalCopy';
 
 export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
   const stamp = useDisplayTimestampFormat();
@@ -27,7 +28,9 @@ export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
   const { calendars, loading: calendarsLoading, refresh: refreshCalendars } = useCalendarSources();
   const [syncing, setSyncing] = useState(false);
   const [updatingCalendar, setUpdatingCalendar] = useState<string | null>(null);
-  const [localCalendars, setLocalCalendars] = useState<typeof calendars>([]);
+  // Edited on screen (toggles, reorder, remove) before each save lands. A
+  // refresh updates the records but keeps the order shown here.
+  const [localCalendars, setLocalCalendars] = useLocalCopy(calendars, keepLocalOrder);
 
   const [calGroups, setCalGroups] = useState<Array<{ id: string; name: string; color: string; type: string; userId?: string | null; sourceCount?: number }>>([]);
   const [newGroupName, setNewGroupName] = useState('');
@@ -93,31 +96,6 @@ export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
     }
   };
 
-  useEffect(() => {
-    if (calendars.length > 0 && localCalendars.length === 0) {
-      setLocalCalendars(calendars);
-    } else if (calendars.length > 0) {
-      setLocalCalendars((prev) => {
-        const positionMap = new Map(prev.map((cal, idx) => [cal.id, idx]));
-        const updated = [...prev];
-        const newCalendars: typeof calendars = [];
-
-        for (const cal of calendars) {
-          const existingIdx = positionMap.get(cal.id);
-          if (existingIdx !== undefined) {
-            updated[existingIdx] = cal;
-          } else {
-            newCalendars.push(cal);
-          }
-        }
-
-        const currentIds = new Set(calendars.map((c) => c.id));
-        const filtered = updated.filter((c) => currentIds.has(c.id));
-
-        return [...filtered, ...newCalendars];
-      });
-    }
-  }, [calendars]);
 
   const updateCalendar = async (calendarId: string, updates: { enabled?: boolean; userId?: string | null }) => {
     setUpdatingCalendar(calendarId);

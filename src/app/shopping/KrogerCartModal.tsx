@@ -16,6 +16,7 @@ import { PageLoader } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import { parseShoppingQuantity, type ParsedShoppingQuantity } from '@/lib/utils/parseShoppingQuantity';
 import type { ShoppingItem } from '@/types';
+import { useResetOn } from '@/lib/hooks/useResetOn';
 
 interface KrogerProductCandidate {
   productId: string;
@@ -271,9 +272,9 @@ export function KrogerCartModal({ items, onClose }: KrogerCartModalProps) {
   };
 
   // Reset the editor whenever we land on a new item.
-  useEffect(() => {
+  useResetOn(`${current?.id ?? ''}|${current?.query ?? ''}`, () => {
     setEditQuery(current?.query ?? '');
-  }, [current?.id, current?.query]);
+  });
 
   const retrySearch = async () => {
     const query = editQuery.trim();

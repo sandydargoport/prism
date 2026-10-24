@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -55,6 +55,7 @@ import { toast } from '@/components/ui/use-toast';
 import { useFamily } from '@/components/providers';
 import { LiveTrackingCard } from './bus/LiveTrackingCard';
 import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
+import { useLocalCopy } from '@/lib/hooks/useLocalCopy';
 
 interface BusRoute {
   id: string;
@@ -376,10 +377,9 @@ function GmailConnectionCard({
   gmailLabel: string;
   onSaveLabel: (label: string) => void;
 }) {
-  const [labelInput, setLabelInput] = useState(gmailLabel);
+  // Starts over from the saved label whenever it changes.
+  const [labelInput, setLabelInput] = useLocalCopy(gmailLabel);
   const labelDirty = labelInput.trim() !== gmailLabel;
-
-  useEffect(() => { setLabelInput(gmailLabel); }, [gmailLabel]);
 
   return (
     <Card>

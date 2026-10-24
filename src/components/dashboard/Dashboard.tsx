@@ -45,6 +45,7 @@ import { useDashboardLayout, editLink } from './useDashboardLayout';
 import { buildWidgetProps } from './useWidgetProps';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
+import { useLocalCopy } from '@/lib/hooks/useLocalCopy';
 
 class WidgetBoundary extends React.Component<
   { name: string; children: React.ReactNode },
@@ -153,19 +154,12 @@ export function Dashboard({
   const { allSizeNames } = useScreenSafeZones();
 
   // Orientation from active layout (DB), fallback to landscape
-  const [screenGuideOrientation, setScreenGuideOrientationState] = useState<'landscape' | 'portrait'>(() => {
-    const fromLayout = layout.activeLayout?.orientation;
-    if (fromLayout === 'portrait' || fromLayout === 'landscape') return fromLayout;
-    return 'landscape';
-  });
-
-  // Sync orientation when active layout changes
-  useEffect(() => {
-    const fromLayout = layout.activeLayout?.orientation;
-    if (fromLayout === 'portrait' || fromLayout === 'landscape') {
-      setScreenGuideOrientationState(fromLayout);
-    }
-  }, [layout.activeLayout?.orientation]);
+  // A choice made here holds until the active layout's orientation changes.
+  const fromLayout = layout.activeLayout?.orientation;
+  const [chosenOrientation, setScreenGuideOrientationState] = useLocalCopy<'landscape' | 'portrait' | null>(
+    fromLayout === 'portrait' || fromLayout === 'landscape' ? fromLayout : null,
+  );
+  const screenGuideOrientation = chosenOrientation ?? 'landscape';
 
   const setScreenGuideOrientation = useCallback(async (o: 'landscape' | 'portrait') => {
     setScreenGuideOrientationState(o);
@@ -180,7 +174,7 @@ export function Dashboard({
         });
       } catch { /* ignore */ }
     }
-  }, [layout.activeLayout, data.layouts]);
+  }, [layout.activeLayout, data.layouts, setScreenGuideOrientationState]);
 
   const [enabledSizes, setEnabledSizes] = useState<string[]>(allSizeNames);
   const [gridScrollY, setGridScrollY] = useState(0);

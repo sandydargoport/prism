@@ -19,6 +19,7 @@ import { toast } from '@/components/ui/use-toast';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { PageLoader } from '@/components/ui/spinner';
+import { useLocalCopy } from '@/lib/hooks/useLocalCopy';
 
 const EMOJI_OPTIONS = [
   // Grocery
@@ -50,18 +51,13 @@ export function ManageCategoriesModal({ open, onOpenChange }: ManageCategoriesMo
 
   const [newName, setNewName] = useState('');
   const [newEmoji, setNewEmoji] = useState<string | null>(null);
-  const [localCategories, setLocalCategories] = useState<ShoppingCategoryDef[]>(categories);
+  // Edited on screen before each save lands; starts over when the saved
+  // categories change.
+  const [localCategories, setLocalCategories] = useLocalCopy(categories);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [emojiPickerFor, setEmojiPickerFor] = useState<string | null>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const { confirm, dialogProps } = useConfirmDialog();
-
-  // Sync local state when hook categories update
-  useEffect(() => {
-    if (!loading && categories.length > 0) {
-      setLocalCategories(categories);
-    }
-  }, [loading, categories]);
 
   // Close emoji picker when clicking outside
   useEffect(() => {

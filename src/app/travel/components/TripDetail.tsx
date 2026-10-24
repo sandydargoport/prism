@@ -17,6 +17,7 @@ import { format, parseISO } from 'date-fns';
 import type { TravelTrip, TravelPin, PinType } from '../types';
 import { TRIP_STYLE_CONFIG, STATUS_CONFIG, NPS_COLOR } from '../types';
 import { InlineChildAdd } from './InlineChildAdd';
+import { useLocalCopy } from '@/lib/hooks/useLocalCopy';
 
 interface TripDetailProps {
   trip: TravelTrip;
@@ -88,10 +89,9 @@ export function TripDetail({
   trip, stops, onUpdate, onDelete, onClose, onAddStop,
   onDeleteStop, onReorderStops, onSelectStop, onEdit,
 }: TripDetailProps) {
-  const [localStops, setLocalStops] = React.useState(stops);
+  // Reordered on screen before the save lands; starts over when stops refresh.
+  const [localStops, setLocalStops] = useLocalCopy(stops);
   const [deleting, setDeleting] = React.useState(false);
-
-  React.useEffect(() => { setLocalStops(stops); }, [stops]);
 
   const sensors = useSensors(
     useSensor(MouseSensor),

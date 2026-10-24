@@ -11,6 +11,7 @@ import type { Task } from '@/types';
 import { compareTaskDue } from '@/lib/utils/taskDue';
 import { usePersistedState, useSessionScopedState, oneOf, isBoolean } from '@/lib/hooks/usePersistedState';
 import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
+import { useLocalCopy } from '@/lib/hooks/useLocalCopy';
 
 const AUTO_SYNC_STALE_MINUTES = 5; // Sync if last sync > 5 min ago
 const AUTO_SYNC_INTERVAL_MS = 5 * 60 * 1000; // Background sync every 5 min
@@ -30,7 +31,8 @@ export function useTasksViewData() {
   const { lists: taskLists, loading: listsLoading } = useTaskLists();
   const { members: familyMembers } = useFamily();
 
-  const [tasks, setTasks] = useState<Task[]>([]);
+  // Changed optimistically (delete, revert on failure); starts over on refresh.
+  const [tasks, setTasks] = useLocalCopy(apiTasks);
   const [filterPerson, setFilterPerson] = useState<string[] | null>(null);
   const [filterPriority, setFilterPriority] = useState<string | null>(null);
   // Persisted alongside grouping: both describe how the list is presented,
@@ -122,10 +124,6 @@ export function useTasksViewData() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [autoSync]);
-
-  useEffect(() => {
-    setTasks(apiTasks);
-  }, [apiTasks]);
 
   const filteredTasks = useMemo(() => {
     let result = [...tasks];

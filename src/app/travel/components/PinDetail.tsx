@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { format, parseISO } from 'date-fns';
 import { Trash2, X, MapPin, Star, TreePine, GripVertical, Check, Pencil, Loader2 } from 'lucide-react';
 import {
@@ -23,6 +23,8 @@ import type { PinPendingChildren } from './PinForm';
 import { InlineChildAdd } from './InlineChildAdd';
 import { yearOfDate } from '@/lib/utils/zonedDate';
 import { PinPhotoGrid } from './PinPhotoGrid';
+import { useLocalCopy } from '@/lib/hooks/useLocalCopy';
+import { useResetOn } from '@/lib/hooks/useResetOn';
 
 interface PinDetailProps {
   pin: TravelPin;
@@ -78,7 +80,8 @@ export function PinDetail({ pin, childPins, onUpdate, onDelete, onDeleteChild, o
   const [description, setDescription] = useState(pin.description ?? '');
   const [tagInput, setTagInput] = useState((pin.tags ?? []).join(', '));
 
-  useEffect(() => {
+  // Keyed by id, so a refreshed copy of the same pin keeps what is being typed.
+  useResetOn(pin.id, () => {
     setName(pin.name);
     setTripLabel(pin.tripLabel ?? '');
     setStatus(pin.status);
@@ -87,7 +90,7 @@ export function PinDetail({ pin, childPins, onUpdate, onDelete, onDeleteChild, o
     setVisitedEndDate(pin.visitedEndDate ?? '');
     setDescription(pin.description ?? '');
     setTagInput((pin.tags ?? []).join(', '));
-  }, [pin.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  });
 
   const isDirty =
     name !== pin.name ||
@@ -157,10 +160,11 @@ export function PinDetail({ pin, childPins, onUpdate, onDelete, onDeleteChild, o
   };
 
   // Children reorder
-  const [localChildren, setLocalChildren] = useState<TravelPin[]>([]);
-  useEffect(() => {
-    setLocalChildren([...childPins].sort((a, b) => a.sortOrder - b.sortOrder));
-  }, [childPins]);
+  const sortedChildren = useMemo(
+    () => [...childPins].sort((a, b) => a.sortOrder - b.sortOrder),
+    [childPins],
+  );
+  const [localChildren, setLocalChildren] = useLocalCopy(sortedChildren);
 
   const sensors = useSensors(
     useSensor(MouseSensor),
@@ -178,7 +182,7 @@ export function PinDetail({ pin, childPins, onUpdate, onDelete, onDeleteChild, o
     try {
       await onReorderChildren(newOrder.map(c => c.id));
     } catch {
-      setLocalChildren([...childPins].sort((a, b) => a.sortOrder - b.sortOrder));
+      setLocalChildren(sortedChildren);
     }
   };
 

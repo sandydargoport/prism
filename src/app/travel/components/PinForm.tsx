@@ -20,6 +20,7 @@ import type { TravelPin, PinStatus, PinType, GeocodeResult } from '../types';
 import { STATUS_CONFIG } from '../types';
 import { yearOfDate } from '@/lib/utils/zonedDate';
 import { NPS_UNITS } from '../constants/nationalParks';
+import { useResetOn } from '@/lib/hooks/useResetOn';
 
 export interface PendingStop {
   name: string;
@@ -88,14 +89,14 @@ export function PinForm({ pin, initialLatLng, parentId, pinType = 'location', ch
   const [showStops, setShowStops] = useState(false);
 
   // Sync when user clicks a new spot on the map while the form is already open
-  useEffect(() => {
+  useResetOn(initialLatLng ? `${initialLatLng.lat},${initialLatLng.lng}` : null, () => {
     if (initialLatLng) {
       setLat(initialLatLng.lat);
       setLng(initialLatLng.lng);
       setPlaceName('');
       setSearchResults([]);
     }
-  }, [initialLatLng?.lat, initialLatLng?.lng]); // eslint-disable-line react-hooks/exhaustive-deps
+  });
 
   const hasLocation = lat !== 0 || lng !== 0;
 

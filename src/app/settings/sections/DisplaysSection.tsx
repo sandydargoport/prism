@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { Monitor, ExternalLink, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -13,20 +13,9 @@ const FONT_SCALE_OPTIONS = [75, 80, 85, 90, 95, 100, 105, 110, 115, 120, 130, 14
 export function DisplaysSection() {
   const { layouts, loading } = useLayouts();
   const [saving, setSaving] = useState<string | null>(null);
-  // Optimistic local scale values — keyed by layout id
+  // Optimistic local scale values, keyed by layout id. A layout with no entry
+  // shows its saved scale.
   const [localScales, setLocalScales] = useState<Record<string, number>>({});
-
-  // Initialise local scales from loaded layouts (only once per layout)
-  useEffect(() => {
-    if (layouts.length === 0) return;
-    setLocalScales((prev) => {
-      const next = { ...prev };
-      for (const l of layouts) {
-        if (!(l.id in next)) next[l.id] = l.fontScale ?? 100;
-      }
-      return next;
-    });
-  }, [layouts]);
 
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
