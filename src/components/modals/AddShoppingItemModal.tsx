@@ -125,6 +125,26 @@ export function AddShoppingItemModal({
   const [shoppingLists, setShoppingLists] = useState<ShoppingList[]>([]);
   const [loadingLists, setLoadingLists] = useState(true);
 
+  async function fetchShoppingLists() {
+    try {
+      setLoadingLists(true);
+      const response = await fetch('/api/shopping-lists');
+      if (response.ok) {
+        const data = await response.json();
+        setShoppingLists(data.lists || []);
+
+        // Auto-select first list if no default
+        if (!defaultListId && !item && data.lists.length > 0) {
+          setListId(data.lists[0].id);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch shopping lists:', err);
+    } finally {
+      setLoadingLists(false);
+    }
+  }
+
   // Fetch shopping lists when modal opens
   useEffect(() => {
     if (open) {
@@ -156,26 +176,6 @@ export function AddShoppingItemModal({
       setError(null);
     }
   }, [open, defaultListId]);
-
-  async function fetchShoppingLists() {
-    try {
-      setLoadingLists(true);
-      const response = await fetch('/api/shopping-lists');
-      if (response.ok) {
-        const data = await response.json();
-        setShoppingLists(data.lists || []);
-
-        // Auto-select first list if no default
-        if (!defaultListId && !item && data.lists.length > 0) {
-          setListId(data.lists[0].id);
-        }
-      }
-    } catch (err) {
-      console.error('Failed to fetch shopping lists:', err);
-    } finally {
-      setLoadingLists(false);
-    }
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

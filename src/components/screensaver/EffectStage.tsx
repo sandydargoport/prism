@@ -72,7 +72,9 @@ export function EffectStage({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
-  const tick = useCallback((now: number) => {
+  // Named, so the loop schedules itself rather than reading `tick` before the
+  // assignment below has happened.
+  const tick = useCallback(function frame(now: number) {
     const el = canvas.current;
     if (!el) { raf.current = 0; return; }
     // Deliberately 1, not devicePixelRatio.
@@ -117,7 +119,7 @@ export function EffectStage({ children }: { children: React.ReactNode }) {
     });
     const due = anyDue ? entries : [];
     if (!due.length) {
-      raf.current = active.current.size ? requestAnimationFrame(tick) : 0;
+      raf.current = active.current.size ? requestAnimationFrame(frame) : 0;
       return;
     }
     for (const [, a] of due) {
@@ -169,7 +171,7 @@ export function EffectStage({ children }: { children: React.ReactNode }) {
       }
     }
 
-    raf.current = active.current.size ? requestAnimationFrame(tick) : 0;
+    raf.current = active.current.size ? requestAnimationFrame(frame) : 0;
   }, [clearEntry]);
 
   const begin = useCallback<Stage['begin']>((key, a) => {

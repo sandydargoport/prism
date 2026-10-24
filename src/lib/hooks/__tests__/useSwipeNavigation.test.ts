@@ -25,12 +25,12 @@ function TestComponent({
     enabled,
   });
 
+  // The hook's ref goes on the element as an app would use it; the tests read
+  // the element back once it is attached.
+  React.useEffect(() => { containerEl = ref.current; });
+
   return React.createElement('div', {
-    ref: (el: HTMLDivElement | null) => {
-      containerEl = el;
-      // Set the hook's ref
-      (ref as React.MutableRefObject<HTMLDivElement | null>).current = el;
-    },
+    ref,
     'data-testid': 'swipe-container',
   });
 }

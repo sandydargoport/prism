@@ -121,7 +121,7 @@ export function ShoppingView() {
   } = useShoppingDragReorder({ categoryOrder, dynamicCategories, reorderCategories });
 
   const {
-    inlineInputs, setInlineInputs, inputRefs, extraRows,
+    inlineInputs, setInlineInputs, extraRows,
     handleInlineKeyDown, handleInlineBlur, addExtraRows,
   } = useShoppingInlineInput({ activeList, requireAuth, apiAddItem });
 
@@ -345,7 +345,6 @@ export function ShoppingView() {
                       extraRowCount={categoryExtraRows}
                       baseEmptyLines={BASE_EMPTY_LINES}
                       inlineInputValue={inlineInputs[category] || ''}
-                      inputRefs={inputRefs}
                       onDragStart={() => handleDragStart(category)}
                       onDragOver={(e) => handleDragOver(e, category)}
                       onDragEnd={handleDragEnd}

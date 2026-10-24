@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, KeyboardEvent, FocusEvent } from 'react';
+import { useState, KeyboardEvent, FocusEvent } from 'react';
 import { toast } from '@/components/ui/use-toast';
 
 const BASE_EMPTY_LINES = 6;
@@ -19,7 +19,6 @@ export function useShoppingInlineInput({
   apiAddItem,
 }: UseShoppingInlineInputProps) {
   const [inlineInputs, setInlineInputs] = useState<Record<string, string>>({});
-  const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [extraRows, setExtraRows] = useState<Record<string, number>>({});
 
   const handleInlineAdd = async (category: string) => {
@@ -63,7 +62,6 @@ export function useShoppingInlineInput({
   return {
     inlineInputs,
     setInlineInputs,
-    inputRefs,
     extraRows,
     handleInlineAdd,
     handleInlineKeyDown,

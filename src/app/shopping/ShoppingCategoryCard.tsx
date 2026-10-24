@@ -9,7 +9,7 @@ import { ShoppingItemRow } from '@/app/shopping/ShoppingItemRow';
 import { cn } from '@/lib/utils';
 import { useLongPressDrag } from '@/lib/hooks/useLongPressDrag';
 import type { ShoppingItem } from '@/types';
-import type { KeyboardEvent, FocusEvent, MutableRefObject } from 'react';
+import type { KeyboardEvent, FocusEvent } from 'react';
 
 interface ShoppingCategoryCardProps {
   category: string;
@@ -21,7 +21,6 @@ interface ShoppingCategoryCardProps {
   extraRowCount: number;
   baseEmptyLines: number;
   inlineInputValue: string;
-  inputRefs: MutableRefObject<Record<string, HTMLInputElement | null>>;
   onDragStart: () => void;
   onDragOver: (e: React.DragEvent) => void;
   onDragEnd: () => void;
@@ -50,7 +49,6 @@ export function ShoppingCategoryCard({
   extraRowCount,
   baseEmptyLines,
   inlineInputValue,
-  inputRefs,
   onDragStart,
   onDragOver,
   onDragEnd,
@@ -148,7 +146,6 @@ export function ShoppingCategoryCard({
           style={{ borderColor: categoryColor + '40' }}
         >
           <Input
-            ref={(el) => { inputRefs.current[category] = el; }}
             value={inlineInputValue}
             onChange={(e) => onInlineInputChange(category, e.target.value)}
             onKeyDown={(e) => onInlineKeyDown(e, category)}

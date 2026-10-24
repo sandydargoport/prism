@@ -54,7 +54,7 @@ const eslintConfig = [
     rules: {
       'react-hooks/set-state-in-effect': 'warn',
       'react-hooks/refs': 'warn',
-      'react-hooks/immutability': 'warn',
+      'react-hooks/immutability': 'error',
       'react-hooks/purity': 'error',
       'react-hooks/use-memo': 'error',
       'react-hooks/preserve-manual-memoization': 'error',

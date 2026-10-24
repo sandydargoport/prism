@@ -21,21 +21,9 @@ export function PhotoUpload({ onUploadComplete }: PhotoUploadProps) {
   const [files, setFiles] = useState<UploadFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
 
-  const addFiles = useCallback((newFiles: FileList | File[]) => {
-    const validFiles: UploadFile[] = Array.from(newFiles)
-      .filter((f) => PHOTO_ALLOWED_TYPES.includes(f.type as typeof PHOTO_ALLOWED_TYPES[number]))
-      .filter((f) => f.size <= PHOTO_MAX_SIZE_MB * 1024 * 1024)
-      .map((file) => ({ file, progress: 0, status: 'pending' as const }));
-
-    setFiles((prev) => [...prev, ...validFiles]);
-
-    // Upload each file
-    for (const uf of validFiles) {
-      uploadFile(uf.file);
-    }
-  }, []);
-
-  const uploadFile = async (file: File) => {
+  // Before addFiles, which keeps a reference to it. Declared after, addFiles
+  // held the first render's copy, and with it the first onUploadComplete.
+  const uploadFile = useCallback(async (file: File) => {
     setFiles((prev) =>
       prev.map((f) => (f.file === file ? { ...f, status: 'uploading' as const } : f))
     );
@@ -61,7 +49,21 @@ export function PhotoUpload({ onUploadComplete }: PhotoUploadProps) {
         )
       );
     }
-  };
+  }, [onUploadComplete]);
+
+  const addFiles = useCallback((newFiles: FileList | File[]) => {
+    const validFiles: UploadFile[] = Array.from(newFiles)
+      .filter((f) => PHOTO_ALLOWED_TYPES.includes(f.type as typeof PHOTO_ALLOWED_TYPES[number]))
+      .filter((f) => f.size <= PHOTO_MAX_SIZE_MB * 1024 * 1024)
+      .map((file) => ({ file, progress: 0, status: 'pending' as const }));
+
+    setFiles((prev) => [...prev, ...validFiles]);
+
+    // Upload each file
+    for (const uf of validFiles) {
+      uploadFile(uf.file);
+    }
+  }, [uploadFile]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {

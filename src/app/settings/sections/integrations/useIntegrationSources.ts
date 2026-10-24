@@ -81,6 +81,56 @@ export function useIntegrationSources<S extends BaseSource>(
   // Provider for current list selection flow
   const [listSelectionProvider, setListSelectionProvider] = useState<'microsoft_todo' | 'google_tasks'>('microsoft_todo');
 
+  const fetchListsWithUrl = async (url: string) => {
+    setLoadingMsLists(true);
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        setMsLists(data.lists || []);
+        setShowMsListModal(true);
+      } else {
+        const data = await res.json();
+        setStatusMessage({
+          type: 'error',
+          text: data.error || 'Failed to fetch lists from provider',
+        });
+      }
+    } catch {
+      setStatusMessage({
+        type: 'error',
+        text: 'Failed to fetch lists from provider',
+      });
+    } finally {
+      setLoadingMsLists(false);
+    }
+  };
+
+  const fetchMsListsInternal = async (entityId: string) => {
+    setLoadingMsLists(true);
+    try {
+      const res = await fetch(`/api/task-sources/microsoft-lists?${config.oauthEntityParam}=${entityId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setMsLists(data.lists || []);
+        setShowMsListModal(true);
+      } else {
+        const data = await res.json();
+        setStatusMessage({
+          type: 'error',
+          text: data.error || 'Failed to fetch Microsoft To-Do lists',
+        });
+      }
+    } catch {
+      setStatusMessage({
+        type: 'error',
+        text: 'Failed to fetch Microsoft To-Do lists',
+      });
+    } finally {
+      setLoadingMsLists(false);
+    }
+  };
+
   // Handle OAuth URL params
   useEffect(() => {
     const error = searchParams.get('error');
@@ -160,56 +210,6 @@ export function useIntegrationSources<S extends BaseSource>(
   useEffect(() => {
     fetchSources();
   }, [fetchSources]);
-
-  const fetchListsWithUrl = async (url: string) => {
-    setLoadingMsLists(true);
-    try {
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        setMsLists(data.lists || []);
-        setShowMsListModal(true);
-      } else {
-        const data = await res.json();
-        setStatusMessage({
-          type: 'error',
-          text: data.error || 'Failed to fetch lists from provider',
-        });
-      }
-    } catch {
-      setStatusMessage({
-        type: 'error',
-        text: 'Failed to fetch lists from provider',
-      });
-    } finally {
-      setLoadingMsLists(false);
-    }
-  };
-
-  const fetchMsListsInternal = async (entityId: string) => {
-    setLoadingMsLists(true);
-    try {
-      const res = await fetch(`/api/task-sources/microsoft-lists?${config.oauthEntityParam}=${entityId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setMsLists(data.lists || []);
-        setShowMsListModal(true);
-      } else {
-        const data = await res.json();
-        setStatusMessage({
-          type: 'error',
-          text: data.error || 'Failed to fetch Microsoft To-Do lists',
-        });
-      }
-    } catch {
-      setStatusMessage({
-        type: 'error',
-        text: 'Failed to fetch Microsoft To-Do lists',
-      });
-    } finally {
-      setLoadingMsLists(false);
-    }
-  };
 
   const fetchMsLists = async (entityId: string) => {
     setPendingEntityId(entityId);

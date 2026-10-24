@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Monitor, ExternalLink, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -28,14 +28,14 @@ export function DisplaysSection() {
     });
   }, [layouts]);
 
-  const saveTimers = useState<Record<string, ReturnType<typeof setTimeout>>>({});
+  const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const updateFontScale = (layoutId: string, scale: number) => {
     // Update local state immediately — slider stays responsive
     setLocalScales((prev) => ({ ...prev, [layoutId]: scale }));
 
     // Debounce DB write so rapid slider drags don't spam the API
-    const timers = saveTimers[0];
+    const timers = saveTimers.current;
     if (timers[layoutId]) clearTimeout(timers[layoutId]);
     timers[layoutId] = setTimeout(async () => {
       setSaving(layoutId);
