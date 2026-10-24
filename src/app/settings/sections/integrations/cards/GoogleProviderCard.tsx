@@ -13,6 +13,7 @@ import { CollapsibleSubSection } from '../shared/CollapsibleSubSection';
 import { GoogleCredentialsForm } from './GoogleCredentialsForm';
 import { GoogleManualTokenForm } from './GoogleManualTokenForm';
 import { browserOAuthUsable } from '@/lib/utils/googleRedirectSupport';
+import { useOrigin } from '@/lib/hooks/useOrigin';
 import type { IntegrationStatus } from '../shared/useIntegrationStatus';
 import type { ConnectionStatus } from '../shared/ConnectionStatusBadge';
 import { connectedAsLabel } from '../shared/connectedAs';
@@ -70,8 +71,7 @@ export function GoogleProviderCard({
   // Google refuses a private address as a sign-in redirect, so on a LAN-only
   // install the browser flow cannot work at all. Checked after mount so the
   // server render does not disagree with the client.
-  const [origin, setOrigin] = React.useState<string | null>(null);
-  React.useEffect(() => setOrigin(window.location.origin), []);
+  const origin = useOrigin();
   const browserFlowUnusable = origin !== null && !browserOAuthUsable(origin);
 
   const g = status?.google;

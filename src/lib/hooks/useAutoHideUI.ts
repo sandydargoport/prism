@@ -29,6 +29,9 @@ export function useAutoHideUI() {
   }, [enabled]);
 
   const setEnabled = useCallback((value: boolean) => {
+    // A timer that fired before the feature was turned off leaves `hidden`
+    // true; clear it here so turning the feature back on starts visible.
+    setHidden(false);
     writeStored(STORAGE_KEY, String(value));
   }, []);
 
@@ -56,8 +59,9 @@ export function useAutoHideUI() {
     };
     window.addEventListener('mousemove', moveHandler, { passive: true });
 
-    // Start the timer immediately
-    resetTimer();
+    // Start the timer immediately. The UI is already showing, so there is
+    // nothing to un-hide; only the countdown starts.
+    timerRef.current = setTimeout(() => setHidden(true), HIDE_DELAY);
 
     return () => {
       events.forEach(e => window.removeEventListener(e, handler));
@@ -67,6 +71,7 @@ export function useAutoHideUI() {
   }, [enabled, resetTimer]);
 
   // `hidden` can be left true by a timer that fired before the feature was
-  // turned off; gating on `enabled` here means it never hides the UI then.
+  // turned off (in another tab, say); gating on `enabled` here means it never
+  // hides the UI then.
   return { autoHideEnabled: enabled, setAutoHideEnabled: setEnabled, uiHidden: enabled && isDashboard && hidden };
 }

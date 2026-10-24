@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { usePersistedState, isStringArray } from '@/lib/hooks/usePersistedState';
 
 const STORAGE_KEY = 'prism-mobile-card-order';
 const DEFAULT_ORDER = [
@@ -23,19 +24,13 @@ const DEFAULT_ORDER = [
 const HIDDEN_CARDS_KEY = 'prism-mobile-hidden-cards';
 const DEFAULT_HIDDEN = ['clock', 'photos']; // Hidden by default
 
-export function loadHiddenCards(): string[] {
-  if (typeof window === 'undefined') return DEFAULT_HIDDEN;
-  try {
-    const stored = localStorage.getItem(HIDDEN_CARDS_KEY);
-    if (!stored) return DEFAULT_HIDDEN;
-    return JSON.parse(stored) as string[];
-  } catch {
-    return DEFAULT_HIDDEN;
-  }
-}
-
-export function saveHiddenCards(hidden: string[]) {
-  localStorage.setItem(HIDDEN_CARDS_KEY, JSON.stringify(hidden));
+/**
+ * Which cards the mobile dashboard hides. Shared through the stored-value
+ * store, so a card toggled in the FAB menu leaves (or joins) the dashboard
+ * straight away rather than on the next reload.
+ */
+export function useHiddenCards() {
+  return usePersistedState(HIDDEN_CARDS_KEY, DEFAULT_HIDDEN, isStringArray);
 }
 
 function loadOrder(): string[] {

@@ -23,7 +23,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { cn } from '@/lib/utils';
 import type { useDashboardData } from './useDashboardData';
-import { useMobileCardOrder, loadHiddenCards } from './useMobileCardOrder';
+import { useMobileCardOrder, useHiddenCards } from './useMobileCardOrder';
 import { useBusTracking } from '@/lib/hooks/useBusTracking';
 import { pickLiveTrack, useBusLive } from '@/lib/hooks/useBusLive';
 import { useNow } from '@/lib/hooks/useNow';
@@ -78,7 +78,7 @@ export const MobileDashboard = memo(function MobileDashboard({ data }: MobileDas
   const busLive = useBusLive(allBusRoutes.length > 0);
   const now = useNow();
   const liveBus = pickLiveTrack(busLive.tracks, now.getTime() + busLive.clockOffsetMs);
-  const [hiddenCards] = useState(loadHiddenCards);
+  const [hiddenCards] = useHiddenCards();
   const [reorderMode, setReorderMode] = useState(false);
 
   const { pullDistance, refreshing } = usePullToRefresh();

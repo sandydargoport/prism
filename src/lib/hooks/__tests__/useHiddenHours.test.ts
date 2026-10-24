@@ -21,9 +21,34 @@ afterAll(() => {
 
 beforeEach(() => {
   localStorage.clear();
+  window.dispatchEvent(new StorageEvent('storage', { key: null }));
 });
 
 describe('useHiddenHours', () => {
+  it('every mounted copy follows a change made through another', () => {
+    // The week view and the side-by-side day view each mount the hook.
+    const week = renderHook(() => useHiddenHours());
+    const day = renderHook(() => useHiddenHours());
+
+    act(() => week.result.current.toggleHidden());
+    expect(day.result.current.settings.enabled).toBe(true);
+  });
+
+  it('the database value replaces the cached one', async () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ startHour: 1, endHour: 5 }));
+    (global.fetch as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ settings: { calendarHiddenHours: { startHour: 22, endHour: 7 } } }),
+      }),
+    );
+    const { result } = renderHook(() => useHiddenHours());
+    expect(result.current.settings.startHour).toBe(1);
+    await act(async () => {});
+    expect(result.current.settings.startHour).toBe(22);
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY)!).endHour).toBe(7);
+  });
+
   it('returns default settings on first use', () => {
     const { result } = renderHook(() => useHiddenHours());
 

@@ -1,23 +1,20 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { createPortal } from 'react-dom';
 import { usePathname } from 'next/navigation';
 import { Keyboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useGlobalInput } from '@/lib/hooks/useGlobalInput';
+import { useHydrated } from '@/lib/hooks/useStoredValue';
 
 export function KeyboardToggleButton() {
   const { keyboardVisible, setKeyboardVisible, isInputFocused, isMobile, virtualKeyboardEnabled } =
     useGlobalInput();
   const pathname = usePathname();
-  const [mounted, setMounted] = useState(false);
-  const [hasTouchScreen, setHasTouchScreen] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-    setHasTouchScreen(navigator.maxTouchPoints > 0);
-  }, []);
+  const mounted = useHydrated();
+  const hasTouchScreen = mounted && navigator.maxTouchPoints > 0;
 
   // Hidden during the setup wizard — a first-run user has no context for
   // what this control is, and on devices that merely report touch support

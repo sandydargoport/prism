@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useCameraScanner } from '@/lib/hooks/useCameraScanner';
 import { toast } from '@/components/ui/use-toast';
+import { useHydrated } from '@/lib/hooks/useStoredValue';
 
 interface CameraScannerOverlayProps {
   onClose: () => void;
@@ -86,8 +87,9 @@ export function CameraScannerOverlay({ onClose, onScan }: CameraScannerOverlayPr
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
-  const [mounted, setMounted] = React.useState(false);
-  const [usePhotoMode, setUsePhotoMode] = React.useState(false);
+  const mounted = useHydrated();
+  // Without BarcodeDetector the overlay falls back to taking a photo.
+  const usePhotoMode = mounted && !hasBarcodeDetector();
   const [photoDecoding, setPhotoDecoding] = React.useState(false);
   // Self-dismiss: hide immediately on success without waiting for parent re-render
   const [dismissed, setDismissed] = React.useState(false);
@@ -112,11 +114,6 @@ export function CameraScannerOverlay({ onClose, onScan }: CameraScannerOverlayPr
       toast({ title: 'Camera error', description: msg, variant: 'destructive' });
     }, []),
   });
-
-  useEffect(() => {
-    setMounted(true);
-    setUsePhotoMode(!hasBarcodeDetector());
-  }, []);
 
   useEffect(() => {
     if (mounted && !usePhotoMode && videoRef.current && state === 'idle') {

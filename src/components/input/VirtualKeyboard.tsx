@@ -8,6 +8,7 @@ import 'simple-keyboard/build/css/index.css';
 import { Mic, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useGlobalInput } from '@/lib/hooks/useGlobalInput';
+import { useHydrated } from '@/lib/hooks/useStoredValue';
 import {
   KEYBOARD_HEIGHT_VH,
   KEYBOARD_MAX_HEIGHT_PX,
@@ -78,7 +79,7 @@ export function VirtualKeyboard() {
     activeField,
   } = useGlobalInput();
 
-  const [mounted, setMounted] = useState(false);
+  const mounted = useHydrated();
   const [isExiting, setIsExiting] = useState(false);
   const [visible, setVisible] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -144,8 +145,6 @@ export function VirtualKeyboard() {
   const evaluateAutoShift = useCallback((keyboardCaret?: number | null) => {
     setShiftState(autoShiftState(keyboardCaret));
   }, [setShiftState, autoShiftState]);
-
-  useEffect(() => { setMounted(true); }, []);
 
   // Manage enter/exit animation
   useEffect(() => {

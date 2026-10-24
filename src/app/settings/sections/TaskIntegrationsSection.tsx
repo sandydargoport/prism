@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import {
   Plus,
@@ -34,6 +34,7 @@ import {
   ConfirmDialog,
 } from './integrations/components';
 import { browserOAuthUsable } from '@/lib/utils/googleRedirectSupport';
+import { useOrigin } from '@/lib/hooks/useOrigin';
 
 interface TaskIntegrationsSectionProps {
   /** Hide the section header (h2 + description) when rendered inside a card sub-section. */
@@ -74,8 +75,7 @@ export function TaskIntegrationsSection({
   // Google's browser sign-in cannot work from a private address — it refuses
   // the redirect URI before showing a consent screen. Checked after mount so
   // the server render does not disagree with the client.
-  const [origin, setOrigin] = useState<string | null>(null);
-  useEffect(() => setOrigin(window.location.origin), []);
+  const origin = useOrigin();
   const googleBrowserFlowUnusable =
     providerFilter === 'google_tasks' && origin !== null && !browserOAuthUsable(origin);
 

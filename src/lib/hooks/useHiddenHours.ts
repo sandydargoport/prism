@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useMemo } from 'react';
+import { parseStored, readStored, useHydrated, useStoredString, writeStored } from './useStoredValue';
 import type { CalendarEvent } from '@/types/calendar';
 
 // localStorage key doubles as a fast-paint cache AND the migration source for
@@ -41,40 +42,36 @@ function normalize(parsed: unknown): HiddenHoursSettings {
   };
 }
 
+/** The cached settings as stored right now, or null when there are none. */
+function readCached(): HiddenHoursSettings | null {
+  const raw = readStored(CACHE_KEY);
+  return raw === null ? null : normalize(parseStored(CACHE_KEY, raw));
+}
+
 export function useHiddenHours() {
-  const [settings, setSettingsState] = useState<HiddenHoursSettings>(DEFAULT_SETTINGS);
-  const [loaded, setLoaded] = useState(false);
+  // The localStorage cache is read through the stored-value store, so the
+  // first render of a client-side mount already has it (the calendar does not
+  // flash default hours), and every mounted copy of this hook follows a change
+  // made through any other.
+  const raw = useStoredString(CACHE_KEY);
+  const settings = useMemo(
+    () => (raw === null ? DEFAULT_SETTINGS : normalize(parseStored(CACHE_KEY, raw))),
+    [raw],
+  );
+  // False on the server and while hydrating, when storage is not readable yet.
+  const loaded = useHydrated();
 
+  // The database value is authoritative: it replaces the cache when present.
   useEffect(() => {
-    // 1. Instant paint from the localStorage cache (so the calendar doesn't
-    //    flash default hours before the DB responds).
-    let cached: HiddenHoursSettings | null = null;
-    try {
-      const saved = localStorage.getItem(CACHE_KEY);
-      if (saved) {
-        cached = normalize(JSON.parse(saved));
-        setSettingsState(cached);
-      }
-    } catch {
-      // ignore
-    }
-    setLoaded(true);
-
-    // 2. Authoritative value from the database; reconcile + refresh the cache.
     let active = true;
     fetch('/api/settings')
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!active) return;
         const dbValue = data?.settings?.[SETTING_KEY];
+        const cached = readCached();
         if (dbValue && typeof dbValue === 'object') {
-          const norm = normalize(dbValue);
-          setSettingsState(norm);
-          try {
-            localStorage.setItem(CACHE_KEY, JSON.stringify(norm));
-          } catch {
-            // ignore
-          }
+          writeStored(CACHE_KEY, JSON.stringify(normalize(dbValue)));
         } else if (cached) {
           // One-time migration: DB has no value yet but this device had a local
           // one — push it up so it persists and reaches other devices.
@@ -93,23 +90,18 @@ export function useHiddenHours() {
   }, []);
 
   const setSettings = useCallback((newSettings: Partial<HiddenHoursSettings>) => {
-    setSettingsState((prev) => {
-      const updated = { ...prev, ...newSettings };
-      // Cache locally for instant paint next load.
-      try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify(updated));
-      } catch {
-        // ignore
-      }
-      // Persist to the DB (requires settings permission; a display-only session
-      // silently keeps the local value if the PATCH is refused).
-      fetch('/api/settings', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: SETTING_KEY, value: updated }),
-      }).catch(() => {});
-      return updated;
-    });
+    // Built on the store rather than the last render, so two calls in one
+    // batch build on each other.
+    const updated = { ...(readCached() ?? DEFAULT_SETTINGS), ...newSettings };
+    // Cache locally for instant paint next load.
+    writeStored(CACHE_KEY, JSON.stringify(updated));
+    // Persist to the DB (requires settings permission; a display-only session
+    // silently keeps the local value if the PATCH is refused).
+    fetch('/api/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: SETTING_KEY, value: updated }),
+    }).catch(() => {});
   }, []);
 
   // Toggle hidden state

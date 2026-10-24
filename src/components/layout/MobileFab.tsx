@@ -1,7 +1,7 @@
 'use client';
 import { Emoji } from '@/components/ui/Emoji';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/components/providers/ThemeProvider';
-import { loadHiddenCards, saveHiddenCards } from '@/components/dashboard/useMobileCardOrder';
+import { useHiddenCards } from '@/components/dashboard/useMobileCardOrder';
 import { useMobileLayout } from '@/lib/hooks/useMobileLayout';
 
 export interface MobileFabProps {
@@ -59,14 +59,10 @@ export function MobileFab({ user, onLogin, onLogout, uiHidden }: MobileFabProps)
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [showCards, setShowCards] = useState(false);
-  const [hiddenCards, setHiddenCards] = useState<string[]>([]);
+  const [hiddenCards, setHiddenCards] = useHiddenCards();
   const [reorderMode, setReorderMode] = useState(false);
   const { theme, setTheme } = useTheme();
   const { layout, setLayout } = useMobileLayout();
-
-  useEffect(() => {
-    setHiddenCards(loadHiddenCards());
-  }, []);
 
   const toggleReorderMode = useCallback(() => {
     const next = !reorderMode;
@@ -76,14 +72,10 @@ export function MobileFab({ user, onLogin, onLogout, uiHidden }: MobileFabProps)
   }, [reorderMode]);
 
   const toggleCard = useCallback((cardId: string) => {
-    setHiddenCards((prev) => {
-      const next = prev.includes(cardId)
-        ? prev.filter((id) => id !== cardId)
-        : [...prev, cardId];
-      saveHiddenCards(next);
-      return next;
-    });
-  }, []);
+    setHiddenCards((prev) =>
+      prev.includes(cardId) ? prev.filter((id) => id !== cardId) : [...prev, cardId],
+    );
+  }, [setHiddenCards]);
 
   const cycleTheme = () => {
     if (theme === 'light') setTheme('dark');

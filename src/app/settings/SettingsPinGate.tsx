@@ -10,6 +10,7 @@ import { UserAvatar } from '@/components/ui/avatar';
 import { useFamily, useAuth } from '@/components/providers';
 import { DEFAULT_PIN_LENGTH } from '@/lib/constants';
 import { pinErrorMessage } from '@/lib/utils/pinErrorMessage';
+import { useHydrated } from '@/lib/hooks/useStoredValue';
 import { SettingsView } from './SettingsView';
 
 type GateState = 'checking' | 'prompt' | 'verified';
@@ -102,15 +103,12 @@ function SettingsPinPrompt({
   const [error, setError] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isShaking, setIsShaking] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  // The portal needs document.body, which the server render does not have.
+  const mounted = useHydrated();
 
   // Every pad requires exactly the SELECTED parent's own PIN length, not a
   // family-wide constant — members can have different-length PINs.
   const pinLength = selectedParent?.pinLength ?? DEFAULT_PIN_LENGTH;
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Auto-select if only one parent
   useEffect(() => {
