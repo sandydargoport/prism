@@ -152,7 +152,7 @@ Active days aren't currently editable from the route dialog, so routes that only
 
 Prism can also take live bus positions from a **position provider**: a small program you run that reads positions from your bus service and posts them to Prism. Prism does not include a provider for any particular vendor. It defines the format, stores what arrives, and keeps the history.
 
-While a linked trip is running, the Bus Tracker widget shows a map with the bus moving along today's route, each upcoming stop labelled with its projected time, and a panel with the arrival time at your stop, how late the bus is running, the next stop, the bus and driver, and when the last update arrived. A small widget shows the panel only. With no live data, the widget shows the route's scheduled time as before.
+While a linked trip is running, the Bus Tracker widget fills with a map of the bus moving along today's route, each upcoming stop labelled with its projected time. A card in the map's corner shows the arrival time at your stop, how late the bus is running, how many stops are done and when the last update arrived; from 480 x 360 px it also shows the next stop, the bus and the driver. Below 200 x 240 px the widget shows the card alone, with no map. With no live data, the widget shows the route's scheduled time as before.
 
 Projected times start from the provider's planned stop times, moved by how late or early the bus reached its most recent stop. Before the first stop, the start of the trip sets it: a bus that leaves the depot late, or is still parked past its planned start, moves every stop later at once, since a late start is seldom made up. They never show a time earlier than now.
 

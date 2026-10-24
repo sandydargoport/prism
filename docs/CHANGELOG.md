@@ -4,14 +4,22 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+Ships two database migrations, applied automatically on start: live bus positions, and bus trip history.
+
 ### Added
-- **The bus card counts every stop on the route.** When the bus provider reports progress, the **Stops** row shows how far along the whole route the bus is ("14 of 22") instead of only the stops Prism tracks ("1 of 2"). The row is now on the small card over the map too, so every layout with a map shows it.
+- **Live bus tracking on a map.** Prism can take live positions from a position provider: a small program you run that reads them from your bus service and posts them to Prism with a token that can do nothing else. Prism includes no provider for any particular company; *docs/features/BUS.md* describes the format, and `scripts/fake-bus-provider.ts` is a working example. While a trip runs, the Bus Tracker widget fills with a map: the route driven so far as a solid line, the road still to come as a dashed one, each stop with its actual or projected time, and the bus as a dot pointing the way it is heading. A card over the map shows the arrival time at your stop, how late the bus is running, how many stops are done and when the last update came in; a large widget adds the next stop, the bus and the driver. A small widget shows the card alone. The camera follows the bus and keeps the road ahead in view, or shows the whole route, set under *Settings → Bus Tracking → Live Tracking*.
+- **Bus trip history and arrival time accuracy.** Each finished trip is kept as a one-line summary: whether it ran, stops reached, when it started and finished, and the weather. The arrival time shown for your stop is saved at 20, 15, 10, 5 and 2 minutes out and compared with when the bus actually arrived; *Live Tracking → Arrival time accuracy* shows the typical miss at each lead time. How long positions and history are kept is a setting.
+- **Wishes opens as one combined list on both tabs.** Each person used to appear twice on **Gift Ideas**, in the filter row and again as a column header. *Group by Person* still gives the side-by-side columns, and a new **Hide completed** (Wishes) or **Hide purchased** (Gift Ideas) in the header menu matches Tasks and Shopping.
 
 ### Fixed
-- **An afternoon bus line starts at the school.** On a trip whose first stop is the school, the solid line on the map starts where the bus left its wait there. It used to include the drive to the school before the trip began. Until the bus reaches the school, the map shows the marker and the road ahead only.
+- **The dashboard fills the screen on first load.** A freshly loaded page could draw the dashboard as a thin strip, with every widget squashed into it, until the window was resized.
 - **A bus route appears when its time comes, without a reload.** A display loaded outside a route's window showed no bus until someone reloaded the page. The widget now checks the time every minute, and looks for newly added routes every 5 minutes. ([#596](https://github.com/sandydargoport/prism/issues/596))
 - **A dashboard with no screensaver of its own shows the default one.** It used to show whichever screensaver the previously opened dashboard had. ([#688](https://github.com/sandydargoport/prism/issues/688))
 - **Screensaver widgets show at the size they were given in the editor.** A layout that did not reach the right or bottom edge of the editor's Screen frame was scaled up, so every widget came out bigger and lower than it was placed. **Preview** in the screensaver editor now shows what the screensaver will draw. ([#689](https://github.com/sandydargoport/prism/issues/689))
+
+### Under the hood
+- A `fix:` or `feat:` pull request now gets a **Regression test** check, which asks for a test that fails if the change is reverted, or a line saying why there is none. CONTRIBUTING explains which kind of test fits.
+- The MCP server's `hono` dependency moves to 4.13.13.
 
 ## [1.30.1] – 2026-10-20
 
