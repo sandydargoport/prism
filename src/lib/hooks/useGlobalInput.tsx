@@ -47,6 +47,13 @@ interface GlobalInputContextValue {
    * "none" to keep the OS keyboard down (#498). Read by auto-capitalization.
    */
   declaredInputMode: (el: HTMLElement) => string | null;
+  /**
+   * The field the keyboard is serving, as state, for anything that renders
+   * from it. The refs above hold the same element for event handlers; a ref
+   * alone does not re-render when focus moves between fields while the
+   * keyboard stays open.
+   */
+  activeField: HTMLElement | null;
 }
 
 const GlobalInputContext = createContext<GlobalInputContextValue | null>(null);
@@ -94,6 +101,7 @@ export function GlobalInputProvider({ children }: { children: React.ReactNode })
 
   const activeInputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const activeContentEditableRef = useRef<HTMLElement | null>(null);
+  const [activeField, setActiveField] = useState<HTMLElement | null>(null);
   // Scroll and padding changes made to lift the field above the keyboard (#499).
   const revealRecordsRef = useRef<RevealRecord[]>([]);
   // The field currently carrying inputmode="none", and its attribute before.
@@ -378,6 +386,7 @@ export function GlobalInputProvider({ children }: { children: React.ReactNode })
         releaseOsKeyboard();
         activeInputRef.current = null;
         activeContentEditableRef.current = null;
+        setActiveField(null);
         setIsInputFocused(false);
         setKeyboardVisibleState(false);
         return;
@@ -389,6 +398,7 @@ export function GlobalInputProvider({ children }: { children: React.ReactNode })
         activeInputRef.current = target as HTMLInputElement | HTMLTextAreaElement;
         activeContentEditableRef.current = null;
       }
+      setActiveField(target as HTMLElement);
       setIsInputFocused(true);
       if (prismKeyboardApplies()) {
         const host = editableHost(target);
@@ -425,6 +435,7 @@ export function GlobalInputProvider({ children }: { children: React.ReactNode })
       releaseOsKeyboard();
       activeInputRef.current = null;
       activeContentEditableRef.current = null;
+      setActiveField(null);
       setIsInputFocused(false);
       setKeyboardVisibleState(false);
       releaseView(!textInjectedWhileOpen.current);
@@ -491,10 +502,11 @@ export function GlobalInputProvider({ children }: { children: React.ReactNode })
     stopListening: speech.stop,
     virtualKeyboardEnabled,
     declaredInputMode,
+    activeField,
   }), [
     keyboardVisible, speech.isListening, speech.start, speech.stop,
     isInputFocused, isMobile, setKeyboardVisible, injectText, virtualKeyboardEnabled,
-    declaredInputMode,
+    declaredInputMode, activeField,
   ]);
 
   return (

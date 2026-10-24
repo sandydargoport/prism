@@ -60,16 +60,6 @@ const eslintConfig = [
       'react-hooks/preserve-manual-memoization': 'error',
     },
   },
-  // refs is cleared everywhere but these, which are their own batches of #447.
-  // Each comes off this list as it is fixed.
-  {
-    files: [
-      'src/components/input/VirtualKeyboard.tsx',
-    ],
-    rules: {
-      'react-hooks/refs': 'warn',
-    },
-  },
 
   {
     // `next lint` only ever walked the source directories. Calling eslint
