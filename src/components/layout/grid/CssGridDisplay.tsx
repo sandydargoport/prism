@@ -26,6 +26,7 @@ export function CssGridDisplay({
   targetRows,
   designOrientation,
   containMode = false,
+  screenFrame,
   className,
 }: CssGridDisplayProps) {
   const { containerRef, cellSize: widthCellSize, width, top, zoom, remeasure } = useSquareCells(cols, containerPadding, margin, fillHeight);
@@ -64,8 +65,12 @@ export function CssGridDisplay({
       if (w.x + w.w > maxCol) maxCol = w.x + w.w;
       if (w.y + w.h > maxRow) maxRow = w.y + w.h;
     }
+    if (containMode && screenFrame) {
+      maxCol = Math.max(maxCol, screenFrame.cols);
+      maxRow = Math.max(maxRow, screenFrame.rows);
+    }
     return { fitCols: maxCol, fitRows: maxRow };
-  }, [visibleWidgets]);
+  }, [visibleWidgets, containMode, screenFrame]);
 
   const screenWide = viewportWidth >= viewportHeight;
   const mode = resolveFitMode({

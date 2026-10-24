@@ -59,6 +59,13 @@ export interface CssGridDisplayProps {
    * scale to fit any screen without clipping or distortion.
    */
   containMode?: boolean;
+  /**
+   * Contain mode only: the editor's Screen frame, in grid units. The canvas is
+   * at least this big, so a layout designed inside the frame maps the frame,
+   * not the widgets' own bounding box, onto the screen. Without it, widgets
+   * that stop short of the frame's edge were scaled up to fill the screen.
+   */
+  screenFrame?: { cols: number; rows: number };
   className?: string;
 }
 
@@ -73,6 +80,11 @@ export interface LayoutGridEditorProps {
   bottomOffset?: number;
   minVisibleRows?: number;
   theme?: EditorTheme;
+  /**
+   * How Preview maps the design onto the screen. 'contain' is the screensaver's
+   * own geometry, so Preview shows what the live screensaver will draw.
+   */
+  previewFit?: 'stretch' | 'contain';
   gridHelperText?: string;
   className?: string;
   screenGuideOrientation?: 'landscape' | 'portrait';

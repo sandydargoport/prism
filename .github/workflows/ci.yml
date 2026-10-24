@@ -257,6 +257,11 @@ jobs:
           TZ: Asia/Tokyo
         run: npx playwright test e2e/calendar-geometry.spec.ts --reporter=list
 
+      # The screensaver editor against the live screensaver: the same widget
+      # measured in both, landscape and portrait (#689).
+      - name: Run screensaver geometry suite
+        run: npx playwright test e2e/screensaver-geometry.spec.ts --reporter=list
+
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2

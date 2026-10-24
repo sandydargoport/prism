@@ -35,6 +35,7 @@ export function LayoutGridEditor({
   bottomOffset = 0,
   minVisibleRows = 0,
   theme = DASHBOARD_THEME,
+  previewFit = 'stretch',
   gridHelperText,
   className,
   screenGuideOrientation: screenGuideOrientationProp,
@@ -644,20 +645,38 @@ export function LayoutGridEditor({
   // instead of a square-cell, letterboxed approximation. (The old multi-screen
   // safe-zone preview lives on in git history / the archived guide code if a
   // fixed-aspect fit is ever needed again for odd screens like iPad/e-readers.)
+  //
+  // No `className` here: the live display has no side margins, so a preview
+  // inside them was narrower than the screen it claims to show.
   if (isEditable && measureMode) {
+    const frame = SAFE_ZONES[screenGuideOrientation]?.[0];
     return (
-      <div className={className || ''}>
-        <CssGridDisplay
-          layout={stableLayout}
-          renderWidget={renderWidget}
-          margin={margin}
-          containerPadding={containerPadding}
-          cols={cols}
-          headerOffset={measureHideNav ? 0 : 50}
-          bottomOffset={measureHideNav ? 0 : bottomOffset}
-          targetRows={displayTargetRows}
-          designOrientation={screenGuideOrientation}
-        />
+      <div>
+        {previewFit === 'contain' ? (
+          <CssGridDisplay
+            layout={stableLayout}
+            renderWidget={renderWidget}
+            margin={margin}
+            containerPadding={containerPadding}
+            cols={cols}
+            containMode
+            screenFrame={frame}
+            headerOffset={measureHideNav ? 0 : 50}
+            bottomOffset={measureHideNav ? 0 : bottomOffset}
+          />
+        ) : (
+          <CssGridDisplay
+            layout={stableLayout}
+            renderWidget={renderWidget}
+            margin={margin}
+            containerPadding={containerPadding}
+            cols={cols}
+            headerOffset={measureHideNav ? 0 : 50}
+            bottomOffset={measureHideNav ? 0 : bottomOffset}
+            targetRows={displayTargetRows}
+            designOrientation={screenGuideOrientation}
+          />
+        )}
       </div>
     );
   }

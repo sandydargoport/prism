@@ -412,6 +412,7 @@ export function Dashboard({
             bottomOffset={bottomOffset}
             minVisibleRows={8}
             theme={SCREENSAVER_THEME}
+            previewFit="contain"
             gridHelperText="Drag widgets to reposition &bull; Scroll to see more"
             className="mx-4"
             screenGuideOrientation={screenGuideOrientation}
