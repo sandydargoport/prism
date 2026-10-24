@@ -118,12 +118,6 @@ export function PinForm({ pin, initialLatLng, parentId, pinType = 'location', ch
     return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
   }, [inputValue, hasLocation, searchLocation]);
 
-  useEffect(() => {
-    if (isNP && selectedPark && !hasLocation) {
-      searchLocation(selectedPark + ' National Park');
-    }
-  }, [selectedPark]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // Stop geocode search
   useEffect(() => {
     if (stopTimer.current) clearTimeout(stopTimer.current);
@@ -163,6 +157,7 @@ export function PinForm({ pin, initialLatLng, parentId, pinType = 'location', ch
     setInputValue(parkName);
     setNpSearch('');
     clearLocation();
+    searchLocation(parkName + ' National Park');
   };
 
   const selectStopResult = (result: GeocodeResult) => {

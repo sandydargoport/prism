@@ -90,8 +90,10 @@ export function useTasksViewData() {
     }
   }, [refreshTasks, activeUser]);
 
-  // Auto-sync on mount
-  useFetchOnMount(autoSync);
+  // Auto-sync on mount. Wrapped so the hook's abort signal is not passed in as
+  // `force`.
+  const autoSyncOnMount = useCallback(() => autoSync(), [autoSync]);
+  useFetchOnMount(autoSyncOnMount);
 
   // Background sync interval with visibility-based pause
   useEffect(() => {

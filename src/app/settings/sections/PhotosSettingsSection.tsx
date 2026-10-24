@@ -80,19 +80,24 @@ export function PhotosSettingsSection() {
   }, []);
 
   // Load folders whenever picker opens or stack changes
-  React.useEffect(() => {
+  const loadFolders = React.useCallback(async () => {
     if (!pickingFolder) return;
     const parentId = folderStack.at(-1)?.id;
     setFoldersLoading(true);
     const url = parentId
       ? `/api/photo-sources/${pickingFolder}/folders?parentId=${parentId}`
       : `/api/photo-sources/${pickingFolder}/folders`;
-    fetch(url)
-      .then((r) => r.ok ? r.json() : { folders: [] })
-      .then((d) => setFolders(d.folders || []))
-      .catch(() => setFolders([]))
-      .finally(() => setFoldersLoading(false));
+    try {
+      const r = await fetch(url);
+      const d = r.ok ? await r.json() : { folders: [] };
+      setFolders(d.folders || []);
+    } catch {
+      setFolders([]);
+    } finally {
+      setFoldersLoading(false);
+    }
   }, [pickingFolder, folderStack]);
+  useFetchOnMount(loadFolders);
 
   const openFolderPicker = (sourceId: string) => {
     setPickingFolder(sourceId);

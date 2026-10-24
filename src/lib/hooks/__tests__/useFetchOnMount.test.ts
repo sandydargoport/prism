@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import { useCallback, useState } from 'react';
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { useFetchOnMount } from '../useFetchOnMount';
 
 describe('useFetchOnMount', () => {
@@ -36,5 +36,26 @@ describe('useFetchOnMount', () => {
       return items;
     });
     await waitFor(() => expect(result.current).toEqual(['milk']));
+  });
+
+  it('a slow earlier response does not land on top of a newer one', async () => {
+    const resolvers: Record<string, (v: string) => void> = {};
+    const { result, rerender } = renderHook(
+      ({ q }) => {
+        const [shown, setShown] = useState('');
+        const load = useCallback(async (signal: AbortSignal) => {
+          const data = await new Promise<string>((r) => { resolvers[q] = r; });
+          if (!signal.aborted) setShown(data);
+        }, [q]);
+        useFetchOnMount(load);
+        return shown;
+      },
+      { initialProps: { q: 'first' } },
+    );
+    rerender({ q: 'second' });
+    act(() => resolvers.second!('second result'));
+    await waitFor(() => expect(result.current).toBe('second result'));
+    await act(async () => resolvers.first!('first result'));
+    expect(result.current).toBe('second result');
   });
 });

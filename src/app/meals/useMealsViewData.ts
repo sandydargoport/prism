@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
 import { format, startOfWeek, addDays, parseISO } from 'date-fns';
 import { toast } from '@/components/ui/use-toast';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
@@ -49,10 +50,13 @@ export function useMealsViewData() {
     }
   }, [weekOfString, weekEndString]);
 
-  useEffect(() => {
+  // Show the loading state only when the week changes, not on the refetch
+  // that follows each edit.
+  const loadWeek = useCallback(async () => {
     setLoading(true);
-    fetchMeals();
+    await fetchMeals();
   }, [fetchMeals]);
+  useFetchOnMount(loadWeek);
 
   const goToPreviousWeek = useCallback(() => setCurrentWeek(prev => addDays(prev, -7)), []);
   const goToNextWeek = useCallback(() => setCurrentWeek(prev => addDays(prev, 7)), []);

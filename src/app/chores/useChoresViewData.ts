@@ -10,6 +10,7 @@ import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { usePersistedState, useSessionScopedState, oneOf, isBoolean, isStringArray } from '@/lib/hooks/usePersistedState';
 import { useNow } from '@/lib/hooks/useNow';
 import type { Chore } from '@/types';
+import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
 
 export interface ChoreCompletion {
   id: string;
@@ -77,11 +78,11 @@ export function useChoresViewData() {
     }
   }, []);
 
-  useEffect(() => {
-    if (showCompletions && completions.length === 0) {
-      fetchCompletions();
-    }
+  // Load the history the first time it is shown.
+  const loadCompletionsWhenShown = useCallback(async () => {
+    if (showCompletions && completions.length === 0) await fetchCompletions();
   }, [showCompletions, completions.length, fetchCompletions]);
+  useFetchOnMount(loadCompletionsWhenShown);
 
   useEffect(() => {
     if (apiChores.length > 0) {

@@ -10,6 +10,7 @@ import {
 } from '@/lib/community/index';
 import type { CommunityIndexEntry } from '@/lib/community/validateLayout';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
+import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
 
 interface CommunityGalleryProps {
   mode: 'dashboard' | 'screensaver';
@@ -49,17 +50,14 @@ export function CommunityGallery({ mode, onApplyLayout, currentOrientation }: Co
     ...(search ? { search } : {}),
   }), [mode, orientation, search]);
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadIndex = useCallback(async (signal: AbortSignal) => {
     setLoadingIndex(true);
-    filterCommunityLayouts(filters).then(result => {
-      if (!cancelled) {
-        setLayouts(result);
-        setLoadingIndex(false);
-      }
-    });
-    return () => { cancelled = true; };
+    const result = await filterCommunityLayouts(filters);
+    if (signal.aborted) return;
+    setLayouts(result);
+    setLoadingIndex(false);
   }, [filters]);
+  useFetchOnMount(loadIndex);
 
   const handleUseLayout = useCallback(async (entry: CommunityIndexEntry) => {
     setLoading(entry.id);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { CheckCircle2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { SyncReviewModal, type SyncReviewChange } from '@/components/sync/SyncReviewModal';
+import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
 
 /** Which entity this sync drives. Both share the same connections. */
 export type SyncEntity = 'recipes' | 'meals';
@@ -95,7 +96,7 @@ export function RecipeSyncModal({ entity, onClose, onSynced }: RecipeSyncModalPr
   const [applying, setApplying] = useState(false);
   const [result, setResult] = useState<string | null>(null);
 
-  const loadSources = async () => {
+  const loadSources = useCallback(async () => {
     try {
       const res = await fetch('/api/recipe-sources');
       if (res.ok) {
@@ -107,11 +108,9 @@ export function RecipeSyncModal({ entity, onClose, onSynced }: RecipeSyncModalPr
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadSources();
   }, []);
+
+  useFetchOnMount(loadSources);
 
   const handleConnect = async () => {
     if (!serverUrl.trim() || !token.trim()) return;

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
 import { ClipboardList, Filter, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -99,11 +100,9 @@ export function ActivityLogSection() {
     }
   }, [entityTypeFilter, userFilter]);
 
-  // Reset and fetch when filters change
-  useEffect(() => {
-    setPage(1);
-    fetchLogs(1, false);
-  }, [fetchLogs]);
+  // Fetch the first page on mount and whenever the filters change.
+  const fetchFirstPage = useCallback(() => fetchLogs(1, false), [fetchLogs]);
+  useFetchOnMount(fetchFirstPage);
 
   const loadMore = () => {
     const nextPage = page + 1;
@@ -132,7 +131,7 @@ export function ActivityLogSection() {
             <Filter className="h-4 w-4 text-muted-foreground" />
             <select
               value={entityTypeFilter}
-              onChange={(e) => setEntityTypeFilter(e.target.value)}
+              onChange={(e) => { setEntityTypeFilter(e.target.value); setPage(1); }}
               className="bg-background border border-border rounded-md px-3 py-1.5 text-sm"
             >
               {ENTITY_TYPE_OPTIONS.map((opt) => (
@@ -143,7 +142,7 @@ export function ActivityLogSection() {
             </select>
             <select
               value={userFilter}
-              onChange={(e) => setUserFilter(e.target.value)}
+              onChange={(e) => { setUserFilter(e.target.value); setPage(1); }}
               className="bg-background border border-border rounded-md px-3 py-1.5 text-sm"
             >
               <option value="">All members</option>

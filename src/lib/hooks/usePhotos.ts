@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
+import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
 import { useVisibilityPolling } from '@/lib/hooks/useVisibilityPolling';
 import { navCacheGet, navCacheSet } from '@/lib/utils/navCache';
 
@@ -186,10 +187,7 @@ export function usePhotos(options: UsePhotosOptions = {}): UsePhotosResult {
     }
   }, []);
 
-  useEffect(() => {
-    offsetRef.current = 0;
-    fetchPhotos(0, false);
-  }, [fetchPhotos]);
+  useFetchOnMount(refresh);
 
   // Stable wrapper so useVisibilityPolling gets a memoized callback
   const pollPhotos = useCallback(() => { fetchPhotos(0, false); }, [fetchPhotos]);

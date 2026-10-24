@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
+import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
 
 export interface WifiConfig {
   ssid: string;
@@ -40,13 +41,10 @@ export function useWifiConfig(options: { enabled?: boolean } = {}) {
     }
   }, []);
 
-  useEffect(() => {
-    if (enabled) {
-      fetchConfig();
-    } else {
-      setLoading(false);
-    }
+  const loadWhenEnabled = useCallback(async () => {
+    if (enabled) await fetchConfig();
   }, [fetchConfig, enabled]);
+  useFetchOnMount(loadWhenEnabled);
 
   const saveConfig = useCallback(async (newConfig: WifiConfig): Promise<{ success: boolean; error?: string }> => {
     try {
@@ -82,7 +80,8 @@ export function useWifiConfig(options: { enabled?: boolean } = {}) {
 
   return {
     config,
-    loading,
+    // Nothing is being fetched while disabled.
+    loading: enabled && loading,
     saving,
     error,
     saveConfig,

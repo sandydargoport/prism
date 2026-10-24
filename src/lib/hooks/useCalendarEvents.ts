@@ -245,10 +245,9 @@ export function useCalendarEvents(
     }
   }, [enabled, autoSyncMinutes, syncCalendars]);
 
-  // Initial sync check on mount / when enabled changes
-  useEffect(() => {
-    if (enabled && autoSyncMinutes > 0) checkAndSync();
-  }, [checkAndSync, enabled, autoSyncMinutes]);
+  // Initial sync check on mount / when enabled changes. checkAndSync returns
+  // early when auto-sync is off.
+  useFetchOnMount(checkAndSync);
 
   // Periodic sync check — pauses when tab is hidden
   useVisibilityPolling(checkAndSync, enabled && autoSyncMinutes > 0 ? autoSyncMinutes * 60 * 1000 : 0);

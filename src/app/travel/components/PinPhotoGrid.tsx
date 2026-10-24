@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Image as ImageIcon, MapPin, RefreshCw } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { floatingUtcToDateKey } from '@/lib/utils/zonedDate';
@@ -15,6 +15,7 @@ function takenDate(takenAt: string): Date {
   return parseISO(floatingUtcToDateKey(new Date(takenAt)));
 }
 import { cn } from '@/lib/utils';
+import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
 
 interface NearbyPhoto {
   id: string;
@@ -38,7 +39,7 @@ export function PinPhotoGrid({ pinId, radiusKm }: PinPhotoGridProps) {
   const [error, setError] = useState(false);
   const [lightbox, setLightbox] = useState<NearbyPhoto | null>(null);
 
-  const fetchPhotos = async () => {
+  const fetchPhotos = useCallback(async () => {
     setLoading(true);
     setError(false);
     try {
@@ -52,11 +53,9 @@ export function PinPhotoGrid({ pinId, radiusKm }: PinPhotoGridProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [pinId]);
 
-  useEffect(() => {
-    fetchPhotos();
-  }, [pinId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useFetchOnMount(fetchPhotos);
 
   if (loading) {
     return (

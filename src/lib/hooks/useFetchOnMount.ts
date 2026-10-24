@@ -16,9 +16,15 @@ import { useEffect } from 'react';
  * (loading, syncing) before the first `await` is part of the request and fine.
  * What does not belong here is state worked out from props or other state:
  * that is the real case the rule catches, and it belongs in the render.
+ *
+ * `signal` is aborted when `load` changes or the component unmounts. A loader
+ * whose inputs change quickly (a search box) checks it before setting state,
+ * so a slow earlier response cannot land on top of a newer one.
  */
-export function useFetchOnMount(load: () => Promise<unknown>): void {
+export function useFetchOnMount(load: (signal: AbortSignal) => Promise<unknown>): void {
   useEffect(() => {
-    void load();
+    const controller = new AbortController();
+    void load(controller.signal);
+    return () => controller.abort();
   }, [load]);
 }

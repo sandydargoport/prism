@@ -26,6 +26,7 @@
 
 import * as React from 'react';
 import { createContext, useContext, useState, useCallback, useEffect, useEffectEvent } from 'react';
+import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
 import { QuickPinModal, type QuickPinMember } from '@/components/auth';
 import { useVisibilityPolling } from '@/lib/hooks/useVisibilityPolling';
 
@@ -105,11 +106,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   // Check for existing session on mount
-  useEffect(() => {
-    sessionCheckPromiseRef.current = checkSession().finally(() => {
+  const checkInitialSession = useCallback(() => {
+    const check = checkSession().finally(() => {
       setSessionChecked(true);
     });
+    sessionCheckPromiseRef.current = check;
+    return check;
   }, [checkSession]);
+  useFetchOnMount(checkInitialSession);
 
   // Periodic session validation (every 5 minutes)
   const periodicCheck = useCallback(() => {
