@@ -15,7 +15,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 import {
@@ -37,6 +37,7 @@ import {
   UserAvatar,
 } from '@/components/ui';
 import { useFamily } from '@/components/providers';
+import { useResetOn } from '@/lib/hooks/useResetOn';
 
 /**
  * Task data returned after creation
@@ -94,17 +95,16 @@ export function AddTaskModal({
   // Family members from context
   const { members: familyMembers, loading: loadingMembers } = useFamily();
 
-  // Reset form when modal closes
-  useEffect(() => {
-    if (!open) {
-      setTitle('');
-      setDescription('');
-      setAssignedTo(defaultAssignee || '');
-      setDueDate('');
-      setPriority('');
-      setError(null);
-    }
-  }, [open, defaultAssignee]);
+  // Start each opening from a blank form, with the assignee current then.
+  useResetOn(open, () => {
+    if (!open) return;
+    setTitle('');
+    setDescription('');
+    setAssignedTo(defaultAssignee || '');
+    setDueDate('');
+    setPriority('');
+    setError(null);
+  });
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

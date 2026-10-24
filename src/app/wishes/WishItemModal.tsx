@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -11,6 +11,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import type { WishItem } from '@/types';
+import { useResetOn } from '@/lib/hooks/useResetOn';
 
 interface WishItemModalProps {
   open: boolean;
@@ -25,13 +26,14 @@ export function WishItemModal({ open, onOpenChange, onSave, editingItem }: WishI
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (open) {
-      setName(editingItem?.name || '');
-      setUrl(editingItem?.url || '');
-      setNotes(editingItem?.notes || '');
-    }
-  }, [open, editingItem]);
+  // Fill the form when the modal opens. Keyed by the item's id, so a refreshed
+  // copy of the same item does not overwrite what is being typed.
+  useResetOn(open ? (editingItem?.id ?? 'new') : null, () => {
+    if (!open) return;
+    setName(editingItem?.name || '');
+    setUrl(editingItem?.url || '');
+    setNotes(editingItem?.notes || '');
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

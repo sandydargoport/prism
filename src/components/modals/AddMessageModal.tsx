@@ -15,7 +15,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Loader2, Pin, AlertTriangle, Clock } from 'lucide-react';
 import {
   Dialog,
@@ -36,6 +36,7 @@ import {
   Checkbox,
 } from '@/components/ui';
 import { useFamily } from '@/components/providers';
+import { useResetOn } from '@/lib/hooks/useResetOn';
 
 /**
  * Message data returned after creation
@@ -81,9 +82,10 @@ export function AddMessageModal({
   onMessageCreated,
   currentUser,
 }: AddMessageModalProps) {
-  // Form state — author defaults to the current user when one is provided.
+  // Form state
   const [message, setMessage] = useState('');
-  const [authorId, setAuthorId] = useState<string>(currentUser?.id || '');
+  // The author someone picked, or '' for the default.
+  const [pickedAuthorId, setPickedAuthorId] = useState<string>('');
   const [pinned, setPinned] = useState(false);
   const [important, setImportant] = useState(false);
   const [expiresIn, setExpiresIn] = useState<string>('never');
@@ -98,32 +100,21 @@ export function AddMessageModal({
   // Determine if author is locked (currentUser provided)
   const isAuthorLocked = !!currentUser;
 
-  // Reset form when modal closes or currentUser changes
-  useEffect(() => {
-    if (!open) {
-      setMessage('');
-      setAuthorId(currentUser?.id || '');
-      setPinned(false);
-      setImportant(false);
-      setExpiresIn('never');
-      setError(null);
-    }
-  }, [open, currentUser]);
+  // The current user when there is one (and then it cannot be changed),
+  // otherwise the pick, otherwise the first member once the family loads.
+  // Derived rather than copied in by effects, so it is right on every render.
+  const authorId = currentUser?.id || pickedAuthorId || familyMembers[0]?.id || '';
 
-  // Update authorId when currentUser changes
-  useEffect(() => {
-    if (currentUser) {
-      setAuthorId(currentUser.id);
-    }
-  }, [currentUser]);
-
-  // Auto-select first member if none selected and members are loaded
-  useEffect(() => {
-    const firstMember = familyMembers[0];
-    if (!authorId && !isAuthorLocked && firstMember) {
-      setAuthorId(firstMember.id);
-    }
-  }, [authorId, isAuthorLocked, familyMembers]);
+  // Start each opening from a blank form.
+  useResetOn(open, () => {
+    if (!open) return;
+    setMessage('');
+    setPickedAuthorId('');
+    setPinned(false);
+    setImportant(false);
+    setExpiresIn('never');
+    setError(null);
+  });
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -217,7 +208,7 @@ export function AddMessageModal({
               </div>
             ) : (
               // Show dropdown for author selection
-              <Select value={authorId} onValueChange={setAuthorId}>
+              <Select value={authorId} onValueChange={setPickedAuthorId}>
                 <SelectTrigger id="author">
                   <SelectValue placeholder={loadingMembers ? 'Loading...' : 'Select person'} />
                 </SelectTrigger>

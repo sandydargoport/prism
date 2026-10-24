@@ -8,6 +8,7 @@ import { UserAvatar } from '@/components/ui/avatar';
 import { useFamily } from '@/components/providers';
 import { DEFAULT_PIN_LENGTH } from '@/lib/constants';
 import { pinErrorMessage } from '@/lib/utils/pinErrorMessage';
+import { useResetOn } from '@/lib/hooks/useResetOn';
 
 interface ExitAwayModeModalProps {
   open: boolean;
@@ -45,13 +46,12 @@ export function ExitAwayModeModal({
   const pinLength = selectedParent?.pinLength ?? DEFAULT_PIN_LENGTH;
 
   // Reset state when modal closes
-  useEffect(() => {
-    if (!open) {
-      setSelectedParent(null);
-      setPin([]);
-      setError(null);
-    }
-  }, [open]);
+  useResetOn(open, () => {
+    if (!open) return;
+    setSelectedParent(null);
+    setPin([]);
+    setError(null);
+  });
 
   // pinLength must be a dependency — it changes per selected parent (their
   // own configured length), not just once per session.

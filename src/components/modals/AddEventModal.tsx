@@ -15,7 +15,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Loader2, MapPin, AlignLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useTranslations } from 'next-intl';
@@ -43,6 +43,7 @@ import {
   SelectValue,
   Switch,
 } from '@/components/ui';
+import { useResetOn } from '@/lib/hooks/useResetOn';
 
 /**
  * Event data returned after creation
@@ -220,7 +221,11 @@ export function AddEventModal({
   const [allDay, setAllDay] = useState(false);
   const [recurrenceRule, setRecurrenceRule] = useState('');
   const [reminderMinutes, setReminderMinutes] = useState<number | ''>('');
-  const [calendarSourceId, setCalendarSourceId] = useState<string>('');
+  // The calendar someone picked, or '' to follow the default. Derived rather
+  // than copied: the calendars load after the modal can already be open, and
+  // a new event has to land on the default once it is known.
+  const [pickedCalendarId, setPickedCalendarId] = useState<string>('');
+  const calendarSourceId = pickedCalendarId || defaultCalendarId;
   const [showMore, setShowMore] = useState(false);
 
   // Loading/error state
@@ -267,9 +272,17 @@ export function AddEventModal({
     }
   }
 
-  // Populate form when opening
-  useEffect(() => {
-    if (open && event) {
+  // Fill the form when the modal opens: from the event when editing, from the
+  // clicked day or today otherwise. Keyed by the event's id rather than the
+  // object, so a refreshed copy of the same event does not overwrite what is
+  // being typed. The timezone is in the key because the times are shown in it.
+  const fillKey = open
+    ? `${event?.id ?? 'new'}|${defaultDate?.getTime() ?? ''}|${displayTimezone}`
+    : null;
+  useResetOn(fillKey, () => {
+    if (!open) return;
+    setError(null);
+    if (event) {
       setTitle(event.title);
       setDescription(event.description || '');
       setLocation(event.location || '');
@@ -294,34 +307,20 @@ export function AddEventModal({
       }
       setRecurrenceRule(event.recurrenceRule || '');
       setReminderMinutes(event.reminderMinutes ?? '');
-      setCalendarSourceId(event.calendarSourceId || defaultCalendarId);
+      setPickedCalendarId(event.calendarSourceId || '');
       setShowMore(!!(event.description || event.location || event.reminderMinutes || event.recurrenceRule));
-    } else if (open && defaultDate) {
-      // Calendar cells are already presentation-only wall dates.
-      const d = format(defaultDate, 'yyyy-MM-dd');
-      setStartDate(d);
-      setEndDate(d);
-      setStartTimeStr('09:00');
-      setEndTimeStr('10:00');
-    } else if (open) {
-      const today = formatDateLocal(new Date(), displayTimezone);
-      setStartDate(today);
-      setEndDate(today);
-      setStartTimeStr('09:00');
-      setEndTimeStr('10:00');
+      return;
     }
-    if (open && !event) setCalendarSourceId(defaultCalendarId);
-  }, [open, event, defaultDate, defaultCalendarId, displayTimezone]);
-
-  // Reset form when modal closes
-  useEffect(() => {
-    if (!open) {
-      setTitle(''); setDescription(''); setLocation('');
-      setStartDate(''); setStartTimeStr(''); setEndDate(''); setEndTimeStr('');
-      setAllDay(false); setRecurrenceRule(''); setReminderMinutes('');
-      setCalendarSourceId(defaultCalendarId); setShowMore(false); setError(null);
-    }
-  }, [open, defaultCalendarId]);
+    setTitle(''); setDescription(''); setLocation('');
+    setAllDay(false); setRecurrenceRule(''); setReminderMinutes('');
+    setPickedCalendarId(''); setShowMore(false);
+    // Calendar cells are already presentation-only wall dates.
+    const d = defaultDate ? format(defaultDate, 'yyyy-MM-dd') : formatDateLocal(new Date(), displayTimezone);
+    setStartDate(d);
+    setEndDate(d);
+    setStartTimeStr('09:00');
+    setEndTimeStr('10:00');
+  });
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -520,7 +519,7 @@ export function AddEventModal({
           </div>
 
           {/* Calendar Selection */}
-          <Select value={calendarSourceId} onValueChange={setCalendarSourceId}>
+          <Select value={calendarSourceId} onValueChange={setPickedCalendarId}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder={t('eventForm.selectCalendar')} />
             </SelectTrigger>

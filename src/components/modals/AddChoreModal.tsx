@@ -16,7 +16,7 @@
 
 import * as React from 'react';
 import { Emoji } from '@/components/ui/Emoji';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { DAYS_SHORT_ARRAY, DAYS_LONG_ARRAY } from '@/lib/constants/days';
 import { Loader2 } from 'lucide-react';
 import {
@@ -32,6 +32,7 @@ import {
   Switch,
 } from '@/components/ui';
 import { useFamily } from '@/components/providers';
+import { useResetOn } from '@/lib/hooks/useResetOn';
 
 /**
  * Chore data returned after creation
@@ -130,36 +131,22 @@ export function AddChoreModal({
   // Family members from context
   const { members: familyMembers, loading: loadingMembers } = useFamily();
 
-  // Populate form when editing
-  useEffect(() => {
-    if (open && chore) {
-      setTitle(chore.title);
-      setDescription(chore.description || '');
-      setCategory(chore.category);
-      setFrequency(chore.frequency);
-      setCustomIntervalDays(chore.customIntervalDays || 7);
-      setStartDay(chore.startDay || '');
-      setPointValue(chore.pointValue);
-      setRequiresApproval(chore.requiresApproval);
-      setAssignedTo(chore.assignedTo?.id || '');
-    }
-  }, [open, chore]);
-
-  // Reset form when modal closes
-  useEffect(() => {
-    if (!open) {
-      setTitle('');
-      setDescription('');
-      setCategory('cleaning');
-      setFrequency('weekly');
-      setCustomIntervalDays(7);
-      setStartDay('');
-      setPointValue(5);
-      setRequiresApproval(true);
-      setAssignedTo('');
-      setError(null);
-    }
-  }, [open]);
+  // Fill the form when the modal opens: from the chore when editing, the
+  // defaults otherwise. Keyed by the chore's id, so a refreshed copy of the
+  // same chore does not overwrite what is being typed.
+  useResetOn(open ? (chore?.id ?? 'new') : null, () => {
+    if (!open) return;
+    setTitle(chore?.title ?? '');
+    setDescription(chore?.description || '');
+    setCategory(chore?.category ?? 'cleaning');
+    setFrequency(chore?.frequency ?? 'weekly');
+    setCustomIntervalDays(chore?.customIntervalDays || 7);
+    setStartDay(chore?.startDay || '');
+    setPointValue(chore?.pointValue ?? 5);
+    setRequiresApproval(chore?.requiresApproval ?? true);
+    setAssignedTo(chore?.assignedTo?.id || '');
+    setError(null);
+  });
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

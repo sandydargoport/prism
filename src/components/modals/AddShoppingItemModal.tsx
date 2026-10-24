@@ -36,6 +36,7 @@ import {
   SelectValue,
 } from '@/components/ui';
 import type { ShoppingList } from '@/types';
+import { useResetOn } from '@/lib/hooks/useResetOn';
 
 /**
  * Shopping item data returned after creation
@@ -152,30 +153,19 @@ export function AddShoppingItemModal({
     }
   }, [open]);
 
-  // Populate form when editing
-  useEffect(() => {
-    if (open && item) {
-      setListId(item.listId);
-      setName(item.name);
-      setQuantity(item.quantity?.toString() || '');
-      setUnit(item.unit || '');
-      setCategory(item.category || 'other');
-      setNotes(item.notes || '');
-    }
-  }, [open, item]);
-
-  // Reset form when modal closes
-  useEffect(() => {
-    if (!open) {
-      setListId(defaultListId || '');
-      setName('');
-      setQuantity('');
-      setUnit('');
-      setCategory('other');
-      setNotes('');
-      setError(null);
-    }
-  }, [open, defaultListId]);
+  // Fill the form when the modal opens: from the item when editing, blank
+  // otherwise. Keyed by the item's id, so a refreshed copy of the same item
+  // does not overwrite what is being typed.
+  useResetOn(open ? (item?.id ?? 'new') : null, () => {
+    if (!open) return;
+    setListId(item ? item.listId : defaultListId || '');
+    setName(item?.name ?? '');
+    setQuantity(item?.quantity?.toString() || '');
+    setUnit(item?.unit || '');
+    setCategory(item?.category || 'other');
+    setNotes(item?.notes || '');
+    setError(null);
+  });
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

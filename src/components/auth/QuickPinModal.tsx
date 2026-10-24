@@ -29,6 +29,7 @@ import { useFamily } from '@/components/providers';
 import { DEFAULT_PIN_LENGTH } from '@/lib/constants';
 import { pinErrorMessage } from '@/lib/utils/pinErrorMessage';
 import { detectBrowserTimezone } from '@/lib/hooks/useTimezone';
+import { useResetOn } from '@/lib/hooks/useResetOn';
 
 /**
  * FAMILY MEMBER TYPE
@@ -104,13 +105,12 @@ export function QuickPinModal({
   const pinLength = selectedMember?.pinLength ?? DEFAULT_PIN_LENGTH;
 
   // Reset state when modal closes
-  useEffect(() => {
-    if (!open) {
-      setSelectedMember(preSelectedMember || null);
-      setPin([]);
-      setError(null);
-    }
-  }, [open, preSelectedMember]);
+  useResetOn(open, () => {
+    if (!open) return;
+    setSelectedMember(preSelectedMember || null);
+    setPin([]);
+    setError(null);
+  });
 
   // Handle key press
   // NOTE: pinLength must be a dependency — it changes per selected member
