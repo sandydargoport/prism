@@ -257,6 +257,7 @@ function MobileDashboardHelp() {
     <>
       <P>On phones, the dashboard shows a simplified single-column layout with summary cards for weather, calendar, chores, tasks, shopping, meals, messages, and birthdays.</P>
       <P>Tap any card to navigate to the full page for that feature.</P>
+      <P>The round menu button in the corner holds two card controls: <strong>Cards</strong> lists every card, so you can hide the ones you do not use or bring back a hidden one, and <strong>Reorder</strong> lets you drag the cards into a new order (tap <strong>Done</strong> when finished). Both are saved on that phone only.</P>
     </>
   );
 }
@@ -463,10 +464,11 @@ function WishesHelp() {
         <Li><strong>Cross off</strong>: Owner can cross off items they got themselves</Li>
         <Li><strong>Sync</strong> with Microsoft To Do per member (Settings)</Li>
       </Ul>
+      <P>Both tabs open as one combined list. Set <strong>Group</strong> to <strong>Person</strong> for side-by-side columns, one per family member. The header menu has <strong>Hide completed</strong> (Wishes) or <strong>Hide purchased</strong> (Gift Ideas).</P>
       <H2>Gift Ideas</H2>
       <P>Private per-user gift idea tracking. Switch to the &quot;Gift Ideas&quot; tab on the Wishes page.</P>
       <Ul>
-        <Li>See columns for each family member (except yourself)</Li>
+        <Li>Set <strong>Group</strong> to <strong>Person</strong> to see a column for each family member (except yourself)</Li>
         <Li>Add ideas with name, link, price, and notes</Li>
         <Li>Mark as purchased when you buy them</Li>
         <Li><strong>Privacy</strong>: Only you can see your ideas. They are never visible to the recipient or other family members</Li>
@@ -741,6 +743,13 @@ function BusHelp() {
         <Li><strong>Connect Gmail</strong>: In Settings &gt; Bus Tracking, connect the Gmail account that receives FirstView emails (optionally set a Gmail label to narrow the search)</Li>
         <Li><strong>Discover routes</strong>: Prism scans for FirstView emails and creates the routes it finds, each with its stop</Li>
         <Li><strong>Bus Tracker widget</strong>: Add the Bus Tracker widget to a dashboard to see predicted arrival times</Li>
+      </Ul>
+      <H2>Live Map</H2>
+      <P>With a live position provider set up (a small program you run that posts the bus&apos;s position to Prism), the widget turns into a map while a trip runs: the route driven so far as a solid line, the road still to come as a dashed one, each stop with its actual or projected time, and the bus as a dot pointing the way it is heading. A card over the map shows the arrival time at your stop, how late the bus is running, and how many stops are done. A small widget shows the card alone.</P>
+      <Ul>
+        <Li><strong>Camera and map style</strong>: In Settings &gt; Bus Tracking &gt; Live Tracking, choose whether the map follows the bus or shows the whole route</Li>
+        <Li><strong>Trip history</strong>: Each finished trip is kept as a one-line summary; set how long history is kept under <strong>Keep history</strong></Li>
+        <Li><strong>Arrival time accuracy</strong>: Shows how far off the predicted arrival time typically was at 20, 15, 10, 5 and 2 minutes out</Li>
       </Ul>
     </>
   );
