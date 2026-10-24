@@ -70,6 +70,10 @@ for (const [orientation, viewport] of [
   test.describe(`screensaver geometry, ${orientation}`, () => {
     test.skip(!HAS_TEST_DB, 'needs the seeded test database to log in and edit');
     test.use({ viewport });
+    // The first test in the CI step waits for the dev server to compile the
+    // dashboard and the editor's chunks from cold, which alone ran past the
+    // 30 s default. A warm run takes about 7 s.
+    test.setTimeout(90_000);
 
     test('a widget renders where and as big as it was sized in the editor', async ({ page }) => {
       await openScreensaverEditor(page, orientation);
