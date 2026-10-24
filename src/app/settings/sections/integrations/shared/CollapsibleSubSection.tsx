@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { ChevronDown } from 'lucide-react';
+import { useResetOn } from '@/lib/hooks/useResetOn';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -29,9 +30,10 @@ export function CollapsibleSubSection({
 }: Props) {
   const [open, setOpen] = React.useState<boolean>(!!defaultOpen);
 
-  React.useEffect(() => {
+  // Once forced open it stays open after forceOpen clears, until closed by hand.
+  useResetOn(!!forceOpen, () => {
     if (forceOpen) setOpen(true);
-  }, [forceOpen]);
+  });
 
   const isOpen = forceOpen || open;
 

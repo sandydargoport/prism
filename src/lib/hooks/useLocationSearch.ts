@@ -8,6 +8,8 @@ export interface LocationCandidate {
   lon: number;
 }
 
+const NO_CANDIDATES: LocationCandidate[] = [];
+
 interface StoredLocation {
   lat?: number;
   lon?: number;
@@ -32,7 +34,10 @@ function legacyDisplayName(loc: StoredLocation): string {
 export function useLocationSearch() {
   const [query, setQuery] = useState('');
   const [savedName, setSavedName] = useState<string | null>(null);
-  const [candidates, setCandidates] = useState<LocationCandidate[]>([]);
+  const [results, setResults] = useState<LocationCandidate[]>([]);
+  // Whether the candidate dropdown is showing. Results arriving open it; a
+  // click outside or a pick closes it.
+  const [open, setOpen] = useState(false);
   const [searching, setSearching] = useState(false);
   const [saving, setSaving] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -52,17 +57,16 @@ export function useLocationSearch() {
   // Debounced search
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (query.length < 2) {
-      setCandidates([]);
-      return;
-    }
+    if (query.length < 2) return;
 
     debounceRef.current = setTimeout(async () => {
       setSearching(true);
       try {
         const res = await fetch(`/api/location-search?q=${encodeURIComponent(query)}`);
         const data = await res.json();
-        setCandidates(data.results ?? []);
+        const found: LocationCandidate[] = data.results ?? [];
+        setResults(found);
+        setOpen(found.length > 0);
       } catch {
         /* ignore */
       }
@@ -76,7 +80,8 @@ export function useLocationSearch() {
 
   const select = useCallback(async (candidate: LocationCandidate) => {
     setQuery('');
-    setCandidates([]);
+    setResults([]);
+    setOpen(false);
     setSavedName(candidate.displayName);
     setSaving(true);
     try {
@@ -109,5 +114,8 @@ export function useLocationSearch() {
     setSaving(false);
   }, []);
 
-  return { query, setQuery, savedName, candidates, searching, saving, select, clear };
+  // A query too short to search lists nothing, whatever the last search found.
+  const candidates = query.length < 2 ? NO_CANDIDATES : results;
+
+  return { query, setQuery, savedName, candidates, searching, saving, select, clear, open, setOpen };
 }

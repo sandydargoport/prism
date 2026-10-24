@@ -5,6 +5,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { useScreenSafeZones } from '@/lib/hooks/useScreenSafeZones';
+import { useResetOn } from '@/lib/hooks/useResetOn';
 import { LayoutEditorShareDialog } from './LayoutEditorShareDialog';
 import { LayoutEditorImportDialog } from './LayoutEditorImportExport';
 import { CreateDashboardDialog, SaveAsDialog } from './LayoutEditorDashboardManager';
@@ -114,9 +115,9 @@ export function LayoutEditor({
   }, [activePopover]);
 
   // Close popover when measure mode activates
-  useEffect(() => {
+  useResetOn(measureMode, () => {
     if (measureMode) setActivePopover(null);
-  }, [measureMode]);
+  });
 
   // Copy this layout over the other one and switch to it, so the result is
   // in front of the user to Save or Cancel like any other edit.

@@ -29,6 +29,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { scopedHref, isNavActive, RETURN_PARAM } from '@/lib/utils/dashboardScope';
 import { useReturnSlug } from '@/lib/hooks/useReturnSlug';
+import { useResetOn } from '@/lib/hooks/useResetOn';
 import { HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PrismIcon } from '@/components/ui/PrismIcon';
@@ -103,9 +104,7 @@ export function SideNav({ user, onLogout, onLogin, uiHidden, className }: SideNa
   }, [expanded]);
 
   // Collapse on navigation
-  React.useEffect(() => {
-    setExpanded(false);
-  }, [pathname]);
+  useResetOn(pathname, () => setExpanded(false));
 
   // Check if a nav item is active
   const isActive = (href: string) => isNavActive(href, pathname, search);

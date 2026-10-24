@@ -31,8 +31,7 @@ export function GeneralSection() {
 }
 
 function LocationCard() {
-  const { query, setQuery, savedName, candidates, searching, saving, select, clear } = useLocationSearch();
-  const [open, setOpen] = useState(false);
+  const { query, setQuery, savedName, candidates, searching, saving, select, clear, open, setOpen } = useLocationSearch();
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
@@ -44,12 +43,7 @@ function LocationCard() {
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  // Open/close the dropdown as candidates arrive/clear from the shared hook.
-  useEffect(() => {
-    setOpen(candidates.length > 0);
-  }, [candidates]);
+  }, [setOpen]);
 
   return (
     <Card>

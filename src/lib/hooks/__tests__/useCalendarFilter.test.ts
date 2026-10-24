@@ -9,6 +9,7 @@
  * and calendar group derivation from sources.
  */
 
+import * as React from 'react';
 import { renderHook, act, waitFor } from '@testing-library/react';
 
 // --- Mock calendar sources ---
@@ -101,6 +102,49 @@ describe('useCalendarFilter', () => {
 
       expect(result.current.calendarGroups[0]!.id).toBe('api-group-1');
       expect(result.current.calendarGroups[0]!.name).toBe('API Group');
+    });
+  });
+
+  describe('"all" covers every group', () => {
+    it('includes every group id from the first render that has groups', () => {
+      const seen: { groups: string[]; selected: Set<string> }[] = [];
+      renderHook(() => {
+        const r = useCalendarFilter();
+        // Committed renders only, the ones that reach the screen.
+        React.useLayoutEffect(() => {
+          seen.push({ groups: r.calendarGroups.map((g) => g.id), selected: r.selectedCalendarIds });
+        });
+        return r;
+      });
+
+      const withGroups = seen.filter((s) => s.groups.length > 0);
+      expect(withGroups.length).toBeGreaterThan(0);
+      for (const s of withGroups) {
+        for (const id of s.groups) expect(s.selected.has(id)).toBe(true);
+      }
+    });
+
+    it('a first tap on a group that loaded later hides that group', async () => {
+      // Groups derived from the sources come first; the API's groups replace them.
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          groups: [
+            { id: 'api-group-1', name: 'API Group', color: '#00FF00', type: 'person' },
+            { id: 'api-group-2', name: 'Other Group', color: '#0000FF', type: 'person' },
+          ],
+        }),
+      });
+      const { result } = renderHook(() => useCalendarFilter());
+      await waitFor(() => {
+        expect(result.current.calendarGroups[0]?.id).toBe('api-group-1');
+      });
+
+      act(() => { result.current.toggleCalendar('api-group-1'); });
+
+      expect(result.current.selectedCalendarIds.has('api-group-1')).toBe(false);
+      expect(result.current.selectedCalendarIds.has('api-group-2')).toBe(true);
+      expect(result.current.selectedCalendarIds.has('all')).toBe(false);
     });
   });
 

@@ -51,7 +51,7 @@ export function LayoutGridEditor({
   const { height: viewportHeight } = useViewportSize();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
-  const [selectedWidget, setSelectedWidget] = useState<string | null>(null);
+  const [selectedId, setSelectedWidget] = useState<string | null>(null);
   const colorPickerRef = useRef<HTMLInputElement | null>(null);
   const [colorTarget, setColorTarget] = useState<'fill' | 'outline' | 'text'>('fill');
   const [openPopover, setOpenPopover] = useState<'fill' | 'outline' | 'text' | 'grid' | null>(null);
@@ -221,16 +221,11 @@ export function LayoutGridEditor({
     onLayoutChange(updated);
   }, [stableLayout, onLayoutChange]);
 
-  // Clear selection when widget becomes invisible
-  useEffect(() => {
-    if (selectedWidget && !layout.find(w => w.i === selectedWidget && w.visible !== false)) {
-      setSelectedWidget(null);
-    }
-  }, [selectedWidget, layout]);
-
-  const selectedWidgetConfig = selectedWidget
-    ? stableLayout.find(w => w.i === selectedWidget && w.visible !== false)
+  // A widget that is hidden or removed is no longer selected.
+  const selectedWidgetConfig = selectedId
+    ? stableLayout.find(w => w.i === selectedId && w.visible !== false)
     : null;
+  const selectedWidget = selectedWidgetConfig ? selectedId : null;
 
   // Get current color value for whichever target is active
   const getActiveColor = (widget: WidgetConfig): string | undefined => {

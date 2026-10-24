@@ -20,8 +20,15 @@ export interface UseCalendarFilterResult {
   calendarGroups: CalendarGroup[];
 }
 
+const ALL_ONLY = new Set(['all']);
+
+function expandAll(ids: Set<string>, groups: CalendarGroup[]): Set<string> {
+  if (groups.length === 0 || ids.size !== 1 || !ids.has('all')) return ids;
+  return new Set(['all', ...groups.map((g) => g.id)]);
+}
+
 export function useCalendarFilter(): UseCalendarFilterResult {
-  const [selectedCalendarIds, setSelectedCalendarIds] = useState<Set<string>>(new Set(['all']));
+  const [chosenIds, setChosenIds] = useState<Set<string>>(ALL_ONLY);
   const { calendars: calendarSources } = useCalendarSources();
   const [apiGroups, setApiGroups] = useState<CalendarGroup[]>([]);
 
@@ -77,9 +84,16 @@ export function useCalendarFilter(): UseCalendarFilterResult {
     return groups;
   }, [apiGroups, calendarSources]);
 
+  // The starting 'all' alone means every group, whichever groups have loaded
+  // by the time it is read.
+  const selectedCalendarIds = useMemo(
+    () => expandAll(chosenIds, calendarGroups),
+    [chosenIds, calendarGroups],
+  );
+
   const toggleCalendar = useCallback((id: string) => {
-    setSelectedCalendarIds((prev) => {
-      const newSet = new Set(prev);
+    setChosenIds((prev) => {
+      const newSet = new Set(expandAll(prev, calendarGroups));
       if (id === 'all') {
         if (newSet.has('all')) {
           return new Set();
@@ -101,15 +115,6 @@ export function useCalendarFilter(): UseCalendarFilterResult {
         return newSet;
       }
     });
-  }, [calendarGroups]);
-
-  // Initialize selected calendars to 'all' when calendar groups load
-  useEffect(() => {
-    if (calendarGroups.length > 0 && selectedCalendarIds.size === 1 && selectedCalendarIds.has('all')) {
-      const all = new Set(['all']);
-      calendarGroups.forEach((g) => all.add(g.id));
-      setSelectedCalendarIds(all);
-    }
   }, [calendarGroups]);
 
   // Build a lookup from calendarId → groupId

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { ImageIcon, Upload, Star, Play, X, CheckSquare, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,7 @@ import { useAuth } from '@/components/providers';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
+import { useResetOn } from '@/lib/hooks/useResetOn';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from '@/components/ui/use-toast';
 
@@ -129,9 +130,9 @@ export function PhotosView() {
 
   // If a desktop session is resized down into the mobile breakpoint while in
   // select mode, exit it — the mobile toolbar has no way to leave it otherwise.
-  useEffect(() => {
-    if (isMobile && selectMode) exitSelectMode();
-  }, [isMobile, selectMode, exitSelectMode]);
+  useResetOn(isMobile, () => {
+    if (isMobile) exitSelectMode();
+  });
 
   const handleBulkDelete = useCallback(async () => {
     const ids = Array.from(selectedIds);

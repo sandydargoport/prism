@@ -34,6 +34,8 @@ export interface PinPendingChildren {
   parks: PendingStop[];
 }
 
+const NO_RESULTS: GeocodeResult[] = [];
+
 interface PinFormProps {
   pin?: TravelPin | null;
   initialLatLng?: { lat: number; lng: number } | null;
@@ -112,9 +114,15 @@ export function PinForm({ pin, initialLatLng, parentId, pinType = 'location', ch
     }
   }, []);
 
+  // Results are only listed while there is something to search for, so a
+  // chosen place or a too-short query hides them without clearing state.
+  const placeResults = hasLocation ? NO_RESULTS : searchResults;
+  const stopSearchable = stopQuery.trim().length >= 2;
+  const stopMatches = stopSearchable ? stopResults : NO_RESULTS;
+
   useEffect(() => {
     if (searchTimer.current) clearTimeout(searchTimer.current);
-    if (hasLocation) { setSearchResults([]); return; }
+    if (hasLocation) return;
     searchTimer.current = setTimeout(() => searchLocation(inputValue), 350);
     return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
   }, [inputValue, hasLocation, searchLocation]);
@@ -122,7 +130,7 @@ export function PinForm({ pin, initialLatLng, parentId, pinType = 'location', ch
   // Stop geocode search
   useEffect(() => {
     if (stopTimer.current) clearTimeout(stopTimer.current);
-    if (stopQuery.trim().length < 2) { setStopResults([]); return; }
+    if (!stopSearchable) return;
     stopTimer.current = setTimeout(async () => {
       setStopSearching(true);
       try {
@@ -134,7 +142,7 @@ export function PinForm({ pin, initialLatLng, parentId, pinType = 'location', ch
       }
     }, 350);
     return () => { if (stopTimer.current) clearTimeout(stopTimer.current); };
-  }, [stopQuery]);
+  }, [stopQuery, stopSearchable]);
 
   const selectResult = (result: GeocodeResult) => {
     const shortName = result.displayName.split(',')[0]?.trim() ?? result.displayName;
@@ -332,9 +340,9 @@ export function PinForm({ pin, initialLatLng, parentId, pinType = 'location', ch
               required
             />
             {searching && <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />}
-            {searchResults.length > 0 && (
+            {placeResults.length > 0 && (
               <ul className="absolute z-50 top-full left-0 right-0 bg-popover border border-border rounded-md shadow-lg mt-1 overflow-hidden max-h-52 overflow-y-auto">
-                {searchResults.map((r) => (
+                {placeResults.map((r) => (
                   <li key={r.placeId}>
                     <button type="button" onClick={() => selectResult(r)}
                       className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
@@ -448,9 +456,9 @@ export function PinForm({ pin, initialLatLng, parentId, pinType = 'location', ch
                     className="pl-8 pr-8 text-sm"
                   />
                   {stopSearching && <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />}
-                  {stopResults.length > 0 && (
+                  {stopMatches.length > 0 && (
                     <ul className="absolute z-50 top-full left-0 right-0 bg-popover border border-border rounded-md shadow-lg mt-1 overflow-hidden max-h-44 overflow-y-auto">
-                      {stopResults.map((r) => (
+                      {stopMatches.map((r) => (
                         <li key={r.placeId}>
                           <button type="button" onClick={() => selectStopResult(r)}
                             className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"

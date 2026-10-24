@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -25,8 +25,7 @@ interface HouseholdStepProps {
  * setup finishes.
  */
 export function HouseholdStep({ onNext, onBack }: HouseholdStepProps) {
-  const { query, setQuery, savedName, candidates, searching, saving, select, clear } = useLocationSearch();
-  const [open, setOpen] = useState(false);
+  const { query, setQuery, savedName, candidates, searching, saving, select, clear, open, setOpen } = useLocationSearch();
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -35,11 +34,7 @@ export function HouseholdStep({ onNext, onBack }: HouseholdStepProps) {
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  useEffect(() => {
-    setOpen(candidates.length > 0);
-  }, [candidates]);
+  }, [setOpen]);
 
   const { timezone, setTimezone, loading: tzLoading } = useTimezone();
   const detected = detectBrowserTimezone();
