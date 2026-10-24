@@ -4,6 +4,15 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+### Added
+- **The bus card counts every stop on the route.** When the bus provider reports progress, the **Stops** row shows how far along the whole route the bus is ("14 of 22") instead of only the stops Prism tracks ("1 of 2"). The row is now on the small card over the map too, so every layout with a map shows it.
+
+### Fixed
+- **An afternoon bus line starts at the school.** On a trip whose first stop is the school, the solid line on the map starts where the bus left its wait there. It used to include the drive to the school before the trip began. Until the bus reaches the school, the map shows the marker and the road ahead only.
+- **A bus route appears when its time comes, without a reload.** A display loaded outside a route's window showed no bus until someone reloaded the page. The widget now checks the time every minute, and looks for newly added routes every 5 minutes. ([#596](https://github.com/sandydargoport/prism/issues/596))
+- **A dashboard with no screensaver of its own shows the default one.** It used to show whichever screensaver the previously opened dashboard had. ([#688](https://github.com/sandydargoport/prism/issues/688))
+- **Screensaver widgets show at the size they were given in the editor.** A layout that did not reach the right or bottom edge of the editor's Screen frame was scaled up, so every widget came out bigger and lower than it was placed. **Preview** in the screensaver editor now shows what the screensaver will draw. ([#689](https://github.com/sandydargoport/prism/issues/689))
+
 ## [1.30.1] – 2026-10-20
 
 A hotfix release. Four bug fixes, no database migrations.
