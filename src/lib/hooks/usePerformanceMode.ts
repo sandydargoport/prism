@@ -1,14 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect } from 'react';
+import { readStored, useHydrated, useStoredString, writeStored } from './useStoredValue';
 
 const STORAGE_KEY = 'prism-perf-mode';
 const HTML_CLASS = 'performance-mode';
-const CHANGE_EVENT = 'prism:performance-mode-change';
-
-interface PerformanceModeChangeDetail {
-  enabled: boolean;
-}
 
 function detectLowEndHardware(): boolean {
   if (typeof navigator === 'undefined') return false;
@@ -22,10 +18,16 @@ function applyClass(on: boolean): void {
   document.documentElement.classList.toggle(HTML_CLASS, on);
 }
 
-function broadcast(on: boolean): void {
-  window.dispatchEvent(
-    new CustomEvent<PerformanceModeChangeDetail>(CHANGE_EVENT, { detail: { enabled: on } }),
-  );
+function setEnabled(on: boolean): void {
+  writeStored(STORAGE_KEY, String(on));
+}
+
+/**
+ * Whether performance mode is on, for a component that only reads it. False
+ * during hydration, as on the server, then the display's own value.
+ */
+export function usePerformanceModeOn(): boolean {
+  return useStoredString(STORAGE_KEY) === 'true';
 }
 
 /**
@@ -44,8 +46,7 @@ function broadcast(on: boolean): void {
  *   ?perf=1 → force-enable and persist
  *   ?perf=0 → force-disable and persist
  *
- * Multiple consumer hook instances stay in sync via a 'prism:performance-mode-change'
- * window event; mutations from any instance propagate to all others.
+ * Every instance reads the same store, so a change made in one reaches all.
  *
  * Called inside ThemeProvider. The class itself is applied before the first
  * paint by the inline script in app/layout.tsx, alongside the dark class —
@@ -54,55 +55,37 @@ function broadcast(on: boolean): void {
  * with nothing stored, the ?perf= URL overrides, and keeping `enabled` in
  * sync across hook instances.
  *
- * `enabled` itself is still false for the first render, so component-level
- * branches on it (PhotoWidget, TravelGlobe) render their full version for one
- * frame. The page-wide backdrop-filter cost is the one that mattered and that
- * is handled above; the rest would need this state hydrated synchronously.
+ * `enabled` is false while hydrating, as on the server, so component-level
+ * branches on it (PhotoWidget, TravelGlobe) render their full version for that
+ * one frame. On a client-side mount it is right from the first render.
  */
 export function usePerformanceMode() {
-  const [enabled, setEnabledState] = useState(false);
+  const enabled = usePerformanceModeOn();
+  const hydrated = useHydrated();
 
+  // The ?perf= override and the first-load auto-detect. Both are writes, which
+  // every instance then reads back.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const paramVal = params.get('perf');
 
-    let on: boolean;
     if (paramVal === '1' || paramVal === '0') {
-      on = paramVal === '1';
-      localStorage.setItem(STORAGE_KEY, String(on));
+      setEnabled(paramVal === '1');
       params.delete('perf');
       const newSearch = params.toString();
       const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : '') + window.location.hash;
       window.history.replaceState(null, '', newUrl);
     } else {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored === 'true' || stored === 'false') {
-        on = stored === 'true';
-      } else {
-        on = detectLowEndHardware();
-        localStorage.setItem(STORAGE_KEY, String(on));
-      }
+      const stored = readStored(STORAGE_KEY);
+      if (stored !== 'true' && stored !== 'false') setEnabled(detectLowEndHardware());
     }
-
-    setEnabledState(on);
-    applyClass(on);
-
-    const handleChange = (e: Event) => {
-      const detail = (e as CustomEvent<PerformanceModeChangeDetail>).detail;
-      if (typeof detail?.enabled === 'boolean') {
-        setEnabledState(detail.enabled);
-      }
-    };
-    window.addEventListener(CHANGE_EVENT, handleChange);
-    return () => window.removeEventListener(CHANGE_EVENT, handleChange);
   }, []);
 
-  const setEnabled = useCallback((on: boolean) => {
-    setEnabledState(on);
-    localStorage.setItem(STORAGE_KEY, String(on));
-    applyClass(on);
-    broadcast(on);
-  }, []);
+  // Not while hydrating: `enabled` is still the server's false then, and
+  // removing the class the inline script set would undo it for a frame.
+  useEffect(() => {
+    if (hydrated) applyClass(enabled);
+  }, [hydrated, enabled]);
 
   return { enabled, setEnabled };
 }
