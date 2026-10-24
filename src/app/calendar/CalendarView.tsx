@@ -66,6 +66,7 @@ import { useTasks } from '@/lib/hooks/useTasks';
 import { useMeals } from '@/lib/hooks/useMeals';
 import { useRecipes } from '@/lib/hooks/useRecipes';
 import { useTaskLists } from '@/lib/hooks/useTaskLists';
+import { useResetOn } from '@/lib/hooks/useResetOn';
 import { ChoreModal } from '@/app/chores/ChoreModal';
 import { TaskModal } from '@/app/tasks/TaskModal';
 import { useChoreModals } from '@/app/chores/useChoreModals';
@@ -247,9 +248,10 @@ export function CalendarView() {
   // Deep link: /calendar?manage=calendars opens the Manage panel (used by the
   // Integrations settings cards after connecting a Google/CalDAV account).
   const searchParams = useSearchParams();
-  useEffect(() => {
-    if (searchParams?.get('manage') === 'calendars') setShowManageCalendars(true);
-  }, [searchParams]);
+  const manageParam = searchParams?.get('manage') ?? null;
+  useResetOn(manageParam, () => {
+    if (manageParam === 'calendars') setShowManageCalendars(true);
+  });
 
   // Live data for the modals. The bucket carries lightweight summaries; the
   // modals need full records (e.g. meal recipe URL, chore startDay), which

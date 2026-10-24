@@ -5,6 +5,7 @@ import { PopoverButton } from './LayoutEditorPopover';
 import { CheckIcon } from './LayoutEditorIcons';
 import type { DashboardInfo } from './LayoutEditorTypes';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { editLink } from '@/components/dashboard/useDashboardLayout';
 
 const moreItemClass = 'w-full text-left px-3 py-1.5 text-sm hover:bg-accent transition-colors';
 
@@ -24,9 +25,9 @@ export function DashboardDropdown({ layoutName, isActive, onToggle, allDashboard
         {allDashboards.map(d => (
           <button key={d.id} onClick={() => {
             if (d.id !== currentDashboardId && d.slug) {
-              sessionStorage.setItem('prism:editing', 'true'); onSwitchDashboard?.(d.slug);
+              onSwitchDashboard?.(d.slug);
             } else if (d.id !== currentDashboardId && d.isDefault) {
-              sessionStorage.setItem('prism:editing', 'true'); window.location.href = '/';
+              window.location.href = editLink('/');
             }
             onClose();
           }} className={`w-full text-left px-3 py-1.5 text-sm hover:bg-accent transition-colors flex items-center gap-2 ${d.id === currentDashboardId ? 'bg-accent/50' : ''}`}>

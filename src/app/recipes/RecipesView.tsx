@@ -20,6 +20,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { PageLoader } from '@/components/ui/spinner';
 import { useRecipes, type Recipe } from '@/lib/hooks/useRecipes';
 import { useShoppingLists } from '@/lib/hooks/useShoppingLists';
+import { useResetOn } from '@/lib/hooks/useResetOn';
 import { useAuth } from '@/components/providers';
 import { useRecipesFilters } from './useRecipesFilters';
 import { RecipeCard } from './RecipeCard';
@@ -47,7 +48,6 @@ export function RecipesView() {
   const [showSyncTandoorModal, setShowSyncTandoorModal] = useState(false);
   const [textPrefill, setTextPrefill] = useState<ParsedRecipeText | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [paramHandled, setParamHandled] = useState(false);
 
   const { recipes, loading, error, deleteRecipe, toggleFavorite, importFromUrl, importFromPaprika, createRecipe, updateRecipe, refresh } = useRecipes({
     favorite: viewMode === 'favorites' ? true : undefined,
@@ -71,14 +71,13 @@ export function RecipesView() {
   }, [recipes, selectedRecipe]);
 
   // Auto-open recipe from ?recipe=<id> search param (e.g. linked from meals page)
+  // Once, when the recipes have loaded: a later refresh keeps the same key, so
+  // a recipe the user closed does not reopen.
   const recipeParam = searchParams.get('recipe');
-  useEffect(() => {
-    if (recipeParam && recipes.length > 0 && !paramHandled) {
-      const match = recipes.find(r => r.id === recipeParam);
-      if (match) setSelectedRecipe(match);
-      setParamHandled(true);
-    }
-  }, [recipeParam, recipes, paramHandled]);
+  useResetOn(recipes.length > 0 ? recipeParam : null, () => {
+    const match = recipeParam ? recipes.find(r => r.id === recipeParam) : undefined;
+    if (match) setSelectedRecipe(match);
+  });
 
   const handleDelete = async (recipe: Recipe) => {
     if (!await confirm(`Delete "${recipe.name}"?`, 'This cannot be undone.')) return;

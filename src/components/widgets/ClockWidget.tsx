@@ -88,16 +88,10 @@ export const ClockWidget = React.memo(function ClockWidget({
   const effectiveTimeFormat = format24Hour === undefined
     ? timeFormat
     : format24Hour ? '24h' : '12h';
-  // State to hold the current time
-  // Initialize with current time to avoid hydration mismatch
-  const [currentTime, setCurrentTime] = useState<Date>(new Date());
+  // The current time, read when the widget mounts and then every second
+  const [currentTime, setCurrentTime] = useState<Date>(() => new Date());
 
-  // Update the time every second
   useEffect(() => {
-    // Update immediately on mount
-    setCurrentTime(new Date());
-
-    // Set up interval for updates
     const intervalId = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000); // Update every second
@@ -188,11 +182,9 @@ export const ClockWidget = React.memo(function ClockWidget({
  * }
  */
 export function useCurrentTime(updateInterval = 1000): Date {
-  const [time, setTime] = useState<Date>(new Date());
+  const [time, setTime] = useState<Date>(() => new Date());
 
   useEffect(() => {
-    setTime(new Date());
-
     const intervalId = setInterval(() => {
       setTime(new Date());
     }, updateInterval);

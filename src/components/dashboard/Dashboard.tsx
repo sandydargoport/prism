@@ -41,7 +41,7 @@ import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import { WidgetErrorBoundary } from '@/components/dashboard/WidgetErrorBoundary';
 import { WidgetExpandProvider, useWidgetExpand } from '@/components/dashboard/WidgetExpandProvider';
 import { useDashboardData } from './useDashboardData';
-import { useDashboardLayout } from './useDashboardLayout';
+import { useDashboardLayout, editLink } from './useDashboardLayout';
 import { buildWidgetProps } from './useWidgetProps';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
@@ -207,8 +207,10 @@ export function Dashboard({
   }, []);
 
   // Dashboard management callbacks for LayoutEditor
+  // Only offered inside the layout editor, so the next dashboard opens in edit
+  // mode too.
   const handleSwitchDashboard = useCallback((targetSlug: string) => {
-    router.push(`/d/${targetSlug}`);
+    router.push(editLink(`/d/${targetSlug}`));
   }, [router]);
 
   const handleCreateDashboard = useCallback(async (name: string, startFrom: 'blank' | 'template' | 'copy') => {

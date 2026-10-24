@@ -1,11 +1,86 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { useSearchParams } from 'next/navigation';
 import type { BaseSource, IntegrationConfig, MsList } from './types';
 import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
+import { useResetOn } from '@/lib/hooks/useResetOn';
+
+type StatusMessage = { type: 'error' | 'success'; text: string };
+
+const LISTS_FAILURE = 'Failed to fetch lists from provider';
+const MS_LISTS_FAILURE = 'Failed to fetch Microsoft To-Do lists';
+
+function msListsUrl(config: IntegrationConfig, entityId: string): string {
+  return `/api/task-sources/microsoft-lists?${config.oauthEntityParam}=${entityId}`;
+}
+
+/** What an OAuth redirect back to Settings asks this hook to do. */
+export type OAuthLanding = {
+  status?: StatusMessage;
+  provider?: 'microsoft_todo' | 'google_tasks';
+  isNewConnection?: boolean;
+  entityId?: string;
+  lists?: { url: string; failure: string };
+};
+
+/**
+ * Read an OAuth redirect's result from the URL, or null when the URL is not
+ * one this hook answers.
+ *
+ * It answers when the URL targets either the legacy section this hook backs
+ * (config.section) or the Integrations page it is now embedded in, so one
+ * hook instance handles both standalone and embedded use.
+ */
+export function readOAuthLanding(
+  params: Pick<URLSearchParams, 'get'>,
+  config: IntegrationConfig,
+): OAuthLanding | null {
+  const section = params.get('section');
+  if (section !== config.section && section !== 'integrations') return null;
+  const error = params.get('error');
+  const success = params.get('success');
+  const entityId = params.get(config.oauthEntityParam);
+  const newConnection = params.get('newConnection') === 'true';
+
+  if (error) {
+    return { status: { type: 'error', text: config.errorMessages[error] || `Error: ${error}` } };
+  }
+  if (success) {
+    return { status: { type: 'success', text: config.successMessages[success] || 'Operation completed successfully!' } };
+  }
+  // Each list flow is skipped by an instance filtered to the other provider
+  // (several instances are embedded under different cards).
+  if (params.get('selectGoogleTasksList') === 'true') {
+    if (config.respondsToProvider && config.respondsToProvider !== 'google_tasks') return null;
+    if (newConnection) {
+      return { provider: 'google_tasks', isNewConnection: true, lists: { url: '/api/task-sources/google-lists', failure: LISTS_FAILURE } };
+    }
+    if (entityId) {
+      return {
+        provider: 'google_tasks', isNewConnection: false, entityId,
+        lists: { url: `/api/task-sources/google-lists?taskListId=${entityId}`, failure: LISTS_FAILURE },
+      };
+    }
+    return { provider: 'google_tasks' };
+  }
+  if (params.get('selectMsList') === 'true') {
+    if (config.respondsToProvider && config.respondsToProvider !== 'microsoft_todo') return null;
+    if (newConnection) {
+      return {
+        provider: 'microsoft_todo', isNewConnection: true,
+        lists: { url: '/api/task-sources/microsoft-lists?newConnection=true', failure: LISTS_FAILURE },
+      };
+    }
+    if (entityId) {
+      return { provider: 'microsoft_todo', isNewConnection: false, entityId, lists: { url: msListsUrl(config, entityId), failure: MS_LISTS_FAILURE } };
+    }
+    return { provider: 'microsoft_todo' };
+  }
+  return null;
+}
 
 export interface UseIntegrationSourcesResult<S extends BaseSource> {
   sources: S[];
@@ -82,7 +157,7 @@ export function useIntegrationSources<S extends BaseSource>(
   // Provider for current list selection flow
   const [listSelectionProvider, setListSelectionProvider] = useState<'microsoft_todo' | 'google_tasks'>('microsoft_todo');
 
-  const fetchListsWithUrl = async (url: string) => {
+  const loadLists = useCallback(async (url: string, failure: string) => {
     setLoadingMsLists(true);
     try {
       const res = await fetch(url);
@@ -92,106 +167,35 @@ export function useIntegrationSources<S extends BaseSource>(
         setShowMsListModal(true);
       } else {
         const data = await res.json();
-        setStatusMessage({
-          type: 'error',
-          text: data.error || 'Failed to fetch lists from provider',
-        });
+        setStatusMessage({ type: 'error', text: data.error || failure });
       }
     } catch {
-      setStatusMessage({
-        type: 'error',
-        text: 'Failed to fetch lists from provider',
-      });
+      setStatusMessage({ type: 'error', text: failure });
     } finally {
       setLoadingMsLists(false);
     }
-  };
+  }, []);
 
-  const fetchMsListsInternal = async (entityId: string) => {
-    setLoadingMsLists(true);
-    try {
-      const res = await fetch(`/api/task-sources/microsoft-lists?${config.oauthEntityParam}=${entityId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setMsLists(data.lists || []);
-        setShowMsListModal(true);
-      } else {
-        const data = await res.json();
-        setStatusMessage({
-          type: 'error',
-          text: data.error || 'Failed to fetch Microsoft To-Do lists',
-        });
-      }
-    } catch {
-      setStatusMessage({
-        type: 'error',
-        text: 'Failed to fetch Microsoft To-Do lists',
-      });
-    } finally {
-      setLoadingMsLists(false);
-    }
-  };
+  const fetchMsListsInternal = (entityId: string) =>
+    loadLists(msListsUrl(config, entityId), MS_LISTS_FAILURE);
 
-  // Handle OAuth URL params
-  useEffect(() => {
-    const error = searchParams.get('error');
-    const success = searchParams.get('success');
-    const section = searchParams.get('section');
-    const selectMsList = searchParams.get('selectMsList');
-    const selectGoogleTasksList = searchParams.get('selectGoogleTasksList');
-    const entityId = searchParams.get(config.oauthEntityParam);
-    const newConnection = searchParams.get('newConnection');
-
-    // Hook activates when the URL targets either:
-    //   - the legacy section this hook backs (config.section), or
-    //   - the new Integrations page (where it's now embedded).
-    // Lets one hook instance handle both standalone use AND embedded use
-    // without forking the trigger logic.
-    if (section === config.section || section === 'integrations') {
-      if (error) {
-        setStatusMessage({
-          type: 'error',
-          text: config.errorMessages[error] || `Error: ${error}`,
-        });
-      } else if (success) {
-        setStatusMessage({
-          type: 'success',
-          text: config.successMessages[success] || 'Operation completed successfully!',
-        });
-      } else if (selectGoogleTasksList === 'true') {
-        // Skip if this hook instance is filtered to a different provider
-        // (multiple instances embedded under different cards).
-        if (config.respondsToProvider && config.respondsToProvider !== 'google_tasks') {
-          // no-op
-        } else {
-          setListSelectionProvider('google_tasks');
-          if (newConnection === 'true') {
-            setIsNewConnection(true);
-            fetchListsWithUrl('/api/task-sources/google-lists');
-          } else if (entityId) {
-            setIsNewConnection(false);
-            setPendingEntityId(entityId);
-            fetchListsWithUrl(`/api/task-sources/google-lists?taskListId=${entityId}`);
-          }
-        }
-      } else if (selectMsList === 'true') {
-        if (config.respondsToProvider && config.respondsToProvider !== 'microsoft_todo') {
-          // no-op — filtered out
-        } else {
-          setListSelectionProvider('microsoft_todo');
-          if (newConnection === 'true') {
-            // New connection flow: fetch MS lists without a specific entity ID
-            setIsNewConnection(true);
-            fetchListsWithUrl('/api/task-sources/microsoft-lists?newConnection=true');
-          } else if (entityId) {
-            setIsNewConnection(false);
-            setPendingEntityId(entityId);
-            fetchMsListsInternal(entityId);
-          }
-        }
-      }
-    }
-  }, [searchParams]);
+  // An OAuth redirect back to Settings carries its result in the URL. The
+  // state it asks for is set during render, in the render that first sees the
+  // new URL; the list fetch it may ask for runs as a request.
+  const landing = readOAuthLanding(searchParams, config);
+  useResetOn(searchParams.toString(), () => {
+    if (!landing) return;
+    if (landing.status) setStatusMessage(landing.status);
+    if (landing.provider) setListSelectionProvider(landing.provider);
+    if (landing.isNewConnection !== undefined) setIsNewConnection(landing.isNewConnection);
+    if (landing.entityId) setPendingEntityId(landing.entityId);
+  });
+  const landingListsUrl = landing?.lists?.url ?? null;
+  const landingListsFailure = landing?.lists?.failure ?? '';
+  const fetchLandingLists = useCallback(async () => {
+    if (landingListsUrl) await loadLists(landingListsUrl, landingListsFailure);
+  }, [landingListsUrl, landingListsFailure, loadLists]);
+  useFetchOnMount(fetchLandingLists);
 
   const fetchSources = useCallback(async () => {
     try {

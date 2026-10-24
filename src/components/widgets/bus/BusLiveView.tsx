@@ -83,13 +83,13 @@ export function BusLiveView({ track, speedUnit, clockOffsetMs, mapStyle, camera 
   const { resolvedTheme } = useTheme();
   const reducedMotion = useShouldSkipMotion();
 
-  // Ticks the "in N min" and "updated Ns ago" text between polls.
+  // Ticks the "in N min" and "updated Ns ago" text between polls. A poll that
+  // lands between ticks is up to one tick behind, and ages are floored at 0s.
   const [now, setNow] = React.useState(() => Date.now() + clockOffsetMs);
   React.useEffect(() => {
-    setNow(Date.now() + clockOffsetMs);
     const id = setInterval(() => setNow(Date.now() + clockOffsetMs), 5_000);
     return () => clearInterval(id);
-  }, [clockOffsetMs, track]);
+  }, [clockOffsetMs]);
 
   React.useLayoutEffect(() => {
     const el = rootRef.current;
@@ -268,10 +268,9 @@ export function LiveBusSummary({ track, className }: { track: LiveTrack; classNa
   const { timeFormat, displayTimezone } = useTimeFormat();
   const [now, setNow] = React.useState(() => Date.now());
   React.useEffect(() => {
-    setNow(Date.now());
     const id = setInterval(() => setNow(Date.now()), 15_000);
     return () => clearInterval(id);
-  }, [track]);
+  }, []);
 
   const rider = track.stops.find((s) => s.key === track.riderStopKey);
   const time = (iso: string) => formatDisplayTime(new Date(iso), timeFormat, {}, displayTimezone);

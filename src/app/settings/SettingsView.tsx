@@ -56,6 +56,7 @@ import { ActivityLogSection } from './sections/ActivityLogSection';
 import { DisplaysSection } from './sections/DisplaysSection';
 import { IntegrationsSection } from './sections/integrations/IntegrationsSection';
 import { useLayouts } from '@/lib/hooks/useLayouts';
+import { useResetOn } from '@/lib/hooks/useResetOn';
 
 
 // Exported hooks (consumed by other components)
@@ -210,13 +211,12 @@ export function SettingsView() {
   // but leaves urlSection unchanged, so on the next render the effect would
   // see (urlSection !== activeSection) and snap activeSection back to the
   // stale URL value. (This is the "stuck on bus tracking after Gmail auth"
-  // bug.) Only the URL changing should trigger a sync.
+  // bug.) Only the URL changing should trigger a sync. Done during render, so
+  // the old section is never painted for the new URL.
   const urlSection = searchParams.get('section');
-  React.useEffect(() => {
-    if (urlSection) {
-      setActiveSection(normalizeSection(urlSection));
-    }
-  }, [urlSection]);
+  useResetOn(urlSection, () => {
+    if (urlSection) setActiveSection(normalizeSection(urlSection));
+  });
 
   const sections = [
     { id: 'account', label: 'Account & Profile', icon: User },

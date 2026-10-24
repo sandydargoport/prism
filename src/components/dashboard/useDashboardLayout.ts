@@ -14,6 +14,8 @@ import {
 import type { WidgetConfig, Layout } from '@/lib/hooks/useLayouts';
 import { findNextFreeSlot } from '@/lib/utils/widgetPlacement';
 import { useAuth } from '@/components/providers/AuthProvider';
+import { useUrlParam } from '@/lib/hooks/useUrlParam';
+import { useResetOn } from '@/lib/hooks/useResetOn';
 
 interface LayoutsData {
   savedLayout: Layout | null;
@@ -23,11 +25,19 @@ interface LayoutsData {
   loading: boolean;
 }
 
+/** The query parameter that opens a dashboard in edit mode. */
+export const EDIT_PARAM = 'edit';
+
+/** A link to the dashboard at `path` that opens it in edit mode. */
+export function editLink(path: string): string {
+  return `${path}?${EDIT_PARAM}=1`;
+}
+
 export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
   const { activeUser, requireAuth } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editingWidgets, setEditingWidgets] = useState<WidgetConfig[]>([]);
-  const preEditWidgetsRef = useRef<WidgetConfig[]>([]);
+  const [preEditWidgets, setPreEditWidgets] = useState<WidgetConfig[]>([]);
   const preEditSsRef = useRef<WidgetConfig[] | null>(null);
   const [editingScreensaver, setEditingScreensaver] = useState(false);
 
@@ -57,21 +67,27 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     saveScreensaverLayout(widgets);
   }, [activeLayout, layouts.allLayouts]);
 
-  // Re-enter edit mode after dashboard switch (sessionStorage flag).
-  // Only re-enter when the active user is still a parent — guards against a
-  // stale flag re-engaging edit mode after a logout / session expiry.
+  // Switching dashboards from the editor opens the next one with ?edit=1, and
+  // it opens in edit mode once its layout has loaded. Only for a parent, so a
+  // link kept past a logout or session expiry does not re-engage edit mode.
+  const resumeEditing = useUrlParam(EDIT_PARAM) === '1';
+  const resumeKey = resumeEditing && activeLayout && activeUser?.role === 'parent'
+    ? activeLayout.id
+    : null;
+  useResetOn(resumeKey, () => {
+    if (!resumeKey || !activeLayout) return;
+    const current = activeLayout.widgets ?? DEFAULT_TEMPLATE.widgets;
+    setPreEditWidgets(current);
+    setEditingWidgets(current);
+    setIsEditing(true);
+  });
+  // Then drop it from the address, so a reload opens the dashboard normally.
   useEffect(() => {
-    if (activeLayout && typeof window !== 'undefined') {
-      const flag = sessionStorage.getItem('prism:editing');
-      if (flag && activeUser?.role === 'parent') {
-        sessionStorage.removeItem('prism:editing');
-        const current = activeLayout.widgets ?? DEFAULT_TEMPLATE.widgets;
-        preEditWidgetsRef.current = current;
-        setEditingWidgets(current);
-        setIsEditing(true);
-      }
-    }
-  }, [activeLayout, activeUser]);
+    if (!resumeKey) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete(EDIT_PARAM);
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+  }, [resumeKey]);
 
   // While layouts are still fetching, render NOTHING rather than falling
   // back to DEFAULT_TEMPLATE — for any established user whose saved layout
@@ -93,7 +109,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     const user = activeUser ?? await requireAuth('Sign in to edit', "Enter a parent's PIN to edit the dashboard layout.");
     if (!user || user.role !== 'parent') return;
     const current = activeLayout?.widgets ?? DEFAULT_TEMPLATE.widgets;
-    preEditWidgetsRef.current = current;
+    setPreEditWidgets(current);
     preEditSsRef.current = ssLayout;
     setEditingWidgets(current);
     setIsEditing(true);
@@ -161,7 +177,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
   }, []);
 
   const handleCancel = useCallback(() => {
-    setEditingWidgets(preEditWidgetsRef.current);
+    setEditingWidgets(preEditWidgets);
     // Screensaver edits apply as they are made (the running screensaver reads
     // them), so Cancel has to put the layout from before editing back too,
     // or a copy from the dashboard would survive it.
@@ -171,7 +187,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
       preEditSsRef.current = null;
     }
     setIsEditing(false);
-  }, []);
+  }, [preEditWidgets]);
 
   // Screensaver callbacks — save to both DB (via layout) and localStorage
   const handleSsLayoutChange = useCallback((newLayout: WidgetConfig[]) => {
