@@ -14,7 +14,8 @@
 'use client';
 
 import * as React from 'react';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useEffectEvent, useState } from 'react';
+import { useLatestRef } from '@/lib/hooks/useLatestRef';
 import { useSeasonalTheme } from '@/lib/hooks/useSeasonalTheme';
 import { usePerformanceMode } from '@/lib/hooks/usePerformanceMode';
 import { isInstallableTheme, MAX_INSTALLED_THEMES, type Theme } from '@/lib/themes/tokens';
@@ -110,8 +111,9 @@ export function ThemeProvider({
   const [palette, setPaletteState] = useState<Theme>(
     () => getBuiltinTheme(DEFAULT_THEME_ID) ?? BUILTIN_THEMES[0]!,
   );
-  const themeRef = React.useRef(theme);
-  themeRef.current = theme;
+  // A ref rather than an effect event: persistTheme is called from event
+  // handlers as well as the load effect.
+  const themeRef = useLatestRef(theme);
 
   // On mount, load saved theme from localStorage
   useEffect(() => {
@@ -268,6 +270,7 @@ export function ThemeProvider({
   // known once this response arrives — resetting from a separate effect raced
   // the read and wrote back an empty `installed`, uninstalling every gallery
   // theme in the house as the price of fixing one unreadable palette.
+  const persistOnLoad = useEffectEvent((id: string, installed: Theme[]) => persistTheme(id, installed));
   useEffect(() => {
     let cancelled = false;
     fetch('/api/settings')
@@ -300,7 +303,7 @@ export function ThemeProvider({
         if (new URLSearchParams(window.location.search).get('theme') === 'default') {
           const fallback = getBuiltinTheme(DEFAULT_THEME_ID) ?? BUILTIN_THEMES[0]!;
           setPaletteState(fallback);
-          void persistTheme(fallback.id, installed);
+          void persistOnLoad(fallback.id, installed);
           return;
         }
 

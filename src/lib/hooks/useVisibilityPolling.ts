@@ -1,6 +1,6 @@
 'use client';
 
-import { useContext, useEffect, useRef } from 'react';
+import { useContext, useEffect, useRef, useEffectEvent } from 'react';
 import { usePollingInterval } from './usePollingInterval';
 import { useDisplayIdle } from './useDisplayIdle';
 import { PollingScopeContext } from './pollingScope';
@@ -45,8 +45,7 @@ export function useVisibilityPolling(
   // identity changes on every render (most of them close over fetch params)
   // cannot restart the timer. Restarting resets the countdown, and a callback
   // that changes faster than the interval means the tick never arrives at all.
-  const callbackRef = useRef(callback);
-  callbackRef.current = callback;
+  const onTick = useEffectEvent(() => callback());
 
   // Whether the last state we saw was paused, so resuming can tell a genuine
   // resume from an interval change. Starts false: mounting is not a resume,
@@ -73,9 +72,9 @@ export function useVisibilityPolling(
       }
       if (wasPaused.current) {
         wasPaused.current = false;
-        callbackRef.current();
+        onTick();
       }
-      timer = setInterval(() => callbackRef.current(), effectiveInterval);
+      timer = setInterval(() => onTick(), effectiveInterval);
     };
 
     run();

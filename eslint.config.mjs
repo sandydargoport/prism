@@ -53,11 +53,24 @@ const eslintConfig = [
   {
     rules: {
       'react-hooks/set-state-in-effect': 'warn',
-      'react-hooks/refs': 'warn',
+      'react-hooks/refs': 'error',
       'react-hooks/immutability': 'error',
       'react-hooks/purity': 'error',
       'react-hooks/use-memo': 'error',
       'react-hooks/preserve-manual-memoization': 'error',
+    },
+  },
+  // refs is cleared everywhere but these, which are their own batches of #447.
+  // Each comes off this list as it is fixed.
+  {
+    files: [
+      'src/components/input/VirtualKeyboard.tsx',
+      'src/components/widgets/bus/BusLiveMap.tsx',
+      'src/components/layout/LayoutGridEditor.tsx',
+      'src/components/layout/grid/CssGridEditor.tsx',
+    ],
+    rules: {
+      'react-hooks/refs': 'warn',
     },
   },
 

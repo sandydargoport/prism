@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState, useEffectEvent } from 'react';
 import { useAuth } from '@/components/providers';
 
 /** Written by useIdleDetection on any interaction anywhere in the app. */
@@ -72,8 +72,7 @@ export function useIdleLogoutSetting(): [number, (v: number) => void] {
 
 export function useIdleLogout() {
   const { activeUser, clearActiveUser } = useAuth();
-  const activeRef = useRef(activeUser);
-  activeRef.current = activeUser;
+  const isSignedIn = useEffectEvent(() => Boolean(activeUser));
 
   useEffect(() => {
     const minutes = getIdleLogoutMinutes();
@@ -82,7 +81,7 @@ export function useIdleLogout() {
     const check = () => {
       // Nothing to do when nobody is signed in — avoids a pointless logout
       // request every minute on a display that is already anonymous.
-      if (!activeRef.current) return;
+      if (!isSignedIn()) return;
       try {
         const raw = window.localStorage.getItem(LAST_ACTIVITY_KEY);
         if (raw === null) return;

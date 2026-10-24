@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useEffectEvent } from 'react';
 import { navCacheGet } from '@/lib/utils/navCache';
 
 interface CachedMountFetchOptions<T> {
@@ -49,10 +49,10 @@ export function useCachedMountFetch<T>({
   fetch,
   adopt,
 }: CachedMountFetchOptions<T>): void {
-  const fetchRef = useRef(fetch);
-  fetchRef.current = fetch;
-  const adoptRef = useRef(adopt);
-  adoptRef.current = adopt;
+  // Effect events: the latest callbacks, without their identity re-running
+  // the effect.
+  const runFetch = useEffectEvent(() => fetch());
+  const adoptCached = useEffectEvent((value: T) => adopt(value));
 
   useEffect(() => {
     if (!enabled) return;
@@ -61,9 +61,9 @@ export function useCachedMountFetch<T>({
     // reasons the request does not care about.
     const cached = maxAgeMs > 0 ? navCacheGet<T>(key, maxAgeMs) : undefined;
     if (cached !== undefined) {
-      adoptRef.current(cached);
+      adoptCached(cached);
       return;
     }
-    void fetchRef.current();
+    void runFetch();
   }, [key, enabled, maxAgeMs]);
 }

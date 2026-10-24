@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, type Dispatch, type SetStateAction } from 'react';
 import { useVisibilityPolling } from './useVisibilityPolling';
+import { useLatestRef } from './useLatestRef';
 import { usePollingInterval } from './usePollingInterval';
 import { useCachedMountFetch } from './useCachedMountFetch';
 import { navCacheGet, navCacheSet, navCacheDedupe } from '@/lib/utils/navCache';
@@ -47,10 +48,10 @@ interface UseFetchResult<T> {
 export function useFetch<T>(options: UseFetchOptions<T>): UseFetchResult<T> {
   const { url, initialData, transform, refreshInterval = 0, label = 'data', enabled = true, pollWhileIdle = false } = options;
 
-  const transformRef = useRef(transform);
-  transformRef.current = transform;
-  const labelRef = useRef(label);
-  labelRef.current = label;
+  // Refs rather than effect events: fetchData is also `refresh`, which event
+  // handlers call.
+  const transformRef = useLatestRef(transform);
+  const labelRef = useLatestRef(label);
 
   // How old a cached value may be and still be treated as current: one refresh
   // interval, since that is already the staleness this hook polls at.
@@ -122,7 +123,7 @@ export function useFetch<T>(options: UseFetchOptions<T>): UseFetchResult<T> {
     } finally {
       setLoading(false);
     }
-  }, [url, maxAgeMs, applyResult]);
+  }, [url, maxAgeMs, applyResult, transformRef, labelRef]);
 
   useCachedMountFetch<T>({
     key: url,

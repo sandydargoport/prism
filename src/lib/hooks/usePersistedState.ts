@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useEffectEvent } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 
 /**
@@ -36,9 +36,8 @@ export function usePersistedState<T>(
   const [hydrated, setHydrated] = useState(false);
 
   // `isValid` is usually an inline arrow, so its identity changes every render.
-  // Held in a ref so the read below runs once per key rather than per render.
-  const validRef = useRef(isValid);
-  validRef.current = isValid;
+  // An effect event, so the read below runs once per key rather than per render.
+  const valid = useEffectEvent((v: unknown): v is T => isValid(v));
 
   useEffect(() => {
     try {
@@ -48,7 +47,7 @@ export function usePersistedState<T>(
         // Validated rather than trusted: a stored value can outlive the option
         // that produced it, and a stale one would leave the view in a state the
         // UI no longer offers a way out of.
-        if (validRef.current(parsed)) setValue(parsed);
+        if (valid(parsed)) setValue(parsed);
       }
     } catch {
       /* storage unavailable — fall back to the initial value */
