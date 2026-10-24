@@ -10,6 +10,7 @@ import { useScreenOrientation } from '@/lib/hooks/useScreenOrientation';
 import { ExitAwayModeModal } from './ExitAwayModeModal';
 import { useTimeFormat } from '@/components/providers';
 import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
+import { useResetOn } from '@/lib/hooks/useResetOn';
 
 export function AwayModeOverlay() {
   const { isAway, toggle } = useAwayMode();
@@ -48,15 +49,17 @@ export function AwayModeOverlay() {
     return () => clearInterval(timer);
   }, [isAway, photos.length, pinnedId, photoInterval]);
 
-  // Fade in effect
-  useEffect(() => {
-    if (isAway) {
-      const timer = setTimeout(() => setVisible(true), 50);
-      return () => clearTimeout(timer);
-    } else {
+  // Fade in a tick after it opens; start over closed each time it ends.
+  useResetOn(isAway, () => {
+    if (!isAway) {
       setVisible(false);
       setShowExitModal(false);
     }
+  });
+  useEffect(() => {
+    if (!isAway) return;
+    const timer = setTimeout(() => setVisible(true), 50);
+    return () => clearTimeout(timer);
   }, [isAway]);
 
   const handleExitSuccess = useCallback(async () => {

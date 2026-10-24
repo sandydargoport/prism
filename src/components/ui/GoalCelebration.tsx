@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback, type JSX } from 'react';
 import { useShouldSkipMotion } from '@/lib/hooks/useShouldSkipMotion';
+import { useResetOn } from '@/lib/hooks/useResetOn';
 import { useTimeFormat } from '@/components/providers';
 import { toDisplayDate } from '@/lib/utils/timeFormat';
 
@@ -484,7 +485,6 @@ export function GoalCelebration({
   onComplete?: () => void;
 }) {
   const [visible, setVisible] = useState(false);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const onCompleteRef = useRef(onComplete);
   const skipMotion = useShouldSkipMotion();
   const { displayTimezone } = useTimeFormat();
@@ -498,35 +498,21 @@ export function GoalCelebration({
     onCompleteRef.current?.();
   }, []);
 
-  useEffect(() => {
-    if (show && !visible) {
-      // In perf-mode or with reduced-motion, fire onComplete immediately
-      // and skip the 6s SVG-heavy seasonal scene entirely.
-      if (skipMotion) {
-        onCompleteRef.current?.();
-        return;
-      }
-      setVisible(true);
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(handleDismiss, 6000);
-    }
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
-    };
-  }, [show, visible, handleDismiss, skipMotion]);
+  // Shown in the render that sees `show` turn on, hidden in the one that sees
+  // it turn off.
+  useResetOn(show, () => setVisible(show && !skipMotion));
 
   useEffect(() => {
-    if (!show && visible) {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
-      setVisible(false);
+    if (!show) return;
+    // In perf-mode or with reduced-motion, fire onComplete immediately
+    // and skip the 6s SVG-heavy seasonal scene entirely.
+    if (skipMotion) {
+      onCompleteRef.current?.();
+      return;
     }
-  }, [show, visible]);
+    const timer = setTimeout(handleDismiss, 6000);
+    return () => clearTimeout(timer);
+  }, [show, handleDismiss, skipMotion]);
 
   if (!visible) return null;
 

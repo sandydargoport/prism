@@ -69,7 +69,9 @@ run it once against the code before your change and watch it fail.
 - Genuinely nothing testable (copy, a config value): say so in one line in the
   PR body, `No regression test: <why>`.
 
-The **Regression test** check enforces this. Dependency bumps are exempt.
+The **Regression test** check enforces this. Dependency bumps are exempt, and
+so is a `refactor:` that keeps behaviour the same: the existing tests are its
+guard. A refactor that changes what users see is a `fix:` and needs its test.
 
 ## Code Conventions
 

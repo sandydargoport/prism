@@ -9,6 +9,7 @@ import { Mic, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useGlobalInput } from '@/lib/hooks/useGlobalInput';
 import { useHydrated } from '@/lib/hooks/useStoredValue';
+import { useResetOn } from '@/lib/hooks/useResetOn';
 import {
   KEYBOARD_HEIGHT_VH,
   KEYBOARD_MAX_HEIGHT_PX,
@@ -146,18 +147,21 @@ export function VirtualKeyboard() {
     setShiftState(autoShiftState(keyboardCaret));
   }, [setShiftState, autoShiftState]);
 
-  // Manage enter/exit animation
-  useEffect(() => {
+  // Manage enter/exit animation: the phase changes in the render that sees
+  // keyboardVisible change, and the effect only times the exit.
+  useResetOn(keyboardVisible, () => {
     if (keyboardVisible) {
       setIsExiting(false);
       setVisible(true);
     } else if (visible) {
       setIsExiting(true);
-      const t = setTimeout(() => { setVisible(false); setIsExiting(false); }, 200);
-      return () => clearTimeout(t);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [keyboardVisible]);
+  });
+  useEffect(() => {
+    if (!isExiting) return;
+    const t = setTimeout(() => { setVisible(false); setIsExiting(false); }, 200);
+    return () => clearTimeout(t);
+  }, [isExiting]);
 
   // Capture isContentEditable state and reset shift when keyboard becomes visible.
   // Always force the layout back to lowercase, or to the automatic capital when

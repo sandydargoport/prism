@@ -39,20 +39,15 @@ const eslintConfig = [
     },
   },
 
-  // React Compiler rules, new as errors in eslint-config-next 16 via
-  // eslint-plugin-react-hooks v6. They report 172 findings across 112 files on
-  // the tree as it stands, so they are warnings here: the Next 16 upgrade is
-  // not the place to make 112 files of behavioural changes sight unseen.
-  //
-  // These are NOT noise to be silenced. set-state-in-effect in particular
-  // describes a pattern this codebase has been bitten by before (per-display
-  // preferences loading after mount, so the first paint renders the wrong
-  // thing and then undoes it). They are being worked through by rule (#447),
-  // and each goes back to error once it has no findings left, so a fixed rule
-  // cannot slip back.
+  // React Compiler rules from eslint-plugin-react-hooks v6. They arrived with
+  // 172 findings and were worked through one rule at a time (#447); all are
+  // errors now, so a fixed pattern cannot slip back. set-state-in-effect in
+  // particular is a pattern this codebase has been bitten by before (state
+  // set after mount, so the first paint renders the wrong thing and then
+  // undoes it).
   {
     rules: {
-      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/set-state-in-effect': 'error',
       'react-hooks/refs': 'error',
       'react-hooks/immutability': 'error',
       'react-hooks/purity': 'error',

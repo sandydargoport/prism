@@ -1,6 +1,8 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
+import { useLatestRef } from '@/lib/hooks/useLatestRef';
+import { useResetOn } from '@/lib/hooks/useResetOn';
 
 interface Confetti {
   id: number;
@@ -11,56 +13,45 @@ interface Confetti {
   rotate: number;
 }
 
+const CONFETTI_COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8'];
+
+function makeConfetti(): Confetti[] {
+  const particles: Confetti[] = [];
+  for (let i = 0; i < 30; i++) {
+    particles.push({
+      id: i,
+      x: Math.random() * 100,
+      delay: Math.random() * 0.5,
+      color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)]!,
+      round: Math.random() > 0.5,
+      rotate: Math.random() * 360,
+    });
+  }
+  return particles;
+}
+
 export function ShoppingCelebration({ show, onComplete }: { show: boolean; onComplete?: () => void }) {
   const [confetti, setConfetti] = useState<Confetti[]>([]);
   const [visible, setVisible] = useState(false);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const onCompleteRef = useLatestRef(onComplete);
 
+  // Start in the render that sees `show` turn on, with fresh confetti; hide in
+  // the one that sees it turn off, so it can be triggered again.
+  useResetOn(show, () => {
+    setVisible(show);
+    setConfetti(show ? makeConfetti() : []);
+  });
+
+  // End animation after 3 seconds and notify parent
   useEffect(() => {
-    if (show && !visible) {
-      // Start the animation
-      setVisible(true);
-
-      // Generate confetti particles
-      const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8'];
-      const particles: Confetti[] = [];
-      for (let i = 0; i < 30; i++) {
-        particles.push({
-          id: i,
-          x: Math.random() * 100,
-          delay: Math.random() * 0.5,
-          color: colors[Math.floor(Math.random() * colors.length)]!,
-          round: Math.random() > 0.5,
-          rotate: Math.random() * 360,
-        });
-      }
-      setConfetti(particles);
-
-      // End animation after 3 seconds and notify parent
-      timerRef.current = setTimeout(() => {
-        setVisible(false);
-        setConfetti([]);
-        onComplete?.();
-      }, 3000);
-    }
-
-    // Cleanup on unmount
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [show, visible, onComplete]);
-
-  // Reset visibility when show goes back to false (so we can trigger again)
-  useEffect(() => {
-    if (!show) {
-      // Allow re-triggering after parent resets
-      // Small delay to ensure timers complete first
-      const resetTimer = setTimeout(() => {
-        if (!show) setVisible(false);
-      }, 100);
-      return () => clearTimeout(resetTimer);
-    }
-  }, [show]);
+    if (!show) return;
+    const timer = setTimeout(() => {
+      setVisible(false);
+      setConfetti([]);
+      onCompleteRef.current?.();
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [show, onCompleteRef]);
 
   if (!visible) return null;
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useShouldSkipMotion } from '@/lib/hooks/useShouldSkipMotion';
+import { useResetOn } from '@/lib/hooks/useResetOn';
 
 export function PlaneCelebration({
   show,
@@ -13,7 +14,6 @@ export function PlaneCelebration({
   onComplete?: () => void;
 }) {
   const [visible, setVisible] = useState(false);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const onCompleteRef = useRef(onComplete);
   const skipMotion = useShouldSkipMotion();
 
@@ -27,46 +27,23 @@ export function PlaneCelebration({
     onCompleteRef.current?.();
   }, []);
 
+  // Shown in the render that sees `show` turn on, hidden in the one that sees
+  // it turn off (parent state cleared).
+  useResetOn(show, () => setVisible(show && !skipMotion));
+
   useEffect(() => {
-    if (show && !visible) {
-      // In perf-mode or with reduced-motion, fire onComplete immediately
-      // and skip the 5s animation entirely. Preserves the behavior contract
-      // (callers count on onComplete firing) without any rendered motion.
-      if (skipMotion) {
-        onCompleteRef.current?.();
-        return;
-      }
-
-      setVisible(true);
-
-      // Clear any existing timer
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
-
-      // End animation after 5 seconds (matches CSS animation duration)
-      timerRef.current = setTimeout(handleAnimationEnd, 5000);
+    if (!show) return;
+    // In perf-mode or with reduced-motion, fire onComplete immediately
+    // and skip the 5s animation entirely. Preserves the behavior contract
+    // (callers count on onComplete firing) without any rendered motion.
+    if (skipMotion) {
+      onCompleteRef.current?.();
+      return;
     }
-
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
-    };
-  }, [show, visible, handleAnimationEnd, skipMotion]);
-
-  // Reset when show goes back to false (parent state cleared)
-  useEffect(() => {
-    if (!show && visible) {
-      // Clear timer and reset state immediately
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
-      setVisible(false);
-    }
-  }, [show, visible]);
+    // End animation after 5 seconds (matches CSS animation duration)
+    const timer = setTimeout(handleAnimationEnd, 5000);
+    return () => clearTimeout(timer);
+  }, [show, handleAnimationEnd, skipMotion]);
 
   if (!visible) return null;
 

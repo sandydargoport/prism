@@ -29,6 +29,7 @@ import { useScreenSafeZones } from '@/lib/hooks/useScreenSafeZones';
 import { useViewportSize } from '@/lib/hooks/useViewportSize';
 import { setDisplayIdle } from '@/lib/hooks/useDisplayIdle';
 import { PollingScopeContext } from '@/lib/hooks/pollingScope';
+import { useResetOn } from '@/lib/hooks/useResetOn';
 
 /**
  * Wrapper classes that make any dashboard widget legible as a screensaver
@@ -108,13 +109,14 @@ export function Screensaver() {
     return () => clearInterval(timer);
   }, [isIdle, photos.length, pinnedId, screensaverInterval]);
 
+  // Fade in a tick after it mounts; start over transparent each time it ends.
+  useResetOn(isIdle, () => {
+    if (!isIdle) setVisible(false);
+  });
   useEffect(() => {
-    if (isIdle) {
-      const timer = setTimeout(() => setVisible(true), 50);
-      return () => clearTimeout(timer);
-    } else {
-      setVisible(false);
-    }
+    if (!isIdle) return;
+    const timer = setTimeout(() => setVisible(true), 50);
+    return () => clearTimeout(timer);
   }, [isIdle]);
 
   if (!isIdle) return null;
