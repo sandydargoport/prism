@@ -9,6 +9,8 @@
  * must never break the page — a private window or blocked site data makes
  * localStorage throw on access, not return null.
  */
+import { createElement } from 'react';
+import { hydrateRoot } from 'react-dom/client';
 import { renderHook, act } from '@testing-library/react';
 import {
   usePersistedState,
@@ -23,7 +25,12 @@ import {
 
 const isGroup = oneOf('none', 'person', 'list');
 
-beforeEach(() => window.localStorage.clear());
+beforeEach(() => {
+  window.localStorage.clear();
+  // What another tab clearing storage looks like; it also drops any value the
+  // store is holding because a write was refused.
+  window.dispatchEvent(new StorageEvent('storage', { key: null }));
+});
 
 describe('usePersistedState', () => {
   it('starts from the initial value when nothing is stored', () => {
@@ -193,14 +200,13 @@ describe('useSessionScopedStringSet', () => {
 });
 
 /**
- * The hook must not read storage during the first render.
+ * Hydration and first paint.
  *
- * The server has no localStorage, so it always renders the default. A stored
- * value applied during the first client render disagrees with that markup and
- * React discards the tree (#418). The value is therefore applied after mount,
- * and the write is gated behind that read — writing first would overwrite the
- * stored preference with the default on every mount, which is the same as not
- * persisting at all.
+ * The server has no localStorage, so it always renders the default. During
+ * hydration the hook must render that same default (a mismatch is React error
+ * #418, which throws the tree away), and then the stored value. On a
+ * client-side mount there is no server markup to match, so the stored value
+ * belongs on the very first render, not one render later.
  */
 describe('hydration safety', () => {
   it('does not clobber a stored value on mount', () => {
@@ -209,16 +215,68 @@ describe('hydration safety', () => {
     expect(window.localStorage.getItem('k')).toBe(JSON.stringify('person'));
   });
 
-  it('still applies the stored value once mounted', () => {
+  it('has the stored value on the first render of a client-side mount', () => {
+    // Opening the Tasks page from the nav must not draw the default grouping
+    // for a frame and then redraw with the saved one.
     window.localStorage.setItem('k', JSON.stringify('person'));
-    const { result } = renderHook(() => usePersistedState('k', 'none', isGroup));
-    expect(result.current[0]).toBe('person');
+    const seen: string[] = [];
+    renderHook(() => {
+      const [v] = usePersistedState('k', 'none', isGroup);
+      seen.push(v);
+    });
+    expect(seen[0]).toBe('person');
+    expect(seen).not.toContain('none');
+  });
+
+  it('hydrates the server markup without a mismatch, then shows the stored value', async () => {
+    window.localStorage.setItem('k', JSON.stringify('person'));
+    function Grouping() {
+      const [v] = usePersistedState('k', 'none', isGroup);
+      return createElement('span', null, v);
+    }
+    const container = document.createElement('div');
+    // What the server sends: it cannot see storage, so it renders the default.
+    container.innerHTML = '<span>none</span>';
+
+    const errors: unknown[] = [];
+    await act(async () => {
+      hydrateRoot(container, createElement(Grouping), {
+        onRecoverableError: (e) => errors.push(e),
+      });
+    });
+    expect(errors).toEqual([]);
+    expect(container.textContent).toBe('person');
   });
 
   it('a changed value is written after hydration', () => {
     const { result } = renderHook(() => usePersistedState('k', 'none', isGroup));
     act(() => result.current[1]('list'));
     expect(window.localStorage.getItem('k')).toBe(JSON.stringify('list'));
+  });
+
+  it('a change through one hook reaches another mounted on the same key', () => {
+    // e.g. the screensaver's quick settings and the Settings page both open.
+    const a = renderHook(() => usePersistedState('k', 'none', isGroup));
+    const b = renderHook(() => usePersistedState('k', 'none', isGroup));
+    act(() => a.result.current[1]('list'));
+    expect(b.result.current[0]).toBe('list');
+  });
+
+  it('two updaters in one batch build on each other', () => {
+    const { result } = renderHook(() => usePersistedStringSet('s'));
+    act(() => {
+      result.current[1]((prev) => new Set([...prev, 'a']));
+      result.current[1]((prev) => new Set([...prev, 'b']));
+    });
+    expect([...result.current[0]]).toEqual(['a', 'b']);
+  });
+
+  it('keeps the same Set while nothing changed, so it is safe in deps', () => {
+    window.localStorage.setItem('s', JSON.stringify(['a']));
+    const { result, rerender } = renderHook(() => usePersistedStringSet('s'));
+    const first = result.current[0];
+    rerender();
+    expect(result.current[0]).toBe(first);
   });
 
   it('tolerates a validator whose identity changes every render', () => {

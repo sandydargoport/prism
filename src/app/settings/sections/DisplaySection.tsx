@@ -462,10 +462,7 @@ function TimersCard() {
             </div>
             <Switch
               checked={autoHideEnabled}
-              onCheckedChange={(checked) => {
-                setAutoHideEnabled(checked);
-                window.dispatchEvent(new Event('prism:auto-hide-change'));
-              }}
+              onCheckedChange={setAutoHideEnabled}
             />
           </div>
         </div>

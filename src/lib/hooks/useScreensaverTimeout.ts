@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
+import { useStoredString, writeStored } from './useStoredValue';
 
 const STORAGE_KEY = 'prism-screensaver-timeout';
 const DEFAULT_TIMEOUT = 120; // 2 minutes in seconds
@@ -15,23 +16,11 @@ export const SCREENSAVER_TIMEOUT_OPTIONS = [
 ] as const;
 
 export function useScreensaverTimeout() {
-  const [timeout, setTimeoutState] = useState<number>(() => {
-    if (typeof window === 'undefined') return DEFAULT_TIMEOUT;
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored !== null ? Number(stored) : DEFAULT_TIMEOUT;
-  });
-
-  // Sync with localStorage on mount (for SSR hydration)
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored !== null) {
-      setTimeoutState(Number(stored));
-    }
-  }, []);
+  const stored = useStoredString(STORAGE_KEY);
+  const timeout = stored !== null ? Number(stored) : DEFAULT_TIMEOUT;
 
   const setTimeout = useCallback((value: number) => {
-    setTimeoutState(value);
-    localStorage.setItem(STORAGE_KEY, String(value));
+    writeStored(STORAGE_KEY, String(value));
     // Dispatch event so useIdleDetection can react
     window.dispatchEvent(new CustomEvent('prism:screensaver-timeout-change', { detail: value }));
   }, []);

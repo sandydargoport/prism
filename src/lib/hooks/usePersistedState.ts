@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useEffectEvent } from 'react';
+import { useState, useLayoutEffect, useMemo, useCallback, useEffectEvent } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
+import { useLatestRef } from './useLatestRef';
+import { parseStored, readStored, useStoredString, writeStored } from './useStoredValue';
 
 /**
  * useState that survives a refresh, stored per browser.
@@ -23,49 +25,40 @@ export function usePersistedState<T>(
   initial: T,
   isValid: (v: unknown) => v is T,
 ): [T, Dispatch<SetStateAction<T>>] {
-  // Always start from `initial`, never from storage.
-  //
-  // Reading localStorage in the initialiser meant the first client render
-  // disagreed with the server's markup — the server has no localStorage, so it
-  // always rendered the default. React treats that as a failed hydration
-  // (#418), throws the tree away and re-renders. Pages still worked, so it went
-  // unnoticed, but every load with a stored grouping paid a full client
-  // re-render and briefly showed the ungrouped view. Applying the stored value
-  // after mount makes the two renders agree by construction.
-  const [value, setValue] = useState<T>(initial);
-  const [hydrated, setHydrated] = useState(false);
+  // Read from the shared store rather than copied into state after mount. On a
+  // client-side mount the stored value is there on the first render; during
+  // hydration the store renders `initial`, as the server did, and then the
+  // stored value, so the markup matches (a mismatch is React error #418, which
+  // throws the tree away and re-renders it).
+  const raw = useStoredString(key);
+  // Held once, like useState's initial value: callers often pass a fresh array.
+  const [fallback] = useState(initial);
+  const stored = parseStored(key, raw);
+  // Validated rather than trusted: a stored value can outlive the option that
+  // produced it, and a stale one would leave the view in a state the UI no
+  // longer offers a way out of.
+  const value = raw !== null && isValid(stored) ? stored : fallback;
 
-  // `isValid` is usually an inline arrow, so its identity changes every render.
-  // An effect event, so the read below runs once per key rather than per render.
-  const valid = useEffectEvent((v: unknown): v is T => isValid(v));
-
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(key);
-      if (raw !== null) {
-        const parsed = JSON.parse(raw) as unknown;
-        // Validated rather than trusted: a stored value can outlive the option
-        // that produced it, and a stale one would leave the view in a state the
-        // UI no longer offers a way out of.
-        if (valid(parsed)) setValue(parsed);
+  // Read from refs in the setter, so it keeps one identity while `isValid` is
+  // an inline arrow at the call site.
+  const isValidRef = useLatestRef(isValid);
+  const fallbackRef = useLatestRef(fallback);
+  const setValue = useCallback<Dispatch<SetStateAction<T>>>(
+    (next) => {
+      let resolved: T;
+      if (typeof next === 'function') {
+        // Resolved against the store, not the last render, so two updaters in
+        // one batch build on each other.
+        const current = parseStored(key, readStored(key));
+        const prev = isValidRef.current(current) ? current : fallbackRef.current;
+        resolved = (next as (p: T) => T)(prev);
+      } else {
+        resolved = next;
       }
-    } catch {
-      /* storage unavailable — fall back to the initial value */
-    }
-    setHydrated(true);
-  }, [key]);
-
-  useEffect(() => {
-    // Gated on `hydrated`, and deliberately so: writing before the read above
-    // has run would overwrite a stored preference with the default on every
-    // mount, which is the same as not persisting at all.
-    if (!hydrated) return;
-    try {
-      window.localStorage.setItem(key, JSON.stringify(value));
-    } catch {
-      /* storage unavailable — the session works, it just will not persist */
-    }
-  }, [key, value, hydrated]);
+      writeStored(key, JSON.stringify(resolved));
+    },
+    [key, isValidRef, fallbackRef],
+  );
 
   return [value, setValue];
 }
@@ -169,16 +162,14 @@ export function useSessionScopedState<T>(
   isValid: (v: unknown) => v is T,
 ): [T, Dispatch<SetStateAction<T>>] {
   const [value, setValue] = usePersistedState<T>(key, initial, isValid);
-  const [ready, setReady] = useState(false);
 
-  useEffect(() => {
-    // Checked after mount, not in the initialiser: reading the clock during
-    // render would differ between server and client and hydrate mismatched.
-    if (!ready) {
-      setReady(true);
-      if (displayWentIdle()) setValue(initial);
-    }
-  }, [ready, initial, setValue]);
+  // Checked after mount, not during render: reading the clock while rendering
+  // would differ between server and client and hydrate mismatched. A layout
+  // effect, so a forgotten filter is never painted before it is dropped.
+  const forgetIfIdle = useEffectEvent(() => {
+    if (displayWentIdle()) setValue(initial);
+  });
+  useLayoutEffect(() => forgetIfIdle(), [key]);
 
   return [value, setValue];
 }

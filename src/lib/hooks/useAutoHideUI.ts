@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePathname } from 'next/navigation';
+import { useStoredString, writeStored } from './useStoredValue';
 
 const STORAGE_KEY = 'prism:auto-hide-ui';
 const HIDE_DELAY = 10_000; // 10 seconds
@@ -11,18 +12,13 @@ const HIDE_DELAY = 10_000; // 10 seconds
  * Only hides when the feature is enabled in settings.
  */
 export function useAutoHideUI() {
-  const [enabled, setEnabledState] = useState(false);
+  // False during hydration (the server cannot see storage), so the server
+  // markup always matches.
+  const enabled = useStoredString(STORAGE_KEY) === 'true';
   const [hidden, setHidden] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   // Only auto-hide on dashboard routes (/ and /d/[slug])
   const isDashboard = pathname === '/' || pathname.startsWith('/d/');
-
-  // Read from localStorage after mount to avoid SSR hydration mismatch
-  useEffect(() => {
-    setEnabledState(localStorage.getItem(STORAGE_KEY) === 'true');
-    setMounted(true);
-  }, []);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resetTimer = useCallback(() => {
@@ -33,12 +29,7 @@ export function useAutoHideUI() {
   }, [enabled]);
 
   const setEnabled = useCallback((value: boolean) => {
-    setEnabledState(value);
-    localStorage.setItem(STORAGE_KEY, String(value));
-    if (!value) {
-      setHidden(false);
-      if (timerRef.current) clearTimeout(timerRef.current);
-    }
+    writeStored(STORAGE_KEY, String(value));
   }, []);
 
   useEffect(() => {
@@ -75,20 +66,7 @@ export function useAutoHideUI() {
     };
   }, [enabled, resetTimer]);
 
-  // Listen for cross-component setting changes
-  useEffect(() => {
-    const handler = () => {
-      const val = localStorage.getItem(STORAGE_KEY) === 'true';
-      setEnabledState(val);
-      if (!val) setHidden(false);
-    };
-    window.addEventListener('storage', handler);
-    window.addEventListener('prism:auto-hide-change', handler);
-    return () => {
-      window.removeEventListener('storage', handler);
-      window.removeEventListener('prism:auto-hide-change', handler);
-    };
-  }, []);
-
-  return { autoHideEnabled: enabled, setAutoHideEnabled: setEnabled, uiHidden: mounted && enabled && isDashboard && hidden };
+  // `hidden` can be left true by a timer that fired before the feature was
+  // turned off; gating on `enabled` here means it never hides the UI then.
+  return { autoHideEnabled: enabled, setAutoHideEnabled: setEnabled, uiHidden: enabled && isDashboard && hidden };
 }

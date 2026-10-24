@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useEffectEvent } from 'react';
+import { useEffect, useEffectEvent } from 'react';
+import { readStored, useStoredString, writeStored } from './useStoredValue';
 import { useAuth } from '@/components/providers';
 
 /** Written by useIdleDetection on any interaction anywhere in the app. */
@@ -19,16 +20,14 @@ export const IDLE_LOGOUT_OPTIONS = [
   { value: 240, label: '4 hours' },
 ] as const;
 
+function parseMinutes(stored: string | null): number {
+  if (stored === null) return DEFAULT_IDLE_LOGOUT_MINUTES;
+  const n = Number(stored);
+  return Number.isFinite(n) && n >= 0 ? n : DEFAULT_IDLE_LOGOUT_MINUTES;
+}
+
 export function getIdleLogoutMinutes(): number {
-  if (typeof window === 'undefined') return DEFAULT_IDLE_LOGOUT_MINUTES;
-  try {
-    const stored = window.localStorage.getItem(IDLE_LOGOUT_KEY);
-    if (stored === null) return DEFAULT_IDLE_LOGOUT_MINUTES;
-    const n = Number(stored);
-    return Number.isFinite(n) && n >= 0 ? n : DEFAULT_IDLE_LOGOUT_MINUTES;
-  } catch {
-    return DEFAULT_IDLE_LOGOUT_MINUTES;
-  }
+  return parseMinutes(readStored(IDLE_LOGOUT_KEY));
 }
 
 /** True when the display has gone untouched for longer than the setting. */
@@ -55,18 +54,10 @@ export function shouldLogOut(minutes: number, lastActivity: number, now: number)
  * that often would train people to resent it. This is the longer question of
  * whether anyone is still here.
  */
-/** Read/write the setting, with the change event other tabs listen for. */
+/** Read/write the setting. A refused write holds for this page view only. */
 export function useIdleLogoutSetting(): [number, (v: number) => void] {
-  const [minutes, setMinutes] = useState<number>(() => getIdleLogoutMinutes());
-  useEffect(() => setMinutes(getIdleLogoutMinutes()), []);
-  const update = (v: number) => {
-    setMinutes(v);
-    try {
-      window.localStorage.setItem(IDLE_LOGOUT_KEY, String(v));
-    } catch {
-      /* storage unavailable — the choice holds for this session only */
-    }
-  };
+  const minutes = parseMinutes(useStoredString(IDLE_LOGOUT_KEY));
+  const update = (v: number) => writeStored(IDLE_LOGOUT_KEY, String(v));
   return [minutes, update];
 }
 

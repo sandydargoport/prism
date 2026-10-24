@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
+import { parseStored, useStoredString, writeStored } from './useStoredValue';
 
 // --- Public types (consumed by LayoutPreview, LayoutGridEditor, etc.) ---
 
@@ -95,23 +96,13 @@ function isOldFormat(data: unknown): boolean {
   return Array.isArray(obj.landscape) || Array.isArray(obj.portrait);
 }
 
-function loadScreens(): ScreenZoneConfig[] {
-  if (typeof window === 'undefined') return DEFAULT_SCREENS;
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      // Migrate old format (had landscape/portrait with rows/cols) → use defaults
-      if (isOldFormat(parsed)) {
-        return DEFAULT_SCREENS;
-      }
-      const config = parsed as ScreenSafeZonesConfig;
-      if (config.screens?.length) {
-        return config.screens;
-      }
-    }
-  } catch { /* use defaults */ }
-  return DEFAULT_SCREENS;
+function toScreens(raw: string | null): ScreenZoneConfig[] {
+  const parsed = parseStored(STORAGE_KEY, raw);
+  if (!parsed || typeof parsed !== 'object') return DEFAULT_SCREENS;
+  // Migrate old format (had landscape/portrait with rows/cols) → use defaults
+  if (isOldFormat(parsed)) return DEFAULT_SCREENS;
+  const config = parsed as ScreenSafeZonesConfig;
+  return config.screens?.length ? config.screens : DEFAULT_SCREENS;
 }
 
 // --- Backward-compat export ---
@@ -124,31 +115,13 @@ export const DEFAULT_SCREEN_SAFE_ZONES: ScreenSafeZones = {
 // --- Hook ---
 
 export function useScreenSafeZones() {
-  const [screens, setScreensState] = useState<ScreenZoneConfig[]>(loadScreens);
-
-  // Sync from localStorage on mount (SSR hydration safety)
-  useEffect(() => {
-    setScreensState(loadScreens());
-  }, []);
-
-  // Listen for changes from other components/tabs
-  useEffect(() => {
-    const handler = (e: Event) => {
-      if (e instanceof CustomEvent) {
-        setScreensState(e.detail as ScreenZoneConfig[]);
-      }
-    };
-    window.addEventListener('prism:screen-safe-zones-change', handler);
-    return () => window.removeEventListener('prism:screen-safe-zones-change', handler);
-  }, []);
+  // Same identity while the stored string is unchanged, so the memos below
+  // only recompute on a real change.
+  const screens = toScreens(useStoredString(STORAGE_KEY));
 
   const setScreens = useCallback((newScreens: ScreenZoneConfig[]) => {
-    setScreensState(newScreens);
-    try {
-      const config: ScreenSafeZonesConfig = { screens: newScreens };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-      window.dispatchEvent(new CustomEvent('prism:screen-safe-zones-change', { detail: newScreens }));
-    } catch { /* ignore storage errors */ }
+    const config: ScreenSafeZonesConfig = { screens: newScreens };
+    writeStored(STORAGE_KEY, JSON.stringify(config));
   }, []);
 
   const resetToDefaults = useCallback(() => {
