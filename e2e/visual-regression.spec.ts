@@ -445,6 +445,11 @@ test.describe('Visual regression', () => {
       // only child is the panel, which is the thing under test.
       const panel = page.locator('[data-testid="pin-modal"] > div');
       await expect(panel).toBeVisible();
+      // The panel's rounded corners, and the row above it when its top lands
+      // between pixels, show the dimmed dashboard through the backdrop. That
+      // holds live content (the weather, for one), so it changes from day to
+      // day with the clock held still. A solid backdrop leaves only the panel.
+      await page.addStyleTag({ content: '[data-testid="pin-modal"] { background: #000 !important; }' });
       await expect(panel).toHaveScreenshot(`pin-modal-${theme}.png`, SCREENSHOT_OPTIONS);
     });
   }
