@@ -25,7 +25,7 @@ Edit the screensaver layout in dashboard edit mode by clicking the **Screensaver
 *Settings → Appearance → Screensaver → Background* sets what sits behind the widgets, per display:
 
 - **Photos**: the slideshow, as before. The default.
-- **Night sky**: the stars, constellation figures and moon as they stand outside right now, drawn from the household location in *Settings → General*. By day it is a plain sky. It loads no images and redraws once a minute, so it costs next to nothing on a display that never sleeps, and it shows no family photos to visitors.
+- **Night sky**: the stars, Milky Way, constellation figures and moon as they stand outside right now, drawn from the household location in *Settings → General*, over a treeline on the horizon. The Milky Way comes out last at dusk and fades when the moon is bright, as it does outside. The brightest stars twinkle and a shooting star crosses every few minutes; with reduced motion set on the device, or Performance Mode on, both stop and the sky is still. By day it is a plain sky. It loads no images and redraws once a minute, so it costs next to nothing on a display that never sleeps, and it shows no family photos to visitors.
 - **Photos by day, night sky after dark**: changes over at sunset and back at sunrise, rechecked every minute while the screensaver is up.
 
 Everything is worked out on the display from the date and location; nothing is fetched. With no location set, the time zone stands in for it, so the change at sunset is right to within about an hour.

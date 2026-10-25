@@ -1,5 +1,8 @@
 import { test, expect, type Page } from '@playwright/test';
 import { getSeededParentId } from './helpers/auth';
+import {
+  facingFor, localSiderealTime, project, toHorizontal,
+} from '../src/components/screensaver/nightSky/sky';
 
 /**
  * A widget sized in the screensaver editor lands at the same size and place in
@@ -139,6 +142,8 @@ for (const [orientation, viewport] of [
  */
 const NOON = '2026-06-21T12:00:00Z';
 const NIGHT = '2026-06-22T03:30:00Z';
+/** Full dark and no moon: late evening four days after the August new moon. */
+const DEEP = '2026-08-15T06:00:00Z';
 
 test.describe('screensaver night sky', () => {
   test.use({ viewport: { width: 1280, height: 720 } });
@@ -181,6 +186,73 @@ test.describe('screensaver night sky', () => {
     expect(Math.abs(s!.w - 1280)).toBeLessThanOrEqual(1);
     expect(Math.abs(s!.h - 720)).toBeLessThanOrEqual(1);
     expect(s!.alpha, 'the sky is painted, not a blank canvas').toBe(255);
+  });
+
+  test('the Milky Way glows where it is in the sky, and not elsewhere', async ({ page }) => {
+    // Two points at about the same height on screen: one on the band in
+    // Cygnus, one well off it in Hercules. The band is the only thing that
+    // can make the first brighter than the second; a median over a patch
+    // keeps a stray star from deciding it.
+    await openScreensaver(page, 'sky', DEEP);
+    const view = { width: 1280, height: 720, facing: facingFor(45) };
+    const lst = localSiderealTime(new Date(DEEP), -100);
+    const on = project(toHorizontal(300, 30, 45, lst), view);
+    const off = project(toHorizontal(250, 20, 45, lst), view);
+    const [band, beside] = await page.evaluate(([a, b]) => {
+      const el = document.querySelector<HTMLCanvasElement>('[data-testid="night-sky"]')!;
+      const ctx = el.getContext('2d')!;
+      const k = el.width / el.clientWidth;
+      const median = (p: { x: number; y: number }) => {
+        const size = Math.round(24 * k);
+        const d = ctx.getImageData(Math.round(p.x * k - size / 2), Math.round(p.y * k - size / 2), size, size).data;
+        const lum: number[] = [];
+        for (let i = 0; i < d.length; i += 4) lum.push(0.2126 * d[i]! + 0.7152 * d[i + 1]! + 0.0722 * d[i + 2]!);
+        lum.sort((x, y) => x - y);
+        return lum[lum.length >> 1]!;
+      };
+      return [median(a), median(b)];
+    }, [on, off] as const);
+    expect(band - beside, `on the band ${band.toFixed(1)}, beside it ${beside.toFixed(1)}`).toBeGreaterThan(12);
+  });
+
+  test('the brightest stars twinkle, unless motion is reduced', async ({ page }) => {
+    await openScreensaver(page, 'sky', DEEP);
+    const twinkles = page.getByTestId('night-sky-twinkle');
+    expect(await twinkles.count()).toBeGreaterThan(2);
+    // Each sits on its star, inside the sky.
+    for (const box of await twinkles.evaluateAll((els) => els.map((e) => e.getBoundingClientRect().toJSON()))) {
+      const cx = box.x + box.width / 2;
+      const cy = box.y + box.height / 2;
+      expect(cx).toBeGreaterThan(0);
+      expect(cx).toBeLessThan(1280);
+      expect(cy).toBeGreaterThan(0);
+      expect(cy).toBeLessThan(720);
+    }
+
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await expect(twinkles).toHaveCount(0);
+  });
+
+  test('a shooting star crosses every few minutes', async ({ page }) => {
+    // The clock runs here rather than standing still, so minutes can pass.
+    await page.clock.install({ time: new Date(DEEP) });
+    await openScreensaver(page, 'sky', DEEP);
+    await expect(page.getByTestId('night-sky-meteor')).toHaveCount(0);
+    // Its streak plays on real time and removes itself when done, which can be
+    // before the fake minutes have finished passing; so count it arriving.
+    await page.evaluate(() => {
+      const w = window as unknown as { meteors: number };
+      w.meteors = 0;
+      new MutationObserver((changes) => {
+        for (const c of changes) {
+          for (const n of c.addedNodes) {
+            if (n instanceof HTMLElement && n.dataset.testid === 'night-sky-meteor') w.meteors++;
+          }
+        }
+      }).observe(document.body, { childList: true, subtree: true });
+    });
+    await page.clock.runFor(6 * 60_000);
+    expect(await page.evaluate(() => (window as unknown as { meteors: number }).meteors)).toBeGreaterThanOrEqual(1);
   });
 
   test('after dark shows photos at noon and the sky at midnight', async ({ page }) => {

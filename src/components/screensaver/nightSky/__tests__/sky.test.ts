@@ -1,7 +1,8 @@
 import {
-  localSiderealTime, toHorizontal, sunPosition, moonPosition, skyShowsNow, skyLight, project, facingFor,
+  localSiderealTime, toHorizontal, toEquatorial, sunPosition, moonPosition, skyShowsNow, skyLight, project,
+  unproject, facingFor,
 } from '../sky';
-import { STARS, LINES } from '../catalog';
+import { STARS, LINES, MILKY_WAY } from '../catalog';
 
 // A fictional household somewhere mid-latitude, west of Greenwich.
 const LAT = 45;
@@ -96,14 +97,60 @@ describe('sky light and projection', () => {
     expect(project({ alt: 20, az: 150 }, v).x).toBeLessThan(960);
   });
 
+  it('turns a point on screen back into the same point of the sky', () => {
+    // The Milky Way is drawn by looking each pixel up this way, so a slip here
+    // puts the band in the wrong place.
+    const v = { width: 1920, height: 1080, facing: facingFor(LAT) };
+    const lst = 123;
+    for (const [ra, dec] of [[40, 10], [266.4, -28.9], [310, 45], [100, 70]] as const) {
+      const sky = toHorizontal(ra, dec, LAT, lst);
+      if (sky.alt <= 0) continue;
+      const { x, y } = project(sky, v);
+      const back = toEquatorial(unproject(x, y, v), LAT, lst);
+      expect(back.dec).toBeCloseTo(dec, 6);
+      expect(Math.abs(((back.ra - ra + 540) % 360) - 180)).toBeLessThan(1e-6);
+    }
+  });
+
   it('faces north in the southern hemisphere', () => {
     expect(facingFor(-33)).toBe(0);
   });
 
   it('has the catalogue it draws from', () => {
-    expect(STARS.length / 4).toBeGreaterThan(800);
+    // Down to magnitude 6: the faint ones are what give the sky its depth.
+    expect(STARS.length / 4).toBeGreaterThan(4500);
+    expect(Math.max(...STARS.filter((_, i) => i % 4 === 2))).toBeGreaterThan(5.5);
     expect(LINES.length).toBeGreaterThan(100);
     // Sirius is the brightest star and comes first.
     expect(STARS.slice(0, 3)).toEqual([101.3, -16.7, -1.4]);
+  });
+});
+
+describe('the Milky Way grid', () => {
+  const at = (ra: number, dec: number) => Number(MILKY_WAY[Math.floor(dec + 90) * 360 + Math.floor(ra)]);
+
+  it('covers the whole sky, one degree to a cell', () => {
+    expect(MILKY_WAY).toMatch(/^[0-9]{64800}$/);
+  });
+
+  it('is bright toward the centre of the galaxy and dark at its pole', () => {
+    // The centre is in Sagittarius; the pole, straight out of the disc, in Coma.
+    expect(at(266.4, -28.9)).toBeGreaterThanOrEqual(3);
+    expect(at(192.9, 27.1)).toBe(0);
+  });
+
+  it('runs all the way round the sky as one band', () => {
+    // The faintest step is edged by two rings that circle the sky; rasterised
+    // wrongly, the band breaks where they cross 0h or fills in the sky outside
+    // them. Cassiopeia (0h, +60) sits on the band at the seam, and the band
+    // crosses every hour of right ascension somewhere.
+    expect(at(0.5, 60)).toBeGreaterThan(0);
+    for (let ra = 0; ra < 360; ra += 15) {
+      let lit = false;
+      for (let dec = -89; dec <= 89; dec++) if (at(ra, dec) > 0) lit = true;
+      expect(lit).toBe(true);
+    }
+    // And less than a third of the sky is in it.
+    expect([...MILKY_WAY].filter((c) => c !== '0').length / MILKY_WAY.length).toBeLessThan(0.33);
   });
 });

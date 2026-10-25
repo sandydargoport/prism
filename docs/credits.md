@@ -45,9 +45,10 @@ so a display downloads only the ranges it actually draws.
 - BSD 3-Clause License
 - Source: <https://github.com/ofrohn/d3-celestial>
 
-The screensaver's night sky uses its bright star positions (from the XHIP
-Hipparcos compilation) and constellation lines (from the IAU charts), trimmed
-to what a screen across a room can show.
+The screensaver's night sky uses its star positions (from the XHIP Hipparcos
+compilation), constellation lines (from the IAU charts) and Milky Way outlines
+(from the Milky Way Outline Catalog by Jose R. Vieira), trimmed to what a
+screen across a room can show.
 
 ## Prism itself
 

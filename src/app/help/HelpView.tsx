@@ -527,7 +527,7 @@ function ScreensaverHelp() {
       <P>Auto-activates when the device is idle. Shows a photo slideshow with optional widgets.</P>
       <Ul>
         <Li><strong>Configure timeout</strong>: Settings &gt; Appearance &gt; Timers &amp; Auto-Activation (Screensaver &gt; Activate after). Options are 30s, 1m, 2m, 10m, 1h, or Never (default 2m)</Li>
-        <Li><strong>Background</strong>: Photos, a <strong>Night sky</strong> (the stars and moon as they are outside now), or photos by day and the night sky after dark. Settings &gt; Appearance &gt; Screensaver &gt; Background</Li>
+        <Li><strong>Background</strong>: Photos, a <strong>Night sky</strong> (the stars, Milky Way and moon as they are outside now), or photos by day and the night sky after dark. Settings &gt; Appearance &gt; Screensaver &gt; Background</Li>
         <Li><strong>Photo rotation</strong>: Set the &quot;Rotate photos every&quot; interval, or pin one static photo</Li>
         <Li><strong>Edit layout</strong>: In dashboard edit mode, toggle &quot;Screensaver&quot;</Li>
       </Ul>

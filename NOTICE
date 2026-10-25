@@ -61,12 +61,13 @@ Source:    https://github.com/ofrohn/d3-celestial
 Licence:   third-party/d3-celestial/LICENSE
 Copyright (c) 2015, Olaf Frohn
 
-The screensaver's night sky draws bright star positions and constellation
-lines taken from this package's data, trimmed and reformatted into
-src/components/screensaver/nightSky/catalog.ts by
+The screensaver's night sky draws star positions, constellation lines and
+Milky Way outlines taken from this package's data, trimmed and reformatted
+into src/components/screensaver/nightSky/catalog.ts by
 scripts/gen-night-sky-catalog.mjs. Its star positions come from the XHIP
-Hipparcos compilation (Anderson & Francis 2012) and its figures from the IAU
-constellation charts.
+Hipparcos compilation (Anderson & Francis 2012), its figures from the IAU
+constellation charts, and its Milky Way from the Milky Way Outline Catalog by
+Jose R. Vieira.
 
 --------------------------------------------------------------------------
 

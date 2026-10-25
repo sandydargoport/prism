@@ -35,6 +35,19 @@ export function toHorizontal(ra: number, dec: number, lat: number, lst: number):
   return { alt: alt / RAD, az: ((az / RAD) + 360) % 360 };
 }
 
+/** The way back: right ascension and declination of a point in the sky. */
+export function toEquatorial(p: Horizontal, lat: number, lst: number): { ra: number; dec: number } {
+  const a = p.alt * RAD;
+  const z = p.az * RAD;
+  const q = lat * RAD;
+  const dec = Math.asin(Math.sin(a) * Math.sin(q) + Math.cos(a) * Math.cos(q) * Math.cos(z));
+  const h = Math.atan2(
+    -Math.sin(z) * Math.cos(a),
+    Math.sin(a) * Math.cos(q) - Math.cos(a) * Math.sin(q) * Math.cos(z),
+  );
+  return { ra: (((lst - h / RAD) % 360) + 360) % 360, dec: dec / RAD };
+}
+
 // suncalc 2 works in degrees with azimuth from north, the same as here. Its
 // first version used radians from south, and examples written for it are
 // still everywhere.
@@ -98,18 +111,35 @@ export function facingFor(lat: number): number {
   return lat >= 0 ? 180 : 0;
 }
 
+/** Radius of the projection that puts the horizon ahead at HORIZON_AT of the height. */
+function radius(v: View): number {
+  const a0 = CENTRE_ALT * RAD;
+  return ((HORIZON_AT - CENTRE_AT) * v.height) / ((2 * Math.sin(a0)) / (1 + Math.cos(a0)));
+}
+
 export function project(p: Horizontal, v: View): { x: number; y: number } {
   const a0 = CENTRE_ALT * RAD;
   const a = p.alt * RAD;
   const dAz = (p.az - v.facing) * RAD;
-  // Radius that puts the horizon ahead at HORIZON_AT of the height.
-  const horizonY = (2 * Math.sin(a0)) / (1 + Math.cos(a0));
-  const r = ((HORIZON_AT - CENTRE_AT) * v.height) / horizonY;
+  const r = radius(v);
   const k = (2 * r) / (1 + Math.sin(a0) * Math.sin(a) + Math.cos(a0) * Math.cos(a) * Math.cos(dAz));
   return {
     x: v.width / 2 + k * Math.cos(a) * Math.sin(dAz),
     y: CENTRE_AT * v.height - k * (Math.cos(a0) * Math.sin(a) - Math.sin(a0) * Math.cos(a) * Math.cos(dAz)),
   };
+}
+
+/** The point of the sky on screen at (x, y): the inverse of project. */
+export function unproject(x: number, y: number, v: View): Horizontal {
+  const a0 = CENTRE_ALT * RAD;
+  const px = x - v.width / 2;
+  const py = CENTRE_AT * v.height - y;
+  const rho = Math.hypot(px, py);
+  if (rho === 0) return { alt: CENTRE_ALT, az: v.facing };
+  const c = 2 * Math.atan(rho / (2 * radius(v)));
+  const alt = Math.asin(Math.cos(c) * Math.sin(a0) + (py * Math.sin(c) * Math.cos(a0)) / rho);
+  const dAz = Math.atan2(px * Math.sin(c), rho * Math.cos(a0) * Math.cos(c) - py * Math.sin(a0) * Math.sin(c));
+  return { alt: alt / RAD, az: (((v.facing + dAz / RAD) % 360) + 360) % 360 };
 }
 
 /** Sky colour and star visibility for a sun altitude. */
