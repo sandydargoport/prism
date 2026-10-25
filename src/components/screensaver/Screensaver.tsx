@@ -30,6 +30,10 @@ import { useViewportSize } from '@/lib/hooks/useViewportSize';
 import { setDisplayIdle } from '@/lib/hooks/useDisplayIdle';
 import { PollingScopeContext } from '@/lib/hooks/pollingScope';
 import { useResetOn } from '@/lib/hooks/useResetOn';
+import { useScreensaverBackdrop, useSkyLocation, useSkyShowing } from './useScreensaverBackdrop';
+
+// Only displays that choose the sky load its star catalogue.
+const NightSky = React.lazy(() => import('./nightSky/NightSky').then((m) => ({ default: m.NightSky })));
 
 /**
  * Wrapper classes that make any dashboard widget legible as a screensaver
@@ -92,13 +96,17 @@ export function Screensaver() {
     return () => setDisplayIdle(false);
   }, [isIdle]);
 
+  const { backdrop } = useScreensaverBackdrop();
+  const { lat, lon } = useSkyLocation(backdrop !== 'photos');
+  const showSky = useSkyShowing(backdrop, lat, lon, isIdle);
+
   const [visible, setVisible] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [fadingOut, setFadingOut] = useState(false);
 
   // Only rotate if no pinned photo and interval is not "never" (0)
   useEffect(() => {
-    if (!isIdle || photos.length <= 1 || pinnedId || screensaverInterval === 0) return;
+    if (!isIdle || showSky || photos.length <= 1 || pinnedId || screensaverInterval === 0) return;
     const timer = setInterval(() => {
       setFadingOut(true);
       setTimeout(() => {
@@ -107,7 +115,7 @@ export function Screensaver() {
       }, 1000);
     }, screensaverInterval * 1000);
     return () => clearInterval(timer);
-  }, [isIdle, photos.length, pinnedId, screensaverInterval]);
+  }, [isIdle, showSky, photos.length, pinnedId, screensaverInterval]);
 
   // Fade in a tick after it mounts; start over transparent each time it ends.
   useResetOn(isIdle, () => {
@@ -121,8 +129,9 @@ export function Screensaver() {
 
   if (!isIdle) return null;
 
-  // Use pinned photo if set, otherwise use rotating photos
-  const src = pinnedId
+  // Use pinned photo if set, otherwise use rotating photos. None at all under
+  // the sky, so it loads nothing for as long as it is up.
+  const src = showSky ? '' : pinnedId
     ? `/api/photos/${pinnedId}/file`
     : photos[currentIndex]
       ? `/api/photos/${photos[currentIndex]!.id}/file`
@@ -147,7 +156,15 @@ export function Screensaver() {
           }}
         />
       )}
-      <div className="pointer-events-none absolute inset-0 bg-black/40" />
+      {showSky ? (
+        <React.Suspense fallback={null}>
+          <NightSky lat={lat} lon={lon} />
+        </React.Suspense>
+      ) : (
+        // Photos are dimmed so the white widget text reads over them. The sky
+        // is already dark where it matters.
+        <div className="pointer-events-none absolute inset-0 bg-black/40" />
+      )}
       {/* Scoped from out here rather than inside ScreensaverGrid: the grid
           calls useDashboardData in its own body, which reads context from
           where the grid SITS, not from what it renders. */}

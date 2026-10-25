@@ -20,6 +20,16 @@ Screensaver layouts are dashboard-scoped. Your kitchen dashboard (`/d/kitchen`) 
 
 Edit the screensaver layout in dashboard edit mode by clicking the **Screensaver** button to switch from editing the dashboard to editing the screensaver overlay.
 
+### Background: photos or the night sky
+
+*Settings → Appearance → Screensaver → Background* sets what sits behind the widgets, per display:
+
+- **Photos**: the slideshow, as before. The default.
+- **Night sky**: the stars, constellation figures and moon as they stand outside right now, drawn from the household location in *Settings → General*. By day it is a plain sky. It loads no images and redraws once a minute, so it costs next to nothing on a display that never sleeps, and it shows no family photos to visitors.
+- **Photos by day, night sky after dark**: changes over at sunset and back at sunrise, rechecked every minute while the screensaver is up.
+
+Everything is worked out on the display from the date and location; nothing is fetched. With no location set, the time zone stands in for it, so the change at sunset is right to within about an hour.
+
 ### Widget transitions
 
 By default the screensaver shows every widget in its layout, all the time. It can

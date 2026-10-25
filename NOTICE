@@ -54,6 +54,21 @@ its own — typically a minimal kiosk build. Self-hosted, split by unicode-range
 so a display fetches only the ranges it draws.
 
 --------------------------------------------------------------------------
+d3-celestial star data  -  BSD 3-Clause
+--------------------------------------------------------------------------
+Package:   d3-celestial 0.7.35 (data files only)
+Source:    https://github.com/ofrohn/d3-celestial
+Licence:   third-party/d3-celestial/LICENSE
+Copyright (c) 2015, Olaf Frohn
+
+The screensaver's night sky draws bright star positions and constellation
+lines taken from this package's data, trimmed and reformatted into
+src/components/screensaver/nightSky/catalog.ts by
+scripts/gen-night-sky-catalog.mjs. Its star positions come from the XHIP
+Hipparcos compilation (Anderson & Francis 2012) and its figures from the IAU
+constellation charts.
+
+--------------------------------------------------------------------------
 
 Bundling OFL fonts places no condition on Prism's own licence: the OFL is a
 per-file licence and does not reach the surrounding work. Its one prohibition

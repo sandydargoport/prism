@@ -39,6 +39,16 @@ for it, so a display on a private network renders the same as one online.
 A fallback for clients with no emoji font of their own. Split by unicode-range
 so a display downloads only the ranges it actually draws.
 
+## Star data: d3-celestial
+
+- Copyright © 2015, Olaf Frohn
+- BSD 3-Clause License
+- Source: <https://github.com/ofrohn/d3-celestial>
+
+The screensaver's night sky uses its bright star positions (from the XHIP
+Hipparcos compilation) and constellation lines (from the IAU charts), trimmed
+to what a screen across a room can show.
+
 ## Prism itself
 
 Prism is licensed under the [PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0/).

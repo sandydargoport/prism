@@ -18,6 +18,7 @@ import { useScreenOrientation } from '@/lib/hooks/useScreenOrientation';
 import { useOrientationOverride } from '../SettingsView';
 import { useScreensaverTimeout } from '@/lib/hooks/useScreensaverTimeout';
 import { useScreensaverMotion, type ScreensaverMotion, type ScreensaverDrift } from '@/components/screensaver/useScreensaverMotion';
+import { useScreensaverBackdrop, type ScreensaverBackdrop } from '@/components/screensaver/useScreensaverBackdrop';
 import { useIdleLogoutSetting, IDLE_LOGOUT_OPTIONS } from '@/lib/hooks/useIdleLogout';
 import { useAutoHideUI } from '@/lib/hooks/useAutoHideUI';
 import { useAwayModeTimeout } from '@/lib/hooks/useAwayModeTimeout';
@@ -518,6 +519,7 @@ function ScreensaverCard() {
     shortcut, setShortcut, drift, setDrift,
     carbonation, setCarbonation, waterClear, setWaterClear, wobble, setWobble, speed, setSpeed,
   } = useScreensaverMotion();
+  const { backdrop, setBackdrop } = useScreensaverBackdrop();
 
   return (
     <Card id="screensaver-settings">
@@ -543,6 +545,24 @@ function ScreensaverCard() {
               <option value={0}>Never</option>
             </select>
           </div>
+          <div className="flex items-center gap-3 pl-2">
+            <span className="text-sm text-muted-foreground">Background</span>
+            <select
+              value={backdrop}
+              onChange={(e) => setBackdrop(e.target.value as ScreensaverBackdrop)}
+              className="border border-border rounded px-2 py-1 text-sm bg-background"
+            >
+              <option value="photos">Photos</option>
+              <option value="sky">Night sky</option>
+              <option value="skyAtNight">Photos by day, night sky after dark</option>
+            </select>
+          </div>
+          {backdrop !== 'photos' && (
+            <p className="text-xs text-muted-foreground pl-2">
+              The stars and moon as they are outside now, worked out from the location in
+              Settings &gt; General.
+            </p>
+          )}
           <div className="flex items-center gap-3 pl-2">
             <span className="text-sm text-muted-foreground">Widget transition effect</span>
             <select

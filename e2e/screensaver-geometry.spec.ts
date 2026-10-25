@@ -128,3 +128,70 @@ for (const [orientation, viewport] of [
     });
   });
 }
+
+/**
+ * The night sky backdrop (#340): drawn across the whole screen in place of the
+ * photos, and with "after dark" only once the sun is down where the household
+ * is. The location comes from the weather response, so it is pinned here to a
+ * fictional one rather than whatever the test server resolves. If the server
+ * has no weather to patch, the sky falls back to a longitude from the time
+ * zone; the two times below are day and night for both, so either way holds.
+ */
+const NOON = '2026-06-21T12:00:00Z';
+const NIGHT = '2026-06-22T03:30:00Z';
+
+test.describe('screensaver night sky', () => {
+  test.use({ viewport: { width: 1280, height: 720 } });
+  test.setTimeout(90_000);
+
+  async function openScreensaver(page: Page, backdrop: string, at: string) {
+    await page.clock.setFixedTime(new Date(at));
+    await page.route('**/api/weather*', async (route) => {
+      const response = await route.fetch();
+      if (!response.ok()) return route.fulfill({ response });
+      return route.fulfill({ response, json: { ...(await response.json()), lat: 45, lon: -100 } });
+    });
+    await page.addInitScript((value) => {
+      localStorage.setItem('prism-screensaver-backdrop', value);
+    }, backdrop);
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
+    await page.locator('.fixed.inset-0.z-9999').waitFor();
+    await page.waitForTimeout(1500);
+  }
+
+  /** The sky canvas's box, and whether it has painted an opaque sky at the top. */
+  async function sky(page: Page) {
+    return page.evaluate(() => {
+      const el = document.querySelector<HTMLCanvasElement>('[data-testid="night-sky"]');
+      if (!el) return null;
+      const b = el.getBoundingClientRect();
+      const px = el.getContext('2d')!.getImageData(Math.floor(el.width / 2), 2, 1, 1).data;
+      return { x: b.x, y: b.y, w: b.width, h: b.height, alpha: px[3] };
+    });
+  }
+
+  test('Night sky fills the screen instead of the photos', async ({ page }) => {
+    await openScreensaver(page, 'sky', NIGHT);
+    const s = await sky(page);
+    expect(s, 'the sky canvas is drawn').not.toBeNull();
+    expect(s!.x).toBe(0);
+    expect(s!.y).toBe(0);
+    expect(Math.abs(s!.w - 1280)).toBeLessThanOrEqual(1);
+    expect(Math.abs(s!.h - 720)).toBeLessThanOrEqual(1);
+    expect(s!.alpha, 'the sky is painted, not a blank canvas').toBe(255);
+  });
+
+  test('after dark shows photos at noon and the sky at midnight', async ({ page }) => {
+    await openScreensaver(page, 'skyAtNight', NOON);
+    expect(await sky(page), 'local noon: photos, no sky').toBeNull();
+
+    await page.clock.setFixedTime(new Date(NIGHT));
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
+    await page.locator('[data-testid="night-sky"]').waitFor();
+    expect((await sky(page))!.alpha).toBe(255);
+  });
+});
