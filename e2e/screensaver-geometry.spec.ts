@@ -158,6 +158,9 @@ test.describe('screensaver night sky', () => {
     });
     await page.addInitScript((value) => {
       localStorage.setItem('prism-screensaver-backdrop', value);
+      // Performance Mode turns itself on with four cores or fewer, which a CI
+      // runner has, and it stops the twinkle and shooting stars on purpose.
+      localStorage.setItem('prism-perf-mode', 'false');
     }, backdrop);
     await page.goto('/');
     await page.waitForLoadState('networkidle');
