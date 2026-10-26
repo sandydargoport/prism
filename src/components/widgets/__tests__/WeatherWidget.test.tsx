@@ -567,6 +567,9 @@ describe('an eclipse on the arc', () => {
   it('shows the shadow across the sun while it happens', () => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date(2026, 6, 17, 12, 30));
+    // The sun is up: pinned, because the fixture's place and the clock's zone
+    // need not agree, and in Tokyo 12:30 is the middle of the night at 100W.
+    jest.mocked(SunCalc.getPosition).mockReturnValue({ altitude: 40, azimuth: 180 });
     render(<WeatherWidget data={day(solar)} />);
     expect(screen.getByTestId('eclipse-shadow')).toBeTruthy();
     // Once it has begun the outline has done its job; it would only sit on
