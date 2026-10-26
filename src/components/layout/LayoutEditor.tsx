@@ -41,6 +41,8 @@ export function LayoutEditor({
   screensaverPresets = [],
   onSelectScreensaverPreset,
   onDeleteScreensaverPreset,
+  screensaverMode,
+  onScreensaverModeChange,
   screenGuideOrientation = 'landscape',
   onScreenGuideOrientationChange,
   enabledSizes = [],
@@ -65,6 +67,7 @@ export function LayoutEditor({
   const effectiveEnabledSizes = enabledSizes.length > 0 ? enabledSizes : allSizeNames;
 
   const [activePopover, setActivePopover] = useState<ActivePopover>(null);
+  const calm = screensaverMode === 'calm' && !editingScreensaver;
   const [focusedWidget, setFocusedWidget] = useState<string | null>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
 
@@ -199,7 +202,10 @@ export function LayoutEditor({
             allDashboards={allDashboards}
             currentDashboardId={currentDashboardId}
             onToggleMeasureMode={toggleMeasureMode}
-            onToggleScreensaverEdit={onToggleScreensaverEdit}
+            screensaverMode={screensaverMode}
+            onScreensaverModeChange={onScreensaverModeChange}
+            // A calm dashboard has no separate screensaver to edit or copy to.
+            onToggleScreensaverEdit={calm ? undefined : onToggleScreensaverEdit}
             onSave={state.handleSave}
             onSaveAs={() => { state.setShowSaveAsDialog(true); setActivePopover(null); }}
             onReset={onReset}
@@ -208,7 +214,7 @@ export function LayoutEditor({
             onExport={state.handleExport}
             onImportOpen={() => { state.setShowImportDialog(true); setActivePopover(null); }}
             onShareOpen={() => { state.setShowShareDialog(true); setActivePopover(null); }}
-            onCopyToOther={onToggleScreensaverEdit ? handleCopyToOther : undefined}
+            onCopyToOther={onToggleScreensaverEdit && !calm ? handleCopyToOther : undefined}
             onDeleteDashboard={onDeleteDashboard}
             onHandleDelete={state.handleDelete}
           />

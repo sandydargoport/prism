@@ -391,6 +391,7 @@ const widgetConfigSchema = z.object({
   gridLineOpacity: z.number().min(0).max(1).optional(),
   cellBackgroundColor: z.string().optional(),
   cellBackgroundOpacity: z.number().min(0).max(1).optional(),
+  showWhenIdle: z.boolean().optional(),
   settings: z.record(z.unknown()).optional(),
 });
 
@@ -400,6 +401,8 @@ export const createLayoutSchema = z.object({
   isDefault: z.boolean().optional().default(false),
   widgets: z.array(widgetConfigSchema).min(1, 'At least one widget is required'),
   screensaverWidgets: z.array(widgetConfigSchema).nullable().optional(),
+  // No default here: a new dashboard gets the column's, an update leaves it.
+  screensaverMode: z.enum(['separate', 'calm']).optional(),
   orientation: z.enum(['landscape', 'portrait']).optional().default('landscape'),
   fontScale: z.number().int().min(50).max(200).nullable().optional(),
   createdBy: uuidSchema.optional(),

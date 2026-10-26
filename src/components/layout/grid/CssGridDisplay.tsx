@@ -27,6 +27,7 @@ export function CssGridDisplay({
   designOrientation,
   containMode = false,
   screenFrame,
+  fadedIds,
   className,
 }: CssGridDisplayProps) {
   const { containerRef, cellSize: widthCellSize, width, top, zoom, remeasure } = useSquareCells(cols, containerPadding, margin, fillHeight);
@@ -206,16 +207,23 @@ export function CssGridDisplay({
           const contentStyle = getWidgetContentStyle(w);
           const textClass = getTextColorClass(w);
           const hasCustomBg = !!w.backgroundColor;
+          const faded = fadedIds?.has(w.i) ?? false;
 
           return (
             <div
               key={w.i}
-              className={`widget-cell relative overflow-hidden ${textClass}`}
+              className={`widget-cell relative overflow-hidden ${textClass} transition-opacity duration-1000 motion-reduce:duration-200`}
               data-widget={w.i}
+              data-faded={faded || undefined}
+              aria-hidden={faded || undefined}
               style={{
                 gridColumn: `${w.x + 1} / span ${w.w}`,
                 gridRow: `${w.y + 1} / span ${w.h}`,
                 ...widgetStyle,
+                // Faded, not removed: the cell keeps its place in the grid, so
+                // nothing around it reflows. A tap on it falls to the empty
+                // grid, which wakes the display without pressing anything.
+                ...(faded ? { opacity: 0, pointerEvents: 'none' as const } : {}),
               }}
             >
               <WidgetBgOverrideProvider value={{ hasCustomBg, textColor: w.textColor, textOpacity: w.textOpacity, gridLineOpacity: w.gridLineOpacity, cellBackgroundColor: w.cellBackgroundColor, cellBackgroundOpacity: w.cellBackgroundOpacity }}>

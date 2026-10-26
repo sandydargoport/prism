@@ -31,6 +31,7 @@ import { setDisplayIdle } from '@/lib/hooks/useDisplayIdle';
 import { PollingScopeContext } from '@/lib/hooks/pollingScope';
 import { useResetOn } from '@/lib/hooks/useResetOn';
 import { useScreensaverBackdrop, useSkyLocation, useSkyShowing } from './useScreensaverBackdrop';
+import { setCalmIdle, useActiveScreensaverMode } from './calmMode';
 
 // Only displays that choose the sky load its star catalogue.
 const NightSky = React.lazy(() => import('./nightSky/NightSky').then((m) => ({ default: m.NightSky })));
@@ -73,7 +74,15 @@ export function Screensaver() {
   // has touched anything — so it yields to both.
   const { isAway } = useAwayMode();
   const { isActive: isBabysitter } = useBabysitterMode();
-  const isIdle = shouldShowScreensaver({ idle: idleNow, away: isAway, babysitter: isBabysitter });
+  const idle = shouldShowScreensaver({ idle: idleNow, away: isAway, babysitter: isBabysitter });
+  // A calm dashboard is its own idle screen (#691): this decides when, and the
+  // dashboard does the showing, so there is no overlay to put up.
+  const calm = useActiveScreensaverMode() === 'calm';
+  const isIdle = idle && !calm;
+  useEffect(() => {
+    setCalmIdle(idle && calm);
+    return () => setCalmIdle(false);
+  }, [idle, calm]);
   const { enabled: autoOrientation } = useAutoOrientationSetting();
   const { pinnedId } = usePinnedPhoto('screensaver');
   const { interval: screensaverInterval } = useScreensaverInterval();
@@ -90,7 +99,9 @@ export function Screensaver() {
   });
   // Tell the polling layer the display is covered. On a wall-mounted screen
   // this is the only pause signal that ever fires: document.hidden cannot,
-  // because the tab is never hidden. See useDisplayIdle.
+  // because the tab is never hidden. See useDisplayIdle. A calm display is
+  // never covered: its dashboard is what the idle screen shows, so it keeps
+  // refreshing.
   useEffect(() => {
     setDisplayIdle(isIdle);
     return () => setDisplayIdle(false);

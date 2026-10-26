@@ -37,7 +37,7 @@ const MealModal = lazy(() => import('@/app/meals/MealsView').then(m => ({ defaul
 import { WIDGET_REGISTRY } from '@/components/widgets/widgetRegistry';
 import { renderScreensaverPreview } from '@/components/screensaver/ScreensaverWidgetPreview';
 import { SCREENSAVER_WIDGET_CLASS } from '@/components/screensaver/Screensaver';
-import type { WidgetConfig } from '@/lib/hooks/useLayouts';
+import type { ScreensaverMode, WidgetConfig } from '@/lib/hooks/useLayouts';
 import { WidgetErrorBoundary } from '@/components/dashboard/WidgetErrorBoundary';
 import { WidgetExpandProvider, useWidgetExpand } from '@/components/dashboard/WidgetExpandProvider';
 import { useDashboardData } from './useDashboardData';
@@ -46,6 +46,7 @@ import { buildWidgetProps } from './useWidgetProps';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { useLocalCopy } from '@/lib/hooks/useLocalCopy';
+import { setActiveScreensaverMode, shownWhenIdle, useCalmIdle } from '@/components/screensaver/calmMode';
 
 class WidgetBoundary extends React.Component<
   { name: string; children: React.ReactNode },
@@ -152,6 +153,29 @@ export function Dashboard({
 
   // Grid control state shared between LayoutEditor toolbar and LayoutGridEditor
   const { allSizeNames } = useScreenSafeZones();
+
+  // Calm mode (#691): tell the Screensaver this dashboard is its own idle
+  // screen, and take it back when the dashboard goes, so other pages still get
+  // the ordinary screensaver. The phone layout has no calm idle state.
+  const screensaverMode = isMobile ? 'separate' : layout.activeLayout?.screensaverMode ?? 'separate';
+  useEffect(() => {
+    setActiveScreensaverMode(screensaverMode);
+    return () => setActiveScreensaverMode('separate');
+  }, [screensaverMode]);
+  const setScreensaverMode = useCallback(async (mode: ScreensaverMode) => {
+    const active = layout.activeLayout;
+    if (!active) return;
+    try {
+      await data.layouts.saveLayout({ id: active.id, name: active.name, widgets: active.widgets, screensaverMode: mode });
+    } catch (err) {
+      console.error('Failed to save the screensaver mode:', err);
+    }
+  }, [layout.activeLayout, data.layouts]);
+  const calmIdle = useCalmIdle() && !layout.isEditing;
+  const fadedIds = useMemo(
+    () => calmIdle ? new Set(layout.activeWidgets.filter(w => !shownWhenIdle(w)).map(w => w.i)) : undefined,
+    [calmIdle, layout.activeWidgets],
+  );
 
   // Orientation from active layout (DB), fallback to landscape
   // A choice made here holds until the active layout's orientation changes.
@@ -377,6 +401,8 @@ export function Dashboard({
             screensaverPresets={layout.ssPresets}
             onSelectScreensaverPreset={layout.handleSelectSsPreset}
             onDeleteScreensaverPreset={layout.handleDeleteSsPreset}
+            screensaverMode={layout.activeLayout ? screensaverMode : undefined}
+            onScreensaverModeChange={setScreensaverMode}
             screenGuideOrientation={screenGuideOrientation}
             onScreenGuideOrientationChange={setScreenGuideOrientation}
             enabledSizes={enabledSizes}
@@ -424,6 +450,7 @@ export function Dashboard({
                 onLayoutChange={layout.isEditing ? layout.setEditingWidgets : () => {}}
                 isEditable={layout.isEditing}
                 renderWidget={renderDashboardWidget}
+                fadedIds={fadedIds}
                 widgetConstraints={dashboardConstraints}
                 margin={8}
                 headerOffset={layout.isEditing ? 140 : uiHidden ? 0 : 56}

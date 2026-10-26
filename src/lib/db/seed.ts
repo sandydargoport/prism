@@ -991,6 +991,9 @@ async function seed() {
         { i: 'chores',   x: 24, y: 12, w: 24, h: 6  },
         { i: 'shopping', x: 24, y: 18, w: 24, h: 6  },
       ],
+      // Seeded as an install from before calm mode (#691), so the suites that
+      // drive the separate screensaver keep finding it.
+      screensaverMode: 'separate',
       createdBy: alex.id,
     },
   ]);

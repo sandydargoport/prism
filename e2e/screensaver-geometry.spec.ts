@@ -345,3 +345,99 @@ test.describe('screensaver night sky', () => {
     expect((await sky(page))!.alpha).toBe(255);
   });
 });
+
+/**
+ * Calm mode (#691): a dashboard that is its own idle screen. Going idle fades
+ * out the widgets not ticked to stay and leaves every widget exactly where it
+ * was; waking brings them back. Nothing moves, and the separate screensaver
+ * does not come up over it.
+ */
+test.describe('calm mode idle screen', () => {
+  test.skip(!HAS_TEST_DB, 'needs the seeded test database to log in and create a dashboard');
+  test.use({ viewport: { width: 1280, height: 720 } });
+  test.setTimeout(90_000);
+
+  // Clock and Tasks rely on the default ticks; Shopping and Weather override them.
+  const WIDGETS = [
+    { i: 'clock', x: 0, y: 0, w: 16, h: 12 },
+    { i: 'tasks', x: 16, y: 0, w: 16, h: 12 },
+    { i: 'shopping', x: 32, y: 0, w: 16, h: 12, showWhenIdle: true },
+    { i: 'weather', x: 0, y: 12, w: 16, h: 12, showWhenIdle: false },
+  ];
+  const SHOWN = ['clock', 'shopping'];
+  const FADED = ['tasks', 'weather'];
+
+  type Cell = Box & { opacity: number; hit: boolean };
+  async function cells(page: Page): Promise<Record<string, Cell>> {
+    return page.evaluate(() => {
+      const out: Record<string, { x: number; y: number; w: number; h: number; opacity: number; hit: boolean }> = {};
+      document.querySelectorAll<HTMLElement>('.widget-cell[data-widget]').forEach((el) => {
+        const b = el.getBoundingClientRect();
+        // What a tap at the widget's centre would land on.
+        const at = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2);
+        out[el.dataset.widget!] = {
+          x: b.x, y: b.y, w: b.width, h: b.height,
+          opacity: Number(getComputedStyle(el).opacity),
+          hit: !!at && el.contains(at),
+        };
+      });
+      return out;
+    });
+  }
+
+  test('going idle fades the unticked widgets in place, and waking brings them back', async ({ page }) => {
+    const login = await page.request.post('/api/auth/login', {
+      data: { userId: getSeededParentId(), pin: PIN },
+    });
+    expect(login.ok(), 'precondition: login must succeed').toBe(true);
+    const created = await page.request.post('/api/layouts', {
+      data: { name: `Calm e2e ${Date.now()}`, widgets: WIDGETS },
+    });
+    expect(created.status()).toBe(201);
+    const layout = await created.json();
+    // A dashboard created now is calm without being asked.
+    expect(layout.screensaverMode).toBe('calm');
+
+    try {
+      await page.goto(`/d/${layout.slug}`);
+      await page.locator('.widget-cell[data-widget="clock"]').waitFor({ timeout: 60000 });
+      await page.waitForTimeout(800);
+      const before = await cells(page);
+      expect(Object.keys(before).sort()).toEqual(WIDGETS.map((w) => w.i).sort());
+
+      await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
+      await page.waitForTimeout(1500);
+      const idle = await cells(page);
+
+      // The separate screensaver did not come up over the dashboard.
+      await expect(page.locator('.fixed.inset-0 .widget-cell')).toHaveCount(0);
+      for (const i of [...SHOWN, ...FADED]) {
+        expect(Math.abs(idle[i]!.x - before[i]!.x), `${i} x`).toBeLessThanOrEqual(1);
+        expect(Math.abs(idle[i]!.y - before[i]!.y), `${i} y`).toBeLessThanOrEqual(1);
+        expect(Math.abs(idle[i]!.w - before[i]!.w), `${i} width`).toBeLessThanOrEqual(1);
+        expect(Math.abs(idle[i]!.h - before[i]!.h), `${i} height`).toBeLessThanOrEqual(1);
+      }
+      for (const i of SHOWN) {
+        expect(idle[i]!.opacity, `${i} stays`).toBe(1);
+        expect(idle[i]!.hit, `a tap on ${i} reaches it`).toBe(true);
+      }
+      for (const i of FADED) {
+        expect(idle[i]!.opacity, `${i} fades`).toBe(0);
+        expect(idle[i]!.hit, `a tap on faded ${i} does not press it`).toBe(false);
+      }
+
+      // The first touch after the toolbar's forced start is absorbed (see
+      // useIdleDetection); the second wakes the display.
+      const tasks = idle.tasks!;
+      for (let n = 0; n < 2; n++) await page.mouse.click(tasks.x + tasks.w / 2, tasks.y + tasks.h / 2);
+      await page.waitForTimeout(1500);
+      const awake = await cells(page);
+      for (const i of [...SHOWN, ...FADED]) {
+        expect(awake[i]!.opacity, `${i} is back`).toBe(1);
+        expect(Math.abs(awake[i]!.y - before[i]!.y), `${i} did not move`).toBeLessThanOrEqual(1);
+      }
+    } finally {
+      await page.request.delete(`/api/layouts/${layout.id}`);
+    }
+  });
+});

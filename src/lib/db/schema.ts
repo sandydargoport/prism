@@ -934,6 +934,11 @@ export const layouts = pgTable('layouts', {
   // Per-dashboard screensaver layout (null = use default template)
   screensaverWidgets: jsonb('screensaver_widgets'),
 
+  // What the display shows when idle: 'separate' is the screensaver layout
+  // above, 'calm' is this dashboard itself with only some widgets left showing
+  // (#691). Dashboards from before calm mode stay 'separate'; see 0036.
+  screensaverMode: varchar('screensaver_mode', { length: 20 }).default('calm').notNull(),
+
   // Per-dashboard screen orientation
   orientation: varchar('orientation', { length: 20 }).default('landscape'),
 

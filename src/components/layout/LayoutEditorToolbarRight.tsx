@@ -3,6 +3,7 @@
 import { PopoverButton } from './LayoutEditorPopover';
 import { ChevronIcon } from './LayoutEditorIcons';
 import type { ActivePopover, DashboardInfo } from './LayoutEditorTypes';
+import type { ScreensaverMode } from '@/lib/hooks/useLayouts';
 
 interface ToolbarRightProps {
   editingScreensaver: boolean;
@@ -14,6 +15,8 @@ interface ToolbarRightProps {
   allDashboards: DashboardInfo[];
   currentDashboardId?: string;
   onToggleMeasureMode: () => void;
+  screensaverMode?: ScreensaverMode;
+  onScreensaverModeChange?: (mode: ScreensaverMode) => void;
   onToggleScreensaverEdit?: () => void;
   onSave: () => void;
   onSaveAs: () => void;
@@ -42,6 +45,8 @@ export function LayoutEditorToolbarRight({
   allDashboards,
   currentDashboardId,
   onToggleMeasureMode,
+  screensaverMode,
+  onScreensaverModeChange,
   onToggleScreensaverEdit,
   onSave,
   onSaveAs,
@@ -65,6 +70,21 @@ export function LayoutEditorToolbarRight({
       >
         Preview
       </button>
+
+      {/* What the display shows when idle: this dashboard, or the separate
+          screensaver layout. Saved as soon as it is picked. */}
+      {!editingScreensaver && screensaverMode && onScreensaverModeChange && (
+        <select
+          value={screensaverMode}
+          onChange={(e) => onScreensaverModeChange(e.target.value as ScreensaverMode)}
+          className={`${btnClass} bg-muted hover:bg-accent`}
+          aria-label="When idle"
+          title="What this dashboard shows when nobody is using it"
+        >
+          <option value="calm">Idle: this dashboard</option>
+          <option value="separate">Idle: screensaver</option>
+        </select>
+      )}
 
       {/* Screensaver toggle */}
       {onToggleScreensaverEdit && (

@@ -248,6 +248,49 @@ fi
 log "Scenario D: PASS"
 
 # ----------------------------------------------------------------------------
+# Scenario E: 0036 keeps existing dashboards on the separate screensaver.
+# An install from before 0036 has no screensaver_mode column. Its dashboards
+# must come out 'separate', a dashboard created afterwards must be 'calm', and
+# a replay must not undo a mode someone has since picked.
+# ----------------------------------------------------------------------------
+log "=== Scenario E: 0036 existing dashboards stay separate ==="
+
+layout_mode() {
+  docker exec "$CONTAINER_NAME" psql -U prism -d prism -t -A -c \
+    "SELECT screensaver_mode FROM layouts WHERE name = '$1'"
+}
+
+log "Simulate a pre-0036 install with one dashboard..."
+psql_exec "
+ALTER TABLE layouts DROP COLUMN IF EXISTS screensaver_mode;
+INSERT INTO layouts (name, widgets) VALUES ('Old dashboard', '[]'::jsonb);
+DELETE FROM public.__prism_migrations;
+"
+run_migrate
+
+psql_exec "INSERT INTO layouts (name, widgets) VALUES ('New dashboard', '[]'::jsonb);"
+OLD=$(layout_mode 'Old dashboard')
+NEW=$(layout_mode 'New dashboard')
+if [ "$OLD" != "separate" ] || [ "$NEW" != "calm" ]; then
+  echo "ERROR: 0036 gave old='$OLD' new='$NEW' (want separate, calm)" >&2
+  exit 1
+fi
+
+log "Switch the old one to calm, then replay every migration..."
+psql_exec "
+UPDATE layouts SET screensaver_mode = 'calm' WHERE name = 'Old dashboard';
+DELETE FROM public.__prism_migrations;
+"
+run_migrate
+OLD=$(layout_mode 'Old dashboard')
+if [ "$OLD" != "calm" ]; then
+  echo "ERROR: replaying 0036 reset a picked mode (got '$OLD')" >&2
+  exit 1
+fi
+
+log "Scenario E: PASS"
+
+# ----------------------------------------------------------------------------
 echo
 echo "=========================================="
 echo "  All migration-replay scenarios passed"

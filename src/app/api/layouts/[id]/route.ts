@@ -93,11 +93,12 @@ export async function PATCH(
     };
 
     // Map validated fields to update data
-    const { name, widgets, isDefault, screensaverWidgets, orientation, fontScale } = validation.data;
+    const { name, widgets, isDefault, screensaverWidgets, screensaverMode, orientation, fontScale } = validation.data;
     if (name !== undefined) updateData.name = name;
     if (widgets !== undefined) updateData.widgets = widgets;
     if (isDefault !== undefined) updateData.isDefault = isDefault;
     if (screensaverWidgets !== undefined) updateData.screensaverWidgets = screensaverWidgets;
+    if (screensaverMode !== undefined) updateData.screensaverMode = screensaverMode;
     if (orientation !== undefined) updateData.orientation = orientation;
     if (fontScale !== undefined) updateData.fontScale = fontScale;
 

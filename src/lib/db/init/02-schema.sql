@@ -398,7 +398,8 @@ CREATE TABLE IF NOT EXISTS public.layouts (
     slug character varying(100),
     screensaver_widgets jsonb,
     orientation character varying(20) DEFAULT 'landscape'::character varying,
-    font_scale integer
+    font_scale integer,
+    screensaver_mode character varying(20) DEFAULT 'calm'::character varying NOT NULL
 );
 
 
