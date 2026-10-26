@@ -74,16 +74,17 @@ export function LayoutEditorToolbarRight({
       {/* What the display shows when idle: this dashboard, or the separate
           screensaver layout. Saved as soon as it is picked. */}
       {!editingScreensaver && screensaverMode && onScreensaverModeChange && (
-        <select
-          value={screensaverMode}
-          onChange={(e) => onScreensaverModeChange(e.target.value as ScreensaverMode)}
-          className={`${btnClass} bg-muted hover:bg-accent`}
-          aria-label="When idle"
-          title="What this dashboard shows when nobody is using it"
-        >
-          <option value="calm">Idle: this dashboard</option>
-          <option value="separate">Idle: screensaver</option>
-        </select>
+        <label className="flex items-center gap-1 text-xs whitespace-nowrap">
+          When nobody&apos;s using it:
+          <select
+            value={screensaverMode}
+            onChange={(e) => onScreensaverModeChange(e.target.value as ScreensaverMode)}
+            className={`${btnClass} bg-muted hover:bg-accent`}
+          >
+            <option value="calm">Fade to a calm view of this dashboard</option>
+            <option value="separate">Show the screensaver</option>
+          </select>
+        </label>
       )}
 
       {/* Screensaver toggle */}
