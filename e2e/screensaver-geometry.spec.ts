@@ -3,6 +3,7 @@ import { getSeededParentId } from './helpers/auth';
 import {
   facingFor, localSiderealTime, project, toHorizontal,
 } from '../src/components/screensaver/nightSky/sky';
+import { FIGURES } from '../src/components/screensaver/nightSky/catalog';
 
 /**
  * A widget sized in the screensaver editor lands at the same size and place in
@@ -256,6 +257,50 @@ test.describe('screensaver night sky', () => {
     });
     await page.clock.runFor(6 * 60_000);
     expect(await page.evaluate(() => (window as unknown as { meteors: number }).meteors)).toBeGreaterThanOrEqual(1);
+  });
+
+  test('teaches one constellation at a time, traced from its brightest star', async ({ page }) => {
+    await page.clock.install({ time: new Date(DEEP) });
+    await openScreensaver(page, 'sky', DEEP);
+    const lesson = page.getByTestId('night-sky-constellation');
+    await expect(lesson).toHaveCount(0);
+    await page.clock.runFor(13_000);
+    await expect(lesson).toHaveCount(1);
+
+    const id = (await lesson.getAttribute('data-figure'))!;
+    const fig = FIGURES.find((f) => f.id === id)!;
+    await expect(page.getByTestId('night-sky-constellation-name')).toHaveText(fig.name);
+    // The first lines leave from the figure's brightest star.
+    let brightest = 0;
+    for (let i = 0; i < fig.v.length / 3; i++) if (fig.v[i * 3 + 2]! < fig.v[brightest * 3 + 2]!) brightest = i;
+    const first = page.locator('[data-testid="night-sky-stroke"][data-depth="0"]');
+    expect(await first.count()).toBeGreaterThan(0);
+    for (const from of await first.evaluateAll((els) => els.map((e) => e.getAttribute('data-from')))) {
+      expect(Number(from)).toBe(brightest);
+    }
+    // All of it on screen.
+    const box = (await lesson.locator('svg').evaluate((svg) => {
+      const r = (svg as SVGSVGElement).querySelector('g')!.getBoundingClientRect();
+      return { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
+    }));
+    expect(box.left).toBeGreaterThanOrEqual(0);
+    expect(box.top).toBeGreaterThanOrEqual(0);
+    expect(box.right).toBeLessThanOrEqual(1280);
+    expect(box.bottom).toBeLessThanOrEqual(720);
+    // The display remembers it, so the next one is a different figure.
+    const taught = await page.evaluate(() => JSON.parse(localStorage.getItem('prism-night-sky-taught') ?? '{}'));
+    expect(Object.keys(taught)).toEqual([id]);
+
+    // And with reduced motion it is shown whole, without the trace.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    let next: string | null = id;
+    for (let s = 0; s < 120 && (next === id || next === null); s += 5) {
+      await page.clock.runFor(5_000);
+      next = await lesson.count() ? await lesson.getAttribute('data-figure') : null;
+    }
+    expect(next).not.toBeNull();
+    expect(next).not.toBe(id);
+    await expect(lesson).toHaveClass(/night-sky-still/);
   });
 
   test('after dark shows photos at noon and the sky at midnight', async ({ page }) => {

@@ -2,7 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useShouldSkipMotion } from '@/lib/hooks/useShouldSkipMotion';
-import { STARS, LINES, MILKY_WAY } from './catalog';
+import { readStored, writeStored } from '@/lib/hooks/useStoredValue';
+import { STARS, LINES, MILKY_WAY, FIGURES } from './catalog';
+import { Constellation, lessonLength } from './Constellation';
+import { pickNext, type Placement, type TaughtHistory } from './teach';
 import {
   facingFor, localSiderealTime, moonPosition, project, skyLight, sunPosition, toEquatorial, toHorizontal,
   unproject,
@@ -13,6 +16,21 @@ import {
 export type BrightStar = { x: number; y: number; r: number; rgb: string }
 
 type Meteor = { id: number; x: number; y: number; angle: number; travel: number; length: number }
+
+/** When each figure was last taught on this display. */
+const TAUGHT_KEY = 'prism-night-sky-taught';
+/** The first lesson soon after the sky comes up, then one after each pause. */
+const FIRST_LESSON = 12_000;
+const BETWEEN_LESSONS = 40_000;
+
+function readTaught(): TaughtHistory {
+  try {
+    const parsed: unknown = JSON.parse(readStored(TAUGHT_KEY) ?? '{}');
+    return parsed && typeof parsed === 'object' ? (parsed as TaughtHistory) : {};
+  } catch {
+    return {};
+  }
+}
 
 /**
  * The screensaver's night sky: the stars, Milky Way, constellation figures and
@@ -30,6 +48,7 @@ export function NightSky({ lat, lon }: { lat: number; lon: number }) {
   const [bright, setBright] = useState<BrightStar[]>([]);
   const [dark, setDark] = useState(0);
   const [meteor, setMeteor] = useState<Meteor | null>(null);
+  const [lesson, setLesson] = useState<Placement | null>(null);
   const still = useShouldSkipMotion();
 
   useEffect(() => {
@@ -76,6 +95,40 @@ export function NightSky({ lat, lon }: { lat: number; lon: number }) {
     return () => window.clearTimeout(timer);
   }, [meteorsOn]);
 
+  // One constellation at a time, drawn in and named, once it is dark enough
+  // to see them. The display remembers which it has shown, so it works
+  // through all of them before coming back round.
+  const teaching = dark > 0.6;
+  useEffect(() => {
+    if (!teaching) return;
+    let timer = 0;
+    const teach = () => {
+      const el = canvas.current;
+      const next = el && pickNext(
+        FIGURES, lat, localSiderealTime(new Date(), lon),
+        { width: el.clientWidth, height: el.clientHeight, facing: facingFor(lat) },
+        // Not behind a widget, where it could not be seen.
+        Array.from(document.querySelectorAll('.prism-screensaver-flat'), (w) => w.getBoundingClientRect()),
+        readTaught(),
+      );
+      if (!next) {
+        timer = window.setTimeout(teach, BETWEEN_LESSONS);
+        return;
+      }
+      writeStored(TAUGHT_KEY, JSON.stringify({ ...readTaught(), [next.fig.id]: Date.now() }));
+      setLesson(next);
+      timer = window.setTimeout(() => {
+        setLesson(null);
+        timer = window.setTimeout(teach, BETWEEN_LESSONS);
+      }, lessonLength(next));
+    };
+    timer = window.setTimeout(teach, FIRST_LESSON);
+    return () => {
+      window.clearTimeout(timer);
+      setLesson(null);
+    };
+  }, [teaching, lat, lon]);
+
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
       <canvas ref={canvas} data-testid="night-sky" className="absolute inset-0 h-full w-full" />
@@ -97,6 +150,9 @@ export function NightSky({ lat, lon }: { lat: number; lon: number }) {
           }}
         />
       ))}
+      {lesson && (
+        <Constellation key={lesson.fig.id} placement={lesson} still={still} />
+      )}
       {meteorsOn && meteor && (
         <span
           key={meteor.id}

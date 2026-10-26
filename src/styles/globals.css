@@ -776,6 +776,41 @@ html.performance-mode [class*="backdrop-blur"] {
   will-change: opacity, transform;
 }
 
+/* Night sky screensaver: one constellation at a time, its lines traced out
+   from the brightest star, then named, held, and faded. */
+@keyframes night-sky-trace {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes night-sky-appear {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes night-sky-lesson-out {
+  to { opacity: 0; }
+}
+
+.night-sky-trace {
+  stroke-dasharray: 1;
+  animation: night-sky-trace ease-in-out both;
+}
+
+.night-sky-appear {
+  animation: night-sky-appear 0.6s ease-out both;
+}
+
+.night-sky-lesson {
+  animation: night-sky-lesson-out ease-in forwards;
+}
+
+/* Reduced motion or Performance Mode: the figure appears whole and goes. */
+.night-sky-still,
+.night-sky-still * {
+  animation: none !important;
+}
+
 /* Allow color picker dropdowns to overflow grid items */
 .react-grid-item {
   overflow: visible !important;
