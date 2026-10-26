@@ -86,6 +86,7 @@
     "@radix-ui/react-tooltip": "^1.4.1",
     "@zxing/browser": "^0.2.1",
     "@zxing/library": "^0.23.0",
+    "astronomy-engine": "2.1.19",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

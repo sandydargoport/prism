@@ -24,4 +24,11 @@ describe('getMoonData', () => {
     expect(a.moonPhase).toBe(b.moonPhase);
     expect(a.moonIllumination).toBe(b.moonIllumination);
   });
+
+  it("carries the day's eclipse, so every weather provider sends it", () => {
+    // The total lunar eclipse in the small hours of 14 March 2025 (CDT).
+    const night = getMoonData(LAT, LON, new Date('2025-03-14T06:00:00Z'), new Date('2025-03-14T05:00:00Z'));
+    expect(night.eclipse).toMatchObject({ body: 'moon', kind: 'total' });
+    expect(getMoonData(LAT, LON, new Date('2026-05-01T15:00:00Z'), DAY_START).eclipse).toBeUndefined();
+  });
 });

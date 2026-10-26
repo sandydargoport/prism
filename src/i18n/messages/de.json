@@ -210,6 +210,19 @@
       "snowShowers": "Schneeschauer",
       "thunderstorm": "Gewitter",
       "cloudy": "Bewölkt"
+    },
+    "eclipse": {
+      "sun": {
+        "partial": "Partielle Sonnenfinsternis",
+        "annular": "Ringförmige Sonnenfinsternis",
+        "total": "Totale Sonnenfinsternis"
+      },
+      "moon": {
+        "partial": "Partielle Mondfinsternis",
+        "total": "Totale Mondfinsternis"
+      },
+      "line": "{name}: {begin} bis {end}, Maximum {peak}",
+      "marker": "Finsternis {peak}"
     }
   }
 }

@@ -46,6 +46,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import { useTimeFormat } from '@/components/providers';
 import { useLocalDateKey } from '@/lib/hooks/useLocalDateKey';
 import { useNow } from '@/lib/hooks/useNow';
+import type { Eclipse } from '@/lib/integrations/eclipse';
 import { formatDisplayHour, formatDisplayTime } from '@/lib/utils/timeFormat';
 
 /**
@@ -173,6 +174,8 @@ export interface WeatherData {
   moonIllumination?: number;
   /** Human-readable phase label, e.g. "Waning Gibbous". */
   moonPhaseName?: string;
+  /** An eclipse seen from the location today (computed locally via astronomy-engine). */
+  eclipse?: Eclipse;
   /** Latitude of the weather location — used client-side by suncalc to draw
    *  the sun/moon arcs at their true altitudes. */
   lat?: number;
@@ -471,6 +474,7 @@ export const WeatherWidget = React.memo(function WeatherWidget({
                   lat={weatherData.lat}
                   lon={weatherData.lon}
                   moonrise={weatherData.moonrise}
+                  eclipse={weatherData.eclipse}
                   moonset={weatherData.moonset}
                   moonPhase={weatherData.moonPhase}
                   timezone={weatherData.timezone}
@@ -925,6 +929,25 @@ function PrecipitationChart({ minutely }: { minutely: MinutelyData[] }) {
  * the moon's current position. Below-horizon segments use the dashed
  * background only.
  */
+/**
+ * How far to set the moon's disc from the sun's so it covers `cover` (0..1) of
+ * it, both of radius r. The overlap of two equal circles shrinks as they part,
+ * not in step with the distance, so it is found by halving the interval.
+ */
+function shadowOffset(cover: number, r: number): number {
+  const overlap = (d: number) => {
+    const x = d / (2 * r);
+    return (2 * Math.acos(x) - 2 * x * Math.sqrt(1 - x * x)) / Math.PI;
+  };
+  let lo = 0;
+  let hi = 2 * r;
+  for (let i = 0; i < 20; i++) {
+    const mid = (lo + hi) / 2;
+    if (overlap(mid) > cover) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
 function SunriseSunsetArc({
   sunrise,
   sunset,
@@ -933,6 +956,7 @@ function SunriseSunsetArc({
   moonrise,
   moonset,
   moonPhase,
+  eclipse,
   timezone,
 }: {
   sunrise: Date;
@@ -942,9 +966,11 @@ function SunriseSunsetArc({
   moonrise?: Date;
   moonset?: Date;
   moonPhase?: number;
+  eclipse?: Eclipse;
   timezone?: string;
 }) {
   const { timeFormat } = useTimeFormat();
+  const t = useTranslations('weather.eclipse');
   const [width, setWidth] = React.useState(220);
   const containerRef = React.useRef<HTMLDivElement>(null);
   // Unique gradient ID so multiple weather widgets on a page (e.g., dashboard
@@ -1067,6 +1093,26 @@ function SunriseSunsetArc({
   const inWindow = (f: number | null): f is number => f !== null && f >= 0 && f <= 1;
 
 
+  // Today's eclipse, until it is over: outlined ahead of time where the sun or
+  // moon will be at its peak, and drawn on the body itself while it happens.
+  const eclipseNow = eclipse && nowMs <= eclipse.end.getTime() ? eclipse : undefined;
+  const eclipseMarker = (() => {
+    if (!eclipseNow) return null;
+    const frac = (eclipseNow.peak.getTime() - midnightMs) / dayMs;
+    if (frac < 0 || frac > 1) return null;
+    const at = eclipseNow.body === 'sun'
+      ? SunCalc.getPosition(eclipseNow.peak, useLat, useLon)
+      : SunCalc.getMoonPosition(eclipseNow.peak, useLat, useLon);
+    return { x: xOf(frac), y: altToY(altitudeToRadians(at.altitude)) };
+  })();
+  // How far into the disc the shadow is right now, 0..obscuration.
+  const eclipseCover = (() => {
+    if (!eclipseNow || nowMs < eclipseNow.begin.getTime()) return 0;
+    const peak = eclipseNow.peak.getTime();
+    const half = nowMs < peak ? peak - eclipseNow.begin.getTime() : eclipseNow.end.getTime() - peak;
+    return eclipseNow.obscuration * Math.max(0, 1 - Math.abs(nowMs - peak) / Math.max(1, half));
+  })();
+
   const SUN_COLOR = '#FBBF24';   // amber-400 — sun at zenith
   const SUN_LOW   = '#F97316';   // orange-500 — sun at low altitude
   const SUN_HORIZON = '#EF4444'; // red-500 — sun at the horizon
@@ -1150,6 +1196,23 @@ function SunriseSunsetArc({
             stroke={MOON_COLOR} strokeOpacity={0.55} strokeWidth={1.5} />
         )}
 
+        {/* Eclipse ahead: the sun or moon outlined where it will be at the peak,
+            with the shadow's disc dashed over it as far as it will reach. */}
+        {eclipseMarker && eclipseNow && nowMs < eclipseNow.begin.getTime() && (
+          <g data-testid="eclipse-marker">
+            <circle cx={eclipseMarker.x} cy={eclipseMarker.y} r={7}
+              fill="none" stroke={eclipseNow.body === 'sun' ? SUN_COLOR : MOON_COLOR}
+              strokeOpacity={0.9} strokeWidth={1.5} strokeDasharray="2 2" />
+            <circle cx={eclipseMarker.x + shadowOffset(eclipseNow.obscuration, 7)} cy={eclipseMarker.y} r={7}
+              fill="currentColor" fillOpacity={0.12} stroke="currentColor" strokeOpacity={0.5}
+              strokeWidth={1} strokeDasharray="2 2" />
+            <text x={Math.min(width - pad, Math.max(pad, eclipseMarker.x))} y={eclipseMarker.y - 13}
+              textAnchor="middle" fontSize={10} fill="currentColor" fillOpacity={0.8}>
+              {t('marker', { peak: formatDisplayTime(eclipseNow.peak, timeFormat, {}, timezone) })}
+            </text>
+          </g>
+        )}
+
         {/* Sun glow + dot — color tracks altitude so a low sun glows red/orange */}
         {isDay && <circle cx={sunX} cy={sunY} r={16} fill={sunDotColor} opacity={0.2} />}
         <circle
@@ -1158,6 +1221,11 @@ function SunriseSunsetArc({
           fill={sunDotColor}
           opacity={isDay ? 1 : 0.55}
         />
+        {/* A solar eclipse under way: the moon's dark disc across the sun. */}
+        {isDay && eclipseNow?.body === 'sun' && eclipseCover > 0 && (
+          <circle data-testid="eclipse-shadow" cx={sunX + shadowOffset(eclipseCover, 7)} cy={sunY} r={7}
+            fill="#1E293B" opacity={0.9} />
+        )}
 
         {/* Moon glyph at current position — blue when above, muted when below.
             Disc outline is drawn unfilled so a new moon (lit area collapses to
@@ -1173,6 +1241,11 @@ function SunriseSunsetArc({
             <path d={moonPhasePath(moonX, moonY, 6, moonPhase)}
               fill={isMoonUp ? MOON_COLOR : '#94A3B8'}
               opacity={isMoonUp ? 1 : 0.55} />
+            {/* A lunar eclipse under way: the earth's shadow turns it copper. */}
+            {isMoonUp && eclipseNow?.body === 'moon' && eclipseCover > 0 && (
+              <circle data-testid="eclipse-shadow" cx={moonX} cy={moonY} r={6}
+                fill="#B45309" opacity={0.85 * eclipseCover} />
+            )}
           </g>
         )}
       </svg>
@@ -1204,6 +1277,17 @@ function SunriseSunsetArc({
           </span>
         )}
       </div>
+      {eclipseNow && (
+        <div data-testid="eclipse-line" className="text-[11px] tabular-nums opacity-80"
+          style={{ color: eclipseNow.body === 'sun' ? SUN_COLOR : MOON_COLOR }}>
+          {t('line', {
+            name: t(`${eclipseNow.body}.${eclipseNow.kind}`),
+            begin: formatDisplayTime(eclipseNow.begin, timeFormat, {}, timezone),
+            end: formatDisplayTime(eclipseNow.end, timeFormat, {}, timezone),
+            peak: formatDisplayTime(eclipseNow.peak, timeFormat, {}, timezone),
+          })}
+        </div>
+      )}
     </div>
   );
 }

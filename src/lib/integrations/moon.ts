@@ -10,6 +10,7 @@
  */
 
 import * as SunCalc from 'suncalc';
+import { eclipseForDay, type Eclipse } from './eclipse';
 
 export type MoonPhaseName =
   | 'New Moon'
@@ -32,6 +33,8 @@ export interface MoonData {
   moonIllumination: number;
   /** Human-readable phase label. */
   moonPhaseName: MoonPhaseName;
+  /** An eclipse seen from here during the location's day, when there is one. */
+  eclipse?: Eclipse;
 }
 
 function phaseName(phase: number): MoonPhaseName {
@@ -86,5 +89,6 @@ export function getMoonData(lat: number, lon: number, now: Date = new Date(), da
     moonPhase: illum.phase,
     moonIllumination: illum.fraction,
     moonPhaseName: phaseName(illum.phase),
+    eclipse: dayStart ? eclipseForDay(lat, lon, dayStart) : undefined,
   };
 }

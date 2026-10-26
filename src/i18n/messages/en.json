@@ -210,6 +210,19 @@
       "snowShowers": "Snow showers",
       "thunderstorm": "Thunderstorm",
       "cloudy": "Cloudy"
+    },
+    "eclipse": {
+      "sun": {
+        "partial": "Partial solar eclipse",
+        "annular": "Annular solar eclipse",
+        "total": "Total solar eclipse"
+      },
+      "moon": {
+        "partial": "Partial lunar eclipse",
+        "total": "Total lunar eclipse"
+      },
+      "line": "{name}: {begin} to {end}, peak {peak}",
+      "marker": "Eclipse {peak}"
     }
   }
 }

@@ -302,6 +302,7 @@ export async function fetchWeatherData(
     moonPhase: moon.moonPhase,
     moonIllumination: moon.moonIllumination,
     moonPhaseName: moon.moonPhaseName,
+    eclipse: moon.eclipse,
     lat: config.lat,
     lon: config.lon,
     minutely: minutelyData,

@@ -9,7 +9,8 @@ interface UseWeatherOptions {
   enabled?: boolean;
 }
 
-function transformWeather(json: unknown): WeatherData {
+/** The API response with its date strings turned back into Dates. */
+export function transformWeather(json: unknown): WeatherData {
   const raw = json as {
     lastUpdated: string;
     forecast: Array<{ date: string; dayName: string; high: number; low: number; condition: string }>;
@@ -18,6 +19,7 @@ function transformWeather(json: unknown): WeatherData {
     sunset?: string;
     moonrise?: string;
     moonset?: string;
+    eclipse?: { begin: string; peak: string; end: string };
     [key: string]: unknown;
   };
   return {
@@ -35,6 +37,9 @@ function transformWeather(json: unknown): WeatherData {
     sunset:   raw.sunset   ? new Date(raw.sunset)   : undefined,
     moonrise: raw.moonrise ? new Date(raw.moonrise) : undefined,
     moonset:  raw.moonset  ? new Date(raw.moonset)  : undefined,
+    eclipse:  raw.eclipse
+      ? { ...raw.eclipse, begin: new Date(raw.eclipse.begin), peak: new Date(raw.eclipse.peak), end: new Date(raw.eclipse.end) }
+      : undefined,
   } as unknown as WeatherData;
 }
 

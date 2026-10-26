@@ -407,6 +407,7 @@ export async function fetchWeatherData(
     moonPhase: moon.moonPhase,
     moonIllumination: moon.moonIllumination,
     moonPhaseName: moon.moonPhaseName,
+    eclipse: moon.eclipse,
     lat: config.lat,
     lon: config.lon,
     // Open-Meteo doesn't provide minutely precip — leave undefined.
