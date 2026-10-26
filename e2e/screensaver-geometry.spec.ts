@@ -219,6 +219,36 @@ test.describe('screensaver night sky', () => {
     expect(band - beside, `on the band ${band.toFixed(1)}, beside it ${beside.toFixed(1)}`).toBeGreaterThan(12);
   });
 
+  test('the Milky Way is grainy with faint stars, not a smooth haze', async ({ page }) => {
+    // A smooth glow, however bright, reads as thin cloud; the band's grain of
+    // unresolved stars is what makes it read as the galaxy. So within a patch
+    // on the band, neighbouring pixels must differ: measured as the mean step
+    // in brightness from each pixel to the next, which a blurred glow keeps
+    // near zero and a scatter of points does not.
+    await openScreensaver(page, 'sky', DEEP);
+    const view = { width: 1280, height: 720, facing: facingFor(45) };
+    const lst = localSiderealTime(new Date(DEEP), -100);
+    const on = project(toHorizontal(300, 30, 45, lst), view);
+    const grain = await page.evaluate((p) => {
+      const el = document.querySelector<HTMLCanvasElement>('[data-testid="night-sky"]')!;
+      const k = el.width / el.clientWidth;
+      const size = Math.round(40 * k);
+      const d = el.getContext('2d')!
+        .getImageData(Math.round(p.x * k - size / 2), Math.round(p.y * k - size / 2), size, size).data;
+      const lum = (i: number) => 0.2126 * d[i]! + 0.7152 * d[i + 1]! + 0.0722 * d[i + 2]!;
+      let sum = 0;
+      let n = 0;
+      for (let y = 0; y < size; y++) {
+        for (let x = 1; x < size; x++) {
+          sum += Math.abs(lum((y * size + x) * 4) - lum((y * size + x - 1) * 4));
+          n++;
+        }
+      }
+      return sum / n;
+    }, on);
+    expect(grain, `mean step between neighbouring pixels on the band: ${grain.toFixed(2)}`).toBeGreaterThan(3);
+  });
+
   test('the brightest stars twinkle, unless motion is reduced', async ({ page }) => {
     await openScreensaver(page, 'sky', DEEP);
     const twinkles = page.getByTestId('night-sky-twinkle');

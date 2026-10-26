@@ -243,6 +243,7 @@ export function drawSky(
     // square of the darkness; and a bright moon washes it out, a full one by half.
     const moonlight = moon.alt > 0 ? 1 - 0.5 * moon.fraction : 1;
     drawMilkyWay(ctx, view, lat, lst, light.stars ** 2 * moonlight);
+    drawStarDust(ctx, view, lat, lst, light.stars ** 2 * moonlight);
 
     ctx.lineWidth = Math.max(1, scale);
     ctx.strokeStyle = `rgba(160,184,230,${0.14 * light.stars})`;
@@ -312,11 +313,58 @@ function milkyWayAt(ra: number, dec: number): number {
   return (top * (1 - fy) + bottom * fy) / 9;
 }
 
-/** A fixed pattern of light and dark patches, a third of a degree across. */
-function mottle(ra: number, dec: number): number {
-  let h = Math.imul(Math.floor(ra * 3), 374_761_393) ^ Math.imul(Math.floor(dec * 3) + 300, 668_265_263);
-  h = Math.imul(h ^ (h >>> 13), 1_274_126_177);
-  return 0.8 + (((h ^ (h >>> 16)) >>> 0) / 4_294_967_296) * 0.4;
+/** Points of star dust: flat [ra°, dec°, brightness 0..1, band brightness 0..1]. */
+let starDust: Float32Array | null = null;
+const DUST = 80_000;
+
+/**
+ * The Milky Way's grain: a great many faint points, scattered over the band as
+ * thickly as it is bright. The glow alone reads as thin cloud; it is this
+ * grain, the unresolved stars, that makes it read as the galaxy. Made once,
+ * from a fixed seed, so the same points stay in the same places on the sky.
+ */
+function makeStarDust(): Float32Array {
+  const out = new Float32Array(DUST * 4);
+  const rand = seeded(1987);
+  let n = 0;
+  for (let tries = 0; n < DUST && tries < DUST * 60; tries++) {
+    // Even over the sphere, then kept in proportion to the band's brightness.
+    const ra = rand() * 360;
+    const dec = (Math.asin(2 * rand() - 1) * 180) / Math.PI;
+    const v = milkyWayAt(ra, dec);
+    if (v <= 0 || rand() > v ** 1.2) continue;
+    out[n * 4] = ra;
+    out[n * 4 + 1] = dec;
+    out[n * 4 + 2] = rand() ** 2.5;
+    out[n * 4 + 3] = v;
+    n++;
+  }
+  return out.subarray(0, n * 4);
+}
+
+/** Alpha steps the dust is drawn in: one fill per step rather than one per point. */
+const DUST_STEPS = 8;
+
+function drawStarDust(
+  ctx: CanvasRenderingContext2D, view: View, lat: number, lst: number, strength: number,
+) {
+  if (strength <= 0.05) return;
+  starDust ??= makeStarDust();
+  const size = Math.max(0.8, view.height / 1080);
+  const steps: Path2D[] = Array.from({ length: DUST_STEPS }, () => new Path2D());
+  for (let i = 0; i < starDust.length; i += 4) {
+    const h = toHorizontal(starDust[i]!, starDust[i + 1]!, lat, lst);
+    if (h.alt < 2) continue;
+    const p = project(h, view);
+    if (p.x < 0 || p.x > view.width || p.y < 0 || p.y > view.height) continue;
+    const a = Math.min(1, h.alt / 25) * (0.25 + 0.75 * starDust[i + 2]!) * (0.4 + 0.6 * starDust[i + 3]!);
+    const step = Math.min(DUST_STEPS - 1, Math.floor(a * DUST_STEPS));
+    steps[step]!.rect(p.x, p.y, size, size);
+  }
+  for (let k = 0; k < DUST_STEPS; k++) {
+    ctx.fillStyle = `rgba(225,232,255,${(((k + 1) / DUST_STEPS) * 0.55 * strength).toFixed(3)})`;
+    ctx.fill(steps[k]!);
+  }
 }
 
 /**
@@ -349,7 +397,7 @@ function drawMilkyWay(
       if (v <= 0) continue;
       // Thicker air near the horizon dims it, as it does the stars.
       const haze = Math.min(1, sky.alt / 25);
-      const a = Math.min(1, v * mottle(ra, dec) * haze * strength * 0.42);
+      const a = Math.min(1, v ** 1.4 * haze * strength * 0.24);
       const i = (y * w + x) * 4;
       // Bluish where faint, warmer in the bright star clouds of the core.
       img.data[i] = 190 + 50 * v;
