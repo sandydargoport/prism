@@ -4,12 +4,25 @@
 # decides the level; this file only decides the order inside it. An open issue
 # not listed here comes after the listed ones in its level, newest first. A
 # closed issue is simply skipped, so this file never needs cleaning up.
-508
-447
-340
+691
+690
+658
 52
+734
+687
+738
+692
+672
+671
+479
+347
+324
+169
+121
+75
+56
+54
+51
 57
 59
 53
-665
-660
