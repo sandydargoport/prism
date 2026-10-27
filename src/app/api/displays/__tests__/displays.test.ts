@@ -15,6 +15,7 @@ const mockInsertValues = jest.fn();
 const mockUpdateSet = jest.fn();
 const mockUpdateReturning = jest.fn();
 const mockDeleteReturning = jest.fn();
+const mockApply = jest.fn();
 
 // One cookie jar per test, standing in for the browser.
 let mockJar: Map<string, string>;
@@ -70,7 +71,13 @@ jest.mock('@/lib/db/client', () => ({
     }),
   },
 }));
-jest.mock('@/lib/db/schema', () => ({ displays: { id: 'id', name: 'name', lastSeenAt: 'last_seen_at' } }));
+jest.mock('@/lib/db/schema', () => ({
+  displays: { id: 'id', name: 'name', lastSeenAt: 'last_seen_at' },
+  layouts: { id: 'id' },
+}));
+jest.mock('@/lib/displays/displaySettingsStore', () => ({
+  applySettingChanges: (...a: unknown[]) => mockApply(...a),
+}));
 jest.mock('@/lib/services/auditLog', () => ({ logActivity: (...a: unknown[]) => mockLogActivity(...a) }));
 jest.mock('@/lib/utils/logError', () => ({ logError: jest.fn() }));
 
@@ -152,6 +159,25 @@ describe('POST /api/displays (name this screen)', () => {
   });
 });
 
+describe('POST /api/displays with an id (this is an existing screen)', () => {
+  it('points this browser at that screen', async () => {
+    mockSelectWhere.mockReturnValue([{ id: HALL, name: 'Hall' }]);
+    const res = await POST(json('/api/displays', 'POST', { id: HALL }));
+    expect(res.status).toBe(200);
+    expect(mockJar.get(DISPLAY_COOKIE)).toBe(issueDisplayToken(HALL));
+    expect(mockInsertValues).not.toHaveBeenCalled();
+  });
+
+  it('answers 404 for a screen that does not exist, and is parent only', async () => {
+    expect((await POST(json('/api/displays', 'POST', { id: HALL }))).status).toBe(404);
+    expect((await POST(json('/api/displays', 'POST', { id: 'nope' }))).status).toBe(404);
+    mockRequireAuth.mockResolvedValue(CHILD);
+    mockSelectWhere.mockReturnValue([{ id: HALL, name: 'Hall' }]);
+    expect((await POST(json('/api/displays', 'POST', { id: HALL }))).status).toBe(403);
+    expect(mockJar.has(DISPLAY_COOKIE)).toBe(false);
+  });
+});
+
 describe('GET /api/displays', () => {
   it('lists screens with online status and says which one this browser is', async () => {
     const now = Date.now();
@@ -188,6 +214,45 @@ describe('PATCH and DELETE /api/displays/:id', () => {
     const res = await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { name: 'Upstairs hall' }), params(HALL));
     expect(res.status).toBe(200);
     expect(mockUpdateSet).toHaveBeenCalledWith(expect.objectContaining({ name: 'Upstairs hall' }));
+  });
+
+  it('changes another screen\'s settings from this device', async () => {
+    mockUpdateReturning.mockReturnValue([{ id: HALL, name: 'Hall', dashboardId: null, settings: {} }]);
+    mockApply.mockResolvedValue({ settings: { 'prism-perf-mode': 'true' }, settingsUpdatedAt: new Date() });
+    const res = await PATCH(
+      json(`/api/displays/${HALL}`, 'PATCH', { settings: { 'prism-perf-mode': 'true' } }),
+      params(HALL),
+    );
+    expect(res.status).toBe(200);
+    expect(mockApply).toHaveBeenCalledWith(HALL, { 'prism-perf-mode': 'true' });
+    expect((await res.json()).display.settings).toEqual({ 'prism-perf-mode': 'true' });
+  });
+
+  it('refuses settings that are not screen settings', async () => {
+    const res = await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { settings: { 'prism-theme': 'dark' } }), params(HALL));
+    expect(res.status).toBe(400);
+    expect(mockApply).not.toHaveBeenCalled();
+  });
+
+  it('sets the screen\'s dashboard and moves its settings timestamp so it notices', async () => {
+    const DASH = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    mockSelectWhere.mockReturnValue([{ id: DASH }]);
+    mockUpdateReturning.mockReturnValue([{ id: HALL, name: 'Hall', dashboardId: DASH, settings: {} }]);
+    const res = await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { dashboardId: DASH }), params(HALL));
+    expect(res.status).toBe(200);
+    expect(mockUpdateSet).toHaveBeenCalledWith(expect.objectContaining({
+      dashboardId: DASH,
+      settingsUpdatedAt: expect.any(Date),
+    }));
+  });
+
+  it('refuses a dashboard that does not exist, and an empty change', async () => {
+    mockSelectWhere.mockReturnValue([]);
+    const DASH = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    expect((await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { dashboardId: DASH }), params(HALL))).status).toBe(400);
+    expect((await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { dashboardId: 'x' }), params(HALL))).status).toBe(400);
+    expect((await PATCH(json(`/api/displays/${HALL}`, 'PATCH', {}), params(HALL))).status).toBe(400);
+    expect(mockUpdateSet).not.toHaveBeenCalled();
   });
 
   it('answers 404 for a screen that does not exist, and for an id that is not one', async () => {
@@ -228,9 +293,11 @@ describe('POST /api/displays/heartbeat', () => {
 
   it('touches last seen for a named screen', async () => {
     mockJar.set(DISPLAY_COOKIE, issueDisplayToken(KITCHEN));
-    mockSelectWhere.mockReturnValue([{ id: KITCHEN, name: 'Kitchen' }]);
+    const edited = new Date('2026-10-27T18:00:00Z');
+    mockSelectWhere.mockReturnValue([{ id: KITCHEN, name: 'Kitchen', settingsUpdatedAt: edited }]);
     const body = await (await HEARTBEAT(json('/api/displays/heartbeat', 'POST'))).json();
-    expect(body.display).toEqual({ id: KITCHEN, name: 'Kitchen' });
+    // The screen compares this with its last sync to notice a remote edit.
+    expect(body.display).toEqual({ id: KITCHEN, name: 'Kitchen', settingsUpdatedAt: edited.toISOString() });
     expect(mockUpdateSet).toHaveBeenCalledWith({ lastSeenAt: expect.any(Date) });
   });
 

@@ -585,7 +585,7 @@ function SettingsHelp({ isMobile }: { isMobile: boolean }) {
         </>
       )}
       <H3>Displays</H3>
-      <P>Name each screen from the screen itself, for example &quot;Kitchen&quot;, and see every named screen and whether it is on. A browser nobody named works as before.</P>
+      <P>Name each screen from the screen itself, for example &quot;Kitchen&quot;, and see every named screen and whether it is on. A named screen keeps its screensaver, performance, keyboard and screen-shape settings with its name, so a reset browser can take them back with <em>Or this is an existing screen</em>. Each screen can open on its own dashboard. A browser nobody named works as before.</P>
       <H3>Photos</H3>
       <P>Add photo sources (OneDrive, Immich), pick sync folders, and set a static wallpaper or screensaver photo.</P>
       <H3>Bus Tracking</H3>

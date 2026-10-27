@@ -289,6 +289,9 @@ CREATE TABLE IF NOT EXISTS public.displays (
     id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
     name character varying(60) NOT NULL,
     last_seen_at timestamp without time zone,
+    settings jsonb DEFAULT '{}'::jsonb NOT NULL,
+    settings_updated_at timestamp without time zone,
+    dashboard_id uuid,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
     updated_at timestamp without time zone DEFAULT now() NOT NULL
 );

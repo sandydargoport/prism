@@ -1,12 +1,14 @@
 /**
  * The display registry (#690).
  *
- * GET  — every named screen, with whether it is online, and which one (if any)
- *        this browser is
+ * GET  — every named screen, with whether it is online, its dashboard and
+ *        settings, and which one (if any) this browser is
  * POST — name this browser's screen. Parent only. A browser already named is
- *        renamed rather than given a second row.
+ *        renamed rather than given a second row. With `id` instead of `name`,
+ *        this browser becomes that existing screen: how a screen whose browser
+ *        was reset gets its name and settings back.
  *
- * REQUEST BODY (POST): { name: string (1 to 60 characters) }
+ * REQUEST BODY (POST): { name: string (1 to 60 characters) } or { id: string }
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
@@ -16,6 +18,7 @@ import {
   cleanDisplayName,
   currentDisplay,
   DISPLAY_NAME_MAX_LENGTH,
+  isDisplayId,
   isOnline,
   setDisplayCookies,
 } from '@/lib/auth/displayIdentity';
@@ -48,6 +51,8 @@ export async function GET() {
         name: d.name,
         lastSeenAt: d.lastSeenAt?.toISOString() ?? null,
         online: isOnline(d.lastSeenAt, now),
+        dashboardId: d.dashboardId,
+        settings: d.settings,
       })),
       currentId: mine?.id ?? null,
     });
@@ -65,6 +70,29 @@ export async function POST(request: NextRequest) {
   if (denied) return denied;
 
   const body = await request.json().catch(() => null);
+
+  if (body?.id !== undefined) {
+    if (typeof body.id !== 'string' || !isDisplayId(body.id)) {
+      return NextResponse.json({ error: 'Display not found' }, { status: 404 });
+    }
+    try {
+      const [row] = await db.select().from(displays).where(eq(displays.id, body.id));
+      if (!row) return NextResponse.json({ error: 'Display not found' }, { status: 404 });
+      setDisplayCookies(await cookies(), row.id, requestIsSecure(request));
+      logActivity({
+        userId: auth.userId,
+        action: 'update',
+        entityType: 'display',
+        entityId: row.id,
+        summary: `This browser is now the display "${row.name}"`,
+      });
+      return NextResponse.json({ display: { id: row.id, name: row.name } });
+    } catch (error) {
+      logError('Failed to take over display:', error);
+      return NextResponse.json({ error: 'Failed to use that display' }, { status: 500 });
+    }
+  }
+
   const name = cleanDisplayName(body?.name);
   if (!name) {
     return NextResponse.json(

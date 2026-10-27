@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
+import { useLayouts } from '@/lib/hooks/useLayouts';
+import { reloadForRemoteChange, resetSyncBase, syncScreenSettings } from '@/lib/displays/displaySettingsSync';
 
 /**
  * Settings > Displays (#690): name this screen, and see every named screen with
@@ -19,6 +21,7 @@ type DisplayEntry = {
   name: string;
   lastSeenAt: string | null;
   online: boolean;
+  dashboardId: string | null;
 };
 
 const NAME_MAX = 60;
@@ -44,7 +47,9 @@ export function DisplaysSection() {
   const [authWall, setAuthWall] = useState(false);
   const [trusted, setTrusted] = useState(false);
 
+  const { layouts } = useLayouts();
   const [newName, setNewName] = useState('');
+  const [takeOverId, setTakeOverId] = useState('');
   const [alsoTrust, setAlsoTrust] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
@@ -97,6 +102,10 @@ export function DisplaysSection() {
     }));
     if (!ok) return;
     setNewName('');
+    // A new screen: what this browser has becomes its settings, sent now
+    // rather than on the next round.
+    resetSyncBase();
+    void syncScreenSettings();
     // Trusting stays its own decision on the server (naming a phone must not
     // exempt it from sign-in); this only saves a second trip to Security.
     if (authWall && !trusted && alsoTrust) {
@@ -108,6 +117,26 @@ export function DisplaysSection() {
       }
     }
   };
+
+  /** This browser becomes an existing screen, taking its stored settings. */
+  const takeOver = async () => {
+    const ok = await run(() => fetch('/api/displays', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: takeOverId }),
+    }));
+    if (!ok) return;
+    resetSyncBase();
+    const { applied } = await syncScreenSettings();
+    if (applied.length > 0) reloadForRemoteChange();
+  };
+
+  const setDashboard = (id: string, dashboardId: string | null) =>
+    run(() => fetch(`/api/displays/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dashboardId }),
+    }));
 
   const rename = async (id: string) => {
     const ok = await run(() => fetch(`/api/displays/${id}`, {
@@ -166,6 +195,23 @@ export function DisplaysSection() {
                 Name this display
               </Button>
             </form>
+            {displays.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="text-muted-foreground">Or this is an existing screen:</span>
+                <select
+                  aria-label="Existing screen"
+                  className="rounded-md border border-input bg-background px-2 py-1.5"
+                  value={takeOverId}
+                  onChange={(e) => setTakeOverId(e.target.value)}
+                >
+                  <option value="">Choose…</option>
+                  {displays.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+                <Button size="sm" variant="outline" disabled={busy || !takeOverId} onClick={() => void takeOver()}>
+                  Use its name and settings
+                </Button>
+              </div>
+            )}
             {authWall && !trusted && (
               <label className="flex items-center gap-2 text-sm">
                 <input
@@ -183,7 +229,10 @@ export function DisplaysSection() {
       <Card>
         <CardHeader>
           <CardTitle>All screens</CardTitle>
-          <CardDescription>A screen shows as online while it is switched on.</CardDescription>
+          <CardDescription>
+            A screen shows as online while it is switched on. Pick the dashboard each one
+            opens on; a screen showing its home page switches within a minute.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {loaded && displays.length === 0 && (
@@ -211,7 +260,7 @@ export function DisplaysSection() {
                   </form>
                 ) : (
                   <>
-                    <div className="flex-1 min-w-0">
+                    <div className="min-w-0 basis-full sm:basis-0 sm:flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium truncate">{d.name}</span>
                         {d.id === currentId && <Badge variant="secondary">This screen</Badge>}
@@ -224,6 +273,18 @@ export function DisplaysSection() {
                         {statusText(d, fetchedAt)}
                       </div>
                     </div>
+                    <select
+                      aria-label={`Dashboard for ${d.name}`}
+                      className="rounded-md border border-input bg-background px-2 py-1.5 text-sm max-w-[12rem]"
+                      disabled={busy}
+                      value={d.dashboardId ?? ''}
+                      onChange={(e) => void setDashboard(d.id, e.target.value || null)}
+                    >
+                      <option value="">Default dashboard</option>
+                      {layouts.filter((l) => !l.isDefault).map((l) => (
+                        <option key={l.id} value={l.id}>{l.name}</option>
+                      ))}
+                    </select>
                     <Button
                       size="sm"
                       variant="outline"

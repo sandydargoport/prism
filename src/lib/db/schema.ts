@@ -983,6 +983,13 @@ export const displays = pgTable('displays', {
   name: varchar('name', { length: 60 }).notNull(),
   // Touched by the screen's own heartbeat, for "online 2 min ago".
   lastSeenAt: timestamp('last_seen_at'),
+  // The screen's own settings, keyed by the browser storage key each one
+  // already uses (see SCREEN_SETTING_KEYS). A key that is absent is unset.
+  settings: jsonb('settings').$type<Record<string, string>>().default({}).notNull(),
+  // When `settings` last changed, so the screen knows to pick up a remote edit.
+  settingsUpdatedAt: timestamp('settings_updated_at'),
+  // The dashboard this screen opens on; null is the household default.
+  dashboardId: uuid('dashboard_id').references(() => layouts.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

@@ -9,7 +9,9 @@
  * screen whose row was removed is told so, and its cookies are cleared, so it
  * goes back to being an unnamed browser and stops calling.
  *
- * RESPONSE: { display: { id, name } | null }
+ * RESPONSE: { display: { id, name, settingsUpdatedAt } | null }. The screen
+ * compares settingsUpdatedAt with what it last synced to notice an edit made
+ * from another device.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
@@ -47,7 +49,9 @@ export async function POST(request: NextRequest) {
       setDisplayCookies(await cookies(), null, requestIsSecure(request));
       return NextResponse.json({ display: null });
     }
-    return NextResponse.json({ display: { id: row.id, name: row.name } });
+    return NextResponse.json({
+      display: { id: row.id, name: row.name, settingsUpdatedAt: row.settingsUpdatedAt?.toISOString() ?? null },
+    });
   } catch (error) {
     logError('Display heartbeat failed:', error);
     return NextResponse.json({ error: 'Heartbeat failed' }, { status: 500 });
