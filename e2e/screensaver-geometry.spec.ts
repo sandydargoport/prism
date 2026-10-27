@@ -441,3 +441,50 @@ test.describe('calm mode idle screen', () => {
     }
   });
 });
+
+test.describe('screensaver fireworks wind-up', () => {
+  test.use({ viewport: { width: 1280, height: 720 } });
+  test.setTimeout(90_000);
+
+  /** Alpha of each screensaver card's top border, by widget. */
+  async function outlineAlpha(page: Page): Promise<number[]> {
+    return page.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>('.prism-screensaver-flat')].map((live) => {
+        const card = live.querySelector<HTMLElement>('[class*="bg-card"].border-border');
+        if (!card) return -1;
+        const c = getComputedStyle(card).borderTopColor;
+        if (c === 'transparent') return 0;
+        const slash = c.match(/\/\s*([\d.]+)\s*\)$/);
+        if (slash) return Number(slash[1]);
+        const rgba = c.match(/^rgba\((?:[^,]+,){3}\s*([\d.]+)\)$/);
+        return rgba ? Number(rgba[1]) : 1;
+      }));
+  }
+
+  test('a widget about to burst sets its outline down first, with outlines shown', async ({ page }) => {
+    // Outlines on is the default, and it was the case that broke: the outline
+    // colour is a Tailwind utility in a cascade layer, and an unlayered
+    // !important rule loses to it, so the outline stayed through the wind-up
+    // and vanished all at once at the burst.
+    await page.addInitScript(() => localStorage.setItem('prism-screensaver-outlines', 'on'));
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
+    await page.locator('.fixed.inset-0.z-9999 .prism-screensaver-flat').first().waitFor();
+    await page.waitForTimeout(1000);
+
+    const before = await outlineAlpha(page);
+    const target = before.findIndex((a) => a > 0);
+    expect(target, 'precondition: a screensaver card shows an outline').toBeGreaterThanOrEqual(0);
+
+    // What WidgetStage puts on a departing widget the moment its wind-up starts.
+    await page.evaluate((i) => {
+      document.querySelectorAll('.prism-screensaver-flat')[i]!.classList.add('prism-shed');
+    }, target);
+    // The shed fades over 2.8 s; the wind-up before the burst is longer.
+    await page.waitForTimeout(3500);
+
+    const after = await outlineAlpha(page);
+    expect(after[target], 'the outline is gone before the burst').toBe(0);
+  });
+});

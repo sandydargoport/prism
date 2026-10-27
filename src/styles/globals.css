@@ -1231,14 +1231,24 @@ html[data-virtual-keyboard-open] [data-keyboard-aware-dialog] {
  *
  * It comes back the same way on arrival, for the same reason: a card that snaps
  * in is a rectangle appearing.
+ *
+ * In the utilities layer, and one class more specific than the outline. The
+ * "Show widget outlines" colour is a Tailwind utility, so it sits in that
+ * layer, and an !important rule in a layer beats an unlayered one whatever the
+ * specificity. Unlayered, this lost: with outlines on, which is the default,
+ * the outline stayed at full strength through the whole wind-up and then
+ * vanished all at once at the burst, a rectangle cut out of the sky.
  */
-.prism-shed [class*="bg-card"] {
-  background-color: transparent !important;
-  border-color: transparent !important;
-  box-shadow: none !important;
-  transition: background-color 2.8s ease-in-out,
-              border-color 2.8s ease-in-out,
-              box-shadow 2.8s ease-in-out;
+@layer utilities {
+  .prism-shed [class*="bg-card"],
+  .prism-shed [class*="bg-card"].border-border {
+    background-color: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+    transition: background-color 2.8s ease-in-out,
+                border-color 2.8s ease-in-out,
+                box-shadow 2.8s ease-in-out;
+  }
 }
 
 /**

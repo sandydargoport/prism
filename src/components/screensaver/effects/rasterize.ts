@@ -23,10 +23,19 @@
 const PAINTED = [
   'display', 'position', 'top', 'left', 'right', 'bottom', 'width', 'height',
   'margin', 'padding', 'box-sizing', 'overflow',
+  // A thin, faint scrollbar on screen came out as a full-width white one in the
+  // snapshot, and its track burst as a straight line of fragments.
+  'scrollbar-width', 'scrollbar-color',
   'font-family', 'font-size', 'font-weight', 'font-style', 'line-height',
   'letter-spacing', 'text-align', 'text-transform', 'white-space', 'text-shadow',
   'color', 'background-color', 'background-image', 'background-size', 'background-position',
-  'border', 'border-radius', 'box-shadow', 'opacity', 'transform',
+  // Each side, not the `border` shorthand. The shorthand reads back as an empty
+  // string whenever the sides differ (a calendar event's coloured left edge,
+  // say), so nothing was inlined and the snapshot fell back to the browser's
+  // own default for a <button>: a grey outline on every side. Those outlines
+  // flew apart with the burst, drawn round boxes that have none on screen.
+  'border-top', 'border-right', 'border-bottom', 'border-left',
+  'border-radius', 'box-shadow', 'opacity', 'transform',
   'flex', 'flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'gap',
   'grid-template-columns', 'grid-template-rows',
   'fill', 'stroke', 'stroke-width',
@@ -81,16 +90,31 @@ async function toDataUri(url: string): Promise<string | null> {
   }
 }
 
-/** The font families this subtree actually renders in. */
-function familiesUsed(root: HTMLElement): Set<string> {
-  const used = new Set<string>();
+/**
+ * The font families this subtree actually renders in, most wanted first.
+ *
+ * Ordered by how early each one comes in a font stack, because the byte budget
+ * below is spent in this order. Spent in stylesheet order instead, the emoji
+ * font won: its faces are declared first, the small ones fit under the
+ * per-face cap, and four of them used up the whole budget before Inter was
+ * reached. Every snapshot was then set in a fallback face, wider than Inter,
+ * so its text wrapped and clipped and the widget that burst was not the one on
+ * screen.
+ */
+function familiesUsed(root: HTMLElement): string[] {
+  const rank = new Map<string, number>();
   for (const el of [root, ...Array.from(root.querySelectorAll<HTMLElement>('*'))]) {
-    for (const name of getComputedStyle(el).fontFamily.split(',')) {
+    getComputedStyle(el).fontFamily.split(',').forEach((name, i) => {
       const clean = name.trim().replace(/^["']|["']$/g, '').toLowerCase();
-      if (clean) used.add(clean);
-    }
+      if (clean && i < (rank.get(clean) ?? Infinity)) rank.set(clean, i);
+    });
   }
-  return used;
+  return [...rank.entries()].sort((a, b) => a[1] - b[1]).map(([name]) => name);
+}
+
+/** By its text, not instanceof: not every DOM (jsdom, for one) has the class. */
+function isFontFace(rule: CSSRule): rule is CSSFontFaceRule {
+  return rule.cssText.trimStart().startsWith('@font-face');
 }
 
 /**
@@ -102,14 +126,13 @@ function familiesUsed(root: HTMLElement): Set<string> {
  * at the exact moment a widget was meant to burst. A widget renders in one or
  * two of those faces, so the rest is pure freight.
  */
-function embeddedFontCss(families: Set<string>): Promise<string> {
-  const key = [...families].sort().join('|');
+function embeddedFontCss(families: string[]): Promise<string> {
+  const key = families.join('|');
   const hit = fontCss.get(key);
   if (hit) return hit;
 
   const built = (async () => {
-    const faces: string[] = [];
-    let spent = 0;
+    const wanted: { rank: number; rule: CSSFontFaceRule }[] = [];
     for (const sheet of Array.from(document.styleSheets)) {
       let rules: CSSRuleList;
       try {
@@ -118,29 +141,37 @@ function embeddedFontCss(families: Set<string>): Promise<string> {
         continue; // cross-origin stylesheet; nothing we can read
       }
       for (const rule of Array.from(rules)) {
-        if (!(rule instanceof CSSFontFaceRule)) continue;
+        if (!isFontFace(rule)) continue;
         const family = rule.style
           .getPropertyValue('font-family')
           .trim()
           .replace(/^["']|["']$/g, '')
           .toLowerCase();
-        if (family && !families.has(family)) continue;
-
-        let text = rule.cssText;
-        const urls = [...text.matchAll(/url\(["']?([^"')]+)["']?\)/g)].map((m) => m[1]!);
-        let skip = false;
-        for (const u of urls) {
-          if (u.startsWith('data:')) continue;
-          const blob = await fetchBlob(new URL(u, location.href).href);
-          if (!blob) continue;
-          if (blob.size > MAX_FACE_BYTES || spent + blob.size > MAX_TOTAL_BYTES) { skip = true; break; }
-          const data = await blobToDataUri(blob);
-          if (!data) continue;
-          spent += blob.size;
-          text = text.replace(u, data);
-        }
-        if (!skip) faces.push(text);
+        const rank = families.indexOf(family);
+        if (family && rank < 0) continue;
+        wanted.push({ rank: rank < 0 ? families.length : rank, rule });
       }
+    }
+    // Stable, so faces of one family keep their stylesheet order.
+    wanted.sort((a, b) => a.rank - b.rank);
+
+    const faces: string[] = [];
+    let spent = 0;
+    for (const { rule } of wanted) {
+      let text = rule.cssText;
+      const urls = [...text.matchAll(/url\(["']?([^"')]+)["']?\)/g)].map((m) => m[1]!);
+      let skip = false;
+      for (const u of urls) {
+        if (u.startsWith('data:')) continue;
+        const blob = await fetchBlob(new URL(u, location.href).href);
+        if (!blob) continue;
+        if (blob.size > MAX_FACE_BYTES || spent + blob.size > MAX_TOTAL_BYTES) { skip = true; break; }
+        const data = await blobToDataUri(blob);
+        if (!data) continue;
+        spent += blob.size;
+        text = text.replace(u, data);
+      }
+      if (!skip) faces.push(text);
     }
     return faces.join('\n');
   })();
@@ -168,6 +199,15 @@ export async function rasterize(
   const height = Math.round(rect.height);
   if (width < 2 || height < 2) return null;
 
+  // The size the widget is laid out at, which is not the size it is drawn at
+  // under a CSS zoom (a widget's own text size, say). Computed styles are all in the
+  // first, so the snapshot is laid out there and zoomed back up to the second.
+  // Without this the widget came out at its unzoomed size in the top-left of
+  // its own box: the burst was smaller than the widget, off centre, and cut
+  // off along the right and bottom with the rest of the box empty.
+  const laidOut = parseFloat(getComputedStyle(el).width);
+  const zoom = laidOut > 0 ? rect.width / laidOut : 1;
+
   const clone = el.cloneNode(true) as HTMLElement;
   const source = [el, ...Array.from(el.querySelectorAll<HTMLElement>('*'))];
   const copy = [clone, ...Array.from(clone.querySelectorAll<HTMLElement>('*'))];
@@ -192,6 +232,10 @@ export async function rasterize(
       else img.remove();
     }),
   );
+
+  if (Math.abs(zoom - 1) > 0.001) {
+    clone.setAttribute('style', `${clone.getAttribute('style') ?? ''}zoom:${zoom};`);
+  }
 
   prepare?.(clone);
 
