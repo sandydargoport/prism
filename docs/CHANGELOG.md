@@ -4,6 +4,8 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+## [1.31.0] – 2026-10-27
+
 Ships two database migrations, applied automatically on start: live bus positions, and bus trip history.
 
 ### Added
