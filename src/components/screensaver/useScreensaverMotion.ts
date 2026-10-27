@@ -32,7 +32,7 @@ const RENAMED: Record<string, ScreensaverMotion> = {
   dissolve: 'fireworks',
 };
 
-function normalise(raw: string | null, migrated: boolean): ScreensaverMotion | null {
+export function normalise(raw: string | null, migrated: boolean): ScreensaverMotion | null {
   if (!raw) return null;
   if (!migrated && RENAMED[raw]) return RENAMED[raw]!;
   return (VALID as string[]).includes(raw) ? (raw as ScreensaverMotion) : null;

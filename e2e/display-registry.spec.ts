@@ -158,3 +158,61 @@ test.describe('Display settings follow the screen', () => {
     }
   });
 });
+
+test.describe('Another screen\'s settings', () => {
+  test('changed from a phone in Settings > Displays, and the screen uses them', async ({ browser }) => {
+    test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
+    test.setTimeout(180_000);
+    const tag = Date.now().toString(36);
+    const DEN = `Den ${tag}`;
+
+    const probe = await browser.newPage();
+    const parent = await getFirstParent(probe);
+    await probe.close();
+
+    const wallContext = await browser.newContext();
+    const phoneContext = await browser.newContext();
+    try {
+      const wall = await openDisplays(wallContext, parent.name);
+      await wall.getByLabel('Name for this screen').fill(DEN);
+      await wall.getByRole('button', { name: 'Name this display' }).click();
+      await expect(wall.getByText('This screen is named')).toContainText(DEN);
+      // A screen's own settings are on its own pages, not in its row.
+      await expect(wall.getByTestId('display-row').filter({ hasText: DEN })
+        .getByRole('button', { name: 'Settings' })).toHaveCount(0);
+
+      const phone = await openDisplays(phoneContext, parent.name);
+      await phone.getByTestId('display-row').filter({ hasText: DEN })
+        .getByRole('button', { name: 'Settings' }).click();
+      const panel = phone.getByTestId('screen-settings');
+      await panel.getByLabel(`Activate after on ${DEN}`).selectOption({ label: '1 hour' });
+      await expect(panel).toContainText(`Saved. ${DEN} changes within a minute.`);
+      // Only shown once there is an effect to time.
+      await expect(panel.getByLabel(`Change every on ${DEN}`)).toHaveCount(0);
+      await panel.getByLabel(`Widget transition effect on ${DEN}`).selectOption({ label: 'Smoke' });
+      await expect(panel.getByLabel(`Change every on ${DEN}`)).toBeVisible();
+      await panel.getByLabel(`Drift on ${DEN}`).selectOption({ label: 'Off' });
+      await panel.getByLabel(`On-screen keyboard on ${DEN}`).selectOption({ label: 'Never' });
+      await expect(panel.getByLabel(`On-screen keyboard on ${DEN}`)).toHaveValue('"never"');
+
+      // On the screen: stored as its own controls store them, and shown there.
+      await wall.reload();
+      await expect.poll(() => readStorage(wall, 'prism-screensaver-timeout'), { timeout: 30_000 }).toBe('3600');
+      expect(await readStorage(wall, 'prism-screensaver-motion')).toBe('smoke');
+      expect(await readStorage(wall, 'prism-screensaver-motion-v2')).toBe('1');
+      expect(await readStorage(wall, 'prism-screensaver-drift')).toBe('off');
+      expect(await readStorage(wall, 'prism:keyboard-on-this-device')).toBe('"never"');
+      await wall.goto('/settings?section=display');
+      const screensaver = wall.locator('#screensaver-settings');
+      await expect(screensaver.locator('select').first()).toHaveValue('3600', { timeout: 30_000 });
+      await expect(screensaver.getByRole('checkbox', { name: 'Drift' })).not.toBeChecked();
+
+      const { displays } = await (await phone.request.get('/api/displays')).json();
+      const den = displays.find((d: { name: string }) => d.name === DEN);
+      await phone.request.delete(`/api/displays/${den.id}`);
+    } finally {
+      await wallContext.close();
+      await phoneContext.close();
+    }
+  });
+});
