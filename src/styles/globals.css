@@ -1202,21 +1202,20 @@ html[data-virtual-keyboard-open] [data-keyboard-aware-dialog] {
   100%  { transform: translate(0px, 0px); }
 }
 
-.prism-drift-breathe,
-.prism-drift-ripple,
-.prism-drift-figure8 {
+/* Set on a grid cell as data-drift by CssGridDisplay, not as a class: the
+   grid adds and removes it itself so that a widget can glide home from
+   wherever it has drifted to, rather than snapping back. */
+[data-drift] {
   animation-iteration-count: infinite;
   animation-timing-function: ease-in-out;
 }
 
-.prism-drift-breathe { animation-name: prism-drift-breathe; animation-duration: 22s; }
-.prism-drift-ripple  { animation-name: prism-drift-ripple;  animation-duration: 75s; }
-.prism-drift-figure8 { animation-name: prism-drift-figure8; animation-duration: 96s; animation-timing-function: linear; }
+[data-drift="breathe"] { animation-name: prism-drift-breathe; animation-duration: 22s; }
+[data-drift="ripple"]  { animation-name: prism-drift-ripple;  animation-duration: 75s; }
+[data-drift="figure8"] { animation-name: prism-drift-figure8; animation-duration: 96s; animation-timing-function: linear; }
 
 @media (prefers-reduced-motion: reduce) {
-  .prism-drift-breathe,
-  .prism-drift-ripple,
-  .prism-drift-figure8 { animation: none; }
+  [data-drift] { animation: none; }
 }
 
 /**

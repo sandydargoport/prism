@@ -37,6 +37,7 @@ export function LayoutGridEditor({
   theme = DASHBOARD_THEME,
   previewFit = 'stretch',
   fadedIds,
+  drift,
   gridHelperText,
   className,
   screenGuideOrientation: screenGuideOrientationProp,
@@ -738,6 +739,7 @@ export function LayoutGridEditor({
       targetRows={displayTargetRows}
       designOrientation={screenGuideOrientation}
       fadedIds={fadedIds}
+      drift={drift}
       className={className}
     />
   );

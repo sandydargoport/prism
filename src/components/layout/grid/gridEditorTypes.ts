@@ -101,6 +101,8 @@ export interface LayoutGridEditorProps {
   gridHelperText?: string;
   /** Display mode only; see CssGridDisplayProps. */
   fadedIds?: ReadonlySet<string>;
+  /** Display mode only; see CssGridDisplayProps. */
+  drift?: ScreensaverDrift;
   className?: string;
   screenGuideOrientation?: 'landscape' | 'portrait';
   enabledSizes?: string[];

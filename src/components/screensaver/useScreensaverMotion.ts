@@ -59,7 +59,8 @@ const setFloor = (v: number) => writeStored(FLOOR_KEY, String(v));
 const setCeiling = (v: number) => writeStored(CEILING_KEY, String(v));
 const setOutlines = (v: boolean) => writeStored(OUTLINES_KEY, onOff(v));
 const setShortcut = (v: boolean) => writeStored(SHORTCUT_KEY, onOff(v));
-const setDrift = (v: ScreensaverDrift) => writeStored(DRIFT_KEY, v);
+/** null puts the display back on Automatic: see `driftChoice`. */
+const setDrift = (v: ScreensaverDrift | null) => writeStored(DRIFT_KEY, v);
 const setCarbonation = (v: boolean) => writeStored(CARBONATION_KEY, onOff(v));
 const setWobble = (v: number) => writeStored(WOBBLE_KEY, String(v));
 const setWaterClear = (v: boolean) => writeStored(WATER_CLEAR_KEY, onOff(v));
@@ -95,8 +96,14 @@ export function useScreensaverMotion() {
   // update — the same reason the effects themselves default to off.
   const shortcut = useStoredString(SHORTCUT_KEY) === 'on';
   const rawDrift = useStoredString(DRIFT_KEY);
-  const drift: ScreensaverDrift =
-    rawDrift && (DRIFTS as string[]).includes(rawDrift) ? (rawDrift as ScreensaverDrift) : 'off';
+  // What this display was set to, or null for Automatic: nothing chosen yet.
+  // Kept apart from `drift` because the two idle screens read Automatic
+  // differently (see calmIdleDrift).
+  const driftChoice: ScreensaverDrift | null =
+    rawDrift && (DRIFTS as string[]).includes(rawDrift) ? (rawDrift as ScreensaverDrift) : null;
+  // The separate screensaver's drift. Automatic is still there, so no display
+  // that was set up before calm mode starts moving on an update.
+  const drift: ScreensaverDrift = driftChoice ?? 'off';
   const carbonation = useStoredString(CARBONATION_KEY) !== 'off';
   const wobble = num(useStoredString(WOBBLE_KEY), (n) => n >= 0, 1);
   const speed = num(useStoredString(SPEED_KEY), (n) => n > 0, 1);
@@ -125,7 +132,7 @@ export function useScreensaverMotion() {
     ceiling, setCeiling,
     outlines, setOutlines,
     shortcut, setShortcut,
-    drift, setDrift,
+    drift, driftChoice, setDrift,
     carbonation, setCarbonation,
     wobble, setWobble,
     speed, setSpeed,

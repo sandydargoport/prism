@@ -2,11 +2,13 @@
 
 import { useSyncExternalStore } from 'react';
 import type { ScreensaverMode, WidgetConfig } from '@/lib/hooks/useLayouts';
+import type { ScreensaverDrift } from './useScreensaverMotion';
 
 /**
  * Calm mode (#691): the dashboard is its own idle screen. When the display goes
  * idle, the widgets not marked to stay fade out and the rest stay exactly where
- * they are; a tap brings everything back. Nothing moves.
+ * they are; a tap brings everything back. Nothing changes place; the widgets
+ * that stay only drift, a few pixels at a time, to spare the panel.
  *
  * The Screensaver still owns idleness (timers, the toolbar button, Away and
  * Babysitter yielding), so two facts cross between it and the dashboard:
@@ -31,6 +33,21 @@ export const DEFAULT_IDLE_WIDGETS: ReadonlySet<string> = new Set(['clock', 'weat
  */
 export function shownWhenIdle(widget: WidgetConfig): boolean {
   return widget.showWhenIdle ?? DEFAULT_IDLE_WIDGETS.has(widget.i);
+}
+
+/**
+ * How the widgets that stay on a calm idle screen drift.
+ *
+ * The display's own Drift setting when one was chosen. Automatic means figure
+ * eight here, unlike on the separate screensaver where it means still: a calm
+ * screen holds the same widgets in the same places all night, every night,
+ * which is the case drift exists for. Figure eight, because it moves every
+ * pixel of a widget by the same amount; breathe barely moves the middle.
+ */
+export const DEFAULT_CALM_DRIFT: ScreensaverDrift = 'figure8';
+
+export function calmIdleDrift(choice: ScreensaverDrift | null): ScreensaverDrift {
+  return choice ?? DEFAULT_CALM_DRIFT;
 }
 
 function createStore<T>(initial: T) {

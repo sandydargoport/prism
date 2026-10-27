@@ -411,12 +411,18 @@ test.describe('calm mode idle screen', () => {
 
       // The separate screensaver did not come up over the dashboard.
       await expect(page.locator('.fixed.inset-0 .widget-cell')).toHaveCount(0);
+      // Nothing changes size or place. The widgets that stay drift (Automatic
+      // means figure eight on a calm screen), but only within its 10 px.
+      const off = (i: string, from: Record<string, Cell>, to: Record<string, Cell>) =>
+        Math.hypot(to[i]!.x - from[i]!.x, to[i]!.y - from[i]!.y);
       for (const i of [...SHOWN, ...FADED]) {
-        expect(Math.abs(idle[i]!.x - before[i]!.x), `${i} x`).toBeLessThanOrEqual(1);
-        expect(Math.abs(idle[i]!.y - before[i]!.y), `${i} y`).toBeLessThanOrEqual(1);
         expect(Math.abs(idle[i]!.w - before[i]!.w), `${i} width`).toBeLessThanOrEqual(1);
         expect(Math.abs(idle[i]!.h - before[i]!.h), `${i} height`).toBeLessThanOrEqual(1);
       }
+      for (const i of SHOWN) expect(off(i, before, idle), `${i} drifts within its amplitude`).toBeLessThanOrEqual(10.5);
+      for (const i of FADED) expect(off(i, before, idle), `faded ${i} stays put`).toBeLessThanOrEqual(1);
+      // The clock's phase puts it about 9 px out by now.
+      expect(off('clock', before, idle), 'the clock is drifting').toBeGreaterThan(2);
       for (const i of SHOWN) {
         expect(idle[i]!.opacity, `${i} stays`).toBe(1);
         expect(idle[i]!.hit, `a tap on ${i} reaches it`).toBe(true);
@@ -430,11 +436,14 @@ test.describe('calm mode idle screen', () => {
       // useIdleDetection); the second wakes the display.
       const tasks = idle.tasks!;
       for (let n = 0; n < 2; n++) await page.mouse.click(tasks.x + tasks.w / 2, tasks.y + tasks.h / 2);
+      // Waking eases a drifted widget home over a second; it does not snap.
+      const waking = await cells(page);
+      expect(off('clock', before, waking), 'the clock glides back, not jumps').toBeGreaterThan(1.5);
       await page.waitForTimeout(1500);
       const awake = await cells(page);
       for (const i of [...SHOWN, ...FADED]) {
         expect(awake[i]!.opacity, `${i} is back`).toBe(1);
-        expect(Math.abs(awake[i]!.y - before[i]!.y), `${i} did not move`).toBeLessThanOrEqual(1);
+        expect(off(i, before, awake), `${i} is back in its place`).toBeLessThanOrEqual(1);
       }
     } finally {
       await page.request.delete(`/api/layouts/${layout.id}`);

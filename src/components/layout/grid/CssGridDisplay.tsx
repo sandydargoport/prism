@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { WidgetBgOverrideProvider } from '@/components/widgets/WidgetContainer';
 import { getWidgetStyle, getWidgetContentStyle, getTextColorClass } from './gridWidgetStyles';
 import { useSquareCells } from './useSquareCells';
@@ -8,6 +8,7 @@ import { useViewportSize } from '@/lib/hooks/useViewportSize';
 import { GRID_COLS } from '@/lib/constants/grid';
 import { resolveFitMode, containGeometry } from './fitMode';
 import type { CssGridDisplayProps } from './gridEditorTypes';
+import type { ScreensaverDrift } from '@/components/screensaver/useScreensaverMotion';
 
 /**
  * Where in its drift cycle a widget starts, in seconds (negative, so it is
@@ -20,6 +21,40 @@ function driftPhase(id: string): number {
   let hash = 0;
   for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) % 997;
   return -(hash % 60);
+}
+
+/**
+ * Start, stop or change one cell's drift.
+ *
+ * Done to the element rather than rendered, for the sake of stopping. Taking
+ * the animation away puts the cell straight back where it started, and a
+ * widget that has drifted ten pixels jumps ten pixels the moment the display
+ * wakes. So the cell is pinned where it is at that instant and eased home over
+ * the same second the faded widgets take to come back.
+ */
+function setCellDrift(el: HTMLElement, id: string, want: ScreensaverDrift) {
+  const current = el.dataset.drift ?? 'off';
+  if (current === want) return;
+  if (want !== 'off') {
+    el.style.transitionProperty = ''; // in case it was still easing home
+    el.dataset.drift = want;
+    el.style.animationDelay = `${driftPhase(id)}s`;
+    return;
+  }
+  const at = getComputedStyle(el).transform;
+  delete el.dataset.drift;
+  el.style.animationDelay = '';
+  if (!at || at === 'none') return;
+  el.style.transform = at;
+  void el.offsetWidth; // commit the pinned position, or there is nothing to ease from
+  el.style.transitionProperty = 'opacity, transform';
+  el.style.transform = '';
+  const done = (e: TransitionEvent) => {
+    if (e.target !== el || e.propertyName !== 'transform') return;
+    el.style.transitionProperty = '';
+    el.removeEventListener('transitionend', done);
+  };
+  el.addEventListener('transitionend', done);
 }
 
 /**
@@ -56,6 +91,14 @@ export function CssGridDisplay({
     () => layout.filter(w => w.visible !== false),
     [layout],
   );
+
+  // A faded widget does not drift: there is nothing on screen to protect.
+  const cells = useRef(new Map<string, HTMLDivElement>());
+  useLayoutEffect(() => {
+    for (const [id, el] of cells.current) {
+      setCellDrift(el, id, fadedIds?.has(id) ? 'off' : drift);
+    }
+  }, [drift, fadedIds, visibleWidgets]);
 
   // --- Fit-to-screen (targetRows set) --------------------------------------
   // The design is a fixed `cols × targetRows` canvas. How it maps onto the real
@@ -222,12 +265,12 @@ export function CssGridDisplay({
           const textClass = getTextColorClass(w);
           const hasCustomBg = !!w.backgroundColor;
           const faded = fadedIds?.has(w.i) ?? false;
-          const drifting = drift !== 'off' && !faded;
 
           return (
             <div
               key={w.i}
-              className={`widget-cell relative overflow-hidden ${textClass} transition-opacity duration-1000 motion-reduce:duration-200${drifting ? ` prism-drift-${drift}` : ''}`}
+              className={`widget-cell relative overflow-hidden ${textClass} transition-opacity duration-1000 motion-reduce:duration-200`}
+              ref={(el) => { if (el) cells.current.set(w.i, el); else cells.current.delete(w.i); }}
               data-widget={w.i}
               data-faded={faded || undefined}
               aria-hidden={faded || undefined}
@@ -239,7 +282,6 @@ export function CssGridDisplay({
                 // nothing around it reflows. A tap on it falls to the empty
                 // grid, which wakes the display without pressing anything.
                 ...(faded ? { opacity: 0, pointerEvents: 'none' as const } : {}),
-                ...(drifting ? { animationDelay: `${driftPhase(w.i)}s` } : {}),
               }}
             >
               <WidgetBgOverrideProvider value={{ hasCustomBg, textColor: w.textColor, textOpacity: w.textOpacity, gridLineOpacity: w.gridLineOpacity, cellBackgroundColor: w.cellBackgroundColor, cellBackgroundOpacity: w.cellBackgroundOpacity }}>

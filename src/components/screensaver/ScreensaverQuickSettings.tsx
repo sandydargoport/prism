@@ -48,7 +48,7 @@ export function ScreensaverSettingsPanel({
     floor, setFloor,
     ceiling, setCeiling,
     outlines, setOutlines,
-    drift, setDrift,
+    driftChoice, setDrift,
     speed, setSpeed,
     carbonation, setCarbonation,
     waterClear, setWaterClear,
@@ -225,10 +225,11 @@ export function ScreensaverSettingsPanel({
             <label className="flex items-center justify-between gap-3">
               <span className="text-sm text-white/70">Drift</span>
               <select
-                value={drift}
-                onChange={(e) => setDrift(e.target.value as ScreensaverDrift)}
+                value={driftChoice ?? 'auto'}
+                onChange={(e) => setDrift(e.target.value === 'auto' ? null : e.target.value as ScreensaverDrift)}
                 className={select}
               >
+                <option value="auto">Automatic</option>
                 <option value="off">Still</option>
                 <option value="breathe">Breathe</option>
                 <option value="ripple">Ripple</option>

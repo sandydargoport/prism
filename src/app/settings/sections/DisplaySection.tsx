@@ -516,7 +516,7 @@ function ScreensaverCard() {
     motion, setMotion,
     interval: motionInterval, setInterval: setMotionInterval,
     floor, setFloor, ceiling, setCeiling, outlines, setOutlines,
-    shortcut, setShortcut, drift, setDrift,
+    shortcut, setShortcut, driftChoice, setDrift,
     carbonation, setCarbonation, waterClear, setWaterClear, wobble, setWobble, speed, setSpeed,
   } = useScreensaverMotion();
   const { backdrop, setBackdrop } = useScreensaverBackdrop();
@@ -686,10 +686,11 @@ function ScreensaverCard() {
           <div className="flex items-center gap-3 pl-2">
             <span className="text-sm text-muted-foreground">Drift</span>
             <select
-              value={drift}
-              onChange={(e) => setDrift(e.target.value as ScreensaverDrift)}
+              value={driftChoice ?? 'auto'}
+              onChange={(e) => setDrift(e.target.value === 'auto' ? null : e.target.value as ScreensaverDrift)}
               className="border border-border rounded px-2 py-1 text-sm bg-background"
             >
+              <option value="auto">Automatic</option>
               <option value="off">Still</option>
               <option value="breathe">Breathe</option>
               <option value="ripple">Ripple</option>
@@ -699,7 +700,9 @@ function ScreensaverCard() {
           <p className="text-xs text-muted-foreground pl-2">
             Moves each widget slowly and out of step with the others, so no edge sits on
             the same pixels for months. Periods are minutes long and the movement is a
-            few pixels — enough to spare the panel, not enough to notice.
+            few pixels, enough to spare the panel, not enough to notice. It also moves the
+            widgets that stay on a dashboard set to fade to a calm view of itself.
+            Automatic keeps the screensaver still and uses Figure eight on a calm view.
           </p>
           <label className="flex items-center gap-3 pl-2 cursor-pointer">
             <input
