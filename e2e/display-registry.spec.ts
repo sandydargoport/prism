@@ -22,6 +22,13 @@ async function openDisplays(context: BrowserContext, parentName: string): Promis
 test.describe('Display registry', () => {
   test('name a screen on itself, then rename and remove it from another device', async ({ browser }) => {
     test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
+    // The first visit compiles Settings and the display routes on the dev server.
+    test.setTimeout(120_000);
+    // Names unique to this attempt, so a retry is not confused by rows an
+    // earlier attempt left behind.
+    const tag = Date.now().toString(36);
+    const KITCHEN = `Kitchen ${tag}`;
+    const RENAMED = `Kitchen wall ${tag}`;
 
     const probe = await browser.newPage();
     const parent = await getFirstParent(probe);
@@ -32,33 +39,34 @@ test.describe('Display registry', () => {
     try {
       // On the wall: name it.
       const wall = await openDisplays(wallContext, parent.name);
-      await wall.getByLabel('Name for this screen').fill('Kitchen');
+      await expect(wall.getByLabel('Name for this screen')).toBeVisible({ timeout: 60_000 });
+      await wall.getByLabel('Name for this screen').fill(KITCHEN);
       await wall.getByRole('button', { name: 'Name this display' }).click();
-      await expect(wall.getByText('This screen is named')).toContainText('Kitchen');
-      const wallRow = wall.getByTestId('display-row').filter({ hasText: 'Kitchen' });
+      await expect(wall.getByText('This screen is named')).toContainText(KITCHEN);
+      const wallRow = wall.getByTestId('display-row').filter({ hasText: KITCHEN });
       await expect(wallRow).toContainText('This screen');
       await expect(wallRow).toContainText('Online');
 
       // On the phone: listed, online, and not "this screen".
       const phone = await openDisplays(phoneContext, parent.name);
-      const phoneRow = phone.getByTestId('display-row').filter({ hasText: 'Kitchen' });
+      const phoneRow = phone.getByTestId('display-row').filter({ hasText: KITCHEN });
       await expect(phoneRow).toContainText('Online');
       await expect(phoneRow).not.toContainText('This screen');
       await expect(phone.getByLabel('Name for this screen')).toBeVisible();
 
       // Rename from the phone; the wall shows it after a refresh.
       await phoneRow.getByRole('button', { name: 'Rename' }).click();
-      await phone.getByLabel('New name for Kitchen').fill('Kitchen wall');
+      await phone.getByLabel(`New name for ${KITCHEN}`).fill(RENAMED);
       await phone.getByRole('button', { name: 'Save' }).click();
-      await expect(phone.getByTestId('display-row').filter({ hasText: 'Kitchen wall' })).toBeVisible();
+      await expect(phone.getByTestId('display-row').filter({ hasText: RENAMED })).toBeVisible();
       await wall.reload();
-      await expect(wall.getByText('This screen is named')).toContainText('Kitchen wall');
+      await expect(wall.getByText('This screen is named')).toContainText(RENAMED);
 
       // Remove from the phone; the wall's next heartbeat forgets its name.
       phone.once('dialog', (d) => d.accept());
-      await phone.getByTestId('display-row').filter({ hasText: 'Kitchen wall' })
+      await phone.getByTestId('display-row').filter({ hasText: RENAMED })
         .getByRole('button', { name: 'Remove' }).click();
-      await expect(phone.getByTestId('display-row').filter({ hasText: 'Kitchen wall' })).toHaveCount(0);
+      await expect(phone.getByTestId('display-row').filter({ hasText: RENAMED })).toHaveCount(0);
 
       const beat = await wall.request.post('/api/displays/heartbeat');
       expect((await beat.json()).display).toBeNull();
