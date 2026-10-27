@@ -53,6 +53,8 @@ async function openScreensaverEditor(page: Page, orientation: 'landscape' | 'por
     // Once per test: the editor writes this key itself after load.
     if (sessionStorage.getItem('ss-geometry-seeded')) return;
     localStorage.setItem('prism-screensaver-layout', JSON.stringify(layout));
+    // Drift is on by default and would move the live widgets off their places.
+    localStorage.setItem('prism-screensaver-drift', 'off');
     sessionStorage.setItem('ss-geometry-seeded', '1');
   }, LAYOUT);
   await page.goto('/');
@@ -398,6 +400,11 @@ test.describe('calm mode idle screen', () => {
     // A dashboard created now is calm without being asked.
     expect(layout.screensaverMode).toBe('calm');
 
+    // Drift takes its phase from the wall clock (every widget in step), so fix
+    // the clock a quarter of the way into the 96 s cycle: the far right of the
+    // figure eight, 4 px out, the moment the display goes idle.
+    const base = Date.UTC(2026, 9, 27, 12);
+    await page.clock.setFixedTime(new Date(base - (base % 96_000) + 24_000));
     try {
       await page.goto(`/d/${layout.slug}`);
       await page.locator('.widget-cell[data-widget="clock"]').waitFor({ timeout: 60000 });
@@ -411,18 +418,18 @@ test.describe('calm mode idle screen', () => {
 
       // The separate screensaver did not come up over the dashboard.
       await expect(page.locator('.fixed.inset-0 .widget-cell')).toHaveCount(0);
-      // Nothing changes size or place. The widgets that stay drift (Automatic
-      // means figure eight on a calm screen), but only within its 10 px.
+      // Nothing changes size or place. The widgets that stay drift, but only
+      // within the 4 px figure eight.
       const off = (i: string, from: Record<string, Cell>, to: Record<string, Cell>) =>
         Math.hypot(to[i]!.x - from[i]!.x, to[i]!.y - from[i]!.y);
       for (const i of [...SHOWN, ...FADED]) {
         expect(Math.abs(idle[i]!.w - before[i]!.w), `${i} width`).toBeLessThanOrEqual(1);
         expect(Math.abs(idle[i]!.h - before[i]!.h), `${i} height`).toBeLessThanOrEqual(1);
       }
-      for (const i of SHOWN) expect(off(i, before, idle), `${i} drifts within its amplitude`).toBeLessThanOrEqual(10.5);
+      for (const i of SHOWN) expect(off(i, before, idle), `${i} drifts within its amplitude`).toBeLessThanOrEqual(4.5);
       for (const i of FADED) expect(off(i, before, idle), `faded ${i} stays put`).toBeLessThanOrEqual(1);
-      // The clock's phase puts it about 9 px out by now.
-      expect(off('clock', before, idle), 'the clock is drifting').toBeGreaterThan(2);
+      // The fixed clock puts it about 4 px out by now.
+      expect(off('clock', before, idle), 'the clock is drifting').toBeGreaterThan(3);
       for (const i of SHOWN) {
         expect(idle[i]!.opacity, `${i} stays`).toBe(1);
         expect(idle[i]!.hit, `a tap on ${i} reaches it`).toBe(true);
@@ -497,14 +504,60 @@ test.describe('screensaver widget outlines', () => {
     expect(after[target], 'the outline is gone before the burst').toBe(0);
   });
 
+  test('drifting widgets keep their gaps through a whole cycle, with nothing stored', async ({ page }) => {
+    // Drift is on by default. It used to run each widget on its own phase, so
+    // neighbours could drift towards each other and overlap (-14.8 px measured
+    // on the wall's 4 px gaps). Waiting for the worst moment takes minutes, so
+    // this pauses the drift animations and steps them through one whole cycle,
+    // keeping whatever phases the page gave them.
+    await page.addInitScript(() => localStorage.setItem('prism-perf-mode', 'false'));
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
+    await page.locator('.fixed.inset-0.z-9999 .widget-cell').first().waitFor();
+    await page.waitForTimeout(1500);
+
+    const result = await page.evaluate(() => {
+      const cells = [...document.querySelectorAll<HTMLElement>('.fixed.inset-0.z-9999 .widget-cell')];
+      const gap = parseFloat(getComputedStyle(cells[0]!.parentElement!).columnGap);
+      const drifts = cells.flatMap((c) => c.getAnimations()).filter(
+        (a) => a instanceof CSSAnimation && a.animationName === 'prism-drift');
+      drifts.forEach((a) => a.pause());
+      const period = 96_000;
+      let closest = Infinity;
+      let reach = 0;
+      for (let t = 0; t < period; t += 1000) {
+        const rects = cells.map((c) => c.getBoundingClientRect());
+        // How far each cell is from its own place in the grid.
+        for (const c of cells) {
+          const m = new DOMMatrix(getComputedStyle(c).transform);
+          reach = Math.max(reach, Math.hypot(m.e, m.f));
+        }
+        for (let i = 0; i < rects.length; i++) {
+          for (let j = i + 1; j < rects.length; j++) {
+            const a = rects[i]!, b = rects[j]!;
+            // Distance between the two boxes; negative when they overlap.
+            const apart = Math.max(a.left - b.right, b.left - a.right, a.top - b.bottom, b.top - a.bottom);
+            closest = Math.min(closest, apart);
+          }
+        }
+        drifts.forEach((a) => { a.currentTime = Number(a.currentTime) + 1000; });
+      }
+      return { cells: cells.length, drifts: drifts.length, gap, closest, reach };
+    });
+
+    expect(result.cells, 'precondition: the screensaver shows two widgets or more').toBeGreaterThan(1);
+    expect(result.drifts, 'every widget drifts with nothing stored').toBe(result.cells);
+    expect(result.reach, 'the widgets move').toBeGreaterThan(3.5);
+    expect(result.reach, 'within the 4 px figure eight').toBeLessThanOrEqual(4.5);
+    expect(result.closest, 'neighbours never get closer than the grid gap').toBeGreaterThanOrEqual(result.gap - 0.5);
+  });
+
   test('a drifting widget moves whole, with no edge clipped by its cell', async ({ page }) => {
     // Drift used to run inside the cell, which clips its content, so the card
     // lost the edge of its outline on whichever side it had drifted towards.
-    await page.addInitScript(() => {
-      localStorage.setItem('prism-screensaver-drift', 'figure8');
-      // Performance Mode stops animations, and a CI runner trips it.
-      localStorage.setItem('prism-perf-mode', 'false');
-    });
+    // Performance Mode stops animations, and a CI runner trips it.
+    await page.addInitScript(() => localStorage.setItem('prism-perf-mode', 'false'));
     await page.goto('/');
     await page.waitForLoadState('networkidle');
     await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));

@@ -62,15 +62,17 @@ the display asks for reduced motion.
 
 ### Drift
 
-Independently of transitions, the widgets that *are* showing can move very
-slowly: **Breathe**, **Ripple** or **Figure eight**. This is for the panel's
-sake. Rotating which widgets are shown helps with burn-in; moving the ones that
-are helps more, because it shifts the boundaries rather than what is inside them.
+Independently of transitions, the widgets that *are* showing move very slowly
+in a figure eight, 4 px each way over a minute and a half. This is for the
+panel's sake. Rotating which widgets are shown helps with burn-in; moving the
+ones that are helps more, because it shifts the edges rather than what is inside
+them. It also runs on a dashboard that fades to a calm view of itself.
 
-Periods run from twenty seconds to a minute and a half, each widget is out of
-step with the others, and the amplitudes are whole pixels — sub-pixel movement
-leaves the same physical pixels lit and does nothing. Breathe and Figure eight
-are meant to be imperceptible. Ripple is meant to be just noticeable.
+Every widget moves together, so the gaps between them stay as designed. The
+amplitude is whole pixels, since sub-pixel movement leaves the same physical
+pixels lit and does nothing. Four pixels moves thin outlines and text clear of
+where they were; it cannot move a large stroke, such as the clock's digits,
+fully off its pixels, and more movement would start to be noticed.
 
 ### Configuration
 
@@ -95,7 +97,7 @@ also be reached from the screensaver itself — see below.
   top line of a widget's text or over empty space above it — the water covering
   content is the effect working as intended for some people and a fault for
   others, so it is a switch rather than a decision.
-- **Drift**: Still, Breathe, Ripple or Figure eight.
+- **Drift**: on or off, on by default.
 - **Show a settings shortcut on the screensaver**: off by default.
 
 ### Changing it from the screensaver

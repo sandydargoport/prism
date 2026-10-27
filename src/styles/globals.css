@@ -1163,56 +1163,43 @@ html[data-virtual-keyboard-open] [data-keyboard-aware-dialog] {
  * screen helps; moving the ones that are helps more, because it shifts the
  * boundaries themselves rather than what is inside them.
  *
- * All three are CSS animations and none of them touch JavaScript. That is not
- * an optimisation, it is the requirement: this runs for hours, so it has to
- * cost nothing and it has to stay smooth without depending on a frame loop that
- * is also drawing transitions.
+ * A CSS animation, untouched by JavaScript once started. That is not an
+ * optimisation, it is the requirement: this runs for hours, so it has to cost
+ * nothing and it has to stay smooth without depending on a frame loop that is
+ * also drawing transitions.
  *
  * Amplitudes are in whole pixels because sub-pixel movement does not shift
- * anything — the same physical pixels stay lit. Periods are in minutes because
- * anything you can see moving is a distraction on a display people read.
+ * anything: the same physical pixels stay lit. Four pixels moves a thin outline
+ * or a line of text clear of where it was; a big stroke never fully moves, and
+ * more drift would only make the motion noticeable. The period is minutes long
+ * because anything you can see moving is a distraction on a display people read.
+ *
+ * x = sin(t), y = sin(2t): a figure eight, which covers two axes without ever
+ * retracing the same path, the most displacement for the least apparent motion.
+ * Translation only: scaling or rotating moves a big widget's far edges further
+ * than its middle, which no gap can be sized for.
  */
-@keyframes prism-drift-breathe {
-  0%, 100% { transform: scale(1); }
-  50%      { transform: scale(1.012); }
-}
-
-/* A flag in almost no wind. Fifteen seconds was flag-like and far too busy for
-   something that runs all night; at seventy-five the shape is the same and you
-   have to watch to catch it, which is the whole brief. */
-@keyframes prism-drift-ripple {
-  0%, 100% { transform: translate(0, 0) rotate(0deg) skewY(0deg); }
-  20%      { transform: translate(5px, -3px) rotate(0.5deg) skewY(0.45deg); }
-  40%      { transform: translate(2px, 2px) rotate(-0.2deg) skewY(-0.3deg); }
-  60%      { transform: translate(-4px, -2px) rotate(-0.5deg) skewY(0.35deg); }
-  80%      { transform: translate(-2px, 3px) rotate(0.25deg) skewY(-0.2deg); }
-}
-
-/* x = sin(t), y = sin(2t): a figure eight, which covers two axes without ever
-   retracing the same path — the most displacement for the least apparent motion. */
-@keyframes prism-drift-figure8 {
+@keyframes prism-drift {
   0%    { transform: translate(0px, 0px); }
-  12.5% { transform: translate(7px, 7px); }
-  25%   { transform: translate(10px, 0px); }
-  37.5% { transform: translate(7px, -7px); }
+  12.5% { transform: translate(2.8px, 2.8px); }
+  25%   { transform: translate(4px, 0px); }
+  37.5% { transform: translate(2.8px, -2.8px); }
   50%   { transform: translate(0px, 0px); }
-  62.5% { transform: translate(-7px, 7px); }
-  75%   { transform: translate(-10px, 0px); }
-  87.5% { transform: translate(-7px, -7px); }
+  62.5% { transform: translate(-2.8px, 2.8px); }
+  75%   { transform: translate(-4px, 0px); }
+  87.5% { transform: translate(-2.8px, -2.8px); }
   100%  { transform: translate(0px, 0px); }
 }
 
 /* Set on a grid cell as data-drift by CssGridDisplay, not as a class: the
    grid adds and removes it itself so that a widget can glide home from
-   wherever it has drifted to, rather than snapping back. */
+   wherever it has drifted to, rather than snapping back. The grid also sets
+   the duration and the shared starting point. */
 [data-drift] {
+  animation-name: prism-drift;
   animation-iteration-count: infinite;
-  animation-timing-function: ease-in-out;
+  animation-timing-function: linear;
 }
-
-[data-drift="breathe"] { animation-name: prism-drift-breathe; animation-duration: 22s; }
-[data-drift="ripple"]  { animation-name: prism-drift-ripple;  animation-duration: 75s; }
-[data-drift="figure8"] { animation-name: prism-drift-figure8; animation-duration: 96s; animation-timing-function: linear; }
 
 @media (prefers-reduced-motion: reduce) {
   [data-drift] { animation: none; }

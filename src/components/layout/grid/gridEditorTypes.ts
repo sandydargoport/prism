@@ -1,5 +1,4 @@
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
-import type { ScreensaverDrift } from '@/components/screensaver/useScreensaverMotion';
 
 export interface EditorTheme {
   gridBg: string;
@@ -78,7 +77,7 @@ export interface CssGridDisplayProps {
    * it: the cell clips its content, so a card drifting inside it lost an edge
    * of its outline to the clip on whichever side it had moved towards.
    */
-  drift?: ScreensaverDrift;
+  drift?: boolean;
   className?: string;
 }
 
@@ -102,7 +101,7 @@ export interface LayoutGridEditorProps {
   /** Display mode only; see CssGridDisplayProps. */
   fadedIds?: ReadonlySet<string>;
   /** Display mode only; see CssGridDisplayProps. */
-  drift?: ScreensaverDrift;
+  drift?: boolean;
   className?: string;
   screenGuideOrientation?: 'landscape' | 'portrait';
   enabledSizes?: string[];

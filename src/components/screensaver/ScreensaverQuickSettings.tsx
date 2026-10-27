@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { EFFECT_ORDER, getEffect } from './effects';
-import { useScreensaverMotion, type ScreensaverMotion, type ScreensaverDrift } from './useScreensaverMotion';
+import { useScreensaverMotion, type ScreensaverMotion } from './useScreensaverMotion';
 import { useScreensaverBackdrop, type ScreensaverBackdrop } from './useScreensaverBackdrop';
 import { useScreensaverTimeout } from '@/lib/hooks/useScreensaverTimeout';
 import { useScreensaverInterval } from '@/components/layout/WallpaperBackground';
@@ -48,7 +48,6 @@ export function ScreensaverSettingsPanel({
     floor, setFloor,
     ceiling, setCeiling,
     outlines, setOutlines,
-    driftChoice, setDrift,
     speed, setSpeed,
     carbonation, setCarbonation,
     waterClear, setWaterClear,
@@ -222,20 +221,6 @@ export function ScreensaverSettingsPanel({
                   </label>
                 </>
               )}
-            <label className="flex items-center justify-between gap-3">
-              <span className="text-sm text-white/70">Drift</span>
-              <select
-                value={driftChoice ?? 'auto'}
-                onChange={(e) => setDrift(e.target.value === 'auto' ? null : e.target.value as ScreensaverDrift)}
-                className={select}
-              >
-                <option value="auto">Automatic</option>
-                <option value="off">Still</option>
-                <option value="breathe">Breathe</option>
-                <option value="ripple">Ripple</option>
-                <option value="figure8">Figure eight</option>
-              </select>
-            </label>
 
             <div className="h-px bg-white/10 my-1" />
 

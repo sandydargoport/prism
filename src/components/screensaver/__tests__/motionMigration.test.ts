@@ -64,3 +64,40 @@ describe('screensaver motion setting', () => {
     }
   });
 });
+
+/**
+ * Drift was a choice of style (breathe, ripple, figure eight) with Automatic
+ * left unstored; it is one On/Off setting now, on by default. A display that
+ * chose still stays still; every other stored value drifts.
+ */
+describe('drift setting', () => {
+  const DRIFT = 'prism-screensaver-drift';
+
+  it('drifts with nothing stored', () => {
+    const { result } = renderHook(() => useScreensaverMotion());
+    expect(result.current.drift).toBe(true);
+  });
+
+  it('keeps a display that chose still, still', () => {
+    window.localStorage.setItem(DRIFT, 'off');
+    const { result } = renderHook(() => useScreensaverMotion());
+    expect(result.current.drift).toBe(false);
+  });
+
+  it('reads every old style as on', () => {
+    for (const v of ['breathe', 'ripple', 'figure8']) {
+      window.localStorage.setItem(DRIFT, v);
+      const { result } = renderHook(() => useScreensaverMotion());
+      expect(result.current.drift).toBe(true);
+    }
+  });
+
+  it('turns off and back on', () => {
+    const { result } = renderHook(() => useScreensaverMotion());
+    act(() => result.current.setDrift(false));
+    expect(result.current.drift).toBe(false);
+    act(() => result.current.setDrift(true));
+    expect(result.current.drift).toBe(true);
+    expect(window.localStorage.getItem(DRIFT)).toBe('on');
+  });
+});

@@ -17,7 +17,7 @@ import { useWallpaperSettings, useAutoOrientationSetting, useScreensaverInterval
 import { useScreenOrientation } from '@/lib/hooks/useScreenOrientation';
 import { useOrientationOverride } from '../SettingsView';
 import { useScreensaverTimeout } from '@/lib/hooks/useScreensaverTimeout';
-import { useScreensaverMotion, type ScreensaverMotion, type ScreensaverDrift } from '@/components/screensaver/useScreensaverMotion';
+import { useScreensaverMotion, type ScreensaverMotion } from '@/components/screensaver/useScreensaverMotion';
 import { useScreensaverBackdrop, type ScreensaverBackdrop } from '@/components/screensaver/useScreensaverBackdrop';
 import { useIdleLogoutSetting, IDLE_LOGOUT_OPTIONS } from '@/lib/hooks/useIdleLogout';
 import { useAutoHideUI } from '@/lib/hooks/useAutoHideUI';
@@ -516,7 +516,7 @@ function ScreensaverCard() {
     motion, setMotion,
     interval: motionInterval, setInterval: setMotionInterval,
     floor, setFloor, ceiling, setCeiling, outlines, setOutlines,
-    shortcut, setShortcut, driftChoice, setDrift,
+    shortcut, setShortcut, drift, setDrift,
     carbonation, setCarbonation, waterClear, setWaterClear, wobble, setWobble, speed, setSpeed,
   } = useScreensaverMotion();
   const { backdrop, setBackdrop } = useScreensaverBackdrop();
@@ -683,26 +683,20 @@ function ScreensaverCard() {
               </div>
             </>
           )}
-          <div className="flex items-center gap-3 pl-2">
+          <label className="flex items-center gap-3 pl-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={drift}
+              onChange={(e) => setDrift(e.target.checked)}
+              className="rounded border-border"
+            />
             <span className="text-sm text-muted-foreground">Drift</span>
-            <select
-              value={driftChoice ?? 'auto'}
-              onChange={(e) => setDrift(e.target.value === 'auto' ? null : e.target.value as ScreensaverDrift)}
-              className="border border-border rounded px-2 py-1 text-sm bg-background"
-            >
-              <option value="auto">Automatic</option>
-              <option value="off">Still</option>
-              <option value="breathe">Breathe</option>
-              <option value="ripple">Ripple</option>
-              <option value="figure8">Figure eight</option>
-            </select>
-          </div>
+          </label>
           <p className="text-xs text-muted-foreground pl-2">
-            Moves each widget slowly and out of step with the others, so no edge sits on
-            the same pixels for months. Periods are minutes long and the movement is a
-            few pixels, enough to spare the panel, not enough to notice. It also moves the
-            widgets that stay on a dashboard set to fade to a calm view of itself.
-            Automatic keeps the screensaver still and uses Figure eight on a calm view.
+            Moves the widgets a few pixels in a slow figure eight while the display is
+            idle, so no edge or line of text sits on the same pixels for months. It
+            applies to the screensaver and to a dashboard that fades to a calm view of
+            itself.
           </p>
           <label className="flex items-center gap-3 pl-2 cursor-pointer">
             <input

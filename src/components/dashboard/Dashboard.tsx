@@ -46,7 +46,7 @@ import { buildWidgetProps } from './useWidgetProps';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { useLocalCopy } from '@/lib/hooks/useLocalCopy';
-import { calmIdleDrift, setActiveScreensaverMode, shownWhenIdle, useCalmIdle } from '@/components/screensaver/calmMode';
+import { setActiveScreensaverMode, shownWhenIdle, useCalmIdle } from '@/components/screensaver/calmMode';
 import { useScreensaverMotion } from '@/components/screensaver/useScreensaverMotion';
 
 class WidgetBoundary extends React.Component<
@@ -179,8 +179,8 @@ export function Dashboard({
   );
   // The widgets that stay drift while idle, so a screen that shows the same
   // board all night does not hold every edge on the same pixels (part 2).
-  const { driftChoice } = useScreensaverMotion();
-  const idleDrift = calmIdle ? calmIdleDrift(driftChoice) : 'off';
+  const { drift } = useScreensaverMotion();
+  const idleDrift = calmIdle && drift;
 
   // Orientation from active layout (DB), fallback to landscape
   // A choice made here holds until the active layout's orientation changes.

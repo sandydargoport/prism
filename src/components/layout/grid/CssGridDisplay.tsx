@@ -8,41 +8,44 @@ import { useViewportSize } from '@/lib/hooks/useViewportSize';
 import { GRID_COLS } from '@/lib/constants/grid';
 import { resolveFitMode, containGeometry } from './fitMode';
 import type { CssGridDisplayProps } from './gridEditorTypes';
-import type { ScreensaverDrift } from '@/components/screensaver/useScreensaverMotion';
+/** One figure eight, in seconds. The keyframes are prism-drift in globals.css. */
+const DRIFT_PERIOD_S = 96;
 
 /**
- * Where in its drift cycle a widget starts, in seconds (negative, so it is
- * already under way). Every widget on its own schedule: drifting in lockstep
- * would move the whole board as one object, which is both obvious and useless,
- * since the relationship between widgets is exactly what would stay burned in.
- * Derived from the id so it is stable across renders.
+ * Where in the drift cycle a cell starts, in seconds (negative, so it is
+ * already under way): the same point for every cell, taken from the wall
+ * clock, so every widget on screen drifts in step however late it arrived.
+ *
+ * In step, because drifting out of step let neighbours move towards each other
+ * and overlap: two widgets each 4 px out close a 4 px gap twice over. Moving
+ * together keeps every gap exactly as designed, and every pixel still sees the
+ * same movement, which is all the panel needs.
  */
-function driftPhase(id: string): number {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) % 997;
-  return -(hash % 60);
+function driftPhase(): number {
+  return -((Date.now() / 1000) % DRIFT_PERIOD_S);
 }
 
 /**
- * Start, stop or change one cell's drift.
+ * Start or stop one cell's drift.
  *
  * Done to the element rather than rendered, for the sake of stopping. Taking
  * the animation away puts the cell straight back where it started, and a
- * widget that has drifted ten pixels jumps ten pixels the moment the display
+ * widget that has drifted four pixels jumps four pixels the moment the display
  * wakes. So the cell is pinned where it is at that instant and eased home over
  * the same second the faded widgets take to come back.
  */
-function setCellDrift(el: HTMLElement, id: string, want: ScreensaverDrift) {
-  const current = el.dataset.drift ?? 'off';
-  if (current === want) return;
-  if (want !== 'off') {
+function setCellDrift(el: HTMLElement, want: boolean) {
+  if ((el.dataset.drift !== undefined) === want) return;
+  if (want) {
     el.style.transitionProperty = ''; // in case it was still easing home
-    el.dataset.drift = want;
-    el.style.animationDelay = `${driftPhase(id)}s`;
+    el.dataset.drift = '';
+    el.style.animationDuration = `${DRIFT_PERIOD_S}s`;
+    el.style.animationDelay = `${driftPhase()}s`;
     return;
   }
   const at = getComputedStyle(el).transform;
   delete el.dataset.drift;
+  el.style.animationDuration = '';
   el.style.animationDelay = '';
   if (!at || at === 'none') return;
   el.style.transform = at;
@@ -76,7 +79,7 @@ export function CssGridDisplay({
   containMode = false,
   screenFrame,
   fadedIds,
-  drift = 'off',
+  drift = false,
   className,
 }: CssGridDisplayProps) {
   const { containerRef, cellSize: widthCellSize, width, top, zoom, remeasure } = useSquareCells(cols, containerPadding, margin, fillHeight);
@@ -96,7 +99,7 @@ export function CssGridDisplay({
   const cells = useRef(new Map<string, HTMLDivElement>());
   useLayoutEffect(() => {
     for (const [id, el] of cells.current) {
-      setCellDrift(el, id, fadedIds?.has(id) ? 'off' : drift);
+      setCellDrift(el, drift && !fadedIds?.has(id));
     }
   }, [drift, fadedIds, visibleWidgets]);
 

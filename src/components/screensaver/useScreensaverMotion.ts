@@ -9,10 +9,15 @@ export const DEFAULT_MOTION_INTERVAL = 20;   // seconds between changes
 
 export type ScreensaverMotion = 'off' | 'fade' | 'smoke' | 'liquid' | 'fireworks';
 
-/** Slow ambient movement, to stop a widget living on the same pixels for years. */
-export type ScreensaverDrift = 'off' | 'breathe' | 'ripple' | 'figure8';
-
-const DRIFTS: ScreensaverDrift[] = ['off', 'breathe', 'ripple', 'figure8'];
+/**
+ * Whether widgets drift: slow ambient movement, to stop a widget living on the
+ * same pixels for years. On unless the display turned it off. Earlier versions
+ * stored a style (breathe, ripple, figure8) or nothing; all of those read as on,
+ * since there is one motion now.
+ */
+export function driftOn(raw: string | null): boolean {
+  return raw !== 'off';
+}
 
 const VALID: ScreensaverMotion[] = ['off', 'fade', 'smoke', 'liquid', 'fireworks'];
 
@@ -59,8 +64,7 @@ const setFloor = (v: number) => writeStored(FLOOR_KEY, String(v));
 const setCeiling = (v: number) => writeStored(CEILING_KEY, String(v));
 const setOutlines = (v: boolean) => writeStored(OUTLINES_KEY, onOff(v));
 const setShortcut = (v: boolean) => writeStored(SHORTCUT_KEY, onOff(v));
-/** null puts the display back on Automatic: see `driftChoice`. */
-const setDrift = (v: ScreensaverDrift | null) => writeStored(DRIFT_KEY, v);
+const setDrift = (v: boolean) => writeStored(DRIFT_KEY, onOff(v));
 const setCarbonation = (v: boolean) => writeStored(CARBONATION_KEY, onOff(v));
 const setWobble = (v: number) => writeStored(WOBBLE_KEY, String(v));
 const setWaterClear = (v: boolean) => writeStored(WATER_CLEAR_KEY, onOff(v));
@@ -95,15 +99,8 @@ export function useScreensaverMotion() {
   // using it, and putting a control on it changes that for every display on
   // update — the same reason the effects themselves default to off.
   const shortcut = useStoredString(SHORTCUT_KEY) === 'on';
-  const rawDrift = useStoredString(DRIFT_KEY);
-  // What this display was set to, or null for Automatic: nothing chosen yet.
-  // Kept apart from `drift` because the two idle screens read Automatic
-  // differently (see calmIdleDrift).
-  const driftChoice: ScreensaverDrift | null =
-    rawDrift && (DRIFTS as string[]).includes(rawDrift) ? (rawDrift as ScreensaverDrift) : null;
-  // The separate screensaver's drift. Automatic is still there, so no display
-  // that was set up before calm mode starts moving on an update.
-  const drift: ScreensaverDrift = driftChoice ?? 'off';
+  // Both idle screens, the separate screensaver and a calm dashboard.
+  const drift = driftOn(useStoredString(DRIFT_KEY));
   const carbonation = useStoredString(CARBONATION_KEY) !== 'off';
   const wobble = num(useStoredString(WOBBLE_KEY), (n) => n >= 0, 1);
   const speed = num(useStoredString(SPEED_KEY), (n) => n > 0, 1);
@@ -132,7 +129,7 @@ export function useScreensaverMotion() {
     ceiling, setCeiling,
     outlines, setOutlines,
     shortcut, setShortcut,
-    drift, driftChoice, setDrift,
+    drift, setDrift,
     carbonation, setCarbonation,
     wobble, setWobble,
     speed, setSpeed,
