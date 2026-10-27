@@ -15,6 +15,7 @@ import { AuthProvider } from './AuthProvider';
 import { FamilyProvider } from './FamilyProvider';
 import { GlobalInputProvider } from '@/lib/hooks/useGlobalInput';
 import { TimeFormatProvider } from './TimeFormatProvider';
+import { DisplayHeartbeat } from '@/components/displays/DisplayHeartbeat';
 
 // simple-keyboard accesses browser globals at module load — must be client-only
 const VirtualKeyboard = dynamic(
@@ -50,6 +51,7 @@ export function Providers({ children }: ProvidersProps) {
                 {children}
                 <VirtualKeyboard />
                 <KeyboardToggleButton />
+                <DisplayHeartbeat />
               </GlobalInputProvider>
             </TimeFormatProvider>
           </AuthProvider>

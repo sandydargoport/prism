@@ -6,6 +6,7 @@ All notable changes to Prism are documented in this file.
 
 ### Added
 - **Choose what stays on a calm dashboard.** In the layout editor, each widget on a calm dashboard has a **Stays** or **Fades** button in its top-right corner, which sets whether it stays on screen when the display goes idle. ([#691](https://github.com/sandydargoport/prism/issues/691))
+- **Name each screen.** *Settings → Displays* names the screen you are standing at (for example "Kitchen") and lists every named screen with whether it is on, so you can rename or remove any of them from another device. With *Require sign-in* on, naming a screen can trust it in the same step. A browser nobody named works as before. Per-screen settings will follow in a later release. The old *Displays* section, which set each dashboard's text size, is now called *Text Size*. Ships a database migration, applied automatically on start. ([#690](https://github.com/sandydargoport/prism/issues/690))
 
 ## [1.31.0] – 2026-10-27
 

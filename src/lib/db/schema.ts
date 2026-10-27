@@ -974,6 +974,19 @@ export const apiTokens = pgTable('api_tokens', {
   createdByIdx: index('api_tokens_created_by_idx').on(table.createdBy),
 }));
 
+/**
+ * A screen a parent has named (#690). The browser holds a signed cookie with
+ * the row's id; a browser nobody named has no row and behaves as before.
+ */
+export const displays = pgTable('displays', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: varchar('name', { length: 60 }).notNull(),
+  // Touched by the screen's own heartbeat, for "online 2 min ago".
+  lastSeenAt: timestamp('last_seen_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 
 export const apiCredentials = pgTable('api_credentials', {
   id: uuid('id').defaultRandom().primaryKey(),

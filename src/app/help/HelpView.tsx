@@ -584,6 +584,8 @@ function SettingsHelp({ isMobile }: { isMobile: boolean }) {
           <P>How large everything reads on each dashboard. It scales the whole board at once, separately from the per-widget text size in the layout editor, and does not change other pages.</P>
         </>
       )}
+      <H3>Displays</H3>
+      <P>Name each screen from the screen itself, for example &quot;Kitchen&quot;, and see every named screen and whether it is on. A browser nobody named works as before.</P>
       <H3>Photos</H3>
       <P>Add photo sources (OneDrive, Immich), pick sync folders, and set a static wallpaper or screensaver photo.</P>
       <H3>Bus Tracking</H3>
