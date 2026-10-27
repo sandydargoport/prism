@@ -1,4 +1,5 @@
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
+import type { ScreensaverDrift } from '@/components/screensaver/useScreensaverMotion';
 
 export interface EditorTheme {
   gridBg: string;
@@ -72,6 +73,12 @@ export interface CssGridDisplayProps {
    * state (#691).
    */
   fadedIds?: ReadonlySet<string>;
+  /**
+   * Slow burn-in drift, applied to each whole cell. On the cell, not inside
+   * it: the cell clips its content, so a card drifting inside it lost an edge
+   * of its outline to the clip on whichever side it had moved towards.
+   */
+  drift?: ScreensaverDrift;
   className?: string;
 }
 

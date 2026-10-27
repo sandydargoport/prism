@@ -10,6 +10,19 @@ import { resolveFitMode, containGeometry } from './fitMode';
 import type { CssGridDisplayProps } from './gridEditorTypes';
 
 /**
+ * Where in its drift cycle a widget starts, in seconds (negative, so it is
+ * already under way). Every widget on its own schedule: drifting in lockstep
+ * would move the whole board as one object, which is both obvious and useless,
+ * since the relationship between widgets is exactly what would stay burned in.
+ * Derived from the id so it is stable across renders.
+ */
+function driftPhase(id: string): number {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) % 997;
+  return -(hash % 60);
+}
+
+/**
  * Pure CSS Grid display for dashboard widgets. SSR-safe.
  * No drag/resize — used only for display mode and screensaver.
  */
@@ -28,6 +41,7 @@ export function CssGridDisplay({
   containMode = false,
   screenFrame,
   fadedIds,
+  drift = 'off',
   className,
 }: CssGridDisplayProps) {
   const { containerRef, cellSize: widthCellSize, width, top, zoom, remeasure } = useSquareCells(cols, containerPadding, margin, fillHeight);
@@ -208,11 +222,12 @@ export function CssGridDisplay({
           const textClass = getTextColorClass(w);
           const hasCustomBg = !!w.backgroundColor;
           const faded = fadedIds?.has(w.i) ?? false;
+          const drifting = drift !== 'off' && !faded;
 
           return (
             <div
               key={w.i}
-              className={`widget-cell relative overflow-hidden ${textClass} transition-opacity duration-1000 motion-reduce:duration-200`}
+              className={`widget-cell relative overflow-hidden ${textClass} transition-opacity duration-1000 motion-reduce:duration-200${drifting ? ` prism-drift-${drift}` : ''}`}
               data-widget={w.i}
               data-faded={faded || undefined}
               aria-hidden={faded || undefined}
@@ -224,6 +239,7 @@ export function CssGridDisplay({
                 // nothing around it reflows. A tap on it falls to the empty
                 // grid, which wakes the display without pressing anything.
                 ...(faded ? { opacity: 0, pointerEvents: 'none' as const } : {}),
+                ...(drifting ? { animationDelay: `${driftPhase(w.i)}s` } : {}),
               }}
             >
               <WidgetBgOverrideProvider value={{ hasCustomBg, textColor: w.textColor, textOpacity: w.textOpacity, gridLineOpacity: w.gridLineOpacity, cellBackgroundColor: w.cellBackgroundColor, cellBackgroundOpacity: w.cellBackgroundOpacity }}>

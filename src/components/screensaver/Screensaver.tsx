@@ -363,20 +363,8 @@ function ScreensaverGrid() {
       ...props
     } = rawProps as Record<string, unknown>;
       const on = !effect || showing.includes(w.i);
-    // Every widget on its own schedule. Drifting in lockstep would move the
-    // whole board as one object, which is both obvious and useless — the
-    // relationship between widgets is exactly what would stay burned in.
-    // Derived from the widget's id so it is stable across renders.
-    let hash = 0;
-    for (let i = 0; i < w.i.length; i++) hash = (hash * 31 + w.i.charCodeAt(i)) % 997;
-    const driftPhase = -(hash % 60);
-
     return (
       <React.Suspense fallback={<div className="flex items-center justify-center h-full opacity-50 text-sm">Loading...</div>}>
-        <div
-          className={drift === 'off' ? 'h-full w-full' : `h-full w-full prism-drift-${drift}`}
-          style={drift === 'off' ? undefined : { animationDelay: `${driftPhase}s` }}
-        >
         <WidgetStage
           id={w.i}
           effect={effect}
@@ -395,7 +383,6 @@ function ScreensaverGrid() {
         >
           <Component {...props} />
         </WidgetStage>
-        </div>
       </React.Suspense>
     );
   };
@@ -425,6 +412,7 @@ function ScreensaverGrid() {
         containMode
         screenFrame={screenFrame}
         headerOffset={0}
+        drift={drift}
         className="w-full h-full"
       />
       </EffectStage>

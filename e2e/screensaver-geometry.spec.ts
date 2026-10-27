@@ -442,7 +442,7 @@ test.describe('calm mode idle screen', () => {
   });
 });
 
-test.describe('screensaver fireworks wind-up', () => {
+test.describe('screensaver widget outlines', () => {
   test.use({ viewport: { width: 1280, height: 720 } });
   test.setTimeout(90_000);
 
@@ -486,5 +486,42 @@ test.describe('screensaver fireworks wind-up', () => {
 
     const after = await outlineAlpha(page);
     expect(after[target], 'the outline is gone before the burst').toBe(0);
+  });
+
+  test('a drifting widget moves whole, with no edge clipped by its cell', async ({ page }) => {
+    // Drift used to run inside the cell, which clips its content, so the card
+    // lost the edge of its outline on whichever side it had drifted towards.
+    await page.addInitScript(() => {
+      localStorage.setItem('prism-screensaver-drift', 'figure8');
+      // Performance Mode stops animations, and a CI runner trips it.
+      localStorage.setItem('prism-perf-mode', 'false');
+    });
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
+    await page.locator('.fixed.inset-0.z-9999 .widget-cell').first().waitFor();
+
+    const measure = () => page.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>('.fixed.inset-0.z-9999 .widget-cell')].map((cell) => {
+        const c = cell.getBoundingClientRect();
+        const card = cell.querySelector('.border-border[class*="bg-card/"]');
+        const k = card?.getBoundingClientRect();
+        return {
+          id: cell.dataset.widget!, x: c.x, y: c.y,
+          // How far the card reaches past its cell on any side; the cell clips there.
+          overhang: k ? Math.max(c.left - k.left, c.top - k.top, k.right - c.right, k.bottom - c.bottom) : 0,
+        };
+      }));
+
+    await page.waitForTimeout(1500);
+    const first = await measure();
+    await page.waitForTimeout(2000);
+    const second = await measure();
+    expect(first.length, 'precondition: the screensaver shows widgets').toBeGreaterThan(0);
+    for (const m of [...first, ...second]) {
+      expect(m.overhang, `${m.id} is not clipped by its cell`).toBeLessThanOrEqual(0.5);
+    }
+    const moved = first.some((m, n) => Math.hypot(m.x - second[n]!.x, m.y - second[n]!.y) > 0.2);
+    expect(moved, 'the drift is still running').toBe(true);
   });
 });
