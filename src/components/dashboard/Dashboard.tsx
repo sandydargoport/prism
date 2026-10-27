@@ -457,6 +457,7 @@ export function Dashboard({
                 renderWidget={renderDashboardWidget}
                 fadedIds={fadedIds}
                 drift={idleDrift}
+                idleToggles={layout.isEditing && screensaverMode === 'calm'}
                 widgetConstraints={dashboardConstraints}
                 margin={8}
                 headerOffset={layout.isEditing ? 140 : uiHidden ? 0 : 56}

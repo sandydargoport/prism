@@ -20,6 +20,17 @@ Screensaver layouts are dashboard-scoped. Your kitchen dashboard (`/d/kitchen`) 
 
 Edit the screensaver layout in dashboard edit mode by clicking the **Screensaver** button to switch from editing the dashboard to editing the screensaver overlay.
 
+### A calm dashboard is its own idle screen
+
+A dashboard set to *Fade to a calm view of this dashboard* (under *When nobody's
+using it* in the editor) has no separate screensaver. When the display goes idle,
+some widgets fade out where they are and the rest stay; a tap brings everything
+back, and nothing moves.
+
+In the editor, each widget on a calm dashboard has a **Stays** or **Fades** button
+in its top-right corner. Tap it to choose, then **Save**. Until a widget is set,
+the clock, weather and calendar stay and everything else fades.
+
 ### Background: photos or the night sky
 
 *Settings → Appearance → Screensaver → Background* sets what sits behind the widgets, per display:

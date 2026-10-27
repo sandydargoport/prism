@@ -4,6 +4,9 @@ All notable changes to Prism are documented in this file.
 
 ## Unreleased
 
+### Added
+- **Choose what stays on a calm dashboard.** In the layout editor, each widget on a calm dashboard has a **Stays** or **Fades** button in its top-right corner, which sets whether it stays on screen when the display goes idle. ([#691](https://github.com/sandydargoport/prism/issues/691))
+
 ## [1.31.0] – 2026-10-27
 
 Ships two database migrations, applied automatically on start: live bus positions, and bus trip history.

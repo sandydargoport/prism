@@ -38,6 +38,7 @@ export function LayoutGridEditor({
   previewFit = 'stretch',
   fadedIds,
   drift,
+  idleToggles,
   gridHelperText,
   className,
   screenGuideOrientation: screenGuideOrientationProp,
@@ -713,6 +714,7 @@ export function LayoutGridEditor({
                 selectedWidget={selectedWidget}
                 onSelectWidget={setSelectedWidget}
                 theme={theme}
+                idleToggles={idleToggles}
               />
             ) : (
               <div style={{ padding: 20, color: 'yellow' }}>

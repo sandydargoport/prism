@@ -102,6 +102,8 @@ export interface LayoutGridEditorProps {
   fadedIds?: ReadonlySet<string>;
   /** Display mode only; see CssGridDisplayProps. */
   drift?: boolean;
+  /** Edit mode only; see CssGridEditorProps. */
+  idleToggles?: boolean;
   className?: string;
   screenGuideOrientation?: 'landscape' | 'portrait';
   enabledSizes?: string[];

@@ -456,6 +456,52 @@ test.describe('calm mode idle screen', () => {
       await page.request.delete(`/api/layouts/${layout.id}`);
     }
   });
+
+  test('each widget\'s Stays / Fades button in the editor sets whether it stays', async ({ page }) => {
+    const login = await page.request.post('/api/auth/login', {
+      data: { userId: getSeededParentId(), pin: PIN },
+    });
+    expect(login.ok(), 'precondition: login must succeed').toBe(true);
+    // Neither widget is set, so the defaults decide: the clock stays, tasks fade.
+    const created = await page.request.post('/api/layouts', {
+      data: { name: `Calm ticks e2e ${Date.now()}`, widgets: WIDGETS.slice(0, 2) },
+    });
+    expect(created.status()).toBe(201);
+    const layout = await created.json();
+    // Keep the widgets still, so a drifted clock cannot read as moved.
+    await page.addInitScript(() => localStorage.setItem('prism-screensaver-drift', 'off'));
+    try {
+      await page.goto(`/d/${layout.slug}`);
+      await page.getByLabel('Edit layout').click({ timeout: 60000 });
+      const toggle = (i: string) => page.locator(`[data-editor-widget="${i}"] [data-idle-toggle]`);
+      await expect(toggle('clock')).toHaveAttribute('aria-pressed', 'true');
+      await expect(toggle('clock')).toContainText('Stays');
+      await expect(toggle('tasks')).toHaveAttribute('aria-pressed', 'false');
+      await expect(toggle('tasks')).toContainText('Fades');
+
+      await toggle('tasks').click();
+      await toggle('clock').click();
+      await expect(toggle('tasks')).toHaveAttribute('aria-pressed', 'true');
+      await expect(toggle('clock')).toHaveAttribute('aria-pressed', 'false');
+      // The button changes only this; it does not select the widget to move it.
+      await expect(page.getByText(/^Tap to (resize|deselect)$/)).toHaveCount(0);
+
+      await page.getByRole('button', { name: 'Save', exact: true }).click();
+      await expect(page.locator('[data-idle-toggle]')).toHaveCount(0);
+      const saved = await (await page.request.get(`/api/layouts/${layout.id}`)).json();
+      const tick = Object.fromEntries(saved.widgets.map((w: { i: string; showWhenIdle?: boolean }) => [w.i, w.showWhenIdle]));
+      expect(tick).toEqual({ clock: false, tasks: true });
+
+      await page.locator('.widget-cell[data-widget="clock"]').waitFor();
+      await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
+      await page.waitForTimeout(1500);
+      const idle = await cells(page);
+      expect(idle.tasks!.opacity, 'tasks now stays').toBe(1);
+      expect(idle.clock!.opacity, 'the clock now fades').toBe(0);
+    } finally {
+      await page.request.delete(`/api/layouts/${layout.id}`);
+    }
+  });
 });
 
 test.describe('screensaver widget outlines', () => {
