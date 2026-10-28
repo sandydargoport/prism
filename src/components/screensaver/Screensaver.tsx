@@ -32,6 +32,7 @@ import { PollingScopeContext } from '@/lib/hooks/pollingScope';
 import { useResetOn } from '@/lib/hooks/useResetOn';
 import { useScreensaverBackdrop, useSkyLocation, useSkyShowing } from './useScreensaverBackdrop';
 import { setCalmIdle, useActiveScreensaverMode } from './calmMode';
+import { IdleDim } from './idleDim';
 
 // Only displays that choose the sky load its star catalogue.
 const NightSky = React.lazy(() => import('./nightSky/NightSky').then((m) => ({ default: m.NightSky })));
@@ -138,7 +139,11 @@ export function Screensaver() {
     return () => clearTimeout(timer);
   }, [isIdle]);
 
-  if (!isIdle) return null;
+  // Over both idle screens, so it is outside the overlay below and stays
+  // mounted while a calm dashboard is idle. Same place in both returns, so it
+  // keeps its state and eases out on waking.
+  const dim = <IdleDim idle={idle} />;
+  if (!isIdle) return <>{dim}{null}</>;
 
   // Use pinned photo if set, otherwise use rotating photos. None at all under
   // the sky, so it loads nothing for as long as it is up.
@@ -149,41 +154,44 @@ export function Screensaver() {
       : '';
 
   return (
-    <div
-      className={`fixed inset-0 z-9999 bg-black transition-opacity duration-1000 ${
-        visible ? 'opacity-100' : 'opacity-0'
-      }`}
-    >
-      {/* Decorative layers are absolutely positioned, so in CSS paint order they
-          sit ABOVE the (statically-positioned) widget grid and would swallow every
-          tap. pointer-events-none lets taps fall through to the widgets — needed
-          for the calendar view controls to be operable on the screensaver. */}
-      {src && (
-        <div
-          className="pointer-events-none absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
-          style={{
-            backgroundImage: `url(${src})`,
-            opacity: fadingOut ? 0 : 1,
-          }}
-        />
-      )}
-      {showSky ? (
-        <React.Suspense fallback={null}>
-          <NightSky lat={lat} lon={lon} />
-        </React.Suspense>
-      ) : (
-        // Photos are dimmed so the white widget text reads over them. The sky
-        // is already dark where it matters.
-        <div className="pointer-events-none absolute inset-0 bg-black/40" />
-      )}
-      {/* Scoped from out here rather than inside ScreensaverGrid: the grid
-          calls useDashboardData in its own body, which reads context from
-          where the grid SITS, not from what it renders. */}
-      <PollingScopeContext.Provider value="screensaver">
-        <ScreensaverGrid />
-      </PollingScopeContext.Provider>
-      <ScreensaverQuickSettings />
-    </div>
+    <>
+      {dim}
+      <div
+        className={`fixed inset-0 z-9999 bg-black transition-opacity duration-1000 ${
+          visible ? 'opacity-100' : 'opacity-0'
+        }`}
+      >
+        {/* Decorative layers are absolutely positioned, so in CSS paint order they
+            sit ABOVE the (statically-positioned) widget grid and would swallow every
+            tap. pointer-events-none lets taps fall through to the widgets — needed
+            for the calendar view controls to be operable on the screensaver. */}
+        {src && (
+          <div
+            className="pointer-events-none absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
+            style={{
+              backgroundImage: `url(${src})`,
+              opacity: fadingOut ? 0 : 1,
+            }}
+          />
+        )}
+        {showSky ? (
+          <React.Suspense fallback={null}>
+            <NightSky lat={lat} lon={lon} />
+          </React.Suspense>
+        ) : (
+          // Photos are dimmed so the white widget text reads over them. The sky
+          // is already dark where it matters.
+          <div className="pointer-events-none absolute inset-0 bg-black/40" />
+        )}
+        {/* Scoped from out here rather than inside ScreensaverGrid: the grid
+            calls useDashboardData in its own body, which reads context from
+            where the grid SITS, not from what it renders. */}
+        <PollingScopeContext.Provider value="screensaver">
+          <ScreensaverGrid />
+        </PollingScopeContext.Provider>
+        <ScreensaverQuickSettings />
+      </div>
+    </>
   );
 }
 

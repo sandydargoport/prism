@@ -85,6 +85,18 @@ pixels lit and does nothing. Four pixels moves thin outlines and text clear of
 where they were; it cannot move a large stroke, such as the clock's digits,
 fully off its pixels, and more movement would start to be noticed.
 
+### Dim when idle
+
+During the hours chosen, the idle screen darkens: a black layer over the
+screensaver or the calm dashboard, eased in over a few seconds. A touch lifts
+it. The hours are read on the screen's own clock, and a screen already idle
+when they begin dims then. Off by default.
+
+A web page cannot change the panel's own brightness or turn it off. On an OLED
+panel the black layer is real dimming; on an LCD the backlight stays on, but
+less light reaches the room. A screen that should go fully dark at night still
+needs the computer's own display sleep.
+
 ### Configuration
 
 Screensaver settings live under *Settings → Appearance → Screensaver*, and can
@@ -109,6 +121,8 @@ also be reached from the screensaver itself — see below.
   content is the effect working as intended for some people and a fault for
   others, so it is a switch rather than a decision.
 - **Drift**: on or off, on by default.
+- **Dim when idle**: Off, A little, Half or A lot, and the hours (8 pm to 7 am
+  through 11 pm to 7 am, or all day). Off by default.
 - **Show a settings shortcut on the screensaver**: off by default.
 
 ### Changing it from the screensaver

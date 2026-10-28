@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { getSeededParentId } from './helpers/auth';
+import { getFirstParent, getSeededParentId, verifySettingsPinViaAPI } from './helpers/auth';
 import {
   facingFor, localSiderealTime, project, toHorizontal,
 } from '../src/components/screensaver/nightSky/sky';
@@ -501,6 +501,67 @@ test.describe('calm mode idle screen', () => {
     } finally {
       await page.request.delete(`/api/layouts/${layout.id}`);
     }
+  });
+});
+
+/**
+ * Dim when idle (#691): during the hours chosen on this screen, the idle
+ * screen darkens behind a black layer that never takes a tap, and a touch
+ * lifts it. The hours are read on the screen's own clock, so the browser is
+ * put in a zone west of UTC.
+ */
+test.describe('dim when idle', () => {
+  test.use({ viewport: { width: 1280, height: 720 }, timezoneId: 'America/Chicago' });
+  test.setTimeout(90_000);
+
+  async function dim(page: Page) {
+    return page.evaluate(() => {
+      const layer = document.querySelector<HTMLElement>('[data-idle-dim]');
+      if (!layer) return null;
+      const at = document.elementFromPoint(640, 360);
+      return { opacity: Number(getComputedStyle(layer).opacity), takesTaps: !!at && layer.contains(at) };
+    });
+  }
+
+  test('darkens the idle screen at night, as chosen in Settings, and a touch lifts it', async ({ page }) => {
+    test.skip(!HAS_TEST_DB, 'needs the seeded test database to open Settings');
+    await verifySettingsPinViaAPI(page, (await getFirstParent(page)).name, PIN);
+    // 11:30 pm in Chicago, 04:30 UTC: inside 11 pm to 7 am only on the screen's clock.
+    await page.clock.setFixedTime(new Date('2026-10-28T04:30:00Z'));
+    await page.goto('/settings?section=display');
+    const level = page.getByLabel('Dim when idle');
+    await level.waitFor({ timeout: 60000 });
+    await expect(page.getByLabel('Dim during'), 'no hours to pick while off').toHaveCount(0);
+    await level.selectOption({ label: 'Half' });
+    await page.getByLabel('Dim during').selectOption({ label: '11 pm to 7 am' });
+
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    expect(await dim(page), 'awake, nothing is dimmed').toEqual({ opacity: 0, takesTaps: false });
+
+    await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
+    // It eases in over 4 s.
+    await page.waitForTimeout(5000);
+    expect(await dim(page), 'idle at night: half dark, taps pass through').toEqual({ opacity: 0.5, takesTaps: false });
+
+    // The first touch after the toolbar's forced start is absorbed; the second wakes.
+    for (let n = 0; n < 2; n++) await page.mouse.click(640, 360);
+    await page.waitForTimeout(1000);
+    expect((await dim(page))!.opacity, 'awake again, full brightness').toBe(0);
+  });
+
+  test('leaves the idle screen alone outside the hours', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('prism-screensaver-dim', '0.5');
+      localStorage.setItem('prism-screensaver-dim-hours', '23-7');
+    });
+    // 6 pm in Chicago, which is 11 pm UTC: the hours must not be read in UTC.
+    await page.clock.setFixedTime(new Date('2026-10-28T23:00:00Z'));
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
+    await page.waitForTimeout(5000);
+    expect((await dim(page))!.opacity).toBe(0);
   });
 });
 
