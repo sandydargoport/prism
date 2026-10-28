@@ -87,10 +87,15 @@ fully off its pixels, and more movement would start to be noticed.
 
 ### Dim when idle
 
-During the hours chosen, the idle screen darkens: a black layer over the
-screensaver or the calm dashboard, eased in over a few seconds. A touch lifts
-it. The hours are read on the screen's own clock, and a screen already idle
-when they begin dims then. Off by default.
+During the hours the calendar hides, the idle screen darkens: a black layer over
+the screensaver or the calm dashboard, eased in over a few seconds. A touch
+lifts it. The hours are *Calendar Hours* (on the Calendar page, under
+**Manage**), shared by every screen: a fixed range, or with Auto-fit, before the
+day's first timed event and after its last, plus the buffer (outside 8 am to
+7 pm on a day without timed events). The calendar's clock button only changes
+the calendar view; the dimming follows the range either way. How dark is set
+per screen. The hours are read on the screen's own clock, and a screen already
+idle when they begin dims then. Off by default.
 
 A web page cannot change the panel's own brightness or turn it off. On an OLED
 panel the black layer is real dimming; on an LCD the backlight stays on, but
@@ -121,8 +126,8 @@ also be reached from the screensaver itself — see below.
   content is the effect working as intended for some people and a fault for
   others, so it is a switch rather than a decision.
 - **Drift**: on or off, on by default.
-- **Dim when idle**: Off, A little, Half or A lot, and the hours (8 pm to 7 am
-  through 11 pm to 7 am, or all day). Off by default.
+- **Dim when idle**: Off, 25%, 50% or 75% darker, during the calendar's hidden
+  hours. Off by default.
 - **Show a settings shortcut on the screensaver**: off by default.
 
 ### Changing it from the screensaver

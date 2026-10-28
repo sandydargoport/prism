@@ -19,7 +19,8 @@ import { useOrientationOverride } from '../SettingsView';
 import { useScreensaverTimeout } from '@/lib/hooks/useScreensaverTimeout';
 import { useScreensaverMotion, type ScreensaverMotion } from '@/components/screensaver/useScreensaverMotion';
 import { useScreensaverBackdrop, type ScreensaverBackdrop } from '@/components/screensaver/useScreensaverBackdrop';
-import { DIM_HOURS, DIM_LEVELS, useIdleDimSetting } from '@/components/screensaver/idleDim';
+import { DIM_LEVELS, describeDimHours, useIdleDimSetting } from '@/components/screensaver/idleDim';
+import { useHiddenHours } from '@/lib/hooks/useHiddenHours';
 import { useIdleLogoutSetting, IDLE_LOGOUT_OPTIONS } from '@/lib/hooks/useIdleLogout';
 import { useAutoHideUI } from '@/lib/hooks/useAutoHideUI';
 import { useAwayModeTimeout } from '@/lib/hooks/useAwayModeTimeout';
@@ -521,7 +522,8 @@ function ScreensaverCard() {
     carbonation, setCarbonation, waterClear, setWaterClear, wobble, setWobble, speed, setSpeed,
   } = useScreensaverMotion();
   const { backdrop, setBackdrop } = useScreensaverBackdrop();
-  const { level: dimLevel, setLevel: setDimLevel, hours: dimHours, setHours: setDimHours } = useIdleDimSetting();
+  const { level: dimLevel, setLevel: setDimLevel } = useIdleDimSetting();
+  const { settings: calendarHours } = useHiddenHours();
 
   return (
     <Card id="screensaver-settings">
@@ -710,21 +712,13 @@ function ScreensaverCard() {
             >
               {DIM_LEVELS.map((l) => <option key={l.raw} value={l.raw}>{l.label}</option>)}
             </select>
-            {dimLevel !== '0' && (
-              <select
-                aria-label="Dim during"
-                value={dimHours}
-                onChange={(e) => setDimHours(e.target.value)}
-                className="border border-border rounded px-2 py-1 text-sm bg-background"
-              >
-                {DIM_HOURS.map((h) => <option key={h.raw} value={h.raw}>{h.label}</option>)}
-              </select>
-            )}
           </div>
-          <p className="text-xs text-muted-foreground pl-2">
-            Darkens the idle screen during these hours, on this screen&apos;s clock. A touch
-            brings it back to full brightness. The screen&apos;s own brightness and power are
-            not something a web page can change.
+          <p className="text-xs text-muted-foreground pl-2" data-dim-hours>
+            Darkens the idle screen during the hours the calendar hides:{' '}
+            {describeDimHours(calendarHours)}. Those hours are set for every screen on the{' '}
+            <a href="/calendar" className="underline">Calendar</a> page, under Manage &gt; Calendar
+            Hours; how dark is set per screen. A touch brings back full brightness. A web page
+            cannot change the screen&apos;s own brightness or power.
           </p>
           <label className="flex items-center gap-3 pl-2 cursor-pointer">
             <input

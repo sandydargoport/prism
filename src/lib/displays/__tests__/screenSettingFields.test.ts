@@ -39,13 +39,6 @@ describe('currentOption', () => {
     expect(currentOption(field('prism-screensaver-shortcut'), { 'prism-screensaver-shortcut': 'yes' })).toBe('off');
   });
 
-  it('asks for the dim hours only when the screen dims', () => {
-    const hours = field('prism-screensaver-dim-hours');
-    expect(hours.showIf!({})).toBe(false);
-    expect(hours.showIf!({ 'prism-screensaver-dim': '0.5' })).toBe(true);
-    expect(currentOption(hours, {})).toBe('22-7');
-  });
-
   it('reads an effect stored under its old name as the screen does', () => {
     const motion = field('prism-screensaver-motion');
     expect(currentOption(motion, { 'prism-screensaver-motion': 'smoke' })).toBe('fade');
