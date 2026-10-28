@@ -5,7 +5,7 @@ import { ImageIcon } from 'lucide-react';
 import { WidgetContainer, WidgetEmpty } from './WidgetContainer';
 import { SlideshowCore } from '@/components/photos/SlideshowCore';
 import { usePhotos } from '@/lib/hooks/usePhotos';
-import { usePerformanceMode } from '@/lib/hooks/usePerformanceMode';
+import { usePerformanceLevel } from '@/lib/hooks/usePerformanceMode';
 import { PHOTO_SLIDESHOW_INTERVAL_DEFAULT } from '@/lib/constants';
 
 export interface PhotoWidgetProps {
@@ -13,7 +13,8 @@ export interface PhotoWidgetProps {
 }
 
 export const PhotoWidget = React.memo(function PhotoWidget({ className }: PhotoWidgetProps) {
-  const { enabled: perfMode } = usePerformanceMode();
+  // One static photo only at the lightest level.
+  const perfMode = usePerformanceLevel() === 'minimal';
   const { photos, loading, error } = usePhotos({
     sort: 'random',
     limit: perfMode ? 1 : 50,

@@ -166,12 +166,11 @@ See the [Travel Map guide](TRAVEL.md#gps-photo-linking) for the full setup + how
 
 ---
 
-## Performance mode interaction
+## Performance level interaction
 
-When Performance Mode is active (auto-detected on low-spec devices, or manual via *Settings → Appearance*):
+At the **Minimal** performance level (*Settings → Appearance → Performance*, chosen there or reached by Auto):
 
 - The Photo widget renders as a **single static image** (the first photo in the configured filter) instead of cycling.
-- Slideshow rotation pauses on the screensaver in performance mode.
 - The dashboard wallpaper still renders if pinned (no per-frame work needed for a static image).
 
 Saves render cycles + bandwidth on a Raspberry Pi or older tablet.

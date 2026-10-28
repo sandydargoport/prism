@@ -127,9 +127,15 @@ Views: **Group by Person** (cards per family member), **List view** (sortable), 
 
 Weekly meal planner. Plan meals by day + meal type (breakfast / lunch / snack / dinner); each meal can carry an optional time of day (defaulting to breakfast 7am / lunch 12pm / snack 3pm / dinner 6pm) used for calendar placement. Link recipes from the [Recipes](features/RECIPES.md) library so opening a planned meal jumps to its recipe. Mark as cooked to track. Drag between days, including from the dashboard Meals widget on touch devices. Filter the week by one or more meal types using the breakfast/lunch/dinner/snack pills. Pull a meal plan from Tandoor or Mealie via **Add ▾ → Sync meal plan…** (review-and-approve; imported meals bring their recipes along). Week starts on your configured day (*Settings → General → Week Starts On*).
 
-### Performance Mode
+### Performance
 
-Auto-enabled on devices reporting ≤2 GB RAM or ≤4 CPU cores. Stretches polling intervals ~2.5×, renders Photo widget as a single static image instead of a slideshow, dials back animations. Lightning-bolt badge appears in the dashboard header while active. Override in *Settings → Appearance → Performance Mode*.
+Each screen runs at one of three levels, set in *Settings → Appearance → Performance*:
+
+- **Full**: everything.
+- **Reduced**: no backdrop blur, no full-screen celebrations or particle effects, a still night sky.
+- **Minimal**: Reduced, plus the Photo widget shows one static image, refreshes come ~2.5× less often, and fades are near-instant.
+
+**Auto**, the default, starts at Full and times the frames of the fade each time the screen goes idle or wakes. After three choppy fades in a row it steps down one level, and stays there; pick a level by hand to override it. A lightning-bolt badge in the dashboard header shows while a screen runs below Full. Kiosks can set it from the address: `?perf=auto`, `full`, `reduced` or `minimal`.
 
 ---
 
@@ -142,7 +148,7 @@ A short tour of *Settings*. (Each section's deep behavior is documented in the l
 - **General**: weather location (city or postal code), time zone, Week Starts On.
 - **Integrations**: one card per provider brand: Google (Calendar, Tasks), Microsoft (To Do, OneDrive), Gmail (bus tracking), Apple / CalDAV, Kroger (shopping cart push), plus Photo Sources. Per-list Task / Shopping / Wish List sync is mapped inside the Microsoft or Google provider card.
 - **Text Size**: how large everything reads on each dashboard.
-- **Appearance**: Color Scheme (Light / Dark / System), Theme Palette, Seasonal Theme, Performance Mode, Screensaver (start delay, background: photos or night sky, photo rotation, widget transition effect and its options, drift), Auto-Hide Navigation / Away Mode / sign-out timers, Orientation Override.
+- **Appearance**: Color Scheme (Light / Dark / System), Theme Palette, Seasonal Theme, Performance, Screensaver (start delay, background: photos or night sky, photo rotation, widget transition effect and its options, drift), Auto-Hide Navigation / Away Mode / sign-out timers, Orientation Override.
 - **Displays**: name each screen from the screen itself (for example "Kitchen"), and see every named screen and whether it is on. A named screen keeps its screensaver, performance, keyboard and screen-shape settings with its name, so a reset browser can take them back with *Or this is an existing screen*. Each screen can open on its own dashboard. A browser nobody named works as before.
 - **Photos**: manage sources (Local, OneDrive, Immich); folder picker; display filters (orientation, resolution); GPS backfill; pinned wallpaper / screensaver.
 - **Bus Tracking**: Gmail connection, route configuration, route auto-discovery, Gmail label filter.

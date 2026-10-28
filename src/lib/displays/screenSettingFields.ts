@@ -1,5 +1,6 @@
 import { normalise as normaliseMotion } from '@/components/screensaver/useScreensaverMotion';
 import { DEFAULT_DIM_LEVEL, DIM_LEVELS } from '@/components/screensaver/idleDim';
+import { modeFrom } from '@/lib/perfLevel';
 import type { ScreenSettingChanges, ScreenSettingKey, ScreenSettings } from './screenSettings';
 
 /**
@@ -196,10 +197,17 @@ export const SCREEN_SETTING_FIELDS: ScreenSettingField[] = [
   },
   {
     key: 'prism-perf-mode',
-    label: 'Performance mode',
+    label: 'Performance',
     group: 'Screen',
-    options: trueFalse,
-    fallback: 'false',
+    options: [
+      { raw: 'auto', label: 'Auto' },
+      { raw: 'full', label: 'Full' },
+      { raw: 'reduced', label: 'Reduced' },
+      { raw: 'minimal', label: 'Minimal' },
+    ],
+    fallback: 'auto',
+    // The old on/off values still mean what they did.
+    read: (settings) => modeFrom(settings['prism-perf-mode'] ?? null),
   },
   {
     key: 'prism:keyboard-on-this-device',

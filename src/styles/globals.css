@@ -1205,6 +1205,14 @@ html[data-virtual-keyboard-open] [data-keyboard-aware-dialog] {
   [data-drift] { animation: none; }
 }
 
+/* The minimal performance level (#691): a calm dashboard's widgets blink out
+   and back rather than fading over a second, so the screen has next to no
+   frames to draw. Drift stays: it is one cheap animation, and it is there for
+   the panel. */
+html.perf-minimal .widget-cell {
+  transition-duration: 150ms;
+}
+
 /**
  * A widget setting down its card before it goes.
  *

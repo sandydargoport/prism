@@ -25,6 +25,7 @@ import { useIdleLogoutSetting, IDLE_LOGOUT_OPTIONS } from '@/lib/hooks/useIdleLo
 import { useAutoHideUI } from '@/lib/hooks/useAutoHideUI';
 import { useAwayModeTimeout } from '@/lib/hooks/useAwayModeTimeout';
 import { usePerformanceMode } from '@/lib/hooks/usePerformanceMode';
+import type { PerfLevel, PerfMode } from '@/lib/perfLevel';
 
 function getCurrentMonthNum(): number {
   return new Date().getMonth() + 1;
@@ -764,29 +765,47 @@ function ScreensaverCard() {
   );
 }
 
+const PERF_CHOICES: { mode: PerfMode; label: string; detail: string }[] = [
+  { mode: 'auto', label: 'Auto', detail: 'Starts at Full and steps down by itself if fades on this screen stutter.' },
+  { mode: 'full', label: 'Full', detail: 'Everything: blur, celebrations, moving night sky, photo slideshow.' },
+  { mode: 'reduced', label: 'Reduced', detail: 'No blur, no full-screen celebrations or particle effects, a still night sky.' },
+  { mode: 'minimal', label: 'Minimal', detail: 'Reduced, plus one static photo, slower refreshes, and near-instant fades.' },
+];
+
+const LEVEL_LABEL: Record<PerfLevel, string> = { full: 'Full', reduced: 'Reduced', minimal: 'Minimal' };
+
 function PerformanceModeCard() {
-  const { enabled, setEnabled } = usePerformanceMode();
+  const { mode, level, setMode } = usePerformanceMode();
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Performance Mode</CardTitle>
+        <CardTitle>Performance</CardTitle>
         <CardDescription>
-          A lighter preset for low-end hardware (thin clients, older mini PCs)
+          How much visual work this screen does. Lighter levels suit thin clients and older mini PCs.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <span className="text-sm font-medium">Enable performance mode</span>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Disables backdrop blur, stretches polling intervals, and shows a single static photo instead of a slideshow. Auto-enabled on devices reporting ≤2 GB RAM or ≤4 CPU cores; you can override it here at any time.
-            </p>
-          </div>
-          <Switch
-            checked={enabled}
-            onCheckedChange={setEnabled}
-          />
-        </div>
+      <CardContent className="space-y-2" role="radiogroup" aria-label="Performance">
+        {PERF_CHOICES.map(choice => (
+          <label key={choice.mode} className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="radio"
+              name="perf-mode"
+              value={choice.mode}
+              checked={mode === choice.mode}
+              onChange={() => setMode(choice.mode)}
+              className="mt-1"
+            />
+            <span>
+              <span className="text-sm font-medium">
+                {choice.label}
+                {choice.mode === 'auto' && mode === 'auto' && (
+                  <span className="font-normal text-muted-foreground"> (now running: {LEVEL_LABEL[level]})</span>
+                )}
+              </span>
+              <span className="block text-xs text-muted-foreground mt-0.5">{choice.detail}</span>
+            </span>
+          </label>
+        ))}
       </CardContent>
     </Card>
   );

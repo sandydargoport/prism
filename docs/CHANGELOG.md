@@ -11,6 +11,9 @@ All notable changes to Prism are documented in this file.
 - **Change another screen's settings from your phone.** In *Settings → Displays*, **Settings** on another screen's row opens its screensaver, drift, performance mode, on-screen keyboard, orientation and auto-hide settings. Each change is saved at once and reaches the screen within a minute, or when it is next switched on. ([#690](https://github.com/sandydargoport/prism/issues/690))
 - **Dim the screen at night while nobody is using it.** *Settings → Appearance → Screensaver → Dim when idle* makes the screensaver or calm dashboard 25%, 50% or 75% darker during the hours the calendar hides (*Calendar Hours*, on the Calendar page under **Manage**: a fixed range, or Auto-fit around the day's events), on the screen's own clock. A touch brings back full brightness. Off by default; how dark is set per screen, also from another device in *Settings → Displays*. ([#691](https://github.com/sandydargoport/prism/issues/691))
 
+### Changed
+- **Performance has levels, and Auto measures.** *Settings → Appearance → Performance* replaces the Performance Mode switch with **Auto**, **Full**, **Reduced** and **Minimal**. Reduced turns off backdrop blur, full-screen celebrations and particle effects, and stills the night sky; Minimal also shows one static photo, refreshes ~2.5× less often and makes fades near-instant. Auto, the default for a screen that never chose, starts at Full and steps down one level after three choppy idle or wake fades in a row, in place of the old guess from core count and memory. A screen that had Performance Mode on is now Reduced, one that had it off is Full. Set per screen, also from another device in *Settings → Displays*. ([#691](https://github.com/sandydargoport/prism/issues/691))
+
 ## [1.31.0] – 2026-10-27
 
 Ships two database migrations, applied automatically on start: live bus positions, and bus trip history.

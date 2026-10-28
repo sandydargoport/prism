@@ -21,7 +21,7 @@ function readReducedMotion(): boolean {
  * Returns true when motion-heavy effects (full-screen celebrations, plane
  * fly-by, confetti) should be skipped. Two reasons fold into one signal:
  *   - The OS-level `prefers-reduced-motion` accessibility preference is set.
- *   - Performance Mode is enabled (manual or auto-detected).
+ *   - The screen runs at the reduced or minimal performance level.
  *
  * Follows both as they change. False while hydrating, as on the server.
  */

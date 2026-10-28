@@ -133,7 +133,7 @@ When a child's progress on a goal hits 100%, an animation plays. The animation i
 | New Year's week | Fireworks + confetti |
 | All other times | Trophy + confetti |
 
-The animation respects `prefers-reduced-motion` and Performance Mode. Both skip the visual but still fire the completion event so the celebration counter increments.
+The animation respects `prefers-reduced-motion` and a Reduced or Minimal performance level. Both skip the visual but still fire the completion event so the celebration counter increments.
 
 ---
 
@@ -234,4 +234,4 @@ Goals are global (one row per goal), but progress is tracked per-child via the `
 
 ### Celebration animation didn't fire
 
-Check `prefers-reduced-motion` (System Settings → Accessibility) and Performance Mode (*Settings → Appearance*). Either one suppresses the animation, but the goal-achievement event still records.
+Check `prefers-reduced-motion` (System Settings → Accessibility) and a Reduced or Minimal performance level (*Settings → Appearance → Performance*). Either one suppresses the animation, but the goal-achievement event still records.

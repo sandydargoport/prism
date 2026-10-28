@@ -161,8 +161,8 @@ test.describe('screensaver night sky', () => {
     });
     await page.addInitScript((value) => {
       localStorage.setItem('prism-screensaver-backdrop', value);
-      // Performance Mode turns itself on with four cores or fewer, which a CI
-      // runner has, and it stops the twinkle and shooting stars on purpose.
+      // Auto performance can step down on a slow CI runner, and a lighter
+      // level stops the twinkle and shooting stars on purpose.
       localStorage.setItem('prism-perf-mode', 'false');
     }, backdrop);
     await page.goto('/');
@@ -457,6 +457,37 @@ test.describe('calm mode idle screen', () => {
     }
   });
 
+  test('at the Minimal performance level the idle fade is a blink', async ({ page }) => {
+    const login = await page.request.post('/api/auth/login', {
+      data: { userId: getSeededParentId(), pin: PIN },
+    });
+    expect(login.ok(), 'precondition: login must succeed').toBe(true);
+    const created = await page.request.post('/api/layouts', {
+      data: { name: `Calm perf e2e ${Date.now()}`, widgets: WIDGETS },
+    });
+    expect(created.status()).toBe(201);
+    const layout = await created.json();
+    try {
+      // Chosen the way a person would, in Settings, past its PIN gate.
+      await verifySettingsPinViaAPI(page, (await getFirstParent(page)).name, PIN);
+      await page.goto('/settings?section=display');
+      await page.getByRole('radio', { name: /^Minimal/ }).check();
+      await expect(page.locator('html')).toHaveClass(/perf-minimal/);
+
+      await page.goto(`/d/${layout.slug}`);
+      await page.locator('.widget-cell[data-widget="tasks"]').waitFor({ timeout: 60000 });
+      await page.waitForTimeout(800);
+      await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
+      // A third of the ordinary one-second fade: it would still be most of the
+      // way visible, and a blink is long gone.
+      await page.waitForTimeout(350);
+      const idle = await cells(page);
+      for (const i of FADED) expect(idle[i]!.opacity, `${i} is already gone`).toBe(0);
+    } finally {
+      await page.request.delete(`/api/layouts/${layout.id}`);
+    }
+  });
+
   test('each widget\'s Stays / Fades button in the editor sets whether it stays', async ({ page }) => {
     const login = await page.request.post('/api/auth/login', {
       data: { userId: getSeededParentId(), pin: PIN },
@@ -678,7 +709,7 @@ test.describe('screensaver widget outlines', () => {
   test('a drifting widget moves whole, with no edge clipped by its cell', async ({ page }) => {
     // Drift used to run inside the cell, which clips its content, so the card
     // lost the edge of its outline on whichever side it had drifted towards.
-    // Performance Mode stops animations, and a CI runner trips it.
+    // A lighter performance level stops animations; pin Full.
     await page.addInitScript(() => localStorage.setItem('prism-perf-mode', 'false'));
     await page.goto('/');
     await page.waitForLoadState('networkidle');

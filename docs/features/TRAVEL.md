@@ -236,7 +236,7 @@ Three possible causes:
 
 MapLibre's globe projection is GPU-intensive. On low-power hardware:
 
-- Enable Performance Mode (*Settings → Appearance*).
+- Set *Settings → Appearance → Performance* to Reduced or Minimal.
 - Disable other widgets to leave more GPU headroom.
 - Or fall back to the (less impressive but lighter) flat-mercator view by setting `projection: 'mercator'` in the globe init.
 

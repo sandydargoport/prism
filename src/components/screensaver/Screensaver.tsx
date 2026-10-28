@@ -24,7 +24,7 @@ import { EffectStage } from './EffectStage';
 import { ScreensaverQuickSettings } from './ScreensaverQuickSettings';
 import { getEffect } from './effects';
 import { scaledDuration } from './screensaverPrefs';
-import { usePerformanceMode } from '@/lib/hooks/usePerformanceMode';
+import { useAutoPerformance, usePerformanceModeOn } from '@/lib/hooks/usePerformanceMode';
 import { useScreenSafeZones } from '@/lib/hooks/useScreenSafeZones';
 import { useViewportSize } from '@/lib/hooks/useViewportSize';
 import { setDisplayIdle } from '@/lib/hooks/useDisplayIdle';
@@ -84,6 +84,8 @@ export function Screensaver() {
     setCalmIdle(idle && calm);
     return () => setCalmIdle(false);
   }, [idle, calm]);
+  // Going idle and waking are the fades Auto performance times.
+  useAutoPerformance(idle);
   const { enabled: autoOrientation } = useAutoOrientationSetting();
   const { pinnedId } = usePinnedPhoto('screensaver');
   const { interval: screensaverInterval } = useScreensaverInterval();
@@ -263,7 +265,7 @@ function ScreensaverGrid() {
   // win on thin clients, so handing those same displays a particle system would
   // be backwards. Both it and prefers-reduced-motion fall back to the plain
   // fade rather than to nothing, so the rotation still reads as intentional.
-  const { enabled: lowPower } = usePerformanceMode();
+  const lowPower = usePerformanceModeOn();
   const reduced = useMemo(
     () => typeof window !== 'undefined'
       && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,

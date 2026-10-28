@@ -172,7 +172,7 @@ Designed for one-handed phone use while pushing a cart. Tap **minimize** to exit
 
 A progress bar at the top of each list shows checked / total. When you check off the last item, the celebration animation plays: a shopping cart slides across the screen with a kid riding inside (arms up), confetti exhaust particles, and an "All Done!" text bounce. Auto-dismisses after 3 seconds.
 
-The animation honors `prefers-reduced-motion` and Performance Mode. Both skip it.
+The animation honors `prefers-reduced-motion` and a Reduced or Minimal performance level. Both skip it.
 
 ---
 

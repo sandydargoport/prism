@@ -36,7 +36,7 @@ the clock, weather and calendar stay and everything else fades.
 *Settings → Appearance → Screensaver → Background* sets what sits behind the widgets, per display:
 
 - **Photos**: the slideshow, as before. The default.
-- **Night sky**: the stars, Milky Way, constellation figures and moon as they stand outside right now, drawn from the household location in *Settings → General*, over a treeline on the horizon. The Milky Way comes out last at dusk and fades when the moon is bright, as it does outside. Once it is dark, one constellation at a time is drawn in, line by line outward from its brightest star (the way you would find it outside), then named, with what the name means and its brightest stars' names, for about twenty seconds. The next follows after a pause. Each display remembers which it has shown and picks the one shown longest ago, best known first, skipping any a widget would hide, so over the nights of a season it works through all of them. The brightest stars twinkle and a shooting star crosses every few minutes; with reduced motion set on the device, or Performance Mode on, both stop and each constellation appears whole instead of being traced. By day it is a plain sky. It loads no images and redraws once a minute, so it costs next to nothing on a display that never sleeps, and it shows no family photos to visitors.
+- **Night sky**: the stars, Milky Way, constellation figures and moon as they stand outside right now, drawn from the household location in *Settings → General*, over a treeline on the horizon. The Milky Way comes out last at dusk and fades when the moon is bright, as it does outside. Once it is dark, one constellation at a time is drawn in, line by line outward from its brightest star (the way you would find it outside), then named, with what the name means and its brightest stars' names, for about twenty seconds. The next follows after a pause. Each display remembers which it has shown and picks the one shown longest ago, best known first, skipping any a widget would hide, so over the nights of a season it works through all of them. The brightest stars twinkle and a shooting star crosses every few minutes; with reduced motion set on the device, or a Reduced or Minimal performance level, both stop and each constellation appears whole instead of being traced. By day it is a plain sky. It loads no images and redraws once a minute, so it costs next to nothing on a display that never sleeps, and it shows no family photos to visitors.
 - **Photos by day, night sky after dark**: changes over at sunset and back at sunrise, rechecked every minute while the screensaver is up.
 
 Everything is worked out on the display from the date and location; nothing is fetched. With no location set, the time zone stands in for it, so the change at sunset is right to within about an hour.
@@ -331,11 +331,11 @@ Switching between modes is done via the header icons (when not in away/babysitte
 
 Each overlay is lazy-loaded: the screensaver, away mode, and babysitter mode components only load when activated, not on every dashboard render. The transitive import chain that pulled them into the root layout was broken in v1.0.4 specifically to keep the dashboard's first paint fast.
 
-In Performance Mode:
+At the Reduced and Minimal performance levels (*Settings → Appearance → Performance*):
 
-- Screensaver still works, but photo rotation pauses (single static image instead of cycling).
-- Away mode runs normally, minimal overhead.
-- Babysitter mode runs normally, static content.
+- The screensaver's Fireworks effect falls back to a plain fade, and the night sky stops twinkling.
+- At Minimal, fades between idle and awake are near-instant.
+- Away mode and babysitter mode run normally.
 
 ---
 
@@ -381,7 +381,7 @@ Make sure you've configured at least one section in *Settings → Babysitter Inf
 
 ### Photo slideshow stutters during screensaver
 
-Performance Mode might be active: slideshows pause in performance mode (single image instead of rotation). Disable Performance Mode if you want the cycle behavior on a low-spec device, but watch CPU.
+The screen may be running at the Minimal performance level, where the Photo widget shows a single image. Check *Settings → Appearance → Performance*; with Auto it shows the level it is running at.
 
 ### Wrong photo source on the screensaver
 

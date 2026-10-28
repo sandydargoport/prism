@@ -1,91 +1,111 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { readStored, useHydrated, useStoredString, writeStored } from './useStoredValue';
+import {
+  PERF_AUTO_LEVEL_KEY, PERF_CLASS, PERF_MINIMAL_CLASS, PERF_MODE_KEY,
+  autoLevelFrom, levelFrom, modeFrom, type PerfLevel, type PerfMode,
+} from '@/lib/perfLevel';
+import { afterFade, fadeWasBad, watchFrames, WATCH_MS } from '@/lib/autoPerf';
 
-const STORAGE_KEY = 'prism-perf-mode';
-const HTML_CLASS = 'performance-mode';
-
-function detectLowEndHardware(): boolean {
-  if (typeof navigator === 'undefined') return false;
-  const nav = navigator as Navigator & { deviceMemory?: number };
-  if (typeof nav.deviceMemory === 'number' && nav.deviceMemory <= 2) return true;
-  if (typeof nav.hardwareConcurrency === 'number' && nav.hardwareConcurrency <= 4) return true;
-  return false;
+function applyClasses(level: PerfLevel): void {
+  const classes = document.documentElement.classList;
+  classes.toggle(PERF_CLASS, level !== 'full');
+  classes.toggle(PERF_MINIMAL_CLASS, level === 'minimal');
 }
 
-function applyClass(on: boolean): void {
-  document.documentElement.classList.toggle(HTML_CLASS, on);
-}
-
-function setEnabled(on: boolean): void {
-  writeStored(STORAGE_KEY, String(on));
+function setMode(mode: PerfMode): void {
+  writeStored(PERF_MODE_KEY, mode);
 }
 
 /**
- * Whether performance mode is on, for a component that only reads it. False
- * during hydration, as on the server, then the display's own value.
+ * The level this screen runs at (see lib/perfLevel.ts). Full during
+ * hydration, as on the server, then the screen's own value.
+ */
+export function usePerformanceLevel(): PerfLevel {
+  return levelFrom(useStoredString(PERF_MODE_KEY), useStoredString(PERF_AUTO_LEVEL_KEY));
+}
+
+/**
+ * Whether the screen does less than everything: reduced or minimal. What
+ * blur, celebrations and particle effects check.
  */
 export function usePerformanceModeOn(): boolean {
-  return useStoredString(STORAGE_KEY) === 'true';
+  return usePerformanceLevel() !== 'full';
 }
 
 /**
- * Persists a "performance mode" preference to localStorage and reflects it
- * as a CSS class on <html>. When enabled:
- *  - backdrop-filter is removed (biggest GPU win on thin clients / integrated graphics)
- *  - PhotoWidget renders count + last thumbnail only
- *  - Polling cadence stretches (see usePollingInterval)
- *  - TravelGlobe falls back to a flat 2D projection
+ * The screen's performance mode and the level it runs at, persisted per screen
+ * in localStorage and reflected as classes on <html>:
+ *  - `performance-mode` at reduced and minimal: backdrop-filter is removed
+ *    (the biggest GPU win on thin clients and integrated graphics)
+ *  - `perf-minimal` at minimal: fades shortened. PhotoWidget and polling
+ *    read the level directly.
  *
- * Auto-detect: on first load (no localStorage value), enables itself if
- * navigator.deviceMemory <= 2 OR hardwareConcurrency <= 4. The result is
- * persisted, so a user who explicitly turns it off is not re-overridden.
+ * URL params, for kiosks and headless devices that can't reach Settings:
+ *   ?perf=auto|full|reduced|minimal sets that mode; ?perf=1 and ?perf=0 still
+ *   mean reduced and full. The param is removed from the address afterwards.
  *
- * URL params (for kiosks / headless devices that can't reach Settings):
- *   ?perf=1 → force-enable and persist
- *   ?perf=0 → force-disable and persist
- *
- * Every instance reads the same store, so a change made in one reaches all.
- *
- * Called inside ThemeProvider. The class itself is applied before the first
- * paint by the inline script in app/layout.tsx, alongside the dark class —
- * this hook runs in an effect, which is a frame too late for a display that
- * has performance mode on. What it still owns is the auto-detect on a display
- * with nothing stored, the ?perf= URL overrides, and keeping `enabled` in
- * sync across hook instances.
- *
- * `enabled` is false while hydrating, as on the server, so component-level
- * branches on it (PhotoWidget, TravelGlobe) render their full version for that
- * one frame. On a client-side mount it is right from the first render.
+ * Called inside ThemeProvider. The classes themselves are applied before the
+ * first paint by the inline script in app/layout.tsx (PERF_CLASS_SCRIPT); this
+ * hook runs in an effect, which is a frame too late for a screen with a
+ * lighter level. What it still owns is the ?perf= override and keeping the
+ * classes in step when the level changes.
  */
 export function usePerformanceMode() {
-  const enabled = usePerformanceModeOn();
+  const mode = modeFrom(useStoredString(PERF_MODE_KEY));
+  const level = usePerformanceLevel();
   const hydrated = useHydrated();
 
-  // The ?perf= override and the first-load auto-detect. Both are writes, which
-  // every instance then reads back.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const paramVal = params.get('perf');
-
-    if (paramVal === '1' || paramVal === '0') {
-      setEnabled(paramVal === '1');
-      params.delete('perf');
-      const newSearch = params.toString();
-      const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : '') + window.location.hash;
-      window.history.replaceState(null, '', newUrl);
-    } else {
-      const stored = readStored(STORAGE_KEY);
-      if (stored !== 'true' && stored !== 'false') setEnabled(detectLowEndHardware());
-    }
+    if (paramVal === null) return;
+    const chosen = paramVal === '1' ? 'reduced' : paramVal === '0' ? 'full' : paramVal;
+    if (chosen !== 'auto' && chosen !== 'full' && chosen !== 'reduced' && chosen !== 'minimal') return;
+    setMode(chosen);
+    params.delete('perf');
+    const newSearch = params.toString();
+    const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : '') + window.location.hash;
+    window.history.replaceState(null, '', newUrl);
   }, []);
 
-  // Not while hydrating: `enabled` is still the server's false then, and
-  // removing the class the inline script set would undo it for a frame.
+  // Not while hydrating: the level is still the server's full then, and
+  // removing the classes the inline script set would undo them for a frame.
   useEffect(() => {
-    if (hydrated) applyClass(enabled);
-  }, [hydrated, enabled]);
+    if (hydrated) applyClasses(level);
+  }, [hydrated, level]);
 
-  return { enabled, setEnabled };
+  return { mode, level, setMode };
+}
+
+/** Bad fades so far, for this page view. A reload starts the count again. */
+let badInARow = 0;
+
+/**
+ * Times the frames of the fade that follows each change of `idle`, and lets
+ * Auto step down when fades keep dropping frames (see lib/autoPerf.ts).
+ * Called by the Screensaver, which owns idleness for both kinds of idle screen.
+ */
+export function useAutoPerformance(idle: boolean): void {
+  const mode = modeFrom(useStoredString(PERF_MODE_KEY));
+  const hydrated = useHydrated();
+  const seen = useRef(idle);
+  useEffect(() => {
+    // Only real changes: not the first render, and not a hidden tab, whose
+    // frames the browser throttles on purpose.
+    if (seen.current === idle) return;
+    seen.current = idle;
+    if (!hydrated || mode !== 'auto' || document.hidden) return;
+    let cancelled = false;
+    void watchFrames(WATCH_MS).then(gaps => {
+      if (cancelled) return;
+      const before = autoLevelFrom(readStored(PERF_AUTO_LEVEL_KEY));
+      const next = afterFade({ level: before, badInARow }, fadeWasBad(gaps));
+      badInARow = next.badInARow;
+      if (next.level !== before) writeStored(PERF_AUTO_LEVEL_KEY, next.level);
+    });
+    return () => { cancelled = true; };
+    // `idle` is the trigger: each change starts a fade worth timing.
+  }, [idle, hydrated, mode]);
 }

@@ -60,6 +60,7 @@ import { DemoBanner } from '@/components/layout/DemoBanner';
 import { Toaster } from '@/components/ui/toaster';
 import { getServerTheme } from '@/lib/themes/serverTheme';
 import { themeCss } from '@/lib/themes/applyTheme';
+import { PERF_CLASS_SCRIPT } from '@/lib/perfLevel';
 
 
 /**
@@ -297,10 +298,9 @@ export default async function RootLayout({
           the thin clients that can least afford the frame, and it happened on
           every page load, not just the first.
 
-          Only an explicitly stored value is read here. When nothing is stored
-          the hook auto-detects from device memory and core count and persists
-          the result, which happens once per display; duplicating that
-          heuristic in here would just let the two drift apart.
+          The level comes from two keys, the chosen mode and what Auto
+          measured. PERF_CLASS_SCRIPT reads both, and is tested against the
+          hook's own reading of them so the two cannot drift apart.
 
           The try/catch matters: getItem throws outright when a browser is set
           to block site data, and an exception here would take the dark class
@@ -308,7 +308,7 @@ export default async function RootLayout({
         */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('prism-theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');if(localStorage.getItem('prism-perf-mode')==='true')document.documentElement.classList.add('performance-mode')}catch(e){}})()`,
+            __html: `(function(){try{var t=localStorage.getItem('prism-theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');${PERF_CLASS_SCRIPT}}catch(e){}})()`,
           }}
         />
       </head>
