@@ -58,6 +58,11 @@ test.describe('Mobile PWA settings reachability', () => {
       throw new Error(`Settings verify-pin failed: ${verifyRes.status()}`);
     }
 
+    // Headless WebKit draws backdrop blur in software, with no GPU: measured,
+    // the menu's blurred labels took this test from 3 s to 25 s, past the
+    // timeout on CI. This test is about reaching Settings, not about blur, so
+    // run it at the Reduced performance level, which drops the blur.
+    await page.addInitScript(() => localStorage.setItem('prism-perf-mode', 'reduced'));
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
