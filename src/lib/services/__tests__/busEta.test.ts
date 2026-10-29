@@ -130,3 +130,43 @@ describe('projectStops along the whole route', () => {
     expect(p.shiftMs).toBe(12 * 60_000);
   });
 });
+
+describe('projectStops on an afternoon trip that starts at the school', () => {
+  const pm: LiveTrackStop[] = [
+    { key: 'school', order: 0, lat: 1, lng: 1, plannedAt: at('20:30'), kind: 'school' },
+    { key: 'home', order: 1, lat: 1, lng: 2, plannedAt: at('20:50'), rider: true },
+  ];
+  // The first move of the day is the drive to the school, long before the planned start.
+  const start = { plannedStart: new Date(at('20:30')), departedAt: new Date(at('20:08')) };
+
+  it('does not move the later stops earlier when the bus reaches the school early', () => {
+    const p = projectStops(pm, [visit('school', '20:20')], null, new Date(at('20:25')), start);
+    expect(p.shiftMs).toBe(0);
+    expect(p.stops[1]!.projectedAt).toBe(new Date(at('20:50')).toISOString());
+  });
+
+  it('applies the usual lateness while the bus waits at the school', () => {
+    const p = projectStops(pm, [visit('school', '20:20')], null, new Date(at('20:25')), { ...start, usualLateMs: 17 * 60_000 });
+    expect(p.stops[1]!.projectedAt).toBe(new Date(at('21:07')).toISOString());
+  });
+
+  it('counts a bus still at the school past its start as late by at least that much', () => {
+    const p = projectStops(pm, [visit('school', '20:20')], null, new Date(at('20:36')), start);
+    expect(p.shiftMs).toBe(6 * 60_000);
+    expect(p.stops[1]!.projectedAt).toBe(new Date(at('20:56')).toISOString());
+  });
+
+  it('follows the route stops once the bus has left the school', () => {
+    const p = projectStops(pm, [
+      visit('school', '20:20'),
+      { stopKey: 'r1', plannedAt: new Date(at('20:35')), arrivedAt: new Date(at('20:45')), departedAt: null },
+    ], null, new Date(at('20:46')), { ...start, usualLateMs: 17 * 60_000 });
+    expect(p.shiftMs).toBe(10 * 60_000);
+    expect(p.stops[1]!.projectedAt).toBe(new Date(at('21:00')).toISOString());
+  });
+
+  it('a school reached late still shifts the later stops', () => {
+    const p = projectStops(pm, [visit('school', '20:38')], null, new Date(at('20:39')), start);
+    expect(p.shiftMs).toBe(8 * 60_000);
+  });
+});

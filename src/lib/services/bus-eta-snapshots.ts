@@ -59,7 +59,7 @@ export async function recordEtaSnapshots(trackIds: string[], now: Date = new Dat
       visits.filter((v) => v.trackId === track.id),
       track.progress,
       now,
-      { plannedStart: track.plannedStart, departedAt: moved.get(track.id) ?? null, usualLateMs: await usualLateness(track.routeId!, riderKey, today).catch(() => null) },
+      { plannedStart: track.plannedStart, departedAt: moved.get(track.id) ?? null, usualLateMs: await usualLateness(track.routeId!, track.stops.find((s) => s.key === riderKey)!.order, today).catch(() => null) },
     );
     const rider = projection.stops.find((s) => s.key === riderKey);
     if (!rider || rider.passed || !rider.projectedAt) continue;

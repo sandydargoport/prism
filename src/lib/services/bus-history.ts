@@ -138,25 +138,54 @@ export function leastLate(lateMs: number[]): number | null {
   return lateMs.length >= USUAL_LATE_MIN_TRIPS ? Math.min(...lateMs) : null;
 }
 
+export interface PastStopVisit {
+  stopKey: string;
+  plannedAt: Date;
+  arrivedAt: Date;
+  /** The stops of the track that visit belongs to, that day. */
+  trackStops: LiveTrackStop[];
+}
+
 /**
- * The least the bus has been behind plan at this stop over its recent trips
- * before `beforeDate`, in ms; null with too few. The least, not the typical,
- * because the ETA must not tell anyone the bus is later than it may be.
+ * Lateness at the rider's stop on each past trip, newest first. Keys are only
+ * stable for the day, so the stop is found by where it sits on that day's
+ * track: the track stop at the same order. Route stops that are not on the
+ * track are skipped, whatever order they were stored with.
  */
-export async function usualLateness(routeId: string, stopKey: string, beforeDate: string): Promise<number | null> {
+export function riderStopLateness(visits: PastStopVisit[], riderOrder: number): number[] {
+  return visits
+    .filter((v) => v.trackStops.some((s) => s.key === v.stopKey && s.order === riderOrder))
+    .slice(0, USUAL_LATE_TRIPS)
+    .map((v) => v.arrivedAt.getTime() - v.plannedAt.getTime());
+}
+
+/**
+ * The least the bus has been behind plan at the rider's stop (the track stop
+ * at `riderOrder`) over its recent trips before `beforeDate`, in ms; null with
+ * too few. The least, not the typical, because the ETA must not tell anyone
+ * the bus is later than it may be.
+ */
+export async function usualLateness(routeId: string, riderOrder: number, beforeDate: string): Promise<number | null> {
   const rows = await db
-    .select({ plannedAt: busStopVisits.plannedAt, arrivedAt: busStopVisits.arrivedAt })
+    .select({
+      stopKey: busStopVisits.stopKey,
+      plannedAt: busStopVisits.plannedAt,
+      arrivedAt: busStopVisits.arrivedAt,
+      trackStops: vehicleTracks.stops,
+    })
     .from(busStopVisits)
+    .innerJoin(vehicleTracks, eq(busStopVisits.trackId, vehicleTracks.id))
     .where(and(
       eq(busStopVisits.routeId, routeId),
-      eq(busStopVisits.stopKey, stopKey),
+      eq(busStopVisits.stopOrder, riderOrder),
       lt(busStopVisits.tripDate, beforeDate),
       isNotNull(busStopVisits.plannedAt),
       isNotNull(busStopVisits.arrivedAt),
     ))
     .orderBy(desc(busStopVisits.tripDate))
-    .limit(USUAL_LATE_TRIPS);
-  return leastLate(rows.map((r) => r.arrivedAt!.getTime() - r.plannedAt!.getTime()));
+    // Route stops share stop_order 0, so fetch enough to find ten trips past them.
+    .limit(USUAL_LATE_TRIPS * 40);
+  return leastLate(riderStopLateness(rows as PastStopVisit[], riderOrder));
 }
 
 /**

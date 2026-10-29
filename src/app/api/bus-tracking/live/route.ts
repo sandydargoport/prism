@@ -179,7 +179,8 @@ export async function GET(request: NextRequest) {
     // How late the bus has been at the rider's stop lately, the ETA's floor before the first stop.
     const usualLate = new Map(await Promise.all(rows.map(async ({ track, route }) => {
       const key = pickRiderStop(track.stops, route.stopName);
-      return [track.id, key ? await usualLateness(route.id, key, today).catch(() => null) : null] as const;
+      const order = track.stops.find((s) => s.key === key)?.order;
+      return [track.id, order !== undefined ? await usualLateness(route.id, order, today).catch(() => null) : null] as const;
     })));
 
     const tracks = rows.map(({ track, route }) => {

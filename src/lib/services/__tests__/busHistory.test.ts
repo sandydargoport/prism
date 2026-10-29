@@ -3,7 +3,7 @@
  */
 jest.mock('@/lib/db/client', () => ({ db: {} }));
 
-import { driverKey, leastLate, summarizeTrip, weatherBucket, type TripFacts } from '../bus-history';
+import { driverKey, leastLate, riderStopLateness, summarizeTrip, weatherBucket, type TripFacts } from '../bus-history';
 import { accuracyByHorizon, dueHorizons } from '../bus-eta-snapshots';
 import type { LiveTrackStop } from '@/lib/db/schema';
 
@@ -127,5 +127,31 @@ describe('leastLate', () => {
   it('is the smallest lateness, once there are three trips', () => {
     expect(leastLate([7, 11, 6, 10].map((m) => m * 60_000))).toBe(6 * 60_000);
     expect(leastLate([7, 11].map((m) => m * 60_000))).toBeNull();
+  });
+});
+
+describe('riderStopLateness', () => {
+  const day = (d: string, hhmm: string) => new Date(`2026-03-${d}T${hhmm}:00Z`);
+  // The provider gives the same stop a new key every day.
+  const track = (d: string) => [
+    { key: `school-${d}`, order: 0, lat: 1, lng: 1, kind: 'school' as const },
+    { key: `home-${d}`, order: 1, lat: 1, lng: 2, rider: true },
+  ];
+  const visit = (d: string, key: string, planned: string, arrived: string) =>
+    ({ stopKey: key, plannedAt: day(d, planned), arrivedAt: day(d, arrived), trackStops: track(d) });
+
+  it('finds the rider stop on each day by its order, though its key changes', () => {
+    const late = riderStopLateness([
+      visit('04', 'home-04', '20:50', '21:09'),
+      visit('03', 'home-03', '20:50', '21:07'),
+      visit('02', 'home-02', '20:50', '21:10'),
+    ], 1);
+    expect(late).toEqual([19, 17, 20].map((m) => m * 60_000));
+    expect(leastLate(late)).toBe(17 * 60_000);
+  });
+
+  it('skips route stops that are not on the track', () => {
+    expect(riderStopLateness([visit('04', 'route-stop-9', '20:40', '20:41')], 0)).toEqual([]);
+    expect(riderStopLateness([visit('04', 'school-04', '20:30', '20:20')], 0)).toEqual([-10 * 60_000]);
   });
 });

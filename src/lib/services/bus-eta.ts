@@ -103,13 +103,19 @@ export function projectStops(
   // stop on the route, not just the track's: the provider reports the whole
   // route's arrivals, so the shift follows the bus stop by stop.
   const planOf = new Map(ordered.map((s) => [s.key, s.plannedAt]));
+  const kindOf = new Map(ordered.map((s) => [s.key, s.kind]));
   let shiftMs: number | null = null;
   let latest = -Infinity;
+  let waiting = false;
   for (const v of visits) {
     const plan = v.plannedAt ?? (planOf.get(v.stopKey) ? new Date(planOf.get(v.stopKey)!) : null);
     if (!v.arrivedAt || !plan || v.arrivedAt.getTime() <= latest) continue;
     latest = v.arrivedAt.getTime();
     shiftMs = v.arrivedAt.getTime() - plan.getTime();
+    // A bus that reaches the school early waits there for dismissal, so
+    // until it leaves, that is no reason to expect the later stops early.
+    waiting = shiftMs < 0 && !v.departedAt && kindOf.get(v.stopKey) === 'school';
+    if (waiting) shiftMs = 0;
   }
 
   // Before the first stop, the start says it: a bus that leaves the depot
@@ -117,16 +123,20 @@ export function projectStops(
   // Still parked past the planned start, it is at least that late already.
   // Leaving early does not mean arriving early, so recent trips set a floor:
   // the plan has been optimistic every day, and an ETA that is too early only
-  // costs a wait, while one that is too late misses the bus.
-  if (shiftMs === null && lastPassed < 0 && start) {
+  // costs a wait, while one that is too late misses the bus. Waiting at the
+  // school is the same, except that the bus moving earlier was the drive
+  // there, not the start.
+  if (start && ((shiftMs === null && lastPassed < 0) || waiting)) {
     const planned = start.plannedStart?.getTime();
     let fromStart: number | null = null;
     if (planned !== undefined) {
-      if (start.departedAt) fromStart = start.departedAt.getTime() - planned;
+      if (start.departedAt && !waiting) fromStart = start.departedAt.getTime() - planned;
       else if (now.getTime() > planned) fromStart = now.getTime() - planned;
     }
     const usual = start.usualLateMs ?? null;
-    if (fromStart !== null || usual !== null) shiftMs = Math.max(fromStart ?? -Infinity, usual ?? -Infinity);
+    if (fromStart !== null || usual !== null) {
+      shiftMs = Math.max(shiftMs ?? -Infinity, fromStart ?? -Infinity, usual ?? -Infinity);
+    }
   }
 
   // If the next stop is already overdue on that shift, the bus is later than
