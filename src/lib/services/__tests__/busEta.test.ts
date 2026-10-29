@@ -96,3 +96,37 @@ describe('pickRiderStop', () => {
     expect(pickRiderStop([], 'Cedar')).toBeNull();
   });
 });
+
+describe('projectStops along the whole route', () => {
+  const ours: LiveTrackStop[] = [
+    { key: 'home', order: 0, lat: 1, lng: 1, plannedAt: at('13:20'), rider: true },
+    { key: 'school', order: 1, lat: 1, lng: 2, plannedAt: at('13:30'), kind: 'school' },
+  ];
+  const routeVisit = (stopKey: string, planned: string, arrived: string) =>
+    ({ stopKey, plannedAt: new Date(at(planned)), arrivedAt: new Date(at(arrived)), departedAt: null });
+
+  it('takes the lateness from the latest route stop reached, even one not on the track', () => {
+    const p = projectStops(ours, [
+      routeVisit('r1', '13:00', '13:02'),
+      routeVisit('r2', '13:05', '13:11'),
+    ], null, new Date(at('13:12')), { plannedStart: new Date(at('12:50')), departedAt: new Date(at('12:47')) });
+    expect(p.shiftMs).toBe(6 * 60_000);
+    expect(p.stops[0]!.projectedAt).toBe(new Date(at('13:26')).toISOString());
+  });
+
+  it('an early start does not make the bus early when recent trips were late', () => {
+    // Left 3 min early, but the bus has been at least 6 min late at this stop lately.
+    const p = projectStops(ours, [], null, new Date(at('12:55')), {
+      plannedStart: new Date(at('12:50')), departedAt: new Date(at('12:47')), usualLateMs: 6 * 60_000,
+    });
+    expect(p.shiftMs).toBe(6 * 60_000);
+    expect(p.stops[0]!.projectedAt).toBe(new Date(at('13:26')).toISOString());
+  });
+
+  it('a start later than usual still wins', () => {
+    const p = projectStops(ours, [], null, new Date(at('13:05')), {
+      plannedStart: new Date(at('12:50')), departedAt: new Date(at('13:02')), usualLateMs: 6 * 60_000,
+    });
+    expect(p.shiftMs).toBe(12 * 60_000);
+  });
+});

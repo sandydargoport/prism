@@ -13,7 +13,7 @@
  */
 
 import { createHmac } from 'crypto';
-import { and, asc, eq, inArray, isNotNull, isNull, lt } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, isNull, lt } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import {
   busStopVisits, busTrips, vehicleFixes, vehicleTracks, type LiveTrackStop,
@@ -127,6 +127,36 @@ export async function firstMoves(trackIds: string[]): Promise<Map<string, Date>>
     if (first) moved.set(trackId, first.ts);
   }
   return moved;
+}
+
+/** How many recent trips the usual lateness looks at, and how many it needs. */
+export const USUAL_LATE_TRIPS = 10;
+export const USUAL_LATE_MIN_TRIPS = 3;
+
+/** The least of these lateness values, once there are enough of them to mean something. */
+export function leastLate(lateMs: number[]): number | null {
+  return lateMs.length >= USUAL_LATE_MIN_TRIPS ? Math.min(...lateMs) : null;
+}
+
+/**
+ * The least the bus has been behind plan at this stop over its recent trips
+ * before `beforeDate`, in ms; null with too few. The least, not the typical,
+ * because the ETA must not tell anyone the bus is later than it may be.
+ */
+export async function usualLateness(routeId: string, stopKey: string, beforeDate: string): Promise<number | null> {
+  const rows = await db
+    .select({ plannedAt: busStopVisits.plannedAt, arrivedAt: busStopVisits.arrivedAt })
+    .from(busStopVisits)
+    .where(and(
+      eq(busStopVisits.routeId, routeId),
+      eq(busStopVisits.stopKey, stopKey),
+      lt(busStopVisits.tripDate, beforeDate),
+      isNotNull(busStopVisits.plannedAt),
+      isNotNull(busStopVisits.arrivedAt),
+    ))
+    .orderBy(desc(busStopVisits.tripDate))
+    .limit(USUAL_LATE_TRIPS);
+  return leastLate(rows.map((r) => r.arrivedAt!.getTime() - r.plannedAt!.getTime()));
 }
 
 /**

@@ -15,7 +15,7 @@ import { busEtaSnapshots, busRoutes, busStopVisits, vehicleTracks } from '@/lib/
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { addDaysToKey, todayKey } from '@/lib/utils/zonedDate';
 import { pickRiderStop, projectStops } from './bus-eta';
-import { firstMoves } from './bus-history';
+import { firstMoves, usualLateness } from './bus-history';
 
 /** Lead times, in minutes before the projected arrival, at which a snapshot is saved. */
 export const HORIZONS_MIN = [20, 15, 10, 5, 2] as const;
@@ -59,7 +59,7 @@ export async function recordEtaSnapshots(trackIds: string[], now: Date = new Dat
       visits.filter((v) => v.trackId === track.id),
       track.progress,
       now,
-      { plannedStart: track.plannedStart, departedAt: moved.get(track.id) ?? null },
+      { plannedStart: track.plannedStart, departedAt: moved.get(track.id) ?? null, usualLateMs: await usualLateness(track.routeId!, riderKey, today).catch(() => null) },
     );
     const rider = projection.stops.find((s) => s.key === riderKey);
     if (!rider || rider.passed || !rider.projectedAt) continue;

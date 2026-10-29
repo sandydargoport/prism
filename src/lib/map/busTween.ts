@@ -236,6 +236,23 @@ export function isPathDone(path: Path, now: number): boolean {
 
 export type Freshness = 'live' | 'stale' | 'lost';
 
+/** Below this speed (m/s) the bus counts as stopped, the same bar the card uses. */
+export const ARROW_MIN_MPS = 0.5;
+
+/**
+ * Whether the marker shows its direction arrow: only while the bus is live
+ * and moving, as the provider's own app does. A stopped bus has no direction
+ * worth showing, and an old position should not claim one.
+ */
+export function showsArrow(
+  fix: { speed: number | null; moving: boolean | null } | undefined,
+  age: Freshness,
+): boolean {
+  if (!fix || age !== 'live') return false;
+  if (fix.speed !== null) return fix.speed > ARROW_MIN_MPS;
+  return fix.moving === true;
+}
+
 export function freshness(lastFixTs: number | null, now: number): Freshness {
   if (lastFixTs === null) return 'lost';
   const age = now - lastFixTs;

@@ -7,7 +7,7 @@ import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { todayKey } from '@/lib/utils/zonedDate';
 import { thinPath, type LngLat } from '@/lib/map/routeAhead';
 import { pickRiderStop, projectStops } from '@/lib/services/bus-eta';
-import { firstMoves } from '@/lib/services/bus-history';
+import { firstMoves, usualLateness } from '@/lib/services/bus-history';
 import { logError } from '@/lib/utils/logError';
 import { BUS_DRIVER_NAMES_SETTING, driverLabel, isDriverNames, type DriverNames } from '@/lib/services/bus-driver-names';
 import {
@@ -155,13 +155,19 @@ export async function GET(request: NextRequest) {
       cursor = new Date(Math.max(back, since?.getTime() ?? 0)).toISOString();
     }
 
+    // How late the bus has been at the rider's stop lately, the ETA's floor before the first stop.
+    const usualLate = new Map(await Promise.all(rows.map(async ({ track, route }) => {
+      const key = pickRiderStop(track.stops, route.stopName);
+      return [track.id, key ? await usualLateness(route.id, key, today).catch(() => null) : null] as const;
+    })));
+
     const tracks = rows.map(({ track, route }) => {
       const projection = projectStops(
         track.stops,
         visits.filter((v) => v.trackId === track.id),
         track.progress,
         now,
-        { plannedStart: track.plannedStart, departedAt: moved.get(track.id) ?? null },
+        { plannedStart: track.plannedStart, departedAt: moved.get(track.id) ?? null, usualLateMs: usualLate.get(track.id) ?? null },
       );
       return {
         id: track.id,

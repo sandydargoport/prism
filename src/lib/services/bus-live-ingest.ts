@@ -27,6 +27,16 @@ import { recordEtaSnapshots } from './bus-eta-snapshots';
 /** A fix stamped further ahead than this is a clock fault, not a position. */
 const MAX_FUTURE_MS = 5 * 60 * 1000;
 
+/**
+ * A stop visit's planned time: the track's own plan for its stops, else the
+ * one the event brought, for a stop on the route but not on the track. Those
+ * let the ETA follow the bus stop by stop.
+ */
+export function visitPlan(trackPlan: string | null | undefined, eventPlan: string | undefined): Date | null {
+  const plan = trackPlan ?? eventPlan;
+  return plan ? new Date(plan) : null;
+}
+
 export interface IngestResult {
   tracks: number;
   fixes: number;
@@ -255,7 +265,7 @@ export async function ingestLivePayload(
         stopKey: e.stop,
         stopOrder: stop?.order ?? 0,
         kind: stop?.kind ?? null,
-        plannedAt: stop?.plannedAt ? new Date(stop.plannedAt) : null,
+        plannedAt: visitPlan(stop?.plannedAt, e.plannedAt),
         arrivedAt: e.kind === 'arrived' ? at : null,
         departedAt: e.kind === 'departed' ? at : null,
       })
@@ -263,9 +273,12 @@ export async function ingestLivePayload(
         target: [busStopVisits.routeId, busStopVisits.tripDate, busStopVisits.stopKey],
         // `excluded` is the row this insert proposed, so the new time goes
         // through Drizzle's own timestamp mapping rather than a raw parameter.
-        set: e.kind === 'arrived'
-          ? { arrivedAt: sql`COALESCE(${busStopVisits.arrivedAt}, excluded.arrived_at)` }
-          : { departedAt: sql`GREATEST(${busStopVisits.departedAt}, excluded.departed_at)` },
+        set: {
+          ...(e.kind === 'arrived'
+            ? { arrivedAt: sql`COALESCE(${busStopVisits.arrivedAt}, excluded.arrived_at)` }
+            : { departedAt: sql`GREATEST(${busStopVisits.departedAt}, excluded.departed_at)` }),
+          plannedAt: sql`COALESCE(${busStopVisits.plannedAt}, excluded.planned_at)`,
+        },
       });
     result.stopEvents++;
   }

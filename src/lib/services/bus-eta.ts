@@ -15,6 +15,8 @@ export interface StopVisitTimes {
   stopKey: string;
   arrivedAt: Date | null;
   departedAt: Date | null;
+  /** The provider's plan for this stop, for stops on the route but not on the track. */
+  plannedAt?: Date | null;
 }
 
 export interface StopTiming {
@@ -36,6 +38,11 @@ export interface StopTiming {
 export interface TripStart {
   plannedStart: Date | null;
   departedAt: Date | null;
+  /**
+   * The least the bus has been behind plan at the rider's stop on recent
+   * trips, in ms. Used until the bus reaches a stop with a planned time.
+   */
+  usualLateMs?: number | null;
 }
 
 export interface Projection {
@@ -92,25 +99,34 @@ export function projectStops(
   const passed = ordered.map((s, i) => Boolean(byKey.get(s.key)?.arrivedAt) || i < visitedCount);
   const lastPassed = passed.lastIndexOf(true);
 
-  // Lateness at the most recent stop with both a plan and an arrival. Any
-  // later stop the bus is known to have passed has no time, so it says nothing.
+  // Lateness at the most recent stop reached that has a plan. That is any
+  // stop on the route, not just the track's: the provider reports the whole
+  // route's arrivals, so the shift follows the bus stop by stop.
+  const planOf = new Map(ordered.map((s) => [s.key, s.plannedAt]));
   let shiftMs: number | null = null;
-  for (let i = lastPassed; i >= 0; i--) {
-    const s = ordered[i]!;
-    const arrived = byKey.get(s.key)?.arrivedAt;
-    if (s.plannedAt && arrived) {
-      shiftMs = arrived.getTime() - new Date(s.plannedAt).getTime();
-      break;
-    }
+  let latest = -Infinity;
+  for (const v of visits) {
+    const plan = v.plannedAt ?? (planOf.get(v.stopKey) ? new Date(planOf.get(v.stopKey)!) : null);
+    if (!v.arrivedAt || !plan || v.arrivedAt.getTime() <= latest) continue;
+    latest = v.arrivedAt.getTime();
+    shiftMs = v.arrivedAt.getTime() - plan.getTime();
   }
 
   // Before the first stop, the start says it: a bus that leaves the depot
   // late seldom makes the time up, so a late start shifts every stop at once.
   // Still parked past the planned start, it is at least that late already.
-  if (shiftMs === null && lastPassed < 0 && start?.plannedStart) {
-    const planned = start.plannedStart.getTime();
-    if (start.departedAt) shiftMs = start.departedAt.getTime() - planned;
-    else if (now.getTime() > planned) shiftMs = now.getTime() - planned;
+  // Leaving early does not mean arriving early, so recent trips set a floor:
+  // the plan has been optimistic every day, and an ETA that is too early only
+  // costs a wait, while one that is too late misses the bus.
+  if (shiftMs === null && lastPassed < 0 && start) {
+    const planned = start.plannedStart?.getTime();
+    let fromStart: number | null = null;
+    if (planned !== undefined) {
+      if (start.departedAt) fromStart = start.departedAt.getTime() - planned;
+      else if (now.getTime() > planned) fromStart = now.getTime() - planned;
+    }
+    const usual = start.usualLateMs ?? null;
+    if (fromStart !== null || usual !== null) shiftMs = Math.max(fromStart ?? -Infinity, usual ?? -Infinity);
   }
 
   // If the next stop is already overdue on that shift, the bus is later than

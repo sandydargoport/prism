@@ -3,7 +3,7 @@
  */
 jest.mock('@/lib/db/client', () => ({ db: {} }));
 
-import { driverKey, summarizeTrip, weatherBucket, type TripFacts } from '../bus-history';
+import { driverKey, leastLate, summarizeTrip, weatherBucket, type TripFacts } from '../bus-history';
 import { accuracyByHorizon, dueHorizons } from '../bus-eta-snapshots';
 import type { LiveTrackStop } from '@/lib/db/schema';
 
@@ -120,5 +120,12 @@ describe('accuracyByHorizon', () => {
     expect(five.trips).toBe(1);
     expect(five.typicalMin).toBe(0);
     expect(result.find((h) => h.horizonMin === 20)!.trips).toBe(0);
+  });
+});
+
+describe('leastLate', () => {
+  it('is the smallest lateness, once there are three trips', () => {
+    expect(leastLate([7, 11, 6, 10].map((m) => m * 60_000))).toBe(6 * 60_000);
+    expect(leastLate([7, 11].map((m) => m * 60_000))).toBeNull();
   });
 });

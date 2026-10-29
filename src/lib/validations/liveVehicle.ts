@@ -73,6 +73,8 @@ export const liveStopEventSchema = z.object({
   stop: key,
   kind: z.enum(['arrived', 'departed']),
   at: isoTime,
+  // The provider's planned time, for a stop on the route but not on the track.
+  plannedAt: isoTime.optional(),
 });
 
 export const liveProgressSchema = z.object({

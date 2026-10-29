@@ -1,4 +1,5 @@
 import { cardCover, chooseLayout, formatSpeed, lateness } from '../BusLiveView';
+import { showsArrow } from '@/lib/map/busTween';
 import { isTrackLive, mergeFixes, pickLiveTrack, type LiveFix, type LiveTrack } from '@/lib/hooks/useBusLive';
 
 jest.mock('next/dynamic', () => () => () => null);
@@ -77,5 +78,22 @@ describe('isTrackLive / pickLiveTrack', () => {
     const sooner = track({ id: 'sooner', stops: [stop('2026-03-02T13:10:00Z')] });
     expect(pickLiveTrack([later, sooner], now)?.id).toBe('sooner');
     expect(pickLiveTrack([track({ status: 'completed' })], now)).toBeNull();
+  });
+});
+
+describe('showsArrow', () => {
+  const at = (speed: number | null, moving: boolean | null) => ({ speed, moving });
+  it('shows the direction only while a live bus moves', () => {
+    expect(showsArrow(at(8, true), 'live')).toBe(true);
+    expect(showsArrow(at(0, false), 'live')).toBe(false);
+    expect(showsArrow(at(0.2, true), 'live')).toBe(false);
+    // No speed (the REST fallback drops it): the motion flag decides.
+    expect(showsArrow(at(null, true), 'live')).toBe(true);
+    expect(showsArrow(at(null, null), 'live')).toBe(false);
+  });
+
+  it('never on an old position', () => {
+    expect(showsArrow(at(8, true), 'stale')).toBe(false);
+    expect(showsArrow(undefined, 'live')).toBe(false);
   });
 });

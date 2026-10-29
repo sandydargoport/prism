@@ -3,7 +3,7 @@
  */
 jest.mock('@/lib/db/client', () => ({ db: {} }));
 
-import { matchRoute, mergeVehicle } from '../bus-live-ingest';
+import { matchRoute, mergeVehicle, visitPlan } from '../bus-live-ingest';
 import { isValidRetention } from '../bus-live-retention';
 import { liveVehiclePayloadSchema } from '@/lib/validations/liveVehicle';
 
@@ -34,6 +34,21 @@ describe('matchRoute', () => {
 
   it('an unbound route never matches', () => {
     expect(matchRoute('p', { label: 'Route 7' }, [route('x', null)])).toBeNull();
+  });
+});
+
+describe('visitPlan', () => {
+  it("keeps the track's plan, else takes the event's for a route stop", () => {
+    expect(visitPlan('2026-03-02T13:10:00Z', '2026-03-02T13:12:00Z')).toEqual(new Date('2026-03-02T13:10:00Z'));
+    expect(visitPlan(undefined, '2026-03-02T13:12:00Z')).toEqual(new Date('2026-03-02T13:12:00Z'));
+    expect(visitPlan(null, undefined)).toBeNull();
+  });
+
+  it('the contract accepts a planned time on a stop event', () => {
+    expect(liveVehiclePayloadSchema.safeParse({
+      provider: 'p',
+      stopEvents: [{ track: 't1', stop: 's9', kind: 'arrived', at: '2026-03-02T13:13:00Z', plannedAt: '2026-03-02T13:10:00Z' }],
+    }).success).toBe(true);
   });
 });
 

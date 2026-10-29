@@ -6,7 +6,7 @@ import { maplibregl, MAP_LABEL_FONT } from '@/lib/map/maplibreSetup';
 import { busMapStyleUrl, type BusMapCamera, type BusMapStyle } from '@/lib/map/busMapOptions';
 import { CAMERA_TICK_MS, CLOSE_ZOOM, MANUAL_HOLD_MS, REFRAME_MS, cameraView, needsReframe } from '@/lib/map/busCamera';
 import {
-  CATCH_UP_MS, buildPath, extrapolate, freshness, headingDelta, isExtrapolating, isPathDone, metresAhead,
+  CATCH_UP_MS, buildPath, extrapolate, freshness, headingDelta, showsArrow, isExtrapolating, isPathDone, metresAhead,
   metresBetween, poseAt, shouldHold, speedBetween, type Motion, type Path, type Pose,
 } from '@/lib/map/busTween';
 import type { LiveTrack } from '@/lib/hooks/useBusLive';
@@ -46,22 +46,23 @@ function themeColor(token: string, fallback: string): string {
 }
 
 /**
- * The bus as a beacon: a dot in the theme colour, a soft cone showing which
- * way it is heading, and a slow pulse while it is live. The whole marker
- * turns with the heading, so the cone is drawn pointing up.
+ * The bus as a beacon: a dot in the theme colour, an arrow ahead of it while
+ * it moves, and a slow pulse while it is live. The whole marker turns with
+ * the heading, so the arrow is drawn pointing up.
  */
 function beaconHtml(color: string): string {
-  const cone = `bus-cone-${Math.random().toString(36).slice(2, 8)}`;
   const dot = 'position:absolute;left:50%;top:50%;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;box-sizing:border-box';
   return `
     <div data-pulse style="${dot};background:${color};opacity:0"></div>
-    <svg viewBox="0 0 56 56" width="56" height="56" style="position:absolute;inset:0">
-      <defs><linearGradient id="${cone}" x1="0" y1="1" x2="0" y2="0">
-        <stop offset="0" stop-color="${color}" stop-opacity="0.5"/><stop offset="1" stop-color="${color}" stop-opacity="0"/>
-      </linearGradient></defs>
-      <path d="M28 28 L17 4 A26 26 0 0 1 39 4 Z" fill="url(#${cone})"/>
+    <svg data-arrow viewBox="0 0 56 56" width="56" height="56" style="position:absolute;inset:0;opacity:0;transition:opacity 400ms">
+      <path d="M28 3 L37 15 L28 12 L19 15 Z" fill="${color}" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>
     </svg>
     <div style="${dot};background:${color};border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>`;
+}
+
+function setArrow(el: HTMLElement, shown: boolean) {
+  const arrow = el.querySelector<SVGElement>('[data-arrow]');
+  if (arrow) arrow.style.opacity = shown ? '1' : '0';
 }
 
 function busElement(): HTMLDivElement {
@@ -193,6 +194,7 @@ export function BusLiveMap({
   const shownRef = useRef<Pose | null>(null);
   const heldSinceRef = useRef<number | null>(null);
   const pulseRef = useRef<Animation | null>(null);
+  const arrowRef = useRef(false);
 
   const setTrace = (untilTs: number) => {
     const source = mapRef.current?.getSource(TRACE) as maplibregl.GeoJSONSource | undefined;
@@ -506,6 +508,7 @@ export function BusLiveMap({
     const el = markerRef.current?.getElement();
     if (!el) return;
     el.innerHTML = beaconHtml(themeColor('primary', '#2563eb'));
+    setArrow(el, arrowRef.current);
     pulseRef.current?.cancel();
     pulseRef.current = reducedMotion ? null : el.querySelector('[data-pulse]')?.animate(
       [{ transform: 'scale(1)', opacity: 0.45 }, { transform: 'scale(3)', opacity: 0 }],
@@ -520,6 +523,8 @@ export function BusLiveMap({
     if (!el) return;
     const age = freshness(track.lastFixAt ? new Date(track.lastFixAt).getTime() : null, Date.now() + clockOffsetMs);
     el.style.opacity = age === 'live' ? '1' : '0.45';
+    arrowRef.current = showsArrow(track.fixes[track.fixes.length - 1], age);
+    setArrow(el, arrowRef.current);
     // A pulse says "live"; an old position should not claim it.
     if (age === 'live') pulseRef.current?.play();
     else pulseRef.current?.pause();
