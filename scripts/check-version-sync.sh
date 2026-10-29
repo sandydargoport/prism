@@ -40,6 +40,13 @@ fi
 # is what HA Supervisor uses to detect updates — if it drifts from
 # package.json, the release pipeline pushes an image to the wrong tag
 # and HA shows users a stale "Update available" badge that doesn't move.
+#
+# It may also sit one release behind: HA reads it from master and pulls
+# the image of that version, which only exists once the release is tagged.
+# So between the release commit and the tag it stays on the last tagged
+# version, or every install fails with a 404 (#751).
+PREV_RELEASE=$(grep -E '^## \[[0-9]+\.[0-9]+\.[0-9]+\]' docs/CHANGELOG.md | sed -n 2p \
+  | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
 HA_CONFIG=ha-app/config.yaml
 if [[ -f "$HA_CONFIG" ]]; then
   HA_VERSION=$(grep -E '^version:' "$HA_CONFIG" | head -1 \
@@ -48,14 +55,16 @@ if [[ -f "$HA_CONFIG" ]]; then
     echo "ERROR: ha-app/config.yaml has no parseable version: field."
     exit 1
   fi
-  if [[ "$HA_VERSION" != "$VERSION" ]]; then
+  if [[ "$HA_VERSION" != "$VERSION" && "$HA_VERSION" != "$PREV_RELEASE" ]]; then
     echo "ERROR: version drift detected."
     echo "  package.json:           $VERSION"
+    echo "  previous release:       ${PREV_RELEASE:-none}"
     echo "  ha-app/config.yaml:     $HA_VERSION"
     echo ""
-    echo "Run 'bash scripts/release.sh <new-version>' to bump all three in lockstep."
+    echo "ha-app/config.yaml must be package.json's version once it is tagged,"
+    echo "or the previous release until then."
     exit 1
   fi
 fi
 
-echo "✓ package.json ($VERSION) matches CHANGELOG.md + ha-app/config.yaml"
+echo "✓ package.json ($VERSION) matches CHANGELOG.md; ha-app/config.yaml is $HA_VERSION"
