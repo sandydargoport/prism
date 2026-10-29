@@ -5,7 +5,7 @@ import { db } from '@/lib/db/client';
 import { busRoutes, busStopVisits, settings, vehicleFixes, vehicleTracks } from '@/lib/db/schema';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { todayKey } from '@/lib/utils/zonedDate';
-import { thinPath, type LngLat } from '@/lib/map/routeAhead';
+import { combineTraces, type LngLat } from '@/lib/map/routeAhead';
 import { pickRiderStop, projectStops } from '@/lib/services/bus-eta';
 import { firstMoves, usualLateness } from '@/lib/services/bus-history';
 import { logError } from '@/lib/utils/logError';
@@ -54,29 +54,50 @@ async function mapDisplay() {
 
 /** A trip with fewer fixes than this did not record enough of the route to follow. */
 const MIN_USUAL_FIXES = 20;
+/** How many recent trips the usual path pools. */
+const USUAL_TRIPS = 10;
+
+/** One pooled path per route, direction and day: it only changes when a day's trip is added. */
+const usualCache = new Map<string, LngLat[] | null>();
 
 /**
- * The route as the bus last drove it: the trace of the most recent earlier
- * trip on this route that recorded enough of it, thinned for drawing. The
- * widget draws the road ahead along it. Null before there is such a trip.
+ * The route as the bus usually drives it: the traces of up to the last 10
+ * earlier trips in this direction that recorded enough of it, pooled into
+ * one path that fills in with every trip (combineTraces). The widget draws
+ * the road ahead along it. Null before there is such a trip.
  */
-async function usualPath(routeId: string, before: string): Promise<LngLat[] | null> {
+async function usualPath(routeId: string, direction: string | null, before: string): Promise<LngLat[] | null> {
+  const cacheKey = `${routeId}:${direction ?? ''}:${before}`;
+  if (usualCache.has(cacheKey)) return usualCache.get(cacheKey)!;
   const recent = await db
     .select({ id: vehicleTracks.id, fixes: count(vehicleFixes.id) })
     .from(vehicleTracks)
     .innerJoin(vehicleFixes, eq(vehicleFixes.trackId, vehicleTracks.id))
-    .where(and(eq(vehicleTracks.routeId, routeId), lt(vehicleTracks.tripDate, before)))
+    .where(and(
+      eq(vehicleTracks.routeId, routeId),
+      lt(vehicleTracks.tripDate, before),
+      // Mornings and afternoons drive different streets: never pool them.
+      ...(direction ? [eq(vehicleTracks.direction, direction as 'AM' | 'PM')] : []),
+    ))
     .groupBy(vehicleTracks.id, vehicleTracks.tripDate)
     .orderBy(desc(vehicleTracks.tripDate))
-    .limit(5);
-  const last = recent.find((t) => t.fixes >= MIN_USUAL_FIXES);
-  if (!last) return null;
-  const points = await db
-    .select({ lat: vehicleFixes.lat, lng: vehicleFixes.lng })
-    .from(vehicleFixes)
-    .where(eq(vehicleFixes.trackId, last.id))
-    .orderBy(asc(vehicleFixes.ts));
-  return thinPath(points.map((p): LngLat => [p.lng, p.lat]));
+    .limit(USUAL_TRIPS);
+  const ids = recent.filter((t) => t.fixes >= MIN_USUAL_FIXES).map((t) => t.id);
+  let path: LngLat[] | null = null;
+  if (ids.length > 0) {
+    const points = await db
+      .select({ trackId: vehicleFixes.trackId, lat: vehicleFixes.lat, lng: vehicleFixes.lng })
+      .from(vehicleFixes)
+      .where(inArray(vehicleFixes.trackId, ids))
+      .orderBy(asc(vehicleFixes.ts));
+    const traces = ids.map((id) => points.filter((p) => p.trackId === id).map((p): LngLat => [p.lng, p.lat]));
+    const pooled = combineTraces(traces);
+    path = pooled.length >= 2 ? pooled : null;
+  }
+  // Yesterday's entries are never asked for again.
+  for (const key of usualCache.keys()) if (!key.endsWith(`:${before}`)) usualCache.delete(key);
+  usualCache.set(cacheKey, path);
+  return path;
 }
 
 async function driverNames(): Promise<DriverNames> {
@@ -121,8 +142,8 @@ export async function GET(request: NextRequest) {
     // Sent once, with the first full load; later polls only bring new fixes.
     const usual = new Map<string, LngLat[] | null>();
     if (!since) {
-      for (const routeId of new Set(rows.map((r) => r.route.id))) {
-        usual.set(routeId, await usualPath(routeId, today).catch(() => null));
+      for (const { track, route } of rows) {
+        usual.set(track.id, await usualPath(route.id, track.direction ?? route.direction ?? null, today).catch(() => null));
       }
     }
     const [visits, fixes, unit, display, names, moved] = await Promise.all([
@@ -185,7 +206,7 @@ export async function GET(request: NextRequest) {
         riderStopKey: pickRiderStop(track.stops, route.stopName),
         shiftMs: projection.shiftMs,
         stops: projection.stops,
-        ...(since ? {} : { usualPath: usual.get(route.id) ?? null }),
+        ...(since ? {} : { usualPath: usual.get(track.id) ?? null }),
         fixes: fixes
           .filter((f) => f.trackId === track.id)
           .map((f) => ({

@@ -3,8 +3,8 @@
  * position the bus reported.
  *
  * Bus routes repeat day to day, so the best guess at the streets ahead is the
- * last trip's own trace: from the point nearest the bus to the point nearest
- * where it is headed. With no earlier trip, or with the bus well off that
+ * usual path, pooled from recent trips (combineTraces): from the point nearest
+ * the bus to the point nearest where it is headed. With no earlier trip, or with the bus well off that
  * path (a detour, a new route), it falls back to straight lines through the
  * stops still to come. Pure, so it can be tested without a map.
  *
@@ -145,3 +145,87 @@ export function pointAlong(line: LngLat[], m: number): { point: LngLat; heading:
   const n = line.length;
   return { point: line[n - 1]!, heading: n >= 2 ? bearing(line[n - 2]!, line[n - 1]!) : 0 };
 }
+
+/** The pooled path averages fixes in pieces this long along the route. */
+export const PIECE_M = 10;
+/** A fix further than this from the reference line is not on today's usual route (a detour). */
+const OFF_REFERENCE_M = 40;
+/** How far ahead along the reference the next fix is looked for; covers a 30 s gap at speed. */
+const SEARCH_AHEAD_M = 800;
+
+interface Placed { along: number; m: number; seg: number }
+
+/** Where `p` falls on `line`, searching segments from `from` up to `limit` metres on. */
+function place(line: LngLat[], cum: number[], p: LngLat, from: number, limit: number): Placed | null {
+  let best: Placed | null = null;
+  for (let i = from; i < line.length - 1 && cum[i]! - cum[from]! <= limit; i++) {
+    const a = line[i]!;
+    const b = line[i + 1]!;
+    const len = cum[i + 1]! - cum[i]!;
+    // Flat metres with `a` as origin.
+    const k = 111_320 * Math.cos((a[1] * Math.PI) / 180);
+    const bx = (b[0] - a[0]) * k, by = (b[1] - a[1]) * 111_320;
+    const px = (p[0] - a[0]) * k, py = (p[1] - a[1]) * 111_320;
+    const t = len > 0 ? Math.max(0, Math.min(1, (px * bx + py * by) / (len * len))) : 0;
+    const m = Math.hypot(px - bx * t, py - by * t);
+    if (!best || m < best.m) best = { along: cum[i]! + len * t, m, seg: i };
+  }
+  return best;
+}
+
+/**
+ * The fix nearest the middle of a piece's fixes, which steadies GPS wobble on
+ * a straight road. A real fix, never an average, which could land off the
+ * road where a piece takes in both sides of a turn.
+ */
+function middleFix(fixes: LngLat[]): LngLat {
+  const mid: LngLat = [
+    fixes.reduce((sum, f) => sum + f[0], 0) / fixes.length,
+    fixes.reduce((sum, f) => sum + f[1], 0) / fixes.length,
+  ];
+  return fixes.reduce((best, f) => (metres(f, mid) < metres(best, mid) ? f : best));
+}
+
+/**
+ * One path from several trips' traces of the same route. Fixes arrive every
+ * 10 to 30 s, so a single trace cuts corners between them; on different days
+ * they land in different places. Every fix is placed by its distance along a
+ * reference line (the trace with the most fixes, then every pooled fix in
+ * route order on a second pass) and each short piece keeps its middle fix, so
+ * the path fills in toward the real road with each trip. Each trace is placed
+ * in order, only ever moving forward, so a street driven twice (out of the
+ * depot and back along the route) keeps both passes in their place.
+ */
+export function combineTraces(traces: LngLat[][]): LngLat[] {
+  const usable = traces.filter((t) => t.length >= 2);
+  if (usable.length === 0) return [];
+  let reference = thinPath([...usable].sort((a, b) => b.length - a.length)[0]!);
+  for (let pass = 0; pass < 2 && reference.length >= 2; pass++) {
+    const cum = [0];
+    for (let i = 1; i < reference.length; i++) cum.push(cum[i - 1]! + metres(reference[i - 1]!, reference[i]!));
+    const pieces = new Map<number, { p: LngLat; along: number }[]>();
+    for (const trace of usable) {
+      let seg: number | null = null;
+      for (const p of trace) {
+        // The first fix may be anywhere on the route; after that, only ahead.
+        const at: Placed | null = seg === null ? place(reference, cum, p, 0, Infinity) : place(reference, cum, p, seg, SEARCH_AHEAD_M);
+        if (!at || at.m > OFF_REFERENCE_M) continue;
+        seg = at.seg;
+        const key = Math.floor(at.along / PIECE_M);
+        pieces.set(key, [...(pieces.get(key) ?? []), { p, along: at.along }]);
+      }
+    }
+    const ordered = [...pieces.entries()].sort((a, b) => a[0] - b[0]).map(([, fixes]) => fixes);
+    // The first pass keeps every fix in route order: a reference that already
+    // turns every corner the fixes show. Against it the second pass can tell
+    // the two sides of a turn apart and keep one fix per piece.
+    const next = pass === 0
+      ? ordered.flatMap((fixes) => [...fixes].sort((a, b) => a.along - b.along).map((f) => f.p))
+      : ordered.map((fixes) => middleFix(fixes.map((f) => f.p)));
+    if (next.length < 2) break;
+    reference = next;
+  }
+  // Already one point per piece; thinning further would cut the corners again.
+  return reference;
+}
+

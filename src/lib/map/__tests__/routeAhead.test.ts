@@ -1,4 +1,4 @@
-import { aheadTarget, metres, pathAhead, pointAlong, routeAhead, stopsAhead, thinPath, type LngLat } from '../routeAhead';
+import { aheadTarget, combineTraces, metres, pathAhead, pointAlong, routeAhead, stopsAhead, thinPath, type LngLat } from '../routeAhead';
 
 // An L-shaped usual path at the equator, a point every ~11 m: east 0.003°, then north.
 const east: LngLat[] = Array.from({ length: 31 }, (_, i) => [i * 0.0001, 0]);
@@ -84,3 +84,59 @@ describe('pointAlong', () => {
     expect(pointAlong(corner, 10_000).point).toEqual([0.001, 0.001]);
   });
 });
+
+describe('combineTraces', () => {
+  // Metres to degrees at the equator, where a degree is the same both ways.
+  const M = 1 / 111_320;
+  const xy = (x: number, y: number): LngLat => [x * M, y * M];
+  // A road east 200 m, then north 200 m; `s` is the distance along it.
+  const onRoad = (s: number): LngLat => (s <= 200 ? xy(s, 0) : xy(200, s - 200));
+  const sampled = (offset: number, every = 60) =>
+    Array.from({ length: Math.floor((400 - offset) / every) + 1 }, (_, i) => onRoad(offset + i * every));
+  const corner = xy(200, 0);
+
+  /** How close a drawn line comes to `p`, in metres. */
+  const gap = (line: LngLat[], p: LngLat) => {
+    let best = Infinity;
+    for (let i = 1; i < line.length; i++) {
+      const [a, b] = [line[i - 1]!, line[i]!];
+      for (let t = 0; t <= 1; t += 0.01) best = Math.min(best, metres([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t], p));
+    }
+    return best;
+  };
+
+  it('fills in a corner that every single trip cuts', () => {
+    // A fix every 60 m, landing in a different place each day, none within 10 m of the corner.
+    const trips = [0, 10, 30, 40, 50, 55].map((o) => sampled(o));
+    const single = Math.min(...trips.map((t) => gap(t, corner)));
+    const pooled = combineTraces(trips);
+    expect(gap(pooled, corner)).toBeLessThan(single);
+    expect(gap(pooled, corner)).toBeLessThan(8);
+  });
+
+  it('keeps a street driven out and back in order', () => {
+    const outAndBack = (o: number) => [
+      ...Array.from({ length: 15 }, (_, i) => xy(o + i * 20, 0)),
+      ...Array.from({ length: 15 }, (_, i) => xy(300 - o - i * 20, 0)),
+    ];
+    const pooled = combineTraces([outAndBack(0), outAndBack(7), outAndBack(13)]);
+    const x = (p: LngLat) => p[0] / M;
+    expect(x(pooled[0]!)).toBeLessThan(30);
+    expect(Math.max(...pooled.map(x))).toBeGreaterThan(270);
+    expect(x(pooled.at(-1)!)).toBeLessThan(30);
+  });
+
+  it("leaves out one day's detour", () => {
+    const usual = [sampled(0, 20), sampled(10, 20)];
+    // A sparser trip that swung 100 m off the road halfway along the first leg.
+    const detour = sampled(5, 40).map((p, i) => (i === 2 ? xy(p[0] / M, 100) : p));
+    const pooled = combineTraces([...usual, detour]);
+    expect(Math.max(...pooled.map((p) => p[1] / M).filter((_, i) => pooled[i]![0] / M < 190))).toBeLessThan(5);
+  });
+
+  it('is empty with nothing to go on', () => {
+    expect(combineTraces([])).toEqual([]);
+    expect(combineTraces([[xy(0, 0)]])).toEqual([]);
+  });
+});
+
