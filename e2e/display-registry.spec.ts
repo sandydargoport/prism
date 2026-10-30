@@ -345,7 +345,7 @@ test.describe('Time-of-day layouts', () => {
 });
 
 test.describe('Attention notices', () => {
-  test('turned on in Settings > Displays, new messages show as cards at the top right, newest first', async ({ browser }) => {
+  test('turned on in Settings > Displays, new messages show as cards at the top right, newest first, and keep coming while idle', async ({ browser }) => {
     test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
     test.setTimeout(120_000);
     const tag = Date.now().toString(36);
@@ -382,6 +382,8 @@ test.describe('Attention notices', () => {
         await wall.waitForTimeout(1_100);
       }
 
+      // A controllable clock, to run the message polling forward while idle.
+      await wall.clock.install();
       await wall.goto('/');
       const notices = wall.getByTestId('attention-notice').filter({ hasText: tag });
       await expect(notices).toHaveCount(2, { timeout: 30_000 });
@@ -400,6 +402,27 @@ test.describe('Attention notices', () => {
       await notices.nth(0).getByRole('button', { name: 'Dismiss' }).click();
       await expect(notices).toHaveCount(1);
       await expect(notices.nth(0)).toContainText(`First ${tag}`);
+
+      // Average brightness (0-255) of a card's background, whatever colour syntax it uses.
+      const brightness = () => notices.nth(0).evaluate((el) => {
+        const ctx = document.createElement('canvas').getContext('2d')!;
+        ctx.fillStyle = getComputedStyle(el).backgroundColor;
+        ctx.fillRect(0, 0, 1, 1);
+        const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+        return (r! + g! + b!) / 3;
+      });
+      expect(await brightness()).toBeGreaterThan(200);
+
+      // The screensaver comes up: the cards stay on top of it, turn dark, and
+      // a message posted while idle still arrives.
+      await wall.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
+      await expect(wall.getByTestId('attention-panel')).toHaveAttribute('data-idle', 'true');
+      await expect.poll(brightness, { timeout: 5_000 }).toBeLessThan(60);
+      const res = await wall.request.post('/api/messages', { data: { message: `Third ${tag}`, authorId: author.id } });
+      expect(res.status()).toBe(201);
+      posted.push((await res.json()).id);
+      await wall.clock.fastForward('03:00');
+      await expect(notices.nth(0)).toContainText(`Third ${tag}`, { timeout: 15_000 });
 
       const { displays } = await (await wall.request.get('/api/displays')).json();
       const hall = displays.find((d: { name: string }) => d.name === HALL);

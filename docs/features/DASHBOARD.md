@@ -143,7 +143,7 @@ A named screen can show small notice cards down the top right of its dashboard. 
 - **Event**: a timed event starts within the set minutes. Goes when it starts. All-day events never show.
 - **Message**: a family message was posted within the set minutes.
 
-The newest card is on top and at most four show. Tap the **×** on a card to dismiss it. The dashboard underneath does not move; the cards cover what is behind them until they go. Cards show on dashboards only, also over the screensaver, and dim with it.
+The newest card is on top and at most four show. Tap the **×** on a card to dismiss it. The dashboard underneath does not move; the cards cover what is behind them until they go. Cards show on dashboards only, also over the screensaver, where they turn dark and keep updating, and dim with it.
 
 ### Saving
 

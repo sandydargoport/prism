@@ -5,6 +5,10 @@ import { usePathname } from 'next/navigation';
 import { Bus, CalendarClock, MessageSquare, X } from 'lucide-react';
 import { useTimeFormat } from '@/components/providers';
 import { useStoredString } from '@/lib/hooks/useStoredValue';
+import { useDisplayIdle } from '@/lib/hooks/useDisplayIdle';
+import { PollingScopeContext } from '@/lib/hooks/pollingScope';
+import { useCalmIdle } from '@/components/screensaver/calmMode';
+import { cn } from '@/lib/utils';
 import { useNow } from '@/lib/hooks/useNow';
 import { useBusTracking } from '@/lib/hooks/useBusTracking';
 import { useBusLive } from '@/lib/hooks/useBusLive';
@@ -25,6 +29,7 @@ import {
  * Each source fetches only while its trigger is on, so a screen that uses
  * none of them makes no extra requests. Sits above the screensaver and below
  * the idle dim, so it stays visible while idle and dims with everything else.
+ * While idle the cards turn dark, so they do not glare off a black screen.
  */
 
 const MIN = 60 * 1000;
@@ -81,11 +86,23 @@ function isDashboardPath(path: string | null): boolean {
   return path === '/' || (path?.startsWith('/d/') ?? false);
 }
 
+/** Visible while the screensaver is up, so it keeps polling like the screensaver's own widgets. */
 export function AttentionPanel() {
+  return (
+    <PollingScopeContext.Provider value="screensaver">
+      <Notices />
+    </PollingScopeContext.Provider>
+  );
+}
+
+function Notices() {
   const settings = parseAttention(useStoredString(SCREEN_ATTENTION_KEY));
   const onDashboard = isDashboardPath(usePathname());
   const now = useNow(15_000).getTime();
   const { timeFormat, displayTimezone } = useTimeFormat();
+  const screensaverUp = useDisplayIdle();
+  const calmIdle = useCalmIdle();
+  const idle = screensaverUp || calmIdle;
   const [byKind, setByKind] = React.useState<Partial<Record<AttentionKind, Notice[]>>>({});
   const [dismissed, setDismissed] = React.useState<ReadonlySet<string>>(() => new Set());
 
@@ -109,6 +126,7 @@ export function AttentionPanel() {
         <aside
           aria-label="Notices"
           data-testid="attention-panel"
+          data-idle={idle || undefined}
           className="pointer-events-none fixed right-4 top-4 z-9999 flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-3"
         >
           {shown.map((n) => (
@@ -116,17 +134,20 @@ export function AttentionPanel() {
               key={n.id}
               data-testid="attention-notice"
               data-kind={n.kind}
-              className="pointer-events-auto flex items-start gap-3 rounded-xl border border-border bg-card p-4 text-card-foreground shadow-lg animate-in fade-in slide-in-from-right-4 duration-500"
+              className={cn(
+                'pointer-events-auto flex items-start gap-3 rounded-xl border p-4 shadow-lg transition-colors duration-1000 animate-in fade-in slide-in-from-right-4',
+                idle ? 'border-white/10 bg-neutral-900/90 text-white/85' : 'border-border bg-card text-card-foreground',
+              )}
             >
-              <span className="mt-0.5 shrink-0 text-primary">{ICONS[n.kind]}</span>
+              <span className={cn('mt-0.5 shrink-0', idle ? 'text-white/60' : 'text-primary')}>{ICONS[n.kind]}</span>
               <div className="min-w-0 flex-1">
                 <div className="line-clamp-2 font-semibold leading-snug">{n.title}</div>
-                <div className="text-sm text-muted-foreground">{detail(n, now, time)}</div>
+                <div className={cn('text-sm', idle ? 'text-white/55' : 'text-muted-foreground')}>{detail(n, now, time)}</div>
               </div>
               <button
                 type="button"
                 aria-label="Dismiss"
-                className="-m-1 shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted"
+                className={cn('-m-1 shrink-0 rounded-md p-1', idle ? 'text-white/55 hover:bg-white/10' : 'text-muted-foreground hover:bg-muted')}
                 onClick={() => setDismissed((prev) => new Set(prev).add(n.id))}
               >
                 <X className="h-4 w-4" />
