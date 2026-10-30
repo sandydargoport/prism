@@ -111,6 +111,7 @@ describe('projectStops along the whole route', () => {
       routeVisit('r2', '13:05', '13:11'),
     ], null, new Date(at('13:12')), { plannedStart: new Date(at('12:50')), departedAt: new Date(at('12:47')) });
     expect(p.shiftMs).toBe(6 * 60_000);
+    expect(p.shiftMeasured).toBe(true);
     expect(p.stops[0]!.projectedAt).toBe(new Date(at('13:26')).toISOString());
   });
 
@@ -120,6 +121,8 @@ describe('projectStops along the whole route', () => {
       plannedStart: new Date(at('12:50')), departedAt: new Date(at('12:47')), usualLateMs: 6 * 60_000,
     });
     expect(p.shiftMs).toBe(6 * 60_000);
+    // Borrowed from recent trips, not measured on this one.
+    expect(p.shiftMeasured).toBe(false);
     expect(p.stops[0]!.projectedAt).toBe(new Date(at('13:26')).toISOString());
   });
 
@@ -128,6 +131,11 @@ describe('projectStops along the whole route', () => {
       plannedStart: new Date(at('12:50')), departedAt: new Date(at('13:02')), usualLateMs: 6 * 60_000,
     });
     expect(p.shiftMs).toBe(12 * 60_000);
+    expect(p.shiftMeasured).toBe(true);
+  });
+
+  it('has measured nothing with no stop reached and no start to go on', () => {
+    expect(projectStops(ours, [], null, new Date(at('12:40'))).shiftMeasured).toBe(false);
   });
 });
 

@@ -18,7 +18,7 @@ const stop = (key: string, order: number, passed: boolean): StopTiming => ({
 const track = (progress: LiveTrack['progress']): LiveTrack => ({
   id: 't', routeId: 'r', routeLabel: 'Route 7', direction: 'PM', label: null, status: 'in_progress',
   vehicle: null, driverLabel: null, progress, plannedStart: null, plannedEnd: null,
-  lastFixAt: null, riderStopKey: 'home', shiftMs: null,
+  lastFixAt: null, riderStopKey: 'home', shiftMs: null, shiftMeasured: false, typicalLateMs: null,
   stops: [stop('school', 0, true), stop('home', 1, false)], fixes: [], usualPath: null,
 });
 
@@ -42,6 +42,15 @@ describe('BusLivePanel', () => {
     );
     expect(screen.getByText('Stops')).toBeTruthy();
     expect(screen.getByText('14 of 22')).toBeTruthy();
+  });
+
+  it('shows the lateness against the schedule and against the usual', () => {
+    render(
+      <BusLivePanel
+        track={{ ...track(null), shiftMs: 12 * 60_000, shiftMeasured: true, typicalLateMs: 8 * 60_000 }}
+        speedUnit="mph" now={Date.now()} formatTime={(iso) => iso} detail={false} />,
+    );
+    expect(screen.getByText('12 min late · 4 min later than usual')).toBeTruthy();
   });
 
   it('leaves the Stops row out before the provider sends a count', () => {

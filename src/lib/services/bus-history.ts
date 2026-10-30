@@ -138,6 +138,14 @@ export function leastLate(lateMs: number[]): number | null {
   return lateMs.length >= USUAL_LATE_MIN_TRIPS ? Math.min(...lateMs) : null;
 }
 
+/** The typical (median) of these lateness values, once there are enough of them to mean something. */
+export function typicalLate(lateMs: number[]): number | null {
+  if (lateMs.length < USUAL_LATE_MIN_TRIPS) return null;
+  const sorted = [...lateMs].sort((a, b) => a - b);
+  const mid = sorted.length >> 1;
+  return sorted.length % 2 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
+}
+
 export interface PastStopVisit {
   stopKey: string;
   plannedAt: Date;
@@ -160,12 +168,10 @@ export function riderStopLateness(visits: PastStopVisit[], riderOrder: number): 
 }
 
 /**
- * The least the bus has been behind plan at the rider's stop (the track stop
- * at `riderOrder`) over its recent trips before `beforeDate`, in ms; null with
- * too few. The least, not the typical, because the ETA must not tell anyone
- * the bus is later than it may be.
+ * How far behind plan the bus was at the rider's stop (the track stop at
+ * `riderOrder`) on its recent trips before `beforeDate`, in ms, newest first.
  */
-export async function usualLateness(routeId: string, riderOrder: number, beforeDate: string): Promise<number | null> {
+export async function recentLateness(routeId: string, riderOrder: number, beforeDate: string): Promise<number[]> {
   const rows = await db
     .select({
       stopKey: busStopVisits.stopKey,
@@ -185,7 +191,16 @@ export async function usualLateness(routeId: string, riderOrder: number, beforeD
     .orderBy(desc(busStopVisits.tripDate))
     // Route stops share stop_order 0, so fetch enough to find ten trips past them.
     .limit(USUAL_LATE_TRIPS * 40);
-  return leastLate(riderStopLateness(rows as PastStopVisit[], riderOrder));
+  return riderStopLateness(rows as PastStopVisit[], riderOrder);
+}
+
+/**
+ * The least the bus has been behind plan at the rider's stop over its recent
+ * trips, in ms; null with too few. The least, not the typical, because the
+ * ETA must not tell anyone the bus is later than it may be.
+ */
+export async function usualLateness(routeId: string, riderOrder: number, beforeDate: string): Promise<number | null> {
+  return leastLate(await recentLateness(routeId, riderOrder, beforeDate));
 }
 
 /**

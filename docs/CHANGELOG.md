@@ -15,6 +15,7 @@ All notable changes to Prism are documented in this file.
 
 ### Changed
 - **Performance has levels, and Auto measures.** *Settings → Appearance → Performance* replaces the Performance Mode switch with **Auto**, **Full**, **Reduced** and **Minimal**. Reduced turns off backdrop blur, full-screen celebrations and particle effects, and stills the night sky; Minimal also shows one static photo, refreshes ~2.5× less often and makes fades near-instant. Auto, the default for a screen that never chose, starts at Full and steps down one level after three choppy idle or wake fades in a row, in place of the old guess from core count and memory. A screen that had Performance Mode on is now Reduced, one that had it off is Full. Set per screen, also from another device in *Settings → Displays*. ([#691](https://github.com/sandydargoport/prism/issues/691))
+- **Bus card compares today with the usual.** Beside how late the bus is against the timetable, the live bus card says how that compares with its typical lateness at your stop over the last 10 trips ("8 min late · about usual", "12 min late · 4 min later than usual"). Before anything on the trip is measured, it says what is typical ("usually 9 min late").
 
 ### Fixed
 - **Bus card no longer shows "0 of 2" stops before the route starts.** The stop count appears once the bus provider sends it, instead of counting only your stop and the school.

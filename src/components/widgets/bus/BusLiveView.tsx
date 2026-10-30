@@ -54,6 +54,24 @@ export function lateness(shiftMs: number | null): string | null {
   return min > 0 ? `${min} min late` : `${-min} min early`;
 }
 
+/**
+ * Today against the bus's habit, beside the schedule lateness: a bus that is
+ * always 8 minutes behind the timetable is "about usual" at 8. Before anything
+ * on this trip is measured, the lateness shown is itself borrowed from recent
+ * trips, so then this only says what is typical.
+ */
+export function versusUsual(shiftMs: number | null, typicalMs: number | null, measured: boolean): string | null {
+  if (typicalMs === null) return null;
+  const typical = Math.round(typicalMs / MS_PER_MIN);
+  if (shiftMs === null || !measured) {
+    if (typical === 0) return 'usually on time';
+    return typical > 0 ? `usually ${typical} min late` : `usually ${-typical} min early`;
+  }
+  const diff = Math.round((shiftMs - typicalMs) / MS_PER_MIN);
+  if (Math.abs(diff) <= 1) return 'about usual';
+  return diff > 0 ? `${diff} min later than usual` : `${-diff} min earlier than usual`;
+}
+
 export function formatSpeed(metresPerSecond: number, unit: 'mph' | 'km/h'): string {
   const value = unit === 'mph' ? metresPerSecond * 2.23694 : metresPerSecond * 3.6;
   return `${Math.round(value)} ${unit}`;
@@ -213,7 +231,8 @@ export function BusLivePanel({
   }
 
   const rows: [string, React.ReactNode][] = [];
-  if (late) rows.push(['Running', late]);
+  const usual = versusUsual(track.shiftMs, track.typicalLateMs, track.shiftMeasured);
+  if (late) rows.push(['Running', usual ? `${late} · ${usual}` : late]);
   // High in the list, beside how late it is: how fresh the position is
   // decides how far to trust everything else, so it is never the row dropped.
   if (lastFixMs === null) {

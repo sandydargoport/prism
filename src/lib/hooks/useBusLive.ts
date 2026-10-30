@@ -39,6 +39,10 @@ export interface LiveTrack {
   lastFixAt: string | null;
   riderStopKey: string | null;
   shiftMs: number | null;
+  /** Whether shiftMs was measured on this trip rather than borrowed from recent ones. */
+  shiftMeasured: boolean;
+  /** How late the bus typically is at the household's stop (median of recent trips), in ms. */
+  typicalLateMs: number | null;
   stops: StopTiming[];
   /** Every fix received today, oldest first. */
   fixes: LiveFix[];

@@ -49,6 +49,11 @@ export interface Projection {
   stops: StopTiming[];
   /** How far behind plan the bus is running, in ms (negative = early). Null with nothing to go on. */
   shiftMs: number | null;
+  /**
+   * Whether the shift was measured on this trip (a stop reached, a late start,
+   * a stop overdue), rather than borrowed from recent trips.
+   */
+  shiftMeasured: boolean;
 }
 
 const iso = (d: Date | null | undefined) => (d ? d.toISOString() : null);
@@ -105,6 +110,7 @@ export function projectStops(
   const planOf = new Map(ordered.map((s) => [s.key, s.plannedAt]));
   const kindOf = new Map(ordered.map((s) => [s.key, s.kind]));
   let shiftMs: number | null = null;
+  let measured = false;
   let latest = -Infinity;
   let waiting = false;
   for (const v of visits) {
@@ -116,6 +122,7 @@ export function projectStops(
     // until it leaves, that is no reason to expect the later stops early.
     waiting = shiftMs < 0 && !v.departedAt && kindOf.get(v.stopKey) === 'school';
     if (waiting) shiftMs = 0;
+    measured = !waiting;
   }
 
   // Before the first stop, the start says it: a bus that leaves the depot
@@ -136,6 +143,7 @@ export function projectStops(
     const usual = start.usualLateMs ?? null;
     if (fromStart !== null || usual !== null) {
       shiftMs = Math.max(shiftMs ?? -Infinity, fromStart ?? -Infinity, usual ?? -Infinity);
+      measured = usual === null || shiftMs > usual;
     }
   }
 
@@ -148,11 +156,13 @@ export function projectStops(
     if (nextAt < now.getTime()) {
       shift = now.getTime() - new Date(next.plannedAt!).getTime();
       shiftMs = shift;
+      measured = true;
     }
   }
 
   return {
     shiftMs,
+    shiftMeasured: measured,
     stops: ordered.map((s, i) => {
       const visit = byKey.get(s.key);
       const projected = !passed[i] && s.plannedAt

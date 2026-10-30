@@ -3,7 +3,9 @@
  */
 jest.mock('@/lib/db/client', () => ({ db: {} }));
 
-import { driverKey, leastLate, riderStopLateness, summarizeTrip, weatherBucket, type TripFacts } from '../bus-history';
+import {
+  driverKey, leastLate, riderStopLateness, summarizeTrip, typicalLate, weatherBucket, type TripFacts,
+} from '../bus-history';
 import { accuracyByHorizon, dueHorizons } from '../bus-eta-snapshots';
 import type { LiveTrackStop } from '@/lib/db/schema';
 
@@ -127,6 +129,14 @@ describe('leastLate', () => {
   it('is the smallest lateness, once there are three trips', () => {
     expect(leastLate([7, 11, 6, 10].map((m) => m * 60_000))).toBe(6 * 60_000);
     expect(leastLate([7, 11].map((m) => m * 60_000))).toBeNull();
+  });
+});
+
+describe('typicalLate', () => {
+  it('is the median lateness, once there are three trips', () => {
+    expect(typicalLate([7, 11, 6, 30, 8].map((m) => m * 60_000))).toBe(8 * 60_000);
+    expect(typicalLate([7, 11, 6, 10].map((m) => m * 60_000))).toBe(8.5 * 60_000);
+    expect(typicalLate([7, 11].map((m) => m * 60_000))).toBeNull();
   });
 });
 

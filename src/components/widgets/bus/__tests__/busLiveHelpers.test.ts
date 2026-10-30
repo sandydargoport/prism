@@ -1,4 +1,4 @@
-import { cardCover, chooseLayout, formatSpeed, lateness } from '../BusLiveView';
+import { cardCover, chooseLayout, formatSpeed, lateness, versusUsual } from '../BusLiveView';
 import { showsArrow } from '@/lib/map/busTween';
 import { isTrackLive, mergeFixes, pickLiveTrack, type LiveFix, type LiveTrack } from '@/lib/hooks/useBusLive';
 
@@ -44,6 +44,27 @@ describe('lateness and speed', () => {
   });
 });
 
+describe('versusUsual', () => {
+  const min = 60_000;
+
+  it('compares a measured lateness with the typical one, within a minute counting as usual', () => {
+    expect(versusUsual(8 * min, 8 * min, true)).toBe('about usual');
+    expect(versusUsual(9 * min, 8 * min, true)).toBe('about usual');
+    expect(versusUsual(12 * min, 8 * min, true)).toBe('4 min later than usual');
+    expect(versusUsual(5 * min, 8 * min, true)).toBe('3 min earlier than usual');
+  });
+
+  it('only says what is typical while the lateness is borrowed from recent trips', () => {
+    expect(versusUsual(6 * min, 9 * min, false)).toBe('usually 9 min late');
+    expect(versusUsual(null, -2 * min, false)).toBe('usually 2 min early');
+    expect(versusUsual(null, 20_000, false)).toBe('usually on time');
+  });
+
+  it('says nothing without enough history', () => {
+    expect(versusUsual(8 * min, null, true)).toBeNull();
+  });
+});
+
 describe('mergeFixes', () => {
   it('drops repeats and keeps time order, whatever order pages arrive in', () => {
     const held = [fix('1', '2026-03-02T13:00:10Z'), fix('2', '2026-03-02T13:00:20Z')];
@@ -56,7 +77,8 @@ describe('mergeFixes', () => {
 const track = (over: Partial<LiveTrack>): LiveTrack => ({
   id: 't', routeId: 'r', routeLabel: 'AM', direction: 'AM', label: null, status: 'live',
   vehicle: null, driverLabel: null, progress: null, plannedStart: null, plannedEnd: null,
-  lastFixAt: '2026-03-02T13:00:00Z', riderStopKey: 's', shiftMs: null, stops: [], fixes: [], usualPath: null,
+  lastFixAt: '2026-03-02T13:00:00Z', riderStopKey: 's', shiftMs: null, shiftMeasured: false, typicalLateMs: null,
+  stops: [], fixes: [], usualPath: null,
   ...over,
 });
 const now = new Date('2026-03-02T13:02:00Z').getTime();
