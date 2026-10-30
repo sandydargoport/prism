@@ -19,6 +19,7 @@ All notable changes to Prism are documented in this file.
 - **Bus card compares today with the usual.** Beside how late the bus is against the timetable, the live bus card says how that compares with its typical lateness at your stop over the last 10 trips ("8 min late · about usual", "12 min late · 4 min later than usual"). Before anything on the trip is measured, it says what is typical ("usually 9 min late").
 
 ### Fixed
+- **The bus provider token's copy button no longer says "Token copied" when nothing was copied.** On a plain `http://` page, or when the browser refuses, it now says it could not copy, and one tap on the token selects all of it for copying by hand.
 - **Bus card no longer shows "0 of 2" stops before the route starts.** The stop count appears once the bus provider sends it, instead of counting only your stop and the school.
 
 ## [1.31.0] – 2026-10-27
