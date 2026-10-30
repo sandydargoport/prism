@@ -88,6 +88,7 @@ nav:
       - Install: getting-started/install.md
       - First-time setup: getting-started/first-time-setup.md
       - Updating: getting-started/updating.md
+      - Using https at home: getting-started/https.md
   - User Guide:
       - Overview: HELP.md
       - Dashboard & Layouts: features/DASHBOARD.md
