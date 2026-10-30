@@ -15,6 +15,10 @@ const BabysitterModeOverlay = dynamic(
   () => import('@/components/babysitter-mode/BabysitterModeOverlay').then(m => ({ default: m.BabysitterModeOverlay })),
   { ssr: false }
 );
+const AttentionPanel = dynamic(
+  () => import('@/components/attention/AttentionPanel').then(m => ({ default: m.AttentionPanel })),
+  { ssr: false }
+);
 
 export function LazyOverlays() {
   // Mounted here because this component is already in the root layout, so the
@@ -26,6 +30,8 @@ export function LazyOverlays() {
       <BabysitterModeOverlay />
       <AwayModeOverlay />
       <Screensaver />
+      {/* After the screensaver: same layer, so its notices show over it. */}
+      <AttentionPanel />
     </>
   );
 }

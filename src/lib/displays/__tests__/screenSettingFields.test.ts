@@ -11,8 +11,10 @@ const field = (key: string) => SCREEN_SETTING_FIELDS.find((f) => f.key === key)!
 describe('SCREEN_SETTING_FIELDS', () => {
   it('covers every synced setting a person chooses', () => {
     // The motion marker is written with the effect; nothing edits safe zones yet;
-    // the schedule has its own editor.
-    const notOnTheForm = ['prism-screensaver-motion-v2', 'prism:screen-safe-zones', 'prism-screen-schedule'];
+    // the schedule and the attention panel have their own editors.
+    const notOnTheForm = [
+      'prism-screensaver-motion-v2', 'prism:screen-safe-zones', 'prism-screen-schedule', 'prism-screen-attention',
+    ];
     expect(SCREEN_SETTING_FIELDS.map((f) => f.key).sort())
       .toEqual(SCREEN_SETTING_KEYS.filter((k) => !notOnTheForm.includes(k)).sort());
   });

@@ -135,6 +135,16 @@ A named screen (*Settings → Displays*) can show other dashboards at set times,
 
 Make the dashboard for a time with **Save As** in the editor and rearrange it there. When a time starts or ends, the screen changes over in place: widgets that are on both dashboards slide to their new places and the rest fade. The change waits until nobody has touched the screen for a minute, and never happens while the layout is being edited. Opening another dashboard by hand keeps it until the next time starts or ends. With reduced motion the dashboards crossfade, and at the **Minimal** performance level they swap at once.
 
+### Notices
+
+A named screen can show small notice cards down the top right of its dashboard. In *Settings → Displays*, **Notices** on the screen's row turns each kind on, with how many minutes it covers:
+
+- **Bus**: the bus is due at your stop within the set minutes (the live position where there is one, else the emailed estimate). Goes once the bus has passed the stop.
+- **Event**: a timed event starts within the set minutes. Goes when it starts. All-day events never show.
+- **Message**: a family message was posted within the set minutes.
+
+The newest card is on top and at most four show. Tap the **×** on a card to dismiss it. The dashboard underneath does not move; the cards cover what is behind them until they go. Cards show on dashboards only, also over the screensaver, and dim with it.
+
 ### Saving
 
 - **Save** overwrites the current dashboard's layout.

@@ -343,3 +343,71 @@ test.describe('Time-of-day layouts', () => {
     }
   });
 });
+
+test.describe('Attention notices', () => {
+  test('turned on in Settings > Displays, new messages show as cards at the top right, newest first', async ({ browser }) => {
+    test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
+    test.setTimeout(120_000);
+    const tag = Date.now().toString(36);
+    const HALL = `Hall ${tag}`;
+
+    const probe = await browser.newPage();
+    const parent = await getFirstParent(probe);
+    await probe.close();
+
+    const wallContext = await browser.newContext({ viewport: { width: 1600, height: 900 } });
+    const posted: string[] = [];
+    try {
+      const wall = await wallContext.newPage();
+      await verifySettingsPinViaAPI(wall, parent.name);
+      // Signed in, the family list carries ids.
+      const author = await getFirstParent(wall);
+      await wall.goto('/settings?section=displays');
+      await wall.getByLabel('Name for this screen').fill(HALL);
+      await wall.getByRole('button', { name: 'Name this display' }).click();
+      const row = wall.getByTestId('display-row').filter({ hasText: HALL });
+      await row.getByRole('button', { name: 'Notices' }).click();
+      const panel = wall.getByTestId('screen-attention');
+      await panel.getByLabel('A message was posted in the last', { exact: true }).check();
+      await panel.getByRole('button', { name: 'Save notices' }).click();
+      await expect(panel).toContainText(`Saved. ${HALL} follows it within a minute.`);
+      await expect.poll(() => readStorage(wall, 'prism-screen-attention')).toBe('{"message":120}');
+      // Off the dashboard, nothing shows.
+      await expect(wall.getByTestId('attention-panel')).toHaveCount(0);
+
+      for (const text of [`First ${tag}`, `Second ${tag}`]) {
+        const res = await wall.request.post('/api/messages', { data: { message: text, authorId: author.id } });
+        expect(res.status()).toBe(201);
+        posted.push((await res.json()).id);
+        await wall.waitForTimeout(1_100);
+      }
+
+      await wall.goto('/');
+      const notices = wall.getByTestId('attention-notice').filter({ hasText: tag });
+      await expect(notices).toHaveCount(2, { timeout: 30_000 });
+      await expect(notices.nth(0)).toContainText(`Second ${tag}`);
+      await expect(notices.nth(1)).toContainText(`First ${tag}`);
+
+      // A narrow column hugging the top right corner, cards as tall as their text.
+      const box = await wall.getByTestId('attention-panel').evaluate((el) => el.getBoundingClientRect().toJSON());
+      const rem = await wall.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize));
+      expect(1600 - box.right).toBeCloseTo(rem, 0);
+      expect(box.top).toBeCloseTo(rem, 0);
+      expect(box.width).toBeLessThanOrEqual(400);
+      const card = await notices.nth(0).evaluate((el) => el.getBoundingClientRect().height);
+      expect(card).toBeLessThan(160);
+
+      await notices.nth(0).getByRole('button', { name: 'Dismiss' }).click();
+      await expect(notices).toHaveCount(1);
+      await expect(notices.nth(0)).toContainText(`First ${tag}`);
+
+      const { displays } = await (await wall.request.get('/api/displays')).json();
+      const hall = displays.find((d: { name: string }) => d.name === HALL);
+      await wall.request.delete(`/api/displays/${hall.id}`);
+    } finally {
+      const cleanup = await wallContext.newPage().catch(() => null);
+      for (const id of posted) await cleanup?.request.delete(`/api/messages/${id}`).catch(() => {});
+      await wallContext.close();
+    }
+  });
+});
