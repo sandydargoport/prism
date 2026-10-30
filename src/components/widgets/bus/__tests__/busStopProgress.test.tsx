@@ -27,12 +27,9 @@ describe('stopProgress', () => {
     expect(stopProgress(track({ lastVisitedStop: 14, totalStops: 22 }))).toBe('14 of 22');
   });
 
-  it("falls back to the track's own stops", () => {
-    expect(stopProgress(track(null))).toBe('1 of 2');
-    expect(stopProgress(track({ lastVisitedStop: 0, totalStops: 0 }))).toBe('1 of 2');
-  });
-
-  it('is empty with nothing to count', () => {
+  it("shows nothing before the provider sends a count, rather than counting the track's own two stops", () => {
+    expect(stopProgress(track(null))).toBeNull();
+    expect(stopProgress(track({ lastVisitedStop: 0, totalStops: 0 }))).toBeNull();
     expect(stopProgress({ progress: null, stops: [] })).toBeNull();
   });
 });
@@ -45,5 +42,13 @@ describe('BusLivePanel', () => {
     );
     expect(screen.getByText('Stops')).toBeTruthy();
     expect(screen.getByText('14 of 22')).toBeTruthy();
+  });
+
+  it('leaves the Stops row out before the provider sends a count', () => {
+    render(
+      <BusLivePanel track={track(null)} speedUnit="mph" now={Date.now()} formatTime={(iso) => iso} detail={false} />,
+    );
+    expect(screen.queryByText('Stops')).toBeNull();
+    expect(screen.queryByText('1 of 2')).toBeNull();
   });
 });

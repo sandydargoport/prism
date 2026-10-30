@@ -166,9 +166,10 @@ const CARD_ROWS = new Set(['Running', 'Updated', 'Stops', 'Now']);
  */
 export function stopProgress(track: Pick<LiveTrack, 'progress' | 'stops'>): string | null {
   const p = track.progress;
-  if (p && p.totalStops > 0) return `${p.lastVisitedStop} of ${p.totalStops}`;
-  if (track.stops.length === 0) return null;
-  return `${track.stops.filter((s) => s.passed).length} of ${track.stops.length}`;
+  // Only the provider knows the whole route. The track's own stops are just
+  // the household's stop and the school, so counting those ("0 of 2") would
+  // mislead before the provider sends its count.
+  return p && p.totalStops > 0 ? `${p.lastVisitedStop} of ${p.totalStops}` : null;
 }
 
 export function BusLivePanel({
