@@ -14,6 +14,8 @@ After installation, open **<http://localhost:3000>**. A fresh install has no acc
 
 ### HTTPS / Nginx certificate prerequisite (Linux / WSL)
 
+Some features (the microphone, camera scanning, copy buttons, installing as an app) only work over `https://`. For a certificate every device trusts without warnings, see [Using https at home](https.md).
+
 Prism's default Nginx config terminates TLS on port `443` and expects:
 
 - `config/certs/prism.crt`
