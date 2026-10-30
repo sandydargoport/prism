@@ -334,7 +334,12 @@ function busStatusText(p: BusPrediction): string {
   }
 }
 
-export function BusTrackingCard({ routes, live }: { routes: BusRouteStatus[]; live?: LiveTrack | null }) {
+export function BusTrackingCard({ routes, live, provider }: {
+  routes: BusRouteStatus[];
+  live?: LiveTrack | null;
+  /** Whether a live provider feeds the routes; then the email view is never shown. Null until known. */
+  provider?: boolean | null;
+}) {
   if (live) {
     return (
       <CardShell icon={<Bus className="h-4 w-4 text-amber-600" />} title="Bus Tracker" count={1}>
@@ -349,6 +354,14 @@ export function BusTrackingCard({ routes, live }: { routes: BusRouteStatus[]; li
     );
   }
   if (!routes || routes.length === 0) return null;
+  if (provider === null) return null;
+  if (provider) {
+    return (
+      <CardShell icon={<Bus className="h-4 w-4 text-amber-600" />} title="Bus Tracker">
+        <p className="text-xs text-muted-foreground">No bus today</p>
+      </CardShell>
+    );
+  }
 
   const active = routes.filter((r) => r.prediction.status !== 'no_data');
 

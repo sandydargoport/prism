@@ -253,7 +253,12 @@ export function PhotosTile() {
   );
 }
 
-export function BusTrackingTile({ routes, live }: { routes: BusRouteStatus[] | null; live?: LiveTrack | null }) {
+export function BusTrackingTile({ routes, live, provider }: {
+  routes: BusRouteStatus[] | null;
+  live?: LiveTrack | null;
+  /** Whether a live provider feeds the routes; then the email status is never shown. Null until known. */
+  provider?: boolean | null;
+}) {
   if (live) {
     return (
       <TileShell icon={<Bus className="h-4 w-4 text-amber-500" />} title="Bus">
@@ -263,6 +268,13 @@ export function BusTrackingTile({ routes, live }: { routes: BusRouteStatus[] | n
     );
   }
   const first = routes?.[0];
+  if (first && provider !== undefined && provider !== false) {
+    return (
+      <TileShell icon={<Bus className="h-4 w-4 text-amber-500" />} title="Bus">
+        <TileLine dim>{provider ? 'No bus today' : first.label}</TileLine>
+      </TileShell>
+    );
+  }
   const pred: BusPrediction | undefined = first?.prediction;
   const statusLabel = !first ? 'No routes'
     : !pred ? first.label

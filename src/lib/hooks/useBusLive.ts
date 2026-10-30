@@ -101,6 +101,17 @@ export function pickWindowTrack(tracks: LiveTrack[], routeIds: string[], now: nu
   return [...candidates].sort((a, b) => distance(a) - distance(b))[0] ?? null;
 }
 
+/**
+ * The trip the bus widget, card and tile show: the live one, else, when a
+ * live provider feeds the routes, today's trip on an open route. Null means
+ * the email view (no provider) or nothing to show.
+ */
+export function pickShownTrack(
+  tracks: LiveTrack[], openRouteIds: string[], provider: boolean | null, now: number,
+): LiveTrack | null {
+  return pickLiveTrack(tracks, now) ?? (provider ? pickWindowTrack(tracks, openRouteIds, now) : null);
+}
+
 /** Merge a page of fixes into what is held, dropping repeats, oldest first. */
 export function mergeFixes(held: LiveFix[], incoming: LiveFix[]): LiveFix[] {
   if (incoming.length === 0) return held;

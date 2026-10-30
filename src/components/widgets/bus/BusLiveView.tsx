@@ -294,7 +294,8 @@ export function LiveBusSummary({ track, className }: { track: LiveTrack; classNa
 
   const rider = track.stops.find((s) => s.key === track.riderStopKey);
   const time = (iso: string) => formatDisplayTime(new Date(iso), timeFormat, {}, displayTimezone);
-  let text = 'Bus is moving';
+  // A trip shown before it starts, or once its feed has gone quiet, is not moving.
+  let text = track.lastFixAt ? 'Bus is moving' : 'Waiting for the bus';
   if (rider?.passed && rider.arrivedAt) {
     text = `${rider.name ?? 'Your stop'}: arrived ${time(rider.arrivedAt)}`;
   } else if (rider?.projectedAt) {

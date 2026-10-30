@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils';
 import type { useDashboardData } from './useDashboardData';
 import { useMobileCardOrder, useHiddenCards } from './useMobileCardOrder';
 import { useBusTracking } from '@/lib/hooks/useBusTracking';
-import { pickLiveTrack, useBusLive } from '@/lib/hooks/useBusLive';
+import { pickShownTrack, useBusLive } from '@/lib/hooks/useBusLive';
 import { useNow } from '@/lib/hooks/useNow';
 import {
   WeatherCard, ClockCard, CalendarCard, ChoresCard, TasksCard,
@@ -77,7 +77,9 @@ export const MobileDashboard = memo(function MobileDashboard({ data }: MobileDas
   const { routes: busRoutes, allRoutes: allBusRoutes } = useBusTracking();
   const busLive = useBusLive(allBusRoutes.length > 0);
   const now = useNow();
-  const liveBus = pickLiveTrack(busLive.tracks, now.getTime() + busLive.clockOffsetMs);
+  // As on the bus widget: with a live provider, today's trip on an open route
+  // stands in for the email view, before it starts and once it is done.
+  const liveBus = pickShownTrack(busLive.tracks, busRoutes.map((r) => r.id), busLive.provider, now.getTime() + busLive.clockOffsetMs);
   const [hiddenCards] = useHiddenCards();
   const [reorderMode, setReorderMode] = useState(false);
 
@@ -122,8 +124,8 @@ export const MobileDashboard = memo(function MobileDashboard({ data }: MobileDas
     wishes: <WishesTile />,
     photos: <PhotosTile />,
     recipes: <RecipesTile />,
-    busTracking: <BusTrackingTile routes={busRoutes} live={liveBus} />,
-  }), [data, busRoutes, liveBus]);
+    busTracking: <BusTrackingTile routes={busRoutes} live={liveBus} provider={busLive.provider} />,
+  }), [data, busRoutes, liveBus, busLive.provider]);
 
   const cardMap: Record<string, React.ReactNode> = useMemo(() => ({
     weather: <WeatherCard data={data.weather} />,
@@ -139,8 +141,8 @@ export const MobileDashboard = memo(function MobileDashboard({ data }: MobileDas
     wishes: <WishesCard />,
     photos: <PhotosCard />,
     recipes: <RecipesCard />,
-    busTracking: <BusTrackingCard routes={busRoutes} live={liveBus} />,
-  }), [data, busRoutes, liveBus]);
+    busTracking: <BusTrackingCard routes={busRoutes} live={liveBus} provider={busLive.provider} />,
+  }), [data, busRoutes, liveBus, busLive.provider]);
 
   const cardHasContent: Record<string, boolean> = useMemo(() => ({
     weather: !data.weather.loading && !!data.weather.data,
@@ -157,7 +159,7 @@ export const MobileDashboard = memo(function MobileDashboard({ data }: MobileDas
     photos: true,
     recipes: true,
     busTracking: (busRoutes?.length ?? 0) > 0 || liveBus !== null,
-  }), [data, busRoutes, liveBus]);
+  }), [data, busRoutes, liveBus, busLive.provider]);
 
   const visibleOrder = useMemo(
     () => order.filter((id) => !hiddenCards.includes(id) && cardHasContent[id] !== false),
