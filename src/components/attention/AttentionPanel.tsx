@@ -34,6 +34,13 @@ import {
 
 const MIN = 60 * 1000;
 
+/**
+ * A notice is only useful soon after the thing happens, so the panel asks more
+ * often than the widgets do (messages every 2 min, events every 5).
+ */
+const MESSAGE_POLL_MS = 30 * 1000;
+const EVENT_POLL_MS = 60 * 1000;
+
 type Report = (kind: AttentionKind, notices: Notice[]) => void;
 
 function BusSource({ minutes, now, report }: { minutes: number; now: number; report: Report }) {
@@ -54,14 +61,14 @@ function BusSource({ minutes, now, report }: { minutes: number; now: number; rep
 }
 
 function EventSource({ minutes, now, report }: { minutes: number; now: number; report: Report }) {
-  const { events } = useCalendarEvents({ daysToShow: 1, useDemoFallback: false, autoSyncMinutes: 0 });
+  const { events } = useCalendarEvents({ daysToShow: 1, useDemoFallback: false, autoSyncMinutes: 0, refreshInterval: EVENT_POLL_MS });
   const notices = React.useMemo(() => eventNotices(events, now, minutes), [events, now, minutes]);
   React.useEffect(() => report('event', notices), [report, notices]);
   return null;
 }
 
 function MessageSource({ minutes, now, report }: { minutes: number; now: number; report: Report }) {
-  const { messages } = useMessages({ limit: 10 });
+  const { messages } = useMessages({ limit: 10, refreshInterval: MESSAGE_POLL_MS });
   const notices = React.useMemo(() => messageNotices(messages, now, minutes), [messages, now, minutes]);
   React.useEffect(() => report('message', notices), [report, notices]);
   return null;

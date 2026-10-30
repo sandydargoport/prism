@@ -421,7 +421,8 @@ test.describe('Attention notices', () => {
       const res = await wall.request.post('/api/messages', { data: { message: `Third ${tag}`, authorId: author.id } });
       expect(res.status()).toBe(201);
       posted.push((await res.json()).id);
-      await wall.clock.fastForward('03:00');
+      // Within the panel's own half-minute check, well before the widgets' two.
+      await wall.clock.fastForward('00:40');
       await expect(notices.nth(0)).toContainText(`Third ${tag}`, { timeout: 15_000 });
 
       const { displays } = await (await wall.request.get('/api/displays')).json();
