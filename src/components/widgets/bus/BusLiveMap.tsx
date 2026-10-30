@@ -164,8 +164,8 @@ function addLayers(map: maplibregl.Map) {
 /**
  * Today's trip on a map: the trace so far, each stop labelled with its actual
  * (passed) or projected (upcoming) time, and the bus where it most likely is
- * now (see busTween). Zoom is by the + and - buttons only: on a wall display a
- * drag or pinch belongs to the dashboard.
+ * now (see busTween). A drag pans and the + and - buttons zoom; a look around
+ * by hand holds the camera for a minute, then it frames the trip again.
  */
 export function BusLiveMap({
   track, formatTime, darkMode, reducedMotion, clockOffsetMs, mapStyle, camera, cover = NO_COVER,
@@ -207,7 +207,7 @@ export function BusLiveMap({
   /**
    * Aim the camera for the chosen mode. Bounds get room for the labels, which
    * hang below and to both sides of their dot. Skipped for a minute after a
-   * tap on the zoom buttons, so a zoom by hand is not undone at once. Unless
+   * tap on the zoom buttons or a drag, so a look around by hand is not undone at once. Unless
    * forced, it moves only when needsReframe says so, then glides there.
    */
   const aim = (animate: boolean, force = !animate) => {
@@ -441,7 +441,17 @@ export function BusLiveMap({
       style: styleUrl,
       center: [0, 0],
       zoom: 1,
-      interactive: false,
+      // Drag to pan, beside the zoom buttons. Every other gesture stays off:
+      // a wall screen gets brushed and leaned on, and a stray wheel or pinch
+      // should not move the map.
+      dragPan: true,
+      scrollZoom: false,
+      boxZoom: false,
+      dragRotate: false,
+      keyboard: false,
+      doubleClickZoom: false,
+      touchZoomRotate: false,
+      touchPitch: false,
       attributionControl: false,
     });
     map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
@@ -450,6 +460,9 @@ export function BusLiveMap({
     containerRef.current.querySelectorAll('.maplibregl-ctrl-zoom-in, .maplibregl-ctrl-zoom-out').forEach((button) => {
       button.addEventListener('click', () => { manualUntilRef.current = Date.now() + MANUAL_HOLD_MS; });
     });
+    // So is a drag: the camera waits rather than pulling the map back mid-look.
+    map.on('dragstart', () => { manualUntilRef.current = Date.now() + MANUAL_HOLD_MS; });
+    map.on('dragend', () => { manualUntilRef.current = Date.now() + MANUAL_HOLD_MS; });
     markerRef.current = new maplibregl.Marker({
       element: busElement(),
       rotationAlignment: 'map',
@@ -458,7 +471,7 @@ export function BusLiveMap({
     // Runs on the first style and again whenever the style is swapped (light
     // to dark, simple to detailed), which drops every layer we added.
     // Compact attribution opens on every style load and only folds on a drag,
-    // which this map never gets, so fold it whenever the map settles.
+    // which may never come, so fold it whenever the map settles.
     map.on('idle', () => {
       containerRef.current?.querySelector('.maplibregl-ctrl-attrib.maplibregl-compact-show')
         ?.classList.remove('maplibregl-compact-show');
