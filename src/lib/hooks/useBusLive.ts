@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import { useFetchOnMount } from './useFetchOnMount';
 import { useVisibilityPolling } from './useVisibilityPolling';
 import { useNow } from './useNow';
 import type { StopTiming } from '@/lib/services/bus-eta';
@@ -60,6 +61,8 @@ interface LiveResponse {
   mapStyle: BusMapStyle;
   camera: BusMapCamera;
   tracks: (Omit<LiveTrack, 'usualPath'> & { usualPath?: LiveTrack['usualPath'] })[];
+  /** Whether a live provider feeds this household; sent with the first load only. */
+  provider?: boolean;
 }
 
 /** Poll this often while a bus is moving: the feed itself is ~10s. */
@@ -87,6 +90,17 @@ export function pickLiveTrack(tracks: LiveTrack[], now: number): LiveTrack | nul
   return [...running].sort((a, b) => due(a) - due(b))[0]!;
 }
 
+/**
+ * Today's trip on one of `routeIds` (the routes whose window is open) while no
+ * bus is live: waiting to start, gone quiet, or done. With several, the one
+ * planned to start nearest `now`.
+ */
+export function pickWindowTrack(tracks: LiveTrack[], routeIds: string[], now: number): LiveTrack | null {
+  const candidates = tracks.filter((t) => routeIds.includes(t.routeId));
+  const distance = (t: LiveTrack) => (t.plannedStart ? Math.abs(new Date(t.plannedStart).getTime() - now) : Infinity);
+  return [...candidates].sort((a, b) => distance(a) - distance(b))[0] ?? null;
+}
+
 /** Merge a page of fixes into what is held, dropping repeats, oldest first. */
 export function mergeFixes(held: LiveFix[], incoming: LiveFix[]): LiveFix[] {
   if (incoming.length === 0) return held;
@@ -108,6 +122,8 @@ export function useBusLive(enabled: boolean) {
   // Server time minus device time, so "updated 8s ago" is right on a display
   // whose clock has drifted.
   const [clockOffsetMs, setClockOffsetMs] = useState(0);
+  // Null until the first load says, so nothing guesses in the meantime.
+  const [provider, setProvider] = useState<boolean | null>(null);
   const cursorRef = useRef<string | null>(null);
   const tracksRef = useRef<LiveTrack[]>([]);
 
@@ -117,8 +133,12 @@ export function useBusLive(enabled: boolean) {
       const url = cursorRef.current
         ? `/api/bus-tracking/live?since=${encodeURIComponent(cursorRef.current)}`
         : '/api/bus-tracking/live';
-      const res = await fetch(url);
-      if (!res.ok) return;
+      const res = await fetch(url).catch(() => null);
+      if (!res?.ok) {
+        // Without an answer, decide as before there was a provider.
+        setProvider((p) => p ?? false);
+        return;
+      }
       const data: LiveResponse = await res.json();
       const held = new Map(tracksRef.current.map((t) => [t.id, t]));
       const next = data.tracks.map((t) => ({
@@ -134,12 +154,13 @@ export function useBusLive(enabled: boolean) {
       setMapStyle(data.mapStyle ?? DEFAULT_BUS_MAP_STYLE);
       setCamera(data.camera ?? DEFAULT_BUS_MAP_CAMERA);
       setClockOffsetMs(new Date(data.serverTime).getTime() - Date.now());
+      if (data.provider !== undefined) setProvider(data.provider);
     } catch {
       // Keep what is shown; the next poll tries again.
     }
   }, [enabled]);
 
-  useEffect(() => { void fetchLive(); }, [fetchLive]);
+  useFetchOnMount(fetchLive);
 
   // A new day starts from scratch: yesterday's tracks drop out of the
   // response, and their fixes go with them since nothing merges into them.
@@ -147,5 +168,5 @@ export function useBusLive(enabled: boolean) {
   const anyLive = tracks.some((t) => isTrackLive(t, now.getTime() + clockOffsetMs));
   useVisibilityPolling(fetchLive, enabled ? (anyLive ? LIVE_POLL_MS : IDLE_POLL_MS) : 0);
 
-  return { tracks, speedUnit, clockOffsetMs, mapStyle, camera };
+  return { tracks, speedUnit, clockOffsetMs, mapStyle, camera, provider };
 }

@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { WidgetContainer, WidgetEmpty } from './WidgetContainer';
 import { useBusTracking } from '@/lib/hooks/useBusTracking';
 import type { BusRouteStatus, BusPrediction } from '@/lib/hooks/useBusTracking';
-import { pickLiveTrack, useBusLive } from '@/lib/hooks/useBusLive';
+import { pickLiveTrack, pickWindowTrack, useBusLive } from '@/lib/hooks/useBusLive';
 import { useNow } from '@/lib/hooks/useNow';
 import { BusLiveView } from './bus/BusLiveView';
 
@@ -31,20 +31,28 @@ export const BusTrackingWidget = React.memo(function BusTrackingWidget({ classNa
   // A live trip takes the whole widget, whatever its scheduled window says.
   // useNow ticks, so a trip that ends between polls stops taking the widget.
   const now = useNow();
-  const liveTrack = pickLiveTrack(live.tracks, now.getTime() + live.clockOffsetMs);
+  const serverNow = now.getTime() + live.clockOffsetMs;
+  const liveTrack = pickLiveTrack(live.tracks, serverNow);
+
+  // With a live provider, the email view below is never shown: its routes
+  // are not fed by emails, so it would only ever say "No updates yet". Inside
+  // a route's window the widget shows that route's trip for today instead,
+  // before it starts, while the feed is quiet, and once it is done.
+  const shownTrack = liveTrack
+    ?? (live.provider ? pickWindowTrack(live.tracks, routes.map((r) => r.id), serverNow) : null);
 
   // In compact mode, show only the most relevant route (closest to scheduled time)
   const displayRoutes = isCompact ? getBestRoute(routes) : routes;
 
-  if (liveTrack) {
+  if (shownTrack) {
     return (
       <WidgetContainer
-        title={liveTrack.routeLabel}
+        title={shownTrack.routeLabel}
         icon={<Bus className="h-4 w-4" />}
         size="medium"
         className={className}
       >
-        <BusLiveView track={liveTrack} speedUnit={live.speedUnit} clockOffsetMs={live.clockOffsetMs} mapStyle={live.mapStyle} camera={live.camera} />
+        <BusLiveView track={shownTrack} speedUnit={live.speedUnit} clockOffsetMs={live.clockOffsetMs} mapStyle={live.mapStyle} camera={live.camera} />
       </WidgetContainer>
     );
   }
@@ -54,7 +62,8 @@ export const BusTrackingWidget = React.memo(function BusTrackingWidget({ classNa
       title="Bus Tracker"
       icon={<Bus className="h-4 w-4" />}
       size="medium"
-      loading={loading}
+      // Until the live load says whether a provider feeds the routes, which view applies is not known.
+      loading={loading || (allRoutes.length > 0 && live.provider === null)}
       error={error}
       className={className}
     >
@@ -67,6 +76,12 @@ export const BusTrackingWidget = React.memo(function BusTrackingWidget({ classNa
         <WidgetEmpty
           icon={<Bus className="h-8 w-8" />}
           message="No routes active right now"
+        />
+      ) : live.provider ? (
+        // The provider sends each school day's trips early in the morning, so none means no bus today.
+        <WidgetEmpty
+          icon={<Bus className="h-8 w-8" />}
+          message="No bus today"
         />
       ) : (
         <div className="overflow-auto h-full -mr-2 pr-2 space-y-3">
