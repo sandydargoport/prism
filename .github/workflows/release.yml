@@ -16,10 +16,15 @@ name: Release HA addon
 # To cut a release:
 #   1. `bash scripts/release.sh <new-version>` (bumps package.json +
 #      CHANGELOG + ha-app/config.yaml in lockstep)
-#   2. Open chore(release): <ver> PR, merge to master
-#   3. `git tag -a v<new-version> -m "Release <new-version>" && \
+#   2. Open the chore(release): <ver> PR, but do not merge it yet
+#   3. Tag the PR's head commit and push the tag:
+#      `git tag -a v<new-version> -m "Release <new-version>" && \
 #       git push origin v<new-version>`
-#   4. This workflow fires and publishes images for every arch.
+#   4. This workflow fires and publishes images for every arch
+#   5. Re-run the PR's CI; "HA add-on image is published" turns green,
+#      then merge with a merge commit
+# Home Assistant reads ha-app/config.yaml from master, so the bump must
+# not reach master before these images exist (#751, #757).
 
 on:
   push:

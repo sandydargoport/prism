@@ -81,7 +81,9 @@ console.log('✓ package.json: ' + previous + ' → $NEW_VERSION');
 # --- Bump ha-app/config.yaml version field ---------------------------
 # Single source of truth is package.json — this just keeps the HA addon
 # manifest in lockstep so the release pipeline pushes images to the
-# right tag.
+# right tag. The PR carrying this bump merges only after the tag's images
+# exist (scripts/check-ha-image.sh in CI), so master never offers HA a
+# version it cannot pull.
 if [[ -f ha-app/config.yaml ]]; then
   node -e "
 const fs = require('fs');
@@ -192,18 +194,22 @@ Release prep complete. Suggested next steps:
   gh pr create --base master --head chore/release-$NEW_VERSION \\
        --title "chore(release): $NEW_VERSION"
 
-After the PR merges to master:
+Tag the release PR's commit BEFORE merging it. Home Assistant reads
+ha-app/config.yaml from master, so master must not offer $NEW_VERSION until
+its images exist. CI's "HA add-on image is published" step keeps the PR red
+until they do (#757).
 
-  git checkout master && git pull
   git tag -a v$NEW_VERSION -m "Release $NEW_VERSION"
   git push origin v$NEW_VERSION
-  gh release create v$NEW_VERSION --title "$NEW_VERSION" \\
-       --notes-file <(awk '/^## \\[$NEW_VERSION\\]/{f=1;next} f&&/^## \\[/{exit} f' docs/CHANGELOG.md)
 
 The tag push fires .github/workflows/release.yml, which builds the HA
-addon for amd64 + aarch64 and publishes to ghcr.io. amd64 is fast
-(~5 min), aarch64 runs via QEMU and takes 30-60 min. Both must complete
-before HA users can pull the published image; until then HA Supervisor
-falls back to building locally from the in-addon Dockerfile.
+add-on for amd64 and aarch64 on native runners and publishes to ghcr.io.
+When both builds are done, re-run the PR's failed CI job, then merge with
+a merge commit so the tagged commit is part of master's history:
+
+  gh run rerun --failed <run-id>     # or "Re-run failed jobs" on the PR
+  gh pr merge chore/release-$NEW_VERSION --merge
+  gh release create v$NEW_VERSION --title "$NEW_VERSION" \\
+       --notes-file <(awk '/^## \\[$NEW_VERSION\\]/{f=1;next} f&&/^## \\[/{exit} f' docs/CHANGELOG.md)
 
 MSG

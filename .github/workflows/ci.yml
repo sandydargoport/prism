@@ -41,6 +41,12 @@ jobs:
       - name: Version sync (package.json ↔ CHANGELOG)
         run: bash scripts/check-version-sync.sh
 
+      # Home Assistant pulls the image of the version ha-app/config.yaml names,
+      # straight from master. A release PR stays red here until its tag has
+      # been built, so it can never merge ahead of its images (#757).
+      - name: HA add-on image is published
+        run: bash scripts/check-ha-image.sh
+
       # Syntax-check JS that doesn't flow through the TS/Next.js pipeline.
       # Caught nothing today, but had this been in place yesterday it would
       # have caught the duplicate `const windowUniques` in traffic/index.html
