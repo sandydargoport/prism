@@ -112,6 +112,18 @@ export function LiveTrackingCard({ routes, onBound }: { routes: RouteOption[]; o
     [tracks],
   );
 
+  // The clipboard API is missing on a plain http:// page and can refuse
+  // elsewhere, so only report a copy that happened. The token is select-all,
+  // so one tap selects all of it for copying by hand.
+  const handleCopyToken = async (token: string) => {
+    try {
+      await navigator.clipboard.writeText(token);
+      toast({ title: 'Token copied' });
+    } catch {
+      toast({ title: "Couldn't copy the token", description: 'Tap the token to select it, then copy it by hand.', variant: 'destructive' });
+    }
+  };
+
   const handleCreateToken = async () => {
     setCreating(true);
     try {
@@ -234,11 +246,12 @@ export function LiveTrackingCard({ routes, onBound }: { routes: RouteOption[]; o
           {newToken ? (
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <code className="flex-1 truncate rounded bg-muted px-2 py-1 text-xs">{newToken}</code>
+                <code className="flex-1 truncate select-all rounded bg-muted px-2 py-1 text-xs">{newToken}</code>
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => { void navigator.clipboard?.writeText(newToken); toast({ title: 'Token copied' }); }}
+                  aria-label="Copy token"
+                  onClick={() => void handleCopyToken(newToken)}
                 >
                   <Copy className="h-4 w-4" />
                 </Button>
