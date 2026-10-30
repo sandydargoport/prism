@@ -12,6 +12,7 @@
  *
  * Chosen 2026-10-27: screensaver and drift, performance mode, the on-screen
  * keyboard and the screen layout settings. Theme stays per browser for now.
+ * The time-of-day schedule joined 2026-10-30 (#692).
  * Derived values (the screensaver layout bridged from the dashboard) and
  * per-browser memory (which constellation was last taught) are left out.
  */
@@ -40,6 +41,8 @@ export const SCREEN_SETTING_KEYS = [
   'prism-orientation-override',
   'prism:screen-safe-zones',
   'prism:auto-hide-ui',
+  // Which dashboard it shows at which time of day (#692).
+  'prism-screen-schedule',
 ] as const;
 
 export type ScreenSettingKey = (typeof SCREEN_SETTING_KEYS)[number];

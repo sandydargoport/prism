@@ -78,6 +78,13 @@ export interface CssGridDisplayProps {
    * of its outline to the clip on whichever side it had moved towards.
    */
   drift?: boolean;
+  /**
+   * When a screen's schedule changes the dashboard (#692), widgets on both
+   * slide and resize to their new places and the rest fade. Only the
+   * dashboard's own grid: names must be unique on the page, and a separate
+   * screensaver shows the same widgets.
+   */
+  morph?: boolean;
   className?: string;
 }
 
@@ -102,6 +109,8 @@ export interface LayoutGridEditorProps {
   fadedIds?: ReadonlySet<string>;
   /** Display mode only; see CssGridDisplayProps. */
   drift?: boolean;
+  /** Display mode only; see CssGridDisplayProps. */
+  morph?: boolean;
   /** Edit mode only; see CssGridEditorProps. */
   idleToggles?: boolean;
   className?: string;

@@ -216,3 +216,130 @@ test.describe('Another screen\'s settings', () => {
     }
   });
 });
+
+/** `HH:mm` on the wall clock in `timeZone` at `at`. */
+function wallTime(at: number, timeZone: string): string {
+  return new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(at);
+}
+
+test.describe('Time-of-day layouts', () => {
+  test('a scheduled dashboard takes over when its time starts, once the screen is left alone, without a reload', async ({ browser }) => {
+    test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
+    test.setTimeout(180_000);
+    const tag = Date.now().toString(36);
+    const PORCH = `Porch ${tag}`;
+    const MORNING = `Morning ${tag}`;
+    const ZONE = 'America/Chicago';
+
+    const probe = await browser.newPage();
+    const parent = await getFirstParent(probe);
+    await probe.close();
+
+    const wallContext = await browser.newContext({ timezoneId: ZONE });
+    try {
+      const wall = await wallContext.newPage();
+      await verifySettingsPinViaAPI(wall, parent.name);
+      const settings = await (await wall.request.get('/api/settings')).json();
+      const zone: string = settings?.settings?.timezone || ZONE;
+
+      // Morning is the default dashboard with the clock and weather swapped
+      // and the shopping list left off.
+      const { layouts } = await (await wall.request.get('/api/layouts')).json() as { layouts: Array<{ isDefault: boolean; widgets: Array<{ i: string; x: number; y: number; w: number; h: number }> }> };
+      const home = layouts.find((l) => l.isDefault)!;
+      const at = (id: string) => home.widgets.find((w) => w.i === id)!;
+      const [clock, weather] = [at('clock'), at('weather')];
+      const morningWidgets = home.widgets
+        .filter((w) => w.i !== 'shopping')
+        .map((w) => w.i === 'clock' ? { ...w, x: weather.x, y: weather.y, w: weather.w, h: weather.h }
+          : w.i === 'weather' ? { ...w, x: clock.x, y: clock.y, w: clock.w, h: clock.h } : w);
+      const morning = await (await wall.request.post('/api/layouts', { data: { name: MORNING, widgets: morningWidgets } })).json();
+
+      // Name the wall, and give it a schedule from its own Displays page: from
+      // a moment half a day away, so the server's real clock never falls in it.
+      const start = Math.ceil((Date.now() + 12 * 3600_000) / 60_000) * 60_000;
+      await wall.goto('/settings?section=displays');
+      await wall.getByLabel('Name for this screen').fill(PORCH);
+      await wall.getByRole('button', { name: 'Name this display' }).click();
+      const row = wall.getByTestId('display-row').filter({ hasText: PORCH });
+      await row.getByRole('button', { name: 'Schedule' }).click();
+      const panel = wall.getByTestId('screen-schedule');
+      await panel.getByRole('button', { name: 'Add a time' }).click();
+      await panel.getByLabel('Dashboard for time 1').selectOption({ label: MORNING });
+      await panel.getByLabel('Start of time 1').fill(wallTime(start, zone));
+      await panel.getByLabel('End of time 1').fill(wallTime(start + 3600_000, zone));
+      const days = panel.getByRole('group', { name: 'Days for time 1' });
+      for (const day of ['Sunday', 'Saturday']) await days.getByRole('button', { name: day }).click();
+      await panel.getByRole('button', { name: 'Save schedule' }).click();
+      await expect(panel).toContainText(`Saved. ${PORCH} follows it within a minute.`);
+      await expect.poll(() => readStorage(wall, 'prism-screen-schedule')).toContain(morning.id);
+
+      // The wall's clock, ninety seconds before the window. Drift off, so an
+      // idle screen's widgets stand still to be measured.
+      await wall.evaluate(() => localStorage.setItem('prism-screensaver-drift', 'off'));
+      await wall.clock.install({ time: start - 90_000 });
+      await wall.goto('/');
+      const cell = (id: string) => wall.locator(`[data-widget="${id}"]`);
+      await expect(cell('shopping')).toBeVisible({ timeout: 60_000 });
+      const before = await cell('clock').boundingBox();
+      const weatherBefore = await cell('weather').boundingBox();
+      await wall.evaluate(() => {
+        (window as unknown as { stayedLoaded: boolean }).stayedLoaded = true;
+        // Every view transition's animated parts, to see the widgets morph.
+        const start = document.startViewTransition.bind(document);
+        const seen: string[] = [];
+        (window as unknown as { morphs: string[] }).morphs = seen;
+        document.startViewTransition = (arg) => {
+          const t = start(arg);
+          t.ready.then(() => {
+            for (const a of document.getAnimations()) {
+              const p = (a.effect as KeyframeEffect | null)?.pseudoElement;
+              if (p) seen.push(p);
+            }
+          }, () => {});
+          return t;
+        };
+      });
+
+      // Someone touches the screen half a minute before; the window starts
+      // but the dashboard stays while the touch is under a minute old. The
+      // clock stands still between jumps, so each is exact.
+      await wall.clock.pauseAt(start - 30_000);
+      await wall.evaluate(() => window.dispatchEvent(new PointerEvent('pointerdown')));
+      await wall.clock.fastForward(40_000);
+      await wall.waitForTimeout(1_000);
+      await expect(cell('shopping')).toBeVisible();
+
+      // Left alone for the minute: Morning, in place.
+      await wall.clock.fastForward(30_000);
+      await wall.clock.resume();
+      await expect(cell('shopping')).toHaveCount(0, { timeout: 10_000 });
+      await expect(wall).toHaveURL(/\/$/);
+      expect(await wall.evaluate(() => (window as unknown as { stayedLoaded?: boolean }).stayedLoaded)).toBe(true);
+      // The clock moved to where the weather was, by sliding there.
+      await wall.waitForTimeout(2_000);
+      const after = await cell('clock').boundingBox();
+      expect(Math.abs(after!.x - weatherBefore!.x)).toBeLessThan(2);
+      expect(Math.abs(after!.y - weatherBefore!.y)).toBeLessThan(2);
+      expect(Math.abs(after!.x - before!.x) + Math.abs(after!.y - before!.y)).toBeGreaterThan(20);
+      const morphs = await wall.evaluate(() => (window as unknown as { morphs: string[] }).morphs);
+      expect(morphs).toContain('::view-transition-group(widget-clock)');
+
+      const { displays } = await (await wall.request.get('/api/displays')).json();
+      const porch = displays.find((d: { name: string }) => d.name === PORCH);
+
+      // Loaded inside a window, the home page opens the scheduled dashboard
+      // straight away. The server's clock is real, so the window is now.
+      const now = Date.now();
+      const rule = { days: [0, 1, 2, 3, 4, 5, 6], from: wallTime(now - 120_000, zone), to: wallTime(now + 3600_000, zone), dashboardId: morning.id };
+      await wall.request.patch(`/api/displays/${porch.id}`, { data: { settings: { 'prism-screen-schedule': JSON.stringify([rule]) } } });
+      const opened = await wall.request.get('/', { maxRedirects: 0 });
+      expect(opened.status()).toBe(307);
+      expect(opened.headers().location).toBe(`/d/${morning.slug}`);
+
+      await wall.request.delete(`/api/displays/${porch.id}`);
+      await wall.request.delete(`/api/layouts/${morning.id}`);
+    } finally {
+      await wallContext.close();
+    }
+  });
+});

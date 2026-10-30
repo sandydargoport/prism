@@ -1205,6 +1205,45 @@ html[data-virtual-keyboard-open] [data-keyboard-aware-dialog] {
   [data-drift] { animation: none; }
 }
 
+/* A screen's schedule changing the dashboard (#692). React names each widget
+   for the change (CssGridDisplay); a widget on both dashboards slides and
+   resizes to its new place, slowly, each a little after the one before, and
+   one on only one of them fades. Only transform and opacity are animated, on
+   snapshots, so weak wall hardware keeps up; the widget's real content is
+   there from the end. The minimal level skips the animation altogether. */
+::view-transition-group(.schedule-morph) {
+  animation-duration: 900ms;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+::view-transition-old(.schedule-morph),
+::view-transition-new(.schedule-morph) {
+  /* Fill the moving box at an even scale: stretched to its shape, a card's
+     text went tall and thin on the way. */
+  height: 100%;
+  object-fit: contain;
+  animation-duration: 900ms;
+}
+::view-transition-new(.schedule-fade-in) {
+  animation: 500ms ease-out 400ms both schedule-fade-in;
+}
+::view-transition-old(.schedule-fade-out) {
+  animation: 400ms ease-in both schedule-fade-out;
+}
+@keyframes schedule-fade-in { from { opacity: 0; } }
+@keyframes schedule-fade-out { to { opacity: 0; } }
+
+/* Reduced motion: nothing slides, the two dashboards crossfade quickly. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(.schedule-morph) { animation: none; }
+  ::view-transition-old(.schedule-morph),
+  ::view-transition-new(.schedule-morph),
+  ::view-transition-new(.schedule-fade-in),
+  ::view-transition-old(.schedule-fade-out) {
+    animation-duration: 200ms;
+    animation-delay: 0s;
+  }
+}
+
 /* The minimal performance level (#691): a calm dashboard's widgets blink out
    and back rather than fading over a second, so the screen has next to no
    frames to draw. Drift stays: it is one cheap animation, and it is there for

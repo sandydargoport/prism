@@ -129,6 +129,12 @@ Create separate dashboards for different rooms or displays. Click the dashboard-
 - Each dashboard has an **independent** widget layout, screensaver layout, and orientation.
 - Bookmark a dashboard URL on a dedicated device for instant access.
 
+### Different dashboards at different times
+
+A named screen (*Settings → Displays*) can show other dashboards at set times, for example a morning dashboard with the bus large on school days. In *Settings → Displays*, **Schedule** on the screen's row lists its times: each shows one dashboard from a start to an end time on the days ticked. Outside every time the screen shows its own dashboard. Times are in the household time zone; one that ends before it starts runs past midnight, and one that starts and ends at the same time lasts the whole day. When two times overlap, the higher one in the list wins.
+
+Make the dashboard for a time with **Save As** in the editor and rearrange it there. When a time starts or ends, the screen changes over in place: widgets that are on both dashboards slide to their new places and the rest fade. The change waits until nobody has touched the screen for a minute, and never happens while the layout is being edited. Opening another dashboard by hand keeps it until the next time starts or ends. With reduced motion the dashboards crossfade, and at the **Minimal** performance level they swap at once.
+
 ### Saving
 
 - **Save** overwrites the current dashboard's layout.

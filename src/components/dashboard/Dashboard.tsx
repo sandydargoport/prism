@@ -42,6 +42,7 @@ import { WidgetErrorBoundary } from '@/components/dashboard/WidgetErrorBoundary'
 import { WidgetExpandProvider, useWidgetExpand } from '@/components/dashboard/WidgetExpandProvider';
 import { useDashboardData } from './useDashboardData';
 import { useDashboardLayout, editLink } from './useDashboardLayout';
+import { useScreenSchedule } from './useScreenSchedule';
 import { buildWidgetProps } from './useWidgetProps';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
@@ -125,7 +126,16 @@ export function Dashboard({
     deleteChore: () => {},
   });
 
-  const layout = useDashboardLayout(data.layouts, slug);
+  // A named screen's time-of-day rules pick which dashboard this page shows (#692).
+  const editingRef = useRef(false);
+  const schedule = useScreenSchedule({
+    routeSlug: slug,
+    layouts: data.layouts.allLayouts,
+    loading: data.layouts.loading,
+    editing: editingRef,
+  });
+  const layout = useDashboardLayout(data.layouts, schedule.slug);
+  useEffect(() => { editingRef.current = layout.isEditing; }, [layout.isEditing]);
 
   // Persist visible widget IDs to localStorage for next load's prioritized fetching
   useEffect(() => {
@@ -232,9 +242,11 @@ export function Dashboard({
   // Dashboard management callbacks for LayoutEditor
   // Only offered inside the layout editor, so the next dashboard opens in edit
   // mode too.
+  const { pick: pickDashboard } = schedule;
   const handleSwitchDashboard = useCallback((targetSlug: string) => {
+    pickDashboard(targetSlug);
     router.push(editLink(`/d/${targetSlug}`));
-  }, [router]);
+  }, [router, pickDashboard]);
 
   const handleCreateDashboard = useCallback(async (name: string, startFrom: 'blank' | 'template' | 'copy') => {
     const { DEFAULT_TEMPLATE } = await import('@/lib/constants/layoutTemplates');
@@ -359,213 +371,220 @@ export function Dashboard({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
+  // Always this wrapper, styled or not, so a change of text size does not
+  // remount the dashboard under it.
   if (isMobile) {
     return (
-      <AppShell
-        user={activeUser ? { id: activeUser.id, name: activeUser.name, avatarUrl: activeUser.avatarUrl, color: activeUser.color } : undefined}
-        onLogout={activeUser ? clearActiveUser : undefined}
-        onLogin={handleLogin}
-      >
-        <MobileDashboard data={data} />
-      </AppShell>
+      <div style={schedule.zoomStyle}>
+        <AppShell
+          user={activeUser ? { id: activeUser.id, name: activeUser.name, avatarUrl: activeUser.avatarUrl, color: activeUser.color } : undefined}
+          onLogout={activeUser ? clearActiveUser : undefined}
+          onLogin={handleLogin}
+        >
+          <MobileDashboard data={data} />
+        </AppShell>
+      </div>
     );
   }
 
   return (
-    <AppShell
-      user={activeUser ? { id: activeUser.id, name: activeUser.name, avatarUrl: activeUser.avatarUrl, color: activeUser.color } : undefined}
-      onLogout={activeUser ? clearActiveUser : undefined}
-      onLogin={handleLogin}
-      showWallpaper
-    >
-      <DashboardLayout className={className}>
-        <DashboardHeader
-          onScreensaverClick={() => window.dispatchEvent(new Event('prism:screensaver'))}
-          onEditClick={activeUser && activeUser.role !== 'parent' ? undefined : layout.handleEditStart}
-        />
-
-        {layout.isEditing && (
-          <LayoutEditor
-            widgets={layout.editingWidgets}
-            onWidgetsChange={layout.setEditingWidgets}
-            onSave={layout.handleSave}
-            onSaveAs={layout.handleSaveAs}
-            onReset={layout.handleReset}
-            onCancel={() => { layout.setEditingScreensaver(false); layout.handleCancel(); }}
-            onDeleteLayout={data.layouts.deleteLayout}
-            layoutName={layout.activeLayout?.name}
-            savedLayouts={data.layouts.allLayouts.map(l => ({ id: l.id, name: l.name, widgets: l.widgets }))}
-            editingScreensaver={layout.editingScreensaver}
-            onToggleScreensaverEdit={() => layout.setEditingScreensaver(!layout.editingScreensaver)}
-            screensaverWidgets={layout.ssLayout}
-            onScreensaverWidgetToggle={layout.handleSsWidgetToggle}
-            onScreensaverSave={layout.handleSsSave}
-            onScreensaverSaveAs={layout.handleSsSaveAs}
-            onScreensaverReset={layout.handleSsReset}
-            onSelectScreensaverTemplate={layout.handleSelectSsTemplate}
-            screensaverPresets={layout.ssPresets}
-            onSelectScreensaverPreset={layout.handleSelectSsPreset}
-            onDeleteScreensaverPreset={layout.handleDeleteSsPreset}
-            screensaverMode={layout.activeLayout ? screensaverMode : undefined}
-            onScreensaverModeChange={setScreensaverMode}
-            screenGuideOrientation={screenGuideOrientation}
-            onScreenGuideOrientationChange={setScreenGuideOrientation}
-            enabledSizes={enabledSizes}
-            onToggleSize={handleToggleSize}
-            gridScrollY={gridScrollY}
-            gridVisibleRows={gridVisibleRows}
-            gridScrollX={gridScrollX}
-            gridVisibleCols={gridVisibleCols}
-            gridTotalRows={gridTotalRows}
-            gridTotalCols={gridTotalCols}
-            scrollToGridRef={scrollToGridRef}
-            allDashboards={data.layouts.allLayouts.map(l => ({ id: l.id, name: l.name, slug: l.slug, isDefault: l.isDefault }))}
-            currentDashboardId={layout.activeLayout?.id}
-            onSwitchDashboard={handleSwitchDashboard}
-            onCreateDashboard={handleCreateDashboard}
-            onRenameDashboard={handleRenameDashboard}
-            onDeleteDashboard={handleDeleteDashboard}
+    <div style={schedule.zoomStyle}>
+      <AppShell
+        user={activeUser ? { id: activeUser.id, name: activeUser.name, avatarUrl: activeUser.avatarUrl, color: activeUser.color } : undefined}
+        onLogout={activeUser ? clearActiveUser : undefined}
+        onLogin={handleLogin}
+        showWallpaper
+      >
+        <DashboardLayout className={className}>
+          <DashboardHeader
+            onScreensaverClick={() => window.dispatchEvent(new Event('prism:screensaver'))}
+            onEditClick={activeUser && activeUser.role !== 'parent' ? undefined : layout.handleEditStart}
           />
-        )}
 
-        {layout.editingScreensaver && layout.isEditing ? (
-          <LayoutGridEditor
-            layout={layout.ssLayout}
-            onLayoutChange={layout.handleSsLayoutChange}
-            isEditable
-            renderWidget={renderSsWidget}
-            margin={4}
-            headerOffset={100}
-            bottomOffset={bottomOffset}
-            minVisibleRows={8}
-            theme={SCREENSAVER_THEME}
-            previewFit="contain"
-            gridHelperText="Drag widgets to reposition &bull; Scroll to see more"
-            className="mx-4"
-            screenGuideOrientation={screenGuideOrientation}
-            enabledSizes={enabledSizes}
-            onScrollInfo={handleScrollInfo}
-            scrollToRef={scrollToGridRef}
-          />
-        ) : (
-          <WidgetErrorBoundary>
-            <WidgetExpandProvider renderMagnified={renderMagnifiedWidget}>
-              <LayoutGridEditor
-                layout={layout.activeWidgets}
-                onLayoutChange={layout.isEditing ? layout.setEditingWidgets : () => {}}
-                isEditable={layout.isEditing}
-                renderWidget={renderDashboardWidget}
-                fadedIds={fadedIds}
-                drift={idleDrift}
-                idleToggles={layout.isEditing && screensaverMode === 'calm'}
-                widgetConstraints={dashboardConstraints}
-                margin={8}
-                headerOffset={layout.isEditing ? 140 : uiHidden ? 0 : 56}
-                bottomOffset={bottomOffset}
-                screenGuideOrientation={screenGuideOrientation}
-                enabledSizes={enabledSizes}
-                onScrollInfo={handleScrollInfo}
-                scrollToRef={scrollToGridRef}
+          {layout.isEditing && (
+            <LayoutEditor
+              widgets={layout.editingWidgets}
+              onWidgetsChange={layout.setEditingWidgets}
+              onSave={layout.handleSave}
+              onSaveAs={layout.handleSaveAs}
+              onReset={layout.handleReset}
+              onCancel={() => { layout.setEditingScreensaver(false); layout.handleCancel(); }}
+              onDeleteLayout={data.layouts.deleteLayout}
+              layoutName={layout.activeLayout?.name}
+              savedLayouts={data.layouts.allLayouts.map(l => ({ id: l.id, name: l.name, widgets: l.widgets }))}
+              editingScreensaver={layout.editingScreensaver}
+              onToggleScreensaverEdit={() => layout.setEditingScreensaver(!layout.editingScreensaver)}
+              screensaverWidgets={layout.ssLayout}
+              onScreensaverWidgetToggle={layout.handleSsWidgetToggle}
+              onScreensaverSave={layout.handleSsSave}
+              onScreensaverSaveAs={layout.handleSsSaveAs}
+              onScreensaverReset={layout.handleSsReset}
+              onSelectScreensaverTemplate={layout.handleSelectSsTemplate}
+              screensaverPresets={layout.ssPresets}
+              onSelectScreensaverPreset={layout.handleSelectSsPreset}
+              onDeleteScreensaverPreset={layout.handleDeleteSsPreset}
+              screensaverMode={layout.activeLayout ? screensaverMode : undefined}
+              onScreensaverModeChange={setScreensaverMode}
+              screenGuideOrientation={screenGuideOrientation}
+              onScreenGuideOrientationChange={setScreenGuideOrientation}
+              enabledSizes={enabledSizes}
+              onToggleSize={handleToggleSize}
+              gridScrollY={gridScrollY}
+              gridVisibleRows={gridVisibleRows}
+              gridScrollX={gridScrollX}
+              gridVisibleCols={gridVisibleCols}
+              gridTotalRows={gridTotalRows}
+              gridTotalCols={gridTotalCols}
+              scrollToGridRef={scrollToGridRef}
+              allDashboards={data.layouts.allLayouts.map(l => ({ id: l.id, name: l.name, slug: l.slug, isDefault: l.isDefault }))}
+              currentDashboardId={layout.activeLayout?.id}
+              onSwitchDashboard={handleSwitchDashboard}
+              onCreateDashboard={handleCreateDashboard}
+              onRenameDashboard={handleRenameDashboard}
+              onDeleteDashboard={handleDeleteDashboard}
+            />
+          )}
+
+          {layout.editingScreensaver && layout.isEditing ? (
+            <LayoutGridEditor
+              layout={layout.ssLayout}
+              onLayoutChange={layout.handleSsLayoutChange}
+              isEditable
+              renderWidget={renderSsWidget}
+              margin={4}
+              headerOffset={100}
+              bottomOffset={bottomOffset}
+              minVisibleRows={8}
+              theme={SCREENSAVER_THEME}
+              previewFit="contain"
+              gridHelperText="Drag widgets to reposition &bull; Scroll to see more"
+              className="mx-4"
+              screenGuideOrientation={screenGuideOrientation}
+              enabledSizes={enabledSizes}
+              onScrollInfo={handleScrollInfo}
+              scrollToRef={scrollToGridRef}
+            />
+          ) : (
+            <WidgetErrorBoundary>
+              <WidgetExpandProvider renderMagnified={renderMagnifiedWidget}>
+                <LayoutGridEditor
+                  layout={layout.activeWidgets}
+                  onLayoutChange={layout.isEditing ? layout.setEditingWidgets : () => {}}
+                  isEditable={layout.isEditing}
+                  renderWidget={renderDashboardWidget}
+                  fadedIds={fadedIds}
+                  drift={idleDrift}
+                  morph
+                  idleToggles={layout.isEditing && screensaverMode === 'calm'}
+                  widgetConstraints={dashboardConstraints}
+                  margin={8}
+                  headerOffset={layout.isEditing ? 140 : uiHidden ? 0 : 56}
+                  bottomOffset={bottomOffset}
+                  screenGuideOrientation={screenGuideOrientation}
+                  enabledSizes={enabledSizes}
+                  onScrollInfo={handleScrollInfo}
+                  scrollToRef={scrollToGridRef}
+                />
+              </WidgetExpandProvider>
+            </WidgetErrorBoundary>
+          )}
+
+          {showAddTask && (
+            <AddTaskModal open={showAddTask} onOpenChange={setShowAddTask}
+              onTaskCreated={() => { data.tasks.refresh(); }} />
+          )}
+          {showAddMessage && (
+            <AddMessageModal open={showAddMessage} onOpenChange={setShowAddMessage}
+              currentUser={activeUser ? { id: activeUser.id, name: activeUser.name, color: activeUser.color, avatarUrl: activeUser.avatarUrl } : undefined}
+              onMessageCreated={() => { data.messages.refresh(); }} />
+          )}
+          {showAddChore && (
+            <AddChoreModal open={showAddChore} onOpenChange={setShowAddChore}
+              onChoreCreated={() => { data.chores.refresh(); }} />
+          )}
+          {showAddShopping && (
+            <AddShoppingItemModal open={showAddShopping} onOpenChange={setShowAddShopping}
+              onItemCreated={() => { data.shopping.refresh(); }} />
+          )}
+
+          {editingChore && (
+            <Suspense fallback={null}>
+              <ChoreModal
+                chore={editingChore}
+                familyMembers={familyMembers}
+                onClose={() => setEditingChore(null)}
+                onSave={async (updated) => {
+                  await saveEditedChore(editingChore.id, updated);
+                }}
               />
-            </WidgetExpandProvider>
-          </WidgetErrorBoundary>
-        )}
+            </Suspense>
+          )}
 
-        {showAddTask && (
-          <AddTaskModal open={showAddTask} onOpenChange={setShowAddTask}
-            onTaskCreated={() => { data.tasks.refresh(); }} />
-        )}
-        {showAddMessage && (
-          <AddMessageModal open={showAddMessage} onOpenChange={setShowAddMessage}
-            currentUser={activeUser ? { id: activeUser.id, name: activeUser.name, color: activeUser.color, avatarUrl: activeUser.avatarUrl } : undefined}
-            onMessageCreated={() => { data.messages.refresh(); }} />
-        )}
-        {showAddChore && (
-          <AddChoreModal open={showAddChore} onOpenChange={setShowAddChore}
-            onChoreCreated={() => { data.chores.refresh(); }} />
-        )}
-        {showAddShopping && (
-          <AddShoppingItemModal open={showAddShopping} onOpenChange={setShowAddShopping}
-            onItemCreated={() => { data.shopping.refresh(); }} />
-        )}
+          {editingTask && (
+            <Suspense fallback={null}>
+              <TaskModal
+                task={editingTask}
+                familyMembers={familyMembers}
+                taskLists={taskLists}
+                onClose={() => setEditingTask(null)}
+                onSave={async (updated) => {
+                  try {
+                    const res = await fetch(`/api/tasks/${editingTask.id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        title: updated.title,
+                        priority: updated.priority,
+                        category: updated.category,
+                        assignedTo: updated.assignedTo?.id,
+                        dueDate: updated.dueDate,
+                        dueTime: updated.dueTime,
+                        completed: updated.completed,
+                        listId: updated.listId,
+                      }),
+                    });
+                    if (!res.ok) throw new Error('Failed to update task');
+                    data.tasks.refresh();
+                  } catch (err) {
+                    toast({ title: err instanceof Error ? err.message : 'Failed to update task', variant: 'destructive' });
+                  } finally {
+                    setEditingTask(null);
+                  }
+                }}
+              />
+            </Suspense>
+          )}
 
-        {editingChore && (
-          <Suspense fallback={null}>
-            <ChoreModal
-              chore={editingChore}
-              familyMembers={familyMembers}
-              onClose={() => setEditingChore(null)}
-              onSave={async (updated) => {
-                await saveEditedChore(editingChore.id, updated);
-              }}
-            />
-          </Suspense>
-        )}
-
-        {editingTask && (
-          <Suspense fallback={null}>
-            <TaskModal
-              task={editingTask}
-              familyMembers={familyMembers}
-              taskLists={taskLists}
-              onClose={() => setEditingTask(null)}
-              onSave={async (updated) => {
-                try {
-                  const res = await fetch(`/api/tasks/${editingTask.id}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      title: updated.title,
-                      priority: updated.priority,
-                      category: updated.category,
-                      assignedTo: updated.assignedTo?.id,
-                      dueDate: updated.dueDate,
-                      dueTime: updated.dueTime,
-                      completed: updated.completed,
-                      listId: updated.listId,
-                    }),
-                  });
-                  if (!res.ok) throw new Error('Failed to update task');
-                  data.tasks.refresh();
-                } catch (err) {
-                  toast({ title: err instanceof Error ? err.message : 'Failed to update task', variant: 'destructive' });
-                } finally {
-                  setEditingTask(null);
-                }
-              }}
-            />
-          </Suspense>
-        )}
-
-        {editingMeal && (
-          <Suspense fallback={null}>
-            <MealModal
-              meal={editingMeal}
-              weekOf={editingMeal.weekOf}
-              dayOptions={['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const}
-              recipes={recipes}
-              onClose={() => setEditingMeal(null)}
-              onSave={async (updates) => {
-                try {
-                  const res = await fetch(`/api/meals/${editingMeal.id}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(updates),
-                  });
-                  if (!res.ok) throw new Error('Failed to update meal');
-                  data.meals.refresh();
-                } catch (err) {
-                  toast({ title: err instanceof Error ? err.message : 'Failed to update meal', variant: 'destructive' });
-                } finally {
-                  setEditingMeal(null);
-                }
-              }}
-            />
-          </Suspense>
-        )}
-      </DashboardLayout>
-      <ConfirmDialog {...confirmDialogProps} />
-    </AppShell>
+          {editingMeal && (
+            <Suspense fallback={null}>
+              <MealModal
+                meal={editingMeal}
+                weekOf={editingMeal.weekOf}
+                dayOptions={['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const}
+                recipes={recipes}
+                onClose={() => setEditingMeal(null)}
+                onSave={async (updates) => {
+                  try {
+                    const res = await fetch(`/api/meals/${editingMeal.id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(updates),
+                    });
+                    if (!res.ok) throw new Error('Failed to update meal');
+                    data.meals.refresh();
+                  } catch (err) {
+                    toast({ title: err instanceof Error ? err.message : 'Failed to update meal', variant: 'destructive' });
+                  } finally {
+                    setEditingMeal(null);
+                  }
+                }}
+              />
+            </Suspense>
+          )}
+        </DashboardLayout>
+        <ConfirmDialog {...confirmDialogProps} />
+      </AppShell>
+    </div>
   );
 }
 

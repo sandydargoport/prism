@@ -38,6 +38,7 @@ export function LayoutGridEditor({
   previewFit = 'stretch',
   fadedIds,
   drift,
+  morph,
   idleToggles,
   gridHelperText,
   className,
@@ -742,6 +743,7 @@ export function LayoutGridEditor({
       designOrientation={screenGuideOrientation}
       fadedIds={fadedIds}
       drift={drift}
+      morph={morph}
       className={className}
     />
   );

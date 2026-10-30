@@ -2,19 +2,21 @@ import { redirect } from 'next/navigation';
 import { DashboardClient } from './DashboardClient';
 import { db } from '@/lib/db/client';
 import { currentDisplay } from '@/lib/auth/displayIdentity';
+import { getHouseholdTimezone } from '@/lib/householdTimezone';
+import { screenDashboardAt } from '@/lib/displays/screenSchedule';
 
 /**
  * A named screen with its own dashboard set (#690) opens on that one instead
- * of the household default. Null when it has none, or it no longer exists.
+ * of the household default, or on the one its schedule shows right now
+ * (#692). Null when it has none, or it no longer exists.
  */
 async function screenDashboardSlug(): Promise<string | null> {
   try {
     const screen = await currentDisplay();
-    if (!screen?.dashboardId) return null;
-    const layout = await db.query.layouts.findFirst({
-      where: (l, { eq: eqFn }) => eqFn(l.id, screen.dashboardId!),
-      columns: { slug: true, isDefault: true },
-    });
+    if (!screen) return null;
+    const all = await db.query.layouts.findMany({ columns: { id: true, slug: true, isDefault: true } });
+    const id = screenDashboardAt(screen, Date.now(), await getHouseholdTimezone(), (d) => all.some((l) => l.id === d));
+    const layout = all.find((l) => l.id === id);
     return layout && !layout.isDefault ? layout.slug : null;
   } catch {
     return null;

@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, ViewTransition } from 'react';
+import { SCHEDULE_TRANSITION } from '@/lib/displays/screenSchedule';
 import { WidgetBgOverrideProvider } from '@/components/widgets/WidgetContainer';
 import { getWidgetStyle, getWidgetContentStyle, getTextColorClass } from './gridWidgetStyles';
 import { useSquareCells } from './useSquareCells';
@@ -8,6 +9,21 @@ import { useViewportSize } from '@/lib/hooks/useViewportSize';
 import { GRID_COLS } from '@/lib/constants/grid';
 import { resolveFitMode, containGeometry } from './fitMode';
 import type { CssGridDisplayProps } from './gridEditorTypes';
+// A widget on both dashboards moves; one on only one fades (schedule-* in
+// globals.css). Only under a scheduled change: any other transition, such as
+// a navigation, leaves the grid alone as before.
+const MORPH = { [SCHEDULE_TRANSITION]: 'schedule-morph', default: 'none' };
+const FADE_IN = { [SCHEDULE_TRANSITION]: 'schedule-fade-in', default: 'none' };
+const FADE_OUT = { [SCHEDULE_TRANSITION]: 'schedule-fade-out', default: 'none' };
+/** Each widget starts a little after the one before, up to this many steps. */
+const STAGGER_MS = 60;
+const STAGGER_STEPS = 8;
+
+/** A view-transition-name for a widget id (letters, digits, - and _ only). */
+function morphName(id: string): string {
+  return `widget-${id.replace(/[^A-Za-z0-9_-]/g, '_')}`;
+}
+
 /** One figure eight, in seconds. The keyframes are prism-drift in globals.css. */
 const DRIFT_PERIOD_S = 96;
 
@@ -80,6 +96,7 @@ export function CssGridDisplay({
   screenFrame,
   fadedIds,
   drift = false,
+  morph = false,
   className,
 }: CssGridDisplayProps) {
   const { containerRef, cellSize: widthCellSize, width, top, zoom, remeasure } = useSquareCells(cols, containerPadding, margin, fillHeight);
@@ -261,6 +278,11 @@ export function CssGridDisplay({
         ...(centerContain ? { display: 'flex', alignItems: 'center', justifyContent: 'center' } : {}),
       }}
     >
+      {morph && (
+        <style>{visibleWidgets.slice(0, STAGGER_STEPS).map((w, i) =>
+          `::view-transition-group(${morphName(w.i)}){animation-delay:${i * STAGGER_MS}ms}`,
+        ).join('') + '@media (prefers-reduced-motion:reduce){::view-transition-group(*){animation-delay:0s}}'}</style>
+      )}
       <div style={gridStyle}>
         {visibleWidgets.map(w => {
           const widgetStyle = getWidgetStyle(w);
@@ -269,7 +291,7 @@ export function CssGridDisplay({
           const hasCustomBg = !!w.backgroundColor;
           const faded = fadedIds?.has(w.i) ?? false;
 
-          return (
+          const cell = (
             <div
               key={w.i}
               className={`widget-cell relative overflow-hidden ${textClass} transition-opacity duration-1000 motion-reduce:duration-200`}
@@ -293,6 +315,12 @@ export function CssGridDisplay({
                 </div>
               </WidgetBgOverrideProvider>
             </div>
+          );
+          if (!morph) return cell;
+          return (
+            <ViewTransition key={w.i} name={morphName(w.i)} default="none" update={MORPH} share={MORPH} enter={FADE_IN} exit={FADE_OUT}>
+              {cell}
+            </ViewTransition>
           );
         })}
       </div>
