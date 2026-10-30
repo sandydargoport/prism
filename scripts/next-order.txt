@@ -6,12 +6,12 @@
 # closed issue is simply skipped, so this file never needs cleaning up.
 691
 690
+692
 658
 52
 734
 687
 738
-692
 672
 671
 479
