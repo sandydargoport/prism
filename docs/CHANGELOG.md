@@ -23,6 +23,7 @@ All notable changes to Prism are documented in this file.
 
 ### Fixed
 - **Birthdays on a phone opens the birthdays list, not the calendar.** Tapping the Birthdays tile on the phone dashboard used to open the calendar (in agenda view), and the card in the list layout did nothing. Both now open the full Birthdays widget, with every upcoming birthday that fits.
+- **The on-screen keyboard's microphone key is visible on every display.** It was labelled with the 🎤 emoji, which shows as a blank key on a display whose browser has no emoji font, so there seemed to be no microphone key. It now uses the same self-hosted image as the rest of Prism's emoji.
 - **"Hide widget outlines" is there with no transition effect.** The switch, on the screensaver's own settings panel and in *Settings → Appearance → Screensaver*, only appeared once a transition effect was picked, so a screensaver with the effect set to None could not hide its widget outlines.
 - **The Kroger redirect URI's Copy button says whether it worked.** On a plain `http://` page, or when the browser refuses, it now says it could not copy instead of doing nothing, and one tap on the address selects all of it.
 - **The bus provider token's copy button no longer says "Token copied" when nothing was copied.** On a plain `http://` page, or when the browser refuses, it now says it could not copy, and one tap on the token selects all of it for copying by hand.

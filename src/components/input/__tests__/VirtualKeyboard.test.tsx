@@ -192,3 +192,18 @@ describe('VirtualKeyboard auto-capitalization', () => {
     expect(keyLabel('~')).toBe('~'); // still the shift layout
   });
 });
+
+describe('VirtualKeyboard microphone key', () => {
+  // Labelled with the emoji character, the key was blank on a display whose
+  // browser has no emoji font, so it looked as if there were no mic key.
+  it('is labelled with the Twemoji image, not an emoji character, and starts listening', () => {
+    openFor(makeField('<input type="text">'));
+    const key = document.querySelector('[data-virtual-keyboard] [data-skbtn="{mic}"]')!;
+    const img = key.querySelector('img');
+    expect(img?.getAttribute('src')).toBe('/twemoji/1f3a4.svg');
+    expect(img?.getAttribute('alt')).toBe('Microphone');
+    expect(key.textContent).not.toContain('🎤');
+    tap('{mic}');
+    expect(ctx.startListening).toHaveBeenCalled();
+  });
+});
