@@ -45,6 +45,7 @@ import { useDashboardData } from './useDashboardData';
 import { useDashboardLayout, editLink } from './useDashboardLayout';
 import { useScreenSchedule } from './useScreenSchedule';
 import { useRemoveBirthday } from './useRemoveBirthday';
+import { useIdleSwitchCheck } from '@/components/layout/useIdleSwitchCheck';
 import { buildWidgetProps } from './useWidgetProps';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
@@ -291,6 +292,13 @@ export function Dashboard({
   }, [layout.activeLayout, data.layouts, router]);
 
   const removeBirthday = useRemoveBirthday(confirmAction);
+  // Tonight's times and crossed offsets for a day and night pair being edited.
+  const idleCheck = useIdleSwitchCheck(layout.isEditing ? layout.editingBackground : null);
+  // The Idle screen tab's Behind it bar sits under the toolbar: one row, or
+  // about four with a day and night pair.
+  const idleBarHeight = layout.isEditing && layout.editTab === 'idle'
+    ? ('switch' in layout.editingBackground ? 130 : 36)
+    : 0;
   const widgetProps = buildWidgetProps(data, requireAuth, {
     setShowAddTask, setShowAddMessage, setShowAddChore, setShowAddShopping,
   }, weatherLocation, confirmAction, {
@@ -426,6 +434,9 @@ export function Dashboard({
               onDeleteScreensaverPreset={layout.handleDeleteSsPreset}
               idleBackground={layout.activeLayout ? layout.editingBackground : undefined}
               onIdleBackgroundChange={layout.setEditingBackground}
+              idleHalf={layout.idleHalf}
+              onIdleHalfChange={layout.setIdleHalf}
+              idleCheck={idleCheck}
               screenGuideOrientation={screenGuideOrientation}
               onScreenGuideOrientationChange={setScreenGuideOrientation}
               enabledSizes={enabledSizes}
@@ -453,7 +464,7 @@ export function Dashboard({
               isEditable
               renderWidget={renderSsWidget}
               margin={4}
-              headerOffset={100}
+              headerOffset={100 + idleBarHeight}
               bottomOffset={bottomOffset}
               minVisibleRows={8}
               theme={SCREENSAVER_THEME}
@@ -482,7 +493,7 @@ export function Dashboard({
                   idleToggles={layout.isEditing && layout.editTab === 'idle' && !isMobile}
                   widgetConstraints={dashboardConstraints}
                   margin={8}
-                  headerOffset={layout.isEditing ? 140 : uiHidden ? 0 : 56}
+                  headerOffset={layout.isEditing ? 140 + idleBarHeight : uiHidden ? 0 : 56}
                   bottomOffset={bottomOffset}
                   screenGuideOrientation={screenGuideOrientation}
                   enabledSizes={enabledSizes}

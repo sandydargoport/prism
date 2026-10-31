@@ -218,6 +218,12 @@ test.describe('Another screen\'s settings', () => {
 });
 
 /** `HH:mm` on the wall clock in `timeZone` at `at`. */
+/** The zone's offset from UTC at a moment, as Intl names it ("GMT-5"). */
+function zoneOffset(at: number, timeZone: string): string {
+  return new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'shortOffset' })
+    .formatToParts(at).find((p) => p.type === 'timeZoneName')!.value;
+}
+
 function wallTime(at: number, timeZone: string): string {
   return new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(at);
 }
@@ -256,7 +262,12 @@ test.describe('Time-of-day layouts', () => {
 
       // Name the wall, and give it a schedule from its own Displays page: from
       // a moment half a day away, so the server's real clock never falls in it.
-      const start = Math.ceil((Date.now() + 12 * 3600_000) / 60_000) * 60_000;
+      let start = Math.ceil((Date.now() + 12 * 3600_000) / 60_000) * 60_000;
+      // Not near a clock change: in the hour that repeats when the clocks go
+      // back, an hour later reads the same on the wall, and a window that
+      // starts and ends at the same time is all day.
+      const steady = (t: number) => [t - 2 * 3600_000, t + 3600_000].every((u) => zoneOffset(u, zone) === zoneOffset(t, zone));
+      while (!steady(start)) start += 3600_000;
       await wall.goto('/settings?section=displays');
       await wall.getByLabel('Name for this screen').fill(PORCH);
       await wall.getByRole('button', { name: 'Name this display' }).click();

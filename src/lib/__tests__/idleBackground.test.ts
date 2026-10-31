@@ -1,5 +1,5 @@
 import {
-  idleBackgroundSchema, idleSourceAt, sameIdleBackground, isNight, parseIdleBackground, tonight, usesSource, withoutDashboard,
+  firstCrossedNight, idleBackgroundSchema, idleSourceAt, sameIdleBackground, isNight, parseIdleBackground, tonight, usesSource, withoutDashboard,
   type IdleBackground, type IdleSwitch,
 } from '../idleBackground';
 
@@ -132,5 +132,23 @@ describe('switching at set times', () => {
     expect(isNight(local(31, 3), sw, LAT, LON)).toBe(true);
     expect(isNight(local(31, 5), sw, LAT, LON)).toBe(false);
     expect(isNight(local(31, 23), sw, LAT, LON)).toBe(false);
+  });
+});
+
+describe('offsets that cross', () => {
+  const north = { lat: 64, lon: -150 };
+  const spring = at('2026-03-01T22:00:00Z');
+
+  it('finds the first night in the coming year where they cross, near midsummer', () => {
+    const crossed = firstCrossedNight(spring, sun(120, -120), north.lat, north.lon)!;
+    expect(crossed).not.toBeNull();
+    expect(crossed.getMonth()).toBeGreaterThanOrEqual(4);
+    expect(crossed.getMonth()).toBeLessThanOrEqual(6);
+  });
+
+  it('passes offsets that leave a night all year, and set times', () => {
+    expect(firstCrossedNight(spring, sun(30, -30), north.lat, north.lon)).toBeNull();
+    expect(firstCrossedNight(spring, sun(120, -120), LAT, LON)).toBeNull();
+    expect(firstCrossedNight(spring, { by: 'clock', from: '21:00', to: '06:30' }, LAT, LON)).toBeNull();
   });
 });

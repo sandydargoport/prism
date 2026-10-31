@@ -18,6 +18,8 @@ import { useMeasureMode } from './useMeasureMode';
 import { useLayoutEditorState } from './useLayoutEditorState';
 import type { LayoutEditorProps } from './LayoutEditorTypes';
 import { copyLayoutToOther } from './copyLayout';
+import { IdleBackgroundBar, idleSaveProblem } from './IdleBackgroundBar';
+import { toast } from '@/components/ui/use-toast';
 
 export type { SavedLayout, DashboardInfo, LayoutEditorProps } from './LayoutEditorTypes';
 
@@ -46,6 +48,9 @@ export function LayoutEditor({
   onDeleteScreensaverPreset,
   idleBackground,
   onIdleBackgroundChange,
+  idleHalf = 'day',
+  onIdleHalfChange,
+  idleCheck = {},
   screenGuideOrientation = 'landscape',
   onScreenGuideOrientationChange,
   enabledSizes = [],
@@ -87,13 +92,32 @@ export function LayoutEditor({
 
   const closePopover = useCallback(() => setActivePopover(null), []);
 
+  // A day and night pair whose offsets cross is not saved (#782).
+  const saveBlocked = idleBackground ? idleSaveProblem(idleBackground, idleCheck) : null;
+  const guardedSave = useCallback(async (name?: string) => {
+    if (saveBlocked) {
+      onEditTabChange?.('idle');
+      toast({ title: saveBlocked, variant: 'destructive' });
+      return;
+    }
+    await onSave(name);
+  }, [saveBlocked, onEditTabChange, onSave]);
+  const guardedSaveAs = (opts: { id: string } | { name: string }) => {
+    if (saveBlocked) {
+      onEditTabChange?.('idle');
+      toast({ title: saveBlocked, variant: 'destructive' });
+      return;
+    }
+    onSaveAs?.(opts);
+  };
+
   const state = useLayoutEditorState({
     editingScreensaver,
     layoutName,
     currentWidgets,
     visibleWidgets,
     onWidgetsChange,
-    onSave,
+    onSave: guardedSave,
     onSaveAs,
     onScreensaverSaveAs,
     onSelectScreensaverPreset,
@@ -210,8 +234,7 @@ export function LayoutEditor({
             allDashboards={allDashboards}
             currentDashboardId={currentDashboardId}
             onToggleMeasureMode={toggleMeasureMode}
-            idleBackground={idleBackground}
-            onIdleBackgroundChange={onIdleBackgroundChange}
+            saveBlocked={saveBlocked}
             onSave={state.handleSave}
             onSaveAs={() => { state.setShowSaveAsDialog(true); setActivePopover(null); }}
             onReset={onReset}
@@ -225,6 +248,15 @@ export function LayoutEditor({
             onHandleDelete={state.handleDelete}
           />
         </div>
+        {editTab === 'idle' && idleBackground && onIdleBackgroundChange && (
+          <IdleBackgroundBar
+            value={idleBackground}
+            onChange={onIdleBackgroundChange}
+            half={idleHalf}
+            onHalfChange={(h) => onIdleHalfChange?.(h)}
+            check={idleCheck}
+          />
+        )}
       </div>
 
       <CreateDashboardDialog
@@ -238,8 +270,8 @@ export function LayoutEditor({
         onClose={() => state.setShowSaveAsDialog(false)}
         allDashboards={allDashboards}
         currentDashboardId={currentDashboardId}
-        onOverwrite={(id) => onSaveAs?.({ id })}
-        onCreateNew={(name) => onSaveAs?.({ name })}
+        onOverwrite={(id) => guardedSaveAs({ id })}
+        onCreateNew={(name) => guardedSaveAs({ name })}
       />
 
       <RenameDashboardDialog
