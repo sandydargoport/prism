@@ -6,6 +6,7 @@ import { readStored, writeStored } from '@/lib/hooks/useStoredValue';
 import { STARS, LINES, MILKY_WAY, FIGURES } from './catalog';
 import { Constellation, lessonLength } from './Constellation';
 import { pickNext, type Placement, type TaughtHistory } from './teach';
+import { activeShower, angleFromRadiant, meteorWait, showerNotice } from './showers';
 import {
   facingFor, localSiderealTime, moonPosition, project, skyLight, sunPosition, toEquatorial, toHorizontal,
   unproject,
@@ -16,6 +17,21 @@ import {
 export type BrightStar = { x: number; y: number; r: number; rgb: string }
 
 type Meteor = { id: number; x: number; y: number; angle: number; travel: number; length: number }
+
+/** A meteor shower worth mentioning tonight, placed on screen. */
+type ShowerOnScreen = {
+  name: string;
+  notice: string;
+  /** The radiant on screen, which may be off its edges (behind the view). */
+  x: number;
+  y: number;
+  /** Whether the radiant is on screen, so it can be marked and meteors start around it. */
+  visible: boolean;
+  wait: number;
+}
+
+/** A lunar eclipse seen from here, as the weather response carries it. */
+export type SkyEclipse = { body: 'sun' | 'moon'; begin: Date; peak: Date; end: Date; obscuration: number }
 
 /** When each figure was last taught on this display. */
 const TAUGHT_KEY = 'prism-night-sky-taught';
@@ -43,10 +59,11 @@ function readTaught(): TaughtHistory {
  * opacity and transform animations the compositor runs without touching the
  * canvas. Both stop with reduced motion or Performance Mode.
  */
-export function NightSky({ lat, lon }: { lat: number; lon: number }) {
+export function NightSky({ lat, lon, eclipse }: { lat: number; lon: number; eclipse?: SkyEclipse }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [bright, setBright] = useState<BrightStar[]>([]);
   const [dark, setDark] = useState(0);
+  const [shower, setShower] = useState<ShowerOnScreen | null>(null);
   const [meteor, setMeteor] = useState<Meteor | null>(null);
   const [lesson, setLesson] = useState<Placement | null>(null);
   const still = useShouldSkipMotion();
@@ -55,45 +72,77 @@ export function NightSky({ lat, lon }: { lat: number; lon: number }) {
     const el = canvas.current;
     if (!el) return;
     const paint = () => {
-      const drawn = drawSky(el, new Date(), lat, lon);
+      const now = new Date();
+      const drawn = drawSky(el, now, lat, lon, eclipse);
       setBright(drawn.bright);
       setDark(drawn.dark);
+      // Rechecked with each redraw, so it comes and goes with the radiant.
+      const a = activeShower(now, lat, lon);
+      const at = a && project(a.radiant, { width: el.clientWidth, height: el.clientHeight, facing: facingFor(lat) });
+      setShower((prev) => {
+        if (!a || !at) return null;
+        const notice = showerNotice(a);
+        // The same shower in much the same place: keep the old object, so the
+        // meteor timer is not restarted every minute.
+        if (prev && prev.notice === notice && Math.hypot(prev.x - at.x, prev.y - at.y) < 20) return prev;
+        const visible = at.x > 20 && at.x < el.clientWidth - 20 && at.y > 20 && at.y < el.clientHeight - 20;
+        return { name: a.shower.name, notice, x: at.x, y: at.y, visible, wait: meteorWait(a) };
+      });
     };
     paint();
     const timer = window.setInterval(paint, 60_000);
     const resize = new ResizeObserver(paint);
     resize.observe(el);
     return () => { window.clearInterval(timer); resize.disconnect(); };
-  }, [lat, lon]);
+  }, [lat, lon, eclipse]);
 
   // A shooting star every few minutes, somewhere in the upper sky, only once
-  // it is properly dark.
+  // it is properly dark. During a shower they come more often and streak away
+  // from its radiant, starting a little way out from it as real ones do.
   const meteorsOn = !still && dark > 0.6;
   useEffect(() => {
     if (!meteorsOn) return;
     let timer = 0;
     let id = 0;
     const next = () => {
+      const wait = shower ? shower.wait * (0.5 + Math.random()) : 120_000 + Math.random() * 240_000;
       timer = window.setTimeout(() => {
         const el = canvas.current;
         if (el) {
+          const w = el.clientWidth;
           const h = el.clientHeight;
-          const leftward = Math.random() < 0.5;
+          let x = w * (0.15 + Math.random() * 0.7);
+          let y = h * (0.05 + Math.random() * 0.35);
+          let angle: number;
+          if (shower) {
+            // Around the radiant when it is on screen. When it is not (behind
+            // the view, as the Perseids' is from the north), anywhere in the
+            // upper sky, still heading away from it.
+            if (shower.visible) {
+              const out = Math.random() * Math.PI * 2;
+              const dist = h * (0.08 + Math.random() * 0.25);
+              x = shower.x + Math.cos(out) * dist;
+              y = shower.y + Math.sin(out) * dist;
+            }
+            angle = angleFromRadiant(x, y, shower.x, shower.y);
+          } else {
+            angle = Math.random() < 0.5 ? 140 + Math.random() * 30 : 10 + Math.random() * 30;
+          }
           setMeteor({
             id: ++id,
-            x: el.clientWidth * (0.15 + Math.random() * 0.7),
-            y: h * (0.05 + Math.random() * 0.35),
-            angle: leftward ? 140 + Math.random() * 30 : 10 + Math.random() * 30,
+            x,
+            y,
+            angle,
             travel: h * (0.25 + Math.random() * 0.2),
             length: h * (0.08 + Math.random() * 0.06),
           });
         }
         next();
-      }, 120_000 + Math.random() * 240_000);
+      }, wait);
     };
     next();
     return () => window.clearTimeout(timer);
-  }, [meteorsOn]);
+  }, [meteorsOn, shower]);
 
   // One constellation at a time, drawn in and named, once it is dark enough
   // to see them. The display remembers which it has shown, so it works
@@ -153,6 +202,25 @@ export function NightSky({ lat, lon }: { lat: number; lon: number }) {
       {lesson && (
         <Constellation key={lesson.fig.id} placement={lesson} still={still} />
       )}
+      {shower && dark > 0.6 && (
+        <>
+          {/* The radiant: where this shower's meteors seem to come from. */}
+          {shower.visible && (
+            <span
+              data-testid="night-sky-radiant"
+              className="absolute rounded-full border border-white/40"
+              style={{ left: shower.x - 9, top: shower.y - 9, width: 18, height: 18 }}
+            />
+          )}
+          <div
+            data-testid="night-sky-shower"
+            className="absolute inset-x-0 text-center text-white/80 italic"
+            style={{ top: '6%', fontSize: 'max(13px, 1.6vh)', textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}
+          >
+            {shower.notice}
+          </div>
+        </>
+      )}
       {meteorsOn && meteor && (
         <span
           key={meteor.id}
@@ -189,7 +257,7 @@ const extinction = (alt: number) => Math.min(1, Math.max(0, alt / 8));
 const TWINKLE_MAG = 1.6;
 
 export function drawSky(
-  el: HTMLCanvasElement, date: Date, lat: number, lon: number,
+  el: HTMLCanvasElement, date: Date, lat: number, lon: number, eclipse?: SkyEclipse,
 ): { bright: BrightStar[]; dark: number } {
   const ctx = el.getContext('2d');
   const none = { bright: [], dark: 0 };
@@ -293,7 +361,7 @@ export function drawSky(
     }
   }
 
-  drawMoon(ctx, moon, at, height);
+  drawMoon(ctx, moon, at, height, eclipseDepth(eclipse, date));
   drawGround(ctx, at, width, height, view.facing);
   drawGrain(ctx, width, height);
   return { bright, dark: light.stars };
@@ -417,9 +485,33 @@ function drawMilkyWay(
   ctx.restore();
 }
 
+/**
+ * How deep into the Earth's shadow the moon is right now, 0..1: 0 outside a
+ * lunar eclipse, rising to its obscuration at the peak (1 for a total one).
+ * The weather response only carries an eclipse that can be seen from here.
+ */
+export function eclipseDepth(eclipse: SkyEclipse | undefined, date: Date): number {
+  if (!eclipse || eclipse.body !== 'moon') return 0;
+  const t = date.getTime();
+  const begin = eclipse.begin.getTime();
+  const peak = eclipse.peak.getTime();
+  const end = eclipse.end.getTime();
+  if (t <= begin || t >= end) return 0;
+  const toward = t < peak ? (t - begin) / (peak - begin) : (end - t) / (end - peak);
+  return Math.max(0, Math.min(1, toward)) * eclipse.obscuration;
+}
+
+/** The colour of a totally eclipsed moon: sunlight bent and reddened by the Earth's air. */
+const COPPER: [number, number, number] = [176, 92, 52];
+const MOON_WHITE: [number, number, number] = [244, 241, 230];
+
+function moonColour(depth: number): string {
+  return `rgb(${MOON_WHITE.map((v, i) => Math.round(v + (COPPER[i]! - v) * depth)).join(',')})`;
+}
+
 function drawMoon(
   ctx: CanvasRenderingContext2D, moon: ReturnType<typeof moonPosition>,
-  at: (p: Horizontal) => { x: number; y: number }, height: number,
+  at: (p: Horizontal) => { x: number; y: number }, height: number, depth = 0,
 ) {
   if (moon.alt < -1) return;
   const { x, y } = at(moon);
@@ -427,7 +519,8 @@ function drawMoon(
   const r = height * 0.026;
 
   const halo = ctx.createRadialGradient(x, y, r, x, y, r * 6);
-  halo.addColorStop(0, `rgba(240,236,220,${0.18 * moon.fraction})`);
+  // A moon in the shadow is much dimmer, so its halo all but goes.
+  halo.addColorStop(0, `rgba(240,236,220,${0.18 * moon.fraction * (1 - 0.8 * depth)})`);
   halo.addColorStop(1, 'rgba(240,236,220,0)');
   ctx.fillStyle = halo;
   ctx.fillRect(x - r * 6, y - r * 6, r * 12, r * 12);
@@ -445,7 +538,7 @@ function drawMoon(
   // for a gibbous moon.
   ctx.rotate(Math.atan2(-Math.cos(moon.limb), -Math.sin(moon.limb)));
   const rx = r * Math.abs(2 * moon.fraction - 1);
-  ctx.fillStyle = '#f4f1e6';
+  ctx.fillStyle = moonColour(depth);
   ctx.beginPath();
   ctx.arc(0, 0, r, -Math.PI / 2, Math.PI / 2);
   if (moon.fraction >= 0.5) ctx.ellipse(0, 0, rx, r, 0, Math.PI / 2, Math.PI * 1.5);

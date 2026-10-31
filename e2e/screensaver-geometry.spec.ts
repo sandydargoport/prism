@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { getFirstParent, getSeededParentId, verifySettingsPinViaAPI } from './helpers/auth';
 import {
-  facingFor, localSiderealTime, project, toHorizontal,
+  facingFor, localSiderealTime, moonPosition, project, toHorizontal,
 } from '../src/components/screensaver/nightSky/sky';
 import { FIGURES } from '../src/components/screensaver/nightSky/catalog';
 
@@ -152,12 +152,12 @@ test.describe('screensaver night sky', () => {
   test.use({ viewport: { width: 1280, height: 720 } });
   test.setTimeout(90_000);
 
-  async function openScreensaver(page: Page, backdrop: string, at: string) {
+  async function openScreensaver(page: Page, backdrop: string, at: string, weather: Record<string, unknown> = {}) {
     await page.clock.setFixedTime(new Date(at));
     await page.route('**/api/weather*', async (route) => {
       const response = await route.fetch();
       if (!response.ok()) return route.fulfill({ response });
-      return route.fulfill({ response, json: { ...(await response.json()), lat: 45, lon: -100 } });
+      return route.fulfill({ response, json: { ...(await response.json()), lat: 45, lon: -100, ...weather } });
     });
     await page.addInitScript((value) => {
       localStorage.setItem('prism-screensaver-backdrop', value);
@@ -333,6 +333,57 @@ test.describe('screensaver night sky', () => {
     expect(next).not.toBeNull();
     expect(next).not.toBe(id);
     await expect(lesson).toHaveClass(/night-sky-still/);
+  });
+
+  test('names a meteor shower on its peak night, and not outside it', async ({ page }) => {
+    // The Geminids peak on 14 December, their radiant high in the south-east
+    // at midnight, so it is on screen and marked.
+    await openScreensaver(page, 'sky', '2026-12-14T07:00:00Z');
+    await expect(page.getByTestId('night-sky-shower')).toContainText('Geminids peak tonight');
+    const radiant = await page.getByTestId('night-sky-radiant').boundingBox();
+    expect(radiant, 'the radiant is marked').not.toBeNull();
+    expect(radiant!.x > 0 && radiant!.x < 1280 && radiant!.y > 0 && radiant!.y < 720, 'on screen').toBe(true);
+
+    await page.clock.setFixedTime(new Date('2026-12-26T07:00:00Z'));
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
+    await page.locator('[data-testid="night-sky"]').waitFor();
+    await page.waitForTimeout(1500);
+    await expect(page.getByTestId('night-sky-shower')).toHaveCount(0);
+  });
+
+  test('the moon is copper during a lunar eclipse seen from here', async ({ page }) => {
+    // The total lunar eclipse of 3 March 2026, at its peak. The eclipse comes
+    // from the weather response, which works it out for the server's today, so
+    // the test hands it over for the fixed date. The place is a point in the
+    // open Pacific where it is local midnight and the moon is high.
+    const peak = '2026-03-03T11:33:00Z';
+    const place = { lat: 30, lon: -160 };
+    const moon = moonPosition(new Date(peak), place.lat, place.lon);
+    expect(moon.alt, 'precondition: the moon is up at the peak').toBeGreaterThan(5);
+    const at = project(moon, { width: 1280, height: 720, facing: facingFor(place.lat) });
+    expect(at.x > 20 && at.x < 1260 && at.y > 20 && at.y < 700, 'precondition: the moon is on screen').toBe(true);
+
+    const moonPixel = () => page.evaluate(({ x, y }) => {
+      const el = document.querySelector<HTMLCanvasElement>('[data-testid="night-sky"]')!;
+      const k = el.width / el.clientWidth;
+      const [r, g, b] = el.getContext('2d')!.getImageData(Math.round(x * k), Math.round(y * k), 1, 1).data;
+      return { r: r!, g: g!, b: b! };
+    }, at);
+
+    await openScreensaver(page, 'sky', peak, {
+      ...place,
+      eclipse: { body: 'moon', kind: 'total', begin: '2026-03-03T09:50:00Z', peak, end: '2026-03-03T13:17:00Z', obscuration: 1 },
+    });
+    const copper = await moonPixel();
+    expect(copper.r - copper.b, 'red well above blue: copper').toBeGreaterThan(80);
+
+    // The same moon with no eclipse is near white.
+    await page.unrouteAll({ behavior: 'ignoreErrors' });
+    await openScreensaver(page, 'sky', peak, { ...place, eclipse: null });
+    const white = await moonPixel();
+    expect(white.r - white.b, 'no eclipse: near white').toBeLessThan(40);
   });
 
   test('after dark shows photos at noon and the sky at midnight', async ({ page }) => {
