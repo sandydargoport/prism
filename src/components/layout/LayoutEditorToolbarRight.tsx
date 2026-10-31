@@ -4,23 +4,7 @@ import { PopoverButton } from './LayoutEditorPopover';
 import { ChevronIcon } from './LayoutEditorIcons';
 import type { ActivePopover, DashboardInfo } from './LayoutEditorTypes';
 import type { EditTab } from '@/components/dashboard/useDashboardLayout';
-import { sameIdleBackground, type IdleBackground } from '@/lib/idleBackground';
 
-/**
- * What the Idle screen tab offers behind it until the full picker with its own
- * day and night halves (#782, part 3). A pair set any other way shows as itself
- * and is kept unless another choice is picked.
- */
-const IDLE_CHOICES: { label: string; value: IdleBackground }[] = [
-  { label: 'This dashboard', value: { source: 'dashboard' } },
-  { label: 'Photos', value: { source: 'photos' } },
-  { label: 'Night sky', value: { source: 'sky' } },
-  {
-    label: 'Photos by day, night sky after dark',
-    value: { day: 'photos', night: 'sky', switch: { by: 'sun', duskOffset: 0, dawnOffset: 0 } },
-  },
-];
-const choiceIndex = (bg: IdleBackground) => IDLE_CHOICES.findIndex((c) => sameIdleBackground(c.value, bg));
 
 interface ToolbarRightProps {
   editingScreensaver: boolean;
@@ -36,8 +20,8 @@ interface ToolbarRightProps {
   allDashboards: DashboardInfo[];
   currentDashboardId?: string;
   onToggleMeasureMode: () => void;
-  idleBackground?: IdleBackground;
-  onIdleBackgroundChange?: (bg: IdleBackground) => void;
+  /** Why Save is refused right now, or null. */
+  saveBlocked?: string | null;
   onSave: () => void;
   onSaveAs: () => void;
   onReset: () => void;
@@ -68,8 +52,7 @@ export function LayoutEditorToolbarRight({
   allDashboards,
   currentDashboardId,
   onToggleMeasureMode,
-  idleBackground,
-  onIdleBackgroundChange,
+  saveBlocked = null,
   onSave,
   onSaveAs,
   onReset,
@@ -116,29 +99,13 @@ export function LayoutEditorToolbarRight({
         Preview
       </button>
 
-      {/* What shows behind it when idle. Kept with the rest on Save. */}
-      {idleTab && idleBackground && onIdleBackgroundChange && (
-        <label className="flex items-center gap-1 text-xs whitespace-nowrap">
-          Behind it:
-          <select
-            value={choiceIndex(idleBackground)}
-            onChange={(e) => {
-              const choice = IDLE_CHOICES[Number(e.target.value)];
-              if (choice) onIdleBackgroundChange(choice.value);
-            }}
-            className={`${btnClass} bg-muted hover:bg-accent`}
-          >
-            {IDLE_CHOICES.map((c, i) => <option key={c.label} value={i}>{c.label}</option>)}
-            {choiceIndex(idleBackground) < 0 && <option value={-1}>Changes with the time of day</option>}
-          </select>
-        </label>
-      )}
-
       {/* Save split button */}
       <div className="relative flex">
         <button
           onClick={onSave}
-          className="px-2 py-1.5 text-xs rounded-l-md whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          disabled={!!saveBlocked}
+          title={saveBlocked ?? undefined}
+          className="px-2 py-1.5 text-xs rounded-l-md whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {saveFeedback || 'Save'}
         </button>

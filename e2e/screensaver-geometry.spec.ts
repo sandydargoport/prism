@@ -625,11 +625,11 @@ test.describe('calm mode idle screen', () => {
 
       // Photos behind it: the canvas becomes the screensaver layout. Then back
       // to this dashboard, which is what gets saved.
-      const behind = page.getByLabel('Behind it:');
-      await behind.selectOption({ label: 'Photos' });
+      const behind = (name: string) => page.getByRole('radio', { name, exact: true });
+      await behind('Photos').click();
       await expect(page.locator('[data-idle-toggle]')).toHaveCount(0);
       await expect(page.locator('[data-editor-widget]').first()).toBeVisible();
-      await behind.selectOption({ label: 'This dashboard' });
+      await behind('This dashboard').click();
       await expect(toggle('tasks')).toHaveAttribute('aria-pressed', 'true');
       // Nothing is stored before Save.
       const before = await (await page.request.get(`/api/layouts/${layout.id}`)).json();
@@ -648,6 +648,82 @@ test.describe('calm mode idle screen', () => {
       const idle = await cells(page);
       expect(idle.tasks!.opacity, 'tasks now stays').toBe(1);
       expect(idle.clock!.opacity, 'the clock now fades').toBe(0);
+    } finally {
+      await page.request.delete(`/api/layouts/${layout.id}`);
+    }
+  });
+});
+
+/**
+ * The Idle screen tab's Behind it (#782): a day and night pair previews each
+ * half on the canvas, moves its edges by offsets, shows tonight's times, and
+ * is saved with the rest; offsets that cross near midsummer far north are
+ * refused.
+ */
+test.describe('idle background picker', () => {
+  test.skip(!HAS_TEST_DB, 'needs the seeded test database to log in and create a dashboard');
+  test.use({ viewport: { width: 1600, height: 900 } });
+  test.setTimeout(90_000);
+
+  async function editIdle(page: Page, place: { lat: number; lon: number }) {
+    const login = await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } });
+    expect(login.ok(), 'precondition: login must succeed').toBe(true);
+    const created = await page.request.post('/api/layouts', {
+      data: { name: `Behind it e2e ${Date.now()}`, widgets: [{ i: 'clock', x: 0, y: 0, w: 16, h: 12 }, { i: 'tasks', x: 16, y: 0, w: 16, h: 12 }] },
+    });
+    expect(created.status()).toBe(201);
+    const layout = await created.json();
+    await page.route('**/api/weather*', async (route) => {
+      const response = await route.fetch();
+      if (!response.ok()) return route.fulfill({ response });
+      return route.fulfill({ response, json: { ...(await response.json()), ...place } });
+    });
+    await page.goto(`/d/${layout.slug}`);
+    await page.getByLabel('Edit layout').click({ timeout: 60000 });
+    await page.getByRole('tab', { name: /Idle screen/ }).click();
+    await page.getByRole('radio', { name: 'Changes with the time of day' }).click();
+    return layout as { id: string };
+  }
+
+  test('a day and night pair: preview each half, move an edge, and Save', async ({ page }) => {
+    const layout = await editIdle(page, { lat: 45, lon: -100 });
+    try {
+      // By day it is this dashboard: Stays / Fades. After dark, the sky's layout.
+      await expect(page.locator('[data-idle-toggle]').first()).toBeVisible();
+      await page.getByRole('button', { name: 'Night', exact: true }).click();
+      await expect(page.locator('[data-idle-toggle]')).toHaveCount(0);
+      await page.getByRole('button', { name: 'Day', exact: true }).click();
+      await expect(page.locator('[data-idle-toggle]').first()).toBeVisible();
+
+      await page.getByLabel('Starts: amount').fill('30');
+      await page.getByLabel('Ends: unit').selectOption('hr');
+      await page.getByLabel('Ends: amount').fill('1');
+      await expect(page.locator('[data-night-start]')).toContainText(/\d/);
+      await expect(page.locator('[data-night-end]')).toContainText(/\d/);
+      await expect(page.locator('[data-idle-crossed]')).toHaveCount(0);
+
+      await page.getByRole('button', { name: 'Save', exact: true }).click();
+      await expect(page.locator('[data-idle-background-bar]')).toHaveCount(0);
+      const saved = await (await page.request.get(`/api/layouts/${layout.id}`)).json();
+      expect(saved.idleBackground).toEqual({
+        day: 'dashboard', night: 'sky', switch: { by: 'sun', duskOffset: 30, dawnOffset: -60 },
+      });
+    } finally {
+      await page.request.delete(`/api/layouts/${layout.id}`);
+    }
+  });
+
+  test('offsets that cross near midsummer far north are refused', async ({ page }) => {
+    const layout = await editIdle(page, { lat: 64, lon: -150 });
+    try {
+      await page.getByLabel('Starts: unit').selectOption('hr');
+      await page.getByLabel('Starts: amount').fill('6');
+      await page.getByLabel('Ends: unit').selectOption('hr');
+      await page.getByLabel('Ends: amount').fill('6');
+      await expect(page.locator('[data-idle-crossed]')).toContainText('night would end before it starts');
+      await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeDisabled();
+      const stored = await (await page.request.get(`/api/layouts/${layout.id}`)).json();
+      expect(stored.idleBackground).toEqual({ source: 'dashboard' });
     } finally {
       await page.request.delete(`/api/layouts/${layout.id}`);
     }

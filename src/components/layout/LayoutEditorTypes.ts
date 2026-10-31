@@ -1,6 +1,7 @@
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import type { IdleBackground } from '@/lib/idleBackground';
-import type { EditTab } from '@/components/dashboard/useDashboardLayout';
+import type { EditTab, IdleHalf } from '@/components/dashboard/useDashboardLayout';
+import type { IdleSwitchCheck } from './useIdleSwitchCheck';
 
 export const EXPORT_VERSION = 2;
 
@@ -46,6 +47,11 @@ export interface LayoutEditorProps {
   /** What the display shows behind it when idle (#782). Omitted: no picker. */
   idleBackground?: IdleBackground;
   onIdleBackgroundChange?: (bg: IdleBackground) => void;
+  /** Which half of a day and night pair the Idle screen tab shows. */
+  idleHalf?: IdleHalf;
+  onIdleHalfChange?: (half: IdleHalf) => void;
+  /** Tonight's times and whether the offsets cross, for a day and night pair. */
+  idleCheck?: IdleSwitchCheck;
   screenGuideOrientation?: 'landscape' | 'portrait';
   onScreenGuideOrientationChange?: (o: 'landscape' | 'portrait') => void;
   enabledSizes?: string[];

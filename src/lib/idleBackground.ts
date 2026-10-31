@@ -109,11 +109,11 @@ function atClock(day: Date, hhmm: string, days = 0): Date {
 const valid = (d: Date | null | undefined): d is Date => !!d && !Number.isNaN(d.getTime());
 
 /**
- * The night that starts on the local day of `noon`, or null when there is none:
- * the sun never sets or never rises there that day, or the offsets cross so
- * night would end before it starts.
+ * Where the night that starts on the local day of `noon` would begin and end,
+ * offsets applied, even if they cross. Null when the sun does not set or rise
+ * there that day.
  */
-function nightOf(noon: Date, sw: IdleSwitch, lat: number, lon: number): NightSpan | null {
+function nightBounds(noon: Date, sw: IdleSwitch, lat: number, lon: number): NightSpan | null {
   if (sw.by === 'clock') {
     // "HH:MM" strings compare in time order.
     return { start: atClock(noon, sw.from), end: atClock(noon, sw.to, sw.to < sw.from ? 1 : 0) };
@@ -121,9 +121,36 @@ function nightOf(noon: Date, sw: IdleSwitch, lat: number, lon: number): NightSpa
   const sunset = SunCalc.getTimes(noon, lat, lon).sunset;
   const sunrise = SunCalc.getTimes(localNoon(noon, 1), lat, lon).sunrise;
   if (!valid(sunset) || !valid(sunrise)) return null;
-  const start = new Date(sunset.getTime() + sw.duskOffset * MINUTE);
-  const end = new Date(sunrise.getTime() + sw.dawnOffset * MINUTE);
-  return start < end ? { start, end } : null;
+  return {
+    start: new Date(sunset.getTime() + sw.duskOffset * MINUTE),
+    end: new Date(sunrise.getTime() + sw.dawnOffset * MINUTE),
+  };
+}
+
+/**
+ * The night that starts on the local day of `noon`, or null when there is none:
+ * the sun never sets or never rises there that day, or the offsets cross so
+ * night would end before it starts.
+ */
+function nightOf(noon: Date, sw: IdleSwitch, lat: number, lon: number): NightSpan | null {
+  const span = nightBounds(noon, sw, lat, lon);
+  return span && span.start < span.end ? span : null;
+}
+
+/**
+ * The first night in the coming year, from `now`, on which the offsets cross
+ * so night would end before it starts, or null if they never do. Near
+ * midsummer far from the equator dusk and dawn are only hours apart, and the
+ * editor refuses such a setting rather than leave the screen without a night.
+ */
+export function firstCrossedNight(now: Date, sw: IdleSwitch, lat: number, lon: number): Date | null {
+  if (sw.by === 'clock') return null;
+  for (let days = 0; days < 366; days++) {
+    const noon = localNoon(now, days);
+    const span = nightBounds(noon, sw, lat, lon);
+    if (span && span.start >= span.end) return noon;
+  }
+  return null;
 }
 
 /**

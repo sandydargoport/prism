@@ -133,6 +133,31 @@ describe('one editor, two tabs, one Save (#782)', () => {
     expect([result.current.dashboardDirty, result.current.idleDirty]).toEqual([false, true]);
   });
 
+  it('takes the background of a dashboard that finishes loading after editing starts', async () => {
+    activeUser = { id: 'p1', role: 'parent' };
+    const empty = data([]);
+    const loaded = data([{ ...dashboard('a', custom), idleBackground: { source: 'dashboard' } } as Layout]);
+    const { result, rerender } = renderHook(({ layouts }) => useDashboardLayout(layouts, 'a'), {
+      initialProps: { layouts: empty },
+    });
+    await act(async () => { await result.current.handleEditStart(); });
+    rerender({ layouts: loaded });
+    expect(result.current.editingBackground).toEqual({ source: 'dashboard' });
+    expect(result.current.idleDirty).toBe(false);
+  });
+
+  it('arranges the previewed half of a day and night pair', async () => {
+    const { result } = await editing({ ...dashboard('a', custom), idleBackground: { source: 'dashboard' } } as Layout);
+    act(() => { result.current.setEditTab('idle'); });
+    act(() => {
+      result.current.setEditingBackground({ day: 'dashboard', night: 'sky', switch: { by: 'sun', duskOffset: 0, dawnOffset: 0 } });
+    });
+    expect(result.current.idleHalf).toBe('day');
+    expect(result.current.editingScreensaver).toBe(false);
+    act(() => { result.current.setIdleHalf('night'); });
+    expect(result.current.editingScreensaver).toBe(true);
+  });
+
   it('arranges a screensaver layout on the Idle screen tab only behind photos or the sky', async () => {
     const { result } = await editing({ ...dashboard('a', custom), idleBackground: { source: 'dashboard' } } as Layout);
     act(() => { result.current.setEditTab('idle'); });
