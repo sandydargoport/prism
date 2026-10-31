@@ -39,8 +39,10 @@ type DashData = ReturnType<typeof useDashboardData>;
 const LayoutCtx = createContext<MobileLayoutMode>('rows');
 export const MobileLayoutProvider = LayoutCtx.Provider;
 
-function CardShell({ href, icon, title, count, children }: {
+function CardShell({ href, onOpen, icon, title, count, children }: {
   href?: string;
+  /** Opens something in place (a full widget) instead of following a link. */
+  onOpen?: () => void;
   icon: React.ReactNode;
   title: string;
   count?: number;
@@ -57,7 +59,7 @@ function CardShell({ href, icon, title, count, children }: {
             <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full shrink-0">{count}</span>
           )}
         </div>
-        {href && <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
+        {(href || onOpen) && <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
       </div>
       {!compact && children}
     </div>
@@ -65,6 +67,9 @@ function CardShell({ href, icon, title, count, children }: {
 
   if (href) {
     return <Link href={href} className="block">{inner}</Link>;
+  }
+  if (onOpen) {
+    return <button type="button" onClick={onOpen} className="block w-full text-left">{inner}</button>;
   }
   return inner;
 }
@@ -237,7 +242,7 @@ export function MessagesCard({ data }: { data: DashData['messages'] }) {
   );
 }
 
-export function BirthdaysCard({ data }: { data: DashData['birthdays'] }) {
+export function BirthdaysCard({ data, onOpen }: { data: DashData['birthdays']; onOpen?: () => void }) {
   const upcoming = useMemo(() => {
     if (!data.birthdays) return [];
     return data.birthdays.slice(0, 2);
@@ -246,7 +251,7 @@ export function BirthdaysCard({ data }: { data: DashData['birthdays'] }) {
   if (upcoming.length === 0) return null;
 
   return (
-    <CardShell icon={<Cake className="h-4 w-4 text-pink-500" />} title="Birthdays" count={upcoming.length}>
+    <CardShell onOpen={onOpen} icon={<Cake className="h-4 w-4 text-pink-500" />} title="Birthdays" count={upcoming.length}>
       <div className="space-y-1">
         {upcoming.map((b) => (
           <p key={b.id} className="text-xs text-muted-foreground">

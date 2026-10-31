@@ -20,8 +20,10 @@ import { useLocalDateKey } from '@/lib/hooks/useLocalDateKey';
 
 type DashData = ReturnType<typeof useDashboardData>;
 
-function TileShell({ href, icon, title, children, accent }: {
+function TileShell({ href, onOpen, icon, title, children, accent }: {
   href?: string;
+  /** Opens something in place (a full widget) instead of following a link. */
+  onOpen?: () => void;
   icon: React.ReactNode;
   title: string;
   children?: React.ReactNode;
@@ -34,7 +36,7 @@ function TileShell({ href, icon, title, children, accent }: {
           {icon}
           <span className="font-semibold text-sm truncate">{title}</span>
         </div>
-        {href && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+        {(href || onOpen) && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
       </div>
       {children && (
         <div className={cn('flex-1 min-h-0 flex flex-col justify-center gap-0.5', accent)}>
@@ -44,6 +46,7 @@ function TileShell({ href, icon, title, children, accent }: {
     </div>
   );
   if (href) return <Link href={href} className="block h-full">{inner}</Link>;
+  if (onOpen) return <button type="button" onClick={onOpen} className="block h-full w-full text-left">{inner}</button>;
   return inner;
 }
 
@@ -204,7 +207,7 @@ export function MessagesTile({ data }: { data: DashData['messages'] }) {
   );
 }
 
-export function BirthdaysTile({ data }: { data: DashData['birthdays'] }) {
+export function BirthdaysTile({ data, onOpen }: { data: DashData['birthdays']; onOpen?: () => void }) {
   const next = useMemo(() => {
     if (!data.birthdays?.length) return null;
     const b = data.birthdays[0]!;
@@ -214,7 +217,9 @@ export function BirthdaysTile({ data }: { data: DashData['birthdays'] }) {
     return { name: b.name, label };
   }, [data.birthdays]);
   return (
-    <TileShell href="/calendar" icon={<Cake className="h-4 w-4 text-pink-400" />} title="Birthdays">
+    // There is no birthdays page: it opens the full widget (MobileDashboard).
+    // It used to link to the calendar, which on a phone opens in agenda view.
+    <TileShell onOpen={onOpen} icon={<Cake className="h-4 w-4 text-pink-400" />} title="Birthdays">
       {next
         ? <><TileLine>{next.name}</TileLine><TileLine dim>{next.label}</TileLine></>
         : <TileLine dim>None upcoming</TileLine>

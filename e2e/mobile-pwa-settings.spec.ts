@@ -104,3 +104,34 @@ test.describe('Mobile PWA settings reachability', () => {
     await expect(page.locator('#google')).toBeVisible();
   });
 });
+
+test.describe('Mobile dashboard Birthdays', () => {
+  test('tapping Birthdays opens the full widget, with every upcoming birthday that fits', async ({ page }) => {
+    test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
+    // Six fictional birthdays, so the count does not depend on the seed.
+    const birthdays = ['Robin', 'Sam', 'Alex', 'Jordan', 'Casey', 'Morgan'].map((name, i) => ({
+      id: String(i), name, birthDate: '2015-11-02', eventType: 'birthday', age: 10 + i,
+      daysUntil: 5 + i * 20, nextBirthday: '2026-11-02',
+    }));
+    await page.route('**/api/birthdays?*', (route) => route.fulfill({ json: { birthdays } }));
+
+    const family = await page.request.get('/api/family').then((r) => r.json());
+    const members = Array.isArray(family) ? family : family.members;
+    await loginViaAPI(page, members[0].name);
+    await page.goto('/');
+
+    await page.getByRole('button', { name: /Birthdays/ }).first().click();
+    const sheet = page.getByRole('dialog');
+    await expect(sheet).toBeVisible();
+    expect(page.url(), 'stays on the dashboard, not the calendar').not.toContain('/calendar');
+
+    // The widget fills the sheet and so lists all six. In a slot sized to its
+    // content it measured itself one row tall and showed one.
+    await expect(sheet.locator('tbody tr')).toHaveCount(6);
+    const [card, box] = await Promise.all([
+      sheet.locator('[data-widget]').boundingBox(),
+      sheet.boundingBox(),
+    ]);
+    expect(card!.height, 'the widget fills most of the sheet').toBeGreaterThan(box!.height * 0.6);
+  });
+});
