@@ -1,5 +1,5 @@
 import {
-  localSiderealTime, toHorizontal, toEquatorial, sunPosition, moonPosition, skyShowsNow, skyLight, project,
+  localSiderealTime, toHorizontal, toEquatorial, sunPosition, moonPosition, skyLight, project,
   unproject, facingFor,
 } from '../sky';
 import { STARS, LINES, MILKY_WAY } from '../catalog';
@@ -53,28 +53,6 @@ describe('night sky positions', () => {
     // Full moon 2026-10-26, new moon 2026-11-09.
     expect(moonPosition(new Date('2026-10-26T04:00:00Z'), LAT, LON).fraction).toBeGreaterThan(0.97);
     expect(moonPosition(new Date('2026-11-09T12:00:00Z'), LAT, LON).fraction).toBeLessThan(0.03);
-  });
-});
-
-describe('which backdrop shows', () => {
-  const noon = new Date('2026-06-21T18:42:00Z');
-  const midnight = new Date('2026-06-22T06:42:00Z');
-
-  it('photos only ever shows photos, and sky only ever the sky', () => {
-    expect(skyShowsNow('photos', midnight, LAT, LON)).toBe(false);
-    expect(skyShowsNow('sky', noon, LAT, LON)).toBe(true);
-  });
-
-  it('after dark shows photos by day and the sky by night', () => {
-    expect(skyShowsNow('skyAtNight', noon, LAT, LON)).toBe(false);
-    expect(skyShowsNow('skyAtNight', midnight, LAT, LON)).toBe(true);
-  });
-
-  it('changes over at sunset, not at some fixed hour', () => {
-    // Sunset at 45N, 100W on the solstice is about 02:30 UTC; in winter it is
-    // about 23:15 UTC. The same clock time is day in June and night in December.
-    expect(skyShowsNow('skyAtNight', new Date('2026-06-22T00:30:00Z'), LAT, LON)).toBe(false);
-    expect(skyShowsNow('skyAtNight', new Date('2026-12-22T00:30:00Z'), LAT, LON)).toBe(true);
   });
 });
 

@@ -2,10 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useFetchOnMount } from './useFetchOnMount';
-
-/** What the display shows when idle: a separate screensaver layout, or the
- *  dashboard itself with only some widgets left showing (calm mode, #691). */
-export type ScreensaverMode = 'separate' | 'calm';
+import type { IdleBackground } from '@/lib/idleBackground';
 
 export interface WidgetConfig {
   i: string;
@@ -41,7 +38,7 @@ export interface Layout {
   isDefault: boolean;
   widgets: WidgetConfig[];
   screensaverWidgets: WidgetConfig[] | null;
-  screensaverMode?: ScreensaverMode;
+  idleBackground?: IdleBackground;
   orientation: string;
   fontScale: number | null;
   createdBy?: string;

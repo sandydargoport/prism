@@ -15,6 +15,7 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
+import type { IdleBackground } from '../idleBackground';
 
 
 export const users = pgTable('users', {
@@ -934,10 +935,13 @@ export const layouts = pgTable('layouts', {
   // Per-dashboard screensaver layout (null = use default template)
   screensaverWidgets: jsonb('screensaver_widgets'),
 
-  // What the display shows when idle: 'separate' is the screensaver layout
-  // above, 'calm' is this dashboard itself with only some widgets left showing
-  // (#691). Dashboards from before calm mode stay 'separate'; see 0036.
-  screensaverMode: varchar('screensaver_mode', { length: 20 }).default('calm').notNull(),
+  // What the display shows behind it when idle (#782): this dashboard itself
+  // with only some widgets left showing, or the screensaver layout above over
+  // photos or the night sky, or one by day and another after dark. See
+  // src/lib/idleBackground.ts. It replaced `screensaver_mode` (calm or
+  // separate), which 0039 converted and which the database still holds,
+  // unread, so a rollback finds it.
+  idleBackground: jsonb('idle_background').$type<IdleBackground>().default({ source: 'dashboard' }).notNull(),
 
   // Per-dashboard screen orientation
   orientation: varchar('orientation', { length: 20 }).default('landscape'),

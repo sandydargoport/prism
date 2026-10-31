@@ -1,7 +1,8 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
-import type { ScreensaverMode, WidgetConfig } from '@/lib/hooks/useLayouts';
+import type { WidgetConfig } from '@/lib/hooks/useLayouts';
+import { PHOTOS, type IdleBackground } from '@/lib/idleBackground';
 
 /**
  * Calm mode (#691): the dashboard is its own idle screen. When the display goes
@@ -12,9 +13,11 @@ import type { ScreensaverMode, WidgetConfig } from '@/lib/hooks/useLayouts';
  * The Screensaver still owns idleness (timers, the toolbar button, Away and
  * Babysitter yielding), so two facts cross between it and the dashboard:
  *
- *  - which mode the dashboard on screen uses, published by the Dashboard while
- *    it is mounted. Any other page, or no dashboard, is 'separate', so a
- *    display left on the calendar page still gets the ordinary screensaver.
+ *  - the idle background of the dashboard on screen (#782), published by the
+ *    Dashboard while it is mounted. Any other page has no dashboard to show,
+ *    so it gets the screensaver over that dashboard's photos or sky; with no
+ *    dashboard at all, photos.
+ *    The Screensaver works out which half of a day and night pair shows now.
  *  - whether a calm display is idle right now, published by the Screensaver.
  *
  * Both are module-level stores for the same reason useDisplayIdle is one: the
@@ -52,14 +55,14 @@ function createStore<T>(initial: T) {
   };
 }
 
-const activeMode = createStore<ScreensaverMode>('separate');
+const activeBackground = createStore<IdleBackground>(PHOTOS);
 const calmIdle = createStore(false);
 
-/** Publish the mode of the dashboard on screen. Called by the Dashboard. */
-export const setActiveScreensaverMode = activeMode.set;
+/** Publish the idle background of the dashboard on screen. Called by the Dashboard. */
+export const setActiveIdleBackground = activeBackground.set;
 
-export function useActiveScreensaverMode(): ScreensaverMode {
-  return useSyncExternalStore(activeMode.subscribe, activeMode.get, activeMode.initial);
+export function useActiveIdleBackground(): IdleBackground {
+  return useSyncExternalStore(activeBackground.subscribe, activeBackground.get, activeBackground.initial);
 }
 
 /** Publish whether a calm display is idle. Called by the Screensaver. */

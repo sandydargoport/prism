@@ -3,7 +3,23 @@
 import { PopoverButton } from './LayoutEditorPopover';
 import { ChevronIcon } from './LayoutEditorIcons';
 import type { ActivePopover, DashboardInfo } from './LayoutEditorTypes';
-import type { ScreensaverMode } from '@/lib/hooks/useLayouts';
+import { sameIdleBackground, type IdleBackground } from '@/lib/idleBackground';
+
+/**
+ * The choices the toolbar offers until the Idle screen tab (#782) replaces it.
+ * A day and night pair set any other way shows as itself and is kept unless
+ * another choice is picked.
+ */
+const IDLE_CHOICES: { label: string; value: IdleBackground }[] = [
+  { label: 'Fade to a calm view of this dashboard', value: { source: 'dashboard' } },
+  { label: 'Show the screensaver over photos', value: { source: 'photos' } },
+  { label: 'Show the screensaver over the night sky', value: { source: 'sky' } },
+  {
+    label: 'Photos by day, night sky after dark',
+    value: { day: 'photos', night: 'sky', switch: { by: 'sun', duskOffset: 0, dawnOffset: 0 } },
+  },
+];
+const choiceIndex = (bg: IdleBackground) => IDLE_CHOICES.findIndex((c) => sameIdleBackground(c.value, bg));
 
 interface ToolbarRightProps {
   editingScreensaver: boolean;
@@ -15,8 +31,8 @@ interface ToolbarRightProps {
   allDashboards: DashboardInfo[];
   currentDashboardId?: string;
   onToggleMeasureMode: () => void;
-  screensaverMode?: ScreensaverMode;
-  onScreensaverModeChange?: (mode: ScreensaverMode) => void;
+  idleBackground?: IdleBackground;
+  onIdleBackgroundChange?: (bg: IdleBackground) => void;
   onToggleScreensaverEdit?: () => void;
   onSave: () => void;
   onSaveAs: () => void;
@@ -45,8 +61,8 @@ export function LayoutEditorToolbarRight({
   allDashboards,
   currentDashboardId,
   onToggleMeasureMode,
-  screensaverMode,
-  onScreensaverModeChange,
+  idleBackground,
+  onIdleBackgroundChange,
   onToggleScreensaverEdit,
   onSave,
   onSaveAs,
@@ -71,18 +87,22 @@ export function LayoutEditorToolbarRight({
         Preview
       </button>
 
-      {/* What the display shows when idle: this dashboard, or the separate
-          screensaver layout. Saved as soon as it is picked. */}
-      {!editingScreensaver && screensaverMode && onScreensaverModeChange && (
+      {/* What the display shows behind it when idle: this dashboard, or the
+          screensaver layout over photos or the sky. Saved as soon as it is
+          picked. */}
+      {!editingScreensaver && idleBackground && onIdleBackgroundChange && (
         <label className="flex items-center gap-1 text-xs whitespace-nowrap">
           When nobody&apos;s using it:
           <select
-            value={screensaverMode}
-            onChange={(e) => onScreensaverModeChange(e.target.value as ScreensaverMode)}
+            value={choiceIndex(idleBackground)}
+            onChange={(e) => {
+              const choice = IDLE_CHOICES[Number(e.target.value)];
+              if (choice) onIdleBackgroundChange(choice.value);
+            }}
             className={`${btnClass} bg-muted hover:bg-accent`}
           >
-            <option value="calm">Fade to a calm view of this dashboard</option>
-            <option value="separate">Show the screensaver</option>
+            {IDLE_CHOICES.map((c, i) => <option key={c.label} value={i}>{c.label}</option>)}
+            {choiceIndex(idleBackground) < 0 && <option value={-1}>Changes with the time of day</option>}
           </select>
         </label>
       )}

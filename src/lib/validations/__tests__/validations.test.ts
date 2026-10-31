@@ -289,24 +289,29 @@ describe('createLayoutSchema', () => {
     expect(createLayoutSchema.safeParse({ ...validLayout, slug: 'my-kitchen' }).success).toBe(true);
   });
 
-  // Calm mode (#691). Unknown keys are stripped, so a field missing from the
-  // schema would be silently dropped on every save.
-  it('keeps the screensaver mode and each widget\'s show-when-idle tick', () => {
+  // The idle background (#782) and calm mode's ticks (#691). Unknown keys are
+  // stripped, so a field missing from the schema would be silently dropped on
+  // every save.
+  it('keeps the idle background and each widget\'s show-when-idle tick', () => {
+    const idleBackground = {
+      day: 'dashboard', night: 'sky', switch: { by: 'sun', duskOffset: 30, dawnOffset: -60 },
+    } as const;
     const parsed = createLayoutSchema.parse({
       ...validLayout,
-      screensaverMode: 'calm',
+      idleBackground,
       widgets: [{ i: 'clock', x: 0, y: 0, w: 2, h: 2, showWhenIdle: false }],
     });
-    expect(parsed.screensaverMode).toBe('calm');
+    expect(parsed.idleBackground).toEqual(idleBackground);
     expect(parsed.widgets[0]!.showWhenIdle).toBe(false);
   });
 
-  it('leaves the mode unset when not given, so a new dashboard takes the column default', () => {
-    expect(createLayoutSchema.parse(validLayout).screensaverMode).toBeUndefined();
+  it('leaves the background unset when not given, so a new dashboard takes the column default', () => {
+    expect(createLayoutSchema.parse(validLayout).idleBackground).toBeUndefined();
   });
 
-  it('rejects an unknown screensaver mode', () => {
-    expect(createLayoutSchema.safeParse({ ...validLayout, screensaverMode: 'sleep' }).success).toBe(false);
+  it('rejects an unknown idle background', () => {
+    expect(createLayoutSchema.safeParse({ ...validLayout, idleBackground: { source: 'video' } }).success).toBe(false);
+    expect(createLayoutSchema.safeParse({ ...validLayout, idleBackground: 'calm' }).success).toBe(false);
   });
 });
 
