@@ -119,6 +119,8 @@ function getCheckboxes(): HTMLInputElement[] {
 }
 
 // ---- Tests ----
+beforeEach(() => localStorage.clear());
+
 describe('ShoppingWidget — behavioral', () => {
   describe('Check off item', () => {
     it('calls onItemToggle with correct itemId and true when checking an unchecked item', () => {
@@ -199,12 +201,22 @@ describe('ShoppingWidget — behavioral', () => {
       expect(screen.getByText('Apples')).toBeTruthy();
     });
 
-    it('says so when every item is checked off', () => {
+    it('is empty when every item is checked off, so Hide when empty can hide it', () => {
       const allChecked = makeList({
         items: makeList().items.map((i) => ({ ...i, checked: true })),
       });
       render(<ShoppingWidget lists={[allChecked]} />);
-      expect(screen.getByText('Everything is checked off')).toBeTruthy();
+      // WidgetEmpty is what tells the grid the widget is empty (#738).
+      expect(screen.getByTestId('widget-empty').textContent).toBe('Everything is checked off');
+    });
+
+    it('is empty when the picked list is all checked off, even if another list has items', () => {
+      const allChecked = makeList({
+        items: makeList().items.map((i) => ({ ...i, checked: true })),
+      });
+      render(<ShoppingWidget lists={[allChecked, secondList]} />);
+      expect(screen.getByTestId('widget-empty').textContent).toBe('Everything is checked off');
+      expect(screen.queryByText('Paper towels')).toBeNull();
     });
   });
 
@@ -298,6 +310,23 @@ describe('ShoppingWidget — behavioral', () => {
       // Now the Target list item should be visible
       expect(screen.getByText('Paper towels')).toBeTruthy();
     });
+
+    it('remembers the picked list on this display, so the screensaver copy shows it too', () => {
+      const dashboard = render(<ShoppingWidget lists={[makeList(), secondList]} />);
+      fireEvent.click(screen.getByText('Target'));
+      dashboard.unmount();
+
+      // A second copy of the widget, as the screensaver draws.
+      render(<ShoppingWidget lists={[makeList(), secondList]} />);
+      expect(screen.getByText('Paper towels')).toBeTruthy();
+      expect(screen.queryByText('Apples')).toBeNull();
+    });
+
+    it('falls back to the first list when the remembered one is gone', () => {
+      localStorage.setItem('prism-shopping-widget-list', 'deleted-list');
+      render(<ShoppingWidget lists={[makeList(), secondList]} />);
+      expect(screen.getByText('Apples')).toBeTruthy();
+    });
   });
 
   describe('All checked', () => {
@@ -308,7 +337,7 @@ describe('ShoppingWidget — behavioral', () => {
           { id: 'i2', listId: 'l1', name: 'Milk', checked: true, createdAt: '2026-01-01' },
         ],
       });
-      render(<ShoppingWidget lists={[allCheckedList]} />);
+      render(<ShoppingWidget lists={[allCheckedList]} showChecked />);
 
       const progressbar = screen.getByRole('progressbar');
       expect(Number(progressbar.getAttribute('aria-valuenow'))).toBeCloseTo(100, 0);
