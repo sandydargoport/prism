@@ -213,14 +213,16 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
   }, []);
 
   const handleSsSave = useCallback(async () => {
-    // Save screensaver to DB by updating the current layout
+    // Save screensaver to DB by updating the current layout. With the
+    // dashboard's edits in progress, not its last saved widgets: this closes
+    // the editor, so saving the old ones threw those edits away unasked.
     saveScreensaverLayout(ssLayout);
     if (activeLayout) {
       try {
         await layouts.saveLayout({
           id: activeLayout.id,
           name: activeLayout.name,
-          widgets: activeLayout.widgets,
+          widgets: editingWidgets,
           isDefault: activeLayout.isDefault,
           screensaverWidgets: ssLayout,
         });
@@ -229,7 +231,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
       }
     }
     setIsEditing(false);
-  }, [ssLayout, activeLayout, layouts]);
+  }, [ssLayout, activeLayout, editingWidgets, layouts]);
 
   const handleSsSaveAs = useCallback(() => {
     const name = window.prompt('Preset name:', 'My Screensaver');
