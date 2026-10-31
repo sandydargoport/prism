@@ -32,14 +32,11 @@ const iconForType = (type: string) => {
 };
 
 /**
- * Phase 1: this card is a *summary + entry-point* into the existing
- * priority-ordered photo source list living in PhotosSettingsSection.
- * The actual management UI (folder picker, Immich connect form, ▲▼ reorder)
- * stays in PhotosSettingsSection for now. Phase 2 will lift it here so the
- * Photos settings section can shed its non-source UI.
- *
- * Why summary-only in Phase 1: the photo source flow shipped fresh in PR #91
- * — minimizing churn around it is more valuable than perfect IA today.
+ * A *summary + entry point*: photo sources are managed in one place,
+ * PhotosSettingsSection (folder picker, Immich connect form, ▲▼ reorder), next
+ * to the photo display settings. This card lists them and links there. Moving
+ * the management here was considered and dropped (#52): Photos is where people
+ * look for it, and the OneDrive sign-in already returns there.
  */
 export function PhotoSourcesCard({ forceSubSectionOpen }: Props) {
   const [sources, setSources] = React.useState<PhotoSourceSummary[] | null>(null);
