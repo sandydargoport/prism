@@ -6,7 +6,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { useScreenSafeZones } from '@/lib/hooks/useScreenSafeZones';
 import { useResetOn } from '@/lib/hooks/useResetOn';
-import { idleSources } from '@/lib/idleBackground';
+import { editsIdleLayout } from '@/components/dashboard/useDashboardLayout';
 import { LayoutEditorShareDialog } from './LayoutEditorShareDialog';
 import { LayoutEditorImportDialog } from './LayoutEditorImportExport';
 import { CreateDashboardDialog, SaveAsDialog } from './LayoutEditorDashboardManager';
@@ -32,10 +32,12 @@ export function LayoutEditor({
   onCancel,
   layoutName,
   savedLayouts = [],
+  editTab = 'dashboard',
+  onEditTabChange,
+  dashboardDirty,
+  idleDirty,
   editingScreensaver = false,
-  onToggleScreensaverEdit,
   screensaverWidgets,
-  onScreensaverSave,
   onScreensaverSaveAs,
   onScreensaverReset,
   onSelectScreensaverTemplate,
@@ -68,8 +70,9 @@ export function LayoutEditor({
   const effectiveEnabledSizes = enabledSizes.length > 0 ? enabledSizes : allSizeNames;
 
   const [activePopover, setActivePopover] = useState<ActivePopover>(null);
-  // Only ever the dashboard itself: there is no screensaver layout to show.
-  const calm = !!idleBackground && idleSources(idleBackground).every(s => s === 'dashboard') && !editingScreensaver;
+  // There is a screensaver layout to copy to or from only when something
+  // other than the dashboard itself shows behind it.
+  const hasIdleLayout = !!idleBackground && editsIdleLayout(idleBackground);
   const [focusedWidget, setFocusedWidget] = useState<string | null>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
 
@@ -92,7 +95,6 @@ export function LayoutEditor({
     onWidgetsChange,
     onSave,
     onSaveAs,
-    onScreensaverSave,
     onScreensaverSaveAs,
     onSelectScreensaverPreset,
     onRenameDashboard,
@@ -131,7 +133,7 @@ export function LayoutEditor({
       editingScreensaver ? (screensaverWidgets ?? []) : widgets,
       editingScreensaver ? 'dashboard' : 'screensaver',
     );
-    const target = editingScreensaver ? 'dashboard' : 'screensaver';
+    const target = editingScreensaver ? 'dashboard' : 'idle screen';
     const leftOut = copy.leftOut.length
       ? ` Left out, because the screensaver cannot show them: ${copy.leftOut.join(', ')}.`
       : '';
@@ -143,7 +145,7 @@ export function LayoutEditor({
     if (!ok) return;
     if (editingScreensaver) onWidgetsChange(copy.widgets);
     else onSelectScreensaverTemplate?.(copy.widgets);
-    onToggleScreensaverEdit?.();
+    onEditTabChange?.(editingScreensaver ? 'dashboard' : 'idle');
   };
 
   if (measureMode) {
@@ -162,6 +164,7 @@ export function LayoutEditor({
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <LayoutEditorToolbarLeft
             editingScreensaver={editingScreensaver}
+            idleTab={editTab === 'idle'}
             layoutName={layoutName}
             mode={state.mode}
             activePopover={activePopover}
@@ -196,9 +199,12 @@ export function LayoutEditor({
           />
           <LayoutEditorToolbarRight
             editingScreensaver={editingScreensaver}
+            editTab={editTab}
+            onEditTabChange={(tab) => onEditTabChange?.(tab)}
+            dashboardDirty={dashboardDirty}
+            idleDirty={idleDirty}
             activePopover={activePopover}
             onTogglePopover={togglePopover}
-            saveLabel={editingScreensaver ? 'Save Screensaver' : 'Save'}
             saveFeedback={state.saveFeedback}
             exportFeedback={state.exportFeedback}
             allDashboards={allDashboards}
@@ -206,8 +212,6 @@ export function LayoutEditor({
             onToggleMeasureMode={toggleMeasureMode}
             idleBackground={idleBackground}
             onIdleBackgroundChange={onIdleBackgroundChange}
-            // A calm dashboard has no separate screensaver to edit or copy to.
-            onToggleScreensaverEdit={calm ? undefined : onToggleScreensaverEdit}
             onSave={state.handleSave}
             onSaveAs={() => { state.setShowSaveAsDialog(true); setActivePopover(null); }}
             onReset={onReset}
@@ -216,7 +220,7 @@ export function LayoutEditor({
             onExport={state.handleExport}
             onImportOpen={() => { state.setShowImportDialog(true); setActivePopover(null); }}
             onShareOpen={() => { state.setShowShareDialog(true); setActivePopover(null); }}
-            onCopyToOther={onToggleScreensaverEdit && !calm ? handleCopyToOther : undefined}
+            onCopyToOther={hasIdleLayout && (editTab === 'dashboard' || editingScreensaver) ? handleCopyToOther : undefined}
             onDeleteDashboard={onDeleteDashboard}
             onHandleDelete={state.handleDelete}
           />

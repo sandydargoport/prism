@@ -18,22 +18,22 @@ Activates after a configurable idle period. Shows a rotating photo slideshow wit
 
 Screensaver layouts are dashboard-scoped. Your kitchen dashboard (`/d/kitchen`) can have a screensaver showing big clock + weather + a slow photo cycle, while your bedroom dashboard (`/d/bedroom`) has a smaller clock + tomorrow's calendar.
 
-Edit the screensaver layout in dashboard edit mode by clicking the **Screensaver** button to switch from editing the dashboard to editing the screensaver overlay.
+The layout editor has two tabs: **Dashboard** and **Idle screen**. The Idle screen tab sets what shows when nobody is using the display (**Behind it**) and arranges the screensaver layout. One **Save** keeps both tabs, and **Cancel** undoes both; a dot on a tab marks changes not yet saved.
 
 ### A calm dashboard is its own idle screen
 
-A dashboard set to *Fade to a calm view of this dashboard* (under *When nobody's
-using it* in the editor) has no separate screensaver. When the display goes idle,
+A dashboard with **Behind it** set to **This dashboard** (on the editor's Idle
+screen tab) has no separate screensaver. When the display goes idle,
 some widgets fade out where they are and the rest stay; a tap brings everything
 back, and nothing moves.
 
-In the editor, each widget on a calm dashboard has a **Stays** or **Fades** button
-in its top-right corner. Tap it to choose, then **Save**. Until a widget is set,
+On the Idle screen tab, each widget on a calm dashboard has a **Stays** or **Fades**
+button in its top-right corner. Tap it to choose, then **Save**. Until a widget is set,
 the clock, weather and calendar stay and everything else fades.
 
 ### Background: photos or the night sky
 
-*When nobody's using it* in the layout editor sets what sits behind the screensaver's widgets. It is saved with the dashboard, so every screen showing that dashboard shows the same; a screen that should idle differently gets its own dashboard (*Settings → Displays*).
+**Behind it**, on the layout editor's Idle screen tab, sets what sits behind the screensaver's widgets. It is saved with the dashboard, so every screen showing that dashboard shows the same; a screen that should idle differently gets its own dashboard (*Settings → Displays*).
 
 - **Photos**: the slideshow.
 - **Night sky**: the stars, Milky Way, constellation figures and moon as they stand outside right now, drawn from the household location in *Settings → General*, over a treeline on the horizon. The Milky Way comes out last at dusk and fades when the moon is bright, as it does outside. Once it is dark, one constellation at a time is drawn in, line by line outward from its brightest star (the way you would find it outside), then named, with what the name means and its brightest stars' names, for about twenty seconds. The next follows after a pause. Each display remembers which it has shown and picks the one shown longest ago, best known first, skipping any a widget would hide, so over the nights of a season it works through all of them. The brightest stars twinkle and a shooting star crosses every few minutes. On the nights around the peak of one of the ten major annual meteor showers (the Quadrantids, Lyrids, Eta Aquariids, Southern Delta Aquariids, Perseids, Draconids, Orionids, Leonids, Geminids and Ursids), while its radiant is up, a line at the top says so ("Geminids peak tonight, up to 150 an hour", and whether a bright moon will hide the fainter ones), a small ring marks the radiant when it is in view, and shooting stars come more often and streak away from it. During a lunar eclipse seen from here, the moon turns copper as it moves into the Earth's shadow. With reduced motion set on the device, or a Reduced or Minimal performance level, both stop and each constellation appears whole instead of being traced. By day it is a plain sky. It loads no images and redraws once a minute, so it costs next to nothing on a display that never sleeps, and it shows no family photos to visitors.

@@ -38,7 +38,7 @@ import { WIDGET_REGISTRY } from '@/components/widgets/widgetRegistry';
 import { renderScreensaverPreview } from '@/components/screensaver/ScreensaverWidgetPreview';
 import { SCREENSAVER_WIDGET_CLASS } from '@/components/screensaver/Screensaver';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
-import { parseIdleBackground, usesSource, withoutDashboard, PHOTOS, type IdleBackground } from '@/lib/idleBackground';
+import { parseIdleBackground, withoutDashboard, PHOTOS, type IdleBackground } from '@/lib/idleBackground';
 import { WidgetErrorBoundary } from '@/components/dashboard/WidgetErrorBoundary';
 import { WidgetExpandProvider, useWidgetExpand } from '@/components/dashboard/WidgetExpandProvider';
 import { useDashboardData } from './useDashboardData';
@@ -178,15 +178,6 @@ export function Dashboard({
     setActiveIdleBackground(bg);
     return () => setActiveIdleBackground(withoutDashboard(bg));
   }, [idleKey]);
-  const setIdleBackground = useCallback(async (bg: IdleBackground) => {
-    const active = layout.activeLayout;
-    if (!active) return;
-    try {
-      await data.layouts.saveLayout({ id: active.id, name: active.name, widgets: active.widgets, idleBackground: bg });
-    } catch (err) {
-      console.error('Failed to save the idle background:', err);
-    }
-  }, [layout.activeLayout, data.layouts]);
   const calmIdle = useCalmIdle() && !layout.isEditing;
   const fadedIds = useMemo(
     () => calmIdle ? new Set(layout.activeWidgets.filter(w => !shownWhenIdle(w)).map(w => w.i)) : undefined,
@@ -413,23 +404,25 @@ export function Dashboard({
               onSave={layout.handleSave}
               onSaveAs={layout.handleSaveAs}
               onReset={layout.handleReset}
-              onCancel={() => { layout.setEditingScreensaver(false); layout.handleCancel(); }}
+              onCancel={layout.handleCancel}
               onDeleteLayout={data.layouts.deleteLayout}
               layoutName={layout.activeLayout?.name}
               savedLayouts={data.layouts.allLayouts.map(l => ({ id: l.id, name: l.name, widgets: l.widgets }))}
+              editTab={layout.editTab}
+              onEditTabChange={layout.setEditTab}
+              dashboardDirty={layout.dashboardDirty}
+              idleDirty={layout.idleDirty}
               editingScreensaver={layout.editingScreensaver}
-              onToggleScreensaverEdit={() => layout.setEditingScreensaver(!layout.editingScreensaver)}
               screensaverWidgets={layout.ssLayout}
               onScreensaverWidgetToggle={layout.handleSsWidgetToggle}
-              onScreensaverSave={layout.handleSsSave}
               onScreensaverSaveAs={layout.handleSsSaveAs}
               onScreensaverReset={layout.handleSsReset}
               onSelectScreensaverTemplate={layout.handleSelectSsTemplate}
               screensaverPresets={layout.ssPresets}
               onSelectScreensaverPreset={layout.handleSelectSsPreset}
               onDeleteScreensaverPreset={layout.handleDeleteSsPreset}
-              idleBackground={layout.activeLayout ? idleBackground : undefined}
-              onIdleBackgroundChange={setIdleBackground}
+              idleBackground={layout.activeLayout ? layout.editingBackground : undefined}
+              onIdleBackgroundChange={layout.setEditingBackground}
               screenGuideOrientation={screenGuideOrientation}
               onScreenGuideOrientationChange={setScreenGuideOrientation}
               enabledSizes={enabledSizes}
@@ -450,7 +443,7 @@ export function Dashboard({
             />
           )}
 
-          {layout.editingScreensaver && layout.isEditing ? (
+          {layout.editingScreensaver ? (
             <LayoutGridEditor
               layout={layout.ssLayout}
               onLayoutChange={layout.handleSsLayoutChange}
@@ -482,7 +475,8 @@ export function Dashboard({
                   hideEmptyByDefault={calmIdle}
                   drift={idleDrift}
                   morph
-                  idleToggles={layout.isEditing && !isMobile && usesSource(idleBackground, 'dashboard')}
+                  // Stays / Fades belongs to the Idle screen tab, on a dashboard that is its own idle screen.
+                  idleToggles={layout.isEditing && layout.editTab === 'idle' && !isMobile}
                   widgetConstraints={dashboardConstraints}
                   margin={8}
                   headerOffset={layout.isEditing ? 140 : uiHidden ? 0 : 56}

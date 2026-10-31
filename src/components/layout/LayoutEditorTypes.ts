@@ -1,5 +1,6 @@
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import type { IdleBackground } from '@/lib/idleBackground';
+import type { EditTab } from '@/components/dashboard/useDashboardLayout';
 
 export const EXPORT_VERSION = 2;
 
@@ -26,11 +27,16 @@ export interface LayoutEditorProps {
   onDeleteLayout?: (id: string) => void;
   layoutName?: string;
   savedLayouts?: SavedLayout[];
+  /** The Dashboard or Idle screen tab (#782). */
+  editTab?: EditTab;
+  onEditTabChange?: (tab: EditTab) => void;
+  /** Which tabs hold unsaved changes. */
+  dashboardDirty?: boolean;
+  idleDirty?: boolean;
+  /** The Idle screen tab, arranging a screensaver layout. */
   editingScreensaver?: boolean;
-  onToggleScreensaverEdit?: () => void;
   screensaverWidgets?: WidgetConfig[];
   onScreensaverWidgetToggle?: (widgetType: string, visible: boolean) => void;
-  onScreensaverSave?: () => void;
   onScreensaverSaveAs?: () => void;
   onScreensaverReset?: () => void;
   onSelectScreensaverTemplate?: (templateWidgets: WidgetConfig[]) => void;

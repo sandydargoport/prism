@@ -64,19 +64,82 @@ describe('screensaver per dashboard', () => {
   });
 });
 
-describe('saving from the screensaver editor', () => {
-  it("keeps the dashboard edits made before switching to the screensaver", async () => {
+describe('one editor, two tabs, one Save (#782)', () => {
+  const edited: WidgetConfig[] = [{ i: 'tasks', x: 0, y: 0, w: 12, h: 12, visible: true }];
+  const idleEdited: WidgetConfig[] = [{ i: 'weather', x: 4, y: 4, w: 16, h: 16, visible: true }];
+
+  async function editing(layout: Layout = dashboard('a', custom)) {
     activeUser = { id: 'p1', role: 'parent' };
-    const layouts = data([dashboard('a', custom)]);
-    const { result } = renderHook(() => useDashboardLayout(layouts, 'a'));
-    await act(async () => { await result.current.handleEditStart(); });
+    const layouts = data([layout]);
+    const hook = renderHook(() => useDashboardLayout(layouts, 'a'));
+    await act(async () => { await hook.result.current.handleEditStart(); });
+    return { layouts, result: hook.result };
+  }
+  const photos = () => ({ ...dashboard('a', custom), idleBackground: { source: 'photos' } }) as Layout;
 
-    // Edit the dashboard, then switch to the screensaver and save from there.
-    const edited: WidgetConfig[] = [{ i: 'tasks', x: 0, y: 0, w: 12, h: 12, visible: true }];
+  it('keeps unsaved edits in both tabs when switching between them, and Save stores both', async () => {
+    const { layouts, result } = await editing(photos());
     act(() => { result.current.setEditingWidgets(edited); });
-    act(() => { result.current.setEditingScreensaver(true); });
-    await act(async () => { await result.current.handleSsSave(); });
+    act(() => { result.current.setEditTab('idle'); });
+    expect(result.current.editingScreensaver).toBe(true);
+    act(() => { result.current.handleSsLayoutChange(idleEdited); });
+    act(() => { result.current.setEditingBackground({ source: 'sky' }); });
+    act(() => { result.current.setEditTab('dashboard'); });
+    expect(result.current.editingWidgets).toEqual(edited);
+    act(() => { result.current.setEditTab('idle'); });
+    expect(result.current.ssLayout).toEqual(idleEdited);
 
-    expect(layouts.saveLayout).toHaveBeenCalledWith(expect.objectContaining({ id: 'a', widgets: edited }));
+    await act(async () => { await result.current.handleSave(); });
+    expect(layouts.saveLayout).toHaveBeenCalledTimes(1);
+    expect(layouts.saveLayout).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'a', widgets: edited, screensaverWidgets: idleEdited, idleBackground: { source: 'sky' },
+    }));
+    expect(result.current.isEditing).toBe(false);
+    // The running screensaver gets the new layout once saved.
+    expect(stored()).toEqual(idleEdited);
+  });
+
+  it('saves nothing until Save, and Cancel undoes both tabs', async () => {
+    const { layouts, result } = await editing(photos());
+    act(() => { result.current.setEditingWidgets(edited); });
+    act(() => { result.current.setEditTab('idle'); });
+    act(() => { result.current.handleSsLayoutChange(idleEdited); });
+    act(() => { result.current.setEditingBackground({ source: 'dashboard' }); });
+    expect(stored()).toEqual(custom);
+
+    act(() => { result.current.handleCancel(); });
+    expect(layouts.saveLayout).not.toHaveBeenCalled();
+    expect(result.current.isEditing).toBe(false);
+    expect(result.current.editTab).toBe('dashboard');
+    expect(result.current.activeWidgets).toEqual([]);
+    expect(result.current.ssLayout).toEqual(custom);
+    expect(result.current.editingBackground).toEqual({ source: 'photos' });
+    expect(stored()).toEqual(custom);
+  });
+
+  it('marks only the tab whose part changed', async () => {
+    const { result } = await editing({ ...photos(), widgets: [{ i: 'clock', x: 0, y: 0, w: 8, h: 8 }] } as Layout);
+    expect([result.current.dashboardDirty, result.current.idleDirty]).toEqual([false, false]);
+
+    // Stays / Fades is the idle screen's.
+    act(() => { result.current.setEditingWidgets([{ i: 'clock', x: 0, y: 0, w: 8, h: 8, showWhenIdle: false }]); });
+    expect([result.current.dashboardDirty, result.current.idleDirty]).toEqual([false, true]);
+
+    act(() => { result.current.setEditingWidgets([{ i: 'clock', x: 4, y: 0, w: 8, h: 8 }]); });
+    expect([result.current.dashboardDirty, result.current.idleDirty]).toEqual([true, false]);
+
+    act(() => { result.current.setEditingWidgets([{ i: 'clock', x: 0, y: 0, w: 8, h: 8 }]); });
+    act(() => { result.current.setEditingBackground({ source: 'sky' }); });
+    expect([result.current.dashboardDirty, result.current.idleDirty]).toEqual([false, true]);
+  });
+
+  it('arranges a screensaver layout on the Idle screen tab only behind photos or the sky', async () => {
+    const { result } = await editing({ ...dashboard('a', custom), idleBackground: { source: 'dashboard' } } as Layout);
+    act(() => { result.current.setEditTab('idle'); });
+    expect(result.current.editingScreensaver).toBe(false);
+    act(() => { result.current.setEditingBackground({ source: 'photos' }); });
+    expect(result.current.editingScreensaver).toBe(true);
+    act(() => { result.current.setEditTab('dashboard'); });
+    expect(result.current.editingScreensaver).toBe(false);
   });
 });
