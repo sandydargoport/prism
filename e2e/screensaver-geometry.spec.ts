@@ -694,6 +694,44 @@ test.describe('screensaver widget outlines', () => {
     expect(alpha.clock, 'Outline: None hides the card outline').toBe(0);
   });
 
+  test('an empty widget is hidden by default and keeps its place, unless set to show', async ({ page }) => {
+    // #738: on the screensaver an empty widget hides unless set otherwise.
+    // Messages is made empty by answering its fetch with nothing.
+    await page.route('**/api/messages?*', (route) => route.fulfill({ json: { messages: [] } }));
+    const open = async (messages: Record<string, unknown>) => {
+      await page.addInitScript((m) => {
+        localStorage.setItem('prism-screensaver-motion', 'off');
+        localStorage.setItem('prism-screensaver-motion-v2', '1');
+        localStorage.setItem('prism-screensaver-drift', 'off');
+        localStorage.setItem('prism-screensaver-layout', JSON.stringify([
+          { i: 'clock', x: 2, y: 2, w: 16, h: 10, visible: true },
+          { i: 'messages', x: 20, y: 2, w: 16, h: 10, visible: true, ...m },
+          { i: 'weather', x: 2, y: 14, w: 16, h: 10, visible: false },
+        ]));
+      }, messages);
+      await page.goto('/');
+      await page.waitForLoadState('networkidle');
+      await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
+      await page.locator('.fixed.inset-0.z-9999 .widget-cell[data-widget="messages"]').waitFor();
+      await page.waitForTimeout(1500);
+      return page.evaluate(() => {
+        const cell = (id: string) => {
+          const el = document.querySelector<HTMLElement>(`.fixed.inset-0 .widget-cell[data-widget="${id}"]`)!;
+          return { opacity: Number(getComputedStyle(el).opacity), w: el.getBoundingClientRect().width };
+        };
+        return { clock: cell('clock'), messages: cell('messages') };
+      });
+    };
+
+    const byDefault = await open({});
+    expect(byDefault.clock.opacity, 'the clock always shows').toBe(1);
+    expect(byDefault.messages.opacity, 'empty messages are hidden').toBe(0);
+    expect(byDefault.messages.w, 'and keep their place').toBeGreaterThan(0);
+
+    const shown = await open({ hideWhenEmpty: false });
+    expect(shown.messages.opacity, 'set to always show, it shows').toBe(1);
+  });
+
   test('drifting widgets keep their gaps through a whole cycle, with nothing stored', async ({ page }) => {
     // Drift is on by default. It used to run each widget on its own phase, so
     // neighbours could drift towards each other and overlap (-14.8 px measured

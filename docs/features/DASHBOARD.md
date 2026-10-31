@@ -37,9 +37,10 @@ Click a widget to select it, then use the **properties toolbar** to style it ind
 
 - Background color (including a **frosted-glass** option used by the Ambient templates)
 - Opacity
-- Outline
+- Outline, including **None** to remove the widget's border
 - Text color
 - Text size
+- **Hide when empty**: the widget is not drawn while it has nothing to show (no open tasks, no messages, an empty shopping list, no birthdays coming up, no meals planned) and comes back when something arrives. Its space stays empty, so nothing else moves. On by default on the screensaver and on a calm dashboard's idle screen, off by default on a dashboard in use. Clock, Weather, Calendar, Photos and Travel always have something to show, so they don't offer it. In the editor the widget always shows, marked **Empty: hidden** when the live screen leaves it out.
 
 ---
 

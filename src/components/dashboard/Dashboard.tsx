@@ -457,6 +457,7 @@ export function Dashboard({
               minVisibleRows={8}
               theme={SCREENSAVER_THEME}
               previewFit="contain"
+              hideEmptyByDefault
               gridHelperText="Drag widgets to reposition &bull; Scroll to see more"
               className="mx-4"
               screenGuideOrientation={screenGuideOrientation}
@@ -473,6 +474,7 @@ export function Dashboard({
                   isEditable={layout.isEditing}
                   renderWidget={renderDashboardWidget}
                   fadedIds={fadedIds}
+                  hideEmptyByDefault={calmIdle}
                   drift={idleDrift}
                   morph
                   idleToggles={layout.isEditing && screensaverMode === 'calm'}

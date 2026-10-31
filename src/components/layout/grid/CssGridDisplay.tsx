@@ -2,9 +2,11 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, ViewTransition } from 'react';
 import { SCHEDULE_TRANSITION } from '@/lib/displays/screenSchedule';
-import { WidgetBgOverrideProvider } from '@/components/widgets/WidgetContainer';
+import { WidgetBgOverrideProvider, WidgetEmptyReportContext } from '@/components/widgets/WidgetContainer';
 import { getWidgetStyle, getWidgetContentStyle, getTextColorClass, getWidgetOutlineClass } from './gridWidgetStyles';
 import { useSquareCells } from './useSquareCells';
+import { useEmptyWidgets } from './useEmptyWidgets';
+import { hidesWhenEmpty } from './hideWhenEmpty';
 import { useViewportSize } from '@/lib/hooks/useViewportSize';
 import { GRID_COLS } from '@/lib/constants/grid';
 import { resolveFitMode, containGeometry } from './fitMode';
@@ -97,6 +99,8 @@ export function CssGridDisplay({
   fadedIds,
   drift = false,
   morph = false,
+  hideEmptyByDefault = false,
+  onEmptyChange,
   className,
 }: CssGridDisplayProps) {
   const { containerRef, cellSize: widthCellSize, width, top, zoom, remeasure } = useSquareCells(cols, containerPadding, margin, fillHeight);
@@ -111,6 +115,8 @@ export function CssGridDisplay({
     () => layout.filter(w => w.visible !== false),
     [layout],
   );
+
+  const { emptyIds, reporterFor } = useEmptyWidgets(onEmptyChange);
 
   // A faded widget does not drift: there is nothing on screen to protect.
   const cells = useRef(new Map<string, HTMLDivElement>());
@@ -291,6 +297,10 @@ export function CssGridDisplay({
           const outlineClass = getWidgetOutlineClass(w);
           const hasCustomBg = !!w.backgroundColor;
           const faded = fadedIds?.has(w.i) ?? false;
+          // Nothing to show and set to hide: out of sight the same way as a
+          // faded widget, keeping its place (#738).
+          const hiddenEmpty = emptyIds.has(w.i) && hidesWhenEmpty(w, hideEmptyByDefault);
+          const gone = faded || hiddenEmpty;
 
           const cell = (
             <div
@@ -299,7 +309,8 @@ export function CssGridDisplay({
               ref={(el) => { if (el) cells.current.set(w.i, el); else cells.current.delete(w.i); }}
               data-widget={w.i}
               data-faded={faded || undefined}
-              aria-hidden={faded || undefined}
+              data-hidden-empty={hiddenEmpty || undefined}
+              aria-hidden={gone || undefined}
               style={{
                 gridColumn: `${w.x + 1} / span ${w.w}`,
                 gridRow: `${w.y + 1} / span ${w.h}`,
@@ -307,13 +318,15 @@ export function CssGridDisplay({
                 // Faded, not removed: the cell keeps its place in the grid, so
                 // nothing around it reflows. A tap on it falls to the empty
                 // grid, which wakes the display without pressing anything.
-                ...(faded ? { opacity: 0, pointerEvents: 'none' as const } : {}),
+                ...(gone ? { opacity: 0, pointerEvents: 'none' as const } : {}),
               }}
             >
               <WidgetBgOverrideProvider value={{ hasCustomBg, textColor: w.textColor, textOpacity: w.textOpacity, gridLineOpacity: w.gridLineOpacity, cellBackgroundColor: w.cellBackgroundColor, cellBackgroundOpacity: w.cellBackgroundOpacity }}>
-                <div className="h-full w-full overflow-hidden" style={contentStyle}>
-                  {renderWidget(w)}
-                </div>
+                <WidgetEmptyReportContext.Provider value={reporterFor(w.i)}>
+                  <div className="h-full w-full overflow-hidden" style={contentStyle}>
+                    {renderWidget(w)}
+                  </div>
+                </WidgetEmptyReportContext.Provider>
               </WidgetBgOverrideProvider>
             </div>
           );

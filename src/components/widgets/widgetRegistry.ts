@@ -36,6 +36,10 @@ export interface WidgetRegistryEntry {
   maxW?: number;
   maxH?: number;
   hasGrid?: boolean;
+  /** Has an empty state (it draws WidgetEmpty), so it can hide when empty
+   *  (#738). Clock, weather, calendar, photos and travel always have
+   *  something to show. */
+  canBeEmpty?: boolean;
 }
 
 export const WIDGET_REGISTRY: Record<string, WidgetRegistryEntry> = {
@@ -75,6 +79,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistryEntry> = {
     minH: 5,
     defaultW: 16,
     defaultH: 12,
+    canBeEmpty: true,
   },
   messages: {
     component: MessagesWidget,
@@ -84,6 +89,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistryEntry> = {
     minH: 5,
     defaultW: 16,
     defaultH: 12,
+    canBeEmpty: true,
   },
   chores: {
     component: ChoresWidget,
@@ -93,6 +99,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistryEntry> = {
     minH: 5,
     defaultW: 16,
     defaultH: 12,
+    canBeEmpty: true,
   },
   shopping: {
     component: ShoppingWidget,
@@ -102,6 +109,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistryEntry> = {
     minH: 5,
     defaultW: 16,
     defaultH: 12,
+    canBeEmpty: true,
   },
   meals: {
     component: MealsWidget,
@@ -111,6 +119,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistryEntry> = {
     minH: 6,
     defaultW: 24,
     defaultH: 14,
+    canBeEmpty: true,
   },
   birthdays: {
     component: BirthdaysWidget,
@@ -120,6 +129,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistryEntry> = {
     minH: 5,
     defaultW: 16,
     defaultH: 10,
+    canBeEmpty: true,
   },
   photos: {
     component: PhotoWidget,
@@ -138,6 +148,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistryEntry> = {
     minH: 8,
     defaultW: 12,
     defaultH: 12,
+    canBeEmpty: true,
   },
   wishes: {
     component: WishesWidget,
@@ -147,6 +158,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistryEntry> = {
     minH: 6,
     defaultW: 12,
     defaultH: 10,
+    canBeEmpty: true,
   },
   busTracking: {
     component: BusTrackingWidget,
@@ -156,6 +168,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistryEntry> = {
     minH: 6,
     defaultW: 12,
     defaultH: 8,
+    canBeEmpty: true,
   },
   travel: {
     component: TravelWidget,

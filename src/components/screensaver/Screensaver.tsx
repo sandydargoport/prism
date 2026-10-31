@@ -16,6 +16,7 @@ import { GRID_COLS } from '@/lib/constants/grid';
 import { CssGridDisplay } from '@/components/layout/grid/CssGridDisplay';
 import { CalendarPrefsScopeContext } from '@/lib/hooks/useCalendarWidgetPrefs';
 import { loadScreensaverLayout } from './screensaverStorage';
+import { hidesWhenEmpty } from '@/components/layout/grid/hideWhenEmpty';
 import { shouldShowScreensaver } from './shouldShowScreensaver';
 import { rotate, showingCount } from './screensaverRotation';
 import { useScreensaverMotion } from './useScreensaverMotion';
@@ -244,9 +245,15 @@ function ScreensaverGrid() {
   // Which widgets are currently on screen. Off by default, in which case every
   // widget shows and all of this is inert.
   const { motion, interval: motionInterval, floor, ceiling, outlines, drift, waterClear, ready } = useScreensaverMotion();
+  // Widgets showing their empty state. One set to hide when empty (on by
+  // default here, #738) sits out the rotation too, or it would take a turn and
+  // leave a gap where it should have been.
+  const [emptyIds, setEmptyIds] = useState<ReadonlySet<string>>(() => new Set());
   const widgetIds = useMemo(
-    () => layout.filter((w) => w.visible !== false).map((w) => w.i),
-    [layout],
+    () => layout
+      .filter((w) => w.visible !== false && !(emptyIds.has(w.i) && hidesWhenEmpty(w, true)))
+      .map((w) => w.i),
+    [layout, emptyIds],
   );
 
   /** Horizontal centre of each widget, so a pour can find a partner across the
@@ -423,6 +430,8 @@ function ScreensaverGrid() {
         screenFrame={screenFrame}
         headerOffset={0}
         drift={drift}
+        hideEmptyByDefault
+        onEmptyChange={setEmptyIds}
         className="w-full h-full"
       />
       </EffectStage>

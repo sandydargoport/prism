@@ -430,6 +430,18 @@ function WidgetError({ message }: { message: string }) {
  *   <TaskList tasks={tasks} />
  * )}
  */
+/**
+ * Lets the grid cell around a widget know it is showing its empty state, so a
+ * widget set to hide when empty (#738) can be hidden. Null outside a grid.
+ *
+ * Reported by WidgetEmpty itself rather than worked out from each widget's
+ * data: the widget has already decided what it would show (open tasks only,
+ * upcoming birthdays only), so this cannot disagree with what is on screen.
+ * WidgetContainer draws nothing of its children while loading or in error, so
+ * a loading widget never counts as empty.
+ */
+export const WidgetEmptyReportContext = React.createContext<((empty: boolean) => void) | null>(null);
+
 export function WidgetEmpty({
   icon,
   message,
@@ -439,6 +451,13 @@ export function WidgetEmpty({
   message: string;
   action?: React.ReactNode;
 }) {
+  const report = React.useContext(WidgetEmptyReportContext);
+  React.useEffect(() => {
+    if (!report) return;
+    report(true);
+    return () => report(false);
+  }, [report]);
+
   return (
     <div className="flex h-full w-full flex-col items-center justify-center text-center p-4 gap-3">
       {icon && (
