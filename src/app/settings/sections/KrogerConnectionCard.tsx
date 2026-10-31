@@ -72,9 +72,15 @@ export function KrogerConnectionCard() {
     }
   };
 
+  // The clipboard API is missing on a plain http:// page and can refuse
+  // elsewhere, so only report a copy that happened.
   const copyRedirectUri = async () => {
-    await navigator.clipboard.writeText(redirectUri);
-    toast({ title: 'Redirect URI copied' });
+    try {
+      await navigator.clipboard.writeText(redirectUri);
+      toast({ title: 'Redirect URI copied' });
+    } catch {
+      toast({ title: "Couldn't copy the redirect URI", description: 'Tap the address to select it, then copy it by hand.', variant: 'destructive' });
+    }
   };
 
   const searchStores = async () => {
@@ -236,7 +242,7 @@ export function KrogerConnectionCard() {
                     </li>
                     <li>
                       Set the redirect URI to:
-                      <code className="block mt-1 text-xs bg-muted rounded px-2 py-1 break-all">{redirectUri}</code>
+                      <code className="block mt-1 text-xs bg-muted rounded px-2 py-1 break-all select-all">{redirectUri}</code>
                       <button
                         onClick={copyRedirectUri}
                         className="mt-1 text-xs text-primary hover:underline"

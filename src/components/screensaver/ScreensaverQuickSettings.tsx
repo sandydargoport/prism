@@ -161,18 +161,20 @@ export function ScreensaverSettingsPanel({
                     ))}
                   </select>
                 </label>
-
-                <label className="flex items-center justify-between gap-3 cursor-pointer">
-                  <span className="text-sm text-white/70">Hide widget outlines</span>
-                  <input
-                    type="checkbox"
-                    checked={!outlines}
-                    onChange={(e) => setOutlines(!e.target.checked)}
-                    className="h-4 w-4 rounded border-white/30"
-                  />
-                </label>
               </>
             )}
+
+            {/* Outlines show with or without a transition effect, so this is
+                not inside the motion !== 'off' block above. */}
+            <label className="flex items-center justify-between gap-3 cursor-pointer">
+              <span className="text-sm text-white/70">Hide widget outlines</span>
+              <input
+                type="checkbox"
+                checked={!outlines}
+                onChange={(e) => setOutlines(!e.target.checked)}
+                className="h-4 w-4 rounded border-white/30"
+              />
+            </label>
               <label className="flex items-center justify-between gap-3">
                 <span className="text-sm text-white/70">Transition length</span>
                 <select

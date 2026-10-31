@@ -512,7 +512,7 @@ function TimersCard() {
  * for it — the screensaver editor — didn't mention it either. Giving it a card
  * with its own name is the whole fix.
  */
-function ScreensaverCard() {
+export function ScreensaverCard() {
   const { timeout: ssTimeout, setTimeout: setSsTimeout } = useScreensaverTimeout();
   const { interval: photoInterval, setInterval: setPhotoInterval } = useScreensaverInterval();
   const {
@@ -623,17 +623,17 @@ function ScreensaverCard() {
               </select>
             </div>
           )}
-          {motion !== 'off' && (
-            <label className="flex items-center gap-3 pl-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={!outlines}
-                onChange={(e) => setOutlines(!e.target.checked)}
-                className="rounded border-border"
-              />
-              <span className="text-sm text-muted-foreground">Hide widget outlines</span>
-            </label>
-          )}
+          {/* Outlines show with or without a transition effect, so this is
+              not under motion !== 'off' like the controls above. */}
+          <label className="flex items-center gap-3 pl-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={!outlines}
+              onChange={(e) => setOutlines(!e.target.checked)}
+              className="rounded border-border"
+            />
+            <span className="text-sm text-muted-foreground">Hide widget outlines</span>
+          </label>
           <div className="flex items-center gap-3 pl-2">
             <span className="text-sm text-muted-foreground">Transition length</span>
             <select
