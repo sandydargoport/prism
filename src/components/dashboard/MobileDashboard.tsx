@@ -22,6 +22,8 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { BirthdaysWidget } from '@/components/widgets/BirthdaysWidget';
 import type { useDashboardData } from './useDashboardData';
 import { useMobileCardOrder, useHiddenCards } from './useMobileCardOrder';
 import { useBusTracking } from '@/lib/hooks/useBusTracking';
@@ -82,6 +84,9 @@ export const MobileDashboard = memo(function MobileDashboard({ data }: MobileDas
   const liveBus = pickShownTrack(busLive.tracks, busRoutes.map((r) => r.id), busLive.provider, now.getTime() + busLive.clockOffsetMs);
   const [hiddenCards] = useHiddenCards();
   const [reorderMode, setReorderMode] = useState(false);
+  // Birthdays has no page of its own, so its card opens the full widget here.
+  const [birthdaysOpen, setBirthdaysOpen] = useState(false);
+  const openBirthdays = useCallback(() => setBirthdaysOpen(true), []);
 
   const { pullDistance, refreshing } = usePullToRefresh();
   const { layout } = useMobileLayout();
@@ -119,13 +124,13 @@ export const MobileDashboard = memo(function MobileDashboard({ data }: MobileDas
     shopping: <ShoppingTile data={data.shopping} />,
     meals: <MealsTile data={data.meals} />,
     messages: <MessagesTile data={data.messages} />,
-    birthdays: <BirthdaysTile data={data.birthdays} />,
+    birthdays: <BirthdaysTile data={data.birthdays} onOpen={openBirthdays} />,
     points: <PointsTile data={data.points} />,
     wishes: <WishesTile />,
     photos: <PhotosTile />,
     recipes: <RecipesTile />,
     busTracking: <BusTrackingTile routes={busRoutes} live={liveBus} provider={busLive.provider} />,
-  }), [data, busRoutes, liveBus, busLive.provider]);
+  }), [data, busRoutes, liveBus, busLive.provider, openBirthdays]);
 
   const cardMap: Record<string, React.ReactNode> = useMemo(() => ({
     weather: <WeatherCard data={data.weather} />,
@@ -136,13 +141,13 @@ export const MobileDashboard = memo(function MobileDashboard({ data }: MobileDas
     shopping: <ShoppingCard data={data.shopping} />,
     meals: <MealsCard data={data.meals} />,
     messages: <MessagesCard data={data.messages} />,
-    birthdays: <BirthdaysCard data={data.birthdays} />,
+    birthdays: <BirthdaysCard data={data.birthdays} onOpen={openBirthdays} />,
     points: <PointsCard data={data.points} />,
     wishes: <WishesCard />,
     photos: <PhotosCard />,
     recipes: <RecipesCard />,
     busTracking: <BusTrackingCard routes={busRoutes} live={liveBus} provider={busLive.provider} />,
-  }), [data, busRoutes, liveBus, busLive.provider]);
+  }), [data, busRoutes, liveBus, busLive.provider, openBirthdays]);
 
   const cardHasContent: Record<string, boolean> = useMemo(() => ({
     weather: !data.weather.loading && !!data.weather.data,
@@ -239,6 +244,22 @@ export const MobileDashboard = memo(function MobileDashboard({ data }: MobileDas
           ))}
         </div>
       )}
+
+      <Dialog open={birthdaysOpen} onOpenChange={setBirthdaysOpen}>
+        {/* A column, so the widget fills the sheet: it shows as many rows as
+            fit its own height, and in a short auto-sized slot that was one. */}
+        <DialogContent className="h-[80dvh] flex flex-col p-4 pt-10">
+          <DialogTitle className="sr-only">Birthdays</DialogTitle>
+          <div className="flex-1 min-h-0">
+            <BirthdaysWidget
+              birthdays={data.birthdays.birthdays ?? []}
+              loading={data.birthdays.loading}
+              error={data.birthdays.error}
+              maxItems={50}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </MobileLayoutProvider>
   );
 });
