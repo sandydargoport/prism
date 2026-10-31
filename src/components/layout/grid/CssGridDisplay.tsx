@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, ViewTransition } from 'react';
 import { SCHEDULE_TRANSITION } from '@/lib/displays/screenSchedule';
 import { WidgetBgOverrideProvider } from '@/components/widgets/WidgetContainer';
-import { getWidgetStyle, getWidgetContentStyle, getTextColorClass } from './gridWidgetStyles';
+import { getWidgetStyle, getWidgetContentStyle, getTextColorClass, getWidgetOutlineClass } from './gridWidgetStyles';
 import { useSquareCells } from './useSquareCells';
 import { useViewportSize } from '@/lib/hooks/useViewportSize';
 import { GRID_COLS } from '@/lib/constants/grid';
@@ -288,13 +288,14 @@ export function CssGridDisplay({
           const widgetStyle = getWidgetStyle(w);
           const contentStyle = getWidgetContentStyle(w);
           const textClass = getTextColorClass(w);
+          const outlineClass = getWidgetOutlineClass(w);
           const hasCustomBg = !!w.backgroundColor;
           const faded = fadedIds?.has(w.i) ?? false;
 
           const cell = (
             <div
               key={w.i}
-              className={`widget-cell relative overflow-hidden ${textClass} transition-opacity duration-1000 motion-reduce:duration-200`}
+              className={`widget-cell relative overflow-hidden ${textClass} ${outlineClass} transition-opacity duration-1000 motion-reduce:duration-200`}
               ref={(el) => { if (el) cells.current.set(w.i, el); else cells.current.delete(w.i); }}
               data-widget={w.i}
               data-faded={faded || undefined}

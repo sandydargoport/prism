@@ -657,6 +657,43 @@ test.describe('screensaver widget outlines', () => {
     expect(after[target], 'the outline is gone before the burst').toBe(0);
   });
 
+  test('a widget with Outline set to None has no outline, with outlines shown', async ({ page }) => {
+    // Outlines on is the default and the hard case: their colour is a Tailwind
+    // !important utility in a cascade layer, which beats any unlayered rule.
+    await page.addInitScript(() => {
+      localStorage.setItem('prism-screensaver-outlines', 'on');
+      localStorage.setItem('prism-screensaver-motion', 'off');
+      localStorage.setItem('prism-screensaver-motion-v2', '1');
+      localStorage.setItem('prism-screensaver-drift', 'off');
+      localStorage.setItem('prism-screensaver-layout', JSON.stringify([
+        { i: 'clock', x: 2, y: 2, w: 16, h: 10, visible: true, outlineColor: 'transparent' },
+        { i: 'weather', x: 20, y: 2, w: 16, h: 10, visible: true },
+        { i: 'messages', x: 2, y: 14, w: 16, h: 10, visible: false },
+      ]));
+    });
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
+    await page.locator('.fixed.inset-0.z-9999 .widget-cell[data-widget="clock"]').waitFor();
+    await page.waitForTimeout(1000);
+
+    const alpha = await page.evaluate(() => {
+      const out: Record<string, number> = {};
+      for (const id of ['clock', 'weather']) {
+        const card = document.querySelector<HTMLElement>(
+          `.fixed.inset-0 .widget-cell[data-widget="${id}"] [class*="bg-card"].border-border`);
+        if (!card) { out[id] = -1; continue; }
+        const c = getComputedStyle(card).borderTopColor;
+        const slash = c.match(/\/\s*([\d.]+)\s*\)$/);
+        const rgba = c.match(/^rgba\((?:[^,]+,){3}\s*([\d.]+)\)$/);
+        out[id] = c === 'transparent' ? 0 : slash ? Number(slash[1]) : rgba ? Number(rgba[1]) : 1;
+      }
+      return out;
+    });
+    expect(alpha.weather, 'precondition: a default widget shows its outline').toBeGreaterThan(0);
+    expect(alpha.clock, 'Outline: None hides the card outline').toBe(0);
+  });
+
   test('drifting widgets keep their gaps through a whole cycle, with nothing stored', async ({ page }) => {
     // Drift is on by default. It used to run each widget on its own phase, so
     // neighbours could drift towards each other and overlap (-14.8 px measured
