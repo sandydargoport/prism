@@ -27,6 +27,10 @@ export interface WidgetConfig {
   /** Calm mode: stays on screen while the display is idle. Unset uses the
    *  default for the widget (see shownWhenIdle). */
   showWhenIdle?: boolean;
+  /** Not drawn while it has nothing to show (#738). Unset uses the default for
+   *  where it is drawn: on for the screensaver and a calm dashboard's idle
+   *  screen, off for a dashboard in use. See hideWhenEmpty.ts. */
+  hideWhenEmpty?: boolean;
   settings?: Record<string, unknown>;
 }
 

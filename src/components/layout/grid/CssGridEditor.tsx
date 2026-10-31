@@ -14,11 +14,13 @@ import {
   type DragStartEvent,
   type Modifier,
 } from '@dnd-kit/core';
-import { Moon } from 'lucide-react';
-import { WidgetBgOverrideProvider } from '@/components/widgets/WidgetContainer';
+import { EyeOff, Moon } from 'lucide-react';
+import { WidgetBgOverrideProvider, WidgetEmptyReportContext } from '@/components/widgets/WidgetContainer';
 import { shownWhenIdle } from '@/components/screensaver/calmMode';
 import { getWidgetStyle, getWidgetContentStyle, getTextColorClass, getWidgetOutlineClass } from './gridWidgetStyles';
 import type { EditorTheme } from './gridEditorTypes';
+import { useEmptyWidgets } from './useEmptyWidgets';
+import { canHideWhenEmpty, hidesWhenEmpty } from './hideWhenEmpty';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 
 type ResizeEdge = 'n' | 's' | 'e' | 'w' | 'ne' | 'se' | 'sw';
@@ -44,6 +46,8 @@ export interface CssGridEditorProps {
    * the idle screen keeps is set where the widgets are.
    */
   idleToggles?: boolean;
+  /** See CssGridDisplayProps: whether an unset widget hides when empty. */
+  hideEmptyByDefault?: boolean;
 }
 
 export function CssGridEditor({
@@ -61,8 +65,10 @@ export function CssGridEditor({
   onSelectWidget,
   theme,
   idleToggles = false,
+  hideEmptyByDefault = false,
 }: CssGridEditorProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
+  const { emptyIds, reporterFor } = useEmptyWidgets();
   const [editMode, setEditMode] = useState<EditMode>('move');
   const [resizePreview, setResizePreview] = useState<{
     widgetId: string;
@@ -247,6 +253,12 @@ export function CssGridEditor({
             renderWidget={renderWidget}
             theme={theme}
             onToggleIdle={idleToggles ? handleToggleIdle : undefined}
+            reportEmpty={reporterFor(w.i)}
+            emptyHidden={!emptyIds.has(w.i) ? null
+              : hidesWhenEmpty(w, hideEmptyByDefault) ? 'always'
+              // A calm dashboard's idle screen hides an unset widget.
+              : idleToggles && w.hideWhenEmpty === undefined && canHideWhenEmpty(w.i) ? 'idle'
+              : null}
           />
         ))}
       </div>
@@ -313,6 +325,9 @@ interface DraggableWidgetProps {
   renderWidget: (widget: WidgetConfig) => React.ReactNode;
   theme: EditorTheme;
   onToggleIdle?: (id: string) => void;
+  reportEmpty: (empty: boolean) => void;
+  /** Empty now and so hidden on the live screen, always or only when idle. */
+  emptyHidden: 'always' | 'idle' | null;
 }
 
 function DraggableWidget({
@@ -326,6 +341,8 @@ function DraggableWidget({
   renderWidget,
   theme,
   onToggleIdle,
+  reportEmpty,
+  emptyHidden,
 }: DraggableWidgetProps) {
   const inMoveMode = isSelected && editMode === 'move';
   const inResizeMode = isSelected && editMode === 'resize';
@@ -381,13 +398,24 @@ function DraggableWidget({
           bubble through pointer-events:none and the wrapper has its own
           onClick + dnd-kit listeners. */}
       <WidgetBgOverrideProvider value={{ hasCustomBg, textColor: widget.textColor, textOpacity: widget.textOpacity, gridLineOpacity: widget.gridLineOpacity, cellBackgroundColor: widget.cellBackgroundColor, cellBackgroundOpacity: widget.cellBackgroundOpacity }}>
-        <div
-          className={`h-full w-full overflow-hidden ${textClass} ${outlineClass}`}
-          style={{ pointerEvents: 'none', ...contentStyle }}
-        >
-          {renderWidget(widget)}
-        </div>
+        <WidgetEmptyReportContext.Provider value={reportEmpty}>
+          <div
+            className={`h-full w-full overflow-hidden ${textClass} ${outlineClass} ${emptyHidden ? 'opacity-50' : ''}`}
+            style={{ pointerEvents: 'none', ...contentStyle }}
+          >
+            {renderWidget(widget)}
+          </div>
+        </WidgetEmptyReportContext.Provider>
       </WidgetBgOverrideProvider>
+
+      {/* Edit mode always shows the widget, so say when the live screen does
+          not (#738). Top edge at the left; the idle switch is at the right. */}
+      {emptyHidden && !isDragging && (
+        <div data-empty-marker className="absolute -top-2.5 left-3 z-30 flex items-center gap-1 rounded-full bg-neutral-600 px-2 py-0.5 text-[11px] leading-4 font-medium text-white shadow-xs pointer-events-none">
+          <EyeOff className="h-3.5 w-3.5" aria-hidden />
+          {emptyHidden === 'idle' ? 'Empty: hidden when idle' : 'Empty: hidden'}
+        </div>
+      )}
 
       {/* Mode label — visible when selected */}
       {isSelected && !isDragging && (
