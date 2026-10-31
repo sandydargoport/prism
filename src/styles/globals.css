@@ -1134,6 +1134,23 @@ html[data-virtual-keyboard-open] [data-keyboard-aware-dialog] {
 }
 
 /**
+ * A widget's Outline set to None: the same perimeter as above, for one widget,
+ * on a dashboard or the screensaver.
+ *
+ * In the utilities layer, unlike .prism-no-outline, because it has to win with
+ * the screensaver's outlines on: that colour is a Tailwind !important utility,
+ * and an !important rule in a layer beats an unlayered one whatever the
+ * specificity (see .prism-shed below). Inside the layer this selector is the
+ * more specific one.
+ */
+@layer utilities {
+  .prism-outline-none [class*="bg-card"].border-border {
+    border-color: transparent !important;
+    box-shadow: none !important;
+  }
+}
+
+/**
  * No backdrop blur on a screensaver widget.
  *
  * The card is backdrop-blurred, and any transform animation on or above it

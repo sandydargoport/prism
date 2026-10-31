@@ -34,7 +34,7 @@ export function getWidgetStyle(w: WidgetConfig): CSSProperties | undefined {
       : w.backgroundColor;
   }
 
-  if (w.outlineColor) {
+  if (w.outlineColor && w.outlineColor !== 'transparent') {
     const olOpacity = w.outlineOpacity ?? 1;
     style.border = `2px solid ${olOpacity < 1 ? hexToRgba(w.outlineColor, olOpacity) : w.outlineColor}`;
   }
@@ -47,6 +47,16 @@ export function getWidgetStyle(w: WidgetConfig): CSSProperties | undefined {
   }
 
   return style;
+}
+
+/**
+ * Outline "None": no added border, and the card's own perimeter hidden too.
+ * The faint outline a widget shows by default is the card's border, not
+ * outlineColor, so leaving outlineColor off is not enough. The rule is
+ * .prism-outline-none in globals.css.
+ */
+export function getWidgetOutlineClass(w: WidgetConfig): string {
+  return w.outlineColor === 'transparent' ? 'prism-outline-none' : '';
 }
 
 /**

@@ -298,7 +298,7 @@ export function LayoutGridEditor({
       else updateWidgetColor(selectedWidget, { textColor: null, textOpacity: 1 });
     };
     const isDefault = !color;
-    const hasColor = target === 'fill' ? (bgColor && bgColor !== 'transparent') : target === 'outline' ? !!olColor : false;
+    const hasColor = target === 'fill' ? (bgColor && bgColor !== 'transparent') : target === 'outline' ? (!!olColor && olColor !== 'transparent') : false;
     const isFrosted = target === 'fill' && bgColor === 'frosted';
 
     return (
@@ -324,11 +324,11 @@ export function LayoutGridEditor({
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></svg>
             </div>
           </button>
-          {/* Transparent (fill only) */}
-          {target === 'fill' && (
+          {/* Transparent (fill), or None (outline: hides the card's own border too) */}
+          {target !== 'text' && (
             <button onClick={() => apply('transparent')} onPointerDown={(e) => e.stopPropagation()}
-              className={`w-7 h-7 rounded-full border border-gray-300 overflow-hidden transition-transform hover:scale-110 touch-manipulation ${bgColor === 'transparent' ? 'ring-2 ring-primary ring-offset-1' : ''}`}
-              title="Transparent">
+              className={`w-7 h-7 rounded-full border border-gray-300 overflow-hidden transition-transform hover:scale-110 touch-manipulation ${color === 'transparent' ? 'ring-2 ring-primary ring-offset-1' : ''}`}
+              title={target === 'outline' ? 'None' : 'Transparent'} aria-label={target === 'outline' ? 'No outline' : 'Transparent fill'}>
               <svg viewBox="0 0 32 32" className="w-full h-full"><pattern id="chk-pop" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="4" height="4" fill="#ccc" /><rect x="4" y="4" width="4" height="4" fill="#ccc" /><rect x="4" width="4" height="4" fill="#fff" /><rect y="4" width="4" height="4" fill="#fff" /></pattern><circle cx="16" cy="16" r="16" fill="url(#chk-pop)" /></svg>
             </button>
           )}

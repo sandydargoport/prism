@@ -17,7 +17,7 @@ import {
 import { Moon } from 'lucide-react';
 import { WidgetBgOverrideProvider } from '@/components/widgets/WidgetContainer';
 import { shownWhenIdle } from '@/components/screensaver/calmMode';
-import { getWidgetStyle, getWidgetContentStyle, getTextColorClass } from './gridWidgetStyles';
+import { getWidgetStyle, getWidgetContentStyle, getTextColorClass, getWidgetOutlineClass } from './gridWidgetStyles';
 import type { EditorTheme } from './gridEditorTypes';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 
@@ -280,6 +280,7 @@ function DragOverlayContent({
   const widgetStyle = getWidgetStyle(widget);
   const contentStyle = getWidgetContentStyle(widget);
   const textClass = getTextColorClass(widget);
+  const outlineClass = getWidgetOutlineClass(widget);
 
   return (
     <div
@@ -289,7 +290,7 @@ function DragOverlayContent({
         ...widgetStyle,
         opacity: 0.85,
       }}
-      className={`rounded-lg border-2 border-primary shadow-lg ${textClass}`}
+      className={`rounded-lg border-2 border-primary shadow-lg ${textClass} ${outlineClass}`}
     >
       <WidgetBgOverrideProvider value={{ hasCustomBg: !!widget.backgroundColor, textColor: widget.textColor, textOpacity: widget.textOpacity, gridLineOpacity: widget.gridLineOpacity, cellBackgroundColor: widget.cellBackgroundColor, cellBackgroundOpacity: widget.cellBackgroundOpacity }}>
         <div className="h-full w-full overflow-hidden" style={{ pointerEvents: 'none', ...contentStyle }}>
@@ -338,6 +339,7 @@ function DraggableWidget({
   const widgetStyle = getWidgetStyle(widget);
   const contentStyle = getWidgetContentStyle(widget);
   const textClass = getTextColorClass(widget, '');
+  const outlineClass = getWidgetOutlineClass(widget);
   const hasCustomBg = !!widget.backgroundColor;
 
   // Ring color: blue for move, orange for resize
@@ -380,7 +382,7 @@ function DraggableWidget({
           onClick + dnd-kit listeners. */}
       <WidgetBgOverrideProvider value={{ hasCustomBg, textColor: widget.textColor, textOpacity: widget.textOpacity, gridLineOpacity: widget.gridLineOpacity, cellBackgroundColor: widget.cellBackgroundColor, cellBackgroundOpacity: widget.cellBackgroundOpacity }}>
         <div
-          className={`h-full w-full overflow-hidden ${textClass}`}
+          className={`h-full w-full overflow-hidden ${textClass} ${outlineClass}`}
           style={{ pointerEvents: 'none', ...contentStyle }}
         >
           {renderWidget(widget)}
