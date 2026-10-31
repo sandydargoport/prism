@@ -10,6 +10,8 @@ import React from 'react';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 
 jest.mock('next/dynamic', () => () => () => null);
+// The birthdays list's Remove asks for a parent; nobody is signed in here.
+jest.mock('@/components/providers/AuthProvider', () => ({ useAuth: () => ({ requireAuth: async () => null }) }));
 jest.mock('@/components/providers/TimeFormatProvider', () => ({
   useTimeFormat: () => ({ timeFormat: '24h', displayTimezone: 'UTC' }),
 }));

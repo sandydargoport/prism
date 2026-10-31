@@ -8,6 +8,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { RemovedItemsManager, type RemovedItem } from '@/components/settings/RemovedItemsManager';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { toast } from '@/components/ui/use-toast';
+import { announceBirthdaysChanged, removeBirthday } from '@/lib/hooks/useBirthdays';
 
 type BirthdayRow = {
   id: string;
@@ -93,8 +94,7 @@ export function BirthdaysCard() {
     if (!ok) return;
     setRemovingId(row.id);
     try {
-      const res = await fetch(`/api/birthdays/${row.id}`, { method: 'DELETE' });
-      if (!res.ok) {
+      if (!await removeBirthday(row.id)) {
         toast({ title: 'Failed to remove', variant: 'destructive' });
         return;
       }
@@ -114,6 +114,8 @@ export function BirthdaysCard() {
         toast({ title: 'Failed to restore', variant: 'destructive' });
         return;
       }
+      // The server re-reads the calendars on restore, so it is back already.
+      announceBirthdaysChanged();
       await load();
     } catch {
       toast({ title: 'Failed to restore', variant: 'destructive' });

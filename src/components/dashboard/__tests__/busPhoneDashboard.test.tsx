@@ -8,6 +8,8 @@ import type { LiveTrack } from '@/lib/hooks/useBusLive';
 import type { BusRouteStatus } from '@/lib/hooks/useBusTracking';
 
 jest.mock('next/dynamic', () => () => () => null);
+// The birthdays list's Remove asks for a parent; nobody is signed in here.
+jest.mock('@/components/providers/AuthProvider', () => ({ useAuth: () => ({ requireAuth: async () => null }) }));
 jest.mock('@/components/providers/TimeFormatProvider', () => ({
   useTimeFormat: () => ({ timeFormat: '24h', displayTimezone: 'UTC' }),
 }));
