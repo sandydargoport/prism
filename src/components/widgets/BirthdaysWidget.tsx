@@ -25,6 +25,8 @@ export type BirthdaysWidgetProps = {
   error?: string | null;
   maxItems?: number;
   titleHref?: string;
+  /** Tapping a row offers to remove it. Omitted: rows do nothing. */
+  onRemove?: (birthday: Birthday) => void;
 };
 
 const TYPE_ICONS: Record<string, string> = {
@@ -53,6 +55,7 @@ export const BirthdaysWidget = React.memo(function BirthdaysWidget({
   error = null,
   maxItems = 8,
   titleHref,
+  onRemove,
 }: BirthdaysWidgetProps) {
   const t = useTranslations('birthdays');
   const locale = useLocale();
@@ -116,10 +119,17 @@ export const BirthdaysWidget = React.memo(function BirthdaysWidget({
                 <tr
                   key={item.id}
                   data-row-line
+                  onClick={onRemove ? () => onRemove(item) : undefined}
+                  onKeyDown={onRemove ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onRemove(item); } } : undefined}
+                  role={onRemove ? 'button' : undefined}
+                  tabIndex={onRemove ? 0 : undefined}
+                  aria-label={onRemove ? `Remove ${item.name}` : undefined}
+                  title={onRemove ? 'Tap to remove' : undefined}
                   className={cn(
                     'border-b-2',
                     rowLineColor(item.daysUntil),
-                    item.daysUntil === 0 && 'bg-success/10'
+                    item.daysUntil === 0 && 'bg-success/10',
+                    onRemove && 'cursor-pointer hover:bg-accent/40'
                   )}
                 >
                   <td className="py-1.5 pr-2 truncate max-w-[140px]" title={item.name}>

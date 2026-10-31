@@ -44,6 +44,7 @@ import { WidgetExpandProvider, useWidgetExpand } from '@/components/dashboard/Wi
 import { useDashboardData } from './useDashboardData';
 import { useDashboardLayout, editLink } from './useDashboardLayout';
 import { useScreenSchedule } from './useScreenSchedule';
+import { useRemoveBirthday } from './useRemoveBirthday';
 import { buildWidgetProps } from './useWidgetProps';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
@@ -289,12 +290,14 @@ export function Dashboard({
     }
   }, [layout.activeLayout, data.layouts, router]);
 
+  const removeBirthday = useRemoveBirthday(confirmAction);
   const widgetProps = buildWidgetProps(data, requireAuth, {
     setShowAddTask, setShowAddMessage, setShowAddChore, setShowAddShopping,
   }, weatherLocation, confirmAction, {
     onEditTask: setEditingTask,
     onEditChore: setEditingChore,
     onEditMeal: setEditingMeal,
+    onRemoveBirthday: removeBirthday,
   });
 
   const handleLogin = async () => {

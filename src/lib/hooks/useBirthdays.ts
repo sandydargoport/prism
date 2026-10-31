@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useFetch } from './useFetch';
 
 export interface Birthday {
@@ -14,6 +14,27 @@ export interface Birthday {
   giftIdeas?: string;
 }
 
+/**
+ * Fired on this screen when a birthday is removed or restored, so every list
+ * of them reloads at once rather than at its next refresh. Other screens pick
+ * the change up at theirs.
+ */
+export const BIRTHDAYS_CHANGED = 'prism:birthdays-changed';
+
+export function announceBirthdaysChanged() {
+  window.dispatchEvent(new Event(BIRTHDAYS_CHANGED));
+}
+
+/**
+ * Remove a birthday. A synced one is also recorded as removed, so sync does
+ * not add it back; Settings > Calendars can restore it. True if it went.
+ */
+export async function removeBirthday(id: string): Promise<boolean> {
+  const res = await fetch(`/api/birthdays/${id}`, { method: 'DELETE' });
+  if (res.ok) announceBirthdaysChanged();
+  return res.ok;
+}
+
 interface UseBirthdaysOptions {
   limit?: number;
   refreshInterval?: number;
@@ -21,7 +42,8 @@ interface UseBirthdaysOptions {
 }
 
 export function useBirthdays(options: UseBirthdaysOptions = {}) {
-  const { limit = 10, refreshInterval = 60 * 60 * 1000, enabled } = options;
+  // Every 5 minutes, so a removal made on another screen shows here soon.
+  const { limit = 10, refreshInterval = 5 * 60 * 1000, enabled } = options;
   const [syncError, setSyncError] = useState<string | null>(null);
 
   const { data: birthdays, loading, error: fetchError, refresh } = useFetch<Birthday[]>({
@@ -32,6 +54,13 @@ export function useBirthdays(options: UseBirthdaysOptions = {}) {
     label: 'birthdays',
     enabled,
   });
+
+  useEffect(() => {
+    if (enabled === false) return;
+    const handler = () => { void refresh(); };
+    window.addEventListener(BIRTHDAYS_CHANGED, handler);
+    return () => window.removeEventListener(BIRTHDAYS_CHANGED, handler);
+  }, [enabled, refresh]);
 
   const syncFromGoogle = useCallback(async () => {
     try {

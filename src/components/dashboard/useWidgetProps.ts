@@ -2,6 +2,7 @@
 
 import { toast } from '@/components/ui/use-toast';
 import type { Chore, Task, Meal } from '@/types';
+import type { Birthday } from '@/lib/hooks/useBirthdays';
 import type { useDashboardData } from './useDashboardData';
 
 interface ModalSetters {
@@ -15,6 +16,7 @@ interface EditHandlers {
   onEditTask?: (task: Task) => void;
   onEditChore?: (chore: Chore) => void;
   onEditMeal?: (meal: Meal) => void;
+  onRemoveBirthday?: (birthday: Birthday) => void;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -153,6 +155,7 @@ export function buildWidgetProps(
       birthdays: data.birthdays.birthdays,
       loading: data.birthdays.loading,
       error: data.birthdays.error,
+      onRemove: editHandlers?.onRemoveBirthday,
     },
     points: {
       goals: data.points.goals,

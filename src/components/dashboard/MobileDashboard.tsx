@@ -24,6 +24,9 @@ import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { BirthdaysWidget } from '@/components/widgets/BirthdaysWidget';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
+import { useRemoveBirthday } from './useRemoveBirthday';
 import type { useDashboardData } from './useDashboardData';
 import { useMobileCardOrder, useHiddenCards } from './useMobileCardOrder';
 import { useBusTracking } from '@/lib/hooks/useBusTracking';
@@ -87,6 +90,8 @@ export const MobileDashboard = memo(function MobileDashboard({ data }: MobileDas
   // Birthdays has no page of its own, so its card opens the full widget here.
   const [birthdaysOpen, setBirthdaysOpen] = useState(false);
   const openBirthdays = useCallback(() => setBirthdaysOpen(true), []);
+  const { confirm, dialogProps: confirmDialogProps } = useConfirmDialog();
+  const removeBirthday = useRemoveBirthday(confirm);
 
   const { pullDistance, refreshing } = usePullToRefresh();
   const { layout } = useMobileLayout();
@@ -256,10 +261,12 @@ export const MobileDashboard = memo(function MobileDashboard({ data }: MobileDas
               loading={data.birthdays.loading}
               error={data.birthdays.error}
               maxItems={50}
+              onRemove={removeBirthday}
             />
           </div>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog {...confirmDialogProps} />
     </MobileLayoutProvider>
   );
 });
