@@ -28,7 +28,7 @@ import * as React from 'react';
 import { Emoji } from '@/components/ui/Emoji';
 import { useState, useMemo, useCallback } from 'react';
 import { format, isToday, isTomorrow, isPast, parseISO } from 'date-fns';
-import { ClipboardList, Plus, AlertCircle, CheckCircle, Clock, Hourglass } from 'lucide-react';
+import { ClipboardList, Plus, AlertCircle, Clock, Hourglass, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { WidgetContainer, WidgetEmpty } from './WidgetContainer';
 import { Button, Badge, UserAvatar } from '@/components/ui';
@@ -185,7 +185,7 @@ export const ChoresWidget = React.memo(function ChoresWidget({
                 chore={chore}
                 completing={completingChores.has(chore.id)}
                 onComplete={() => handleComplete(chore.id)}
-                onClick={onChoreClick ? () => onChoreClick(chore) : undefined}
+                onEdit={onChoreClick ? () => onChoreClick(chore) : undefined}
               />
             ))}
           </div>
@@ -204,18 +204,19 @@ export const ChoresWidget = React.memo(function ChoresWidget({
 
 /**
  * CHORE ITEM
- * A single chore row with completion button, title, and metadata.
+ * A single chore row: tap anywhere on it to complete it (or approve it, when
+ * it is waiting), pencil to edit.
  */
 function ChoreItem({
   chore,
   completing,
   onComplete,
-  onClick,
+  onEdit,
 }: {
   chore: Chore;
   completing: boolean;
   onComplete: () => void;
-  onClick?: () => void;
+  onEdit?: () => void;
 }) {
   // Format next due date
   const dueDateDisplay = chore.nextDue ? formatDueDate(chore.nextDue) : null;
@@ -229,47 +230,34 @@ function ChoreItem({
   // Get category emoji
   const categoryEmoji = getCategoryEmoji(chore.category);
 
+  // The whole row is the tap target, as the Tasks page and recipe
+  // ingredients are: a tap completes the chore (approves it when it is
+  // waiting), and it is crossed out while that is under way.
+  const complete = () => { if (!completing) onComplete(); };
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label={isPendingApproval ? `Approve ${chore.title}` : `Complete ${chore.title}`}
+      aria-disabled={completing || undefined}
+      onClick={complete}
+      onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); complete(); } }}
       className={cn(
-        'flex items-start gap-3 p-2 rounded-lg',
+        'flex items-start gap-3 p-2 rounded-lg cursor-pointer select-none',
         'hover:bg-accent/50 transition-colors',
         'touch-action-manipulation',
+        completing && 'opacity-60',
         isPendingApproval && 'bg-warning/10 border border-warning/30'
       )}
     >
-      {/* Complete button — stops propagation so the row click doesn't also
-          fire when the user just wants to mark complete. */}
-      <Button
-        size="icon"
-        variant="ghost"
-        onClick={(e) => { e.stopPropagation(); onComplete(); }}
-        disabled={completing}
-        className={cn(
-          'h-8 w-8 shrink-0',
-          isOverdue && !isPendingApproval && 'text-destructive hover:text-destructive',
-          isPendingApproval && 'text-warning'
-        )}
-        title={isPendingApproval ? 'Pending approval - click to complete or approve' : 'Mark as complete'}
-        aria-label={isPendingApproval ? 'Pending approval' : 'Mark as complete'}
-      >
-        {completing ? (
-          <Clock className="h-4 w-4 animate-spin" />
-        ) : isPendingApproval ? (
-          <Hourglass className="h-4 w-4" />
-        ) : (
-          <CheckCircle className="h-4 w-4" />
-        )}
-      </Button>
+      {/* Status, not a button: busy while completing, waiting for approval. */}
+      {(completing || isPendingApproval) && (
+        <span aria-hidden className={cn('mt-0.5 shrink-0', isPendingApproval ? 'text-warning' : 'text-muted-foreground')}>
+          {completing ? <Clock className="h-4 w-4 animate-spin" /> : <Hourglass className="h-4 w-4" />}
+        </span>
+      )}
 
-      {/* Chore content — clickable surface that opens the edit modal. */}
-      <div
-        className={cn('flex-1 min-w-0', onClick && 'cursor-pointer')}
-        role={onClick ? 'button' : undefined}
-        tabIndex={onClick ? 0 : undefined}
-        onClick={onClick}
-        onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
-      >
+      <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           {/* Category emoji */}
           <span className="text-base"><Emoji e={categoryEmoji} /></span>
@@ -277,7 +265,8 @@ function ChoreItem({
           {/* Title */}
           <span className={cn(
             'text-sm font-medium truncate',
-            isPendingApproval && 'text-warning'
+            isPendingApproval && 'text-warning',
+            completing && 'line-through text-muted-foreground'
           )}>{chore.title}</span>
 
           {/* Points badge */}
@@ -352,6 +341,20 @@ function ChoreItem({
           )}
         </div>
       </div>
+
+      {onEdit && (
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-7 w-7 shrink-0 text-muted-foreground opacity-60 hover:opacity-100"
+          // The row completes the chore, so the pencil must not also do that.
+          onClick={(e) => { e.stopPropagation(); onEdit(); }}
+          onKeyDown={(e) => e.stopPropagation()}
+          aria-label="Edit chore"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+      )}
     </div>
   );
 }
