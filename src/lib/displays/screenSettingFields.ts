@@ -65,17 +65,6 @@ export const SCREEN_SETTING_FIELDS: ScreenSettingField[] = [
     fallback: '120',
   },
   {
-    key: 'prism-screensaver-backdrop',
-    label: 'Background',
-    group: 'Screensaver',
-    options: [
-      { raw: 'photos', label: 'Photos' },
-      { raw: 'sky', label: 'Night sky' },
-      { raw: 'skyAtNight', label: 'Photos by day, night sky after dark' },
-    ],
-    fallback: 'photos',
-  },
-  {
     key: MOTION,
     label: 'Widget transition effect',
     group: 'Screensaver',

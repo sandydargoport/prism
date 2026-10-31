@@ -13,13 +13,13 @@
  * Chosen 2026-10-27: screensaver and drift, performance mode, the on-screen
  * keyboard and the screen layout settings. Theme stays per browser for now.
  * The time-of-day schedule and the attention panel joined 2026-10-30 (#692).
+ * The screensaver background left 2026-10-31 for the dashboard (#782).
  * Derived values (the screensaver layout bridged from the dashboard) and
  * per-browser memory (which constellation was last taught) are left out.
  */
 export const SCREEN_SETTING_KEYS = [
   // Screensaver: when it starts, what it shows, how widgets move.
   'prism-screensaver-timeout',
-  'prism-screensaver-backdrop',
   'prism-screensaver-interval',
   'prism-screensaver-motion',
   'prism-screensaver-motion-v2',

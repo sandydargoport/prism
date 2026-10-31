@@ -291,6 +291,68 @@ fi
 log "Scenario E: PASS"
 
 # ----------------------------------------------------------------------------
+# Scenario F: 0039 moves the idle background onto the dashboard.
+# An install from before 0039 has screensaver_mode on each dashboard and a
+# background on each saved screen. Calm becomes this dashboard, separate
+# becomes photos, and a separate dashboard shown on a screen set to the sky
+# takes that screen's choice. A replay must not undo a background picked since.
+# ----------------------------------------------------------------------------
+log "=== Scenario F: 0039 idle background from mode + screen ==="
+
+idle_bg() {
+  docker exec "$CONTAINER_NAME" psql -U prism -d prism -t -A -c \
+    "SELECT idle_background::text FROM layouts WHERE name = '$1'"
+}
+expect_bg() {
+  local got
+  got=$(idle_bg "$1")
+  if [ "$got" != "$2" ]; then
+    echo "ERROR: 0039 gave '$1' = $got (want $2)" >&2
+    exit 1
+  fi
+}
+
+log "Simulate a pre-0039 install: four dashboards, three saved screens..."
+psql_exec "
+ALTER TABLE layouts DROP COLUMN IF EXISTS idle_background;
+UPDATE layouts SET is_default = false;
+INSERT INTO layouts (name, widgets, screensaver_mode) VALUES
+  ('F calm', '[]'::jsonb, 'calm'),
+  ('F photos', '[]'::jsonb, 'separate'),
+  ('F night', '[]'::jsonb, 'separate'),
+  ('F calm sky', '[]'::jsonb, 'calm');
+INSERT INTO layouts (name, widgets, screensaver_mode, is_default) VALUES
+  ('F default', '[]'::jsonb, 'separate', true);
+INSERT INTO displays (name, settings, dashboard_id) VALUES
+  ('Hall', '{\"prism-screensaver-backdrop\": \"skyAtNight\"}'::jsonb, (SELECT id FROM layouts WHERE name = 'F night')),
+  ('Den', '{\"prism-screensaver-backdrop\": \"sky\"}'::jsonb, (SELECT id FROM layouts WHERE name = 'F night')),
+  ('Porch', '{\"prism-screensaver-backdrop\": \"skyAtNight\"}'::jsonb, (SELECT id FROM layouts WHERE name = 'F calm sky')),
+  ('Attic', '{\"prism-screensaver-backdrop\": \"sky\"}'::jsonb, NULL);
+DELETE FROM public.__prism_migrations;
+"
+run_migrate
+
+expect_bg 'F calm' '{"source": "dashboard"}'
+expect_bg 'F photos' '{"source": "photos"}'
+expect_bg 'F night' '{"day": "photos", "night": "sky", "switch": {"by": "sun", "dawnOffset": 0, "duskOffset": 0}}'
+expect_bg 'F calm sky' '{"source": "dashboard"}'
+expect_bg 'F default' '{"source": "sky"}'
+
+psql_exec "INSERT INTO layouts (name, widgets) VALUES ('F new', '[]'::jsonb);"
+expect_bg 'F new' '{"source": "dashboard"}'
+
+log "Pick a new background for one, then replay every migration..."
+psql_exec "
+UPDATE layouts SET idle_background = '{\"source\": \"sky\"}'::jsonb WHERE name = 'F photos';
+DELETE FROM public.__prism_migrations;
+"
+run_migrate
+expect_bg 'F photos' '{"source": "sky"}'
+expect_bg 'F night' '{"day": "photos", "night": "sky", "switch": {"by": "sun", "dawnOffset": 0, "duskOffset": 0}}'
+
+log "Scenario F: PASS"
+
+# ----------------------------------------------------------------------------
 echo
 echo "=========================================="
 echo "  All migration-replay scenarios passed"

@@ -8,11 +8,6 @@ import * as SunCalc from 'suncalc';
 
 const RAD = Math.PI / 180;
 
-export type ScreensaverBackdrop = 'photos' | 'sky' | 'skyAtNight';
-
-/** Degrees the sun sits below the horizon at sunset, refraction included. */
-const SUNSET_ALT = -0.833;
-
 /** Sidereal time at a longitude, in degrees. Accurate to well under a degree. */
 export function localSiderealTime(date: Date, lon: number): number {
   const days = date.getTime() / 86_400_000 - 10_957.5; // since J2000.0
@@ -54,15 +49,6 @@ export function toEquatorial(p: Horizontal, lat: number, lst: number): { ra: num
 export function sunPosition(date: Date, lat: number, lon: number): Horizontal {
   const p = SunCalc.getPosition(date, lat, lon);
   return { alt: p.altitude, az: p.azimuth };
-}
-
-/** Whether the screensaver should be showing the sky rather than photos. */
-export function skyShowsNow(
-  backdrop: ScreensaverBackdrop, date: Date, lat: number, lon: number,
-): boolean {
-  if (backdrop === 'sky') return true;
-  if (backdrop === 'photos') return false;
-  return sunPosition(date, lat, lon).alt < SUNSET_ALT;
 }
 
 export type Moon = {

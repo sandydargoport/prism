@@ -4,6 +4,7 @@ import {
   facingFor, localSiderealTime, moonPosition, project, toHorizontal,
 } from '../src/components/screensaver/nightSky/sky';
 import { FIGURES } from '../src/components/screensaver/nightSky/catalog';
+import type { IdleBackground } from '../src/lib/idleBackground';
 
 /**
  * A widget sized in the screensaver editor lands at the same size and place in
@@ -148,26 +149,50 @@ const NIGHT = '2026-06-22T03:30:00Z';
 /** Full dark and no moon: late evening four days after the August new moon. */
 const DEEP = '2026-08-15T06:00:00Z';
 
+const BACKGROUNDS = {
+  sky: { source: 'sky' },
+  dayNight: { day: 'photos', night: 'sky', switch: { by: 'sun', duskOffset: 0, dawnOffset: 0 } },
+} satisfies Record<string, IdleBackground>;
+
+function idleLayout(idleBackground: IdleBackground) {
+  return {
+    id: '00000000-0000-4000-8000-000000000782', name: 'Idle e2e', slug: 'idle-e2e', isDefault: true,
+    widgets: [{ i: 'clock', x: 0, y: 0, w: 16, h: 12 }], screensaverWidgets: null, idleBackground,
+    orientation: 'landscape', fontScale: null, createdAt: NOON, updatedAt: NOON,
+  };
+}
+
 test.describe('screensaver night sky', () => {
   test.use({ viewport: { width: 1280, height: 720 } });
   test.setTimeout(90_000);
 
-  async function openScreensaver(page: Page, backdrop: string, at: string, weather: Record<string, unknown> = {}) {
+  /**
+   * The background is stored with the dashboard (#782), so the page is handed
+   * one dashboard with it set. Nothing is written to the database.
+   */
+  async function openDashboard(page: Page, background: IdleBackground, at: string, weather: Record<string, unknown> = {}) {
     await page.clock.setFixedTime(new Date(at));
     await page.route('**/api/weather*', async (route) => {
       const response = await route.fetch();
       if (!response.ok()) return route.fulfill({ response });
       return route.fulfill({ response, json: { ...(await response.json()), lat: 45, lon: -100, ...weather } });
     });
-    await page.addInitScript((value) => {
-      localStorage.setItem('prism-screensaver-backdrop', value);
+    await page.route('**/api/layouts', (route) => route.request().method() === 'GET'
+      ? route.fulfill({ json: { layouts: [idleLayout(background)] } })
+      : route.fallback());
+    await page.addInitScript(() => {
       // Auto performance can step down on a slow CI runner, and a lighter
       // level stops the twinkle and shooting stars on purpose.
       localStorage.setItem('prism-perf-mode', 'false');
-    }, backdrop);
+    });
     await page.goto('/');
+    await page.locator('.widget-cell[data-widget="clock"]').waitFor({ timeout: 60000 });
     await page.waitForLoadState('networkidle');
     await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
+  }
+
+  async function openScreensaver(page: Page, backdrop: keyof typeof BACKGROUNDS, at: string, weather: Record<string, unknown> = {}) {
+    await openDashboard(page, BACKGROUNDS[backdrop], at, weather);
     await page.locator('.fixed.inset-0.z-9999').waitFor();
     await page.waitForTimeout(1500);
   }
@@ -387,13 +412,27 @@ test.describe('screensaver night sky', () => {
   });
 
   test('after dark shows photos at noon and the sky at midnight', async ({ page }) => {
-    await openScreensaver(page, 'skyAtNight', NOON);
+    await openScreensaver(page, 'dayNight', NOON);
     expect(await sky(page), 'local noon: photos, no sky').toBeNull();
 
     await page.clock.setFixedTime(new Date(NIGHT));
     await page.reload();
     await page.waitForLoadState('networkidle');
     await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
+    await page.locator('[data-testid="night-sky"]').waitFor();
+    expect((await sky(page))!.alpha).toBe(255);
+  });
+
+  test('a dashboard by day and the sky after dark: calm at noon, the sky at midnight', async ({ page }) => {
+    const background: IdleBackground = { day: 'dashboard', night: 'sky', switch: { by: 'sun', duskOffset: 0, dawnOffset: 0 } };
+    await openDashboard(page, background, NOON);
+    await page.waitForTimeout(1500);
+    expect(await page.locator('.fixed.inset-0.z-9999').count(), 'noon: no screensaver over the dashboard').toBe(0);
+    expect(await sky(page), 'noon: no sky').toBeNull();
+    await expect(page.locator('.widget-cell[data-widget="clock"]')).toBeVisible();
+
+    await page.unrouteAll({ behavior: 'ignoreErrors' });
+    await openDashboard(page, background, NIGHT);
     await page.locator('[data-testid="night-sky"]').waitFor();
     expect((await sky(page))!.alpha).toBe(255);
   });
@@ -449,7 +488,7 @@ test.describe('calm mode idle screen', () => {
     expect(created.status()).toBe(201);
     const layout = await created.json();
     // A dashboard created now is calm without being asked.
-    expect(layout.screensaverMode).toBe('calm');
+    expect(layout.idleBackground).toEqual({ source: 'dashboard' });
 
     // Drift takes its phase from the wall clock (every widget in step), so fix
     // the clock a quarter of the way into the 96 s cycle: the far right of the

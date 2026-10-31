@@ -993,7 +993,7 @@ async function seed() {
       ],
       // Seeded as an install from before calm mode (#691), so the suites that
       // drive the separate screensaver keep finding it.
-      screensaverMode: 'separate',
+      idleBackground: { source: 'photos' },
       createdBy: alex.id,
     },
   ]);

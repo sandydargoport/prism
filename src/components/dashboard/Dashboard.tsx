@@ -37,7 +37,8 @@ const MealModal = lazy(() => import('@/app/meals/MealsView').then(m => ({ defaul
 import { WIDGET_REGISTRY } from '@/components/widgets/widgetRegistry';
 import { renderScreensaverPreview } from '@/components/screensaver/ScreensaverWidgetPreview';
 import { SCREENSAVER_WIDGET_CLASS } from '@/components/screensaver/Screensaver';
-import type { ScreensaverMode, WidgetConfig } from '@/lib/hooks/useLayouts';
+import type { WidgetConfig } from '@/lib/hooks/useLayouts';
+import { parseIdleBackground, usesSource, withoutDashboard, PHOTOS, type IdleBackground } from '@/lib/idleBackground';
 import { WidgetErrorBoundary } from '@/components/dashboard/WidgetErrorBoundary';
 import { WidgetExpandProvider, useWidgetExpand } from '@/components/dashboard/WidgetExpandProvider';
 import { useDashboardData } from './useDashboardData';
@@ -47,7 +48,7 @@ import { buildWidgetProps } from './useWidgetProps';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { useLocalCopy } from '@/lib/hooks/useLocalCopy';
-import { setActiveScreensaverMode, shownWhenIdle, useCalmIdle } from '@/components/screensaver/calmMode';
+import { setActiveIdleBackground, shownWhenIdle, useCalmIdle } from '@/components/screensaver/calmMode';
 import { useScreensaverMotion } from '@/components/screensaver/useScreensaverMotion';
 
 class WidgetBoundary extends React.Component<
@@ -165,21 +166,25 @@ export function Dashboard({
   // Grid control state shared between LayoutEditor toolbar and LayoutGridEditor
   const { allSizeNames } = useScreenSafeZones();
 
-  // Calm mode (#691): tell the Screensaver this dashboard is its own idle
-  // screen, and take it back when the dashboard goes, so other pages still get
-  // the ordinary screensaver. The phone layout has no calm idle state.
-  const screensaverMode = isMobile ? 'separate' : layout.activeLayout?.screensaverMode ?? 'separate';
+  // Tell the Screensaver what this dashboard shows behind it when idle (#782),
+  // which may be the dashboard itself (calm mode, #691). When the dashboard
+  // goes, other pages keep its photos or sky but have no dashboard to show.
+  // The phone layout has no calm idle state. Keyed by its JSON so a fresh copy
+  // of the same value is not a change.
+  const idleBackground = layout.activeLayout ? parseIdleBackground(layout.activeLayout.idleBackground) : PHOTOS;
+  const idleKey = JSON.stringify(isMobile ? withoutDashboard(idleBackground) : idleBackground);
   useEffect(() => {
-    setActiveScreensaverMode(screensaverMode);
-    return () => setActiveScreensaverMode('separate');
-  }, [screensaverMode]);
-  const setScreensaverMode = useCallback(async (mode: ScreensaverMode) => {
+    const bg = JSON.parse(idleKey) as IdleBackground;
+    setActiveIdleBackground(bg);
+    return () => setActiveIdleBackground(withoutDashboard(bg));
+  }, [idleKey]);
+  const setIdleBackground = useCallback(async (bg: IdleBackground) => {
     const active = layout.activeLayout;
     if (!active) return;
     try {
-      await data.layouts.saveLayout({ id: active.id, name: active.name, widgets: active.widgets, screensaverMode: mode });
+      await data.layouts.saveLayout({ id: active.id, name: active.name, widgets: active.widgets, idleBackground: bg });
     } catch (err) {
-      console.error('Failed to save the screensaver mode:', err);
+      console.error('Failed to save the idle background:', err);
     }
   }, [layout.activeLayout, data.layouts]);
   const calmIdle = useCalmIdle() && !layout.isEditing;
@@ -423,8 +428,8 @@ export function Dashboard({
               screensaverPresets={layout.ssPresets}
               onSelectScreensaverPreset={layout.handleSelectSsPreset}
               onDeleteScreensaverPreset={layout.handleDeleteSsPreset}
-              screensaverMode={layout.activeLayout ? screensaverMode : undefined}
-              onScreensaverModeChange={setScreensaverMode}
+              idleBackground={layout.activeLayout ? idleBackground : undefined}
+              onIdleBackgroundChange={setIdleBackground}
               screenGuideOrientation={screenGuideOrientation}
               onScreenGuideOrientationChange={setScreenGuideOrientation}
               enabledSizes={enabledSizes}
@@ -477,7 +482,7 @@ export function Dashboard({
                   hideEmptyByDefault={calmIdle}
                   drift={idleDrift}
                   morph
-                  idleToggles={layout.isEditing && screensaverMode === 'calm'}
+                  idleToggles={layout.isEditing && !isMobile && usesSource(idleBackground, 'dashboard')}
                   widgetConstraints={dashboardConstraints}
                   margin={8}
                   headerOffset={layout.isEditing ? 140 : uiHidden ? 0 : 56}

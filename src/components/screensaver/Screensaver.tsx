@@ -31,8 +31,9 @@ import { useViewportSize } from '@/lib/hooks/useViewportSize';
 import { setDisplayIdle } from '@/lib/hooks/useDisplayIdle';
 import { PollingScopeContext } from '@/lib/hooks/pollingScope';
 import { useResetOn } from '@/lib/hooks/useResetOn';
-import { useScreensaverBackdrop, useSkyLocation, useSkyShowing } from './useScreensaverBackdrop';
-import { setCalmIdle, useActiveScreensaverMode } from './calmMode';
+import { useIdleSource, useSkyLocation } from './useIdleBackground';
+import { setCalmIdle, useActiveIdleBackground } from './calmMode';
+import { needsLocation } from '@/lib/idleBackground';
 import { IdleDim } from './idleDim';
 
 // Only displays that choose the sky load its star catalogue.
@@ -77,9 +78,14 @@ export function Screensaver() {
   const { isAway } = useAwayMode();
   const { isActive: isBabysitter } = useBabysitterMode();
   const idle = shouldShowScreensaver({ idle: idleNow, away: isAway, babysitter: isBabysitter });
-  // A calm dashboard is its own idle screen (#691): this decides when, and the
+  // What shows behind it (#782), which can change with the time of day. When
+  // it is the dashboard itself (calm mode, #691) this decides when, and the
   // dashboard does the showing, so there is no overlay to put up.
-  const calm = useActiveScreensaverMode() === 'calm';
+  const background = useActiveIdleBackground();
+  const { lat, lon, eclipse } = useSkyLocation(needsLocation(background));
+  const source = useIdleSource(background, lat, lon, idle);
+  const calm = source === 'dashboard';
+  const showSky = source === 'sky';
   const isIdle = idle && !calm;
   useEffect(() => {
     setCalmIdle(idle && calm);
@@ -110,10 +116,6 @@ export function Screensaver() {
     setDisplayIdle(isIdle);
     return () => setDisplayIdle(false);
   }, [isIdle]);
-
-  const { backdrop } = useScreensaverBackdrop();
-  const { lat, lon, eclipse } = useSkyLocation(backdrop !== 'photos');
-  const showSky = useSkyShowing(backdrop, lat, lon, isIdle);
 
   const [visible, setVisible] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);

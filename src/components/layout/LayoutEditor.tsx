@@ -6,6 +6,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { useScreenSafeZones } from '@/lib/hooks/useScreenSafeZones';
 import { useResetOn } from '@/lib/hooks/useResetOn';
+import { idleSources } from '@/lib/idleBackground';
 import { LayoutEditorShareDialog } from './LayoutEditorShareDialog';
 import { LayoutEditorImportDialog } from './LayoutEditorImportExport';
 import { CreateDashboardDialog, SaveAsDialog } from './LayoutEditorDashboardManager';
@@ -41,8 +42,8 @@ export function LayoutEditor({
   screensaverPresets = [],
   onSelectScreensaverPreset,
   onDeleteScreensaverPreset,
-  screensaverMode,
-  onScreensaverModeChange,
+  idleBackground,
+  onIdleBackgroundChange,
   screenGuideOrientation = 'landscape',
   onScreenGuideOrientationChange,
   enabledSizes = [],
@@ -67,7 +68,8 @@ export function LayoutEditor({
   const effectiveEnabledSizes = enabledSizes.length > 0 ? enabledSizes : allSizeNames;
 
   const [activePopover, setActivePopover] = useState<ActivePopover>(null);
-  const calm = screensaverMode === 'calm' && !editingScreensaver;
+  // Only ever the dashboard itself: there is no screensaver layout to show.
+  const calm = !!idleBackground && idleSources(idleBackground).every(s => s === 'dashboard') && !editingScreensaver;
   const [focusedWidget, setFocusedWidget] = useState<string | null>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
 
@@ -202,8 +204,8 @@ export function LayoutEditor({
             allDashboards={allDashboards}
             currentDashboardId={currentDashboardId}
             onToggleMeasureMode={toggleMeasureMode}
-            screensaverMode={screensaverMode}
-            onScreensaverModeChange={onScreensaverModeChange}
+            idleBackground={idleBackground}
+            onIdleBackgroundChange={onIdleBackgroundChange}
             // A calm dashboard has no separate screensaver to edit or copy to.
             onToggleScreensaverEdit={calm ? undefined : onToggleScreensaverEdit}
             onSave={state.handleSave}

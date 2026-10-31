@@ -1,4 +1,5 @@
-import type { ScreensaverMode, WidgetConfig } from '@/lib/hooks/useLayouts';
+import type { WidgetConfig } from '@/lib/hooks/useLayouts';
+import type { IdleBackground } from '@/lib/idleBackground';
 
 export const EXPORT_VERSION = 2;
 
@@ -36,9 +37,9 @@ export interface LayoutEditorProps {
   screensaverPresets?: Array<{ name: string; widgets: WidgetConfig[] }>;
   onSelectScreensaverPreset?: (widgets: WidgetConfig[]) => void;
   onDeleteScreensaverPreset?: (name: string) => void;
-  /** What the display shows when idle (#691). Omitted: no picker. */
-  screensaverMode?: ScreensaverMode;
-  onScreensaverModeChange?: (mode: ScreensaverMode) => void;
+  /** What the display shows behind it when idle (#782). Omitted: no picker. */
+  idleBackground?: IdleBackground;
+  onIdleBackgroundChange?: (bg: IdleBackground) => void;
   screenGuideOrientation?: 'landscape' | 'portrait';
   onScreenGuideOrientationChange?: (o: 'landscape' | 'portrait') => void;
   enabledSizes?: string[];
