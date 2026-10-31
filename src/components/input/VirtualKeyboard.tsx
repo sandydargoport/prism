@@ -61,7 +61,10 @@ const display = {
   '{lock}': '⇪',
   '{tab}': '⇥',
   '{space}': ' ',
-  '{mic}': '🎤',
+  // The Twemoji image rather than the emoji itself: a wall display's browser
+  // often has no emoji font, and the key was blank there. simple-keyboard sets
+  // the label as HTML, so the image goes in as markup, sized like <Emoji>.
+  '{mic}': '<img src="/twemoji/1f3a4.svg" alt="Microphone" draggable="false" class="inline-block h-[1em] w-[1em] align-[-0.125em]">',
   '{dismiss}': '↓',
 };
 
