@@ -112,7 +112,7 @@ export function Screensaver() {
   }, [isIdle]);
 
   const { backdrop } = useScreensaverBackdrop();
-  const { lat, lon } = useSkyLocation(backdrop !== 'photos');
+  const { lat, lon, eclipse } = useSkyLocation(backdrop !== 'photos');
   const showSky = useSkyShowing(backdrop, lat, lon, isIdle);
 
   const [visible, setVisible] = useState(false);
@@ -179,7 +179,7 @@ export function Screensaver() {
         )}
         {showSky ? (
           <React.Suspense fallback={null}>
-            <NightSky lat={lat} lon={lon} />
+            <NightSky lat={lat} lon={lon} eclipse={eclipse} />
           </React.Suspense>
         ) : (
           // Photos are dimmed so the white widget text reads over them. The sky
