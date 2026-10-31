@@ -6,13 +6,14 @@
  * must get the default there, not the previous dashboard's (#688).
  */
 
-import { renderHook } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import { useDashboardLayout } from '../useDashboardLayout';
 import { DEFAULT_SCREENSAVER_LAYOUT } from '@/components/screensaver/screensaverStorage';
 import type { Layout, WidgetConfig } from '@/lib/hooks/useLayouts';
 
+let activeUser: { id: string; role: string } | null = null;
 jest.mock('@/components/providers/AuthProvider', () => ({
-  useAuth: () => ({ activeUser: null, requireAuth: jest.fn() }),
+  useAuth: () => ({ activeUser, requireAuth: jest.fn() }),
 }));
 
 const KEY = 'prism-screensaver-layout';
@@ -31,7 +32,7 @@ const data = (all: Layout[]) => ({
 
 const stored = () => JSON.parse(localStorage.getItem(KEY) ?? 'null');
 
-beforeEach(() => localStorage.clear());
+beforeEach(() => { localStorage.clear(); activeUser = null; });
 
 describe('screensaver per dashboard', () => {
   it('gives a dashboard with no saved screensaver the default, not the last one shown', () => {
@@ -60,5 +61,22 @@ describe('screensaver per dashboard', () => {
     const { result } = renderHook(() => useDashboardLayout(layouts, 'a'));
     expect(result.current.ssLayout.find((w) => w.i === 'clock')).toMatchObject(custom[0]!);
     expect(stored().find((w: WidgetConfig) => w.i === 'clock')).toMatchObject(custom[0]!);
+  });
+});
+
+describe('saving from the screensaver editor', () => {
+  it("keeps the dashboard edits made before switching to the screensaver", async () => {
+    activeUser = { id: 'p1', role: 'parent' };
+    const layouts = data([dashboard('a', custom)]);
+    const { result } = renderHook(() => useDashboardLayout(layouts, 'a'));
+    await act(async () => { await result.current.handleEditStart(); });
+
+    // Edit the dashboard, then switch to the screensaver and save from there.
+    const edited: WidgetConfig[] = [{ i: 'tasks', x: 0, y: 0, w: 12, h: 12, visible: true }];
+    act(() => { result.current.setEditingWidgets(edited); });
+    act(() => { result.current.setEditingScreensaver(true); });
+    await act(async () => { await result.current.handleSsSave(); });
+
+    expect(layouts.saveLayout).toHaveBeenCalledWith(expect.objectContaining({ id: 'a', widgets: edited }));
   });
 });
