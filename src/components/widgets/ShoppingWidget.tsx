@@ -29,7 +29,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { ShoppingCart, Plus, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { WidgetContainer, WidgetEmpty } from './WidgetContainer';
-import { Button, Checkbox, Badge, Progress } from '@/components/ui';
+import { Button, Badge, Progress } from '@/components/ui';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -267,7 +267,7 @@ export const ShoppingWidget = React.memo(function ShoppingWidget({
 
 /**
  * SHOPPING ITEM ROW
- * A single shopping item with checkbox and details.
+ * A single shopping item: tap anywhere on it to cross it out.
  */
 function ShoppingItemRow({
   item,
@@ -286,27 +286,29 @@ function ShoppingItemRow({
     ? `${item.quantity}${item.unit ? ` ${item.unit}` : ''}`
     : null;
 
+  // The whole row is the tap target and a tap crosses the item out, as the
+  // recipe ingredients and the Shopping page do: no checkbox to aim for.
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-pressed={checked}
+      onClick={onToggle}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } }}
       className={cn(
-        'flex items-start gap-3 p-2 rounded-lg',
+        'flex items-start gap-3 p-2 rounded-lg cursor-pointer select-none',
         'hover:bg-accent/50 transition-colors',
         'touch-action-manipulation',
         checked && 'opacity-60'
       )}
     >
-      {/* Checkbox */}
-      <Checkbox
-        checked={checked}
-        onCheckedChange={onToggle}
-        className="mt-0.5"
-      />
-
       {/* Item content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          {/* Category emoji */}
-          {categoryEmoji && <span className="text-sm"><Emoji e={categoryEmoji} /></span>}
+          {/* Category emoji, or a bullet */}
+          {categoryEmoji
+            ? <span className="text-sm"><Emoji e={categoryEmoji} /></span>
+            : <span className="text-muted-foreground">&bull;</span>}
 
           {/* Name */}
           <span

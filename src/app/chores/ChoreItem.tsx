@@ -6,7 +6,6 @@ import {
   AlertCircle,
   Trash2,
   Edit2,
-  CheckCircle2,
   Hourglass,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -69,34 +68,28 @@ export function ChoreItem({
     }
   };
 
+  // The whole row is the tap target, as on the Tasks page and the recipe
+  // ingredients: a tap completes the chore, or approves it when it is waiting.
+  // A disabled chore cannot be completed, so its row does nothing.
+  const complete = () => { if (chore.enabled) onComplete(); };
   return (
     <div
+      role="button"
+      tabIndex={chore.enabled ? 0 : -1}
+      aria-label={isPendingApproval ? `Approve ${chore.title}` : `Complete ${chore.title}`}
+      aria-disabled={!chore.enabled || undefined}
+      onClick={complete}
+      onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); complete(); } }}
       className={cn(
-        'flex items-center gap-4 p-4 rounded-lg border border-border bg-card/85 backdrop-blur-xs',
+        'flex items-center gap-4 p-4 rounded-lg border border-border bg-card/85 backdrop-blur-xs select-none',
         'hover:border-seasonal-accent hover:ring-2 hover:ring-seasonal-accent/50 transition-all group',
+        chore.enabled && 'cursor-pointer',
         !chore.enabled && 'opacity-50',
         isPendingApproval && 'bg-warning/10 border-warning/30'
       )}
     >
-      {/* Complete button - always enabled for parents, shows pending state visually */}
-      <Button
-        size="icon"
-        variant="ghost"
-        onClick={onComplete}
-        disabled={!chore.enabled}
-        className={cn(
-          'shrink-0 h-9 w-9',
-          isOverdue && !isPendingApproval && 'text-destructive hover:text-destructive',
-          isPendingApproval && 'text-warning'
-        )}
-        title={isPendingApproval ? 'Approve and complete chore' : 'Mark as complete'}
-      >
-        {isPendingApproval ? (
-          <Hourglass className="h-5 w-5" />
-        ) : (
-          <CheckCircle2 className="h-5 w-5" />
-        )}
-      </Button>
+      {/* Waiting for approval: a status, not a button. */}
+      {isPendingApproval && <Hourglass aria-hidden className="h-5 w-5 shrink-0 text-warning" />}
 
       {/* Content */}
       <div className="flex-1 min-w-0">
@@ -104,7 +97,9 @@ export function ChoreItem({
           <span className="text-base"><Emoji e={categoryEmoji} /></span>
           <span className={cn(
             'font-medium',
-            isPendingApproval && 'text-warning'
+            isPendingApproval && 'text-warning',
+            // The overdue cue the old complete button's red tint carried.
+            isOverdue && !isPendingApproval && 'text-destructive'
           )}>{chore.title}</span>
 
           {chore.pointValue > 0 && (
@@ -175,8 +170,8 @@ export function ChoreItem({
         )}
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-1">
+      {/* Actions. Taps here stay here: the row behind completes the chore. */}
+      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-1">
           <span className="text-xs text-muted-foreground mr-1">
             {chore.enabled ? 'Enabled' : 'Disabled'}

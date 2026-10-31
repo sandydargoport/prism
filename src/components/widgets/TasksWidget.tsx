@@ -28,10 +28,10 @@
 import * as React from 'react';
 import { useMemo, useCallback } from 'react';
 import { format } from 'date-fns';
-import { CheckSquare, Plus, AlertCircle } from 'lucide-react';
+import { CheckSquare, Plus, AlertCircle, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { WidgetContainer, WidgetEmpty } from './WidgetContainer';
-import { Button, Checkbox, Badge, UserAvatar } from '@/components/ui';
+import { Button, Badge, UserAvatar } from '@/components/ui';
 import { compareTaskDue, dueLocalDate, isTaskOverdue } from '@/lib/utils/taskDue';
 
 
@@ -175,7 +175,7 @@ export const TasksWidget = React.memo(function TasksWidget({
                 task={task}
                 completed={task.completed || false}
                 onToggle={() => handleToggle(task.id, task.completed || false)}
-                onClick={onTaskClick ? () => onTaskClick(task) : undefined}
+                onEdit={onTaskClick ? () => onTaskClick(task) : undefined}
               />
             ))}
           </div>
@@ -195,18 +195,18 @@ export const TasksWidget = React.memo(function TasksWidget({
 
 /**
  * TASK ITEM
- * A single task row with checkbox, title, and metadata.
+ * A single task row: tap anywhere on it to cross it off, pencil to edit.
  */
 function TaskItem({
   task,
   completed,
   onToggle,
-  onClick,
+  onEdit,
 }: {
   task: Task;
   completed: boolean;
   onToggle: () => void;
-  onClick?: () => void;
+  onEdit?: () => void;
 }) {
   // Format due date
   // Re-renders at the display zone's midnight, so "Today" and "Tomorrow" move
@@ -217,37 +217,30 @@ function TaskItem({
   // Check if overdue
   const isOverdue = isTaskOverdue(task, new Date(), timeZone) && !completed;
 
+  // The whole row is the tap target and a tap crosses the task off, as the
+  // Tasks page and recipe ingredients do. Editing is the pencil.
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-pressed={completed}
+      onClick={onToggle}
+      onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onToggle(); } }}
       className={cn(
-        'flex items-start gap-3 p-2 rounded-lg',
+        'flex items-start gap-3 p-2 rounded-lg cursor-pointer select-none',
         'hover:bg-accent/50 transition-colors',
         'touch-action-manipulation',
         completed && 'opacity-60'
       )}
     >
-      {/* Checkbox — stops propagation so the row click doesn't open the
-          edit modal when the user is just toggling completion. */}
-      <Checkbox
-        checked={completed}
-        onCheckedChange={onToggle}
-        onClick={(e) => e.stopPropagation()}
-        className="mt-0.5"
-        style={
-          task.assignedTo
-            ? { borderColor: task.assignedTo.color }
-            : undefined
-        }
+      {/* Who it is for, in their colour, where the checkbox border used to show it. */}
+      <span
+        aria-hidden
+        className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-muted-foreground/50"
+        style={task.assignedTo ? { backgroundColor: task.assignedTo.color } : undefined}
       />
 
-      {/* Task content — clickable surface that opens the edit modal. */}
-      <div
-        className={cn('flex-1 min-w-0', onClick && 'cursor-pointer')}
-        role={onClick ? 'button' : undefined}
-        tabIndex={onClick ? 0 : undefined}
-        onClick={onClick}
-        onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
-      >
+      <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           {/* Title */}
           <span
@@ -301,6 +294,20 @@ function TaskItem({
           )}
         </div>
       </div>
+
+      {onEdit && (
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-7 w-7 shrink-0 text-muted-foreground opacity-60 hover:opacity-100"
+          // The row crosses the task off, so the pencil must not also do that.
+          onClick={(e) => { e.stopPropagation(); onEdit(); }}
+          onKeyDown={(e) => e.stopPropagation()}
+          aria-label="Edit task"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+      )}
     </div>
   );
 }

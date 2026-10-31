@@ -14,7 +14,7 @@
  */
 
 import * as React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import type { Chore } from '@/types';
 import type { Task } from '@/types';
 import type { ShoppingList } from '@/types';
@@ -129,6 +129,44 @@ describe('TasksWidget', () => {
     const done: Task = { ...mockTask, id: 't2', title: 'Done task', completed: true };
     render(<TasksWidget tasks={[mockTask, done]} showCompleted={true} />);
     expect(screen.getByText('Done task')).toBeTruthy();
+  });
+
+  it('crosses a task off with a tap on the row, and edits only from the pencil', () => {
+    const onTaskToggle = jest.fn();
+    const onTaskClick = jest.fn();
+    render(<TasksWidget tasks={[mockTask]} onTaskToggle={onTaskToggle} onTaskClick={onTaskClick} />);
+    expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
+
+    fireEvent.click(screen.getByText('Buy milk'));
+    expect(onTaskToggle).toHaveBeenCalledWith('t1', true);
+    expect(onTaskClick).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit task' }));
+    expect(onTaskClick).toHaveBeenCalledTimes(1);
+    expect(onTaskToggle).toHaveBeenCalledTimes(1);
+  });
+
+  it('a done task is crossed out', () => {
+    const done: Task = { ...mockTask, completed: true };
+    render(<TasksWidget tasks={[done]} showCompleted />);
+    expect(screen.getByText('Buy milk').className).toContain('line-through');
+  });
+});
+
+describe('ChoresWidget tap to complete', () => {
+  it('completes a chore with a tap on the row, and edits only from the pencil', () => {
+    const onChoreComplete = jest.fn();
+    const onChoreClick = jest.fn();
+    render(<ChoresWidget chores={[mockChore]} onChoreComplete={onChoreComplete} onChoreClick={onChoreClick} />);
+    expect(screen.queryByRole('button', { name: 'Mark as complete' })).toBeNull();
+
+    fireEvent.click(screen.getByText('Vacuum'));
+    expect(onChoreComplete).toHaveBeenCalledWith('c1');
+    expect(onChoreClick).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit chore' }));
+    expect(onChoreClick).toHaveBeenCalledTimes(1);
+    expect(onChoreComplete).toHaveBeenCalledTimes(1);
   });
 });
 
