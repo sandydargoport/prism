@@ -16,7 +16,6 @@ interface UseLayoutEditorStateOptions {
   onWidgetsChange: (w: WidgetConfig[]) => void;
   onSave: (name?: string) => void | Promise<void>;
   onSaveAs: (name?: string) => void;
-  onScreensaverSave?: () => void;
   onScreensaverSaveAs?: () => void;
   onSelectScreensaverPreset?: (w: WidgetConfig[]) => void;
   onRenameDashboard?: (name: string) => void;
@@ -35,7 +34,6 @@ export function useLayoutEditorState({
   onWidgetsChange,
   onSave,
   onSaveAs,
-  onScreensaverSave,
   onScreensaverSaveAs,
   onSelectScreensaverPreset,
   onRenameDashboard,
@@ -102,8 +100,8 @@ export function useLayoutEditorState({
 
   const handleSave = useCallback(async () => {
     try {
-      if (editingScreensaver) await onScreensaverSave?.();
-      else await onSave();
+      // One Save keeps both tabs (#782).
+      await onSave();
       setSaveFeedback('Saved!');
       setTimeout(() => setSaveFeedback(''), 2000);
     } catch (err) {
@@ -112,7 +110,7 @@ export function useLayoutEditorState({
       setTimeout(() => setSaveFeedback(''), 3000);
       toast({ title: 'Failed to save layout', variant: 'destructive' });
     }
-  }, [editingScreensaver, onScreensaverSave, onSave]);
+  }, [onSave]);
 
   const handleRenameOpen = useCallback(() => {
     setRenameValue(layoutName || '');

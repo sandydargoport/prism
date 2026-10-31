@@ -85,7 +85,7 @@ Submitting to the gallery needs a GitHub account. Without one, use **Download fi
 
 ### Copy between the dashboard and the screensaver
 
-**More → Copy to screensaver** replaces the screensaver's layout with the dashboard you are editing, and switches to the screensaver so you can check it; **Save** keeps it and **Cancel** puts the old one back. While editing the screensaver the same item reads **Copy to dashboard**. The screensaver shows fewer kinds of widget than the dashboard, so any it cannot show are left out, and the confirmation says which.
+**More → Use as idle screen** replaces the idle screen's layout with the dashboard you are editing, and switches to the Idle screen tab so you can check it; **Save** keeps it and **Cancel** puts the old one back. On the Idle screen tab the same item reads **Use as dashboard**. Both need photos or the night sky behind the idle screen, since a dashboard that is its own idle screen has no separate layout. The screensaver shows fewer kinds of widget than the dashboard, so any it cannot show are left out, and the confirmation says which.
 
 ### Export & Import
 
