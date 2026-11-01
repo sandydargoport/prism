@@ -38,7 +38,7 @@ import { logError } from '@/lib/utils/logError';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { normalizeAllDayRange } from '@/lib/utils/allDayRange';
 import { MAX_CALENDAR_EVENTS } from '@/lib/utils/calendarRange';
-import { expandSeries, isPrismSeries, occurrenceId } from '@/lib/utils/recurrence';
+import { expandSeries, isSeriesRow, occurrenceId } from '@/lib/utils/recurrence';
 
 // Cache events for 5 minutes
 const EVENTS_CACHE_TTL = 5 * 60;
@@ -111,9 +111,9 @@ export async function GET(request: NextRequest) {
       and(gte(events.endTime, startDate), lte(events.endTime, endDate)),
       // Event spans the entire range
       and(lte(events.startTime, startDate), gte(events.endTime, endDate)),
-      // A series Prism expands itself (#59) is stored once, at its first
-      // occurrence, so one that began before the range is still in it.
-      and(isNotNull(events.recurrenceRule), isNull(events.externalEventId), lte(events.startTime, endDate))
+      // A series row (#59) is stored once, at its first occurrence, so one
+      // that began before the range is still in it.
+      and(isNotNull(events.recurrenceRule), isNull(events.seriesKey), lte(events.startTime, endDate))
     );
 
     // A hidden event (#592) stays in the database so a sync cannot re-add it.
@@ -146,7 +146,6 @@ export async function GET(request: NextRequest) {
           allDay: events.allDay,
           recurring: events.recurring,
           recurrenceRule: events.recurrenceRule,
-          externalEventId: events.externalEventId,
           seriesKey: events.seriesKey,
           color: events.color,
           reminderMinutes: events.reminderMinutes,
@@ -206,13 +205,13 @@ export async function GET(request: NextRequest) {
 
       // Format response
       // Color priority: event color > user color > calendar color > default
-      // A series Prism owns becomes one event per occurrence in the range,
+      // A series row becomes one event per occurrence in the range,
       // each under an id naming its start, so an edit or delete reaches the
       // series row (see recurrence.ts).
       const timeZone = await getHouseholdTimezone();
       const expanded: EventResponse[] = results
         .flatMap((row) => {
-          if (!isPrismSeries(row)) return [formatEventRow(row)];
+          if (!isSeriesRow(row)) return [formatEventRow(row)];
           return expandSeries(row, startDate, endDate, timeZone).map(({ start, end }) => ({
             ...formatEventRow({ ...row, startTime: start, endTime: end, recurring: true }),
             id: occurrenceId(row.id, start),
@@ -352,6 +351,9 @@ export async function POST(request: NextRequest) {
         normalizeAllDayRange(startTime, endTime, await getHouseholdTimezone()));
     }
 
+    // The rule the event repeats by, if any, without Google's `RRULE:` prefix.
+    const rule = recurrenceRule?.trim().replace(/^RRULE:/i, '') || null;
+
     let externalEventId: string | null = null;
     let caldavHref: string | null = null;
     let caldavEtag: string | null = null;
@@ -403,9 +405,12 @@ export async function POST(request: NextRequest) {
               .where(eq(calendarSources.id, calendarSourceId));
           }
 
-          const allDayRange = allDay ? toGoogleAllDayRange(startTime, endTime, await getHouseholdTimezone()) : null;
+          const timeZone = await getHouseholdTimezone();
+          const allDayRange = allDay ? toGoogleAllDayRange(startTime, endTime, timeZone) : null;
 
-          // Create event on Google Calendar
+          // Create event on Google Calendar. A repeating one carries its
+          // RRULE and the zone it repeats in, which Google requires for a
+          // timed series (#59).
           const googleEvent = await createCalendarEvent(
             accessToken,
             calendar.sourceCalendarId,
@@ -415,10 +420,11 @@ export async function POST(request: NextRequest) {
               location: location?.trim() || undefined,
               start: allDay
                 ? allDayRange!.start
-                : { dateTime: startTime.toISOString() },
+                : { dateTime: startTime.toISOString(), ...(rule ? { timeZone } : {}) },
               end: allDay
                 ? allDayRange!.end
-                : { dateTime: endTime.toISOString() },
+                : { dateTime: endTime.toISOString(), ...(rule ? { timeZone } : {}) },
+              ...(rule ? { recurrence: [`RRULE:${rule}`] } : {}),
             }
           );
 
@@ -439,33 +445,29 @@ export async function POST(request: NextRequest) {
       // A CalDAV calendar gets the event as a new object named by its UID.
       // The UID is stored as the external id and the href and ETag beside it,
       // so the next sync matches this row instead of adding a second copy,
-      // and later edits and deletes can address it. A repeating event stays
-      // in Prism for now: the RRULE would need the zone it repeats in (#59).
+      // and later edits and deletes can address it. A repeating one is
+      // written in the household zone so its wall time holds (#59).
       if (calendar.provider === 'caldav') {
-        if (recurring || recurrenceRule) {
-          pushWarning =
-            'Event saved in Prism only. Prism cannot add repeating events to this calendar yet, so it will not show in other apps.';
+        const uid = randomUUID();
+        const result = await pushCalDAVEventCreate(calendar.id, {
+          uid,
+          title: title.trim(),
+          description: description?.trim() || null,
+          location: location?.trim() || null,
+          startTime,
+          endTime,
+          allDay,
+          ...(rule ? { recurrence: { rule, timeZone: await getHouseholdTimezone() } } : {}),
+        });
+        if (result.ok) {
+          externalEventId = uid;
+          caldavHref = result.href;
+          caldavEtag = result.etag;
         } else {
-          const uid = randomUUID();
-          const result = await pushCalDAVEventCreate(calendar.id, {
-            uid,
-            title: title.trim(),
-            description: description?.trim() || null,
-            location: location?.trim() || null,
-            startTime,
-            endTime,
-            allDay,
-          });
-          if (result.ok) {
-            externalEventId = uid;
-            caldavHref = result.href;
-            caldavEtag = result.etag;
-          } else {
-            logError('Failed to create event on CalDAV server:', result.message);
-            pushWarning = result.reason === 'forbidden'
-              ? 'Event saved in Prism only. This calendar is read-only, so it was not added there.'
-              : 'Event was saved in Prism but could not be added to the calendar.';
-          }
+          logError('Failed to create event on CalDAV server:', result.message);
+          pushWarning = result.reason === 'forbidden'
+            ? 'Event saved in Prism only. This calendar is read-only, so it was not added there.'
+            : 'Event was saved in Prism but could not be added to the calendar.';
         }
       }
     }
@@ -484,8 +486,8 @@ export async function POST(request: NextRequest) {
         externalEventId,
         caldavHref,
         caldavEtag,
-        recurring,
-        recurrenceRule: recurrenceRule || null,
+        recurring: recurring || Boolean(rule),
+        recurrenceRule: rule,
         color: color || null,
         reminderMinutes: reminderMinutes ?? null,
         createdBy: createdBy || null,

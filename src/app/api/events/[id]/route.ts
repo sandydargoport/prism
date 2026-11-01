@@ -29,7 +29,7 @@ import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { normalizeAllDayRange } from '@/lib/utils/allDayRange';
-import { isPrismSeries, parseEventId } from '@/lib/utils/recurrence';
+import { isSeriesRow, parseEventId } from '@/lib/utils/recurrence';
 
 
 interface RouteParams {
@@ -385,12 +385,12 @@ export async function PATCH(
       updateData.endTime = effectiveEnd;
     }
 
-    // The form shows one occurrence of a series Prism expands itself, and the
+    // The form shows one occurrence of a series row, and the
     // edit belongs to the series row (#59): a moved time moves every
     // occurrence by the same amount, and the series keeps its first date.
     // Turning the repeat off leaves the event where the form put it.
     const keepsRule = !('recurrenceRule' in body) || Boolean(body.recurrenceRule);
-    if (occurrenceStart && isPrismSeries(existingEvent) && keepsRule) {
+    if (occurrenceStart && isSeriesRow(existingEvent) && keepsRule) {
       const lengthMs = existingEvent.endTime.getTime() - existingEvent.startTime.getTime();
       const occurrenceEnd = occurrenceStart.getTime() + lengthMs;
       if (updateData.startTime) {

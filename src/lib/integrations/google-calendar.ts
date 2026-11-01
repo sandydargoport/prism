@@ -320,6 +320,8 @@ export async function createCalendarEvent(
     location?: string;
     start: { dateTime?: string; date?: string; timeZone?: string };
     end: { dateTime?: string; date?: string; timeZone?: string };
+    /** `RRULE:...` lines for a repeating event; start and end then need a timeZone. */
+    recurrence?: string[];
   }
 ): Promise<GoogleCalendarEvent> {
   const response = await googleFetch(

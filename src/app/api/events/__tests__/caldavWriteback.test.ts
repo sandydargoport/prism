@@ -340,13 +340,20 @@ describe('POST /api/events on a CalDAV calendar', () => {
     expect(mockInsertValues).toHaveBeenCalledWith(expect.objectContaining({ externalEventId: null }));
   });
 
-  it('keeps a new repeating event in Prism, with a warning', async () => {
+  it('creates a repeating event on the server with its rule and the household zone (#59)', async () => {
     setupCreate();
-    const { status, json } = await post({ ...NEW, recurring: true, recurrenceRule: 'FREQ=WEEKLY' });
+    const { status, json } = await post({ ...NEW, recurring: true, recurrenceRule: 'FREQ=WEEKLY;BYDAY=TH' });
 
     expect(status).toBe(201);
-    expect(mockPushCreate).not.toHaveBeenCalled();
-    expect(json.warning).toMatch(/cannot add repeating events/);
+    expect(json.warning).toBeUndefined();
+    const [, ev] = mockPushCreate.mock.calls[0]!;
+    expect(ev.recurrence).toEqual({ rule: 'FREQ=WEEKLY;BYDAY=TH', timeZone: 'America/Chicago' });
+    // Stored as the series row until the next sync brings the occurrences.
+    expect(mockInsertValues).toHaveBeenCalledWith(expect.objectContaining({
+      externalEventId: ev.uid,
+      recurrenceRule: 'FREQ=WEEKLY;BYDAY=TH',
+      recurring: true,
+    }));
   });
 
   it('does not push to an iCal feed', async () => {
