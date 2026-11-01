@@ -380,6 +380,36 @@ test.describe('screensaver night sky', () => {
     await expect(page.getByTestId('night-sky-shower')).toHaveCount(0);
   });
 
+  test('says when aurora may be visible, and leaves the line off when the forecast fails', async ({ page }) => {
+    // The forecast itself is NOAA's and changes by the hour, so the server's
+    // answer is handed over: aurora low in the north tonight.
+    await page.route('**/api/aurora', (route) => route.fulfill({ json: { enabled: true, chance: 'horizon' } }));
+    await openScreensaver(page, 'sky', DEEP);
+    await expect(page.getByTestId('night-sky-aurora')).toHaveText('Aurora possible now, low in the northern sky');
+    const line = await page.getByTestId('night-sky-aurora').boundingBox();
+    expect(line!.y, 'at the top of the sky').toBeLessThan(720 * 0.2);
+
+    // NOAA did not answer: no line, and the sky draws as normal.
+    await page.unrouteAll({ behavior: 'ignoreErrors' });
+    await page.route('**/api/aurora', (route) => route.fulfill({ status: 502, json: { error: 'Aurora forecast unavailable' } }));
+    await openScreensaver(page, 'sky', DEEP);
+    await expect(page.getByTestId('night-sky-aurora')).toHaveCount(0);
+    expect((await sky(page))!.alpha, 'the sky is drawn').toBe(255);
+  });
+
+  test('asks for no aurora forecast by day', async ({ page }) => {
+    let asked = 0;
+    await page.route('**/api/aurora', (route) => {
+      asked++;
+      return route.fulfill({ json: { enabled: true, chance: 'overhead' } });
+    });
+    await openScreensaver(page, 'sky', NOON);
+    await page.locator('[data-testid="night-sky"]').waitFor();
+    await page.waitForTimeout(2000);
+    expect(asked, 'a plain daytime sky fetches nothing').toBe(0);
+    await expect(page.getByTestId('night-sky-aurora')).toHaveCount(0);
+  });
+
   test('the moon is copper during a lunar eclipse seen from here', async ({ page }) => {
     // The total lunar eclipse of 3 March 2026, at its peak. The eclipse comes
     // from the weather response, which works it out for the server's today, so

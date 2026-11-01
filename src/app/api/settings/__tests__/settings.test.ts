@@ -262,5 +262,16 @@ describe('PATCH /api/settings', () => {
       const res = await PATCH(makePatchRequest({ key: 'weekStartsOn', value }));
       expect(res.status).toBe(400);
     });
+
+    it.each(['true', 1, null])('rejects the aurora switch %p', async (value) => {
+      const res = await PATCH(makePatchRequest({ key: 'nightSkyAurora', value }));
+      expect(res.status).toBe(400);
+      expect(mockInsert).not.toHaveBeenCalled();
+    });
+
+    it('accepts the aurora switch on', async () => {
+      const res = await PATCH(makePatchRequest({ key: 'nightSkyAurora', value: true }));
+      expect(res.status).toBe(200);
+    });
   });
 });

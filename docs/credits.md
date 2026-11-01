@@ -50,6 +50,14 @@ compilation), constellation lines (from the IAU charts) and Milky Way outlines
 (from the Milky Way Outline Catalog by Jose R. Vieira), trimmed to what a
 screen across a room can show.
 
+## Aurora forecast: NOAA Space Weather Prediction Center
+
+- Public domain (a work of the US government)
+- Source: <https://www.swpc.noaa.gov/products/aurora-30-minute-forecast>
+
+When switched on, the night sky's aurora line comes from the OVATION model's
+short-range forecast. The server fetches it; nothing is bundled.
+
 ## Prism itself
 
 Prism is licensed under the [PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0/).
