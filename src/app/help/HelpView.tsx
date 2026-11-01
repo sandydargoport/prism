@@ -613,7 +613,7 @@ function IntegrationsHelp() {
       <H2>Google Tasks</H2>
       <P>An alternative task provider. Connect Google Tasks from the Google card and map it to a task list.</P>
       <H2>Apple iCloud / CalDAV</H2>
-      <P>Connect iCloud (or any CalDAV server) for calendars, Reminders, and optional contact birthdays. See the <strong>Apple iCloud (CalDAV)</strong> help section for setup. Edits you make in Prism are written back to the calendar, and deleting a single (non-recurring) synced event removes it there too. New events stay in Prism for now.</P>
+      <P>Connect iCloud (or any CalDAV server) for calendars, Reminders, and optional contact birthdays. See the <strong>Apple iCloud (CalDAV)</strong> help section for setup. New events and edits you make in Prism are written to the calendar, and deleting a single (non-recurring) synced event removes it there too. New repeating events stay in Prism for now.</P>
       <H2>Kroger / Mariano&apos;s Cart</H2>
       <P>Push your shopping list to your online Kroger / Mariano&apos;s cart. See the <strong>Kroger / Mariano&apos;s Cart</strong> help section.</P>
       <H2>Gmail Bus Tracking</H2>

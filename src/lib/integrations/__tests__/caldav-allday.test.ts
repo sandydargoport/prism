@@ -9,12 +9,10 @@
  */
 
 const mockFetchCalendarObjects = jest.fn();
-const mockCreateCalendarObject = jest.fn();
 jest.mock('tsdav', () => ({
   createDAVClient: jest.fn(async () => ({
     fetchCalendars: async () => [{ url: 'https://dav.example.com/cal/' }],
     fetchCalendarObjects: (...a: unknown[]) => mockFetchCalendarObjects(...a),
-    createCalendarObject: (...a: unknown[]) => mockCreateCalendarObject(...a),
   })),
 }));
 
@@ -47,7 +45,6 @@ describe(`CalDAV all-day dates in the runner's zone (${tz})`, () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockFetchCalendarObjects.mockResolvedValue([{ url: `${CAL}one-day.ics`, etag: '"1"', data: ICS }]);
-    mockCreateCalendarObject.mockResolvedValue({ ok: true, headers: new Headers() });
   });
 
   it('reads a one-day VALUE=DATE event as a floating UTC-midnight range', async () => {
@@ -60,6 +57,7 @@ describe(`CalDAV all-day dates in the runner's zone (${tz})`, () => {
   });
 
   it('writes the same dates back that it read', async () => {
+    const put = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(null, { status: 201 }));
     const [ev] = await readEvents();
     await createCalDAVEvent('https://dav.example.com', 'user', 'pass', CAL, {
       uid: 'one-day@example.com',
@@ -68,7 +66,8 @@ describe(`CalDAV all-day dates in the runner's zone (${tz})`, () => {
       endTime: ev!.endTime,
       allDay: true,
     });
-    const { iCalString } = mockCreateCalendarObject.mock.calls[0]![0] as { iCalString: string };
+    const iCalString = put.mock.calls[0]![1]!.body as string;
+    put.mockRestore();
     expect(iCalString).toContain('DTSTART;VALUE=DATE:20260906');
     expect(iCalString).toContain('DTEND;VALUE=DATE:20260907');
   });

@@ -85,10 +85,12 @@ describe('exported functions throw UnsafeUrlError on a private serverUrl', () =>
     expect(mockCreateDAVClient).not.toHaveBeenCalled();
   });
   it('createCalDAVEvent', async () => {
+    const fetchSpy = jest.spyOn(global, 'fetch');
     await expect(
       createCalDAVEvent('http://169.254.169.254', 'u', 'p', '/cal', EV),
     ).rejects.toBeInstanceOf(UnsafeUrlError);
-    expect(mockCreateDAVClient).not.toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
   });
   it('patchCalDAVEvent', async () => {
     const fetchSpy = jest.spyOn(global, 'fetch');

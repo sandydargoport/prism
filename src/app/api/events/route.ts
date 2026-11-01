@@ -29,6 +29,8 @@ import { getCached } from '@/lib/cache/redis';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { createCalendarEvent, refreshAccessToken, toGoogleAllDayRange } from '@/lib/integrations/google-calendar';
 import { decrypt, encrypt } from '@/lib/utils/crypto';
+import { pushCalDAVEventCreate } from '@/lib/services/calendar-sync';
+import { randomUUID } from 'crypto';
 import { formatEventRow } from '@/lib/utils/formatters';
 import { visibleEventsCondition } from '@/lib/services/hiddenEvents';
 import { logActivity } from '@/lib/services/auditLog';
@@ -330,7 +332,9 @@ export async function POST(request: NextRequest) {
     }
 
     let externalEventId: string | null = null;
-    let googleWarning: string | null = null;
+    let caldavHref: string | null = null;
+    let caldavEtag: string | null = null;
+    let pushWarning: string | null = null;
     let calendarSource = null;
 
     // Validate calendarSourceId if provided and push to external calendar
@@ -404,10 +408,43 @@ export async function POST(request: NextRequest) {
           // will fail identically. Saying "could not be synced" invites a retry
           // that cannot work, so name the cause and the fix instead.
           const msg = error instanceof Error ? error.message : '';
-          googleWarning = /insufficient|forbidden|\b403\b/i.test(msg)
+          pushWarning = /insufficient|forbidden|\b403\b/i.test(msg)
             ? 'Event saved locally. This Google connection is read-only, so it was not added to Google Calendar. ' +
               'Reconnect with the calendar.events scope to create events there.'
             : 'Event was saved locally but could not be synced to Google Calendar.';
+        }
+      }
+
+      // A CalDAV calendar gets the event as a new object named by its UID.
+      // The UID is stored as the external id and the href and ETag beside it,
+      // so the next sync matches this row instead of adding a second copy,
+      // and later edits and deletes can address it. A repeating event stays
+      // in Prism for now: the RRULE would need the zone it repeats in (#59).
+      if (calendar.provider === 'caldav') {
+        if (recurring || recurrenceRule) {
+          pushWarning =
+            'Event saved in Prism only. Prism cannot add repeating events to this calendar yet, so it will not show in other apps.';
+        } else {
+          const uid = randomUUID();
+          const result = await pushCalDAVEventCreate(calendar.id, {
+            uid,
+            title: title.trim(),
+            description: description?.trim() || null,
+            location: location?.trim() || null,
+            startTime,
+            endTime,
+            allDay,
+          });
+          if (result.ok) {
+            externalEventId = uid;
+            caldavHref = result.href;
+            caldavEtag = result.etag;
+          } else {
+            logError('Failed to create event on CalDAV server:', result.message);
+            pushWarning = result.reason === 'forbidden'
+              ? 'Event saved in Prism only. This calendar is read-only, so it was not added there.'
+              : 'Event was saved in Prism but could not be added to the calendar.';
+          }
         }
       }
     }
@@ -424,6 +461,8 @@ export async function POST(request: NextRequest) {
         allDay,
         calendarSourceId: calendarSourceId || null,
         externalEventId,
+        caldavHref,
+        caldavEtag,
         recurring,
         recurrenceRule: recurrenceRule || null,
         color: color || null,
@@ -485,7 +524,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(
-      googleWarning ? { ...response, warning: googleWarning } : response,
+      pushWarning ? { ...response, warning: pushWarning } : response,
       { status: 201 }
     );
   } catch (error) {

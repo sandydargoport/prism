@@ -13,6 +13,7 @@ import {
   fetchCalDAVEvents,
   fetchCalDAVTasks,
   type CalDAVConnectionConfig,
+  type CalDAVCreateResult,
   type CalDAVEventChanges,
   type CalDAVPatchResult,
 } from '@/lib/integrations/caldav';
@@ -1427,15 +1428,14 @@ async function loadCalDAVAuth(sourceId: string): Promise<{
 export async function pushCalDAVEventCreate(
   sourceId: string,
   ev: { uid: string; title: string; description?: string | null; location?: string | null; startTime: Date; endTime: Date; allDay?: boolean },
-): Promise<{ ok: true; href: string } | { ok: false; error: string }> {
+): Promise<CalDAVCreateResult> {
   const auth = await loadCalDAVAuth(sourceId);
-  if ('error' in auth) return { ok: false, error: auth.error };
+  if ('error' in auth) return { ok: false, reason: 'error', message: auth.error };
   try {
     const { createCalDAVEvent } = await import('@/lib/integrations/caldav');
-    const { href } = await createCalDAVEvent(auth.serverUrl, auth.username, auth.password, auth.sourceCalendarId, ev);
-    return { ok: true, href };
+    return await createCalDAVEvent(auth.serverUrl, auth.username, auth.password, auth.sourceCalendarId, ev);
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    return { ok: false, reason: 'error', message: err instanceof Error ? err.message : String(err) };
   }
 }
 
