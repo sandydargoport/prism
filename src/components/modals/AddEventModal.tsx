@@ -26,6 +26,9 @@ import { fromDisplayDateTime, toDisplayDate } from '@/lib/utils/timeFormat';
 import { toast } from '@/components/ui/use-toast';
 import { TimeDropdown } from './TimeDropdown';
 import { readResponseError } from '@/lib/utils/responseError';
+import { RepeatPicker, repeatFromRule, type Repeat } from './RepeatPicker';
+import { buildRepeatRule, firstRepeatDate, parseRepeatRule } from '@/lib/utils/repeatRule';
+import { addDaysToKey, calendarDaysBetween } from '@/lib/utils/zonedDate';
 import {
   Dialog,
   DialogContent,
@@ -95,19 +98,6 @@ export interface AddEventModalProps {
   /** Pre-fill start date when creating */
   defaultDate?: Date;
 }
-
-/**
- * Recurrence presets. `labelKey` indexes `calendar.eventForm.recurrence`; the
- * RRULE on the left is protocol, the label on the right is copy.
- */
-const RECURRENCE_OPTIONS = [
-  { value: '', labelKey: 'none' },
-  { value: 'FREQ=DAILY', labelKey: 'daily' },
-  { value: 'FREQ=WEEKLY', labelKey: 'weekly' },
-  { value: 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR', labelKey: 'weekdays' },
-  { value: 'FREQ=MONTHLY', labelKey: 'monthly' },
-  { value: 'FREQ=YEARLY', labelKey: 'yearly' },
-];
 
 /**
  * Reminder options, in minutes before the event. The label is built from an
@@ -219,7 +209,7 @@ export function AddEventModal({
   const [endDate, setEndDate] = useState('');
   const [endTimeStr, setEndTimeStr] = useState('');
   const [allDay, setAllDay] = useState(false);
-  const [recurrenceRule, setRecurrenceRule] = useState('');
+  const [repeat, setRepeat] = useState<Repeat>({ kind: 'none' });
   const [reminderMinutes, setReminderMinutes] = useState<number | ''>('');
   // The calendar someone picked, or '' to follow the default. Derived rather
   // than copied: the calendars load after the modal can already be open, and
@@ -305,14 +295,14 @@ export function AddEventModal({
         setStartTimeStr('');
         setEndTimeStr('');
       }
-      setRecurrenceRule(event.recurrenceRule || '');
+      setRepeat(repeatFromRule(event.recurrenceRule, sd, displayTimezone));
       setReminderMinutes(event.reminderMinutes ?? '');
       setPickedCalendarId(event.calendarSourceId || '');
       setShowMore(!!(event.description || event.location || event.reminderMinutes || event.recurrenceRule));
       return;
     }
     setTitle(''); setDescription(''); setLocation('');
-    setAllDay(false); setRecurrenceRule(''); setReminderMinutes('');
+    setAllDay(false); setRepeat({ kind: 'none' }); setReminderMinutes('');
     setPickedCalendarId(''); setShowMore(false);
     // Calendar cells are already presentation-only wall dates.
     const d = defaultDate ? format(defaultDate, 'yyyy-MM-dd') : formatDateLocal(new Date(), displayTimezone);
@@ -328,14 +318,26 @@ export function AddEventModal({
     if (!title.trim() || !startDate || !endDate) return;
     if (!allDay && (!startTimeStr || !endTimeStr)) return;
 
+    // A weekly repeat on days the start is not on begins on the first of
+    // them (Tue/Thu from a Monday starts Tuesday), so the series has no
+    // stray first date. The end moves with it.
+    const repeatSpec = repeat.kind === 'custom' ? repeat.spec
+      : repeat.kind === 'preset' ? parseRepeatRule(repeat.rule, startDate, displayTimezone)
+      : null;
+    const fromDate = repeatSpec ? firstRepeatDate(startDate, repeatSpec) : startDate;
+    const toDate = addDaysToKey(endDate, calendarDaysBetween(startDate, fromDate));
+    const recurrenceRule = repeat.kind === 'none' ? ''
+      : repeat.kind === 'custom' ? buildRepeatRule(repeat.spec, fromDate, allDay, displayTimezone)
+      : repeat.rule;
+
     // All-day values are floating dates. Keep them in UTC so their calendar
     // date is stable and Google can receive an exclusive end date reliably.
     const startISO = allDay
-      ? `${startDate}T00:00:00.000Z`
-      : fromDisplayDateTime(startDate, startTimeStr, displayTimezone).toISOString();
+      ? `${fromDate}T00:00:00.000Z`
+      : fromDisplayDateTime(fromDate, startTimeStr, displayTimezone).toISOString();
     const endISO = allDay
-      ? `${endDate}T23:59:59.000Z`
-      : fromDisplayDateTime(endDate, endTimeStr, displayTimezone).toISOString();
+      ? `${toDate}T23:59:59.000Z`
+      : fromDisplayDateTime(toDate, endTimeStr, displayTimezone).toISOString();
 
     if (new Date(endISO) < new Date(startISO)) {
       setError(t('eventForm.endBeforeStart'));
@@ -597,21 +599,7 @@ export function AddEventModal({
               </div>
 
               {/* Recurrence */}
-              <Select
-                value={recurrenceRule || '__none__'}
-                onValueChange={(v) => setRecurrenceRule(v === '__none__' ? '' : v)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder={t('eventForm.recurrence.none')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {RECURRENCE_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value || '__none__'} value={opt.value || '__none__'}>
-                      {t(`eventForm.recurrence.${opt.labelKey}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <RepeatPicker value={repeat} onChange={setRepeat} startKey={startDate} timeZone={displayTimezone} />
 
               {/* Reminder */}
               <Select
