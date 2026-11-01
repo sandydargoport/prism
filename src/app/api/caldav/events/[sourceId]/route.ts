@@ -1,11 +1,10 @@
 /**
  * Two-way write to a CalDAV calendar.
  *
- * Scoped narrow on purpose: this PR ships the writeback path for review,
- * but does NOT yet wire it into the main /api/events flow. The main events
- * route will mirror the change locally, then call this endpoint when the
- * event lives on a CalDAV source whose `providerConfig.writable === true`.
- * That wiring is the next PR.
+ * The app does not call this: /api/events and /api/events/[id] write CalDAV
+ * events through the same calendar-sync helpers directly (#687). It stays as
+ * an API for scripts, and only for a source whose
+ * `providerConfig.writable === true`.
  *
  *   POST  /api/caldav/events/[sourceId]                 — create
  *   PATCH /api/caldav/events/[sourceId]?href=…          — update
@@ -86,8 +85,8 @@ export async function POST(req: NextRequest, ctx: RouteCtx) {
   try {
     const body = (await req.json()) as BodyShape;
     const result = await pushCalDAVEventCreate(sourceId, parseBody(body));
-    if (!result.ok) return NextResponse.json({ error: result.error }, { status: 502 });
-    return NextResponse.json({ href: result.href }, { status: 201 });
+    if (!result.ok) return NextResponse.json({ error: result.message }, { status: 502 });
+    return NextResponse.json({ href: result.href, etag: result.etag }, { status: 201 });
   } catch (err) {
     logError('CalDAV event create failed', err);
     return NextResponse.json({ error: 'Create failed' }, { status: 500 });

@@ -5,10 +5,10 @@
  * times, so saving an edit would have dropped alarms, attendees, the repeat
  * rule and every property another app stores. These tests take an object that
  * carries all of those, edit one field, and check that every other line comes
- * back exactly as it was.
+ * back exactly as it was. New events are PUT as their own object.
  */
 import ICAL from 'ical.js';
-import { applyCalDAVEventChanges, icalTimeToDate, patchCalDAVEvent } from '../caldav';
+import { applyCalDAVEventChanges, createCalDAVEvent, icalTimeToDate, patchCalDAVEvent } from '../caldav';
 
 const TZ = 'America/Chicago';
 const NOW = new Date('2026-11-01T12:00:00Z');
@@ -407,5 +407,60 @@ describe('patchCalDAVEvent', () => {
       { title: 'X' }, TZ);
     expect(result).toMatchObject({ ok: false, reason: 'not-found' });
     expect(put()).toHaveLength(0);
+  });
+});
+
+describe('createCalDAVEvent', () => {
+  let fetchMock: jest.SpyInstance;
+  beforeEach(() => {
+    fetchMock = jest.spyOn(global, 'fetch');
+  });
+  afterEach(() => fetchMock.mockRestore());
+
+  const EV = {
+    uid: 'c0ffee00-1111-4222-8333-444455556666',
+    title: 'Book fair',
+    location: 'School library',
+    startTime: new Date('2026-11-12T14:00:00Z'),
+    endTime: new Date('2026-11-12T15:30:00Z'),
+  };
+
+  it('PUTs a new object named by the UID, refusing to replace one, and returns href and ETag', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 201, headers: { ETag: '"n1"' } }));
+
+    const result = await createCalDAVEvent('https://dav.example.com', 'u', 'p', 'https://dav.example.com/cal/home', EV);
+
+    const href = 'https://dav.example.com/cal/home/c0ffee00-1111-4222-8333-444455556666.ics';
+    expect(result).toEqual({ ok: true, href, etag: '"n1"' });
+    const [[url, init]] = fetchMock.mock.calls;
+    expect(url).toBe(href);
+    expect(init.method).toBe('PUT');
+    expect(init.headers['If-None-Match']).toBe('*');
+    const body = lines(init.body);
+    expect(body).toContain('UID:c0ffee00-1111-4222-8333-444455556666');
+    expect(body).toContain('SUMMARY:Book fair');
+    expect(body).toContain('LOCATION:School library');
+    expect(body).toContain('DTSTART:20261112T140000Z');
+    expect(body).toContain('DTEND:20261112T153000Z');
+  });
+
+  it('writes an all-day event as plain dates', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 201 }));
+    const result = await createCalDAVEvent('https://dav.example.com', 'u', 'p', 'https://dav.example.com/cal/home/', {
+      ...EV,
+      startTime: new Date('2026-11-12T00:00:00Z'),
+      endTime: new Date('2026-11-13T00:00:00Z'),
+      allDay: true,
+    });
+    expect(result).toMatchObject({ ok: true, etag: null });
+    const body = lines(fetchMock.mock.calls[0]![1].body);
+    expect(body).toContain('DTSTART;VALUE=DATE:20261112');
+    expect(body).toContain('DTEND;VALUE=DATE:20261113');
+  });
+
+  it('reports a read-only calendar as forbidden', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 403 }));
+    const result = await createCalDAVEvent('https://dav.example.com', 'u', 'p', 'https://dav.example.com/cal/home/', EV);
+    expect(result).toMatchObject({ ok: false, reason: 'forbidden' });
   });
 });

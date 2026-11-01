@@ -658,7 +658,7 @@ function formatICalDate(date: Date): string {
 
 /**
  * Two-way write: create / update / delete events back to the CalDAV
- * server. Create and delete wrap tsdav's createCalendarObject /
+ * server. Create is a plain PUT of a new object and delete wraps tsdav's
  * deleteCalendarObject. An update reads the stored object, changes only the
  * edited fields with ical.js and writes it back (patchCalDAVEvent), so the
  * properties Prism does not model survive the edit.
@@ -725,8 +725,10 @@ function buildVEventICalString(ev: CalDAVEventWrite): string {
 }
 
 /**
- * Push a new VEVENT to the given CalDAV calendar. Returns the href the
- * server assigned so callers can store it for later update / delete.
+ * Push a new VEVENT to the given CalDAV calendar, as `<uid>.ics` inside it.
+ * `If-None-Match: *` makes the server refuse rather than replace an object
+ * already at that name. Returns the object's href and the ETag the server
+ * sent (null when it sends none; the next sync fills it in), or why it failed.
  */
 export async function createCalDAVEvent(
   serverUrl: string,
@@ -734,33 +736,38 @@ export async function createCalDAVEvent(
   password: string,
   calendarHref: string,
   ev: CalDAVEventWrite,
-): Promise<{ href: string }> {
+): Promise<CalDAVCreateResult> {
   assertSafeCalDAVUrl(serverUrl);
+  const collection = new URL(calendarHref, serverUrl);
+  if (!collection.pathname.endsWith('/')) collection.pathname += '/';
+  const href = new URL(`${encodeURIComponent(ev.uid)}.ics`, collection).toString();
 
-  const client = await createDAVClient({
-    serverUrl,
-    credentials: { username, password },
-    authMethod: 'Basic',
-    defaultAccountType: 'caldav',
+  const res = await safeFetch(href, {
+    method: 'PUT',
+    headers: {
+      Authorization: basicAuth(username, password),
+      'Content-Type': 'text/calendar; charset=utf-8',
+      'If-None-Match': '*',
+    },
+    body: buildVEventICalString(ev),
   });
+  if (!res.ok) return davFailure(res.status, 'create');
+  return { ok: true, href, etag: res.headers.get('etag') };
+}
 
-  const calendars = await client.fetchCalendars();
-  const calendar = calendars.find((c: DAVCalendar) => c.url === calendarHref);
-  if (!calendar) throw new Error(`Calendar not found: ${calendarHref}`);
+export type CalDAVCreateResult =
+  | { ok: true; href: string; etag: string | null }
+  | { ok: false; reason: 'forbidden' | 'not-found' | 'error'; message: string };
 
-  const iCalString = buildVEventICalString(ev);
-  const filename = `${ev.uid}.ics`;
-  const response = await client.createCalendarObject({ calendar, iCalString, filename });
+function basicAuth(username: string, password: string): string {
+  return `Basic ${Buffer.from(`${username}:${password}`, 'utf8').toString('base64')}`;
+}
 
-  if (!response.ok) {
-    throw new Error(`CalDAV create failed: ${response.status} ${response.statusText}`);
-  }
-
-  // tsdav returns the raw fetch Response; the Location header carries the
-  // server-assigned href. Fall back to the constructed href if absent.
-  const loc = response.headers.get('Location') || response.headers.get('location');
-  const href = loc || new URL(filename, calendarHref).toString();
-  return { href };
+function davFailure(status: number, step: string): { ok: false; reason: 'forbidden' | 'not-found' | 'error'; message: string } {
+  const message = `CalDAV ${step} failed: ${status}`;
+  if (status === 401 || status === 403) return { ok: false, reason: 'forbidden', message };
+  if (status === 404 || status === 410) return { ok: false, reason: 'not-found', message };
+  return { ok: false, reason: 'error', message };
 }
 
 /**
@@ -948,20 +955,13 @@ export async function patchCalDAVEvent(
 ): Promise<CalDAVPatchResult> {
   assertSafeCalDAVUrl(serverUrl);
   const url = new URL(calendarObjectHref, serverUrl).toString();
-  const authorization = `Basic ${Buffer.from(`${username}:${password}`, 'utf8').toString('base64')}`;
-
-  const failure = (status: number, step: string): CalDAVPatchResult => {
-    const message = `CalDAV ${step} failed: ${status}`;
-    if (status === 401 || status === 403) return { ok: false, reason: 'forbidden', message };
-    if (status === 404 || status === 410) return { ok: false, reason: 'not-found', message };
-    return { ok: false, reason: 'error', message };
-  };
+  const authorization = basicAuth(username, password);
 
   for (let attempt = 0; attempt < 2; attempt++) {
     const current = await safeFetch(url, {
       headers: { Authorization: authorization, Accept: 'text/calendar' },
     });
-    if (!current.ok) return failure(current.status, 'read');
+    if (!current.ok) return davFailure(current.status, 'read');
     const etag = current.headers.get('etag');
 
     const next = applyCalDAVEventChanges(await current.text(), uid, changes, timeZone);
@@ -977,7 +977,7 @@ export async function patchCalDAVEvent(
       body: next,
     });
     if (put.status === 412) continue;
-    if (!put.ok) return failure(put.status, 'update');
+    if (!put.ok) return davFailure(put.status, 'update');
     return { ok: true, etag: put.headers.get('etag') };
   }
   return {
