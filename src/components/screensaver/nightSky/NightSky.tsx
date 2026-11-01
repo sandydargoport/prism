@@ -7,6 +7,7 @@ import { STARS, LINES, MILKY_WAY, FIGURES } from './catalog';
 import { Constellation, lessonLength } from './Constellation';
 import { pickNext, type Placement, type TaughtHistory } from './teach';
 import { activeShower, angleFromRadiant, meteorWait, showerNotice } from './showers';
+import { useAurora } from './useAurora';
 import {
   facingFor, localSiderealTime, moonPosition, project, skyLight, sunPosition, toEquatorial, toHorizontal,
   unproject,
@@ -67,6 +68,8 @@ export function NightSky({ lat, lon, eclipse }: { lat: number; lon: number; ecli
   const [meteor, setMeteor] = useState<Meteor | null>(null);
   const [lesson, setLesson] = useState<Placement | null>(null);
   const still = useShouldSkipMotion();
+  // Only once it is properly dark, which is also when aurora could be seen.
+  const aurora = useAurora(dark > 0.6, lat);
 
   useEffect(() => {
     const el = canvas.current;
@@ -202,24 +205,23 @@ export function NightSky({ lat, lon, eclipse }: { lat: number; lon: number; ecli
       {lesson && (
         <Constellation key={lesson.fig.id} placement={lesson} still={still} />
       )}
-      {shower && dark > 0.6 && (
-        <>
-          {/* The radiant: where this shower's meteors seem to come from. */}
-          {shower.visible && (
-            <span
-              data-testid="night-sky-radiant"
-              className="absolute rounded-full border border-white/40"
-              style={{ left: shower.x - 9, top: shower.y - 9, width: 18, height: 18 }}
-            />
-          )}
-          <div
-            data-testid="night-sky-shower"
-            className="absolute inset-x-0 text-center text-white/80 italic"
-            style={{ top: '6%', fontSize: 'max(13px, 1.6vh)', textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}
-          >
-            {shower.notice}
-          </div>
-        </>
+      {/* The radiant: where this shower's meteors seem to come from. */}
+      {shower && dark > 0.6 && shower.visible && (
+        <span
+          data-testid="night-sky-radiant"
+          className="absolute rounded-full border border-white/40"
+          style={{ left: shower.x - 9, top: shower.y - 9, width: 18, height: 18 }}
+        />
+      )}
+      {/* Lines on the sky, one under the other: a shower tonight, aurora now. */}
+      {((shower && dark > 0.6) || aurora) && (
+        <div
+          className="absolute inset-x-0 flex flex-col items-center gap-1 text-center text-white/80 italic"
+          style={{ top: '6%', fontSize: 'max(13px, 1.6vh)', textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}
+        >
+          {shower && dark > 0.6 && <div data-testid="night-sky-shower">{shower.notice}</div>}
+          {aurora && <div data-testid="night-sky-aurora">{aurora}</div>}
+        </div>
       )}
       {meteorsOn && meteor && (
         <span
