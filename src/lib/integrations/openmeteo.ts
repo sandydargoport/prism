@@ -37,7 +37,7 @@ import type {
 } from '@/components/widgets/WeatherWidget';
 import type { LocationParam, WeatherOptions } from './weather';
 import { getMoonData } from './moon';
-import { dayWindowUtc, todayKey } from '@/lib/utils/zonedDate';
+import { dayWindowUtc, todayKey, zonedWallTimeToUtc } from '@/lib/utils/zonedDate';
 import { DAYS_SHORT_ARRAY } from '@/lib/constants/days';
 
 function defaultImperialUnits(): WeatherUnits {
@@ -175,28 +175,17 @@ function describeWmo(code: number): string {
  * `timezone=auto`, so we need this to land on the correct absolute instant
  * regardless of the runtime's local timezone (which is UTC in our containers).
  *
- * Approach: format the localIso (treated as UTC) in the target zone to read
- * back its longOffset like "GMT-05:00", then subtract that offset from the
- * UTC interpretation. DST transitions are handled implicitly because the
- * offset is recomputed against the actual date.
+ * The shared helper settles the offset at the wall time itself. Reading it at
+ * the wall time taken as UTC instead put sunrise an hour out on the days the
+ * clocks change, when the zone's offset differs either side of those hours.
  */
 function zonedTimeToUtc(localIso: string, timeZone: string): Date {
-  // Treat the wall-clock as UTC for the moment — wrong by the timezone offset.
-  const asUtc = new Date(`${localIso}Z`);
-  // Ask Intl what UTC offset the target zone has at that moment.
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    timeZoneName: 'longOffset',
-    hour12: false,
-  }).formatToParts(asUtc);
-  const offsetName = parts.find((p) => p.type === 'timeZoneName')?.value ?? 'GMT';
-  // "GMT-05:00" → ±HH:MM
-  const m = /([+-])(\d{2}):?(\d{2})/.exec(offsetName);
-  if (!m) return asUtc;
-  const sign = m[1] === '+' ? 1 : -1;
-  const offsetMinutes = sign * (parseInt(m[2]!, 10) * 60 + parseInt(m[3]!, 10));
-  // Subtract the offset to get the real UTC instant for that wall-clock time.
-  return new Date(asUtc.getTime() - offsetMinutes * 60_000);
+  const [dateKey, time = ''] = localIso.split('T');
+  try {
+    return zonedWallTimeToUtc(dateKey!, time.slice(0, 5), timeZone);
+  } catch {
+    return new Date(`${localIso}Z`);
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -28,6 +28,7 @@ afterAll(() => {
 
 afterEach(() => {
   jest.restoreAllMocks();
+  jest.useRealTimers();
 });
 
 // Compute YYYY-MM-DD in the response timezone for a given offset (0 = today,
@@ -284,13 +285,24 @@ describe('openmeteo.fetchWeatherData', () => {
     expect(result.forecast[0]?.condition).not.toBe('cloudy');
   });
 
-  it('parses sunrise/sunset as wall-clock-in-location, not wall-clock-in-runtime', async () => {
+  // An ordinary day, and both days the clocks change in Chicago: on those the
+  // offset differs either side of the small hours, and sunrise came out an
+  // hour early when it was read at the wrong moment.
+  it.each([
+    ['an ordinary day', '2026-05-19T15:00:00Z'],
+    ['the day the clocks go back', '2026-11-01T15:00:00Z'],
+    ['the day the clocks go forward', '2026-03-08T15:00:00Z'],
+  ])('parses sunrise/sunset as wall-clock-in-location, not wall-clock-in-runtime, on %s', async (_day, now) => {
     // Regression: Open-Meteo returns "2026-05-19T05:42" (no offset) for a
     // location in America/Chicago. The bug was that `new Date(s)` interpreted
     // this as the runtime's local time — UTC in our Docker containers — so the
     // serialized ISO instant was 5 hours off, displaying sunrise around
     // midnight in the browser. Verify the parser uses the response's timezone
     // to land on the correct UTC instant.
+    jest.useFakeTimers({
+      now: new Date(now).getTime(),
+      doNotFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'queueMicrotask', 'nextTick'],
+    });
     const today = localDate(0, 'America/Chicago');
     const response = buildResponse('America/Chicago');
     response.daily.sunrise = [`${today}T05:42`];
