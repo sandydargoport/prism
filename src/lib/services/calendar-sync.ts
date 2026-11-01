@@ -13,6 +13,8 @@ import {
   fetchCalDAVEvents,
   fetchCalDAVTasks,
   type CalDAVConnectionConfig,
+  type CalDAVEventChanges,
+  type CalDAVPatchResult,
 } from '@/lib/integrations/caldav';
 import {
   fetchCalendarEvents,
@@ -1440,17 +1442,19 @@ export async function pushCalDAVEventCreate(
 export async function pushCalDAVEventUpdate(
   sourceId: string,
   calendarObjectHref: string,
-  etag: string | undefined,
-  ev: { uid: string; title: string; description?: string | null; location?: string | null; startTime: Date; endTime: Date; allDay?: boolean },
-): Promise<{ ok: true } | { ok: false; error: string }> {
+  uid: string,
+  changes: CalDAVEventChanges,
+): Promise<CalDAVPatchResult> {
   const auth = await loadCalDAVAuth(sourceId);
-  if ('error' in auth) return { ok: false, error: auth.error };
+  if ('error' in auth) return { ok: false, reason: 'error', message: auth.error };
   try {
-    const { updateCalDAVEvent } = await import('@/lib/integrations/caldav');
-    await updateCalDAVEvent(auth.serverUrl, auth.username, auth.password, calendarObjectHref, etag, ev);
-    return { ok: true };
+    const { patchCalDAVEvent } = await import('@/lib/integrations/caldav');
+    return await patchCalDAVEvent(
+      auth.serverUrl, auth.username, auth.password, calendarObjectHref, uid, changes,
+      await getHouseholdTimezone(),
+    );
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    return { ok: false, reason: 'error', message: err instanceof Error ? err.message : String(err) };
   }
 }
 

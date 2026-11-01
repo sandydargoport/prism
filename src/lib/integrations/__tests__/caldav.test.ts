@@ -23,7 +23,7 @@ import {
   fetchCalDAVEvents,
   fetchCalDAVTasks,
   createCalDAVEvent,
-  updateCalDAVEvent,
+  patchCalDAVEvent,
   deleteCalDAVEvent,
 } from '../caldav';
 import { UnsafeUrlError } from '@/lib/utils/safeFetch';
@@ -90,11 +90,13 @@ describe('exported functions throw UnsafeUrlError on a private serverUrl', () =>
     ).rejects.toBeInstanceOf(UnsafeUrlError);
     expect(mockCreateDAVClient).not.toHaveBeenCalled();
   });
-  it('updateCalDAVEvent', async () => {
+  it('patchCalDAVEvent', async () => {
+    const fetchSpy = jest.spyOn(global, 'fetch');
     await expect(
-      updateCalDAVEvent('http://[::1]', 'u', 'p', '/cal/o.ics', undefined, EV),
+      patchCalDAVEvent('http://[::1]', 'u', 'p', '/cal/o.ics', 'u1', { title: 'T' }, 'UTC'),
     ).rejects.toBeInstanceOf(UnsafeUrlError);
-    expect(mockCreateDAVClient).not.toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
   });
   it('deleteCalDAVEvent', async () => {
     await expect(

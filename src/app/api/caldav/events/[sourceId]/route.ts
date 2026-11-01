@@ -8,11 +8,13 @@
  * That wiring is the next PR.
  *
  *   POST  /api/caldav/events/[sourceId]                 — create
- *   PATCH /api/caldav/events/[sourceId]?href=…&etag=…   — update
+ *   PATCH /api/caldav/events/[sourceId]?href=…          — update
  *   DELETE /api/caldav/events/[sourceId]?href=…&etag=…  — delete
  *
  * Body shape (POST + PATCH): { uid, title, description?, location?,
- * startTime, endTime, allDay? }. Dates are ISO 8601 strings.
+ * startTime, endTime, allDay? }. Dates are ISO 8601 strings. PATCH reads the
+ * stored object and changes only the fields that differ, keeping everything
+ * else on it; a 409 means it changed on the server during the save.
  *
  * Requires `canModifySettings` for now — once integrated into /api/events,
  * permissions will be inherited from that route.
@@ -103,14 +105,21 @@ export async function PATCH(req: NextRequest, ctx: RouteCtx) {
   if (writable !== true) return writable;
 
   const href = req.nextUrl.searchParams.get('href');
-  const etag = req.nextUrl.searchParams.get('etag') ?? undefined;
   if (!href) return NextResponse.json({ error: 'href required' }, { status: 400 });
 
   try {
     const body = (await req.json()) as BodyShape;
-    const result = await pushCalDAVEventUpdate(sourceId, href, etag, parseBody(body));
-    if (!result.ok) return NextResponse.json({ error: result.error }, { status: 502 });
-    return NextResponse.json({ ok: true });
+    const ev = parseBody(body);
+    const result = await pushCalDAVEventUpdate(sourceId, href, ev.uid, {
+      title: ev.title,
+      description: ev.description,
+      location: ev.location,
+      times: { startTime: ev.startTime, endTime: ev.endTime, allDay: Boolean(ev.allDay) },
+    });
+    if (!result.ok) {
+      return NextResponse.json({ error: result.message }, { status: result.reason === 'conflict' ? 409 : 502 });
+    }
+    return NextResponse.json({ ok: true, etag: result.etag });
   } catch (err) {
     logError('CalDAV event update failed', err);
     return NextResponse.json({ error: 'Update failed' }, { status: 500 });
