@@ -27,6 +27,7 @@ import type { DayBucket } from '@/lib/hooks/useWeekViewData';
 import { useTimeFormat } from '@/components/providers';
 import { eventOccursOnDisplayDay, eventSpansMultipleDisplayDays, formatDisplayTime, isCalendarEventPast, toDisplayDate } from '@/lib/utils/timeFormat';
 import { eventsOverlappingRange } from '@/lib/utils/calendarRange';
+import { canDragEvent } from '@/lib/utils/eventMove';
 import { useDateLabels } from '@/lib/hooks/useDateLabels';
 import { useTranslations } from 'next-intl';
 
@@ -371,10 +372,7 @@ function DayCell({
       >
         {cards
           ? visibleEvents.map((event) => {
-              // Only locally-managed events are safe to drag; external (Google,
-              // iCal feed, etc.) events would either round-trip or be reverted
-              // on next sync. `calendarId === 'local'` marks internal events.
-              const draggable = enableDnd && event.calendarId === 'local';
+              const draggable = enableDnd && canDragEvent(event);
               return (
                 <WeekItemCard
                   key={event.id}

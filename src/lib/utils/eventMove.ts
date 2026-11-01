@@ -24,6 +24,16 @@ import {
 
 const MS_PER_DAY = 86_400_000;
 
+/**
+ * Whether an event on the grid can be dragged to another day. Only an event
+ * on no calendar (`calendarId === 'local'`) is safe: a synced one would be
+ * reverted by the next sync. A repeating one is not either, since dropping
+ * one occurrence would move the whole series (#59).
+ */
+export function canDragEvent(event: { calendarId: string; recurring?: boolean }): boolean {
+  return event.calendarId === 'local' && !event.recurring;
+}
+
 export function moveEventToDay(
   event: { startTime: Date; endTime: Date; allDay: boolean },
   targetKey: string,

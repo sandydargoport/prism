@@ -74,6 +74,7 @@ import type { OverlayItemRef } from '@/components/calendar/cells';
 import type { Chore, Task, Meal } from '@/types';
 import { eventStartDisplayDate, formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
 import { readResponseError } from '@/lib/utils/responseError';
+import { parseEventId } from '@/lib/utils/occurrenceId';
 
 const MEAL_TYPE_ORDER = { breakfast: 0, lunch: 1, snack: 2, dinner: 3 } as const;
 const EMPTY_EVENTS: CalendarEvent[] = [];
@@ -842,7 +843,12 @@ function EventDetailModal({ event, onClose, onEdit, onDeleted, canHide, onHidden
   };
 
   const handleDelete = async () => {
-    const ok = await confirm(t('event.deleteConfirmTitle'), t('event.deleteConfirmBody'));
+    // An occurrence of a series Prism keeps is deleted with its series.
+    const wholeSeries = parseEventId(event.id).occurrenceStart !== null;
+    const ok = await confirm(
+      t('event.deleteConfirmTitle'),
+      t(wholeSeries ? 'event.deleteSeriesConfirmBody' : 'event.deleteConfirmBody'),
+    );
     if (!ok) return;
     try {
       const response = await fetch(`/api/events/${event.id}`, { method: 'DELETE' });
