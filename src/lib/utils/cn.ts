@@ -43,7 +43,17 @@
  */
 
 import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { extendTailwindMerge } from 'tailwind-merge';
+
+/**
+ * Prism's own font sizes, from the text floor in globals.css (#798). Without
+ * this, tailwind-merge reads `text-3xs` as a colour and drops it when a colour
+ * such as `text-muted-foreground` follows, so the text falls back to the size
+ * it inherits.
+ */
+const twMerge = extendTailwindMerge({
+  extend: { theme: { text: ['2xs', '3xs', '4xs', 'event', 'daynum', 'daynum-large'] } },
+});
 
 
 /**

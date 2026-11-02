@@ -10,6 +10,7 @@ import { useResetOn } from '@/lib/hooks/useResetOn';
 import { useTimeFormat } from '@/components/providers/TimeFormatProvider';
 import { loadBase } from '@/lib/displays/displaySettingsSync';
 import { parseSchedule, scheduledDashboard, SCHEDULE_TRANSITION, SCREEN_SCHEDULE_KEY } from '@/lib/displays/screenSchedule';
+import { pageZoomVars } from '@/lib/utils/zoomVars';
 
 /**
  * Time-of-day layouts on the screen itself (#692).
@@ -147,7 +148,7 @@ export function useScreenSchedule({ routeSlug, layouts, loading, editing }: Inpu
   // `--app-vh` as the page sets it, for the scale now in force overall.
   const zoomStyle = zoom === 1
     ? undefined
-    : ({ zoom, '--app-vh': `${10000 / shownScale}vh` } as React.CSSProperties);
+    : ({ zoom, '--app-vh': `${10000 / shownScale}vh`, ...pageZoomVars(shownScale) } as React.CSSProperties);
   const pick = useCallback((slug: string) => {
     const layout = layouts.find((l) => l.slug === slug);
     if (layout) showByHand(layout.id);

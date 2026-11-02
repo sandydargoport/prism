@@ -116,7 +116,7 @@ export function ViewMenu({ viewType, onViewChange }: ViewMenuProps) {
           onClick={() => cycle(-1)}
           className="rounded border border-input hover:bg-accent inline-flex items-center justify-center text-foreground/80 hover:text-foreground transition-colors min-h-0"
         >
-          <span className="block text-[10px] leading-none">▲</span>
+          <span className="block text-3xs leading-none">▲</span>
         </button>
         <button
           type="button"
@@ -125,7 +125,7 @@ export function ViewMenu({ viewType, onViewChange }: ViewMenuProps) {
           onClick={() => cycle(1)}
           className="rounded border border-input hover:bg-accent inline-flex items-center justify-center text-foreground/80 hover:text-foreground transition-colors min-h-0"
         >
-          <span className="block text-[10px] leading-none">▼</span>
+          <span className="block text-3xs leading-none">▼</span>
         </button>
       </div>
     </div>

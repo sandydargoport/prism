@@ -237,6 +237,9 @@ describe('the modes reach real components', () => {
       'src/components/calendar/MultiWeekView.tsx',
       'src/components/calendar/TwoWeekView.tsx',
       'src/components/calendar/AgendaView.tsx',
+      // The floored calendar sizes (text-event, text-daynum) read their mode
+      // variables in the @theme block (#798).
+      'src/styles/globals.css',
     ].map(read).join('\n');
 
     const emitted = new Set<string>();

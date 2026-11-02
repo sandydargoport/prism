@@ -51,7 +51,7 @@ export function DayOverflowPopover({
           className={cn(
             // Full-width + a taller min-height so it's an easy touch target on a
             // wall display (was min-h-20px / 10px text — fiddly to tap).
-            'flex w-full items-center text-left text-[11px] font-medium px-2 py-1 rounded',
+            'flex w-full items-center text-left text-2xs font-medium px-2 py-1 rounded',
             'bg-muted/60 hover:bg-muted active:bg-muted text-muted-foreground transition-colors',
             'min-h-[28px]',
             triggerClassName,
@@ -89,7 +89,7 @@ export function DayOverflowPopover({
                 style={{ borderLeft: `3px solid ${event.color}` }}
               >
                 {!event.allDay && (
-                  <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
+                  <span className="text-3xs text-muted-foreground tabular-nums shrink-0">
                     {formatDisplayTime(event.startTime, timeFormat, {}, displayTimezone)}
                   </span>
                 )}

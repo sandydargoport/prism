@@ -159,7 +159,7 @@ export function ViewOptionsMenu({
             // active — the button's outer fill stays the same regardless,
             // so it sits uniformly alongside the View popover + Today
             // button in the toolbar.
-            <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+            <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-3xs font-semibold text-primary-foreground">
               {nonDefaultCount}
             </span>
           )}
@@ -168,7 +168,7 @@ export function ViewOptionsMenu({
       <PopoverContent align="end" className="w-64 p-2 z-10000" data-screensaver-keep>
         <div className="space-y-3">
           <section>
-            <p className="mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="mb-1.5 px-2 text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('display')}
             </p>
             <div className="space-y-0.5">
@@ -244,7 +244,7 @@ export function ViewOptionsMenu({
           </section>
 
           <section>
-            <p className="mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="mb-1.5 px-2 text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('showOnCalendar')}
             </p>
             <div className="space-y-0.5">
@@ -260,7 +260,7 @@ export function ViewOptionsMenu({
               ))}
             </div>
             {!showOverlayRows && (
-              <p className="mt-2 px-2 text-[10px] leading-snug text-muted-foreground">
+              <p className="mt-2 px-2 text-3xs leading-snug text-muted-foreground">
                 {t('cardsHint')}
               </p>
             )}

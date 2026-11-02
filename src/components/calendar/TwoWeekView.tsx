@@ -110,8 +110,8 @@ export function TwoWeekView({
               className={cn(
                 'w-full text-left rounded truncate hover:opacity-80 hover:ring-1 hover:ring-seasonal-accent/50 transition-all',
                 compact
-                  ? 'text-[10px] px-0.5 py-px'
-                  : 'px-(--event-padding-x) py-(--event-padding-y) text-(length:--event-font-size)'
+                  ? 'text-3xs px-0.5 py-px'
+                  : 'px-(--event-padding-x) py-(--event-padding-y) text-event'
               )}
               style={event.allDay
                 ? { backgroundColor: event.color + '20', borderLeft: `2px solid ${event.color}` }

@@ -1,6 +1,7 @@
 import { db } from '@/lib/db/client';
 import { layouts } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { pageZoomVars } from '@/lib/utils/zoomVars';
 
 interface Props {
   children: React.ReactNode;
@@ -31,7 +32,7 @@ export default async function SlugLayout({ children, params }: Props) {
     <div
       style={
         fontScale !== 100
-          ? ({ zoom: fontScale / 100, '--app-vh': `${10000 / fontScale}vh` } as React.CSSProperties)
+          ? ({ zoom: fontScale / 100, '--app-vh': `${10000 / fontScale}vh`, ...pageZoomVars(fontScale) } as React.CSSProperties)
           : undefined
       }
     >

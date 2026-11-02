@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page, type TestInfo, type BrowserType } from '@playwright/test';
 import { getSeededParentId } from './helpers/auth';
 
 /**
@@ -206,3 +206,139 @@ test.describe('calendar grid geometry', () => {
     }
   });
 });
+
+/**
+ * Text floor (#798): no text in a calendar view, or in the calendar widget
+ * under page and widget zoom, renders smaller than 14px on a wall screen or
+ * 12px at a desk. Measured as the rendered size: computed font-size times the
+ * CSS zoom in force, for every visible text node on screen.
+ *
+ * 3 Months is left out until its compact events are reworked (the dense views
+ * part of #798); it still draws events at 8px.
+ */
+const FLOOR_VIEWS = ['agenda', 'day', 'week', 'weekVertical', 'multiWeek', 'month'];
+const WIDGET_VIEWS = ['agenda', 'list', 'day', 'week', 'multiWeek2', 'month'];
+const POINTERS = [
+  // Blink bitmask: none=1, fine=4. Set at launch; CDP emulation is ignored.
+  { name: 'wall (no pointer)', bits: 1, media: '(pointer: none)', floor: 14 },
+  { name: 'desk (mouse)', bits: 4, media: '(pointer: fine)', floor: 12 },
+];
+
+/** Every visible text node on screen drawn under `floor` px, and how many were measured. */
+async function textUnder(page: Page, floor: number, within?: string) {
+  return page.evaluate(([min, sel]) => {
+    const root = sel ? document.querySelector(sel) : document.body;
+    if (!root) return { count: 0, under: [] as Array<{ px: number; text: string; cls: string }> };
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const seen = new Set<Element>();
+    const under: Array<{ px: number; text: string; cls: string }> = [];
+    let count = 0;
+    let n: Node | null;
+    while ((n = walker.nextNode())) {
+      if (!n.textContent?.trim()) continue;
+      const el = n.parentElement;
+      if (!el || seen.has(el)) continue;
+      seen.add(el);
+      const r = el.getBoundingClientRect();
+      if (!r.width || !r.height || r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth) continue;
+      const cs = getComputedStyle(el);
+      if (cs.visibility === 'hidden' || cs.opacity === '0') continue;
+      count++;
+      const px = parseFloat(cs.fontSize) * (el.currentCSSZoom || 1);
+      // 0.05 px of slack for rounding through zoom.
+      if (px < (min as number) - 0.05) {
+        under.push({ px: Math.round(px * 10) / 10, text: n.textContent.trim().slice(0, 30), cls: (el.getAttribute('class') || '').slice(0, 80) });
+      }
+    }
+    return { count, under };
+  }, [floor, within] as const);
+}
+
+/**
+ * A page in a browser launched with the given pointer type. Playwright sets
+ * launch options only per worker, and CDP pointer emulation is ignored.
+ */
+async function pointerPage(
+  playwright: { chromium: BrowserType },
+  info: TestInfo,
+  bits: number,
+  viewport: { width: number; height: number },
+) {
+  const browser = await playwright.chromium.launch({
+    args: [`--blink-settings=primaryPointerType=${bits},availablePointerTypes=${bits}`],
+  });
+  const context = await browser.newContext({ viewport, baseURL: info.project.use.baseURL, timezoneId: info.project.use.timezoneId });
+  return { browser, page: await context.newPage() };
+}
+
+async function openCalendarView(page: Page, view: string) {
+  if (HAS_TEST_DB) {
+    const login = await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } });
+    expect(login.ok(), 'precondition: login must succeed before measuring').toBe(true);
+  }
+  await page.addInitScript((v) => localStorage.setItem('prism-calendar-view-type', v), view);
+  await page.goto('/calendar', { waitUntil: 'networkidle' });
+  await page.getByRole('button', { name: 'Add Event' }).waitFor({ timeout: 30_000 });
+  await page.waitForTimeout(1500);
+}
+
+for (const pointer of POINTERS) {
+  test.describe(`text floor, ${pointer.name}`, () => {
+    for (const [width, height] of [[1920, 1080], [1280, 720]] as const) {
+      test(`calendar views at ${width}x${height} never draw text under ${pointer.floor}px`, async ({ playwright }, info) => {
+        test.setTimeout(180_000);
+        const { browser, page } = await pointerPage(playwright, info, pointer.bits, { width, height });
+        try {
+          for (const view of FLOOR_VIEWS) {
+            await openCalendarView(page, view);
+            expect(await page.evaluate((m) => matchMedia(m).matches, pointer.media), `premise: ${pointer.media}`).toBe(true);
+            const { count, under } = await textUnder(page, pointer.floor);
+            expect(count, `${view}: something to measure`).toBeGreaterThan(10);
+            expect(under, `${view}: text under ${pointer.floor}px`).toEqual([]);
+          }
+        } finally {
+          await browser.close();
+        }
+      });
+    }
+
+    test(`calendar widget at 75% page zoom and 0.5 widget zoom never draws text under ${pointer.floor}px`, async ({ playwright }, info) => {
+      test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
+      test.setTimeout(180_000);
+      const { browser, page } = await pointerPage(playwright, info, pointer.bits, { width: 1920, height: 1080 });
+      const login = await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } });
+      expect(login.ok(), 'precondition: login must succeed').toBe(true);
+      const created = await page.request.post('/api/layouts', {
+        data: {
+          name: `Text floor e2e ${Date.now()}`,
+          widgets: [{ i: 'calendar', x: 0, y: 0, w: 32, h: 32, textScale: 0.5 }],
+        },
+      });
+      expect(created.status()).toBe(201);
+      const layout = await created.json();
+      try {
+        const zoomed = await page.request.patch(`/api/layouts/${layout.id}`, { data: { fontScale: 75 } });
+        expect(zoomed.ok(), 'precondition: page zoom saved').toBe(true);
+        for (const view of WIDGET_VIEWS) {
+          await page.addInitScript((v) => localStorage.setItem('prism-calendar-view', v), view);
+          await page.goto(`/d/${layout.slug}`, { waitUntil: 'networkidle' });
+          const cell = page.locator('.widget-cell[data-widget="calendar"]');
+          await cell.waitFor({ timeout: 60_000 });
+          await page.waitForTimeout(1500);
+          const zoom = await cell.evaluate((el) => {
+            const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+            while (walker.nextNode()) if (walker.currentNode.textContent?.trim()) return walker.currentNode.parentElement!.currentCSSZoom;
+            return 1;
+          });
+          expect(zoom, 'premise: page and widget zoom both apply').toBeCloseTo(0.375, 2);
+          const { count, under } = await textUnder(page, pointer.floor, '.widget-cell[data-widget="calendar"]');
+          expect(count, `${view}: something to measure`).toBeGreaterThan(3);
+          expect(under, `${view}: text under ${pointer.floor}px`).toEqual([]);
+        }
+      } finally {
+        await page.request.delete(`/api/layouts/${layout.id}`);
+        await browser.close();
+      }
+    });
+  });
+}

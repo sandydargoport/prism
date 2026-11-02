@@ -102,7 +102,7 @@ const SIZE_PROFILES: Record<WeekItemSize, SizeProfile> = {
     itemSize: 'xs',
     minHeight: 'min-h-[40px]',
     headerDateText: 'text-xs font-bold',
-    headerLabelText: 'text-[9px]',
+    headerLabelText: 'text-4xs',
     showWeather: false,
     showEmptyState: false,
     containerPadding: 'p-1',
@@ -112,7 +112,7 @@ const SIZE_PROFILES: Record<WeekItemSize, SizeProfile> = {
     itemSize: 'sm',
     minHeight: 'min-h-[70px]',
     headerDateText: 'text-base font-bold',
-    headerLabelText: 'text-[10px]',
+    headerLabelText: 'text-3xs',
     showWeather: false,
     showEmptyState: false,
     containerPadding: 'p-1.5',
@@ -213,7 +213,7 @@ export function DayColumn({
           </span>
         </div>
         {profile.showWeather && bucket.weather && (
-          <div className="flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
+          <div className="flex shrink-0 items-center gap-1 text-2xs text-muted-foreground">
             {weatherIcon(bucket.weather.condition, size === 'lg' ? 'lg' : 'sm')}
             <span className="tabular-nums">
               {Math.round(bucket.weather.high)}°/{Math.round(bucket.weather.low)}°
@@ -304,7 +304,7 @@ export function DayColumn({
         ))}
 
       {profile.showEmptyState && isEmpty && (
-        <div className="flex flex-1 items-center justify-center rounded border border-dashed border-border/30 bg-black/10 py-3 text-[10px] text-muted-foreground">
+        <div className="flex flex-1 items-center justify-center rounded border border-dashed border-border/30 bg-black/10 py-3 text-3xs text-muted-foreground">
           {t('nothingPlanned')}
         </div>
       )}

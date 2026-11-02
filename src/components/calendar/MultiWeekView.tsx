@@ -319,14 +319,14 @@ function DayCell({
               stays the layout's call. The roomy branch is the theme's. */}
           <span className={cn(
             'font-bold leading-none',
-            compact ? 'text-base' : 'text-(length:--daynum-large)',
+            compact ? 'text-base' : 'text-daynum-large',
           )}>
             {format(date, 'd')}
           </span>
           <span
             className={cn(
               'font-medium leading-none truncate',
-              compact ? 'text-[11px]' : 'text-xs',
+              compact ? 'text-2xs' : 'text-xs',
               !today && 'text-muted-foreground',
             )}
             style={today ? { color: monthAccent } : undefined}
@@ -337,7 +337,7 @@ function DayCell({
         {dayWeather && (
           <div className={cn(
             'flex shrink-0 items-center gap-1 text-muted-foreground tabular-nums',
-            compact ? 'text-[10px]' : 'text-[11px]',
+            compact ? 'text-3xs' : 'text-2xs',
           )}>
             {weatherIcon(dayWeather.condition)}
             <span>{Math.round(dayWeather.high)}°/{Math.round(dayWeather.low)}°</span>

@@ -259,7 +259,7 @@ function MonthDayCell({
       <div className="flex shrink-0 items-center justify-center h-(--daynum-row)">
         <span className={cn(
           'inline-flex items-center justify-center rounded-full px-1 font-medium',
-          'h-(--daynum-box) min-w-(--daynum-box) text-(length:--daynum-size)',
+          'h-(--daynum-box) min-w-(--daynum-box) text-daynum',
           today && 'bg-primary font-bold text-primary-foreground',
           !today && isPast && 'text-muted-foreground',
           !today && !isSameMonth(date, currentDate) && 'text-muted-foreground/55',
@@ -366,7 +366,7 @@ function DayCardsCell({
             onEventClick(event);
           }}
           className={cn(
-            'w-full text-left text-[10px] px-1 py-0.5 rounded-md bg-card/85 backdrop-blur-xs border border-border/40 shadow-xs truncate hover:bg-card transition-colors leading-tight',
+            'w-full text-left text-3xs px-1 py-0.5 rounded-md bg-card/85 backdrop-blur-xs border border-border/40 shadow-xs truncate hover:bg-card transition-colors leading-tight',
             isCalendarEventPast(
               event.startTime,
               event.endTime,

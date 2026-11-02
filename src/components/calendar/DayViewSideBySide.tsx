@@ -363,7 +363,7 @@ export function DayViewSideBySide({
                               key={event.id}
                               onClick={() => onEventClick(event)}
                               className={cn(
-                                'absolute p-0.5 rounded text-left text-xs z-10 overflow-hidden hover:opacity-90 hover:ring-2 hover:ring-seasonal-accent/50 transition-all flex flex-col items-start',
+                                'absolute p-0.5 rounded text-left text-xs z-10 overflow-hidden hover:opacity-90 hover:ring-2 hover:ring-seasonal-accent/50 transition-all flex flex-col flex-wrap content-start items-start gap-x-1 min-h-[calc(var(--text-floor)*var(--zoom-inv,1)*1.25+0.25rem)]',
                                 cards && 'bg-card/85 backdrop-blur-xs border border-border/40 shadow-xs',
                               )}
                               style={
@@ -386,12 +386,13 @@ export function DayViewSideBySide({
                                     }
                               }
                             >
-                              {/* Title first; show time row only when the
-                                  block is at least an hour. 45-min and shorter
-                                  blocks fit only one line without clipping. */}
-                              <div className={cn('font-medium truncate w-full text-[11px] leading-tight', cards && 'text-foreground')}>{event.title}</div>
+                              {/* Title first, then the time for blocks of an
+                                  hour or more. Text never shrinks to fit
+                                  (#798): `flex-wrap` sends a line that does not
+                                  fit whole into a clipped second column. */}
+                              <div className={cn('font-medium truncate w-full text-2xs leading-tight', cards && 'text-foreground')}>{event.title}</div>
                               {durationMin >= 60 && (
-                                <div className={cn('text-[9px] leading-tight', cards ? 'text-muted-foreground' : 'opacity-70')}>
+                                <div className={cn('text-4xs leading-tight truncate w-full', cards ? 'text-muted-foreground' : 'opacity-70')}>
                                   {formatDisplayTimeRange(event.startTime, event.endTime ?? new Date(event.startTime.getTime() + 3600000), timeFormat, displayTimezone)}
                                 </div>
                               )}

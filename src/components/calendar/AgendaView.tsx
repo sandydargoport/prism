@@ -210,7 +210,7 @@ function AgendaDaySection({
           {formatAgendaDayHeader(date, displayTimezone, t, d)}
         </span>
         {isSameDay(date, toDisplayDate(new Date(), displayTimezone)) && (
-          <Badge className="text-[10px] px-1.5 py-0 bg-seasonal-highlight text-foreground">
+          <Badge className="text-3xs px-1.5 py-0 bg-seasonal-highlight text-foreground">
             {t('today')}
           </Badge>
         )}
