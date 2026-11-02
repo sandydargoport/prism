@@ -458,6 +458,53 @@ describe('createCalDAVEvent', () => {
     expect(body).toContain('DTEND;VALUE=DATE:20261113');
   });
 
+  it('writes a repeating event in the household zone, with its rule and VTIMEZONE (#59)', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 201 }));
+    await createCalDAVEvent('https://dav.example.com', 'u', 'p', 'https://dav.example.com/cal/home/', {
+      ...EV,
+      recurrence: { rule: 'FREQ=WEEKLY;BYDAY=TH', timeZone: TZ },
+    });
+    const ics = fetchMock.mock.calls[0]![1].body as string;
+    const body = lines(ics);
+    // 14:00Z on 12 Nov is 08:00 in Chicago.
+    expect(body).toContain('DTSTART;TZID=America/Chicago:20261112T080000');
+    expect(body).toContain('DTEND;TZID=America/Chicago:20261112T093000');
+    expect(body).toContain('RRULE:FREQ=WEEKLY;BYDAY=TH');
+    expect(body).toContain('TZID:America/Chicago');
+
+    // Read back with the zone the object defines, the occurrences stay at
+    // 08:00 across the March clock change.
+    const vcalendar = new ICAL.Component(ICAL.parse(ics));
+    const zone = new ICAL.Timezone(vcalendar.getFirstSubcomponent('vtimezone')!);
+    ICAL.TimezoneService.register(zone, 'America/Chicago');
+    try {
+      const event = new ICAL.Event(vcalendar.getFirstSubcomponent('vevent')!);
+      const it = event.iterator();
+      const starts: string[] = [];
+      for (let next = it.next(); next && starts.length < 20; next = it.next()) starts.push(next.toJSDate().toISOString());
+      expect(starts[0]).toBe('2026-11-12T14:00:00.000Z');
+      // 18 Mar 2027 is after the change to daylight time: 08:00 CDT.
+      expect(starts).toContain('2027-03-18T13:00:00.000Z');
+    } finally {
+      ICAL.TimezoneService.remove('America/Chicago');
+    }
+  });
+
+  it('writes a repeating all-day event as dates with its rule', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 201 }));
+    await createCalDAVEvent('https://dav.example.com', 'u', 'p', 'https://dav.example.com/cal/home/', {
+      ...EV,
+      startTime: new Date('2026-11-12T00:00:00Z'),
+      endTime: new Date('2026-11-13T00:00:00Z'),
+      allDay: true,
+      recurrence: { rule: 'FREQ=YEARLY;BYMONTH=11;BYMONTHDAY=12', timeZone: TZ },
+    });
+    const body = lines(fetchMock.mock.calls[0]![1].body);
+    expect(body).toContain('DTSTART;VALUE=DATE:20261112');
+    expect(body).toContain('RRULE:FREQ=YEARLY;BYMONTH=11;BYMONTHDAY=12');
+    expect(body).not.toContain('BEGIN:VTIMEZONE');
+  });
+
   it('reports a read-only calendar as forbidden', async () => {
     fetchMock.mockResolvedValueOnce(new Response(null, { status: 403 }));
     const result = await createCalDAVEvent('https://dav.example.com', 'u', 'p', 'https://dav.example.com/cal/home/', EV);

@@ -11,6 +11,7 @@ import { safeFetch, validatePublicUrl, UnsafeUrlError } from '@/lib/utils/safeFe
 import { dueFromInstant, wallDue, type TaskDue } from '@/lib/utils/taskDue';
 import { isValidTimezone } from '@/lib/utils/timezone';
 import { todayKey, wallTimeAt, zonedWallTimeToUtc } from '@/lib/utils/zonedDate';
+import { buildVTimezone } from '@/lib/utils/vtimezone';
 
 /**
  * Guard a user-supplied CalDAV server URL before handing it to tsdav.
@@ -676,6 +677,12 @@ export interface CalDAVEventWrite {
   startTime: Date;
   endTime: Date;
   allDay?: boolean;
+  /**
+   * A repeating event's RRULE and the zone it repeats in. A timed one is
+   * written in that zone (DTSTART;TZID=...) with its VTIMEZONE, so its wall
+   * time holds across a clock change, which a UTC DTSTART would not.
+   */
+  recurrence?: { rule: string; timeZone: string };
 }
 
 /**
@@ -717,11 +724,36 @@ function buildVEventICalString(ev: CalDAVEventWrite): string {
     start.isDate = true;
     end.isDate = true;
   }
-  vevent.updatePropertyWithValue('dtstart', start);
-  vevent.updatePropertyWithValue('dtend', end);
 
+  const zone = ev.recurrence && !ev.allDay ? ev.recurrence.timeZone : null;
+  if (zone) {
+    // The wall times in the zone, with the zone named on each property.
+    const dtstart = vevent.updatePropertyWithValue('dtstart', wallTimeIn(ev.startTime, zone));
+    const dtend = vevent.updatePropertyWithValue('dtend', wallTimeIn(ev.endTime, zone));
+    dtstart.setParameter('tzid', zone);
+    dtend.setParameter('tzid', zone);
+  } else {
+    vevent.updatePropertyWithValue('dtstart', start);
+    vevent.updatePropertyWithValue('dtend', end);
+  }
+  if (ev.recurrence) {
+    vevent.updatePropertyWithValue('rrule', ICAL.Recur.fromString(ev.recurrence.rule.replace(/^RRULE:/i, '')));
+  }
+
+  if (zone) {
+    vcalendar.addSubcomponent(new ICAL.Component(ICAL.parse(
+      `BEGIN:VCALENDAR\r\n${buildVTimezone(zone, ev.startTime.getUTCFullYear())}\r\nEND:VCALENDAR`,
+    )).getFirstSubcomponent('vtimezone')!);
+  }
   vcalendar.addSubcomponent(vevent);
   return vcalendar.toString();
+}
+
+/** An instant as a floating ICAL time reading the wall clock in `timeZone`. */
+function wallTimeIn(instant: Date, timeZone: string): ICAL.Time {
+  const [year, month, day] = todayKey(timeZone, instant).split('-').map(Number) as [number, number, number];
+  const [hour, minute] = wallTimeAt(timeZone, instant).split(':').map(Number) as [number, number];
+  return ICAL.Time.fromData({ year, month, day, hour, minute, second: instant.getUTCSeconds() });
 }
 
 /**

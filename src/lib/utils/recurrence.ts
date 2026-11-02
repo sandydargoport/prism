@@ -1,11 +1,13 @@
 /**
- * Repeating events that Prism itself owns (#59).
+ * Repeating events stored as one series row (#59).
  *
- * A synced calendar sends each occurrence as its own row, so only an event
- * made in Prism and kept here (no external id: a Prism calendar, or a
- * calendar Prism could not add the series to) is stored once, as the series'
- * first occurrence plus its RRULE. These helpers turn that row into the
- * occurrences a date range shows.
+ * A synced calendar sends each occurrence as its own row, which names its
+ * series in `seriesKey`. A repeating event made in Prism is stored once
+ * instead, as the series' first occurrence plus its RRULE, with no series
+ * key: kept in Prism (a Prism calendar, or one the series could not be added
+ * to), or added to Google or CalDAV and waiting for the next sync to replace
+ * it with the calendar's own occurrences. These helpers turn that row into
+ * the occurrences a date range shows.
  *
  * The rule repeats in the household's wall time, so a 9:00 weekly event stays
  * at 9:00 across a clock change. All-day rows are floating dates (UTC midnight
@@ -30,12 +32,12 @@ export type SeriesRow = {
   endTime: Date;
   allDay: boolean;
   recurrenceRule: string | null;
-  externalEventId: string | null;
+  seriesKey: string | null;
 };
 
-/** True when Prism expands this row itself instead of a sync supplying occurrences. */
-export function isPrismSeries(row: Pick<SeriesRow, 'recurrenceRule' | 'externalEventId'>): boolean {
-  return Boolean(row.recurrenceRule?.trim()) && !row.externalEventId;
+/** True for a series row, which Prism expands, rather than one synced occurrence. */
+export function isSeriesRow(row: Pick<SeriesRow, 'recurrenceRule' | 'seriesKey'>): boolean {
+  return Boolean(row.recurrenceRule?.trim()) && !row.seriesKey;
 }
 
 /** Parse a stored rule, tolerating the `RRULE:` prefix Google's form carries. */

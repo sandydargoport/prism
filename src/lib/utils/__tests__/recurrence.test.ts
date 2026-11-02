@@ -1,4 +1,4 @@
-import { expandSeries, isPrismSeries, occurrenceId, parseEventId } from '../recurrence';
+import { expandSeries, isSeriesRow, occurrenceId, parseEventId } from '../recurrence';
 
 const CHICAGO = 'America/Chicago';
 const d = (s: string) => new Date(s);
@@ -95,11 +95,11 @@ describe('expandSeries', () => {
   });
 });
 
-describe('isPrismSeries', () => {
-  it('is a row with a rule and no external id', () => {
-    expect(isPrismSeries({ recurrenceRule: 'FREQ=WEEKLY', externalEventId: null })).toBe(true);
-    expect(isPrismSeries({ recurrenceRule: 'FREQ=WEEKLY', externalEventId: 'abc' })).toBe(false);
-    expect(isPrismSeries({ recurrenceRule: null, externalEventId: null })).toBe(false);
+describe('isSeriesRow', () => {
+  it('is a row with a rule that is not one synced occurrence of a series', () => {
+    expect(isSeriesRow({ recurrenceRule: 'FREQ=WEEKLY', seriesKey: null })).toBe(true);
+    expect(isSeriesRow({ recurrenceRule: 'FREQ=WEEKLY', seriesKey: 'swim@example.com' })).toBe(false);
+    expect(isSeriesRow({ recurrenceRule: null, seriesKey: null })).toBe(false);
   });
 });
 

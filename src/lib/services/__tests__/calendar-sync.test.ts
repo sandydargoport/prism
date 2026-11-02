@@ -49,9 +49,22 @@ jest.mock('@/lib/db/client', () => ({
   },
 }));
 
+// inArray is recorded so a test can see which ids a delete was scoped to.
+const mockInArray = jest.fn();
+jest.mock('drizzle-orm', () => {
+  const actual = jest.requireActual('drizzle-orm');
+  return {
+    ...actual,
+    inArray: (...args: unknown[]) => {
+      mockInArray(...args);
+      return actual.inArray(...args);
+    },
+  };
+});
+
 jest.mock('@/lib/db/schema', () => ({
   calendarSources: { id: 'id', provider: 'provider', enabled: 'enabled' },
-  events: { calendarSourceId: 'calendarSourceId', externalEventId: 'externalEventId', startTime: 'startTime', id: 'id', pendingDeletion: 'pendingDeletion' },
+  events: { calendarSourceId: 'calendarSourceId', externalEventId: 'externalEventId', startTime: 'startTime', id: 'id', pendingDeletion: 'pendingDeletion', seriesKey: 'seriesKey', recurrenceRule: 'recurrenceRule' },
   dismissedEvents: { calendarSourceId: 'calendarSourceId', externalEventId: 'externalEventId' },
   settings: { key: 'key' },
 }));
@@ -1030,5 +1043,65 @@ describe('sync records the series key', () => {
     expect(eventWrites).toHaveLength(1);
     expect(eventWrites[0]).toMatchObject({ externalEventId: occ.uid, seriesKey: 'swim@example.com', recurring: true });
     expect(eventWrites[0]).not.toHaveProperty('hiddenAt');
+  });
+});
+
+// A repeating event Prism adds to Google or CalDAV is stored as one series row
+// (its external id is the series' id) until the calendar sends the
+// occurrences (#59). That row then goes, rather than being flagged as an
+// event deleted upstream.
+describe('sync replaces a series row Prism added with the occurrences', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockFindMany.mockResolvedValue([]);
+  });
+
+  it('Google: deletes the series row once its occurrences arrive', async () => {
+    mockFindFirst.mockResolvedValue(makeSource());
+    mockFetchCalendarEvents.mockResolvedValue([
+      { id: 'series-1_20261118T230000Z', recurringEventId: 'series-1', summary: 'Swim practice' },
+      { id: 'other-1', summary: 'Dentist' },
+    ]);
+    mockConvertEvent.mockImplementation((e: { id: string; summary: string; recurringEventId?: string }) => ({
+      externalEventId: e.id, title: e.summary, startTime: new Date(), endTime: new Date(),
+      seriesKey: e.recurringEventId ?? null,
+    }));
+
+    await syncGoogleCalendarSource('source-1');
+
+    expect(mockDelete).toHaveBeenCalledTimes(1);
+    expect(mockInArray).toHaveBeenCalledWith('externalEventId', ['series-1']);
+  });
+
+  it('Google: deletes nothing when no occurrence belongs to a series', async () => {
+    mockFindFirst.mockResolvedValue(makeSource());
+    mockFetchCalendarEvents.mockResolvedValue([{ id: 'other-1', summary: 'Dentist' }]);
+    mockConvertEvent.mockReturnValue({ externalEventId: 'other-1', title: 'Dentist', startTime: new Date(), endTime: new Date() });
+
+    await syncGoogleCalendarSource('source-1');
+
+    expect(mockDelete).not.toHaveBeenCalled();
+  });
+
+  it('CalDAV: deletes the series row once its occurrences arrive', async () => {
+    const start = new Date(Date.now() + 86_400_000);
+    mockFindFirst.mockResolvedValue({
+      id: 'caldav-1',
+      provider: 'caldav',
+      accessToken: 'enc',
+      sourceCalendarId: '/cal/',
+      providerConfig: { serverUrl: 'https://dav.example.test', username: 'someone' },
+    });
+    mockFetchCalDAVEvents.mockResolvedValue([{
+      uid: `swim@example.com_${start.toISOString()}`, title: 'Swim practice', description: null, location: null,
+      startTime: start, endTime: new Date(start.getTime() + 3_600_000), allDay: false, color: null,
+      recurring: true, recurrenceRule: 'FREQ=WEEKLY', href: '/cal/swim.ics', etag: '"1"', seriesKey: 'swim@example.com',
+    }]);
+    mockFindFirstEvent.mockResolvedValue(undefined);
+
+    await syncCalDAVCalendarSource('caldav-1');
+
+    expect(mockDelete).toHaveBeenCalledTimes(1);
+    expect(mockInArray).toHaveBeenCalledWith('externalEventId', ['swim@example.com']);
   });
 });

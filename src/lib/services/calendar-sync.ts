@@ -8,7 +8,7 @@ import { decideDeletionReview } from '@/lib/services/taskDeletionReview';
  */
 const CALDAV_MISSING_GRACE_MS = 6 * 60 * 1000;
 import { calendarSources, events, tasks, taskLists, dismissedEvents } from '@/lib/db/schema';
-import { eq, and, gte, lte, sql, inArray, isNotNull } from 'drizzle-orm';
+import { eq, and, gte, lte, sql, inArray, isNotNull, isNull } from 'drizzle-orm';
 import {
   fetchCalDAVEvents,
   fetchCalDAVTasks,
@@ -108,6 +108,23 @@ function eventChanged(a: EventContent, b: EventContent): boolean {
 }
 
 /** A zero net-change result, optionally carrying errors (for early returns). */
+/**
+ * Remove the series rows Prism wrote for repeating events it added to this
+ * calendar (#59) once the calendar sends their occurrences. A series row has
+ * the series' id as its external id, a rule, and no series key; until the
+ * occurrences arrive, it is what shows the series. Removed here rather than
+ * flagged like an event deleted upstream, since nothing was deleted.
+ */
+async function dropReplacedSeriesRows(sourceId: string, seriesKeys: Set<string>): Promise<void> {
+  if (seriesKeys.size === 0) return;
+  await db.delete(events).where(and(
+    eq(events.calendarSourceId, sourceId),
+    isNull(events.seriesKey),
+    isNotNull(events.recurrenceRule),
+    inArray(events.externalEventId, [...seriesKeys]),
+  ));
+}
+
 function emptyCounts(errors: string[] = []): SyncCounts {
   return { added: 0, updated: 0, removed: 0, unchanged: 0, synced: 0, errors };
 }
@@ -341,6 +358,11 @@ export async function syncGoogleCalendarSource(
       errors.push(`Failed to sync event ${googleEvent.id}: ${error}`);
     }
   }
+
+  await dropReplacedSeriesRows(
+    sourceId,
+    new Set(googleEvents.flatMap((e) => (e.status !== 'cancelled' && e.recurringEventId ? [e.recurringEventId] : []))),
+  );
 
   // Delete events that exist in Prism but were removed from Google
   // (Google is source of truth for synced events; cancelled events excluded above)
@@ -1107,6 +1129,11 @@ export async function syncCalDAVCalendarSource(
         await db.insert(events).values(eventData);
       }
     }
+
+    await dropReplacedSeriesRows(
+      sourceId,
+      new Set(caldavEvents.flatMap((e) => (e.seriesKey ? [e.seriesKey] : []))),
+    );
 
     // Drop events that no longer exist upstream (within the sync window only —
     // matches the behavior of the Google + iCal paths in this file).
