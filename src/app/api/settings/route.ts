@@ -18,6 +18,7 @@ import { BUS_RETENTION_KEYS, isValidRetention } from '@/lib/services/bus-live-re
 import { BUS_MAP_CAMERA_SETTING, BUS_MAP_STYLE_SETTING, isBusMapCamera, isBusMapStyle } from '@/lib/map/busMapOptions';
 import { BUS_DRIVER_NAMES_SETTING, isDriverNames } from '@/lib/services/bus-driver-names';
 import { AURORA_SETTING } from '@/lib/integrations/aurora';
+import { PAST_EVENTS_SETTING_KEY, isPastEventsMode } from '@/lib/utils/pastEvents';
 
 /**
  * Settings the setup wizard writes before any parent account has a session.
@@ -120,6 +121,10 @@ export async function PATCH(request: NextRequest) {
 
     if (body.key === 'weekStartsOn' && body.value !== '0' && body.value !== '1') {
       return NextResponse.json({ error: 'Invalid week start' }, { status: 400 });
+    }
+
+    if (body.key === PAST_EVENTS_SETTING_KEY && !isPastEventsMode(body.value)) {
+      return NextResponse.json({ error: 'Invalid past events mode' }, { status: 400 });
     }
 
     if (body.key === BUS_RETENTION_KEYS.trace && !isValidRetention('trace', body.value)) {

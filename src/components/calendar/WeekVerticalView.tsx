@@ -26,6 +26,9 @@ import {
   toDisplayDate,
 } from '@/lib/utils/timeFormat';
 import { eventsOverlappingRange } from '@/lib/utils/calendarRange';
+import { withoutEndedEvents } from '@/lib/utils/pastEvents';
+import { usePastEventsMode } from '@/lib/hooks/usePastEventsMode';
+import { useNow } from '@/lib/hooks/useNow';
 import { useTranslations } from 'next-intl';
 import { useDateLabels } from '@/lib/hooks/useDateLabels';
 
@@ -77,9 +80,15 @@ export function WeekVerticalView({
   const t = useTranslations('calendar');
   const weekStart = startOfWeek(currentDate, { weekStartsOn });
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const { mode: pastEvents } = usePastEventsMode();
+  // Ticks each minute, so an ended event leaves (or dims) on time.
+  const clock = useNow();
   // Scope the wide event list to this week once; passed into each day row.
-  const scopedEvents = eventsOverlappingRange(events, weekStart, addDays(weekStart, 7));
-  const now = toDisplayDate(new Date(), displayTimezone);
+  const inWeek = eventsOverlappingRange(events, weekStart, addDays(weekStart, 7));
+  const scopedEvents = pastEvents === 'hide'
+    ? withoutEndedEvents(inWeek, clock, displayTimezone)
+    : inWeek;
+  const now = toDisplayDate(clock, displayTimezone);
   const today = startOfDay(now);
 
   // Determine display groups (same logic as DayViewSideBySide)
