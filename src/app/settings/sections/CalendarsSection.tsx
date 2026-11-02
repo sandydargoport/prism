@@ -20,6 +20,7 @@ import { CalendarColorPicker } from '../components/CalendarColorPicker';
 import { useHiddenHours } from '@/lib/hooks/useHiddenHours';
 import { useOAuthConfigStatus } from './integrations/shared/useOAuthConfigStatus';
 import { useLocalCopy, keepLocalOrder } from '@/lib/hooks/useLocalCopy';
+import { canAddEventsTo, looksReadOnlyCalendar } from '@/lib/utils/calendarWritable';
 
 export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
   const stamp = useDisplayTimestampFormat();
@@ -548,17 +549,8 @@ export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
                   </div>
                   {/* Show in Event Modal toggle - only for writable calendars */}
                   {(() => {
-                    // Detect subscription/read-only calendars by common patterns
-                    const name = cal.dashboardCalendarName.toLowerCase();
-                    const isSubscription = cal.provider !== 'local' && (
-                      name.includes('birthday') ||
-                      name.includes('holiday') ||
-                      name.includes('contacts') ||
-                      name.startsWith('subscribe') ||
-                      name.includes('phases of the moon') ||
-                      name.includes('week numbers')
-                    );
-                    const isWritable = cal.provider === 'local' || (cal.provider === 'google' && !isSubscription);
+                    const isSubscription = cal.provider !== 'local' && looksReadOnlyCalendar(cal.dashboardCalendarName);
+                    const isWritable = canAddEventsTo(cal);
 
                     return (
                       <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
