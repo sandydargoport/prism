@@ -229,3 +229,56 @@ export function combineTraces(traces: LngLat[][]): LngLat[] {
   return reference;
 }
 
+
+/**
+ * Today's solid line, drawn along the usual path wherever the bus is on it.
+ *
+ * Raw fixes wander 10 to 30 m either side of the road and arrive 10 to 30 s
+ * apart, so joined up as they come they zigzag across kerbs and cut every
+ * corner through the gardens. The usual path is the road as earlier trips
+ * pooled it (combineTraces), so each fix is placed on it instead, the path's
+ * own corners filling in between one fix and the next. A fix off the path (a
+ * detour) is drawn where it was reported. The line still ends at the newest
+ * fix, which is where the marker and the dashed road ahead start.
+ *
+ * Fixes are placed in order and only forward, as in combineTraces, so a
+ * street driven twice keeps both passes, and GPS wander while the bus stands
+ * still never draws it backing up.
+ */
+export function alongUsualPath(trace: LngLat[], usual: LngLat[] | null): LngLat[] {
+  if (!usual || usual.length < 2 || trace.length < 2) return trace;
+  const cum = [0];
+  for (let i = 1; i < usual.length; i++) cum.push(cum[i - 1]! + metres(usual[i - 1]!, usual[i]!));
+  const at = (seg: number, along: number): LngLat => {
+    const a = usual[seg]!, b = usual[seg + 1]!;
+    const len = cum[seg + 1]! - cum[seg]!;
+    const t = len > 0 ? (along - cum[seg]!) / len : 0;
+    return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+  };
+
+  const out: LngLat[] = [];
+  // Where the line last met the path; null while it is off it.
+  let last: Placed | null = null;
+  // Where to search from, kept through a detour so the bus rejoins further on.
+  let from: number | null = null;
+  for (const p of trace) {
+    const placed: Placed | null = from === null
+      ? place(usual, cum, p, 0, Infinity)
+      : place(usual, cum, p, from, last ? SEARCH_AHEAD_M : Infinity);
+    if (!placed || placed.m > OFF_REFERENCE_M) {
+      out.push(p);
+      last = null;
+      continue;
+    }
+    if (last && placed.along <= last.along) continue;
+    // Following the path from the last place: its corners, then this fix's place.
+    if (last) for (let i = last.seg + 1; i <= placed.seg; i++) out.push(usual[i]!);
+    out.push(at(placed.seg, placed.along));
+    last = placed;
+    from = placed.seg;
+  }
+  const newest = trace[trace.length - 1]!;
+  const end = out[out.length - 1];
+  if (!end || end[0] !== newest[0] || end[1] !== newest[1]) out.push(newest);
+  return out;
+}

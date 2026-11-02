@@ -1,4 +1,4 @@
-import { aheadTarget, combineTraces, metres, pathAhead, pointAlong, routeAhead, stopsAhead, thinPath, type LngLat } from '../routeAhead';
+import { aheadTarget, alongUsualPath, combineTraces, metres, pathAhead, pointAlong, routeAhead, stopsAhead, thinPath, type LngLat } from '../routeAhead';
 
 // An L-shaped usual path at the equator, a point every ~11 m: east 0.003°, then north.
 const east: LngLat[] = Array.from({ length: 31 }, (_, i) => [i * 0.0001, 0]);
@@ -140,3 +140,59 @@ describe('combineTraces', () => {
   });
 });
 
+
+describe('alongUsualPath', () => {
+  const M = 1 / 111_320;
+  const xy = (x: number, y: number): LngLat => [x * M, y * M];
+  // The usual path: a road east 200 m, then north 200 m, a point every 10 m.
+  const road: LngLat[] = [
+    ...Array.from({ length: 21 }, (_, i) => xy(i * 10, 0)),
+    ...Array.from({ length: 20 }, (_, i) => xy(200, (i + 1) * 10)),
+  ];
+  const corner = xy(200, 0);
+  /** Distance from `p` to the road, in metres. */
+  const offRoad = (p: LngLat) => {
+    const [x, y] = [p[0] / M, p[1] / M];
+    const clamp = (v: number) => Math.min(200, Math.max(0, v));
+    return Math.min(Math.hypot(x - clamp(x), y), Math.hypot(x - 200, y - clamp(y)));
+  };
+  const near = (a: LngLat, b: LngLat) => metres(a, b) < 0.5;
+  // Today's fixes every 40 m along the road, wandering 15 m either side of it.
+  const wobbly: LngLat[] = Array.from({ length: 10 }, (_, i) => {
+    const s = i * 40 + 10;
+    const side = i % 2 === 0 ? 15 : -15;
+    return s <= 200 ? xy(s, side) : xy(200 + side, s - 200);
+  });
+
+  it('draws a wobbly trace on the road, corner included, and ends at the newest fix', () => {
+    const line = alongUsualPath(wobbly, road);
+    const body = line.slice(0, -1);
+    for (const p of body) expect(offRoad(p)).toBeLessThan(0.5);
+    expect(line.some((p) => near(p, corner))).toBe(true);
+    expect(line.at(-1)).toEqual(wobbly.at(-1));
+    // Joined up raw, the same fixes zigzag 15 m off the road.
+    expect(Math.max(...wobbly.map(offRoad))).toBeGreaterThan(14);
+  });
+
+  it('never draws the bus backing up while it stands still', () => {
+    const waiting = [xy(50, 3), xy(48, -4), xy(51, 2), xy(47, 5), xy(90, 2)];
+    const line = alongUsualPath(waiting, road);
+    const x = line.map((p) => p[0] / M);
+    for (let i = 1; i < x.length; i++) expect(x[i]!).toBeGreaterThanOrEqual(x[i - 1]! - 1e-6);
+  });
+
+  it('keeps a detour where it was reported, then rejoins the road', () => {
+    const detour = [xy(10, 0), xy(50, 2), xy(80, 100), xy(120, 100), xy(150, -3), xy(190, 1)];
+    const line = alongUsualPath(detour, road);
+    expect(line).toContainEqual(xy(80, 100));
+    expect(line).toContainEqual(xy(120, 100));
+    // Not filled in along the road between where it left and where it came back.
+    expect(line.some((p) => near(p, xy(100, 0)))).toBe(false);
+    expect(offRoad(line[line.length - 2]!)).toBeLessThan(0.5);
+  });
+
+  it('is the trace as reported without a usual path', () => {
+    expect(alongUsualPath(wobbly, null)).toBe(wobbly);
+    expect(alongUsualPath(wobbly, [])).toBe(wobbly);
+  });
+});

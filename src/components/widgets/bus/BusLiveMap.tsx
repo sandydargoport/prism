@@ -10,7 +10,7 @@ import {
   metresBetween, poseAt, shouldHold, speedBetween, type Motion, type Path, type Pose,
 } from '@/lib/map/busTween';
 import type { LiveTrack } from '@/lib/hooks/useBusLive';
-import { pointAlong, routeAhead, type LngLat } from '@/lib/map/routeAhead';
+import { alongUsualPath, pointAlong, routeAhead, type LngLat } from '@/lib/map/routeAhead';
 import { traceCoordinates } from '@/lib/map/busTrace';
 
 interface BusLiveMapProps {
@@ -95,8 +95,9 @@ function stopFeatures(track: LiveTrack, formatTime: (iso: string) => string): Ge
   };
 }
 
+/** The road driven so far, along the usual path where the bus kept to it (alongUsualPath). */
 function traceFeature(track: LiveTrack, untilTs: number): GeoJSON.Feature {
-  const coordinates = traceCoordinates(track.fixes, track.stops, untilTs);
+  const coordinates = alongUsualPath(traceCoordinates(track.fixes, track.stops, untilTs), track.usualPath);
   return { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates } };
 }
 
