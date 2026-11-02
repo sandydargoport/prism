@@ -36,7 +36,7 @@ Weekly meal grid. Drag-and-drop meals to days. Recipe library with Paprika impor
 
 ## Photos
 
-Family photo display: OneDrive sync, manual upload, or both. Screensaver slideshow with Ken Burns pans. Pin specific photos to specific dashboards. Auto-orientation matching for portrait vs. landscape displays.
+Family photo display: OneDrive sync, manual upload, or both. Screensaver slideshow. Pin specific photos to specific dashboards. Auto-orientation matching for portrait vs. landscape displays.
 
 → Full docs: [Photos](features/PHOTOS.md)
 
