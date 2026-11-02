@@ -269,7 +269,7 @@ Cross-calendar events (e.g. the same event in your Google personal calendar and 
 Click **Add Event** in the calendar header (or on the CalendarWidget). The modal includes:
 
 - **Title** (required)
-- **Calendar**: picker filtered to calendars marked "Show in Add Event modal".
+- **Calendar**: Prism, Google and CalDAV calendars marked "Show in Add Event modal" (*Settings → Calendars*). iCal feeds, and calendars named like subscriptions (Birthdays, Holidays, Week Numbers), are not offered.
 - **Color**: preset palette + your profile color.
 - **Description**
 - **Location**

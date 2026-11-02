@@ -26,6 +26,7 @@ import { fromDisplayDateTime, toDisplayDate } from '@/lib/utils/timeFormat';
 import { toast } from '@/components/ui/use-toast';
 import { TimeDropdown } from './TimeDropdown';
 import { readResponseError } from '@/lib/utils/responseError';
+import { canAddEventsTo } from '@/lib/utils/calendarWritable';
 import { RepeatPicker, repeatFromRule, type Repeat } from './RepeatPicker';
 import { buildRepeatRule, firstRepeatDate, parseRepeatRule } from '@/lib/utils/repeatRule';
 import { addDaysToKey, calendarDaysBetween } from '@/lib/utils/zonedDate';
@@ -177,12 +178,10 @@ export function AddEventModal({
   const { activeUser } = useAuth();
   const { displayTimezone } = useTimeFormat();
 
-  // Filter to only writable, non-read-only calendars with showInEventModal enabled
+  // Filter to calendars Prism can add events to, with showInEventModal enabled
   const writableCalendars = useMemo(() => {
     return calendars.filter(
-      (cal) => cal.enabled &&
-               (cal.provider === 'google' || cal.provider === 'local') &&
-               cal.showInEventModal !== false
+      (cal) => cal.enabled && canAddEventsTo(cal) && cal.showInEventModal !== false
     );
   }, [calendars]);
 
@@ -548,6 +547,9 @@ export function AddEventModal({
                     {cal.provider === 'google' && (
                       <span className="text-xs text-muted-foreground shrink-0">Google</span>
                     )}
+                    {cal.provider === 'caldav' && (
+                      <span className="text-xs text-muted-foreground shrink-0">CalDAV</span>
+                    )}
                   </div>
                 </SelectItem>
               ))}
@@ -557,7 +559,7 @@ export function AddEventModal({
           {/* Sync-behavior hint. Local is the default and needs no label; the
               only thing worth clarifying is that connected accounts push
               outward — and only once such an account actually exists. */}
-          {writableCalendars.some((c) => c.provider === 'google') && (
+          {writableCalendars.some((c) => c.provider !== 'local') && (
             <p className="text-xs text-muted-foreground">
               {t('eventForm.syncHint')}
             </p>

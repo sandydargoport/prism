@@ -9,6 +9,7 @@ import { logActivity } from '@/lib/services/auditLog';
 import { testCalDAVConnection } from '@/lib/integrations/caldav';
 import { syncCalDAVCalendarSource, syncCalDAVTasks } from '@/lib/services/calendar-sync';
 import { syncCardDAVBirthdays } from '@/lib/services/carddav-birthday-sync';
+import { looksReadOnlyCalendar } from '@/lib/utils/calendarWritable';
 
 /**
  * POST /api/caldav/connect
@@ -86,7 +87,10 @@ export async function POST(request: NextRequest) {
           accessToken: encryptedPassword,
           providerConfig: caldavConfig,
           enabled: true,
-          showInEventModal: false, // Read-only
+          // Events made in Prism are created on the server (#687), so a
+          // calendar is offered in the event form unless its name marks it
+          // as a subscription.
+          showInEventModal: !looksReadOnlyCalendar(displayName),
         })
         .returning();
 
