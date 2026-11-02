@@ -4,7 +4,7 @@ A factual comparison for anyone evaluating a shared family display.
 
 The TL;DR: Skylight is the easiest if you're willing to pay forever, Dakboard is fine if you trust someone else with your calendar, MagicMirror² is great if you enjoy YAML and live alone, and Prism is the answer if you want **no subscription, no cloud, and a touch-first interface the whole family will actually use**, and you're comfortable running Docker.
 
-Prism's visual style is a **glassmorphism** layout (frosted-glass widgets with subtle depth) over a per-display wallpaper, designed to look at home on a kitchen wall display rather than read like a configuration screen.
+Prism's visual style is translucent, lightly blurred widget cards over a per-display wallpaper, designed to look at home on a kitchen wall display rather than read like a configuration screen.
 
 ---
 
@@ -26,7 +26,7 @@ Prism's visual style is a **glassmorphism** layout (frosted-glass widgets with s
 | **Microsoft To Do** | ✅ | ❌ | Limited | ✅ Via module |
 | **Chores with kid approval flow** | ✅ Built-in points + redemption | Limited | ❌ | ❌ |
 | **Meal planning + recipes** | ✅ Built-in (Paprika import, OCR) | ❌ | ❌ | Via module |
-| **Photo screensaver** | ✅ OneDrive sync + slideshow + Ken Burns | ✅ | ✅ | Via module |
+| **Photo screensaver** | ✅ OneDrive sync + slideshow | ✅ | ✅ | Via module |
 | **Shopping with Kroger / Mariano's push** | ✅ One-click cart push | ❌ | ❌ | ❌ |
 | **Home Assistant integration** | ✅ [Embed as a panel, REST sensors, + one-click add-on](home-assistant.md) | ❌ | Limited | ✅ Native HA card available |
 | **Voice / Alexa skill** | ✅ Voice API foundation (v1.8) | ❌ | ❌ | Via module |
