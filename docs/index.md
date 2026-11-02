@@ -23,7 +23,7 @@ Prism is a configurable family dashboard for large wall-mounted screens, tablets
 
 - :material-calendar-month: **Calendar**
 
-    Bidirectional Google Calendar sync, iCal support, ten view modes (day / week / 1W-4W / month / 3-month / agenda), drag-and-drop, and click-to-edit from the widget.
+    Bidirectional Google Calendar sync, iCal support, seven view modes (agenda / day / list / schedule / 2-week / month / 3-month), drag-and-drop, and click-to-edit from the widget.
 
     [Calendar guide →](features/CALENDAR.md)
 
