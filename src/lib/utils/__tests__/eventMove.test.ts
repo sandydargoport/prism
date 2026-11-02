@@ -1,4 +1,4 @@
-import { moveEventToDay } from '../eventMove';
+import { canDragEvent, moveEventToDay } from '../eventMove';
 
 const CHICAGO = 'America/Chicago';
 const iso = (r: { startTime: Date; endTime: Date }) => [r.startTime.toISOString(), r.endTime.toISOString()];
@@ -31,5 +31,13 @@ describe('moveEventToDay', () => {
     const event = { startTime: new Date('2026-10-31T14:00:00Z'), endTime: new Date('2026-10-31T15:30:00Z'), allDay: false };
     expect(iso(moveEventToDay(event, '2026-11-02', CHICAGO)))
       .toEqual(['2026-11-02T15:00:00.000Z', '2026-11-02T16:30:00.000Z']);
+  });
+});
+
+describe('canDragEvent', () => {
+  it('drags a one-off event on no calendar, and nothing synced or repeating', () => {
+    expect(canDragEvent({ calendarId: 'local' })).toBe(true);
+    expect(canDragEvent({ calendarId: 'local', recurring: true })).toBe(false);
+    expect(canDragEvent({ calendarId: 'cal-1' })).toBe(false);
   });
 });

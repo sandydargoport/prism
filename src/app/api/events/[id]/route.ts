@@ -29,6 +29,7 @@ import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { normalizeAllDayRange } from '@/lib/utils/allDayRange';
+import { isPrismSeries, parseEventId } from '@/lib/utils/recurrence';
 
 
 interface RouteParams {
@@ -116,7 +117,7 @@ export async function GET(
   if (auth instanceof NextResponse) return auth;
 
   try {
-    const { id } = await params;
+    const { rowId: id } = parseEventId((await params).id);
 
     const [eventWithSource] = await db
       .select({
@@ -220,7 +221,7 @@ export async function PATCH(
   if (auth instanceof NextResponse) return auth;
 
   try {
-    const { id } = await params;
+    const { rowId: id, occurrenceStart } = parseEventId((await params).id);
     const body = await request.json();
 
     // Check if event exists and get calendar source info
@@ -237,6 +238,7 @@ export async function PATCH(
         endTime: events.endTime,
         allDay: events.allDay,
         recurring: events.recurring,
+        recurrenceRule: events.recurrenceRule,
         seriesKey: events.seriesKey,
         caldavHref: events.caldavHref,
       })
@@ -381,6 +383,24 @@ export async function PATCH(
         normalizeAllDayRange(effectiveStart, effectiveEnd, await getHouseholdTimezone()));
       updateData.startTime = effectiveStart;
       updateData.endTime = effectiveEnd;
+    }
+
+    // The form shows one occurrence of a series Prism expands itself, and the
+    // edit belongs to the series row (#59): a moved time moves every
+    // occurrence by the same amount, and the series keeps its first date.
+    // Turning the repeat off leaves the event where the form put it.
+    const keepsRule = !('recurrenceRule' in body) || Boolean(body.recurrenceRule);
+    if (occurrenceStart && isPrismSeries(existingEvent) && keepsRule) {
+      const lengthMs = existingEvent.endTime.getTime() - existingEvent.startTime.getTime();
+      const occurrenceEnd = occurrenceStart.getTime() + lengthMs;
+      if (updateData.startTime) {
+        effectiveStart = new Date(existingEvent.startTime.getTime() + effectiveStart.getTime() - occurrenceStart.getTime());
+        updateData.startTime = effectiveStart;
+      }
+      if (updateData.endTime) {
+        effectiveEnd = new Date(existingEvent.endTime.getTime() + effectiveEnd.getTime() - occurrenceEnd);
+        updateData.endTime = effectiveEnd;
+      }
     }
 
     // Google and CalDAV edits are written upstream. An event on any other
@@ -727,7 +747,7 @@ export async function DELETE(
   if (auth instanceof NextResponse) return auth;
 
   try {
-    const { id } = await params;
+    const { rowId: id } = parseEventId((await params).id);
 
     // Check if event exists
     const [existingEvent] = await db

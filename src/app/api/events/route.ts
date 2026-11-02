@@ -38,6 +38,7 @@ import { logError } from '@/lib/utils/logError';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { normalizeAllDayRange } from '@/lib/utils/allDayRange';
 import { MAX_CALENDAR_EVENTS } from '@/lib/utils/calendarRange';
+import { expandSeries, isPrismSeries, occurrenceId } from '@/lib/utils/recurrence';
 
 // Cache events for 5 minutes
 const EVENTS_CACHE_TTL = 5 * 60;
@@ -109,7 +110,10 @@ export async function GET(request: NextRequest) {
       // Event ends within range
       and(gte(events.endTime, startDate), lte(events.endTime, endDate)),
       // Event spans the entire range
-      and(lte(events.startTime, startDate), gte(events.endTime, endDate))
+      and(lte(events.startTime, startDate), gte(events.endTime, endDate)),
+      // A series Prism expands itself (#59) is stored once, at its first
+      // occurrence, so one that began before the range is still in it.
+      and(isNotNull(events.recurrenceRule), isNull(events.externalEventId), lte(events.startTime, endDate))
     );
 
     // A hidden event (#592) stays in the database so a sync cannot re-add it.
@@ -142,6 +146,7 @@ export async function GET(request: NextRequest) {
           allDay: events.allDay,
           recurring: events.recurring,
           recurrenceRule: events.recurrenceRule,
+          externalEventId: events.externalEventId,
           seriesKey: events.seriesKey,
           color: events.color,
           reminderMinutes: events.reminderMinutes,
@@ -201,7 +206,23 @@ export async function GET(request: NextRequest) {
 
       // Format response
       // Color priority: event color > user color > calendar color > default
-      const formattedEvents: EventResponse[] = results.map((row) => formatEventRow(row));
+      // A series Prism owns becomes one event per occurrence in the range,
+      // each under an id naming its start, so an edit or delete reaches the
+      // series row (see recurrence.ts).
+      const timeZone = await getHouseholdTimezone();
+      const expanded: EventResponse[] = results
+        .flatMap((row) => {
+          if (!isPrismSeries(row)) return [formatEventRow(row)];
+          return expandSeries(row, startDate, endDate, timeZone).map(({ start, end }) => ({
+            ...formatEventRow({ ...row, startTime: start, endTime: end, recurring: true }),
+            id: occurrenceId(row.id, start),
+          }));
+        })
+        .sort((a, b) => a.startTime.localeCompare(b.startTime));
+      if (expanded.length > limit) {
+        console.warn(`[events] repeating events filled the ${limit}-event ceiling for ${startDateStr}..${endDateStr}; some events were omitted.`);
+      }
+      const formattedEvents = expanded.slice(0, limit);
 
       return {
         events: formattedEvents,

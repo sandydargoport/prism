@@ -120,6 +120,7 @@
     "event": {
       "deleteConfirmTitle": "Diesen Termin löschen?",
       "deleteConfirmBody": "Soll dieser Termin wirklich gelöscht werden?",
+      "deleteSeriesConfirmBody": "Damit werden alle Termine dieser Serie gelöscht.",
       "hideInPrism": "In Prism ausblenden",
       "hideInPrismHint": "Der Termin bleibt in seinem Kalender. Unter Einstellungen > Kalender wieder einblenden.",
       "hiddenToast": "„{title}“ ausgeblendet",

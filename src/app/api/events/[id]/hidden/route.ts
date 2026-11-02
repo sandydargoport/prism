@@ -22,6 +22,7 @@ import { events, hiddenEventSeries } from '@/lib/db/schema';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
+import { parseEventId } from '@/lib/utils/recurrence';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -71,7 +72,7 @@ async function setHidden(request: NextRequest, { params }: RouteParams, hidden: 
   if (forbidden) return forbidden;
 
   try {
-    const { id } = await params;
+    const { rowId: id } = parseEventId((await params).id);
     if (hidden && request.nextUrl.searchParams.get('scope') === 'series') {
       return await hideSeries(id, auth.userId);
     }
