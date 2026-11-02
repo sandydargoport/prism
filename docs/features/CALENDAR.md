@@ -274,7 +274,7 @@ Click **Add Event** in the calendar header (or on the CalendarWidget). The modal
 - **Description**
 - **Location**
 - **Start / End time** or **All day** toggle.
-- **Recurrence**: None, Daily, Every weekday, Weekly, Monthly, Yearly (writes to Google Calendar's RRULE format if syncing to Google).
+- **Recurrence**: None, Daily, Every weekday, Weekly, Monthly, Yearly, or **Custom…**: every N days, weeks, months or years; chosen days of the week; monthly or yearly on the date or on the nth weekday ("the third Wednesday"); ending never, on a date, or after N times. A weekly repeat starts on the first chosen day on or after the start date. A rule from another app that the builder cannot show is kept unchanged. Opening any occurrence of a repeating event made in Prism edits the whole series.
 
 Subscription / read-only calendars are auto-hidden from the picker.
 
