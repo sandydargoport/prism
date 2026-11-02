@@ -287,7 +287,7 @@ export function DisplaysSection() {
                   </form>
                 ) : (
                   <>
-                    <div className="min-w-0 basis-full sm:basis-0 sm:flex-1">
+                    <div className="min-w-0 basis-full sm:basis-0 sm:flex-1 sm:min-w-[12rem]">
                       <div className="flex items-center gap-2">
                         <span className="font-medium truncate">{d.name}</span>
                         {d.id === currentId && <Badge variant="secondary">This screen</Badge>}
@@ -302,7 +302,7 @@ export function DisplaysSection() {
                     </div>
                     <select
                       aria-label={`Dashboard for ${d.name}`}
-                      className="rounded-md border border-input bg-background px-2 py-1.5 text-sm max-w-[12rem]"
+                      className="rounded-md border border-input bg-background px-2 py-1.5 text-sm max-w-[18rem]"
                       disabled={busy}
                       value={d.dashboardId ?? ''}
                       onChange={(e) => void setDashboard(d.id, e.target.value || null)}
