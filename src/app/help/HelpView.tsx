@@ -296,7 +296,7 @@ function CalendarHelp({ isMobile }: { isMobile: boolean }) {
       {!isMobile && (
         <>
           <H2>Views</H2>
-          <P>Agenda, Day, Week, List, Multi-Week (1-4W), Month, and 3-Month. Switch views using the toolbar buttons. The grid lines toggle (grid icon) shows or hides cell borders across all grid-based views.</P>
+          <P>Agenda, Day, List, Schedule, 2 Weeks, Month, and 3 Months. Switch views using the toolbar buttons. The grid lines toggle (grid icon) shows or hides cell borders across all grid-based views.</P>
 
           <H2>Calendar Notes</H2>
           <P>Click the sticky note icon to show a notes panel alongside Day or List views. Notes are day-tied, shared across the family, and support formatting shortcuts: Ctrl+B bold, Ctrl+I italic, Ctrl+U underline, Ctrl+Shift+S strikethrough, Ctrl+Shift+L bullet list. Type &quot;- &quot; at the start of a line to auto-convert to a bullet.</P>

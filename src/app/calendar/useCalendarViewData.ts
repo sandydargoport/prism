@@ -22,9 +22,9 @@ import { useTimeFormat } from '@/components/providers';
 import { useFollowToday } from '@/lib/hooks/useFollowToday';
 import { useResetOn } from '@/lib/hooks/useResetOn';
 import { toDisplayDate } from '@/lib/utils/timeFormat';
+import { migrateSubpageView, type SubpageView } from '@/lib/utils/retiredCalendarViews';
 
-export type CalendarViewType = 'agenda' | 'day' | 'week' | 'weekVertical' | 'multiWeek' | 'month' | 'threeMonth';
-export type MultiWeekCount = 1 | 2 | 3 | 4;
+export type CalendarViewType = SubpageView;
 
 export type { CalendarGroup } from '@/lib/hooks';
 
@@ -45,12 +45,11 @@ export function useCalendarViewData() {
   useResetOn(displayTimezone, () => setCurrentDate(toDisplayDate(new Date(), displayTimezone)));
   useFollowToday(currentDate, setCurrentDate, displayTimezone);
   const [viewType, setViewTypeState] = useState<CalendarViewType>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('prism-calendar-view-type') as CalendarViewType | null;
-      const valid: CalendarViewType[] = ['agenda', 'day', 'week', 'weekVertical', 'multiWeek', 'month', 'threeMonth'];
-      if (saved && valid.includes(saved)) return saved;
-    }
-    return 'month';
+    if (typeof window === 'undefined') return 'month';
+    return migrateSubpageView(
+      localStorage.getItem('prism-calendar-view-type'),
+      localStorage.getItem('prism-calendar-week-count'),
+    );
   });
   const setViewType = useCallback(
     (next: CalendarViewType) => startTransition(() => setViewTypeState(next)),
@@ -59,18 +58,9 @@ export function useCalendarViewData() {
 
   useEffect(() => {
     localStorage.setItem('prism-calendar-view-type', viewType);
+    // The week count only chose between the retired 1W/3W/4W grids.
+    localStorage.removeItem('prism-calendar-week-count');
   }, [viewType]);
-  const [weekCount, setWeekCount] = useState<MultiWeekCount>(() => {
-    if (typeof window !== 'undefined') {
-      const raw = localStorage.getItem('prism-calendar-week-count');
-      const n = raw ? Number(raw) : NaN;
-      if (n === 1 || n === 2 || n === 3 || n === 4) return n as MultiWeekCount;
-    }
-    return 2;
-  });
-  useEffect(() => {
-    localStorage.setItem('prism-calendar-week-count', String(weekCount));
-  }, [weekCount]);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
@@ -180,12 +170,12 @@ export function useCalendarViewData() {
         case 'day': return subDays(prev, 1);
         case 'week': return subWeeks(prev, 1);
         case 'weekVertical': return subWeeks(prev, 1);
-        case 'multiWeek': return subWeeks(prev, weekCount);
+        case 'multiWeek': return subWeeks(prev, 2);
         case 'month': return subMonths(prev, 1);
         case 'threeMonth': return subMonths(prev, 1);
       }
     }));
-  }, [viewType, weekCount]);
+  }, [viewType]);
 
   const goToNext = useCallback(() => {
     startTransition(() => setCurrentDate(prev => {
@@ -194,12 +184,12 @@ export function useCalendarViewData() {
         case 'day': return addDays(prev, 1);
         case 'week': return addWeeks(prev, 1);
         case 'weekVertical': return addWeeks(prev, 1);
-        case 'multiWeek': return addWeeks(prev, weekCount);
+        case 'multiWeek': return addWeeks(prev, 2);
         case 'month': return addMonths(prev, 1);
         case 'threeMonth': return addMonths(prev, 1);
       }
     }));
-  }, [viewType, weekCount]);
+  }, [viewType]);
 
   // The header reads in the interface language: Intl picks the field order as
   // well as the names, so German gets "4. September 2026", not "September 4".
@@ -218,18 +208,17 @@ export function useCalendarViewData() {
       case 'multiWeek':
         return d.range(
           startOfWeek(currentDate, { weekStartsOn }),
-          endOfWeek(addWeeks(currentDate, weekCount - 1), { weekStartsOn }),
+          endOfWeek(addWeeks(currentDate, 1), { weekStartsOn }),
         );
       case 'month':
       case 'threeMonth':
         return d.monthYear(currentDate);
     }
-  }, [viewType, weekCount, currentDate, weekStartsOn, t, d]);
+  }, [viewType, currentDate, weekStartsOn, t, d]);
 
   return {
     currentDate, setCurrentDate,
     viewType, setViewType,
-    weekCount, setWeekCount,
     selectedEvent, setSelectedEvent,
     showAddEvent, setShowAddEvent,
     editingEvent, setEditingEvent,

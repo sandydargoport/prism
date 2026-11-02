@@ -49,7 +49,7 @@ A third **guest** role also exists for shared-display / kiosk use: a read-only s
 
 ### [Calendar](features/CALENDAR.md)
 
-Multiple sources (Google OAuth + iCal subscriptions), ten view modes (Agenda / Day / List / Schedule / 1W-4W / Month / 3 Months), drag-and-drop, click-to-edit from the dashboard widget, server-side sync cron, calendar notes, hidden hours, view options menu. Mobile collapses to Agenda only.
+Multiple sources (Google OAuth + iCal subscriptions), seven view modes (Agenda / Day / List / Schedule / 2W / Month / 3 Months), drag-and-drop, click-to-edit from the dashboard widget, server-side sync cron, calendar notes, hidden hours, view options menu. Mobile collapses to Agenda only.
 
 A parent can hide an event in Prism without deleting it from its calendar (**Hide in Prism** in the event detail), and on a recurring Google, iCal or CalDAV event can hide the whole series. Hidden events and series are listed under *Settings → Calendars*, with Unhide. The same card lists birthdays and milestones, each with Remove; a removed synced birthday can be restored from **Removed birthdays**.
 

@@ -30,7 +30,6 @@ async function openCalendar(page: Page, mode: 'cards' | 'inline', view = 'multiW
   }
   await page.addInitScript(([m, v]) => {
     localStorage.setItem('prism-calendar-view-type', v as string);
-    localStorage.setItem('prism-calendar-week-count', '2');
     localStorage.setItem('prism-calendar-display-mode', m as string);
     localStorage.setItem('prism-calendar-bordered', 'true');
   }, [mode, view]);

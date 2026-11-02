@@ -106,7 +106,6 @@ export function CalendarView() {
   const {
     currentDate, setCurrentDate,
     viewType, setViewType,
-    weekCount, setWeekCount,
     weeksBordered, setWeeksBordered,
     displayMode, setDisplayMode,
     hideWeekends, setHideWeekends,
@@ -137,7 +136,7 @@ export function CalendarView() {
       }
       case 'multiWeek': {
         const ws = startOfWeek(currentDate, { weekStartsOn });
-        return { rangeFrom: ws, rangeTo: endOfWeek(addWeeks(ws, weekCount - 1), { weekStartsOn }) };
+        return { rangeFrom: ws, rangeTo: endOfWeek(addWeeks(ws, 1), { weekStartsOn }) };
       }
       case 'month':
       case 'threeMonth': {
@@ -146,7 +145,7 @@ export function CalendarView() {
         return { rangeFrom: ms, rangeTo: me };
       }
     }
-  }, [viewType, currentDate, weekCount, weekStartsOn]);
+  }, [viewType, currentDate, weekStartsOn]);
 
   // Build per-day buckets in cards mode regardless of which overlay checkboxes
   // are on — the bucket also carries weather, which should always render.
@@ -421,9 +420,7 @@ export function CalendarView() {
             <div className="hidden md:flex">
               <ViewMenu
                 viewType={viewType}
-                weekCount={weekCount}
                 onViewChange={setViewType}
-                onWeekCountChange={setWeekCount}
               />
             </div>
             {/* Single gear popover replacing Notes/Grid/Cards/Hide-weekends/
@@ -599,10 +596,9 @@ export function CalendarView() {
                 />
               )}
               {viewType === 'multiWeek' && (
-                /* All weekCounts (1/2/3/4) use MultiWeekView so the grid
-                   compresses to fit the page and overflows into popovers
-                   instead of growing taller than the viewport. */
-                <MultiWeekView currentDate={currentDate} events={visibleEvents} onEventClick={setSelectedEvent} weekCount={weekCount} bordered={weeksBordered} displayMode={displayMode}
+                /* The 2W grid compresses to fit the page and overflows into
+                   popovers instead of growing taller than the viewport. */
+                <MultiWeekView currentDate={currentDate} events={visibleEvents} onEventClick={setSelectedEvent} bordered={weeksBordered} displayMode={displayMode}
                   bucketsByDate={overlaysActive ? filteredBucketsByDate : undefined}
                   enableDnd={overlaysActive}
                   hideWeekends={hideWeekends}
