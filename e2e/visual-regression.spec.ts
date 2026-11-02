@@ -308,6 +308,9 @@ test.describe('Visual regression', () => {
     { view: 'multiWeek', displayMode: 'cards'  as const, label: 'multiweek-2w-cards' },
     { view: 'week',      displayMode: 'cards'  as const, label: 'week-cards' },
     { view: 'agenda',    displayMode: 'cards'  as const, label: 'agenda-cards' },
+    // 720p: the smallest common wall screen, where the text floor (#798) has
+    // the least room. Schedule has the tightest event blocks.
+    { view: 'week',      displayMode: 'inline' as const, label: 'week-inline-720p', viewport: { width: 1280, height: 720 } },
   ];
 
   for (const theme of ['light', 'dark'] as const) {
@@ -315,6 +318,7 @@ test.describe('Visual regression', () => {
       test(`calendar ${cfg.label} - ${theme}`, async ({ page }) => {
         test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
         await setClientFlags(page, { theme });
+        if ('viewport' in cfg && cfg.viewport) await page.setViewportSize(cfg.viewport);
         await setCalendarPrefs(page, {
           viewType: cfg.view,
           displayMode: cfg.displayMode,

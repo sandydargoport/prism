@@ -243,7 +243,7 @@ function WeekListDayRow({
           {format(day, 'd')}
         </span>
         <span className={cn(
-          'text-[10px]',
+          'text-3xs',
           isCurrentDay ? 'text-primary-foreground/80' : 'text-muted-foreground'
         )}>
           {d.monthShort(day)}

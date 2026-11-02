@@ -4,6 +4,7 @@ import { db } from '@/lib/db/client';
 import { currentDisplay } from '@/lib/auth/displayIdentity';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { screenDashboardAt } from '@/lib/displays/screenSchedule';
+import { pageZoomVars } from '@/lib/utils/zoomVars';
 
 /**
  * A named screen with its own dashboard set (#690) opens on that one instead
@@ -65,7 +66,7 @@ export default async function HomePage() {
       <div
         style={
           fontScale !== 100
-            ? ({ zoom: fontScale / 100, '--app-vh': `${10000 / fontScale}vh` } as React.CSSProperties)
+            ? ({ zoom: fontScale / 100, '--app-vh': `${10000 / fontScale}vh`, ...pageZoomVars(fontScale) } as React.CSSProperties)
             : undefined
         }
       >

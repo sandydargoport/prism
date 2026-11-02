@@ -224,7 +224,7 @@ export function WeekView({
                       key={event.id}
                       onClick={() => onEventClick(event)}
                       className={cn(
-                        'absolute text-left text-xs px-0.5 pt-0.5 rounded overflow-hidden hover:opacity-90 hover:ring-1 hover:ring-seasonal-accent/50 transition-all z-10 flex flex-col items-start',
+                        'absolute text-left text-xs px-0.5 pt-0.5 rounded overflow-hidden hover:opacity-90 hover:ring-1 hover:ring-seasonal-accent/50 transition-all z-10 flex flex-col flex-wrap content-start items-start gap-x-1 min-h-[calc(var(--text-floor)*var(--zoom-inv,1)*1.25+0.25rem)]',
                         cards && 'bg-card/85 backdrop-blur-xs border border-border/40 shadow-xs',
                       )}
                       style={
@@ -247,19 +247,19 @@ export function WeekView({
                             }
                       }
                     >
-                      <span className={cn('truncate w-full text-[10px] font-medium leading-tight', cards && 'text-foreground')}>{event.title}</span>
+                      <span className={cn('truncate w-full text-3xs font-medium leading-tight', cards && 'text-foreground')}>{event.title}</span>
                       {cards && durationMin >= 30 && (
-                        <span className="text-[9px] leading-tight text-muted-foreground truncate w-full">
+                        <span className="text-4xs leading-tight text-muted-foreground truncate w-full">
                           {formatDisplayTimeRange(event.startTime, event.endTime ?? new Date(event.startTime.getTime() + 3600000), timeFormat, displayTimezone)}
                         </span>
                       )}
                       {cards && durationMin >= 60 && (event.location || event.calendarName) && (
-                        <span className="text-[9px] leading-tight text-muted-foreground truncate w-full">
+                        <span className="text-4xs leading-tight text-muted-foreground truncate w-full">
                           {event.location || event.calendarName}
                         </span>
                       )}
                       {!cards && (
-                        <span className="text-[9px] leading-tight opacity-70">
+                        <span className="text-4xs leading-tight opacity-70 truncate w-full">
                           {formatDisplayTimeRange(event.startTime, event.endTime ?? new Date(event.startTime.getTime() + 3600000), timeFormat, displayTimezone)}
                         </span>
                       )}
@@ -301,7 +301,7 @@ export function WeekView({
               {hours.map((hour) => (
                 <div
                   key={hour}
-                  className="text-[9px] text-muted-foreground text-right pl-0.5 pr-0.5 border-t border-transparent flex items-start"
+                  className="text-4xs text-muted-foreground text-right pl-0.5 pr-0.5 border-t border-transparent flex items-start"
                 >
                   {formatDisplayHour(new Date().setHours(hour, 0), timeFormat, { compact: true })}
                 </div>
@@ -318,7 +318,7 @@ export function WeekView({
               {hours.map((hour) => (
                 <div
                   key={hour}
-                  className="text-[9px] text-muted-foreground text-right pl-0.5 pr-0.5 border-t border-transparent flex items-start"
+                  className="text-4xs text-muted-foreground text-right pl-0.5 pr-0.5 border-t border-transparent flex items-start"
                 >
                   {formatDisplayHour(new Date().setHours(hour, 0), timeFormat, { compact: true })}
                 </div>
@@ -407,7 +407,7 @@ export function WeekView({
                       </span>
                     </div>
                     {dayWeather && (
-                      <div className="flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
+                      <div className="flex shrink-0 items-center gap-1 text-2xs text-muted-foreground">
                         {weatherIcon(dayWeather.condition)}
                         <span className="tabular-nums">
                           {Math.round(dayWeather.high)}°/{Math.round(dayWeather.low)}°
@@ -422,7 +422,7 @@ export function WeekView({
                           key={event.id}
                           onClick={() => onEventClick(event)}
                           className={cn(
-                            'w-full text-left text-[10px] font-medium px-1 py-px rounded truncate hover:opacity-80 transition-all leading-tight',
+                            'w-full text-left text-3xs font-medium px-1 py-px rounded truncate hover:opacity-80 transition-all leading-tight',
                             cards && 'bg-card/85 backdrop-blur-xs border border-border/40 shadow-xs',
                           )}
                           style={
@@ -498,7 +498,7 @@ export function WeekView({
                               key={event.id}
                               onClick={() => onEventClick(event)}
                               className={cn(
-                                'absolute p-0.5 rounded text-left text-xs z-10 overflow-hidden hover:opacity-90 hover:ring-2 hover:ring-seasonal-accent/50 transition-all flex flex-col items-start',
+                                'absolute p-0.5 rounded text-left text-xs z-10 overflow-hidden hover:opacity-90 hover:ring-2 hover:ring-seasonal-accent/50 transition-all flex flex-col flex-wrap content-start items-start gap-x-1 min-h-[calc(var(--text-floor)*var(--zoom-inv,1)*1.25+0.25rem)]',
                                 cards && 'bg-card/85 backdrop-blur-xs border border-border/40 shadow-xs',
                               )}
                               style={
@@ -522,23 +522,24 @@ export function WeekView({
                               }
                             >
                               {/* Time-grid rows in priority order: title, then
-                                  time, then subtitle. Thresholds tuned so a
-                                  45-min block stays single-line and a 60-min
-                                  block stays at most two lines (60-min cells
-                                  can't fit 3 lines without clipping). */}
-                              <div className={cn('font-medium truncate w-full text-[10px] leading-tight', cards && 'text-foreground')}>{event.title}</div>
+                                  time, then subtitle. Text never shrinks to fit
+                                  (#798): `flex-wrap` sends a line that does not
+                                  fit whole into a second column, which the
+                                  block's overflow-hidden clips, so a short
+                                  event shows its title alone, not half a time. */}
+                              <div className={cn('font-medium truncate w-full text-3xs leading-tight', cards && 'text-foreground')}>{event.title}</div>
                               {cards && durationMin >= 60 && (
-                                <div className="text-[9px] leading-tight text-muted-foreground truncate w-full">
+                                <div className="text-4xs leading-tight text-muted-foreground truncate w-full">
                                   {formatDisplayTimeRange(event.startTime, event.endTime ?? new Date(event.startTime.getTime() + 3600000), timeFormat, displayTimezone)}
                                 </div>
                               )}
                               {cards && durationMin >= 90 && (event.location || event.calendarName) && (
-                                <div className="text-[9px] leading-tight text-muted-foreground truncate w-full">
+                                <div className="text-4xs leading-tight text-muted-foreground truncate w-full">
                                   {event.location || event.calendarName}
                                 </div>
                               )}
                               {!cards && durationMin >= 45 && (
-                                <div className="text-[9px] leading-tight opacity-70">
+                                <div className="text-4xs leading-tight opacity-70 truncate w-full">
                                   {formatDisplayTimeRange(event.startTime, event.endTime ?? new Date(event.startTime.getTime() + 3600000), timeFormat, displayTimezone)}
                                 </div>
                               )}

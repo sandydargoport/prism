@@ -100,4 +100,12 @@ describe('cn', () => {
     expect(result).not.toContain('text-sm');
     expect(result).toContain('rounded-md');
   });
+
+  it('keeps the floored text sizes next to a text colour (#798)', () => {
+    for (const size of ['text-2xs', 'text-3xs', 'text-4xs', 'text-event', 'text-daynum', 'text-daynum-large']) {
+      expect(cn(size, 'text-muted-foreground')).toBe(`${size} text-muted-foreground`);
+      // and they are sizes: a later size replaces them
+      expect(cn(size, 'text-sm')).toBe('text-sm');
+    }
+  });
 });

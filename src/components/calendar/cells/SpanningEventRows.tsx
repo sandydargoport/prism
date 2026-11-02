@@ -225,8 +225,8 @@ export function SpanningEventRows({
   const barMetrics = compact
     ? 'px-0.5 py-px text-[8px]'
     : cards
-      ? 'flex items-stretch gap-2 pr-1 text-[10px]'
-      : 'px-(--event-padding-x,0.25rem) py-(--event-padding-y,0.125rem) text-(length:--event-font-size,0.75rem) font-(--event-font-weight)';
+      ? 'flex items-stretch gap-2 pr-1 text-3xs'
+      : 'px-(--event-padding-x,0.25rem) py-(--event-padding-y,0.125rem) text-event font-(--event-font-weight)';
 
   return (
     <div

@@ -118,7 +118,7 @@ function MiniMonth({
       {/* Day name headers */}
       <div className="grid grid-cols-7 gap-px px-1 shrink-0">
         {dayIndices.map((index) => (
-          <div key={index} className="text-center text-[10px] font-medium text-muted-foreground py-1">
+          <div key={index} className="text-center text-3xs font-medium text-muted-foreground py-1">
             {d.weekdayByIndex(index, 'weekdayNarrow')}
           </div>
         ))}
@@ -169,7 +169,7 @@ function MiniMonth({
                 >
                   <div className="flex h-4 shrink-0 items-center justify-center">
                     <span className={cn(
-                      'inline-flex h-4 min-w-4 items-center justify-center rounded-full px-0.5 text-[10px] leading-tight',
+                      'inline-flex h-4 min-w-4 items-center justify-center rounded-full px-0.5 text-3xs leading-tight',
                       today && 'bg-primary font-bold text-primary-foreground',
                     )}>
                       {format(date, 'd')}
