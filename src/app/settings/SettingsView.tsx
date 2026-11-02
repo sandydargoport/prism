@@ -272,7 +272,7 @@ export function SettingsView() {
         </header>
 
         <div className="flex-1 flex overflow-hidden">
-          <nav className="hidden md:block w-64 shrink-0 border-r border-border bg-card/85 backdrop-blur-xs p-4">
+          <nav className="hidden md:landscape:block w-64 shrink-0 border-r border-border bg-card/85 backdrop-blur-xs p-4">
             <div className="space-y-1">
               {sections.map((section) => {
                 const Icon = section.icon;
@@ -297,11 +297,13 @@ export function SettingsView() {
 
           <div className="flex-1 overflow-y-auto p-4 md:p-6">
             {/*
-              Mobile section selector. The desktop sidebar above is hidden on
-              <md, so without this the Settings page is reachable from MobileNav
-              but every section other than 'account' (the default) is not.
+              Section selector for phones and portrait screens. The sidebar
+              above shows only on a landscape screen md and wider: on a portrait
+              wall it took 320px of 1080 and crowded every section, so portrait
+              gets this dropdown and the full width instead. Without it, every
+              section other than 'account' (the default) is unreachable there.
             */}
-            <div className="md:hidden mb-4">
+            <div className="md:landscape:hidden mb-4">
               <label htmlFor="settings-section-select" className="sr-only">
                 Settings section
               </label>
@@ -318,12 +320,11 @@ export function SettingsView() {
                 ))}
               </select>
             </div>
-            {/* Appearance is long enough to be worth a second column on a wide
-                screen, and only it: widening every section would leave the
-                short ones as a thin strip of controls across a lot of nothing.
-                The column itself keeps its width — the space goes into a new
-                column beside it, not into stretching the old one. */}
-            <div className={activeSection === 'display' ? 'max-w-2xl xl:max-w-none' : 'max-w-2xl'}>
+            {/* Sections use the whole width they are given. A 42rem cap cut
+                screen names in Settings > Displays down to one letter on a
+                1080p screen, with half of it left empty beside them. On a wide
+                screen Appearance lays its cards out in columns of its own. */}
+            <div>
               <InsecurePageNotice />
               {activeSection === 'account' && <AccountSection />}
               {activeSection === 'family' && <FamilySection />}
