@@ -316,9 +316,11 @@ describe('forecastDays prop', () => {
 
   // A widget too short for even one whole day row showed half a row cut off
   // at the bottom. It now shows none, and no "N-Day Forecast" label.
-  it('shows no half day when not even one row fits', () => {
+  // And when the rows above squeeze the list to no height at all, it showed
+  // a "4-Day Forecast" label over an empty strip.
+  it.each([30, 0])('shows no half day when not even one row fits (list %ipx tall)', (listH) => {
     const spy = jest.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
-      const h = this.dataset.testid === 'weather-day-list' ? 30 : 44;
+      const h = this.dataset.testid === 'weather-day-list' ? listH : 44;
       return { height: h, width: 300, top: 0, left: 0, right: 300, bottom: h, x: 0, y: 0, toJSON: () => ({}) } as DOMRect;
     });
     try {
