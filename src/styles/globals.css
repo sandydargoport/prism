@@ -479,6 +479,7 @@ html.performance-mode {
 
   .dark {
     --ds-event-tint: 26%;
+    --ds-glass-alpha: 0.4;
 
     --background: 222 47% 11%;
     --foreground: 210 40% 98%;

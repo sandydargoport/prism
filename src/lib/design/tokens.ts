@@ -53,8 +53,12 @@ export const CARD = {
   paddingPx: 24,
   gapPx: 16,
   borderPx: 1,
-  /** Over a photo the card is its own colour at this opacity, plus blur. */
-  glassAlpha: 0.65,
+  /**
+   * Over a photo the card is its own colour at this opacity, plus blur.
+   * Dark glass is thinner: light text on it stays readable over a bright
+   * photo, while light glass needs more card to keep its dark grey text.
+   */
+  glassAlpha: { light: 0.65, dark: 0.4 },
   glassBlurPx: 24,
 } as const;
 
