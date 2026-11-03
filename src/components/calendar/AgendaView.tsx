@@ -202,12 +202,10 @@ function AgendaDaySection({
       )}
     >
       <div className="flex items-center gap-2 mb-2">
-        <span
-          className={cn(
-            'text-sm font-semibold',
-            isSameDay(date, toDisplayDate(new Date(), displayTimezone)) && 'text-seasonal-accent'
-          )}
-        >
+        {/* The normal text colour: a seasonal accent is a marker colour, and
+            several months' are too light to read as text on a light card. The
+            Today badge beside it marks the day (#801). */}
+        <span className="text-sm font-semibold text-foreground">
           {formatAgendaDayHeader(date, displayTimezone, t, d)}
         </span>
         {isSameDay(date, toDisplayDate(new Date(), displayTimezone)) && (
