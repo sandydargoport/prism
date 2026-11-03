@@ -6,7 +6,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import {
-  CARD, EVENT, PAPER, PAPER_CONTRAST_MIN, REFERENCE_ROOT_PX, SPACE_PX,
+  CARD, EVENT, PAPER, PAPER_CONTRAST_MIN, PHOTO_DIM, REFERENCE_ROOT_PX, SPACE_PX,
   TARGET_MIN_PX, TEXT_FLOOR_PX, TYPE_SCALE, TYPE_STEP_MIN, type TypeRole,
 } from '../tokens';
 import { checkThemeContrast, EDGE_MIN } from '@/lib/themes/contrast';
@@ -121,12 +121,25 @@ describe('Paper palette', () => {
     }
   });
 
-  it.each(MODES)('glass cards stay readable in %s over a black or a white photo', (mode) => {
+  // A photo never reaches the glass at full strength: it is drawn under a
+  // black layer (PHOTO_DIM). So the worst cases are a pure black and a pure
+  // white photo as they look under that layer, for every kind of photo.
+  it.each(MODES)('glass cards stay readable in %s over any photo, as it is drawn', (mode) => {
     const card = hslToHex(PAPER[mode].card);
     const text = hslToHex(PAPER[mode]['card-foreground']);
-    for (const photo of ['#000000', '#ffffff']) {
-      const glass = mix(card, photo, CARD.glassAlpha);
-      expect(contrastRatioHex(text, glass)).toBeGreaterThanOrEqual(PAPER_CONTRAST_MIN);
+    for (const [kind, dim] of Object.entries(PHOTO_DIM)) {
+      for (const photo of ['#000000', '#ffffff']) {
+        const drawn = mix('#000000', photo, dim[mode]);
+        const ratio = contrastRatioHex(text, mix(card, drawn, CARD.glassAlpha));
+        expect([kind, photo, ratio >= PAPER_CONTRAST_MIN]).toEqual([kind, photo, true]);
+      }
+    }
+  });
+
+  it('the wallpaper draws the black layer the glass check assumes', () => {
+    const wallpaper = fs.readFileSync(path.join(ROOT, 'src/components/layout/WallpaperBackground.tsx'), 'utf8');
+    for (const dim of Object.values(PHOTO_DIM)) {
+      expect(wallpaper).toContain(`bg-black/${dim.light * 100} dark:bg-black/${dim.dark * 100}`);
     }
   });
 

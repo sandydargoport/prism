@@ -6,7 +6,8 @@ import path from 'path';
 import { wallpaperPool } from '../WallpaperBackground';
 import { getWidgetStyle, getTextColorClass, isSeeThroughFill } from '../grid/gridWidgetStyles';
 import { SCENERY } from '@/lib/scenery';
-import { FIRST_SCREEN_TEMPLATE } from '@/lib/constants/layoutTemplates';
+import { FIRST_SCREEN_TEMPLATE, LAYOUT_TEMPLATES } from '@/lib/constants/layoutTemplates';
+import { shownWhenIdle } from '@/components/screensaver/calmMode';
 
 // #808 part 2: new installs show bundled park scenery behind glass cards
 // until the household adds photos; existing installs keep their background.
@@ -65,5 +66,18 @@ describe('Glass fill', () => {
 
   it("is the new install's card fill", () => {
     for (const w of FIRST_SCREEN_TEMPLATE.widgets) expect([w.i, w.backgroundColor]).toEqual([w.i, 'glass']);
+  });
+});
+
+describe('photo-forward views', () => {
+  it('a new install goes to just the clock and weather over the photo when idle', () => {
+    const idle = FIRST_SCREEN_TEMPLATE.widgets.filter(shownWhenIdle).map((w) => w.i);
+    expect(idle.sort()).toEqual(['clock', 'weather']);
+  });
+
+  it('the Ambient templates use glass, readable in light and dark', () => {
+    for (const t of [LAYOUT_TEMPLATES.ambient!, LAYOUT_TEMPLATES.ambientPortrait!]) {
+      for (const w of t.widgets) expect([t.orientation, w.i, w.backgroundColor]).toEqual([t.orientation, w.i, 'glass']);
+    }
   });
 });

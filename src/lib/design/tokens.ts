@@ -54,8 +54,20 @@ export const CARD = {
   gapPx: 16,
   borderPx: 1,
   /** Over a photo the card is its own colour at this opacity, plus blur. */
-  glassAlpha: 0.82,
+  glassAlpha: 0.65,
   glassBlurPx: 24,
+} as const;
+
+/**
+ * The black layer laid over a wallpaper photo, as a share, so no photo reaches
+ * the glass at full brightness. Glass contrast is checked against the darkest
+ * and brightest a photo can be once it is under this layer. The bundled scenery
+ * is dimmed lightly so it shows; the household's own photos keep the old,
+ * heavier layer.
+ */
+export const PHOTO_DIM = {
+  scenery: { light: 0.1, dark: 0.4 },
+  photos: { light: 0.6, dark: 0.7 },
 } as const;
 
 /**

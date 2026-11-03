@@ -223,9 +223,10 @@ export function WallpaperBackground() {
           opacity: fadingOut ? 0 : 1,
         }}
       />
-      {/* Dark overlay to keep widgets readable. The bundled scenery is shown
-          with glass widgets, which carry their own contrast (docs/DESIGN.md),
-          so it is only lightly dimmed and the photo shows. */}
+      {/* Black layer that keeps widgets readable, PHOTO_DIM in
+          src/lib/design/tokens.ts (a test holds these classes to it). The
+          bundled scenery is shown with glass widgets, so it is only lightly
+          dimmed and the photo shows. */}
       <div className={scenery ? 'absolute inset-0 bg-black/10 dark:bg-black/40' : 'absolute inset-0 bg-black/60 dark:bg-black/70'} />
     </div>
   );

@@ -400,7 +400,7 @@ html.performance-mode {
     --ds-card-radius: 0.8rem;
     --ds-card-pad: 1.2rem;
     --ds-card-gap: 0.8rem;
-    --ds-glass-alpha: 0.82;
+    --ds-glass-alpha: 0.65;
     --ds-glass-blur: 24px;
     --ds-glass-filter: blur(var(--ds-glass-blur)) saturate(1.2);
     --ds-event-bar: 4px;
