@@ -62,7 +62,19 @@ async function renderAgenda() {
 }
 
 describe('AgendaView past events', () => {
-  it('dims ended events by default, and only ended ones', async () => {
+  it('leaves the agenda as it was by default: nothing dimmed, nothing hidden', async () => {
+    // The visual-regression baselines are the agenda as it has always looked,
+    // so the default must not change a pixel of it.
+    await renderAgenda();
+    for (const title of ['Emma dentist', 'Soccer practice', 'Parker family dinner']) {
+      const row = screen.getByText(title).closest('button');
+      expect(row?.hasAttribute('data-ended')).toBe(false);
+      expect(row?.className).not.toContain('opacity-60');
+    }
+  });
+
+  it('dims ended events, and only ended ones, when the household chose Dimmed', async () => {
+    settingsFromServer = { calendarPastEvents: 'dim' };
     await renderAgenda();
 
     const dentist = screen.getByText('Emma dentist').closest('button');
@@ -76,6 +88,7 @@ describe('AgendaView past events', () => {
   });
 
   it('dims rather than strikes through: an ended event was not "done"', async () => {
+    settingsFromServer = { calendarPastEvents: 'dim' };
     await renderAgenda();
     const title = screen.getByText('Emma dentist').parentElement;
     expect(title?.className).not.toContain('line-through');

@@ -14,9 +14,10 @@ export function PastEventsCard() {
       <CardHeader>
         <CardTitle>Past Events</CardTitle>
         <CardDescription>
-          What the calendar does with events that have already ended. Hidden removes them from the
-          agenda and list views, so they show only what is still to come. Day, week and month grids
-          always dim them instead, so a past day never looks empty.
+          What the calendar does with events that have already ended. Dimmed fades them in the
+          agenda as the other views already do. Hidden removes them from the agenda and list views,
+          so they show only what is still to come. Day, week and month grids always dim them, so a
+          past day never looks empty.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -29,6 +30,7 @@ export function PastEventsCard() {
             }}
             className="min-h-11 border border-border rounded px-2 py-1 text-sm bg-background"
           >
+            <option value="show">Shown</option>
             <option value="dim">Dimmed</option>
             <option value="hide">Hidden in agenda and list</option>
           </select>

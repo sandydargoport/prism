@@ -170,6 +170,7 @@ export function AgendaView({
             mealColor={mealColor}
             onItemClick={onItemClick}
             now={now}
+            dimEnded={pastEvents === 'dim'}
           />
         ))}
       </div>
@@ -188,6 +189,7 @@ function AgendaDaySection({
   mealColor,
   onItemClick,
   now,
+  dimEnded,
 }: {
   date: Date;
   events: CalendarEvent[];
@@ -199,13 +201,15 @@ function AgendaDaySection({
   mealColor?: string;
   onItemClick?: (ref: OverlayItemRef) => void;
   now: Date;
+  /** Whether ended events are dimmed (the `dim` past-events mode). */
+  dimEnded: boolean;
 }) {
   const { timeFormat, displayTimezone } = useTimeFormat();
   const t = useTranslations('calendar');
   const d = useDateLabels();
   const droppable = useDayDroppable({ date, enabled: cards && enableDnd });
   const isToday = isSameDay(date, toDisplayDate(now, displayTimezone));
-  const rows = buildAgendaRows({ date, events, bucket, onEventClick, mealColor, onItemClick, timeFormat, displayTimezone, t, now });
+  const rows = buildAgendaRows({ date, events, bucket, onEventClick, mealColor, onItemClick, timeFormat, displayTimezone, t, now, dimEnded });
   const displayRows = maxEvents > 0 ? rows.slice(0, maxEvents) : rows;
   const remainingCount = maxEvents > 0 ? rows.length - maxEvents : 0;
 
@@ -228,7 +232,7 @@ function AgendaDaySection({
           {formatAgendaDayHeader(date, displayTimezone, t, d)}
         </span>
         {isToday && (
-          <Badge className="text-[10px] px-1.5 py-0 bg-seasonal-highlight text-foreground">
+          <Badge className="text-3xs px-1.5 py-0 bg-seasonal-highlight text-foreground">
             {t('today')}
           </Badge>
         )}
@@ -259,6 +263,7 @@ function buildAgendaRows({
   displayTimezone,
   t,
   now,
+  dimEnded,
 }: {
   date: Date;
   events: CalendarEvent[];
@@ -270,6 +275,7 @@ function buildAgendaRows({
   displayTimezone: string;
   t: (key: string, values?: Record<string, string | number | Date>) => string;
   now: Date;
+  dimEnded: boolean;
 }): AgendaRow[] {
   const rows: AgendaRow[] = [];
 
@@ -297,7 +303,7 @@ function buildAgendaRows({
           : t('continues'),
       title: event.title,
       subtitle: event.location,
-      ended: isCalendarEventPast(event.startTime, event.endTime, event.allDay, now, displayTimezone),
+      ended: dimEnded && isCalendarEventPast(event.startTime, event.endTime, event.allDay, now, displayTimezone),
       onClick: onEventClick ? () => onEventClick(event) : undefined,
     });
   }
