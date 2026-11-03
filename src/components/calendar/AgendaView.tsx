@@ -21,9 +21,13 @@ import {
   eventStartDisplayDate,
   eventStartsOnDisplayDay,
   formatDisplayTime,
+  isCalendarEventPast,
   toDisplayDate,
   type TimeFormat,
 } from '@/lib/utils/timeFormat';
+import { withoutEndedEvents } from '@/lib/utils/pastEvents';
+import { usePastEventsMode } from '@/lib/hooks/usePastEventsMode';
+import { useNow } from '@/lib/hooks/useNow';
 import { eventsOverlappingRange } from '@/lib/utils/calendarRange';
 import { useDateLabels, type DateLabels } from '@/lib/hooks/useDateLabels';
 
@@ -64,6 +68,9 @@ type AgendaRow = {
   title: string;
   subtitle?: string;
   muted?: boolean;
+  /** An event that has already ended (dimmed, not struck through: it was not
+   *  "done", it is just over). */
+  ended?: boolean;
   pendingApproval?: boolean;
   onClick?: () => void;
 };
@@ -98,11 +105,18 @@ export function AgendaView({
   const { displayTimezone } = useTimeFormat();
   const t = useTranslations('calendar');
   const cards = displayMode === 'cards';
-  const startDate = startOfDay(toDisplayDate(new Date(), displayTimezone));
+  const { mode: pastEvents } = usePastEventsMode();
+  // Ticks each minute, so an event leaves (or dims) when it ends rather than
+  // at the next data refresh, and the agenda rolls over at midnight.
+  const now = useNow();
+  const startDate = startOfDay(toDisplayDate(now, displayTimezone));
 
   // Scope the wide event list to the agenda horizon once, so the per-day
   // membership check below iterates a small slice instead of thousands.
-  const scopedEvents = eventsOverlappingRange(events, startDate, addDays(startDate, days));
+  const inHorizon = eventsOverlappingRange(events, startDate, addDays(startDate, days));
+  const scopedEvents = pastEvents === 'hide'
+    ? withoutEndedEvents(inHorizon, now, displayTimezone)
+    : inHorizon;
   const filteredEvents = scopedEvents
     .filter(e => Array.from({ length: days }, (_, i) => addDays(startDate, i))
       .some(date => eventOccursOnDisplayDay(
@@ -155,6 +169,8 @@ export function AgendaView({
             enableDnd={enableDnd}
             mealColor={mealColor}
             onItemClick={onItemClick}
+            now={now}
+            dimEnded={pastEvents === 'dim'}
           />
         ))}
       </div>
@@ -172,6 +188,8 @@ function AgendaDaySection({
   enableDnd = false,
   mealColor,
   onItemClick,
+  now,
+  dimEnded,
 }: {
   date: Date;
   events: CalendarEvent[];
@@ -182,12 +200,16 @@ function AgendaDaySection({
   enableDnd?: boolean;
   mealColor?: string;
   onItemClick?: (ref: OverlayItemRef) => void;
+  now: Date;
+  /** Whether ended events are dimmed (the `dim` past-events mode). */
+  dimEnded: boolean;
 }) {
   const { timeFormat, displayTimezone } = useTimeFormat();
   const t = useTranslations('calendar');
   const d = useDateLabels();
   const droppable = useDayDroppable({ date, enabled: cards && enableDnd });
-  const rows = buildAgendaRows({ date, events, bucket, onEventClick, mealColor, onItemClick, timeFormat, displayTimezone, t });
+  const isToday = isSameDay(date, toDisplayDate(now, displayTimezone));
+  const rows = buildAgendaRows({ date, events, bucket, onEventClick, mealColor, onItemClick, timeFormat, displayTimezone, t, now, dimEnded });
   const displayRows = maxEvents > 0 ? rows.slice(0, maxEvents) : rows;
   const remainingCount = maxEvents > 0 ? rows.length - maxEvents : 0;
 
@@ -204,12 +226,12 @@ function AgendaDaySection({
         <span
           className={cn(
             'text-sm font-semibold',
-            isSameDay(date, toDisplayDate(new Date(), displayTimezone)) && 'text-seasonal-accent'
+            isToday && 'text-seasonal-accent'
           )}
         >
           {formatAgendaDayHeader(date, displayTimezone, t, d)}
         </span>
-        {isSameDay(date, toDisplayDate(new Date(), displayTimezone)) && (
+        {isToday && (
           <Badge className="text-3xs px-1.5 py-0 bg-seasonal-highlight text-foreground">
             {t('today')}
           </Badge>
@@ -240,6 +262,8 @@ function buildAgendaRows({
   timeFormat,
   displayTimezone,
   t,
+  now,
+  dimEnded,
 }: {
   date: Date;
   events: CalendarEvent[];
@@ -250,6 +274,8 @@ function buildAgendaRows({
   timeFormat: TimeFormat;
   displayTimezone: string;
   t: (key: string, values?: Record<string, string | number | Date>) => string;
+  now: Date;
+  dimEnded: boolean;
 }): AgendaRow[] {
   const rows: AgendaRow[] = [];
 
@@ -277,6 +303,7 @@ function buildAgendaRows({
           : t('continues'),
       title: event.title,
       subtitle: event.location,
+      ended: dimEnded && isCalendarEventPast(event.startTime, event.endTime, event.allDay, now, displayTimezone),
       onClick: onEventClick ? () => onEventClick(event) : undefined,
     });
   }
@@ -367,6 +394,7 @@ function AgendaRowItem({ row, cards = false }: { row: AgendaRow; cards?: boolean
     <Tag
       ref={row.dragId ? draggable.setNodeRef : undefined}
       onClick={row.onClick}
+      data-ended={row.ended || undefined}
       type={Tag === 'button' ? 'button' : undefined}
       style={transformStyle}
       {...(row.dragId ? draggable.listeners : {})}
@@ -379,7 +407,7 @@ function AgendaRowItem({ row, cards = false }: { row: AgendaRow; cards?: boolean
         'transition-colors touch-action-manipulation',
         row.dragId && 'cursor-grab active:cursor-grabbing',
         draggable.isDragging && 'opacity-60 ring-2 ring-seasonal-accent shadow-xl',
-        row.muted && 'opacity-60',
+        (row.muted || row.ended) && 'opacity-60',
       )}
     >
       {row.pendingApproval && (
