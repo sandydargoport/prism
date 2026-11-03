@@ -491,17 +491,17 @@ async function ensureDemoPhotos(browser: Browser): Promise<void> {
  * function that puts everything back.
  */
 /**
- * The hero's dashboard, on the 48x27 grid. The calendar takes the left half;
- * the weather (forecast, sun and moon) sits top right, where neither the
- * tablet nor the phone overlaps the wall in the framed image. Clock and
- * weather stay when idle, so the tablet's idle shot is the photo with those
- * two over it, on the right.
+ * The hero's dashboard, on the 48x27 grid. The clock runs across the top left
+ * with the calendar under it; the weather (forecast, sun and moon) sits top
+ * right, where neither the tablet nor the phone overlaps the wall in the
+ * framed image. Clock and weather stay when idle, so the tablet's idle shot is
+ * the photo with both along the top, against the sky.
  */
 const HERO_LAYOUT = [
-  { i: 'calendar', x: 0, y: 0, w: 27, h: 27, showWhenIdle: false },
+  { i: 'clock', x: 0, y: 0, w: 27, h: 5, showWhenIdle: true },
+  { i: 'calendar', x: 0, y: 5, w: 27, h: 22, showWhenIdle: false },
   { i: 'weather', x: 27, y: 0, w: 21, h: 15, showWhenIdle: true },
-  { i: 'clock', x: 27, y: 15, w: 21, h: 5, showWhenIdle: true },
-  { i: 'birthdays', x: 27, y: 20, w: 21, h: 7, showWhenIdle: false },
+  { i: 'birthdays', x: 27, y: 15, w: 21, h: 12, showWhenIdle: false },
 ].map((w) => ({ ...w, backgroundColor: 'glass' }));
 
 async function stageHero(browser: Browser): Promise<() => Promise<void>> {
