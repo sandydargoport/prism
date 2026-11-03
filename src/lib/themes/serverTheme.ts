@@ -3,6 +3,7 @@ import { settings } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { BUILTIN_THEMES, getBuiltinTheme, DEFAULT_THEME_ID } from './appThemes';
 import { isInstallableTheme, type Theme } from './tokens';
+import { DEFAULT_MODE_SETTING_KEY, isDefaultMode, type DefaultMode } from '@/lib/looks';
 
 const THEME_SETTING_KEY = 'theme';
 
@@ -40,4 +41,28 @@ export async function getServerTheme(): Promise<Theme> {
   } catch {
     return fallback;
   }
+}
+
+/**
+ * The household's default light or dark mode, for displays that never chose
+ * one (#808: the Night look). A display's own choice, in localStorage, always
+ * wins. Missing, unknown or unreadable is 'system', as before.
+ */
+export async function getServerDefaultMode(): Promise<DefaultMode> {
+  try {
+    const [row] = await db.select().from(settings).where(eq(settings.key, DEFAULT_MODE_SETTING_KEY));
+    return isDefaultMode(row?.value) ? row.value : 'system';
+  } catch {
+    return 'system';
+  }
+}
+
+/**
+ * The blocking script that sets the dark and performance classes before the
+ * first paint. `defaultMode` is one of three fixed words (checked above), so it
+ * is safe to place in the script.
+ */
+export function firstPaintScript(defaultMode: DefaultMode, perfScript: string): string {
+  const fallback = isDefaultMode(defaultMode) ? defaultMode : 'system';
+  return `(function(){try{var t=localStorage.getItem('prism-theme')||'${fallback}';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');${perfScript}}catch(e){}})()`;
 }

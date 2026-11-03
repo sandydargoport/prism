@@ -33,6 +33,6 @@ describe('ConnectCalendarInvite', () => {
     render(<ConnectCalendarInvite />);
     expect(screen.getByText('Bring your calendars in')).toBeTruthy();
     const link = screen.getByRole('link', { name: 'Connect a calendar' });
-    expect(link.getAttribute('href')).toBe('/settings?section=integrations');
+    expect(link.getAttribute('href')).toBe('/calendar?manage=calendars');
   });
 });

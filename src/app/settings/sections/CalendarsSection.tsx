@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { addIcalSubscription } from '@/lib/calendar/addIcalSubscription';
 import { toast } from '@/components/ui/use-toast';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
@@ -852,36 +853,16 @@ function AddIcalSubscriptionCard({ onAdded }: { onAdded: () => void }) {
   const submit = async () => {
     if (!url.trim()) return;
     setSubmitting(true);
-    try {
-      const body: Record<string, string> = { url: url.trim(), type: 'ical' };
-      if (name.trim()) body.name = name.trim();
-      const res = await fetch('/api/calendar-sources', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        toast({ title: data.error || 'Failed to add calendar', variant: 'destructive' });
-        return;
-      }
-      toast({ title: 'Subscription added — first sync running in background', variant: 'success' });
-      setUrl('');
-      setName('');
-      onAdded();
-      // The server imports the feed in the background, then invalidates the
-      // events cache. Nudge calendar views to refetch as it lands — one now,
-      // and a couple of staggered follow-ups to cover the sub-second-to-a-few-
-      // seconds a first import takes — so events appear without a page refresh.
-      window.dispatchEvent(new Event('prism:calendar-synced'));
-      [2500, 6000].forEach((ms) =>
-        setTimeout(() => window.dispatchEvent(new Event('prism:calendar-synced')), ms),
-      );
-    } catch (err) {
-      toast({ title: err instanceof Error ? err.message : 'Failed to add calendar', variant: 'destructive' });
-    } finally {
-      setSubmitting(false);
+    const error = await addIcalSubscription(url, name);
+    setSubmitting(false);
+    if (error) {
+      toast({ title: error, variant: 'destructive' });
+      return;
     }
+    toast({ title: 'Subscription added — first sync running in background', variant: 'success' });
+    setUrl('');
+    setName('');
+    onAdded();
   };
 
   return (

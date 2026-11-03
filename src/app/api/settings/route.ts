@@ -8,6 +8,7 @@ import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import type { AuthResult } from '@/lib/auth';
 import { logError } from '@/lib/utils/logError';
 import { PIN_LENGTH_SETTING_KEY } from '@/lib/constants';
+import { DEFAULT_MODE_SETTING_KEY, FIRST_LOOK_SETTING_KEY, isDefaultMode, isLookId } from '@/lib/looks';
 import { isSetupComplete } from '@/lib/setup';
 import { getBuiltinTheme } from '@/lib/themes/appThemes';
 import { isInstallableTheme, MAX_INSTALLED_THEMES } from '@/lib/themes/tokens';
@@ -33,6 +34,7 @@ const SETUP_BOOTSTRAP_KEYS = new Set<string>([
   'weekStartsOn',
   'location',
   TELEMETRY_SETTING_KEYS.enabled,
+  FIRST_LOOK_SETTING_KEY,
 ]);
 
 function isLocationValue(value: unknown): boolean {
@@ -116,6 +118,15 @@ export async function PATCH(request: NextRequest) {
       if (typeof body.value !== 'string' || !isValidTimezone(body.value)) {
         return NextResponse.json({ error: 'Invalid time zone' }, { status: 400 });
       }
+    }
+
+    if (body.key === FIRST_LOOK_SETTING_KEY && !isLookId(body.value)) {
+      return NextResponse.json({ error: 'Invalid look' }, { status: 400 });
+    }
+    // Read on the server and placed in the first-paint script, so only the
+    // three known words get in.
+    if (body.key === DEFAULT_MODE_SETTING_KEY && !isDefaultMode(body.value)) {
+      return NextResponse.json({ error: 'Invalid mode' }, { status: 400 });
     }
 
     if (body.key === 'weekStartsOn' && body.value !== '0' && body.value !== '1') {

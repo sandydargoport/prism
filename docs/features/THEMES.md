@@ -1,14 +1,16 @@
 # Themes
 
-Prism ships five palettes. Choose one under *Settings → Appearance → Palette*.
+Prism ships seven palettes. Choose one under *Settings → Appearance → Palette*.
 
 | | |
 |---|---|
 | **Prism** | The original. Cool blues on a clean surface. |
+| **Paper** | Warm paper neutrals with one blue accent. The colour comes from the family. New installs start on it. |
 | **Clay** | Warm earth tones. Easier on the eyes in a bright kitchen. |
 | **Harvest** | Late autumn. Amber, bark and a low sun. |
 | **Snow Day** | Cold light and pale blue. Quiet, and easy to read. |
 | **Arcade** | Sixteen-bit console. Saturated primaries on near-black. |
+| **Notice Board** | Near-white and flat, packed tight. The events supply the colour. |
 
 ## What is per-screen and what is not
 
@@ -19,7 +21,9 @@ broken.
 
 **Light and dark are per-screen.** That is a decision about the room a
 particular screen is in — a hallway display at night and a tablet in a bright
-kitchen want different answers, and both are right at the same time.
+kitchen want different answers, and both are right at the same time. A screen
+that never chose follows its system setting, or dark on an install that picked
+the **Night** look in setup.
 
 The same split applies to the screensaver timeout and text size, which are
 also per-screen.
