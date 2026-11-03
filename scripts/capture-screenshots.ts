@@ -46,7 +46,6 @@
 import { chromium, Browser, BrowserContext, Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
-import { LAYOUT_TEMPLATES } from '../src/lib/constants/layoutTemplates';
 import { frameAll } from './frame-screenshots';
 import { SCENERY } from '../src/lib/scenery';
 
@@ -146,13 +145,20 @@ interface CaptureSpec {
    * rail and top bar away, as a wall shows them when nobody is using it.
    */
   idleChrome?: boolean;
+  /**
+   * Put the dashboard into its idle screen before the shot: the widgets that
+   * do not stay when idle fade, leaving the photo with the clock and weather.
+   */
+  idle?: boolean;
 }
 
 /**
  * The hero set: the same moment on a wall, a tablet and a phone, in light and
  * dark. frame-screenshots.ts puts each trio into device frames afterwards.
- * The wall and the tablet are signed out, as they would be in a kitchen; the
- * phone is a parent's, signed in. They show a new install in the Photo look
+ * Each device shows a different side of it: the wall the dashboard, the
+ * tablet the idle screen (the photo with the clock and weather), the phone
+ * the mobile home. The wall and the tablet are signed out, as they would be
+ * in a kitchen; the phone is a parent's, signed in. They show a new install in the Photo look
  * (see stageHero), so they run before any demo photos are uploaded.
  */
 const HERO_SHOTS: CaptureSpec[] = (['light', 'dark'] as const).flatMap((theme) => [
@@ -169,11 +175,12 @@ const HERO_SHOTS: CaptureSpec[] = (['light', 'dark'] as const).flatMap((theme) =
   {
     name: `hero-tablet-${theme}`,
     url: '/',
-    description: `Tablet, touch, signed out (${theme})`,
+    description: `Tablet, touch, signed out, idle screen (${theme})`,
     theme,
     device: 'tablet' as const,
     signedOut: true,
     idleChrome: true,
+    idle: true,
     settleMs: 15000,
   },
   {
@@ -483,6 +490,20 @@ async function ensureDemoPhotos(browser: Browser): Promise<void> {
  * show the display member's default layout, which is this one. Returns a
  * function that puts everything back.
  */
+/**
+ * The hero's dashboard, on the 48x27 grid. The calendar takes the left half;
+ * the weather (forecast, sun and moon) sits top right, where neither the
+ * tablet nor the phone overlaps the wall in the framed image. Clock and
+ * weather stay when idle, so the tablet's idle shot is the photo with those
+ * two over it, on the right.
+ */
+const HERO_LAYOUT = [
+  { i: 'calendar', x: 0, y: 0, w: 27, h: 27, showWhenIdle: false },
+  { i: 'weather', x: 27, y: 0, w: 21, h: 15, showWhenIdle: true },
+  { i: 'clock', x: 27, y: 15, w: 21, h: 5, showWhenIdle: true },
+  { i: 'birthdays', x: 27, y: 20, w: 21, h: 7, showWhenIdle: false },
+].map((w) => ({ ...w, backgroundColor: 'glass' }));
+
 async function stageHero(browser: Browser): Promise<() => Promise<void>> {
   const context = await browser.newContext({ baseURL: BASE_URL });
   const page = await context.newPage();
@@ -497,21 +518,25 @@ async function stageHero(browser: Browser): Promise<() => Promise<void>> {
   const settings = (await (await page.request.get('/api/settings')).json()) as Record<string, unknown>;
   const setSetting = (key: string, value: unknown) =>
     page.request.patch('/api/settings', { data: { key, value } });
-  const patchLayout = (widgets: unknown) =>
-    page.request.patch(`/api/layouts/${layout.id}`, { data: { widgets } });
 
-  const original = { widgets: layout.widgets, theme: settings.theme, scenery: settings.wallpaperScenery };
-  const glass = LAYOUT_TEMPLATES.familyCentral!.widgets.map((w) => ({ ...w, backgroundColor: 'glass' }));
+  const original = {
+    widgets: layout.widgets, idleBackground: layout.idleBackground,
+    theme: settings.theme, scenery: settings.wallpaperScenery,
+  };
   for (const resp of [
-    await patchLayout(glass),
+    await page.request.patch(`/api/layouts/${layout.id}`, {
+      data: { widgets: HERO_LAYOUT, idleBackground: { source: 'dashboard' } },
+    }),
     await setSetting('theme', { ...(original.theme as object | undefined), paletteId: 'paper' }),
     await setSetting('wallpaperScenery', true),
   ]) {
     if (!resp.ok()) throw new Error(`Staging the hero failed: ${resp.status()}`);
   }
-  console.log('  staged the hero: Family Central, glass cards, Paper, park scenery');
+  console.log('  staged the hero: calendar + weather layout, glass cards, Paper, park scenery');
   return async () => {
-    await patchLayout(original.widgets);
+    await page.request.patch(`/api/layouts/${layout.id}`, {
+      data: { widgets: original.widgets, idleBackground: original.idleBackground ?? { source: 'photos' } },
+    });
     await setSetting('theme', original.theme ?? { mode: 'system' });
     await setSetting('wallpaperScenery', original.scenery ?? false);
     await context.close();
@@ -705,6 +730,12 @@ async function captureOnce(spec: CaptureSpec): Promise<void> {
     // Auto-hide takes the rail and bar away after 10 s without a touch; the
     // click above counts as one.
     if (spec.idleChrome) await page.waitForTimeout(11_000);
+    if (spec.idle) {
+      // The toolbar's "screensaver now" event, which a calm dashboard answers
+      // by fading in place rather than opening the separate screensaver.
+      await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
+      await page.waitForTimeout(2500);
+    }
 
     // Wait for any <img> (photo thumbnails, recipe images, avatars) to finish
     // loading. waitForContentReady only tracks spinners/skeletons, not images,

@@ -24,9 +24,9 @@ export const CANVAS = { width: 2400, height: 1350 } as const;
 
 /** Where each screen goes on the canvas, as screen rects (the bezel sits outside). */
 export const PLACEMENT = {
-  wall: { left: 360, top: 90, width: 1680, height: 945, bezel: 22, radius: 18 },
+  wall: { left: 330, top: 90, width: 1640, height: 923, bezel: 22, radius: 18 },
   tablet: { left: 110, top: 700, width: 720, height: 500, bezel: 26, radius: 30 },
-  phone: { left: 1990, top: 560, width: 330, height: 714, bezel: 16, radius: 46 },
+  phone: { left: 2000, top: 560, width: 330, height: 714, bezel: 16, radius: 46 },
 } as const;
 
 export type DeviceName = keyof typeof PLACEMENT;

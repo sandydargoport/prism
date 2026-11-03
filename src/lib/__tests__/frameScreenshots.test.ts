@@ -85,10 +85,10 @@ describe('frame-screenshots', () => {
     const w = PLACEMENT.wall;
     const t = PLACEMENT.tablet;
     const ph = PLACEMENT.phone;
-    // Premise: these edges sit over the wall's screen.
+    // Premise: these edges sit over the wall (its screen or its bezel).
     const phoneY = ph.top + 100;
     expect(ph.left - ph.bezel - RING).toBeGreaterThan(w.left);
-    expect(ph.left - ph.bezel - RING).toBeLessThan(w.left + w.width);
+    expect(ph.left - ph.bezel - RING).toBeLessThan(w.left + w.width + w.bezel);
     expect(phoneY).toBeLessThan(w.top + w.height);
     const tabletX = t.left + t.width / 2;
     expect(tabletX).toBeGreaterThan(w.left);
