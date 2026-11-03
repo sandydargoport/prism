@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { loginViaAPI, logout, getFirstParent, FamilyMember } from './helpers/auth';
+import { waitForQuiet } from './helpers/network';
 
 test.describe('Calendar Notes', () => {
   let parent: FamilyMember;
@@ -20,7 +21,7 @@ test.describe('Calendar Notes', () => {
 
   test('calendar page loads in day view with notes button', async ({ page }) => {
     await page.goto('/calendar');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     // Switch to Day view (notes are supported in day and weekVertical views)
     const viewSwitcher = page.locator('.border.rounded-md');
@@ -37,7 +38,7 @@ test.describe('Calendar Notes', () => {
 
   test('toggle notes panel via sticky note button in day view', async ({ page }) => {
     await page.goto('/calendar');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     // Switch to Day view
     const viewSwitcher = page.locator('.border.rounded-md');
@@ -128,7 +129,7 @@ test.describe('Calendar Notes', () => {
 
   test('notes button not visible in month view', async ({ page }) => {
     await page.goto('/calendar');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     // Switch to Month view (notes not supported)
     const viewSwitcher = page.locator('.border.rounded-md');

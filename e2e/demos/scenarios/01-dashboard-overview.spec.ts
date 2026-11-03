@@ -1,6 +1,7 @@
 import { test } from '@playwright/test';
 import { loginViaAPI } from '../helpers/auth';
 import { resetDemoData } from '../helpers/reset';
+import { waitForQuiet } from '../../helpers/network';
 
 test('Dashboard overview — logged in with layout editor', async ({ page }) => {
   resetDemoData();
@@ -8,7 +9,7 @@ test('Dashboard overview — logged in with layout editor', async ({ page }) => 
   // Login via API so the video starts already authenticated
   await loginViaAPI(page, 'Alex');
   await page.goto('/');
-  await page.waitForLoadState('networkidle');
+  await waitForQuiet(page);
 
   // Pause on dashboard to show widgets in logged-in state
   await page.waitForTimeout(3000);

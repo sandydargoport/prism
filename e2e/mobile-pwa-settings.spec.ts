@@ -18,6 +18,7 @@
 
 import { test, expect, devices } from '@playwright/test';
 import { loginViaAPI } from './helpers/auth';
+import { waitForQuiet } from './helpers/network';
 
 const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
 const PIN = process.env.E2E_PIN || '1234';
@@ -64,7 +65,7 @@ test.describe('Mobile PWA settings reachability', () => {
     // run it at the Reduced performance level, which drops the blur.
     await page.addInitScript(() => localStorage.setItem('prism-perf-mode', 'reduced'));
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     // Mobile nav at <md is MobileFab — a floating action button that opens
     // a stack of action items. The FAB itself is aria-labeled "Open menu".
@@ -79,7 +80,7 @@ test.describe('Mobile PWA settings reachability', () => {
     await settingsLink.click();
 
     await page.waitForURL(/\/settings/);
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     // The desktop sidebar is hidden on <md; the mobile <select> must be
     // present and offer every section by id.

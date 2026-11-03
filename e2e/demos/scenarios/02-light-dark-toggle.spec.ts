@@ -1,6 +1,7 @@
 import { test } from '@playwright/test';
 import { loginViaAPI } from '../helpers/auth';
 import { resetDemoData } from '../helpers/reset';
+import { waitForQuiet } from '../../helpers/network';
 
 test('Light and dark mode toggle', async ({ page }) => {
   resetDemoData();
@@ -8,7 +9,7 @@ test('Light and dark mode toggle', async ({ page }) => {
   await loginViaAPI(page, 'Alex');
   // Navigate directly to the Display settings section
   await page.goto('/settings?section=display');
-  await page.waitForLoadState('networkidle');
+  await waitForQuiet(page);
   await page.waitForTimeout(1500);
 
   // Click "Dark" mode button

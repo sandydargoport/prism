@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { loginViaAPI, logout, getFirstParent, FamilyMember } from './helpers/auth';
 import { deleteTaskByTitle } from './helpers/cleanup';
+import { waitForQuiet } from './helpers/network';
 
 const TEST_TITLE = `E2E Task ${Date.now()}`;
 const EDITED_TITLE = `${TEST_TITLE} (edited)`;
@@ -27,7 +28,7 @@ test.describe('Task CRUD', () => {
 
   test('create a task via modal', async ({ page }) => {
     await page.goto('/tasks');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     // Click "Add Task" button
     const addBtn = page.getByRole('button', { name: /Add Task/i });
@@ -60,7 +61,7 @@ test.describe('Task CRUD', () => {
     const created = await createRes.json();
 
     await page.goto('/tasks');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     // Edit via API (the UI edit flow varies; test the mutation works)
     const patchRes = await page.request.patch(`/api/tasks/${created.id}`, {
@@ -70,7 +71,7 @@ test.describe('Task CRUD', () => {
 
     // Refresh and verify
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
     await expect(page.getByText(EDITED_TITLE)).toBeVisible({ timeout: 10000 });
   });
 
@@ -82,7 +83,7 @@ test.describe('Task CRUD', () => {
     const created = await createRes.json();
 
     await page.goto('/tasks');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     // Complete via API
     const completeRes = await page.request.patch(`/api/tasks/${created.id}`, {

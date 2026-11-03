@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { loginViaAPI, loginViaUI, logout, getFirstParent, getFirstChild, FamilyMember } from './helpers/auth';
 import { resetAll } from './helpers/reset';
+import { waitForQuiet } from './helpers/network';
 
 const MODAL_SELECTOR = '[data-testid="pin-modal"]';
 
@@ -22,7 +23,7 @@ test.describe('Authentication', () => {
 
   test('PIN pad opens when clicking Log in', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     await page.click('button[aria-label="Log in"]');
 
@@ -36,7 +37,7 @@ test.describe('Authentication', () => {
 
   test('PIN pad closes when clicking overlay background', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     await page.click('button[aria-label="Log in"]');
     const modal = page.locator(MODAL_SELECTOR);
@@ -58,7 +59,7 @@ test.describe('Authentication', () => {
 
   test('incorrect PIN shows error', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     await page.click('button[aria-label="Log in"]');
 
@@ -81,7 +82,7 @@ test.describe('Authentication', () => {
   test('child login via API succeeds', async ({ page }) => {
     await loginViaAPI(page, child.name);
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     // Child should be logged in — Log out button visible
     await expect(page.locator('button[aria-label="Log out"]')).toBeVisible({ timeout: 5000 });

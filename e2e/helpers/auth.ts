@@ -1,5 +1,6 @@
 import { Page, expect } from '@playwright/test';
 import { execSync } from 'node:child_process';
+import { waitForQuiet } from './network';
 
 export interface FamilyMember {
   id: string;
@@ -63,7 +64,7 @@ const MODAL_SELECTOR = '[data-testid="pin-modal"]';
  */
 export async function loginViaUI(page: Page, name: string, pin = DEFAULT_PIN) {
   await page.goto('/');
-  await page.waitForLoadState('networkidle');
+  await waitForQuiet(page);
 
   // Click the "Log in" button in the nav
   await page.click('button[aria-label="Log in"]');

@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { loginViaAPI, logout, getFirstParent, FamilyMember } from './helpers/auth';
 import { resetModes } from './helpers/reset';
+import { waitForQuiet } from './helpers/network';
 
 test.describe('Away Mode & Babysitter Mode', () => {
   let parent: FamilyMember;
@@ -44,7 +45,7 @@ test.describe('Away Mode & Babysitter Mode', () => {
 
     // Navigate and wait for overlay to render (polls for state)
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     // Away mode overlay (z-9998) should eventually appear
     const overlay = page.locator('.z-\\[9998\\]');
@@ -88,7 +89,7 @@ test.describe('Away Mode & Babysitter Mode', () => {
     });
 
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     // Babysitter mode overlay (z-9997) should be visible
     const overlay = page.locator('.z-\\[9997\\]');

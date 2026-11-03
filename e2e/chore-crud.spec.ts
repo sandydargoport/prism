@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { loginViaAPI, logout, getFirstParent, getFirstChild, FamilyMember } from './helpers/auth';
 import { deleteChoreByTitle } from './helpers/cleanup';
+import { waitForQuiet } from './helpers/network';
 
 const TEST_TITLE = `E2E Chore ${Date.now()}`;
 
@@ -47,7 +48,7 @@ test.describe('Chore CRUD', () => {
 
   test('create chore via modal UI', async ({ page }) => {
     await page.goto('/chores');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     const addBtn = page.getByRole('button', { name: /Add Chore/i });
     await expect(addBtn).toBeVisible({ timeout: 10000 });

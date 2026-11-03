@@ -50,6 +50,7 @@ import { test, expect, Page, type Locator } from '@playwright/test';
 import { execSync } from 'child_process';
 import { loginViaAPI, verifySettingsPinViaAPI } from './helpers/auth';
 import { resetAll } from './helpers/reset';
+import { waitForQuiet } from './helpers/network';
 
 /**
  * Pull a seeded parent's name directly from the DB.
@@ -210,7 +211,7 @@ test.describe('Visual regression', () => {
       await setClientFlags(page, { theme });
       await loginViaAPI(page, parentName);
       await page.goto('/');
-      await page.waitForLoadState('networkidle');
+      await waitForQuiet(page);
       await page.waitForTimeout(800); // let theme + seasonal vars settle
 
       await expectPainted(page, page.locator('.widget-cell').first());
@@ -225,7 +226,7 @@ test.describe('Visual regression', () => {
       await setClientFlags(page, { theme, perfMode: true });
       await loginViaAPI(page, parentName);
       await page.goto('/');
-      await page.waitForLoadState('networkidle');
+      await waitForQuiet(page);
       await page.waitForTimeout(800);
 
       await expectPainted(page, page.locator('.widget-cell').first());
@@ -240,7 +241,7 @@ test.describe('Visual regression', () => {
       await setClientFlags(page, { theme });
       await loginViaAPI(page, parentName);
       await page.goto('/calendar');
-      await page.waitForLoadState('networkidle');
+      await waitForQuiet(page);
       await page.waitForTimeout(800);
 
       await expectPainted(page, page.getByRole('button', { name: 'Add Event' }));
@@ -252,7 +253,7 @@ test.describe('Visual regression', () => {
       await setClientFlags(page, { theme });
       await verifySettingsPinViaAPI(page, parentName);
       await page.goto('/settings');
-      await page.waitForLoadState('networkidle');
+      await waitForQuiet(page);
       await page.waitForTimeout(800);
 
       await expectPainted(page);
@@ -264,7 +265,7 @@ test.describe('Visual regression', () => {
       await setClientFlags(page, { theme });
       await verifySettingsPinViaAPI(page, parentName);
       await page.goto('/settings?section=integrations');
-      await page.waitForLoadState('networkidle');
+      await waitForQuiet(page);
       // Wait for the /api/integrations/status fetch + /api/photo-sources
       // fetch to settle so the cards render their final descriptions.
       await page.waitForTimeout(1200);
@@ -325,7 +326,7 @@ test.describe('Visual regression', () => {
         });
         await loginViaAPI(page, parentName);
         await page.goto('/calendar');
-        await page.waitForLoadState('networkidle');
+        await waitForQuiet(page);
         await page.waitForTimeout(800);
 
         await expectPainted(page, page.getByRole('button', { name: 'Add Event' }));
@@ -347,7 +348,7 @@ test.describe('Visual regression', () => {
       await setClientFlags(page, { theme });
       await loginViaAPI(page, parentName);
       await page.goto('/calendar');
-      await page.waitForLoadState('networkidle');
+      await waitForQuiet(page);
       await page.click('button:has-text("Add Event")');
       // Modal is portal-rendered; wait for its title rather than a specific selector.
       await page.waitForSelector('text=/Add Event|New Event/i', { timeout: 5000 });
@@ -378,7 +379,7 @@ test.describe('Visual regression', () => {
         // SettingsView selects the section from `?section=`, not the hash —
         // `/settings#family` just renders the default section.
         await page.goto(`/settings?section=${section}`);
-        await page.waitForLoadState('networkidle');
+        await waitForQuiet(page);
         await page.waitForTimeout(800);
 
         await expectPainted(page, page.getByRole('heading', { name: SECTION_HEADINGS[section] }));
@@ -400,7 +401,7 @@ test.describe('Visual regression', () => {
       await setCalendarPrefs(page, { viewType: 'agenda', displayMode: 'inline' });
       await loginViaAPI(page, parentName);
       await page.goto('/calendar');
-      await page.waitForLoadState('networkidle');
+      await waitForQuiet(page);
       await page.waitForTimeout(800);
 
       await expectPainted(page);
@@ -419,7 +420,7 @@ test.describe('Visual regression', () => {
       test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a synthetic-seed DB');
       await setClientFlags(page, { theme });
       await page.goto('/');
-      await page.waitForLoadState('networkidle');
+      await waitForQuiet(page);
       await page.waitForTimeout(600);
 
       await expectPainted(page);
@@ -433,7 +434,7 @@ test.describe('Visual regression', () => {
       test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a synthetic-seed DB');
       await setClientFlags(page, { theme });
       await page.goto('/');
-      await page.waitForLoadState('networkidle');
+      await waitForQuiet(page);
       await page.click('button[aria-label="Log in"]');
       await page.waitForSelector('[data-testid="pin-modal"]', { timeout: 5000 });
       await page.waitForTimeout(400);
