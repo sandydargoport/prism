@@ -1,5 +1,6 @@
 import { test, expect, type Page, type TestInfo, type BrowserType } from '@playwright/test';
 import { getSeededParentId } from './helpers/auth';
+import { waitForQuiet } from './helpers/network';
 
 /**
  * Geometry checks for the calendar grid.
@@ -33,7 +34,8 @@ async function openCalendar(page: Page, mode: 'cards' | 'inline', view = 'multiW
     localStorage.setItem('prism-calendar-display-mode', m as string);
     localStorage.setItem('prism-calendar-bordered', 'true');
   }, [mode, view]);
-  await page.goto('/calendar', { waitUntil: 'networkidle' });
+  await page.goto('/calendar');
+  await waitForQuiet(page);
   await page.waitForSelector('[data-spanning-events]', { timeout: 30000 });
   await page.waitForTimeout(1500);
 }
@@ -277,7 +279,8 @@ async function openCalendarView(page: Page, view: string) {
     expect(login.ok(), 'precondition: login must succeed before measuring').toBe(true);
   }
   await page.addInitScript((v) => localStorage.setItem('prism-calendar-view-type', v), view);
-  await page.goto('/calendar', { waitUntil: 'networkidle' });
+  await page.goto('/calendar');
+  await waitForQuiet(page);
   await page.getByRole('button', { name: 'Add Event' }).waitFor({ timeout: 30_000 });
   await page.waitForTimeout(1500);
 }
@@ -321,7 +324,8 @@ for (const pointer of POINTERS) {
         expect(zoomed.ok(), 'precondition: page zoom saved').toBe(true);
         for (const view of WIDGET_VIEWS) {
           await page.addInitScript((v) => localStorage.setItem('prism-calendar-view', v), view);
-          await page.goto(`/d/${layout.slug}`, { waitUntil: 'networkidle' });
+          await page.goto(`/d/${layout.slug}`);
+  await waitForQuiet(page);
           const cell = page.locator('.widget-cell[data-widget="calendar"]');
           await cell.waitFor({ timeout: 60_000 });
           await page.waitForTimeout(1500);
