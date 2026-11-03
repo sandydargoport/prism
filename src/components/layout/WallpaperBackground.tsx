@@ -12,6 +12,9 @@ const PINNED_WALLPAPER_KEY = 'prism-pinned-wallpaper';
 const PINNED_SCREENSAVER_KEY = 'prism-pinned-screensaver';
 const SCREENSAVER_INTERVAL_KEY = 'prism-screensaver-interval';
 
+/** On <html> while a wallpaper photo is showing. */
+export const WALLPAPER_ATTR = 'data-wallpaper';
+
 function useOrientationOverride(): 'auto' | 'landscape' | 'portrait' {
   const [override, setOverride] = useState<'auto' | 'landscape' | 'portrait'>(() => {
     if (typeof window === 'undefined') return 'auto';
@@ -180,6 +183,16 @@ export function WallpaperBackground() {
     return () => window.clearInterval(timer);
   }, [enabled, pool.length, interval, usePinned]);
 
+  // Tell the stylesheet a photo is behind the page. The 2.0 glass (#799) only
+  // makes sense over a photo; without one the cards keep their theme surface.
+  const showing = enabled && (usePinned || pool.length > 0);
+  useEffect(() => {
+    if (!showing) return;
+    const root = document.documentElement;
+    root.setAttribute(WALLPAPER_ATTR, '');
+    return () => root.removeAttribute(WALLPAPER_ATTR);
+  }, [showing]);
+
   if (!enabled) return null;
 
   // Pinned photo (if set and not broken), else the next non-broken rotation photo.
@@ -202,14 +215,15 @@ export function WallpaperBackground() {
       />
       {/* Photo */}
       <div
-        className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
+        className="wallpaper-photo absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
         style={{
           backgroundImage: `url(${src})`,
           opacity: fadingOut ? 0 : 1,
         }}
       />
-      {/* Dark overlay to keep widgets readable */}
-      <div className="absolute inset-0 bg-black/60 dark:bg-black/70" />
+      {/* Dark overlay to keep widgets readable. The 2.0 look replaces the flat
+          layer with dimming shaped to where text sits (globals.css). */}
+      <div className="wallpaper-scrim absolute inset-0 bg-black/60 dark:bg-black/70" />
     </div>
   );
 }

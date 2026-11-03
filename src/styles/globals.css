@@ -563,6 +563,16 @@ html.performance-mode [class*="backdrop-blur"] {
     }
   }
 
+  /* The 2.0 look (#799) reads at a smaller step on touch and kiosk screens:
+     16px from tablet width up, where Classic climbs 18 / 20 / 22. The text
+     floor (14px) is unchanged, so nothing gets smaller than it already may. */
+  @media (min-width: 768px) and (pointer: coarse),
+    (min-width: 768px) and (pointer: none) {
+    html[data-appearance='v2'] {
+      font-size: 16px;
+    }
+  }
+
   body {
     @apply bg-background text-foreground;
     -webkit-font-smoothing: antialiased;
@@ -1360,4 +1370,88 @@ html.perf-minimal .widget-cell {
 }
 .member-color-slider::-moz-range-track {
   background: transparent;
+}
+
+
+/* ── Prism 2.0 glass (#799) ────────────────────────────────────────────────
+   Only with the 2.0 appearance AND a wallpaper photo showing: without a photo
+   there is nothing for glass to show, and the theme surfaces stay as they are.
+
+   Unlayered on purpose, so these beat the bg-card/85 utilities without
+   !important, while a widget's own background colour (an inline style) still
+   wins: a colour someone picked is kept. */
+
+/* The photo: a little dimmer, instead of under a flat 60-70% black layer. */
+html[data-appearance='v2'] .wallpaper-photo {
+  filter: brightness(0.82) saturate(1.1);
+}
+
+/* Dimming shaped to where text sits: the top right (clock, weather on most
+   layouts), a ramp along the bottom, and the left edge under the side rail. */
+html[data-appearance='v2'] .wallpaper-scrim {
+  background:
+    radial-gradient(ellipse 45% 55% at 92% 18%, rgb(0 0 0 / 0.55), transparent 70%),
+    linear-gradient(to top, rgb(0 0 0 / 0.45), transparent 30%),
+    linear-gradient(to right, rgb(0 0 0 / 0.35), transparent 12%);
+}
+
+/* The top bar and side rail float on the photo. Expanded, the rail overlaps
+   the cards, so it turns into a glass panel then. */
+html[data-appearance='v2'][data-wallpaper] .app-chrome {
+  background-color: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  --foreground: 0 0% 100%;
+  --muted-foreground: 0 0% 100% / 0.75;
+  color: hsl(var(--foreground));
+}
+html[data-appearance='v2'][data-wallpaper] .app-chrome.w-52 {
+  background-color: rgb(14 14 18 / 0.72);
+  -webkit-backdrop-filter: blur(26px) saturate(1.7);
+  backdrop-filter: blur(26px) saturate(1.7);
+}
+
+/* Cards: smoked glass in light and dark alike, so the photo comes through and
+   the text is light. White text on the glass is what makes the photo the
+   background rather than a tint behind white cards. */
+html[data-appearance='v2'][data-wallpaper] .widget-card {
+  --foreground: 0 0% 100%;
+  --card-foreground: 0 0% 100%;
+  --popover-foreground: 0 0% 100%;
+  --secondary-foreground: 0 0% 100%;
+  --muted-foreground: 0 0% 100% / 0.72;
+  --card: 0 0% 100% / 0.06;
+  --background: 0 0% 100% / 0.06;
+  --muted: 0 0% 100% / 0.08;
+  --secondary: 0 0% 100% / 0.1;
+  --accent: 0 0% 100% / 0.1;
+  --border: 0 0% 100% / 0.14;
+  --input: 0 0% 100% / 0.22;
+  /* Dark palettes darken their warning red for dark grey cards; over a photo
+     it needs to be lighter to read. */
+  --destructive: 0 90% 68%;
+  background-color: rgb(14 14 18 / 0.42);
+  color: hsl(var(--foreground));
+  -webkit-backdrop-filter: blur(26px) saturate(1.7);
+  backdrop-filter: blur(26px) saturate(1.7);
+  border-color: transparent;
+  border-radius: 1.75rem;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.18),
+    0 20px 50px -20px rgb(0 0 0 / 0.6);
+}
+
+/* Reduced and minimal performance take the blur away (above). Without it the
+   glass would show the photo sharp behind the text, so the cards get denser
+   instead. */
+html.performance-mode[data-appearance='v2'][data-wallpaper] .widget-card {
+  background-color: rgb(14 14 18 / 0.8);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+html.performance-mode[data-appearance='v2'][data-wallpaper] .app-chrome.w-52 {
+  background-color: rgb(14 14 18 / 0.92);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }

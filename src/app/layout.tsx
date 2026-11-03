@@ -61,6 +61,8 @@ import { Toaster } from '@/components/ui/toaster';
 import { getServerTheme } from '@/lib/themes/serverTheme';
 import { themeCss } from '@/lib/themes/applyTheme';
 import { PERF_CLASS_SCRIPT } from '@/lib/perfLevel';
+import { getServerAppearance } from '@/lib/themes/serverAppearance';
+import { APPEARANCE_SCRIPT } from '@/lib/themes/appearance';
 
 
 /**
@@ -265,6 +267,10 @@ export default async function RootLayout({
   // the default colours on every reload is the most visible thing about
   // theming, and it reads as a fault.
   const theme = await getServerTheme();
+  // Classic or 2.0 (#799), on <html> for the same reason: no flash of the
+  // other look. Null when the database cannot be read; the head script then
+  // uses what this browser saw last.
+  const appearance = await getServerAppearance();
 
   return (
     <html
@@ -272,6 +278,7 @@ export default async function RootLayout({
       // Suppress hydration warnings from browser extensions
       // that might modify the HTML (password managers, etc.)
       suppressHydrationWarning
+      data-appearance={appearance ?? undefined}
     >
       <head>
         {/*
@@ -308,7 +315,7 @@ export default async function RootLayout({
         */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('prism-theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');${PERF_CLASS_SCRIPT}}catch(e){}})()`,
+            __html: `(function(){try{var t=localStorage.getItem('prism-theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');${PERF_CLASS_SCRIPT}${APPEARANCE_SCRIPT}}catch(e){}})()`,
           }}
         />
       </head>

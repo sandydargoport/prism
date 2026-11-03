@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
 import { Sun, Moon, Monitor, Share2, Store } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,7 @@ import { useAwayModeTimeout } from '@/lib/hooks/useAwayModeTimeout';
 import { usePerformanceMode } from '@/lib/hooks/usePerformanceMode';
 import type { PerfLevel, PerfMode } from '@/lib/perfLevel';
 import { AURORA_SETTING } from '@/lib/integrations/aurora';
+import { APPEARANCE_ATTR, APPEARANCE_SETTING, applyAppearance, isAppearance, type Appearance } from '@/lib/themes/appearance';
 
 function getCurrentMonthNum(): number {
   return new Date().getMonth() + 1;
@@ -73,6 +74,8 @@ export function DisplaySection() {
           Seasonal Theme sits beside Color Scheme instead of below it. The
           divider stays full width so the grouping still reads as one thing. */}
       <div className="grid xl:grid-cols-2 2xl:grid-cols-3 gap-4 items-start">
+
+      <LookCard />
 
       <Card>
         <CardHeader>
@@ -512,6 +515,77 @@ function TimersCard() {
  * for it — the screensaver editor — didn't mention it either. Giving it a card
  * with its own name is the whole fix.
  */
+/**
+ * Classic or 2.0 (#799), for the whole household. The page already carries the
+ * current value on <html> (rendered by the server), so there is nothing to
+ * fetch; a change is applied here at once and on other screens at their next
+ * load.
+ */
+function subscribeAppearance(onChange: () => void): () => void {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: [APPEARANCE_ATTR] });
+  return () => observer.disconnect();
+}
+
+function readAppearance(): Appearance {
+  const current = document.documentElement.getAttribute(APPEARANCE_ATTR);
+  return isAppearance(current) ? current : 'classic';
+}
+
+function LookCard() {
+  // Null while server rendering: the buttons stay disabled until the page's
+  // own attribute can be read.
+  const look = useSyncExternalStore(subscribeAppearance, readAppearance, () => null);
+  const [failed, setFailed] = useState(false);
+
+  const choose = useCallback(async (next: Appearance) => {
+    setFailed(false);
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: APPEARANCE_SETTING, value: next }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      applyAppearance(next);
+    } catch {
+      setFailed(true);
+    }
+  }, []);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Look</CardTitle>
+        <CardDescription>
+          2.0 puts glass cards over the wallpaper photo, with smaller text on wall
+          screens. Applies to every screen in the house.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex gap-3" role="radiogroup" aria-label="Look">
+          {(['classic', 'v2'] as const).map((value) => (
+            <Button
+              key={value}
+              role="radio"
+              aria-checked={look === value}
+              variant={look === value ? 'default' : 'outline'}
+              onClick={() => choose(value)}
+              className="flex-1"
+              disabled={look === null}
+            >
+              {value === 'classic' ? 'Classic' : '2.0'}
+            </Button>
+          ))}
+        </div>
+        {failed && (
+          <p className="text-sm text-destructive mt-2">Could not save. Try again.</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 /**
  * Aurora on the night sky, for the whole household: one switch, because it is
  * one forecast, fetched by the server for the household location.

@@ -218,6 +218,9 @@ export function WidgetContainer({
   return (
     <Card
       className={cn(
+        // Hook for the 2.0 glass (globals.css). Only the card: the grid cell
+        // around it carries data-widget too, and glass on both doubles the blur.
+        'widget-card',
         // Grid sizing
         sizeClasses[size],
         // Full height within grid cell

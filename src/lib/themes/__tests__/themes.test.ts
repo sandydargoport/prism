@@ -7,7 +7,7 @@
  */
 import { THEME_TOKENS, isValidTokenValue, isValidTokenSet, normalizeShape, isValidShape, SHAPE_LIMITS } from '../tokens';
 import { BUILTIN_THEMES, getBuiltinTheme, DEFAULT_THEME_ID } from '../appThemes';
-import { applyThemeVars, clearThemeVars, themeCss, themeTokens } from '../applyTheme';
+import { applyThemeVars, clearThemeVars, themeCss, themeTokens, glassTokensCss, GLASS_SELECTOR } from '../applyTheme';
 import { checkContrast, checkThemeContrast } from '../contrast';
 
 describe('isValidTokenValue', () => {
@@ -116,8 +116,19 @@ describe('themeCss', () => {
   it('emits both modes', () => {
     const css = themeCss(BUILTIN_THEMES[0]!);
     expect(css).toContain(':root{');
-    expect(css).toContain('.dark{');
+    expect(css).toContain('.dark,');
     expect(css).toContain('--background:0 0% 100%');
+  });
+
+  // The 2.0 glass cards (#799) are dark in light mode too: they take the dark
+  // tokens, or a light palette's accents go dark-on-dark on the glass.
+  it('gives the 2.0 glass cards the dark tokens', () => {
+    const theme = BUILTIN_THEMES[0]!;
+    const css = themeCss(theme);
+    const darkBlock = css.slice(css.indexOf('.dark,'));
+    expect(darkBlock.startsWith(`.dark,${GLASS_SELECTOR}{`)).toBe(true);
+    expect(darkBlock).toContain(`--primary:${theme.dark.primary}`);
+    expect(glassTokensCss(theme)).toBe(`${GLASS_SELECTOR}{${darkBlock.slice(darkBlock.indexOf('{') + 1)}`);
   });
 
   it('cannot be escaped out of, even by a crafted value', () => {

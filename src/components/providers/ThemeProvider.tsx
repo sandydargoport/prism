@@ -21,7 +21,7 @@ import { usePerformanceMode } from '@/lib/hooks/usePerformanceMode';
 import { useHydrated, useStoredString, writeStored } from '@/lib/hooks/useStoredValue';
 import { isInstallableTheme, MAX_INSTALLED_THEMES, type Theme } from '@/lib/themes/tokens';
 import { BUILTIN_THEMES, getBuiltinTheme, DEFAULT_THEME_ID } from '@/lib/themes/appThemes';
-import { applyThemeVars, applyThemeChrome, themeTokens } from '@/lib/themes/applyTheme';
+import { applyThemeVars, applyThemeChrome, themeTokens, glassTokensCss } from '@/lib/themes/applyTheme';
 
 /**
  * Theme modes
@@ -226,6 +226,15 @@ export function ThemeProvider({
     if (!mounted) return;
     applyThemeVars(document.documentElement, themeTokens(palette, resolvedTheme));
     applyThemeChrome(document.documentElement, palette);
+    // The 2.0 glass cards carry the palette's dark tokens in a rule of their
+    // own (the server rendered the first one); keep it on the palette in use.
+    let glass = document.getElementById('prism-glass-tokens');
+    if (!glass) {
+      glass = document.createElement('style');
+      glass.id = 'prism-glass-tokens';
+      document.head.appendChild(glass);
+    }
+    glass.textContent = glassTokensCss(palette);
   }, [palette, resolvedTheme, mounted]);
 
   // Read the stored palette once. A failure here is not worth surfacing: the

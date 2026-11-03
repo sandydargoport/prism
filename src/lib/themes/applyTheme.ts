@@ -178,15 +178,35 @@ export function clearThemeVars(root: HTMLElement): void {
  * An optional token a theme leaves out simply is not emitted, so the value in
  * globals.css stands.
  */
+/**
+ * The 2.0 glass cards (#799) are dark surfaces in light mode too, so they take
+ * the palette's dark tokens: its light-mode accents are chosen for a white card
+ * and go dark-on-dark on the glass. :where() keeps this at the weight of a
+ * single class, so the glass rules in globals.css still win for the surface and
+ * text tokens they set.
+ */
+export const GLASS_SELECTOR = `:where(html[data-appearance='v2'][data-wallpaper]) .widget-card`;
+
+function tokenBlock(tokens: ThemeTokens): string {
+  return ALL_THEME_TOKENS.filter((t) => isValidTokenValue(tokens[t]))
+    .map((t) => `--${t}:${tokens[t]}`)
+    .join(';');
+}
+
+/**
+ * The glass rule alone, for the client to rewrite when the palette changes
+ * after load. themeCss renders the same rule on the server for first paint.
+ */
+export function glassTokensCss(theme: Theme): string {
+  return `${GLASS_SELECTOR}{${tokenBlock(theme.dark)}}`;
+}
+
 export function themeCss(theme: Theme): string {
-  const block = (tokens: ThemeTokens) =>
-    ALL_THEME_TOKENS.filter((t) => isValidTokenValue(tokens[t]))
-      .map((t) => `--${t}:${tokens[t]}`)
-      .join(';');
+  const block = tokenBlock;
 
   // Shape, typeface and modes sit on :root only — none of them differ between
   // light and dark, and repeating them under .dark would just be a second
   // place to keep in step.
   const chrome = chromeProperties(theme).map(([p, v]) => `${p}:${v}`).join(';');
-  return `:root{${block(theme.light)};${chrome}}.dark{${block(theme.dark)}}`;
+  return `:root{${block(theme.light)};${chrome}}.dark,${GLASS_SELECTOR}{${block(theme.dark)}}`;
 }

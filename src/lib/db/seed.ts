@@ -967,9 +967,13 @@ async function seed() {
     // The wizard normally writes this row after creating the first parent;
     // since the seed creates parents directly, we shortcut here.
     { key: 'setupComplete', value: { completedAt: NOW.toISOString() } },
+    // Classic, as every install that existed before 2.0 was given by migration
+    // 0041. The visual baselines and geometry suites measure Classic; the 2.0
+    // look has its own spec that switches this row.
+    { key: 'appearance', value: 'classic' },
   ]);
 
-  console.log(`  Created 4 settings (including setupComplete)`);
+  console.log(`  Created 5 settings (including setupComplete)`);
 
   // ─── LAYOUTS ──────────────────────────────────────────────────────────────
   console.log('Creating default layout...');

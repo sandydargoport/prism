@@ -273,5 +273,17 @@ describe('PATCH /api/settings', () => {
       const res = await PATCH(makePatchRequest({ key: 'nightSkyAurora', value: true }));
       expect(res.status).toBe(200);
     });
+
+    // Rendered into an attribute on <html> by the root layout.
+    it.each(['2.0', 'glass', true, null, '"><script>'])('rejects the appearance %p', async (value) => {
+      const res = await PATCH(makePatchRequest({ key: 'appearance', value }));
+      expect(res.status).toBe(400);
+      expect(mockInsert).not.toHaveBeenCalled();
+    });
+
+    it.each(['classic', 'v2'])('accepts the appearance %p', async (value) => {
+      const res = await PATCH(makePatchRequest({ key: 'appearance', value }));
+      expect(res.status).toBe(200);
+    });
   });
 });
