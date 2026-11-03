@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { usePhotos } from '@/lib/hooks/usePhotos';
 import { useScreenOrientation } from '@/lib/hooks/useScreenOrientation';
-import { SCENERY, SCENERY_SETTING_KEY } from '@/lib/scenery';
+import { SCENERY } from '@/lib/scenery';
+import { useSceneryOn } from '@/lib/hooks/useSceneryOn';
 
 const STORAGE_KEY = 'prism-wallpaper-enabled';
 const INTERVAL_KEY = 'prism-wallpaper-interval';
@@ -132,25 +133,7 @@ export function usePinnedPhoto(context: 'wallpaper' | 'screensaver') {
   return { pinnedId, setPinnedId };
 }
 
-/**
- * Whether this household shows the bundled scenery while it has no wallpaper
- * photos of its own. Set by setup on new installs (#808); absent everywhere
- * else, so an existing install's background does not change.
- */
-function useSceneryFallback(): boolean {
-  const [on, setOn] = useState(false);
-  useEffect(() => {
-    let active = true;
-    fetch('/api/settings')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => { if (active) setOn(data?.settings?.[SCENERY_SETTING_KEY] === true); })
-      .catch(() => {});
-    return () => { active = false; };
-  }, []);
-  return on;
-}
-
-/** What to show: the household's own photos, or the bundled scenery when it has none. */
+/** What to show: wallpaper photos added to Prism, or the bundled scenery when there are none. */
 export function wallpaperPool(
   photos: Array<{ id: string }>,
   photosLoading: boolean,
@@ -193,7 +176,7 @@ export function WallpaperBackground() {
     setBrokenIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
   }, []);
 
-  const sceneryOn = useSceneryFallback();
+  const sceneryOn = useSceneryOn();
   const { items, scenery } = wallpaperPool(photos, photosLoading, sceneryOn);
   const usePinned = !scenery && !!pinnedId && !brokenIds.has(pinnedId);
   const pool = items.filter((p) => !brokenIds.has(p.id));
