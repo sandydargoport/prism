@@ -1,7 +1,7 @@
 'use client';
 
+import { eventTintStyle } from '@/lib/design/eventStyle';
 import { cn } from '@/lib/utils';
-import { contrastText } from '@/lib/utils/color';
 import type { CalendarEvent } from '@/types/calendar';
 import { useTimeFormat } from '@/components/providers';
 import { formatDisplayTime, isCalendarEventPast } from '@/lib/utils/timeFormat';
@@ -66,7 +66,7 @@ export function InlineCalendarEvent({
       )}
       style={
         event.allDay
-          ? { backgroundColor: event.color, color: past ? contrastText(event.color) : '#fff' }
+          ? eventTintStyle(event.color)
           : undefined
       }
     >
