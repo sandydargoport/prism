@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import { hexToRgba, isLightColor } from '@/lib/utils/color';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
+import { widgetZoomVars } from '@/lib/utils/zoomVars';
 
 /**
  * Compute inline CSSProperties for a widget's background, outline, and text
@@ -69,7 +70,7 @@ export function getWidgetContentStyle(w: WidgetConfig): CSSProperties | undefine
   // Tailwind text classes use rem (root-relative), which ignores parent
   // em/font-size — `zoom` scales everything (rem text, SVG dimensions,
   // layout boxes) proportionally without changing the cell's grid slot.
-  return { zoom: w.textScale } as CSSProperties;
+  return { zoom: w.textScale, ...widgetZoomVars(w.textScale) } as CSSProperties;
 }
 
 /**

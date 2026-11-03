@@ -172,7 +172,8 @@ describe('SpanningEventRows', () => {
     // so a bar and an all-day chip are the same object at any theme density.
     expect(bar.className).not.toMatch(/\bh-5\b/);
     expect(bar.className).toContain('px-(--event-padding-x,0.25rem)');
-    expect(bar.className).toContain('text-(length:--event-font-size,0.75rem)');
+    // text-event is --event-font-size with the text floor (#798).
+    expect(bar.className).toContain('text-event');
   });
 
   it('holds an empty lane open with an invisible bar, not a fixed height', () => {

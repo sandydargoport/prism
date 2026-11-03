@@ -446,3 +446,55 @@ test.describe('Attention notices', () => {
     }
   });
 });
+
+test.describe('Settings width', () => {
+  // A 42rem cap on every settings section cut screen names in this list down
+  // to one letter on a 1080p screen, beside an empty half of the page. In
+  // portrait the section sidebar took a third of the width as well.
+  test('screen names show in full: the section uses the width, and portrait swaps the sidebar for the dropdown', async ({ browser }) => {
+    test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
+    test.setTimeout(120_000);
+    const tag = Date.now().toString(36);
+    const NAME = `Basement playroom ${tag}`;
+
+    const probe = await browser.newPage();
+    const parent = await getFirstParent(probe);
+    await probe.close();
+
+    const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+    let id: string | undefined;
+    try {
+      const page = await openDisplays(context, parent.name);
+      const made = await page.request.post('/api/displays', { data: { name: NAME } });
+      expect(made.ok(), 'precondition: screen named').toBe(true);
+      id = (await made.json()).display?.id;
+
+      for (const viewport of [{ width: 1920, height: 1080 }, { width: 1080, height: 1920 }]) {
+        await page.setViewportSize(viewport);
+        await page.reload();
+        const row = page.getByTestId('display-row').filter({ hasText: NAME });
+        await expect(row).toBeVisible({ timeout: 60_000 });
+        const label = `${viewport.width}x${viewport.height}`;
+
+        const name = row.getByText(NAME, { exact: true });
+        const clipped = await name.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+        expect(clipped, `${label}: the screen name is cut off`).toBe(false);
+
+        // The section fills its scroll area (less padding), not a narrow column.
+        const fill = await page.getByRole('heading', { name: 'Displays', level: 2 }).evaluate((h) => {
+          const card = h.closest('div.space-y-6') ?? h.parentElement!.parentElement!;
+          const area = card.closest('.overflow-y-auto')!;
+          return card.getBoundingClientRect().width / area.clientWidth;
+        });
+        expect(fill, `${label}: section width / available width`).toBeGreaterThan(0.9);
+
+        const portrait = viewport.height > viewport.width;
+        await expect(page.locator('#settings-section-select')).toBeVisible({ visible: portrait });
+        await expect(page.getByRole('navigation').getByRole('button', { name: 'Displays' })).toBeVisible({ visible: !portrait });
+      }
+    } finally {
+      if (id) await context.request.delete(`/api/displays/${id}`).catch(() => {});
+      await context.close();
+    }
+  });
+});

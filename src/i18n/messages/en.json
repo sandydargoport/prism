@@ -66,16 +66,10 @@
       "day": "Day",
       "list": "List",
       "schedule": "Schedule",
-      "week1": "1 Week",
       "week2": "2 Weeks",
-      "week3": "3 Weeks",
-      "week4": "4 Weeks",
       "month": "Month",
       "threeMonth": "3 Months",
-      "week1Short": "1W",
-      "week2Short": "2W",
-      "week3Short": "3W",
-      "week4Short": "4W"
+      "week2Short": "2W"
     },
     "options": {
       "trigger": "View",

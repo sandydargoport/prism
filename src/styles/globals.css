@@ -10,6 +10,21 @@
    :root, so .dark and every installed theme would stop taking effect. Nothing
    outside this file reads the generated color or radius names. */
 @theme inline {
+  /* Text floor (#798). Small text never renders below --text-floor, after page
+     and widget zoom. --zoom-inv is 1 / the zoom in force (set by every zoom
+     wrapper), so `floor * zoom-inv` is the size that the zoom brings back up
+     to exactly the floor. These must stay in `inline`: a plain @theme would
+     resolve --zoom-inv once at :root and the floor would shrink under zoom.
+     2xs/3xs/4xs replace the old fixed 11px/10px/8-9px classes; xs to 3xl below
+     are floored the same way. */
+  --text-4xs: max(calc(var(--text-floor) * var(--zoom-inv, 1)), 0.5rem);
+  --text-3xs: max(calc(var(--text-floor) * var(--zoom-inv, 1)), 0.625rem);
+  --text-2xs: max(calc(var(--text-floor) * var(--zoom-inv, 1)), 0.6875rem);
+  /* The theme's calendar sizes, floored the same way. */
+  --text-event: max(calc(var(--text-floor) * var(--zoom-inv, 1)), var(--event-font-size, 0.75rem));
+  --text-daynum: max(calc(var(--text-floor) * var(--zoom-inv, 1)), var(--daynum-size, 0.75rem));
+  --text-daynum-large: max(calc(var(--text-floor) * var(--zoom-inv, 1)), var(--daynum-large, 1.25rem));
+
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
@@ -76,20 +91,23 @@
     JetBrains Mono, Menlo, Monaco, Consolas, Liberation Mono, Courier New,
     monospace;
 
-  --text-xs: 0.75rem;
-  --text-xs--line-height: 1rem;
-  --text-sm: 0.875rem;
-  --text-sm--line-height: 1.25rem;
-  --text-base: 1rem;
-  --text-base--line-height: 1.5rem;
-  --text-lg: 1.125rem;
-  --text-lg--line-height: 1.75rem;
-  --text-xl: 1.25rem;
-  --text-xl--line-height: 1.75rem;
-  --text-2xl: 1.5rem;
-  --text-2xl--line-height: 2rem;
-  --text-3xl: 1.875rem;
-  --text-3xl--line-height: 2.25rem;
+  /* Floored (see the text floor above). Each line height is its old rem value
+     or the same ratio in em, whichever is larger: identical while the size is
+     unfloored, and it grows with the text when the floor lifts it. */
+  --text-xs: max(calc(var(--text-floor) * var(--zoom-inv, 1)), 0.75rem);
+  --text-xs--line-height: max(1rem, 1.3333em);
+  --text-sm: max(calc(var(--text-floor) * var(--zoom-inv, 1)), 0.875rem);
+  --text-sm--line-height: max(1.25rem, 1.4286em);
+  --text-base: max(calc(var(--text-floor) * var(--zoom-inv, 1)), 1rem);
+  --text-base--line-height: max(1.5rem, 1.5em);
+  --text-lg: max(calc(var(--text-floor) * var(--zoom-inv, 1)), 1.125rem);
+  --text-lg--line-height: max(1.75rem, 1.5556em);
+  --text-xl: max(calc(var(--text-floor) * var(--zoom-inv, 1)), 1.25rem);
+  --text-xl--line-height: max(1.75rem, 1.4em);
+  --text-2xl: max(calc(var(--text-floor) * var(--zoom-inv, 1)), 1.5rem);
+  --text-2xl--line-height: max(2rem, 1.3333em);
+  --text-3xl: max(calc(var(--text-floor) * var(--zoom-inv, 1)), 1.875rem);
+  --text-3xl--line-height: max(2.25rem, 1.2em);
   --text-4xl: 2.25rem;
   --text-4xl--line-height: 2.5rem;
   --text-5xl: 3rem;
@@ -499,8 +517,12 @@ html.performance-mode [class*="backdrop-blur"] {
      A wall display with a mouse attached still reports `fine` and stays at
      14px. That case is genuinely indistinguishable from a desk, so it is left
      to the per-layout font scale in Settings -> Displays. */
+  /* --text-floor is the smallest text allowed on screen (#798): 14px on a
+     touch or kiosk screen 768px and wider, read from across a room; 12px at a
+     desk or on a phone, read close up. See @theme. */
   html {
     font-size: 16px;
+    --text-floor: 12px;
   }
 
   /* Desktop/laptop (mouse/trackpad): tighter base matches dashboard UIs */
@@ -514,6 +536,7 @@ html.performance-mode [class*="backdrop-blur"] {
     (min-width: 768px) and (pointer: none) {
     html {
       font-size: 18px;
+      --text-floor: 14px;
     }
   }
 

@@ -26,13 +26,9 @@ export type ViewType =
   | 'month'
   | 'threeMonth';
 
-export type MultiWeekCount = 1 | 2 | 3 | 4;
-
 interface ViewMenuProps {
   viewType: ViewType;
-  weekCount: MultiWeekCount;
   onViewChange: (viewType: ViewType) => void;
-  onWeekCountChange: (n: MultiWeekCount) => void;
 }
 
 interface ViewOption {
@@ -40,94 +36,37 @@ interface ViewOption {
   labelKey: string;
   /** Icon shown alongside the label. */
   Icon: typeof Calendar;
-  /** Returns true when this option matches the current view state. */
-  isActive: (viewType: ViewType, weekCount: MultiWeekCount) => boolean;
-  /** Switches the calendar to this option. */
-  apply: (
-    setView: (v: ViewType) => void,
-    setWeekCount: (n: MultiWeekCount) => void,
-  ) => void;
+  /** The view this option switches to. */
+  view: ViewType;
 }
 
-const OPTIONS: ViewOption[] = [
-  {
-    labelKey: 'agenda',
-    Icon: ListChecks,
-    isActive: (v) => v === 'agenda',
-    apply: (setView) => setView('agenda'),
-  },
-  {
-    labelKey: 'day',
-    Icon: CalendarDays,
-    isActive: (v) => v === 'day',
-    apply: (setView) => setView('day'),
-  },
-  {
-    labelKey: 'list',
-    Icon: List,
-    isActive: (v) => v === 'weekVertical',
-    apply: (setView) => setView('weekVertical'),
-  },
-  {
-    labelKey: 'schedule',
-    Icon: Clock,
-    isActive: (v) => v === 'week',
-    apply: (setView) => setView('week'),
-  },
-  {
-    labelKey: 'week1',
-    Icon: CalendarRange,
-    isActive: (v, wc) => v === 'multiWeek' && wc === 1,
-    apply: (setView, setWeekCount) => { setView('multiWeek'); setWeekCount(1); },
-  },
-  {
-    labelKey: 'week2',
-    Icon: CalendarRange,
-    isActive: (v, wc) => v === 'multiWeek' && wc === 2,
-    apply: (setView, setWeekCount) => { setView('multiWeek'); setWeekCount(2); },
-  },
-  {
-    labelKey: 'week3',
-    Icon: CalendarRange,
-    isActive: (v, wc) => v === 'multiWeek' && wc === 3,
-    apply: (setView, setWeekCount) => { setView('multiWeek'); setWeekCount(3); },
-  },
-  {
-    labelKey: 'week4',
-    Icon: CalendarRange,
-    isActive: (v, wc) => v === 'multiWeek' && wc === 4,
-    apply: (setView, setWeekCount) => { setView('multiWeek'); setWeekCount(4); },
-  },
-  {
-    labelKey: 'month',
-    Icon: LayoutGrid,
-    isActive: (v) => v === 'month',
-    apply: (setView) => setView('month'),
-  },
-  {
-    labelKey: 'threeMonth',
-    Icon: Grid3X3,
-    isActive: (v) => v === 'threeMonth',
-    apply: (setView) => setView('threeMonth'),
-  },
+/** 1W, 3W and 4W were retired (#804); `multiWeek` is the 2W grid. */
+export const VIEW_MENU_OPTIONS: ViewOption[] = [
+  { labelKey: 'agenda', Icon: ListChecks, view: 'agenda' },
+  { labelKey: 'day', Icon: CalendarDays, view: 'day' },
+  { labelKey: 'list', Icon: List, view: 'weekVertical' },
+  { labelKey: 'schedule', Icon: Clock, view: 'week' },
+  { labelKey: 'week2', Icon: CalendarRange, view: 'multiWeek' },
+  { labelKey: 'month', Icon: LayoutGrid, view: 'month' },
+  { labelKey: 'threeMonth', Icon: Grid3X3, view: 'threeMonth' },
 ];
 
-export function ViewMenu({ viewType, weekCount, onViewChange, onWeekCountChange }: ViewMenuProps) {
+export function ViewMenu({ viewType, onViewChange }: ViewMenuProps) {
   const t = useTranslations('calendar');
   const [open, setOpen] = React.useState(false);
   const activeIndex = Math.max(
     0,
-    OPTIONS.findIndex((o) => o.isActive(viewType, weekCount)),
+    VIEW_MENU_OPTIONS.findIndex((o) => o.view === viewType),
   );
-  const active = OPTIONS[activeIndex] ?? OPTIONS[0]!;
+  const active = VIEW_MENU_OPTIONS[activeIndex] ?? VIEW_MENU_OPTIONS[0]!;
   const ActiveIcon = active.Icon;
 
-  // Cycle through OPTIONS with wraparound. Up/down arrows instead of left/right
+  // Cycle through VIEW_MENU_OPTIONS with wraparound. Up/down arrows instead of left/right
   // because they map to the dropdown's vertical list and avoid confusion with
   // the < > date-range nav buttons.
   const cycle = (delta: -1 | 1) => {
-    const next = (activeIndex + delta + OPTIONS.length) % OPTIONS.length;
-    OPTIONS[next]!.apply(onViewChange, onWeekCountChange);
+    const next = (activeIndex + delta + VIEW_MENU_OPTIONS.length) % VIEW_MENU_OPTIONS.length;
+    onViewChange(VIEW_MENU_OPTIONS[next]!.view);
   };
 
   return (
@@ -145,15 +84,15 @@ export function ViewMenu({ viewType, weekCount, onViewChange, onWeekCountChange 
           </Button>
         </PopoverTrigger>
         <PopoverContent align="end" className="w-44 p-1">
-          {OPTIONS.map((opt) => {
+          {VIEW_MENU_OPTIONS.map((opt) => {
             const Icon = opt.Icon;
-            const isActive = opt.isActive(viewType, weekCount);
+            const isActive = opt.view === viewType;
             return (
               <button
                 key={opt.labelKey}
                 type="button"
                 onClick={() => {
-                  opt.apply(onViewChange, onWeekCountChange);
+                  onViewChange(opt.view);
                   setOpen(false);
                 }}
                 className={cn(
@@ -177,7 +116,7 @@ export function ViewMenu({ viewType, weekCount, onViewChange, onWeekCountChange 
           onClick={() => cycle(-1)}
           className="rounded border border-input hover:bg-accent inline-flex items-center justify-center text-foreground/80 hover:text-foreground transition-colors min-h-0"
         >
-          <span className="block text-[10px] leading-none">▲</span>
+          <span className="block text-3xs leading-none">▲</span>
         </button>
         <button
           type="button"
@@ -186,7 +125,7 @@ export function ViewMenu({ viewType, weekCount, onViewChange, onWeekCountChange 
           onClick={() => cycle(1)}
           className="rounded border border-input hover:bg-accent inline-flex items-center justify-center text-foreground/80 hover:text-foreground transition-colors min-h-0"
         >
-          <span className="block text-[10px] leading-none">▼</span>
+          <span className="block text-3xs leading-none">▼</span>
         </button>
       </div>
     </div>

@@ -238,7 +238,7 @@ function ViewPopover({
           onClick={() => cycle(-1)}
           className="rounded border border-input hover:bg-accent inline-flex items-center justify-center min-h-0"
         >
-          <span className="block text-[10px] leading-none">▲</span>
+          <span className="block text-3xs leading-none">▲</span>
         </button>
         <button
           type="button"
@@ -247,7 +247,7 @@ function ViewPopover({
           onClick={() => cycle(1)}
           className="rounded border border-input hover:bg-accent inline-flex items-center justify-center min-h-0"
         >
-          <span className="block text-[10px] leading-none">▼</span>
+          <span className="block text-3xs leading-none">▼</span>
         </button>
       </div>
     </div>

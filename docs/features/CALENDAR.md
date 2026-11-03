@@ -119,7 +119,7 @@ Set `PRISM_DISABLE_CALENDAR_CRON=true` in your `.env` to fall back to user-trigg
 
 ## Views
 
-Both the calendar subpage and the dashboard widget expose the same set of ten views:
+Both the calendar subpage and the dashboard widget expose the same set of seven views (the widget has no 3 Months):
 
 | View | Best for |
 |---|---|
@@ -127,12 +127,13 @@ Both the calendar subpage and the dashboard widget expose the same set of ten vi
 | **Day** | Hourly breakdown with side-by-side calendar columns. |
 | **List** | Vertical week view: each day stacks its events. Pairs well with the notes column. |
 | **Schedule** | Week shown as one tall vertical column. Good for narrow displays. |
-| **1W** | Single week, 7-day grid with hourly rows. |
-| **2W / 3W / 4W** | Multi-week grids: 2 / 3 / 4 weeks visible at once. |
+| **2W** | Two weeks as a grid of days. |
 | **Month** | Standard calendar grid (6-week rendered span). |
 | **3 Months** | Three months side-by-side. Long-term planning. |
 
-The view dropdown has ▲▼ triangles for one-click cycling. Multi-week navigation advances/retreats by `weekCount` (so 4W view's "next" jumps 4 weeks ahead, not 1).
+The view dropdown has ▲▼ triangles for one-click cycling. In 2W, next and previous move two weeks at a time.
+
+The 1W, 3W and 4W grids were removed. A screen that was showing one of them opens on Schedule (in place of 1W) or Month (in place of 3W and 4W).
 
 On phones, calendar views collapse to Agenda only: no view switcher, no chevrons. Header reads "Upcoming Events."
 
@@ -162,7 +163,7 @@ When you're in **cards mode**, you can drag any of these between days:
 - Chores
 - Tasks
 
-Works on Day, List, Week, 1W-4W, Month, 3 Months, and Agenda. Works on the dashboard CalendarWidget too. The drag activates after 5px of pointer movement, so single taps still trigger click-to-edit on the same card.
+Works on Day, List, Schedule, 2W, Month, 3 Months, and Agenda. Works on the dashboard CalendarWidget too. The drag activates after 5px of pointer movement, so single taps still trigger click-to-edit on the same card.
 
 If the API rejects the move (e.g. moving a recurring event instance is restricted), the error surfaces inline as a `moveError` chip on the source cell. No silent failures.
 

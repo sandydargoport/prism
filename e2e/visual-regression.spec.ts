@@ -275,28 +275,27 @@ test.describe('Visual regression', () => {
   }
 
   // ─── Calendar view modes ────────────────────────────────────────────────
-  // The v1.7.0 calendar refactor introduced ten view modes (Agenda, Day, List,
-  // Schedule, 1W, 2W, 3W, 4W, Month, 3M) and a cards display mode that can
+  // The calendar has seven view modes (Agenda, Day, List, Schedule, 2W, Month,
+  // 3M) and a cards display mode that can
   // toggle on top of most of them. Each combination has its own layout
   // primitives — capture the ones most likely to regress when the calendar
   // surface is refactored next.
   //
   // Note: view modes are persisted to localStorage (`prism-calendar-view-type`,
-  // `prism-calendar-week-count`, `prism-calendar-display-mode`) so we set them
+  // `prism-calendar-display-mode`) so we set them
   // via addInitScript before the page loads. That avoids racing the toolbar.
 
   async function setCalendarPrefs(
     page: Page,
-    opts: { viewType: string; displayMode?: 'inline' | 'cards'; weekCount?: number },
+    opts: { viewType: string; displayMode?: 'inline' | 'cards' },
   ) {
-    const { viewType, displayMode = 'inline', weekCount = 2 } = opts;
+    const { viewType, displayMode = 'inline' } = opts;
     await page.addInitScript(
-      ([v, d, w]) => {
+      ([v, d]) => {
         localStorage.setItem('prism-calendar-view-type', v as string);
         localStorage.setItem('prism-calendar-display-mode', d as string);
-        localStorage.setItem('prism-calendar-week-count', String(w));
       },
-      [viewType, displayMode, weekCount],
+      [viewType, displayMode],
     );
   }
 
@@ -306,9 +305,12 @@ test.describe('Visual regression', () => {
   const calendarMatrix = [
     { view: 'month',     displayMode: 'inline' as const, label: 'month-inline' },
     { view: 'month',     displayMode: 'cards'  as const, label: 'month-cards' },
-    { view: 'multiWeek', displayMode: 'cards'  as const, label: 'multiweek-2w-cards', weekCount: 2 },
+    { view: 'multiWeek', displayMode: 'cards'  as const, label: 'multiweek-2w-cards' },
     { view: 'week',      displayMode: 'cards'  as const, label: 'week-cards' },
     { view: 'agenda',    displayMode: 'cards'  as const, label: 'agenda-cards' },
+    // 720p: the smallest common wall screen, where the text floor (#798) has
+    // the least room. Schedule has the tightest event blocks.
+    { view: 'week',      displayMode: 'inline' as const, label: 'week-inline-720p', viewport: { width: 1280, height: 720 } },
   ];
 
   for (const theme of ['light', 'dark'] as const) {
@@ -316,10 +318,10 @@ test.describe('Visual regression', () => {
       test(`calendar ${cfg.label} - ${theme}`, async ({ page }) => {
         test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
         await setClientFlags(page, { theme });
+        if ('viewport' in cfg && cfg.viewport) await page.setViewportSize(cfg.viewport);
         await setCalendarPrefs(page, {
           viewType: cfg.view,
           displayMode: cfg.displayMode,
-          weekCount: cfg.weekCount,
         });
         await loginViaAPI(page, parentName);
         await page.goto('/calendar');
