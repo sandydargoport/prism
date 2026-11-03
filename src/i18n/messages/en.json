@@ -198,6 +198,11 @@
       "backToDashboard": "Back to Dashboard",
       "hideFailed": "Failed to hide event",
       "unhideFailed": "Failed to unhide event"
+    },
+    "connectInvite": {
+      "title": "Bring your calendars in",
+      "body": "Connect Google, iCloud, Outlook or a calendar link, and the family's week shows up here.",
+      "action": "Connect a calendar"
     }
   },
   "birthdays": {

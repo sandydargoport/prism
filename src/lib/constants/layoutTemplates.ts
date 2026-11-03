@@ -175,6 +175,26 @@ export const LAYOUT_TEMPLATES: Record<string, LayoutTemplate> = {
   },
 };
 
+// What a brand-new install opens on (#808), written as a real layout when
+// setup first finishes. Calendar first; until a calendar is connected the
+// calendar widget shows a "Connect a calendar" invitation instead of an empty
+// list. Clock and weather share the right column at full height. No list
+// widgets: on day one they are empty, and a hidden widget does not yet give
+// its space back. Existing installs never get this; they keep what they have.
+export const FIRST_SCREEN_TEMPLATE: LayoutTemplate = {
+  name: 'Home',
+  description: 'Calendar first, with the clock and weather beside it',
+  orientation: 'landscape',
+  widgets: [
+    { i: 'calendar', x: 0,  y: 0,  w: 32, h: 27 },
+    { i: 'clock',    x: 32, y: 0,  w: 16, h: 12 },
+    { i: 'weather',  x: 32, y: 12, w: 16, h: 15 },
+  ],
+};
+
+/** Pages a brand-new install starts with hidden (#808). Settings > Features shows them again. */
+export const NEW_INSTALL_HIDDEN_PAGES = ['/wishes', '/travel', '/weekend'] as const;
+
 // New-user / empty-layout fallback. Deliberately weather-forward with NO
 // calendar/birthdays/points — a fresh install hasn't connected a calendar yet,
 // so a calendar-hero default would render empty. Not shown in the template
