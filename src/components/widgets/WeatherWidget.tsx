@@ -576,7 +576,7 @@ function CurrentConditions({
           </div>
         )}
         {(sunrise || sunset) && (
-          <div className="flex items-center justify-end gap-2 tabular-nums">
+          <div data-keep-bg data-testid="header-sun-times" className="flex items-center justify-end gap-2 tabular-nums self-end rounded-full bg-background/55 px-2 text-foreground">
             {sunrise && (
               <span className="flex items-center gap-0.5" title="Sunrise">
                 <Sunrise className="h-3 w-3" style={{ color: '#FBBF24' }} />
@@ -1264,17 +1264,19 @@ function SunriseSunsetArc({
       {/* Sun / moon times — one evenly-spaced row: sun pair fixed on the left
           (sunrise, sunset), moon pair on the right (moonrise ↑, moonset ↓).
           Cleaner and never clips vs. the old x-anchored floating labels. */}
-      <div className="flex items-center justify-between gap-3 text-[11px] tabular-nums pt-0.5 whitespace-nowrap">
-        <span className="flex items-center gap-3">
-          <span className="flex items-center gap-1" style={{ color: SUN_COLOR }} title="Sunrise">
-            <Sunrise className="h-3 w-3" />{formatDisplayTime(sunrise, timeFormat, {}, timezone)}
+      {/* In the normal text colour on a small backing, so the times read over
+          glass and over a bare photo alike; only the icons carry the colour. */}
+      <div className="flex items-center justify-between gap-3 text-xs tabular-nums pt-0.5 whitespace-nowrap text-foreground">
+        <span data-keep-bg data-testid="sun-times" className="flex items-center gap-3 rounded-full bg-background/55 px-2 py-0.5">
+          <span className="flex items-center gap-1" title="Sunrise">
+            <Sunrise className="h-3 w-3" style={{ color: SUN_COLOR }} />{formatDisplayTime(sunrise, timeFormat, {}, timezone)}
           </span>
-          <span className="flex items-center gap-1" style={{ color: SUN_COLOR }} title="Sunset">
-            <Sunset className="h-3 w-3" />{formatDisplayTime(sunset, timeFormat, {}, timezone)}
+          <span className="flex items-center gap-1" title="Sunset">
+            <Sunset className="h-3 w-3" style={{ color: SUN_COLOR }} />{formatDisplayTime(sunset, timeFormat, {}, timezone)}
           </span>
         </span>
         {(moonrise || moonset) && (
-          <span className="flex items-center gap-3" style={{ color: MOON_COLOR }}>
+          <span data-keep-bg data-testid="moon-times" className="flex items-center gap-3 rounded-full bg-background/55 px-2 py-0.5">
             {moonrise && (
               <span className="flex items-center gap-1" title="Moonrise">
                 <MoonGlyph phase={moonPhase ?? 0} size={11} /><span className="opacity-70">↑</span>{formatDisplayTime(moonrise, timeFormat, {}, timezone)}

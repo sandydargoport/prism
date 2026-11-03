@@ -97,6 +97,7 @@ export function CssGridDisplay({
   containMode = false,
   screenFrame,
   fadedIds,
+  idleClear = false,
   drift = false,
   morph = false,
   hideEmptyByDefault = false,
@@ -291,7 +292,9 @@ export function CssGridDisplay({
       )}
       <div style={gridStyle}>
         {visibleWidgets.map(w => {
-          const widgetStyle = getWidgetStyle(w);
+          // On the idle screen a glass card that stays drops its glass.
+          const clear = idleClear && w.backgroundColor === 'glass' && !fadedIds?.has(w.i);
+          const widgetStyle = clear ? undefined : getWidgetStyle(w);
           const contentStyle = getWidgetContentStyle(w);
           const textClass = getTextColorClass(w);
           const outlineClass = getWidgetOutlineClass(w);
@@ -305,7 +308,7 @@ export function CssGridDisplay({
           const cell = (
             <div
               key={w.i}
-              className={`widget-cell relative overflow-hidden ${textClass} ${outlineClass} transition-opacity duration-1000 motion-reduce:duration-200`}
+              className={`widget-cell relative overflow-hidden ${textClass} ${outlineClass} ${clear ? 'idle-clear' : ''} transition-opacity duration-1000 motion-reduce:duration-200`}
               ref={(el) => { if (el) cells.current.set(w.i, el); else cells.current.delete(w.i); }}
               data-widget={w.i}
               data-faded={faded || undefined}

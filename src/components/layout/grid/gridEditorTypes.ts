@@ -73,6 +73,12 @@ export interface CssGridDisplayProps {
    */
   fadedIds?: ReadonlySet<string>;
   /**
+   * The display is on its calm idle screen: the glass cards that stay turn
+   * clear, so the clock and weather sit straight on the photo, with light
+   * text and a soft shadow (.idle-clear in globals.css).
+   */
+  idleClear?: boolean;
+  /**
    * Slow burn-in drift, applied to each whole cell. On the cell, not inside
    * it: the cell clips its content, so a card drifting inside it lost an edge
    * of its outline to the clip on whichever side it had moved towards.
@@ -115,6 +121,8 @@ export interface LayoutGridEditorProps {
   gridHelperText?: string;
   /** Display mode only; see CssGridDisplayProps. */
   fadedIds?: ReadonlySet<string>;
+  /** Display mode only; see CssGridDisplayProps. */
+  idleClear?: boolean;
   /**
    * See CssGridDisplayProps. In edit mode it is the default the Hide when
    * empty switch shows for a widget that has not been set.

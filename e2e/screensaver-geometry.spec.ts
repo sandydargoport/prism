@@ -482,8 +482,9 @@ test.describe('calm mode idle screen', () => {
   test.setTimeout(90_000);
 
   // Clock and Tasks rely on the default ticks; Shopping and Weather override them.
+  // The clock is glass, which goes clear on the idle screen.
   const WIDGETS = [
-    { i: 'clock', x: 0, y: 0, w: 16, h: 12 },
+    { i: 'clock', x: 0, y: 0, w: 16, h: 12, backgroundColor: 'glass' },
     { i: 'tasks', x: 16, y: 0, w: 16, h: 12 },
     { i: 'shopping', x: 32, y: 0, w: 16, h: 12, showWhenIdle: true },
     { i: 'weather', x: 0, y: 12, w: 16, h: 12, showWhenIdle: false },
@@ -506,6 +507,17 @@ test.describe('calm mode idle screen', () => {
         };
       });
       return out;
+    });
+  }
+
+  /** The clock cell's fill alpha, and whether its text carries a shadow. */
+  async function clockFill(page: Page) {
+    return page.locator('.widget-cell[data-widget="clock"]').evaluate((el) => {
+      const cs = getComputedStyle(el);
+      const m = cs.backgroundColor.match(/rgba?\(([^)]+)\)/);
+      const parts = m ? m[1]!.split(/[ ,/]+/).filter(Boolean) : [];
+      const alpha = parts.length === 4 ? Number(parts[3]) : parts.length === 3 ? 1 : 0;
+      return { alpha, blur: cs.backdropFilter, shadow: cs.textShadow };
     });
   }
 
@@ -533,10 +545,17 @@ test.describe('calm mode idle screen', () => {
       await page.waitForTimeout(800);
       const before = await cells(page);
       expect(Object.keys(before).sort()).toEqual(WIDGETS.map((w) => w.i).sort());
+      const glass = await clockFill(page);
+      expect(glass.alpha, 'premise: the clock is glass while awake').toBeGreaterThan(0.2);
 
       await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
       await page.waitForTimeout(1500);
       const idle = await cells(page);
+      // The glass clock that stays goes clear, with shadowed text, on the photo.
+      const clear = await clockFill(page);
+      expect(clear.alpha, 'idle glass is clear').toBe(0);
+      expect(clear.blur, 'idle glass has no blur').toBe('none');
+      expect(clear.shadow, 'idle text has a shadow').not.toBe('none');
 
       // The separate screensaver did not come up over the dashboard.
       await expect(page.locator('.fixed.inset-0 .widget-cell')).toHaveCount(0);
@@ -570,6 +589,7 @@ test.describe('calm mode idle screen', () => {
       expect(off('clock', before, waking), 'the clock glides back, not jumps').toBeGreaterThan(1.5);
       await page.waitForTimeout(1500);
       const awake = await cells(page);
+      expect((await clockFill(page)).alpha, 'the glass is back on waking').toBeGreaterThan(0.2);
       for (const i of [...SHOWN, ...FADED]) {
         expect(awake[i]!.opacity, `${i} is back`).toBe(1);
         expect(off(i, before, awake), `${i} is back in its place`).toBeLessThanOrEqual(1);

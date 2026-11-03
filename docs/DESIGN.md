@@ -104,6 +104,10 @@ Rules for a display nobody is touching.
    event). Everything else steps down from it.
 6. **Hide what is empty.** An empty widget hides on the wall, or says one
    short sentence; it does not show an empty box with an Add button.
+7. **Idle screen: straight on the photo.** When the wall goes idle, the glass
+   cards that stay (the clock and weather) turn fully clear. Their text turns
+   light and carries a soft dark shadow (`--ds-idle-text-shadow`); small
+   details such as the sun and moon times keep a small backing.
 
 ## Touch
 

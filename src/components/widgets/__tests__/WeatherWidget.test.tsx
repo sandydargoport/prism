@@ -542,6 +542,33 @@ describe('sun and moon arcs', () => {
 });
 
 
+describe('sun and moon times under the arc', () => {
+  // They were small amber and blue text straight on the card, hard to read
+  // over glass or a bare photo. Now the text is the normal colour on a small
+  // backing; only the icons are coloured.
+  it('sit on a backing, in the normal text colour', () => {
+    render(
+      <WeatherWidget
+        data={makeWeatherData({
+          sunrise: new Date(2026, 6, 17, 5, 30),
+          sunset: new Date(2026, 6, 17, 20, 15),
+          moonrise: new Date(2026, 6, 17, 21, 0),
+          moonset: new Date(2026, 6, 18, 5, 0),
+          moonPhase: 0.5,
+        })}
+      />
+    );
+    for (const id of ['sun-times', 'moon-times', 'header-sun-times']) {
+      const backing = screen.getByTestId(id);
+      expect(backing.className).toMatch(/\bbg-background\/\d+/);
+      for (const time of Array.from(backing.querySelectorAll('[title]')) as HTMLElement[]) {
+        expect([time.title, time.style.color]).toEqual([time.title, '']);
+      }
+    }
+  });
+});
+
+
 // ===========================================================================
 // 9. An eclipse on the sun and moon arc
 // ===========================================================================
