@@ -80,12 +80,21 @@ describe('shape tokens', () => {
     expect(remToPx(cssValue('--ds-card-radius'))).toBeCloseTo(CARD.radiusPx, 5);
     expect(remToPx(cssValue('--ds-card-pad'))).toBeCloseTo(CARD.paddingPx, 5);
     expect(remToPx(cssValue('--ds-card-gap'))).toBeCloseTo(CARD.gapPx, 5);
-    expect(Number(cssValue('--ds-glass-alpha'))).toBe(CARD.glassAlpha);
+    expect(css).toContain(`--ds-glass-alpha: ${CARD.glassAlpha};`);
     expect(cssValue('--ds-glass-blur')).toBe(`${CARD.glassBlurPx}px`);
     expect(cssValue('--ds-event-bar')).toBe(`${EVENT.barPx}px`);
     // First match is :root (light), the .dark block overrides it.
     const tints = [...css.matchAll(/--ds-event-tint:\s*([\d.]+)%;/g)].map((m) => Number(m[1]) / 100);
     expect(tints).toEqual([EVENT.tint.light, EVENT.tint.dark]);
+  });
+});
+
+describe('glass under Performance Mode', () => {
+  it('drops the blur and thickens the glass, never thinner than the normal glass', () => {
+    const block = /html\.performance-mode \{([^}]*)\}/.exec(css)?.[1] ?? '';
+    expect(block).toMatch(/--ds-glass-filter:\s*none;/);
+    const alpha = Number(/--ds-glass-alpha:\s*([\d.]+);/.exec(block)?.[1]);
+    expect(alpha).toBeGreaterThan(CARD.glassAlpha);
   });
 });
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
 import { layouts, settings, users } from '@/lib/db/schema';
 import { FIRST_SCREEN_TEMPLATE, NEW_INSTALL_HIDDEN_PAGES } from '@/lib/constants/layoutTemplates';
+import { SCENERY_SETTING_KEY } from '@/lib/scenery';
 import { memberOrder } from '@/lib/db/memberOrder';
 import { eq, sql } from 'drizzle-orm';
 
@@ -64,8 +65,8 @@ export async function POST() {
 }
 
 /**
- * The first screen of a brand-new install (#808): a calendar-first layout and
- * three pages hidden. Each part is written only when nothing is there yet, so
+ * The first screen of a brand-new install (#808): a calendar-first layout with
+ * glass cards, the bundled scenery behind it, and three pages hidden. Each part is written only when nothing is there yet, so
  * a layout or a page choice made before setup finished is never replaced.
  */
 async function writeFirstScreen(createdBy: string) {
@@ -83,5 +84,10 @@ async function writeFirstScreen(createdBy: string) {
   const [hidden] = await db.select().from(settings).where(eq(settings.key, 'hiddenPages'));
   if (!hidden) {
     await db.insert(settings).values({ key: 'hiddenPages', value: [...NEW_INSTALL_HIDDEN_PAGES] });
+  }
+  // Bundled scenery behind the dashboard until the household adds photos.
+  const [scenery] = await db.select().from(settings).where(eq(settings.key, SCENERY_SETTING_KEY));
+  if (!scenery) {
+    await db.insert(settings).values({ key: SCENERY_SETTING_KEY, value: true });
   }
 }

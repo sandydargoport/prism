@@ -111,11 +111,21 @@ describe('POST /api/setup/complete', () => {
       expect(NEW_INSTALL_HIDDEN_PAGES).toEqual(['/wishes', '/travel', '/weekend']);
     });
 
+    it('turns on the bundled scenery, and never overrides a choice already made', async () => {
+      await POST();
+      expect(insertedSetting('wallpaperScenery')?.value).toBe(true);
+      inserted = [];
+      state.settings = { wallpaperScenery: false };
+      await POST();
+      expect(insertedSetting('wallpaperScenery')).toBeUndefined();
+    });
+
     it('leaves an install that already finished setup exactly as it is', async () => {
       state.settings.setupComplete = { completedAt: '2026-01-01T00:00:00Z' };
       await POST();
       expect(insertedLayouts()).toEqual([]);
       expect(insertedSetting('hiddenPages')).toBeUndefined();
+      expect(insertedSetting('wallpaperScenery')).toBeUndefined();
       expect(updated).toEqual(['setupComplete']);
     });
 

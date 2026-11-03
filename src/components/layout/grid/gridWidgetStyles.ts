@@ -16,11 +16,28 @@ import { widgetZoomVars } from '@/lib/utils/zoomVars';
  * honored it). Moving the zoom inward isolates it from the grid layout
  * algorithm and makes scaling deterministic across both views.
  */
+/**
+ * Fills that let the wallpaper show through instead of painting a colour:
+ * 'frosted' (a white tint and blur) and 'glass' (the theme's own card colour,
+ * see-through, and blur; docs/DESIGN.md "Cards").
+ */
+export function isSeeThroughFill(c: string | undefined): boolean {
+  return c === 'frosted' || c === 'glass';
+}
+
 export function getWidgetStyle(w: WidgetConfig): CSSProperties | undefined {
   if (!w.backgroundColor && !w.outlineColor && !w.textColor) return undefined;
   const style: CSSProperties = { borderRadius: '0.5rem' };
 
-  if (w.backgroundColor === 'frosted') {
+  if (w.backgroundColor === 'glass') {
+    // The card's own colour, so light themes get light glass and dark themes
+    // dark glass, and the theme's text stays readable on it. Both values are
+    // CSS properties, so Performance Mode can drop the blur and thicken the
+    // glass in one place (globals.css).
+    style.backgroundColor = 'hsl(var(--card) / var(--ds-glass-alpha))';
+    style.backdropFilter = 'var(--ds-glass-filter)';
+    (style as Record<string, string>).WebkitBackdropFilter = 'var(--ds-glass-filter)';
+  } else if (w.backgroundColor === 'frosted') {
     // Blur intensity mapped from backgroundOpacity: 0.25=light, 0.5=med, 0.75=heavy, 1=max
     const intensity = w.backgroundOpacity ?? 0.5;
     const blurPx = Math.round(intensity * 24); // 6px to 24px
@@ -79,6 +96,6 @@ export function getWidgetContentStyle(w: WidgetConfig): CSSProperties | undefine
  */
 export function getTextColorClass(w: WidgetConfig, fallback = ''): string {
   if (w.textColor) return '';
-  if (!w.backgroundColor || w.backgroundColor === 'transparent' || w.backgroundColor === 'frosted' || w.backgroundOpacity === 0) return fallback;
+  if (!w.backgroundColor || w.backgroundColor === 'transparent' || isSeeThroughFill(w.backgroundColor) || w.backgroundOpacity === 0) return fallback;
   return isLightColor(w.backgroundColor) ? 'text-black' : 'text-white';
 }

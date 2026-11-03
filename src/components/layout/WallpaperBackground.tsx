@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { usePhotos } from '@/lib/hooks/usePhotos';
 import { useScreenOrientation } from '@/lib/hooks/useScreenOrientation';
+import { SCENERY, SCENERY_SETTING_KEY } from '@/lib/scenery';
 
 const STORAGE_KEY = 'prism-wallpaper-enabled';
 const INTERVAL_KEY = 'prism-wallpaper-interval';
@@ -131,6 +132,35 @@ export function usePinnedPhoto(context: 'wallpaper' | 'screensaver') {
   return { pinnedId, setPinnedId };
 }
 
+/**
+ * Whether this household shows the bundled scenery while it has no wallpaper
+ * photos of its own. Set by setup on new installs (#808); absent everywhere
+ * else, so an existing install's background does not change.
+ */
+function useSceneryFallback(): boolean {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    let active = true;
+    fetch('/api/settings')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (active) setOn(data?.settings?.[SCENERY_SETTING_KEY] === true); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
+  return on;
+}
+
+/** What to show: the household's own photos, or the bundled scenery when it has none. */
+export function wallpaperPool(
+  photos: Array<{ id: string }>,
+  photosLoading: boolean,
+  sceneryOn: boolean,
+): { items: Array<{ id: string; src: string }>; scenery: boolean } {
+  if (photos.length > 0) return { items: photos.map((p) => ({ id: p.id, src: `/api/photos/${p.id}/file` })), scenery: false };
+  if (sceneryOn && !photosLoading) return { items: SCENERY.map((s) => ({ id: s.id, src: s.src })), scenery: true };
+  return { items: [], scenery: false };
+}
+
 export function WallpaperBackground() {
   const { enabled, interval } = useWallpaperSettings();
   const { enabled: autoOrientation } = useAutoOrientationSetting();
@@ -141,7 +171,7 @@ export function WallpaperBackground() {
   // Fetch all wallpaper photos, then PREFER the ones matching this screen's
   // orientation — but fall back to any photo when none match, so a display whose
   // orientation has no photos still shows a wallpaper instead of going blank.
-  const { photos: allPhotos } = usePhotos({
+  const { photos: allPhotos, loading: photosLoading } = usePhotos({
     sort: 'random',
     limit: 40,
     usage: 'wallpaper',
@@ -163,8 +193,10 @@ export function WallpaperBackground() {
     setBrokenIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
   }, []);
 
-  const usePinned = !!pinnedId && !brokenIds.has(pinnedId);
-  const pool = photos.filter((p) => !brokenIds.has(p.id));
+  const sceneryOn = useSceneryFallback();
+  const { items, scenery } = wallpaperPool(photos, photosLoading, sceneryOn);
+  const usePinned = !scenery && !!pinnedId && !brokenIds.has(pinnedId);
+  const pool = items.filter((p) => !brokenIds.has(p.id));
 
   // Rotate photos (only if no pinned photo and interval is not "never")
   useEffect(() => {
@@ -185,7 +217,7 @@ export function WallpaperBackground() {
   // Pinned photo (if set and not broken), else the next non-broken rotation photo.
   const rotationPhoto = pool.length > 0 ? pool[currentIndex % pool.length] : undefined;
   const activeId = usePinned ? pinnedId : (rotationPhoto?.id ?? null);
-  const src = activeId ? `/api/photos/${activeId}/file` : null;
+  const src = usePinned ? `/api/photos/${pinnedId}/file` : (rotationPhoto?.src ?? null);
 
   if (!src) return null;
 
@@ -208,8 +240,10 @@ export function WallpaperBackground() {
           opacity: fadingOut ? 0 : 1,
         }}
       />
-      {/* Dark overlay to keep widgets readable */}
-      <div className="absolute inset-0 bg-black/60 dark:bg-black/70" />
+      {/* Dark overlay to keep widgets readable. The bundled scenery is shown
+          with glass widgets, which carry their own contrast (docs/DESIGN.md),
+          so it is only lightly dimmed and the photo shows. */}
+      <div className={scenery ? 'absolute inset-0 bg-black/10 dark:bg-black/40' : 'absolute inset-0 bg-black/60 dark:bg-black/70'} />
     </div>
   );
 }
