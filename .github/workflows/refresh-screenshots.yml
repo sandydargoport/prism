@@ -1,8 +1,8 @@
 name: Refresh Screenshots
 
 # Manually-triggered. Boots an ephemeral, freshly-seeded Prism, captures every
-# docs screenshot with scripts/capture-screenshots.ts (which also self-seeds a
-# few Bing daily wallpapers and pins one for the dashboard hero), and opens a PR
+# docs screenshot with scripts/capture-screenshots.ts (which also uploads the
+# bundled park scenery and pins one for the dashboard hero), and opens a PR
 # with the refreshed docs/demos/*.png. Runs against a throwaway seeded DB only,
 # never a live instance. This is an on-demand chore, not part of the merge gate.
 on:
@@ -113,8 +113,8 @@ jobs:
 
       - name: Boot app and capture screenshots
         # Start the dev server (same boot the e2e suite uses), wait for health,
-        # then run the capture against it. The capture script self-seeds Bing
-        # wallpapers and pins one for the dashboard hero.
+        # then run the capture against it. The capture script uploads the
+        # bundled park scenery and pins one for the dashboard hero.
         run: |
           npm run dev > /tmp/dev.log 2>&1 &
           echo "Waiting for the app to come up..."

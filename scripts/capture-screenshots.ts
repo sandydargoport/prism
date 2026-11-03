@@ -20,10 +20,10 @@
  * against an ephemeral seeded database.
  *
  * Photos: the seed does not create photos (they need image bytes), so before
- * capturing this script auto-seeds a handful of Bing daily wallpapers into the
- * target if it has none, and pins one as the dashboard wallpaper. That keeps the
- * Photos page, the dashboard hero, and the screensaver populated with no manual
- * prep. If Bing is unreachable, capture still proceeds (photo shots just empty).
+ * capturing this script uploads the park photos Prism ships (public/scenery)
+ * into the target if it has none, and pins one as the dashboard wallpaper. That
+ * keeps the Photos page, the dashboard hero, and the screensaver populated with
+ * no manual prep and no network.
  *
  * Saves to docs/demos/ with stable filenames so the docs site + README
  * references stay valid across re-runs. Captures both light + dark theme for the
@@ -36,6 +36,7 @@
 import { chromium, Browser, BrowserContext, Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
+import { SCENERY } from '../src/lib/scenery';
 
 // Refuse to run against anything that is not a declared test database. This is
 // the same flag e2e/*.spec.ts gate on. It is a deliberate choice rather than a
@@ -339,41 +340,22 @@ async function groupByPerson(page: Page): Promise<void> {
   }
 }
 
-/** Fetch a handful of Bing daily wallpapers (landscape + a few portrait). */
-async function fetchBingWallpapers(): Promise<{ name: string; buffer: Buffer }[]> {
-  const bases: string[] = [];
-  for (const idx of [0, 7]) {
-    try {
-      const r = await fetch(`https://www.bing.com/HPImageArchive.aspx?format=js&idx=${idx}&n=8&mkt=en-US`);
-      const j = (await r.json()) as { images?: { urlbase: string }[] };
-      for (const im of j.images ?? []) if (!bases.includes(im.urlbase)) bases.push(im.urlbase);
-    } catch {
-      // Bing unreachable — return whatever we have.
-    }
-  }
-  const jobs: { url: string; name: string }[] = [];
-  // Landscape and portrait must come from DISJOINT bases, or the same image
-  // shows up twice (once cropped landscape, once cropped portrait).
-  bases.slice(0, 8).forEach((ub, i) => jobs.push({ url: `https://www.bing.com${ub}_1920x1080.jpg`, name: `demo-land-${i}.jpg` }));
-  bases.slice(8, 11).forEach((ub, i) => jobs.push({ url: `https://www.bing.com${ub}_1080x1920.jpg`, name: `demo-port-${i}.jpg` }));
-  const out: { name: string; buffer: Buffer }[] = [];
-  for (const job of jobs) {
-    try {
-      const r = await fetch(job.url);
-      if (!r.ok) continue;
-      const buffer = Buffer.from(await r.arrayBuffer());
-      if (buffer.length > 10_000) out.push({ name: job.name, buffer });
-    } catch {
-      // Skip a failed image; keep going.
-    }
-  }
-  return out;
+/**
+ * The park photos Prism ships (public/scenery, public domain, credited in
+ * CREDITS.md). Read from disk, so a capture needs no network and never puts
+ * someone else's copyrighted photo in the published screenshots.
+ */
+function loadBundledScenery(): { name: string; buffer: Buffer }[] {
+  return SCENERY.map((s) => ({
+    name: `${s.id}.webp`,
+    buffer: fs.readFileSync(path.join(process.cwd(), 'public', s.src)),
+  }));
 }
 
 /**
  * Make sure the target has demo photos before capturing. The seed omits photos
- * (they need image bytes), so if the instance has none we upload a few Bing
- * wallpapers through the real upload API (which builds thumbnails, dimensions,
+ * (they need image bytes), so if the instance has none we upload the bundled
+ * park scenery through the real upload API (which builds thumbnails, dimensions,
  * orientation, and tags them wallpaper+gallery+screensaver). Best-effort: any
  * failure leaves the photo-dependent shots empty rather than aborting capture.
  */
@@ -388,16 +370,16 @@ async function ensureDemoPhotos(browser: Browser): Promise<void> {
     const json = await resp.json();
     const list = Array.isArray(json) ? json : (json.photos ?? []);
     if (list.length > 0) {
-      console.log('  photos already present — skipping Bing seed');
+      console.log('  photos already present — skipping the scenery seed');
       return;
     }
 
-    console.log('  no photos found — seeding Bing wallpapers...');
-    const images = await fetchBingWallpapers();
+    console.log('  no photos found — uploading the bundled park scenery...');
+    const images = loadBundledScenery();
     let uploaded = 0;
     for (const img of images) {
       const up = await page.request.post('/api/photos', {
-        multipart: { file: { name: img.name, mimeType: 'image/jpeg', buffer: img.buffer } },
+        multipart: { file: { name: img.name, mimeType: 'image/webp', buffer: img.buffer } },
       });
       if (up.ok()) uploaded++;
     }
