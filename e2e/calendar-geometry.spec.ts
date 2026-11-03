@@ -342,3 +342,63 @@ for (const pointer of POINTERS) {
     });
   });
 }
+
+/**
+ * The clock fits its tile (#808 hero). A tablet is a touch screen at 1180px, so
+ * it gets the 20px wall root; at that size "4:10 PM" in a small tile wrapped
+ * onto two lines and the date ran out of the box. The clock now sizes from its
+ * own box, so the time stays on one line and both lines stay inside the tile.
+ */
+test.describe('clock fits its tile', () => {
+  for (const [label, viewport] of [
+    ['tablet', { width: 1180, height: 820 }],
+    ['wall', { width: 1920, height: 1080 }],
+  ] as const) {
+    test(`a small clock tile on a ${label} holds the time on one line and the date inside`, async ({ playwright }, info) => {
+      test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
+      test.setTimeout(120_000);
+      // Blink bitmask: coarse=2, as a tablet reports.
+      const { browser, page } = await pointerPage(playwright, info, 2, viewport);
+      const login = await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } });
+      expect(login.ok(), 'precondition: login must succeed').toBe(true);
+      const created = await page.request.post('/api/layouts', {
+        data: {
+          name: `Clock fit e2e ${Date.now()}`,
+          // About the hero's tablet tile (some 210px wide), where it overflowed.
+          widgets: [
+            { i: 'calendar', x: 0, y: 0, w: 24, h: 27 },
+            { i: 'clock', x: 24, y: 19, w: 7, h: 8 },
+          ],
+        },
+      });
+      expect(created.status()).toBe(201);
+      const layout = await created.json();
+      try {
+        await page.goto(`/d/${layout.slug}`, { waitUntil: 'networkidle' });
+        const cell = page.locator('.widget-cell[data-widget="clock"]');
+        await cell.waitFor({ timeout: 60_000 });
+        await page.waitForTimeout(1000);
+        expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches), 'premise: coarse pointer').toBe(true);
+        const m = await cell.evaluate((el) => {
+          const box = el.getBoundingClientRect();
+          const [time, date] = Array.from(el.querySelectorAll('time'), (t) => {
+            const r = t.getBoundingClientRect();
+            const cs = getComputedStyle(t);
+            return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, height: r.height, line: parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2 };
+          });
+          return { box: { left: box.left, right: box.right, top: box.top, bottom: box.bottom }, time: time!, date: date! };
+        });
+        expect(m.time.height, 'time is one line').toBeLessThan(m.time.line * 1.5);
+        for (const [name, r] of [['time', m.time], ['date', m.date]] as const) {
+          expect(r.left, `${name} inside on the left`).toBeGreaterThanOrEqual(m.box.left - 0.5);
+          expect(r.right, `${name} inside on the right`).toBeLessThanOrEqual(m.box.right + 0.5);
+          expect(r.top, `${name} inside at the top`).toBeGreaterThanOrEqual(m.box.top - 0.5);
+          expect(r.bottom, `${name} inside at the bottom`).toBeLessThanOrEqual(m.box.bottom + 0.5);
+        }
+      } finally {
+        await page.request.delete(`/api/layouts/${layout.id}`);
+        await browser.close();
+      }
+    });
+  }
+});
