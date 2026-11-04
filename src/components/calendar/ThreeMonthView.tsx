@@ -265,7 +265,7 @@ function MiniMonth({
               return (
                 <div
                   key={dayIndex}
-                  data-three-month-day
+                  data-three-month-day={format(date, 'yyyy-MM-dd')}
                   onClick={() => onDateClick(date)}
                   className={cn(
                     'relative flex min-h-0 flex-col rounded text-xs cursor-pointer overflow-visible p-0.5',

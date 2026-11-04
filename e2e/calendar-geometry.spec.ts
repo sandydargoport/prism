@@ -362,6 +362,7 @@ test.describe('3 Months folds a busy day', () => {
     // The 12th of the current month is always in the middle mini month. Six is
     // more than a 1080p cell holds (four) and needs no other events that day.
     const now = new Date();
+    const busyDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-12`;
     const created: string[] = [];
     try {
       for (let i = 0; i < 6; i++) {
@@ -381,7 +382,9 @@ test.describe('3 Months folds a busy day', () => {
       for (const [width, height] of [[1920, 1080], [1280, 720]] as const) {
         await page.setViewportSize({ width, height });
         await openCalendarView(page, 'threeMonth');
-        const day = page.locator('[data-three-month-day]').filter({ hasText: 'Busy day e2e' });
+        // Found by date, not by title: at 720p the cell shows one event, and a
+        // seeded event that sorts first (all-day, or earlier) may take that spot.
+        const day = page.locator(`[data-three-month-day="${busyDate}"]`);
         await expect(day, `${width}x${height}: the busy day`).toHaveCount(1);
         const box = await day.evaluate((cell) => {
           const r = cell.getBoundingClientRect();
