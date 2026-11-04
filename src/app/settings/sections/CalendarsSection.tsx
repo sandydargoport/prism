@@ -560,7 +560,7 @@ export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
                             Show in &quot;Add Event&quot; modal
                           </span>
                           {isSubscription && (
-                            <Badge variant="outline" className="text-[10px] px-1 py-0 opacity-60">Read-only</Badge>
+                            <Badge variant="outline" className="text-3xs px-1 py-0 opacity-60">Read-only</Badge>
                           )}
                         </div>
                         <Switch

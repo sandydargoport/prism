@@ -193,7 +193,7 @@ export function LayoutPreview({
           }}
         >
           <span
-            className="absolute text-[7px] px-0.5 rounded-tl font-medium pointer-events-none"
+            className="absolute text-4xs px-0.5 rounded-tl font-medium pointer-events-none"
             style={{ backgroundColor: zone.color, color: 'white', bottom: 1, right: 1 }}
           >
             {zone.name}

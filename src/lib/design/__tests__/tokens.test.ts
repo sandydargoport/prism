@@ -61,6 +61,33 @@ describe('type scale', () => {
     expect(Number(cssValue(`--text-${role}--line-height`))).toBe(TYPE_SCALE[role].lineHeight);
   });
 
+  it('no component draws text at a fixed pixel size, which would skip the floor (#893)', () => {
+    // text-[10px] compiles to a plain font-size and never meets --text-floor.
+    // The floored sizes are text-2xs (11px), text-3xs (10px), text-4xs (8-9px).
+    // The 3 Months compact chips are the two left; #894 floors them.
+    const allowed = new Set([
+      'src/components/calendar/cells/InlineCalendarEvent.tsx',
+      'src/components/calendar/cells/SpanningEventRows.tsx',
+    ]);
+    const offenders: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          if (entry.name !== '__tests__') walk(full);
+        } else if (/\.(tsx?|css)$/.test(entry.name)) {
+          const rel = path.relative(ROOT, full);
+          if (allowed.has(rel)) continue;
+          fs.readFileSync(full, 'utf8').split('\n').forEach((line, i) => {
+            if (/text-\[\d+(\.\d+)?px\]/.test(line)) offenders.push(`${rel}:${i + 1}`);
+          });
+        }
+      }
+    };
+    walk(path.join(ROOT, 'src'));
+    expect(offenders).toEqual([]);
+  });
+
   it('cn keeps a role size next to a text colour', () => {
     for (const role of ROLES) {
       expect(cn(`text-${role}`, 'text-muted-foreground')).toBe(`text-${role} text-muted-foreground`);

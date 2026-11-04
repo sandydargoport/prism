@@ -230,18 +230,18 @@ function CommunityLayoutCard({
 
       {/* Meta */}
       <div className="flex flex-1 flex-col px-0.5 pt-2">
-        <div className="truncate text-[13px] font-semibold leading-tight">{entry.name}</div>
+        <div className="truncate text-xs font-semibold leading-tight">{entry.name}</div>
         <p className="mt-0.5 line-clamp-2 min-h-8 text-xs leading-snug text-muted-foreground">
           {entry.description}
         </p>
-        <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <div className="mt-1.5 flex items-center gap-1.5 text-2xs text-muted-foreground">
           <span className="truncate">by {entry.author}</span>
           <span className="opacity-40">·</span>
           <span className="shrink-0 tabular-nums">{entry.widgetCount}w</span>
         </div>
         {entry.orientation && (
           <div className="mt-1.5">
-            <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-muted/50 px-1.5 py-0.5 text-[10px] capitalize text-muted-foreground">
+            <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-muted/50 px-1.5 py-0.5 text-3xs capitalize text-muted-foreground">
               {entry.orientation === 'portrait' ? '▯' : '▭'} {entry.orientation}
             </span>
           </div>

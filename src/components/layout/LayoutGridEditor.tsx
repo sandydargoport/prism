@@ -314,7 +314,7 @@ export function LayoutGridEditor({
             const p = getColorPalette(id, isDark);
             return (
               <button key={id} onClick={() => setPaletteId(id)} onPointerDown={(e) => e.stopPropagation()}
-                className={`px-2 py-0.5 text-[10px] rounded-full border transition-colors touch-manipulation ${paletteId === id ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-accent/50 text-muted-foreground'}`}
+                className={`px-2 py-0.5 text-3xs rounded-full border transition-colors touch-manipulation ${paletteId === id ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-accent/50 text-muted-foreground'}`}
               >{p.label}</button>
             );
           })}
@@ -375,8 +375,8 @@ export function LayoutGridEditor({
         </div>
         {/* Text scale (text only) */}
         {target === 'text' && (
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] text-muted-foreground w-10 shrink-0">Size</span>
+          <div className="flex items-center gap-1 flex-wrap">
+            <span className="text-3xs text-muted-foreground w-14 shrink-0">Size</span>
             {[
               { value: 0.75, label: 'S' },
               { value: 1, label: 'M' },
@@ -384,7 +384,7 @@ export function LayoutGridEditor({
               { value: 1.5, label: 'XL' },
             ].map(({ value, label }) => (
               <button key={value} onClick={() => updateWidgetColor(selectedWidget!, { textScale: value })} onPointerDown={(e) => e.stopPropagation()}
-                className={`w-7 h-7 rounded-full text-[10px] border transition-colors touch-manipulation ${
+                className={`h-7 min-w-7 px-1 rounded-full text-3xs border transition-colors touch-manipulation ${
                   (selectedWidgetConfig!.textScale ?? 1) === value
                     ? 'bg-primary text-primary-foreground border-primary'
                     : 'border-border hover:bg-accent/50'
@@ -394,12 +394,12 @@ export function LayoutGridEditor({
         )}
         {/* Opacity (fill/outline only, not text) */}
         {target !== 'text' && (hasColor || isFrosted) && (
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] text-muted-foreground w-10 shrink-0">{isFrosted ? 'Blur' : 'Opacity'}</span>
+          <div className="flex items-center gap-1 flex-wrap">
+            <span className="text-3xs text-muted-foreground w-14 shrink-0">{isFrosted ? 'Blur' : 'Opacity'}</span>
             {isFrosted ? (
               [{ v: 0.25, l: 'Light' }, { v: 0.5, l: 'Med' }, { v: 0.75, l: 'Heavy' }, { v: 1, l: 'Max' }].map(({ v, l }) => (
                 <button key={v} onClick={() => updateWidgetColor(selectedWidget, { backgroundOpacity: v })} onPointerDown={(e) => e.stopPropagation()}
-                  className={`px-2 py-1 text-[10px] rounded border transition-colors touch-manipulation ${bgOpacity === v ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-accent/50'}`}>{l}</button>
+                  className={`px-2 py-1 text-3xs rounded border transition-colors touch-manipulation ${bgOpacity === v ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-accent/50'}`}>{l}</button>
               ))
             ) : (
               [0, 0.25, 0.5, 0.75, 1].map((o) => {
@@ -407,7 +407,7 @@ export function LayoutGridEditor({
                 const set = () => target === 'fill' ? updateWidgetColor(selectedWidget, { backgroundOpacity: o }) : updateWidgetColor(selectedWidget, { outlineOpacity: o });
                 return (
                   <button key={o} onClick={set} onPointerDown={(e) => e.stopPropagation()}
-                    className={`w-7 h-7 rounded-full text-[10px] border transition-colors touch-manipulation ${cur === o ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-accent/50'}`}>{Math.round(o * 100)}%</button>
+                    className={`h-7 min-w-7 px-1 rounded-full text-3xs border transition-colors touch-manipulation ${cur === o ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-accent/50'}`}>{Math.round(o * 100)}%</button>
                 );
               })
             )}
@@ -463,7 +463,7 @@ export function LayoutGridEditor({
                 </button>
                 {/* Popover */}
                 {isOpen && (
-                  <div className="absolute top-full left-0 mt-1 z-200 bg-card border border-border rounded-lg shadow-lg min-w-[320px]">
+                  <div className="absolute top-full left-0 mt-1 z-200 bg-card border border-border rounded-lg shadow-lg min-w-[360px]">
                     {renderColorPopover(id)}
                   </div>
                 )}
@@ -499,20 +499,20 @@ export function LayoutGridEditor({
                 </button>
                 {/* Grid popover */}
                 {isOpen && (
-                  <div className="absolute top-full left-0 mt-1 z-200 bg-card border border-border rounded-lg shadow-lg min-w-[280px] p-2.5 space-y-2.5">
+                  <div className="absolute top-full left-0 mt-1 z-200 bg-card border border-border rounded-lg shadow-lg min-w-[380px] p-2.5 space-y-2.5">
                     {/* Lines opacity */}
                     <div>
-                      <div className="text-[10px] text-muted-foreground mb-1 font-medium uppercase tracking-wide">Line Opacity</div>
+                      <div className="text-3xs text-muted-foreground mb-1 font-medium uppercase tracking-wide">Line Opacity</div>
                       <div className="flex items-center gap-1">
                         {[0, 0.25, 0.5, 0.75, 1].map((o) => (
                           <button key={o} onClick={() => updateWidgetColor(selectedWidget, { gridLineOpacity: o })} onPointerDown={(e) => e.stopPropagation()}
-                            className={`w-8 h-8 rounded-full text-[10px] border transition-colors touch-manipulation ${gridLineOp === o ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-accent/50'}`}>{Math.round(o * 100)}%</button>
+                            className={`w-8 h-8 rounded-full text-3xs border transition-colors touch-manipulation ${gridLineOp === o ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-accent/50'}`}>{Math.round(o * 100)}%</button>
                         ))}
                       </div>
                     </div>
                     {/* Cell background */}
                     <div>
-                      <div className="text-[10px] text-muted-foreground mb-1 font-medium uppercase tracking-wide">Cell Background</div>
+                      <div className="text-3xs text-muted-foreground mb-1 font-medium uppercase tracking-wide">Cell Background</div>
                       <div className="flex items-center gap-1 flex-wrap">
                         <button onClick={() => updateWidgetColor(selectedWidget, { cellBackgroundColor: null, cellBackgroundOpacity: 1 })} onPointerDown={(e) => e.stopPropagation()}
                           className={`w-7 h-7 rounded-full border border-gray-300 overflow-hidden transition-transform hover:scale-110 touch-manipulation ${!cellBgColor ? 'ring-2 ring-primary ring-offset-1' : ''}`} title="Default">
@@ -527,11 +527,11 @@ export function LayoutGridEditor({
                         ))}
                       </div>
                       {cellBgColor && (
-                        <div className="flex items-center gap-1 mt-1.5">
-                          <span className="text-[10px] text-muted-foreground w-10 shrink-0">Opacity</span>
+                        <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                          <span className="text-3xs text-muted-foreground w-14 shrink-0">Opacity</span>
                           {[0, 0.1, 0.25, 0.5, 0.75, 1].map((o) => (
                             <button key={o} onClick={() => updateWidgetColor(selectedWidget, { cellBackgroundOpacity: o })} onPointerDown={(e) => e.stopPropagation()}
-                              className={`w-7 h-7 rounded-full text-[9px] border transition-colors touch-manipulation ${cellBgOp === o ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-accent/50'}`}>{Math.round(o * 100)}%</button>
+                              className={`h-7 min-w-7 px-1 rounded-full text-3xs border transition-colors touch-manipulation ${cellBgOp === o ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-accent/50'}`}>{Math.round(o * 100)}%</button>
                           ))}
                         </div>
                       )}
@@ -653,7 +653,7 @@ export function LayoutGridEditor({
           <div style={cornerStyle('bl')} />
           <div style={cornerStyle('br')} />
           <span
-            className="absolute text-[10px] px-1 py-0.5 rounded font-semibold"
+            className="absolute text-3xs px-1 py-0.5 rounded font-semibold"
             style={{
               backgroundColor: color,
               color: 'white',

@@ -271,18 +271,18 @@ function ChoreItem({
 
           {/* Points badge */}
           {chore.pointValue > 0 && (
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+            <Badge variant="secondary" className="text-3xs px-1.5 py-0">
               +{chore.pointValue}
             </Badge>
           )}
 
           {/* Pending approval badge - takes priority over "requires approval" */}
           {isPendingApproval ? (
-            <Badge variant="default" className="text-[10px] px-1.5 py-0 bg-warning hover:bg-warning">
+            <Badge variant="default" className="text-3xs px-1.5 py-0 bg-warning hover:bg-warning">
               Pending
             </Badge>
           ) : chore.requiresApproval && (
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+            <Badge variant="outline" className="text-3xs px-1.5 py-0">
               Approval
             </Badge>
           )}
@@ -297,7 +297,7 @@ function ChoreItem({
                 name={chore.pendingApproval.completedBy.name}
                 color={chore.pendingApproval.completedBy.color}
                 size="sm"
-                className="h-4 w-4 text-[8px]"
+                className="h-6 w-6 text-4xs"
               />
               <span className="text-xs text-warning">
                 Done by {chore.pendingApproval.completedBy.name}
@@ -312,7 +312,7 @@ function ChoreItem({
                 name={chore.assignedTo.name}
                 color={chore.assignedTo.color}
                 size="sm"
-                className="h-4 w-4 text-[8px]"
+                className="h-6 w-6 text-4xs"
               />
               <span className="text-xs text-muted-foreground">
                 {chore.assignedTo.name}

@@ -42,8 +42,8 @@ export function LayoutEditorPreviewPanel({
       {/* INTERACTIVE canvas mini-map — the one real, scrollable canvas. */}
       <div>
         <div className="flex items-baseline justify-between mb-1.5">
-          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Canvas</p>
-          <span className="text-[9px] text-muted-foreground/70">click to scroll</span>
+          <p className="text-3xs font-medium text-muted-foreground uppercase tracking-wide">Canvas</p>
+          <span className="text-4xs text-muted-foreground/70">click to scroll</span>
         </div>
         <LayoutPreview
           widgets={previewWidgets}
@@ -63,7 +63,7 @@ export function LayoutEditorPreviewPanel({
       {/* REFERENCE — how the one design looks on each screen. Not editable;
           delineated (bordered, muted background) so it reads as a preview. */}
       <div className="rounded-md border border-border/60 bg-muted/40 p-2">
-        <p className="text-[10px] font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
+        <p className="text-3xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
           Preview — each screen <span className="normal-case font-normal opacity-60">(reference)</span>
         </p>
         <DevicePreviewGallery widgets={previewWidgets} highlightWidget={focusedWidget} />

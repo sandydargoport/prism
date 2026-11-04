@@ -84,7 +84,7 @@ export function AddToMealPlanSection({ recipe }: { recipe: Recipe }) {
         {/* Day headers */}
         <div className="grid grid-cols-7 mb-1">
           {dayHeaders.map((h, i) => (
-            <div key={i} className="text-center text-[11px] font-medium text-muted-foreground py-0.5">
+            <div key={i} className="text-center text-2xs font-medium text-muted-foreground py-0.5">
               {h}
             </div>
           ))}

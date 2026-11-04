@@ -203,7 +203,7 @@ function DaySection({
       <div className="flex items-center gap-2">
         <h4 className={cn('text-sm font-semibold capitalize', isToday && 'text-primary')}>{day}</h4>
         <span className="text-xs text-muted-foreground">{format(date, 'MMM d')}</span>
-        {isToday && <Badge variant="default" className="text-[10px] px-1.5 py-0">Today</Badge>}
+        {isToday && <Badge variant="default" className="text-3xs px-1.5 py-0">Today</Badge>}
       </div>
       <div className="space-y-1">
         {meals.map((meal) => (
@@ -242,7 +242,7 @@ function MealItem({
       >
         <div className="flex items-center gap-2">
           <span className={cn('text-sm font-medium truncate', isCooked && 'line-through text-muted-foreground')}>{meal.name}</span>
-          <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize">{meal.mealType}</Badge>
+          <Badge variant="outline" className="text-3xs px-1.5 py-0 capitalize">{meal.mealType}</Badge>
           {(meal.prepTime || meal.cookTime) && (
             <div className="flex items-center gap-0.5 text-xs text-muted-foreground">
               <Clock className="h-3 w-3" />
@@ -253,7 +253,7 @@ function MealItem({
         {isCooked && meal.cookedBy && (
           <div className="flex items-center gap-1 mt-0.5">
             <CheckCircle2 className="h-3 w-3 text-muted-foreground" />
-            <UserAvatar name={meal.cookedBy.name} color={meal.cookedBy.color} size="sm" className="h-4 w-4 text-[8px]" />
+            <UserAvatar name={meal.cookedBy.name} color={meal.cookedBy.color} size="sm" className="h-6 w-6 text-4xs" />
             <span className="text-xs text-muted-foreground">{meal.cookedBy.name} cooked this</span>
           </div>
         )}

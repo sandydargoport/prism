@@ -298,10 +298,10 @@ export function PinForm({ pin, initialLatLng, parentId, pinType = 'location', ch
                       >
                         <span className={cn('h-4 w-4 rounded border flex items-center justify-center shrink-0',
                           sel ? 'bg-success border-success' : 'border-border')}>
-                          {sel && <span className="text-white text-[10px] leading-none">✓</span>}
+                          {sel && <span className="text-white text-3xs leading-none">✓</span>}
                         </span>
                         <span className="flex-1 truncate">{u.name}</span>
-                        <span className="text-[10px] text-muted-foreground uppercase shrink-0">
+                        <span className="text-3xs text-muted-foreground uppercase shrink-0">
                           {u.type === 'monument' ? 'NM' : 'NP'}
                         </span>
                       </button>
@@ -480,7 +480,7 @@ export function PinForm({ pin, initialLatLng, parentId, pinType = 'location', ch
                       >
                         <Emoji e="📍" /> {s.name}
                         {s.latitude === 0 && s.longitude === 0 && (
-                          <span className="text-[10px] text-warning ml-0.5">no location</span>
+                          <span className="text-3xs text-warning ml-0.5">no location</span>
                         )}
                         <button type="button"
                           onClick={() => setPendingStops((p) => p.filter((x) => x.name !== s.name))}
@@ -539,10 +539,10 @@ export function PinForm({ pin, initialLatLng, parentId, pinType = 'location', ch
                         >
                           <span className={cn('h-4 w-4 rounded border flex items-center justify-center shrink-0',
                             selected ? 'bg-success border-success' : 'border-border')}>
-                            {selected && <span className="text-white text-[10px] leading-none">✓</span>}
+                            {selected && <span className="text-white text-3xs leading-none">✓</span>}
                           </span>
                           <span className="flex-1 truncate">{u.name}</span>
-                          <span className="text-[10px] text-muted-foreground uppercase shrink-0">
+                          <span className="text-3xs text-muted-foreground uppercase shrink-0">
                             {u.type === 'monument' ? 'NM' : 'NP'}
                           </span>
                         </button>
@@ -561,7 +561,7 @@ export function PinForm({ pin, initialLatLng, parentId, pinType = 'location', ch
                   <Badge key={p.name} className="bg-success text-white gap-1 pr-1 text-xs">
                     <Emoji e="🌲" /> {p.name}
                     {p.latitude === 0 && p.longitude === 0 && (
-                      <span className="text-[10px] text-success ml-0.5">locating…</span>
+                      <span className="text-3xs text-success ml-0.5">locating…</span>
                     )}
                     <button type="button" onClick={() => { void togglePendingPark(p.name); }} className="hover:opacity-75">
                       <X className="h-3 w-3" />

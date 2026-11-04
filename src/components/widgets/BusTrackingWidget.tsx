@@ -205,7 +205,7 @@ function RouteStatusCard({ route, compact }: { route: BusRouteStatus; compact: b
 
       {/* Last update info */}
       {p.lastCheckpointName && p.minutesSinceLastCheckpoint !== null && (
-        <div className="text-[11px] text-muted-foreground">
+        <div className="text-2xs text-muted-foreground">
           Last: {p.lastCheckpointName} ({formatMinutes(p.minutesSinceLastCheckpoint)} ago)
         </div>
       )}
@@ -271,7 +271,7 @@ function TrainMap({
         )}
         {!compact && (
           <div
-            className="absolute text-[9px] leading-tight text-muted-foreground text-center pointer-events-none"
+            className="absolute text-4xs leading-tight text-muted-foreground text-center pointer-events-none"
             style={{
               top: nodeSize + 3,
               left: '50%',

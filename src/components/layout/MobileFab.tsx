@@ -140,7 +140,7 @@ export function MobileFab({ user, onLogin, onLogout, uiHidden }: MobileFabProps)
       key: 'auth',
       icon: user ? (
         <div
-          className="relative h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
+          className="relative h-5 w-5 rounded-full flex items-center justify-center text-3xs font-bold text-white"
           style={{ backgroundColor: user.color || '#6B7280' }}
         >
           {user.avatarUrl?.startsWith('emoji:') ? (

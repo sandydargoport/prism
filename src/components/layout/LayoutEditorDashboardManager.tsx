@@ -33,7 +33,7 @@ export function DashboardDropdown({ layoutName, isActive, onToggle, allDashboard
           }} className={`w-full text-left px-3 py-1.5 text-sm hover:bg-accent transition-colors flex items-center gap-2 ${d.id === currentDashboardId ? 'bg-accent/50' : ''}`}>
             <span className="flex-1 truncate">{d.name}</span>
             {d.id === currentDashboardId && <CheckIcon />}
-            {d.isDefault && d.id !== currentDashboardId && <span className="text-[10px] text-muted-foreground">default</span>}
+            {d.isDefault && d.id !== currentDashboardId && <span className="text-3xs text-muted-foreground">default</span>}
           </button>
         ))}
         <div className="border-t border-border my-1" />
@@ -107,10 +107,10 @@ export function SaveAsDialog({
                   >
                     <span className="flex-1 truncate">{d.name}</span>
                     {d.id === currentDashboardId && (
-                      <span className="text-[10px] text-muted-foreground">current</span>
+                      <span className="text-3xs text-muted-foreground">current</span>
                     )}
                     {d.isDefault && d.id !== currentDashboardId && (
-                      <span className="text-[10px] text-muted-foreground">default</span>
+                      <span className="text-3xs text-muted-foreground">default</span>
                     )}
                   </button>
                 ))}

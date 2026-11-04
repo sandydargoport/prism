@@ -20,7 +20,7 @@ export function TagChip({ tag, active, onClick, size = 'md' }: TagChipProps) {
       onClick={onClick}
       className={cn(
         'inline-flex items-center rounded-full border transition-colors',
-        size === 'sm' ? 'px-1.5 py-0 text-[10px]' : 'px-2 py-0.5 text-xs',
+        size === 'sm' ? 'px-1.5 py-0 text-3xs' : 'px-2 py-0.5 text-xs',
         active
           ? 'bg-primary text-primary-foreground border-primary'
           : onClick

@@ -159,7 +159,7 @@ export function MobileNav({ user, onLogin, onLogout, uiHidden }: MobileNavProps)
               {user ? (
                 <>
                   <div
-                    className="relative h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
+                    className="relative h-5 w-5 rounded-full flex items-center justify-center text-3xs font-bold text-white"
                     style={{ backgroundColor: user.color || '#6B7280' }}
                   >
                     {user.avatarUrl?.startsWith('emoji:') ? (
@@ -218,7 +218,7 @@ export function MobileNav({ user, onLogin, onLogout, uiHidden }: MobileNavProps)
                 )}
               >
                 <Icon className={cn('h-6 w-6', isActive && 'stroke-[2.5]')} />
-                <span className="text-[10px] font-medium">{t(item.i18nKey)}</span>
+                <span className="text-3xs font-medium">{t(item.i18nKey)}</span>
               </Link>
             );
           })}
@@ -234,7 +234,7 @@ export function MobileNav({ user, onLogin, onLogout, uiHidden }: MobileNavProps)
             )}
           >
             <MoreHorizontal className={cn('h-6 w-6', (showMore || isSecondaryActive) && 'stroke-[2.5]')} />
-            <span className="text-[10px] font-medium">More</span>
+            <span className="text-3xs font-medium">More</span>
           </button>
         </div>
       </nav>

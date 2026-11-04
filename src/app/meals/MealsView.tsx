@@ -303,7 +303,7 @@ function MealCard({ meal, onMarkCooked, onUnmarkCooked, onEdit, onDelete, onDrop
         {isCooked && meal.cookedBy && (
           <div className="flex items-center gap-1 mt-1">
             <CheckCircle2 className="h-3 w-3 text-success" />
-            <UserAvatar name={meal.cookedBy.name} color={meal.cookedBy.color} size="sm" className="h-4 w-4 text-[8px]" />
+            <UserAvatar name={meal.cookedBy.name} color={meal.cookedBy.color} size="sm" className="h-6 w-6 text-4xs" />
             <span className="text-xs text-muted-foreground">{meal.cookedBy.name} cooked this</span>
           </div>
         )}
