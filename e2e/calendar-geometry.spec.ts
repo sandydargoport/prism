@@ -381,14 +381,18 @@ test.describe('clock fits its tile', () => {
         expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches), 'premise: coarse pointer').toBe(true);
         const m = await cell.evaluate((el) => {
           const box = el.getBoundingClientRect();
-          const [time, date] = Array.from(el.querySelectorAll('time'), (t) => {
+          const [time, date] = (['[data-clock-time]', '[data-clock-date]'] as const).map((sel) => {
+            const t = el.querySelector(sel)!;
             const r = t.getBoundingClientRect();
             const cs = getComputedStyle(t);
-            return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, height: r.height, line: parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2 };
+            return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, height: r.height, line: parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2, weight: cs.fontWeight };
           });
           return { box: { left: box.left, right: box.right, top: box.top, bottom: box.bottom }, time: time!, date: date! };
         });
         expect(m.time.height, 'time is one line').toBeLessThan(m.time.line * 1.5);
+        // A lock screen (#800): the date sits above the time, which is medium weight.
+        expect(m.date.bottom, 'date above the time').toBeLessThanOrEqual(m.time.top + 0.5);
+        expect(m.time.weight, 'time at medium weight').toBe('500');
         for (const [name, r] of [['time', m.time], ['date', m.date]] as const) {
           expect(r.left, `${name} inside on the left`).toBeGreaterThanOrEqual(m.box.left - 0.5);
           expect(r.right, `${name} inside on the right`).toBeLessThanOrEqual(m.box.right + 0.5);

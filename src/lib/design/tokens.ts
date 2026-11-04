@@ -32,8 +32,8 @@ export const TYPE_SCALE = {
   title: { px: 28, weight: 600, lineHeight: 1.25 },
   /** The date line and the one headline per screen. */
   display: { px: 48, weight: 600, lineHeight: 1.1 },
-  /** The clock. Light weight, tabular figures. */
-  clock: { px: 100, weight: 300, lineHeight: 1 },
+  /** The clock. Medium weight, tight spacing, tabular figures (#800). */
+  clock: { px: 100, weight: 500, lineHeight: 1 },
 } as const;
 
 export type TypeRole = keyof typeof TYPE_SCALE;
