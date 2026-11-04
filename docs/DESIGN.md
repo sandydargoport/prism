@@ -62,10 +62,12 @@ One material everywhere. Only the fill changes.
 | Padding | 24px (`--ds-card-pad`) |
 | Gap between cards | 16px (`--ds-card-gap`) |
 | Border | 1px in the border colour, no shadow |
-| Over a photo | the card colour at 65% (`--ds-glass-alpha`) with a 24px blur |
+| Over a photo | the card colour at 65% in light, 40% in dark (`--ds-glass-alpha`), with a 24px blur |
 
 - Glass keeps the card's own colour, so a light theme gets light glass and a
-  dark theme dark glass. A photo is always drawn under a black layer (10%
+  dark theme dark glass. Dark glass is thinner and shows more of the photo:
+  its light text holds up over a bright photo, where light glass needs more
+  card behind its grey text. A photo is always drawn under a black layer (10%
   light, 40% dark for the bundled scenery; 60% and 70% for the family's own
   photos), and text on glass stays at 4.5:1 over a pure black or a pure white
   photo under that layer (checked).
@@ -102,6 +104,10 @@ Rules for a display nobody is touching.
    event). Everything else steps down from it.
 6. **Hide what is empty.** An empty widget hides on the wall, or says one
    short sentence; it does not show an empty box with an Add button.
+7. **Idle screen: straight on the photo.** When the wall goes idle, the glass
+   cards that stay (the clock and weather) turn fully clear. Their text turns
+   light and carries a soft dark shadow (`--ds-idle-text-shadow`); small
+   details such as the sun and moon times keep a small backing.
 
 ## Touch
 

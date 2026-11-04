@@ -486,6 +486,7 @@ export function Dashboard({
                   isEditable={layout.isEditing}
                   renderWidget={renderDashboardWidget}
                   fadedIds={fadedIds}
+                  idleClear={calmIdle}
                   hideEmptyByDefault={calmIdle}
                   drift={idleDrift}
                   morph

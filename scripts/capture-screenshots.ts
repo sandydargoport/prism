@@ -46,7 +46,6 @@
 import { chromium, Browser, BrowserContext, Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
-import { LAYOUT_TEMPLATES } from '../src/lib/constants/layoutTemplates';
 import { frameAll } from './frame-screenshots';
 import { SCENERY } from '../src/lib/scenery';
 
@@ -141,13 +140,26 @@ interface CaptureSpec {
   device?: DeviceName;
   /** Capture signed out, the way a wall display runs. */
   signedOut?: boolean;
+  /**
+   * Leave the screen untouched long enough for auto-hide to take the side
+   * rail and top bar away, as a wall shows them when nobody is using it.
+   */
+  idleChrome?: boolean;
+  /**
+   * Put the dashboard into its idle screen before the shot: the widgets that
+   * do not stay when idle fade, leaving the photo with the clock and weather.
+   */
+  idle?: boolean;
 }
 
 /**
  * The hero set: the same moment on a wall, a tablet and a phone, in light and
  * dark. frame-screenshots.ts puts each trio into device frames afterwards.
- * The wall and the tablet are signed out, as they would be in a kitchen; the
- * phone is a parent's, signed in.
+ * Each device shows a different side of it: the wall the dashboard, the
+ * tablet the idle screen (the photo with the clock and weather), the phone
+ * the mobile home. The wall and the tablet are signed out, as they would be
+ * in a kitchen; the phone is a parent's, signed in. They show a new install in the Photo look
+ * (see stageHero), so they run before any demo photos are uploaded.
  */
 const HERO_SHOTS: CaptureSpec[] = (['light', 'dark'] as const).flatMap((theme) => [
   {
@@ -157,17 +169,18 @@ const HERO_SHOTS: CaptureSpec[] = (['light', 'dark'] as const).flatMap((theme) =
     theme,
     device: 'wall' as const,
     signedOut: true,
-    pinWallpaper: true,
+    idleChrome: true,
     settleMs: 15000,
   },
   {
     name: `hero-tablet-${theme}`,
     url: '/',
-    description: `Tablet, touch, signed out (${theme})`,
+    description: `Tablet, touch, signed out, idle screen (${theme})`,
     theme,
     device: 'tablet' as const,
     signedOut: true,
-    pinWallpaper: true,
+    idleChrome: true,
+    idle: true,
     settleMs: 15000,
   },
   {
@@ -378,7 +391,7 @@ const SCREENSHOTS: CaptureSpec[] = [
     description: 'Family message board',
     settleMs: 1000,
   },
-  // Last, because they restage the dashboard layout (see stageHeroLayout).
+  // The hero set runs first, on its own staging (see main).
   ...HERO_SHOTS,
 ];
 
@@ -470,11 +483,28 @@ async function ensureDemoPhotos(browser: Browser): Promise<void> {
 }
 
 /**
- * Put the seeded default dashboard into the calendar-first layout the hero
- * shows, and return a function that puts the original back. Signed-out
- * screens show the display member's default layout, which is this one.
+ * Stage the seeded install as a new install in the Photo look (#808): the
+ * Family Central layout with glass cards, the Paper palette, and the bundled
+ * park scenery behind it (shown only while the install has no photos of its
+ * own, which is why the hero runs before ensureDemoPhotos). Signed-out screens
+ * show the display member's default layout, which is this one. Returns a
+ * function that puts everything back.
  */
-async function stageHeroLayout(browser: Browser): Promise<() => Promise<void>> {
+/**
+ * The hero's dashboard, on the 48x27 grid. The clock runs across the top left
+ * with the calendar under it; the weather (forecast, sun and moon) sits top
+ * right, where neither the tablet nor the phone overlaps the wall in the
+ * framed image. Clock and weather stay when idle, so the tablet's idle shot is
+ * the photo with both along the top, against the sky.
+ */
+const HERO_LAYOUT = [
+  { i: 'clock', x: 0, y: 0, w: 27, h: 5, showWhenIdle: true },
+  { i: 'calendar', x: 0, y: 5, w: 27, h: 22, showWhenIdle: false },
+  { i: 'weather', x: 27, y: 0, w: 21, h: 15, showWhenIdle: true },
+  { i: 'birthdays', x: 27, y: 15, w: 21, h: 12, showWhenIdle: false },
+].map((w) => ({ ...w, backgroundColor: 'glass' }));
+
+async function stageHero(browser: Browser): Promise<() => Promise<void>> {
   const context = await browser.newContext({ baseURL: BASE_URL });
   const page = await context.newPage();
   await page.goto('/', { waitUntil: 'load', timeout: 60_000 });
@@ -485,14 +515,30 @@ async function stageHeroLayout(browser: Browser): Promise<() => Promise<void>> {
     await context.close();
     throw new Error('No default layout to stage: did the seed run, and set displayUserId?');
   }
-  const original = layout.widgets;
-  const patch = (widgets: unknown) =>
-    page.request.patch(`/api/layouts/${layout.id}`, { data: { widgets } });
-  const resp = await patch(LAYOUT_TEMPLATES.familyCentral!.widgets);
-  if (!resp.ok()) throw new Error(`Staging the hero layout failed: ${resp.status()}`);
-  console.log('  staged the Family Central layout for the hero shots');
+  const settings = (await (await page.request.get('/api/settings')).json()) as Record<string, unknown>;
+  const setSetting = (key: string, value: unknown) =>
+    page.request.patch('/api/settings', { data: { key, value } });
+
+  const original = {
+    widgets: layout.widgets, idleBackground: layout.idleBackground,
+    theme: settings.theme, scenery: settings.wallpaperScenery,
+  };
+  for (const resp of [
+    await page.request.patch(`/api/layouts/${layout.id}`, {
+      data: { widgets: HERO_LAYOUT, idleBackground: { source: 'dashboard' } },
+    }),
+    await setSetting('theme', { ...(original.theme as object | undefined), paletteId: 'paper' }),
+    await setSetting('wallpaperScenery', true),
+  ]) {
+    if (!resp.ok()) throw new Error(`Staging the hero failed: ${resp.status()}`);
+  }
+  console.log('  staged the hero: calendar + weather layout, glass cards, Paper, park scenery');
   return async () => {
-    await patch(original);
+    await page.request.patch(`/api/layouts/${layout.id}`, {
+      data: { widgets: original.widgets, idleBackground: original.idleBackground ?? { source: 'photos' } },
+    });
+    await setSetting('theme', original.theme ?? { mode: 'system' });
+    await setSetting('wallpaperScenery', original.scenery ?? false);
     await context.close();
   };
 }
@@ -681,6 +727,16 @@ async function captureOnce(spec: CaptureSpec): Promise<void> {
       }
     }
 
+    // Auto-hide takes the rail and bar away after 10 s without a touch; the
+    // click above counts as one.
+    if (spec.idleChrome) await page.waitForTimeout(11_000);
+    if (spec.idle) {
+      // The toolbar's "screensaver now" event, which a calm dashboard answers
+      // by fading in place rather than opening the separate screensaver.
+      await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
+      await page.waitForTimeout(2500);
+    }
+
     // Wait for any <img> (photo thumbnails, recipe images, avatars) to finish
     // loading. waitForContentReady only tracks spinners/skeletons, not images,
     // so without this the Photos gallery can capture blank thumbnails.
@@ -793,27 +849,33 @@ async function main() {
 
   let ok = 0;
   let failed = 0;
-  let restoreLayout: (() => Promise<void>) | null = null;
+  let restoreHero: (() => Promise<void>) | null = null;
+  const run = async (spec: CaptureSpec) => {
+    if (await captureOne(spec)) ok++;
+    else failed++;
+    // Small pause between captures so the dev server has time to recover
+    // from the previous on-demand compile before we hit it with another.
+    await new Promise((r) => setTimeout(r, 1_500));
+  };
+  const heroSpecs = specs.filter((s) => s.name.startsWith('hero-'));
+  const otherSpecs = specs.filter((s) => !s.name.startsWith('hero-'));
 
   try {
-    // Ensure the target has demo photos (Photos page, dashboard hero,
-    // screensaver) before capturing. Skipped automatically if a photo filter
-    // is not part of the run but photos are cheap and shared, so always run it.
-    await ensureDemoPhotos(await browserFor({} as CaptureSpec));
-
-    for (const spec of specs) {
-      if (spec.name.startsWith('hero-') && !restoreLayout) {
-        restoreLayout = await stageHeroLayout(await browserFor({} as CaptureSpec));
-      }
-      const success = await captureOne(spec);
-      if (success) ok++;
-      else failed++;
-      // Small pause between captures so the dev server has time to recover
-      // from the previous on-demand compile before we hit it with another.
-      await new Promise((r) => setTimeout(r, 1_500));
+    // The hero shows a new install, so it runs on its own staging before any
+    // demo photos exist: with photos, the scenery steps aside.
+    if (heroSpecs.length > 0) {
+      restoreHero = await stageHero(await browserFor({} as CaptureSpec));
+      for (const spec of heroSpecs) await run(spec);
+      await restoreHero();
+      restoreHero = null;
     }
+
+    // Demo photos for the Photos page, the photo dashboard and the
+    // screensaver. Cheap and shared, so always run it.
+    if (otherSpecs.length > 0) await ensureDemoPhotos(await browserFor({} as CaptureSpec));
+    for (const spec of otherSpecs) await run(spec);
   } finally {
-    if (restoreLayout) await restoreLayout().catch(() => {});
+    if (restoreHero) await restoreHero().catch(() => {});
     for (const b of browsers.values()) await (await b).close();
   }
 

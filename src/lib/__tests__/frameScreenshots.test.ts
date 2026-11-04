@@ -5,7 +5,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import sharp from 'sharp';
-import { CANVAS, PLACEMENT, composeHero, frameAll, type DeviceName } from '../../../scripts/frame-screenshots';
+import { BACKDROP, CANVAS, PLACEMENT, RING, composeHero, frameAll, type DeviceName } from '../../../scripts/frame-screenshots';
 
 // scripts/frame-screenshots.ts puts the wall, tablet and phone shots into
 // device frames on one image (docs/demos/hero-{light,dark}.png). Each shot
@@ -68,6 +68,38 @@ describe('frame-screenshots', () => {
     // The canvas corner is backdrop, not a screen.
     const corner = await pixel(out, 5, 5);
     for (const c of Object.values(COLOURS)) expect(corner).not.toEqual(c);
+  });
+
+  it('keeps the bezels of the tablet and phone where they overlap the wall, ringed off from it', async () => {
+    const out = path.join(dir, 'hero-light.png');
+    await composeHero(
+      'light',
+      {
+        wall: path.join(dir, 'hero-wall-light.png'),
+        tablet: path.join(dir, 'hero-tablet-light.png'),
+        phone: path.join(dir, 'hero-phone-light.png'),
+      },
+      out,
+    );
+    const hex = (rgb: number[]) => '#' + rgb.map((v) => v.toString(16).padStart(2, '0')).join('');
+    const w = PLACEMENT.wall;
+    const t = PLACEMENT.tablet;
+    const ph = PLACEMENT.phone;
+    // Premise: these edges sit over the wall (its screen or its bezel).
+    const phoneY = ph.top + 100;
+    expect(ph.left - ph.bezel - RING).toBeGreaterThan(w.left);
+    expect(ph.left - ph.bezel - RING).toBeLessThan(w.left + w.width + w.bezel);
+    expect(phoneY).toBeLessThan(w.top + w.height);
+    const tabletX = t.left + t.width / 2;
+    expect(tabletX).toBeGreaterThan(w.left);
+    expect(t.top - t.bezel - RING).toBeLessThan(w.top + w.height);
+
+    // The phone's left bezel and the tablet's top bezel are drawn, not the wall's screen.
+    expect(hex(await pixel(out, ph.left - ph.bezel / 2, phoneY))).toBe(BACKDROP.light.bezel);
+    expect(hex(await pixel(out, tabletX, t.top - t.bezel / 2))).toBe(BACKDROP.light.bezel);
+    // And a ring in the paper colour separates each from the wall.
+    expect(hex(await pixel(out, ph.left - ph.bezel - RING / 2, phoneY))).toBe(BACKDROP.light.ring);
+    expect(hex(await pixel(out, tabletX, t.top - t.bezel - RING / 2))).toBe(BACKDROP.light.ring);
   });
 
   it('frames only the modes whose three shots exist', async () => {

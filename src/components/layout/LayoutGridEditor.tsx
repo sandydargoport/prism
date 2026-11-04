@@ -39,6 +39,7 @@ export function LayoutGridEditor({
   theme = DASHBOARD_THEME,
   previewFit = 'stretch',
   fadedIds,
+  idleClear,
   hideEmptyByDefault = false,
   drift,
   morph,
@@ -783,6 +784,7 @@ export function LayoutGridEditor({
       targetRows={displayTargetRows}
       designOrientation={screenGuideOrientation}
       fadedIds={fadedIds}
+      idleClear={idleClear}
       hideEmptyByDefault={hideEmptyByDefault}
       drift={drift}
       morph={morph}
