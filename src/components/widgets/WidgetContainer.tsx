@@ -266,7 +266,8 @@ export function WidgetContainer({
           const hasSolidWidgetBg =
             !!backgroundColor &&
             backgroundColor !== 'transparent' &&
-            backgroundColor !== 'frosted';
+            backgroundColor !== 'frosted' &&
+            backgroundColor !== 'glass';
 
           if (!overrideTextColor && !hasSolidWidgetBg) return {};
 

@@ -23,6 +23,7 @@ export type { LayoutGridEditorProps } from './grid/gridEditorTypes';
 
 // Re-import for local use
 import { DASHBOARD_THEME } from './grid/gridEditorTypes';
+import { isSeeThroughFill } from './grid/gridWidgetStyles';
 import type { LayoutGridEditorProps } from './grid/gridEditorTypes';
 
 export function LayoutGridEditor({
@@ -253,8 +254,9 @@ export function LayoutGridEditor({
 
   // Helper: render a Harvey ball indicator
   const renderHarveyBall = (color: string | undefined, opacity: number, size = 16) => {
-    const fillColor = color && color !== 'transparent' && color !== 'frosted' ? color : (color === 'frosted' ? '#b0c4de' : undefined);
-    const fillLevel = !color || color === 'transparent' ? 0 : (color === 'frosted' ? 1 : opacity);
+    const seeThrough = isSeeThroughFill(color);
+    const fillColor = color && color !== 'transparent' && !seeThrough ? color : (seeThrough ? '#b0c4de' : undefined);
+    const fillLevel = !color || color === 'transparent' ? 0 : (seeThrough ? 1 : opacity);
     if (!fillColor || fillLevel === 0) return null;
     const r = size / 2 - 1;
     const cx = size / 2;
@@ -340,6 +342,14 @@ export function LayoutGridEditor({
               className={`w-7 h-7 rounded-full border border-gray-300 overflow-hidden transition-transform hover:scale-110 touch-manipulation ${bgColor === 'frosted' ? 'ring-2 ring-primary ring-offset-1' : ''}`}
               title="Frosted glass">
               <svg viewBox="0 0 32 32" className="w-full h-full"><defs><radialGradient id="frost-pop" cx="30%" cy="30%"><stop offset="0%" stopColor="rgba(255,255,255,0.7)" /><stop offset="100%" stopColor="rgba(200,210,230,0.4)" /></radialGradient></defs><circle cx="16" cy="16" r="16" fill="url(#frost-pop)" /><circle cx="10" cy="12" r="4" fill="rgba(255,255,255,0.3)" /><circle cx="20" cy="18" r="3" fill="rgba(255,255,255,0.2)" /></svg>
+            </button>
+          )}
+          {/* Glass (fill only): the theme's card colour, see-through, blurred */}
+          {target === 'fill' && (
+            <button onClick={() => apply('glass')} onPointerDown={(e) => e.stopPropagation()}
+              className={`w-7 h-7 rounded-full border border-gray-300 overflow-hidden transition-transform hover:scale-110 touch-manipulation ${bgColor === 'glass' ? 'ring-2 ring-primary ring-offset-1' : ''}`}
+              title="Glass" aria-label="Glass fill">
+              <div className="w-full h-full bg-card/80 backdrop-blur-sm" style={{ backgroundImage: 'linear-gradient(135deg, hsl(var(--card) / 0.9), hsl(var(--card) / 0.5))' }} />
             </button>
           )}
           <div className="w-px h-5 bg-border" />
@@ -447,7 +457,7 @@ export function LayoutGridEditor({
                   {indicator}
                   {/* Colored underline indicator */}
                   {hasValue && (
-                    <div className="absolute bottom-0.5 left-2 right-2 h-0.5 rounded-full" style={{ backgroundColor: color === 'frosted' ? '#b0c4de' : color! }} />
+                    <div className="absolute bottom-0.5 left-2 right-2 h-0.5 rounded-full" style={{ backgroundColor: isSeeThroughFill(color) ? '#b0c4de' : color! }} />
                   )}
                 </button>
                 {/* Popover */}

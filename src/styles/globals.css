@@ -385,6 +385,13 @@ html.performance-mode [class*="backdrop-blur"] {
   backdrop-filter: none !important;
 }
 
+/* The Glass widget fill (docs/DESIGN.md "Cards"): no blur, thicker glass, so
+   it stays readable without the cost. */
+html.performance-mode {
+  --ds-glass-filter: none;
+  --ds-glass-alpha: 0.94;
+}
+
 @layer base {
   :root {
     /* Prism 2.0 shape tokens (docs/DESIGN.md). Not colours, so no theme
@@ -393,8 +400,9 @@ html.performance-mode [class*="backdrop-blur"] {
     --ds-card-radius: 0.8rem;
     --ds-card-pad: 1.2rem;
     --ds-card-gap: 0.8rem;
-    --ds-glass-alpha: 0.82;
+    --ds-glass-alpha: 0.65;
     --ds-glass-blur: 24px;
+    --ds-glass-filter: blur(var(--ds-glass-blur)) saturate(1.2);
     --ds-event-bar: 4px;
     --ds-event-tint: 16%;
 
