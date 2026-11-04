@@ -213,10 +213,11 @@ test.describe('calendar grid geometry', () => {
  * 12px at a desk. Measured as the rendered size: computed font-size times the
  * CSS zoom in force, for every visible text node on screen.
  *
- * 3 Months is left out until its compact events are reworked (the dense views
- * part of #798); it still draws events at 8px.
+ * 3 Months is in since #894: its compact events draw at the floor and a busy
+ * day folds the rest into "+N" (see the test below). The calendar widget has no
+ * 3 Months view, so WIDGET_VIEWS does not list it.
  */
-const FLOOR_VIEWS = ['agenda', 'day', 'week', 'weekVertical', 'multiWeek', 'month'];
+const FLOOR_VIEWS = ['agenda', 'day', 'week', 'weekVertical', 'multiWeek', 'month', 'threeMonth'];
 const WIDGET_VIEWS = ['agenda', 'list', 'day', 'week', 'multiWeek2', 'month'];
 const POINTERS = [
   // Blink bitmask: none=1, fine=4. Set at launch; CDP emulation is ignored.
@@ -342,6 +343,87 @@ for (const pointer of POINTERS) {
     });
   });
 }
+
+/**
+ * 3 Months at the floor (#894). A day cell there is about 82x145 at 1080p and
+ * 52x79 at 720p, so at 14px only a few events fit. A busy day must show what
+ * fits and fold the rest into "+N", never spill out of the cell, never scroll
+ * inside it, and never fold while there is room for another event.
+ */
+test.describe('3 Months folds a busy day', () => {
+  test('at 1080p and 720p a busy day shows "+N" and keeps every event inside its cell', async ({ playwright }, info) => {
+    test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
+    test.setTimeout(180_000);
+    const parentId = getSeededParentId();
+    // One set of events for both sizes: creating events is rate limited per user.
+    const { browser, page } = await pointerPage(playwright, info, 1, { width: 1920, height: 1080 });
+    const login = await page.request.post('/api/auth/login', { data: { userId: parentId, pin: PIN } });
+    expect(login.ok(), 'precondition: login must succeed').toBe(true);
+    // The 12th of the current month is always in the middle mini month. Six is
+    // more than a 1080p cell holds (four) and needs no other events that day.
+    const now = new Date();
+    const busyDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-12`;
+    const created: string[] = [];
+    try {
+      for (let i = 0; i < 6; i++) {
+        // In UTC, 07:00-12:30 on the 12th is the 12th in every zone CI uses: the
+        // runner and server in Tokyo, the browser in Chicago or Tokyo.
+        const start = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 12, 7 + i));
+        const res = await page.request.post('/api/events', {
+          data: {
+            title: `Busy day e2e ${i + 1}`,
+            startTime: start.toISOString(),
+            endTime: new Date(start.getTime() + 30 * 60_000).toISOString(),
+            allDay: false,
+            createdBy: parentId,
+          },
+        });
+        expect(res.status()).toBe(201);
+        created.push((await res.json()).id);
+      }
+      for (const [width, height] of [[1920, 1080], [1280, 720]] as const) {
+        await page.setViewportSize({ width, height });
+        await openCalendarView(page, 'threeMonth');
+        // Found by date, not by title: at 720p the cell shows one event, and a
+        // seeded event that sorts first (all-day, or earlier) may take that spot.
+        const day = page.locator(`[data-three-month-day="${busyDate}"]`);
+        await expect(day, `${width}x${height}: the busy day`).toHaveCount(1);
+        // The cell is drawn before its events arrive: wait for the fold, or
+        // the measurement can run on an empty day.
+        await expect(day.locator('[data-day-overflow]'), `${width}x${height}: the busy day folds`).toBeVisible();
+        const box = await day.evaluate((cell) => {
+          const r = cell.getBoundingClientRect();
+          const chips = [...cell.querySelectorAll('li button')].map((b) => b.getBoundingClientRect());
+          const trigger = cell.querySelector('[data-day-overflow]');
+          const t = trigger?.getBoundingClientRect();
+          const list = trigger?.parentElement?.parentElement?.getBoundingClientRect();
+          return {
+            label: trigger?.textContent?.trim() ?? null,
+            name: trigger?.getAttribute('aria-label') ?? null,
+            triggerFont: trigger ? parseFloat(getComputedStyle(trigger).fontSize) : 0,
+            chips: chips.length,
+            chipHeight: chips.length ? Math.max(...chips.map((c) => c.height)) : 0,
+            spill: [...chips, ...(t ? [t] : [])].filter((c) => c.bottom > r.bottom + 0.5 || c.right > r.right + 0.5).length,
+            free: t && list ? list.bottom - t.bottom : 0,
+          };
+        });
+        const at = `${width}x${height}`;
+        expect(box.label, `${at}: a busy day folds into +N`).toMatch(/^\+\d+$/);
+        expect(box.name, `${at}: the short label keeps its full accessible name`).toMatch(/\d/);
+        expect(box.triggerFont, `${at}: +N at the floor`).toBeGreaterThanOrEqual(13.95);
+        expect(box.spill, `${at}: nothing drawn past the cell`).toBe(0);
+        // Shown plus folded is every event that day (6 added, plus any seeded).
+        expect(box.chips + Number(box.label!.slice(1))).toBeGreaterThanOrEqual(6);
+        // Folding only when out of room: the space left under the trigger is
+        // less than one more event would need.
+        if (box.chips > 0) expect(box.free, `${at}: folded with room to spare`).toBeLessThan(box.chipHeight);
+      }
+    } finally {
+      for (const id of created) await page.request.delete(`/api/events/${id}`);
+      await browser.close();
+    }
+  });
+});
 
 /**
  * Now & Next (#806). The page clock is fixed at 12:00 UTC on a far date, and

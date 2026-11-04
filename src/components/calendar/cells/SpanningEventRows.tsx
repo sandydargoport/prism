@@ -223,7 +223,7 @@ export function SpanningEventRows({
   // properties, so a bar and a chip are the same height with their text
   // starting at the same offset under any theme.
   const barMetrics = compact
-    ? 'px-0.5 py-px text-[8px]'
+    ? 'px-0.5 py-px text-4xs'
     : cards
       ? 'flex items-stretch gap-2 pr-1 text-3xs'
       : 'px-(--event-padding-x,0.25rem) py-(--event-padding-y,0.125rem) text-event font-(--event-font-weight)';

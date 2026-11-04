@@ -18,6 +18,9 @@ interface DayOverflowPopoverProps {
   onEventClick: (event: CalendarEvent) => void;
   /** Optional className for the trigger button. */
   triggerClassName?: string;
+  /** Show only "+N" on the trigger, for cells too narrow for the words. The
+      full label stays as the button's accessible name. */
+  short?: boolean;
 }
 
 /**
@@ -30,6 +33,7 @@ export function DayOverflowPopover({
   hiddenEvents,
   onEventClick,
   triggerClassName,
+  short = false,
 }: DayOverflowPopoverProps) {
   const { timeFormat, displayTimezone } = useTimeFormat();
   const t = useTranslations('calendar');
@@ -48,6 +52,7 @@ export function DayOverflowPopover({
           // its label is translated, so matching on "+N more" only worked on an
           // English instance.
           data-day-overflow
+          aria-label={short ? t('moreEvents', { count: hiddenEvents.length }) : undefined}
           className={cn(
             // Full-width + a taller min-height so it's an easy touch target on a
             // wall display (was min-h-20px / 10px text — fiddly to tap).
@@ -57,7 +62,7 @@ export function DayOverflowPopover({
             triggerClassName,
           )}
         >
-          {t('moreEvents', { count: hiddenEvents.length })}
+          {short ? `+${hiddenEvents.length}` : t('moreEvents', { count: hiddenEvents.length })}
         </button>
       </PopoverTrigger>
       <PopoverContent
