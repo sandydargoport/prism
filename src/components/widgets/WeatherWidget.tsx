@@ -382,7 +382,9 @@ export const WeatherWidget = React.memo(function WeatherWidget({
       const row = el.querySelector('[data-day-row]');
       const rowH = row ? row.getBoundingClientRect().height : 44;
       if (rowH <= 0) return;
-      setMaxDayRows(Math.max(1, Math.floor((h - 6) / rowH)));
+      // Zero when not even one whole row fits: the section then shows nothing
+      // rather than half a day.
+      setMaxDayRows(Math.max(0, Math.floor((h - 6) / rowH)));
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -451,14 +453,19 @@ export const WeatherWidget = React.memo(function WeatherWidget({
             {/* Multi-day summary — the day list fills the remaining space and
                 clips to WHOLE rows (maxDayRows) so a day is never half-cut. */}
             <div className="flex-1 min-h-0 flex flex-col">
-              <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                {shownForecast.length}-Day Forecast
-              </span>
-              <div ref={dayListRef} className="flex-1 min-h-0 overflow-hidden">
-                <DayHeader
-                  days={shownForecast}
-                  units={units}
-                />
+              {shownForecast.length > 0 && (
+                <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {shownForecast.length}-Day Forecast
+                </span>
+              )}
+              {/* Stays mounted when empty, so it is measured again as it grows. */}
+              <div ref={dayListRef} className="flex-1 min-h-0 overflow-hidden" data-testid="weather-day-list">
+                {shownForecast.length > 0 && (
+                  <DayHeader
+                    days={shownForecast}
+                    units={units}
+                  />
+                )}
               </div>
             </div>
 

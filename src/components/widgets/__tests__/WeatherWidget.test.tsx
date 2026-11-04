@@ -314,6 +314,22 @@ describe('forecastDays prop', () => {
     expect(screen.queryByText('3-Day Forecast')).not.toBeNull();
   });
 
+  // A widget too short for even one whole day row showed half a row cut off
+  // at the bottom. It now shows none, and no "N-Day Forecast" label.
+  it('shows no half day when not even one row fits', () => {
+    const spy = jest.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      const h = this.dataset.testid === 'weather-day-list' ? 30 : 44;
+      return { height: h, width: 300, top: 0, left: 0, right: 300, bottom: h, x: 0, y: 0, toJSON: () => ({}) } as DOMRect;
+    });
+    try {
+      render(<WeatherWidget data={makeWeatherData()} gridH={12} />);
+      expect(screen.queryByText(/-Day Forecast/)).toBeNull();
+      expect(screen.queryByText('MON')).toBeNull();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it('respects an explicit forecastDays value', () => {
     const data = makeWeatherData();
     render(<WeatherWidget data={data} forecastDays={3} />);

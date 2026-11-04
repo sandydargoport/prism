@@ -387,7 +387,9 @@ describe('SpanningEventRows', () => {
     expect(buttons[3]!.className).not.toContain('rounded-r-md');
   });
 
-  it('uses white text for a future spanning event', () => {
+  // #801: a pale tint of the person's colour, a bar on the leading edge, and
+  // the normal text colour. Never white text on a saturated block.
+  it('draws a future spanning event as a tint with a bar, in the normal text colour', () => {
     const futureEvent: CalendarEvent = {
       ...event,
       startTime: new Date('2099-08-10T00:00:00.000Z'),
@@ -403,7 +405,10 @@ describe('SpanningEventRows', () => {
       />
     );
 
-    expect(getByRole('button').style.color).toBe('rgb(255, 255, 255)');
+    const bar = getByRole('button');
+    expect(bar.style.color).toBe('hsl(var(--card-foreground))');
+    expect(bar.getAttribute('style')).toContain('var(--ds-event-tint)');
+    expect(bar.style.boxShadow).toContain('var(--ds-event-bar)');
   });
 
   it('does not repeat a timed event start time on continuation days', () => {
@@ -479,7 +484,7 @@ describe('InlineCalendarEvent', () => {
     expect(button.className).not.toContain('line-through');
   });
 
-  it('uses white text for a current or future filled event', () => {
+  it('draws a current or future all-day event as a tint with a bar, in the normal text colour', () => {
     const futureEvent: CalendarEvent = {
       ...event,
       startTime: new Date('2026-08-21T00:00:00.000Z'),
@@ -488,6 +493,9 @@ describe('InlineCalendarEvent', () => {
 
     const { getByRole } = render(<InlineCalendarEvent event={futureEvent} onClick={() => {}} />);
 
-    expect(getByRole('button').style.color).toBe('rgb(255, 255, 255)');
+    const chip = getByRole('button');
+    expect(chip.style.color).toBe('hsl(var(--card-foreground))');
+    expect(chip.getAttribute('style')).toContain('var(--ds-event-tint)');
+    expect(chip.style.boxShadow).toContain('var(--ds-event-bar)');
   });
 });
