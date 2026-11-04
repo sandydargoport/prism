@@ -366,7 +366,9 @@ test.describe('3 Months folds a busy day', () => {
     const created: string[] = [];
     try {
       for (let i = 0; i < 6; i++) {
-        const start = new Date(now.getFullYear(), now.getMonth(), 12, 7 + i);
+        // In UTC, 07:00-12:30 on the 12th is the 12th in every zone CI uses: the
+        // runner and server in Tokyo, the browser in Chicago or Tokyo.
+        const start = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 12, 7 + i));
         const res = await page.request.post('/api/events', {
           data: {
             title: `Busy day e2e ${i + 1}`,
