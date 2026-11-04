@@ -91,6 +91,21 @@
     JetBrains Mono, Menlo, Monaco, Consolas, Liberation Mono, Courier New,
     monospace;
 
+  /* Prism 2.0 type roles (docs/DESIGN.md, src/lib/design/tokens.ts). rem at
+     the 20px wall root: caption 14, body 20, title 28, display 48, clock 100.
+     Floored like the rest, so a desk or a zoomed widget never goes under the
+     floor. A test reads these lines and compares them with tokens.ts. */
+  --text-caption: max(calc(var(--text-floor) * var(--zoom-inv, 1)), 0.7rem);
+  --text-caption--line-height: 1.35;
+  --text-body: max(calc(var(--text-floor) * var(--zoom-inv, 1)), 1rem);
+  --text-body--line-height: 1.4;
+  --text-title: max(calc(var(--text-floor) * var(--zoom-inv, 1)), 1.4rem);
+  --text-title--line-height: 1.25;
+  --text-display: max(calc(var(--text-floor) * var(--zoom-inv, 1)), 2.4rem);
+  --text-display--line-height: 1.1;
+  --text-clock: max(calc(var(--text-floor) * var(--zoom-inv, 1)), 5rem);
+  --text-clock--line-height: 1;
+
   /* Floored (see the text floor above). Each line height is its old rem value
      or the same ratio in em, whichever is larger: identical while the size is
      unfloored, and it grows with the text when the floor lifts it. */
@@ -372,6 +387,17 @@ html.performance-mode [class*="backdrop-blur"] {
 
 @layer base {
   :root {
+    /* Prism 2.0 shape tokens (docs/DESIGN.md). Not colours, so no theme
+       writes them; tokens.ts holds the values and a test checks these match. */
+    --ds-target-min: 44px;
+    --ds-card-radius: 0.8rem;
+    --ds-card-pad: 1.2rem;
+    --ds-card-gap: 0.8rem;
+    --ds-glass-alpha: 0.82;
+    --ds-glass-blur: 24px;
+    --ds-event-bar: 4px;
+    --ds-event-tint: 16%;
+
     --background: 0 0% 100%;
     --foreground: 222 47% 11%;
 
@@ -444,6 +470,8 @@ html.performance-mode [class*="backdrop-blur"] {
   }
 
   .dark {
+    --ds-event-tint: 26%;
+
     --background: 222 47% 11%;
     --foreground: 210 40% 98%;
 
