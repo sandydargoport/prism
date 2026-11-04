@@ -32,6 +32,8 @@ import { useWeekStartsOn } from '@/lib/hooks/useWeekStartsOn';
 import { useCalendarWidgetPrefs, VIEW_OPTIONS, CalendarPrefsScopeContext } from '@/lib/hooks/useCalendarWidgetPrefs';
 import { useCalendarSyncHealth } from '@/lib/hooks/useCalendarSyncHealth';
 import { CalendarWidgetControls } from './CalendarWidgetControls';
+import { DayPagingContext } from '@/lib/hooks/useDayPaging';
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import type { CalendarEvent } from '@/types/calendar';
 export type { CalendarEvent };
 
@@ -264,6 +266,9 @@ export const CalendarWidget = React.memo(function CalendarWidget({
     </div>
   ) : null;
 
+  // A wall or tablet screen pages a busy day; a phone keeps "+N more" (#801).
+  const pageBusyDays = useMediaQuery('(min-width: 768px)');
+
   return (
     <WidgetContainer
       title={t('title')}
@@ -335,6 +340,7 @@ export const CalendarWidget = React.memo(function CalendarWidget({
           onDragEnd={handleDragEnd}
           onDragCancel={() => { setActiveDragId(null); setMoveError(null); }}
         >
+          <DayPagingContext.Provider value={pageBusyDays}>
           <Suspense fallback={<div className="h-full flex items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
             {resolvedView === 'agenda' && (
               <AgendaView
@@ -437,6 +443,7 @@ export const CalendarWidget = React.memo(function CalendarWidget({
               </div>
             )}
           </Suspense>
+          </DayPagingContext.Provider>
         </DndContext>
         )}
       </div>

@@ -11,6 +11,8 @@ export type WeekItemSize = 'xs' | 'sm' | 'md' | 'lg';
 export type WeekItemLayout = 'column' | 'row';
 
 interface WeekItemCardProps {
+  /** Extra classes on the card, such as the page-turn fade (#801). */
+  className?: string;
   variant: WeekItemVariant;
   /** Hex or CSS color used for the left stripe and (optionally) icon tint */
   stripeColor: string;
@@ -141,6 +143,7 @@ export function WeekItemCard({
   dragId,
   size = 'md',
   layout = 'column',
+  className,
 }: WeekItemCardProps) {
   const draggable = useDraggable({
     id: dragId ?? `__static__:${variant}:${title}`,
@@ -195,6 +198,7 @@ export function WeekItemCard({
           muted && 'opacity-60',
           subdued && 'opacity-55 saturate-[0.65]',
           styles.padding,
+          className,
         )}
       >
         {pendingApproval && (
@@ -243,6 +247,7 @@ export function WeekItemCard({
         draggable.isDragging && 'opacity-60 ring-2 ring-seasonal-accent shadow-xl',
         muted && 'opacity-60',
         subdued && 'opacity-55 saturate-[0.65]',
+        className,
       )}
     >
       {pendingApproval && (

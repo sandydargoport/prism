@@ -46,6 +46,7 @@
     "nothingPlanned": "Nothing planned",
     "noUpcomingEvents": "No upcoming events",
     "moreEvents": "+ {count} more",
+    "dayPageLabel": "Page {page} of {pages}, {count} more",
     "moreItems": "+{count} more events",
     "dayHeader": "{label} - {date}",
     "dateAtTime": "{date} at {time}",
