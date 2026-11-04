@@ -13,6 +13,12 @@ import type { CalendarEvent } from '@/types/calendar';
 // #801: the agenda draws an event as a pale tint of the person's colour with a
 // bar on the leading edge, in the normal text colour, never white on a block.
 
+// The agenda reads the household's past-events setting on mount; answer with
+// no settings, so it keeps its default.
+beforeEach(() => {
+  global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ settings: {} }) })) as unknown as typeof fetch;
+});
+
 function soonEvent(): CalendarEvent {
   const start = new Date();
   start.setHours(start.getHours() + 1, 0, 0, 0);
