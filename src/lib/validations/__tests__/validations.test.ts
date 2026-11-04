@@ -402,3 +402,53 @@ describe('validateRequest', () => {
     expect(result.success).toBe(false);
   });
 });
+
+// An update writes only what the request sent. `.partial()` on a create schema
+// keeps each field's `.default()`, so an edit that never mentioned a field
+// wrote the create-time default over the stored value.
+describe('update schemas leave out what the request left out', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const all = require('../index') as Record<string, unknown>;
+  const updates = Object.entries(all).filter(([name]) => /^(update|patch)\w+Schema$/.test(name)) as [
+    string,
+    { safeParse: (v: unknown) => { success: boolean; data?: unknown } },
+  ][];
+
+  it('finds the update schemas', () => {
+    expect(updates.map(([n]) => n)).toEqual(
+      expect.arrayContaining(['updateLayoutSchema', 'updateChoreSchema', 'updateGoalSchema', 'updateBusRouteSchema', 'patchEventSchema']),
+    );
+  });
+
+  it.each(updates)('%s adds no field to an empty update', (_name, schema) => {
+    const parsed = schema.safeParse({});
+    if (parsed.success) expect(parsed.data).toEqual({});
+  });
+
+  it('keeps a layout the default, and its orientation, when only its text size changes', () => {
+    expect(all.updateLayoutSchema).toBeDefined();
+    const { updateLayoutSchema } = all as { updateLayoutSchema: { parse: (v: unknown) => unknown } };
+    expect(updateLayoutSchema.parse({ fontScale: 120 })).toEqual({ fontScale: 120 });
+  });
+
+  it('still fills the defaults in when creating', () => {
+    const { createLayoutSchema: create } = all as { createLayoutSchema: { parse: (v: unknown) => Record<string, unknown> } };
+    const made = create.parse({ name: 'Kitchen', widgets: [{ i: 'clock', x: 0, y: 0, w: 2, h: 2 }] });
+    expect(made.isDefault).toBe(false);
+    expect(made.orientation).toBe('landscape');
+  });
+
+  it('is what every PATCH route parses with', () => {
+    const api = path.join(__dirname, '..', '..', '..', 'app', 'api');
+    const offenders: string[] = [];
+    const walk = (dir: string) => {
+      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) walk(p);
+        else if (e.name === 'route.ts' && /create\w+Schema\.partial\(\)/.test(fs.readFileSync(p, 'utf8'))) offenders.push(p);
+      }
+    };
+    walk(api);
+    expect(offenders).toEqual([]);
+  });
+});

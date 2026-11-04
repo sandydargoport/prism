@@ -15,7 +15,7 @@ import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { maintenanceReminders, maintenanceCompletions, users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
-import { createMaintenanceSchema, completeMaintenanceSchema, validateRequest } from '@/lib/validations';
+import { updateMaintenanceSchema, completeMaintenanceSchema, validateRequest } from '@/lib/validations';
 import { logError } from '@/lib/utils/logError';
 
 /**
@@ -123,7 +123,7 @@ export async function PATCH(
     }
 
     // Validate request body
-    const validation = validateRequest(createMaintenanceSchema.partial(), body);
+    const validation = validateRequest(updateMaintenanceSchema, body);
     if (!validation.success) {
       return NextResponse.json(
         { error: 'Validation failed', details: validation.error.issues },
