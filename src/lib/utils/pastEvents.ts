@@ -1,25 +1,23 @@
 import { isCalendarEventPast } from './timeFormat';
 
 /**
- * How the calendar treats events that have already ended.
+ * How the agenda and list views treat events that have already ended.
  *
- * - `show`: the calendar as it was before this setting existed, and the
- *   default, so an upgrade changes nothing. The list and grid views already
- *   dim ended events; the agenda shows them at full strength.
- * - `dim`: the agenda dims them too, so every view agrees.
+ * - `dim`: the default. Every view fades ended events, the agenda included.
  * - `hide`: removed from the agenda and list views, which read as "what is
- *   next" on a wall display. Grid views (day, week, multi-week, month) keep
- *   dimming instead: an empty past day in a grid looks like a sync failure.
+ *   next" on a wall display, so a short agenda shows what is still to come.
+ *   Grid views (day, week, multi-week, month) keep dimming instead: an empty
+ *   past day in a grid looks like a sync failure.
  */
-export type PastEventsMode = 'show' | 'dim' | 'hide';
+export type PastEventsMode = 'dim' | 'hide';
 
 /** Database settings key (household-wide, shared across displays). */
 export const PAST_EVENTS_SETTING_KEY = 'calendarPastEvents';
 
-export const DEFAULT_PAST_EVENTS_MODE: PastEventsMode = 'show';
+export const DEFAULT_PAST_EVENTS_MODE: PastEventsMode = 'dim';
 
 export function isPastEventsMode(value: unknown): value is PastEventsMode {
-  return value === 'show' || value === 'dim' || value === 'hide';
+  return value === 'dim' || value === 'hide';
 }
 
 type EventTimes = { startTime: Date; endTime: Date; allDay: boolean };

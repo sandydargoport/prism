@@ -70,11 +70,11 @@ describe('withoutEndedEvents', () => {
 });
 
 describe('isPastEventsMode', () => {
-  it.each(['show', 'dim', 'hide'])('accepts %p', (value) => {
+  it.each(['dim', 'hide'])('accepts %p', (value) => {
     expect(isPastEventsMode(value)).toBe(true);
   });
 
-  it.each(['shown', 'hidden', '', null, undefined, 1, true])('rejects %p', (value) => {
+  it.each(['show', 'shown', 'hidden', '', null, undefined, 1, true])('rejects %p', (value) => {
     expect(isPastEventsMode(value)).toBe(false);
   });
 });
