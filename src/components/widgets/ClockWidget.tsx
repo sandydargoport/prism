@@ -90,10 +90,14 @@ export const ClockWidget = React.memo(function ClockWidget({
     : format24Hour ? '24h' : '12h';
   // The current time, read when the widget mounts and then every second
   const [currentTime, setCurrentTime] = useState<Date>(() => new Date());
+  // False for the first paint, true from the first tick on: a digit that
+  // appears because the time changed slides in, the first paint does not.
+  const [ticked, setTicked] = useState(false);
 
   useEffect(() => {
     const intervalId = setInterval(() => {
       setCurrentTime(new Date());
+      setTicked(true);
     }, 1000); // Update every second
 
     // Cleanup: Clear interval when component unmounts
@@ -120,6 +124,8 @@ export const ClockWidget = React.memo(function ClockWidget({
   // "4:10 PM" -> "4:10" + "PM": the day half is drawn small beside the digits,
   // which leaves the digits most of the width.
   const { digits, dayHalf, dayHalfFirst } = splitDayHalf(timeString);
+  // Seconds sit small and dimmed after the minutes, like a lock screen.
+  const { main, seconds } = splitSeconds(digits, showSeconds);
   const dayHalfSpan = dayHalf && (
     <span className={cn('text-[0.45em] font-semibold', dayHalfFirst ? 'mr-[0.15em]' : 'ml-[0.15em]')}>
       {dayHalf}
@@ -141,40 +147,80 @@ export const ClockWidget = React.memo(function ClockWidget({
         style={{ containerType: 'size' }}
         data-clock-face
       >
-        {/* TIME DISPLAY */}
-        <time
-          dateTime={currentTime.toISOString()}
-          className={cn(
-            // Font styling
-            'font-bold tracking-tight',
-            // Tabular numbers for consistent width
-            'tabular-nums',
-            // One line, always: it shrinks to fit rather than wrapping
-            'whitespace-nowrap leading-none'
-          )}
-          style={{ fontSize: fit.time }}
-        >
-          {dayHalfFirst && dayHalfSpan}
-          {digits}
-          {!dayHalfFirst && dayHalfSpan}
-        </time>
-
-        {/* DATE DISPLAY */}
+        {/* DATE, above the time as on a lock screen */}
         {showDate && (
           <time
             dateTime={getDisplayDateKey(currentTime, displayTimezone)}
-            className={cn(
-              'text-muted-foreground mt-[0.3em] text-balance leading-tight'
-            )}
+            className="text-muted-foreground mb-[0.3em] text-balance leading-tight"
             style={{ fontSize: fit.date }}
+            data-clock-date
           >
             {dateString}
           </time>
         )}
+
+        {/* TIME */}
+        <time
+          dateTime={currentTime.toISOString()}
+          className={cn(
+            // Medium weight, tight spacing, digits of equal width
+            'font-medium tracking-[-0.03em] tabular-nums',
+            // One line, always: it shrinks to fit rather than wrapping
+            'whitespace-nowrap leading-none'
+          )}
+          style={{ fontSize: fit.time, fontFamily: 'var(--font-numeral)' }}
+          data-clock-time
+        >
+          {dayHalfFirst && dayHalfSpan}
+          <ClockDigits text={main} animate={ticked} />
+          {seconds && (
+            <span className="text-[0.45em] text-muted-foreground ml-[0.05em]" data-clock-seconds>
+              <ClockDigits text={seconds} animate={ticked} />
+            </span>
+          )}
+          {!dayHalfFirst && dayHalfSpan}
+        </time>
       </div>
     </WidgetContainer>
   );
 });
+
+
+/**
+ * The digits, one span each. A span is keyed by its position and value, so
+ * only the digit that changed remounts. Each digit decides once, when it is
+ * created, whether to slide in (about 380ms): the digits of the first paint
+ * never do, since adding the class later would start the slide on them too.
+ * Under reduced motion nothing slides.
+ */
+function ClockDigits({ text, animate }: { text: string; animate: boolean }) {
+  return (
+    <>
+      {Array.from(text, (ch, i) => (
+        <ClockDigit key={`${i}-${ch}`} ch={ch} slide={animate} />
+      ))}
+    </>
+  );
+}
+
+function ClockDigit({ ch, slide }: { ch: string; slide: boolean }) {
+  const [slideIn] = useState(slide);
+  return (
+    <span
+      className={cn('inline-block', slideIn && 'animate-digit-in motion-reduce:animate-none')}
+      data-clock-digit
+    >
+      {ch}
+    </span>
+  );
+}
+
+
+/** "4:10:23" -> "4:10" + ":23" when seconds are shown; otherwise all main. */
+export function splitSeconds(digits: string, showSeconds: boolean): { main: string; seconds: string } {
+  const m = showSeconds ? digits.match(/^(.*\d)([:.]\d\d)$/) : null;
+  return m ? { main: m[1]!, seconds: m[2]! } : { main: digits, seconds: '' };
+}
 
 
 /** Size ceilings per variant, in rem: text-3xl/5xl/7xl and text-sm/lg/xl. */
@@ -186,9 +232,11 @@ const DATE_REM = { small: 0.875, medium: 1.125, large: 1.25 } as const;
  *
  * The time's width is counted in em from its widest form (12:59:59 PM), not
  * the current string, so the size does not jump when 9:59 becomes 10:00.
- * Measured in bold tabular digits: "12:59" is 2.6em, ":59" adds 1.45em, and
- * the half-size " PM" adds 0.75em. The time takes at most 88% of the width
- * and 45% of the height, leaving room for two lines of date below it.
+ * Measured in bold tabular digits, which is wider than the medium weight
+ * drawn, so it errs on the side of fitting: "12:59" is 2.6em, the seconds
+ * (":59" at 0.45 size) add 0.66em, and the half-size " PM" adds 0.75em. The
+ * time takes at most 88% of the width and 45% of the height, leaving room for
+ * two lines of date above it.
  *
  * The date keeps the text floor (it may wrap to two lines, never shrink
  * below what is readable across a room), and is otherwise capped at 9% of
@@ -199,7 +247,7 @@ export function clockFit(
   showSeconds: boolean,
   size: keyof typeof TIME_REM,
 ): { time: string; date: string } {
-  const em = 2.6 + (showSeconds ? 1.45 : 0) + (timeFormat === '12h' ? 0.75 : 0);
+  const em = 2.6 + (showSeconds ? 0.66 : 0) + (timeFormat === '12h' ? 0.75 : 0);
   const widthCq = Math.round((88 / em) * 10) / 10;
   return {
     time: `min(${TIME_REM[size]}rem, ${widthCq}cqw, 45cqh)`,

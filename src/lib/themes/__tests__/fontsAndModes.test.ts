@@ -64,6 +64,28 @@ describe('font role', () => {
   });
 });
 
+// Clock digits (#800): a numeral face of their own, or the theme's face.
+describe('numeral font role', () => {
+  it('sets the clock digits in the numeral role a theme names', () => {
+    expect(themeCss(theme({ font: 'sans', numeralFont: 'rounded' }))).toContain('--theme-font-numeral:var(--font-rounded)');
+  });
+
+  it('follows the theme face when no numeral role is named', () => {
+    expect(themeCss(theme({ font: 'serif' }))).toContain('--theme-font-numeral:var(--font-serif)');
+  });
+
+  it('refuses a theme whose numeral role is a family name, and never emits it', () => {
+    expect(isInstallableTheme(theme({ numeralFont: 'Comic Sans MS' } as unknown as Partial<Theme>))).toBe(false);
+    const css = themeCss(theme({ numeralFont: 'x"; } body { display: none' } as unknown as Partial<Theme>));
+    expect(css).not.toContain('display: none');
+  });
+
+  it('is the face the clock draws its digits in', () => {
+    const css = readFileSync(join(__dirname, '../../../styles/globals.css'), 'utf8');
+    expect(css).toMatch(/--font-numeral: var\(--theme-font-numeral, var\(--font-sans\)\);/);
+  });
+});
+
 describe('display modes', () => {
   it('accepts a listed option', () => {
     expect(isValidModes({ events: 'compact' })).toBe(true);

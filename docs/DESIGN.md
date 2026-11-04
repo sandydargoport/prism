@@ -24,13 +24,16 @@ screen in: the clock, then the next thing, then the rows.
 | `text-body` | 20px | 400 | List rows: a chore, a shopping item, an agenda line |
 | `text-title` | 28px | 600 | What a row is about: an event in Now/Next, a person |
 | `text-display` | 48px | 600 | The date line; one headline per screen |
-| `text-clock` | 100px | 300 | The clock, with tabular figures |
+| `text-clock` | 100px | 500 | The clock: date above, tabular figures, seconds small and dimmed |
 
 - Nothing renders under the text floor: 14px on a touch or kiosk screen, 12px
   at a desk or on a phone, after any zoom (#798). Every class above is floored.
 - Widget names are captions, not headings. The content is the heading.
 - One family per screen (the theme's font). Weight and size make the hierarchy,
-  not colour.
+  not colour. The one exception is the clock's digits, which a theme may set in
+  a numeral face of its own (`numeralFont`, the `--font-numeral` role).
+- Clock digits slide in when they change (about 380ms), never on first paint,
+  and not at all under reduced motion.
 
 ## Colour
 
