@@ -33,6 +33,16 @@ test.describe('API Health', () => {
     expect(Array.isArray(data.members)).toBe(true);
   });
 
+  test('signed out, the wall sees the seeded layouts', async ({ request }) => {
+    // The seed names a display member, as the setup wizard does. Without it
+    // a signed-out visitor gets no layouts and the built-in default instead.
+    const response = await request.get('/api/layouts');
+    expect(response.ok()).toBe(true);
+
+    const data = await response.json();
+    expect(data.layouts.length).toBeGreaterThan(0);
+  });
+
   test('tasks endpoint returns data', async ({ request }) => {
     const response = await request.get('/api/tasks');
     expect(response.ok()).toBe(true);

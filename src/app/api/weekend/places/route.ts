@@ -20,7 +20,7 @@ const createSchema = z.object({
   isFavorite: z.boolean().default(false),
   rating: z.number().int().min(1).max(5).nullable().optional(),
   notes: z.string().nullable().optional(),
-  tags: z.array(z.string()).default([]),
+  tags: z.array(z.string()).max(100).default([]),
   sourceProvider: z.enum(['mapbox', 'nominatim', 'manual']).nullable().optional(),
   sourceId: z.string().max(100).nullable().optional(),
 });
@@ -111,7 +111,7 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (err) {
-    if (err instanceof z.ZodError) return NextResponse.json({ error: err.errors }, { status: 400 });
+    if (err instanceof z.ZodError) return NextResponse.json({ error: err.issues }, { status: 400 });
     logError('POST /api/weekend/places', err);
     return NextResponse.json({ error: 'Failed to create place' }, { status: 500 });
   }
