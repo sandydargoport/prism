@@ -6,6 +6,7 @@
  * code has to work around.
  */
 import type { Theme } from './tokens';
+import { PAPER as PAPER_TOKENS } from '@/lib/design/tokens';
 
 export const DEFAULT_THEME_ID = 'prism';
 
@@ -345,7 +346,20 @@ const NOTICE_BOARD: Theme = {
   modes: { events: 'compact', surface: 'flat' },
 };
 
-export const BUILTIN_THEMES: Theme[] = [PRISM, CLAY, HARVEST, SNOW_DAY, ARCADE, NOTICE_BOARD];
+/**
+ * The Paper palette (docs/DESIGN.md): warm paper neutrals and one accent.
+ * The tokens live in src/lib/design/tokens.ts, where their contrast is checked;
+ * this only registers them. New installs start on it (#808).
+ */
+const PAPER: Theme = {
+  id: 'paper',
+  name: 'Paper',
+  description: 'Warm paper neutrals with one blue accent. The colour comes from the family.',
+  light: PAPER_TOKENS.light,
+  dark: PAPER_TOKENS.dark,
+};
+
+export const BUILTIN_THEMES: Theme[] = [PRISM, PAPER, CLAY, HARVEST, SNOW_DAY, ARCADE, NOTICE_BOARD];
 
 export function getBuiltinTheme(id: string): Theme | undefined {
   return BUILTIN_THEMES.find((t) => t.id === id);

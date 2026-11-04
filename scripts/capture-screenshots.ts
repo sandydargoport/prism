@@ -20,10 +20,10 @@
  * against an ephemeral seeded database.
  *
  * Photos: the seed does not create photos (they need image bytes), so before
- * capturing this script auto-seeds a handful of Bing daily wallpapers into the
- * target if it has none, and pins one as the dashboard wallpaper. That keeps the
- * Photos page, the dashboard hero, and the screensaver populated with no manual
- * prep. If Bing is unreachable, capture still proceeds (photo shots just empty).
+ * capturing this script uploads the park photos Prism ships (public/scenery)
+ * into the target if it has none, and pins one as the dashboard wallpaper. That
+ * keeps the Photos page, the dashboard hero, and the screensaver populated with
+ * no manual prep and no network.
  *
  * Saves to docs/demos/ with stable filenames so the docs site + README
  * references stay valid across re-runs. Captures both light + dark theme for the
@@ -31,11 +31,24 @@
  *
  * Login is automatic, using Alex (parent) with PIN 1234 from the seed. No setup
  * wizard needed; the seed pre-creates users + settings + layout.
+ *
+ * Fixed clock: set PRISM_SEED_NOW (and TZ, default America/Chicago) for both
+ * the seed and this script, and every shot draws the same moment. The refresh
+ * workflow does.
+ *
+ * Hero set (`npm run screenshots:capture -- hero`): the same moment on a 1080p
+ * touch wall and a tablet (signed out) and a phone (signed in), light and dark,
+ * on the Family Central layout. frame-screenshots.ts then puts each trio into
+ * device frames: docs/demos/hero-light.png and hero-dark.png. Design rules for
+ * what those screens should look like are in docs/DESIGN.md.
  */
 
 import { chromium, Browser, BrowserContext, Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
+import { frameAll } from './frame-screenshots';
+import { SCENERY } from '../src/lib/scenery';
+import { freezeWeather } from './frozen-weather';
 
 // Refuse to run against anything that is not a declared test database. This is
 // the same flag e2e/*.spec.ts gate on. It is a deliberate choice rather than a
@@ -60,6 +73,29 @@ const OUT_DIR = path.resolve(__dirname, '..', 'docs', 'demos');
 
 const DESKTOP_VIEWPORT = { width: 1440, height: 900 };
 const MOBILE_VIEWPORT = { width: 390, height: 844 }; // iPhone 14
+
+/**
+ * A fixed clock, so a re-run draws the same day. The seed takes the same
+ * instant (PRISM_SEED_NOW), so the fixtures and the page agree on "today".
+ * setFixedTime, not clock.install: Date is frozen, intervals still run.
+ */
+const FIXED_NOW = process.env.PRISM_SEED_NOW;
+
+/** The demo family lives in Springfield, IL. The seed must run in the same zone. */
+const TIMEZONE = process.env.TZ || 'America/Chicago';
+
+/**
+ * Touch-screen devices for the hero shots. Pointer type has to be set when
+ * the browser launches (Blink bitmask: coarse = 2); emulating it per page is
+ * silently ignored. A coarse pointer is what makes Prism size itself for a
+ * wall: the 20px root and the 14px text floor.
+ */
+const DEVICES = {
+  wall: { viewport: { width: 1920, height: 1080 }, scale: 1, isMobile: false },
+  tablet: { viewport: { width: 1180, height: 820 }, scale: 1, isMobile: false },
+  phone: { viewport: { width: 390, height: 844 }, scale: 2, isMobile: true },
+} as const;
+type DeviceName = keyof typeof DEVICES;
 
 type CalendarViewType =
   | 'agenda'
@@ -101,7 +137,62 @@ interface CaptureSpec {
    * the target has no wallpaper photos.
    */
   pinWallpaper?: boolean;
+  /** A touch-screen device from DEVICES, instead of the desktop or mobile viewport. */
+  device?: DeviceName;
+  /** Capture signed out, the way a wall display runs. */
+  signedOut?: boolean;
+  /**
+   * Leave the screen untouched long enough for auto-hide to take the side
+   * rail and top bar away, as a wall shows them when nobody is using it.
+   */
+  idleChrome?: boolean;
+  /**
+   * Put the dashboard into its idle screen before the shot: the widgets that
+   * do not stay when idle fade, leaving the photo with the clock and weather.
+   */
+  idle?: boolean;
 }
+
+/**
+ * The hero set: the same moment on a wall, a tablet and a phone, in light and
+ * dark. frame-screenshots.ts puts each trio into device frames afterwards.
+ * Each device shows a different side of it: the wall the dashboard, the
+ * tablet the idle screen (the photo with the clock and weather), the phone
+ * the mobile home. The wall and the tablet are signed out, as they would be
+ * in a kitchen; the phone is a parent's, signed in. They show a new install in the Photo look
+ * (see stageHero), so they run before any demo photos are uploaded.
+ */
+const HERO_SHOTS: CaptureSpec[] = (['light', 'dark'] as const).flatMap((theme) => [
+  {
+    name: `hero-wall-${theme}`,
+    url: '/',
+    description: `Wall display, 1080p touch, signed out (${theme})`,
+    theme,
+    device: 'wall' as const,
+    signedOut: true,
+    idleChrome: true,
+    settleMs: 15000,
+  },
+  {
+    name: `hero-tablet-${theme}`,
+    url: '/',
+    description: `Tablet, touch, signed out, idle screen (${theme})`,
+    theme,
+    device: 'tablet' as const,
+    signedOut: true,
+    idleChrome: true,
+    idle: true,
+    settleMs: 15000,
+  },
+  {
+    name: `hero-phone-${theme}`,
+    url: '/',
+    description: `Phone, signed in (${theme})`,
+    theme,
+    device: 'phone' as const,
+    settleMs: 15000,
+  },
+]);
 
 const SCREENSHOTS: CaptureSpec[] = [
   // ─── Dashboard ─────────────────────────────────────────────
@@ -301,6 +392,8 @@ const SCREENSHOTS: CaptureSpec[] = [
     description: 'Family message board',
     settleMs: 1000,
   },
+  // The hero set runs first, on its own staging (see main).
+  ...HERO_SHOTS,
 ];
 
 async function loginAsAlex(page: Page) {
@@ -339,41 +432,22 @@ async function groupByPerson(page: Page): Promise<void> {
   }
 }
 
-/** Fetch a handful of Bing daily wallpapers (landscape + a few portrait). */
-async function fetchBingWallpapers(): Promise<{ name: string; buffer: Buffer }[]> {
-  const bases: string[] = [];
-  for (const idx of [0, 7]) {
-    try {
-      const r = await fetch(`https://www.bing.com/HPImageArchive.aspx?format=js&idx=${idx}&n=8&mkt=en-US`);
-      const j = (await r.json()) as { images?: { urlbase: string }[] };
-      for (const im of j.images ?? []) if (!bases.includes(im.urlbase)) bases.push(im.urlbase);
-    } catch {
-      // Bing unreachable — return whatever we have.
-    }
-  }
-  const jobs: { url: string; name: string }[] = [];
-  // Landscape and portrait must come from DISJOINT bases, or the same image
-  // shows up twice (once cropped landscape, once cropped portrait).
-  bases.slice(0, 8).forEach((ub, i) => jobs.push({ url: `https://www.bing.com${ub}_1920x1080.jpg`, name: `demo-land-${i}.jpg` }));
-  bases.slice(8, 11).forEach((ub, i) => jobs.push({ url: `https://www.bing.com${ub}_1080x1920.jpg`, name: `demo-port-${i}.jpg` }));
-  const out: { name: string; buffer: Buffer }[] = [];
-  for (const job of jobs) {
-    try {
-      const r = await fetch(job.url);
-      if (!r.ok) continue;
-      const buffer = Buffer.from(await r.arrayBuffer());
-      if (buffer.length > 10_000) out.push({ name: job.name, buffer });
-    } catch {
-      // Skip a failed image; keep going.
-    }
-  }
-  return out;
+/**
+ * The park photos Prism ships (public/scenery, public domain, credited in
+ * CREDITS.md). Read from disk, so a capture needs no network and never puts
+ * someone else's copyrighted photo in the published screenshots.
+ */
+function loadBundledScenery(): { name: string; buffer: Buffer }[] {
+  return SCENERY.map((s) => ({
+    name: `${s.id}.webp`,
+    buffer: fs.readFileSync(path.join(process.cwd(), 'public', s.src)),
+  }));
 }
 
 /**
  * Make sure the target has demo photos before capturing. The seed omits photos
- * (they need image bytes), so if the instance has none we upload a few Bing
- * wallpapers through the real upload API (which builds thumbnails, dimensions,
+ * (they need image bytes), so if the instance has none we upload the bundled
+ * park scenery through the real upload API (which builds thumbnails, dimensions,
  * orientation, and tags them wallpaper+gallery+screensaver). Best-effort: any
  * failure leaves the photo-dependent shots empty rather than aborting capture.
  */
@@ -388,16 +462,16 @@ async function ensureDemoPhotos(browser: Browser): Promise<void> {
     const json = await resp.json();
     const list = Array.isArray(json) ? json : (json.photos ?? []);
     if (list.length > 0) {
-      console.log('  photos already present — skipping Bing seed');
+      console.log('  photos already present — skipping the scenery seed');
       return;
     }
 
-    console.log('  no photos found — seeding Bing wallpapers...');
-    const images = await fetchBingWallpapers();
+    console.log('  no photos found — uploading the bundled park scenery...');
+    const images = loadBundledScenery();
     let uploaded = 0;
     for (const img of images) {
       const up = await page.request.post('/api/photos', {
-        multipart: { file: { name: img.name, mimeType: 'image/jpeg', buffer: img.buffer } },
+        multipart: { file: { name: img.name, mimeType: 'image/webp', buffer: img.buffer } },
       });
       if (up.ok()) uploaded++;
     }
@@ -407,6 +481,67 @@ async function ensureDemoPhotos(browser: Browser): Promise<void> {
   } finally {
     await context.close();
   }
+}
+
+/**
+ * Stage the seeded install as a new install in the Photo look (#808): the
+ * Family Central layout with glass cards, the Paper palette, and the bundled
+ * park scenery behind it (shown only while the install has no photos of its
+ * own, which is why the hero runs before ensureDemoPhotos). Signed-out screens
+ * show the display member's default layout, which is this one. Returns a
+ * function that puts everything back.
+ */
+/**
+ * The hero's dashboard, on the 48x27 grid. The clock runs across the top left
+ * with the calendar under it; the weather (forecast, sun and moon) sits top
+ * right, where neither the tablet nor the phone overlaps the wall in the
+ * framed image. Clock and weather stay when idle, so the tablet's idle shot is
+ * the photo with both along the top, against the sky.
+ */
+const HERO_LAYOUT = [
+  { i: 'clock', x: 0, y: 0, w: 27, h: 5, showWhenIdle: true },
+  { i: 'calendar', x: 0, y: 5, w: 27, h: 22, showWhenIdle: false },
+  { i: 'weather', x: 27, y: 0, w: 21, h: 15, showWhenIdle: true },
+  { i: 'birthdays', x: 27, y: 15, w: 21, h: 12, showWhenIdle: false },
+].map((w) => ({ ...w, backgroundColor: 'glass' }));
+
+async function stageHero(browser: Browser): Promise<() => Promise<void>> {
+  const context = await browser.newContext({ baseURL: BASE_URL });
+  const page = await context.newPage();
+  await page.goto('/', { waitUntil: 'load', timeout: 60_000 });
+  await loginAsAlex(page);
+  const json = await (await page.request.get('/api/layouts')).json();
+  const layout = (json.layouts ?? []).find((l: { isDefault?: boolean }) => l.isDefault);
+  if (!layout) {
+    await context.close();
+    throw new Error('No default layout to stage: did the seed run, and set displayUserId?');
+  }
+  const settings = (await (await page.request.get('/api/settings')).json()) as Record<string, unknown>;
+  const setSetting = (key: string, value: unknown) =>
+    page.request.patch('/api/settings', { data: { key, value } });
+
+  const original = {
+    widgets: layout.widgets, idleBackground: layout.idleBackground,
+    theme: settings.theme, scenery: settings.wallpaperScenery,
+  };
+  for (const resp of [
+    await page.request.patch(`/api/layouts/${layout.id}`, {
+      data: { widgets: HERO_LAYOUT, idleBackground: { source: 'dashboard' } },
+    }),
+    await setSetting('theme', { ...(original.theme as object | undefined), paletteId: 'paper' }),
+    await setSetting('wallpaperScenery', true),
+  ]) {
+    if (!resp.ok()) throw new Error(`Staging the hero failed: ${resp.status()}`);
+  }
+  console.log('  staged the hero: calendar + weather layout, glass cards, Paper, park scenery');
+  return async () => {
+    await page.request.patch(`/api/layouts/${layout.id}`, {
+      data: { widgets: original.widgets, idleBackground: original.idleBackground ?? { source: 'photos' } },
+    });
+    await setSetting('theme', original.theme ?? { mode: 'system' });
+    await setSetting('wallpaperScenery', original.scenery ?? false);
+    await context.close();
+  };
 }
 
 /**
@@ -444,16 +579,49 @@ async function waitForContentReady(page: Page, settleMs = 3500): Promise<void> {
   await page.waitForTimeout(settleMs);
 }
 
-async function captureOnce(browser: Browser, spec: CaptureSpec): Promise<void> {
-  const viewport = spec.mobile ? MOBILE_VIEWPORT : DESKTOP_VIEWPORT;
+/** One browser per pointer type, launched on first use (see DEVICES). */
+const browsers = new Map<'fine' | 'coarse', Promise<Browser>>();
+function browserFor(spec: CaptureSpec): Promise<Browser> {
+  const pointer = spec.device ? 'coarse' : 'fine';
+  if (!browsers.has(pointer)) {
+    browsers.set(
+      pointer,
+      chromium.launch(
+        pointer === 'coarse'
+          ? { args: ['--blink-settings=primaryPointerType=2,availablePointerTypes=2'] }
+          : {},
+      ),
+    );
+  }
+  return browsers.get(pointer)!;
+}
+
+async function captureOnce(spec: CaptureSpec): Promise<void> {
+  const browser = await browserFor(spec);
+  const device = spec.device ? DEVICES[spec.device] : null;
+  const viewport = device?.viewport ?? (spec.mobile ? MOBILE_VIEWPORT : DESKTOP_VIEWPORT);
   const context: BrowserContext = await browser.newContext({
     baseURL: BASE_URL,
     viewport,
+    deviceScaleFactor: device?.scale ?? 1,
+    isMobile: device?.isMobile ?? false,
+    hasTouch: Boolean(device),
+    timezoneId: TIMEZONE,
     reducedMotion: 'reduce',
     colorScheme: spec.theme === 'dark' ? 'dark' : 'light',
   });
 
   const page = await context.newPage();
+  if (FIXED_NOW) {
+    await page.clock.setFixedTime(new Date(FIXED_NOW));
+    // The forecast is live; draw the fixed moment's weather instead, or a June
+    // afternoon shows November's hours, sunrise and sunset.
+    await context.route('**/api/weather**', async (route) => {
+      const response = await route.fetch();
+      if (!response.ok()) return route.fulfill({ response });
+      await route.fulfill({ response, json: freezeWeather(await response.json(), FIXED_NOW) });
+    });
+  }
 
   // Pre-seed localStorage BEFORE first paint so the page renders directly in
   // the requested state (theme + calendar view) without a mid-load swap.
@@ -527,6 +695,9 @@ async function captureOnce(browser: Browser, spec: CaptureSpec): Promise<void> {
       }
     }
 
+    // A wall runs signed out. Signing in above was only to find the photo.
+    if (spec.signedOut) await context.clearCookies();
+
     // Navigate to the target page.
     await page.goto(spec.url, { waitUntil: 'load', timeout: 60_000 });
 
@@ -552,6 +723,29 @@ async function captureOnce(browser: Browser, spec: CaptureSpec): Promise<void> {
     // extra settle for animations + render finalization. Pass through the
     // spec's settleMs override; otherwise the function default applies.
     await waitForContentReady(page, spec.settleMs);
+
+    // In dev mode a signed-out load can open "Sign in to make changes" on its
+    // own: the time-zone backfill in TimeFormatProvider runs when its effect is
+    // cancelled, and dev runs effects twice. Close it until that is fixed.
+    if (spec.signedOut) {
+      // The box has no dialog role and ignores Escape, so press its close button.
+      const title = page.getByText('Sign in to make changes');
+      if (await title.isVisible().catch(() => false)) {
+        await title.locator('xpath=ancestor::div[.//button][1]').locator('button').first().click();
+        await title.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+        await page.waitForTimeout(500);
+      }
+    }
+
+    // Auto-hide takes the rail and bar away after 10 s without a touch; the
+    // click above counts as one.
+    if (spec.idleChrome) await page.waitForTimeout(11_000);
+    if (spec.idle) {
+      // The toolbar's "screensaver now" event, which a calm dashboard answers
+      // by fading in place rather than opening the separate screensaver.
+      await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
+      await page.waitForTimeout(2500);
+    }
 
     // Wait for any <img> (photo thumbnails, recipe images, avatars) to finish
     // loading. waitForContentReady only tracks spinners/skeletons, not images,
@@ -597,10 +791,10 @@ async function waitForStackReady(timeoutMs = 180_000): Promise<boolean> {
   return false;
 }
 
-async function captureOne(browser: Browser, spec: CaptureSpec): Promise<boolean> {
+async function captureOne(spec: CaptureSpec): Promise<boolean> {
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      await captureOnce(browser, spec);
+      await captureOnce(spec);
       console.log(`  ✓ ${spec.name}.png  (${spec.description})`);
       return true;
     } catch (err) {
@@ -659,26 +853,45 @@ async function main() {
     process.exit(1);
   }
 
-  const browser = await chromium.launch();
+  if (!FIXED_NOW) {
+    console.warn('  PRISM_SEED_NOW is not set: shots use the real clock and will differ run to run.');
+  }
+
   let ok = 0;
   let failed = 0;
+  let restoreHero: (() => Promise<void>) | null = null;
+  const run = async (spec: CaptureSpec) => {
+    if (await captureOne(spec)) ok++;
+    else failed++;
+    // Small pause between captures so the dev server has time to recover
+    // from the previous on-demand compile before we hit it with another.
+    await new Promise((r) => setTimeout(r, 1_500));
+  };
+  const heroSpecs = specs.filter((s) => s.name.startsWith('hero-'));
+  const otherSpecs = specs.filter((s) => !s.name.startsWith('hero-'));
 
   try {
-    // Ensure the target has demo photos (Photos page, dashboard hero,
-    // screensaver) before capturing. Skipped automatically if a photo filter
-    // is not part of the run but photos are cheap and shared, so always run it.
-    await ensureDemoPhotos(browser);
-
-    for (const spec of specs) {
-      const success = await captureOne(browser, spec);
-      if (success) ok++;
-      else failed++;
-      // Small pause between captures so the dev server has time to recover
-      // from the previous on-demand compile before we hit it with another.
-      await new Promise((r) => setTimeout(r, 1_500));
+    // The hero shows a new install, so it runs on its own staging before any
+    // demo photos exist: with photos, the scenery steps aside.
+    if (heroSpecs.length > 0) {
+      restoreHero = await stageHero(await browserFor({} as CaptureSpec));
+      for (const spec of heroSpecs) await run(spec);
+      await restoreHero();
+      restoreHero = null;
     }
+
+    // Demo photos for the Photos page, the photo dashboard and the
+    // screensaver. Cheap and shared, so always run it.
+    if (otherSpecs.length > 0) await ensureDemoPhotos(await browserFor({} as CaptureSpec));
+    for (const spec of otherSpecs) await run(spec);
   } finally {
-    await browser.close();
+    if (restoreHero) await restoreHero().catch(() => {});
+    for (const b of browsers.values()) await (await b).close();
+  }
+
+  if (specs.some((s) => s.name.startsWith('hero-'))) {
+    console.log('\nFraming hero shots...');
+    for (const f of await frameAll(OUT_DIR)) console.log(`  ✓ ${path.basename(f)}`);
   }
 
   console.log(`\nDone. ${ok} of ${specs.length} captured`);

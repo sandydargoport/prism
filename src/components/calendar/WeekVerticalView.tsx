@@ -1,5 +1,6 @@
 'use client';
 
+import { eventTintStyle } from '@/lib/design/eventStyle';
 import {
   format,
   startOfWeek,
@@ -388,10 +389,10 @@ function DayEventList({
           style={
             cards
               ? { borderLeft: `3px solid ${event.color}` }
-              : { backgroundColor: event.color, borderLeft: `3px solid ${event.color}` }
+              : eventTintStyle(event.color, 'border')
           }
         >
-          <span className={cn('font-medium', cards ? 'text-foreground' : 'text-white')}>{event.title}</span>
+          <span className="font-medium text-foreground">{event.title}</span>
         </button>
       ))}
       {timedEvents.map((event) => {
@@ -416,13 +417,13 @@ function DayEventList({
               'w-full text-left text-xs px-1.5 py-1 rounded hover:opacity-90 transition-opacity truncate block',
               cards
                 ? 'bg-card/85 backdrop-blur-xs border border-border/40 shadow-xs text-foreground'
-                : 'text-white',
+                : 'text-foreground',
               isPastEvent && 'opacity-70',
             )}
             style={
               cards
                 ? { borderLeft: `3px solid ${event.color}` }
-                : { backgroundColor: event.color, borderLeft: `3px solid ${event.color}` }
+                : eventTintStyle(event.color, 'border')
             }
           >
             {startsToday && (

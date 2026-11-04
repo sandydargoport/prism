@@ -1,5 +1,6 @@
 'use client';
 
+import { eventTintStyle } from '@/lib/design/eventStyle';
 import {
   format,
   isSameDay,
@@ -223,12 +224,10 @@ function AgendaDaySection({
       )}
     >
       <div className="flex items-center gap-2 mb-2">
-        <span
-          className={cn(
-            'text-sm font-semibold',
-            isToday && 'text-seasonal-accent'
-          )}
-        >
+        {/* The normal text colour: a seasonal accent is a marker colour, and
+            several months' are too light to read as text on a light card. The
+            Today badge beside it marks the day (#801). */}
+        <span className="text-sm font-semibold text-foreground">
           {formatAgendaDayHeader(date, displayTimezone, t, d)}
         </span>
         {isToday && (
@@ -384,8 +383,7 @@ function AgendaRowItem({ row, cards = false }: { row: AgendaRow; cards?: boolean
     transform: CSS.Translate.toString(draggable.transform),
     touchAction: row.dragId ? 'none' : undefined,
     zIndex: draggable.isDragging ? 50 : undefined,
-    borderLeft: `3px solid ${row.stripeColor}`,
-    backgroundColor: cards ? undefined : row.stripeColor,
+    ...(cards ? { borderLeft: `3px solid ${row.stripeColor}` } : eventTintStyle(row.stripeColor, 'border')),
   };
 
   const Tag: 'button' | 'div' = row.onClick ? 'button' : 'div';
@@ -403,7 +401,7 @@ function AgendaRowItem({ row, cards = false }: { row: AgendaRow; cards?: boolean
         'relative w-full text-left flex items-start gap-2 rounded p-(--agenda-row-padding)',
         cards
           ? 'bg-card/85 backdrop-blur-xs border border-border/40 shadow-xs hover:bg-card text-foreground'
-          : 'hover:opacity-90 text-white',
+          : 'hover:brightness-95',
         'transition-colors touch-action-manipulation',
         row.dragId && 'cursor-grab active:cursor-grabbing',
         draggable.isDragging && 'opacity-60 ring-2 ring-seasonal-accent shadow-xl',
@@ -421,7 +419,7 @@ function AgendaRowItem({ row, cards = false }: { row: AgendaRow; cards?: boolean
         <div className={cn('text-xs', cards ? 'text-muted-foreground' : 'opacity-80')}>
           {row.timeLabel}
         </div>
-        <div className={cn('flex items-center gap-1 text-sm font-medium', cards ? 'text-foreground' : 'text-white', row.muted && 'line-through')}>
+        <div className={cn('flex items-center gap-1 text-sm font-medium', 'text-foreground', row.muted && 'line-through')}>
           {row.dragId?.startsWith('meal:') && (
             <UtensilsCrossed aria-hidden className="h-3 w-3 shrink-0" style={cards ? { color: row.stripeColor } : undefined} />
           )}

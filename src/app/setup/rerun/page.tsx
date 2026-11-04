@@ -5,5 +5,5 @@ export const metadata = {
 };
 
 export default function RerunSetupPage() {
-  return <SetupWizard />;
+  return <SetupWizard firstRun={false} />;
 }

@@ -112,18 +112,19 @@ export const ClockWidget = React.memo(function ClockWidget({
     day: 'numeric',
   });
 
-  // Size-based styling
-  const timeStyles = {
-    small: 'text-3xl',
-    medium: 'text-5xl',
-    large: 'text-7xl',
-  };
-
-  const dateStyles = {
-    small: 'text-sm',
-    medium: 'text-lg',
-    large: 'text-xl',
-  };
+  // The time and date size from the widget's own box (container query units),
+  // so a small tile on a tablet shrinks the text instead of wrapping "4:10 PM"
+  // onto two lines and pushing the date out of the box. The size class is the
+  // ceiling: a roomy tile still gets the size it always had.
+  const fit = clockFit(effectiveTimeFormat, showSeconds, size);
+  // "4:10 PM" -> "4:10" + "PM": the day half is drawn small beside the digits,
+  // which leaves the digits most of the width.
+  const { digits, dayHalf, dayHalfFirst } = splitDayHalf(timeString);
+  const dayHalfSpan = dayHalf && (
+    <span className={cn('text-[0.45em] font-semibold', dayHalfFirst ? 'mr-[0.15em]' : 'ml-[0.15em]')}>
+      {dayHalf}
+    </span>
+  );
 
   return (
     <WidgetContainer
@@ -131,9 +132,15 @@ export const ClockWidget = React.memo(function ClockWidget({
       icon={<Clock className="h-4 w-4" />}
       size={size === 'large' ? 'wide' : 'small'}
       showHeader={false}
-      className={cn('flex items-center justify-center', className)}
+      // No flex here: it would replace the card's grid, the content row would
+      // stop filling the tile, and the face below would have no box to size from.
+      className={className}
     >
-      <div className="flex flex-col items-center justify-center h-full text-center">
+      <div
+        className="flex flex-col items-center justify-center flex-1 min-h-0 w-full text-center"
+        style={{ containerType: 'size' }}
+        data-clock-face
+      >
         {/* TIME DISPLAY */}
         <time
           dateTime={currentTime.toISOString()}
@@ -142,11 +149,14 @@ export const ClockWidget = React.memo(function ClockWidget({
             'font-bold tracking-tight',
             // Tabular numbers for consistent width
             'tabular-nums',
-            // Size-based class
-            timeStyles[size]
+            // One line, always: it shrinks to fit rather than wrapping
+            'whitespace-nowrap leading-none'
           )}
+          style={{ fontSize: fit.time }}
         >
-          {timeString}
+          {dayHalfFirst && dayHalfSpan}
+          {digits}
+          {!dayHalfFirst && dayHalfSpan}
         </time>
 
         {/* DATE DISPLAY */}
@@ -154,9 +164,9 @@ export const ClockWidget = React.memo(function ClockWidget({
           <time
             dateTime={getDisplayDateKey(currentTime, displayTimezone)}
             className={cn(
-              'text-muted-foreground mt-1',
-              dateStyles[size]
+              'text-muted-foreground mt-[0.3em] text-balance leading-tight'
             )}
+            style={{ fontSize: fit.date }}
           >
             {dateString}
           </time>
@@ -165,6 +175,50 @@ export const ClockWidget = React.memo(function ClockWidget({
     </WidgetContainer>
   );
 });
+
+
+/** Size ceilings per variant, in rem: text-3xl/5xl/7xl and text-sm/lg/xl. */
+const TIME_REM = { small: 1.875, medium: 3, large: 4.5 } as const;
+const DATE_REM = { small: 0.875, medium: 1.125, large: 1.25 } as const;
+
+/**
+ * Font sizes for the clock face that fit its box.
+ *
+ * The time's width is counted in em from its widest form (12:59:59 PM), not
+ * the current string, so the size does not jump when 9:59 becomes 10:00.
+ * Measured in bold tabular digits: "12:59" is 2.6em, ":59" adds 1.45em, and
+ * the half-size " PM" adds 0.75em. The time takes at most 88% of the width
+ * and 45% of the height, leaving room for two lines of date below it.
+ *
+ * The date keeps the text floor (it may wrap to two lines, never shrink
+ * below what is readable across a room), and is otherwise capped at 9% of
+ * the width so a narrow tile still wraps it into two lines, not three.
+ */
+export function clockFit(
+  timeFormat: '12h' | '24h',
+  showSeconds: boolean,
+  size: keyof typeof TIME_REM,
+): { time: string; date: string } {
+  const em = 2.6 + (showSeconds ? 1.45 : 0) + (timeFormat === '12h' ? 0.75 : 0);
+  const widthCq = Math.round((88 / em) * 10) / 10;
+  return {
+    time: `min(${TIME_REM[size]}rem, ${widthCq}cqw, 45cqh)`,
+    date: `max(calc(var(--text-floor) * var(--zoom-inv, 1)), min(${DATE_REM[size]}rem, 9cqw, 14cqh))`,
+  };
+}
+
+
+/**
+ * Separates the day half from the digits, whichever side a locale puts it:
+ * "4:10 PM" -> 4:10 + PM after; "午後4:10" -> 4:10 + 午後 first; "16:10" -> none.
+ */
+export function splitDayHalf(time: string): { digits: string; dayHalf: string; dayHalfFirst: boolean } {
+  const after = time.match(/^(\d[\d:.]*\d)\s*(\p{L}.*)$/u);
+  if (after) return { digits: after[1]!, dayHalf: after[2]!, dayHalfFirst: false };
+  const first = time.match(/^(\D*\p{L}\D*?)\s*(\d[\d:.]*\d)$/u);
+  if (first) return { digits: first[2]!, dayHalf: first[1]!, dayHalfFirst: true };
+  return { digits: time, dayHalf: '', dayHalfFirst: false };
+}
 
 
 /**

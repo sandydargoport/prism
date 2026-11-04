@@ -212,6 +212,7 @@ describe('PATCH /api/settings', () => {
       ['location', { lat: 41.9, lon: -87.6, displayName: 'Springfield' }],
       ['location', null],
       ['telemetry.enabled', false],
+      ['firstLook', 'night'], // the wizard's Pick a look step (#808)
     ])('allows writing %s before setup is complete', async (key, value) => {
       mockIsSetupComplete.mockResolvedValue(false);
       mockWhere.mockResolvedValueOnce([]);
@@ -237,6 +238,7 @@ describe('PATCH /api/settings', () => {
       ['location', 'Springfield'],
       ['location', { lat: 200, lon: 0, displayName: 'x' }],
       ['telemetry.enabled', 'false'],
+      ['firstLook', 'neon'],
     ])('rejects a malformed %s on the setup path', async (key, value) => {
       mockIsSetupComplete.mockResolvedValue(false);
 
@@ -267,6 +269,19 @@ describe('PATCH /api/settings', () => {
       const res = await PATCH(makePatchRequest({ key: 'nightSkyAurora', value }));
       expect(res.status).toBe(400);
       expect(mockInsert).not.toHaveBeenCalled();
+    });
+
+    // Placed in the first-paint script by the root layout, so only the three
+    // known words may be stored (#808).
+    it.each(['sepia', "dark';alert(1)//", 1, null])('rejects the default mode %p', async (value) => {
+      const res = await PATCH(makePatchRequest({ key: 'defaultThemeMode', value }));
+      expect(res.status).toBe(400);
+      expect(mockInsert).not.toHaveBeenCalled();
+    });
+
+    it.each(['light', 'dark', 'system'])('accepts the default mode %s', async (value) => {
+      const res = await PATCH(makePatchRequest({ key: 'defaultThemeMode', value }));
+      expect(res.status).toBe(200);
     });
 
     it('accepts the aurora switch on', async () => {

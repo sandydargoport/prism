@@ -377,12 +377,18 @@ export const WeatherWidget = React.memo(function WeatherWidget({
       // getBoundingClientRect keeps container + row in one coordinate space so
       // any dashboard transform-scale cancels. -6 absorbs the list's small top
       // margin + sub-pixel rounding so we round DOWN to whole rows.
-      const h = el.getBoundingClientRect().height;
-      if (h <= 0) return;
+      // No width means no layout yet (SSR, tests): keep the default. A real
+      // list squeezed to no height by the rows above it fits no day at all.
+      const box = el.getBoundingClientRect();
+      if (box.width <= 0) return;
+      const h = box.height;
+      if (h <= 0) { setMaxDayRows(0); return; }
       const row = el.querySelector('[data-day-row]');
       const rowH = row ? row.getBoundingClientRect().height : 44;
       if (rowH <= 0) return;
-      setMaxDayRows(Math.max(1, Math.floor((h - 6) / rowH)));
+      // Zero when not even one whole row fits: the section then shows nothing
+      // rather than half a day.
+      setMaxDayRows(Math.max(0, Math.floor((h - 6) / rowH)));
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -451,14 +457,19 @@ export const WeatherWidget = React.memo(function WeatherWidget({
             {/* Multi-day summary — the day list fills the remaining space and
                 clips to WHOLE rows (maxDayRows) so a day is never half-cut. */}
             <div className="flex-1 min-h-0 flex flex-col">
-              <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                {shownForecast.length}-Day Forecast
-              </span>
-              <div ref={dayListRef} className="flex-1 min-h-0 overflow-hidden">
-                <DayHeader
-                  days={shownForecast}
-                  units={units}
-                />
+              {shownForecast.length > 0 && (
+                <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {shownForecast.length}-Day Forecast
+                </span>
+              )}
+              {/* Stays mounted when empty, so it is measured again as it grows. */}
+              <div ref={dayListRef} className="flex-1 min-h-0 overflow-hidden" data-testid="weather-day-list">
+                {shownForecast.length > 0 && (
+                  <DayHeader
+                    days={shownForecast}
+                    units={units}
+                  />
+                )}
               </div>
             </div>
 
@@ -565,7 +576,7 @@ function CurrentConditions({
           </div>
         )}
         {(sunrise || sunset) && (
-          <div className="flex items-center justify-end gap-2 tabular-nums">
+          <div data-keep-bg data-testid="header-sun-times" className="flex items-center justify-end gap-2 tabular-nums self-end rounded-full bg-background/55 px-2 text-foreground">
             {sunrise && (
               <span className="flex items-center gap-0.5" title="Sunrise">
                 <Sunrise className="h-3 w-3" style={{ color: '#FBBF24' }} />
@@ -1253,17 +1264,19 @@ function SunriseSunsetArc({
       {/* Sun / moon times — one evenly-spaced row: sun pair fixed on the left
           (sunrise, sunset), moon pair on the right (moonrise ↑, moonset ↓).
           Cleaner and never clips vs. the old x-anchored floating labels. */}
-      <div className="flex items-center justify-between gap-3 text-[11px] tabular-nums pt-0.5 whitespace-nowrap">
-        <span className="flex items-center gap-3">
-          <span className="flex items-center gap-1" style={{ color: SUN_COLOR }} title="Sunrise">
-            <Sunrise className="h-3 w-3" />{formatDisplayTime(sunrise, timeFormat, {}, timezone)}
+      {/* In the normal text colour on a small backing, so the times read over
+          glass and over a bare photo alike; only the icons carry the colour. */}
+      <div className="flex items-center justify-between gap-3 text-xs tabular-nums pt-0.5 whitespace-nowrap text-foreground">
+        <span data-keep-bg data-testid="sun-times" className="flex items-center gap-3 rounded-full bg-background/55 px-2 py-0.5">
+          <span className="flex items-center gap-1" title="Sunrise">
+            <Sunrise className="h-3 w-3" style={{ color: SUN_COLOR }} />{formatDisplayTime(sunrise, timeFormat, {}, timezone)}
           </span>
-          <span className="flex items-center gap-1" style={{ color: SUN_COLOR }} title="Sunset">
-            <Sunset className="h-3 w-3" />{formatDisplayTime(sunset, timeFormat, {}, timezone)}
+          <span className="flex items-center gap-1" title="Sunset">
+            <Sunset className="h-3 w-3" style={{ color: SUN_COLOR }} />{formatDisplayTime(sunset, timeFormat, {}, timezone)}
           </span>
         </span>
         {(moonrise || moonset) && (
-          <span className="flex items-center gap-3" style={{ color: MOON_COLOR }}>
+          <span data-keep-bg data-testid="moon-times" className="flex items-center gap-3 rounded-full bg-background/55 px-2 py-0.5">
             {moonrise && (
               <span className="flex items-center gap-1" title="Moonrise">
                 <MoonGlyph phase={moonPhase ?? 0} size={11} /><span className="opacity-70">↑</span>{formatDisplayTime(moonrise, timeFormat, {}, timezone)}

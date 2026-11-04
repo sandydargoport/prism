@@ -6,7 +6,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import {
-  CARD, EVENT, PAPER, PAPER_CONTRAST_MIN, REFERENCE_ROOT_PX, SPACE_PX,
+  CARD, EVENT, PAPER, PAPER_CONTRAST_MIN, PHOTO_DIM, REFERENCE_ROOT_PX, SPACE_PX,
   TARGET_MIN_PX, TEXT_FLOOR_PX, TYPE_SCALE, TYPE_STEP_MIN, type TypeRole,
 } from '../tokens';
 import { checkThemeContrast, EDGE_MIN } from '@/lib/themes/contrast';
@@ -80,12 +80,23 @@ describe('shape tokens', () => {
     expect(remToPx(cssValue('--ds-card-radius'))).toBeCloseTo(CARD.radiusPx, 5);
     expect(remToPx(cssValue('--ds-card-pad'))).toBeCloseTo(CARD.paddingPx, 5);
     expect(remToPx(cssValue('--ds-card-gap'))).toBeCloseTo(CARD.gapPx, 5);
-    expect(Number(cssValue('--ds-glass-alpha'))).toBe(CARD.glassAlpha);
     expect(cssValue('--ds-glass-blur')).toBe(`${CARD.glassBlurPx}px`);
     expect(cssValue('--ds-event-bar')).toBe(`${EVENT.barPx}px`);
     // First match is :root (light), the .dark block overrides it.
     const tints = [...css.matchAll(/--ds-event-tint:\s*([\d.]+)%;/g)].map((m) => Number(m[1]) / 100);
     expect(tints).toEqual([EVENT.tint.light, EVENT.tint.dark]);
+    // Glass the same way; the Performance Mode block comes before both.
+    const glass = [...css.matchAll(/--ds-glass-alpha:\s*([\d.]+);/g)].map((m) => Number(m[1])).slice(1);
+    expect(glass).toEqual([CARD.glassAlpha.light, CARD.glassAlpha.dark]);
+  });
+});
+
+describe('glass under Performance Mode', () => {
+  it('drops the blur and thickens the glass, never thinner than the normal glass', () => {
+    const block = /html\.performance-mode \{([^}]*)\}/.exec(css)?.[1] ?? '';
+    expect(block).toMatch(/--ds-glass-filter:\s*none;/);
+    const alpha = Number(/--ds-glass-alpha:\s*([\d.]+);/.exec(block)?.[1]);
+    expect(alpha).toBeGreaterThan(Math.max(CARD.glassAlpha.light, CARD.glassAlpha.dark));
   });
 });
 
@@ -112,12 +123,25 @@ describe('Paper palette', () => {
     }
   });
 
-  it.each(MODES)('glass cards stay readable in %s over a black or a white photo', (mode) => {
+  // A photo never reaches the glass at full strength: it is drawn under a
+  // black layer (PHOTO_DIM). So the worst cases are a pure black and a pure
+  // white photo as they look under that layer, for every kind of photo.
+  it.each(MODES)('glass cards stay readable in %s over any photo, as it is drawn', (mode) => {
     const card = hslToHex(PAPER[mode].card);
     const text = hslToHex(PAPER[mode]['card-foreground']);
-    for (const photo of ['#000000', '#ffffff']) {
-      const glass = mix(card, photo, CARD.glassAlpha);
-      expect(contrastRatioHex(text, glass)).toBeGreaterThanOrEqual(PAPER_CONTRAST_MIN);
+    for (const [kind, dim] of Object.entries(PHOTO_DIM)) {
+      for (const photo of ['#000000', '#ffffff']) {
+        const drawn = mix('#000000', photo, dim[mode]);
+        const ratio = contrastRatioHex(text, mix(card, drawn, CARD.glassAlpha[mode]));
+        expect([kind, photo, ratio >= PAPER_CONTRAST_MIN]).toEqual([kind, photo, true]);
+      }
+    }
+  });
+
+  it('the wallpaper draws the black layer the glass check assumes', () => {
+    const wallpaper = fs.readFileSync(path.join(ROOT, 'src/components/layout/WallpaperBackground.tsx'), 'utf8');
+    for (const dim of Object.values(PHOTO_DIM)) {
+      expect(wallpaper).toContain(`bg-black/${dim.light * 100} dark:bg-black/${dim.dark * 100}`);
     }
   });
 
@@ -141,6 +165,7 @@ describe('docs/DESIGN.md', () => {
   it('states the target size and the card numbers', () => {
     expect(designDoc).toContain(`${TARGET_MIN_PX}px`);
     expect(designDoc).toContain(`${CARD.radiusPx}px`);
-    expect(designDoc).toContain(`${Math.round(CARD.glassAlpha * 100)}%`);
+    expect(designDoc).toContain(`${Math.round(CARD.glassAlpha.light * 100)}% in light`);
+    expect(designDoc).toContain(`${Math.round(CARD.glassAlpha.dark * 100)}% in dark`);
   });
 });

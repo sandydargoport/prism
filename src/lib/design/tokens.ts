@@ -1,5 +1,5 @@
 /**
- * Prism 2.0 design tokens. docs/DESIGN.md explains each one; this file is the
+ * Prism design tokens. docs/DESIGN.md explains each one; this file is the
  * value, and the CSS in globals.css copies it (a test checks they agree).
  *
  * Sizes are given in px as they render on the reference screen: a 1080p wall
@@ -7,8 +7,8 @@
  * desk (14px root) and a phone (16px root) scale them down, and the text
  * floor stops the small ones going under 14px on a wall or 12px close up.
  *
- * Nothing here is wired into the existing themes yet. Track A of the 2.0 plan
- * (#808 and the wall polish after it) adopts these one surface at a time.
+ * The Paper palette and the setup wizard's Look step use these; the other
+ * themes adopt them one surface at a time.
  */
 import type { ThemeTokens } from '@/lib/themes/tokens';
 
@@ -53,9 +53,25 @@ export const CARD = {
   paddingPx: 24,
   gapPx: 16,
   borderPx: 1,
-  /** Over a photo the card is its own colour at this opacity, plus blur. */
-  glassAlpha: 0.82,
+  /**
+   * Over a photo the card is its own colour at this opacity, plus blur.
+   * Dark glass is thinner: light text on it stays readable over a bright
+   * photo, while light glass needs more card to keep its dark grey text.
+   */
+  glassAlpha: { light: 0.65, dark: 0.4 },
   glassBlurPx: 24,
+} as const;
+
+/**
+ * The black layer laid over a wallpaper photo, as a share, so no photo reaches
+ * the glass at full brightness. Glass contrast is checked against the darkest
+ * and brightest a photo can be once it is under this layer. The bundled scenery
+ * is dimmed lightly so it shows; photos the family added keep the old,
+ * heavier layer.
+ */
+export const PHOTO_DIM = {
+  scenery: { light: 0.1, dark: 0.4 },
+  photos: { light: 0.6, dark: 0.7 },
 } as const;
 
 /**
