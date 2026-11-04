@@ -47,8 +47,8 @@ export async function GET() {
 }
 
 const bindSchema = z.object({
-  trackId: z.string().uuid(),
-  routeId: z.string().uuid().nullable(),
+  trackId: z.guid(),
+  routeId: z.guid().nullable(),
 });
 
 /**

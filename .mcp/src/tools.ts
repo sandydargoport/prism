@@ -167,7 +167,7 @@ export function registerTools(
     'List chores that are due (today or earlier in the household zone), awaiting approval, or recently done. ' +
       'Optionally filter by assignedTo (user UUID) or enabled status.',
     {
-      assignedTo: z.string().uuid().optional().describe('Filter by user UUID'),
+      assignedTo: z.guid().optional().describe('Filter by user UUID'),
       enabled: z.boolean().optional().describe('Filter by enabled status (default: true)'),
       includeFuture: z.boolean().optional().describe('Include chores not yet due'),
     },
@@ -189,7 +189,7 @@ export function registerTools(
       category: z.enum(['cleaning', 'laundry', 'dishes', 'yard', 'pets', 'trash', 'other']),
       frequency: z.enum(['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'semi-annually', 'annually', 'custom']),
       description: z.string().optional(),
-      assignedTo: z.string().uuid().optional().describe('User UUID to assign the chore to'),
+      assignedTo: z.guid().optional().describe('User UUID to assign the chore to'),
       pointValue: z.number().int().min(0).max(1000).optional().default(0),
       requiresApproval: z.boolean().optional().default(false),
       customIntervalDays: z.number().int().min(1).max(365).optional().describe('Days between occurrences (only for frequency=custom)'),
@@ -203,12 +203,12 @@ export function registerTools(
     'update_chore',
     'Update an existing chore by ID.',
     {
-      id: z.string().uuid().describe('Chore UUID'),
+      id: z.guid().describe('Chore UUID'),
       title: z.string().min(1).max(255).optional(),
       category: z.enum(['cleaning', 'laundry', 'dishes', 'yard', 'pets', 'trash', 'other']).optional(),
       frequency: z.enum(['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'semi-annually', 'annually', 'custom']).optional(),
       description: z.string().optional(),
-      assignedTo: z.string().uuid().optional(),
+      assignedTo: z.guid().optional(),
       pointValue: z.number().int().min(0).max(1000).optional(),
       requiresApproval: z.boolean().optional(),
       enabled: z.boolean().optional(),
@@ -223,7 +223,7 @@ export function registerTools(
   server.tool(
     'delete_chore',
     'Delete a chore by ID.',
-    { id: z.string().uuid().describe('Chore UUID') },
+    { id: z.guid().describe('Chore UUID') },
     async ({ id }) => ok(await api('DELETE', `/api/chores/${id}`)),
   );
 
@@ -231,8 +231,8 @@ export function registerTools(
     'complete_chore',
     'Mark a chore as completed by a specific user.',
     {
-      id: z.string().uuid().describe('Chore UUID'),
-      userId: z.string().uuid().describe('UUID of the user completing the chore'),
+      id: z.guid().describe('Chore UUID'),
+      userId: z.guid().describe('UUID of the user completing the chore'),
       notes: z.string().max(1000).optional(),
     },
     async ({ id, userId, notes }) =>
@@ -247,7 +247,7 @@ export function registerTools(
     'list_tasks',
     'List tasks with optional filters.',
     {
-      userId: z.string().uuid().optional().describe('Filter by assigned user UUID'),
+      userId: z.guid().optional().describe('Filter by assigned user UUID'),
       completed: z.boolean().optional().describe('Filter by completion status'),
       priority: z.enum(['high', 'medium', 'low']).optional(),
       dueBefore: dateKey.optional().describe('Due on or before this date, YYYY-MM-DD'),
@@ -274,11 +274,11 @@ export function registerTools(
     {
       title: z.string().min(1).max(255),
       description: z.string().optional(),
-      assignedTo: z.string().uuid().optional().describe('User UUID'),
+      assignedTo: z.guid().optional().describe('User UUID'),
       dueDate: dateKey.optional().describe('Due date, YYYY-MM-DD'),
       dueTime: wallTime.optional().describe('Due time HH:mm in the household time zone; omit for any time that day'),
       priority: z.enum(['high', 'medium', 'low']).optional(),
-      listId: z.string().uuid().nullable().optional().describe('Task list UUID'),
+      listId: z.guid().nullable().optional().describe('Task list UUID'),
     },
     async (params) => ok(await api('POST', '/api/tasks', params)),
   );
@@ -287,15 +287,15 @@ export function registerTools(
     'update_task',
     'Update an existing task by ID.',
     {
-      id: z.string().uuid(),
+      id: z.guid(),
       title: z.string().min(1).max(255).optional(),
       description: z.string().optional(),
-      assignedTo: z.string().uuid().nullable().optional(),
+      assignedTo: z.guid().nullable().optional(),
       dueDate: dateKey.nullable().optional().describe('YYYY-MM-DD; null clears the due date and time'),
       dueTime: wallTime.nullable().optional().describe('HH:mm; null for any time that day; omit to keep'),
       priority: z.enum(['high', 'medium', 'low']).nullable().optional(),
       completed: z.boolean().optional(),
-      listId: z.string().uuid().nullable().optional(),
+      listId: z.guid().nullable().optional(),
     },
     // The route has no PUT; PATCH is the partial update this tool describes.
     async ({ id, ...body }) => ok(await api('PATCH', `/api/tasks/${id}`, body)),
@@ -304,7 +304,7 @@ export function registerTools(
   server.tool(
     'delete_task',
     'Delete a task by ID.',
-    { id: z.string().uuid() },
+    { id: z.guid() },
     async ({ id }) => ok(await api('DELETE', `/api/tasks/${id}`)),
   );
 
@@ -319,7 +319,7 @@ export function registerTools(
     {
       startDate: z.string().describe(`Start of the range. A date YYYY-MM-DD means from the start of that household day. ${TIME_HELP}`),
       endDate: z.string().describe(`End of the range. A date YYYY-MM-DD means through the end of that household day. ${TIME_HELP}`),
-      calendarId: z.string().uuid().optional().describe('Filter by calendar source UUID'),
+      calendarId: z.guid().optional().describe('Filter by calendar source UUID'),
       limit: z.number().int().min(1).max(500).optional().default(100),
     },
     async ({ startDate, endDate, calendarId, limit }) => guarded(async () => {
@@ -347,9 +347,9 @@ export function registerTools(
       description: z.string().optional(),
       location: z.string().max(5000).optional(),
       allDay: z.boolean().optional().default(false),
-      calendarSourceId: z.string().uuid().optional(),
+      calendarSourceId: z.guid().optional(),
       color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().describe('Hex color e.g. #3B82F6'),
-      createdBy: z.string().uuid().optional().describe('User UUID'),
+      createdBy: z.guid().optional().describe('User UUID'),
     },
     async ({ startTime, endTime, allDay, ...rest }) => guarded(async () => {
       if (endTime === undefined && !(allDay && parseDateKey(startTime))) {
@@ -364,7 +364,7 @@ export function registerTools(
     'update_event',
     'Update an existing calendar event. Only the fields given change.',
     {
-      id: z.string().uuid(),
+      id: z.guid(),
       title: z.string().min(1).max(255).optional(),
       startTime: z.string().optional().describe(eventTimeHelp),
       endTime: z.string().optional().describe('For an all-day event, the last day (inclusive).'),
@@ -384,7 +384,7 @@ export function registerTools(
   server.tool(
     'delete_event',
     'Delete a calendar event by ID.',
-    { id: z.string().uuid() },
+    { id: z.guid() },
     async ({ id }) => ok(await api('DELETE', `/api/events/${id}`)),
   );
 
@@ -403,7 +403,7 @@ export function registerTools(
     'list_shopping_items',
     'List shopping items, optionally filtered by list.',
     {
-      listId: z.string().uuid().optional().describe('Shopping list UUID'),
+      listId: z.guid().optional().describe('Shopping list UUID'),
       checked: z.boolean().optional().describe('Filter by checked/unchecked status'),
     },
     async ({ listId, checked }) => {
@@ -419,7 +419,7 @@ export function registerTools(
     'Add an item to a shopping list.',
     {
       name: z.string().min(1).max(255),
-      listId: z.string().uuid().describe('Shopping list UUID'),
+      listId: z.guid().describe('Shopping list UUID'),
       quantity: z.number().int().positive().optional().describe('A whole number, e.g. 2; put the measure in unit'),
       unit: z.string().max(50).optional().describe('e.g. "lb", "dozen"'),
       category: z.string().max(50).optional().describe('Aisle / category label'),
@@ -433,7 +433,7 @@ export function registerTools(
     'update_shopping_item',
     'Update a shopping item (e.g. check it off).',
     {
-      id: z.string().uuid(),
+      id: z.guid(),
       name: z.string().min(1).max(255).optional(),
       checked: z.boolean().optional(),
       quantity: z.number().int().positive().optional(),
@@ -448,7 +448,7 @@ export function registerTools(
   server.tool(
     'delete_shopping_item',
     'Remove an item from a shopping list.',
-    { id: z.string().uuid() },
+    { id: z.guid() },
     async ({ id }) => ok(await api('DELETE', `/api/shopping-items/${id}`)),
   );
 
@@ -478,7 +478,7 @@ export function registerTools(
     'Post a new message to the family message board.',
     {
       content: z.string().min(1).max(1000).describe('Message text'),
-      authorId: z.string().uuid().describe('User UUID of the author'),
+      authorId: z.guid().describe('User UUID of the author'),
       pinned: z.boolean().optional().default(false),
       important: z.boolean().optional().default(false),
       expiresAt: z.string().optional().describe(`When the message auto-expires; must be in the future. ${TIME_HELP}`),
@@ -493,7 +493,7 @@ export function registerTools(
   server.tool(
     'delete_message',
     'Delete a message by ID.',
-    { id: z.string().uuid() },
+    { id: z.guid() },
     async ({ id }) => ok(await api('DELETE', `/api/messages/${id}`)),
   );
 
@@ -543,7 +543,7 @@ export function registerTools(
       mealType: z.enum(['breakfast', 'lunch', 'dinner', 'snack']),
       mealTime: wallTime.optional().describe('HH:mm in the household time zone'),
       description: z.string().max(5000).optional(),
-      recipeId: z.string().uuid().optional().describe('Link to a saved recipe UUID'),
+      recipeId: z.guid().optional().describe('Link to a saved recipe UUID'),
     },
     async ({ date, ...rest }) => guarded(async () => {
       const key = parseDateKey(date);
@@ -564,7 +564,7 @@ export function registerTools(
   server.tool(
     'delete_meal',
     'Remove a meal from the plan.',
-    { id: z.string().uuid() },
+    { id: z.guid() },
     async ({ id }) => ok(await api('DELETE', `/api/meals/${id}`)),
   );
 
@@ -654,7 +654,7 @@ export function registerTools(
       customIntervalDays: z.number().int().positive().optional().describe('Days between occurrences (only for schedule=custom)'),
       nextDue: dateKey.describe('Next due date, YYYY-MM-DD'),
       description: z.string().max(2000).optional(),
-      assignedTo: z.string().uuid().optional().describe('User UUID'),
+      assignedTo: z.guid().optional().describe('User UUID'),
       notes: z.string().max(2000).optional(),
     },
     async (params) => ok(await api('POST', '/api/maintenance', params)),

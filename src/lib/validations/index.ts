@@ -9,7 +9,7 @@ import { idleBackgroundSchema } from '@/lib/idleBackground';
 
 // COMMON SCHEMAS
 
-export const uuidSchema = z.string().uuid();
+export const uuidSchema = z.guid();
 export const hexColorSchema = z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid hex color');
 export const isoDateSchema = z.string().datetime();
 
@@ -136,7 +136,7 @@ export const createShoppingListSchema = z.object({
   color: hexColorSchema.optional(),
   listType: z.enum(['grocery', 'hardware', 'general', 'other']).optional(),
   sortOrder: z.number().int().optional(),
-  visibleCategories: z.array(z.string().max(100)).nullable().optional(),
+  visibleCategories: z.array(z.string().max(100)).max(200).nullable().optional(),
   // Who this list is assigned to (only they can check off items)
   // Null/undefined means anyone can check off items (family list)
   assignedTo: uuidSchema.optional(),
@@ -302,11 +302,11 @@ export const createBusRouteSchema = z.object({
   direction: z.enum(['AM', 'PM']),
   label: z.string().min(1, 'Label is required').max(255),
   scheduledTime: z.string().regex(/^\d{2}:\d{2}$/, 'Must be HH:mm format'),
-  activeDays: z.array(z.number().int().min(0).max(6)).optional().default([1, 2, 3, 4, 5]),
+  activeDays: z.array(z.number().int().min(0).max(6)).max(7).optional().default([1, 2, 3, 4, 5]),
   checkpoints: z.array(z.object({
     name: z.string().min(1).max(255),
     sortOrder: z.number().int().min(0),
-  })).optional().default([]),
+  })).max(100).optional().default([]),
   stopName: z.string().max(255).optional(),
   schoolName: z.string().max(255).optional(),
   enabled: z.boolean().optional().default(true),
@@ -394,15 +394,15 @@ const widgetConfigSchema = z.object({
   cellBackgroundOpacity: z.number().min(0).max(1).optional(),
   showWhenIdle: z.boolean().optional(),
   hideWhenEmpty: z.boolean().optional(),
-  settings: z.record(z.unknown()).optional(),
+  settings: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const createLayoutSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
   slug: z.string().max(100).regex(/^[a-z0-9-]+$/).optional(),
   isDefault: z.boolean().optional().default(false),
-  widgets: z.array(widgetConfigSchema).min(1, 'At least one widget is required'),
-  screensaverWidgets: z.array(widgetConfigSchema).nullable().optional(),
+  widgets: z.array(widgetConfigSchema).min(1, 'At least one widget is required').max(200),
+  screensaverWidgets: z.array(widgetConfigSchema).max(200).nullable().optional(),
   // No default here: a new dashboard gets the column's, an update leaves it.
   idleBackground: idleBackgroundSchema.optional(),
   orientation: z.enum(['landscape', 'portrait']).optional().default('landscape'),
