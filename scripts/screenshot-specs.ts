@@ -119,8 +119,8 @@ export const HERO_LAYOUT = [
 export const GALLERY_LAYOUT = [
   { i: 'clock', x: 0, y: 0, w: 30, h: 5, showWhenIdle: true },
   { i: 'calendar', x: 0, y: 5, w: 30, h: 22, showWhenIdle: false },
-  { i: 'weather', x: 30, y: 0, w: 18, h: 9, showWhenIdle: true },
-  { i: 'chores', x: 30, y: 9, w: 18, h: 9, showWhenIdle: false },
+  { i: 'weather', x: 30, y: 0, w: 18, h: 6, showWhenIdle: true },
+  { i: 'chores', x: 30, y: 6, w: 18, h: 12, showWhenIdle: false },
   { i: 'shopping', x: 30, y: 18, w: 18, h: 9, showWhenIdle: false },
 ] satisfies StagedCell[];
 

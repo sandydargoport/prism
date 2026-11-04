@@ -151,6 +151,8 @@ describe('dashboard screenshots without the side rail and top bar', () => {
 
   it('turns auto-hide on for the screen, and waits until the rail is gone', () => {
     expect(script).toMatch(/localStorage\.setItem\('prism:auto-hide-ui', 'true'\)/);
-    expect(script).toMatch(/classList\.contains\('ml-16'\)/);
+    // Measured on screen: the rail off the left edge, the top bar collapsed.
+    expect(script).toMatch(/querySelector\('aside'\)\?\.getBoundingClientRect\(\)/);
+    expect(script).toMatch(/rail\.right <= 1\) && \(!bar \|\| bar\.height <= 1\)/);
   });
 });
