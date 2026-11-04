@@ -314,6 +314,24 @@ describe('forecastDays prop', () => {
     expect(screen.queryByText('3-Day Forecast')).not.toBeNull();
   });
 
+  // A widget too short for even one whole day row showed half a row cut off
+  // at the bottom. It now shows none, and no "N-Day Forecast" label.
+  // And when the rows above squeeze the list to no height at all, it showed
+  // a "4-Day Forecast" label over an empty strip.
+  it.each([30, 0])('shows no half day when not even one row fits (list %ipx tall)', (listH) => {
+    const spy = jest.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      const h = this.dataset.testid === 'weather-day-list' ? listH : 44;
+      return { height: h, width: 300, top: 0, left: 0, right: 300, bottom: h, x: 0, y: 0, toJSON: () => ({}) } as DOMRect;
+    });
+    try {
+      render(<WeatherWidget data={makeWeatherData()} gridH={12} />);
+      expect(screen.queryByText(/-Day Forecast/)).toBeNull();
+      expect(screen.queryByText('MON')).toBeNull();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it('respects an explicit forecastDays value', () => {
     const data = makeWeatherData();
     render(<WeatherWidget data={data} forecastDays={3} />);
@@ -520,6 +538,33 @@ describe('sun and moon arcs', () => {
     // 45° maps halfway from the horizon at 66 to the zenith at 10. Treating
     // SunCalc v2's degrees as radians would clamp the point to y=10 instead.
     expect(sunPath?.getAttribute('d')).toContain('38.0');
+  });
+});
+
+
+describe('sun and moon times under the arc', () => {
+  // They were small amber and blue text straight on the card, hard to read
+  // over glass or a bare photo. Now the text is the normal colour on a small
+  // backing; only the icons are coloured.
+  it('sit on a backing, in the normal text colour', () => {
+    render(
+      <WeatherWidget
+        data={makeWeatherData({
+          sunrise: new Date(2026, 6, 17, 5, 30),
+          sunset: new Date(2026, 6, 17, 20, 15),
+          moonrise: new Date(2026, 6, 17, 21, 0),
+          moonset: new Date(2026, 6, 18, 5, 0),
+          moonPhase: 0.5,
+        })}
+      />
+    );
+    for (const id of ['sun-times', 'moon-times', 'header-sun-times']) {
+      const backing = screen.getByTestId(id);
+      expect(backing.className).toMatch(/\bbg-background\/\d+/);
+      for (const time of Array.from(backing.querySelectorAll('[title]')) as HTMLElement[]) {
+        expect([time.title, time.style.color]).toEqual([time.title, '']);
+      }
+    }
   });
 });
 

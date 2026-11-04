@@ -3,9 +3,17 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { useStoredString, writeStored } from './useStoredValue';
+import { useSceneryOn } from './useSceneryOn';
 
 const STORAGE_KEY = 'prism:auto-hide-ui';
 const HIDE_DELAY = 10_000; // 10 seconds
+
+/** The stored per-screen choice if there is one, else the household default. */
+export function autoHideEnabledFor(stored: string | null, householdDefault: boolean): boolean {
+  if (stored === 'true') return true;
+  if (stored === 'false') return false;
+  return householdDefault;
+}
 
 /**
  * Returns whether the UI (nav + toolbar) should be hidden due to inactivity.
@@ -14,7 +22,12 @@ const HIDE_DELAY = 10_000; // 10 seconds
 export function useAutoHideUI() {
   // False during hydration (the server cannot see storage), so the server
   // markup always matches.
-  const enabled = useStoredString(STORAGE_KEY) === 'true';
+  // A screen's own choice wins. A screen that never chose follows the
+  // household: on a new install with the scenery look (#808) the rail and
+  // bar hide, so the wall is the photo and the cards.
+  const stored = useStoredString(STORAGE_KEY);
+  const householdDefault = useSceneryOn();
+  const enabled = autoHideEnabledFor(stored, householdDefault);
   const [hidden, setHidden] = useState(false);
   const pathname = usePathname();
   // Only auto-hide on dashboard routes (/ and /d/[slug])

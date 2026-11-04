@@ -93,11 +93,11 @@ export const LAYOUT_TEMPLATES: Record<string, LayoutTemplate> = {
     name: 'Ambient',
     description: 'Photo-forward — your wallpaper takes the screen, with glassy floating clock and weather accents. Pair with a photo wallpaper.',
     orientation: 'landscape',
-    // Intentionally sparse: two frosted-glass accents in opposite corners; the
+    // Intentionally sparse: two glass accents in opposite corners; the
     // open center is the wallpaper photo (the hero). Asymmetric, calm.
     widgets: [
-      { i: 'clock', x: 0, y: 0, w: 14, h: 8, backgroundColor: 'frosted' },
-      { i: 'weather', x: 30, y: 14, w: 18, h: 13, backgroundColor: 'frosted' }, // big → sun/moon (h≥12 shows arc)
+      { i: 'clock', x: 0, y: 0, w: 14, h: 8, backgroundColor: 'glass' },
+      { i: 'weather', x: 30, y: 14, w: 18, h: 13, backgroundColor: 'glass' }, // big → sun/moon (h≥12 shows arc)
     ],
   },
 
@@ -167,13 +167,37 @@ export const LAYOUT_TEMPLATES: Record<string, LayoutTemplate> = {
     name: 'Ambient',
     description: 'Photo-forward — your wallpaper takes the screen, with glassy clock and weather accents top and bottom.',
     orientation: 'portrait',
-    // Sparse frosted-glass bands top and bottom; the open middle is the photo.
+    // Sparse glass bands top and bottom; the open middle is the photo.
     widgets: [
-      { i: 'clock', x: 0, y: 0, w: 36, h: 9, backgroundColor: 'frosted' },
-      { i: 'weather', x: 0, y: 51, w: 36, h: 13, backgroundColor: 'frosted' },
+      { i: 'clock', x: 0, y: 0, w: 36, h: 9, backgroundColor: 'glass' },
+      { i: 'weather', x: 0, y: 51, w: 36, h: 13, backgroundColor: 'glass' },
     ],
   },
 };
+
+// What a brand-new install opens on (#808), written as a real layout when
+// setup first finishes. Calendar first; until a calendar is connected the
+// calendar widget shows a "Connect a calendar" invitation instead of an empty
+// list. Clock and weather share the right column at full height, weather
+// taller so its forecast has whole rows. No list widgets: on day one they are
+// empty, and a hidden widget does not yet give its space back. Glass cards
+// over the bundled scenery (src/lib/scenery.ts) until the household adds
+// photos. When the wall is idle the calendar fades (calm mode), leaving the
+// clock and weather over the photo. Existing installs never get this; they
+// keep what they have.
+export const FIRST_SCREEN_TEMPLATE: LayoutTemplate = {
+  name: 'Home',
+  description: 'Calendar first, with the clock and weather beside it',
+  orientation: 'landscape',
+  widgets: [
+    { i: 'calendar', x: 0,  y: 0, w: 32, h: 27, backgroundColor: 'glass', showWhenIdle: false },
+    { i: 'clock',    x: 32, y: 0, w: 16, h: 9,  backgroundColor: 'glass' },
+    { i: 'weather',  x: 32, y: 9, w: 16, h: 18, backgroundColor: 'glass' },
+  ],
+};
+
+/** Pages a brand-new install starts with hidden (#808). Settings > Features shows them again. */
+export const NEW_INSTALL_HIDDEN_PAGES = ['/wishes', '/travel', '/weekend'] as const;
 
 // New-user / empty-layout fallback. Deliberately weather-forward with NO
 // calendar/birthdays/points — a fresh install hasn't connected a calendar yet,

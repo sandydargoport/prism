@@ -2,7 +2,7 @@
 
 ![Calendar month view](../demos/calendar-month.png){ .hero-image }
 
-The calendar brings every family member's schedule together with meals, chores, and tasks in one place. It supports Google Calendar OAuth (read+write), iCal subscriptions (read-only), ten view modes, drag-and-drop, click-to-edit from the dashboard widget, and a server-side sync cron that keeps events current even when nobody's looking at the dashboard.
+The calendar brings every family member's schedule together with meals, chores, and tasks in one place. It supports Google Calendar OAuth (read+write), iCal subscriptions (read-only), seven views, drag-and-drop, click-to-edit from the dashboard widget, and a server-side sync cron that keeps events current even when nobody's looking at the dashboard.
 
 ---
 

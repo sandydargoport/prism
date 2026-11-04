@@ -20,6 +20,8 @@ import { isLightColor } from '@/lib/utils/color';
 import { deduplicateEvents } from '@/lib/utils/calendarDedup';
 import { WidgetContainer, useWidgetBgOverride } from './WidgetContainer';
 import { useCalendarEvents, useCalendarFilter, useCalendarNotes } from '@/lib/hooks';
+import { useCalendarSources } from '@/lib/hooks/useCalendarEvents';
+import { ConnectCalendarInvite, needsCalendarInvite } from '@/components/calendar/ConnectCalendarInvite';
 import { useDateLabels } from '@/lib/hooks/useDateLabels';
 import { useLocalDateKey } from '@/lib/hooks/useLocalDateKey';
 import { addDaysToKey } from '@/lib/utils/zonedDate';
@@ -147,6 +149,12 @@ export const CalendarWidget = React.memo(function CalendarWidget({
 
   // Hide events from the calendar surface when the events overlay is off.
   const visibleEvents = useMemo(() => (overlays.events ? events : []), [overlays.events, events]);
+  const { calendars: sources, loading: sourcesLoading } = useCalendarSources();
+  const noCalendarYet = needsCalendarInvite({
+    loading: sourcesLoading || apiLoading,
+    eventCount: apiEvents.length,
+    providers: sources.map((c) => c.provider),
+  });
 
   // Drag-and-drop wiring: same dnd-kit setup as /week and the calendar
   // subpage so meals/chores/tasks can be reordered between days.
@@ -320,6 +328,7 @@ export const CalendarWidget = React.memo(function CalendarWidget({
 
       {/* flex-1 min-h-0: fills remaining space after chips / notices */}
       <div className="flex-1 min-h-0 overflow-hidden">
+        {noCalendarYet ? <ConnectCalendarInvite /> : (
         <DndContext
           sensors={dndSensors}
           onDragStart={handleDragStart}
@@ -429,6 +438,7 @@ export const CalendarWidget = React.memo(function CalendarWidget({
             )}
           </Suspense>
         </DndContext>
+        )}
       </div>
     </WidgetContainer>
   );

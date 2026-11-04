@@ -6,7 +6,7 @@ Prism ships as a Docker Compose application, and as a Home Assistant add-on. You
 2. **Pull pre-built image**: for amd64 or ARM64 (Raspberry Pi).
 3. **Home Assistant add-on**: if you already run Home Assistant, no terminal or certificate work needed.
 
-After installation, open **<http://localhost:3000>**. A fresh install has no accounts yet, so it opens the **setup wizard** (Welcome → Family → Household → Done), where you create each family member and choose their PIN. (If you loaded the optional demo seed instead, every seeded user has PIN `1234`.)
+After installation, open **<http://localhost:3000>**. A fresh install has no accounts yet, so it opens the **setup wizard** (Welcome → Family → Household → Calendars → Look → Done), where you create each family member and choose their PIN. (If you loaded the optional demo seed instead, every seeded user has PIN `1234`.)
 
 ---
 

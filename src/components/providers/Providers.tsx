@@ -10,6 +10,7 @@
 import * as React from 'react';
 import dynamic from 'next/dynamic';
 import { ThemeProvider } from './ThemeProvider';
+import type { DefaultMode } from '@/lib/looks';
 import { LocaleProvider } from './LocaleProvider';
 import { AuthProvider } from './AuthProvider';
 import { FamilyProvider } from './FamilyProvider';
@@ -29,6 +30,8 @@ const KeyboardToggleButton = dynamic(
 
 interface ProvidersProps {
   children: React.ReactNode;
+  /** The household default light or dark mode, read on the server (#808). */
+  defaultMode?: DefaultMode;
 }
 
 /**
@@ -36,13 +39,14 @@ interface ProvidersProps {
  * Wraps the application with all necessary providers.
  * AuthProvider must be inside ThemeProvider since QuickPinModal uses styled components.
  */
-export function Providers({ children }: ProvidersProps) {
+export function Providers({ children, defaultMode = 'system' }: ProvidersProps) {
   // No defaultTheme override here. It was 'light' to mask the flash before the
   // stored preference loaded, which also meant a stored 'system' setting was
   // ignored on first render. The blocking script in the root layout now sets
-  // the class before paint, so the mask is no longer needed.
+  // the class before paint, so the mask is no longer needed. The household
+  // default (Night look) applies only where a display never chose.
   return (
-    <ThemeProvider>
+    <ThemeProvider defaultTheme={defaultMode}>
       <LocaleProvider>
         <FamilyProvider>
           <AuthProvider>

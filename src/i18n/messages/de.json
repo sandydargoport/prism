@@ -198,6 +198,11 @@
       "backToDashboard": "Zurück zur Übersicht",
       "hideFailed": "Termin konnte nicht ausgeblendet werden",
       "unhideFailed": "Termin konnte nicht wieder eingeblendet werden"
+    },
+    "connectInvite": {
+      "title": "Holen Sie Ihre Kalender herein",
+      "body": "Verbinden Sie Google, iCloud, Outlook oder einen Kalender-Link, und die Woche der Familie erscheint hier.",
+      "action": "Kalender verbinden"
     }
   },
   "birthdays": {
