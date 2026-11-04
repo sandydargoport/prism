@@ -406,16 +406,21 @@ async function captureOnce(spec: CaptureSpec): Promise<void> {
     }
 
     // Auto-hide takes the rail and bar away after 10 s without a touch; the
-    // click above counts as one. Wait until the content has lost the rail's
-    // margin rather than for a fixed time, and fail rather than ship a shot
-    // with the chrome still showing.
+    // click above counts as one. Measure what is on screen rather than a class:
+    // the rail slid off the left edge and the dashboard's top bar collapsed.
+    // (A check on <main>'s margin passed while both still showed, because the
+    // dashboard renders its own <main>.) Fail rather than ship the chrome.
     if (spec.idleChrome) {
       await page
-        .waitForFunction(() => !document.querySelector('main')?.classList.contains('ml-16'), null, { timeout: 20_000 })
+        .waitForFunction(() => {
+          const rail = document.querySelector('aside')?.getBoundingClientRect();
+          const bar = document.querySelector('header')?.getBoundingClientRect();
+          return (!rail || rail.right <= 1) && (!bar || bar.height <= 1);
+        }, null, { timeout: 25_000 })
         .catch(() => {
           throw new Error(`${spec.name}: the side rail and top bar did not auto-hide`);
         });
-      await page.waitForTimeout(800); // let the slide-out finish
+      await page.waitForTimeout(800); // let the fade finish
     }
     if (spec.idle) {
       // The toolbar's "screensaver now" event, which a calm dashboard answers
