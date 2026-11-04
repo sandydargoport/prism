@@ -1,5 +1,6 @@
 'use client';
 
+import { StatusPill } from '@/components/ui/StatusPill';
 import { parseISO, format } from 'date-fns';
 import { Emoji } from '@/components/ui/Emoji';
 import {
@@ -95,12 +96,9 @@ export function ChoreItem({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-base"><Emoji e={categoryEmoji} /></span>
-          <span className={cn(
-            'font-medium',
-            isPendingApproval && 'text-warning',
-            // The overdue cue the old complete button's red tint carried.
-            isOverdue && !isPendingApproval && 'text-destructive'
-          )}>{chore.title}</span>
+          {/* Status is the pill below, not a coloured title: coloured text
+              fails over glass (#891). */}
+          <span className="font-medium">{chore.title}</span>
 
           {chore.pointValue > 0 && (
             <Badge variant="secondary" className="text-xs">
@@ -134,9 +132,9 @@ export function ChoreItem({
                 size="sm"
                 className="h-6 w-6 text-4xs"
               />
-              <span className="text-warning">
+              <StatusPill tone="warning">
                 Completed by {chore.pendingApproval.completedBy.name}
-              </span>
+              </StatusPill>
             </div>
           )}
 
@@ -158,10 +156,13 @@ export function ChoreItem({
 
           {/* Show due date only if not pending */}
           {!isPendingApproval && chore.nextDue && (
-            <span className={cn(isOverdue && 'text-destructive font-medium')}>
-              {isOverdue && <AlertCircle className="h-3 w-3 inline mr-1" />}
-              {formatDueDate(chore.nextDue)}
-            </span>
+            isOverdue ? (
+              <StatusPill tone="danger" icon={<AlertCircle aria-hidden className="h-3 w-3 shrink-0" />}>
+                {formatDueDate(chore.nextDue)}
+              </StatusPill>
+            ) : (
+              <span>{formatDueDate(chore.nextDue)}</span>
+            )
           )}
         </div>
 
