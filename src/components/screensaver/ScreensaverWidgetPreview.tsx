@@ -49,6 +49,14 @@ export function renderScreensaverPreview(widget: WidgetConfig) {
           <p className="text-sm opacity-90">Mom in 3 days</p>
         </div>
       );
+    case 'nowNext':
+      return (
+        <div className={`h-full flex flex-col justify-end text-right p-3 rounded-lg ${textClass} ${bgClass}`}>
+          <div className="text-3xs uppercase tracking-wider opacity-60 mb-1">Now & Next</div>
+          <p className="text-sm opacity-90">Soccer · until 5:30</p>
+          <p className="text-xs opacity-50 mt-0.5">Scouts in 50 min</p>
+        </div>
+      );
     case 'tasks':
       return (
         <div className={`h-full flex flex-col justify-end text-right p-3 rounded-lg ${textClass} ${bgClass}`}>

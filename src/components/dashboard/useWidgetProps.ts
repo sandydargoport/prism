@@ -151,6 +151,12 @@ export function buildWidgetProps(
       },
       titleHref: '/shopping',
     },
+    nowNext: {
+      events: data.calendar.events,
+      loading: data.calendar.loading,
+      error: data.calendar.error,
+      titleHref: '/calendar',
+    },
     birthdays: {
       birthdays: data.birthdays.birthdays,
       loading: data.birthdays.loading,
