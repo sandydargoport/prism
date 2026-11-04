@@ -81,3 +81,19 @@ describe('no dev overlay in a shot', () => {
     expect(removal).toBeLessThan(script.indexOf('const outPath = path.join(OUT_DIR'));
   });
 });
+
+describe('the gallery page', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const fs = require('node:fs') as typeof import('node:fs');
+  const page = fs.readFileSync(require.resolve('../../../docs/screenshots.md'), 'utf8');
+  const shown = [...page.matchAll(/\(demos\/([a-z0-9-]+)\.png/g)].map((m) => m[1]!);
+
+  it('shows every gallery shot', () => {
+    for (const s of GALLERY_SHOTS) expect(shown).toContain(s.name);
+  });
+
+  it('shows nothing but the gallery and the hero', () => {
+    const allowed = new Set([...GALLERY_SHOTS.map((s) => s.name), 'hero-light', 'hero-dark']);
+    expect(shown.filter((n) => !allowed.has(n))).toEqual([]);
+  });
+});

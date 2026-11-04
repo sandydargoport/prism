@@ -147,10 +147,12 @@ function chromeProperties(theme: Theme): Array<[string, string]> {
   // The face is named by role; the variable behind the role is ours. A theme
   // never supplies a family name, so nothing submitted reaches this string.
   const font = THEME_FONTS[normalizeFont(theme.font)].varName;
+  const numeral = THEME_FONTS[normalizeFont(theme.numeralFont ?? theme.font)].varName;
 
   return [
     ...shapeProperties(theme),
     ['--theme-font', `var(${font}), var(--font-inter, Inter)`],
+    ['--theme-font-numeral', `var(${numeral}), var(--font-inter, Inter)`],
     ...modeVars,
   ];
 }
