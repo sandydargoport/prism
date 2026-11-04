@@ -15,6 +15,7 @@ import { hexToRgba } from '@/lib/utils/color';
 import { useWeekStartsOn } from '@/lib/hooks/useWeekStartsOn';
 import { seasonalPalettes } from '@/lib/themes/seasonalThemes';
 import type { CalendarEvent } from '@/types/calendar';
+import { splitDay, useDayPageTick, useDayPagingEnabled } from '@/lib/hooks/useDayPaging';
 import { CardHeightProbe, DayOverflowPopover, DroppableOverlayCell, InlineCalendarEvent, SpanningEventRows, WeekItemCard, cardTitleClasses, useDayDroppable, weatherIcon, type OverlayItemRef } from './cells';
 
 /** HSL color for the seasonal accent of the cell's month. */
@@ -248,23 +249,17 @@ function DayCell({
     minVisible: 0,
   });
 
-  let visibleCount: number;
-  if (!cards || showAll) {
-    visibleCount = sorted.length;
-  } else {
-    const noOverflowFit = fitWithoutOverflow ?? fallback;
-    const overflowFit = fitWithOverflow ?? fallback;
-    // If every event fits without a popover, show all. Otherwise reserve the
-    // last visible slot for the popover trigger so overflow is always
-    // explicit, never clipped.
-    if (sorted.length <= noOverflowFit) visibleCount = sorted.length;
-    else visibleCount = overflowFit;
-  }
+  // If every event fits without a popover, show all. Otherwise reserve the
+  // last visible slot for the popover trigger so overflow is always explicit,
+  // never clipped. On the wall the day pages through its events instead (#801).
+  const paging = useDayPagingEnabled();
+  const tick = useDayPageTick(paging && cards && !showAll);
+  const split = !cards || showAll
+    ? { shown: sorted, rest: [] as CalendarEvent[], page: null }
+    : splitDay(sorted, fitWithoutOverflow ?? fallback, fitWithOverflow ?? fallback, paging, tick);
+  const { shown: visibleEvents, rest: hiddenEvents, page } = split;
 
   const droppable = useDayDroppable({ date, enabled: cards && enableDnd });
-
-  const visibleEvents = cards ? sorted.slice(0, Math.max(0, visibleCount)) : sorted;
-  const hiddenEvents = cards ? sorted.slice(visibleEvents.length) : [];
 
   const today = isSameDay(date, displayNow);
   const tomorrow = isSameDay(date, addDays(displayNow, 1));
@@ -375,7 +370,9 @@ function DayCell({
               const draggable = enableDnd && canDragEvent(event);
               return (
                 <WeekItemCard
-                  key={event.id}
+                  // Keyed by page too, so a turned page fades in rather than swapping.
+                  key={page ? `${event.id}:${page.index}` : event.id}
+                  className={page ? 'motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500' : undefined}
                   variant="event"
                   size={cardSize}
                   layout="column"
@@ -412,6 +409,7 @@ function DayCell({
             date={date}
             hiddenEvents={hiddenEvents}
             onEventClick={onEventClick}
+            page={page}
           />
         )}
         {/* Skylight-style: events lead; the day's planning group (chores, tasks,

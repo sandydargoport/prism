@@ -21,6 +21,9 @@ interface DayOverflowPopoverProps {
   /** Show only "+N" on the trigger, for cells too narrow for the words. The
       full label stays as the button's accessible name. */
   short?: boolean;
+  /** The day is paging (#801): the trigger shows "1/2" for the page on screen
+      and still lists the events not on it. */
+  page?: { index: number; count: number } | null;
 }
 
 /**
@@ -34,6 +37,7 @@ export function DayOverflowPopover({
   onEventClick,
   triggerClassName,
   short = false,
+  page = null,
 }: DayOverflowPopoverProps) {
   const { timeFormat, displayTimezone } = useTimeFormat();
   const t = useTranslations('calendar');
@@ -52,17 +56,23 @@ export function DayOverflowPopover({
           // its label is translated, so matching on "+N more" only worked on an
           // English instance.
           data-day-overflow
-          aria-label={short ? t('moreEvents', { count: hiddenEvents.length }) : undefined}
+          data-day-page={page ? `${page.index + 1}/${page.count}` : undefined}
+          aria-label={page
+            ? t('dayPageLabel', { page: page.index + 1, pages: page.count, count: hiddenEvents.length })
+            : short ? t('moreEvents', { count: hiddenEvents.length }) : undefined}
           className={cn(
             // Full-width + a taller min-height so it's an easy touch target on a
             // wall display (was min-h-20px / 10px text — fiddly to tap).
             'flex w-full items-center text-left text-2xs font-medium px-2 py-1 rounded',
             'bg-muted/60 hover:bg-muted active:bg-muted text-muted-foreground transition-colors',
             'min-h-[28px]',
+            page && 'justify-center tabular-nums',
             triggerClassName,
           )}
         >
-          {short ? `+${hiddenEvents.length}` : t('moreEvents', { count: hiddenEvents.length })}
+          {page
+            ? `${page.index + 1}/${page.count}`
+            : short ? `+${hiddenEvents.length}` : t('moreEvents', { count: hiddenEvents.length })}
         </button>
       </PopoverTrigger>
       <PopoverContent

@@ -12,3 +12,5 @@ export { useDayDroppable } from './useDayDroppable';
 export { SpanningEventRows, spanningLaneInfo } from './SpanningEventRows';
 export { InlineCalendarEvent } from './InlineCalendarEvent';
 export { getMealTime, getChoreTime, getTaskTime, parseTimeOfDay, formatTimeOfDay, MEAL_TIME_DEFAULTS } from './itemTime';
+export { DayEventList, ChipProbe, useChipMetrics } from './DayEventList';
+export type { ChipMetrics } from './DayEventList';

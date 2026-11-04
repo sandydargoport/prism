@@ -426,6 +426,83 @@ test.describe('3 Months folds a busy day', () => {
 });
 
 /**
+ * Busy days page on the wall (#801). On a dashboard calendar widget at wall
+ * width, a day with more events than fit shows a page of them with a "1/N"
+ * label and turns the page every 8 seconds, so every event gets on screen
+ * without anyone tapping. Checked in both display modes, since inline is the
+ * widget's default and cards is the other. The Calendar page keeps "+N more".
+ */
+test.describe('busy days page on the wall', () => {
+  test('a busy day in the widget pages through every event; the Calendar page still folds', async ({ playwright }, info) => {
+    test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
+    test.setTimeout(240_000);
+    const parentId = getSeededParentId();
+    const { browser, page } = await pointerPage(playwright, info, 1, { width: 1920, height: 1080 });
+    const login = await page.request.post('/api/auth/login', { data: { userId: parentId, pin: PIN } });
+    expect(login.ok(), 'precondition: login must succeed').toBe(true);
+    // The 12th of the current month is always in the month grid. Each project
+    // runs in parallel against one database, so the titles carry its name.
+    const now = new Date();
+    const busyDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-12`;
+    const tag = info.project.name;
+    const titles = Array.from({ length: 9 }, (_, i) => `Paged e2e ${tag} ${i + 1}`);
+    const created: string[] = [];
+    const layout = await (await page.request.post('/api/layouts', {
+      data: { name: `Paging e2e ${Date.now()}`, widgets: [{ i: 'calendar', x: 0, y: 0, w: 32, h: 32 }] },
+    })).json();
+    try {
+      for (const [i, title] of titles.entries()) {
+        const start = new Date(now.getFullYear(), now.getMonth(), 12, 6 + i);
+        const res = await page.request.post('/api/events', {
+          data: { title, startTime: start.toISOString(), endTime: new Date(start.getTime() + 30 * 60_000).toISOString(), allDay: false, createdBy: parentId },
+        });
+        expect(res.status()).toBe(201);
+        created.push((await res.json()).id);
+      }
+      await page.clock.install({ time: now });
+      for (const mode of ['inline', 'cards'] as const) {
+        await page.addInitScript((m) => {
+          localStorage.setItem('prism-calendar-view', 'month');
+          localStorage.setItem('prism-calendar-display-mode', m);
+        }, mode);
+        await page.goto(`/d/${layout.slug}`, { waitUntil: 'load' });
+        const day = page.locator(`.widget-cell[data-widget="calendar"] [data-month-day="${busyDate}"]`);
+        const label = day.locator('[data-day-page]');
+        await expect(label, `${mode}: the busy day pages`).toHaveAttribute('data-day-page', /^1\/\d+$/, { timeout: 60_000 });
+        const pages = Number((await label.getAttribute('data-day-page'))!.split('/')[1]);
+        expect(pages, `${mode}: more than one page`).toBeGreaterThan(1);
+        const seen = new Set<string>();
+        for (let p = 1; p <= pages; p++) {
+          await expect(label, `${mode}: page ${p}`).toHaveAttribute('data-day-page', `${p}/${pages}`);
+          const shot = await day.evaluate((cell) => {
+            const r = cell.getBoundingClientRect();
+            const rows = [...cell.querySelectorAll('button')].filter((b) => /Paged e2e/.test(b.textContent ?? ''));
+            return {
+              titles: rows.map((b) => (b.textContent ?? '').replace(/^.*?(Paged e2e)/, '$1').trim()),
+              spill: rows.filter((b) => { const x = b.getBoundingClientRect(); return x.bottom > r.bottom + 0.5 || x.right > r.right + 0.5; }).length,
+            };
+          });
+          expect(shot.spill, `${mode} page ${p}: nothing drawn past the cell`).toBe(0);
+          for (const t of shot.titles) seen.add(t);
+          await page.clock.runFor(8_000);
+        }
+        expect(await label.getAttribute('data-day-page'), `${mode}: wraps to the first page`).toBe(`1/${pages}`);
+        for (const t of titles) expect([...seen].some((s) => s.startsWith(t)), `${mode}: "${t}" was on a page`).toBe(true);
+      }
+      // The Calendar page keeps "+N more": tapping is quicker there.
+      await openCalendarView(page, 'month');
+      const pageDay = page.locator(`[data-month-day="${busyDate}"]`);
+      await expect(pageDay.locator('[data-day-overflow]')).toBeVisible();
+      await expect(pageDay.locator('[data-day-page]')).toHaveCount(0);
+    } finally {
+      for (const id of created) await page.request.delete(`/api/events/${id}`);
+      await page.request.delete(`/api/layouts/${layout.id}`);
+      await browser.close();
+    }
+  });
+});
+
+/**
  * Now & Next (#806). The page clock is fixed at 12:00 UTC on a far date, and
  * the events sit around it, so "today" is one day in any zone CI uses (UTC,
  * Chicago) and the countdown is exact. Measured on a wall screen at 1080p:
