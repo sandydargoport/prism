@@ -87,6 +87,12 @@ jobs:
       # Gates any PII-sensitive helpers on a synthetic seed and sets the PIN.
       E2E_HAS_TEST_DB: '1'
       E2E_PIN: '1234'
+      # One fixed moment for the seed and the browser clock, in the demo
+      # family's zone, so every refresh draws the same afternoon (4:10 PM on a
+      # Wednesday: soccer under way, movie night next). The hero shots and
+      # their framed light/dark composites depend on it.
+      PRISM_SEED_NOW: '2026-06-17T21:10:00Z'
+      TZ: America/Chicago
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7

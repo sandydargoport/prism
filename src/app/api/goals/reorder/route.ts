@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { logError } from '@/lib/utils/logError';
 
 const reorderSchema = z.object({
-  order: z.array(z.string().uuid()).min(1),
+  order: z.array(z.guid()).min(1).max(1000),
 });
 
 /**
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Validation failed', details: parsed.error.errors },
+        { error: 'Validation failed', details: parsed.error.issues },
         { status: 400 }
       );
     }
