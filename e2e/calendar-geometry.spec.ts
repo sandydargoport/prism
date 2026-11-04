@@ -386,6 +386,9 @@ test.describe('3 Months folds a busy day', () => {
         // seeded event that sorts first (all-day, or earlier) may take that spot.
         const day = page.locator(`[data-three-month-day="${busyDate}"]`);
         await expect(day, `${width}x${height}: the busy day`).toHaveCount(1);
+        // The cell is drawn before its events arrive: wait for the fold, or
+        // the measurement can run on an empty day.
+        await expect(day.locator('[data-day-overflow]'), `${width}x${height}: the busy day folds`).toBeVisible();
         const box = await day.evaluate((cell) => {
           const r = cell.getBoundingClientRect();
           const chips = [...cell.querySelectorAll('li button')].map((b) => b.getBoundingClientRect());
