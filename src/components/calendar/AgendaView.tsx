@@ -1,5 +1,7 @@
 'use client';
 
+import { useNow } from '@/lib/hooks/useNow';
+import { isInProgress } from '@/lib/calendar/nowNext';
 import { eventTintStyle } from '@/lib/design/eventStyle';
 import {
   format,
@@ -65,6 +67,10 @@ type AgendaRow = {
   title: string;
   subtitle?: string;
   muted?: boolean;
+  /** A timed event happening right now (#806): gets a "Now" tag. */
+  inProgress?: boolean;
+  /** Translated "Now", carried on the row so the item needs no hook. */
+  nowLabel?: string;
   pendingApproval?: boolean;
   onClick?: () => void;
 };
@@ -188,7 +194,9 @@ function AgendaDaySection({
   const t = useTranslations('calendar');
   const d = useDateLabels();
   const droppable = useDayDroppable({ date, enabled: cards && enableDnd });
-  const rows = buildAgendaRows({ date, events, bucket, onEventClick, mealColor, onItemClick, timeFormat, displayTimezone, t });
+  // Ticks so the "Now" tag moves on as events start and end on a wall.
+  const now = useNow(30_000);
+  const rows = buildAgendaRows({ date, events, bucket, onEventClick, mealColor, onItemClick, timeFormat, displayTimezone, t, now });
   const displayRows = maxEvents > 0 ? rows.slice(0, maxEvents) : rows;
   const remainingCount = maxEvents > 0 ? rows.length - maxEvents : 0;
 
@@ -239,7 +247,9 @@ function buildAgendaRows({
   timeFormat,
   displayTimezone,
   t,
+  now,
 }: {
+  now: Date;
   date: Date;
   events: CalendarEvent[];
   bucket?: DayBucket;
@@ -276,6 +286,8 @@ function buildAgendaRows({
           : t('continues'),
       title: event.title,
       subtitle: event.location,
+      inProgress: isInProgress(event, now),
+      nowLabel: t('now'),
       onClick: onEventClick ? () => onEventClick(event) : undefined,
     });
   }
@@ -388,8 +400,16 @@ function AgendaRowItem({ row, cards = false }: { row: AgendaRow; cards?: boolean
         />
       )}
       <div className="flex-1 min-w-0">
-        <div className={cn('text-xs', cards ? 'text-muted-foreground' : 'opacity-80')}>
-          {row.timeLabel}
+        <div className="flex items-center gap-1.5">
+          <span className={cn('text-xs', cards ? 'text-muted-foreground' : 'opacity-80')}>
+            {row.timeLabel}
+          </span>
+          {row.inProgress && (
+            // Solid fill with its own foreground: readable over glass (#891).
+            <span data-agenda-now className="rounded-full bg-primary px-1.5 py-px text-xs font-semibold leading-tight text-primary-foreground">
+              {row.nowLabel}
+            </span>
+          )}
         </div>
         <div className={cn('flex items-center gap-1 text-sm font-medium', 'text-foreground', row.muted && 'line-through')}>
           {row.dragId?.startsWith('meal:') && (

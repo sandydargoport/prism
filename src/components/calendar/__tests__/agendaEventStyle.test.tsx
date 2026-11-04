@@ -52,3 +52,19 @@ it("draws today's heading in the normal text colour, not the seasonal accent", (
   expect(heading.className).toContain('text-foreground');
   expect(heading.className).not.toContain('text-seasonal-accent');
 });
+
+// #806: an event happening right now carries a "Now" tag; one later today does not.
+it('tags the event in progress as Now, and only that one', () => {
+  const start = new Date();
+  start.setMinutes(start.getMinutes() - 30, 0, 0);
+  const current = {
+    id: 'e2', title: 'Piano lesson', startTime: start, endTime: new Date(start.getTime() + 3600_000),
+    allDay: false, color: '#3b82f6', calendarName: 'Family', calendarId: 'c1',
+  } as CalendarEvent;
+  render(<AgendaView events={[current, soonEvent()]} days={1} onEventClick={() => {}} />);
+  const tags = document.querySelectorAll('[data-agenda-now]');
+  expect(tags).toHaveLength(1);
+  expect(screen.getByText('Piano lesson').closest('button')!.contains(tags[0]!)).toBe(true);
+  expect(tags[0]!.textContent).toBe('Now');
+  expect(tags[0]!.className).toContain('bg-primary');
+});

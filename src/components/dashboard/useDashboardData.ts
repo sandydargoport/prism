@@ -10,6 +10,7 @@ const DEFERRED_LOAD_DELAY_MS = 2000;
 /** Maps widget IDs to the data domains they require */
 const WIDGET_DOMAIN_MAP: Record<string, string[]> = {
   calendar: ['calendar'],
+  nowNext: ['calendar'],
   weather: ['weather'],
   messages: ['messages'],
   tasks: ['tasks'],
