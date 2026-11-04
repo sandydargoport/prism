@@ -8,6 +8,7 @@ import { busGeofenceLog, busRoutes } from '@/lib/db/schema';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { todayKey, weekdayOfKey } from '@/lib/utils/zonedDate';
 import { scheduledInstantToday } from './bus-tracking-sync';
+import { serverNow } from '@/lib/utils/serverNow';
 import { eq, and, gte, desc } from 'drizzle-orm';
 
 export type BusStatus =
@@ -75,7 +76,8 @@ export async function predictArrival(routeId: string): Promise<ArrivalPrediction
   // The household's today and weekday, not the server's (UTC on a default
   // install, where a US evening is already tomorrow).
   const timeZone = await getHouseholdTimezone();
-  const todayStr = todayKey(timeZone);
+  const now = serverNow();
+  const todayStr = todayKey(timeZone, now);
   const todayDow = weekdayOfKey(todayStr); // 0=Sun, 1=Mon, ..., 6=Sat
   if (!activeDays.includes(todayDow)) {
     return emptyPrediction(totalCheckpoints);
@@ -92,7 +94,7 @@ export async function predictArrival(routeId: string): Promise<ArrivalPrediction
 
   if (todayEvents.length === 0) {
     // Check if overdue
-    if (isOverdue(route.scheduledTime, timeZone)) {
+    if (isOverdue(route.scheduledTime, timeZone, now)) {
       return { ...emptyPrediction(totalCheckpoints), status: 'overdue' };
     }
     return emptyPrediction(totalCheckpoints);
@@ -103,7 +105,7 @@ export async function predictArrival(routeId: string): Promise<ArrivalPrediction
   const lastCheckpointIndex = latest.checkpointIndex;
   const lastCheckpointName = latest.checkpointName;
   const lastCheckpointTime = latest.eventTime;
-  const minutesSince = (Date.now() - lastCheckpointTime.getTime()) / 60000;
+  const minutesSince = (now.getTime() - lastCheckpointTime.getTime()) / 60000;
 
   const direction = route.direction as 'AM' | 'PM';
 
@@ -214,7 +216,7 @@ async function getSegmentStats(
   fromCheckpointIndex: number,
   totalCheckpoints: number
 ): Promise<SegmentStat[]> {
-  const cutoff = new Date();
+  const cutoff = serverNow();
   cutoff.setDate(cutoff.getDate() - HISTORY_DAYS);
 
   // Fetch all historical events for this route
@@ -348,9 +350,9 @@ function emptyPrediction(totalCheckpoints: number): ArrivalPrediction {
 }
 
 /** Scheduled times are household wall-clock times (HH:mm). */
-function isOverdue(scheduledTime: string, timeZone: string): boolean {
-  const scheduled = scheduledInstantToday(scheduledTime, timeZone);
+function isOverdue(scheduledTime: string, timeZone: string, now: Date): boolean {
+  const scheduled = scheduledInstantToday(scheduledTime, timeZone, now);
   // Overdue if more than 30 minutes past scheduled time
-  return scheduled !== null && Date.now() > scheduled.getTime() + 30 * 60000;
+  return scheduled !== null && now.getTime() > scheduled.getTime() + 30 * 60000;
 }
 

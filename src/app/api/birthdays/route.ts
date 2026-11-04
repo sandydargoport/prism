@@ -22,6 +22,7 @@ import { createBirthdaySchema, validateRequest } from '@/lib/validations';
 import { logError } from '@/lib/utils/logError';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { todayKey } from '@/lib/utils/zonedDate';
+import { serverNow } from '@/lib/utils/serverNow';
 import { birthdayOccurrence } from '@/lib/utils/birthdayOccurrence';
 
 /**
@@ -60,7 +61,7 @@ export async function GET(request: NextRequest) {
     const results = await query;
 
     // "Today" is the household's calendar date, not the server's.
-    const today = todayKey(await getHouseholdTimezone());
+    const today = todayKey(await getHouseholdTimezone(), serverNow());
 
     let formattedBirthdays = results.flatMap(birthday => {
       const occurrence = birthdayOccurrence(birthday.birthDate, today);
