@@ -1,5 +1,6 @@
 'use client';
 
+import { StatusPill } from '@/components/ui/StatusPill';
 import { format, formatDistanceToNow } from 'date-fns';
 import {
   CalendarDays,
@@ -101,15 +102,14 @@ export function ChoreGroupCard({
               className={cn(
                 'font-medium text-sm truncate',
                 isCompletedToday && !isPendingApproval && 'line-through',
-                isPendingApproval && 'text-warning'
               )}
             >
               {chore.title}
             </p>
           </div>
           {isPendingApproval && chore.pendingApproval && (
-            <div className="flex items-center gap-1 text-xs mt-0.5 text-warning">
-              <span>Awaiting approval</span>
+            <div className="flex items-center gap-1 text-xs mt-0.5">
+              <StatusPill tone="warning">Awaiting approval</StatusPill>
               <span className="text-muted-foreground">
                 &middot; {chore.pendingApproval.completedBy.name}
               </span>
@@ -119,12 +119,12 @@ export function ChoreGroupCard({
             <div
               className={cn(
                 'flex items-center gap-1 text-xs mt-0.5',
-                isOverdue ? 'text-destructive' : 'text-muted-foreground'
+                'text-muted-foreground'
               )}
             >
               <CalendarDays className="h-3 w-3" />
               {isOverdue ? (
-                <span>Due {formatDistanceToNow(nextDue, { addSuffix: true })}</span>
+                <StatusPill tone="danger">Due {formatDistanceToNow(nextDue, { addSuffix: true })}</StatusPill>
               ) : daysUntil === 0 ? (
                 <span>Due today</span>
               ) : daysUntil === 1 ? (

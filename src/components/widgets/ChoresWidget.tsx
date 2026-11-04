@@ -24,6 +24,7 @@
 
 'use client';
 
+import { StatusPill } from '@/components/ui/StatusPill';
 import * as React from 'react';
 import { Emoji } from '@/components/ui/Emoji';
 import { useState, useMemo, useCallback } from 'react';
@@ -265,7 +266,6 @@ function ChoreItem({
           {/* Title */}
           <span className={cn(
             'text-sm font-medium truncate',
-            isPendingApproval && 'text-warning',
             completing && 'line-through text-muted-foreground'
           )}>{chore.title}</span>
 
@@ -299,9 +299,9 @@ function ChoreItem({
                 size="sm"
                 className="h-6 w-6 text-4xs"
               />
-              <span className="text-xs text-warning">
+              <StatusPill tone="warning">
                 Done by {chore.pendingApproval.completedBy.name}
-              </span>
+              </StatusPill>
             </div>
           )}
 
@@ -327,17 +327,13 @@ function ChoreItem({
 
           {/* Due date - only show if not pending */}
           {!isPendingApproval && dueDateDisplay && (
-            <span
-              className={cn(
-                'text-xs',
-                isOverdue
-                  ? 'text-destructive font-medium'
-                  : 'text-muted-foreground'
-              )}
-            >
-              {isOverdue && <AlertCircle className="h-3 w-3 inline mr-0.5" />}
-              {dueDateDisplay}
-            </span>
+            isOverdue ? (
+              <StatusPill tone="danger" icon={<AlertCircle aria-hidden className="h-3 w-3 shrink-0" />}>
+                {dueDateDisplay}
+              </StatusPill>
+            ) : (
+              <span className="text-xs text-muted-foreground">{dueDateDisplay}</span>
+            )
           )}
         </div>
       </div>

@@ -127,6 +127,26 @@ describe('glass under Performance Mode', () => {
   });
 });
 
+describe('status pills (#891)', () => {
+  // Status words sit on a solid fill, so their contrast is the fill against its
+  // own foreground, never the photo behind a glass card.
+  it.each(MODES)('the Paper red pill reads at 4.5:1 in %s', (mode) => {
+    const ratio = contrastRatioHex(hslToHex(PAPER[mode]['destructive-foreground']), hslToHex(PAPER[mode].destructive));
+    expect(ratio).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('the amber pill reads at 4.5:1 in light and dark (globals.css, Paper sets none)', () => {
+    const block = (sel: RegExp) => sel.exec(css)?.[1] ?? '';
+    const light = block(/:root\s*\{([^}]*--warning:[^}]*)\}/);
+    const dark = block(/\.dark\s*\{([^}]*--warning:[^}]*)\}/);
+    for (const b of [light, dark]) {
+      const v = (n: string) => new RegExp(`${n}:\\s*([^;]+);`).exec(b)![1]!.trim();
+      expect(contrastRatioHex(hslToHex(v('--warning-foreground')), hslToHex(v('--warning')))).toBeGreaterThanOrEqual(4.5);
+    }
+    expect(light).not.toBe(dark);
+  });
+});
+
 describe('Paper palette', () => {
   it('is a complete, valid token set in both modes', () => {
     expect(isValidTokenSet(PAPER.light)).toBe(true);
