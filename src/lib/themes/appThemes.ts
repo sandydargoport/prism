@@ -347,7 +347,7 @@ const NOTICE_BOARD: Theme = {
 };
 
 /**
- * The Prism 2.0 palette (docs/DESIGN.md): warm paper neutrals and one accent.
+ * The Paper palette (docs/DESIGN.md): warm paper neutrals and one accent.
  * The tokens live in src/lib/design/tokens.ts, where their contrast is checked;
  * this only registers them. New installs start on it (#808).
  */
