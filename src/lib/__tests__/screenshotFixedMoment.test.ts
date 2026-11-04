@@ -90,21 +90,27 @@ describe('weather drawn for the fixed moment', () => {
 });
 
 describe('the demo bus on the fixed afternoon', () => {
+  // The seed works on the local clock, so build local times: 4:10 PM on
+  // Wednesday 17 June in whatever zone the tests run in.
+  const at = (day: number, hour: number, minute: number) => new Date(2026, 5, day, hour, minute);
+
   it('has reached its stop by 4:10 PM, so the card is not overdue', () => {
-    const events = afternoonTripEvents(new Date(MOMENT));
+    const now = at(17, 16, 10);
+    const events = afternoonTripEvents(now);
     expect(events.length).toBeGreaterThan(0);
     const last = events[events.length - 1]!;
     expect(last.eventType).toBe('arrived_at_stop');
-    expect(last.eventTime.getTime()).toBeLessThan(Date.parse(MOMENT));
+    expect(last.eventTime.getTime()).toBeLessThan(now.getTime());
     expect(events.every((e) => e.tripDate === '2026-06-17')).toBe(true);
   });
 
   it('logs nothing before the trip ends, so a morning seed is unchanged', () => {
-    expect(afternoonTripEvents(new Date('2026-06-17T14:30:00Z'))).toEqual([]); // 9:30 AM
+    expect(afternoonTripEvents(at(17, 9, 30))).toEqual([]);
+    expect(afternoonTripEvents(at(17, 15, 30))).toEqual([]);
   });
 
   it('logs nothing at the weekend', () => {
-    expect(afternoonTripEvents(new Date('2026-06-20T21:10:00Z'))).toEqual([]); // Saturday
+    expect(afternoonTripEvents(at(20, 16, 10))).toEqual([]); // Saturday
   });
 });
 
