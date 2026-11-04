@@ -1,1 +1,11 @@
 blank_issues_enabled: false
+contact_links:
+  - name: Ideas and feature requests
+    url: https://github.com/sandydargoport/prism/discussions/categories/ideas
+    about: Suggest an idea and see what others think before it becomes an issue.
+  - name: Questions and setup help
+    url: https://github.com/sandydargoport/prism/discussions/categories/q-a
+    about: Ask how to install, connect or use Prism.
+  - name: Report a security problem
+    url: https://github.com/sandydargoport/prism/security/advisories/new
+    about: Report privately. Please do not open a public issue.
