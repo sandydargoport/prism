@@ -13,6 +13,16 @@ import type { CalendarEvent } from '@/types/calendar';
 // #801: the agenda draws an event as a pale tint of the person's colour with a
 // bar on the leading edge, in the normal text colour, never white on a block.
 
+// A fixed afternoon in Chicago, where the agenda is drawn. On the real clock,
+// "an hour from now" fell on Chicago's tomorrow between 11pm and midnight
+// there, and the one-day agenda was empty.
+beforeEach(() => {
+  jest.useFakeTimers({ now: new Date('2026-11-03T21:00:00Z') }); // 3:00 PM CST
+});
+afterEach(() => {
+  jest.useRealTimers();
+});
+
 function soonEvent(): CalendarEvent {
   const start = new Date();
   start.setHours(start.getHours() + 1, 0, 0, 0);
