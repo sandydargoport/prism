@@ -15,6 +15,7 @@ const state: {
 } = { members: [], settings: {}, layouts: [] };
 let inserted: Array<{ table: string; values: Record<string, unknown> }> = [];
 let updated: string[] = [];
+let updatedValues: Record<string, unknown> = {};
 
 jest.mock('@/lib/db/schema', () => ({
   settings: { __table: 'settings', key: 'key' },
@@ -44,9 +45,10 @@ jest.mock('@/lib/db/client', () => ({
       },
     }),
     update: () => ({
-      set: () => ({
+      set: (row: { value: unknown }) => ({
         where: async (cond: { value: string }) => {
           updated.push(cond.value);
+          updatedValues[cond.value] = row.value;
         },
       }),
     }),
@@ -66,6 +68,7 @@ beforeEach(() => {
   state.layouts = [];
   inserted = [];
   updated = [];
+  updatedValues = {};
 });
 
 describe('POST /api/setup/complete', () => {
@@ -99,9 +102,10 @@ describe('POST /api/setup/complete', () => {
       expect(layouts[0]).toMatchObject({
         name: FIRST_SCREEN_TEMPLATE.name,
         isDefault: true,
-        widgets: FIRST_SCREEN_TEMPLATE.widgets,
         createdBy: 'parent-1',
       });
+      expect((layouts[0]!.widgets as Array<{ i: string }>).map((w) => w.i))
+        .toEqual(FIRST_SCREEN_TEMPLATE.widgets.map((w) => w.i));
       expect(FIRST_SCREEN_TEMPLATE.widgets[0]!.i).toBe('calendar');
     });
 
@@ -139,6 +143,53 @@ describe('POST /api/setup/complete', () => {
       state.settings.hiddenPages = [];
       await POST();
       expect(insertedSetting('hiddenPages')).toBeUndefined();
+    });
+  });
+
+  describe('the look picked in the wizard (#808)', () => {
+    const fills = () => (insertedLayouts()[0]!.widgets as Array<{ backgroundColor?: string }>).map((w) => w.backgroundColor);
+
+    it("with no pick, starts on Photo: glass cards, scenery, the Paper palette, each device's own mode", async () => {
+      await POST();
+      expect(fills()).toEqual(['glass', 'glass', 'glass']);
+      expect(insertedSetting('wallpaperScenery')?.value).toBe(true);
+      expect(insertedSetting('theme')?.value).toEqual({ paletteId: 'paper' });
+      expect(insertedSetting('defaultThemeMode')).toBeUndefined();
+    });
+
+    it('Night is Photo, dark on every display that never chose', async () => {
+      state.settings.firstLook = 'night';
+      await POST();
+      expect(fills()).toEqual(['glass', 'glass', 'glass']);
+      expect(insertedSetting('wallpaperScenery')?.value).toBe(true);
+      expect(insertedSetting('defaultThemeMode')?.value).toBe('dark');
+    });
+
+    it('Paper has solid cards and no scenery', async () => {
+      state.settings.firstLook = 'paper';
+      await POST();
+      expect(fills()).toEqual([undefined, undefined, undefined]);
+      expect(insertedSetting('wallpaperScenery')?.value).toBe(false);
+      expect(insertedSetting('theme')?.value).toEqual({ paletteId: 'paper' });
+      expect(insertedSetting('defaultThemeMode')).toBeUndefined();
+    });
+
+    it("never replaces a palette already picked, and keeps an old row's other fields", async () => {
+      state.settings.theme = { paletteId: 'clay' };
+      await POST();
+      expect(insertedSetting('theme')).toBeUndefined();
+      expect(updatedValues.theme).toBeUndefined();
+
+      inserted = [];
+      state.settings.theme = { mode: 'system' };
+      await POST();
+      expect(updatedValues.theme).toEqual({ mode: 'system', paletteId: 'paper' });
+    });
+
+    it('ignores a stored look it does not know', async () => {
+      state.settings.firstLook = 'neon';
+      await POST();
+      expect(fills()).toEqual(['glass', 'glass', 'glass']);
     });
   });
 });

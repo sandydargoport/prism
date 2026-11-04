@@ -62,7 +62,7 @@ export const CARD = {
  * The black layer laid over a wallpaper photo, as a share, so no photo reaches
  * the glass at full brightness. Glass contrast is checked against the darkest
  * and brightest a photo can be once it is under this layer. The bundled scenery
- * is dimmed lightly so it shows; the household's own photos keep the old,
+ * is dimmed lightly so it shows; photos the family added keep the old,
  * heavier layer.
  */
 export const PHOTO_DIM = {

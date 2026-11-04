@@ -5,20 +5,33 @@ import { cn } from '@/lib/utils';
 import { WelcomeStep } from './steps/WelcomeStep';
 import { FamilyStep } from './steps/FamilyStep';
 import { HouseholdStep } from './steps/HouseholdStep';
+import { CalendarStep } from './steps/CalendarStep';
+import { LookStep } from './steps/LookStep';
 import { CompleteStep } from './steps/CompleteStep';
 
-export type StepId = 'welcome' | 'family' | 'household' | 'complete';
+export type StepId = 'welcome' | 'family' | 'household' | 'calendar' | 'look' | 'complete';
 
-const STEPS: { id: StepId; label: string }[] = [
+const ALL_STEPS: { id: StepId; label: string }[] = [
   { id: 'welcome', label: 'Welcome' },
   { id: 'family', label: 'Family' },
   { id: 'household', label: 'Household' },
+  { id: 'calendar', label: 'Calendars' },
+  { id: 'look', label: 'Look' },
   { id: 'complete', label: 'Done' },
 ];
 
-const CONTENT_STEPS = STEPS.filter((s) => s.id !== 'welcome' && s.id !== 'complete');
+/**
+ * The look is applied only when setup first finishes (#808), so running setup
+ * again from Settings skips the step rather than offer a choice that does
+ * nothing.
+ */
+export function wizardSteps(firstRun: boolean) {
+  return ALL_STEPS.filter((s) => firstRun || s.id !== 'look');
+}
 
-export function SetupWizard() {
+export function SetupWizard({ firstRun = true }: { firstRun?: boolean }) {
+  const STEPS = wizardSteps(firstRun);
+  const CONTENT_STEPS = STEPS.filter((s) => s.id !== 'welcome' && s.id !== 'complete');
   const [currentStep, setCurrentStep] = useState<StepId>('welcome');
 
   const stepIndex = STEPS.findIndex((s) => s.id === currentStep);
@@ -70,6 +83,8 @@ export function SetupWizard() {
         {currentStep === 'welcome' && <WelcomeStep onNext={goNext} />}
         {currentStep === 'family' && <FamilyStep onNext={goNext} onBack={goBack} />}
         {currentStep === 'household' && <HouseholdStep onNext={goNext} onBack={goBack} />}
+        {currentStep === 'calendar' && <CalendarStep onNext={goNext} onBack={goBack} />}
+        {currentStep === 'look' && <LookStep onNext={goNext} onBack={goBack} />}
         {currentStep === 'complete' && <CompleteStep />}
       </div>
 

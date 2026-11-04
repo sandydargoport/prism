@@ -4,12 +4,14 @@ After [installing Prism](install.md), the first run drops you into a short, keyl
 
 ## The setup wizard
 
-A fresh install boots straight into the wizard (there's no default-PIN login screen). It has four steps:
+A fresh install boots straight into the wizard (there's no default-PIN login screen). It has six steps:
 
 1. **Welcome**: a quick intro.
 2. **Family**: add each family member (name, role, avatar) and choose a **4- or 6-digit PIN** for each one.
 3. **Household**: set your location by city or ZIP/postal code (time zone is detected automatically) and pick which day your week starts on.
-4. **Done**: you land on a dashboard that already shows your calendar, with no one needing to sign in.
+4. **Calendars**: paste a calendar link (Google's secret iCal address, an iCloud public calendar, an Outlook published calendar, or a school or team feed). Add as many as you like, or skip. Two-way Google and Outlook sync is connected in Settings afterwards.
+5. **Look**: **Photo** (national park scenery behind glass cards), **Night** (the same, always dark) or **Paper** (plain warm cards, no photo). Running setup again skips this step.
+6. **Done**: you land on a dashboard that already shows your calendar, with no one needing to sign in.
 
 Everything the wizard sets can be revisited later in Settings. The steps below cover those edit paths plus the optional extras (integrations, layout, PWA install).
 

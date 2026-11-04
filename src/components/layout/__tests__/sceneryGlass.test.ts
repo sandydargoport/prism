@@ -28,7 +28,7 @@ describe('wallpaperPool', () => {
     expect(wallpaperPool([], false, false)).toEqual({ items: [], scenery: false });
   });
 
-  it("prefers the household's own photos as soon as there are any", () => {
+  it('prefers photos the family added, as soon as there are any', () => {
     const { items, scenery } = wallpaperPool([{ id: 'p1' }], false, true);
     expect(scenery).toBe(false);
     expect(items).toEqual([{ id: 'p1', src: '/api/photos/p1/file' }]);
@@ -36,6 +36,16 @@ describe('wallpaperPool', () => {
 
   it('waits for photos to load, so a household with photos never flashes scenery', () => {
     expect(wallpaperPool([], true, true).items).toEqual([]);
+  });
+});
+
+describe('published screenshots', () => {
+  // docs/demos is published; a downloaded photo there is someone else's
+  // copyright. The capture script uploads only the bundled, credited scenery.
+  it('use the bundled park scenery, never a downloaded photo', () => {
+    const script = fs.readFileSync(path.join(ROOT, 'scripts/capture-screenshots.ts'), 'utf8');
+    expect(script).toContain('loadBundledScenery()');
+    expect(script).not.toMatch(/fetch\(`?https?:\/\/[^)]*\.(jpe?g|png|webp)|HPImageArchive|bing\.com/i);
   });
 });
 

@@ -26,7 +26,7 @@ export function ConnectCalendarInvite() {
       <p className="text-title font-semibold text-foreground">{t('title')}</p>
       <p className="text-body text-muted-foreground max-w-md">{t('body')}</p>
       <Link
-        href="/settings?section=integrations"
+        href="/calendar?manage=calendars"
         className="mt-2 inline-flex items-center justify-center rounded-md bg-primary px-6 text-primary-foreground text-body font-medium min-h-[var(--ds-target-min)] hover:bg-primary/90"
       >
         {t('action')}
