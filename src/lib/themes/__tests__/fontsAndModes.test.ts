@@ -299,6 +299,6 @@ describe('the modes reach real components', () => {
     // house likes it tight". Collapsing the two would let a theme override a
     // decision the layout made about available space.
     const chip = read('src/components/calendar/cells/InlineCalendarEvent.tsx');
-    expect(chip).toContain("compact ? 'px-0.5 py-px text-[8px]'");
+    expect(chip).toContain("compact ? 'px-0.5 py-px text-4xs'");
   });
 });
