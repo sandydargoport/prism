@@ -48,6 +48,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { frameAll } from './frame-screenshots';
 import { SCENERY } from '../src/lib/scenery';
+import { freezeWeather } from './frozen-weather';
 
 // Refuse to run against anything that is not a declared test database. This is
 // the same flag e2e/*.spec.ts gate on. It is a deliberate choice rather than a
@@ -611,7 +612,16 @@ async function captureOnce(spec: CaptureSpec): Promise<void> {
   });
 
   const page = await context.newPage();
-  if (FIXED_NOW) await page.clock.setFixedTime(new Date(FIXED_NOW));
+  if (FIXED_NOW) {
+    await page.clock.setFixedTime(new Date(FIXED_NOW));
+    // The forecast is live; draw the fixed moment's weather instead, or a June
+    // afternoon shows November's hours, sunrise and sunset.
+    await context.route('**/api/weather**', async (route) => {
+      const response = await route.fetch();
+      if (!response.ok()) return route.fulfill({ response });
+      await route.fulfill({ response, json: freezeWeather(await response.json(), FIXED_NOW) });
+    });
+  }
 
   // Pre-seed localStorage BEFORE first paint so the page renders directly in
   // the requested state (theme + calendar view) without a mid-load swap.

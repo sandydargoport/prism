@@ -121,8 +121,10 @@ jobs:
         # Start the dev server (same boot the e2e suite uses), wait for health,
         # then run the capture against it. The capture script uploads the
         # bundled park scenery and pins one for the dashboard hero.
+        # PRISM_SCREENSHOT_NOW: the server's birthdays and bus count from the
+        # same moment as the seed and the browser (src/lib/utils/serverNow.ts).
         run: |
-          npm run dev > /tmp/dev.log 2>&1 &
+          PRISM_SCREENSHOT_NOW="$PRISM_SEED_NOW" npm run dev > /tmp/dev.log 2>&1 &
           echo "Waiting for the app to come up..."
           for i in $(seq 1 80); do
             if curl -sf http://localhost:3000/api/health >/dev/null 2>&1; then echo "App is up."; break; fi
