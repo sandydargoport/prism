@@ -6,6 +6,7 @@
 import { freezeWeather } from '../../../scripts/frozen-weather';
 import { afternoonTripEvents } from '../db/seedBusTrip';
 import { serverNow } from '../utils/serverNow';
+import { SCREENSHOTS } from '../../../scripts/screenshot-specs';
 
 const MOMENT = '2026-06-17T21:10:00Z'; // 4:10 PM CDT, a Wednesday
 
@@ -141,14 +142,11 @@ describe('dashboard screenshots without the side rail and top bar', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const fs = require('node:fs') as typeof import('node:fs');
   const script = fs.readFileSync(require.resolve('../../../scripts/capture-screenshots.ts'), 'utf8');
-  const spec = (name: string) => {
-    const start = script.indexOf(`name: '${name}'`);
-    return script.slice(start, script.indexOf('}', start));
-  };
 
-  it('asks for the auto-hidden chrome on the light and dark dashboards', () => {
-    expect(spec('dashboard-light')).toMatch(/idleChrome: true/);
-    expect(spec('dashboard-dark')).toMatch(/idleChrome: true/);
+  it('asks for the auto-hidden chrome on every wall and tablet dashboard', () => {
+    const walls = SCREENSHOTS.filter((s) => s.url === '/' && (s.device === 'wall' || s.device === 'tablet'));
+    expect(walls.length).toBeGreaterThan(0);
+    for (const s of walls) expect([s.name, s.idleChrome]).toEqual([s.name, true]);
   });
 
   it('turns auto-hide on for the screen, and waits until the rail is gone', () => {
