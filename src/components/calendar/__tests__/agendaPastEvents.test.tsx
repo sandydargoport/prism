@@ -62,15 +62,23 @@ async function renderAgenda() {
 }
 
 describe('AgendaView past events', () => {
-  it('leaves the agenda as it was by default: nothing dimmed, nothing hidden', async () => {
-    // The visual-regression baselines are the agenda as it has always looked,
-    // so the default must not change a pixel of it.
+  it('dims ended events by default, as every other view does, and hides none', async () => {
     await renderAgenda();
-    for (const title of ['Emma dentist', 'Soccer practice', 'Parker family dinner']) {
+
+    const dentist = screen.getByText('Emma dentist').closest('button');
+    expect(dentist?.hasAttribute('data-ended')).toBe(true);
+    expect(dentist?.className).toContain('opacity-60');
+    for (const title of ['Soccer practice', 'Parker family dinner']) {
       const row = screen.getByText(title).closest('button');
       expect(row?.hasAttribute('data-ended')).toBe(false);
       expect(row?.className).not.toContain('opacity-60');
     }
+  });
+
+  it('treats a stored "show" from before the switch as the default, dimmed', async () => {
+    settingsFromServer = { calendarPastEvents: 'show' };
+    await renderAgenda();
+    expect(screen.getByText('Emma dentist').closest('button')?.hasAttribute('data-ended')).toBe(true);
   });
 
   it('dims ended events, and only ended ones, when the household chose Dimmed', async () => {

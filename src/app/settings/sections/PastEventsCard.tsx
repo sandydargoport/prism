@@ -1,8 +1,8 @@
 'use client';
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
 import { usePastEventsMode } from '@/lib/hooks/usePastEventsMode';
-import { isPastEventsMode } from '@/lib/utils/pastEvents';
 
 export function PastEventsCard() {
   const { mode, loaded, setMode } = usePastEventsMode();
@@ -14,27 +14,23 @@ export function PastEventsCard() {
       <CardHeader>
         <CardTitle>Past Events</CardTitle>
         <CardDescription>
-          What the calendar does with events that have already ended. Dimmed fades them in the
-          agenda as the other views already do. Hidden removes them from the agenda and list views,
-          so they show only what is still to come. Day, week and month grids always dim them, so a
-          past day never looks empty.
+          Events that have ended are dimmed in every view. Hiding them clears them out of the
+          agenda and list views, so a short agenda shows what is still to come. Day, week and
+          month grids keep them dimmed, so a past day never looks empty.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <label className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <span className="text-sm text-muted-foreground">Ended events</span>
-          <select
-            value={mode}
-            onChange={(e) => {
-              if (isPastEventsMode(e.target.value)) setMode(e.target.value);
-            }}
-            className="min-h-11 border border-border rounded px-2 py-1 text-sm bg-background"
-          >
-            <option value="show">Shown</option>
-            <option value="dim">Dimmed</option>
-            <option value="hide">Hidden in agenda and list</option>
-          </select>
-        </label>
+        <div className="flex items-center justify-between gap-4">
+          <span id="hide-ended-events" className="text-sm font-medium">
+            Hide ended events in the agenda and list
+          </span>
+          <Switch
+            aria-labelledby="hide-ended-events"
+            checked={mode === 'hide'}
+            onCheckedChange={(on) => setMode(on ? 'hide' : 'dim')}
+            className="data-[state=checked]:bg-blue-500"
+          />
+        </div>
       </CardContent>
     </Card>
   );
