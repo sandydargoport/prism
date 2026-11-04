@@ -378,7 +378,8 @@ test.describe('clock fits its tile', () => {
       expect(created.status()).toBe(201);
       const layout = await created.json();
       try {
-        await page.goto(`/d/${layout.slug}`, { waitUntil: 'networkidle' });
+        await page.goto(`/d/${layout.slug}`);
+        await waitForQuiet(page);
         const cell = page.locator('.widget-cell[data-widget="clock"]');
         await cell.waitFor({ timeout: 60_000 });
         await page.waitForTimeout(1000);
