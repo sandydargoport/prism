@@ -7,6 +7,9 @@ hide:
 
 A visual tour of Prism, captured against a fresh seed (the synthetic Alex / Jordan / Emma / Sophie family). Your own dashboard will look different. These images are illustrative.
 
+![Prism on a wall display, a tablet and a phone](demos/hero-light.png#only-light)
+![Prism on a wall display, a tablet and a phone](demos/hero-dark.png#only-dark)
+
 === "Dashboard"
 
     <div class="grid cards" markdown>
