@@ -14,7 +14,10 @@ Prism is a configurable family dashboard designed for large wall-mounted screens
 ---
 
 <p align="center">
-  <img src="docs/demos/dashboard-dark.png" width="800" alt="Prism dashboard in dark mode">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/demos/hero-dark.png">
+    <img src="docs/demos/hero-light.png" width="900" alt="Prism on a wall display, a tablet and a phone">
+  </picture>
 </p>
 
 **[See the full screenshot gallery and feature tour →](https://sandydargoport.github.io/prism/screenshots/)**
@@ -61,7 +64,7 @@ Add-ons are not distributed through HACS, so the custom-repository flow above is
 
 </details>
 
-Open **<http://localhost:3000>** (on the Home Assistant add-on, use the port 3000 link in the add-on panel). A fresh install boots into the setup wizard, where you create family members and set each member's PIN (4 or 6 digits). To try Prism with a fictional demo family instead, set `PRISM_DEMO_SEED=true` in `.env` before the first `docker compose up`; every demo account uses PIN `1234`.
+Open **<http://localhost:3000>** (on the Home Assistant add-on, use the port 3000 link in the add-on panel). A fresh install boots into the setup wizard, where you create family members, set each member's PIN (4 or 6 digits), add a calendar link and pick a look: park scenery behind glass cards, the same kept dark, or plain paper. To try Prism with a fictional demo family instead, set `PRISM_DEMO_SEED=true` in `.env` before the first `docker compose up`; every demo account uses PIN `1234`.
 
 Full installation notes (HTTPS / Nginx cert prerequisite, Raspberry Pi notes, troubleshooting) are in the [install guide](https://sandydargoport.github.io/prism/getting-started/install/).
 

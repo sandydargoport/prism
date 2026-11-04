@@ -106,6 +106,7 @@ nav:
       - Birthdays & Milestones: features/BIRTHDAYS.md
       - Languages (i18n): features/LANGUAGES.md
       - Display Modes: features/DISPLAY-MODES.md
+      - Themes & Looks: features/THEMES.md
       - Mobile (PWA): features/MOBILE.md
       - Global input: features/global-input-system.md
       - Anonymous update check: features/TELEMETRY.md
