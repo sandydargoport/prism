@@ -447,6 +447,10 @@ async function captureOnce(spec: CaptureSpec): Promise<void> {
       );
     });
 
+    // The dev overlay's badge ("N 1 Issue") can outlive the style tag above,
+    // which React may drop from <head>. Take the overlay out of the page.
+    await page.evaluate(() => document.querySelectorAll('nextjs-portal').forEach((el) => el.remove()));
+
     const outPath = path.join(OUT_DIR, `${spec.name}.png`);
     if (spec.widget) {
       await page.locator(`.widget-cell[data-widget="${spec.widget}"]`).screenshot({ path: outPath });

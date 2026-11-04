@@ -69,3 +69,15 @@ describe('a failed staging explains itself', () => {
     expect(read('scripts/capture-screenshots.ts')).toMatch(/const failed = answers\.filter\(\(r\) => !r\.ok\(\)\)/);
   });
 });
+
+describe('no dev overlay in a shot', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const fs = require('node:fs') as typeof import('node:fs');
+  const script = fs.readFileSync(require.resolve('../../../scripts/capture-screenshots.ts'), 'utf8');
+
+  it('removes the Next.js overlay right before each screenshot', () => {
+    const removal = script.indexOf("querySelectorAll('nextjs-portal').forEach((el) => el.remove())");
+    expect(removal).toBeGreaterThan(-1);
+    expect(removal).toBeLessThan(script.indexOf('const outPath = path.join(OUT_DIR'));
+  });
+});
