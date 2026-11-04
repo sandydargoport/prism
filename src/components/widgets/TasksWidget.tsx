@@ -254,7 +254,7 @@ function TaskItem({
 
           {/* Priority badge */}
           {task.priority === 'high' && (
-            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+            <Badge variant="destructive" className="text-3xs px-1.5 py-0">
               High
             </Badge>
           )}
@@ -270,7 +270,7 @@ function TaskItem({
                 color={task.assignedTo.color}
                 imageUrl={task.assignedTo.avatarUrl}
                 size="sm"
-                className="h-4 w-4 text-[8px]"
+                className="h-6 w-6 text-4xs"
               />
               <span className="text-xs text-muted-foreground">
                 {task.assignedTo.name}

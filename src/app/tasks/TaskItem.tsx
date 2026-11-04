@@ -89,7 +89,7 @@ export function TaskItem({
                 name={task.assignedTo.name}
                 color={task.assignedTo.color}
                 size="sm"
-                className="h-4 w-4 text-[8px]"
+                className="h-6 w-6 text-4xs"
               />
               <span>{task.assignedTo.name}</span>
             </div>

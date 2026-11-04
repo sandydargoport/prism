@@ -460,7 +460,7 @@ function MessageCard({
                   <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={cancelEdit} disabled={saving}>
                     Cancel
                   </Button>
-                  <span className="text-[10px] text-muted-foreground ml-auto">Ctrl+Enter</span>
+                  <span className="text-3xs text-muted-foreground ml-auto">Ctrl+Enter</span>
                 </div>
               </div>
             ) : (
@@ -469,12 +469,12 @@ function MessageCard({
                 <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                   <span className="text-xs text-muted-foreground" title={fullDate}>{timeAgo}</span>
                   {message.pinned && (
-                    <Badge variant="outline" className="gap-0.5 text-[10px] h-4 px-1">
+                    <Badge variant="outline" className="gap-0.5 text-3xs h-4 px-1">
                       <Pin className="h-2.5 w-2.5" />Pinned
                     </Badge>
                   )}
                   {message.important && (
-                    <Badge variant="destructive" className="gap-0.5 text-[10px] h-4 px-1">
+                    <Badge variant="destructive" className="gap-0.5 text-3xs h-4 px-1">
                       <AlertTriangle className="h-2.5 w-2.5" />
                     </Badge>
                   )}

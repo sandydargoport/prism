@@ -60,7 +60,7 @@ export function WeekendPlaceCard({ place, selected, onClick }: WeekendPlaceCardP
 
         {/* Status + pips row */}
         <div className="flex items-center justify-between gap-2">
-          <span className={cn('text-[10px] font-medium px-1.5 py-0.5 rounded-full', cfg.bgClass, cfg.textClass)}>
+          <span className={cn('text-3xs font-medium px-1.5 py-0.5 rounded-full', cfg.bgClass, cfg.textClass)}>
             {cfg.label}
           </span>
           <VisitPips count={place.visitCount} color={pipColor} />
@@ -78,7 +78,7 @@ export function WeekendPlaceCard({ place, selected, onClick }: WeekendPlaceCardP
               <TagChip key={tag} tag={tag} size="sm" />
             ))}
             {place.tags.length > 4 && (
-              <span className="text-[10px] text-muted-foreground">+{place.tags.length - 4}</span>
+              <span className="text-3xs text-muted-foreground">+{place.tags.length - 4}</span>
             )}
           </div>
         )}

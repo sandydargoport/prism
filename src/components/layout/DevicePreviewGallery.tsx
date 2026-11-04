@@ -93,12 +93,12 @@ export function DevicePreviewGallery({
                 );
               })}
               {!match && (
-                <span className="absolute inset-x-0 bottom-0 text-center text-[7px] leading-tight text-muted-foreground bg-background/70">
+                <span className="absolute inset-x-0 bottom-0 text-center text-4xs leading-tight text-muted-foreground bg-background/70">
                   letterboxed
                 </span>
               )}
             </div>
-            <span className="text-[9px] leading-none text-muted-foreground text-center">
+            <span className="text-4xs leading-none text-muted-foreground text-center">
               {d.name}
               {d.note && <span className="opacity-60"> · {d.note}</span>}
             </span>

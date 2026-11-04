@@ -32,7 +32,7 @@ const SWATCH_TOKENS = ['background', 'card', 'primary', 'accent', 'destructive']
 function Swatches({ tokens, label }: { tokens: ThemeTokens; label: string }) {
   return (
     <div className="flex items-center gap-1.5">
-      <span className="w-9 shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">
+      <span className="w-9 shrink-0 text-3xs uppercase tracking-wide text-muted-foreground">
         {label}
       </span>
       {SWATCH_TOKENS.map((tok) => (
@@ -250,17 +250,17 @@ function ThemeCard({
       <div className="mt-2.5 flex-1">
         <div className="flex items-baseline gap-2">
           <span className="truncate text-sm font-medium">{entry.name}</span>
-          {active && <span className="shrink-0 text-[10px] text-primary">In use</span>}
+          {active && <span className="shrink-0 text-3xs text-primary">In use</span>}
         </div>
         <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{entry.description}</p>
-        <p className="mt-1 text-[11px] text-muted-foreground">by {entry.author}</p>
+        <p className="mt-1 text-2xs text-muted-foreground">by {entry.author}</p>
 
         {entry.contrastWarnings > 0 && (
           // Stated rather than hidden behind an icon. Somebody choosing a theme
           // for a screen read from across a kitchen is exactly the person who
           // needs to know this, and the number is the whole reason the
           // submission pipeline measures contrast in the first place.
-          <p className="mt-1.5 text-[11px] text-warning">
+          <p className="mt-1.5 text-2xs text-warning">
             {entry.contrastWarnings === 1
               ? '1 colour pair is legible but tiring at a distance.'
               : `${entry.contrastWarnings} colour pairs are legible but tiring at a distance.`}
@@ -272,7 +272,7 @@ function ThemeCard({
             {entry.tags.map((tag) => (
               <span
                 key={tag}
-                className="rounded-full border border-border/70 bg-muted/50 px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                className="rounded-full border border-border/70 bg-muted/50 px-1.5 py-0.5 text-3xs text-muted-foreground"
               >
                 {tag}
               </span>

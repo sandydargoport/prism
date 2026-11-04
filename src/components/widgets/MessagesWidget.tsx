@@ -212,7 +212,7 @@ function MessageItem({
             color={message.author.color}
             imageUrl={message.author.avatarUrl}
             size="sm"
-            className="h-5 w-5 text-[10px]"
+            className="h-5 w-5 text-3xs"
           />
           <span
             className="text-xs font-medium"

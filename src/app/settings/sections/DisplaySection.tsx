@@ -172,7 +172,7 @@ export function DisplaySection() {
                           to say which is which before anyone goes looking for
                           a Remove button that is not there. */}
                       {installedThemes.some((t) => t.id === p.id) && (
-                        <span className="text-[10px] text-muted-foreground">Community</span>
+                        <span className="text-3xs text-muted-foreground">Community</span>
                       )}
                     </div>
                     <div className="text-xs text-muted-foreground">{p.description}</div>

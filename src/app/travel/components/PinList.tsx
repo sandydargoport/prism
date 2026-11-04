@@ -113,7 +113,7 @@ export function PinList({
             >
               {tab.icon}
               {tab.label}
-              <span className={cn('rounded-full px-1.5 leading-none text-[10px]',
+              <span className={cn('rounded-full px-1.5 leading-none text-3xs',
                 filter === tab.key ? 'bg-primary-foreground/20' : 'bg-muted-foreground/20'
               )}>
                 {stats[tab.key]}
@@ -122,13 +122,13 @@ export function PinList({
           ))}
         </div>
         <div className="flex items-center gap-1 shrink-0 border-l border-border pl-2">
-          <span className="text-[10px] text-muted-foreground uppercase tracking-wide mr-0.5">
+          <span className="text-3xs text-muted-foreground uppercase tracking-wide mr-0.5">
             {groupBy === 'year' ? <Calendar className="h-3 w-3" /> : <GlobeIcon className="h-3 w-3" />}
           </span>
           {GROUP_OPTIONS.map((opt) => (
             <button key={opt.key} onClick={() => setGroupBy(opt.key)}
               className={cn(
-                'px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors',
+                'px-1.5 py-0.5 rounded text-3xs font-medium transition-colors',
                 groupBy === opt.key ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'
               )}
             >
@@ -168,7 +168,7 @@ export function PinList({
                           {trip.isBucketList && <Star className="h-3 w-3 fill-amber-500 text-warning shrink-0" />}
                         </div>
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{ background: tripColor + '22', color: tripColor }}>
+                          <span className="text-3xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: tripColor + '22', color: tripColor }}>
                             {cfg.label}
                           </span>
                           <span className="text-xs text-muted-foreground">{stopCount} {stopCount === 1 ? 'stop' : 'stops'}</span>
@@ -230,7 +230,7 @@ export function PinList({
                               <span className="font-medium text-sm truncate">{pin.name}</span>
                               {pin.isBucketList && <Star className="h-3 w-3 fill-amber-500 text-warning shrink-0" />}
                               {(photoCounts[pin.id] ?? 0) > 0 && (
-                                <span className="text-[10px] text-muted-foreground shrink-0"><Emoji e="📷" /> {photoCounts[pin.id]}</span>
+                                <span className="text-3xs text-muted-foreground shrink-0"><Emoji e="📷" /> {photoCounts[pin.id]}</span>
                               )}
                             </div>
                             <div className="flex items-center gap-2 mt-0.5 flex-wrap">

@@ -263,7 +263,7 @@ export function QuickPinModal({
               <div className="flex flex-col items-center mx-auto mb-1.5 invisible" aria-hidden>
                 <div className="h-12 w-12 rounded-full" />
                 <span className="text-sm font-medium">name</span>
-                <span className="text-[10px]">subtitle</span>
+                <span className="text-3xs">subtitle</span>
               </div>
             ) : lockToMember ? (
               <div className="flex flex-col items-center mx-auto mb-1.5">
@@ -275,7 +275,7 @@ export function QuickPinModal({
                   className="h-12 w-12 ring-2 ring-primary"
                 />
                 <span className="text-sm font-medium mt-0.5">{selectedMember.name}</span>
-                <span className="text-[10px] text-muted-foreground">Enter your PIN</span>
+                <span className="text-3xs text-muted-foreground">Enter your PIN</span>
               </div>
             ) : (
               <button
@@ -290,7 +290,7 @@ export function QuickPinModal({
                   className="h-12 w-12 group-hover:ring-2 ring-primary transition-all"
                 />
                 <span className="text-sm font-medium mt-0.5">{selectedMember.name}</span>
-                <span className="text-[10px] text-muted-foreground">Tap to switch</span>
+                <span className="text-3xs text-muted-foreground">Tap to switch</span>
               </button>
             )}
 

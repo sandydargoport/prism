@@ -132,7 +132,7 @@ export function ChoreItem({
                 name={chore.pendingApproval.completedBy.name}
                 color={chore.pendingApproval.completedBy.color}
                 size="sm"
-                className="h-4 w-4 text-[8px]"
+                className="h-6 w-6 text-4xs"
               />
               <span className="text-warning">
                 Completed by {chore.pendingApproval.completedBy.name}
@@ -148,7 +148,7 @@ export function ChoreItem({
                 imageUrl={chore.assignedTo.avatarUrl}
                 color={chore.assignedTo.color}
                 size="sm"
-                className="h-4 w-4 text-[8px]"
+                className="h-6 w-6 text-4xs"
               />
               <span>{chore.assignedTo.name}</span>
             </div>

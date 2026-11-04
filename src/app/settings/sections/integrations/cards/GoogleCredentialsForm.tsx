@@ -112,7 +112,7 @@ export function GoogleCredentialsForm({ onSaved }: { onSaved?: () => void }) {
           onChange={(e) => setRedirectUri(e.target.value)}
           spellCheck={false}
         />
-        <span className="text-[11px] text-muted-foreground">
+        <span className="text-2xs text-muted-foreground">
           Copy this exact value into your Google OAuth client&apos;s Authorized redirect URIs.
         </span>
       </label>

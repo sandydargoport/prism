@@ -78,7 +78,7 @@ export function ChoreCompletionsList({
                       name={c.completedBy.name}
                       color={c.completedBy.color}
                       size="sm"
-                      className="h-4 w-4 text-[8px]"
+                      className="h-6 w-6 text-4xs"
                     />
                     <span>{c.completedBy.name}</span>
                   </div>

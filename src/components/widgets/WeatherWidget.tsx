@@ -458,7 +458,7 @@ export const WeatherWidget = React.memo(function WeatherWidget({
                 clips to WHOLE rows (maxDayRows) so a day is never half-cut. */}
             <div className="flex-1 min-h-0 flex flex-col">
               {shownForecast.length > 0 && (
-                <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <span className="shrink-0 text-3xs font-semibold uppercase tracking-wider text-muted-foreground">
                   {shownForecast.length}-Day Forecast
                 </span>
               )}
@@ -652,11 +652,11 @@ function DayHeader({
             {/* Day label + precip % + weather icon + moon phase glyph */}
             <div className="flex items-center gap-1.5 w-28 shrink-0">
               <div className="w-12 shrink-0 h-8 flex flex-col justify-center">
-                <div className="text-[11px] font-bold tracking-wide text-foreground leading-tight whitespace-nowrap">
+                <div className="text-2xs font-bold tracking-wide text-foreground leading-tight whitespace-nowrap">
                   {label}
                 </div>
                 {day.precipProbability !== undefined && (
-                  <div className="flex items-center gap-0.5 text-[10px] text-blue-500 leading-tight">
+                  <div className="flex items-center gap-0.5 text-3xs text-blue-500 leading-tight">
                     <Droplets className="h-2.5 w-2.5 shrink-0" />
                     <span>{day.precipProbability}%</span>
                   </div>
@@ -674,7 +674,7 @@ function DayHeader({
                 inside. Low and high temps sit at fixed left/right positions so
                 they line up across days too. */}
             <div className="flex-1 flex items-center gap-1.5 min-w-0">
-              <span className="text-[11px] text-muted-foreground tabular-nums w-7 text-right shrink-0">
+              <span className="text-2xs text-muted-foreground tabular-nums w-7 text-right shrink-0">
                 {fmt(day.low)}°
               </span>
               <div className="flex-1 relative h-4 rounded-full bg-black/10 dark:bg-white/15 ring-1 ring-inset ring-black/10 dark:ring-white/15 overflow-hidden min-w-0">
@@ -687,7 +687,7 @@ function DayHeader({
                   }}
                 />
               </div>
-              <span className="text-[11px] font-semibold tabular-nums w-7 text-left shrink-0">
+              <span className="text-2xs font-semibold tabular-nums w-7 text-left shrink-0">
                 {fmt(day.high)}°
               </span>
             </div>
@@ -741,7 +741,7 @@ function HourlyTimeline({ hourly, units, timezone }: { hourly: HourlyForecast[];
 
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <span className="text-3xs font-semibold uppercase tracking-wider text-muted-foreground">
         Next {upcoming.length} Hours
       </span>
       <div className="flex gap-1.5">
@@ -761,7 +761,7 @@ function HourlyTimeline({ hourly, units, timezone }: { hourly: HourlyForecast[];
               )}
             >
               <span className={cn(
-                'text-[10px] font-medium tabular-nums',
+                'text-3xs font-medium tabular-nums',
                 isNow ? 'text-primary' : 'text-muted-foreground',
               )}>
                 {timeLabel}
@@ -771,7 +771,7 @@ function HourlyTimeline({ hourly, units, timezone }: { hourly: HourlyForecast[];
                 {Math.round(h.temp)}°
               </span>
               <span className={cn(
-                'text-[10px] tabular-nums',
+                'text-3xs tabular-nums',
                 showPrecip ? 'text-blue-500 font-medium' : 'text-transparent',
               )}>
                 {showPrecip ? `${precipPct}%` : '0%'}
@@ -855,11 +855,11 @@ function PrecipitationChart({ minutely }: { minutely: MinutelyData[] }) {
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+        <span className="text-3xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
           <CloudRain className="h-3 w-3 text-blue-400" />
           Rain next hour
         </span>
-        <span className="text-[10px] text-blue-400 font-medium">{rainMessage}</span>
+        <span className="text-3xs text-blue-400 font-medium">{rainMessage}</span>
       </div>
       <div ref={containerRef} className="w-full">
         <svg width={width} height={totalH} style={{ display: 'block' }}>
@@ -1291,7 +1291,7 @@ function SunriseSunsetArc({
         )}
       </div>
       {eclipseNow && (
-        <div data-testid="eclipse-line" className="text-[11px] tabular-nums opacity-80"
+        <div data-testid="eclipse-line" className="text-2xs tabular-nums opacity-80"
           style={{ color: eclipseNow.body === 'sun' ? SUN_COLOR : MOON_COLOR }}>
           {t('line', {
             name: t(`${eclipseNow.body}.${eclipseNow.kind}`),
