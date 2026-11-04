@@ -52,7 +52,15 @@ import { extendTailwindMerge } from 'tailwind-merge';
  * it inherits.
  */
 const twMerge = extendTailwindMerge({
-  extend: { theme: { text: ['2xs', '3xs', '4xs', 'event', 'daynum', 'daynum-large'] } },
+  extend: {
+    theme: {
+      text: [
+        '2xs', '3xs', '4xs', 'event', 'daynum', 'daynum-large',
+        // Prism 2.0 type roles (docs/DESIGN.md)
+        'caption', 'body', 'title', 'display', 'clock',
+      ],
+    },
+  },
 });
 
 

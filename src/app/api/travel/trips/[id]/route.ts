@@ -20,8 +20,8 @@ const patchTripSchema = z.object({
   visitedDate: z.string().nullable().optional(),
   visitedEndDate: z.string().nullable().optional(),
   year: z.number().int().nullable().optional(),
-  memberIds: z.array(z.string()).optional(),
-  tags: z.array(z.string()).optional(),
+  memberIds: z.array(z.string()).max(100).optional(),
+  tags: z.array(z.string()).max(100).optional(),
   sortOrder: z.number().int().optional(),
 });
 

@@ -19,7 +19,7 @@ const updateSchema = z.object({
   isFavorite: z.boolean().optional(),
   rating: z.number().int().min(1).max(5).nullable().optional(),
   notes: z.string().nullable().optional(),
-  tags: z.array(z.string()).optional(),
+  tags: z.array(z.string()).max(100).optional(),
   lastVisitedDate: z.string().nullable().optional(),
   visitCount: z.number().int().min(0).optional(),
 });
@@ -113,7 +113,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       formatPlace(withUser ?? { ...updated, createdByName: null, createdByColor: null })
     );
   } catch (err) {
-    if (err instanceof z.ZodError) return NextResponse.json({ error: err.errors }, { status: 400 });
+    if (err instanceof z.ZodError) return NextResponse.json({ error: err.issues }, { status: 400 });
     logError('PATCH /api/weekend/places/[id]', err);
     return NextResponse.json({ error: 'Failed to update place' }, { status: 500 });
   }
