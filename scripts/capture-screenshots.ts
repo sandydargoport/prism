@@ -203,6 +203,7 @@ const SCREENSHOTS: CaptureSpec[] = [
     theme: 'light',
     settleMs: 15000, // dashboard has many lazy-loaded widgets that each fetch async
     pinWallpaper: true,
+    idleChrome: true,
   },
   {
     name: 'dashboard-dark',
@@ -211,6 +212,7 @@ const SCREENSHOTS: CaptureSpec[] = [
     theme: 'dark',
     settleMs: 15000,
     pinWallpaper: true,
+    idleChrome: true,
   },
   {
     name: 'dashboard-mobile',
@@ -612,6 +614,13 @@ async function captureOnce(spec: CaptureSpec): Promise<void> {
   });
 
   const page = await context.newPage();
+  // This screen's own auto-hide choice, so the rail and bar hide whatever the
+  // household default is (it is on only for the scenery look).
+  if (spec.idleChrome) {
+    await page.addInitScript(() => {
+      try { localStorage.setItem('prism:auto-hide-ui', 'true'); } catch { /* storage blocked */ }
+    });
+  }
   if (FIXED_NOW) {
     await page.clock.setFixedTime(new Date(FIXED_NOW));
     // The forecast is live; draw the fixed moment's weather instead, or a June
@@ -738,8 +747,17 @@ async function captureOnce(spec: CaptureSpec): Promise<void> {
     }
 
     // Auto-hide takes the rail and bar away after 10 s without a touch; the
-    // click above counts as one.
-    if (spec.idleChrome) await page.waitForTimeout(11_000);
+    // click above counts as one. Wait until the content has lost the rail's
+    // margin rather than for a fixed time, and fail rather than ship a shot
+    // with the chrome still showing.
+    if (spec.idleChrome) {
+      await page
+        .waitForFunction(() => !document.querySelector('main')?.classList.contains('ml-16'), null, { timeout: 20_000 })
+        .catch(() => {
+          throw new Error(`${spec.name}: the side rail and top bar did not auto-hide`);
+        });
+      await page.waitForTimeout(800); // let the slide-out finish
+    }
     if (spec.idle) {
       // The toolbar's "screensaver now" event, which a calm dashboard answers
       // by fading in place rather than opening the separate screensaver.

@@ -136,3 +136,23 @@ describe('the screenshot run uses all of the above', () => {
     expect(read('src/lib/db/seed.ts')).toMatch(/afternoonTripEvents\(NOW\)/);
   });
 });
+
+describe('dashboard screenshots without the side rail and top bar', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const fs = require('node:fs') as typeof import('node:fs');
+  const script = fs.readFileSync(require.resolve('../../../scripts/capture-screenshots.ts'), 'utf8');
+  const spec = (name: string) => {
+    const start = script.indexOf(`name: '${name}'`);
+    return script.slice(start, script.indexOf('}', start));
+  };
+
+  it('asks for the auto-hidden chrome on the light and dark dashboards', () => {
+    expect(spec('dashboard-light')).toMatch(/idleChrome: true/);
+    expect(spec('dashboard-dark')).toMatch(/idleChrome: true/);
+  });
+
+  it('turns auto-hide on for the screen, and waits until the rail is gone', () => {
+    expect(script).toMatch(/localStorage\.setItem\('prism:auto-hide-ui', 'true'\)/);
+    expect(script).toMatch(/classList\.contains\('ml-16'\)/);
+  });
+});
