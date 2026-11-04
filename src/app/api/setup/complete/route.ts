@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
-import { settings, users } from '@/lib/db/schema';
+import { layouts, settings, users } from '@/lib/db/schema';
+import { FIRST_SCREEN_TEMPLATE, NEW_INSTALL_HIDDEN_PAGES } from '@/lib/constants/layoutTemplates';
 import { memberOrder } from '@/lib/db/memberOrder';
 import { eq, sql } from 'drizzle-orm';
 
@@ -33,12 +34,18 @@ export async function POST() {
       .select()
       .from(settings)
       .where(eq(settings.key, 'displayUserId'));
+    const primary = memberRows.find((m) => m.role === 'parent') ?? memberRows[0]!;
     if (!displaySetting) {
-      const primary = memberRows.find((m) => m.role === 'parent') ?? memberRows[0]!;
       await db.insert(settings).values({ key: 'displayUserId', value: primary.id });
     }
 
     const existing = await db.select().from(settings).where(eq(settings.key, 'setupComplete'));
+    if (existing.length === 0) {
+      // First time setup finishes: give the new install its first screen.
+      // Re-running setup later (or an install from before this existed) has
+      // a setupComplete row already and is left exactly as it is.
+      await writeFirstScreen(primary.id);
+    }
     if (existing.length > 0) {
       await db.update(settings)
         .set({ value: { completedAt: new Date().toISOString() } })
@@ -53,5 +60,28 @@ export async function POST() {
   } catch (error) {
     console.error('[setup/complete]', error);
     return NextResponse.json({ error: 'Failed to mark setup complete' }, { status: 500 });
+  }
+}
+
+/**
+ * The first screen of a brand-new install (#808): a calendar-first layout and
+ * three pages hidden. Each part is written only when nothing is there yet, so
+ * a layout or a page choice made before setup finished is never replaced.
+ */
+async function writeFirstScreen(createdBy: string) {
+  const [anyLayout] = await db.select({ id: layouts.id }).from(layouts).limit(1);
+  if (!anyLayout) {
+    await db.insert(layouts).values({
+      name: FIRST_SCREEN_TEMPLATE.name,
+      slug: 'home',
+      isDefault: true,
+      orientation: FIRST_SCREEN_TEMPLATE.orientation,
+      widgets: FIRST_SCREEN_TEMPLATE.widgets,
+      createdBy,
+    });
+  }
+  const [hidden] = await db.select().from(settings).where(eq(settings.key, 'hiddenPages'));
+  if (!hidden) {
+    await db.insert(settings).values({ key: 'hiddenPages', value: [...NEW_INSTALL_HIDDEN_PAGES] });
   }
 }
