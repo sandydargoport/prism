@@ -967,9 +967,13 @@ async function seed() {
     // The wizard normally writes this row after creating the first parent;
     // since the seed creates parents directly, we shortcut here.
     { key: 'setupComplete', value: { completedAt: NOW.toISOString() } },
+    // The wall's signed-out view shows this member's layouts and calendars.
+    // The wizard sets it to the first parent (api/setup/complete); without it
+    // a seeded instance shows signed-out visitors no layouts at all.
+    { key: 'displayUserId', value: alex.id },
   ]);
 
-  console.log(`  Created 4 settings (including setupComplete)`);
+  console.log(`  Created 5 settings (including setupComplete and displayUserId)`);
 
   // ─── LAYOUTS ──────────────────────────────────────────────────────────────
   console.log('Creating default layout...');

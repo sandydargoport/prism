@@ -31,11 +31,23 @@
  *
  * Login is automatic, using Alex (parent) with PIN 1234 from the seed. No setup
  * wizard needed; the seed pre-creates users + settings + layout.
+ *
+ * Fixed clock: set PRISM_SEED_NOW (and TZ, default America/Chicago) for both
+ * the seed and this script, and every shot draws the same moment. The refresh
+ * workflow does.
+ *
+ * Hero set (`npm run screenshots:capture -- hero`): the same moment on a 1080p
+ * touch wall and a tablet (signed out) and a phone (signed in), light and dark,
+ * on the Family Central layout. frame-screenshots.ts then puts each trio into
+ * device frames: docs/demos/hero-light.png and hero-dark.png. Design rules for
+ * what those screens should look like are in docs/DESIGN.md.
  */
 
 import { chromium, Browser, BrowserContext, Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
+import { LAYOUT_TEMPLATES } from '../src/lib/constants/layoutTemplates';
+import { frameAll } from './frame-screenshots';
 
 // Refuse to run against anything that is not a declared test database. This is
 // the same flag e2e/*.spec.ts gate on. It is a deliberate choice rather than a
@@ -60,6 +72,29 @@ const OUT_DIR = path.resolve(__dirname, '..', 'docs', 'demos');
 
 const DESKTOP_VIEWPORT = { width: 1440, height: 900 };
 const MOBILE_VIEWPORT = { width: 390, height: 844 }; // iPhone 14
+
+/**
+ * A fixed clock, so a re-run draws the same day. The seed takes the same
+ * instant (PRISM_SEED_NOW), so the fixtures and the page agree on "today".
+ * setFixedTime, not clock.install: Date is frozen, intervals still run.
+ */
+const FIXED_NOW = process.env.PRISM_SEED_NOW;
+
+/** The demo family lives in Springfield, IL. The seed must run in the same zone. */
+const TIMEZONE = process.env.TZ || 'America/Chicago';
+
+/**
+ * Touch-screen devices for the hero shots. Pointer type has to be set when
+ * the browser launches (Blink bitmask: coarse = 2); emulating it per page is
+ * silently ignored. A coarse pointer is what makes Prism size itself for a
+ * wall: the 20px root and the 14px text floor.
+ */
+const DEVICES = {
+  wall: { viewport: { width: 1920, height: 1080 }, scale: 1, isMobile: false },
+  tablet: { viewport: { width: 1180, height: 820 }, scale: 1, isMobile: false },
+  phone: { viewport: { width: 390, height: 844 }, scale: 2, isMobile: true },
+} as const;
+type DeviceName = keyof typeof DEVICES;
 
 type CalendarViewType =
   | 'agenda'
@@ -101,7 +136,48 @@ interface CaptureSpec {
    * the target has no wallpaper photos.
    */
   pinWallpaper?: boolean;
+  /** A touch-screen device from DEVICES, instead of the desktop or mobile viewport. */
+  device?: DeviceName;
+  /** Capture signed out, the way a wall display runs. */
+  signedOut?: boolean;
 }
+
+/**
+ * The hero set: the same moment on a wall, a tablet and a phone, in light and
+ * dark. frame-screenshots.ts puts each trio into device frames afterwards.
+ * The wall and the tablet are signed out, as they would be in a kitchen; the
+ * phone is a parent's, signed in.
+ */
+const HERO_SHOTS: CaptureSpec[] = (['light', 'dark'] as const).flatMap((theme) => [
+  {
+    name: `hero-wall-${theme}`,
+    url: '/',
+    description: `Wall display, 1080p touch, signed out (${theme})`,
+    theme,
+    device: 'wall' as const,
+    signedOut: true,
+    pinWallpaper: true,
+    settleMs: 15000,
+  },
+  {
+    name: `hero-tablet-${theme}`,
+    url: '/',
+    description: `Tablet, touch, signed out (${theme})`,
+    theme,
+    device: 'tablet' as const,
+    signedOut: true,
+    pinWallpaper: true,
+    settleMs: 15000,
+  },
+  {
+    name: `hero-phone-${theme}`,
+    url: '/',
+    description: `Phone, signed in (${theme})`,
+    theme,
+    device: 'phone' as const,
+    settleMs: 15000,
+  },
+]);
 
 const SCREENSHOTS: CaptureSpec[] = [
   // ─── Dashboard ─────────────────────────────────────────────
@@ -301,6 +377,8 @@ const SCREENSHOTS: CaptureSpec[] = [
     description: 'Family message board',
     settleMs: 1000,
   },
+  // Last, because they restage the dashboard layout (see stageHeroLayout).
+  ...HERO_SHOTS,
 ];
 
 async function loginAsAlex(page: Page) {
@@ -410,6 +488,34 @@ async function ensureDemoPhotos(browser: Browser): Promise<void> {
 }
 
 /**
+ * Put the seeded default dashboard into the calendar-first layout the hero
+ * shows, and return a function that puts the original back. Signed-out
+ * screens show the display member's default layout, which is this one.
+ */
+async function stageHeroLayout(browser: Browser): Promise<() => Promise<void>> {
+  const context = await browser.newContext({ baseURL: BASE_URL });
+  const page = await context.newPage();
+  await page.goto('/', { waitUntil: 'load', timeout: 60_000 });
+  await loginAsAlex(page);
+  const json = await (await page.request.get('/api/layouts')).json();
+  const layout = (json.layouts ?? []).find((l: { isDefault?: boolean }) => l.isDefault);
+  if (!layout) {
+    await context.close();
+    throw new Error('No default layout to stage: did the seed run, and set displayUserId?');
+  }
+  const original = layout.widgets;
+  const patch = (widgets: unknown) =>
+    page.request.patch(`/api/layouts/${layout.id}`, { data: { widgets } });
+  const resp = await patch(LAYOUT_TEMPLATES.familyCentral!.widgets);
+  if (!resp.ok()) throw new Error(`Staging the hero layout failed: ${resp.status()}`);
+  console.log('  staged the Family Central layout for the hero shots');
+  return async () => {
+    await patch(original);
+    await context.close();
+  };
+}
+
+/**
  * Wait until any loading indicators have disappeared. Next.js dev mode
  * compiles each route on first hit, taking several seconds, during which
  * the page shows "Loading shopping lists…" / a "Prism" splash / skeleton
@@ -444,16 +550,40 @@ async function waitForContentReady(page: Page, settleMs = 3500): Promise<void> {
   await page.waitForTimeout(settleMs);
 }
 
-async function captureOnce(browser: Browser, spec: CaptureSpec): Promise<void> {
-  const viewport = spec.mobile ? MOBILE_VIEWPORT : DESKTOP_VIEWPORT;
+/** One browser per pointer type, launched on first use (see DEVICES). */
+const browsers = new Map<'fine' | 'coarse', Promise<Browser>>();
+function browserFor(spec: CaptureSpec): Promise<Browser> {
+  const pointer = spec.device ? 'coarse' : 'fine';
+  if (!browsers.has(pointer)) {
+    browsers.set(
+      pointer,
+      chromium.launch(
+        pointer === 'coarse'
+          ? { args: ['--blink-settings=primaryPointerType=2,availablePointerTypes=2'] }
+          : {},
+      ),
+    );
+  }
+  return browsers.get(pointer)!;
+}
+
+async function captureOnce(spec: CaptureSpec): Promise<void> {
+  const browser = await browserFor(spec);
+  const device = spec.device ? DEVICES[spec.device] : null;
+  const viewport = device?.viewport ?? (spec.mobile ? MOBILE_VIEWPORT : DESKTOP_VIEWPORT);
   const context: BrowserContext = await browser.newContext({
     baseURL: BASE_URL,
     viewport,
+    deviceScaleFactor: device?.scale ?? 1,
+    isMobile: device?.isMobile ?? false,
+    hasTouch: Boolean(device),
+    timezoneId: TIMEZONE,
     reducedMotion: 'reduce',
     colorScheme: spec.theme === 'dark' ? 'dark' : 'light',
   });
 
   const page = await context.newPage();
+  if (FIXED_NOW) await page.clock.setFixedTime(new Date(FIXED_NOW));
 
   // Pre-seed localStorage BEFORE first paint so the page renders directly in
   // the requested state (theme + calendar view) without a mid-load swap.
@@ -527,6 +657,9 @@ async function captureOnce(browser: Browser, spec: CaptureSpec): Promise<void> {
       }
     }
 
+    // A wall runs signed out. Signing in above was only to find the photo.
+    if (spec.signedOut) await context.clearCookies();
+
     // Navigate to the target page.
     await page.goto(spec.url, { waitUntil: 'load', timeout: 60_000 });
 
@@ -552,6 +685,19 @@ async function captureOnce(browser: Browser, spec: CaptureSpec): Promise<void> {
     // extra settle for animations + render finalization. Pass through the
     // spec's settleMs override; otherwise the function default applies.
     await waitForContentReady(page, spec.settleMs);
+
+    // In dev mode a signed-out load can open "Sign in to make changes" on its
+    // own: the time-zone backfill in TimeFormatProvider runs when its effect is
+    // cancelled, and dev runs effects twice. Close it until that is fixed.
+    if (spec.signedOut) {
+      // The box has no dialog role and ignores Escape, so press its close button.
+      const title = page.getByText('Sign in to make changes');
+      if (await title.isVisible().catch(() => false)) {
+        await title.locator('xpath=ancestor::div[.//button][1]').locator('button').first().click();
+        await title.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+        await page.waitForTimeout(500);
+      }
+    }
 
     // Wait for any <img> (photo thumbnails, recipe images, avatars) to finish
     // loading. waitForContentReady only tracks spinners/skeletons, not images,
@@ -597,10 +743,10 @@ async function waitForStackReady(timeoutMs = 180_000): Promise<boolean> {
   return false;
 }
 
-async function captureOne(browser: Browser, spec: CaptureSpec): Promise<boolean> {
+async function captureOne(spec: CaptureSpec): Promise<boolean> {
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      await captureOnce(browser, spec);
+      await captureOnce(spec);
       console.log(`  ✓ ${spec.name}.png  (${spec.description})`);
       return true;
     } catch (err) {
@@ -659,18 +805,25 @@ async function main() {
     process.exit(1);
   }
 
-  const browser = await chromium.launch();
+  if (!FIXED_NOW) {
+    console.warn('  PRISM_SEED_NOW is not set: shots use the real clock and will differ run to run.');
+  }
+
   let ok = 0;
   let failed = 0;
+  let restoreLayout: (() => Promise<void>) | null = null;
 
   try {
     // Ensure the target has demo photos (Photos page, dashboard hero,
     // screensaver) before capturing. Skipped automatically if a photo filter
     // is not part of the run but photos are cheap and shared, so always run it.
-    await ensureDemoPhotos(browser);
+    await ensureDemoPhotos(await browserFor({} as CaptureSpec));
 
     for (const spec of specs) {
-      const success = await captureOne(browser, spec);
+      if (spec.name.startsWith('hero-') && !restoreLayout) {
+        restoreLayout = await stageHeroLayout(await browserFor({} as CaptureSpec));
+      }
+      const success = await captureOne(spec);
       if (success) ok++;
       else failed++;
       // Small pause between captures so the dev server has time to recover
@@ -678,7 +831,13 @@ async function main() {
       await new Promise((r) => setTimeout(r, 1_500));
     }
   } finally {
-    await browser.close();
+    if (restoreLayout) await restoreLayout().catch(() => {});
+    for (const b of browsers.values()) await (await b).close();
+  }
+
+  if (specs.some((s) => s.name.startsWith('hero-'))) {
+    console.log('\nFraming hero shots...');
+    for (const f of await frameAll(OUT_DIR)) console.log(`  ✓ ${path.basename(f)}`);
   }
 
   console.log(`\nDone. ${ok} of ${specs.length} captured`);
