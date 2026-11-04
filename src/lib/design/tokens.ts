@@ -1,5 +1,5 @@
 /**
- * Prism 2.0 design tokens. docs/DESIGN.md explains each one; this file is the
+ * Prism design tokens. docs/DESIGN.md explains each one; this file is the
  * value, and the CSS in globals.css copies it (a test checks they agree).
  *
  * Sizes are given in px as they render on the reference screen: a 1080p wall
@@ -7,8 +7,8 @@
  * desk (14px root) and a phone (16px root) scale them down, and the text
  * floor stops the small ones going under 14px on a wall or 12px close up.
  *
- * Nothing here is wired into the existing themes yet. Track A of the 2.0 plan
- * (#808 and the wall polish after it) adopts these one surface at a time.
+ * The Paper palette and the setup wizard's Look step use these; the other
+ * themes adopt them one surface at a time.
  */
 import type { ThemeTokens } from '@/lib/themes/tokens';
 

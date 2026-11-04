@@ -91,7 +91,7 @@
     JetBrains Mono, Menlo, Monaco, Consolas, Liberation Mono, Courier New,
     monospace;
 
-  /* Prism 2.0 type roles (docs/DESIGN.md, src/lib/design/tokens.ts). rem at
+  /* Type roles (docs/DESIGN.md, src/lib/design/tokens.ts). rem at
      the 20px wall root: caption 14, body 20, title 28, display 48, clock 100.
      Floored like the rest, so a desk or a zoomed widget never goes under the
      floor. A test reads these lines and compares them with tokens.ts. */
@@ -417,7 +417,7 @@ html.performance-mode {
 
 @layer base {
   :root {
-    /* Prism 2.0 shape tokens (docs/DESIGN.md). Not colours, so no theme
+    /* Shape tokens (docs/DESIGN.md). Not colours, so no theme
        writes them; tokens.ts holds the values and a test checks these match. */
     --ds-target-min: 44px;
     --ds-card-radius: 0.8rem;

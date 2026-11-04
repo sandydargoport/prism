@@ -1,6 +1,6 @@
 # Prism design guide
 
-How Prism 2.0 screens should look and behave. The values live in
+How Prism screens should look and behave. The values live in
 `src/lib/design/tokens.ts`; `src/styles/globals.css` copies them as CSS, and
 `src/lib/design/__tests__/tokens.test.ts` fails if the code, the CSS or the
 tables below disagree. Change a value in all three in the same PR.
@@ -34,7 +34,7 @@ screen in: the clock, then the next thing, then the rows.
 
 ## Colour
 
-The 2.0 palette is **Paper**: warm neutrals in light and dark, with one accent.
+The palette new installs start on is **Paper**: warm neutrals in light and dark, with one accent.
 
 | | Light | Dark |
 |---|---|---|
