@@ -421,6 +421,66 @@ test.describe('3 Months folds a busy day', () => {
 });
 
 /**
+ * Now & Next (#806). The page clock is fixed at 12:00 UTC on a far date, and
+ * the events sit around it, so "today" is one day in any zone CI uses (UTC,
+ * Chicago) and the countdown is exact. Measured on a wall screen at 1080p:
+ * the lines say what is on and what is next, nothing is under the floor and
+ * nothing is drawn outside the widget.
+ */
+test.describe('Now & Next widget', () => {
+  test('shows the event in progress, the next one with its countdown, at the floor', async ({ playwright }, info) => {
+    test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
+    test.setTimeout(120_000);
+    const { browser, page } = await pointerPage(playwright, info, 1, { width: 1920, height: 1080 });
+    const parentId = getSeededParentId();
+    const login = await page.request.post('/api/auth/login', { data: { userId: parentId, pin: PIN } });
+    expect(login.ok(), 'precondition: login must succeed').toBe(true);
+    const T = new Date('2028-03-15T12:00:00Z');
+    const at = (min: number) => new Date(T.getTime() + min * 60_000).toISOString();
+    const created: string[] = [];
+    // Each project runs in parallel against one database: own titles.
+    const tag = `${info.project.name} ${Date.now()}`;
+    const nowTitle = `Now e2e lesson ${tag}`;
+    const nextTitle = `Next e2e practice ${tag}`;
+    const layout = await (await page.request.post('/api/layouts', {
+      data: { name: `Now next e2e ${Date.now()}`, widgets: [{ i: 'nowNext', x: 0, y: 0, w: 24, h: 8 }] },
+    })).json();
+    try {
+      for (const [title, start, end] of [[nowTitle, -20, 40], [nextTitle, 90, 150]] as const) {
+        const res = await page.request.post('/api/events', {
+          data: { title, startTime: at(start), endTime: at(end), allDay: false, createdBy: parentId },
+        });
+        expect(res.status()).toBe(201);
+        created.push((await res.json()).id);
+      }
+      await page.clock.setFixedTime(T);
+      await page.goto(`/d/${layout.slug}`, { waitUntil: 'load' });
+      const cell = page.locator('.widget-cell[data-widget="nowNext"]');
+      await expect(cell.locator('[data-now-next="now"]', { hasText: nowTitle })).toBeVisible({ timeout: 60_000 });
+      // The other project's events can be on too; the next one is still ours
+      // or its twin, both 90 minutes out.
+      await expect(cell.locator('[data-now-next="next"]')).toContainText('Next e2e practice');
+      await expect(cell.locator('[data-now-next="next"]')).toContainText('in 1 h 30 min');
+      const { count, under } = await textUnder(page, 14, '.widget-cell[data-widget="nowNext"]');
+      expect(count).toBeGreaterThan(3);
+      expect(under, 'Now & Next text under 14px').toEqual([]);
+      const spill = await cell.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return [...el.querySelectorAll('[data-now-next]')].filter((l) => {
+          const b = l.getBoundingClientRect();
+          return b.bottom > r.bottom + 0.5 || b.right > r.right + 0.5;
+        }).length;
+      });
+      expect(spill, 'lines drawn outside the widget').toBe(0);
+    } finally {
+      for (const id of created) await page.request.delete(`/api/events/${id}`);
+      await page.request.delete(`/api/layouts/${layout.id}`);
+      await browser.close();
+    }
+  });
+});
+
+/**
  * The clock fits its tile (#808 hero). A tablet is a touch screen at 1180px, so
  * it gets the 20px wall root; at that size "4:10 PM" in a small tile wrapped
  * onto two lines and the date ran out of the box. The clock now sizes from its

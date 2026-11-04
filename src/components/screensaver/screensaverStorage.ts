@@ -16,6 +16,7 @@ export const DEFAULT_SCREENSAVER_LAYOUT: WidgetConfig[] = [
   { i: 'photos', x: 16, y: 16, w: 16, h: 16, visible: false },
   { i: 'wishes', x: 16, y: 0, w: 12, h: 16, visible: false },
   { i: 'busTracking', x: 36, y: 0, w: 12, h: 12, visible: false },
+  { i: 'nowNext', x: 0, y: 0, w: 24, h: 6, visible: false },
 ];
 
 export function loadScreensaverLayout(): WidgetConfig[] {

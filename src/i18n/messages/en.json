@@ -203,7 +203,8 @@
       "title": "Bring your calendars in",
       "body": "Connect Google, iCloud, Outlook or a calendar link, and the family's week shows up here.",
       "action": "Connect a calendar"
-    }
+    },
+    "now": "Now"
   },
   "birthdays": {
     "title": "Upcoming Birthdays & Milestones",
@@ -244,5 +245,21 @@
       "line": "{name}: {begin} to {end}, peak {peak}",
       "marker": "Eclipse {peak}"
     }
+  },
+  "nowNext": {
+    "title": "Now & Next",
+    "now": "Now",
+    "next": "Next",
+    "until": "until {time}",
+    "at": "{time} · in {countdown}",
+    "startsIn": "starts in {countdown}",
+    "noEvents": "Today: no events",
+    "nothingElse": "Nothing else today",
+    "bus": "Bus",
+    "busAt": "at the stop {time} · in {countdown}",
+    "busHere": "at the stop now",
+    "minutes": "{count} min",
+    "hours": "{count} h",
+    "hoursMinutes": "{h} h {m} min"
   }
 }

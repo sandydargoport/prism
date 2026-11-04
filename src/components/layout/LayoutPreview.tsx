@@ -48,6 +48,7 @@ const WIDGET_COLORS: Record<string, string> = {
   birthdays: '#A855F7', // purple
   photos: '#14B8A6',    // teal
   points: '#EAB308',    // yellow
+  nowNext: '#0EA5E9',   // sky
 };
 
 const WIDGET_LABELS: Record<string, string> = {
@@ -62,6 +63,7 @@ const WIDGET_LABELS: Record<string, string> = {
   birthdays: 'BDY',
   photos: 'PHO',
   points: 'PTS',
+  nowNext: 'NOW',
 };
 
 /**

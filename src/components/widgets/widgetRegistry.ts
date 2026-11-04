@@ -14,6 +14,7 @@ const PhotoWidget = lazy(() => import('./PhotoWidget').then(m => ({ default: m.P
 const PointsWidget = lazy(() => import('./PointsWidget').then(m => ({ default: m.PointsWidget })));
 const WishesWidget = lazy(() => import('./WishesWidget').then(m => ({ default: m.WishesWidget })));
 const BusTrackingWidget = lazy(() => import('./BusTrackingWidget').then(m => ({ default: m.BusTrackingWidget })));
+const NowNextWidget = lazy(() => import('./NowNextWidget').then(m => ({ default: m.NowNextWidget })));
 const TravelWidget = lazy(() => import('./TravelWidget').then(m => ({ default: m.TravelWidget })));
 
 export interface WidgetProps {
@@ -131,6 +132,15 @@ export const WIDGET_REGISTRY: Record<string, WidgetRegistryEntry> = {
     defaultH: 10,
     canBeEmpty: true,
   },
+  nowNext: {
+    component: NowNextWidget,
+    label: 'Now & Next',
+    icon: 'Timer',
+    minW: 12,
+    minH: 4,
+    defaultW: 24,
+    defaultH: 6,
+  },
   photos: {
     component: PhotoWidget,
     label: 'Photos',
@@ -196,4 +206,5 @@ export const SCREENSAVER_WIDGETS = [
   { id: 'photos', label: 'Photos' },
   { id: 'wishes', label: 'Wishes' },
   { id: 'busTracking', label: 'Bus Tracker' },
+  { id: 'nowNext', label: 'Now & Next' },
 ];
