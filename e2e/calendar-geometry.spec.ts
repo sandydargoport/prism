@@ -272,6 +272,20 @@ async function pointerPage(
   return { browser, page: await context.newPage() };
 }
 
+/**
+ * Create an event, waiting out the per-user rate limit (30 a minute). Both
+ * browser projects create events for the same seeded parent at about the same
+ * time, so a run can hit the limit through no fault of the code under test.
+ */
+async function postEvent(page: Page, data: Record<string, unknown>) {
+  for (let attempt = 0; ; attempt++) {
+    const res = await page.request.post('/api/events', { data });
+    if (res.status() !== 429 || attempt >= 3) return res;
+    const wait = Number(res.headers()['retry-after'] ?? '20');
+    await page.waitForTimeout(Math.min(Math.max(wait, 1), 65) * 1000);
+  }
+}
+
 async function openCalendarView(page: Page, view: string) {
   if (HAS_TEST_DB) {
     const login = await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } });
@@ -369,14 +383,12 @@ test.describe('3 Months folds a busy day', () => {
         // In UTC, 07:00-12:30 on the 12th is the 12th in every zone CI uses: the
         // runner and server in Tokyo, the browser in Chicago or Tokyo.
         const start = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 12, 7 + i));
-        const res = await page.request.post('/api/events', {
-          data: {
-            title: `Busy day e2e ${i + 1}`,
-            startTime: start.toISOString(),
-            endTime: new Date(start.getTime() + 30 * 60_000).toISOString(),
-            allDay: false,
-            createdBy: parentId,
-          },
+        const res = await postEvent(page, {
+          title: `Busy day e2e ${i + 1}`,
+          startTime: start.toISOString(),
+          endTime: new Date(start.getTime() + 30 * 60_000).toISOString(),
+          allDay: false,
+          createdBy: parentId,
         });
         expect(res.status()).toBe(201);
         created.push((await res.json()).id);
@@ -445,18 +457,18 @@ test.describe('busy days page on the wall', () => {
     const now = new Date();
     const busyDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-12`;
     const tag = info.project.name;
-    const titles = Array.from({ length: 9 }, (_, i) => `Paged e2e ${tag} ${i + 1}`);
+    // Five: more than a 1080p day holds in either mode (two inline, three as
+    // cards), so it pages, and few enough to stay clear of the rate limit.
+    const titles = Array.from({ length: 5 }, (_, i) => `Paged e2e ${tag} ${i + 1}`);
     const created: string[] = [];
     const layout = await (await page.request.post('/api/layouts', {
       data: { name: `Paging e2e ${Date.now()}`, widgets: [{ i: 'calendar', x: 0, y: 0, w: 32, h: 32 }] },
     })).json();
     try {
       for (const [i, title] of titles.entries()) {
-        // 06:00-14:30 UTC is the 12th in every zone CI uses (Tokyo, Chicago).
+        // 06:00-10:30 UTC is the 12th in every zone CI uses (Tokyo, Chicago).
         const start = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 12, 6 + i));
-        const res = await page.request.post('/api/events', {
-          data: { title, startTime: start.toISOString(), endTime: new Date(start.getTime() + 30 * 60_000).toISOString(), allDay: false, createdBy: parentId },
-        });
+        const res = await postEvent(page, { title, startTime: start.toISOString(), endTime: new Date(start.getTime() + 30 * 60_000).toISOString(), allDay: false, createdBy: parentId });
         expect(res.status()).toBe(201);
         created.push((await res.json()).id);
       }
@@ -530,9 +542,7 @@ test.describe('Now & Next widget', () => {
     })).json();
     try {
       for (const [title, start, end] of [[nowTitle, -20, 40], [nextTitle, 90, 150]] as const) {
-        const res = await page.request.post('/api/events', {
-          data: { title, startTime: at(start), endTime: at(end), allDay: false, createdBy: parentId },
-        });
+        const res = await postEvent(page, { title, startTime: at(start), endTime: at(end), allDay: false, createdBy: parentId });
         expect(res.status()).toBe(201);
         created.push((await res.json()).id);
       }
