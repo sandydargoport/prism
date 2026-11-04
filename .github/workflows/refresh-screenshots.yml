@@ -133,7 +133,9 @@ jobs:
           if ! curl -sf http://localhost:3000/api/health >/dev/null 2>&1; then
             echo "App failed to start. Last 60 log lines:"; tail -60 /tmp/dev.log; exit 1
           fi
-          PRISM_URL=http://localhost:3000 npm run screenshots:capture
+          PRISM_URL=http://localhost:3000 npm run screenshots:capture || {
+            echo "Capture failed. Last 120 server log lines:"; tail -120 /tmp/dev.log; exit 1
+          }
 
       - name: Show changed images
         if: always()

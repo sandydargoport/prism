@@ -175,11 +175,20 @@ async function stageLook(browser: Browser, stage: Stage): Promise<() => Promise<
   const page = await context.newPage();
   await page.goto('/', { waitUntil: 'load', timeout: 60_000 });
   await loginAsAlex(page);
-  const json = await (await page.request.get('/api/layouts')).json();
-  const layout = (json.layouts ?? []).find((l: { isDefault?: boolean }) => l.isDefault);
+  const listed = await page.request.get('/api/layouts');
+  const json = await listed.json().catch(() => ({}));
+  type Listed = { id: string; name?: string; isDefault?: boolean; widgets: unknown; idleBackground?: unknown };
+  const all: Listed[] = json.layouts ?? [];
+  const layout = all.find((l) => l.isDefault);
   if (!layout) {
     await context.close();
-    throw new Error('No default layout to stage: did the seed run, and set displayUserId?');
+    // Say what came back: a failed request and a list without a default need
+    // different fixes, and the run log is all there is to go on.
+    const seen = all.map((l) => `${l.name}${l.isDefault ? ' (default)' : ''}`).join(', ') || 'none';
+    throw new Error(
+      `No default layout to stage the ${stage.look} look: GET /api/layouts answered ${listed.status()}, ` +
+        `layouts: ${seen}${json.error ? `, error: ${json.error}` : ''}`,
+    );
   }
   const settings = (await (await page.request.get('/api/settings')).json()) as Record<string, unknown>;
   const setSetting = (key: string, value: unknown) =>
@@ -203,12 +212,20 @@ async function stageLook(browser: Browser, stage: Stage): Promise<() => Promise<
   }
   console.log(`  staged the ${stage.look} look on the ${stage.layout} dashboard`);
   return async () => {
-    await page.request.patch(`/api/layouts/${layout.id}`, {
-      data: { widgets: original.widgets, idleBackground: original.idleBackground ?? { source: 'photos' } },
-    });
-    await setSetting('theme', original.theme ?? { mode: 'system' });
-    await setSetting('wallpaperScenery', original.scenery ?? false);
+    // Check each answer: a restore that fails quietly leaves the next staging
+    // to start from whatever this one left behind.
+    const answers = [
+      await page.request.patch(`/api/layouts/${layout.id}`, {
+        data: { widgets: original.widgets, idleBackground: original.idleBackground ?? { source: 'photos' } },
+      }),
+      await setSetting('theme', original.theme ?? { mode: 'system' }),
+      await setSetting('wallpaperScenery', original.scenery ?? false),
+    ];
     await context.close();
+    const failed = answers.filter((r) => !r.ok());
+    if (failed.length > 0) {
+      throw new Error(`Restoring after the ${stage.look} look failed: ${failed.map((r) => `${r.url()} ${r.status()}`).join(', ')}`);
+    }
   };
 }
 

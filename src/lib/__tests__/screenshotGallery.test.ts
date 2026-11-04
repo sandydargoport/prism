@@ -55,3 +55,17 @@ describe('the docs gallery', () => {
     expect(shot('idle-screen').idle).toBe(true);
   });
 });
+
+describe('a failed staging explains itself', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const fs = require('node:fs') as typeof import('node:fs');
+  const read = (p: string) => fs.readFileSync(require.resolve(`../../../${p}`), 'utf8');
+
+  it('prints the server log when the capture fails', () => {
+    expect(read('.github/workflows/refresh-screenshots.yml')).toMatch(/npm run screenshots:capture \|\| \{[\s\S]*tail -120 \/tmp\/dev\.log/);
+  });
+
+  it('checks every answer when putting a look back', () => {
+    expect(read('scripts/capture-screenshots.ts')).toMatch(/const failed = answers\.filter\(\(r\) => !r\.ok\(\)\)/);
+  });
+});
