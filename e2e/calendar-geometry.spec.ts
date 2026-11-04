@@ -452,7 +452,8 @@ test.describe('busy days page on the wall', () => {
     })).json();
     try {
       for (const [i, title] of titles.entries()) {
-        const start = new Date(now.getFullYear(), now.getMonth(), 12, 6 + i);
+        // 06:00-14:30 UTC is the 12th in every zone CI uses (Tokyo, Chicago).
+        const start = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 12, 6 + i));
         const res = await page.request.post('/api/events', {
           data: { title, startTime: start.toISOString(), endTime: new Date(start.getTime() + 30 * 60_000).toISOString(), allDay: false, createdBy: parentId },
         });
