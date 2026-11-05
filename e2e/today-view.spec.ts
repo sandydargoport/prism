@@ -262,4 +262,45 @@ test.describe('the Today view', () => {
       await page.request.delete(`/api/events/${event.id}`);
     }
   });
+
+  // #805: the coming days as sentences, bottom left, at the text floor or above.
+  test('the coming days read as sentences in the lower left', async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await login(page);
+    const d = new Date();
+    const tomorrow = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, 9);
+    const title = `Dentist ${Date.now()}`;
+    const ev = await postEvent(page, { title, startTime: tomorrow.toISOString(), endTime: new Date(tomorrow.getTime() + 3600_000).toISOString(), allDay: false, createdBy: getSeededParentId() });
+    expect(ev.status()).toBe(201);
+    const event = await ev.json();
+    const layout = await (await page.request.post('/api/layouts', { data: { name: `Days e2e ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
+    try {
+      await page.route('**/api/weather*', (route) => route.fulfill({ json: WEATHER }));
+      await page.goto(`/d/${layout.slug}`);
+      const block = page.locator('[data-today-coming]');
+      await block.waitFor({ timeout: 60_000 });
+      await expect(block.locator('dt').first()).toHaveText('Tomorrow');
+      await expect(block.locator('dd').first()).toContainText(`${title} at 9`);
+      const m = await page.evaluate(() => {
+        const scene = document.querySelector('[data-today-scene]')!.getBoundingClientRect();
+        const b = document.querySelector('[data-today-coming]')!.getBoundingClientRect();
+        const probe = document.createElement('div');
+        probe.style.fontSize = 'var(--text-floor)';
+        document.body.appendChild(probe);
+        const floor = parseFloat(getComputedStyle(probe).fontSize);
+        probe.remove();
+        const sizes = [...document.querySelectorAll('[data-today-coming] dt, [data-today-coming] dd, [data-today-more]')]
+          .map((el) => parseFloat(getComputedStyle(el).fontSize));
+        return { scene, b, floor, sizes };
+      });
+      expect(m.b.left - m.scene.left, 'left side').toBeLessThan(m.scene.width / 2);
+      expect(m.b.right - m.scene.left, 'stays in the left part').toBeLessThanOrEqual(m.scene.width * 0.6);
+      expect(m.b.top - m.scene.top, 'lower half').toBeGreaterThan(m.scene.height / 2);
+      expect(m.b.bottom).toBeLessThanOrEqual(m.scene.bottom);
+      for (const s of m.sizes) expect(s).toBeGreaterThanOrEqual(m.floor - 0.01);
+    } finally {
+      await page.request.delete(`/api/layouts/${layout.id}`);
+      await page.request.delete(`/api/events/${event.id}`);
+    }
+  });
 });

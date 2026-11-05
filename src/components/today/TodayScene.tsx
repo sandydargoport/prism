@@ -21,6 +21,7 @@ import { formatTemp, weatherSentence, type WeatherData } from '@/components/widg
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import type { CalendarEvent } from '@/types/calendar';
 import { SunArc } from './SunArc';
+import { ComingDays } from './ComingDays';
 
 /** The parts a Today layout can show, by widget id. */
 export const TODAY_PARTS = ['clock', 'weather', 'calendar', 'birthdays', 'chores', 'shopping'] as const;
@@ -119,6 +120,17 @@ export function TodayScene({
       {isPartShown(parts, 'calendar') && (
         <div className="absolute left-[3rem] right-[3rem] top-[30%] h-[38%]" data-today-arc>
           <SunArc events={events} now={now} sunrise={weather?.sunrise} sunset={weather?.sunset} onOpenEvent={onOpenEvent} />
+        </div>
+      )}
+
+      {/* The coming days as sentences (#805), bottom left. */}
+      {isPartShown(parts, 'calendar') && (
+        <div className="absolute bottom-[3rem] left-[3rem] w-[min(56%,60rem)]">
+          <ComingDays
+            events={events}
+            now={now}
+            daysAhead={Number(parts.find((p) => p.i === 'calendar')?.settings?.daysAhead) || undefined}
+          />
         </div>
       )}
     </div>
