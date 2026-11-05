@@ -22,6 +22,8 @@ import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import type { CalendarEvent } from '@/types/calendar';
 import { SunArc } from './SunArc';
 import { ComingDays } from './ComingDays';
+import { QuietLines } from './QuietLines';
+import type { BirthdayLike, ChoreLike } from '@/lib/today/quietLines';
 
 /** The parts a Today layout can show, by widget id. */
 export const TODAY_PARTS = ['clock', 'weather', 'calendar', 'birthdays', 'chores', 'shopping'] as const;
@@ -50,6 +52,7 @@ export function TodayScene({
   weather,
   events = [],
   onOpenEvent,
+  household,
   topOffset = 0,
 }: {
   parts: WidgetConfig[];
@@ -58,6 +61,14 @@ export function TodayScene({
   events?: CalendarEvent[];
   /** Tap a bead: the event sheet (#836). */
   onOpenEvent?: (event: CalendarEvent) => void;
+  /** Chores, the shopping list and birthdays, for the quiet lines (#911). */
+  household?: {
+    chores: ChoreLike[];
+    lists: Array<{ id: string; name: string; items: Array<{ checked: boolean }> }>;
+    birthdays: BirthdayLike[];
+    onTickChore?: (choreId: string) => void;
+    onAddShopping?: () => void;
+  };
   /** Height of the bar above the scene, when it shows. */
   topOffset?: number;
 }) {
@@ -120,6 +131,20 @@ export function TodayScene({
       {isPartShown(parts, 'calendar') && (
         <div className="absolute left-[3rem] right-[3rem] top-[30%] h-[38%]" data-today-arc>
           <SunArc events={events} now={now} sunrise={weather?.sunrise} sunset={weather?.sunset} onOpenEvent={onOpenEvent} />
+        </div>
+      )}
+
+      {/* Quiet lines (#911), bottom right. */}
+      {household && (
+        <div className="absolute bottom-[3rem] right-[3rem]">
+          <QuietLines
+            chores={isPartShown(parts, 'chores') ? household.chores : []}
+            lists={isPartShown(parts, 'shopping') ? household.lists : []}
+            birthdays={isPartShown(parts, 'birthdays') ? household.birthdays : []}
+            now={now}
+            onTickChore={household.onTickChore}
+            onAddShopping={household.onAddShopping}
+          />
         </div>
       )}
 

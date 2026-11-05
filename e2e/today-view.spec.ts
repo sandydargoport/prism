@@ -303,4 +303,56 @@ test.describe('the Today view', () => {
       await page.request.delete(`/api/events/${event.id}`);
     }
   });
+
+  // #911: quiet lines and the birthday nudge.
+  test('the quiet lines have 44px controls, and the birthday nudge adds a task or goes away', async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    const d = new Date();
+    await page.clock.setFixedTime(new Date(d.getFullYear(), d.getMonth(), d.getDate(), 10));
+    await login(page);
+    const soon = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 2);
+    const name = `Aunt Bea ${Date.now() % 100000}`;
+    const birthDate = `1950-${String(soon.getMonth() + 1).padStart(2, '0')}-${String(soon.getDate()).padStart(2, '0')}`;
+    const created = await page.request.post('/api/birthdays', { data: { name, birthDate } });
+    expect(created.ok()).toBe(true);
+    const birthday = await created.json();
+    const layout = await (await page.request.post('/api/layouts', { data: { name: `Quiet e2e ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
+    let taskId: string | undefined;
+    try {
+      await page.route('**/api/weather*', (route) => route.fulfill({ json: WEATHER }));
+      await page.goto(`/d/${layout.slug}`);
+      const nudge = page.locator('[data-today-nudge]');
+      await expect(nudge).toContainText(name, { timeout: 60_000 });
+      await expect(nudge).toContainText('Mail a card by');
+
+      // Every control on the quiet lines is a 44px target.
+      const small = await page.evaluate(() => [...document.querySelectorAll('[data-today-quiet] button')]
+        .map((b) => b.getBoundingClientRect()).filter((r) => r.width < 44 || r.height < 44).length);
+      expect(small, 'controls under 44px').toBe(0);
+
+      // Add it: a task to mail a card, and this birthday's line goes.
+      await nudge.getByRole('button', { name: 'Add it' }).click();
+      await expect.poll(async () => {
+        const res = await (await page.request.get('/api/tasks')).json();
+        const task = ((res.tasks ?? res) as Array<{ id: string; title: string }>).find((t) => t.title === `Mail a card to ${name}`);
+        taskId = task?.id;
+        return !!task;
+      }, { timeout: 15_000 }).toBe(true);
+      await expect(page.locator('[data-today-nudge]').filter({ hasText: name })).toHaveCount(0);
+
+      // Not now: whatever is offered next goes away, and stays away after a reload.
+      for (let i = 0; i < 5 && (await page.locator('[data-today-nudge]').count()) > 0; i++) {
+        await page.locator('[data-today-nudge]').getByRole('button', { name: 'Not now' }).click();
+      }
+      await expect(page.locator('[data-today-nudge]')).toHaveCount(0);
+      await page.reload();
+      await page.locator('[data-today-scene]').waitFor();
+      await page.waitForTimeout(1500);
+      await expect(page.locator('[data-today-nudge]')).toHaveCount(0);
+    } finally {
+      await page.request.delete(`/api/layouts/${layout.id}`);
+      await page.request.delete(`/api/birthdays/${birthday.id}`);
+      if (taskId) await page.request.delete(`/api/tasks/${taskId}`);
+    }
+  });
 });
