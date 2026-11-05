@@ -46,7 +46,7 @@ export async function pinRequiredForEveryChange(): Promise<boolean> {
 }
 
 /** Which screen made the change, for the rate limit and the log. */
-async function screenKey(): Promise<string> {
+export async function screenKey(): Promise<string> {
   const h = await headers();
   const forwarded = h.get('x-forwarded-for')?.split(',')[0]?.trim();
   return forwarded || h.get('x-real-ip') || 'unknown-screen';
