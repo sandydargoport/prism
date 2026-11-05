@@ -269,6 +269,8 @@
     "until": "{title} bis {time}",
     "nothingElse": "Heute nichts mehr",
     "sunset": "Sonnenuntergang {time}",
-    "allDay": "Ganztägig: {titles}"
+    "allDay": "Ganztägig: {titles}",
+    "more": "+{count}",
+    "laterToday": "Später heute"
   }
 }

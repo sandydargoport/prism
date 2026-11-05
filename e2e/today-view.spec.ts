@@ -137,4 +137,61 @@ test.describe('the Today view', () => {
       for (const id of made) await page.request.delete(`/api/events/${id}`);
     }
   });
+
+  // #910: a busy day stays readable: no two labels overlap, none leaves the
+  // screen, and what does not fit is "+N", which lists the rest in a sheet.
+  test('a 12-event day keeps its labels apart and folds the rest into +N', async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    const d = new Date();
+    const at = (h: number, m = 0) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m);
+    // 9 in the morning, so every event is still ahead whenever the suite runs.
+    await page.clock.install({ time: at(9) });
+    await login(page);
+    const parentId = getSeededParentId();
+    const made: string[] = [];
+    for (let i = 0; i < 12; i++) {
+      const start = at(10 + Math.floor(i / 2), (i % 2) * 30);
+      const res = await page.request.post('/api/events', {
+        data: { title: `Busy ${i + 1} practice`, startTime: start.toISOString(), endTime: new Date(start.getTime() + 25 * 60_000).toISOString(), allDay: false, createdBy: parentId },
+      });
+      expect(res.status()).toBe(201);
+      made.push((await res.json()).id);
+    }
+    const created = await page.request.post('/api/layouts', { data: { name: `Busy e2e ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } });
+    const layout = await created.json();
+    try {
+      await page.route('**/api/weather*', (route) => route.fulfill({ json: { ...WEATHER, sunrise: at(6, 30).toISOString(), sunset: at(17, 30).toISOString() } }));
+      await page.goto(`/d/${layout.slug}`);
+      await page.locator('[data-arc-label]').first().waitFor({ timeout: 60_000 });
+      const m = await page.evaluate(() => {
+        const rects = [...document.querySelectorAll('[data-arc-label], [data-arc-sunset-label], [data-arc-more]')]
+          .map((el) => { const r = el.getBoundingClientRect(); return { left: r.left, top: r.top, right: r.right, bottom: r.bottom, text: el.textContent }; });
+        const overlaps: string[] = [];
+        for (let i = 0; i < rects.length; i++) for (let j = i + 1; j < rects.length; j++) {
+          const a = rects[i]!, b = rects[j]!;
+          if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) overlaps.push(`${a.text} / ${b.text}`);
+        }
+        const outside = rects.filter((r) => r.left < 0 || r.right > innerWidth || r.top < 0 || r.bottom > innerHeight).map((r) => r.text);
+        return {
+          overlaps, outside,
+          labels: document.querySelectorAll('[data-arc-label]').length,
+          ahead: document.querySelectorAll('[data-arc-bead]:not([data-past])').length,
+          more: document.querySelector('[data-arc-more]')?.textContent ?? '',
+        };
+      });
+      expect(m.overlaps, 'no two labels overlap').toEqual([]);
+      expect(m.outside, 'every label on screen').toEqual([]);
+      const folded = Number(m.more.replace('+', ''));
+      expect(folded, 'some events fold into +N').toBeGreaterThan(0);
+      // The 12 here, plus any the seeded family already has today.
+      expect(m.ahead).toBeGreaterThanOrEqual(12);
+      expect(m.labels + folded, 'every event ahead is labelled or counted').toBe(m.ahead);
+
+      await page.locator('[data-arc-more]').click();
+      await expect(page.locator('[data-arc-more-list] li')).toHaveCount(folded);
+    } finally {
+      await page.request.delete(`/api/layouts/${layout.id}`);
+      for (const id of made) await page.request.delete(`/api/events/${id}`);
+    }
+  });
 });

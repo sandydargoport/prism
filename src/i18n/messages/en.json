@@ -269,6 +269,8 @@
     "until": "{title} until {time}",
     "nothingElse": "Nothing else today",
     "sunset": "Sunset {time}",
-    "allDay": "All day: {titles}"
+    "allDay": "All day: {titles}",
+    "more": "+{count}",
+    "laterToday": "Later today"
   }
 }
