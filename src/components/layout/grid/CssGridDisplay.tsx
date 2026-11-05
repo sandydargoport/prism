@@ -318,6 +318,7 @@ export function CssGridDisplay({
               ref={(el) => { if (el) cells.current.set(w.i, el); else cells.current.delete(w.i); }}
               data-widget={w.i}
               data-corner={corner}
+              data-fill={w.backgroundColor === 'glass' ? 'glass' : undefined}
               data-faded={faded || undefined}
               data-hidden-empty={hiddenEmpty || undefined}
               aria-hidden={gone || undefined}
