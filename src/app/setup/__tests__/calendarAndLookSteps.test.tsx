@@ -5,6 +5,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { wizardSteps } from '../SetupWizard';
 import { CalendarStep } from '../steps/CalendarStep';
 import { LookStep } from '../steps/LookStep';
+import { CompleteStep } from '../steps/CompleteStep';
 
 // #808: the wizard brings calendars in and picks a look before Done.
 
@@ -68,5 +69,23 @@ describe('LookStep', () => {
 
     await waitFor(() => expect(onNext).toHaveBeenCalled());
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ key: 'firstLook', value: 'paper' });
+  });
+});
+
+// #930: the last step shows the two front pages a first run sets up.
+describe('CompleteStep', () => {
+  it('a first run shows Today and Calendar, and starts on Today', () => {
+    render(<CompleteStep firstRun />);
+    const pages = document.querySelectorAll('[data-setup-front-page]');
+    expect([...pages].map((p) => p.getAttribute('data-setup-front-page'))).toEqual(['today', 'calendar']);
+    expect(screen.getByText('Today')).toBeTruthy();
+    expect(screen.getByText('Calendar')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Start on Today' })).toBeTruthy();
+  });
+
+  it('running setup again sets up no pages, so it shows none', () => {
+    render(<CompleteStep firstRun={false} />);
+    expect(document.querySelector('[data-setup-front-pages]')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Go to dashboard' })).toBeTruthy();
   });
 });
