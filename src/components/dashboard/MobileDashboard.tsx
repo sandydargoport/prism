@@ -223,6 +223,7 @@ export const MobileDashboard = memo(function MobileDashboard({ data }: MobileDas
         /* Tiles: auto-size rows to fill viewport with no scroll */
         <div
           className="px-4 overflow-hidden"
+          data-mobile-cards
           style={{
             height: `calc(100dvh - 112px - ${showIndicator ? (refreshing ? 48 : pullDistance * 0.5) : 0}px)`,
             transform: pullDistance > 0 ? `translateY(${pullDistance * 0.4}px)` : undefined,
@@ -242,6 +243,7 @@ export const MobileDashboard = memo(function MobileDashboard({ data }: MobileDas
         /* Rows: scrollable list */
         <div
           className="p-4 pb-24 space-y-3 max-w-lg mx-auto"
+          data-mobile-cards
           style={pullDistance > 0 ? { transform: `translateY(${pullDistance * 0.4}px)`, transition: 'none' } : undefined}
         >
           {visibleOrder.map((id) => (

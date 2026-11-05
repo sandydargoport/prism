@@ -291,6 +291,7 @@
     "nudgeNoAge": "{name}'s birthday is on {day}. Mail a card by {mailDay}?",
     "addIt": "Add it",
     "notNow": "Not now",
+    "nothingElseToday": "Nothing else today",
     "nudgeTask": "Mail a card to {name}",
     "nudgeAdded": "On the list for {day}.",
     "nudgeFailed": "That did not save. Please try again.",
