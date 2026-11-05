@@ -26,6 +26,7 @@ import { useAwayModeTimeout } from '@/lib/hooks/useAwayModeTimeout';
 import { usePerformanceMode } from '@/lib/hooks/usePerformanceMode';
 import type { PerfLevel, PerfMode } from '@/lib/perfLevel';
 import { AURORA_SETTING } from '@/lib/integrations/aurora';
+import { useNewLook } from '@/components/dashboard/useNewLook';
 
 function getCurrentMonthNum(): number {
   return new Date().getMonth() + 1;
@@ -39,6 +40,29 @@ function SectionDivider({ label }: { label: string }) {
       </span>
       <div className="flex-1 h-px bg-border" />
     </div>
+  );
+}
+
+/** The front page (#808): try the new look, or switch back to the old one. */
+function FrontPageCard() {
+  const { hasToday, previous, tryIt, switchBack } = useNewLook();
+  return (
+    <Card data-front-page-card>
+      <CardHeader>
+        <CardTitle>Front page</CardTitle>
+        <CardDescription>
+          Today draws the day as one scene over the photo; the Calendar layout puts the week on it.
+          Trying them adds both and keeps your layout, so you can switch back at any time.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-wrap gap-2">
+        {!hasToday && <Button onClick={() => void tryIt()} data-new-look-try>Try the new look</Button>}
+        {hasToday && previous && !previous.isDefault && (
+          <Button variant="outline" onClick={() => void switchBack()} data-new-look-back>Switch back to {previous.name}</Button>
+        )}
+        {hasToday && (!previous || previous.isDefault) && <p className="m-0 text-sm text-muted-foreground">Today is one of your layouts.</p>}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -67,6 +91,8 @@ export function DisplaySection() {
           Customize how the dashboard looks and behaves
         </p>
       </div>
+
+      <FrontPageCard />
 
       <SectionDivider label="Theme" />
       {/* A section spreads across the width rather than running down it:

@@ -322,6 +322,8 @@ async function captureOnce(spec: CaptureSpec): Promise<void> {
   await page.addInitScript(
     ({ theme, calendarView, calendarWeekCount, calendarDisplayMode }) => {
       try {
+        // The one-time new-look offer (#808) is a toast; keep it out of the shots.
+        localStorage.setItem('prism-new-look-offer-dismissed', '1');
         if (theme) {
           // ThemeProvider reads the 'prism-theme' key (not 'theme') and toggles
           // only the 'dark' class on <html>.
