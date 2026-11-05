@@ -175,7 +175,7 @@ export function MobileFab({ user, onLogin, onLogout, uiHidden }: MobileFabProps)
 
       {/* Cards settings panel */}
       {showCards && (
-        <div className="fixed inset-x-4 bottom-24 z-50 bg-card rounded-2xl shadow-2xl border border-border p-4 max-h-[60vh] overflow-y-auto safe-area-bottom animate-in fade-in slide-in-from-bottom-4">
+        <div className="fixed inset-x-4 bottom-[calc(var(--nav-bottom,0px)+5.5rem)] z-50 bg-card rounded-2xl shadow-2xl border border-border p-4 max-h-[60vh] overflow-y-auto safe-area-bottom animate-in fade-in slide-in-from-bottom-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-base">Dashboard Cards</h3>
             <button
@@ -252,7 +252,7 @@ export function MobileFab({ user, onLogin, onLogout, uiHidden }: MobileFabProps)
 
       {/* Action items */}
       {isOpen && (
-        <div className="fixed bottom-24 right-6 z-50 flex flex-col-reverse items-end gap-3 safe-area-bottom">
+        <div className="fixed bottom-[calc(var(--nav-bottom,0px)+5.5rem)] right-6 z-50 flex flex-col-reverse items-end gap-3 safe-area-bottom">
           {actions.map((action, i) => {
             const content = (
               <div
@@ -298,7 +298,8 @@ export function MobileFab({ user, onLogin, onLogout, uiHidden }: MobileFabProps)
           reorderMode && !isOpen && 'bg-warning text-white',
           uiHidden && !isOpen && !showCards && 'translate-y-24 opacity-0'
         )}
-        style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}
+        // Above the dock (#924).
+        style={{ bottom: 'calc(var(--nav-bottom, 0px) + 1rem)' }}
       >
         <Plus className="h-6 w-6" />
       </button>

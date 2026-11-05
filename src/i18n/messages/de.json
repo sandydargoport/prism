@@ -21,7 +21,8 @@
       "signIn": "Anmelden",
       "help": "Hilfe",
       "thisScreen": "Dieser Bildschirm",
-      "label": "Seiten"
+      "label": "Seiten",
+      "home": "Start"
     },
     "actions": {
       "save": "Speichern",

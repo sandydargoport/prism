@@ -11,7 +11,6 @@ import { LayoutGridEditor, SCREENSAVER_THEME } from '@/components/layout/LayoutG
 import { useAuth, useFamily } from '@/components/providers';
 import { GRID_COLS } from '@/lib/constants/grid';
 import { useScreenSafeZones } from '@/lib/hooks/useScreenSafeZones';
-import { useOrientation } from '@/lib/hooks/useOrientation';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import { useAutoHideUI } from '@/lib/hooks/useAutoHideUI';
 import { useTaskLists } from '@/lib/hooks/useTaskLists';
@@ -161,15 +160,13 @@ export function Dashboard({
     }
   }, [slug, data.layouts.loading, data.layouts.allLayouts.length, layout.activeLayout, router]);
 
-  // Detect portrait nav to offset grid height (nav covers bottom 80px + safe area)
-  const deviceOrientation = useOrientation();
   const isMobile = useIsMobile();
-  // The wall's dock replaces the rail and top bar in landscape (#922).
-  const wallDock = !isMobile && deviceOrientation === 'landscape' && !layout.isEditing;
+  // The wall's dock replaces the rail and top bar (#922, #924).
+  const wallDock = !isMobile && !layout.isEditing;
   const { uiHidden } = useAutoHideUI();
-  const hasPortraitNav = !isMobile && deviceOrientation === 'portrait';
-  // Only reserve bottom space when nav is actually visible (not auto-hidden)
-  const bottomOffset = hasPortraitNav && !uiHidden ? 96 : 0;
+  // Nothing is fixed at the foot of the wall any more: the portrait bar is
+  // gone and the dock is drawn over the page (#924).
+  const bottomOffset = 0;
 
   // Grid control state shared between LayoutEditor toolbar and LayoutGridEditor
   const { allSizeNames } = useScreenSafeZones();

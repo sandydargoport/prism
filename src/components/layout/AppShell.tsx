@@ -23,13 +23,10 @@
 'use client';
 
 import * as React from 'react';
-import { SideNav } from './SideNav';
 import { Dock } from './Dock';
 import { MobileFab } from './MobileFab';
-import { PortraitNav } from './PortraitNav';
 import { WallpaperBackground } from './WallpaperBackground';
 import { cn } from '@/lib/utils';
-import { useOrientation } from '@/lib/hooks/useOrientation';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import { useAutoHideUI } from '@/lib/hooks/useAutoHideUI';
 import { useInactivityRedirect } from '@/lib/hooks/useInactivityRedirect';
@@ -102,7 +99,6 @@ export function AppShell({
   dock,
   screenJobs,
 }: AppShellProps) {
-  const orientation = useOrientation();
   const isMobile = useIsMobile();
   const { uiHidden } = useAutoHideUI();
   useInactivityRedirect();
@@ -123,29 +119,22 @@ export function AppShell({
     return () => window.removeEventListener('prism:measure-mode', handler);
   }, []);
 
-  // Determine which nav to show:
-  // - Mobile (small screens): MobileNav (simplified)
-  // - Larger screens in landscape: SideNav
-  // - Larger screens in portrait: PortraitNav (bottom drawer)
-  const wallDock = dock === 'wall' && !isMobile && orientation === 'landscape';
-  // Every other page in landscape keeps the dock on screen (#923); the rail
-  // stays only where a page asks for no dock at all.
-  const pageDock = !wallDock && !isMobile && orientation === 'landscape';
-  const showSideNav = false;
-  const pageDockShown = !hideNav && pageDock && !measureHideNav;
-  const showPortraitNav = !isMobile && orientation === 'portrait';
+  // One navigation everywhere (#924): the wall's dock on a dashboard on a
+  // larger screen, in either orientation; the dock on screen everywhere else,
+  // phones included. The rail and the portrait bar are gone.
+  const wallDock = dock === 'wall' && !isMobile;
+  const pageDockShown = !hideNav && !wallDock && !measureHideNav;
   const showMobileNav = isMobile;
-  const portraitNavShown = !hideNav && showPortraitNav && !measureHideNav && !uiHidden;
 
   return (
-    <div className={cn('relative min-h-(--app-vh,100vh)', !showWallpaper && 'bg-background')}>
+    <div
+      className={cn('relative min-h-(--app-vh,100vh)', !showWallpaper && 'bg-background')}
+      // The dock's height (68px, its 1rem gap and the safe area), for the page
+      // to reserve and for anything else fixed at the foot to sit above (#923).
+      style={pageDockShown ? ({ '--nav-bottom': 'calc(68px + 1.5rem + env(safe-area-inset-bottom, 0px))' } as React.CSSProperties) : undefined}
+    >
       {/* WALLPAPER BACKGROUND (only on dashboard/screensaver) */}
       {showWallpaper && <WallpaperBackground />}
-
-      {/* SIDE NAVIGATION - landscape mode on larger screens */}
-      {!hideNav && showSideNav && (
-        <SideNav user={user} onLogout={onLogout} onLogin={onLogin} uiHidden={uiHidden || measureHideNav} />
-      )}
 
       {/* THE DOCK ON EVERY OTHER PAGE (#923) */}
       {pageDockShown && <Dock mode="page" user={user} onLogin={onLogin} onLogout={onLogout} />}
@@ -163,31 +152,19 @@ export function AppShell({
           // layout reflow on every frame, which is expensive on weak CPUs (Atom).
           // The nav itself slides smoothly via GPU-composited transform; the content
           // just needs to reflow once when the class changes.
-          !hideNav && showSideNav && !measureHideNav && !uiHidden && 'ml-16',
-          (portraitNavShown || pageDockShown) && 'pb-(--nav-bottom)',
+          pageDockShown && 'pb-(--nav-bottom)',
           className
         )}
-        // Height of the fixed bottom nav (PortraitNav: h-20, a 1px top border and
-        // the safe area; the dock: 68px plus its 1rem gap). Full-height pages
-        // size themselves with `h-page`, which subtracts it, so nothing sits
-        // under the nav and a list's last row can always scroll clear (#923).
-        style={
-          portraitNavShown
-            ? ({ '--nav-bottom': 'calc(5rem + 1px + env(safe-area-inset-bottom, 0px))' } as React.CSSProperties)
-            : pageDockShown
-              ? ({ '--nav-bottom': 'calc(68px + 1.5rem + env(safe-area-inset-bottom, 0px))' } as React.CSSProperties)
-              : undefined
-        }
+        // Height of the dock (68px plus its 1rem gap and the safe area).
+        // Full-height pages size themselves with `h-page`, which subtracts it,
+        // so nothing sits under the dock and a list's last row can always
+        // scroll clear (#923).
+
       >
         {children}
       </main>
 
-      {/* PORTRAIT BOTTOM NAVIGATION - portrait mode on larger screens */}
-      {!hideNav && showPortraitNav && (
-        <PortraitNav user={user} onLogin={onLogin} onLogout={onLogout} uiHidden={uiHidden || measureHideNav} />
-      )}
-
-      {/* MOBILE FAB - small screens only */}
+      {/* MOBILE FAB - the phone's own tools (cards, reorder, scan) */}
       {!hideNav && showMobileNav && (
         <MobileFab user={user} onLogin={onLogin} onLogout={onLogout} uiHidden={uiHidden || measureHideNav} />
       )}
