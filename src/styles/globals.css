@@ -418,6 +418,31 @@ html.performance-mode {
   --ds-water-filter: none;
 }
 
+/* Sheet (#908, docs/DESIGN.md "Sheet"). On the wall a sheet opens on the side
+   that was touched, never in the middle over what the family was looking at:
+   the left or right third opens it on that side, the middle from the bottom.
+   Phones and desks keep the centred dialog. */
+@media (min-width: 1024px) and (pointer: coarse), (min-width: 1024px) and (pointer: none) {
+  [data-sheet][data-sheet-side="left"] {
+    left: 2rem !important; right: auto !important; top: 50% !important;
+    translate: 0 -50% !important;
+    --tw-enter-translate-x: -2rem !important; --tw-enter-translate-y: 0 !important;
+    --tw-exit-translate-x: -2rem !important; --tw-exit-translate-y: 0 !important;
+  }
+  [data-sheet][data-sheet-side="right"] {
+    left: auto !important; right: 2rem !important; top: 50% !important;
+    translate: 0 -50% !important;
+    --tw-enter-translate-x: 2rem !important; --tw-enter-translate-y: 0 !important;
+    --tw-exit-translate-x: 2rem !important; --tw-exit-translate-y: 0 !important;
+  }
+  [data-sheet][data-sheet-side="bottom"] {
+    top: auto !important; bottom: 2rem !important; left: 50% !important;
+    translate: -50% 0 !important; margin-bottom: 0 !important;
+    --tw-enter-translate-x: 0 !important; --tw-enter-translate-y: 2rem !important;
+    --tw-exit-translate-x: 0 !important; --tw-exit-translate-y: 2rem !important;
+  }
+}
+
 /* The calm idle screen (docs/DESIGN.md "Idle screen"): a glass card that stays
    goes fully clear, so the clock and weather sit straight on the photo. The
    text turns light in either mode and carries a soft dark shadow, which is

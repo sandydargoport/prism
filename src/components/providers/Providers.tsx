@@ -7,6 +7,7 @@
 
 'use client';
 
+import { trackLastPointer } from '@/lib/input/lastPointer';
 import * as React from 'react';
 import dynamic from 'next/dynamic';
 import { ThemeProvider } from './ThemeProvider';
@@ -39,6 +40,9 @@ interface ProvidersProps {
  * Wraps the application with all necessary providers.
  * AuthProvider must be inside ThemeProvider since QuickPinModal uses styled components.
  */
+// Where taps land, from app start, so a sheet can open on that side (#908).
+trackLastPointer();
+
 export function Providers({ children, defaultMode = 'system' }: ProvidersProps) {
   // No defaultTheme override here. It was 'light' to mask the flash before the
   // stored preference loaded, which also meant a stored 'system' setting was
