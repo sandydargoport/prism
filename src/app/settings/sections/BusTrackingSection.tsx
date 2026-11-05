@@ -69,6 +69,7 @@ interface BusRoute {
   checkpoints: { name: string; sortOrder: number }[];
   stopName: string | null;
   schoolName: string | null;
+  walkMinutes?: number;
   enabled: boolean;
   sortOrder: number;
 }
@@ -583,6 +584,7 @@ function RouteDialog({
     scheduledTime: route?.scheduledTime || '07:00',
     stopName: route?.stopName || '',
     schoolName: route?.schoolName || '',
+    walkMinutes: route?.walkMinutes ?? 0,
     checkpoints: route?.checkpoints || [] as { name: string; sortOrder: number }[],
   });
   const [newCheckpointName, setNewCheckpointName] = useState('');
@@ -757,6 +759,23 @@ function RouteDialog({
                 Expected arrival at your stop.
               </p>
             </div>
+          </div>
+
+          {/* Leave-by in Now & Next (#900). */}
+          <div>
+            <Label htmlFor="bus-walk-minutes">Minutes to walk to the stop</Label>
+            <Input
+              id="bus-walk-minutes"
+              type="number"
+              min={0}
+              max={60}
+              value={form.walkMinutes}
+              onChange={(e) => setForm((p) => ({ ...p, walkMinutes: Math.min(60, Math.max(0, Math.trunc(Number(e.target.value) || 0))) }))}
+              className="w-28"
+            />
+            <p className="text-2xs text-muted-foreground mt-0.5">
+              Now &amp; Next then says when to leave. 0 shows no leave time.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

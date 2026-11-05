@@ -271,6 +271,9 @@
     "bus": "Bus",
     "busAt": "at the stop {time} · in {countdown}",
     "busHere": "at the stop now",
+    "leave": "Leave",
+    "leaveIn": "in {countdown}",
+    "leaveNow": "now",
     "minutes": "{count} min",
     "hours": "{count} h",
     "hoursMinutes": "{h} h {m} min"

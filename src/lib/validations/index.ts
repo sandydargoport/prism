@@ -335,6 +335,8 @@ export const createBusRouteSchema = z.object({
   })).max(100).optional().default([]),
   stopName: z.string().max(255).optional(),
   schoolName: z.string().max(255).optional(),
+  // Minutes to walk to the stop, for the leave-by line (#900).
+  walkMinutes: z.number().int().min(0).max(60).optional().default(0),
   enabled: z.boolean().optional().default(true),
   sortOrder: z.number().int().min(0).optional().default(0),
   // Which live provider track is this route's (see bus-live-ingest.ts).

@@ -1653,6 +1653,9 @@ export const busRoutes = pgTable('bus_routes', {
   enabled: boolean('enabled').default(true).notNull(),
   sortOrder: integer('sort_order').default(0).notNull(),
 
+  // Minutes to walk to the stop (#900): Now & Next shows when to leave. 0 = none.
+  walkMinutes: integer('walk_minutes').default(0).notNull(),
+
   // Which live provider track belongs to this route. Tracks arrive daily with
   // opaque keys, so the binding is by provider + label + direction instead.
   liveMatch: jsonb('live_match')
