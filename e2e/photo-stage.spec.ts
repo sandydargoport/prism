@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 import path from 'path';
+import { getSeededParentId } from './helpers/auth';
+import { TODAY_TEMPLATE } from '../src/lib/constants/layoutTemplates';
 
 /**
  * One photo stage with a true crossfade (#954). Two stand-in photos (the
@@ -122,3 +124,50 @@ for (const c of [{ name: 'under reduced motion', reduced: true }, { name: 'below
     expect((await scaleOf(front)).scale).toBe(1);
   });
 }
+
+/**
+ * The subject where the widgets are not (#957), on a Today layout: a wide
+ * photo whose subject would sit under the clock corner in the centred crop is
+ * cropped so the subject lands clear of every covered part.
+ */
+test('a wide photo is cropped so its subject is not under a widget', async ({ page }) => {
+  test.skip(process.env.E2E_HAS_TEST_DB !== '1', 'needs the seeded test database');
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: process.env.E2E_PIN || '1234' } })).ok()).toBe(true);
+  const layout = await (await page.request.post('/api/layouts', { data: { name: `Subject ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
+  try {
+    await page.addInitScript(() => {
+      localStorage.setItem('prism-wallpaper-enabled', 'true');
+      localStorage.setItem('prism-wallpaper-interval', '60');
+    });
+    await page.route('**/api/photos?*', (route) => route.fulfill({ json: { photos: [], total: 0 } }));
+    await page.goto(`/d/${layout.slug}`);
+    const corner = page.locator('[data-today-corner="left"]');
+    await expect(corner).toBeVisible({ timeout: 60_000 });
+    const covering = () => page.evaluate(() => [...document.querySelectorAll('[data-today-corner], [data-today-quiet], [data-today-coming-wrap], [data-today-arc], [data-dock], .widget-cell')]
+      .map((e) => ({ ...(e.getBoundingClientRect().toJSON() as DOMRect), what: `${e.tagName}.${String(e.className).slice(0, 30)}|${e.closest('[data-screensaver-night],[class*="z-9999"]') ? 'in-screensaver' : 'page'}` }))
+      .filter((r) => r.width > 0 && r.height > 0));
+    const box = (await corner.boundingBox())!;
+    const cx = box.x + box.width / 2; const cy = box.y + box.height / 2;
+
+    // A 4:1 photo: centred, its subject would land on the clock corner.
+    const W = 4320; const offX = (W - 1920) / 2;
+    const focal = { x: (cx + offX) / W, y: cy / 1080 };
+    await page.unroute('**/api/photos?*');
+    await page.route('**/api/photos?*', (route) => route.fulfill({ json: {
+      photos: [{ ...photo('wide'), width: 4320, height: 1080, focalX: focal.x, focalY: focal.y }], total: 1,
+    } }));
+    await page.route('**/api/photos/wide/file', (route) => route.fulfill({ path: path.join(SCENERY, 'valley.webp'), contentType: 'image/webp' }));
+    await page.reload();
+    const front = page.locator('[data-photo-stage] [data-photo-layer="front"]').first();
+    await expect(front).toHaveCount(1, { timeout: 60_000 });
+    await page.waitForTimeout(2500);
+    const subject = await front.evaluate((e) => ({ x: Number(e.dataset.subjectX) * 1920, y: Number(e.dataset.subjectY) * 1080 }));
+    const under = (await covering()).filter((r) => subject.x >= r.left && subject.x <= r.right && subject.y >= r.top && subject.y <= r.bottom);
+    expect(under, `subject at ${Math.round(subject.x)},${Math.round(subject.y)}`).toEqual([]);
+    expect(Math.abs(subject.x - cx), 'it moved from the centred crop').toBeGreaterThan(20);
+  } finally {
+    await page.request.delete(`/api/layouts/${layout.id}`);
+  }
+});
