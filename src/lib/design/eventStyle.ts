@@ -13,7 +13,9 @@ import type { CSSProperties } from 'react';
  */
 export function eventTintStyle(color: string, bar: 'border' | 'inset' | 'none' = 'inset'): CSSProperties {
   const style: CSSProperties = {
-    backgroundColor: `color-mix(in srgb, ${color} var(--ds-event-tint), hsl(var(--card)))`,
+    // The ground is the card, or nothing on water, where the event is a
+    // see-through tint over the photo (#799).
+    backgroundColor: `color-mix(in srgb, ${color} var(--ds-event-tint), var(--ds-event-ground, hsl(var(--card))))`,
     color: 'hsl(var(--card-foreground))',
   };
   if (bar === 'border') style.borderLeft = `var(--ds-event-bar) solid ${color}`;

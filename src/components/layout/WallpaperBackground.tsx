@@ -5,6 +5,8 @@ import { usePhotos } from '@/lib/hooks/usePhotos';
 import { useScreenOrientation } from '@/lib/hooks/useScreenOrientation';
 import { SCENERY } from '@/lib/scenery';
 import { useSceneryOn } from '@/lib/hooks/useSceneryOn';
+import { photoTone, waterVars, type PhotoTone } from '@/lib/design/water';
+import { PHOTO_DIM } from '@/lib/design/tokens';
 
 const STORAGE_KEY = 'prism-wallpaper-enabled';
 const INTERVAL_KEY = 'prism-wallpaper-interval';
@@ -133,6 +135,75 @@ export function usePinnedPhoto(context: 'wallpaper' | 'screensaver') {
   return { pinnedId, setPinnedId };
 }
 
+/** Tones already measured, by image URL: a photo is read once per page load. */
+const toneCache = new Map<string, PhotoTone | null>();
+
+/**
+ * The photo's tone, read from a 48x27 copy of it (#799). Null until it is
+ * read, and for an image the browser cannot read back.
+ */
+export function usePhotoTone(src: string | null): PhotoTone | null {
+  // The last tone read, with the photo it belongs to; a cached photo needs no read.
+  const [read, setRead] = useState<{ src: string; tone: PhotoTone | null } | null>(null);
+  useEffect(() => {
+    if (!src || toneCache.has(src)) return;
+    let cancelled = false;
+    const setTone = (tone: PhotoTone | null) => setRead({ src, tone });
+    const img = new Image();
+    img.decoding = 'async';
+    img.onload = () => {
+      let measured: PhotoTone | null = null;
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 48; canvas.height = 27;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (ctx) {
+          // Cover-crop to the screen's shape, as the wallpaper draws it.
+          const screen = window.innerWidth / Math.max(1, window.innerHeight);
+          const photo = img.naturalWidth / Math.max(1, img.naturalHeight);
+          let sw = img.naturalWidth, sh = img.naturalHeight, sx = 0, sy = 0;
+          if (photo > screen) { sw = sh * screen; sx = (img.naturalWidth - sw) / 2; }
+          else { sh = sw / screen; sy = (img.naturalHeight - sh) / 2; }
+          ctx.drawImage(img, sx, sy, sw, sh, 0, 0, 48, 27);
+          measured = photoTone(ctx.getImageData(0, 0, 48, 27).data, 48, 27);
+        }
+      } catch {
+        measured = null; // a tainted or unreadable image keeps the safe values
+      }
+      toneCache.set(src, measured);
+      if (!cancelled) setTone(measured);
+    };
+    img.onerror = () => { toneCache.set(src, null); if (!cancelled) setTone(null); };
+    img.src = src;
+    return () => { cancelled = true; };
+  }, [src]);
+  if (!src) return null;
+  if (toneCache.has(src)) return toneCache.get(src) ?? null;
+  return read?.src === src ? read.tone : null;
+}
+
+/**
+ * While a wallpaper shows, the page knows it (`data-wallpaper` on <html>) and
+ * carries the water values for that photo, so CSS can draw cards as water and
+ * the corner tiles straight on the photo (globals.css, "Water").
+ */
+function useWaterOnPage(src: string | null, scenery: boolean) {
+  const tone = usePhotoTone(src);
+  useEffect(() => {
+    if (!src) return;
+    const root = document.documentElement;
+    // The lighter of the two mode dims: the harder case, so both modes read.
+    const dim = scenery ? PHOTO_DIM.scenery.light : PHOTO_DIM.photos.light;
+    const vars = waterVars(tone, dim);
+    root.dataset.wallpaper = scenery ? 'scenery' : 'photo';
+    for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
+    return () => {
+      delete root.dataset.wallpaper;
+      for (const k of Object.keys(vars)) root.style.removeProperty(k);
+    };
+  }, [src, scenery, tone]);
+}
+
 /** What to show: wallpaper photos added to Prism, or the bundled scenery when there are none. */
 export function wallpaperPool(
   photos: Array<{ id: string }>,
@@ -202,7 +273,19 @@ export function WallpaperBackground() {
   const activeId = usePinned ? pinnedId : (rotationPhoto?.id ?? null);
   const src = usePinned ? `/api/photos/${pinnedId}/file` : (rotationPhoto?.src ?? null);
 
+  return <WallpaperLayers src={src} scenery={scenery} fadingOut={fadingOut} activeId={activeId} onBroken={markBroken} />;
+}
+
+function WallpaperLayers({ src, scenery, fadingOut, activeId, onBroken }: {
+  src: string | null;
+  scenery: boolean;
+  fadingOut: boolean;
+  activeId: string | null;
+  onBroken: (id: string) => void;
+}) {
+  useWaterOnPage(src, scenery);
   if (!src) return null;
+  const markBroken = onBroken;
 
   return (
     <div className="fixed inset-0 z-0 pointer-events-none">
@@ -228,6 +311,13 @@ export function WallpaperBackground() {
           bundled scenery is shown with glass widgets, so it is only lightly
           dimmed and the photo shows. */}
       <div className={scenery ? 'absolute inset-0 bg-black/10 dark:bg-black/40' : 'absolute inset-0 bg-black/60 dark:bg-black/70'} />
+      {/* Shades only where text sits on the photo: the two top corners and
+          the bottom, each as dark as that part of the photo needs (#799). */}
+      <div className="absolute inset-0" data-wallpaper-shade style={{ backgroundImage: [
+        'radial-gradient(45% 40% at 0% 0%, rgb(0 0 0 / var(--ds-shade-tl, 0.35)), transparent)',
+        'radial-gradient(45% 40% at 100% 0%, rgb(0 0 0 / var(--ds-shade-tr, 0.35)), transparent)',
+        'linear-gradient(to top, rgb(0 0 0 / var(--ds-shade-bottom, 0.35)), transparent 35%)',
+      ].join(', ') }} />
     </div>
   );
 }

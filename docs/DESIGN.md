@@ -83,6 +83,24 @@ One material everywhere. Only the fill changes.
   readability.
 - Spacing is on a 4px grid: 4, 8, 12, 16, 24, 32, 48.
 
+### Water: cards and text over a photo (#799)
+
+While a wallpaper shows (`data-wallpaper` on `<html>`), a Glass card is drawn
+as water, and the clock and weather corner tiles have no card at all.
+
+- One ink on a photo: warm near-white (247 242 234). No dark or coloured text
+  over a photo.
+- A water card is a warm near-black tint (24 21 17) with a 10px blur and a faint
+  edge. Its thickness (`--ds-water-alpha`, 0.18 to 0.60) is solved per photo so
+  the ink reaches 4.8:1 over the brightest part of it (`src/lib/design/water.ts`,
+  checked). Until the photo is read it is 0.60.
+- The corner tiles sit straight on the photo, over a shade drawn only under the
+  two top corners and the bottom, each as dark as that part needs for 4.5:1, up
+  to 0.45 (past that the text shadow carries it; a darker shade reads as fog).
+- Events on water are a see-through tint of the person's colour, so the photo
+  still shows through them.
+- Performance Reduced: no blur, and 0.10 more tint, up to 0.70.
+
 ## Events
 
 A pale tint of the person's colour, a solid 4px bar on the leading edge, and

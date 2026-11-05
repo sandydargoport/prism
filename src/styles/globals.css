@@ -415,6 +415,7 @@ html.performance-mode [class*="backdrop-blur"] {
 html.performance-mode {
   --ds-glass-filter: none;
   --ds-glass-alpha: 0.94;
+  --ds-water-filter: none;
 }
 
 /* The calm idle screen (docs/DESIGN.md "Idle screen"): a glass card that stays
@@ -422,7 +423,8 @@ html.performance-mode {
    text turns light in either mode and carries a soft dark shadow, which is
    what keeps it readable over a bright patch of sky. Inner surfaces (the hourly
    tiles) go clear too, except a small backing a widget marks to keep. */
-.widget-cell.idle-clear {
+.widget-cell.idle-clear,
+html[data-wallpaper] .widget-cell[data-corner][data-fill="glass"] {
   --foreground: 0 0% 100%;
   --card-foreground: 0 0% 100%;
   --muted-foreground: 0 0% 90%;
@@ -432,13 +434,53 @@ html.performance-mode {
   text-shadow: var(--ds-idle-text-shadow);
 }
 /* Text kept transparent to hold a place would show as a bare shadow. */
-.widget-cell.idle-clear .text-transparent { text-shadow: none; }
-.widget-cell.idle-clear *:not([data-keep-bg]) {
+.widget-cell.idle-clear .text-transparent,
+html[data-wallpaper] .widget-cell[data-corner][data-fill="glass"] .text-transparent { text-shadow: none; }
+.widget-cell.idle-clear *:not([data-keep-bg]),
+html[data-wallpaper] .widget-cell[data-corner][data-fill="glass"] *:not([data-keep-bg]) {
   background-color: transparent !important;
   box-shadow: none !important;
   backdrop-filter: none !important;
 }
-.widget-cell.idle-clear svg { filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.5)); }
+.widget-cell.idle-clear svg,
+html[data-wallpaper] .widget-cell[data-corner][data-fill="glass"] svg { filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.5)); }
+
+/* Water (#799, docs/DESIGN.md "Water"). While a wallpaper shows, the clock and
+   weather corner tiles sit straight on the photo, awake as on the idle screen,
+   over the shade WallpaperBackground draws under them. */
+html[data-wallpaper] .widget-cell[data-corner][data-fill="glass"] {
+  background-color: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+/* Every other glass card over the photo is water: one light ink on a thin warm
+   tint, only as thick as this photo needs (--ds-water-alpha, set from the
+   photo's tone), with a little blur and a faint edge. The cell's colour tokens
+   follow the ink, so muted text and inner backings do too. */
+html[data-wallpaper] .widget-cell[data-fill="glass"]:not([data-corner]):not(.idle-clear) {
+  --foreground: 36 45% 94%;
+  --card-foreground: 36 45% 94%;
+  --popover-foreground: 36 45% 94%;
+  --muted-foreground: 36 18% 82%;
+  --background: 30 15% 6%;
+  --card: 30 15% 9%;
+  --muted: 30 10% 22%;
+  --secondary: 30 10% 22%;
+  --accent: 30 10% 24%;
+  --border: 30 8% 36%;
+  /* Events are a see-through tint of the person's colour, not a solid block
+     that hides the photo; the colour bar stays. */
+  --ds-event-ground: transparent;
+  --ds-event-tint: var(--ds-water-event-tint, 24%);
+  color: hsl(var(--foreground));
+  background-color: rgb(24 21 17 / var(--ds-water-alpha, 0.6)) !important;
+  -webkit-backdrop-filter: var(--ds-water-filter) !important;
+  backdrop-filter: var(--ds-water-filter) !important;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.1), 0 8px 24px rgb(0 0 0 / 0.28);
+}
+html.performance-mode[data-wallpaper] .widget-cell[data-fill="glass"]:not([data-corner]):not(.idle-clear) {
+  background-color: rgb(24 21 17 / var(--ds-water-alpha-reduced, 0.7)) !important;
+}
 
 @layer base {
   :root {
@@ -451,6 +493,8 @@ html.performance-mode {
     --ds-glass-alpha: 0.65;
     --ds-glass-blur: 24px;
     --ds-glass-filter: blur(var(--ds-glass-blur)) saturate(1.2);
+    --ds-water-blur: 10px;
+    --ds-water-filter: blur(var(--ds-water-blur)) saturate(1.2);
     --ds-idle-text-shadow: 0 1px 2px rgb(0 0 0 / 0.6), 0 0 16px rgb(0 0 0 / 0.45);
     --ds-event-bar: 4px;
     --ds-event-tint: 16%;
