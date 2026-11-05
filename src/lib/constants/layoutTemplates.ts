@@ -200,6 +200,25 @@ export const FIRST_SCREEN_TEMPLATE: LayoutTemplate = {
 /** Pages a brand-new install starts with hidden (#808). Settings > Features shows them again. */
 export const NEW_INSTALL_HIDDEN_PAGES = ['/wishes', '/travel', '/weekend'] as const;
 
+/**
+ * Today (#907): the front page drawn as one scene. Its widgets are the parts
+ * the scene shows; their positions are only a fallback should the layout ever
+ * be drawn as a grid.
+ */
+export const TODAY_TEMPLATE: LayoutTemplate = {
+  name: 'Today',
+  description: 'The day as one scene over the photo',
+  orientation: 'landscape',
+  widgets: [
+    { i: 'clock',     x: 0,  y: 0,  w: 12, h: 5,  showWhenIdle: true },
+    { i: 'weather',   x: 36, y: 0,  w: 12, h: 5,  showWhenIdle: true },
+    { i: 'calendar',  x: 0,  y: 5,  w: 32, h: 22, showWhenIdle: true },
+    { i: 'birthdays', x: 32, y: 5,  w: 16, h: 6,  showWhenIdle: false },
+    { i: 'chores',    x: 32, y: 11, w: 16, h: 8,  showWhenIdle: false },
+    { i: 'shopping',  x: 32, y: 19, w: 16, h: 8,  showWhenIdle: false },
+  ],
+};
+
 // New-user / empty-layout fallback. Deliberately weather-forward with NO
 // calendar/birthdays/points — a fresh install hasn't connected a calendar yet,
 // so a calendar-hero default would render empty. Not shown in the template

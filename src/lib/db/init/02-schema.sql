@@ -416,7 +416,8 @@ CREATE TABLE IF NOT EXISTS public.layouts (
     orientation character varying(20) DEFAULT 'landscape'::character varying,
     font_scale integer,
     screensaver_mode character varying(20) DEFAULT 'calm'::character varying NOT NULL,
-    idle_background jsonb DEFAULT '{"source": "dashboard"}'::jsonb NOT NULL
+    idle_background jsonb DEFAULT '{"source": "dashboard"}'::jsonb NOT NULL,
+    view character varying(20) DEFAULT 'grid'::character varying NOT NULL
 );
 
 
