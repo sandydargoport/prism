@@ -94,4 +94,47 @@ test.describe('the Today view', () => {
       }
     });
   }
+
+  // #909: the day as the sun's path, each timed event a bead on it, in time order.
+  test('the sun arc puts each event as a bead on the path, in time order', async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await login(page);
+    const parentId = getSeededParentId();
+    const d = new Date();
+    const at = (h: number, m = 0) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m).toISOString();
+    const made: string[] = [];
+    for (const [title, h] of [['Arc check late', 21], ['Arc check early', 19], ['Arc check mid', 20]] as const) {
+      const res = await page.request.post('/api/events', { data: { title, startTime: at(h), endTime: at(h, 30), allDay: false, createdBy: parentId } });
+      expect(res.status()).toBe(201);
+      made.push((await res.json()).id);
+    }
+    const created = await page.request.post('/api/layouts', { data: { name: `Arc e2e ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } });
+    const layout = await created.json();
+    try {
+      await page.route('**/api/weather*', (route) => route.fulfill({ json: { ...WEATHER, sunrise: at(6, 30), sunset: at(17, 30) } }));
+      await page.goto(`/d/${layout.slug}`);
+      await page.locator('[data-arc-bead]').first().waitFor({ timeout: 60_000 });
+      await expect(page.locator('[data-arc-sunset]')).toHaveCount(1);
+      const m = await page.evaluate(() => {
+        const path = document.querySelector('[data-arc-path]') as SVGPathElement;
+        const len = path.getTotalLength();
+        const samples: Array<{ x: number; y: number }> = [];
+        for (let i = 0; i <= 2000; i++) { const p = path.getPointAtLength((len * i) / 2000); samples.push({ x: p.x, y: p.y }); }
+        return [...document.querySelectorAll('[data-arc-bead]')].map((b) => {
+          const cx = Number(b.getAttribute('cx')), cy = Number(b.getAttribute('cy'));
+          const off = Math.min(...samples.map((p) => Math.hypot(p.x - cx, p.y - cy)));
+          return { start: Number(b.getAttribute('data-start')), cx, off };
+        });
+      });
+      expect(m.length).toBeGreaterThanOrEqual(3);
+      for (const b of m) expect(b.off, 'bead on the path').toBeLessThanOrEqual(2);
+      const byStart = [...m].sort((a, b) => a.start - b.start);
+      for (let i = 1; i < byStart.length; i++) {
+        if (byStart[i]!.start > byStart[i - 1]!.start) expect(byStart[i]!.cx, 'later is further right').toBeGreaterThan(byStart[i - 1]!.cx);
+      }
+    } finally {
+      await page.request.delete(`/api/layouts/${layout.id}`);
+      for (const id of made) await page.request.delete(`/api/events/${id}`);
+    }
+  });
 });

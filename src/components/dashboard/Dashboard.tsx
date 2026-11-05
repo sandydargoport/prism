@@ -489,6 +489,7 @@ export function Dashboard({
               <TodayScene
                 parts={layout.activeWidgets}
                 weather={data.weather.data ?? null}
+                events={data.calendar.events}
                 topOffset={uiHidden ? 0 : 56}
               />
             </WidgetErrorBoundary>

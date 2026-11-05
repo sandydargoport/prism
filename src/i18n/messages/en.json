@@ -263,5 +263,12 @@
     "minutes": "{count} min",
     "hours": "{count} h",
     "hoursMinutes": "{h} h {m} min"
+  },
+  "today": {
+    "at": "{title} {time}",
+    "until": "{title} until {time}",
+    "nothingElse": "Nothing else today",
+    "sunset": "Sunset {time}",
+    "allDay": "All day: {titles}"
   }
 }

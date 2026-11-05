@@ -19,6 +19,8 @@ import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
 import { splitDayHalf } from '@/components/widgets/ClockWidget';
 import { formatTemp, weatherSentence, type WeatherData } from '@/components/widgets/WeatherWidget';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
+import type { CalendarEvent } from '@/types/calendar';
+import { SunArc } from './SunArc';
 
 /** The parts a Today layout can show, by widget id. */
 export const TODAY_PARTS = ['clock', 'weather', 'calendar', 'birthdays', 'chores', 'shopping'] as const;
@@ -45,10 +47,13 @@ function useMinute(): Date {
 export function TodayScene({
   parts,
   weather,
+  events = [],
   topOffset = 0,
 }: {
   parts: WidgetConfig[];
   weather: WeatherData | null;
+  /** Calendar events around today, for the arc. */
+  events?: CalendarEvent[];
   /** Height of the bar above the scene, when it shows. */
   topOffset?: number;
 }) {
@@ -104,6 +109,13 @@ export function TodayScene({
           <div className="text-body mt-1 first-letter:uppercase whitespace-nowrap" data-today-weather>
             {weatherSentence(condition, high === undefined ? undefined : t('high', { temp: formatTemp(high, weather.units) }))}
           </div>
+        </div>
+      )}
+
+      {/* The day as the sun's path (#909), margin to margin across the middle. */}
+      {isPartShown(parts, 'calendar') && (
+        <div className="absolute left-[3rem] right-[3rem] top-[30%] h-[38%]" data-today-arc>
+          <SunArc events={events} now={now} sunrise={weather?.sunrise} sunset={weather?.sunset} />
         </div>
       )}
     </div>
