@@ -1373,6 +1373,11 @@ export const photos = pgTable('photos', {
   orientation: varchar('orientation', { length: 20 })
     .$type<'landscape' | 'portrait' | 'square'>(),
 
+  // Where the photo's subject is, as fractions of its width and height
+  // (#956). Found once in the browser; null until then, read as the centre.
+  focalX: real('focal_x'),
+  focalY: real('focal_y'),
+
   // Comma-separated display contexts (e.g., "wallpaper,screensaver")
   usage: varchar('usage', { length: 100 }).default('wallpaper,gallery,screensaver').notNull(),
 
