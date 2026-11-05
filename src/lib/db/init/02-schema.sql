@@ -226,6 +226,7 @@ CREATE TABLE IF NOT EXISTS public.calendar_sources (
     color character varying(7),
     enabled boolean DEFAULT true NOT NULL,
     show_in_event_modal boolean DEFAULT true NOT NULL,
+    display_rules jsonb,
     is_family boolean DEFAULT false NOT NULL,
     group_id uuid,
     access_token text,
