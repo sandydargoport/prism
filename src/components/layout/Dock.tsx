@@ -41,10 +41,10 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
   const pathname = usePathname();
   const returnSlug = useReturnSlug();
   const search = returnSlug ? { get: (k: string) => (k === RETURN_PARAM ? returnSlug : null) } : null;
-  const { filterNavItems } = useHiddenPages();
+  const { filterNavItems, dockPages } = useHiddenPages();
   // A phone has room for five pages and More; Sign in moves into More (#924).
   const narrow = useIsMobile();
-  const { dock, more } = dockLayout(filterNavItems(ALL_NAV_ITEMS), undefined, narrow ? DOCK_SIZE_NARROW : undefined);
+  const { dock, more } = dockLayout(filterNavItems(ALL_NAV_ITEMS), dockPages ?? undefined, narrow ? DOCK_SIZE_NARROW : undefined);
   const [moreOpen, setMoreOpen] = React.useState(false);
 
   // The wall: any touch shows the dock; it goes after ten quiet seconds.
