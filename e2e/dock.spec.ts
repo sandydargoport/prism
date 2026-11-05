@@ -100,8 +100,10 @@ test.describe('the dock on the wall', () => {
       await expect(dock).not.toHaveAttribute('aria-hidden', 'true');
       await expect(page.locator(`[data-dock-item="${path}"]`)).toHaveAttribute('aria-current', 'page');
       await expect(page.locator('[data-dock-item="/"]'), 'Home goes back to the screen\'s dashboard').toHaveAttribute('href', '/d/kitchen');
-      // Scroll everything to the end: the last thing on the page ends above the dock.
-      const m = await page.evaluate(async () => {
+      // Scroll everything to the end: the last thing on the page ends above
+      // the dock. Measured again until it holds, since a list that loads
+      // after the first scroll lands unscrolled.
+      const measure = () => page.evaluate(async () => {
         for (const el of [document.scrollingElement, ...document.querySelectorAll('main *')]) {
           if (el && el.scrollHeight > el.clientHeight + 4) el.scrollTop = el.scrollHeight;
         }
@@ -124,7 +126,9 @@ test.describe('the dock on the wall', () => {
         const reserved = parseFloat(getComputedStyle(pageMain).paddingBottom);
         return { dockTop, lowest, reserved, under: innerHeight - dockTop };
       });
-      expect(m.lowest, 'the last visible text ends above the dock').toBeLessThanOrEqual(m.dockTop);
+      let m = await measure();
+      await expect.poll(async () => { m = await measure(); return m.lowest - m.dockTop; },
+        { message: 'the last visible text ends above the dock', timeout: 15_000 }).toBeLessThanOrEqual(0);
       expect(m.reserved, 'room for the dock at the foot of the page').toBeGreaterThanOrEqual(m.under);
     });
   }
