@@ -1092,13 +1092,13 @@ test.describe('corner clock and weather', () => {
     lastUpdated: day.toISOString(),
   };
 
-  async function openLayout(page: Page, widgets: unknown[]) {
+  async function openLayout(page: Page, widgets: unknown[], weather: object = WEATHER) {
     const login = await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } });
     expect(login.ok(), 'precondition: login must succeed').toBe(true);
     const created = await page.request.post('/api/layouts', { data: { name: `Corners e2e ${Date.now()}`, widgets } });
     expect(created.status()).toBe(201);
     const layout = await created.json();
-    await page.route('**/api/weather*', (route) => route.fulfill({ json: WEATHER }));
+    await page.route('**/api/weather*', (route) => route.fulfill({ json: weather }));
     await page.goto(`/d/${layout.slug}`);
     await page.locator('[data-weather-current]').waitFor({ timeout: 60000 });
     await page.locator('[data-clock-time]').waitFor();
@@ -1154,6 +1154,57 @@ test.describe('corner clock and weather', () => {
       await page.request.delete(`/api/layouts/${layout.id}`);
     }
   });
+
+  // #800: the clock and the temperature in the display face, the weather as
+  // one line with the day's high, at the wall size and the small tablet's.
+  for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 800 }]) {
+    test(`the corners use the display face and read as one line at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      const today = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}T00:00:00.000Z`;
+      const layout = await openLayout(page, FIRST_SCREEN_TEMPLATE.widgets, {
+        ...WEATHER,
+        forecast: [{ date: today, dayName: 'Today', high: 79, low: 61, condition: 'partly-cloudy' }],
+      });
+      try {
+        const faces = await page.evaluate(() => {
+          const look = (sel: string) => {
+            const el = document.querySelector(sel) as HTMLElement;
+            const cs = getComputedStyle(el);
+            return { family: cs.fontFamily, size: parseFloat(cs.fontSize) };
+          };
+          // The page's own floor: 14px on a touch wall, 12px with a mouse.
+          const probe = document.createElement('div');
+          probe.style.fontSize = 'var(--text-floor)';
+          document.body.appendChild(probe);
+          const floor = parseFloat(getComputedStyle(probe).fontSize);
+          probe.remove();
+          return {
+            floor,
+            time: look('.widget-cell[data-widget="clock"] [data-clock-time]'),
+            date: look('.widget-cell[data-widget="clock"] [data-clock-date]'),
+            temp: look('[data-weather-temp]'),
+            condition: look('[data-weather-condition]'),
+          };
+        });
+        // The display face is a next/font family; its generated name contains
+        // the face's name, and the text face's does not.
+        expect(faces.time.family, 'clock in the display face').toMatch(/Literata/i);
+        expect(faces.temp.family, 'temperature in the display face').toMatch(/Literata/i);
+        expect(faces.condition.family, 'condition in the text face').not.toMatch(/Literata/i);
+        const { floor, ...text } = faces;
+        expect(floor).toBeGreaterThanOrEqual(12);
+        for (const [name, f] of Object.entries(text)) {
+          expect(f.size, `${name} at or above the text floor`).toBeGreaterThanOrEqual(floor - 0.01);
+        }
+        const condition = page.locator('[data-weather-condition]');
+        await expect(condition).toHaveText('Partly Cloudy, high 79°F');
+        const cut = await condition.evaluate((el) => el.scrollWidth > el.clientWidth);
+        expect(cut, 'the weather line is not cut off').toBe(false);
+      } finally {
+        await page.request.delete(`/api/layouts/${layout.id}`);
+      }
+    });
+  }
 
   test('a large weather tile keeps its details, each on one line', async ({ page }) => {
     const layout = await openLayout(page, [

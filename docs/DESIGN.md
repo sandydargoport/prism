@@ -25,13 +25,18 @@ screen in: the clock, then the next thing, then the rows.
 | `text-title` | 28px | 600 | What a row is about: an event in Now/Next, a person |
 | `text-display` | 48px | 600 | The date line; one headline per screen |
 | `text-clock` | 100px | 500 | The clock: date above, tabular figures, seconds small and dimmed |
+| `text-prose` | 28px | 400 | Sentences on the wall ("Tomorrow Alex has the dentist at 9"); the title's size, looser lines |
 
 - Nothing renders under the text floor: 14px on a touch or kiosk screen, 12px
   at a desk or on a phone, after any zoom (#798). Every class above is floored.
 - Widget names are captions, not headings. The content is the heading.
-- One family per screen (the theme's font). Weight and size make the hierarchy,
-  not colour. The one exception is the clock's digits, which a theme may set in
-  a numeral face of its own (`numeralFont`, the `--font-numeral` role).
+- Two faces: the text face (the theme's font, Inter by default) for everything
+  people read, and the display face (`--font-display`) for the clock, the
+  temperature and page and sheet titles. A theme that names a numeral face
+  (`numeralFont`) sets the display face with it. Weight and size make the
+  hierarchy, not colour.
+- Times are written as people say them (`formatBareTime`): "9", "5:30", and am
+  or pm only before 8 am and from 8 pm.
 - Clock digits slide in when they change (about 380ms), never on first paint,
   and not at all under reduced motion.
 

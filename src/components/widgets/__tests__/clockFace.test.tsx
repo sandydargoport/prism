@@ -33,11 +33,11 @@ describe('the clock face', () => {
     expect(date.compareDocumentPosition(time) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('draws the time at medium weight in tabular digits of the numeral face', () => {
+  it('draws the time at medium weight in tabular digits of the display face (#800)', () => {
     const { time } = face();
     expect(time.className).toMatch(/\bfont-medium\b/);
     expect(time.className).toMatch(/\btabular-nums\b/);
-    expect(time.style.fontFamily).toBe('var(--font-numeral)');
+    expect(time.style.fontFamily).toBe('var(--font-display)');
   });
 
   it('draws seconds small and dimmed after the minutes', () => {

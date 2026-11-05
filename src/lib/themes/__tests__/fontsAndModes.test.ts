@@ -86,6 +86,23 @@ describe('numeral font role', () => {
   });
 });
 
+// The display face (#800): Literata for the clock, the temperature and titles,
+// unless a theme names a numeral face of its own.
+describe('display face role', () => {
+  it('is Literata when the theme names no numeral face', () => {
+    expect(themeCss(theme({ font: 'sans' }))).toContain('--theme-font-display:var(--font-serif)');
+  });
+
+  it('keeps the numeral face a theme names', () => {
+    expect(themeCss(theme({ font: 'sans', numeralFont: 'mono' }))).toContain('--theme-font-display:var(--font-mono-theme), var(--font-serif)');
+  });
+
+  it('falls back to the serif face, never to the text face', () => {
+    const css = readFileSync(join(__dirname, '../../../styles/globals.css'), 'utf8');
+    expect(css).toMatch(/--font-display:\s*var\(--theme-font-display, var\(--font-serif, Literata\)\), Georgia,/);
+  });
+});
+
 describe('display modes', () => {
   it('accepts a listed option', () => {
     expect(isValidModes({ events: 'compact' })).toBe(true);
