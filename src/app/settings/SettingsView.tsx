@@ -272,7 +272,8 @@ export function SettingsView() {
         </header>
 
         <div className="flex-1 flex overflow-hidden">
-          <nav className="hidden md:landscape:block w-64 shrink-0 border-r border-border bg-card/85 backdrop-blur-xs p-4">
+          {/* Scrolls on its own when the window is short (#843). */}
+          <nav className="hidden md:landscape:block w-64 shrink-0 overflow-y-auto border-r border-border bg-card/85 backdrop-blur-xs p-4">
             <div className="space-y-1">
               {sections.map((section) => {
                 const Icon = section.icon;

@@ -73,6 +73,8 @@ export function HelpView() {
     if (!section) return null;
     return (
       <PageWrapper>
+        {/* A fixed height, so the box below scrolls: the page body does not (#843). */}
+        <div className="h-page flex flex-col">
         <SubpageHeader
           icon={<HelpCircle className="h-5 w-5 text-primary" />}
           title={section.title}
@@ -85,10 +87,11 @@ export function HelpView() {
             </button>
           }
         />
-        <div className="flex-1 overflow-auto p-4">
+        <div className="flex-1 min-h-0 overflow-auto p-4">
           <div className="max-w-3xl mx-auto prose prose-sm dark:prose-invert">
             {section.content}
           </div>
+        </div>
         </div>
       </PageWrapper>
     );
@@ -96,11 +99,12 @@ export function HelpView() {
 
   return (
     <PageWrapper>
+      <div className="h-page flex flex-col">
       <SubpageHeader
         icon={<HelpCircle className="h-5 w-5 text-primary" />}
         title="Help"
       />
-      <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 min-h-0 overflow-auto p-4">
         <div className="max-w-3xl mx-auto space-y-4">
           {/* Search */}
           <div className="relative">
@@ -131,6 +135,7 @@ export function HelpView() {
             )}
           </div>
         </div>
+      </div>
       </div>
     </PageWrapper>
   );
