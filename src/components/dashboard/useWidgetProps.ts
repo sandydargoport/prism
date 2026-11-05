@@ -3,6 +3,7 @@
 import { toast } from '@/components/ui/use-toast';
 import type { Chore, Task, Meal } from '@/types';
 import type { Birthday } from '@/lib/hooks/useBirthdays';
+import type { CalendarEvent } from '@/types/calendar';
 import type { useDashboardData } from './useDashboardData';
 
 interface ModalSetters {
@@ -17,6 +18,10 @@ interface EditHandlers {
   onEditChore?: (chore: Chore) => void;
   onEditMeal?: (meal: Meal) => void;
   onRemoveBirthday?: (birthday: Birthday) => void;
+  /** Tap an event: the event sheet (#836). */
+  onOpenEvent?: (event: CalendarEvent) => void;
+  /** "+" on the calendar widget: Add Event on that day (#836). */
+  onAddEvent?: (day: Date) => void;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -46,7 +51,8 @@ export function buildWidgetProps(
       error: data.calendar.error,
       initialView: '3days',
       maxEventsPerDay: 4,
-      onEventClick: (_event: unknown) => {},
+      onEventClick: (event: CalendarEvent) => editHandlers?.onOpenEvent?.(event),
+      onAddEvent: editHandlers?.onAddEvent,
       titleHref: '/calendar',
     },
     tasks: {

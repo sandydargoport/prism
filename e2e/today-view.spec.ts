@@ -9,6 +9,19 @@ import { TODAY_TEMPLATE } from '../src/lib/constants/layoutTemplates';
 const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
 const PIN = process.env.E2E_PIN || '1234';
 
+/**
+ * Create an event, waiting out the per-user limit (30 a minute) the way
+ * calendar-geometry does: a busy day makes a dozen at once.
+ */
+async function postEvent(page: Page, data: Record<string, unknown>) {
+  for (let attempt = 0; ; attempt++) {
+    const res = await page.request.post('/api/events', { data });
+    if (res.status() !== 429 || attempt >= 3) return res;
+    const wait = Number(res.headers()['retry-after'] ?? '20');
+    await page.waitForTimeout(Math.min(Math.max(wait, 1), 65) * 1000);
+  }
+}
+
 test.describe('the Today view', () => {
   test.skip(!HAS_TEST_DB, 'needs the seeded test database to log in and create a dashboard');
   test.setTimeout(90_000);
@@ -104,7 +117,7 @@ test.describe('the Today view', () => {
     const at = (h: number, m = 0) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m).toISOString();
     const made: string[] = [];
     for (const [title, h] of [['Arc check late', 21], ['Arc check early', 19], ['Arc check mid', 20]] as const) {
-      const res = await page.request.post('/api/events', { data: { title, startTime: at(h), endTime: at(h, 30), allDay: false, createdBy: parentId } });
+      const res = await postEvent(page, { title, startTime: at(h), endTime: at(h, 30), allDay: false, createdBy: parentId });
       expect(res.status()).toBe(201);
       made.push((await res.json()).id);
     }
@@ -145,14 +158,15 @@ test.describe('the Today view', () => {
     const d = new Date();
     const at = (h: number, m = 0) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m);
     // 9 in the morning, so every event is still ahead whenever the suite runs.
-    await page.clock.install({ time: at(9) });
+    // Only the date is fixed: timers and animation frames keep running.
+    await page.clock.setFixedTime(at(9));
     await login(page);
     const parentId = getSeededParentId();
     const made: string[] = [];
     for (let i = 0; i < 12; i++) {
       const start = at(10 + Math.floor(i / 2), (i % 2) * 30);
-      const res = await page.request.post('/api/events', {
-        data: { title: `Busy ${i + 1} practice`, startTime: start.toISOString(), endTime: new Date(start.getTime() + 25 * 60_000).toISOString(), allDay: false, createdBy: parentId },
+      const res = await postEvent(page, {
+        title: `Busy ${i + 1} practice`, startTime: start.toISOString(), endTime: new Date(start.getTime() + 25 * 60_000).toISOString(), allDay: false, createdBy: parentId,
       });
       expect(res.status()).toBe(201);
       made.push((await res.json()).id);
@@ -192,6 +206,60 @@ test.describe('the Today view', () => {
     } finally {
       await page.request.delete(`/api/layouts/${layout.id}`);
       for (const id of made) await page.request.delete(`/api/events/${id}`);
+    }
+  });
+
+  // #836: one event sheet, opened from a bead on Today and from the
+  // dashboard's calendar widget; "+" on the widget adds on the shown day.
+  test('tapping an event on Today or on the calendar widget opens its sheet', async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    const d = new Date();
+    const at = (h: number, m = 0) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m);
+    // Only the date is fixed: timers and animation frames keep running.
+    await page.clock.setFixedTime(at(9));
+    await login(page);
+    const title = `Sheet tap ${Date.now()}`;
+    const ev = await postEvent(page, {
+      title, startTime: at(14).toISOString(), endTime: at(15, 30).toISOString(), allDay: false, location: 'Community Park', createdBy: getSeededParentId(),
+    });
+    expect(ev.status()).toBe(201);
+    const event = await ev.json();
+    const made: string[] = [];
+    try {
+      const today = await (await page.request.post('/api/layouts', { data: { name: `Tap today ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
+      made.push(today.id);
+      await page.route('**/api/weather*', (route) => route.fulfill({ json: WEATHER }));
+      await page.goto(`/d/${today.slug}`);
+      const hit = page.locator(`[data-arc-bead-hit][data-title="${title}"]`);
+      await hit.waitFor({ timeout: 60_000 });
+      const box = await hit.boundingBox();
+      expect(box!.width, 'a 44px target round the bead').toBeGreaterThanOrEqual(44);
+      await hit.click();
+      const sheet = page.locator('[data-event-sheet]');
+      await expect(sheet).toBeVisible();
+      await expect(sheet.getByRole('heading', { name: title })).toBeVisible();
+      await expect(sheet.locator('[data-event-sentence]')).toContainText('2 to 3:30, at Community Park');
+      const close = await sheet.locator('[data-sheet-close]').boundingBox();
+      expect(close!.width).toBeGreaterThanOrEqual(44);
+      expect(close!.height).toBeGreaterThanOrEqual(44);
+      await sheet.locator('[data-sheet-close]').click();
+      await expect(sheet).toBeHidden();
+
+      const grid = await (await page.request.post('/api/layouts', { data: { name: `Tap grid ${Date.now()}`, widgets: [{ i: 'calendar', x: 0, y: 0, w: 48, h: 27 }] } })).json();
+      made.push(grid.id);
+      await page.goto(`/d/${grid.slug}`);
+      const chip = page.locator('.widget-cell[data-widget="calendar"]').getByText(title).first();
+      await chip.waitFor({ timeout: 30_000 });
+      await chip.click({ timeout: 15_000 });
+      await expect(page.locator('[data-event-sheet]').getByRole('heading', { name: title })).toBeVisible();
+      await page.locator('[data-event-sheet] [data-sheet-close]').click();
+      await expect(page.locator('[data-event-sheet]')).toBeHidden();
+
+      await page.locator('[data-calendar-add]').click({ timeout: 15_000 });
+      await expect(page.getByRole('dialog').getByText(/New Event/i)).toBeVisible();
+    } finally {
+      for (const id of made) await page.request.delete(`/api/layouts/${id}`);
+      await page.request.delete(`/api/events/${event.id}`);
     }
   });
 });

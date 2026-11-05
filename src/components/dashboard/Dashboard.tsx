@@ -40,6 +40,7 @@ import { SCREENSAVER_WIDGET_CLASS } from '@/components/screensaver/Screensaver';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import { parseIdleBackground, withoutDashboard, PHOTOS, type IdleBackground } from '@/lib/idleBackground';
 import { TodayScene } from '@/components/today/TodayScene';
+import { useEventSheet } from '@/components/calendar/useEventSheet';
 import { WidgetErrorBoundary } from '@/components/dashboard/WidgetErrorBoundary';
 import { WidgetExpandProvider, useWidgetExpand } from '@/components/dashboard/WidgetExpandProvider';
 import { useDashboardData } from './useDashboardData';
@@ -304,6 +305,8 @@ export function Dashboard({
   const idleBarHeight = layout.isEditing && layout.editTab === 'idle'
     ? ('switch' in layout.editingBackground ? 130 : 36)
     : 0;
+  // One event sheet for the calendar widget and Today's arc (#836).
+  const eventSheet = useEventSheet(() => { void data.calendar.refresh(); });
   const widgetProps = buildWidgetProps(data, requireAuth, {
     setShowAddTask, setShowAddMessage, setShowAddChore, setShowAddShopping,
   }, weatherLocation, confirmAction, {
@@ -311,6 +314,8 @@ export function Dashboard({
     onEditChore: setEditingChore,
     onEditMeal: setEditingMeal,
     onRemoveBirthday: removeBirthday,
+    onOpenEvent: eventSheet.open,
+    onAddEvent: eventSheet.add,
   });
 
   const handleLogin = async () => {
@@ -490,6 +495,7 @@ export function Dashboard({
                 parts={layout.activeWidgets}
                 weather={data.weather.data ?? null}
                 events={data.calendar.events}
+                onOpenEvent={eventSheet.open}
                 topOffset={uiHidden ? 0 : 56}
               />
             </WidgetErrorBoundary>
@@ -521,6 +527,7 @@ export function Dashboard({
             </WidgetErrorBoundary>
           )}
 
+          {eventSheet.element}
           {showAddTask && (
             <AddTaskModal open={showAddTask} onOpenChange={setShowAddTask}
               onTaskCreated={() => { data.tasks.refresh(); }} />

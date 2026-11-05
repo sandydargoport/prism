@@ -122,7 +122,10 @@
       "hiddenToastBody": "Unhide it in Settings > Calendars.",
       "hideThisEvent": "This event",
       "hideWholeSeries": "Every event in the series",
-      "hiddenSeriesToast": "Hid every \"{title}\""
+      "hiddenSeriesToast": "Hid every \"{title}\"",
+      "allDay": "all day",
+      "to": "to",
+      "at": "at"
     },
     "eventForm": {
       "titleNew": "New Event",
@@ -205,7 +208,8 @@
       "body": "Connect Google, iCloud, Outlook or a calendar link, and the family's week shows up here.",
       "action": "Connect a calendar"
     },
-    "now": "Now"
+    "now": "Now",
+    "addEvent": "Add event"
   },
   "birthdays": {
     "title": "Upcoming Birthdays & Milestones",
