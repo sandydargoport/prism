@@ -1,5 +1,6 @@
 'use client';
 
+import { PhotoStage } from '@/components/layout/PhotoStage';
 import * as SunCalc from 'suncalc';
 import { isTodayNight } from '@/lib/today/night';
 import { usePhotoTone } from '@/components/layout/WallpaperBackground';
@@ -123,18 +124,12 @@ export function Screensaver() {
 
   const [visible, setVisible] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [fadingOut, setFadingOut] = useState(false);
 
   // Only rotate if no pinned photo and interval is not "never" (0)
   useEffect(() => {
     if (!isIdle || showSky || photos.length <= 1 || pinnedId || screensaverInterval === 0) return;
-    const timer = setInterval(() => {
-      setFadingOut(true);
-      setTimeout(() => {
-        setCurrentIndex((i) => (i + 1) % photos.length);
-        setFadingOut(false);
-      }, 1000);
-    }, screensaverInterval * 1000);
+    // The photo stage crossfades to the next one (#954).
+    const timer = setInterval(() => setCurrentIndex((i) => (i + 1) % photos.length), screensaverInterval * 1000);
     return () => clearInterval(timer);
   }, [isIdle, showSky, photos.length, pinnedId, screensaverInterval]);
 
@@ -190,15 +185,7 @@ export function Screensaver() {
             sit ABOVE the (statically-positioned) widget grid and would swallow every
             tap. pointer-events-none lets taps fall through to the widgets — needed
             for the calendar view controls to be operable on the screensaver. */}
-        {src && (
-          <div
-            className="pointer-events-none absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
-            style={{
-              backgroundImage: `url(${src})`,
-              opacity: fadingOut ? 0 : 1,
-            }}
-          />
-        )}
+        {src && <PhotoStage src={src} />}
         {showSky ? (
           <React.Suspense fallback={null}>
             <NightSky lat={lat} lon={lon} eclipse={eclipse} />
