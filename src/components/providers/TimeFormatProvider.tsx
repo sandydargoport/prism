@@ -103,9 +103,13 @@ export function TimeFormatProvider({ children }: { children: React.ReactNode }) 
         const saved = data?.settings?.[SETTING_KEY];
         if (active && isTimeFormat(saved)) setTimeFormatState(saved);
         const savedTimezone = data?.settings?.[TIMEZONE_SETTING_KEY];
-        if (active && typeof savedTimezone === 'string' && savedTimezone) {
-          setHouseholdTimezone(savedTimezone);
-          localStorage.setItem(TIMEZONE_CACHE_KEY, savedTimezone);
+        // Decide on the data, never on whether this effect was cancelled
+        // (#833): a zone the server already has must never be written again.
+        if (typeof savedTimezone === 'string' && savedTimezone) {
+          if (active) {
+            setHouseholdTimezone(savedTimezone);
+            localStorage.setItem(TIMEZONE_CACHE_KEY, savedTimezone);
+          }
         } else if (data?.settings) {
           backfillHouseholdTimezone();
         }
