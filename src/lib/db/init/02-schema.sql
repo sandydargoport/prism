@@ -533,6 +533,8 @@ CREATE TABLE IF NOT EXISTS public.photos (
     orientation character varying(20),
     focal_x real,
     focal_y real,
+    place_name character varying(120),
+    place_looked_up boolean DEFAULT false NOT NULL,
     usage character varying(100) DEFAULT 'wallpaper,gallery,screensaver'::character varying NOT NULL,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
     latitude numeric(9,6),

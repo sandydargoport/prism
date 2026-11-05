@@ -1,5 +1,6 @@
 'use client';
 
+import { PhotoCaption } from './PhotoCaption';
 import { focalOf, type FocalPoint } from '@/lib/photos/focalPoint';
 import { CENTRED, photoFrame, type Frame } from '@/lib/photos/frame';
 import { coveredRects } from '@/lib/photos/frameDom';
@@ -211,13 +212,14 @@ function useWaterOnPage(src: string | null, scenery: boolean) {
 
 /** What to show: wallpaper photos added to Prism, or the bundled scenery when there are none. */
 export function wallpaperPool(
-  photos: Array<{ id: string; focalX?: number | null; focalY?: number | null; width?: number | null; height?: number | null }>,
+  photos: Array<{ id: string; focalX?: number | null; focalY?: number | null; width?: number | null; height?: number | null; takenAt?: string | null }>,
   photosLoading: boolean,
   sceneryOn: boolean,
-): { items: Array<{ id: string; src: string; focal?: FocalPoint; aspect?: number }>; scenery: boolean } {
+): { items: Array<{ id: string; src: string; focal?: FocalPoint; aspect?: number; takenAt?: string | null }>; scenery: boolean } {
   if (photos.length > 0) return { items: photos.map((p) => ({
     id: p.id, src: `/api/photos/${p.id}/file`, focal: focalOf(p),
     aspect: p.width && p.height ? p.width / p.height : undefined,
+    takenAt: p.takenAt ?? null,
   })), scenery: false };
   if (sceneryOn && !photosLoading) return { items: SCENERY.map((s) => ({ id: s.id, src: s.src })), scenery: true };
   return { items: [], scenery: false };
@@ -284,10 +286,14 @@ export function WallpaperBackground() {
     return photoFrame({ aspect: item.aspect, screen: { width: window.innerWidth, height: window.innerHeight }, covered: coveredRects(), focal: item.focal });
   };
 
-  return <WallpaperLayers src={src} scenery={scenery} activeId={activeId} onBroken={markBroken} frameFor={frameFor} zoomMs={zoomMs} />;
+  // When it was taken, and where if shown (#958). Not for the bundled scenery.
+  const caption = scenery || !activeId ? null : { id: activeId, takenAt: usePinned ? null : rotationPhoto?.takenAt ?? null };
+
+  return <WallpaperLayers src={src} scenery={scenery} activeId={activeId} onBroken={markBroken} frameFor={frameFor} zoomMs={zoomMs} caption={caption} />;
 }
 
-function WallpaperLayers({ src, scenery, activeId, onBroken, frameFor, zoomMs }: {
+function WallpaperLayers({ src, scenery, activeId, onBroken, frameFor, zoomMs, caption }: {
+  caption: { id: string; takenAt: string | null } | null;
   src: string | null;
   scenery: boolean;
   frameFor: (src: string) => Frame;
@@ -324,6 +330,8 @@ function WallpaperLayers({ src, scenery, activeId, onBroken, frameFor, zoomMs }:
         'radial-gradient(45% 40% at 100% 0%, rgb(0 0 0 / var(--ds-shade-tr, 0.35)), transparent)',
         'linear-gradient(to top, rgb(0 0 0 / var(--ds-shade-bottom, 0.35)), transparent 35%)',
       ].join(', ') }} />
+      {/* Above the dim and shades, so it reads in the full light ink. */}
+      <PhotoCaption photo={caption} />
     </div>
   );
 }

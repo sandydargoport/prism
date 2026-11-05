@@ -1,5 +1,6 @@
 'use client';
 
+import { PHOTO_DATE_SETTING, PHOTO_PLACE_SETTING } from '@/lib/photos/caption';
 import { useState, useEffect, useCallback } from 'react';
 import { Sun, Moon, Monitor, Share2, Store } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -919,6 +920,7 @@ function WallpaperSettingsCard() {
                 onCheckedChange={setAutoOrientation}
               />
             </div>
+            <PhotoCaptionSettings />
           </>
         )}
       </CardContent>
@@ -966,5 +968,48 @@ function OrientationCard() {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * When and where photos were taken, on the wall and the screensaver (#958).
+ * Household settings: the date shows unless turned off; the place only when
+ * turned on, because finding it sends a photo's rough location to
+ * OpenStreetMap's geocoder.
+ */
+function PhotoCaptionSettings() {
+  const [values, setValues] = useState<{ date: boolean; place: boolean } | null>(null);
+  useEffect(() => {
+    fetch('/api/settings').then((r) => (r.ok ? r.json() : null)).then((d) => setValues({
+      date: d?.settings?.[PHOTO_DATE_SETTING] !== false,
+      place: d?.settings?.[PHOTO_PLACE_SETTING] === true,
+    })).catch(() => setValues({ date: true, place: false }));
+  }, []);
+  const save = async (key: string, field: 'date' | 'place', value: boolean) => {
+    const before = values;
+    setValues((v) => (v ? { ...v, [field]: value } : v));
+    const res = await fetch('/api/settings', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, value }) }).catch(() => null);
+    if (!res?.ok) setValues(before);
+  };
+  if (!values) return null;
+  return (
+    <>
+      <div className="flex items-center justify-between">
+        <div>
+          <span className="text-sm font-medium">Show when photos were taken</span>
+          <p className="text-xs text-muted-foreground">A short line in a free corner, like &ldquo;March 2019&rdquo;</p>
+        </div>
+        <Switch checked={values.date} onCheckedChange={(v) => void save(PHOTO_DATE_SETTING, 'date', v)} aria-label="Show when photos were taken" />
+      </div>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <span className="text-sm font-medium">Show where photos were taken</span>
+          <p className="text-xs text-muted-foreground">
+            Names the town for photos that have a location. To find it, Prism sends the photo&rsquo;s rough location (to about a kilometre) to OpenStreetMap, once per photo.
+          </p>
+        </div>
+        <Switch checked={values.place} onCheckedChange={(v) => void save(PHOTO_PLACE_SETTING, 'place', v)} aria-label="Show where photos were taken" />
+      </div>
+    </>
   );
 }
