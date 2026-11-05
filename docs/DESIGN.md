@@ -101,6 +101,19 @@ as water, and the clock and weather corner tiles have no card at all.
   still shows through them.
 - Performance Reduced: no blur, and 0.10 more tint, up to 0.70.
 
+## Sheet, buttons and toasts (#908)
+
+- **Sheet**: every dialog draws one sheet: solid (the card colour in light, warm
+  near-black in dark), 1.4rem corners, generous padding, a 48px close button, a
+  display-face title, actions as pills at the bottom (52px tall in a footer). No
+  blur. On a wall (a touch screen 1024px wide or more) it opens on the side that
+  was touched: the left or right third on that side, the middle from the bottom.
+- **Buttons** are pills: filled with the ink for the one main action, a 1.5px
+  outline for a second one, plain text for "Not now". 44px or more on a touch
+  screen.
+- **Toasts** are one pill with a sentence and a text "Undo" (44px), in the top
+  band, centred; on the wall that is between the clock and the weather.
+
 ## Events
 
 A pale tint of the person's colour, a solid 4px bar on the leading edge, and
