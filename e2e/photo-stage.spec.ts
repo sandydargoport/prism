@@ -231,3 +231,45 @@ test('no date line when the household turns it off', async ({ page }) => {
     await expect(page.locator('[data-photo-caption]')).toHaveCount(0);
   } finally { await cleanup(); }
 });
+
+/**
+ * "On this day" (#959): with the setting on, a photo from this date in an
+ * earlier year joins the rotation first, and its line says so.
+ */
+test('On this day: a photo from this date in an earlier year comes first, and says so', async ({ page }) => {
+  test.skip(process.env.E2E_HAS_TEST_DB !== '1', 'needs the seeded test database');
+  test.setTimeout(60_000);
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.addInitScript(() => {
+    localStorage.setItem('prism-wallpaper-enabled', 'true');
+    localStorage.setItem('prism-wallpaper-interval', '60');
+  });
+  await page.route('**/api/settings', async (route) => {
+    if (route.request().method() !== 'GET') return route.continue();
+    const res = await route.fetch();
+    const body = await res.json();
+    await route.fulfill({ response: res, json: { ...body, settings: { ...(body.settings ?? {}), photoOnThisDay: true } } });
+  });
+  const now = new Date();
+  const then = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate(), 12);
+  let askedForThisDay = '';
+  await page.route('**/api/photos?*', (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get('onThisDayMonth')) {
+      askedForThisDay = `${url.searchParams.get('onThisDayMonth')}-${url.searchParams.get('onThisDayDay')}`;
+      return route.fulfill({ json: { photos: [{ ...photo('otd'), takenAt: then.toISOString() }], total: 1 } });
+    }
+    return route.fulfill({ json: { photos: [photo('everyday-a'), photo('everyday-b')], total: 2 } });
+  });
+  await page.route('**/api/photos/*/file', (route) => route.fulfill({ path: path.join(SCENERY, 'valley.webp'), contentType: 'image/webp' }));
+  expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: process.env.E2E_PIN || '1234' } })).ok()).toBe(true);
+  const layout = await (await page.request.post('/api/layouts', { data: { name: `OTD ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
+  try {
+    await page.goto(`/d/${layout.slug}`);
+    await expect(page.locator('[data-photo-stage] [data-photo-layer]').first()).toHaveAttribute('style', /otd/, { timeout: 60_000 });
+    expect(askedForThisDay, "asked for the screen's own date").toBe(`${now.getMonth() + 1}-${now.getDate()}`);
+    await expect(page.locator('[data-photo-caption]')).toHaveText(`On this day, ${then.getFullYear()}`, { timeout: 10_000 });
+  } finally {
+    await page.request.delete(`/api/layouts/${layout.id}`);
+  }
+});

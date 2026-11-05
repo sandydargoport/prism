@@ -1,4 +1,4 @@
-import { captionSpot, captionText, datePhrase } from '../caption';
+import { captionSpot, captionText, datePhrase, mixOnThisDay } from '../caption';
 
 const now = new Date(2026, 10, 5, 12);
 
@@ -34,5 +34,19 @@ describe('the photo caption (#958)', () => {
 
   it('has no spot when every corner is taken, so the line hides', () => {
     expect(captionSpot({ width: 1920, height: 1080 }, [{ left: 0, top: 0, width: 1920, height: 1080 }])).toBeNull();
+  });
+});
+
+describe('the On this day mix (#959)', () => {
+  const p = (id: string) => ({ id });
+  it('puts one of them every other photo, in turn', () => {
+    expect(mixOnThisDay([p('a'), p('b'), p('c')], [p('x'), p('y')]).map((x) => x.id)).toEqual(['x', 'a', 'y', 'b', 'x', 'c']);
+  });
+  it('leaves the rotation as it is when there are none', () => {
+    expect(mixOnThisDay([p('a'), p('b')], []).map((x) => x.id)).toEqual(['a', 'b']);
+  });
+  it('never doubles a photo that is in both lists', () => {
+    expect(mixOnThisDay([p('x'), p('a')], [p('x')]).map((x) => x.id)).toEqual(['x', 'a']);
+    expect(mixOnThisDay([p('x')], [p('x')]).map((x) => x.id)).toEqual(['x']);
   });
 });
