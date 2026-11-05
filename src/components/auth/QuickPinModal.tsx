@@ -77,6 +77,8 @@ export function QuickPinModal({
   preSelectedMember,
   lockToMember = false,
 }: QuickPinModalProps) {
+  const titleId = React.useId();
+  const descriptionId = React.useId();
   // Family members from context
   const { members: contextMembers, loading: loadingMembers } = useFamily();
   const members: QuickPinMember[] = contextMembers.filter(m => m.name).map(m => ({
@@ -145,15 +147,24 @@ export function QuickPinModal({
       } else if (e.key === 'Backspace') {
         e.preventDefault();
         handleBackspace();
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        onOpenChange(false);
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [open, selectedMember, isVerifying, handleKeyPress, handleBackspace, onOpenChange]);
+
+  // Escape closes the box whichever step it is on (#834), not only on the PIN pad.
+  useEffect(() => {
+    if (!open) return;
+    const onEscape = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || isVerifying) return;
+      e.preventDefault();
+      onOpenChange(false);
+    };
+    document.addEventListener('keydown', onEscape);
+    return () => document.removeEventListener('keydown', onEscape);
+  }, [open, isVerifying, onOpenChange]);
 
   // Auto-submit when PIN is complete
   useEffect(() => {
@@ -233,18 +244,24 @@ export function QuickPinModal({
       <div
         className="bg-card rounded-2xl p-3 max-w-[20rem] w-full mx-4 shadow-lg"
         onClick={(e) => e.stopPropagation()}
+        // A named dialog for screen readers (#834).
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-2 pb-2 border-b border-border">
           <div>
-            <h2 className="text-base font-semibold leading-tight">{title}</h2>
-            <p className="text-xs text-muted-foreground">{description}</p>
+            <h2 id={titleId} className="text-base font-semibold leading-tight">{title}</h2>
+            <p id={descriptionId} className="text-xs text-muted-foreground">{description}</p>
           </div>
           <Button
             variant="ghost"
             size="icon"
             onClick={() => onOpenChange(false)}
             className="h-7 w-7"
+            aria-label="Close"
           >
             <X className="h-4 w-4" />
           </Button>
