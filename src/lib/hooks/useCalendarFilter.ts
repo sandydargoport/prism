@@ -1,5 +1,6 @@
 'use client';
 
+import { FAMILY_COLOR } from '@/lib/constants/memberColors';
 import * as React from 'react';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useCalendarSources } from './useCalendarEvents';
@@ -70,7 +71,7 @@ export function useCalendarFilter(): UseCalendarFilterResult {
       (cal) => (cal as { isFamily?: boolean }).isFamily
     );
     if (hasFamilyCalendar) {
-      groups.push({ id: 'FAMILY', name: 'Family', color: '#F59E0B' });
+      groups.push({ id: 'FAMILY', name: 'Family', color: FAMILY_COLOR });
     }
 
     const seenUsers = new Set<string>();
