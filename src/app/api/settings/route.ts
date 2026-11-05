@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PHOTO_DATE_SETTING, PHOTO_PLACE_SETTING } from '@/lib/photos/caption';
+import { PHOTO_DATE_SETTING, PHOTO_ON_THIS_DAY_SETTING, PHOTO_PLACE_SETTING } from '@/lib/photos/caption';
 import { requireAuth, requireRole, getDisplayAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { settings } from '@/lib/db/schema';
@@ -152,7 +152,7 @@ export async function PATCH(request: NextRequest) {
     if (body.key === AURORA_SETTING && typeof body.value !== 'boolean') {
       return NextResponse.json({ error: 'Invalid value' }, { status: 400 });
     }
-    if ((body.key === PHOTO_DATE_SETTING || body.key === PHOTO_PLACE_SETTING) && typeof body.value !== 'boolean') {
+    if ((body.key === PHOTO_DATE_SETTING || body.key === PHOTO_PLACE_SETTING || body.key === PHOTO_ON_THIS_DAY_SETTING) && typeof body.value !== 'boolean') {
       return NextResponse.json({ error: 'Invalid value' }, { status: 400 });
     }
 

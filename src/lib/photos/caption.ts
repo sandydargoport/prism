@@ -7,6 +7,26 @@ import type { Rect } from './frame';
 /** Household settings. The date shows unless turned off; the place only when turned on. */
 export const PHOTO_DATE_SETTING = 'photoCaptionDate';
 export const PHOTO_PLACE_SETTING = 'photoCaptionPlace';
+/** "On this day" mix (#959), off unless turned on. */
+export const PHOTO_ON_THIS_DAY_SETTING = 'photoOnThisDay';
+
+/**
+ * The rotation with "On this day" photos mixed in (#959): every other photo
+ * is one of them, in turn, while there are any; otherwise the pool as it is.
+ * A photo in both lists is not shown twice in a row.
+ */
+export function mixOnThisDay<T extends { id: string }>(pool: readonly T[], onThisDay: readonly T[]): T[] {
+  if (onThisDay.length === 0) return [...pool];
+  const rest = pool.filter((p) => !onThisDay.some((o) => o.id === p.id));
+  if (rest.length === 0) return [...onThisDay];
+  const out: T[] = [];
+  const n = Math.max(rest.length, onThisDay.length);
+  for (let i = 0; i < n; i++) {
+    out.push(onThisDay[i % onThisDay.length]!);
+    if (i < rest.length) out.push(rest[i]!);
+  }
+  return out;
+}
 
 /**
  * "March" this year, "March last year", else "March 2019". On today's date
