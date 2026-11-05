@@ -1167,7 +1167,7 @@ function SunriseSunsetArc({
 
   return (
     <div ref={containerRef} className="flex flex-col gap-1 w-full">
-      <svg width={width} height={H} style={{ display: 'block', overflow: 'visible' }}>
+      <svg width={width} height={H} style={{ display: 'block', overflow: 'visible' }} data-sun-arc>
         {/* Altitude-based color gradient for the sun arc — red at the
             horizon, orange at low altitude, amber at zenith. Matches the
             atmospheric-scattering color shift you'd actually see in the sky. */}

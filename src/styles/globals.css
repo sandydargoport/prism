@@ -469,6 +469,9 @@ html[data-wallpaper] .widget-cell[data-corner][data-fill="glass"] *:not([data-ke
 }
 .widget-cell.idle-clear svg,
 html[data-wallpaper] .widget-cell[data-corner][data-fill="glass"] svg { filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.5)); }
+/* The weather widget's sun arc over a photo (#672): its faint guide lines
+   wash out on a light photo, so it gets the corner tiles' soft shadow. */
+html[data-wallpaper] [data-sun-arc] { filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.55)); }
 
 /* Water (#799, docs/DESIGN.md "Water"). While a wallpaper shows, the clock and
    weather corner tiles sit straight on the photo, awake as on the idle screen,
