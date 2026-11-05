@@ -122,3 +122,26 @@ describe('the Today view in a shared layout', () => {
     expect('view' in projectCommunityLayout({ ...valid, view: 'freeform' })).toBe(false);
   });
 });
+
+// Today's parts travel with it (#927): shown or hidden, staying when idle,
+// days ahead and text size, and no other setting.
+describe('Today parts in a shared layout', () => {
+  it('keeps each part\'s choices and the scene settings', () => {
+    const out = projectCommunityLayout({
+      ...valid,
+      view: 'today',
+      widgets: [
+        { i: 'chores', x: 0, y: 0, w: 4, h: 2, visible: false, showWhenIdle: true },
+        { i: 'calendar', x: 0, y: 2, w: 4, h: 2, settings: { daysAhead: 2, textSize: 'large', apiKey: 'x', daysAheadExtra: 9 } },
+      ],
+    });
+    expect(out.widgets[0]).toMatchObject({ visible: false, showWhenIdle: true });
+    expect(out.widgets[1]!.settings).toEqual({ daysAhead: 2, textSize: 'large' });
+  });
+
+  it('drops a scene setting out of range', () => {
+    const out = projectCommunityLayout({ ...valid, widgets: [{ i: 'calendar', x: 0, y: 0, w: 4, h: 2, settings: { daysAhead: 30, textSize: 'huge' } }] });
+    expect('settings' in out.widgets[0]!).toBe(false);
+  });
+});
+

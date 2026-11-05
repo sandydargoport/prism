@@ -39,6 +39,7 @@ import { SCREENSAVER_WIDGET_CLASS } from '@/components/screensaver/Screensaver';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import { parseIdleBackground, withoutDashboard, PHOTOS, type IdleBackground } from '@/lib/idleBackground';
 import { TodayScene } from '@/components/today/TodayScene';
+import { TodayPartsPanel } from '@/components/today/TodayPartsPanel';
 import type { ChoreLike } from '@/lib/today/quietLines';
 import { useEventSheet } from '@/components/calendar/useEventSheet';
 import { usePinFreeEveryday, useWhoDidIt } from './useEveryday';
@@ -513,6 +514,9 @@ export function Dashboard({
               onScrollInfo={handleScrollInfo}
               scrollToRef={scrollToGridRef}
             />
+          ) : layout.activeLayout?.view === 'today' && layout.isEditing && layout.editTab !== 'idle' ? (
+            // Editing Today (#927): its parts, shown or hidden, never moved.
+            <TodayPartsPanel widgets={layout.editingWidgets} onChange={layout.setEditingWidgets} />
           ) : layout.activeLayout?.view === 'today' && !layout.isEditing ? (
             // Today (#907): one scene over the photo instead of the grid. In
             // the editor it shows as its grid of parts until the parts panel.
