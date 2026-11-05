@@ -5,8 +5,49 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { PartyPopper, Settings, ShieldCheck } from 'lucide-react';
+import { SCENERY } from '@/lib/scenery';
 
-export function CompleteStep() {
+/**
+ * The two front pages a first run sets up (#808), drawn small (#930): Today,
+ * where the wall starts, and Calendar, the week as a board.
+ */
+function FrontPagePreview({ kind }: { kind: 'today' | 'calendar' }) {
+  return (
+    <div
+      aria-hidden
+      className="relative aspect-video overflow-hidden rounded-xl bg-cover bg-center"
+      style={{ backgroundImage: `url(${SCENERY[0]!.src})` }}
+    >
+      <div className="absolute inset-0 bg-black/25" />
+      <div className="absolute left-[7%] top-[9%] space-y-[6%] w-[30%]">
+        <div className="h-[3px] w-[70%] rounded-full bg-white/80" />
+        <div className={kind === 'today' ? 'h-[14px] w-full rounded-sm bg-white/90' : 'h-[9px] w-[70%] rounded-sm bg-white/90'} />
+      </div>
+      <div className="absolute right-[7%] top-[9%] h-[9px] w-[16%] rounded-sm bg-white/80" />
+      {kind === 'today' ? (
+        <>
+          <svg className="absolute left-[7%] top-[40%] h-[28%] w-[86%]" viewBox="0 0 100 30" preserveAspectRatio="none">
+            <path d="M0 28 Q50 -10 100 28" fill="none" stroke="white" strokeOpacity="0.85" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+            <circle cx="38" cy="10" r="2.2" fill="white" />
+          </svg>
+          <div className="absolute bottom-[10%] left-[7%] w-[45%] space-y-[5%]">
+            {[90, 70].map((w) => <div key={w} className="h-[3px] rounded-full bg-white/80" style={{ width: `${w}%` }} />)}
+          </div>
+        </>
+      ) : (
+        <div className="absolute bottom-[10%] left-[7%] right-[7%] top-[34%] grid grid-cols-5 gap-[3%]">
+          {[3, 2, 4, 1, 2].map((n, i) => (
+            <div key={i} className="space-y-[12%] border-t border-white/60 pt-[10%]">
+              {Array.from({ length: n }, (_, j) => <div key={j} className="h-[4px] rounded-full bg-white/80" />)}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function CompleteStep({ firstRun = true }: { firstRun?: boolean }) {
   const [marking, setMarking] = useState(false);
 
   // Anonymous update check is opt-out (on by default). We disclose it here at
@@ -73,19 +114,36 @@ export function CompleteStep() {
   return (
     <Card>
       <CardContent className="pt-8 pb-8 text-center space-y-6">
-        <div className="flex justify-center">
-          <div className="rounded-full bg-primary/10 p-4">
-            <PartyPopper className="h-10 w-10 text-primary" />
+        {!firstRun && (
+          <div className="flex justify-center">
+            <div className="rounded-full bg-primary/10 p-4">
+              <PartyPopper className="h-10 w-10 text-primary" />
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold">You&apos;re all set!</h1>
+          <h1 className="text-2xl">You&apos;re all set</h1>
           <p className="text-muted-foreground">
-            Prism is ready. Head to your dashboard to get started, or visit Settings to
-            connect accounts, add more family members, or fine-tune your display.
+            {firstRun
+              ? 'Prism sets up two front pages. The wall starts on Today; Calendar is one tap away on the dock.'
+              : 'Head to your dashboard, or visit Settings to connect accounts, add family members, or fine-tune your display.'}
           </p>
         </div>
+
+        {firstRun && (
+          <div className="grid grid-cols-2 gap-4 text-left" data-setup-front-pages>
+            {([['today', 'Today', 'The day at a glance'], ['calendar', 'Calendar', 'The week as a board']] as const).map(([kind, name, body]) => (
+              <figure key={kind} className="m-0 space-y-2" data-setup-front-page={kind}>
+                <FrontPagePreview kind={kind} />
+                <figcaption>
+                  <span className="block text-body font-medium">{name}</span>
+                  <span className="block text-caption text-muted-foreground">{body}</span>
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        )}
 
         <div className="flex flex-col gap-3">
           <Button
@@ -94,7 +152,7 @@ export function CompleteStep() {
             size="lg"
             className="w-full"
           >
-            Go to dashboard
+            {firstRun ? 'Start on Today' : 'Go to dashboard'}
           </Button>
           <Button
             variant="outline"
@@ -119,6 +177,7 @@ export function CompleteStep() {
                 <span className="font-medium text-foreground">No personal data, no IP address, no tracking.</span>{' '}
                 <button
                   type="button"
+                  data-inline-link
                   onClick={() => setShowSent((v) => !v)}
                   className="underline underline-offset-2 hover:text-foreground"
                 >
