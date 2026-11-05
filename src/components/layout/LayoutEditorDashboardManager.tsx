@@ -172,9 +172,9 @@ export function CreateDashboardDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  onCreate: (name: string, startFrom: 'blank' | 'template' | 'copy' | 'today') => void;
+  onCreate: (name: string, startFrom: 'blank' | 'template' | 'copy' | 'today' | 'calendar') => void;
 }) {
-  const [createForm, setCreateForm] = useState({ name: '', startFrom: 'template' as 'blank' | 'template' | 'copy' | 'today' });
+  const [createForm, setCreateForm] = useState({ name: '', startFrom: 'template' as 'blank' | 'template' | 'copy' | 'today' | 'calendar' });
 
   if (!open) return null;
 
@@ -206,6 +206,7 @@ export function CreateDashboardDialog({
           <div className="flex gap-2">
             {([
               { value: 'today' as const, label: 'Today' },
+              { value: 'calendar' as const, label: 'Calendar' },
               { value: 'template' as const, label: 'Default Template' },
               { value: 'copy' as const, label: 'Copy Current' },
               { value: 'blank' as const, label: 'Blank' },
