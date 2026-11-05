@@ -128,7 +128,11 @@ export function AppShell({
   // - Larger screens in landscape: SideNav
   // - Larger screens in portrait: PortraitNav (bottom drawer)
   const wallDock = dock === 'wall' && !isMobile && orientation === 'landscape';
-  const showSideNav = !isMobile && orientation === 'landscape' && !wallDock;
+  // Every other page in landscape keeps the dock on screen (#923); the rail
+  // stays only where a page asks for no dock at all.
+  const pageDock = !wallDock && !isMobile && orientation === 'landscape';
+  const showSideNav = false;
+  const pageDockShown = !hideNav && pageDock && !measureHideNav;
   const showPortraitNav = !isMobile && orientation === 'portrait';
   const showMobileNav = isMobile;
   const portraitNavShown = !hideNav && showPortraitNav && !measureHideNav && !uiHidden;
@@ -142,6 +146,9 @@ export function AppShell({
       {!hideNav && showSideNav && (
         <SideNav user={user} onLogout={onLogout} onLogin={onLogin} uiHidden={uiHidden || measureHideNav} />
       )}
+
+      {/* THE DOCK ON EVERY OTHER PAGE (#923) */}
+      {pageDockShown && <Dock mode="page" user={user} onLogin={onLogin} onLogout={onLogout} />}
 
       {/* THE DOCK ON THE WALL (#922) */}
       {!hideNav && wallDock && !measureHideNav && (
@@ -157,16 +164,19 @@ export function AppShell({
           // The nav itself slides smoothly via GPU-composited transform; the content
           // just needs to reflow once when the class changes.
           !hideNav && showSideNav && !measureHideNav && !uiHidden && 'ml-16',
-          portraitNavShown && 'pb-(--nav-bottom)',
+          (portraitNavShown || pageDockShown) && 'pb-(--nav-bottom)',
           className
         )}
         // Height of the fixed bottom nav (PortraitNav: h-20, a 1px top border and
-        // the safe area). Full-height pages size themselves with `h-page`, which
-        // subtracts it, so nothing sits under the nav.
+        // the safe area; the dock: 68px plus its 1rem gap). Full-height pages
+        // size themselves with `h-page`, which subtracts it, so nothing sits
+        // under the nav and a list's last row can always scroll clear (#923).
         style={
           portraitNavShown
             ? ({ '--nav-bottom': 'calc(5rem + 1px + env(safe-area-inset-bottom, 0px))' } as React.CSSProperties)
-            : undefined
+            : pageDockShown
+              ? ({ '--nav-bottom': 'calc(68px + 1.5rem + env(safe-area-inset-bottom, 0px))' } as React.CSSProperties)
+              : undefined
         }
       >
         {children}
