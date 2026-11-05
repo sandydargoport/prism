@@ -86,10 +86,10 @@ describe('numeral font role', () => {
   });
 });
 
-// The display face (#800): Fraunces for the clock, the temperature and titles,
+// The display face (#800): Literata for the clock, the temperature and titles,
 // unless a theme names a numeral face of its own.
 describe('display face role', () => {
-  it('is Fraunces when the theme names no numeral face', () => {
+  it('is Literata when the theme names no numeral face', () => {
     expect(themeCss(theme({ font: 'sans' }))).toContain('--theme-font-display:var(--font-serif)');
   });
 
@@ -99,7 +99,7 @@ describe('display face role', () => {
 
   it('falls back to the serif face, never to the text face', () => {
     const css = readFileSync(join(__dirname, '../../../styles/globals.css'), 'utf8');
-    expect(css).toMatch(/--font-display:\s*var\(--theme-font-display, var\(--font-serif, Fraunces\)\), Georgia,/);
+    expect(css).toMatch(/--font-display:\s*var\(--theme-font-display, var\(--font-serif, Literata\)\), Georgia,/);
   });
 });
 

@@ -153,7 +153,7 @@ function chromeProperties(theme: Theme): Array<[string, string]> {
     ...shapeProperties(theme),
     ['--theme-font', `var(${font}), var(--font-inter, Inter)`],
     ['--theme-font-numeral', `var(${numeral}), var(--font-inter, Inter)`],
-    // The display face is Fraunces unless the theme names a numeral face.
+    // The display face is Literata unless the theme names a numeral face.
     ['--theme-font-display', theme.numeralFont && isValidFont(theme.numeralFont)
       ? `var(${THEME_FONTS[theme.numeralFont].varName}), var(--font-serif)`
       : 'var(--font-serif)'],

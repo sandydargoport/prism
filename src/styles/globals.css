@@ -91,10 +91,10 @@
      numeral face of its own (--theme-font-numeral, set by applyTheme). */
   --font-numeral: var(--theme-font-numeral, var(--font-sans));
   /* The display face (#800): the clock, the temperature and page and sheet
-     titles. Fraunces, unless a theme names a numeral face of its own
+     titles. Literata, unless a theme names a numeral face of its own
      (--theme-font-display, set by applyTheme). Everything else stays sans. */
   --font-display:
-    var(--theme-font-display, var(--font-serif, Fraunces)), Georgia,
+    var(--theme-font-display, var(--font-serif, Literata)), Georgia,
     Times New Roman, serif;
   --font-mono:
     JetBrains Mono, Menlo, Monaco, Consolas, Liberation Mono, Courier New,

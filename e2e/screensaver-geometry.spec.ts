@@ -1188,9 +1188,9 @@ test.describe('corner clock and weather', () => {
         });
         // The display face is a next/font family; its generated name contains
         // the face's name, and the text face's does not.
-        expect(faces.time.family, 'clock in the display face').toMatch(/Fraunces/i);
-        expect(faces.temp.family, 'temperature in the display face').toMatch(/Fraunces/i);
-        expect(faces.condition.family, 'condition in the text face').not.toMatch(/Fraunces/i);
+        expect(faces.time.family, 'clock in the display face').toMatch(/Literata/i);
+        expect(faces.temp.family, 'temperature in the display face').toMatch(/Literata/i);
+        expect(faces.condition.family, 'condition in the text face').not.toMatch(/Literata/i);
         const { floor, ...text } = faces;
         expect(floor).toBeGreaterThanOrEqual(12);
         for (const [name, f] of Object.entries(text)) {

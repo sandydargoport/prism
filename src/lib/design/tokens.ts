@@ -48,12 +48,12 @@ export const PROSE = { size: 'title', weight: 400, lineHeight: 1.35 } as const s
 };
 
 /**
- * Faces by role (#800). The display face (Fraunces) draws the clock, the
+ * Faces by role (#800). The display face (Literata) draws the clock, the
  * temperature and page and sheet titles; everything else is the theme's text
  * face (Inter by default). A theme that names its own numeral face keeps it.
  */
 export const FACE = {
-  display: { family: 'Fraunces', roles: ['clock', 'display'] as TypeRole[] },
+  display: { family: 'Literata', roles: ['clock', 'display'] as TypeRole[] },
   text: { family: 'Inter' },
 } as const;
 

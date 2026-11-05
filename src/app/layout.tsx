@@ -43,7 +43,7 @@ import type { Metadata, Viewport } from 'next';
 
 // Inter font from Google Fonts (loaded by Next.js for performance)
 // Next.js automatically optimizes font loading to prevent layout shift
-import { Inter, Fraunces, Nunito, JetBrains_Mono } from 'next/font/google';
+import { Inter, Literata, Nunito, JetBrains_Mono } from 'next/font/google';
 
 // Providers (theme, auth, etc.)
 import { Providers } from '@/components/providers';
@@ -93,8 +93,11 @@ const inter = Inter({
  * theme actually selects, so the cost of the three unused ones is disk in the
  * container, not bytes on a display.
  */
-const fraunces = Fraunces({
+// Literata: a book face drawn for an e-reader. Its optical-size axis tightens
+// the letters at the clock's size and opens them at title size (#800).
+const literata = Literata({
   subsets: ['latin'],
+  axes: ['opsz'],
   variable: '--font-serif',
   display: 'swap',
 });
@@ -273,7 +276,7 @@ export default async function RootLayout({
       // (--font-sans, --font-display, a theme's --theme-font) are declared on
       // :root and resolve there, so a face defined lower down never reached
       // them and the Serif role drew Tailwind's default serif instead (#800).
-      className={`${inter.variable} ${fraunces.variable} ${nunito.variable} ${jetbrainsMono.variable}`}
+      className={`${inter.variable} ${literata.variable} ${nunito.variable} ${jetbrainsMono.variable}`}
       // Suppress hydration warnings from browser extensions
       // that might modify the HTML (password managers, etc.)
       suppressHydrationWarning
