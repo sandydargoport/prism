@@ -1,5 +1,6 @@
 'use client';
 
+import { focalOf } from '@/lib/photos/focalPoint';
 import { PhotoStage } from '@/components/layout/PhotoStage';
 import * as SunCalc from 'suncalc';
 import { isTodayNight } from '@/lib/today/night';
@@ -185,7 +186,13 @@ export function Screensaver() {
             sit ABOVE the (statically-positioned) widget grid and would swallow every
             tap. pointer-events-none lets taps fall through to the widgets — needed
             for the calendar view controls to be operable on the screensaver. */}
-        {src && <PhotoStage src={src} />}
+        {src && (
+          <PhotoStage
+            src={src}
+            focal={!pinnedId && photos[currentIndex] ? focalOf(photos[currentIndex]!) : undefined}
+            zoomMs={pinnedId || screensaverInterval === 0 ? 0 : screensaverInterval * 1000}
+          />
+        )}
         {showSky ? (
           <React.Suspense fallback={null}>
             <NightSky lat={lat} lon={lon} eclipse={eclipse} />

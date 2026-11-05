@@ -1,5 +1,6 @@
 'use client';
 
+import { focalOf, type FocalPoint } from '@/lib/photos/focalPoint';
 import { useFocalPointPass } from '@/lib/photos/focalPass';
 import { PhotoStage } from './PhotoStage';
 import { useState, useEffect, useCallback } from 'react';
@@ -208,11 +209,11 @@ function useWaterOnPage(src: string | null, scenery: boolean) {
 
 /** What to show: wallpaper photos added to Prism, or the bundled scenery when there are none. */
 export function wallpaperPool(
-  photos: Array<{ id: string }>,
+  photos: Array<{ id: string; focalX?: number | null; focalY?: number | null }>,
   photosLoading: boolean,
   sceneryOn: boolean,
-): { items: Array<{ id: string; src: string }>; scenery: boolean } {
-  if (photos.length > 0) return { items: photos.map((p) => ({ id: p.id, src: `/api/photos/${p.id}/file` })), scenery: false };
+): { items: Array<{ id: string; src: string; focal?: FocalPoint }>; scenery: boolean } {
+  if (photos.length > 0) return { items: photos.map((p) => ({ id: p.id, src: `/api/photos/${p.id}/file`, focal: focalOf(p) })), scenery: false };
   if (sceneryOn && !photosLoading) return { items: SCENERY.map((s) => ({ id: s.id, src: s.src })), scenery: true };
   return { items: [], scenery: false };
 }
@@ -269,13 +270,18 @@ export function WallpaperBackground() {
   const rotationPhoto = pool.length > 0 ? pool[currentIndex % pool.length] : undefined;
   const activeId = usePinned ? pinnedId : (rotationPhoto?.id ?? null);
   const src = usePinned ? `/api/photos/${pinnedId}/file` : (rotationPhoto?.src ?? null);
+  const focal = usePinned ? undefined : rotationPhoto?.focal;
+  // A pinned photo, or "never", stays put: no zoom (#955).
+  const zoomMs = usePinned || interval === 0 ? 0 : interval * 1000;
 
-  return <WallpaperLayers src={src} scenery={scenery} activeId={activeId} onBroken={markBroken} />;
+  return <WallpaperLayers src={src} scenery={scenery} activeId={activeId} onBroken={markBroken} focal={focal} zoomMs={zoomMs} />;
 }
 
-function WallpaperLayers({ src, scenery, activeId, onBroken }: {
+function WallpaperLayers({ src, scenery, activeId, onBroken, focal, zoomMs }: {
   src: string | null;
   scenery: boolean;
+  focal?: FocalPoint;
+  zoomMs: number;
   activeId: string | null;
   onBroken: (id: string) => void;
 }) {
@@ -295,7 +301,7 @@ function WallpaperLayers({ src, scenery, activeId, onBroken }: {
         onError={() => activeId && markBroken(activeId)}
       />
       {/* Photo: the shared stage crossfades to the next (#954). */}
-      <PhotoStage src={src} />
+      <PhotoStage src={src} focal={focal} zoomMs={zoomMs} />
       {/* Black layer that keeps widgets readable, PHOTO_DIM in
           src/lib/design/tokens.ts (a test holds these classes to it). The
           bundled scenery is shown with glass widgets, so it is only lightly

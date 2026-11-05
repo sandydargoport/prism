@@ -8,8 +8,16 @@
  * behind it (fading both layers at once would). The next photo is decoded
  * before its fade starts, so a slow load never shows a blank or half-drawn
  * frame. Under reduced motion the fade is short.
+ *
+ * Each photo also zooms slowly over its whole time on screen (#955), in or
+ * out by turns, anchored on its focal point (#956). Off under reduced motion
+ * and below the full performance level; each swap is timed like the idle
+ * fade, so a screen that cannot keep up steps down and loses the zoom.
  */
 import { useEffect, useRef, useState } from 'react';
+import { CENTRE, type FocalPoint } from '@/lib/photos/focalPoint';
+import { zoomFor, zoomOn, zoomOrigin } from '@/lib/photos/zoom';
+import { judgeMotion, usePerformanceLevel } from '@/lib/hooks/usePerformanceMode';
 
 export const CROSSFADE_MS = 2200;
 export const REDUCED_FADE_MS = 300;
@@ -26,7 +34,21 @@ function decoded(src: string): Promise<void> {
   return new Promise((resolve, reject) => { img.onload = () => resolve(); img.onerror = reject; });
 }
 
-export function PhotoStage({ src, className = '' }: { src: string | null; className?: string }) {
+export function PhotoStage({ src, className = '', focal, zoomMs = 0 }: {
+  src: string | null;
+  className?: string;
+  /** The current photo's focal point; the centre when it has none. */
+  focal?: FocalPoint | null;
+  /** How long each photo is on screen, for the zoom; 0 for no zoom. */
+  zoomMs?: number;
+}) {
+  const level = usePerformanceLevel();
+  const zooming = zoomMs > 0 && zoomOn(level, prefersReducedMotion());
+  // Per photo: which way it zooms and where it is anchored, fixed when it
+  // first arrives so a re-render never restarts or flips it.
+  const shown = useRef(new Map<string, { n: number; focal: FocalPoint }>());
+  const count = useRef(0);
+  const started = useRef(new WeakSet<Element>());
   const [front, setFront] = useState<string | null>(null);
   const [incoming, setIncoming] = useState<{ src: string; shown: boolean } | null>(null);
   const frontRef = useRef<string | null>(null);
@@ -35,6 +57,11 @@ export function PhotoStage({ src, className = '' }: { src: string | null; classN
 
   useEffect(() => {
     if (!src || src === frontRef.current) return;
+    // Fixed now, before its layer exists: a re-render never flips or restarts it.
+    if (!shown.current.has(src)) {
+      shown.current.set(src, { n: count.current++, focal: focal ?? CENTRE });
+      if (shown.current.size > 8) shown.current.delete(shown.current.keys().next().value!);
+    }
     let cancelled = false;
     let frame = 0;
     decoded(src).then(() => {
@@ -45,17 +72,37 @@ export function PhotoStage({ src, className = '' }: { src: string | null; classN
       setIncoming({ src, shown: false });
       // Two frames so the browser paints it transparent before it fades in.
       frame = requestAnimationFrame(() => {
-        frame = requestAnimationFrame(() => { if (!cancelled) setIncoming({ src, shown: true }); });
+        frame = requestAnimationFrame(() => {
+          if (cancelled) return;
+          setIncoming({ src, shown: true });
+          // The swap, with its zoom, is the screen's heaviest moment: time it.
+          judgeMotion();
+        });
       });
     }).catch(() => {
       // Undecodable: keep what is on screen; the caller's validator skips it.
     });
     return () => { cancelled = true; cancelAnimationFrame(frame); };
+    // Only a new photo starts this; its focal point is read with it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [src]);
+
+  const startZoom = (url: string) => (el: HTMLDivElement | null) => {
+    if (!el || !zooming || started.current.has(el) || typeof el.animate !== 'function') return;
+    started.current.add(el);
+    const info = shown.current.get(url) ?? { n: 0, focal: CENTRE };
+    const [from, to] = zoomFor(info.n);
+    el.style.transformOrigin = zoomOrigin(info.focal);
+    el.animate([{ transform: `scale(${from})` }, { transform: `scale(${to})` }], {
+      duration: zoomMs + fadeMs, easing: 'linear', fill: 'forwards',
+    });
+  };
 
   const layer = (key: string, url: string, role: 'front' | 'incoming', opacity: number) => (
     <div
       key={key}
+      ref={startZoom(url)}
+      data-zoom={zooming ? 'on' : 'off'}
       className="absolute inset-0 bg-cover bg-center"
       style={{ backgroundImage: `url(${url})`, opacity, transition: role === 'incoming' ? `opacity ${fadeMs}ms linear` : undefined }}
       data-photo-layer={role}
