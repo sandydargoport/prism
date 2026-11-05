@@ -10,8 +10,8 @@ const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
 const PIN = process.env.E2E_PIN || '1234';
 
 /**
- * Each test stands in for its own screen, so the per-screen limit one test
- * spends on purpose (and a retry's) never reaches another.
+ * Each test stands in for its own screen. The wall limit no longer goes by
+ * the screen's address (#809), so this only labels the activity log.
  */
 const screen = () => ({ 'x-forwarded-for': `10.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}` });
 
@@ -112,10 +112,9 @@ test.describe('everyday jobs without a PIN', () => {
       expect((await wall.post(`/api/chores/${chore.id}/approve`, { data: {} })).status()).toBe(401);
       expect((await wall.patch('/api/settings', { data: { key: 'security', value: { requirePinForEveryChange: true } } })).status()).toBe(401);
 
-      // At most 30 changes a minute from one screen.
-      const statuses: number[] = [];
-      for (let i = 0; i < 31; i++) statuses.push((await wall.patch(`/api/tasks/${task.id}`, { data: { completed: i % 2 === 0 } })).status());
-      expect(statuses, 'the limit answers 429').toContain(429);
+      // The limit is one bucket for the household's walls (#809), so filling
+      // it here would refuse every other test's wall changes for a minute.
+      // It is covered in jest (src/lib/auth/__tests__/everydayAuth.test.ts).
     } finally {
       await parent.patch('/api/settings', { data: { key: 'security', value: original } });
       await parent.delete(`/api/tasks/${task.id}`);

@@ -8,7 +8,7 @@
  *
  * When it is off, a signed-out wall may do the everyday jobs only: tick a
  * chore, a task or a shopping item, and add a shopping item. Each such change
- * is limited to 30 a minute per screen and written to the activity log.
+ * is limited to 60 a minute across the household and written to the activity log.
  * Approving, points, editing, deleting and settings still need a signed-in
  * parent, because those routes keep calling requireAuth().
  *
@@ -24,8 +24,12 @@ import { requireAuth, getDisplayAuth, type AuthResult } from './requireAuth';
 import { rateLimitGuard } from '@/lib/cache/rateLimit';
 import { logActivity } from '@/lib/services/auditLog';
 
-/** Changes a signed-out wall may make in a minute. */
-export const WALL_CHANGES_PER_MINUTE = 30;
+/**
+ * Changes the signed-out walls may make in a minute, together. One bucket for
+ * the household (#809): a per-screen key came from X-Forwarded-For, which any
+ * caller sets, so a caller could start a fresh bucket with every request.
+ */
+export const WALL_CHANGES_PER_MINUTE = 60;
 
 export type EverydayAuth = AuthResult & { wall?: true };
 
@@ -61,8 +65,7 @@ export async function requireEverydayAuth(job: string): Promise<EverydayAuth | N
   const display = await getDisplayAuth();
   if (!display) return auth;
 
-  const screen = await screenKey();
-  const limited = await rateLimitGuard(`wall:${screen}`, 'everyday', WALL_CHANGES_PER_MINUTE, 60);
+  const limited = await rateLimitGuard('wall:household', 'everyday', WALL_CHANGES_PER_MINUTE, 60);
   if (limited) return limited;
 
   return { ...display, wall: true };
