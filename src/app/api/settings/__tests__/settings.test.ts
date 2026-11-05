@@ -92,6 +92,38 @@ describe('GET /api/settings', () => {
     expect(body.settings.theme).toBe('dark');
     expect(body.settings.language).toBe('en');
   });
+
+  // #809: the wall, children and any other caller who may not change
+  // settings get only what the screens need.
+  describe('who may read what (#809)', () => {
+    const rows = [
+      { key: 'theme', value: 'dark' },
+      { key: 'credentials.google', value: { clientId: 'enc', clientSecret: 'enc' } },
+      { key: 'wifiConfig', value: { ssid: 'Example', password: 'enc' } },
+      { key: 'telemetry.instanceId', value: 'abc' },
+      { key: 'busGmailLabel', value: 'Bus' },
+      { key: 'mapboxToken', value: 'token' },
+      { key: 'displayUserId', value: 'u1' },
+      { key: 'security', value: { requirePinForEveryChange: false, pinLength: 4 } },
+    ];
+
+    it('a caller who may not change settings gets no credentials, Wi-Fi, ids or tokens, and only the PIN switch of security', async () => {
+      mockGetDisplayAuth.mockResolvedValue({ userId: 'display', role: 'guest' });
+      mockRequireRole.mockReturnValue(NextResponse.json({ error: 'Forbidden' }, { status: 403 }));
+      mockFrom.mockResolvedValue(rows);
+      const body = await (await GET()).json();
+      expect(Object.keys(body.settings).sort()).toEqual(['security', 'theme']);
+      expect(body.settings.security).toEqual({ requirePinForEveryChange: false });
+    });
+
+    it('a parent still reads every setting', async () => {
+      mockRequireRole.mockReturnValue(null);
+      mockFrom.mockResolvedValue(rows);
+      const body = await (await GET()).json();
+      expect(Object.keys(body.settings)).toHaveLength(rows.length);
+      expect(body.settings.security).toEqual({ requirePinForEveryChange: false, pinLength: 4 });
+    });
+  });
 });
 
 describe('PATCH /api/settings', () => {

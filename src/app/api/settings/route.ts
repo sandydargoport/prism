@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { publicSettings } from '@/lib/settings/publicSettings';
 import { requireAuth, requireRole, getDisplayAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { settings } from '@/lib/db/schema';
@@ -58,7 +59,10 @@ export async function GET() {
     for (const row of rows) {
       result[row.key] = row.value;
     }
-    return NextResponse.json({ settings: result });
+    // A parent's session reads everything; the wall, children and anyone else
+    // get only what the screens need (#809).
+    const mayChange = requireRole(auth, 'canModifySettings') === null;
+    return NextResponse.json({ settings: mayChange ? result : publicSettings(result) });
   } catch (error) {
     logError('Error fetching settings:', error);
     return NextResponse.json(
