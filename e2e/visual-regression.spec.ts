@@ -434,7 +434,11 @@ test.describe('Visual regression', () => {
       await setClientFlags(page, { theme });
       await page.goto('/');
       await page.waitForLoadState('networkidle');
-      await page.click('button[aria-label="Log in"]');
+      // Sign in lives on the dock (#922). On the wall the dock rests as a
+      // Menu word, so open it first when it is folded away.
+      const signIn = page.getByRole('button', { name: 'Sign in', exact: true });
+      if (!(await signIn.isVisible())) await page.locator('[data-dock-menu]').click();
+      await signIn.click();
       await page.waitForSelector('[data-testid="pin-modal"]', { timeout: 5000 });
       await page.waitForTimeout(400);
 

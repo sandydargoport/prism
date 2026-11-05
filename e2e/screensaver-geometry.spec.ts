@@ -21,6 +21,25 @@ import { FIRST_SCREEN_TEMPLATE } from '../src/lib/constants/layoutTemplates';
  * Editing needs a parent login, so this runs only against the seeded test
  * database (see calendar-geometry.spec.ts for why the PIN is gated).
  */
+
+/**
+ * Open the layout editor the way a person does: on the wall that is the
+ * dock's Menu, then More, then Edit layout (#922).
+ */
+async function openEditor(page: Page) {
+  // Landscape walls have the dock; portrait keeps its bar until #924.
+  const menu = page.locator('[data-dock-menu]');
+  const bar = page.getByLabel('Edit layout');
+  await expect(menu.or(bar).first()).toBeVisible({ timeout: 60000 });
+  if (await menu.isVisible()) {
+    await menu.click();
+    await page.locator('[data-dock-more]').click();
+    await page.locator('[data-dock-more-panel] [data-screen-job="edit"]').click();
+  } else {
+    await bar.click();
+  }
+}
+
 const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
 const PIN = process.env.E2E_PIN || '1234';
 
@@ -60,7 +79,7 @@ async function openScreensaverEditor(page: Page, orientation: 'landscape' | 'por
     sessionStorage.setItem('ss-geometry-seeded', '1');
   }, LAYOUT);
   await page.goto('/');
-  await page.getByLabel('Edit layout').click({ timeout: 60000 });
+  await openEditor(page);
   // The seeded dashboard shows the screensaver over photos, so the Idle
   // screen tab arranges its layout.
   await page.getByRole('tab', { name: /Idle screen/ }).click();
@@ -646,7 +665,7 @@ test.describe('calm mode idle screen', () => {
     await page.addInitScript(() => localStorage.setItem('prism-screensaver-drift', 'off'));
     try {
       await page.goto(`/d/${layout.slug}`);
-      await page.getByLabel('Edit layout').click({ timeout: 60000 });
+      await openEditor(page);
       const toggle = (i: string) => page.locator(`[data-editor-widget="${i}"] [data-idle-toggle]`);
       const tab = (name: RegExp) => page.getByRole('tab', { name });
       // The Dashboard tab arranges the dashboard; what stays when idle is the Idle screen tab's.
@@ -730,7 +749,7 @@ test.describe('idle background picker', () => {
       return route.fulfill({ response, json: { ...(await response.json()), ...place } });
     });
     await page.goto(`/d/${layout.slug}`);
-    await page.getByLabel('Edit layout').click({ timeout: 60000 });
+    await openEditor(page);
     await page.getByRole('tab', { name: /Idle screen/ }).click();
     await page.getByRole('radio', { name: 'Changes with the time of day' }).click();
     return layout as { id: string };
