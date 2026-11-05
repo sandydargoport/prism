@@ -102,6 +102,8 @@ async function setClientFlags(
       localStorage.setItem('prism-perf-mode', String(p));
       // Disable auto-hide so the toolbar stays visible during screenshots.
       localStorage.setItem('prism:auto-hide-ui', 'false');
+      // The one-time new-look offer (#808) is a toast; keep it out of the shots.
+      localStorage.setItem('prism-new-look-offer-dismissed', '1');
     },
     [theme, perfMode],
   );
