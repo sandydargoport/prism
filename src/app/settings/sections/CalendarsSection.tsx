@@ -1,5 +1,6 @@
 'use client';
 
+import { FAMILY_COLOR } from '@/lib/constants/memberColors';
 import { useState, useEffect } from 'react';
 import { addIcalSubscription } from '@/lib/calendar/addIcalSubscription';
 import { toast } from '@/components/ui/use-toast';
@@ -45,7 +46,7 @@ export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
   const [restoringId, setRestoringId] = useState<string | null>(null);
 
   const familyCalendarColor = typeof window !== 'undefined'
-    ? localStorage.getItem('prism-family-calendar-color') || '#F59E0B'
+    ? localStorage.getItem('prism-family-calendar-color') || FAMILY_COLOR
     : '#F59E0B';
 
   useEffect(() => {
