@@ -1,5 +1,6 @@
 'use client';
 
+import { BACKGROUND_WRITE_HEADER } from './AuthProvider';
 import * as React from 'react';
 import { format } from 'date-fns';
 import {
@@ -53,7 +54,8 @@ function backfillHouseholdTimezone() {
   if (!isHouseholdZoneCandidate(zone)) return;
   fetch('/api/settings', {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    // Nobody asked for this write, so a refusal must not open the PIN pad.
+    headers: { 'Content-Type': 'application/json', [BACKGROUND_WRITE_HEADER]: '1' },
     body: JSON.stringify({ key: TIMEZONE_SETTING_KEY, value: zone }),
   })
     .then((response) => {

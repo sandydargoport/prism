@@ -15,6 +15,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
+import { requireEverydayAuth, logWallChange } from '@/lib/auth/everydayAuth';
 import { db } from '@/lib/db/client';
 import { shoppingItems, users } from '@/lib/db/schema';
 import { eq, and, asc } from 'drizzle-orm';
@@ -103,8 +104,10 @@ export async function GET(request: NextRequest) {
  * }
  */
 export async function POST(request: NextRequest) {
-  const auth = await requireAuth();
+  // A signed-out wall may add an item when the PIN setting is off (#835).
+  const auth = await requireEverydayAuth('shopping-add');
   if (auth instanceof NextResponse) return auth;
+  if (auth.wall) await logWallChange('shopping-add', 'shopping_item', 'new', 'Added an item on the wall without a PIN');
 
   const { rateLimitGuard } = await import('@/lib/cache/rateLimit');
   // 120/min — recipes with long ingredient lists are added one-by-one in

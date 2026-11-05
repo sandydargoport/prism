@@ -135,9 +135,16 @@ export const updateChoreSchema = updateOf(createChoreSchema).extend({
 });
 
 export const completeChoreSchema = z.object({
-  completedBy: uuidSchema,
+  completedBy: uuidSchema.optional(),
+  /**
+   * Who did it, as the member's place in the family list (#835): a signed-out
+   * wall knows people only by that ordinal, as the PIN pad does.
+   */
+  completedByIndex: z.number().int().min(0).max(99).optional(),
   photoUrl: z.string().url().optional(),
   notes: z.string().max(1000).optional(),
+}).refine((v) => v.completedBy !== undefined || v.completedByIndex !== undefined, {
+  message: 'completedBy or completedByIndex is required',
 });
 
 // SHOPPING SCHEMAS

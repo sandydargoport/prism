@@ -19,7 +19,7 @@ jest.mock('@/components/auth', () => ({
     open ? <div role="dialog">{title} / {description}</div> : null,
 }));
 
-import { AuthProvider, useAuth } from '../AuthProvider';
+import { AuthProvider, useAuth, BACKGROUND_WRITE_HEADER } from '../AuthProvider';
 
 function Probe() {
   const { requireAuth } = useAuth();
@@ -50,6 +50,14 @@ describe('AuthProvider sign-in prompts', () => {
     await act(async () => { await window.fetch('/api/chores/1', { method: 'PATCH' }); });
     expect(screen.getByRole('dialog').textContent).toContain('Sign in to make changes');
     expect(toast).not.toHaveBeenCalled();
+  });
+
+  it('a refused background write does not put the PIN pad over the wall (#835)', async () => {
+    await mount();
+    await act(async () => {
+      await window.fetch('/api/settings', { method: 'PATCH', headers: { [BACKGROUND_WRITE_HEADER]: '1' } });
+    });
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('a refused GET does not prompt', async () => {

@@ -58,6 +58,9 @@ interface AuthProviderProps {
 /**
  * AUTH PROVIDER COMPONENT
  */
+/** Marks a write the app makes on its own, which never asks for a PIN when refused. */
+export const BACKGROUND_WRITE_HEADER = 'X-Prism-Background';
+
 export function AuthProvider({ children }: AuthProviderProps) {
   // Active user state
   const [activeUser, setActiveUser] = useState<QuickPinMember | null>(null);
@@ -165,8 +168,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
           : (input as Request).url;
         const isMutation = method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS';
         const isApi = url.includes('/api/');
+        // A write nobody tapped (a background backfill) says so, and a refusal
+        // of it must not put a PIN pad over a signed-out wall (#835).
+        const background = new Headers(init?.headers).get(BACKGROUND_WRITE_HEADER) === '1';
         const now = Date.now();
-        if (isMutation && isApi && !pinBoxOpen() && now - lastPromptAt > DEBOUNCE_MS) {
+        if (isMutation && isApi && !background && !pinBoxOpen() && now - lastPromptAt > DEBOUNCE_MS) {
           lastPromptAt = now;
           // Open the PIN box rather than describing it in a toast. The refused
           // change is not replayed: a write that failed once could apply twice,

@@ -124,12 +124,31 @@ describe('POST /api/setup/complete', () => {
       expect(insertedSetting('wallpaperScenery')).toBeUndefined();
     });
 
+    // #835: a new install does everyday jobs without a PIN; an existing one
+    // never runs this, so it keeps the PIN for everything.
+    it('turns "Require the PIN for every change" off, keeping other security settings', async () => {
+      await POST();
+      expect(insertedSetting('security')?.value).toEqual({ requirePinForEveryChange: false });
+      inserted = [];
+      state.settings = { security: { sessionTimeout: 30 } };
+      await POST();
+      expect(updatedValues.security).toEqual({ sessionTimeout: 30, requirePinForEveryChange: false });
+    });
+
+    it('never overrides a PIN choice already made', async () => {
+      state.settings = { security: { requirePinForEveryChange: true } };
+      await POST();
+      expect(insertedSetting('security')).toBeUndefined();
+      expect(updatedValues.security).toBeUndefined();
+    });
+
     it('leaves an install that already finished setup exactly as it is', async () => {
       state.settings.setupComplete = { completedAt: '2026-01-01T00:00:00Z' };
       await POST();
       expect(insertedLayouts()).toEqual([]);
       expect(insertedSetting('hiddenPages')).toBeUndefined();
       expect(insertedSetting('wallpaperScenery')).toBeUndefined();
+      expect(insertedSetting('security')).toBeUndefined();
       expect(updated).toEqual(['setupComplete']);
     });
 

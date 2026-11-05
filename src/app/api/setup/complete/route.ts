@@ -105,6 +105,16 @@ async function writeFirstScreen(createdBy: string) {
   } else if (typeof themeValue?.paletteId !== 'string') {
     await db.update(settings).set({ value: { ...themeValue, paletteId: look.paletteId } }).where(eq(settings.key, 'theme'));
   }
+  // A new install does the everyday jobs without a PIN (#835): ticking and
+  // adding from the wall. An existing install never gets here, so it keeps
+  // asking for the PIN until a parent changes the setting.
+  const security = await read('security');
+  const securityValue = (security?.value ?? null) as Record<string, unknown> | null;
+  if (!security) {
+    await db.insert(settings).values({ key: 'security', value: { requirePinForEveryChange: false } });
+  } else if (typeof securityValue?.requirePinForEveryChange !== 'boolean') {
+    await db.update(settings).set({ value: { ...securityValue, requirePinForEveryChange: false } }).where(eq(settings.key, 'security'));
+  }
   if (look.mode && !(await read(DEFAULT_MODE_SETTING_KEY))) {
     await db.insert(settings).values({ key: DEFAULT_MODE_SETTING_KEY, value: look.mode });
   }
