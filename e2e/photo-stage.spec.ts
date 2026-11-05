@@ -171,3 +171,63 @@ test('a wide photo is cropped so its subject is not under a widget', async ({ pa
     await page.request.delete(`/api/layouts/${layout.id}`);
   }
 });
+
+/**
+ * When a photo was taken (#958): a short line in a free corner, at or above
+ * the text floor, unless the household turns it off.
+ */
+async function captionPage(page: import('@playwright/test').Page, dateSetting?: boolean) {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.addInitScript(() => {
+    localStorage.setItem('prism-wallpaper-enabled', 'true');
+    localStorage.setItem('prism-wallpaper-interval', '60');
+  });
+  if (dateSetting !== undefined) {
+    await page.route('**/api/settings', async (route) => {
+      if (route.request().method() !== 'GET') return route.continue();
+      const res = await route.fetch();
+      const body = await res.json();
+      await route.fulfill({ response: res, json: { ...body, settings: { ...(body.settings ?? {}), photoCaptionDate: dateSetting } } });
+    });
+  }
+  await page.route('**/api/photos?*', (route) => route.fulfill({ json: { photos: [{ ...photo('dated'), takenAt: '2019-06-02T12:00:00.000Z' }], total: 1 } }));
+  await page.route('**/api/photos/dated/file', (route) => route.fulfill({ path: path.join(SCENERY, 'valley.webp'), contentType: 'image/webp' }));
+  // A Today layout leaves a corner free; a full grid would hide the line.
+  expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: process.env.E2E_PIN || '1234' } })).ok()).toBe(true);
+  const layout = await (await page.request.post('/api/layouts', { data: { name: `Caption ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
+  await page.goto(`/d/${layout.slug}`);
+  await expect(page.locator('[data-photo-stage] [data-photo-layer="front"]').first()).toHaveCount(1, { timeout: 60_000 });
+  return () => page.request.delete(`/api/layouts/${layout.id}`);
+}
+
+test('the photo says when it was taken, in a free corner, at the text floor or above', async ({ page }) => {
+  test.skip(process.env.E2E_HAS_TEST_DB !== '1', 'needs the seeded test database');
+  test.setTimeout(60_000);
+  const cleanup = await captionPage(page);
+  try {
+  const caption = page.locator('[data-photo-caption]');
+  await expect(caption).toHaveText('June 2019', { timeout: 10_000 });
+  const m = await caption.evaluate((el) => {
+    const probe = document.createElement('div'); probe.style.fontSize = 'var(--text-floor)'; document.body.appendChild(probe);
+    const floor = parseFloat(getComputedStyle(probe).fontSize); probe.remove();
+    const r = el.getBoundingClientRect();
+    const covered = [...document.querySelectorAll('.widget-cell, [data-today-corner], [data-today-quiet], [data-today-coming-wrap], [data-dock]')]
+      .map((e) => e.getBoundingClientRect())
+      .filter((c) => c.width > 0 && c.width * c.height < 0.6 * innerWidth * innerHeight)
+      .filter((c) => r.left < c.right && c.left < r.right && r.top < c.bottom && c.top < r.bottom);
+    return { size: parseFloat(getComputedStyle(el).fontSize), floor, overlaps: covered.length, spot: (el as HTMLElement).dataset.photoCaption };
+  });
+  expect(m.size).toBeGreaterThanOrEqual(m.floor);
+  expect(m.overlaps, `in ${m.spot}`).toBe(0);
+  } finally { await cleanup(); }
+});
+
+test('no date line when the household turns it off', async ({ page }) => {
+  test.skip(process.env.E2E_HAS_TEST_DB !== '1', 'needs the seeded test database');
+  test.setTimeout(60_000);
+  const cleanup = await captionPage(page, false);
+  try {
+    await page.waitForTimeout(2500);
+    await expect(page.locator('[data-photo-caption]')).toHaveCount(0);
+  } finally { await cleanup(); }
+});

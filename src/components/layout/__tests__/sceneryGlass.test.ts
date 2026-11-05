@@ -32,7 +32,7 @@ describe('wallpaperPool', () => {
     const { items, scenery } = wallpaperPool([{ id: 'p1' }], false, true);
     expect(scenery).toBe(false);
     // A photo without a focal point (#956) is anchored on its centre.
-    expect(items).toEqual([{ id: 'p1', src: '/api/photos/p1/file', focal: { x: 0.5, y: 0.5 } }]);
+    expect(items).toEqual([{ id: 'p1', src: '/api/photos/p1/file', focal: { x: 0.5, y: 0.5 }, aspect: undefined, takenAt: null }]);
   });
 
   it('carries a photo\'s focal point for the zoom (#955)', () => {

@@ -1,5 +1,6 @@
 'use client';
 
+import { PhotoCaption } from '@/components/layout/PhotoCaption';
 import { focalOf } from '@/lib/photos/focalPoint';
 import { CENTRED, photoFrame } from '@/lib/photos/frame';
 import { coveredRects } from '@/lib/photos/frameDom';
@@ -218,6 +219,8 @@ export function Screensaver() {
                 'linear-gradient(to top, rgb(0 0 0 / var(--ds-shade-bottom, 0.35)), transparent 35%)',
               ].join(', ') }}
             />
+            {/* When it was taken, and where if shown (#958). */}
+            <PhotoCaption photo={pinnedId ? { id: pinnedId, takenAt: null } : photos[currentIndex] ? { id: photos[currentIndex]!.id, takenAt: photos[currentIndex]!.takenAt } : null} />
           </>
         )}
         {/* Scoped from out here rather than inside ScreensaverGrid: the grid
