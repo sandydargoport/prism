@@ -57,7 +57,8 @@ test.describe('calendar grid geometry', () => {
       };
       document.querySelectorAll('[data-spanning-events] > *').forEach((el) => collect(el, 'band'));
       document.querySelectorAll('[data-droppable-day] button, .relative button').forEach((el) => {
-        if (!el.closest('[data-spanning-events]')) collect(el, 'card');
+        // The person filter chips (#879) carry a dot, not a stripe: not event cards.
+        if (!el.closest('[data-spanning-events]') && !el.closest('[data-calendar-filter]')) collect(el, 'card');
       });
       return out;
     });
