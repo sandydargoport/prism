@@ -36,6 +36,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { UserAvatar } from '@/components/ui/avatar';
+import { PersonMark } from '@/components/ui/PersonMark';
 import { PageWrapper, SubpageHeader, FilterBar, PersonFilter } from '@/components/layout';
 import { useMessages } from '@/lib/hooks';
 import { useAuth, useTimeFormat } from '@/components/providers';
@@ -510,30 +511,23 @@ function MessageCard({
   }
 
   return (
+    // A quiet row, not a card (#882, #932): the person's dot and name as
+    // meta, the message at prose size.
     <div
       className={cn(
-        'p-4 rounded-lg border border-border bg-card/85 backdrop-blur-xs',
-        'hover:border-seasonal-accent hover:ring-2 hover:ring-seasonal-accent/50 transition-all',
+        'min-h-[56px] rounded-2xl px-3 py-3 transition-colors hover:bg-foreground/[0.04]',
         'group',
-        message.important && 'bg-destructive/10 border-destructive/20'
+        message.important && 'bg-destructive/10'
       )}
+      data-message-row
     >
       {/* Header: Author and badges */}
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2">
-          <UserAvatar
-            name={message.author.name}
-            color={message.author.color}
-            imageUrl={message.author.avatarUrl}
-            size="md"
-            className="h-8 w-8 text-sm"
-          />
+          <PersonMark color={message.author.color} kind="dot" ground="paper" />
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
-              <span
-                className="font-medium"
-                style={{ color: message.author.color }}
-              >
+              <span className="text-caption font-medium text-muted-foreground" data-message-sender>
                 {message.author.name}
               </span>
               {message.pinned && (
@@ -614,7 +608,7 @@ function MessageCard({
           </div>
         </div>
       ) : (
-        <p className="text-sm text-foreground whitespace-pre-wrap pl-10">
+        <p className="m-0 pl-5 text-prose text-foreground whitespace-pre-wrap" data-message-text>
           {message.message}
         </p>
       )}
