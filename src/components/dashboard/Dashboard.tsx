@@ -39,6 +39,7 @@ import { renderScreensaverPreview } from '@/components/screensaver/ScreensaverWi
 import { SCREENSAVER_WIDGET_CLASS } from '@/components/screensaver/Screensaver';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import { parseIdleBackground, withoutDashboard, PHOTOS, type IdleBackground } from '@/lib/idleBackground';
+import { TodayScene } from '@/components/today/TodayScene';
 import { WidgetErrorBoundary } from '@/components/dashboard/WidgetErrorBoundary';
 import { WidgetExpandProvider, useWidgetExpand } from '@/components/dashboard/WidgetExpandProvider';
 import { useDashboardData } from './useDashboardData';
@@ -246,10 +247,12 @@ export function Dashboard({
     router.push(editLink(`/d/${targetSlug}`));
   }, [router, pickDashboard]);
 
-  const handleCreateDashboard = useCallback(async (name: string, startFrom: 'blank' | 'template' | 'copy') => {
-    const { DEFAULT_TEMPLATE } = await import('@/lib/constants/layoutTemplates');
+  const handleCreateDashboard = useCallback(async (name: string, startFrom: 'blank' | 'template' | 'copy' | 'today') => {
+    const { DEFAULT_TEMPLATE, TODAY_TEMPLATE } = await import('@/lib/constants/layoutTemplates');
     let widgets: WidgetConfig[];
-    if (startFrom === 'copy' && layout.activeLayout) {
+    if (startFrom === 'today') {
+      widgets = TODAY_TEMPLATE.widgets;
+    } else if (startFrom === 'copy' && layout.activeLayout) {
       widgets = layout.activeLayout.widgets;
     } else if (startFrom === 'template') {
       widgets = DEFAULT_TEMPLATE.widgets;
@@ -258,7 +261,9 @@ export function Dashboard({
       widgets = [{ i: 'clock', x: 16, y: 16, w: 16, h: 16, visible: true }];
     }
     try {
-      const result = await data.layouts.saveLayout({ name, widgets, isDefault: false });
+      const result = await data.layouts.saveLayout({
+        name, widgets, isDefault: false, ...(startFrom === 'today' ? { view: 'today' as const } : {}),
+      });
       const saved = result as { slug?: string };
       if (saved?.slug) {
         router.push(`/d/${saved.slug}`);
@@ -477,6 +482,16 @@ export function Dashboard({
               onScrollInfo={handleScrollInfo}
               scrollToRef={scrollToGridRef}
             />
+          ) : layout.activeLayout?.view === 'today' && !layout.isEditing ? (
+            // Today (#907): one scene over the photo instead of the grid. In
+            // the editor it shows as its grid of parts until the parts panel.
+            <WidgetErrorBoundary>
+              <TodayScene
+                parts={layout.activeWidgets}
+                weather={data.weather.data ?? null}
+                topOffset={uiHidden ? 0 : 56}
+              />
+            </WidgetErrorBoundary>
           ) : (
             <WidgetErrorBoundary>
               <WidgetExpandProvider renderMagnified={renderMagnifiedWidget}>

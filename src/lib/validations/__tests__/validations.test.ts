@@ -11,6 +11,7 @@ import {
   createBirthdaySchema,
   createApiTokenSchema,
   createLayoutSchema,
+  updateLayoutSchema,
   hexColorSchema,
   uuidSchema,
   validateRequest,
@@ -327,6 +328,22 @@ describe('createLayoutSchema', () => {
     expect(result.error!.issues[0]!.code).toBe('too_big');
   });
 });
+// How a dashboard is drawn (#907).
+describe('layout view', () => {
+  const base = { name: 'Kitchen', widgets: [{ i: 'clock', x: 0, y: 0, w: 4, h: 4 }] };
+  it('accepts the grid and Today', () => {
+    expect(createLayoutSchema.parse({ ...base, view: 'today' }).view).toBe('today');
+    expect(createLayoutSchema.parse({ ...base, view: 'grid' }).view).toBe('grid');
+  });
+  it('refuses any other view', () => {
+    expect(createLayoutSchema.safeParse({ ...base, view: 'freeform' }).success).toBe(false);
+  });
+  it('leaves the view unset when not given, so an update keeps it', () => {
+    expect(createLayoutSchema.parse(base).view).toBeUndefined();
+    expect(updateLayoutSchema.parse({ name: 'Kitchen' }).view).toBeUndefined();
+  });
+});
+
 
 /**
  * Every list in a request schema needs a maximum, for the reason above: only a

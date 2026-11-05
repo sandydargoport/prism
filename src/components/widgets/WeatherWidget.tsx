@@ -298,7 +298,7 @@ function tempToColor(fahrenheit: number): string {
 }
 
 
-function formatTemp(value: number, units: WeatherUnits): string {
+export function formatTemp(value: number, units: WeatherUnits): string {
   return `${Math.round(value)}°${units.temperature}`;
 }
 

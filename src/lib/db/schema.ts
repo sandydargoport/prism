@@ -949,6 +949,11 @@ export const layouts = pgTable('layouts', {
   // Per-dashboard font scale (percentage, e.g. 90, 100, 110 — null = 100)
   fontScale: integer('font_scale'),
 
+  // How the dashboard is drawn (#907): 'grid' (widgets on the grid) or
+  // 'today' (one scene over the photo; the widgets are its parts, shown or
+  // hidden, and their positions are not used).
+  view: varchar('view', { length: 20 }).default('grid').notNull(),
+
   createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

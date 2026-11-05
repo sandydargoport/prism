@@ -416,6 +416,10 @@ const widgetConfigSchema = z.object({
   settings: z.record(z.string(), z.unknown()).optional(),
 });
 
+/** How a dashboard is drawn (#907). */
+export const LAYOUT_VIEWS = ['grid', 'today'] as const;
+export type LayoutView = (typeof LAYOUT_VIEWS)[number];
+
 export const createLayoutSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
   slug: z.string().max(100).regex(/^[a-z0-9-]+$/).optional(),
@@ -426,6 +430,8 @@ export const createLayoutSchema = z.object({
   idleBackground: idleBackgroundSchema.optional(),
   orientation: z.enum(['landscape', 'portrait']).optional().default('landscape'),
   fontScale: z.number().int().min(50).max(200).nullable().optional(),
+  // No default here either: a new dashboard gets the column's, an update leaves it (#907).
+  view: z.enum(LAYOUT_VIEWS).optional(),
   createdBy: uuidSchema.optional(),
 });
 

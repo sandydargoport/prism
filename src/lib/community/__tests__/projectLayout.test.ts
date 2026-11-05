@@ -108,3 +108,17 @@ describe('projectCommunityLayout', () => {
     expect(out.widgets).toEqual([]);
   });
 });
+
+// How a layout is drawn travels with it (#907).
+describe('the Today view in a shared layout', () => {
+  it('a Today layout exported and imported again is still Today', () => {
+    const exported = projectCommunityLayout({ ...valid, view: 'today' });
+    expect(exported.view).toBe('today');
+    expect(projectCommunityLayout(JSON.parse(JSON.stringify(exported))).view).toBe('today');
+  });
+
+  it('a grid layout says nothing, and an unknown view becomes the grid', () => {
+    expect('view' in projectCommunityLayout(valid)).toBe(false);
+    expect('view' in projectCommunityLayout({ ...valid, view: 'freeform' })).toBe(false);
+  });
+});

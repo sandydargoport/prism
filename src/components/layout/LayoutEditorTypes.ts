@@ -67,7 +67,7 @@ export interface LayoutEditorProps {
   allDashboards?: DashboardInfo[];
   currentDashboardId?: string;
   onSwitchDashboard?: (slug: string) => void;
-  onCreateDashboard?: (name: string, startFrom: 'blank' | 'template' | 'copy') => void;
+  onCreateDashboard?: (name: string, startFrom: 'blank' | 'template' | 'copy' | 'today') => void;
   onRenameDashboard?: (newName: string) => void;
   onDeleteDashboard?: () => void;
 }
