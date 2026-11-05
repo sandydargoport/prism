@@ -502,4 +502,50 @@ test.describe('the Today view', () => {
       for (const id of made) await page.request.delete(`/api/events/${id}`);
     }
   });
+
+  // #931: the Calendar starting layout.
+  for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 800 }]) {
+    test(`the Calendar layout: today widest, nothing under the floor, week and month, an event opens its sheet, at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await login(page);
+      const d = new Date();
+      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, 10);
+      const title = `Board check ${Date.now()}`;
+      const ev = await postEvent(page, { title, startTime: start.toISOString(), endTime: new Date(start.getTime() + 3600_000).toISOString(), allDay: false, createdBy: getSeededParentId() });
+      const event = await ev.json();
+      const layout = await (await page.request.post('/api/layouts', { data: { name: `Board e2e ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'calendar' } })).json();
+      try {
+        await page.route('**/api/weather*', (route) => route.fulfill({ json: WEATHER }));
+        await page.goto(`/d/${layout.slug}`);
+        await page.locator('[data-board-week]').waitFor({ timeout: 60_000 });
+        const m = await page.evaluate(() => {
+          const cols = [...document.querySelectorAll('[data-board-week] > [data-board-day]')].map((c) => ({ w: c.getBoundingClientRect().width, today: c.hasAttribute('data-board-today') }));
+          const probe = document.createElement('div'); probe.style.fontSize = 'var(--text-floor)'; document.body.appendChild(probe);
+          const floor = parseFloat(getComputedStyle(probe).fontSize); probe.remove();
+          const texts = [...document.querySelectorAll('[data-calendar-board] *')].filter((el) => el.children.length === 0 && (el.textContent ?? '').trim());
+          return {
+            cols,
+            small: texts.filter((el) => parseFloat(getComputedStyle(el).fontSize) < floor - 0.01).length,
+            cut: [...document.querySelectorAll('[data-board-event]')].filter((el) => el.scrollWidth > el.clientWidth + 1).length,
+          };
+        });
+        expect(m.cols).toHaveLength(7);
+        const todayCol = m.cols.find((c) => c.today)!;
+        for (const c of m.cols.filter((c) => !c.today)) expect(todayCol.w, 'today is the widest column').toBeGreaterThan(c.w);
+        expect(m.small, 'text under the floor').toBe(0);
+        expect(m.cut, 'event text cut').toBe(0);
+
+        await page.locator('[data-board-event]').filter({ hasText: title }).click();
+        await expect(page.locator('[data-event-sheet]').getByRole('heading', { name: title })).toBeVisible();
+        await page.locator('[data-event-sheet] [data-sheet-close]').click();
+
+        await page.locator('[data-board-switch="month"]').click();
+        await expect(page.locator('[data-calendar-board]')).toHaveAttribute('data-board-mode', 'month');
+        await expect(page.locator('[data-board-month] [data-board-today]')).toHaveCount(1);
+      } finally {
+        await page.request.delete(`/api/layouts/${layout.id}`);
+        await page.request.delete(`/api/events/${event.id}`);
+      }
+    });
+  }
 });

@@ -42,7 +42,7 @@ export interface Layout {
   orientation: string;
   fontScale: number | null;
   /** How it is drawn (#907): the widget grid, or Today, one scene over the photo. */
-  view?: 'grid' | 'today';
+  view?: 'grid' | 'today' | 'calendar';
   createdBy?: string;
   createdAt: string;
   updatedAt: string;
