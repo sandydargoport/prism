@@ -101,6 +101,9 @@ export const calendarSources = pgTable('calendar_sources', {
   // Subscription/read-only calendars should have this set to false
   showInEventModal: boolean('show_in_event_modal').default(true).notNull(),
 
+  // Display rules (#877): busy only, hide after a time, birthdays as name and age.
+  displayRules: jsonb('display_rules').$type<import('@/lib/calendar/displayRules').DisplayRules>(),
+
   // Whether this is a family-shared calendar (vs personal or unassigned)
   isFamily: boolean('is_family').default(false).notNull(),
 

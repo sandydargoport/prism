@@ -115,6 +115,7 @@ export async function GET() {
         lastSynced: calendarSources.lastSynced,
         syncErrors: calendarSources.syncErrors,
         providerConfig: calendarSources.providerConfig,
+        displayRules: calendarSources.displayRules,
         createdAt: calendarSources.createdAt,
         // User info
         userId: calendarSources.userId,
@@ -145,6 +146,7 @@ export async function GET() {
       lastSynced: source.lastSynced?.toISOString() || null,
       syncErrors: source.syncErrors,
       providerConfig: source.providerConfig,
+      displayRules: source.displayRules ?? null,
       createdAt: source.createdAt.toISOString(),
       // For family calendars, return a virtual "Family" user
       user: source.isFamily

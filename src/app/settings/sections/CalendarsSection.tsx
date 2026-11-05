@@ -1,5 +1,6 @@
 'use client';
 
+import type { DisplayRules } from '@/lib/calendar/displayRules';
 import { FAMILY_COLOR } from '@/lib/constants/memberColors';
 import { useState, useEffect } from 'react';
 import { addIcalSubscription } from '@/lib/calendar/addIcalSubscription';
@@ -626,6 +627,11 @@ export function CalendarsSection({ onSynced }: { onSynced?: () => void } = {}) {
                       className="data-[state=checked]:bg-blue-500"
                     />
                   </div>
+                  <CalendarDisplayRules
+                    calendarId={cal.id}
+                    rules={(cal as { displayRules?: DisplayRules | null }).displayRules ?? null}
+                    onSaved={(next) => setLocalCalendars((prev) => prev.map((lc) => lc.id === cal.id ? { ...lc, displayRules: next } : lc))}
+                  />
                 </div>
               ))}
             </div>
@@ -974,5 +980,64 @@ function AdvancedCalendarSyncCard() {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * Display rules for one calendar (#877): show its events as Busy, hide them
+ * after a time of day, and read birthdays as name and age.
+ */
+function CalendarDisplayRules({ calendarId, rules, onSaved }: {
+  calendarId: string;
+  rules: DisplayRules | null;
+  onSaved: (next: DisplayRules | null) => void;
+}) {
+  const [saving, setSaving] = useState(false);
+  const save = async (patch: Partial<DisplayRules>) => {
+    const next = { ...(rules ?? {}), ...patch };
+    if (!next.busyOnly) delete next.busyOnly;
+    if (!next.birthdays) delete next.birthdays;
+    if (!next.hideAfter) delete next.hideAfter;
+    const value = Object.keys(next).length ? next : null;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/calendars/${calendarId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ displayRules: value }),
+      });
+      if (res.ok) onSaved(value);
+    } catch { /* ignore */ }
+    setSaving(false);
+  };
+  return (
+    <div className="mt-2 pt-2 border-t border-border space-y-2" data-calendar-rules={calendarId}>
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">Show its events only as &ldquo;Busy&rdquo;</span>
+        <Switch checked={rules?.busyOnly === true} disabled={saving} onCheckedChange={(v) => void save({ busyOnly: v })} aria-label="Show only as Busy" className="data-[state=checked]:bg-blue-500" />
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">Birthdays as name and age</span>
+        <Switch checked={rules?.birthdays === true} disabled={saving} onCheckedChange={(v) => void save({ birthdays: v })} aria-label="Birthdays as name and age" className="data-[state=checked]:bg-blue-500" />
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        <label htmlFor={`hide-after-${calendarId}`} className="text-xs text-muted-foreground">
+          Hide today&rsquo;s events after
+        </label>
+        <div className="flex items-center gap-1">
+          <input
+            id={`hide-after-${calendarId}`}
+            type="time"
+            value={rules?.hideAfter ?? ''}
+            disabled={saving}
+            onChange={(e) => void save({ hideAfter: e.target.value || undefined })}
+            className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+          />
+          {rules?.hideAfter && (
+            <Button variant="ghost" size="sm" disabled={saving} onClick={() => void save({ hideAfter: undefined })}>Clear</Button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
