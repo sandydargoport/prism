@@ -522,6 +522,7 @@ export function Dashboard({
                 weather={data.weather.data ?? null}
                 events={data.calendar.events}
                 onOpenEvent={eventSheet.open}
+                idle={calmIdle}
                 household={{
                   chores: data.chores.chores as unknown as ChoreLike[],
                   lists: data.shopping.lists as unknown as Array<{ id: string; name: string; items: Array<{ checked: boolean }> }>,
