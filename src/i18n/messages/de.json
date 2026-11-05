@@ -15,7 +15,13 @@
       "babysitter": "Babysitter",
       "travel": "Reisen",
       "weekend": "Wochenendideen",
-      "settings": "Einstellungen"
+      "settings": "Einstellungen",
+      "menu": "Menü",
+      "more": "Mehr",
+      "signIn": "Anmelden",
+      "help": "Hilfe",
+      "thisScreen": "Dieser Bildschirm",
+      "label": "Seiten"
     },
     "actions": {
       "save": "Speichern",

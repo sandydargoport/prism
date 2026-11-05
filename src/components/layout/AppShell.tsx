@@ -24,6 +24,7 @@
 
 import * as React from 'react';
 import { SideNav } from './SideNav';
+import { Dock } from './Dock';
 import { MobileFab } from './MobileFab';
 import { PortraitNav } from './PortraitNav';
 import { WallpaperBackground } from './WallpaperBackground';
@@ -56,6 +57,14 @@ export interface AppShellProps {
   showWallpaper?: boolean;
   /** Additional CSS classes for main content area */
   className?: string;
+  /**
+   * The wall (#922): in landscape on a larger screen, the rail gives way to
+   * the dock, hidden at rest behind a Menu word. Portrait and phones keep
+   * their own navigation for now (#924).
+   */
+  dock?: 'wall';
+  /** This screen's jobs, for the dock's More panel. */
+  screenJobs?: React.ReactNode;
 }
 
 /**
@@ -90,6 +99,8 @@ export function AppShell({
   hideNav = false,
   showWallpaper = false,
   className,
+  dock,
+  screenJobs,
 }: AppShellProps) {
   const orientation = useOrientation();
   const isMobile = useIsMobile();
@@ -116,7 +127,8 @@ export function AppShell({
   // - Mobile (small screens): MobileNav (simplified)
   // - Larger screens in landscape: SideNav
   // - Larger screens in portrait: PortraitNav (bottom drawer)
-  const showSideNav = !isMobile && orientation === 'landscape';
+  const wallDock = dock === 'wall' && !isMobile && orientation === 'landscape';
+  const showSideNav = !isMobile && orientation === 'landscape' && !wallDock;
   const showPortraitNav = !isMobile && orientation === 'portrait';
   const showMobileNav = isMobile;
   const portraitNavShown = !hideNav && showPortraitNav && !measureHideNav && !uiHidden;
@@ -129,6 +141,11 @@ export function AppShell({
       {/* SIDE NAVIGATION - landscape mode on larger screens */}
       {!hideNav && showSideNav && (
         <SideNav user={user} onLogout={onLogout} onLogin={onLogin} uiHidden={uiHidden || measureHideNav} />
+      )}
+
+      {/* THE DOCK ON THE WALL (#922) */}
+      {!hideNav && wallDock && !measureHideNav && (
+        <Dock mode="wall" user={user} onLogin={onLogin} onLogout={onLogout} screenJobs={screenJobs} />
       )}
 
       {/* MAIN CONTENT AREA */}
