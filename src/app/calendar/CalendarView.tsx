@@ -1,5 +1,7 @@
 'use client';
 
+import { useHydrated } from '@/lib/hooks/useStoredValue';
+import { CalendarSkeleton } from './CalendarSkeleton';
 import { FAMILY_COLOR } from '@/lib/constants/memberColors';
 import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -88,7 +90,19 @@ function sortMealsByType<T extends { mealType: 'breakfast' | 'lunch' | 'dinner' 
 // be opened directly from the calendar without yanking in all of MealsView.
 const MealModal = lazy(() => import('@/app/meals/MealsView').then(m => ({ default: m.MealModal })));
 
+/**
+ * The calendar reads its view, display mode and options from this browser's
+ * storage, which the server cannot see. So the server and the browser's first
+ * render both show the skeleton, and the calendar draws once hydrated (#479):
+ * otherwise the server drew the default view, the browser its saved one, and
+ * React threw the server's away.
+ */
 export function CalendarView() {
+  const hydrated = useHydrated();
+  return hydrated ? <CalendarViewHydrated /> : <CalendarSkeleton />;
+}
+
+function CalendarViewHydrated() {
   const t = useTranslations('calendar');
   const { activeUser, requireAuth } = useAuth();
   const { members: familyMembers } = useFamily();
