@@ -1,5 +1,6 @@
 'use client';
 
+import { PhotoStage } from './PhotoStage';
 import { useState, useEffect, useCallback } from 'react';
 import { usePhotos } from '@/lib/hooks/usePhotos';
 import { useScreenOrientation } from '@/lib/hooks/useScreenOrientation';
@@ -236,7 +237,6 @@ export function WallpaperBackground() {
   const photos = orientedPhotos.length > 0 ? orientedPhotos : allPhotos;
 
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [fadingOut, setFadingOut] = useState(false);
 
   // Track photos whose file is missing/deleted (the image 404s) so we skip past
   // them instead of showing a blank background. A broken pinned photo falls back
@@ -255,14 +255,8 @@ export function WallpaperBackground() {
   // Rotate photos (only if no pinned photo and interval is not "never")
   useEffect(() => {
     if (!enabled || pool.length <= 1 || usePinned || interval === 0) return;
-    const timer = window.setInterval(() => {
-      setFadingOut(true);
-      // After fade out, switch image and fade back in
-      setTimeout(() => {
-        setCurrentIndex((i) => i + 1);
-        setFadingOut(false);
-      }, 1000);
-    }, interval * 1000);
+    // The photo stage crossfades to the next one (#954).
+    const timer = window.setInterval(() => setCurrentIndex((i) => i + 1), interval * 1000);
     return () => window.clearInterval(timer);
   }, [enabled, pool.length, interval, usePinned]);
 
@@ -273,13 +267,12 @@ export function WallpaperBackground() {
   const activeId = usePinned ? pinnedId : (rotationPhoto?.id ?? null);
   const src = usePinned ? `/api/photos/${pinnedId}/file` : (rotationPhoto?.src ?? null);
 
-  return <WallpaperLayers src={src} scenery={scenery} fadingOut={fadingOut} activeId={activeId} onBroken={markBroken} />;
+  return <WallpaperLayers src={src} scenery={scenery} activeId={activeId} onBroken={markBroken} />;
 }
 
-function WallpaperLayers({ src, scenery, fadingOut, activeId, onBroken }: {
+function WallpaperLayers({ src, scenery, activeId, onBroken }: {
   src: string | null;
   scenery: boolean;
-  fadingOut: boolean;
   activeId: string | null;
   onBroken: (id: string) => void;
 }) {
@@ -298,14 +291,8 @@ function WallpaperLayers({ src, scenery, fadingOut, activeId, onBroken }: {
         className="hidden"
         onError={() => activeId && markBroken(activeId)}
       />
-      {/* Photo */}
-      <div
-        className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
-        style={{
-          backgroundImage: `url(${src})`,
-          opacity: fadingOut ? 0 : 1,
-        }}
-      />
+      {/* Photo: the shared stage crossfades to the next (#954). */}
+      <PhotoStage src={src} />
       {/* Black layer that keeps widgets readable, PHOTO_DIM in
           src/lib/design/tokens.ts (a test holds these classes to it). The
           bundled scenery is shown with glass widgets, so it is only lightly
