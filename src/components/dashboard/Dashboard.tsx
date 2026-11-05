@@ -41,6 +41,7 @@ import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import { parseIdleBackground, withoutDashboard, PHOTOS, type IdleBackground } from '@/lib/idleBackground';
 import { TodayScene } from '@/components/today/TodayScene';
 import { useEventSheet } from '@/components/calendar/useEventSheet';
+import { usePinFreeEveryday, useWhoDidIt } from './useEveryday';
 import { WidgetErrorBoundary } from '@/components/dashboard/WidgetErrorBoundary';
 import { WidgetExpandProvider, useWidgetExpand } from '@/components/dashboard/WidgetExpandProvider';
 import { useDashboardData } from './useDashboardData';
@@ -307,6 +308,9 @@ export function Dashboard({
     : 0;
   // One event sheet for the calendar widget and Today's arc (#836).
   const eventSheet = useEventSheet(() => { void data.calendar.refresh(); });
+  // Everyday jobs without a PIN (#835).
+  const pinFree = usePinFreeEveryday();
+  const whoDidIt = useWhoDidIt();
   const widgetProps = buildWidgetProps(data, requireAuth, {
     setShowAddTask, setShowAddMessage, setShowAddChore, setShowAddShopping,
   }, weatherLocation, confirmAction, {
@@ -316,6 +320,16 @@ export function Dashboard({
     onRemoveBirthday: removeBirthday,
     onOpenEvent: eventSheet.open,
     onAddEvent: eventSheet.add,
+    everyday: {
+      pinFree,
+      whoDidIt: async (chore) => {
+        const m = await whoDidIt.ask(chore);
+        if (!m) return null;
+        const index = familyMembers.findIndex((x) => (x.id && x.id === m.id) || x.name === m.name);
+        const member = familyMembers[index];
+        return { index: member?.loginIndex ?? index };
+      },
+    },
   });
 
   const handleLogin = async () => {
@@ -528,6 +542,7 @@ export function Dashboard({
           )}
 
           {eventSheet.element}
+          {whoDidIt.element}
           {showAddTask && (
             <AddTaskModal open={showAddTask} onOpenChange={setShowAddTask}
               onTaskCreated={() => { data.tasks.refresh(); }} />

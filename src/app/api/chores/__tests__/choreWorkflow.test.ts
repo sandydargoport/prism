@@ -63,6 +63,7 @@ jest.mock('drizzle-orm', () => ({
   eq: jest.fn(),
   and: jest.fn(),
   isNull: jest.fn(),
+  asc: jest.fn(),
 }));
 
 // --- Auth mock ---
@@ -72,6 +73,13 @@ const mockRequireRole = jest.fn();
 jest.mock('@/lib/auth', () => ({
   requireAuth: () => mockRequireAuth(),
   requireRole: (...args: unknown[]) => mockRequireRole(...args),
+}));
+
+// The route asks requireEverydayAuth (#835); here it is the signed-in user,
+// as with the PIN required for every change.
+jest.mock('@/lib/auth/everydayAuth', () => ({
+  requireEverydayAuth: () => mockRequireAuth(),
+  logWallChange: jest.fn(),
 }));
 
 jest.mock('@/lib/cache/redis', () => ({

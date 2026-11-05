@@ -1,6 +1,8 @@
 'use client';
 
+import { createElement } from 'react';
 import { toast } from '@/components/ui/use-toast';
+import { ToastAction, type ToastActionElement } from '@/components/ui/toast';
 import type { Chore, Task, Meal } from '@/types';
 import type { Birthday } from '@/lib/hooks/useBirthdays';
 import type { CalendarEvent } from '@/types/calendar';
@@ -22,6 +24,20 @@ interface EditHandlers {
   onOpenEvent?: (event: CalendarEvent) => void;
   /** "+" on the calendar widget: Add Event on that day (#836). */
   onAddEvent?: (day: Date) => void;
+  /**
+   * Everyday jobs without a PIN (#835): when the household turned "Require
+   * the PIN for every change" off, ticks and adds skip the PIN and offer Undo.
+   */
+  everyday?: {
+    pinFree: () => Promise<boolean>;
+    /** Ask who did a chore nobody is assigned to; their place in the family list. */
+    whoDidIt: (chore: string) => Promise<{ index: number } | null>;
+  };
+}
+
+/** A toast with a sentence and a text Undo (#908). */
+function undoToast(title: string, undo: () => Promise<void> | void) {
+  toast({ title, action: createElement(ToastAction, { altText: 'Undo', onClick: () => { void undo(); } }, 'Undo') as unknown as ToastActionElement });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -61,6 +77,11 @@ export function buildWidgetProps(
       loading: data.tasks.loading,
       error: data.tasks.error,
       onTaskToggle: async (taskId: string, completed: boolean) => {
+        if (await editHandlers?.everyday?.pinFree()) {
+          await data.tasks.toggleTask(taskId, completed);
+          undoToast(completed ? 'Ticked.' : 'Unticked.', () => data.tasks.toggleTask(taskId, !completed));
+          return;
+        }
         const user = await requireAuth("Who's completing this task?");
         if (user) data.tasks.toggleTask(taskId, completed);
       },
@@ -92,6 +113,31 @@ export function buildWidgetProps(
       loading: data.chores.loading,
       error: data.chores.error,
       onChoreComplete: async (choreId: string) => {
+        const everyday = editHandlers?.everyday;
+        if (everyday && await everyday.pinFree()) {
+          // No PIN (#835): the assignee gets the credit; with nobody assigned, ask who did it.
+          const chore = data.chores.chores.find((c: { id: string }) => c.id === choreId) as
+            { id: string; title: string; pointValue: number; assignedTo?: { id: string; name: string } } | undefined;
+          if (!chore) return;
+          let who: { completedBy?: string; completedByIndex?: number } | null = null;
+          if (chore.assignedTo?.id) who = { completedBy: chore.assignedTo.id };
+          else {
+            const picked = await everyday.whoDidIt(chore.title);
+            if (picked) who = { completedByIndex: picked.index };
+          }
+          if (!who) return;
+          try {
+            const result = await data.chores.completeChore(choreId, who);
+            undoToast(result?.requiresApproval ? 'Ticked. A parent will approve it.' : 'Ticked.', async () => {
+              await fetch(`/api/chores/${choreId}/complete`, { method: 'DELETE' });
+              data.chores.refresh();
+            });
+            data.chores.refresh();
+          } catch {
+            toast({ title: 'That did not save. Please try again.', variant: 'destructive' });
+          }
+          return;
+        }
         const user = await requireAuth("Who's completing this chore?");
         if (!user) return;
         try {
@@ -150,8 +196,14 @@ export function buildWidgetProps(
       lists: data.shopping.lists,
       loading: data.shopping.loading,
       error: data.shopping.error,
-      onItemToggle: (itemId: string, checked: boolean) => data.shopping.toggleItem(itemId, checked),
+      onItemToggle: async (itemId: string, checked: boolean) => {
+        await data.shopping.toggleItem(itemId, checked);
+        if (await editHandlers?.everyday?.pinFree()) {
+          undoToast(checked ? 'Checked off.' : 'Put back.', () => data.shopping.toggleItem(itemId, !checked));
+        }
+      },
       onAddClick: async () => {
+        if (await editHandlers?.everyday?.pinFree()) { modals.setShowAddShopping(true); return; }
         const user = await requireAuth("Who's adding an item?");
         if (user) modals.setShowAddShopping(true);
       },
