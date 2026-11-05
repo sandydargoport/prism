@@ -28,10 +28,14 @@ export interface ArcAxis {
   x: (hour: number) => number;
 }
 
-/** The time axis for `nowHour`. */
-export function arcAxis(nowHour: number, opts: { portrait?: boolean } = {}): ArcAxis {
-  const start = ARC.startHour;
-  const end = Math.max(ARC.endHour, nowHour + 0.5);
+/**
+ * The time axis for `nowHour`. A day with an event before 6 am starts that
+ * much earlier, and one ending after 10 pm runs that much later (to midnight
+ * at most), so no event piles up at an end of the arc.
+ */
+export function arcAxis(nowHour: number, opts: { portrait?: boolean; firstHour?: number; lastHour?: number } = {}): ArcAxis {
+  const start = opts.firstHour === undefined ? ARC.startHour : Math.max(0, Math.min(ARC.startHour, opts.firstHour - 0.3));
+  const end = Math.min(24, Math.max(ARC.endHour, nowHour + 0.5, (opts.lastHour ?? 0) + 0.3));
   const past = opts.portrait ? ARC.pastWeightPortrait : ARC.pastWeight;
   const split = Math.min(Math.max(nowHour, start), end);
   // Width before `h`: past hours count `past` each, hours ahead count 1.

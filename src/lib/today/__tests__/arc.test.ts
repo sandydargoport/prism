@@ -43,6 +43,14 @@ describe('the time axis', () => {
     expect(arcAxis(16 + 10 / 60).x(16 + 10 / 60)).toBeGreaterThan(0.25);
     expect(arcAxis(16 + 10 / 60).x(16 + 10 / 60)).toBeLessThan(0.35);
   });
+  it('starts earlier for an early event and ends later for a late one, never past midnight', () => {
+    const early = arcAxis(9, { firstHour: 5 });
+    expect(early.start).toBeCloseTo(4.7, 5);
+    expect(early.x(5)).toBeGreaterThan(0);
+    expect(arcAxis(9, { lastHour: 23 }).end).toBeCloseTo(23.3, 5);
+    expect(arcAxis(9, { lastHour: 23.9 }).end).toBe(24);
+  });
+
   it('stretches past 10 pm late at night', () => {
     const axis = arcAxis(23);
     expect(axis.end).toBe(23.5);
