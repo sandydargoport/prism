@@ -6,7 +6,7 @@ import { Suspense, lazy, useState, useCallback, useEffect, useMemo, useRef } fro
 const VISIBLE_WIDGETS_KEY = 'prism-visible-widgets';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/layout/AppShell';
-import { DashboardLayout, DashboardHeader } from '@/components/layout/DashboardGrid';
+import { DashboardLayout, DashboardHeader, ScreenJobs } from '@/components/layout/DashboardGrid';
 import { LayoutGridEditor, SCREENSAVER_THEME } from '@/components/layout/LayoutGridEditor';
 import { useAuth, useFamily } from '@/components/providers';
 import { GRID_COLS } from '@/lib/constants/grid';
@@ -164,6 +164,8 @@ export function Dashboard({
   // Detect portrait nav to offset grid height (nav covers bottom 80px + safe area)
   const deviceOrientation = useOrientation();
   const isMobile = useIsMobile();
+  // The wall's dock replaces the rail and top bar in landscape (#922).
+  const wallDock = !isMobile && deviceOrientation === 'landscape' && !layout.isEditing;
   const { uiHidden } = useAutoHideUI();
   const hasPortraitNav = !isMobile && deviceOrientation === 'portrait';
   // Only reserve bottom space when nav is actually visible (not auto-hidden)
@@ -426,12 +428,24 @@ export function Dashboard({
         onLogout={activeUser ? clearActiveUser : undefined}
         onLogin={handleLogin}
         showWallpaper
-      >
-        <DashboardLayout className={className}>
-          <DashboardHeader
+        // The editor keeps its own controls and the rail (#922).
+        dock={layout.isEditing ? undefined : 'wall'}
+        screenJobs={
+          <ScreenJobs
+            labelled
             onScreensaverClick={() => window.dispatchEvent(new Event('prism:screensaver'))}
             onEditClick={activeUser && activeUser.role !== 'parent' ? undefined : layout.handleEditStart}
           />
+        }
+      >
+        <DashboardLayout className={className}>
+          {/* On the wall in landscape the dock's More has these (#922). */}
+          {!wallDock && (
+            <DashboardHeader
+              onScreensaverClick={() => window.dispatchEvent(new Event('prism:screensaver'))}
+              onEditClick={activeUser && activeUser.role !== 'parent' ? undefined : layout.handleEditStart}
+            />
+          )}
 
           {layout.isEditing && (
             <LayoutEditor
@@ -518,7 +532,7 @@ export function Dashboard({
                   onTickChore: widgetProps.chores?.onChoreComplete as ((id: string) => void) | undefined,
                   onAddShopping: widgetProps.shopping?.onAddClick as (() => void) | undefined,
                 }}
-                topOffset={uiHidden ? 0 : 56}
+                topOffset={uiHidden || wallDock ? 0 : 56}
               />
             </WidgetErrorBoundary>
           ) : (
@@ -538,7 +552,7 @@ export function Dashboard({
                   idleToggles={layout.isEditing && layout.editTab === 'idle' && !isMobile}
                   widgetConstraints={dashboardConstraints}
                   margin={8}
-                  headerOffset={layout.isEditing ? 140 + idleBarHeight : uiHidden ? 0 : 56}
+                  headerOffset={layout.isEditing ? 140 + idleBarHeight : uiHidden || wallDock ? 0 : 56}
                   bottomOffset={bottomOffset}
                   screenGuideOrientation={screenGuideOrientation}
                   enabledSizes={enabledSizes}

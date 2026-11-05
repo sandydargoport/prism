@@ -220,40 +220,56 @@ export function DashboardHeader({
       hidden ? 'opacity-0 max-h-0 py-0' : 'max-h-20 py-2 delay-200'
     )}>
       <div className="flex items-center justify-end gap-2">
-        {onEditClick && (
-          <button
-            onClick={onEditClick}
-            className="p-2 rounded-md hover:bg-accent transition-colors"
-            aria-label="Edit layout"
-          >
-            <GridEditIcon />
-          </button>
-        )}
-
-        <button
-          onClick={() => window.location.reload()}
-          className="p-2 rounded-md hover:bg-accent transition-colors"
-          aria-label="Refresh page"
-        >
-          <RefreshCw className="h-5 w-5" />
-        </button>
-
-        <PerformanceModeBadge />
-        <BabysitterModeToggle />
-        <AwayModeToggle />
-
-        {onScreensaverClick && (
-          <button
-            onMouseDown={(e) => { e.stopPropagation(); }}
-            onClick={(e) => { e.stopPropagation(); onScreensaverClick(); }}
-            className="p-2 rounded-md hover:bg-accent transition-colors"
-            aria-label="Start screensaver"
-          >
-            <ScreensaverIcon />
-          </button>
-        )}
+        <ScreenJobs onEditClick={onEditClick} onScreensaverClick={onScreensaverClick} />
       </div>
     </header>
+  );
+}
+
+/**
+ * This screen's jobs: Edit layout, Reload, the performance badge, Babysitter
+ * and Away modes, and the screensaver. The top bar draws them as icons; the
+ * dock's More panel draws them with their names (#922).
+ */
+export function ScreenJobs({ onEditClick, onScreensaverClick, labelled = false }: {
+  onEditClick?: () => void;
+  onScreensaverClick?: () => void;
+  labelled?: boolean;
+}) {
+  const job = labelled
+    ? 'flex min-h-[44px] items-center gap-2 rounded-full border-[1.5px] border-foreground/30 px-4 text-body hover:bg-muted'
+    : 'p-2 rounded-md hover:bg-accent transition-colors';
+  return (
+    <>
+      {onEditClick && (
+        <button onClick={onEditClick} className={job} aria-label="Edit layout" data-screen-job="edit">
+          <GridEditIcon />
+          {labelled && <span>Edit layout</span>}
+        </button>
+      )}
+
+      <button onClick={() => window.location.reload()} className={job} aria-label="Refresh page" data-screen-job="reload">
+        <RefreshCw className="h-5 w-5" />
+        {labelled && <span>Reload</span>}
+      </button>
+
+      <PerformanceModeBadge />
+      <BabysitterModeToggle />
+      <AwayModeToggle />
+
+      {onScreensaverClick && (
+        <button
+          onMouseDown={(e) => { e.stopPropagation(); }}
+          onClick={(e) => { e.stopPropagation(); onScreensaverClick(); }}
+          className={job}
+          aria-label="Start screensaver"
+          data-screen-job="screensaver"
+        >
+          <ScreensaverIcon />
+          {labelled && <span>Screensaver</span>}
+        </button>
+      )}
+    </>
   );
 }
 

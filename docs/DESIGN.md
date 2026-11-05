@@ -114,6 +114,21 @@ as water, and the clock and weather corner tiles have no card at all.
 - **Toasts** are one pill with a sentence and a text "Undo" (44px), in the top
   band, centred; on the wall that is between the clock and the weather.
 
+## The dock (#922)
+
+One navigation component. On the wall (a landscape dashboard on a larger
+screen) a small "Menu" word sits at the bottom at rest; any touch raises the
+dock, and it goes after ten quiet seconds. It is drawn over the page, so
+nothing moves when it comes and goes.
+
+- Six pages (Home, Calendar, Chores, Shopping, Meals, Photos by default), More,
+  and Sign in or the signed-in person, each with its label; the current page as
+  a soft pill. Solid, no blur, one row at 1280x800, every target 44px or more.
+- More holds every other page, Settings and Help, and "This screen": Edit
+  layout, Reload, the performance badge, Babysitter and Away modes, Screensaver.
+- No page can be lost: `dockLayout` puts each visible page on the dock or in
+  More, never both (checked).
+
 ## Events
 
 A pale tint of the person's colour, a solid 4px bar on the leading edge, and
