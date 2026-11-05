@@ -86,4 +86,46 @@ test.describe('the dock on the wall', () => {
       await page.request.delete(`/api/layouts/${layout.id}`);
     }
   });
+
+  // #923: the dock stays on every other page, marks where you are, never
+  // covers the page's last row, and Home goes back to the screen's dashboard.
+  for (const path of ['/chores', '/shopping', '/calendar']) {
+    test(`the dock stays on ${path}, marks it, and keeps the page clear of it`, async ({ page }) => {
+      await page.setViewportSize({ width: 1920, height: 1080 });
+      const login = await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } });
+      expect(login.ok()).toBe(true);
+      await page.goto(`${path}?from=kitchen`);
+      const dock = page.locator('[data-dock]');
+      await expect(dock).toBeVisible({ timeout: 60_000 });
+      await expect(dock).not.toHaveAttribute('aria-hidden', 'true');
+      await expect(page.locator(`[data-dock-item="${path}"]`)).toHaveAttribute('aria-current', 'page');
+      await expect(page.locator('[data-dock-item="/"]'), 'Home goes back to the screen\'s dashboard').toHaveAttribute('href', '/d/kitchen');
+      // Scroll everything to the end: the last thing on the page ends above the dock.
+      const m = await page.evaluate(async () => {
+        for (const el of [document.scrollingElement, ...document.querySelectorAll('main *')]) {
+          if (el && el.scrollHeight > el.clientHeight + 4) el.scrollTop = el.scrollHeight;
+        }
+        await new Promise((r) => setTimeout(r, 300));
+        const dockTop = document.querySelector('[data-dock]')!.getBoundingClientRect().top;
+        const main = document.querySelector('main')!;
+        let lowest = 0;
+        for (const el of main.querySelectorAll('*')) {
+          const r = el.getBoundingClientRect();
+          if (el.closest('[data-dock]')) continue;
+          if (r.width > 0 && r.height > 0 && r.bottom <= innerHeight + 1 && getComputedStyle(el).visibility !== 'hidden') {
+            const text = (el as HTMLElement).innerText?.trim();
+            if (text && el.children.length === 0) lowest = Math.max(lowest, r.bottom);
+          }
+        }
+        // The page beside the dock reserves the dock's height at its foot,
+        // which is what lets a list's last row scroll clear of it.
+        const shell = document.querySelector('[data-dock]')!.parentElement!;
+        const pageMain = shell.querySelector(':scope > main') as HTMLElement;
+        const reserved = parseFloat(getComputedStyle(pageMain).paddingBottom);
+        return { dockTop, lowest, reserved, under: innerHeight - dockTop };
+      });
+      expect(m.lowest, 'the last visible text ends above the dock').toBeLessThanOrEqual(m.dockTop);
+      expect(m.reserved, 'room for the dock at the foot of the page').toBeGreaterThanOrEqual(m.under);
+    });
+  }
 });

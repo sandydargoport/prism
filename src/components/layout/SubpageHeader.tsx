@@ -46,7 +46,8 @@ export function SubpageHeader({ icon, title, badge, actions, overflow }: Subpage
           </Button>
           <div className="flex items-center gap-2 min-w-0">
             {!isMobile && icon && <span className="shrink-0 flex">{icon}</span>}
-            <h1 className={cn('font-bold truncate', isMobile ? 'text-base' : 'text-xl')}>{title}</h1>
+            {/* The page title in the display face (#923). */}
+            <h1 className={cn('font-medium truncate', isMobile ? 'text-base' : 'text-title')} style={{ fontFamily: 'var(--font-display)' }}>{title}</h1>
             {badge}
           </div>
         </div>
