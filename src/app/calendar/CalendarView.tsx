@@ -1,5 +1,6 @@
 'use client';
 
+import { FAMILY_COLOR } from '@/lib/constants/memberColors';
 import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -171,7 +172,7 @@ export function CalendarView() {
     if (!familyGroup) return true;
     return showAll || selectedCalendarIds.has(familyGroup.id);
   }, [familyGroup, selectedCalendarIds, showAll]);
-  const mealColor = familyGroup?.color ?? '#F59E0B';
+  const mealColor = familyGroup?.color ?? FAMILY_COLOR;
 
   // Set of family-member user IDs whose calendar pill is currently selected.
   // Used to filter chores/tasks by their `assignedTo` so the profile pills

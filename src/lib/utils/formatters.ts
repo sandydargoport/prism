@@ -4,6 +4,7 @@
  * formatting logic across GET, POST, and PATCH endpoints.
  */
 
+import { FAMILY_COLOR } from '@/lib/constants/memberColors';
 import { guestAuthor, type GuestKind } from '@/lib/messages/guestNotes';
 
 /**
@@ -188,7 +189,7 @@ export function formatEventRow(row: {
   if (!eventColor && row.groupColor) eventColor = row.groupColor;
   if (!eventColor && row.userColor) eventColor = row.userColor;
   if (!eventColor && row.calendarSourceColor) eventColor = row.calendarSourceColor;
-  if (!eventColor && row.calendarSourceIsFamily) eventColor = '#F59E0B';
+  if (!eventColor && row.calendarSourceIsFamily) eventColor = FAMILY_COLOR;
 
   return {
     id: row.id,
