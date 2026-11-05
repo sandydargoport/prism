@@ -33,6 +33,10 @@ export interface CommunityWidget {
   visible?: boolean;
   backgroundColor?: string;
   backgroundOpacity?: number;
+  /** Stays on screen while the wall is idle. */
+  showWhenIdle?: boolean;
+  /** Today's scene settings, on its calendar part (#927). Nothing else is carried. */
+  settings?: { daysAhead?: number; textSize?: 'normal' | 'large' | 'larger' };
 }
 
 export interface CommunityLayoutData {
@@ -179,6 +183,13 @@ export function projectCommunityLayout(
     if (typeof w.visible === 'boolean') widget.visible = w.visible;
     if (typeof w.backgroundColor === 'string') widget.backgroundColor = w.backgroundColor;
     if (typeof w.backgroundOpacity === 'number') widget.backgroundOpacity = w.backgroundOpacity;
+    if (typeof w.showWhenIdle === 'boolean') widget.showWhenIdle = w.showWhenIdle;
+    // Only Today's two scene settings, each checked; any other setting stays home.
+    const settings = (w.settings && typeof w.settings === 'object' ? w.settings : {}) as Record<string, unknown>;
+    const kept: NonNullable<CommunityWidget['settings']> = {};
+    if (Number.isInteger(settings.daysAhead) && (settings.daysAhead as number) >= 1 && (settings.daysAhead as number) <= 7) kept.daysAhead = settings.daysAhead as number;
+    if (settings.textSize === 'normal' || settings.textSize === 'large' || settings.textSize === 'larger') kept.textSize = settings.textSize;
+    if (Object.keys(kept).length > 0) widget.settings = kept;
     return widget;
   });
 

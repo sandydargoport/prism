@@ -462,4 +462,44 @@ test.describe('the Today view', () => {
       await page.request.delete(`/api/events/${event.id}`);
     }
   });
+
+  // #927: the editor shows Today's parts, not a grid; hiding one and choosing
+  // one day ahead changes the scene once saved.
+  test('the parts panel hides a part and sets the days ahead', async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await login(page);
+    const d = new Date();
+    const made: string[] = [];
+    for (const days of [1, 2]) {
+      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate() + days, 10);
+      const r = await postEvent(page, { title: `Parts day ${days} ${Date.now()}`, startTime: start.toISOString(), endTime: new Date(start.getTime() + 3600_000).toISOString(), allDay: false, createdBy: getSeededParentId() });
+      made.push((await r.json()).id);
+    }
+    const layout = await (await page.request.post('/api/layouts', { data: { name: `Parts e2e ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
+    try {
+      await page.route('**/api/weather*', (route) => route.fulfill({ json: WEATHER }));
+      await page.goto(`/d/${layout.slug}`);
+      await page.locator('[data-today-chores], [data-today-coming]').first().waitFor({ timeout: 60_000 });
+      await page.locator('[data-dock-menu]').click();
+      await page.locator('[data-dock-more]').click();
+      await page.locator('[data-dock-more-panel] [data-screen-job="edit"]').click();
+      const panel = page.locator('[data-today-parts]');
+      await expect(panel).toBeVisible();
+      await expect(page.locator('.widget-cell'), 'no grid while editing Today').toHaveCount(0);
+      await panel.locator('[data-part-show="chores"]').click();
+      await panel.locator('[data-days-ahead]').selectOption('1');
+      await page.getByRole('button', { name: 'Save', exact: true }).click();
+      await expect(page.locator('[data-today-scene]')).toBeVisible({ timeout: 30_000 });
+      await expect(page.locator('[data-today-chores]'), 'chores hidden').toHaveCount(0);
+      await expect(page.locator('[data-today-coming] dt'), 'one day ahead').toHaveCount(1);
+      await expect(page.locator('[data-today-coming] dt').first()).toHaveText('Tomorrow');
+      const saved = await (await page.request.get(`/api/layouts/${layout.id}`)).json();
+      const parts = (saved.layout ?? saved).widgets as Array<{ i: string; visible?: boolean; settings?: { daysAhead?: number } }>;
+      expect(parts.find((p) => p.i === 'chores')?.visible).toBe(false);
+      expect(parts.find((p) => p.i === 'calendar')?.settings?.daysAhead).toBe(1);
+    } finally {
+      await page.request.delete(`/api/layouts/${layout.id}`);
+      for (const id of made) await page.request.delete(`/api/events/${id}`);
+    }
+  });
 });
