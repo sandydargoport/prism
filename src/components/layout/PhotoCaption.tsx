@@ -7,20 +7,10 @@
  */
 import { useEffect, useState } from 'react';
 import { useLocale } from 'next-intl';
-import { captionSpot, captionText, datePhrase, PHOTO_DATE_SETTING, PHOTO_PLACE_SETTING, type CaptionSpot } from '@/lib/photos/caption';
+import { captionSpot, captionText, datePhrase, type CaptionSpot } from '@/lib/photos/caption';
+import { usePhotoSettings } from '@/lib/photos/usePhotoSettings';
 import { coveredRects } from '@/lib/photos/frameDom';
 
-let settingsRead: Promise<{ date: boolean; place: boolean }> | null = null;
-/** One settings read per page load. The date shows unless off; the place only when on. */
-function readCaptionSettings() {
-  settingsRead ??= fetch('/api/settings')
-    .then((r) => (r.ok ? r.json() : null))
-    .then((d) => ({ date: d?.settings?.[PHOTO_DATE_SETTING] !== false, place: d?.settings?.[PHOTO_PLACE_SETTING] === true }))
-    .catch(() => ({ date: true, place: false }));
-  return settingsRead;
-}
-
-// The scene's own margins: 3rem at the sides and foot, the top line at 2.5rem.
 const SPOT_CLASS: Record<CaptionSpot, string> = {
   'bottom-right': 'bottom-[3rem] right-[3rem] text-right',
   'bottom-left': 'bottom-[3rem] left-[3rem]',
@@ -30,11 +20,10 @@ const SPOT_CLASS: Record<CaptionSpot, string> = {
 
 export function PhotoCaption({ photo }: { photo: { id: string; takenAt?: string | null } | null }) {
   const locale = useLocale();
-  const [opts, setOpts] = useState<{ date: boolean; place: boolean } | null>(null);
+  const opts = usePhotoSettings();
   const [place, setPlace] = useState<{ id: string; name: string | null } | null>(null);
   const [spot, setSpot] = useState<CaptionSpot | null>(null);
 
-  useEffect(() => { void readCaptionSettings().then(setOpts); }, []);
 
   // Keyed on the id: callers may pass a new object each render.
   const id = photo?.id ?? null;
