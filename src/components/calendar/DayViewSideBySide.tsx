@@ -1,5 +1,6 @@
 'use client';
 
+import { SlidingTitle } from '@/components/calendar/cells/SlidingTitle';
 import {
   format,
   isSameDay,
@@ -390,7 +391,7 @@ export function DayViewSideBySide({
                                   hour or more. Text never shrinks to fit
                                   (#798): `flex-wrap` sends a line that does not
                                   fit whole into a clipped second column. */}
-                              <div className={cn('font-medium truncate w-full text-2xs leading-tight', cards && 'text-foreground')}>{event.title}</div>
+                              <SlidingTitle className={cn('font-medium w-full text-2xs leading-tight', cards && 'text-foreground')}>{event.title}</SlidingTitle>
                               {durationMin >= 60 && (
                                 <div className={cn('text-4xs leading-tight truncate w-full', cards ? 'text-muted-foreground' : 'opacity-70')}>
                                   {formatDisplayTimeRange(event.startTime, event.endTime ?? new Date(event.startTime.getTime() + 3600000), timeFormat, displayTimezone)}
