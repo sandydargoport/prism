@@ -275,6 +275,18 @@
     "sunset": "Sunset {time}",
     "allDay": "All day: {titles}",
     "more": "+{count}",
-    "laterToday": "Later today"
+    "laterToday": "Later today",
+    "choresLeft": "{count, plural, one {# chore left} other {# chores left}}",
+    "tick": "Complete {title}",
+    "listCount": "{name} {count}",
+    "addToList": "Add to {name}",
+    "nudgeAge": "{name} turns {age} on {day}. Mail a card by {mailDay}?",
+    "nudgeNoAge": "{name}'s birthday is on {day}. Mail a card by {mailDay}?",
+    "addIt": "Add it",
+    "notNow": "Not now",
+    "nudgeTask": "Mail a card to {name}",
+    "nudgeAdded": "On the list for {day}.",
+    "nudgeFailed": "That did not save. Please try again.",
+    "nudgeWho": "Who's adding this?"
   }
 }

@@ -40,6 +40,7 @@ import { SCREENSAVER_WIDGET_CLASS } from '@/components/screensaver/Screensaver';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import { parseIdleBackground, withoutDashboard, PHOTOS, type IdleBackground } from '@/lib/idleBackground';
 import { TodayScene } from '@/components/today/TodayScene';
+import type { ChoreLike } from '@/lib/today/quietLines';
 import { useEventSheet } from '@/components/calendar/useEventSheet';
 import { usePinFreeEveryday, useWhoDidIt } from './useEveryday';
 import { WidgetErrorBoundary } from '@/components/dashboard/WidgetErrorBoundary';
@@ -510,6 +511,13 @@ export function Dashboard({
                 weather={data.weather.data ?? null}
                 events={data.calendar.events}
                 onOpenEvent={eventSheet.open}
+                household={{
+                  chores: data.chores.chores as unknown as ChoreLike[],
+                  lists: data.shopping.lists as unknown as Array<{ id: string; name: string; items: Array<{ checked: boolean }> }>,
+                  birthdays: data.birthdays.birthdays,
+                  onTickChore: widgetProps.chores?.onChoreComplete as ((id: string) => void) | undefined,
+                  onAddShopping: widgetProps.shopping?.onAddClick as (() => void) | undefined,
+                }}
                 topOffset={uiHidden ? 0 : 56}
               />
             </WidgetErrorBoundary>

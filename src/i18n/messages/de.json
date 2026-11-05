@@ -275,6 +275,18 @@
     "sunset": "Sonnenuntergang {time}",
     "allDay": "Ganztägig: {titles}",
     "more": "+{count}",
-    "laterToday": "Später heute"
+    "laterToday": "Später heute",
+    "choresLeft": "{count, plural, one {# Aufgabe übrig} other {# Aufgaben übrig}}",
+    "tick": "{title} erledigt",
+    "listCount": "{name} {count}",
+    "addToList": "Zu {name} hinzufügen",
+    "nudgeAge": "{name} wird am {day} {age}. Karte bis {mailDay} abschicken?",
+    "nudgeNoAge": "{name} hat am {day} Geburtstag. Karte bis {mailDay} abschicken?",
+    "addIt": "Hinzufügen",
+    "notNow": "Nicht jetzt",
+    "nudgeTask": "Karte an {name} schicken",
+    "nudgeAdded": "Steht für {day} auf der Liste.",
+    "nudgeFailed": "Das wurde nicht gespeichert. Bitte noch einmal.",
+    "nudgeWho": "Wer fügt das hinzu?"
   }
 }
