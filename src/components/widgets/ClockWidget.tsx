@@ -143,7 +143,12 @@ export const ClockWidget = React.memo(function ClockWidget({
       className={className}
     >
       <div
-        className="flex flex-col items-center justify-center flex-1 min-h-0 w-full text-center"
+        className={cn(
+          'flex flex-col items-center justify-center flex-1 min-h-0 w-full text-center',
+          // In a corner tile the face lines up with the screen edge it touches
+          'in-data-[corner=left]:items-start in-data-[corner=left]:text-left',
+          'in-data-[corner=right]:items-end in-data-[corner=right]:text-right',
+        )}
         style={{ containerType: 'size' }}
         data-clock-face
       >
