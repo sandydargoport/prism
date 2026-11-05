@@ -23,6 +23,9 @@ export interface Photo {
   favorite: boolean;
   orientation: PhotoOrientation | null;
   usage: string; // comma-separated tags: "wallpaper,screensaver"
+  /** Where its subject is (#956); null until found. */
+  focalX?: number | null;
+  focalY?: number | null;
   createdAt: string;
 }
 
