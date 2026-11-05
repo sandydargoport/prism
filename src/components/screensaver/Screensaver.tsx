@@ -1,6 +1,8 @@
 'use client';
 
 import { focalOf } from '@/lib/photos/focalPoint';
+import { CENTRED, photoFrame } from '@/lib/photos/frame';
+import { coveredRects } from '@/lib/photos/frameDom';
 import { PhotoStage } from '@/components/layout/PhotoStage';
 import * as SunCalc from 'suncalc';
 import { isTodayNight } from '@/lib/today/night';
@@ -189,7 +191,12 @@ export function Screensaver() {
         {src && (
           <PhotoStage
             src={src}
-            focal={!pinnedId && photos[currentIndex] ? focalOf(photos[currentIndex]!) : undefined}
+            frameFor={(url) => {
+              // Frame the subject clear of the screensaver's widgets (#957).
+              const p = pinnedId ? undefined : photos.find((x) => url.endsWith(`/${x.id}/file`));
+              if (!p?.width || !p.height) return CENTRED;
+              return photoFrame({ aspect: p.width / p.height, screen: { width: window.innerWidth, height: window.innerHeight }, covered: coveredRects(), focal: focalOf(p) });
+            }}
             zoomMs={pinnedId || screensaverInterval === 0 ? 0 : screensaverInterval * 1000}
           />
         )}
