@@ -50,12 +50,14 @@ function useBoxSize<T extends HTMLElement>() {
 
 const toPath = (pts: ArcPoint[]) => pts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('');
 
-export function SunArc({ events, now, sunrise, sunset, onOpenEvent }: {
+export function SunArc({ events, now, sunrise, sunset, onOpenEvent, onlyNext = false }: {
   events: CalendarEvent[];
   now: Date;
   sunrise?: Date;
   sunset?: Date;
   onOpenEvent?: (event: CalendarEvent) => void;
+  /** Idle (#926): label only the next event. */
+  onlyNext?: boolean;
 }) {
   const t = useTranslations('today');
   const { timeFormat, displayTimezone } = useTimeFormat();
@@ -91,6 +93,7 @@ export function SunArc({ events, now, sunrise, sunset, onOpenEvent }: {
   const ready = width > 0 && height > 0;
   const end = axis.end;
   const sun = at(Math.min(Math.max(nowH, axis.start), end));
+  const sunDown = nowH >= set || nowH < rise;
   // Path pieces: the past, the lit stretch to the next event, the rest by day, and after sunset.
   const pieces = ready ? [
     { key: 'past', from: axis.start, to: Math.max(axis.start, Math.min(nowH, end)), cls: 'stroke-white/25', w: 1.5 },
@@ -118,11 +121,12 @@ export function SunArc({ events, now, sunrise, sunset, onOpenEvent }: {
     const m = measure(sunsetText);
     obstacles.push({ left: sunsetAt.x - 6 - m.width, top: sunsetAt.y + 12, width: m.width, height: m.height });
   }
+  const labelled = onlyNext ? ahead.slice(0, 1) : ahead;
   const layout = ready ? placeLabels(
-    ahead.map((e) => { const p = at(hour(e.startTime)); return { id: e.id, x: p.x, y: p.y, ...measure(labelText(e)) }; }),
+    labelled.map((e) => { const p = at(hour(e.startTime)); return { id: e.id, x: p.x, y: p.y, ...measure(labelText(e)) }; }),
     { width, top: 0, obstacles, pathTop },
   ) : { placed: [], folded: [] };
-  const foldedEvents = ahead.filter((e) => layout.folded.includes(e.id));
+  const foldedEvents = onlyNext ? [] : ahead.filter((e) => layout.folded.includes(e.id));
   // "+N" sits by the first folded bead if there is room, else at the end of the arc.
   const more = foldedEvents.length > 0 ? (() => {
     const first = at(hour(foldedEvents[0]!.startTime));
@@ -204,8 +208,15 @@ export function SunArc({ events, now, sunrise, sunset, onOpenEvent }: {
               />
             );
           })}
-          <circle cx={sun.x} cy={sun.y} r={16} fill="rgb(255 236 200)" opacity={0.55} filter="url(#sun-glow)" />
-          <circle cx={sun.x} cy={sun.y} r={9} fill="rgb(255 244 224)" data-arc-sun />
+          {/* Down after sunset and before sunrise: smaller, cooler, no glow (#926). */}
+          {sunDown ? (
+            <circle cx={sun.x} cy={sun.y} r={5} fill="rgb(196 206 228)" opacity={0.7} data-arc-sun data-sun-down />
+          ) : (
+            <>
+              <circle cx={sun.x} cy={sun.y} r={16} fill="rgb(255 236 200)" opacity={0.55} filter="url(#sun-glow)" />
+              <circle cx={sun.x} cy={sun.y} r={9} fill="rgb(255 244 224)" data-arc-sun />
+            </>
+          )}
         </svg>
       )}
 

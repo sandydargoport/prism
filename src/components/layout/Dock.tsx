@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { ALL_NAV_ITEMS, type NavItem } from '@/lib/constants/navItems';
 import { dockLayout, DOCK_SIZE_NARROW } from '@/lib/constants/dock';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
+import { useCalmIdle } from '@/components/screensaver/calmMode';
 import { useHiddenPages } from '@/lib/hooks/useHiddenPages';
 import { scopedHref, isNavActive, RETURN_PARAM } from '@/lib/utils/dashboardScope';
 import { useReturnSlug } from '@/lib/hooks/useReturnSlug';
@@ -64,6 +65,8 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
     };
   }, [mode]);
   const visible = mode === 'page' || shown || moreOpen;
+  // The wall's Menu word fades with the rest when the display goes idle (#926).
+  const calm = useCalmIdle();
 
   // The dashboard is "Home" on the dock, as on the wall's design.
   const label = (item: NavItem) => (item.href === '/' ? t('nav.home', { defaultValue: 'Home' }) : t(item.i18nKey, { defaultValue: item.label }));
@@ -91,7 +94,7 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
 
   return (
     <>
-      {mode === 'wall' && !visible && (
+      {mode === 'wall' && !visible && !calm && (
         <button
           type="button"
           className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-40 flex min-h-[44px] -translate-x-1/2 items-center px-5 text-body font-medium text-white/80 [text-shadow:var(--ds-idle-text-shadow)]"
