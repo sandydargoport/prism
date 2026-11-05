@@ -1,5 +1,9 @@
 'use client';
 
+import * as SunCalc from 'suncalc';
+import { isTodayNight } from '@/lib/today/night';
+import { usePhotoTone } from '@/components/layout/WallpaperBackground';
+import { waterVars } from '@/lib/design/water';
 import * as React from 'react';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useIdleDetection } from '@/lib/hooks/useIdleDetection';
@@ -52,7 +56,7 @@ export const SCREENSAVER_WIDGET_CLASS =
   // Force white text for legibility over the photo — EXCEPT elements marked
   // data-keep-color (e.g. the birthdays "days until" urgency coloring), which
   // keep their own color but still get the shadow.
-  '[&_*:not([data-keep-color])]:text-white! **:[text-shadow:0_1px_4px_rgba(0,0,0,0.75)]';
+  '[&_*:not([data-keep-color])]:text-(--ss-ink)! **:[text-shadow:0_1px_4px_rgba(0,0,0,0.75)]';
 
 // Re-export storage utilities for consumers
 export {
@@ -144,12 +148,6 @@ export function Screensaver() {
     return () => clearTimeout(timer);
   }, [isIdle]);
 
-  // Over both idle screens, so it is outside the overlay below and stays
-  // mounted while a calm dashboard is idle. Same place in both returns, so it
-  // keeps its state and eases out on waking.
-  const dim = <IdleDim idle={idle} />;
-  if (!isIdle) return <>{dim}{null}</>;
-
   // Use pinned photo if set, otherwise use rotating photos. None at all under
   // the sky, so it loads nothing for as long as it is up.
   const src = showSky ? '' : pinnedId
@@ -158,6 +156,24 @@ export function Screensaver() {
       ? `/api/photos/${photos[currentIndex]!.id}/file`
       : '';
 
+  // Night ink from the place's sun, or 8 pm to 6 am without a place (#929).
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNowTick(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+  const sunTimes = lat !== undefined && lon !== undefined ? SunCalc.getTimes(new Date(nowTick), lat, lon) : null;
+  const night = isTodayNight(new Date(nowTick), sunTimes?.sunrise ?? undefined, sunTimes?.sunset ?? undefined);
+  const tone = usePhotoTone(isIdle && src ? src : null);
+  const shadeVars = waterVars(tone, 0.25);
+
+  // Over both idle screens, so it is outside the overlay below and stays
+  // mounted while a calm dashboard is idle. Same place in both returns, so it
+  // keeps its state and eases out on waking.
+  const dim = <IdleDim idle={idle} />;
+  if (!isIdle) return <>{dim}{null}</>;
+
+
   return (
     <>
       {dim}
@@ -165,6 +181,10 @@ export function Screensaver() {
         className={`fixed inset-0 z-9999 bg-black transition-opacity duration-1000 ${
           visible ? 'opacity-100' : 'opacity-0'
         }`}
+        // Today's materials (#929): one ink, warm after dusk, and the shades
+        // under the corners and the foot solved for this photo.
+        style={{ '--ss-ink': night ? 'rgb(255 226 190)' : 'white', ...shadeVars } as React.CSSProperties}
+        data-screensaver-night={night || undefined}
       >
         {/* Decorative layers are absolutely positioned, so in CSS paint order they
             sit ABOVE the (statically-positioned) widget grid and would swallow every
@@ -184,9 +204,20 @@ export function Screensaver() {
             <NightSky lat={lat} lon={lon} eclipse={eclipse} />
           </React.Suspense>
         ) : (
-          // Photos are dimmed so the white widget text reads over them. The sky
-          // is already dark where it matters.
-          <div className="pointer-events-none absolute inset-0 bg-black/40" />
+          // A light dim over the photo, and the shades only where text sits,
+          // as on the wall (#799, #929). The sky is already dark where it matters.
+          <>
+            <div className="pointer-events-none absolute inset-0 bg-black/25" />
+            <div
+              className="pointer-events-none absolute inset-0"
+              data-screensaver-shade
+              style={{ backgroundImage: [
+                'radial-gradient(45% 40% at 0% 0%, rgb(0 0 0 / var(--ds-shade-tl, 0.35)), transparent)',
+                'radial-gradient(45% 40% at 100% 0%, rgb(0 0 0 / var(--ds-shade-tr, 0.35)), transparent)',
+                'linear-gradient(to top, rgb(0 0 0 / var(--ds-shade-bottom, 0.35)), transparent 35%)',
+              ].join(', ') }}
+            />
+          </>
         )}
         {/* Scoped from out here rather than inside ScreensaverGrid: the grid
             calls useDashboardData in its own body, which reads context from
