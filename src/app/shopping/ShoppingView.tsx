@@ -1,5 +1,6 @@
 'use client';
 
+import { ShoppingCalmList } from './ShoppingCalmList';
 import { useState, useEffect } from 'react';
 import { Emoji } from '@/components/ui/Emoji';
 import { toast } from '@/components/ui/use-toast';
@@ -131,6 +132,8 @@ export function ShoppingView() {
   const isMobile = useIsMobile();
   const isPortrait = orientation === 'portrait';
   const [shoppingMode, setShoppingMode] = useState(false);
+  // The page opens on one calm list (#881); the category cards are behind Manage.
+  const [manage, setManage] = useState(false);
 
   // Mobile-only: swipe to switch lists. The pill bar collapses into a
   // compact prev/dots/next indicator when there's more than one list.
@@ -182,6 +185,9 @@ export function ShoppingView() {
               badge={activeList ? <Badge variant="secondary">{checkedItems}/{totalItems}</Badge> : undefined}
               actions={<>
                 <UndoButton />
+                <Button variant={manage ? 'secondary' : 'outline'} size="sm" onClick={() => setManage(!manage)} data-shopping-manage>
+                  {manage ? 'Done' : 'Manage'}
+                </Button>
                 {activeList && activeList.items.some((i) => !i.checked) && (
                   <Button
                     variant="outline"
@@ -288,7 +294,7 @@ export function ShoppingView() {
           </header>
         )}
 
-        {activeList && totalItems > 0 && !shoppingMode && (
+        {activeList && totalItems > 0 && !shoppingMode && manage && (
           <div className="shrink-0 px-3 py-1 bg-card/85 backdrop-blur-xs">
             <div className="max-w-6xl mx-auto flex items-center gap-3">
               <Progress value={progress} className="h-2 flex-1" />
@@ -316,6 +322,18 @@ export function ShoppingView() {
                 icon={<ShoppingCart />}
                 title="No shopping lists yet"
                 action={<Button variant="outline" size="sm" onClick={handleNewList}>Create your first list</Button>}
+              />
+            </div>
+          ) : activeList && !manage && !shoppingMode ? (
+            <div className="pb-24 pt-2">
+              <ShoppingCalmList
+                items={activeList.items as ShoppingItem[]}
+                order={effectiveCategoryOrder}
+                onToggle={(id) => toggleItem(id)}
+                onEdit={handleEditItem}
+                onDelete={(id) => handleDeleteItem(id)}
+                onAdd={(name) => apiAddItem(activeList.id, { name, category: 'other' })}
+                label={(id) => dynamicCategories.find((c) => c.id === id)?.name ?? id}
               />
             </div>
           ) : activeList ? (
