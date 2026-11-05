@@ -122,7 +122,10 @@
       "hiddenToastBody": "Unter Einstellungen > Kalender wieder einblenden.",
       "hideThisEvent": "Nur diesen Termin",
       "hideWholeSeries": "Alle Termine der Serie",
-      "hiddenSeriesToast": "Alle „{title}“ ausgeblendet"
+      "hiddenSeriesToast": "Alle „{title}“ ausgeblendet",
+      "allDay": "ganztägig",
+      "to": "bis",
+      "at": "in"
     },
     "eventForm": {
       "titleNew": "Neuer Termin",
@@ -205,7 +208,8 @@
       "body": "Verbinden Sie Google, iCloud, Outlook oder einen Kalender-Link, und die Woche der Familie erscheint hier.",
       "action": "Kalender verbinden"
     },
-    "now": "Jetzt"
+    "now": "Jetzt",
+    "addEvent": "Termin hinzufügen"
   },
   "birthdays": {
     "title": "Anstehende Geburtstage & Meilensteine",

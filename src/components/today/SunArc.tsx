@@ -50,11 +50,12 @@ function useBoxSize<T extends HTMLElement>() {
 
 const toPath = (pts: ArcPoint[]) => pts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('');
 
-export function SunArc({ events, now, sunrise, sunset }: {
+export function SunArc({ events, now, sunrise, sunset, onOpenEvent }: {
   events: CalendarEvent[];
   now: Date;
   sunrise?: Date;
   sunset?: Date;
+  onOpenEvent?: (event: CalendarEvent) => void;
 }) {
   const t = useTranslations('today');
   const { timeFormat, displayTimezone } = useTimeFormat();
@@ -186,6 +187,23 @@ export function SunArc({ events, now, sunrise, sunset }: {
               />
             );
           })}
+          {/* A 44px target round each bead: tapping it opens the event (#836). */}
+          {onOpenEvent && timed.map((e) => {
+            const p = at(hour(e.startTime));
+            return (
+              <circle
+                key={`hit-${e.id}`}
+                cx={p.x}
+                cy={p.y}
+                r={22}
+                fill="transparent"
+                className="cursor-pointer"
+                onClick={() => onOpenEvent(e)}
+                data-arc-bead-hit
+                data-title={e.title}
+              />
+            );
+          })}
           <circle cx={sun.x} cy={sun.y} r={16} fill="rgb(255 236 200)" opacity={0.55} filter="url(#sun-glow)" />
           <circle cx={sun.x} cy={sun.y} r={9} fill="rgb(255 244 224)" data-arc-sun />
         </svg>
@@ -209,8 +227,9 @@ export function SunArc({ events, now, sunrise, sunset }: {
         return (
           <div
             key={l.id}
-            className="absolute whitespace-nowrap text-body font-medium"
+            className={`absolute whitespace-nowrap text-body font-medium${onOpenEvent ? ' cursor-pointer' : ''}`}
             style={{ left: l.left, top: l.top, width: l.width }}
+            onClick={onOpenEvent ? () => onOpenEvent(e) : undefined}
             data-arc-label
           >
             {labelText(e)}

@@ -48,12 +48,15 @@ export function TodayScene({
   parts,
   weather,
   events = [],
+  onOpenEvent,
   topOffset = 0,
 }: {
   parts: WidgetConfig[];
   weather: WeatherData | null;
   /** Calendar events around today, for the arc. */
   events?: CalendarEvent[];
+  /** Tap a bead: the event sheet (#836). */
+  onOpenEvent?: (event: CalendarEvent) => void;
   /** Height of the bar above the scene, when it shows. */
   topOffset?: number;
 }) {
@@ -115,7 +118,7 @@ export function TodayScene({
       {/* The day as the sun's path (#909), margin to margin across the middle. */}
       {isPartShown(parts, 'calendar') && (
         <div className="absolute left-[3rem] right-[3rem] top-[30%] h-[38%]" data-today-arc>
-          <SunArc events={events} now={now} sunrise={weather?.sunrise} sunset={weather?.sunset} />
+          <SunArc events={events} now={now} sunrise={weather?.sunrise} sunset={weather?.sunset} onOpenEvent={onOpenEvent} />
         </div>
       )}
     </div>
