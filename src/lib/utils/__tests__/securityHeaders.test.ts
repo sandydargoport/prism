@@ -100,3 +100,16 @@ describe('buildSecurityHeaders', () => {
     });
   });
 });
+
+describe('Permissions-Policy (#852)', () => {
+  const policy = () => buildSecurityHeaders().find((h: { key: string }) => h.key === 'Permissions-Policy')!.value as string;
+
+  it('lets Prism\'s own pages use the camera, for the barcode scanner', () => {
+    expect(policy()).toContain('camera=(self)');
+    expect(policy()).not.toContain('camera=()');
+  });
+
+  it('still turns off what Prism never uses', () => {
+    for (const f of ['geolocation=()', 'payment=()', 'usb=()', 'bluetooth=()']) expect(policy()).toContain(f);
+  });
+});
