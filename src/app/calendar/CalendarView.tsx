@@ -27,12 +27,12 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { contrastText } from '@/lib/utils/color';
 import { useFamily, useTimeFormat } from '@/components/providers';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { AddEventModal } from '@/components/modals';
 import { EventSheet } from '@/components/calendar/EventSheet';
+import { PersonMark } from '@/components/ui/PersonMark';
 import { ManageCalendarsModal } from './ManageCalendarsModal';
 import { PendingDeletionsModal } from './PendingDeletionsModal';
 import { usePendingDeletions } from '@/lib/hooks/usePendingDeletions';
@@ -439,6 +439,16 @@ export function CalendarView() {
                 overlays={overlays}
                 onOverlaysChange={setOverlays}
                 showOverlayRows={cardsMode}
+                footer={!isMobile ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowManageCalendars(true)}
+                    className="flex w-full min-h-[44px] items-center gap-2 rounded-md px-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+                    data-calendar-manage
+                  >
+                    <CalendarCog className="h-4 w-4" />{t('toolbar.manageCalendars')}
+                  </button>
+                ) : undefined}
                 onReset={() => {
                   setDisplayMode('inline');
                   setWeeksBordered(false);
@@ -449,14 +459,10 @@ export function CalendarView() {
                 }}
               />
             </div>
+            {/* One Add pill (#879); Manage calendars lives in the menu. */}
             {!isMobile && (
-              <Button variant="outline" size="sm" onClick={() => setShowManageCalendars(true)} className="h-9" title={t('toolbar.manageCalendars')}>
-                <CalendarCog className="h-4 w-4 mr-1" />{t('toolbar.manage')}
-              </Button>
-            )}
-            {!isMobile && (
-              <Button size="sm" onClick={handleAddWithAuth}>
-                <Plus className="h-4 w-4 mr-1" />{t('toolbar.addEvent')}
+              <Button onClick={handleAddWithAuth} className="min-h-[44px] px-5" data-calendar-add-pill>
+                <Plus className="h-4 w-4" />{t('toolbar.addEvent')}
               </Button>
             )}
           </>}
@@ -464,29 +470,35 @@ export function CalendarView() {
 
         {!isMobile && calendarGroups.length > 0 && (
           <FilterBar>
-            <span className="text-sm text-muted-foreground shrink-0">{t('toolbar.show')}</span>
-            <Button
-              variant={selectedCalendarIds.has('all') ? 'default' : 'outline'}
-              size="sm"
+            {/* A quiet row of person dots, not filled chips (#879): a shown
+                calendar is its dot and name at full strength, a hidden one
+                fades to a ring. */}
+            <span className="text-caption text-muted-foreground shrink-0">{t('toolbar.show')}</span>
+            <button
+              type="button"
               onClick={() => toggleCalendar('all')}
-              className="h-7 text-xs"
+              aria-pressed={selectedCalendarIds.has('all')}
+              className={cn('min-h-[44px] rounded-full px-3 text-body transition-colors hover:bg-foreground/[0.06]',
+                selectedCalendarIds.has('all') ? 'text-foreground font-medium' : 'text-muted-foreground')}
+              data-calendar-filter="all"
             >
               {t('toolbar.all')}
-            </Button>
+            </button>
             {calendarGroups.map((group) => {
               const isSelected = selectedCalendarIds.has(group.id) || selectedCalendarIds.has('all');
               return (
-                <Button
+                <button
                   key={group.id}
-                  variant={isSelected ? 'default' : 'outline'}
-                  size="sm"
+                  type="button"
                   onClick={() => toggleCalendar(group.id)}
-                  className={cn('h-7 text-xs gap-1.5', isSelected && 'border-transparent')}
-                  style={isSelected ? { backgroundColor: group.color, color: contrastText(group.color) } : undefined}
+                  aria-pressed={isSelected}
+                  className={cn('flex min-h-[44px] items-center gap-2 rounded-full px-3 text-body transition-colors hover:bg-foreground/[0.06]',
+                    isSelected ? 'text-foreground' : 'text-muted-foreground')}
+                  data-calendar-filter={group.id}
                 >
-                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: isSelected ? 'rgba(255,255,255,0.55)' : group.color }} />
+                  <PersonMark color={group.color} kind={isSelected ? 'dot' : 'ring'} className={isSelected ? undefined : 'h-3 w-3 border-2 opacity-60'} />
                   {group.name}
-                </Button>
+                </button>
               );
             })}
             {(viewType === 'weekVertical' || viewType === 'day') && calendarGroups.length > 1 && (
