@@ -39,6 +39,7 @@ import { SCREENSAVER_WIDGET_CLASS } from '@/components/screensaver/Screensaver';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import { parseIdleBackground, withoutDashboard, PHOTOS, type IdleBackground } from '@/lib/idleBackground';
 import { TodayScene } from '@/components/today/TodayScene';
+import { PhoneToday } from '@/components/today/PhoneToday';
 import { TodayPartsPanel } from '@/components/today/TodayPartsPanel';
 import type { ChoreLike } from '@/lib/today/quietLines';
 import { useEventSheet } from '@/components/calendar/useEventSheet';
@@ -407,14 +408,41 @@ export function Dashboard({
   // Always this wrapper, styled or not, so a change of text size does not
   // remount the dashboard under it.
   if (isMobile) {
+    // A Today or Calendar layout reads as a phone Today (#928); a grid
+    // layout keeps its cards.
+    const phoneToday = layout.activeLayout?.view === 'today' || layout.activeLayout?.view === 'calendar';
     return (
       <div style={schedule.zoomStyle}>
         <AppShell
           user={activeUser ? { id: activeUser.id, name: activeUser.name, avatarUrl: activeUser.avatarUrl, color: activeUser.color } : undefined}
           onLogout={activeUser ? clearActiveUser : undefined}
           onLogin={handleLogin}
+          showWallpaper={phoneToday}
         >
-          <MobileDashboard data={data} />
+          {phoneToday ? (
+            <WidgetErrorBoundary>
+              <PhoneToday
+                parts={layout.activeWidgets}
+                events={data.calendar.events}
+                onOpenEvent={eventSheet.open}
+                household={{
+                  chores: data.chores.chores as unknown as ChoreLike[],
+                  lists: data.shopping.lists as unknown as Array<{ id: string; name: string; items: Array<{ checked: boolean }> }>,
+                  birthdays: data.birthdays.birthdays,
+                  onTickChore: widgetProps.chores?.onChoreComplete as ((id: string) => void) | undefined,
+                  onAddShopping: widgetProps.shopping?.onAddClick as (() => void) | undefined,
+                }}
+              />
+              {eventSheet.element}
+              {whoDidIt.element}
+              {showAddShopping && (
+                <AddShoppingItemModal open={showAddShopping} onOpenChange={setShowAddShopping}
+                  onItemCreated={() => { data.shopping.refresh(); }} />
+              )}
+            </WidgetErrorBoundary>
+          ) : (
+            <MobileDashboard data={data} />
+          )}
         </AppShell>
       </div>
     );
