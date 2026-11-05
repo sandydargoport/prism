@@ -294,6 +294,13 @@
     "nudgeTask": "Mail a card to {name}",
     "nudgeAdded": "On the list for {day}.",
     "nudgeFailed": "That did not save. Please try again.",
-    "nudgeWho": "Who's adding this?"
+    "nudgeWho": "Who's adding this?",
+    "weekRange": "{from} to {to}",
+    "view": "View",
+    "week": "Week",
+    "month": "Month",
+    "earlier": "Earlier",
+    "later": "Later",
+    "allDayShort": "All day"
   }
 }

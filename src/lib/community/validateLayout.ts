@@ -50,7 +50,7 @@ export interface CommunityLayoutData {
   screenSizes: string[];
   orientation: 'landscape' | 'portrait';
   /** How the layout is drawn (#907). Absent means the grid. */
-  view?: 'today';
+  view?: 'today' | 'calendar';
   widgets: CommunityWidget[];
 }
 
@@ -211,7 +211,7 @@ export function projectCommunityLayout(
       : [],
     orientation: obj.orientation as 'landscape' | 'portrait',
     // Only the one other view is carried; anything else is the grid (#907).
-    ...(obj.view === 'today' ? { view: 'today' as const } : {}),
+    ...(obj.view === 'today' || obj.view === 'calendar' ? { view: obj.view } : {}),
     widgets,
   };
 }

@@ -331,8 +331,9 @@ describe('createLayoutSchema', () => {
 // How a dashboard is drawn (#907).
 describe('layout view', () => {
   const base = { name: 'Kitchen', widgets: [{ i: 'clock', x: 0, y: 0, w: 4, h: 4 }] };
-  it('accepts the grid and Today', () => {
+  it('accepts the grid, Today and the Calendar layout', () => {
     expect(createLayoutSchema.parse({ ...base, view: 'today' }).view).toBe('today');
+    expect(createLayoutSchema.parse({ ...base, view: 'calendar' }).view).toBe('calendar');
     expect(createLayoutSchema.parse({ ...base, view: 'grid' }).view).toBe('grid');
   });
   it('refuses any other view', () => {

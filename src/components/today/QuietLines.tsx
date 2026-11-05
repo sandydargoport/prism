@@ -22,13 +22,15 @@ function readPutOff(): string[] {
   try { return JSON.parse(localStorage.getItem(PUT_OFF_KEY) ?? '[]') as string[]; } catch { return []; }
 }
 
-export function QuietLines({ chores, lists, birthdays, now, onTickChore, onAddShopping }: {
+export function QuietLines({ chores, lists, birthdays, now, onTickChore, onAddShopping, inline = false }: {
   chores: ChoreLike[];
   lists: Array<{ id: string; name: string; items: Array<{ checked: boolean }> }>;
   birthdays: BirthdayLike[];
   now: Date;
   onTickChore?: (choreId: string) => void;
   onAddShopping?: () => void;
+  /** On one line, for the Calendar layout's heading (#931). */
+  inline?: boolean;
 }) {
   const t = useTranslations('today');
   const locale = useLocale();
@@ -74,7 +76,7 @@ export function QuietLines({ chores, lists, birthdays, now, onTickChore, onAddSh
   if (left.length === 0 && !list && !nudge) return null;
 
   return (
-    <div className="flex flex-col items-end gap-3 text-right" data-today-quiet>
+    <div className={inline ? 'flex flex-wrap items-center justify-end gap-x-6' : 'flex flex-col items-end gap-3 text-right'} data-today-quiet>
       {nudge && (
         <div className="flex max-w-[34rem] flex-col items-end gap-2" data-today-nudge>
           <p className="m-0 text-body [text-wrap:balance]">
