@@ -64,6 +64,7 @@ export async function GET() {
             checkpoints: route.checkpoints,
             stopName: route.stopName,
             schoolName: route.schoolName,
+            walkMinutes: route.walkMinutes,
             prediction,
           };
         })

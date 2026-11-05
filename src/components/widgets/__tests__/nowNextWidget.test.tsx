@@ -13,7 +13,10 @@ jest.mock('@/components/widgets/WidgetContainer', () => ({
 jest.mock('@/components/providers', () => ({
   useTimeFormat: () => ({ timeFormat: '12h', displayTimezone: 'America/Chicago', householdTimezone: 'America/Chicago' }),
 }));
-jest.mock('@/lib/hooks/useBusTracking', () => ({ useBusTracking: () => ({ routes: [] }) }));
+jest.mock('@/lib/hooks/useBusTracking', () => ({
+  ...jest.requireActual('@/lib/hooks/useBusTracking'),
+  useBusTracking: () => ({ routes: [] }),
+}));
 
 import { NowNextWidget } from '../NowNextWidget';
 import type { CalendarEvent } from '@/types/calendar';
@@ -75,5 +78,49 @@ describe('NowNextWidget', () => {
     expect(bus.textContent).toContain('at the stop 4:22 PM');
     expect(bus.textContent).toContain('in 12 min');
     expect(bus.textContent).not.toMatch(/leave/i);
+  });
+
+  describe('leave-by, with a walk time (#900)', () => {
+    const route = (over: Partial<BusRouteStatus> & { eta?: number | null }) => ({
+      id: 'r1', label: 'Morning bus', studentName: 'Robin', direction: 'AM', scheduledTime: '16:30', activeDays: [0, 1, 2, 3, 4, 5, 6],
+      checkpoints: [], stopName: 'Corner', schoolName: 'School', walkMinutes: 8,
+      prediction: over.eta === null
+        ? { status: 'scheduled', etaMinutes: null, etaRangeLow: null, etaRangeHigh: null, lastCheckpointName: null, lastCheckpointTime: null, lastCheckpointIndex: 0, totalCheckpoints: 3, minutesSinceLastCheckpoint: null }
+        : { status: 'in_transit', etaMinutes: over.eta ?? 14, etaRangeLow: 10, etaRangeHigh: 16, lastCheckpointName: null, lastCheckpointTime: null, lastCheckpointIndex: 0, totalCheckpoints: 3, minutesSinceLastCheckpoint: 2 },
+      ...over,
+    } as BusRouteStatus);
+
+    it('puts a leave-by line above the bus line: the arrival minus the walk', () => {
+      render(<NowNextWidget now={NOW} busRoutes={[route({ eta: 14 })]} events={[]} />);
+      const leave = line('bus-leave')!;
+      expect(leave.textContent).toContain('Leave');
+      expect(leave.textContent).toContain('in 6 min');
+      expect(leave.dataset.warn).toBeUndefined();
+      expect(leave.compareDocumentPosition(line('bus')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('turns amber in the last five minutes and says now at the moment', () => {
+      const { unmount } = render(<NowNextWidget now={NOW} busRoutes={[route({ eta: 12 })]} events={[]} />);
+      expect(line('bus-leave')!.dataset.warn).toBe('true');
+      expect(line('bus-leave')!.textContent).toContain('in 4 min');
+      unmount();
+      render(<NowNextWidget now={NOW} busRoutes={[route({ eta: 8 })]} events={[]} />);
+      expect(line('bus-leave')!.textContent).toContain('now');
+    });
+
+    it('counts back from the schedule when there is no live prediction', () => {
+      // Due 4:30 PM Chicago, now 4:10: leave at 4:22, in 12 min.
+      render(<NowNextWidget now={NOW} busRoutes={[route({ eta: null })]} events={[]} />);
+      expect(line('bus-leave')!.textContent).toContain('in 12 min');
+    });
+
+    it('shows no leave-by line without a walk time, or once it has passed', () => {
+      const { unmount } = render(<NowNextWidget now={NOW} busRoutes={[route({ eta: 14, walkMinutes: 0 })]} events={[]} />);
+      expect(line('bus-leave')).toBeNull();
+      unmount();
+      render(<NowNextWidget now={NOW} busRoutes={[route({ eta: 5 })]} events={[]} />);
+      expect(line('bus-leave')).toBeNull();
+      expect(line('bus')).not.toBeNull();
+    });
   });
 });

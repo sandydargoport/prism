@@ -6,8 +6,9 @@
  * turns amber. With the bus tracker set up, a bus due within the hour gets its
  * own line with the predicted time at the stop.
  *
- * A "leave by" time needs to know how long the walk to the stop takes, which
- * nothing stores yet, so the bus line gives the arrival, not a leave-by time.
+ * A route with a walk time (#900) also gets a leave-by line above its bus
+ * line: the arrival minus the walk, amber in the last five minutes, "now" at
+ * the moment, then it gives way to the bus line.
  */
 import * as React from 'react';
 import { useTranslations } from 'next-intl';
@@ -17,7 +18,9 @@ import { WidgetContainer } from './WidgetContainer';
 import { Emoji } from '@/components/ui/Emoji';
 import { useTimeFormat } from '@/components/providers';
 import { useNow } from '@/lib/hooks/useNow';
-import { useBusTracking, type BusRouteStatus } from '@/lib/hooks/useBusTracking';
+import { isRouteVisible, useBusTracking, type BusRouteStatus } from '@/lib/hooks/useBusTracking';
+import { busArrival, leaveBy } from '@/lib/bus/leaveBy';
+import { todayKey, zonedWallTimeToUtc } from '@/lib/utils/zonedDate';
 import { formatDisplayTime } from '@/lib/utils/timeFormat';
 import { nowNext } from '@/lib/calendar/nowNext';
 import type { CalendarEvent } from '@/types/calendar';
@@ -78,13 +81,16 @@ function BusLines({ routes, now }: { routes: BusRouteStatus[]; now: Date }) {
   const countdown = useCountdown();
   const lines = routes.flatMap((route) => {
     const p = route.prediction;
+    const leave = leaveLine(route, now, displayTimezone, countdown, t);
     if (p.status === 'at_stop') {
       return [<Line key={route.id} testId="bus" label={t('bus')} icon={<Bus aria-hidden className="h-4 w-4" />} title={route.label} detail={t('busHere')} warn />];
     }
+    if (leave && !((p.status === 'in_transit' || p.status === 'cold_start') && p.etaMinutes !== null)) return [leave];
     if ((p.status === 'in_transit' || p.status === 'cold_start') && p.etaMinutes !== null) {
       const at = new Date(now.getTime() + p.etaMinutes * 60_000);
       const time = formatDisplayTime(at, timeFormat, {}, displayTimezone);
       return [
+        ...(leave ? [leave] : []),
         <Line
           key={route.id}
           testId="bus"
@@ -99,6 +105,36 @@ function BusLines({ routes, now }: { routes: BusRouteStatus[]; now: Date }) {
     return [];
   });
   return <>{lines}</>;
+}
+
+/** The leave-by line for a route with a walk time (#900), or null. */
+function leaveLine(
+  route: BusRouteStatus,
+  now: Date,
+  timeZone: string,
+  countdown: (minutes: number) => string,
+  t: ReturnType<typeof useTranslations<'nowNext'>>,
+): React.ReactNode {
+  if (!(route.walkMinutes && route.walkMinutes > 0)) return null;
+  const p = route.prediction;
+  const live = (p.status === 'in_transit' || p.status === 'cold_start') && p.etaMinutes !== null ? p.etaMinutes : null;
+  // Without a live prediction, today's scheduled time, while the route is due.
+  const scheduled = live === null && isRouteVisible(route, timeZone, now)
+    ? zonedWallTimeToUtc(todayKey(timeZone, now), route.scheduledTime, timeZone)
+    : null;
+  const l = leaveBy({ arrival: busArrival({ etaMinutes: live, scheduled, now }), walkMinutes: route.walkMinutes, now });
+  if (!l) return null;
+  return (
+    <Line
+      key={`${route.id}-leave`}
+      testId="bus-leave"
+      label={t('leave')}
+      icon={<Bus aria-hidden className="h-4 w-4" />}
+      title={route.label}
+      detail={l.state === 'now' ? t('leaveNow') : t('leaveIn', { countdown: countdown(l.minutes) })}
+      warn={l.state !== 'later'}
+    />
+  );
 }
 
 function useCountdown() {
