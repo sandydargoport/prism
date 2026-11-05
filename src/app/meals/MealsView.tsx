@@ -172,7 +172,17 @@ export function MealsView() {
           {loading ? (
             <PageLoader />
           ) : (
-            <div className="max-w-6xl mx-auto space-y-3">
+            <div className="max-w-3xl mx-auto flex flex-col gap-6">
+              {isCurrentWeek && (() => {
+                // What is for dinner tonight, first (#882).
+                const todayKey = orderedDays.find((_, i) => format(addDays(currentWeek, i), 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd'));
+                const tonight = todayKey ? (mealsByDay[todayKey] || []).find((m) => m.mealType === 'dinner') ?? (mealsByDay[todayKey] || [])[0] : undefined;
+                return tonight ? (
+                  <p className="m-0 text-title" style={{ fontFamily: 'var(--font-display)' }} data-meals-tonight>
+                    Tonight: {tonight.name}
+                  </p>
+                ) : null;
+              })()}
               {orderedDays.map((day, offset) => {
                 const dayDate = addDays(currentWeek, offset);
                 const allDayMeals = mealsByDay[day] || [];
@@ -181,6 +191,8 @@ export function MealsView() {
                 const isPast = isBefore(dayDate, today) && !isDayToday;
                 return (
                   <DayRow key={day} day={day} date={dayDate} meals={dayMeals} isToday={isDayToday} isPast={isPast}
+                    isTomorrow={format(dayDate, 'yyyy-MM-dd') === format(addDays(today, 1), 'yyyy-MM-dd')}
+                    recipeImage={(id) => recipes.find((r) => r.id === id)?.imageUrl ?? null}
                     onAddMeal={() => handleAddWithAuth(day)}
                     onMarkCooked={markCooked} onUnmarkCooked={unmarkCooked}
                     onEdit={setEditingMeal} onDelete={deleteMeal} onDropMeal={handleDropMeal} />
@@ -220,8 +232,9 @@ export function MealsView() {
 }
 
 
-function DayRow({ day, date, meals, isToday, isPast, onAddMeal, onMarkCooked, onUnmarkCooked, onEdit, onDelete, onDropMeal }: {
-  day: Meal['dayOfWeek']; date: Date; meals: Meal[]; isToday: boolean; isPast: boolean;
+function DayRow({ day, date, meals, isToday, isTomorrow, isPast, recipeImage, onAddMeal, onMarkCooked, onUnmarkCooked, onEdit, onDelete, onDropMeal }: {
+  day: Meal['dayOfWeek']; date: Date; meals: Meal[]; isToday: boolean; isTomorrow?: boolean; isPast: boolean;
+  recipeImage?: (recipeId: string) => string | null;
   onAddMeal: () => void; onMarkCooked: (id: string) => void; onUnmarkCooked: (id: string) => void;
   onEdit: (meal: Meal) => void; onDelete: (id: string) => void; onDropMeal: (id: string, day: Meal['dayOfWeek']) => void;
 }) {
@@ -229,30 +242,31 @@ function DayRow({ day, date, meals, isToday, isPast, onAddMeal, onMarkCooked, on
   return (
     <div
       data-meal-day={day}
+      // A day is a heading and quiet rows, not a box (#882).
       className={cn(
-        'border border-border rounded-lg p-4 bg-card/85 backdrop-blur-xs transition-colors',
-        isToday && 'bg-accent/80 dark:bg-accent/50 border-primary',
-        isPast && !isToday && 'bg-muted/70 dark:bg-muted/55',
-        dragOver && 'border-primary border-2',
+        'rounded-2xl transition-colors',
+        isPast && !isToday && 'opacity-70',
+        dragOver && 'bg-foreground/[0.06]',
       )}
       onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
       onDragLeave={() => setDragOver(false)}
       onDrop={(e) => { e.preventDefault(); setDragOver(false); const id = e.dataTransfer.getData('text/meal-id'); if (id) onDropMeal(id, day); }}
     >
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <h3 className={cn('text-sm font-semibold capitalize', isToday && 'text-primary')}>{day}</h3>
-          <span className="text-xs text-muted-foreground">{format(date, 'MMM d')}</span>
-          {isToday && <Badge variant="default" className="text-xs px-2 py-0">Today</Badge>}
+        <div className="flex items-baseline gap-3">
+          <h3 className="m-0 text-title font-medium capitalize" style={{ fontFamily: 'var(--font-display)' }} data-meals-day-heading>
+            {isToday ? 'Today' : isTomorrow ? 'Tomorrow' : day}
+          </h3>
+          <span className="text-caption text-muted-foreground">{format(date, 'MMM d')}</span>
         </div>
         <Button variant="ghost" size="sm" onClick={onAddMeal} className="h-7 text-xs"><Plus className="h-3 w-3 mr-1" /> Add</Button>
       </div>
       {meals.length === 0 ? (
-        <p className="text-sm text-muted-foreground italic">No meals planned</p>
+        <p className="m-0 px-3 text-body text-muted-foreground">Nothing planned</p>
       ) : (
         <div className="space-y-2">
           {meals.map((meal) => (
-            <MealCard key={meal.id} meal={meal}
+            <MealCard key={meal.id} meal={meal} image={meal.recipeId ? recipeImage?.(meal.recipeId) ?? null : null}
               onMarkCooked={() => onMarkCooked(meal.id)} onUnmarkCooked={() => onUnmarkCooked(meal.id)}
               onEdit={() => onEdit(meal)} onDelete={() => onDelete(meal.id)} onDropMeal={onDropMeal} />
           ))}
@@ -263,8 +277,8 @@ function DayRow({ day, date, meals, isToday, isPast, onAddMeal, onMarkCooked, on
 }
 
 
-function MealCard({ meal, onMarkCooked, onUnmarkCooked, onEdit, onDelete, onDropMeal }: {
-  meal: Meal; onMarkCooked: () => void; onUnmarkCooked: () => void; onEdit: () => void; onDelete: () => void;
+function MealCard({ meal, image, onMarkCooked, onUnmarkCooked, onEdit, onDelete, onDropMeal }: {
+  meal: Meal; image?: string | null; onMarkCooked: () => void; onUnmarkCooked: () => void; onEdit: () => void; onDelete: () => void;
   onDropMeal?: (id: string, day: Meal['dayOfWeek']) => void;
 }) {
   const isCooked = !!meal.cookedAt;
@@ -275,18 +289,26 @@ function MealCard({ meal, onMarkCooked, onUnmarkCooked, onEdit, onDelete, onDrop
     <div
       draggable onDragStart={(e) => { e.dataTransfer.setData('text/meal-id', meal.id); e.dataTransfer.effectAllowed = 'move'; }}
       ref={touchRef}
+      data-meal-row
+      // A quiet row: no border or card, at least 56px (#882, #932).
       className={cn(
-        'flex items-start gap-3 p-3 rounded-md border border-border/50 bg-card/85 backdrop-blur-xs',
-        'hover:border-seasonal-accent hover:ring-2 hover:ring-seasonal-accent/50 transition-all group cursor-grab active:cursor-grabbing',
+        'flex min-h-[56px] items-center gap-3 rounded-2xl px-3 py-2',
+        'hover:bg-foreground/[0.04] transition-colors group cursor-grab active:cursor-grabbing',
         isCooked && 'opacity-60',
         touchDragging && 'opacity-50 scale-95'
       )}
     >
-      <span className="text-lg shrink-0"><Emoji e={getMealTypeEmoji(meal.mealType)} /></span>
+      {image ? (
+        // The recipe's photo, when the meal is linked to one.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={image} alt="" className="h-11 w-11 shrink-0 rounded-xl object-cover" data-meal-photo />
+      ) : (
+        <span className="text-lg shrink-0"><Emoji e={getMealTypeEmoji(meal.mealType)} /></span>
+      )}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className={cn('text-sm font-medium', isCooked && 'line-through text-muted-foreground')}>{meal.name}</span>
-          <Badge variant="outline" className="text-xs capitalize">{meal.mealType}</Badge>
+          <span className={cn('text-body', isCooked && 'line-through text-muted-foreground')}>{meal.name}</span>
+          <span className="text-caption capitalize text-muted-foreground" data-meal-type>{meal.mealType}</span>
           {totalTime > 0 && <div className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3 w-3" /><span>{totalTime}m</span></div>}
           {meal.recipeId && (
             <Link href={`/recipes?recipe=${meal.recipeId}`} className="text-primary hover:underline text-xs flex items-center gap-1">
