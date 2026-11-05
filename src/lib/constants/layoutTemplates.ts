@@ -178,8 +178,9 @@ export const LAYOUT_TEMPLATES: Record<string, LayoutTemplate> = {
 // What a brand-new install opens on (#808), written as a real layout when
 // setup first finishes. Calendar first; until a calendar is connected the
 // calendar widget shows a "Connect a calendar" invitation instead of an empty
-// list. Clock and weather share the right column at full height, weather
-// taller so its forecast has whole rows. No list widgets: on day one they are
+// list. Clock and weather are small tiles in the two top corners with the
+// photo between them (#905), so when idle the time and weather sit on the
+// photo's corners rather than in a column of cards. No list widgets: on day one they are
 // empty, and a hidden widget does not yet give its space back. Glass cards
 // over the bundled scenery (src/lib/scenery.ts) until the household adds
 // photos. When the wall is idle the calendar fades (calm mode), leaving the
@@ -187,12 +188,12 @@ export const LAYOUT_TEMPLATES: Record<string, LayoutTemplate> = {
 // keep what they have.
 export const FIRST_SCREEN_TEMPLATE: LayoutTemplate = {
   name: 'Home',
-  description: 'Calendar first, with the clock and weather beside it',
+  description: 'Calendar first, with the clock and weather in the top corners',
   orientation: 'landscape',
   widgets: [
-    { i: 'calendar', x: 0,  y: 0, w: 32, h: 27, backgroundColor: 'glass', showWhenIdle: false },
-    { i: 'clock',    x: 32, y: 0, w: 16, h: 9,  backgroundColor: 'glass' },
-    { i: 'weather',  x: 32, y: 9, w: 16, h: 18, backgroundColor: 'glass' },
+    { i: 'calendar', x: 0,  y: 5, w: 48, h: 22, backgroundColor: 'glass', showWhenIdle: false },
+    { i: 'clock',    x: 0,  y: 0, w: 12, h: 5,  backgroundColor: 'glass' },
+    { i: 'weather',  x: 36, y: 0, w: 12, h: 5,  backgroundColor: 'glass' },
   ],
 };
 

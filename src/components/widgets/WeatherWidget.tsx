@@ -419,6 +419,11 @@ export const WeatherWidget = React.memo(function WeatherWidget({
   // enough that it doesn't squeeze the actual forecast. Below that, favor the
   // forecast (e.g. the small weather tile on School Mornings).
   const showSunArc = !!weatherData.sunrise && !!weatherData.sunset && !showPrecipChart && gridH >= 12;
+  // A tile too short for the hourly row or the forecast shows the current
+  // conditions alone, centred, so it lines up with a clock tile beside it.
+  const currentOnly =
+    !(showHourly && weatherData.hourly && weatherData.hourly.length > 0) &&
+    !(showForecast && hasDays && resolvedDays > 0);
 
   return (
     <WidgetContainer
@@ -429,7 +434,7 @@ export const WeatherWidget = React.memo(function WeatherWidget({
       error={error}
       className={className}
     >
-      <div className={cn('flex flex-col gap-3 h-full overflow-hidden', isVertical ? 'pb-2' : '')}>
+      <div className={cn('flex flex-col gap-3 h-full overflow-hidden', isVertical ? 'pb-2' : '', currentOnly && 'justify-center')}>
 
         {/* CURRENT CONDITIONS */}
         <CurrentConditions
@@ -535,62 +540,68 @@ function CurrentConditions({
   const temp  = formatTemp(weather.temperature, units);
   const feels = formatTemp(weather.feelsLike, units);
 
+  // A small tile shows only icon, temperature and condition; the stats
+  // column and location come back once the tile is 32rem wide (container
+  // query on this row). In a tile on the right edge of the top row the
+  // compact form lines up with that edge (data-corner on the grid cell).
   return (
-    <div className="flex items-start justify-between gap-2">
-      {/* Left: icon + temp + description */}
-      <div className="flex items-center gap-3">
-        <WeatherIcon
-          condition={weather.condition}
-          className="h-10 w-10 text-primary shrink-0"
-        />
-        <div>
-          <div className="text-4xl font-bold leading-none">{temp}</div>
-          <div className="text-sm text-muted-foreground capitalize mt-0.5">
-            {weather.descriptionKey && typeof t.has === 'function' && t.has(`conditions.${weather.descriptionKey}`)
-              ? t(`conditions.${weather.descriptionKey}`)
-              : weather.description}
+    <div className="@container" data-weather-current>
+      <div className="flex items-start justify-between gap-2 in-data-[corner=right]:justify-end @min-[32rem]:in-data-[corner=right]:justify-between">
+        {/* Left: icon + temp + description */}
+        <div className="flex items-center gap-3 min-w-0">
+          <WeatherIcon
+            condition={weather.condition}
+            className="h-10 w-10 text-primary shrink-0"
+          />
+          <div className="min-w-0">
+            <div className="text-4xl font-bold leading-none whitespace-nowrap">{temp}</div>
+            <div className="text-sm text-muted-foreground capitalize mt-0.5 whitespace-nowrap truncate" data-weather-condition>
+              {weather.descriptionKey && typeof t.has === 'function' && t.has(`conditions.${weather.descriptionKey}`)
+                ? t(`conditions.${weather.descriptionKey}`)
+                : weather.description}
+            </div>
+            {location && (
+              <div className="hidden @min-[32rem]:block text-xs text-muted-foreground/70 mt-0.5 truncate max-w-[140px]">
+                {formatLocation(location)}
+              </div>
+            )}
           </div>
-          {location && (
-            <div className="text-xs text-muted-foreground/70 mt-0.5 truncate max-w-[140px]">
-              {formatLocation(location)}
+        </div>
+
+        {/* Right: stats, only when the tile has room for them */}
+        <div className="hidden @min-[32rem]:block shrink-0 text-right text-xs text-muted-foreground space-y-1 pt-0.5" data-weather-details>
+          <div className="text-sm">Feels like {feels}</div>
+          <div className="flex items-center justify-end gap-1">
+            <Droplets className="h-3 w-3" />
+            <span>{weather.humidity}%</span>
+          </div>
+          <div className="flex items-center justify-end gap-1">
+            <Wind className="h-3 w-3" />
+            <span>{weather.windSpeed} {units.windSpeed}</span>
+          </div>
+          {moonPhase !== undefined && (
+            <div className="flex items-center justify-end gap-1 pt-0.5">
+              <MoonGlyph phase={moonPhase} size={12} />
+              {moonPhaseName && <span>{moonPhaseName}</span>}
+            </div>
+          )}
+          {(sunrise || sunset) && (
+            <div data-keep-bg data-testid="header-sun-times" className="flex items-center justify-end gap-2 tabular-nums whitespace-nowrap self-end rounded-full bg-background/55 px-2 text-foreground">
+              {sunrise && (
+                <span className="flex items-center gap-0.5" title="Sunrise">
+                  <Sunrise className="h-3 w-3" style={{ color: '#FBBF24' }} />
+                  {formatDisplayTime(sunrise, timeFormat, {}, timezone)}
+                </span>
+              )}
+              {sunset && (
+                <span className="flex items-center gap-0.5" title="Sunset">
+                  <Sunset className="h-3 w-3" style={{ color: '#F97316' }} />
+                  {formatDisplayTime(sunset, timeFormat, {}, timezone)}
+                </span>
+              )}
             </div>
           )}
         </div>
-      </div>
-
-      {/* Right: stats */}
-      <div className="text-right text-xs text-muted-foreground space-y-1 pt-0.5">
-        <div className="text-sm">Feels like {feels}</div>
-        <div className="flex items-center justify-end gap-1">
-          <Droplets className="h-3 w-3" />
-          <span>{weather.humidity}%</span>
-        </div>
-        <div className="flex items-center justify-end gap-1">
-          <Wind className="h-3 w-3" />
-          <span>{weather.windSpeed} {units.windSpeed}</span>
-        </div>
-        {moonPhase !== undefined && (
-          <div className="flex items-center justify-end gap-1 pt-0.5">
-            <MoonGlyph phase={moonPhase} size={12} />
-            {moonPhaseName && <span>{moonPhaseName}</span>}
-          </div>
-        )}
-        {(sunrise || sunset) && (
-          <div data-keep-bg data-testid="header-sun-times" className="flex items-center justify-end gap-2 tabular-nums self-end rounded-full bg-background/55 px-2 text-foreground">
-            {sunrise && (
-              <span className="flex items-center gap-0.5" title="Sunrise">
-                <Sunrise className="h-3 w-3" style={{ color: '#FBBF24' }} />
-                {formatDisplayTime(sunrise, timeFormat, {}, timezone)}
-              </span>
-            )}
-            {sunset && (
-              <span className="flex items-center gap-0.5" title="Sunset">
-                <Sunset className="h-3 w-3" style={{ color: '#F97316' }} />
-                {formatDisplayTime(sunset, timeFormat, {}, timezone)}
-              </span>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );

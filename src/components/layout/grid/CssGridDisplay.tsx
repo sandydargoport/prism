@@ -304,6 +304,12 @@ export function CssGridDisplay({
           // faded widget, keeping its place (#738).
           const hiddenEmpty = emptyIds.has(w.i) && hidesWhenEmpty(w, hideEmptyByDefault);
           const gone = faded || hiddenEmpty;
+          // A small tile (a third of the width or less) on the top row that
+          // touches a side edge is a corner tile: the clock and weather line
+          // their text up with that edge instead of centring it.
+          const corner = w.y === 0 && w.w * 3 <= cols
+            ? (w.x === 0 ? 'left' : w.x + w.w >= cols ? 'right' : undefined)
+            : undefined;
 
           const cell = (
             <div
@@ -311,6 +317,7 @@ export function CssGridDisplay({
               className={`widget-cell relative overflow-hidden ${textClass} ${outlineClass} ${clear ? 'idle-clear' : ''} transition-opacity duration-1000 motion-reduce:duration-200`}
               ref={(el) => { if (el) cells.current.set(w.i, el); else cells.current.delete(w.i); }}
               data-widget={w.i}
+              data-corner={corner}
               data-faded={faded || undefined}
               data-hidden-empty={hiddenEmpty || undefined}
               aria-hidden={gone || undefined}

@@ -98,30 +98,30 @@ export type CaptureSpec = {
 };
 
 /**
- * The hero's dashboard, on the 48x27 grid. The clock runs across the top left
- * with the calendar under it; the weather (forecast, sun and moon) sits top
- * right, where neither the tablet nor the phone overlaps the wall in the
- * framed image. Clock and weather stay when idle, so the tablet's idle shot is
- * the photo with both along the top, against the sky.
+ * The hero's dashboard, on the 48x27 grid. The clock and weather are small
+ * tiles in the two top corners with the photo between them (#905), the
+ * calendar below on the left and birthdays on the right. Clock and weather
+ * stay when idle, so the tablet's idle shot is the photo with the time and
+ * weather on its top corners.
  */
 export const HERO_LAYOUT = [
-  { i: 'clock', x: 0, y: 0, w: 27, h: 5, showWhenIdle: true },
-  { i: 'calendar', x: 0, y: 5, w: 27, h: 22, showWhenIdle: false },
-  { i: 'weather', x: 27, y: 0, w: 21, h: 15, showWhenIdle: true },
-  { i: 'birthdays', x: 27, y: 15, w: 21, h: 12, showWhenIdle: false },
+  { i: 'clock', x: 0, y: 0, w: 12, h: 5, showWhenIdle: true },
+  { i: 'calendar', x: 0, y: 5, w: 30, h: 22, showWhenIdle: false },
+  { i: 'weather', x: 36, y: 0, w: 12, h: 5, showWhenIdle: true },
+  { i: 'birthdays', x: 30, y: 5, w: 18, h: 12, showWhenIdle: false },
 ] satisfies StagedCell[];
 
 /**
- * The gallery's dashboard: the hero's clock and calendar on the left, and on
- * the right the weather over the two lists a family touches every day,
- * chores and shopping. Clock and weather stay when idle.
+ * The gallery's dashboard: the hero's corner clock and weather and its
+ * calendar, with the two lists a family touches every day, chores and
+ * shopping, on the right. Clock and weather stay when idle.
  */
 export const GALLERY_LAYOUT = [
-  { i: 'clock', x: 0, y: 0, w: 30, h: 5, showWhenIdle: true },
+  { i: 'clock', x: 0, y: 0, w: 12, h: 5, showWhenIdle: true },
   { i: 'calendar', x: 0, y: 5, w: 30, h: 22, showWhenIdle: false },
-  { i: 'weather', x: 30, y: 0, w: 18, h: 6, showWhenIdle: true },
-  { i: 'chores', x: 30, y: 6, w: 18, h: 12, showWhenIdle: false },
-  { i: 'shopping', x: 30, y: 18, w: 18, h: 9, showWhenIdle: false },
+  { i: 'weather', x: 36, y: 0, w: 12, h: 5, showWhenIdle: true },
+  { i: 'chores', x: 30, y: 5, w: 18, h: 12, showWhenIdle: false },
+  { i: 'shopping', x: 30, y: 17, w: 18, h: 10, showWhenIdle: false },
 ] satisfies StagedCell[];
 
 export const STAGE_LAYOUTS = { hero: HERO_LAYOUT, gallery: GALLERY_LAYOUT } as const;
