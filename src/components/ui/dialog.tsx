@@ -127,7 +127,7 @@ const DialogContent = React.forwardRef<
       <DialogPrimitive.Close
         className={cn(
           // A 48px target in the corner, the icon small inside it.
-          'absolute right-3 top-3 flex h-12 w-12 items-center justify-center rounded-full',
+          'absolute right-3 top-3 flex h-[48px] w-[48px] items-center justify-center rounded-full',
           'text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
           'focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
           'disabled:pointer-events-none'
