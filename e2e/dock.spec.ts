@@ -128,4 +128,42 @@ test.describe('the dock on the wall', () => {
       expect(m.reserved, 'room for the dock at the foot of the page').toBeGreaterThanOrEqual(m.under);
     });
   }
+
+  // #924: one navigation everywhere. Portrait and phones use the same dock;
+  // the rail and the portrait bar are gone.
+  for (const screen of [
+    { name: 'portrait tablet', width: 1080, height: 1920, pages: 6 },
+    { name: 'phone', width: 390, height: 844, pages: 5 },
+  ]) {
+    test(`the ${screen.name} uses the dock and nothing else`, async ({ page }) => {
+      await page.setViewportSize({ width: screen.width, height: screen.height });
+      const login = await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } });
+      expect(login.ok()).toBe(true);
+      await page.goto('/chores');
+      const dock = page.locator('[data-dock]');
+      await expect(dock).toBeVisible({ timeout: 60_000 });
+      await expect(page.locator('aside'), 'no rail').toHaveCount(0);
+      await expect(page.locator('[data-portrait-nav]'), 'no portrait bar').toHaveCount(0);
+      const m = await dock.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        const items = [...el.querySelectorAll(':scope > a, :scope > button')].map((i) => i.getBoundingClientRect());
+        return { left: r.left, right: r.right, bottom: r.bottom, items: items.map((i) => ({ w: i.width, h: i.height })), pages: el.querySelectorAll(':scope > a').length };
+      });
+      expect(m.pages).toBe(screen.pages);
+      expect(m.left).toBeGreaterThanOrEqual(0);
+      expect(m.right).toBeLessThanOrEqual(screen.width);
+      expect(m.bottom).toBeLessThanOrEqual(screen.height);
+      for (const i of m.items) {
+        expect(i.w).toBeGreaterThanOrEqual(44);
+        expect(i.h).toBeGreaterThanOrEqual(44);
+      }
+      // The phone's own tools button sits above the dock, never on it.
+      const fab = page.getByRole('button', { name: 'Open menu' });
+      if (await fab.count()) {
+        const f = await fab.boundingBox();
+        const d = await dock.boundingBox();
+        expect(f!.y + f!.height, 'tools button above the dock').toBeLessThanOrEqual(d!.y);
+      }
+    });
+  }
 });

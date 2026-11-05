@@ -16,7 +16,8 @@ import { useTranslations } from 'next-intl';
 import { HelpCircle, LogIn, LogOut, MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ALL_NAV_ITEMS, type NavItem } from '@/lib/constants/navItems';
-import { dockLayout } from '@/lib/constants/dock';
+import { dockLayout, DOCK_SIZE_NARROW } from '@/lib/constants/dock';
+import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import { useHiddenPages } from '@/lib/hooks/useHiddenPages';
 import { scopedHref, isNavActive, RETURN_PARAM } from '@/lib/utils/dashboardScope';
 import { useReturnSlug } from '@/lib/hooks/useReturnSlug';
@@ -41,7 +42,9 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
   const returnSlug = useReturnSlug();
   const search = returnSlug ? { get: (k: string) => (k === RETURN_PARAM ? returnSlug : null) } : null;
   const { filterNavItems } = useHiddenPages();
-  const { dock, more } = dockLayout(filterNavItems(ALL_NAV_ITEMS));
+  // A phone has room for five pages and More; Sign in moves into More (#924).
+  const narrow = useIsMobile();
+  const { dock, more } = dockLayout(filterNavItems(ALL_NAV_ITEMS), undefined, narrow ? DOCK_SIZE_NARROW : undefined);
   const [moreOpen, setMoreOpen] = React.useState(false);
 
   // The wall: any touch shows the dock; it goes after ten quiet seconds.
@@ -62,7 +65,8 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
   }, [mode]);
   const visible = mode === 'page' || shown || moreOpen;
 
-  const label = (item: NavItem) => t(item.i18nKey, { defaultValue: item.label });
+  // The dashboard is "Home" on the dock, as on the wall's design.
+  const label = (item: NavItem) => (item.href === '/' ? t('nav.home', { defaultValue: 'Home' }) : t(item.i18nKey, { defaultValue: item.label }));
   const link = (item: NavItem, inMore = false) => {
     const active = isNavActive(item.href, pathname, search);
     const Icon = item.icon;
@@ -73,14 +77,14 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
         onClick={() => setMoreOpen(false)}
         aria-current={active ? 'page' : undefined}
         className={cn(
-          'flex min-h-[56px] min-w-[64px] flex-col items-center justify-center gap-1 rounded-full px-3 text-caption font-medium transition-colors',
+          cn('flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-full text-caption font-medium transition-colors', inMore ? 'min-w-[64px] px-3' : narrow ? 'min-w-[44px] flex-1 px-0.5' : 'min-w-[64px] px-3'),
           inMore ? 'min-h-[64px] rounded-2xl text-foreground hover:bg-muted' : 'text-white/85 hover:bg-white/10',
           active && (inMore ? 'bg-muted' : 'bg-white/15 text-white'),
         )}
         data-dock-item={item.href}
       >
         <Icon className="h-5 w-5" />
-        <span className="whitespace-nowrap">{label(item)}</span>
+        <span className={cn('whitespace-nowrap', narrow && !inMore && 'max-w-full truncate')}>{label(item)}</span>
       </Link>
     );
   };
@@ -101,7 +105,9 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
       <nav
         aria-label={t('nav.label', { defaultValue: 'Pages' })}
         className={cn(
-          'fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-40 flex -translate-x-1/2 items-center gap-1 rounded-full bg-[rgb(22_17_13)] p-1.5 shadow-2xl transition-[opacity,transform] duration-200',
+          'fixed bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 flex items-center rounded-full bg-[rgb(22_17_13)] shadow-2xl transition-[opacity,transform] duration-200',
+          // A phone: the full width less a margin, each item an equal share.
+          narrow ? 'inset-x-2 justify-between p-1' : 'left-1/2 -translate-x-1/2 gap-1 p-1.5',
           visible ? 'opacity-100' : 'pointer-events-none translate-y-4 opacity-0',
         )}
         aria-hidden={!visible || undefined}
@@ -112,13 +118,13 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
         <button
           type="button"
           onClick={() => setMoreOpen(true)}
-          className="flex min-h-[56px] min-w-[64px] flex-col items-center justify-center gap-1 rounded-full px-3 text-caption font-medium text-white/85 hover:bg-white/10"
+          className={cn('flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-full text-caption font-medium text-white/85 hover:bg-white/10', narrow ? 'min-w-[44px] flex-1 px-0.5' : 'min-w-[64px] px-3')}
           data-dock-more
         >
           <MoreHorizontal className="h-5 w-5" />
           <span>{t('nav.more', { defaultValue: 'More' })}</span>
         </button>
-        <button
+        {!narrow && <button
           type="button"
           onClick={user ? onLogout : onLogin}
           className="flex min-h-[56px] min-w-[64px] flex-col items-center justify-center gap-1 rounded-full px-3 text-caption font-medium text-white/85 hover:bg-white/10"
@@ -126,7 +132,7 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
         >
           {user ? <LogOut className="h-5 w-5" /> : <LogIn className="h-5 w-5" />}
           <span className="max-w-[6rem] truncate">{user ? user.name : t('nav.signIn', { defaultValue: 'Sign in' })}</span>
-        </button>
+        </button>}
       </nav>
 
       <Dialog open={moreOpen} onOpenChange={setMoreOpen}>
@@ -144,6 +150,17 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
               <span>{t('nav.help', { defaultValue: 'Help' })}</span>
             </Link>
           </div>
+          {narrow && (
+            <button
+              type="button"
+              onClick={() => { setMoreOpen(false); (user ? onLogout : onLogin)?.(); }}
+              className="flex min-h-[52px] items-center justify-center gap-2 rounded-full border-[1.5px] border-foreground/30 px-5 text-body"
+              data-dock-sign
+            >
+              {user ? <LogOut className="h-5 w-5" /> : <LogIn className="h-5 w-5" />}
+              {user ? user.name : t('nav.signIn', { defaultValue: 'Sign in' })}
+            </button>
+          )}
           {screenJobs && (
             <div className="flex flex-col gap-2 border-t border-border pt-4" data-dock-screen-jobs>
               <p className="m-0 text-caption font-medium text-muted-foreground">{t('nav.thisScreen', { defaultValue: 'This screen' })}</p>
