@@ -265,12 +265,12 @@ function MonthDayCell({
     >
       <div className="flex shrink-0 items-center justify-center h-(--daynum-row)">
         <span className={cn(
-          'inline-flex items-center justify-center rounded-full px-1 font-medium',
+          'inline-flex items-center justify-center rounded-full px-1',
           'h-(--daynum-box) min-w-(--daynum-box) text-daynum',
-          today && 'bg-primary font-bold text-primary-foreground',
+          today && 'bg-foreground text-background',
           !today && isPast && 'text-muted-foreground',
           !today && !isSameMonth(date, currentDate) && 'text-muted-foreground/55',
-        )}>
+        )} style={{ fontFamily: 'var(--font-display)' }} data-month-daynum data-today={today || undefined}>
           {format(date, 'd')}
         </span>
       </div>

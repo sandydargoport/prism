@@ -48,7 +48,7 @@ it('draws an agenda event as a tint with a bar, in the normal text colour', () =
 // text on a light card. Today's heading uses the normal text colour.
 it("draws today's heading in the normal text colour, not the seasonal accent", () => {
   const { container } = render(<AgendaView events={[soonEvent()]} days={1} onEventClick={() => {}} />);
-  const heading = container.querySelector('span.text-sm.font-semibold')!;
+  const heading = container.querySelector('[data-agenda-day-word]')!;
   expect(heading.className).toContain('text-foreground');
   expect(heading.className).not.toContain('text-seasonal-accent');
 });
