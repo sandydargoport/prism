@@ -10,6 +10,8 @@ let session: unknown = null;
 let security: unknown = undefined;
 let display: unknown = { userId: 'display-1', role: 'guest' };
 let limited = false;
+let forwarded = '203.0.113.5';
+const limitKeys: string[] = [];
 
 jest.mock('../requireAuth', () => ({
   requireAuth: async () => session ?? NextResponse.json({ error: 'Authentication required' }, { status: 401 }),
@@ -21,9 +23,12 @@ jest.mock('@/lib/db/client', () => ({
   db: { select: () => ({ from: () => ({ where: async () => (security === undefined ? [] : [{ value: security }]) }) }) },
 }));
 jest.mock('@/lib/cache/rateLimit', () => ({
-  rateLimitGuard: async () => (limited ? NextResponse.json({ error: 'Too many' }, { status: 429 }) : null),
+  rateLimitGuard: async (key: string) => {
+    limitKeys.push(key);
+    return limited ? NextResponse.json({ error: 'Too many' }, { status: 429 }) : null;
+  },
 }));
-jest.mock('next/headers', () => ({ headers: async () => new Map([['x-forwarded-for', '10.0.0.5']]) }));
+jest.mock('next/headers', () => ({ headers: async () => new Map([['x-forwarded-for', forwarded]]) }));
 jest.mock('@/lib/services/auditLog', () => ({ logActivity: jest.fn() }));
 
 import { pinRequiredForEveryChange, requireEverydayAuth } from '../everydayAuth';
@@ -33,6 +38,8 @@ beforeEach(() => {
   security = undefined;
   display = { userId: 'display-1', role: 'guest' };
   limited = false;
+  forwarded = '203.0.113.5';
+  limitKeys.length = 0;
 });
 
 describe('pinRequiredForEveryChange', () => {
@@ -66,9 +73,20 @@ describe('requireEverydayAuth', () => {
     display = null;
     expect(((await requireEverydayAuth('task-toggle')) as NextResponse).status).toBe(401);
   });
-  it('answers 429 past 30 changes a minute from one screen', async () => {
+  it("answers 429 once the household's walls are past their changes for the minute", async () => {
     security = { requirePinForEveryChange: false };
     limited = true;
     expect(((await requireEverydayAuth('task-toggle')) as NextResponse).status).toBe(429);
+  });
+});
+
+describe('the wall limit cannot be dodged with a made-up address (#809)', () => {
+  it('counts every signed-out change in one household bucket, whatever X-Forwarded-For says', async () => {
+    security = { requirePinForEveryChange: false };
+    for (const addr of ['203.0.113.5', '198.51.100.9', '203.0.113.7']) {
+      forwarded = addr;
+      await requireEverydayAuth('chore-complete');
+    }
+    expect(new Set(limitKeys)).toEqual(new Set(['wall:household']));
   });
 });
