@@ -68,3 +68,57 @@ test('the wallpaper crossfades: the old photo stays opaque under the new one, wh
   const widgetsAfter = await page.locator('.widget-cell').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().toJSON()));
   expect(widgetsAfter, 'no widget moved during the crossfade').toEqual(widgetsBefore);
 });
+
+/**
+ * The slow zoom (#955): each photo scales slowly over its time on screen,
+ * anchored on its focal point (#956). Off under reduced motion and below the
+ * full performance level.
+ */
+async function zoomPage(page: import('@playwright/test').Page, opts: { mode?: string; reduced?: boolean } = {}) {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  if (opts.reduced) await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.addInitScript((mode) => {
+    localStorage.setItem('prism-wallpaper-enabled', 'true');
+    localStorage.setItem('prism-wallpaper-interval', '20');
+    localStorage.setItem('prism-perf-mode', mode);
+  }, opts.mode ?? 'full');
+  await page.route('**/api/photos?*', (route) => route.fulfill({ json: {
+    photos: [{ ...photo('zoom-a'), focalX: 0.2, focalY: 0.7 }, { ...photo('zoom-b'), focalX: 0.8, focalY: 0.3 }], total: 2,
+  } }));
+  await page.route('**/api/photos/zoom-*/file', (route) => route.fulfill({ path: path.join(SCENERY, 'valley.webp'), contentType: 'image/webp' }));
+  await page.goto('/');
+  const front = page.locator('[data-photo-stage] [data-photo-layer="front"]').first();
+  await expect(front).toHaveCount(1, { timeout: 60_000 });
+  return front;
+}
+
+const scaleOf = (el: import('@playwright/test').Locator) =>
+  el.evaluate((e) => ({ scale: new DOMMatrix(getComputedStyle(e).transform).a, origin: getComputedStyle(e).transformOrigin }));
+
+test('each photo zooms slowly, anchored on its subject', async ({ page }) => {
+  test.setTimeout(60_000);
+  const front = await zoomPage(page);
+  await expect(front).toHaveAttribute('data-zoom', 'on');
+  const a = await scaleOf(front);
+  await page.waitForTimeout(3000);
+  const b = await scaleOf(front);
+  // In from 1.03 or out from 1.12, a little further along after 3s.
+  expect(a.scale).toBeGreaterThanOrEqual(1.03 - 0.001);
+  expect(a.scale).toBeLessThanOrEqual(1.12 + 0.001);
+  expect(Math.abs(b.scale - a.scale), 'it is moving').toBeGreaterThan(0.002);
+  expect(Math.abs(b.scale - a.scale), 'slowly').toBeLessThan(0.03);
+  // Anchored on the photo's focal point, whichever of the two is showing.
+  const [ox, oy] = b.origin.split(' ').map(parseFloat);
+  const at = (fx: number, fy: number) => Math.abs(ox! - fx * 1920) < 2 && Math.abs(oy! - fy * 1080) < 2;
+  expect(at(0.2, 0.7) || at(0.8, 0.3), `origin ${b.origin}`).toBe(true);
+});
+
+for (const c of [{ name: 'under reduced motion', reduced: true }, { name: 'below the full performance level', mode: 'reduced' }]) {
+  test(`no zoom ${c.name}`, async ({ page }) => {
+    test.setTimeout(60_000);
+    const front = await zoomPage(page, c);
+    await expect(front).toHaveAttribute('data-zoom', 'off');
+    await page.waitForTimeout(1500);
+    expect((await scaleOf(front)).scale).toBe(1);
+  });
+}
