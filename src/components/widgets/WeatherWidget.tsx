@@ -446,6 +446,7 @@ export const WeatherWidget = React.memo(function WeatherWidget({
           moonPhase={weatherData.moonPhase}
           moonPhaseName={weatherData.moonPhaseName}
           timezone={weatherData.timezone}
+          todayHigh={weatherData.forecast?.[0]?.high}
         />
 
         {/* HOURLY FORECAST */}
@@ -513,6 +514,11 @@ export const WeatherWidget = React.memo(function WeatherWidget({
 });
 
 
+/** "Sunny" + "high 79°" -> "Sunny, high 79°". Either part may be missing. */
+export function weatherSentence(condition: string | undefined, high: string | undefined): string {
+  return [condition?.trim(), high].filter(Boolean).join(', ');
+}
+
 /**
  * CURRENT CONDITIONS SECTION
  */
@@ -525,6 +531,7 @@ function CurrentConditions({
   moonPhase,
   moonPhaseName,
   timezone,
+  todayHigh,
 }: {
   weather: CurrentWeather;
   location: string;
@@ -534,6 +541,8 @@ function CurrentConditions({
   moonPhase?: number;
   moonPhaseName?: string;
   timezone?: string;
+  /** Today's forecast high, for the one-line "Sunny, high 79" (#800). */
+  todayHigh?: number;
 }) {
   const { timeFormat } = useTimeFormat();
   const t = useTranslations('weather');
@@ -554,11 +563,16 @@ function CurrentConditions({
             className="h-10 w-10 text-primary shrink-0"
           />
           <div className="min-w-0">
-            <div className="text-4xl font-bold leading-none whitespace-nowrap">{temp}</div>
-            <div className="text-sm text-muted-foreground capitalize mt-0.5 whitespace-nowrap truncate" data-weather-condition>
-              {weather.descriptionKey && typeof t.has === 'function' && t.has(`conditions.${weather.descriptionKey}`)
-                ? t(`conditions.${weather.descriptionKey}`)
-                : weather.description}
+            {/* The temperature in the display face, like the clock (#800) */}
+            <div className="text-4xl font-medium tracking-[-0.02em] leading-none whitespace-nowrap tabular-nums" style={{ fontFamily: 'var(--font-display)' }} data-weather-temp>{temp}</div>
+            {/* One line: "Sunny, high 79" */}
+            <div className="text-sm text-muted-foreground mt-0.5 whitespace-nowrap truncate first-letter:uppercase" data-weather-condition>
+              {weatherSentence(
+                weather.descriptionKey && typeof t.has === 'function' && t.has(`conditions.${weather.descriptionKey}`)
+                  ? t(`conditions.${weather.descriptionKey}`)
+                  : weather.description,
+                todayHigh === undefined ? undefined : t('high', { temp: formatTemp(todayHigh, units) }),
+              )}
             </div>
             {location && (
               <div className="hidden @min-[32rem]:block text-xs text-muted-foreground/70 mt-0.5 truncate max-w-[140px]">

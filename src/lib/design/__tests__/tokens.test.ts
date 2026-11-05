@@ -6,7 +6,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import {
-  CARD, EVENT, PAPER, PAPER_CONTRAST_MIN, PHOTO_DIM, REFERENCE_ROOT_PX, SPACE_PX,
+  CARD, EVENT, PAPER, PAPER_CONTRAST_MIN, PHOTO_DIM, PROSE, REFERENCE_ROOT_PX, SPACE_PX,
   TARGET_MIN_PX, TEXT_FLOOR_PX, TYPE_SCALE, TYPE_STEP_MIN, type TypeRole,
 } from '../tokens';
 import { checkThemeContrast, EDGE_MIN } from '@/lib/themes/contrast';
@@ -59,6 +59,13 @@ describe('type scale', () => {
     expect(value).toContain('var(--text-floor) * var(--zoom-inv, 1)');
     expect(remToPx(value)).toBeCloseTo(TYPE_SCALE[role].px, 5);
     expect(Number(cssValue(`--text-${role}--line-height`))).toBe(TYPE_SCALE[role].lineHeight);
+  });
+
+  it('prose reads at a role size, not a sixth step, with looser lines (#800)', () => {
+    expect(ROLES).toContain(PROSE.size);
+    expect(cssValue('--text-prose')).toBe(`var(--text-${PROSE.size})`);
+    expect(Number(cssValue('--text-prose--line-height'))).toBe(PROSE.lineHeight);
+    expect(PROSE.lineHeight).toBeGreaterThan(TYPE_SCALE[PROSE.size].lineHeight);
   });
 
   it('no component draws text at a fixed pixel size, which would skip the floor (#893, #894)', () => {

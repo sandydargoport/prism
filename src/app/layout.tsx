@@ -269,6 +269,11 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
+      // The font variables sit on <html>, not <body>: the role variables
+      // (--font-sans, --font-display, a theme's --theme-font) are declared on
+      // :root and resolve there, so a face defined lower down never reached
+      // them and the Serif role drew Tailwind's default serif instead (#800).
+      className={`${inter.variable} ${fraunces.variable} ${nunito.variable} ${jetbrainsMono.variable}`}
       // Suppress hydration warnings from browser extensions
       // that might modify the HTML (password managers, etc.)
       suppressHydrationWarning
@@ -329,10 +334,6 @@ export default async function RootLayout({
       */}
       <body
         className={`
-          ${inter.variable}
-          ${fraunces.variable}
-          ${nunito.variable}
-          ${jetbrainsMono.variable}
           font-sans
           antialiased
           bg-background

@@ -245,7 +245,8 @@
       },
       "line": "{name}: {begin} bis {end}, Maximum {peak}",
       "marker": "Finsternis {peak}"
-    }
+    },
+    "high": "bis {temp}"
   },
   "nowNext": {
     "title": "Jetzt & Danach",

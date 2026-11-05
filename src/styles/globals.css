@@ -90,6 +90,12 @@
   /* Digits on the clock (#800). The theme's face unless a theme names a
      numeral face of its own (--theme-font-numeral, set by applyTheme). */
   --font-numeral: var(--theme-font-numeral, var(--font-sans));
+  /* The display face (#800): the clock, the temperature and page and sheet
+     titles. Fraunces, unless a theme names a numeral face of its own
+     (--theme-font-display, set by applyTheme). Everything else stays sans. */
+  --font-display:
+    var(--theme-font-display, var(--font-serif, Fraunces)), Georgia,
+    Times New Roman, serif;
   --font-mono:
     JetBrains Mono, Menlo, Monaco, Consolas, Liberation Mono, Courier New,
     monospace;
@@ -108,6 +114,10 @@
   --text-display--line-height: 1.1;
   --text-clock: max(calc(var(--text-floor) * var(--zoom-inv, 1)), 5rem);
   --text-clock--line-height: 1;
+  /* Prose: sentences on the wall. The title's size, regular weight, looser
+     lines (PROSE in tokens.ts). */
+  --text-prose: var(--text-title);
+  --text-prose--line-height: 1.35;
 
   /* Floored (see the text floor above). Each line height is its old rem value
      or the same ratio in em, whichever is larger: identical while the size is

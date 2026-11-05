@@ -245,7 +245,8 @@
       },
       "line": "{name}: {begin} to {end}, peak {peak}",
       "marker": "Eclipse {peak}"
-    }
+    },
+    "high": "high {temp}"
   },
   "nowNext": {
     "title": "Now & Next",

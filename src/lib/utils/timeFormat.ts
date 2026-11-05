@@ -353,6 +353,23 @@ export function formatDisplayTime(
 }
 
 /**
+ * A time as people say it on the wall (#800): "9", "5:30", "9 pm", "7:15 am".
+ * No ":00", and no am/pm between 8:00 am and 7:59 pm, where the day makes it
+ * obvious. The 24-hour format stays as it is ("17:30"): it is never ambiguous.
+ */
+export function formatBareTime(
+  date: Date | number,
+  timeFormat: TimeFormat,
+  timeZone?: string,
+): string {
+  const { hour, minute } = wallClockTime(date, timeZone);
+  if (timeFormat === '24h') return `${pad2(hour)}:${pad2(minute)}`;
+  const digits = minute === 0 ? `${hour12(hour)}` : `${hour12(hour)}:${pad2(minute)}`;
+  const daytime = hour >= 8 && hour < 20;
+  return daytime ? digits : `${digits} ${hour < 12 ? 'am' : 'pm'}`;
+}
+
+/**
  * A date and time, e.g. "Sep 28, 2026, 8:30 PM", in `timeZone` and the
  * household's 12/24-hour format. For timestamps the server recorded (a sync,
  * a backup, a message), which toLocaleString would show in the device zone.
