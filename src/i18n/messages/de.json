@@ -263,5 +263,12 @@
     "minutes": "{count} Min.",
     "hours": "{count} Std.",
     "hoursMinutes": "{h} Std. {m} Min."
+  },
+  "today": {
+    "at": "{title} {time}",
+    "until": "{title} bis {time}",
+    "nothingElse": "Heute nichts mehr",
+    "sunset": "Sonnenuntergang {time}",
+    "allDay": "Ganztägig: {titles}"
   }
 }
