@@ -146,6 +146,23 @@ describe('TimeFormatProvider', () => {
       expect(patchCalls()).toHaveLength(0);
     });
 
+    // #833: a load that lands after the provider was unmounted (a remount, or
+    // React's dev double effect) wrote a zone the server already had, and
+    // the refused write opened the sign-in box on a signed-out screen.
+    it('never writes when the server has a zone, even if the load lands after unmount', async () => {
+      localStorage.setItem('prism:timezone', 'America/Chicago');
+      sessionStorage.clear();
+      let land!: (v: unknown) => void;
+      fetchMock.mockReturnValueOnce(new Promise((r) => { land = r; }));
+      const { unmount } = renderHook(() => useTimeFormat(), { wrapper });
+      unmount();
+      await act(async () => {
+        land({ ok: true, json: async () => ({ settings: { timezone: 'Asia/Tokyo' } }) });
+        await new Promise((r) => setTimeout(r, 0));
+      });
+      expect(patchCalls()).toHaveLength(0);
+    });
+
     it.each(['UTC', 'Etc/GMT+5'])('never saves %s', async (zone) => {
       localStorage.setItem('prism:timezone', zone);
       fetchMock.mockResolvedValue(noZone);
