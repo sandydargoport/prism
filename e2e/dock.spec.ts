@@ -166,4 +166,26 @@ test.describe('the dock on the wall', () => {
       }
     });
   }
+
+  // #925: the household chooses the dock's pages; the rest stay in More.
+  test('a page put on the dock takes a place there and the sixth moves into More', async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    const login = await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } });
+    expect(login.ok()).toBe(true);
+    const before = (await (await page.request.get('/api/settings')).json()).settings?.dockPages ?? null;
+    try {
+      const chosen = ['/', '/calendar', '/chores', '/shopping', '/meals', '/recipes'];
+      expect((await page.request.patch('/api/settings', { data: { key: 'dockPages', value: chosen } })).ok()).toBe(true);
+      await page.addInitScript(() => localStorage.removeItem('prism-dock-pages'));
+      await page.goto('/chores');
+      const onDock = page.locator('[data-dock] [data-dock-item]');
+      await expect(onDock).toHaveCount(6, { timeout: 60_000 });
+      await expect(page.locator('[data-dock] [data-dock-item="/recipes"]')).toBeVisible();
+      await expect(page.locator('[data-dock] [data-dock-item="/photos"]')).toHaveCount(0);
+      await page.locator('[data-dock-more]').click();
+      await expect(page.locator('[data-dock-more-panel] [data-dock-item="/photos"]')).toBeVisible();
+    } finally {
+      await page.request.patch('/api/settings', { data: { key: 'dockPages', value: before ?? ['/', '/calendar', '/chores', '/shopping', '/meals', '/photos'] } });
+    }
+  });
 });

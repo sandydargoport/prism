@@ -30,4 +30,11 @@ describe('dockLayout', () => {
     const { dock } = dockLayout(ALL_NAV_ITEMS, ['/', '/recipes', '/messages']);
     expect(dock.slice(0, 3).map((i) => i.href)).toEqual(['/', '/recipes', '/messages']);
   });
+
+  it('never shows a hidden page, even one the household put on the dock (#925)', () => {
+    const visible = ALL_NAV_ITEMS.filter((i) => i.href !== '/recipes');
+    const { dock, more } = dockLayout(visible, ['/', '/recipes', '/messages']);
+    expect([...dock, ...more].map((i) => i.href)).not.toContain('/recipes');
+    expect(dock[1]!.href).toBe('/messages');
+  });
 });
