@@ -1,5 +1,6 @@
 'use client';
 
+import { SlidingTitle } from '@/components/calendar/cells/SlidingTitle';
 import * as React from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
@@ -212,7 +213,7 @@ export function WeekItemCard({
         )}
         <span className={cn('flex min-w-0 flex-1 items-center gap-1 text-foreground', styles.titleText, styles.titleWeight, muted && 'line-through')}>
           {showMealIcon && <UtensilsCrossed aria-hidden className="h-3 w-3 shrink-0" style={{ color: stripeColor }} />}
-          <span className="truncate">{title}</span>
+          <SlidingTitle>{title}</SlidingTitle>
         </span>
         {styles.showSubtitle && subtitle && (
           <span className={cn('shrink-0 truncate text-muted-foreground', styles.metaText)}>
@@ -263,7 +264,7 @@ export function WeekItemCard({
         )}
         <span className={cn('flex min-w-0 items-center gap-1 text-foreground', styles.titleText, styles.titleWeight, muted && 'line-through')}>
           {showMealIcon && <UtensilsCrossed aria-hidden className="h-3 w-3 shrink-0" style={{ color: stripeColor }} />}
-          <span className="truncate">{title}</span>
+          <SlidingTitle>{title}</SlidingTitle>
         </span>
         {styles.showSubtitle && subtitle && (
           <span className={cn('truncate text-muted-foreground', styles.metaText)}>

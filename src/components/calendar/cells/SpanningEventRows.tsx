@@ -1,5 +1,6 @@
 'use client';
 
+import { SlidingTitle } from '@/components/calendar/cells/SlidingTitle';
 import { eventTintStyle } from '@/lib/design/eventStyle';
 import { addDays, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -353,9 +354,14 @@ export function SpanningEventRows({
               stripe stopped short of the card's edges and the corner had
               nothing to mask.
             */}
-            <span className={cn(cards && 'min-w-0 flex-1 truncate py-0.5', cards && titleClass)}>
-              {showsLabel ? label : '\u00A0'}
-            </span>
+            {cards && showsLabel ? (
+              // Too long for its band, it slides (#901).
+              <SlidingTitle className={cn('flex-1 py-0.5', titleClass)}>{label}</SlidingTitle>
+            ) : (
+              <span className={cn(cards && 'min-w-0 flex-1 truncate py-0.5', cards && titleClass)}>
+                {showsLabel ? label : '\u00A0'}
+              </span>
+            )}
           </Tag>
         );
       })}
