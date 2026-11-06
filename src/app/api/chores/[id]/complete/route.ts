@@ -21,7 +21,6 @@ import { eq, desc } from 'drizzle-orm';
 import { completeChoreSchema, validateRequest } from '@/lib/validations';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { rateLimitGuard } from '@/lib/cache/rateLimit';
-import { calculateNextDue } from '@/lib/utils/calculateNextDue';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { todayKey } from '@/lib/utils/zonedDate';
 import { choreNotDueYet,
@@ -282,9 +281,12 @@ export async function DELETE(
     }
     if (auth.wall) await logWallChange('chore-undo', 'chore', choreId, 'Undid a tick on the wall without a PIN');
 
-    // Undo the completion, then rebuild the chore's schedule fields from
-    // whichever completion (if any) is now the most recent.
-    const today = todayKey(await getHouseholdTimezone());
+    // Undo the completion: the chore is due again on the day it was ticked
+    // (a tick is refused before a chore is due, so that is on or after the
+    // date it replaced), and lastCompleted falls back to the one before.
+    // nextDue used to become null when no earlier completion remained, which
+    // took the chore off the do list for good (#1051).
+    const dueAgain = todayKey(await getHouseholdTimezone(), latest.completedAt);
     await db.transaction(async (tx) => {
       await tx.delete(choreCompletions).where(eq(choreCompletions.id, latest.id));
 
@@ -296,16 +298,11 @@ export async function DELETE(
         .limit(1);
       const mostRecent = remaining[0];
 
-      const [chore] = await tx.select().from(chores).where(eq(chores.id, choreId));
-
       await tx
         .update(chores)
         .set({
           lastCompleted: mostRecent?.completedAt ?? null,
-          nextDue:
-            mostRecent && chore
-              ? calculateNextDue(chore.frequency, chore.customIntervalDays, chore.startDay, today)
-              : null,
+          nextDue: dueAgain,
           updatedAt: new Date(),
         })
         .where(eq(chores.id, choreId));

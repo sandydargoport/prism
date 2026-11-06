@@ -2,8 +2,6 @@
 
 import { usePageAdd } from '@/lib/hooks/usePageAdd';
 import { ChoresDoList } from './ChoresDoList';
-import { toast } from '@/components/ui/use-toast';
-import { ToastAction } from '@/components/ui/toast';
 import { useChoreTick } from '@/components/dashboard/useEveryday';
 import { useState, useMemo } from 'react';
 import { usePersistedState, useSessionScopedStringSet, isBoolean } from '@/lib/hooks/usePersistedState';
@@ -237,11 +235,7 @@ export function ChoresView() {
             <ChoresDoList
               chores={effectiveFilteredChores}
               today={new Date()}
-              onTick={(c) => void tick(c, () => completeChore(c.id))}
-              onUndo={(c) => toast({
-                title: `${c.title} is done for today.`,
-                action: <ToastAction altText="Undo" onClick={() => void undoCompletion('', c.id)}>Undo</ToastAction>,
-              })}
+              onTick={(c) => tick(c, () => completeChore(c.id))}
               onApprove={(c) => void completeChore(c.id)}
               canApprove={activeUser?.role === 'parent'}
               groupBy={groupByUser ? 'person' : 'none'}

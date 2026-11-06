@@ -4,7 +4,9 @@ import { getSeededParentId } from './helpers/auth';
 /**
  * The Chores page (#880) opens on what to do: list rows (#932) at least 56px
  * tall, no on or off switch outside Manage, and a tick with Undo. A chore
- * done today shows ticked and cannot be ticked again (#984).
+ * done today leaves the list and cannot be ticked again (#984, #1051); a row
+ * shows the person's dot, not a ring to aim for, and its title strikes
+ * through on the tap.
  */
 const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
 const PIN = process.env.E2E_PIN || '1234';
@@ -38,6 +40,9 @@ test.describe('the Chores page', () => {
       const heights = await rows.evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
       for (const h of heights) expect(h, 'row height').toBeGreaterThanOrEqual(56);
       await expect(page.getByRole('switch'), 'no on or off switch outside Manage').toHaveCount(0);
+      const mine = page.locator('[data-chores-section="today"] [data-list-row]').filter({ hasText: title });
+      await expect(mine.locator('[data-person-mark="dot"]'), 'the person as a dot').toHaveCount(1);
+      await expect(mine.locator('[data-person-mark="ring"]'), 'no ring that reads as a checkbox').toHaveCount(0);
 
       // Tick it; Undo takes it back.
       const before = await completions(chore.id);
@@ -50,21 +55,20 @@ test.describe('the Chores page', () => {
       await expect(undo).toBeVisible();
       await expect.poll(() => completions(chore.id)).toBe(before + 1);
 
-      // Done for today (#984): it stays under Due today, ticked, and a second
-      // tick neither adds a completion nor counts points again.
-      const doneRow = page.locator('[data-chores-section="today"] [data-list-row]')
-        .filter({ has: page.locator('[data-chore-done-mark]') }).filter({ hasText: title });
-      await expect(doneRow).toBeVisible({ timeout: 15_000 });
-      await expect(page.locator('[data-chores-section="tomorrow"], [data-chores-section="later"]').getByText(title, { exact: true })).toHaveCount(0);
+      // Done for today (#984, #1051): it leaves the list, not even waiting
+      // under Tomorrow or Later, and a second tick is still refused.
+      await expect(page.locator('[data-chores-do]').getByText(title, { exact: true }), 'gone once done').toHaveCount(0, { timeout: 15_000 });
       const again = await page.request.post(`/api/chores/${chore.id}/complete`, { data: { completedBy: getSeededParentId() } });
       expect(again.status(), 'a second tick is refused').toBe(409);
-      await doneRow.locator('button').first().click();
-      await expect(page.getByText(`${title} is done for today.`).first()).toBeVisible();
-      expect(await completions(chore.id)).toBe(before + 1);
 
-      // Its Undo takes the tick back.
-      await page.getByRole('listitem').filter({ hasText: 'is done for today.' }).getByRole('button', { name: 'Undo' }).click();
+      // The tick's Undo takes it back, and the chore returns.
+      await undo.click();
       await expect.poll(() => completions(chore.id), { timeout: 15_000 }).toBe(before);
+      // Due today again: Undo used to leave it with no due date at all, off
+      // the list for good (#1051).
+      const back = ((await (await page.request.get('/api/chores')).json()).chores as Array<{ id: string; nextDue: string | null }>).find((c) => c.id === chore.id)!;
+      expect(back.nextDue?.slice(0, 10), 'due today again after Undo').toBe(today);
+      await expect(mine, 'back on the list after Undo').toBeVisible({ timeout: 15_000 });
 
       // Manage shows the switches.
       await page.locator('[data-chores-manage]').click();
@@ -109,6 +113,11 @@ test.describe('the Chores page', () => {
       await expect(blockA.getByText(forB)).toHaveCount(0);
       await expect(blockB.locator('[data-chores-section="today"]').getByText(forB)).toBeVisible();
       await expect(blockB.getByText(forA)).toHaveCount(0);
+      await expect(blockA.locator('[data-list-row]').filter({ hasText: forA }), 'no name repeated under its heading').not.toContainText(a.name);
+      // Side by side on a wide screen (#1051), not stacked in one column.
+      const ra = (await blockA.boundingBox())!, rb = (await blockB.boundingBox())!;
+      expect(Math.abs(ra.y - rb.y), 'two people on one top line').toBeLessThanOrEqual(2);
+      expect(Math.abs(ra.x - rb.x), 'in different columns').toBeGreaterThan(200);
 
       // None: the single list again.
       await page.locator('[data-chores-manage]').click();
