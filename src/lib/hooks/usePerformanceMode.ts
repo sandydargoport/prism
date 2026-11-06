@@ -83,6 +83,22 @@ export function usePerformanceMode() {
 let badInARow = 0;
 
 /**
+ * Time the frames of one piece of motion the screen does on its own and let
+ * Auto step down when such motion keeps dropping frames. The idle fade and
+ * the photo swap with its zoom (#955) share this count.
+ */
+export function judgeMotion(): void {
+  if (typeof document === 'undefined' || document.hidden) return;
+  if (modeFrom(readStored(PERF_MODE_KEY)) !== 'auto') return;
+  void watchFrames(WATCH_MS).then(gaps => {
+    const before = autoLevelFrom(readStored(PERF_AUTO_LEVEL_KEY));
+    const next = afterFade({ level: before, badInARow }, fadeWasBad(gaps));
+    badInARow = next.badInARow;
+    if (next.level !== before) writeStored(PERF_AUTO_LEVEL_KEY, next.level);
+  });
+}
+
+/**
  * Times the frames of the fade that follows each change of `idle`, and lets
  * Auto step down when fades keep dropping frames (see lib/autoPerf.ts).
  * Called by the Screensaver, which owns idleness for both kinds of idle screen.
