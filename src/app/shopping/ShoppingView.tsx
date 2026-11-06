@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { Emoji } from '@/components/ui/Emoji';
 import { toast } from '@/components/ui/use-toast';
 import { ShoppingCart, Plus, Settings, Maximize2, Minimize2, Tags, Send, ChevronLeft, ChevronRight, ScanLine } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -141,6 +142,7 @@ export function ShoppingView() {
   const [shoppingMode, setShoppingMode] = useState(false);
   // The page opens on one calm list (#881); the category cards are behind Manage.
   const [manage, setManage] = useState(false);
+  const [newCategory, setNewCategory] = useState('');
 
   // Mobile-only: swipe to switch lists. The pill bar collapses into a
   // compact prev/dots/next indicator when there's more than one list.
@@ -357,7 +359,6 @@ export function ShoppingView() {
                 order={effectiveCategoryOrder}
                 onToggle={(id) => toggleItem(id)}
                 onEdit={handleEditItem}
-                onDelete={(id) => handleDeleteItem(id)}
                 onAdd={(name) => apiAddItem(activeList.id, { name, category: 'other' })}
                 label={(id) => dynamicCategories.find((c) => c.id === id)?.name ?? id}
                 color={getDynCategoryColor}
@@ -382,6 +383,7 @@ export function ShoppingView() {
                     <ShoppingCategoryCard
                       key={category}
                       category={category}
+                      categoryName={dynamicCategories.find((c) => c.id === category)?.name}
                       items={items}
                       categoryColor={getDynCategoryColor(category)}
                       categoryEmoji={getDynCategoryEmoji(category)}
@@ -409,6 +411,43 @@ export function ShoppingView() {
                   );
                 })}
               </div>
+
+              {/* Add a category where the categories are (#1053): it was only in
+                  the menu's Manage Categories, and a list that shows chosen
+                  categories also needed it ticked in Edit List. */}
+              <form
+                className="mt-3 flex max-w-md items-center gap-2"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const name = newCategory.trim();
+                  if (!name) return;
+                  const user = await requireAuth('Add a category');
+                  if (!user) return;
+                  const added = await addCategory(name);
+                  if (!added) { toast({ title: `There is already a ${name} category.`, variant: 'warning' }); return; }
+                  if (activeList.visibleCategories) {
+                    await fetch(`/api/shopping-lists/${activeList.id}`, {
+                      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ visibleCategories: [...activeList.visibleCategories, added.id] }),
+                    });
+                    refreshLists();
+                  }
+                  setNewCategory('');
+                  toast({ title: `Added ${name} to ${activeList.name}.` });
+                }}
+              >
+                <Input
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  placeholder="New category"
+                  className="min-h-[44px] rounded-full px-4"
+                  aria-label="New category"
+                  data-shopping-new-category
+                />
+                <Button type="submit" variant="outline" disabled={!newCategory.trim()} data-shopping-add-category>
+                  <Plus className="h-4 w-4 mr-1" />Add category
+                </Button>
+              </form>
 
               {otherItems.length > 0 && (
                 <div className="mt-6 space-y-4">
@@ -442,7 +481,8 @@ export function ShoppingView() {
 
         {editingItem && (
           <ItemModal listId={editingItem.listId} item={editingItem}
-            onClose={() => setEditingItem(null)} onSave={handleUpdateItem} />
+            onClose={() => setEditingItem(null)} onSave={handleUpdateItem}
+            onDelete={(id) => { setEditingItem(null); void handleDeleteItem(id); }} />
         )}
 
         {showListModal && (

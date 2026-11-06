@@ -2,9 +2,9 @@ import { test, expect } from '@playwright/test';
 import { getSeededParentId } from './helpers/auth';
 
 /**
- * The Shopping page (#881): one calm list, controls on the item you tap, and
- * what is checked folds into "Checked off". Headings in the display face with
- * a muted colour mark (#986).
+ * The Shopping page (#881): one calm list; a tap crosses an item off and it
+ * folds into "Checked off"; a pencil at the row's end edits it (#1053).
+ * Headings in the display face with a muted colour mark (#986).
  */
 const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
 const PIN = process.env.E2E_PIN || '1234';
@@ -12,8 +12,10 @@ const PIN = process.env.E2E_PIN || '1234';
 test.describe('the Shopping page', () => {
   test.skip(!HAS_TEST_DB, 'needs the seeded test database');
   test.setTimeout(90_000);
+  // Both tests use the first list; in parallel one page's refresh lands on the other's.
+  test.describe.configure({ mode: 'serial' });
 
-  test('a calm list: no controls until tapped, a check moves an item into the cart and back', async ({ page }) => {
+  test('a calm list: a tap crosses an item off and back, the pencil edits and deletes', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);
     const lists = await (await page.request.get('/api/shopping-lists')).json();
@@ -24,7 +26,6 @@ test.describe('the Shopping page', () => {
       await page.goto('/shopping');
       const calm = page.locator('[data-shopping-calm]');
       await expect(calm).toBeVisible({ timeout: 60_000 });
-      await expect(calm.locator('[data-list-row-actions]'), 'no edit or delete at rest').toHaveCount(0);
       const heights = await calm.locator('[data-list-row]').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
       for (const h of heights) expect(h).toBeGreaterThanOrEqual(56);
 
@@ -46,21 +47,58 @@ test.describe('the Shopping page', () => {
       expect(look.transform, 'no capitals').toBe('none');
       expect(look.sat, 'a muted mark').toBeLessThanOrEqual(0.4);
 
-      const row = calm.locator('[data-list-row]').filter({ hasText: name });
-      await row.locator('> button:not([data-shopping-ring])').click();
-      await expect(row.locator('[data-list-row-actions]')).toBeVisible();
-      await expect(calm.locator('[data-list-row-actions]'), 'only on the tapped item').toHaveCount(1);
-
-      await row.locator('[data-shopping-ring]').click();
-      await expect(calm.locator('[data-shopping-cart-toggle]')).toBeVisible();
+      // #1053: no ring to aim for; a tap anywhere crosses the item off, its
+      // name struck through, then it moves to Checked off; a tap there puts it back.
+      await expect(calm.locator('[data-shopping-ring]'), 'no ring').toHaveCount(0);
+      const row = calm.locator('[data-shopping-category] [data-list-row]').filter({ hasText: name });
+      await row.locator('> button').first().click();
+      await expect(row.locator('[data-shopping-struck]'), 'struck through on the tap').toBeVisible();
       await expect(calm.locator('[data-shopping-cart-toggle]')).toHaveText(/^Checked off \(\d+\)$/);
       await calm.locator('[data-shopping-cart-toggle]').click();
       const inCart = calm.locator('[data-shopping-cart] [data-list-row]').filter({ hasText: name });
       await expect(inCart).toBeVisible();
-      await inCart.locator('[data-shopping-ring]').click();
-      await expect(calm.locator('[data-shopping-category] [data-list-row]').filter({ hasText: name })).toBeVisible();
+      await inCart.locator('> button').first().click();
+      await expect(row, 'back on the list').toBeVisible();
+
+      // The pencil at the end of the row edits it, and Delete is in there.
+      const pencil = row.locator('[data-shopping-edit]');
+      const pb = (await pencil.boundingBox())!;
+      expect(pb.width).toBeGreaterThanOrEqual(44);
+      expect(pb.height).toBeGreaterThanOrEqual(44);
+      await pencil.click();
+      await page.locator('[data-shopping-item-delete]').click();
+      await expect(row, 'deleted from the edit form').toHaveCount(0, { timeout: 15_000 });
     } finally {
       await page.request.delete(`/api/shopping-items/${item.id}`);
+    }
+  });
+
+  // #1053: a category is added where the categories are, under Manage, and a
+  // list that shows chosen categories gets it too, so it shows at once.
+  test('Manage adds a category to this list', async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);
+    const lists = await (await page.request.get('/api/shopping-lists')).json();
+    const list = (lists.lists ?? lists)[0];
+    const before = list.visibleCategories ?? null;
+    const catName = `Garden ${Date.now()}`;
+    const catId = catName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    try {
+      // A list that shows only produce.
+      expect((await page.request.patch(`/api/shopping-lists/${list.id}`, { data: { visibleCategories: ['produce'] } })).ok()).toBe(true);
+      await page.goto('/shopping');
+      await page.locator('[data-shopping-manage]').click();
+      await page.locator('[data-shopping-new-category]').fill(catName);
+      await page.locator('[data-shopping-add-category]').click();
+      await expect(page.getByText(`Added ${catName} to ${list.name}.`).first()).toBeVisible({ timeout: 15_000 });
+      const after = await (await page.request.get(`/api/shopping-lists/${list.id}`)).json();
+      expect((after.list ?? after).visibleCategories, 'the list shows the new category').toContain(catId);
+      await expect(page.getByText(catName, { exact: true }).first(), 'its card is on the page').toBeVisible({ timeout: 15_000 });
+    } finally {
+      await page.request.patch(`/api/shopping-lists/${list.id}`, { data: { visibleCategories: before } });
+      // Take the added category out again, whatever was saved before.
+      const now = (await (await page.request.get('/api/settings')).json()).settings?.shoppingCategories ?? [];
+      await page.request.patch('/api/settings', { data: { key: 'shoppingCategories', value: (now as Array<{ id: string }>).filter((c) => c.id !== catId && !c.id.startsWith('garden-1')) } });
     }
   });
 });
