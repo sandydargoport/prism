@@ -1,5 +1,6 @@
 'use client';
 
+import { SlidingTitle } from '@/components/calendar/cells/SlidingTitle';
 import { eventTintStyle } from '@/lib/design/eventStyle';
 import { cn } from '@/lib/utils';
 import type { CalendarEvent } from '@/types/calendar';
@@ -80,7 +81,7 @@ export function InlineCalendarEvent({
             style={{ backgroundColor: event.color }}
           />
           {time && <span className="shrink-0 tabular-nums text-muted-foreground">{time}</span>}
-          <span className="truncate text-foreground">{event.title}</span>
+          <SlidingTitle className="text-foreground">{event.title}</SlidingTitle>
         </>
       )}
     </button>
