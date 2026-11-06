@@ -152,8 +152,8 @@ test.describe('the Today view', () => {
   });
 
   // #910: a busy day stays readable: no two labels overlap, none leaves the
-  // screen, and what does not fit is "+N", which lists the rest in a sheet.
-  test('a 12-event day keeps its labels apart and folds the rest into +N', async ({ page }) => {
+  // screen. #993: what does not fit stays a bead, with no "+N" count.
+  test('a 12-event day keeps its labels apart, and what does not fit is a bead, not a count', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     const d = new Date();
     const at = (h: number, m = 0) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m);
@@ -178,7 +178,7 @@ test.describe('the Today view', () => {
       await page.goto(`/d/${layout.slug}`);
       await page.locator('[data-arc-label]').first().waitFor({ timeout: 60_000 });
       const m = await page.evaluate(() => {
-        const rects = [...document.querySelectorAll('[data-arc-label], [data-arc-sunset-label], [data-arc-more]')]
+        const rects = [...document.querySelectorAll('[data-arc-label], [data-arc-sunset-label]')]
           .map((el) => { const r = el.getBoundingClientRect(); return { left: r.left, top: r.top, right: r.right, bottom: r.bottom, text: el.textContent }; });
         const overlaps: string[] = [];
         for (let i = 0; i < rects.length; i++) for (let j = i + 1; j < rects.length; j++) {
@@ -190,19 +190,18 @@ test.describe('the Today view', () => {
           overlaps, outside,
           labels: document.querySelectorAll('[data-arc-label]').length,
           ahead: document.querySelectorAll('[data-arc-bead]:not([data-past])').length,
-          more: document.querySelector('[data-arc-more]')?.textContent ?? '',
+          hits: document.querySelectorAll('[data-arc-bead-hit]').length,
+          counts: [...document.querySelectorAll('[data-sun-arc] *')].filter((el) => el.children.length === 0 && /^\s*\+\s*\d+/.test(el.textContent ?? '')).length,
         };
       });
       expect(m.overlaps, 'no two labels overlap').toEqual([]);
       expect(m.outside, 'every label on screen').toEqual([]);
-      const folded = Number(m.more.replace('+', ''));
-      expect(folded, 'some events fold into +N').toBeGreaterThan(0);
       // The 12 here, plus any the seeded family already has today.
       expect(m.ahead).toBeGreaterThanOrEqual(12);
-      expect(m.labels + folded, 'every event ahead is labelled or counted').toBe(m.ahead);
-
-      await page.locator('[data-arc-more]').click();
-      await expect(page.locator('[data-arc-more-list] li')).toHaveCount(folded);
+      expect(m.labels, 'not every event gets a label on a day this busy').toBeLessThan(m.ahead);
+      expect(m.labels).toBeGreaterThan(0);
+      expect(m.counts, 'no "+N" count anywhere on the arc').toBe(0);
+      expect(m.hits, 'every event is a bead that can be tapped').toBeGreaterThanOrEqual(m.ahead);
     } finally {
       await page.request.delete(`/api/layouts/${layout.id}`);
       for (const id of made) await page.request.delete(`/api/events/${id}`);
@@ -548,4 +547,46 @@ test.describe('the Today view', () => {
       }
     });
   }
+  // #993: a busy day on the month board shows what fits, measured, and no count.
+  test('the month board shows as many of a busy day\'s events as fit, and no "+N more"', async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await login(page);
+    const d = new Date();
+    const made: string[] = [];
+    test.setTimeout(150_000);
+    // Within the events limit (30 a minute), and far more than a month cell holds.
+    for (let i = 0; i < 16; i++) {
+      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 6 + Math.floor(i / 2), (i % 2) * 30);
+      const res = await postEvent(page, { title: `Crowded ${i + 1}`, startTime: start.toISOString(), endTime: new Date(start.getTime() + 20 * 60_000).toISOString(), allDay: false, createdBy: getSeededParentId() });
+      expect(res.status()).toBe(201);
+      made.push((await res.json()).id);
+    }
+    const layout = await (await page.request.post('/api/layouts', { data: { name: `Crowded e2e ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'calendar' } })).json();
+    try {
+      await page.route('**/api/weather*', (route) => route.fulfill({ json: WEATHER }));
+      await page.goto(`/d/${layout.slug}`);
+      await page.locator('[data-board-week]').waitFor({ timeout: 60_000 });
+      await page.locator('[data-board-switch="month"]').click();
+      const cell = page.locator('[data-board-month] [data-board-today]');
+      await expect(cell).toHaveCount(1);
+      await page.waitForTimeout(500);
+      const m = await cell.evaluate((el) => {
+        const c = el.getBoundingClientRect();
+        const lines = [...el.children].slice(1) as HTMLElement[];
+        return {
+          text: el.textContent ?? '',
+          shown: lines.length,
+          inside: lines.every((l) => { const r = l.getBoundingClientRect(); return r.top >= c.top - 0.5 && r.bottom <= c.bottom + 0.5; }),
+          board: document.querySelector('[data-calendar-board]')?.textContent ?? '',
+        };
+      });
+      expect(m.board, 'no "more" count on the board').not.toMatch(/\+\s*\d+|\bmore\b/i);
+      expect(m.shown, 'some of the day is shown').toBeGreaterThan(0);
+      expect(m.shown).toBeLessThan(16);
+      expect(m.inside, 'every line shown sits fully inside its day').toBe(true);
+    } finally {
+      await page.request.delete(`/api/layouts/${layout.id}`);
+      for (const id of made) await page.request.delete(`/api/events/${id}`);
+    }
+  });
 });
