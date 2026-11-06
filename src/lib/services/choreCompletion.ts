@@ -133,3 +133,15 @@ export async function recordChoreCompletion(params: {
 
   return completion;
 }
+
+/**
+ * A chore already done for this period (#984): its next due date is after
+ * today. A completion then would award its points again and push the next
+ * due date further on, so routes refuse it. A chore never done (no next due
+ * date) is always due.
+ */
+export function choreNotDueYet(nextDue: string | Date | null | undefined, today: string): boolean {
+  if (!nextDue) return false;
+  const key = typeof nextDue === 'string' ? nextDue.slice(0, 10) : nextDue.toISOString().slice(0, 10);
+  return key > today;
+}
