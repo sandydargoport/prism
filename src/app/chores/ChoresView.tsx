@@ -232,6 +232,8 @@ export function ChoresView() {
               })}
               onApprove={(c) => void completeChore(c.id)}
               canApprove={activeUser?.role === 'parent'}
+              groupBy={groupByUser ? 'person' : 'none'}
+              people={familyMembers.filter((m) => m.id)}
             />
           ) : error ? (
             <div className="flex flex-col items-center justify-center h-full text-destructive">
