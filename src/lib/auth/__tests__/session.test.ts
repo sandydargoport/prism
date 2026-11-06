@@ -35,7 +35,14 @@ import {
   recordFailedLogin,
   clearLoginAttempts,
   getSessionDuration,
+  setSessionKept,
+  listUserSessions,
+  revokeUserSession,
+  revokeOtherSessions,
+  sessionId,
+  KEPT_SESSION,
 } from '../session';
+import { deviceLabel } from '../deviceLabel';
 
 describe('generateSessionToken', () => {
   it('returns a 64-char hex string', () => {
@@ -455,5 +462,98 @@ describe('reserveLoginAttempt (#809)', () => {
     const results = await Promise.all(Array.from({ length: 12 }, () => reserveLoginAttempt('parent-1')));
     expect(results.filter((r) => r.allowed)).toHaveLength(MAX_LOGIN_ATTEMPTS);
     expect(results.filter((r) => !r.allowed).every((r) => !r.allowed && r.retryAfter === 120)).toBe(true);
+  });
+});
+
+describe('kept devices (#1044)', () => {
+  const DAY = 24 * 60 * 60;
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetRedisClient.mockResolvedValue(mockRedisClient);
+  });
+
+  it('a kept session slides a month and outlives the 30-day parent cap', async () => {
+    const createdAt = Date.now() - 60 * DAY * 1000; // two months old: past the ordinary cap
+    mockRedisClient.get.mockResolvedValueOnce(JSON.stringify({
+      userId: 'user-1', role: 'parent', createdAt, expiresAt: Date.now() + 60000, kept: true,
+    }));
+    const result = await validateSession('kept-token');
+    expect(result.ok).toBe(true);
+    expect(mockRedisClient.setEx).toHaveBeenCalledWith('session:kept-token', 30 * DAY, expect.any(String));
+    if (result.ok) expect(result.session.lastUsedAt).toBeGreaterThan(Date.now() - 5000);
+  });
+
+  it('the same session, not kept, is past its cap and rejected', async () => {
+    mockRedisClient.get.mockResolvedValueOnce(JSON.stringify({
+      userId: 'user-1', role: 'parent', createdAt: Date.now() - 60 * DAY * 1000, expiresAt: Date.now() + 60000,
+    }));
+    expect((await validateSession('old-token')).ok).toBe(false);
+  });
+
+  it('a kept session is still capped at a year', async () => {
+    mockRedisClient.get.mockResolvedValueOnce(JSON.stringify({
+      userId: 'user-1', role: 'parent', createdAt: Date.now() - 400 * DAY * 1000, expiresAt: Date.now() + 60000, kept: true,
+    }));
+    expect((await validateSession('ancient')).ok).toBe(false);
+  });
+
+  it('keeping writes the month window and sets cookies to last a year from sign in', async () => {
+    const createdAt = Date.now() - DAY * 1000;
+    mockRedisClient.get.mockResolvedValueOnce(JSON.stringify({ userId: 'user-1', role: 'parent', createdAt, expiresAt: Date.now() }));
+    mockRedisClient.ttl.mockResolvedValueOnce(7 * DAY);
+    const r = await setSessionKept('tok', true);
+    expect(r).not.toBeNull();
+    expect(r!.cookieExpires.getTime()).toBe(createdAt + KEPT_SESSION.ABSOLUTE * 1000);
+    const written = JSON.parse(mockRedisClient.setEx.mock.calls[0][2]);
+    expect(written.kept).toBe(true);
+    expect(mockRedisClient.setEx.mock.calls[0][1]).toBe(30 * DAY);
+    // The per-user set must live as long as the kept session, or the list loses it.
+    expect(mockRedisClient.expire).toHaveBeenCalledWith('user_sessions:user-1', KEPT_SESSION.ABSOLUTE);
+  });
+
+  it('stopping keeping returns to the week window', async () => {
+    mockRedisClient.get.mockResolvedValueOnce(JSON.stringify({ userId: 'user-1', role: 'parent', createdAt: Date.now(), expiresAt: Date.now(), kept: true }));
+    const r = await setSessionKept('tok', false);
+    expect(mockRedisClient.setEx.mock.calls[0][1]).toBe(7 * DAY);
+    expect(r!.cookieExpires.getTime()).toBeLessThanOrEqual(Date.now() + 7 * DAY * 1000 + 1000);
+  });
+
+  it('lists sessions without tokens, marks this one, and drops expired ones', async () => {
+    mockRedisClient.sMembers.mockResolvedValueOnce(['tok-a', 'tok-b', 'tok-gone']);
+    mockRedisClient.get
+      .mockResolvedValueOnce(JSON.stringify({ userId: 'u', role: 'parent', createdAt: 1, lastUsedAt: 100, userAgent: 'x' }))
+      .mockResolvedValueOnce(JSON.stringify({ userId: 'u', role: 'parent', createdAt: 2, lastUsedAt: 200, kept: true }))
+      .mockResolvedValueOnce(null);
+    const list = await listUserSessions('u', 'tok-a');
+    expect(list.map((r) => r.id)).toEqual([sessionId('tok-b'), sessionId('tok-a')]);
+    expect(list.find((r) => r.current)!.id).toBe(sessionId('tok-a'));
+    expect(list.find((r) => r.kept)!.id).toBe(sessionId('tok-b'));
+    expect(JSON.stringify(list)).not.toMatch(/tok-/);
+    expect(mockRedisClient.sRem).toHaveBeenCalledWith('user_sessions:u', 'tok-gone');
+  });
+
+  it('signs out one session by its list id and nothing else', async () => {
+    mockRedisClient.sMembers.mockResolvedValueOnce(['tok-a', 'tok-b']);
+    expect(await revokeUserSession('u', sessionId('tok-b'))).toBe(true);
+    expect(mockRedisClient.del).toHaveBeenCalledWith('session:tok-b');
+    expect(mockRedisClient.del).not.toHaveBeenCalledWith('session:tok-a');
+    mockRedisClient.sMembers.mockResolvedValueOnce(['tok-a']);
+    expect(await revokeUserSession('u', 'not-mine')).toBe(false);
+  });
+
+  it('signs out every other session and keeps this one', async () => {
+    mockRedisClient.sMembers.mockResolvedValueOnce(['mine', 'x', 'y']);
+    expect(await revokeOtherSessions('u', 'mine')).toBe(2);
+    expect(mockRedisClient.del).toHaveBeenCalledWith('session:x');
+    expect(mockRedisClient.del).toHaveBeenCalledWith('session:y');
+    expect(mockRedisClient.del).not.toHaveBeenCalledWith('session:mine');
+  });
+
+  it('names devices plainly', () => {
+    expect(deviceLabel('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1')).toBe('iPhone · Safari');
+    expect(deviceLabel('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148')).toBe('iPhone · Home screen app');
+    expect(deviceLabel('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36')).toBe('Mac · Chrome');
+    expect(deviceLabel('Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36')).toBe('Android phone · Chrome');
+    expect(deviceLabel(undefined)).toBe('Unknown device');
   });
 });

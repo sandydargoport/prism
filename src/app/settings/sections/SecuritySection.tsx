@@ -12,6 +12,7 @@ import { useAuth, useFamily } from '@/components/providers';
 import { parentCanResetPin } from '@/lib/auth/pinReset';
 import { DEFAULT_PIN_LENGTH } from '@/lib/constants';
 import { PinEditModal } from '../components/PinEditModal';
+import { SignedInDevices } from '../components/SignedInDevices';
 import type { FamilyMember } from '../components/PinEditModal';
 import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
 
@@ -272,6 +273,8 @@ export function SecuritySection() {
           </div>
         </CardContent>
       </Card>
+
+      <SignedInDevices />
 
       <Card>
         <CardHeader>
