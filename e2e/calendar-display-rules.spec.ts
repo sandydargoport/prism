@@ -111,3 +111,43 @@ test.describe('per-calendar display rules', () => {
     });
   });
 });
+
+// An event Google replaced (an edited series gets new ids) left its old copy
+// flagged pending deletion beside the new one, so the screen showed it twice
+// and Hide hid only one (#1047). The old copy stays out while its live twin is
+// there, hidden or not; one with no twin still shows until reviewed.
+test.describe('an event replaced at its source', () => {
+  test.skip(!HAS_TEST_DB, 'needs the seeded test database');
+  test.setTimeout(90_000);
+
+  test('shows once, stays once when hidden, and shows when nothing replaced it', async ({ page }) => {
+    const { runSQL } = await import('./helpers/reset');
+    await login(page);
+    const list = await (await page.request.get('/api/calendars')).json();
+    const cal = (list.calendars ?? list).find((c: { provider: string; enabled: boolean }) => c.provider === 'local' && c.enabled);
+    const start = new Date(); start.setDate(start.getDate() + 3); start.setHours(16, 0, 0, 0);
+    const title = `Replaced ${Date.now()}`;
+    const data = { title, startTime: start.toISOString(), endTime: new Date(start.getTime() + 3600_000).toISOString(), allDay: false, calendarSourceId: cal.id };
+    const oldId = await addEvent(page, data);
+    const newId = await addEvent(page, data);
+    // Events are cached per range for 5 minutes; a sync clears that, the SQL
+    // below does not, so each look asks for a range a millisecond longer.
+    let look = 0;
+    const ids = async () => (await listed(page, new Date(start.getTime() - 86_400_000), new Date(start.getTime() + 86_400_000 + ++look)))
+      .filter((e) => e.title === title).map((e) => e.id).sort();
+    try {
+      expect(await ids(), 'premise: both show before the flag').toEqual([oldId, newId].sort());
+      runSQL(`update events set pending_deletion = now() where id = '${oldId}';`);
+      expect(await ids(), 'the old copy is out while the new one is there').toEqual([newId]);
+      expect((await page.request.put(`/api/events/${newId}/hidden`)).ok()).toBe(true);
+      expect(await ids(), 'hiding the new one does not bring the old one back').toEqual([]);
+      await page.request.delete(`/api/events/${newId}/hidden`);
+      runSQL(`update events set pending_deletion = now() where id = '${newId}';`);
+      expect(await ids(), 'with both flagged, both show until reviewed').toEqual([oldId, newId].sort());
+    } finally {
+      runSQL(`update events set pending_deletion = null where id in ('${oldId}', '${newId}');`);
+      await page.request.delete(`/api/events/${oldId}`);
+      await page.request.delete(`/api/events/${newId}`);
+    }
+  });
+});
