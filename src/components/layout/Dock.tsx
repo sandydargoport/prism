@@ -47,6 +47,10 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
   const narrow = useIsMobile();
   const { dock, more } = dockLayout(filterNavItems(ALL_NAV_ITEMS), dockPages ?? undefined, narrow ? DOCK_SIZE_NARROW : undefined);
   const [moreOpen, setMoreOpen] = React.useState(false);
+  // In More, Settings has its own place at the top (#1014); the rest are pages.
+  const settingsItem = more.find((i) => i.href === '/settings');
+  const pages = more.filter((i) => i.href !== '/settings');
+  const topPill = 'flex min-h-[52px] items-center gap-2 rounded-full border-[1.5px] border-foreground/30 px-5 text-body font-medium hover:bg-muted';
 
   // The wall: any touch shows the dock; it goes after ten quiet seconds.
   const [shown, setShown] = React.useState(mode === 'page');
@@ -141,19 +145,33 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
       <Dialog open={moreOpen} onOpenChange={setMoreOpen}>
         <DialogContent className="max-w-2xl" data-dock-more-panel>
           <DialogTitle>{t('nav.more', { defaultValue: 'More' })}</DialogTitle>
-          {/* Five a row on a wall, so pages and this screen's jobs fit as one set of tiles (#1006). */}
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5" data-dock-more-grid>
-            {more.map((item) => link(item, true))}
-            <Link
-              href="/help"
-              onClick={() => setMoreOpen(false)}
-              className="flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-2xl px-3 text-caption font-medium text-foreground hover:bg-muted"
-              data-dock-item="/help"
-            >
+          {/* Settings and Help first, set apart from the pages, so they are easy to find (#1014). */}
+          <div className="flex flex-wrap gap-2" data-dock-more-top>
+            {settingsItem && (
+              <Link
+                href={scopedHref(settingsItem.href, pathname, search)}
+                onClick={() => setMoreOpen(false)}
+                className={topPill}
+                data-dock-item="/settings"
+              >
+                <settingsItem.icon className="h-5 w-5" />
+                <span>{label(settingsItem)}</span>
+              </Link>
+            )}
+            <Link href="/help" onClick={() => setMoreOpen(false)} className={topPill} data-dock-item="/help">
               <HelpCircle className="h-5 w-5" />
               <span>{t('nav.help', { defaultValue: 'Help' })}</span>
             </Link>
           </div>
+          {pages.length > 0 && (
+            <div className="flex flex-col gap-2" data-dock-pages>
+              <p className="m-0 text-caption font-medium text-muted-foreground">{t('nav.pages', { defaultValue: 'Pages' })}</p>
+              {/* Five a row on a wall (#1006). */}
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5" data-dock-more-grid>
+                {pages.map((item) => link(item, true))}
+              </div>
+            </div>
+          )}
           {narrow && (
             <button
               type="button"

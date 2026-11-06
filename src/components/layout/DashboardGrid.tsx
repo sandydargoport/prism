@@ -257,6 +257,8 @@ export function ScreenJobs({ onEditClick, onScreensaverClick, labelled = false }
       </button>
 
       <PerformanceModeBadge labelled={labelled} className={labelled ? job : undefined} />
+      {/* Modes stay one tap from the dashboard. In More they sit under "This
+          screen", apart from the Babysitter page under "Pages" (#1014). */}
       <BabysitterModeToggle {...(labelled ? { showLabel: true, size: 'default' as const, className: job } : {})} data-screen-job="babysitter" />
       <AwayModeToggle {...(labelled ? { showLabel: true, size: 'default' as const, className: job } : {})} data-screen-job="away" />
 

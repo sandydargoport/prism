@@ -83,8 +83,19 @@ test.describe('the dock on the wall', () => {
       await expect(panel.locator('[data-screen-job="screensaver"]')).toBeVisible();
       await expect(panel.locator('[data-screen-job="edit"]')).toBeVisible();
       // #1006: every job is named, the same way, in the same pill.
-      await expect(panel.locator('[data-screen-job="babysitter"]')).toBeVisible();
       await expect(panel.locator('[data-screen-job="away"]')).toBeVisible();
+      await expect(panel.locator('[data-screen-job="babysitter"]')).toBeVisible();
+      // #1014: Settings and Help first, set apart; one Babysitter, the page.
+      await expect(panel.locator('[data-dock-more-top] [data-dock-item="/settings"]')).toBeVisible();
+      await expect(panel.locator('[data-dock-more-top] [data-dock-item="/help"]')).toBeVisible();
+      await expect(panel.locator('[data-dock-more-grid] [data-dock-item="/settings"]'), 'Settings is not a page tile').toHaveCount(0);
+      const top = await panel.locator('[data-dock-more-top]').evaluate((e) => e.getBoundingClientRect().bottom);
+      const firstPage = await panel.locator('[data-dock-more-grid]').evaluate((e) => e.getBoundingClientRect().top);
+      expect(top, 'Settings and Help above the pages').toBeLessThanOrEqual(firstPage);
+      await expect(panel.getByText('Pages', { exact: true })).toBeVisible();
+      // The modes stay one tap away, under This screen, apart from the pages.
+      await expect(panel.locator('[data-dock-screen-jobs] [data-screen-job="babysitter"]')).toHaveText('Babysitter mode');
+      await expect(panel.locator('[data-dock-pages] [data-screen-job]'), 'no mode among the pages').toHaveCount(0);
       const jobs = await panel.locator('[data-screen-job]').evaluateAll((els) => els.map((e) => ({
         job: e.getAttribute('data-screen-job'), text: (e.textContent ?? '').trim(), h: Math.round(e.getBoundingClientRect().height),
       })));
