@@ -25,11 +25,22 @@ describe('the photo caption (#958)', () => {
 
   it('takes the first corner no widget uses', () => {
     const screen = { width: 1920, height: 1080 };
-    expect(captionSpot(screen, [])).toBe('bottom-right');
-    const bottomRight = { left: 1500, top: 900, width: 420, height: 180 };
-    expect(captionSpot(screen, [bottomRight])).toBe('bottom-left');
-    const bottomLeft = { left: 0, top: 900, width: 900, height: 180 };
-    expect(captionSpot(screen, [bottomRight, bottomLeft])).toBe('top-centre');
+    expect(captionSpot(screen, [])).toEqual({ spot: 'bottom-right', lift: 0 });
+    const bottomRight = { left: 1500, top: 700, width: 420, height: 380 };
+    expect(captionSpot(screen, [bottomRight])).toEqual({ spot: 'bottom-left', lift: 0 });
+    const bottomLeft = { left: 0, top: 700, width: 900, height: 380 };
+    // Both bottom corners taken: no caption, never the top or bottom centre (#992).
+    expect(captionSpot(screen, [bottomRight, bottomLeft])).toBeNull();
+  });
+
+  it('lifts the line just clear of a small item already in the corner (#992)', () => {
+    const screen = { width: 1920, height: 1080 };
+    const button = { left: 1759, top: 994, width: 120, height: 44 };
+    const place = captionSpot(screen, [button])!;
+    expect(place.spot).toBe('bottom-right');
+    // The line's bottom (1080 - 32 - lift) sits at least 8px above the button.
+    expect(1080 - 32 - place.lift).toBeLessThanOrEqual(994 - 8);
+    expect(place.lift).toBeLessThanOrEqual(0.15 * 1080);
   });
 
   it('has no spot when every corner is taken, so the line hides', () => {
