@@ -5,6 +5,8 @@
  * Due today (and overdue), Tomorrow, Later this week, as list rows with the
  * person's ring; one tap ticks, with Undo. Chores waiting for a parent are one
  * line each with Approve. Switches, points and categories are behind Manage.
+ * With Group by Person chosen under Manage (#985), a block per person, each
+ * with its own due days.
  */
 import { addDays, format } from 'date-fns';
 import { ListRow } from '@/components/ui/ListRow';
@@ -31,9 +33,25 @@ export function choreGroups(chores: Chore[], today: Date) {
   };
 }
 
-export function ChoresDoList({ chores, today, onTick, onUndo, onApprove, canApprove }: {
+type Person = { id: string; name: string; color: string };
+
+/** Chores split by person, in the given order, then anyone's; people with nothing this week are left out. */
+export function choresByPerson(chores: Chore[], people: Person[]): Array<{ person: Person | null; chores: Chore[] }> {
+  const order = [...people];
+  for (const c of chores) if (c.assignedTo && !order.some((p) => p.id === c.assignedTo!.id)) order.push(c.assignedTo);
+  const blocks: Array<{ person: Person | null; chores: Chore[] }> = order
+    .map((p) => ({ person: p, chores: chores.filter((c) => c.assignedTo?.id === p.id) }));
+  blocks.push({ person: null, chores: chores.filter((c) => !c.assignedTo) });
+  return blocks;
+}
+
+export function ChoresDoList({ chores, today, onTick, onUndo, onApprove, canApprove, groupBy = 'none', people = [] }: {
   chores: Chore[];
   today: Date;
+  /** Manage's Group by (#985): a block per person, or one list. */
+  groupBy?: 'none' | 'person';
+  /** Household order for the person blocks. */
+  people?: Person[];
   onTick: (chore: Chore) => void;
   /** Take back today's tick on a chore shown as done (#984). */
   onUndo: (chore: Chore) => void;
@@ -53,13 +71,20 @@ export function ChoresDoList({ chores, today, onTick, onUndo, onApprove, canAppr
       onClick={() => (done ? onUndo(c) : onTick(c))}
     />
   );
-  const section = (title: string, list: Chore[], id: string, done: Chore[] = []) => list.length + done.length > 0 && (
-    <section className="flex flex-col gap-1" data-chores-section={id}>
-      <h2 className="m-0 px-3 pb-1 text-title font-medium" style={{ fontFamily: 'var(--font-display)' }}>{title}</h2>
+  const section = (title: string, list: Chore[], id: string, done: Chore[] = [], small = false) => list.length + done.length > 0 && (
+    <section key={id} className="flex flex-col gap-1" data-chores-section={id}>
+      {small
+        ? <h3 className="m-0 px-3 pb-1 text-caption font-medium uppercase tracking-wide text-muted-foreground">{title}</h3>
+        : <h2 className="m-0 px-3 pb-1 text-title font-medium" style={{ fontFamily: 'var(--font-display)' }}>{title}</h2>}
       {list.map((c) => row(c))}
       {done.map((c) => row(c, true))}
     </section>
   );
+  const days = (d: ReturnType<typeof choreGroups>, small = false) => [
+    section('Due today', d.today, 'today', d.done, small),
+    section('Tomorrow', d.tomorrow, 'tomorrow', [], small),
+    section('Later this week', d.later, 'later', [], small),
+  ];
 
   if (g.today.length + g.done.length + g.tomorrow.length + g.later.length + g.waiting.length === 0) {
     return <p className="mx-auto max-w-3xl p-6 text-body text-muted-foreground" data-chores-done>Nothing to do this week.</p>;
@@ -75,9 +100,21 @@ export function ChoresDoList({ chores, today, onTick, onUndo, onApprove, canAppr
           {canApprove && <Button onClick={() => onApprove(c)}>Approve</Button>}
         </div>
       ))}
-      {section('Due today', g.today, 'today', g.done)}
-      {section('Tomorrow', g.tomorrow, 'tomorrow')}
-      {section('Later this week', g.later, 'later')}
+      {groupBy === 'person'
+        ? choresByPerson(chores.filter((c) => !c.pendingApproval), people).map(({ person, chores: mine }) => {
+          const d = choreGroups(mine, today);
+          if (d.today.length + d.done.length + d.tomorrow.length + d.later.length === 0) return null;
+          return (
+            <div key={person?.id ?? 'anyone'} className="flex flex-col gap-3" data-chores-person={person?.id ?? 'anyone'}>
+              <h2 className="m-0 flex items-center gap-3 px-3 text-title font-medium" style={{ fontFamily: 'var(--font-display)' }}>
+                <PersonMark color={person?.color ?? '#888888'} kind="dot" ground="paper" />
+                {person?.name ?? 'Anyone'}
+              </h2>
+              {days(d, true)}
+            </div>
+          );
+        })
+        : days(g)}
     </div>
   );
 }

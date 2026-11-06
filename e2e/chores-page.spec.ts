@@ -74,4 +74,51 @@ test.describe('the Chores page', () => {
       await page.request.patch('/api/settings', { data: { key: 'security', value: original } });
     }
   });
+  test('the do list follows Group by under Manage (#985)', async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);
+    const fam = await (await page.request.get('/api/family')).json();
+    const [a, b] = ((fam.members ?? fam) as Array<{ id: string; name: string }>).filter((m) => m.id);
+    if (!a || !b) throw new Error('needs two seeded members');
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(new Date());
+    const stamp = Date.now();
+    const made: string[] = [];
+    const make = async (title: string, who: string) => {
+      const res = await page.request.post('/api/chores', { data: { title, category: 'cleaning', frequency: 'weekly', pointValue: 1, requiresApproval: false, nextDue: today, assignedTo: who } });
+      expect(res.status()).toBe(201);
+      made.push((await res.json()).id);
+    };
+    const forA = `Fold towels ${stamp}`, forB = `Sweep porch ${stamp}`;
+    try {
+      await make(forA, a.id);
+      await make(forB, b.id);
+      await page.goto('/chores');
+      await expect(page.locator('[data-chores-do]')).toBeVisible({ timeout: 60_000 });
+      await expect(page.locator('[data-chores-person]'), 'one list by default').toHaveCount(0);
+
+      // Group by Person under Manage, then back to the do list.
+      await page.locator('[data-chores-manage]').click();
+      await page.getByRole('button', { name: /^Group/ }).click();
+      await page.getByRole('menuitemcheckbox', { name: 'Person' }).click();
+      await page.locator('[data-chores-manage]').click();
+
+      const blockA = page.locator(`[data-chores-person="${a.id}"]`);
+      const blockB = page.locator(`[data-chores-person="${b.id}"]`);
+      await expect(blockA.getByRole('heading', { name: a.name })).toBeVisible();
+      await expect(blockA.locator('[data-chores-section="today"]').getByText(forA)).toBeVisible();
+      await expect(blockA.getByText(forB)).toHaveCount(0);
+      await expect(blockB.locator('[data-chores-section="today"]').getByText(forB)).toBeVisible();
+      await expect(blockB.getByText(forA)).toHaveCount(0);
+
+      // None: the single list again.
+      await page.locator('[data-chores-manage]').click();
+      await page.getByRole('button', { name: /^Group/ }).click();
+      await page.getByRole('menuitemcheckbox', { name: 'None' }).click();
+      await page.locator('[data-chores-manage]').click();
+      await expect(page.locator('[data-chores-person]')).toHaveCount(0);
+      await expect(page.locator('[data-chores-section="today"]').getByText(forA)).toBeVisible();
+    } finally {
+      for (const id of made) await page.request.delete(`/api/chores/${id}`);
+    }
+  });
 });
