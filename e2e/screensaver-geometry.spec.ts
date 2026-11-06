@@ -654,6 +654,8 @@ test.describe('calm mode idle screen', () => {
       // Chosen the way a person would, in Settings, past its PIN gate.
       await verifySettingsPinViaAPI(page, (await getFirstParent(page)).name, PIN);
       await page.goto('/settings?section=display');
+      // Performance is folded under This screen (#1017); open it first.
+      await page.locator('[data-fold="performance"] summary').click();
       await page.getByRole('radio', { name: /^Minimal/ }).check();
       await expect(page.locator('html')).toHaveClass(/perf-minimal/);
 
