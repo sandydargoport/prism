@@ -6,9 +6,10 @@
  * then either a rolling week, today the widest column, or a month for
  * planning up close. Hairlines instead of boxes; a person's colour only as a
  * thin bar. Tapping an event opens the event sheet (#836); tapping a busy day
- * in the month opens a day sheet.
+ * in the month opens a day sheet. A month cell shows as many events as fit,
+ * measured, and never a "+N more" count (#993).
  */
-import { useState, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { addDays, addMonths, startOfMonth, startOfWeek } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -47,6 +48,28 @@ export function CalendarBoard({ events, now, onOpenEvent, headingEnd }: {
   const [mode, setMode] = useState<BoardMode>('week');
   const [offset, setOffset] = useState(0);
   const [dayOpen, setDayOpen] = useState<Date | null>(null);
+  // How many event lines fit in a month cell (#993): the cells are all one
+  // height, so one cell and one probe line give the count for every day.
+  const monthRef = useRef<HTMLDivElement>(null);
+  const [fit, setFit] = useState(3);
+  useLayoutEffect(() => {
+    const grid = monthRef.current;
+    if (!grid) return;
+    const measure = () => {
+      const cell = grid.querySelector<HTMLElement>('[data-board-day]');
+      const date = cell?.querySelector<HTMLElement>('[data-board-date]');
+      const probe = grid.querySelector<HTMLElement>('[data-board-probe]');
+      if (!cell || !date || !probe) return;
+      const cs = getComputedStyle(cell);
+      const inner = cell.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - date.offsetHeight;
+      const gap = parseFloat(cs.rowGap) || 0;
+      setFit(Math.max(0, Math.floor((inner + gap) / (probe.offsetHeight + gap) - 0.0001) ));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(grid);
+    return () => ro.disconnect();
+  }, [mode]);
 
   const today = toDisplayDate(now, displayTimezone);
   const todayKey = getDisplayDateKey(now, displayTimezone);
@@ -144,14 +167,18 @@ export function CalendarBoard({ events, now, onOpenEvent, headingEnd }: {
           })}
         </div>
       ) : (
-        <div className="grid min-h-0 flex-1 grid-cols-7 [grid-auto-rows:minmax(0,1fr)]" data-board-month>
+        <div ref={monthRef} className="relative grid min-h-0 flex-1 grid-cols-7 [grid-auto-rows:minmax(0,1fr)]" data-board-month>
+          {/* One line's height, for the fit count; never seen. */}
+          <span className="invisible absolute flex items-center gap-1.5 text-caption" aria-hidden data-board-probe>
+            <span className="h-[0.9em] w-[3px]" /><span>0:00 Probe</span>
+          </span>
           {days.map((d, i) => {
             const inMonth = d.getMonth() === month!.getMonth();
             const isToday = key(d) === todayKey;
             const list = onDay(d);
             // Past weeks go compact so every event from today on fits in full.
             const pastWeek = key(addDays(d, 6 - (i % 7))) < todayKey;
-            const shown = pastWeek ? [] : list.slice(0, 3);
+            const shown = pastWeek ? [] : list.slice(0, fit);
             return (
               <button
                 key={key(d)}
@@ -161,7 +188,7 @@ export function CalendarBoard({ events, now, onOpenEvent, headingEnd }: {
                 data-board-day={key(d)}
                 data-board-today={isToday || undefined}
               >
-                <span className={`tabular-nums ${isToday ? 'flex h-7 w-7 items-center justify-center rounded-full bg-white font-semibold text-black [text-shadow:none]' : ''}`}>{d.getDate()}</span>
+                <span data-board-date className={`tabular-nums ${isToday ? 'flex h-7 w-7 items-center justify-center rounded-full bg-white font-semibold text-black [text-shadow:none]' : ''}`}>{d.getDate()}</span>
                 {pastWeek && list.length > 0 && (
                   <span className="flex gap-1" aria-hidden>{list.slice(0, 5).map((e) => <span key={e.id} className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: e.color }} />)}</span>
                 )}
@@ -171,7 +198,6 @@ export function CalendarBoard({ events, now, onOpenEvent, headingEnd }: {
                     <span className="truncate">{e.allDay ? e.title : `${time(e.startTime)} ${e.title}`}</span>
                   </span>
                 ))}
-                {!pastWeek && list.length > 3 && <span className="text-caption opacity-80">{t('more', { count: list.length - 3 })}</span>}
               </button>
             );
           })}
