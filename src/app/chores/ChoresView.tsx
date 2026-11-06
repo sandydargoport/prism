@@ -1,5 +1,7 @@
 'use client';
 
+import { ChoresDoList } from './ChoresDoList';
+import { useChoreTick } from '@/components/dashboard/useEveryday';
 import { useState, useMemo } from 'react';
 import { usePersistedState, useSessionScopedStringSet, isBoolean } from '@/lib/hooks/usePersistedState';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -39,7 +41,7 @@ const CHORE_CATEGORIES = [
 
 export function ChoresView() {
   const isMobile = useIsMobile();
-  const { requireAuth } = useAuth();
+  const { requireAuth, activeUser } = useAuth();
   const {
     loading, error, refreshChores, familyMembers,
     filterPerson, setFilterPerson,
@@ -75,6 +77,10 @@ export function ChoresView() {
     'prism-chores-group-by-user', false, isBoolean,
   );
   const [celebratingUser, setCelebratingUser] = useState<{ id: string; name: string } | null>(null);
+  // The page opens on what to do (#880); switches, points and categories are
+  // behind Manage.
+  const [manage, setManage] = useState(false);
+  const { tick, element: whoDidIt } = useChoreTick(() => { void refreshChores(); });
   const [inlineChore, setInlineChore] = useState('');
   const [inlineChoreByUser, setInlineChoreByUser] = useState<Record<string, string>>({});
   // Session-scoped, not persisted outright: this one NARROWS the list, and
@@ -164,6 +170,9 @@ export function ChoresView() {
             {dueCount > 0 && <Badge variant="destructive">{dueCount} due</Badge>}
           </>}
           actions={<>
+            <Button variant={manage ? 'secondary' : 'outline'} size="sm" onClick={() => setManage(!manage)} data-chores-manage>
+              {manage ? 'Done' : 'Manage'}
+            </Button>
             <Button variant={showCompletions ? 'secondary' : 'outline'} size="sm"
               onClick={() => setShowCompletions(!showCompletions)}>
               <History className="h-4 w-4 mr-1" />History
@@ -178,7 +187,7 @@ export function ChoresView() {
           ] as OverflowItem[]}
         />
 
-        <FilterBar>
+        {manage && <FilterBar>
           <PersonFilter members={familyMembers} selected={filterPerson} onSelect={setFilterPerson} />
           <div className="w-px h-5 bg-border shrink-0" />
           <FilterDropdown label="Category" options={CHORE_CATEGORIES} selected={categoryFilters}
@@ -200,7 +209,7 @@ export function ChoresView() {
               <X className="h-3 w-3 mr-1" />Clear
             </Button>
           )}
-        </FilterBar>
+        </FilterBar>}
 
         <div className="flex-1 overflow-y-auto p-4">
           {showCompletions ? (
@@ -210,6 +219,14 @@ export function ChoresView() {
             <div className="flex items-center justify-center h-full">
               <PageLoader label="Loading chores..." />
             </div>
+          ) : !manage && !error ? (
+            <ChoresDoList
+              chores={effectiveFilteredChores}
+              today={new Date()}
+              onTick={(c) => void tick(c, () => completeChore(c.id))}
+              onApprove={(c) => void completeChore(c.id)}
+              canApprove={activeUser?.role === 'parent'}
+            />
           ) : error ? (
             <div className="flex flex-col items-center justify-center h-full text-destructive">
               <AlertCircle className="h-12 w-12 mb-4 opacity-50" /><p>{error}</p>
@@ -266,6 +283,7 @@ export function ChoresView() {
         <PlaneCelebration show={!!celebratingUser} userName={celebratingUser?.name || ''}
           onComplete={() => setCelebratingUser(null)} />
         <ConfirmDialog {...confirmDialogProps} />
+        {whoDidIt}
       </div>
     </PageWrapper>
   );

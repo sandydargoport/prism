@@ -5,7 +5,9 @@
  * the PIN for every change" off, and the "Who did it?" sheet for a chore
  * nobody is assigned to.
  */
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createElement, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { toast } from '@/components/ui/use-toast';
+import { ToastAction, type ToastActionElement } from '@/components/ui/toast';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { useFamily } from '@/components/providers';
 
@@ -74,4 +76,43 @@ export function useWhoDidIt(): { ask: (chore: string) => Promise<Member | null>;
     </Dialog>
   );
   return { ask, element };
+}
+
+/**
+ * A chore tick that follows the household's PIN setting (#835, #880): without
+ * the PIN it credits the assignee (or asks who did it) and offers Undo; with
+ * it, it falls back to `withPin`, the page's own PIN flow.
+ */
+export function useChoreTick(onDone: () => void) {
+  const pinFree = usePinFreeEveryday();
+  const who = useWhoDidIt();
+  const { members } = useFamily();
+  const tick = useCallback(async (
+    chore: { id: string; title: string; assignedTo?: { id: string; name: string } | null },
+    withPin: () => Promise<unknown>,
+  ) => {
+    if (!(await pinFree())) { await withPin(); return; }
+    let body: { completedBy?: string; completedByIndex?: number } | null = null;
+    if (chore.assignedTo?.id) body = { completedBy: chore.assignedTo.id };
+    else {
+      const m = await who.ask(chore.title);
+      if (!m) return;
+      const i = members.findIndex((x) => (x.id && x.id === m.id) || x.name === m.name);
+      body = { completedByIndex: members[i]?.loginIndex ?? i };
+    }
+    const res = await fetch(`/api/chores/${chore.id}/complete`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    if (!res.ok) { toast({ title: 'That did not save. Please try again.', variant: 'destructive' }); return; }
+    const done = await res.json().catch(() => ({}));
+    onDone();
+    toast({
+      title: done?.approvedBy ? 'Ticked.' : 'Ticked. A parent will approve it.',
+      action: createElement(ToastAction, {
+        altText: 'Undo',
+        onClick: () => { void fetch(`/api/chores/${chore.id}/complete`, { method: 'DELETE' }).then(onDone); },
+      }, 'Undo') as unknown as ToastActionElement,
+    });
+  }, [pinFree, who, members, onDone]);
+  return { tick, element: who.element };
 }
