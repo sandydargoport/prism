@@ -1,5 +1,8 @@
 'use client';
 
+import { mixOnThisDay } from '@/lib/photos/caption';
+import { usePhotoSettings } from '@/lib/photos/usePhotoSettings';
+import type { Photo } from '@/lib/hooks/usePhotos';
 import { PhotoCaption } from './PhotoCaption';
 import { focalOf, type FocalPoint } from '@/lib/photos/focalPoint';
 import { CENTRED, photoFrame, type Frame } from '@/lib/photos/frame';
@@ -225,6 +228,22 @@ export function wallpaperPool(
   return { items: [], scenery: false };
 }
 
+/** This screen's date's photos from earlier years, when on (#959). */
+function useOnThisDayPhotos(on: boolean) {
+  const [list, setList] = useState<Photo[]>([]);
+  useEffect(() => {
+    if (!on) return;
+    const now = new Date();
+    let active = true;
+    fetch(`/api/photos?usage=wallpaper&sort=random&limit=20&onThisDayMonth=${now.getMonth() + 1}&onThisDayDay=${now.getDate()}&onThisDayYear=${now.getFullYear()}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { photos?: Photo[] } | null) => { if (active) setList(d?.photos ?? []); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [on]);
+  return on ? list : [];
+}
+
 export function WallpaperBackground() {
   const { enabled, interval } = useWallpaperSettings();
   const { enabled: autoOrientation } = useAutoOrientationSetting();
@@ -257,7 +276,12 @@ export function WallpaperBackground() {
   }, []);
 
   const sceneryOn = useSceneryOn();
-  const { items, scenery } = wallpaperPool(photos, photosLoading, sceneryOn);
+  const { items: everyday, scenery } = wallpaperPool(photos, photosLoading, sceneryOn);
+  // "On this day" (#959): photos from this date in earlier years, every
+  // other photo, when the household turns it on.
+  const photoSettings = usePhotoSettings();
+  const onThisDay = useOnThisDayPhotos(!!photoSettings?.onThisDay && !scenery);
+  const items = mixOnThisDay(everyday, wallpaperPool(onThisDay, false, false).items);
   const usePinned = !scenery && !!pinnedId && !brokenIds.has(pinnedId);
   const pool = items.filter((p) => !brokenIds.has(p.id));
   // Find the focal points of photos that have none yet (#956).
