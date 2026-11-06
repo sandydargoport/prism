@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { getSeededParentId } from './helpers/auth';
+import { getFirstParent, getSeededParentId, verifySettingsPinViaAPI } from './helpers/auth';
 import { TODAY_TEMPLATE } from '../src/lib/constants/layoutTemplates';
 
 /**
@@ -17,6 +17,46 @@ test('declares the translucent iPhone status bar, so safe-area padding clears it
   await page.goto('/');
   await expect(page.locator('meta[name="apple-mobile-web-app-status-bar-style"]')).toHaveAttribute('content', 'black-translucent');
   await expect(page.locator('meta[name="viewport"]')).toHaveAttribute('content', /viewport-fit=cover/);
+});
+
+// With the iPhone's top inset (59px under the Dynamic Island) every subpage's
+// first line of text starts below it, not in the band iOS blurs (#1041).
+// Chromium emulates the inset; WebKit cannot, so this runs in Chromium only.
+test.describe('Subpages clear the iPhone status bar', () => {
+  test.skip(!HAS_TEST_DB, 'needs the seeded test database');
+  test.setTimeout(120_000);
+  test('no text starts under the status bar', async ({ page, browserName }) => {
+    test.skip(browserName !== 'chromium', 'safe-area emulation is a Chromium DevTools feature');
+    const INSET = 59;
+    await page.setViewportSize({ width: 390, height: 844 });
+    const cdp = await page.context().newCDPSession(page);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await cdp.send('Emulation.setSafeAreaInsetsOverride' as any, { insets: { top: INSET, bottom: 34 } });
+    expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);
+    await verifySettingsPinViaAPI(page, (await getFirstParent(page)).name);
+    for (const path of ['/calendar', '/chores', '/shopping', '/tasks', '/meals', '/settings', '/babysitter', '/travel', '/weekend']) {
+      await page.goto(path);
+      await page.waitForLoadState('load');
+      await page.waitForTimeout(2000);
+      const top = await page.evaluate(() => {
+        let min = Infinity;
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+          if (!n.textContent?.trim()) continue;
+          const el = n.parentElement!;
+          const cs = getComputedStyle(el);
+          if (cs.visibility === 'hidden' || cs.opacity === '0') continue;
+          const r = document.createRange();
+          r.selectNodeContents(n);
+          for (const b of r.getClientRects()) {
+            if (b.width > 0 && b.height > 0 && b.bottom > 0 && b.top < innerHeight) min = Math.min(min, b.top);
+          }
+        }
+        return min;
+      });
+      expect(top, `${path}: first text top`).toBeGreaterThanOrEqual(INSET);
+    }
+  });
 });
 
 test.describe('Today on a phone', () => {
