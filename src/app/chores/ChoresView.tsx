@@ -1,5 +1,6 @@
 'use client';
 
+import { usePageAdd } from '@/lib/hooks/usePageAdd';
 import { ChoresDoList } from './ChoresDoList';
 import { toast } from '@/components/ui/use-toast';
 import { ToastAction } from '@/components/ui/toast';
@@ -160,6 +161,7 @@ export function ChoresView() {
     setAddModalDefaultAssignee(familyMembers.some((m) => m.id === user.id) ? user.id : undefined);
     setShowAddModal(true);
   };
+  usePageAdd('Add chore', () => { void handleAddWithAuth(); });
 
   return (
     <PageWrapper>
@@ -185,9 +187,12 @@ export function ChoresView() {
                 <History className="h-4 w-4 mr-1" />History
               </Button>
             )}
-            <Button onClick={handleAddWithAuth} size={isMobile ? 'icon' : 'sm'} aria-label="Add Chore">
-              <Plus className={isMobile ? 'h-4 w-4' : 'h-4 w-4 mr-1'} />{!isMobile && 'Add Chore'}
-            </Button>
+            {/* On a phone the round button adds (#1028). */}
+            {!isMobile && (
+              <Button onClick={handleAddWithAuth} size="sm" aria-label="Add Chore">
+                <Plus className="h-4 w-4 mr-1" />Add Chore
+              </Button>
+            )}
           </>}
           overflow={[
             ...(isMobile ? [{ label: showCompletions ? 'Back to chores' : 'History', icon: History, onClick: () => setShowCompletions(!showCompletions) }] : []),

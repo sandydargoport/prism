@@ -1,5 +1,8 @@
 'use client';
 
+import { MoreHorizontal } from 'lucide-react';
+import { useIsMobile } from '@/lib/hooks/useIsMobile';
+import { usePageAdd } from '@/lib/hooks/usePageAdd';
 import * as React from 'react';
 import { useState } from 'react';
 import Link from 'next/link';
@@ -62,6 +65,7 @@ function getMealTypeEmoji(mealType: string): string {
 }
 
 export function MealsView() {
+  const isMobile = useIsMobile();
   const { requireAuth } = useAuth();
   const {
     weekStartsOn, today, currentWeek, weekOfString, loading,
@@ -94,6 +98,7 @@ export function MealsView() {
     if (day) setSelectedDay(day);
     setShowAddModal(true);
   };
+  usePageAdd('Add meal', () => { void handleAddWithAuth(); });
 
   const handleSyncWithAuth = async () => {
     const user = await requireAuth('Sync meal plan', 'Please log in to sync meals');
@@ -111,9 +116,10 @@ export function MealsView() {
           actions={
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button size="sm">
-                  <Plus className="h-4 w-4 mr-1" />Add<ChevronDown className="h-3 w-3 ml-1 opacity-70" />
-                </Button>
+                {/* On a phone the round button adds a meal (#1028); this keeps the rest. */}
+                {isMobile
+                  ? <Button size="icon" variant="ghost" aria-label="More ways to add"><MoreHorizontal className="h-5 w-5" /></Button>
+                  : <Button size="sm"><Plus className="h-4 w-4 mr-1" />Add<ChevronDown className="h-3 w-3 ml-1 opacity-70" /></Button>}
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuItem onClick={() => handleAddWithAuth()}>
@@ -404,9 +410,10 @@ export function MealModal({ weekOf, meal, defaultDay, dayOptions, recipes, onClo
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 pb-20 md:pb-0" onClick={onClose}>
-      <div className="bg-card rounded-lg p-6 max-w-md w-full mx-4 shadow-lg border border-border max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      {/* A dialog to assistive tech, and to the phone's round button, which hides under it (#1028). */}
+      <div role="dialog" aria-modal="true" aria-labelledby="meal-modal-title" className="bg-card rounded-lg p-6 max-w-md w-full mx-4 shadow-lg border border-border max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold">{meal ? 'Edit Meal' : 'Add Meal'}</h2>
+          <h2 id="meal-modal-title" className="text-lg font-bold">{meal ? 'Edit Meal' : 'Add Meal'}</h2>
           <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close"><X className="h-4 w-4" /></Button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">

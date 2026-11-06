@@ -1,5 +1,6 @@
 'use client';
 
+import { usePageAdd } from '@/lib/hooks/usePageAdd';
 import { useHydrated } from '@/lib/hooks/useStoredValue';
 import { CalendarSkeleton } from './CalendarSkeleton';
 import { FAMILY_COLOR } from '@/lib/constants/memberColors';
@@ -373,6 +374,8 @@ function CalendarViewHydrated() {
     if (!user) return;
     setShowAddEvent(true);
   };
+  // On a phone the round button is this page's Add (#1028).
+  usePageAdd(t('toolbar.addEvent'), () => { void handleAddWithAuth(); });
 
   // Mobile is agenda-only.
   useEffect(() => {

@@ -1,5 +1,6 @@
 'use client';
 
+import { usePageAdd } from '@/lib/hooks/usePageAdd';
 import { ShoppingCalmList } from './ShoppingCalmList';
 import { useState, useEffect } from 'react';
 import { Emoji } from '@/components/ui/Emoji';
@@ -130,6 +131,12 @@ export function ShoppingView() {
 
   const orientation = useOrientation();
   const isMobile = useIsMobile();
+  // On a phone the round button adds an item (#1028): it brings up the list's add field.
+  usePageAdd('Add item', () => {
+    const field = document.querySelector<HTMLInputElement>('[data-shopping-add]');
+    field?.scrollIntoView({ block: 'center' });
+    field?.focus();
+  });
   const isPortrait = orientation === 'portrait';
   const [shoppingMode, setShoppingMode] = useState(false);
   // The page opens on one calm list (#881); the category cards are behind Manage.

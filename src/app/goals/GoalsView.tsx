@@ -1,5 +1,7 @@
 'use client';
 
+import { useIsMobile } from '@/lib/hooks/useIsMobile';
+import { usePageAdd } from '@/lib/hooks/usePageAdd';
 import { useState, useCallback, useMemo } from 'react';
 import { Emoji } from '@/components/ui/Emoji';
 import {
@@ -48,6 +50,7 @@ import { cn } from '@/lib/utils';
 const EMOJI_OPTIONS = ['🎯', '🍦', '🎬', '🎮', '📱', '🎁', '🏖️', '🎪', '⭐', '💰', '🍕', '🎵'];
 
 export function GoalsView() {
+  const isMobile = useIsMobile();
   const { activeUser } = useAuth();
   const isParent = activeUser?.role === 'parent';
 
@@ -83,6 +86,7 @@ export function GoalsView() {
     setFormRecurrencePeriod('weekly');
     setShowGoalModal(true);
   };
+  usePageAdd('Add goal', () => openAddModal());
 
   const openEditModal = (goal: Goal) => {
     setEditingGoal(goal);
@@ -162,7 +166,7 @@ export function GoalsView() {
         <SubpageHeader
           icon={<Trophy className="h-5 w-5 text-primary" />}
           title="Goals & Points"
-          actions={isParent ? (
+          actions={isParent && !isMobile ? (
             <Button onClick={openAddModal} size="sm">
               <Plus className="h-4 w-4 mr-1" />
               Add Goal

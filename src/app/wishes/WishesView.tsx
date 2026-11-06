@@ -1,5 +1,6 @@
 'use client';
 
+import { usePageAdd } from '@/lib/hooks/usePageAdd';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { usePersistedState, useSessionScopedState, isBoolean, isStringArray } from '@/lib/hooks/usePersistedState';
 import { toast } from '@/components/ui/use-toast';
@@ -173,6 +174,7 @@ export function WishesView() {
     if (forMemberId) setAddForMemberId(forMemberId);
     setShowAddModal(true);
   };
+  usePageAdd('Add wish', () => { void handleOpenAddModal(); });
 
   // Auth before opening the edit modal
   const handleOpenEditModal = async (item: WishItem) => {
@@ -257,7 +259,7 @@ export function WishesView() {
         icon={<Gift className="h-6 w-6" />}
         actions={<>
           <UndoButton />
-          {activeTab === 'wishes' && (
+          {activeTab === 'wishes' && !isMobile && (
             <Button variant="ghost" size="icon" onClick={() => handleOpenAddModal()} aria-label="Add wish">
               <Plus className="h-5 w-5" />
             </Button>

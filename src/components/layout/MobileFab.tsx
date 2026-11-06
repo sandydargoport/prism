@@ -1,12 +1,14 @@
 'use client';
 import { Emoji } from '@/components/ui/Emoji';
 
+import { useCurrentPageAdd } from '@/lib/hooks/usePageAdd';
 import { useState, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   SlidersHorizontal,
+  Plus,
   X,
   Home,
   Sun,
@@ -57,6 +59,8 @@ const ALL_CARDS: { id: string; label: string }[] = [
 
 export function MobileFab({ user, onLogin, onLogout, uiHidden }: MobileFabProps) {
   const pathname = usePathname();
+  // A subpage's own Add (#1028); the dashboard has none and keeps its options.
+  const pageAdd = useCurrentPageAdd();
   const [isOpen, setIsOpen] = useState(false);
   const [showCards, setShowCards] = useState(false);
   const [hiddenCards, setHiddenCards] = useHiddenCards();
@@ -151,9 +155,26 @@ export function MobileFab({ user, onLogin, onLogout, uiHidden }: MobileFabProps)
     },
   ];
 
-  // Only on the dashboard (#1020): its card and layout options belong there,
-  // and on other pages it covered the content under it.
-  if (!isDashboard) return null;
+  // Off the dashboard (#1020, #1028) it is the page's Add, or nothing.
+  if (!isDashboard) {
+    if (!pageAdd) return null;
+    return (
+      <button
+        type="button"
+        onClick={pageAdd.run}
+        aria-label={pageAdd.label}
+        data-page-add
+        className={cn(
+          'fixed right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg',
+          'transition-all duration-300 ease-in-out active:scale-95 [body:has([role=dialog])_&]:hidden',
+          uiHidden && 'translate-y-24 opacity-0',
+        )}
+        style={{ bottom: 'calc(var(--nav-bottom, 0px) + 1rem)' }}
+      >
+        <Plus className="h-6 w-6" />
+      </button>
+    );
+  }
 
   return (
     <>
