@@ -249,6 +249,14 @@ test.describe('the dock on the wall', () => {
     });
     await expect.poll(() => page.locator('h1').first().evaluate((e) => e.getBoundingClientRect().width), { message: 'the title has room' }).toBeGreaterThan(30);
     expect(hdr.overlaps, 'nothing in the header overlaps').toBe(0);
+    // #1034: the header's buttons sit inside it, with room above and below.
+    const inside = await page.locator('[data-subpage-header]').evaluate((h) => {
+      const r = h.getBoundingClientRect();
+      return [...h.querySelectorAll('button')].filter((b) => b.getBoundingClientRect().height > 0).map((b) => {
+        const x = b.getBoundingClientRect(); return { top: x.top - r.top, bottom: r.bottom - x.bottom };
+      });
+    });
+    for (const b of inside) { expect(b.top, 'room above').toBeGreaterThanOrEqual(4); expect(b.bottom, 'room below').toBeGreaterThanOrEqual(4); }
 
     // Never over an open window: on the dashboard, open one and the button goes.
     await page.goto('/');

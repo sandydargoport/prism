@@ -5,6 +5,7 @@
  * taken, and where if the household shows places (#958). Small, in the one
  * light ink, in the first corner no widget uses.
  */
+import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import { useEffect, useState } from 'react';
 import { useLocale } from 'next-intl';
 import { captionSpot, captionText, datePhrase, type CaptionPlace, type CaptionSpot } from '@/lib/photos/caption';
@@ -19,6 +20,9 @@ const SPOT_CLASS: Record<CaptionSpot, string> = {
 export function PhotoCaption({ photo }: { photo: { id: string; takenAt?: string | null } | null }) {
   const locale = useLocale();
   const opts = usePhotoSettings();
+  // A wall feature: on a phone the photo only shows behind the top of the
+  // page, so the line floated over the content (#1034).
+  const phone = useIsMobile();
   const [place, setPlace] = useState<{ id: string; name: string | null } | null>(null);
   const [spot, setSpot] = useState<CaptionPlace | null>(null);
 
@@ -49,7 +53,7 @@ export function PhotoCaption({ photo }: { photo: { id: string; takenAt?: string 
     return () => { clearTimeout(first); clearInterval(again); };
   }, [id]);
 
-  if (!photo || !opts || !spot) return null;
+  if (phone || !photo || !opts || !spot) return null;
   const date = opts.date ? datePhrase(photo.takenAt ?? null, new Date(), locale) : null;
   const where = opts.place && place?.id === photo.id ? place.name : null;
   const text = captionText(date, where);

@@ -45,9 +45,11 @@ export function TodayList({ events, now, onOpenEvent, variant, onlyNext = false 
       <button
         type="button"
         onClick={() => open(next)}
+        // Only the event opens it (#1034): on the wall a tap to wake or to reach
+        // the Menu landed anywhere across a full-width button.
         className={cn(
           'flex min-h-[44px] min-w-0 flex-col items-start gap-1 text-left',
-          !wall && 'rounded-2xl bg-card px-4 py-3 shadow-sm',
+          wall ? 'w-fit max-w-full' : 'w-full rounded-2xl bg-card px-4 py-3 shadow-sm',
         )}
         data-today-next
       >
@@ -71,7 +73,8 @@ export function TodayList({ events, now, onOpenEvent, variant, onlyNext = false 
                   type="button"
                   onClick={() => open(e)}
                   className={cn(
-                    'flex min-h-[44px] w-full min-w-0 items-baseline gap-4 text-left',
+                    'flex min-h-[44px] min-w-0 items-baseline gap-4 text-left',
+                    wall ? 'w-fit max-w-full' : 'w-full',
                     wall ? 'text-body' : 'border-b border-border/60 text-body',
                     past && (wall ? 'opacity-55' : 'text-muted-foreground'),
                   )}
