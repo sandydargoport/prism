@@ -65,6 +65,10 @@ URL import (schema.org), Paprika import, paste-text import (OCR-friendly with in
 
 To-do items with assignment, due dates, priorities, lists, nested grouping (Person → List), bidirectional sync to **Microsoft To Do or Google Tasks**.
 
+### [Chores](features/CHORES.md)
+
+Household jobs that come round again, each with a person, a frequency and points. The Chores page opens on what to do today, tomorrow and later this week; parents set chores up behind **Manage**. A chore can require a parent's approval before its points count, and the wall can tick chores without a PIN when *Require the PIN for every change* is off.
+
 ### [Goals & Points](features/GOALS.md)
 
 Kids earn points from approved chores. Parents set goals: recurring (allowance) or one-time (LEGO set). Waterfall allocation fills goals in priority order. Seasonal celebration animations when a goal is achieved.
@@ -116,12 +120,6 @@ Installable as a PWA on iOS, Android, and desktop. Phone viewports get a Floatin
 ## Other features (covered inline below)
 
 A few smaller surfaces are documented here rather than on dedicated pages.
-
-### Chores
-
-The flip side of [Goals & Points](features/GOALS.md). Parents create chores with a frequency (daily / weekly / biweekly / monthly / quarterly / semi-annually / annually) and a point value. Kids mark complete; on a chore with **Requires approval** on (the default) a parent approves, and on one with it off the points count at once; points flow into the goals waterfall. Each chore can have a custom reset day (which day of the week for weekly chores, which day of the month for monthly, MM-DD for annual).
-
-Views: **Group by Person** (cards per family member), **List view** (sortable), **History** (recent completions with approval status). Approved chores stay visible for 24 hours.
 
 ### Meals
 

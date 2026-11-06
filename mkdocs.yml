@@ -96,6 +96,7 @@ nav:
       - Shopping: features/SHOPPING.md
       - Recipes: features/RECIPES.md
       - Tasks: features/TASKS.md
+      - Chores: features/CHORES.md
       - Goals: features/GOALS.md
       - Messages: features/MESSAGES.md
       - Wishes & Gift Ideas: features/WISHES.md
