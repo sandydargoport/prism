@@ -596,7 +596,7 @@ export function Dashboard({
           )}
 
           {eventSheet.element}
-          {/* The one-time offer of the new look to an existing household (#808). */}
+          {/* The one-time offer of the Simple layout to an existing household (#808, #991). */}
           {!layout.isEditing && !calmIdle && <NewLookOffer />}
           {whoDidIt.element}
           {showAddTask && (

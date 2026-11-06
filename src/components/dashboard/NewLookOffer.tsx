@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * The one-time offer to an existing household (#808): a sentence with Try it,
+ * The one-time offer of the Simple layout to an existing household (#808, #991): a sentence with Try it,
  * in the top band where toasts live, shown once on each screen and gone on its
  * own after half a minute. Settings > Display keeps the same choice, and the
  * way back.
@@ -30,8 +30,8 @@ export function NewLookOffer() {
     // Once on this screen, whatever happens next.
     try { localStorage.setItem(NEW_LOOK_DISMISSED_KEY, '1'); } catch { /* it may show again after a reload */ }
     toast({
-      title: 'Try the new look',
-      description: 'A front page drawn as one scene, and a calendar on the photo. Your layout stays, one tap away in Settings.',
+      title: "There's a Simple layout for this screen",
+      description: "Clock and weather in the corners, the day's arc, what's next. Your layout stays; Settings switches back.",
       duration: NEW_LOOK_OFFER_MS,
       action: createElement(ToastAction, {
         altText: 'Try it',

@@ -203,25 +203,35 @@ export function CreateDashboardDialog({
         </div>
         <div>
           <label className="text-xs text-muted-foreground block mb-1">Start from</label>
-          <div className="flex gap-2">
+          {/* Grouped by kind (#991): Simple layouts, then Custom grids. */}
+          <div className="flex flex-col gap-1.5" data-start-from>
             {([
-              { value: 'today' as const, label: 'Today' },
-              { value: 'calendar' as const, label: 'Calendar' },
-              { value: 'template' as const, label: 'Default Template' },
-              { value: 'copy' as const, label: 'Copy Current' },
-              { value: 'blank' as const, label: 'Blank' },
-            ]).map(opt => (
-              <button
-                key={opt.value}
-                onClick={() => setCreateForm(f => ({ ...f, startFrom: opt.value }))}
-                className={`px-2 py-1 text-xs rounded-md border transition-colors ${
-                  createForm.startFrom === opt.value
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-muted border-border hover:bg-accent'
-                }`}
-              >
-                {opt.label}
-              </button>
+              { kind: 'Simple', opts: [
+                { value: 'today' as const, label: 'Today' },
+                { value: 'calendar' as const, label: 'Calendar' },
+              ] },
+              { kind: 'Custom', opts: [
+                { value: 'template' as const, label: 'Default Template' },
+                { value: 'copy' as const, label: 'Copy Current' },
+                { value: 'blank' as const, label: 'Blank' },
+              ] },
+            ]).map(group => (
+              <div key={group.kind} className="flex flex-wrap items-center gap-2" data-start-from-kind={group.kind.toLowerCase()}>
+                <span className="w-14 shrink-0 text-xs font-medium">{group.kind}</span>
+                {group.opts.map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setCreateForm(f => ({ ...f, startFrom: opt.value }))}
+                    className={`px-2 py-1 text-xs rounded-md border transition-colors ${
+                      createForm.startFrom === opt.value
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-muted border-border hover:bg-accent'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             ))}
           </div>
         </div>
