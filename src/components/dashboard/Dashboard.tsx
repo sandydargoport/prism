@@ -42,6 +42,7 @@ import { TodayScene } from '@/components/today/TodayScene';
 import { TodayPartsPanel } from '@/components/today/TodayPartsPanel';
 import type { ChoreLike } from '@/lib/today/quietLines';
 import { useEventSheet } from '@/components/calendar/useEventSheet';
+import { NewLookOffer } from './NewLookOffer';
 import { usePinFreeEveryday, useWhoDidIt } from './useEveryday';
 import { WidgetErrorBoundary } from '@/components/dashboard/WidgetErrorBoundary';
 import { WidgetExpandProvider, useWidgetExpand } from '@/components/dashboard/WidgetExpandProvider';
@@ -567,6 +568,8 @@ export function Dashboard({
           )}
 
           {eventSheet.element}
+          {/* The one-time offer of the new look to an existing household (#808). */}
+          {!layout.isEditing && !calmIdle && <NewLookOffer />}
           {whoDidIt.element}
           {showAddTask && (
             <AddTaskModal open={showAddTask} onOpenChange={setShowAddTask}
