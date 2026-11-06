@@ -334,6 +334,7 @@ export function ShoppingView() {
                 onDelete={(id) => handleDeleteItem(id)}
                 onAdd={(name) => apiAddItem(activeList.id, { name, category: 'other' })}
                 label={(id) => dynamicCategories.find((c) => c.id === id)?.name ?? id}
+                color={getDynCategoryColor}
               />
             </div>
           ) : activeList ? (
