@@ -59,7 +59,7 @@ export function BabysitterModeToggle({
         aria-label="Enable Babysitter Mode"
       >
         <Baby className={showLabel ? 'h-5 w-5' : 'h-4 w-4'} />
-        {showLabel && <span>Babysitter</span>}
+        {showLabel && <span>Babysitter mode</span>}
       </Button>
 
       <QuickPinModal
