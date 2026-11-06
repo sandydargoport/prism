@@ -237,8 +237,10 @@ export function ScreenJobs({ onEditClick, onScreensaverClick, labelled = false }
   onScreensaverClick?: () => void;
   labelled?: boolean;
 }) {
+  // Labelled, a job is a tile like the More panel's pages: the icon above its
+  // name (#1006). h-auto undoes the Button's fixed height on the mode toggles.
   const job = labelled
-    ? 'flex min-h-[44px] items-center gap-2 rounded-full border-[1.5px] border-foreground/30 px-4 text-body hover:bg-muted'
+    ? 'flex h-auto min-h-[64px] min-w-[64px] flex-col items-center justify-center gap-1 rounded-2xl px-3 py-2 text-caption font-medium text-foreground hover:bg-muted [&_svg]:size-5'
     : 'p-2 rounded-md hover:bg-accent transition-colors';
   return (
     <>

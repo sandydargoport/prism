@@ -141,7 +141,8 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
       <Dialog open={moreOpen} onOpenChange={setMoreOpen}>
         <DialogContent className="max-w-2xl" data-dock-more-panel>
           <DialogTitle>{t('nav.more', { defaultValue: 'More' })}</DialogTitle>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+          {/* Five a row on a wall, so pages and this screen's jobs fit as one set of tiles (#1006). */}
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5" data-dock-more-grid>
             {more.map((item) => link(item, true))}
             <Link
               href="/help"
@@ -167,7 +168,7 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
           {screenJobs && (
             <div className="flex flex-col gap-2 border-t border-border pt-4" data-dock-screen-jobs>
               <p className="m-0 text-caption font-medium text-muted-foreground">{t('nav.thisScreen', { defaultValue: 'This screen' })}</p>
-              <div className="flex flex-wrap items-center gap-2">{screenJobs}</div>
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5" data-dock-jobs-grid>{screenJobs}</div>
             </div>
           )}
         </DialogContent>

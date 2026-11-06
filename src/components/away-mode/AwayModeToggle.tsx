@@ -59,7 +59,7 @@ export function AwayModeToggle({
         aria-label="Enable Away Mode"
       >
         <TreePalm className={showLabel ? 'h-5 w-5' : 'h-4 w-4'} />
-        {showLabel && <span>Away</span>}
+        {showLabel && <span>Away mode</span>}
       </Button>
 
       <QuickPinModal

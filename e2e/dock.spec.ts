@@ -89,7 +89,23 @@ test.describe('the dock on the wall', () => {
         job: e.getAttribute('data-screen-job'), text: (e.textContent ?? '').trim(), h: Math.round(e.getBoundingClientRect().height),
       })));
       for (const j of jobs) expect(j.text, `${j.job} has a name`).not.toBe('');
+      // A mode is not confused with the page of the same name.
+      expect(jobs.find((j) => j.job === 'babysitter')!.text).toBe('Babysitter mode');
+      expect(jobs.find((j) => j.job === 'away')!.text).toBe('Away mode');
       expect(new Set(jobs.map((j) => j.h)).size, `one height for every job: ${JSON.stringify(jobs)}`).toBe(1);
+      // Tiles like the pages (#1006): five a row, each job's icon above its name.
+      for (const grid of ['[data-dock-more-grid]', '[data-dock-jobs-grid]']) {
+        const cols = await panel.locator(grid).evaluate((g) => getComputedStyle(g).gridTemplateColumns.split(' ').length);
+        expect(cols, `${grid}: five a row`).toBe(5);
+      }
+      const stacked = await panel.locator('[data-screen-job]').evaluateAll((els) => els.map((e) => {
+        const icon = e.querySelector('svg')!.getBoundingClientRect();
+        const name = [...e.querySelectorAll('span')].find((x) => (x.textContent ?? '').trim())!.getBoundingClientRect();
+        return { job: e.getAttribute('data-screen-job'), above: icon.bottom <= name.top + 1, size: Math.round(icon.width), top: Math.round(icon.top) };
+      }));
+      for (const j of stacked) expect(j.above, `${j.job}: icon above its name`).toBe(true);
+      expect(new Set(stacked.map((j) => j.size)).size, `one icon size: ${JSON.stringify(stacked)}`).toBe(1);
+      expect(new Set(stacked.map((j) => j.top)).size, `icons on one line: ${JSON.stringify(stacked)}`).toBe(1);
     } finally {
       await page.request.delete(`/api/layouts/${layout.id}`);
     }
