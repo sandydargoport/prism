@@ -439,3 +439,21 @@ describe('getSessionDuration', () => {
     expect(getSessionDuration('guest')).toBe(10 * 60 * 1000);
   });
 });
+
+describe('reserveLoginAttempt (#809)', () => {
+  it('lets only the allowed number through when many guesses arrive at once', async () => {
+    let count = 0;
+    mockGetRedisClient.mockResolvedValue({
+      ...mockRedisClient,
+      // A counter the way Redis keeps one: each INCR sees the one before it.
+      incr: jest.fn(async () => ++count),
+      expire: jest.fn(async () => true),
+      ttl: jest.fn(async () => 120),
+    });
+    const { reserveLoginAttempt } = await import('../session');
+    const { MAX_LOGIN_ATTEMPTS } = await import('@/lib/constants');
+    const results = await Promise.all(Array.from({ length: 12 }, () => reserveLoginAttempt('parent-1')));
+    expect(results.filter((r) => r.allowed)).toHaveLength(MAX_LOGIN_ATTEMPTS);
+    expect(results.filter((r) => !r.allowed).every((r) => !r.allowed && r.retryAfter === 120)).toBe(true);
+  });
+});

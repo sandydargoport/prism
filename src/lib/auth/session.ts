@@ -168,16 +168,48 @@ export async function isLoginLockedOut(userId: string): Promise<{ lockedOut: boo
   }
 }
 
-export async function recordFailedLogin(userId: string): Promise<{ remainingAttempts: number }> {
+/**
+ * Count this attempt before the PIN is checked (#809). Checking the counter,
+ * then comparing the PIN (slow on purpose), then counting a failure let many
+ * guesses sent at once all pass the check before any was counted. Counting
+ * first is atomic: once the count passes the limit, every further attempt is
+ * refused until the lockout ends. A correct PIN clears the count as before.
+ */
+export async function reserveLoginAttempt(
+  userId: string,
+): Promise<{ allowed: true; count: number } | { allowed: false; retryAfter: number }> {
+  const client = await getRedisClient();
+  if (!client) return { allowed: true, count: 0 };
+
+  try {
+    const attemptsKey = `login_attempts:${userId}`;
+    const count = await client.incr(attemptsKey);
+    if (count === 1) await client.expire(attemptsKey, LOCKOUT_TIERS[0]);
+    if (count > MAX_LOGIN_ATTEMPTS) {
+      const ttl = await client.ttl(attemptsKey);
+      return { allowed: false, retryAfter: ttl > 0 ? ttl : LOCKOUT_TIERS[0] };
+    }
+    return { allowed: true, count };
+  } catch (error) {
+    console.error('Failed to reserve a login attempt:', error instanceof Error ? error.message : 'Unknown error');
+    return { allowed: true, count: 0 };
+  }
+}
+
+/**
+ * A wrong PIN. Pass the count reserveLoginAttempt returned, so the attempt is
+ * not counted twice; without one it counts the attempt here.
+ */
+export async function recordFailedLogin(userId: string, reservedCount?: number): Promise<{ remainingAttempts: number }> {
   const client = await getRedisClient();
   if (!client) return { remainingAttempts: MAX_LOGIN_ATTEMPTS };
 
   try {
     const attemptsKey = `login_attempts:${userId}`;
     const tierKey = `login_lockout_tier:${userId}`;
-    const newCount = await client.incr(attemptsKey);
+    const newCount = reservedCount && reservedCount > 0 ? reservedCount : await client.incr(attemptsKey);
 
-    if (newCount === 1) {
+    if (newCount === 1 && !(reservedCount && reservedCount > 0)) {
       // First attempt in this window — set a short initial expiry as a safety net
       await client.expire(attemptsKey, LOCKOUT_TIERS[0]);
     }
