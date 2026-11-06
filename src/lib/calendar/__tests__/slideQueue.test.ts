@@ -1,4 +1,4 @@
-import { createSlideQueue, slideDuration, SLIDE } from '../slideQueue';
+import { createSlideQueue, slideDuration, slideKeyframes, SLIDE } from '../slideQueue';
 
 /** A slide that stays running until finish() is called. */
 function slide() {
@@ -37,7 +37,22 @@ describe('the slide queue (#901)', () => {
     expect(q.activeCount).toBe(1);
   });
 
-  it('takes the rests plus the travel there and back at 30px/s', () => {
-    expect(slideDuration(60)).toBe(2 * SLIDE.pauseMs + 2 * 2000);
+  it('takes the rests, one travel at 30px/s, and the fades', () => {
+    expect(slideDuration(60)).toBe(2 * SLIDE.pauseMs + 2000 + 2 * SLIDE.fadeMs);
+  });
+
+  it('only ever reads left to right: it never moves right while it can be seen', () => {
+    const frames = slideKeyframes(60);
+    const x = (f: Keyframe) => Number(/-?\d+(\.\d+)?/.exec(String(f.transform))![0]);
+    expect(Math.min(...frames.map(x))).toBe(-60);
+    for (let i = 1; i < frames.length; i++) {
+      const prev = frames[i - 1]!, cur = frames[i]!;
+      if (x(cur) > x(prev)) {
+        // Going back to the start happens only while hidden.
+        expect(prev.opacity).toBe(0);
+        expect(cur.opacity).toBe(0);
+      }
+    }
+    expect(frames.map((f) => f.offset)).toEqual([...frames.map((f) => f.offset)].sort((a, b) => Number(a) - Number(b)));
   });
 });

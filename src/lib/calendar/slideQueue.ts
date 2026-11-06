@@ -13,11 +13,35 @@ export const SLIDE = {
   maxAtOnce: 3,
   /** Gap between two titles starting. */
   staggerMs: 900,
+  /** Fade out at the end and in at the start, so it never reads backwards. */
+  fadeMs: 300,
 } as const;
 
-/** One slide there and back, in ms, for a title `distance` px too long. */
+/** One slide, in ms, for a title `distance` px too long: rest, travel, rest, fade out, fade in. */
 export function slideDuration(distance: number): number {
-  return 2 * SLIDE.pauseMs + 2 * (distance / SLIDE.pxPerSecond) * 1000;
+  return 2 * SLIDE.pauseMs + (distance / SLIDE.pxPerSecond) * 1000 + 2 * SLIDE.fadeMs;
+}
+
+/**
+ * The slide's keyframes (#901, one way): rest at the start, travel left so the
+ * text reads left to right, rest at the end, fade out, jump back to the start
+ * unseen, fade in. It never travels right while it can be seen.
+ */
+export function slideKeyframes(distance: number): Keyframe[] {
+  const total = slideDuration(distance);
+  const at = (ms: number) => ms / total;
+  const travel = (distance / SLIDE.pxPerSecond) * 1000;
+  const end = `translateX(-${distance}px)`;
+  const a = SLIDE.pauseMs, b = a + travel, c = b + SLIDE.pauseMs, d = c + SLIDE.fadeMs;
+  return [
+    { transform: 'translateX(0)', opacity: 1, offset: 0 },
+    { transform: 'translateX(0)', opacity: 1, offset: at(a) },
+    { transform: end, opacity: 1, offset: at(b) },
+    { transform: end, opacity: 1, offset: at(c) },
+    { transform: end, opacity: 0, offset: at(d) },
+    { transform: 'translateX(0)', opacity: 0, offset: at(d) },
+    { transform: 'translateX(0)', opacity: 1, offset: 1 },
+  ];
 }
 
 /** Runs one slide; resolves when it is over. */

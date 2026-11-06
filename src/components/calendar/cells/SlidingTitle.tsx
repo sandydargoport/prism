@@ -4,12 +4,13 @@
  * An event title that slides when it is too long for its event (#901),
  * instead of being cut. At rest it is cut with an ellipsis, as before; when
  * the shared queue gives it a turn it rests, slides to its end at about
- * 30px/s, rests, and slides back. Under reduced motion it never slides.
+ * 30px/s, rests, fades out and comes back at the start: it only ever reads
+ * left to right. Under reduced motion it never slides.
  * The text keeps its size throughout.
  */
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { slideDuration, slideQueue, SLIDE } from '@/lib/calendar/slideQueue';
+import { slideDuration, slideKeyframes, slideQueue } from '@/lib/calendar/slideQueue';
 
 export function SlidingTitle({ children, className }: { children: React.ReactNode; className?: string }) {
   const outer = useRef<HTMLSpanElement>(null);
@@ -37,16 +38,7 @@ export function SlidingTitle({ children, className }: { children: React.ReactNod
       setSliding(true);
       // A transform needs a box; set here, not by state, so the first frame moves.
       el.style.display = 'inline-block';
-      const total = slideDuration(distance);
-      const rest = SLIDE.pauseMs / total;
-      const travel = (1 - 2 * rest) / 2;
-      animation = el.animate([
-        { transform: 'translateX(0)', offset: 0 },
-        { transform: 'translateX(0)', offset: rest },
-        { transform: `translateX(-${distance}px)`, offset: rest + travel },
-        { transform: `translateX(-${distance}px)`, offset: 2 * rest + travel },
-        { transform: 'translateX(0)', offset: 1 },
-      ], { duration: total, easing: 'linear' });
+      animation = el.animate(slideKeyframes(distance), { duration: slideDuration(distance), easing: 'linear' });
       try { await animation.finished; } finally { el.style.display = ''; setSliding(false); }
     });
     return () => { leave(); animation?.cancel(); };
