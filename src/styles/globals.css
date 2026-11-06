@@ -1516,3 +1516,19 @@ html.perf-minimal .widget-cell {
 .member-color-slider::-moz-range-track {
   background: transparent;
 }
+
+/* Setup wizard (#930): titles in the display face, and every button a 44px
+   target, the colour swatches included. The inline "See what's sent" link
+   and the switch keep their own size. */
+[data-setup-wizard] :is(h1, h3) {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+[data-setup-wizard] button:not([role="switch"]):not([data-inline-link]) {
+  min-height: 44px;
+}
+[data-setup-wizard] [role="group"][aria-label="Color"] > button {
+  width: 44px;
+  height: 44px;
+}

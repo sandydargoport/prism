@@ -1,5 +1,6 @@
 'use client';
 
+import { PersonMark } from '@/components/ui/PersonMark';
 import { useState, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
@@ -301,11 +302,12 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
       <CardContent className="space-y-5">
         {/* Already added */}
         {added.length > 0 && (
-          <div className="space-y-2">
+          <div className="space-y-1">
             {added.map((m) => (
-              <div key={m.id} className="flex items-center gap-2 rounded-md border px-3 py-2">
-                <div className="h-3 w-3 rounded-full shrink-0" style={{ background: m.color }} />
-                <span className="flex-1 text-sm font-medium">{m.name}</span>
+              // A list row (#932, #930): the person's dot, no box.
+              <div key={m.id} className="flex min-h-[56px] items-center gap-3 rounded-2xl px-3 hover:bg-foreground/[0.04]" data-setup-member-row>
+                <PersonMark color={m.color} />
+                <span className="flex-1 text-body font-medium">{m.name}</span>
                 <Badge variant="secondary" className="capitalize text-xs">{m.role}</Badge>
                 {m.hasPin && (
                   <Badge variant="outline" className="text-xs">{m.pinLength}-digit PIN</Badge>
@@ -314,7 +316,7 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7"
+                  className="h-[44px] w-[44px]"
                   onClick={() => startEdit(m)}
                   disabled={saving || !!deletingId}
                   aria-label={`Edit ${m.name}`}
@@ -325,7 +327,7 @@ export function FamilyStep({ onNext, onBack }: FamilyStepProps) {
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 text-destructive"
+                  className="h-[44px] w-[44px] text-destructive"
                   onClick={() => removeMember(m)}
                   disabled={saving || !!deletingId}
                   aria-label={`Remove ${m.name}`}
