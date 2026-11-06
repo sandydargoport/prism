@@ -49,12 +49,12 @@ export function ComingDays({ events, now, daysAhead = SENTENCES.daysAheadDefault
       .map((e) => ({ title: e.title, start: e.startTime, allDay: e.allDay, who: e.groupId ? people.get(e.groupId) : undefined }));
     return { label: day.toLocaleDateString(locale, { weekday: 'long' }), events: dayEvents };
   });
-  const { lines, more } = comingDays(days, {
+  const { lines } = comingDays(days, {
     locale: (locale.startsWith('de') ? 'de' : 'en') as SentenceLocale,
     time: (d) => formatBareTime(d, timeFormat, displayTimezone),
     daysAhead,
   });
-  if (lines.length === 0 && !more) return null;
+  if (lines.length === 0) return null;
 
   return (
     <div data-today-coming>
@@ -66,7 +66,6 @@ export function ComingDays({ events, now, daysAhead = SENTENCES.daysAheadDefault
           </div>
         ))}
       </dl>
-      {more && <p className="mt-2 text-body opacity-85" data-today-more>{more}</p>}
     </div>
   );
 }
