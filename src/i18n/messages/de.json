@@ -291,6 +291,7 @@
     "nudgeNoAge": "{name} hat am {day} Geburtstag. Karte bis {mailDay} abschicken?",
     "addIt": "Hinzufügen",
     "notNow": "Nicht jetzt",
+    "nothingElseToday": "Heute nichts mehr",
     "nudgeTask": "Karte an {name} schicken",
     "nudgeAdded": "Steht für {day} auf der Liste.",
     "nudgeFailed": "Das wurde nicht gespeichert. Bitte noch einmal.",

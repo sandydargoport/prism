@@ -22,7 +22,7 @@ function readPutOff(): string[] {
   try { return JSON.parse(localStorage.getItem(PUT_OFF_KEY) ?? '[]') as string[]; } catch { return []; }
 }
 
-export function QuietLines({ chores, lists, birthdays, now, onTickChore, onAddShopping, inline = false }: {
+export function QuietLines({ chores, lists, birthdays, now, onTickChore, onAddShopping, inline = false, onPaper = false }: {
   chores: ChoreLike[];
   lists: Array<{ id: string; name: string; items: Array<{ checked: boolean }> }>;
   birthdays: BirthdayLike[];
@@ -31,6 +31,8 @@ export function QuietLines({ chores, lists, birthdays, now, onTickChore, onAddSh
   onAddShopping?: () => void;
   /** On one line, for the Calendar layout's heading (#931). */
   inline?: boolean;
+  /** On the phone's paper sheet (#928): left-aligned, in the page's ink. */
+  onPaper?: boolean;
 }) {
   const t = useTranslations('today');
   const locale = useLocale();
@@ -76,17 +78,17 @@ export function QuietLines({ chores, lists, birthdays, now, onTickChore, onAddSh
   if (left.length === 0 && !list && !nudge) return null;
 
   return (
-    <div className={inline ? 'flex flex-wrap items-center justify-end gap-x-6' : 'flex flex-col items-end gap-3 text-right'} data-today-quiet>
+    <div className={inline ? 'flex flex-wrap items-center justify-end gap-x-6' : onPaper ? 'flex flex-col items-start gap-3' : 'flex flex-col items-end gap-3 text-right'} data-today-quiet>
       {nudge && (
-        <div className="flex max-w-[34rem] flex-col items-end gap-2" data-today-nudge>
+        <div className={`flex max-w-[34rem] flex-col gap-2 ${onPaper ? 'items-start' : 'items-end'}`} data-today-nudge>
           <p className="m-0 text-body [text-wrap:balance]">
             {nudge.age
               ? t('nudgeAge', { name: nudge.name, age: nudge.age, day: weekday(nudge.daysUntil), mailDay: weekday(nudge.mailInDays) })
               : t('nudgeNoAge', { name: nudge.name, day: weekday(nudge.daysUntil), mailDay: weekday(nudge.mailInDays) })}
           </p>
           <div className="flex gap-2">
-            <Button variant="ghost" className="min-h-[44px] text-white hover:bg-white/10" onClick={notNow}>{t('notNow')}</Button>
-            <Button className="min-h-[44px] bg-white text-black hover:bg-white/90" onClick={addIt}>{t('addIt')}</Button>
+            <Button variant="ghost" className={onPaper ? 'min-h-[44px]' : 'min-h-[44px] text-white hover:bg-white/10'} onClick={notNow}>{t('notNow')}</Button>
+            <Button className={onPaper ? 'min-h-[44px]' : 'min-h-[44px] bg-white text-black hover:bg-white/90'} onClick={addIt}>{t('addIt')}</Button>
           </div>
         </div>
       )}
@@ -104,7 +106,7 @@ export function QuietLines({ chores, lists, birthdays, now, onTickChore, onAddSh
                 aria-label={t('tick', { title: c.title })}
                 data-today-ring
               >
-                <span className="h-7 w-7 rounded-full border-[3px] bg-black/10" style={{ borderColor: c.assignedTo?.color ?? 'white' }} />
+                <span className="h-7 w-7 rounded-full border-[3px] bg-black/10" style={{ borderColor: c.assignedTo?.color ?? (onPaper ? 'currentColor' : 'white') }} />
               </button>
             ))}
           </span>
@@ -116,7 +118,7 @@ export function QuietLines({ chores, lists, birthdays, now, onTickChore, onAddSh
           <span className="text-body">{t('listCount', { name: list.name, count: toBuy })}</span>
           <button
             type="button"
-            className="flex h-[44px] w-[44px] items-center justify-center rounded-full hover:bg-white/10"
+            className={`flex h-[44px] w-[44px] items-center justify-center rounded-full ${onPaper ? 'hover:bg-foreground/[0.06]' : 'hover:bg-white/10'}`}
             onClick={onAddShopping}
             aria-label={t('addToList', { name: list.name })}
           >
