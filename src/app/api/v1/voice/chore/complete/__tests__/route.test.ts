@@ -172,4 +172,15 @@ describe('POST /api/v1/voice/chore/complete', () => {
     expect(body.ok).toBe(false);
     expect(inserted).toBeUndefined();
   });
+  it('refuses a chore that is already done until a later day, awarding nothing (#984)', async () => {
+    queryResults = [[{ ...baseChore, nextDue: '2999-01-01' }]];
+
+    const res = await POST(request());
+    const body = await res.json();
+
+    expect(res.status).toBe(409);
+    expect(body.ok).toBe(false);
+    expect(inserted).toBeUndefined();
+    expect(scheduleUpdate).toBeUndefined();
+  });
 });
