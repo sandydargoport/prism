@@ -82,6 +82,14 @@ test.describe('the dock on the wall', () => {
       await expect(panel.locator('[data-screen-job="reload"]')).toBeVisible();
       await expect(panel.locator('[data-screen-job="screensaver"]')).toBeVisible();
       await expect(panel.locator('[data-screen-job="edit"]')).toBeVisible();
+      // #1006: every job is named, the same way, in the same pill.
+      await expect(panel.locator('[data-screen-job="babysitter"]')).toBeVisible();
+      await expect(panel.locator('[data-screen-job="away"]')).toBeVisible();
+      const jobs = await panel.locator('[data-screen-job]').evaluateAll((els) => els.map((e) => ({
+        job: e.getAttribute('data-screen-job'), text: (e.textContent ?? '').trim(), h: Math.round(e.getBoundingClientRect().height),
+      })));
+      for (const j of jobs) expect(j.text, `${j.job} has a name`).not.toBe('');
+      expect(new Set(jobs.map((j) => j.h)).size, `one height for every job: ${JSON.stringify(jobs)}`).toBe(1);
     } finally {
       await page.request.delete(`/api/layouts/${layout.id}`);
     }
