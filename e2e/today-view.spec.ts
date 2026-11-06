@@ -414,4 +414,52 @@ test.describe('the Today view', () => {
       await page.request.delete(`/api/layouts/${layout.id}`);
     }
   });
+
+  // #934: Today in portrait.
+  test('in portrait the corners, arc labels, sentences and quiet lines do not overlap', async ({ page }) => {
+    await page.setViewportSize({ width: 1080, height: 1920 });
+    await login(page);
+    const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1); tomorrow.setHours(9, 0, 0, 0);
+    const ev = await postEvent(page, { title: `Portrait dentist ${Date.now()}`, startTime: tomorrow.toISOString(), endTime: new Date(tomorrow.getTime() + 3600_000).toISOString(), allDay: false, createdBy: getSeededParentId() });
+    const event = await ev.json();
+    const layout = await (await page.request.post('/api/layouts', { data: { name: `Portrait e2e ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
+    try {
+      await page.route('**/api/weather*', (route) => route.fulfill({ json: WEATHER }));
+      await page.goto(`/d/${layout.slug}`);
+      await page.locator('[data-today-coming]').waitFor({ timeout: 60_000 });
+      const m = await page.evaluate(() => {
+        const box = (el: Element) => { const r = el.getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom, name: el.getAttribute('data-name') }; };
+        const parts = [
+          ...[...document.querySelectorAll('[data-today-corner], [data-today-coming], [data-today-quiet], [data-arc-label], [data-arc-sunset-label]')].map((el) => ({ ...box(el), name: [...el.attributes].map((a) => a.name).find((n) => n.startsWith('data-')) })),
+        ];
+        const overlaps: string[] = [];
+        for (let i = 0; i < parts.length; i++) for (let j = i + 1; j < parts.length; j++) {
+          const a = parts[i]!, b = parts[j]!;
+          if (a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b) overlaps.push(`${a.name} / ${b.name}`);
+        }
+        const probe = document.createElement('div'); probe.style.fontSize = 'var(--text-floor)'; document.body.appendChild(probe);
+        const floor = parseFloat(getComputedStyle(probe).fontSize); probe.remove();
+        const small = [...document.querySelectorAll('[data-today-scene] *')]
+          .filter((el) => el.children.length === 0 && (el.textContent ?? '').trim() && parseFloat(getComputedStyle(el).fontSize) < floor - 0.01).length;
+        const scene = document.querySelector('[data-today-scene]')!.getBoundingClientRect();
+        const coming = document.querySelector('[data-today-coming-wrap]')!.getBoundingClientRect();
+        const arc = document.querySelector('[data-today-arc]')!.getBoundingClientRect();
+        return {
+          overlaps, small, sideways: document.documentElement.scrollWidth > innerWidth,
+          comingWidth: coming.width / scene.width, comingTop: (coming.top - scene.top) / scene.height,
+          belowArc: coming.top >= arc.bottom - 1,
+        };
+      });
+      expect(m.overlaps).toEqual([]);
+      // Portrait's own composition: the sentences take the width, just below the arc.
+      expect(m.comingWidth, 'sentences across the width').toBeGreaterThan(0.8);
+      expect(m.comingTop, 'in the upper half').toBeLessThan(0.55);
+      expect(m.belowArc, 'below the arc').toBe(true);
+      expect(m.small, 'text under the floor').toBe(0);
+      expect(m.sideways).toBe(false);
+    } finally {
+      await page.request.delete(`/api/layouts/${layout.id}`);
+      await page.request.delete(`/api/events/${event.id}`);
+    }
+  });
 });

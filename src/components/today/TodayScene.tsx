@@ -152,7 +152,10 @@ export function TodayScene({
 
       {/* The day as the sun's path (#909), margin to margin across the middle. */}
       {isPartShown(parts, 'calendar') && (
-        <div className={`absolute left-[3rem] right-[3rem] h-[38%] transition-[top] duration-1000 ${idle ? 'top-[44%]' : 'top-[30%]'}`} data-today-arc>
+        <div
+          className={`absolute left-[3rem] right-[3rem] h-[38%] transition-[top] duration-1000 portrait:h-[26%] ${idle ? 'top-[44%] portrait:top-[24%]' : 'top-[30%] portrait:top-[14%]'}`}
+          data-today-arc
+        >
           <SunArc events={events} now={now} sunrise={weather?.sunrise} sunset={weather?.sunset} onOpenEvent={onOpenEvent} onlyNext={idle} />
         </div>
       )}
@@ -173,7 +176,12 @@ export function TodayScene({
 
       {/* The coming days as sentences (#805), bottom left. */}
       {isPartShown(parts, 'calendar') && (
-        <div className={`absolute bottom-[3rem] left-[3rem] w-[min(56%,60rem)] ${fades}`} aria-hidden={idle || undefined} data-today-coming-wrap>
+        <div
+          // Portrait (#934): the sentences take the width, below the arc.
+          className={`absolute bottom-[3rem] left-[3rem] w-[min(56%,60rem)] portrait:bottom-auto portrait:right-[3rem] portrait:top-[46%] portrait:w-auto ${fades}`}
+          aria-hidden={idle || undefined}
+          data-today-coming-wrap
+        >
           <ComingDays
             events={events}
             now={now}
