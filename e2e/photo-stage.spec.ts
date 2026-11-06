@@ -145,7 +145,7 @@ test('a wide photo is cropped so its subject is not under a widget', async ({ pa
     await page.goto(`/d/${layout.slug}`);
     const corner = page.locator('[data-today-corner="left"]');
     await expect(corner).toBeVisible({ timeout: 60_000 });
-    const covering = () => page.evaluate(() => [...document.querySelectorAll('[data-today-corner], [data-today-quiet], [data-today-coming-wrap], [data-today-arc], [data-dock], .widget-cell')]
+    const covering = () => page.evaluate(() => [...document.querySelectorAll('[data-today-corner], [data-today-quiet], [data-today-coming-wrap], [data-today-arc], [data-today-list-wrap], [data-dock], .widget-cell')]
       .map((e) => ({ ...(e.getBoundingClientRect().toJSON() as DOMRect), what: `${e.tagName}.${String(e.className).slice(0, 30)}|${e.closest('[data-screensaver-night],[class*="z-9999"]') ? 'in-screensaver' : 'page'}` }))
       .filter((r) => r.width > 0 && r.height > 0));
     const box = (await corner.boundingBox())!;

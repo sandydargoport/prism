@@ -424,6 +424,7 @@ export function Dashboard({
               <PhoneToday
                 parts={layout.activeWidgets}
                 events={data.calendar.events}
+                weather={data.weather.data ?? null}
                 onOpenEvent={eventSheet.open}
                 household={{
                   chores: data.chores.chores as unknown as ChoreLike[],

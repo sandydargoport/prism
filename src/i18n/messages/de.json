@@ -306,6 +306,7 @@
     "month": "Monat",
     "earlier": "Früher",
     "later": "Später",
-    "allDayShort": "Ganztägig"
+    "allDayShort": "Ganztägig",
+    "next": "Als Nächstes"
   }
 }

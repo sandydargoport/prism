@@ -2,6 +2,9 @@ import { test, expect, type Page } from '@playwright/test';
 import { getSeededParentId } from './helpers/auth';
 import { TODAY_TEMPLATE } from '../src/lib/constants/layoutTemplates';
 
+/** The Today parts with the arc switched on (#1030: it is an option, off by default). */
+const ARC_WIDGETS = TODAY_TEMPLATE.widgets.map((w) => (w.i === 'calendar' ? { ...w, settings: { ...(w.settings ?? {}), arc: true } } : w));
+
 /**
  * Today (#907): a dashboard drawn as one scene over the photo instead of the
  * widget grid. Needs the seeded test database to log in and create layouts.
@@ -121,7 +124,7 @@ test.describe('the Today view', () => {
       expect(res.status()).toBe(201);
       made.push((await res.json()).id);
     }
-    const created = await page.request.post('/api/layouts', { data: { name: `Arc e2e ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } });
+    const created = await page.request.post('/api/layouts', { data: { name: `Arc e2e ${Date.now()}`, widgets: ARC_WIDGETS, view: 'today' } });
     const layout = await created.json();
     try {
       await page.route('**/api/weather*', (route) => route.fulfill({ json: { ...WEATHER, sunrise: at(6, 30), sunset: at(17, 30) } }));
@@ -171,7 +174,7 @@ test.describe('the Today view', () => {
       expect(res.status()).toBe(201);
       made.push((await res.json()).id);
     }
-    const created = await page.request.post('/api/layouts', { data: { name: `Busy e2e ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } });
+    const created = await page.request.post('/api/layouts', { data: { name: `Busy e2e ${Date.now()}`, widgets: ARC_WIDGETS, view: 'today' } });
     const layout = await created.json();
     try {
       await page.route('**/api/weather*', (route) => route.fulfill({ json: { ...WEATHER, sunrise: at(6, 30).toISOString(), sunset: at(17, 30).toISOString() } }));
@@ -225,7 +228,7 @@ test.describe('the Today view', () => {
     const event = await ev.json();
     const made: string[] = [];
     try {
-      const today = await (await page.request.post('/api/layouts', { data: { name: `Tap today ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
+      const today = await (await page.request.post('/api/layouts', { data: { name: `Tap today ${Date.now()}`, widgets: ARC_WIDGETS, view: 'today' } })).json();
       made.push(today.id);
       await page.route('**/api/weather*', (route) => route.fulfill({ json: WEATHER }));
       await page.goto(`/d/${today.slug}`);
@@ -368,7 +371,7 @@ test.describe('the Today view', () => {
       const r = await postEvent(page, { title, startTime: start.toISOString(), endTime: new Date(start.getTime() + 3600_000).toISOString(), allDay: false, createdBy: getSeededParentId() });
       made.push((await r.json()).id);
     }
-    const layout = await (await page.request.post('/api/layouts', { data: { name: `Idle e2e ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
+    const layout = await (await page.request.post('/api/layouts', { data: { name: `Idle e2e ${Date.now()}`, widgets: ARC_WIDGETS, view: 'today' } })).json();
     try {
       await page.route('**/api/weather*', (route) => route.fulfill({ json: WEATHER }));
       await page.goto(`/d/${layout.slug}`);
@@ -399,7 +402,7 @@ test.describe('the Today view', () => {
     const at = (h: number, m = 0) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m);
     await page.clock.setFixedTime(at(19, 0));
     await login(page);
-    const layout = await (await page.request.post('/api/layouts', { data: { name: `Night e2e ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
+    const layout = await (await page.request.post('/api/layouts', { data: { name: `Night e2e ${Date.now()}`, widgets: ARC_WIDGETS, view: 'today' } })).json();
     try {
       const tomorrow = (h: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, h);
       await page.route('**/api/weather*', (route) => route.fulfill({ json: { ...WEATHER, sunrise: at(6, 30).toISOString(), sunset: at(16, 40).toISOString(), moonrise: at(17, 30).toISOString(), moonset: tomorrow(9).toISOString(), moonPhase: 0.3 } }));
@@ -454,7 +457,7 @@ test.describe('the Today view', () => {
     const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1); tomorrow.setHours(9, 0, 0, 0);
     const ev = await postEvent(page, { title: `Portrait dentist ${Date.now()}`, startTime: tomorrow.toISOString(), endTime: new Date(tomorrow.getTime() + 3600_000).toISOString(), allDay: false, createdBy: getSeededParentId() });
     const event = await ev.json();
-    const layout = await (await page.request.post('/api/layouts', { data: { name: `Portrait e2e ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
+    const layout = await (await page.request.post('/api/layouts', { data: { name: `Portrait e2e ${Date.now()}`, widgets: ARC_WIDGETS, view: 'today' } })).json();
     try {
       await page.route('**/api/weather*', (route) => route.fulfill({ json: WEATHER }));
       await page.goto(`/d/${layout.slug}`);
@@ -497,6 +500,50 @@ test.describe('the Today view', () => {
 
   // #927: the editor shows Today's parts, not a grid; hiding one and choosing
   // one day ahead changes the scene once saved.
+  // #1030: Simple leads with today as a list; the arc is an option.
+  test('Today leads with Next and later today, and the arc only when switched on', async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await login(page);
+    const d = new Date();
+    const at = (h: number, m = 0) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m);
+    await page.clock.setFixedTime(at(9));
+    const tag = Date.now();
+    const made: string[] = [];
+    for (const [title, s, e] of [[`List first ${tag}`, at(10), at(11)], [`List second ${tag}`, at(14), at(15)]] as const) {
+      const res = await postEvent(page, { title, startTime: s.toISOString(), endTime: e.toISOString(), allDay: false, createdBy: getSeededParentId() });
+      expect(res.status()).toBe(201);
+      made.push((await res.json()).id);
+    }
+    const layout = await (await page.request.post('/api/layouts', { data: { name: `List e2e ${tag}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
+    try {
+      await page.route('**/api/weather*', (route) => route.fulfill({ json: WEATHER }));
+      await page.goto(`/d/${layout.slug}`);
+      const list = page.locator('[data-today-list="wall"]');
+      await expect(list).toBeVisible({ timeout: 60_000 });
+      await expect(page.locator('[data-today-arc]'), 'no arc by default').toHaveCount(0);
+      await expect(list.locator('[data-today-next]')).toContainText(`List first ${tag}`);
+      await expect(list.getByText('Next', { exact: true })).toBeVisible();
+      await expect(list.locator('[data-today-later-row]').filter({ hasText: `List second ${tag}` })).toBeVisible();
+      // Next comes before later today.
+      const order = await page.evaluate((t) => {
+        const y = (s: string) => document.querySelector(s)!.getBoundingClientRect().top;
+        const later = [...document.querySelectorAll('[data-today-later-row]')].find((e) => e.textContent?.includes(t))!;
+        return { next: y('[data-today-next]'), later: later.getBoundingClientRect().top };
+      }, `List second ${tag}`);
+      expect(order.next).toBeLessThan(order.later);
+
+      // Switched on, the arc comes back in its place.
+      const arcOn = TODAY_TEMPLATE.widgets.map((w) => (w.i === 'calendar' ? { ...w, settings: { ...(w.settings ?? {}), arc: true } } : w));
+      await page.request.patch(`/api/layouts/${layout.id}`, { data: { widgets: arcOn } });
+      await page.reload();
+      await expect(page.locator('[data-today-arc]')).toHaveCount(1, { timeout: 60_000 });
+      await expect(page.locator('[data-today-list="wall"]')).toHaveCount(0);
+    } finally {
+      await page.request.delete(`/api/layouts/${layout.id}`);
+      for (const id of made) await page.request.delete(`/api/events/${id}`);
+    }
+  });
+
   test('the parts panel hides a part and sets the days ahead', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await login(page);

@@ -24,6 +24,7 @@ import { TODAY_TEXT_SIZES, type TodayTextSize } from './TodayPartsPanel';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import type { CalendarEvent } from '@/types/calendar';
 import { SunArc } from './SunArc';
+import { TodayList } from './TodayList';
 import { ComingDays } from './ComingDays';
 import { QuietLines } from './QuietLines';
 import { CalendarBoard } from './CalendarBoard';
@@ -114,6 +115,8 @@ export function TodayScene({
   const night = isTodayNight(now, weather?.sunrise, weather?.sunset);
   const fades = `transition-opacity duration-1000 motion-reduce:duration-0 ${idle ? 'opacity-0' : 'opacity-100'}`;
   // A part set to stay when idle (#927) keeps its place; the rest fade.
+  // The arc is an option on the Today scene (#1030), off unless switched on.
+  const showArc = parts.find((p) => p.i === 'calendar')?.settings?.arc === true;
   const fadeUnless = (id: string) => `transition-opacity duration-1000 motion-reduce:duration-0 ${idle && !staysIdle(parts, id) ? 'opacity-0' : 'opacity-100'}`;
   const calendarPart = parts.find((p) => p.i === 'calendar');
   const zoom = TODAY_TEXT_SIZES[(calendarPart?.settings?.textSize as TodayTextSize | undefined) ?? 'normal'] ?? 1;
@@ -184,8 +187,19 @@ export function TodayScene({
         </div>
       )}
 
-      {/* The day as the sun's path (#909), margin to margin across the middle. */}
-      {kind === 'today' && isPartShown(parts, 'calendar') && (
+      {/* Simple leads with today as a list (#1030): Next, then later today. */}
+      {kind === 'today' && isPartShown(parts, 'calendar') && !showArc && (
+        <div
+          className={`absolute left-[3rem] w-[min(58%,62rem)] transition-[top,opacity] duration-1000 portrait:right-[3rem] portrait:w-auto ${idle ? 'top-[40%] portrait:top-[22%]' : 'top-[28%] portrait:top-[14%]'} ${idle && !staysIdle(parts, 'calendar') ? 'opacity-0' : ''}`}
+          style={{ zoom }}
+          data-today-list-wrap
+        >
+          <TodayList events={events} now={now} onOpenEvent={onOpenEvent} variant="wall" onlyNext={idle} />
+        </div>
+      )}
+
+      {/* The day as the sun's path (#909), now an option (#1030), margin to margin across the middle. */}
+      {kind === 'today' && isPartShown(parts, 'calendar') && showArc && (
         <div
           className={`absolute left-[3rem] right-[3rem] h-[38%] transition-[top,opacity] duration-1000 portrait:h-[26%] ${idle ? 'top-[44%] portrait:top-[24%]' : 'top-[30%] portrait:top-[14%]'} ${idle && !staysIdle(parts, 'calendar') ? 'opacity-0' : ''}`}
           data-today-arc

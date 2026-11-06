@@ -6,7 +6,7 @@
  */
 import type { Rect } from './frame';
 
-const COVERING = '.widget-cell, [data-today-corner], [data-today-quiet], [data-today-coming-wrap], [data-today-arc], [data-dock]';
+const COVERING = '.widget-cell, [data-today-corner], [data-today-quiet], [data-today-coming-wrap], [data-today-arc], [data-today-list-wrap], [data-dock]';
 /** A container this big is a backdrop, not a widget: it would block every crop. */
 const MAX_SHARE = 0.6;
 

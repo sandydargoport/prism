@@ -88,6 +88,16 @@ export function TodayPartsPanel({ widgets, onChange }: {
       </ul>
 
       <div className="flex flex-wrap items-center gap-6">
+        {/* The arc is an option (#1030); Today leads with the list. */}
+        <label className="flex items-center gap-3 text-body">
+          Show the day as an arc
+          <Switch
+            checked={calendar?.settings?.arc === true}
+            onCheckedChange={(v) => updateScene({ arc: v })}
+            aria-label="Show the day as an arc"
+            data-scene-arc
+          />
+        </label>
         <label className="flex items-center gap-3 text-body">
           Days ahead
           <select
