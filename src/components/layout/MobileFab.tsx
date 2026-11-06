@@ -6,7 +6,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  Plus,
+  SlidersHorizontal,
+  X,
   Home,
   Sun,
   Moon,
@@ -16,7 +17,6 @@ import {
   ArrowUpDown,
   Eye,
   EyeOff,
-  ScanLine,
   Rows3,
   LayoutDashboard,
   Settings as SettingsIcon,
@@ -87,7 +87,6 @@ export function MobileFab({ user, onLogin, onLogout, uiHidden }: MobileFabProps)
   const themeLabel = theme === 'light' ? 'Light' : theme === 'dark' ? 'Dark' : 'Auto';
 
   const isDashboard = pathname === '/' || pathname?.startsWith('/d/');
-  const isShopping = pathname === '/shopping';
 
   const actions = [
     {
@@ -108,17 +107,6 @@ export function MobileFab({ user, onLogin, onLogout, uiHidden }: MobileFabProps)
       onClick: () => setIsOpen(false),
       href: '/settings',
     },
-    ...(isShopping ? [
-      {
-        key: 'scan',
-        icon: <ScanLine className="h-5 w-5" />,
-        label: 'Scan Barcode',
-        onClick: () => {
-          setIsOpen(false);
-          window.dispatchEvent(new CustomEvent('prism:open-barcode-scanner'));
-        },
-      },
-    ] : []),
     ...(isDashboard ? [
       {
         key: 'reorder',
@@ -162,6 +150,10 @@ export function MobileFab({ user, onLogin, onLogout, uiHidden }: MobileFabProps)
       },
     },
   ];
+
+  // Only on the dashboard (#1020): its card and layout options belong there,
+  // and on other pages it covered the content under it.
+  if (!isDashboard) return null;
 
   return (
     <>
@@ -284,24 +276,26 @@ export function MobileFab({ user, onLogin, onLogout, uiHidden }: MobileFabProps)
         </div>
       )}
 
-      {/* FAB button */}
+      {/* The phone dashboard's options (#1020): a sliders mark, not a "+",
+          since it adds nothing; never over an open window. */}
       <button
         onClick={() => { if (showCards) { setShowCards(false); } else { setIsOpen(!isOpen); } }}
-        aria-label={isOpen || showCards ? 'Close menu' : 'Open menu'}
+        aria-label={isOpen || showCards ? 'Close options' : 'Dashboard options'}
+        data-mobile-options
         className={cn(
-          'fixed right-6 z-50 w-14 h-14 rounded-full',
+          'fixed right-6 z-50 w-14 h-14 rounded-full [body:has([role=dialog])_&]:hidden',
           'bg-primary text-primary-foreground shadow-lg',
           'flex items-center justify-center',
           'transition-all duration-300 ease-in-out',
           'active:scale-95',
-          (isOpen || showCards) && 'rotate-45 bg-muted text-muted-foreground',
+          (isOpen || showCards) && 'bg-muted text-muted-foreground',
           reorderMode && !isOpen && 'bg-warning text-white',
           uiHidden && !isOpen && !showCards && 'translate-y-24 opacity-0'
         )}
         // Above the dock (#924).
         style={{ bottom: 'calc(var(--nav-bottom, 0px) + 1rem)' }}
       >
-        <Plus className="h-6 w-6" />
+        {isOpen || showCards ? <X className="h-6 w-6" /> : <SlidersHorizontal className="h-6 w-6" />}
       </button>
     </>
   );

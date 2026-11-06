@@ -167,23 +167,30 @@ export function ChoresView() {
         <SubpageHeader
           icon={<ClipboardList className="h-5 w-5 text-primary" />}
           title="Chores"
-          badge={<>
-            <Badge variant="secondary">{enabledCount} active</Badge>
-            {dueCount > 0 && <Badge variant="destructive">{dueCount} due</Badge>}
-          </>}
+          // On a phone (#1020): one short badge, and History in the menu, so
+          // nothing in the header overlaps and the title has room.
+          badge={isMobile
+            ? (dueCount > 0 ? <Badge variant="destructive" data-chores-due-badge>{dueCount} due</Badge> : undefined)
+            : <>
+              <Badge variant="secondary">{enabledCount} active</Badge>
+              {dueCount > 0 && <Badge variant="destructive">{dueCount} due</Badge>}
+            </>}
           actions={<>
             <Button variant={manage ? 'secondary' : 'outline'} size="sm" onClick={() => setManage(!manage)} data-chores-manage>
               {manage ? 'Done' : 'Manage'}
             </Button>
-            <Button variant={showCompletions ? 'secondary' : 'outline'} size="sm"
-              onClick={() => setShowCompletions(!showCompletions)}>
-              <History className="h-4 w-4 mr-1" />History
-            </Button>
-            <Button onClick={handleAddWithAuth} size="sm">
-              <Plus className="h-4 w-4 mr-1" />Add Chore
+            {!isMobile && (
+              <Button variant={showCompletions ? 'secondary' : 'outline'} size="sm"
+                onClick={() => setShowCompletions(!showCompletions)}>
+                <History className="h-4 w-4 mr-1" />History
+              </Button>
+            )}
+            <Button onClick={handleAddWithAuth} size={isMobile ? 'icon' : 'sm'} aria-label="Add Chore">
+              <Plus className={isMobile ? 'h-4 w-4' : 'h-4 w-4 mr-1'} />{!isMobile && 'Add Chore'}
             </Button>
           </>}
           overflow={[
+            ...(isMobile ? [{ label: showCompletions ? 'Back to chores' : 'History', icon: History, onClick: () => setShowCompletions(!showCompletions) }] : []),
             { label: 'Hide Completed', checked: hideCompleted, onClick: () => setHideCompleted(!hideCompleted) },
             { label: 'Show Disabled', checked: showDisabled, onClick: () => setShowDisabled(!showDisabled) },
           ] as OverflowItem[]}

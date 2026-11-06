@@ -197,7 +197,7 @@ test.describe('the dock on the wall', () => {
         expect(i.h).toBeGreaterThanOrEqual(44);
       }
       // The phone's own tools button sits above the dock, never on it.
-      const fab = page.getByRole('button', { name: 'Open menu' });
+      const fab = page.getByRole('button', { name: 'Dashboard options' });
       if (await fab.count()) {
         const f = await fab.boundingBox();
         const d = await dock.boundingBox();
@@ -205,6 +205,54 @@ test.describe('the dock on the wall', () => {
       }
     });
   }
+
+  // #1020: on a phone, one clear Add per page and nothing floating over a page's
+  // content. The options button is the dashboard's own, and it adds nothing.
+  test('on a phone: options only on the dashboard, no "+" on it, and Shopping\'s header keeps one add', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const login = await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } });
+    expect(login.ok()).toBe(true);
+    await page.goto('/');
+    const options = page.locator('[data-mobile-options]');
+    await expect(options).toBeVisible({ timeout: 60_000 });
+    await expect(options).toHaveAttribute('aria-label', 'Dashboard options');
+    await expect(options.locator('svg.lucide-plus'), 'not a "+"').toHaveCount(0);
+
+    await page.goto('/shopping');
+    await expect(page.locator('[data-shopping-manage]')).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator('[data-mobile-options]'), 'no floating button over the list').toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Add List' }), 'New list is in the menu, not a second "+"').toHaveCount(0);
+    await page.getByRole('button', { name: 'More options', exact: true }).click();
+    await expect(page.getByRole('menuitem', { name: 'New list' })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: 'Scan Barcode' })).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    // Chores: the header's title, badge and buttons do not overlap.
+    await page.goto('/chores');
+    await expect(page.locator('[data-chores-manage]')).toBeVisible({ timeout: 60_000 });
+    const hdr = await page.evaluate(() => {
+      const box = (e: Element | null) => e?.getBoundingClientRect() ?? null;
+      const title = box(document.querySelector('h1'));
+      const parts = [document.querySelector('h1'), document.querySelector('[data-chores-due-badge]'), document.querySelector('[data-chores-manage]')]
+        .filter(Boolean).map((e) => e!.getBoundingClientRect());
+      let overlaps = 0;
+      for (let i = 0; i < parts.length; i++) for (let j = i + 1; j < parts.length; j++) {
+        const a = parts[i]!, b = parts[j]!;
+        if (a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1) overlaps++;
+      }
+      return { titleWidth: title?.width ?? 0, overlaps };
+    });
+    expect(hdr.titleWidth, 'the title has room').toBeGreaterThan(30);
+    expect(hdr.overlaps, 'nothing in the header overlaps').toBe(0);
+
+    // Never over an open window: on the dashboard, open one and the button goes.
+    await page.goto('/');
+    await expect(options).toBeVisible({ timeout: 60_000 });
+    await page.evaluate(() => { const d = document.createElement('div'); d.setAttribute('role', 'dialog'); d.id = 'probe-dialog'; document.body.appendChild(d); });
+    await expect(options).toBeHidden();
+    await page.evaluate(() => document.getElementById('probe-dialog')?.remove());
+    await expect(options).toBeVisible();
+  });
 
   // #925: the household chooses the dock's pages; the rest stay in More.
   test('a page put on the dock takes a place there and the sixth moves into More', async ({ page }) => {
