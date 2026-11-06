@@ -17,7 +17,6 @@ import { useTimeFormat } from '@/components/providers';
 import { eventOccursOnDisplayDay, formatBareTime, toDisplayDate } from '@/lib/utils/timeFormat';
 import { arcAxis, arcPoint, arcPolyline, hourOf, type ArcPoint } from '@/lib/today/arc';
 import { placeLabels, type Rect } from '@/lib/today/labels';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
 /** Width of a line of text in the label's font, read from a probe element. */
 function useTextWidth(probe: React.RefObject<HTMLElement | null>) {
@@ -64,7 +63,6 @@ export function SunArc({ events, now, sunrise, sunset, onOpenEvent, onlyNext = f
   const { ref, width, height } = useBoxSize<HTMLDivElement>();
   const probe = useRef<HTMLDivElement>(null);
   const measure = useTextWidth(probe);
-  const [foldedOpen, setFoldedOpen] = useState(false);
 
   const hour = (d: Date) => hourOf(toDisplayDate(d, displayTimezone));
   const nowH = hour(now);
@@ -104,7 +102,8 @@ export function SunArc({ events, now, sunrise, sunset, onOpenEvent, onlyNext = f
   const ticks = [];
   for (let h = Math.ceil(nowH); h < end; h++) if (h > axis.start) ticks.push(h);
 
-  // Busy days (#910): labels placed so none overlap, the rest folded into "+N".
+  // Busy days (#910): labels placed so none overlap. What does not fit stays a
+  // bead on the line, tappable, with no "+N" count (#993).
   const labelText = (e: CalendarEvent) => (e.startTime.getTime() <= now.getTime()
     ? t('until', { title: e.title, time: time(e.endTime) })
     : t('at', { title: e.title, time: time(e.startTime) }));
@@ -126,19 +125,6 @@ export function SunArc({ events, now, sunrise, sunset, onOpenEvent, onlyNext = f
     labelled.map((e) => { const p = at(hour(e.startTime)); return { id: e.id, x: p.x, y: p.y, ...measure(labelText(e)) }; }),
     { width, top: 0, obstacles, pathTop },
   ) : { placed: [], folded: [] };
-  const foldedEvents = onlyNext ? [] : ahead.filter((e) => layout.folded.includes(e.id));
-  // "+N" sits by the first folded bead if there is room, else at the end of the arc.
-  const more = foldedEvents.length > 0 ? (() => {
-    const first = at(hour(foldedEvents[0]!.startTime));
-    // A 44px target, placed at its full height so it never covers a label.
-    const text = measure(t('more', { count: foldedEvents.length }));
-    const m = { width: Math.max(text.width, 44), height: Math.max(text.height, 44) };
-    const spot = placeLabels([{ id: 'more', x: first.x, y: first.y, ...m }], {
-      width, top: 0, obstacles: [...obstacles, ...layout.placed], pathTop, max: 1,
-    }).placed[0];
-    // No room by the bead: at the top of the arc's box, above it.
-    return spot ?? { left: Math.min(Math.max(0, first.x - m.width / 2), width - m.width), top: 0, width: m.width, height: m.height };
-  })() : null;
 
   return (
     <div ref={ref} className="absolute inset-0" data-sun-arc>
@@ -247,33 +233,6 @@ export function SunArc({ events, now, sunrise, sunset, onOpenEvent, onlyNext = f
           </div>
         );
       })}
-
-      {more && (
-        <button
-          type="button"
-          className="absolute flex min-h-[44px] items-center whitespace-nowrap text-body font-semibold underline-offset-4 hover:underline"
-          style={{ left: more.left, top: more.top, width: more.width, height: more.height }}
-          onClick={() => setFoldedOpen(true)}
-          data-arc-more
-        >
-          {t('more', { count: foldedEvents.length })}
-        </button>
-      )}
-
-      <Dialog open={foldedOpen} onOpenChange={setFoldedOpen}>
-        <DialogContent className="max-w-md">
-          <DialogTitle>{t('laterToday')}</DialogTitle>
-          <ul className="flex flex-col gap-3" data-arc-more-list>
-            {foldedEvents.map((e) => (
-              <li key={e.id} className="flex items-baseline gap-3 text-body">
-                <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: e.color }} />
-                <span className="tabular-nums text-muted-foreground">{time(e.startTime)}</span>
-                <span>{e.title}</span>
-              </li>
-            ))}
-          </ul>
-        </DialogContent>
-      </Dialog>
 
       {ready && ahead.length === 0 && (
         <div className="absolute -translate-x-1/2 -translate-y-full whitespace-nowrap text-body" style={{ left: sun.x, top: sun.y - 22 }} data-arc-empty>
