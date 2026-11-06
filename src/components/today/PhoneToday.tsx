@@ -1,27 +1,29 @@
 'use client';
 
 /**
- * Today on a phone (#928), in place of the widget cards when the layout is a
- * Today or Calendar layout. A short photo header with the date and the next
- * event in the display face, then a paper sheet with the coming days as
- * sentences (the wall's builder, #805) and the chores and shopping lines
- * (#911). Tapping the next event opens the shared event sheet (#836).
+ * Today on a phone (#928, #1030), in place of the widget cards when the
+ * layout is a Today or Calendar layout: the time and the weather on top, then
+ * a paper sheet with today as a list (Next, then later today), the coming
+ * days as sentences (#805), and the chores and shopping lines (#911).
+ * Tapping an event opens the shared event sheet (#836).
  */
-import { useLocale, useTranslations } from 'next-intl';
+import { useLocale } from 'next-intl';
 import { useTimeFormat } from '@/components/providers';
-import { eventOccursOnDisplayDay, formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
+import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
 import { useNow } from '@/lib/hooks/useNow';
-import { nextEventToday } from '@/lib/today/nextEvent';
 import type { CalendarEvent } from '@/types/calendar';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import type { BirthdayLike, ChoreLike } from '@/lib/today/quietLines';
+import { formatTemp, type WeatherData } from '@/components/widgets/WeatherWidget';
 import { ComingDays } from './ComingDays';
 import { QuietLines } from './QuietLines';
+import { TodayList } from './TodayList';
 import { isPartShown } from './TodayScene';
 
-export function PhoneToday({ parts, events, onOpenEvent, household }: {
+export function PhoneToday({ parts, events, weather, onOpenEvent, household }: {
   parts: WidgetConfig[];
   events: CalendarEvent[];
+  weather?: WeatherData | null;
   onOpenEvent: (event: CalendarEvent) => void;
   household: {
     chores: ChoreLike[];
@@ -33,14 +35,11 @@ export function PhoneToday({ parts, events, onOpenEvent, household }: {
 }) {
   const now = useNow();
   const locale = useLocale();
-  const t = useTranslations('today');
   const { timeFormat, displayTimezone } = useTimeFormat();
   const today = toDisplayDate(now, displayTimezone);
   const date = today.toLocaleDateString(locale, { weekday: 'long', month: 'long', day: 'numeric' });
   const calendar = isPartShown(parts, 'calendar');
-  const next = calendar
-    ? nextEventToday(events, now, (e) => eventOccursOnDisplayDay(e.startTime, e.endTime, e.allDay, today, displayTimezone))
-    : undefined;
+  const current = weather?.current;
 
   return (
     <div className="flex min-h-[calc(var(--app-vh,100dvh)-var(--nav-bottom,0px))] flex-col" data-phone-today>
@@ -48,36 +47,30 @@ export function PhoneToday({ parts, events, onOpenEvent, household }: {
           header is on the page's paper, in its ink. */}
       <header
         className={[
-          'flex min-h-[32dvh] flex-col justify-end gap-1 px-5 pb-6 pt-10',
+          'flex items-start justify-between gap-4 px-5 pb-6 pt-10',
           'text-white [text-shadow:var(--ds-idle-text-shadow)]',
-          '[html:not([data-wallpaper])_&]:min-h-0 [html:not([data-wallpaper])_&]:text-foreground [html:not([data-wallpaper])_&]:[text-shadow:none]',
+          '[html:not([data-wallpaper])_&]:text-foreground [html:not([data-wallpaper])_&]:[text-shadow:none]',
         ].join(' ')}
         data-phone-today-header
       >
-        <time className="text-body font-medium opacity-95" data-phone-today-date>{date}</time>
-        {next ? (
-          <button
-            type="button"
-            onClick={() => onOpenEvent(next)}
-            className="min-h-[44px] text-left text-title leading-tight [text-wrap:balance]"
-            style={{ fontFamily: 'var(--font-display)' }}
-            data-phone-today-next
-          >
-            {next.title}
-            {!next.allDay && (
-              <span className="ml-2 align-baseline text-body opacity-90" style={{ fontFamily: 'var(--font-sans)' }} data-phone-today-next-time>
-                {formatDisplayTime(next.startTime, timeFormat, {}, displayTimezone)}
-              </span>
-            )}
-          </button>
-        ) : calendar ? (
-          <p className="m-0 text-title" style={{ fontFamily: 'var(--font-display)' }} data-phone-today-next-none>
-            {t('nothingElseToday')}
-          </p>
-        ) : null}
+        <div className="flex min-w-0 flex-col gap-1">
+          {isPartShown(parts, 'clock') && (
+            <time className="text-display leading-none tabular-nums" style={{ fontFamily: 'var(--font-display)' }} data-phone-today-time>
+              {formatDisplayTime(now, timeFormat, {}, displayTimezone)}
+            </time>
+          )}
+          <span className="text-body opacity-90" data-phone-today-date>{date}</span>
+        </div>
+        {isPartShown(parts, 'weather') && current && weather && (
+          <div className="flex shrink-0 flex-col items-end gap-1" data-phone-today-weather>
+            <span className="text-title leading-none" style={{ fontFamily: 'var(--font-display)' }}>{formatTemp(current.temperature, weather.units)}</span>
+            <span className="text-caption opacity-90">{current.description}</span>
+          </div>
+        )}
       </header>
 
       <section className="flex flex-1 flex-col gap-8 rounded-t-3xl bg-background px-5 pb-8 pt-6 text-foreground" data-phone-today-sheet>
+        {calendar && <TodayList events={events} now={now} onOpenEvent={onOpenEvent} variant="phone" />}
         {calendar && <ComingDays events={events} now={now} />}
         <QuietLines
           onPaper

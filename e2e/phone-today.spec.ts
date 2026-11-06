@@ -37,7 +37,7 @@ test.describe('Today on a phone', () => {
       const root = page.locator('[data-phone-today]');
       await expect(root).toBeVisible({ timeout: 60_000 });
       await expect(page.locator('[data-mobile-cards]'), 'no widget cards').toHaveCount(0);
-      await expect(root.locator('[data-phone-today-next]')).toContainText(`Phone next ${tag}`);
+      await expect(root.locator('[data-today-next]')).toContainText(`Phone next ${tag}`);
       await expect(root.locator('[data-today-coming]')).toBeVisible();
 
       // In order, top to bottom: header, sentences, lines.
@@ -71,12 +71,12 @@ test.describe('Today on a phone', () => {
       // on paper.
       const ink = await page.evaluate(() => ({
         photo: !!document.documentElement.dataset.wallpaper,
-        header: getComputedStyle(document.querySelector('[data-phone-today-next]')!).color,
+        header: getComputedStyle(document.querySelector('[data-today-next]')!).color,
         page: getComputedStyle(document.body).color,
       }));
       if (!ink.photo) expect(ink.header).toBe(ink.page);
 
-      const next = root.locator('[data-phone-today-next]');
+      const next = root.locator('[data-today-next]');
       expect((await next.boundingBox())!.height).toBeGreaterThanOrEqual(44);
       await next.click();
       await expect(page.locator('[data-event-sheet]').getByRole('heading', { name: `Phone next ${tag}` })).toBeVisible();

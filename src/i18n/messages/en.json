@@ -306,6 +306,7 @@
     "month": "Month",
     "earlier": "Earlier",
     "later": "Later",
-    "allDayShort": "All day"
+    "allDayShort": "All day",
+    "next": "Next"
   }
 }
