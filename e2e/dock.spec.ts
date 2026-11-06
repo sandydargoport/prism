@@ -258,6 +258,20 @@ test.describe('the dock on the wall', () => {
     });
     for (const b of inside) { expect(b.top, 'room above').toBeGreaterThanOrEqual(4); expect(b.bottom, 'room below').toBeGreaterThanOrEqual(4); }
 
+    // #1036: no screensaver on a phone.
+    await page.goto('/');
+    await expect(page.locator('[data-mobile-options]')).toBeVisible({ timeout: 60_000 });
+    await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
+    await page.waitForTimeout(1500);
+    await expect(page.locator('[data-screensaver]'), 'no screensaver on a phone').toHaveCount(0);
+
+    // #1036: menus have small corners, so their first and last items are not cut by the curve.
+    await page.goto('/shopping');
+    await page.getByRole('button', { name: 'More options', exact: true }).click();
+    const radius = await page.getByRole('menu').evaluate((m) => parseFloat(getComputedStyle(m).borderTopLeftRadius));
+    expect(radius, 'menu corner radius').toBeLessThanOrEqual(12);
+    await page.keyboard.press('Escape');
+
     // Never over an open window: on the dashboard, open one and the button goes.
     await page.goto('/');
     await expect(options).toBeVisible({ timeout: 60_000 });
