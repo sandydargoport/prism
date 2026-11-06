@@ -2,18 +2,19 @@ import { test, expect } from '@playwright/test';
 import { getFirstParent, getSeededParentId, verifySettingsPinViaAPI } from './helpers/auth';
 
 /**
- * The new look for an existing household (#808): offered once on a screen,
- * Try it adds Today and the Calendar layout without touching the old one,
- * and Settings switches back.
+ * The Simple layout for an existing household (#808, #991): offered once on a
+ * screen; Settings > Display picks Simple or Custom, which adds Today and the
+ * Calendar layout without touching the old one, and switches back. No text
+ * says "new look".
  */
 const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
 const PIN = process.env.E2E_PIN || '1234';
 
-test.describe('trying the new look', () => {
+test.describe('Simple or Custom', () => {
   test.skip(!HAS_TEST_DB, 'needs the seeded test database');
   test.setTimeout(120_000);
 
-  test('offered once, Try it adds the layouts and keeps the old one, Settings switches back', async ({ page }) => {
+  test('offered once; Simple adds the layouts and keeps the old one; Custom switches back', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);
     type L = { id: string; name: string; isDefault: boolean; view?: string; widgets: unknown };
@@ -26,17 +27,19 @@ test.describe('trying the new look', () => {
     const added: string[] = [];
     try {
       await page.goto('/');
-      const offer = page.getByText('Try the new look').first();
+      const offer = page.getByText("There's a Simple layout for this screen").first();
       await expect(offer).toBeVisible({ timeout: 60_000 });
       await page.reload();
       await page.waitForTimeout(4000);
-      await expect(page.getByText('Try the new look'), 'only once on this screen').toHaveCount(0);
+      await expect(page.getByText("There's a Simple layout for this screen"), 'only once on this screen').toHaveCount(0);
 
       // From Settings > Display: the same choice.
       await verifySettingsPinViaAPI(page, (await getFirstParent(page)).name);
       await page.goto('/settings?section=display');
       const card = page.locator('[data-front-page-card]');
-      await card.locator('[data-new-look-try]').click();
+      await expect(card.locator('[data-front-page-choice="custom"]')).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByText(/new look/i), 'no "new look" text').toHaveCount(0);
+      await card.locator('[data-front-page-choice="simple"]').click();
       await expect.poll(async () => (await list()).filter((l) => l.view === 'today' || l.view === 'calendar').length, { timeout: 20_000 }).toBe(2);
       const after = await list();
       for (const l of after) if (l.view === 'today' || l.view === 'calendar') added.push(l.id);
@@ -45,10 +48,12 @@ test.describe('trying the new look', () => {
       expect(kept, 'the old layout stays').toBeTruthy();
       expect(kept.widgets, 'and is unchanged').toEqual(oldDefault.widgets);
 
-      // And back.
-      await page.reload();
-      await card.locator('[data-new-look-back]').click();
+      await expect(card.locator('[data-front-page-choice="simple"]')).toHaveAttribute('aria-pressed', 'true');
+
+      // And back to Custom: the old layout is the front page again.
+      await card.locator('[data-front-page-choice="custom"]').click();
       await expect.poll(async () => (await list()).find((l) => l.id === oldDefault.id)!.isDefault, { timeout: 20_000 }).toBe(true);
+      await expect(card.locator('[data-front-page-choice="custom"]')).toHaveAttribute('aria-pressed', 'true');
     } finally {
       await page.request.patch(`/api/layouts/${oldDefault.id}`, { data: { isDefault: true } });
       for (const id of added) await page.request.delete(`/api/layouts/${id}`);

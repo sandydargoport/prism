@@ -44,24 +44,67 @@ function SectionDivider({ label }: { label: string }) {
   );
 }
 
-/** The front page (#808): try the new look, or switch back to the old one. */
+/** A small picture of each kind, for the picker. */
+function KindPicture({ kind }: { kind: 'simple' | 'custom' }) {
+  return kind === 'simple' ? (
+    <svg viewBox="0 0 320 180" className="block aspect-video w-full rounded-lg" aria-hidden>
+      <defs><linearGradient id="kind-simple" x1="0" y1="0" x2=".3" y2="1"><stop offset="0" stopColor="#5f8fa8" /><stop offset="1" stopColor="#d8c9a3" /></linearGradient></defs>
+      <rect width="320" height="180" rx="8" fill="url(#kind-simple)" />
+      <text x="14" y="32" fill="#fff" fontSize="20">4:00</text>
+      <text x="306" y="28" fill="#fff" fontSize="12" textAnchor="end">62°</text>
+      <path d="M24 112 C90 70 160 70 226 112" stroke="#fff" strokeWidth="1.6" fill="none" />
+      <path d="M226 112 C260 132 290 132 316 120" stroke="#fff" strokeWidth="1" strokeDasharray="2 4" fill="none" opacity=".6" />
+      <circle cx="170" cy="82" r="5" fill="#fff6d8" />
+    </svg>
+  ) : (
+    <svg viewBox="0 0 320 180" className="block aspect-video w-full rounded-lg" aria-hidden>
+      <rect width="320" height="180" rx="8" fill="#3b4a5c" />
+      {[[10, 10, 140, 90], [158, 10, 152, 50], [158, 66, 72, 34], [238, 66, 72, 34], [10, 108, 92, 62], [110, 108, 200, 62]].map(([x, y, w, h]) => (
+        <rect key={`${x}-${y}`} x={x} y={y} width={w} height={h} rx="6" fill="#fff" opacity=".18" />
+      ))}
+    </svg>
+  );
+}
+
+/**
+ * The front page (#808, #991): Simple (the Today and Calendar layouts) or
+ * Custom (a grid of widgets). Choosing one never changes or removes a layout.
+ */
 function FrontPageCard() {
-  const { hasToday, previous, tryIt, switchBack } = useNewLook();
+  const { mode, chooseSimple, chooseCustom, layouts } = useNewLook();
+  const hasCustom = layouts.some((l) => l.view !== 'today' && l.view !== 'calendar');
+  const choices = [
+    { kind: 'simple' as const, name: 'Simple', line: "Clock and weather in the corners, the day's arc, what's next. Few settings.", pick: chooseSimple, can: true },
+    { kind: 'custom' as const, name: 'Custom', line: 'Your grid of widgets, arranged however you like.', pick: chooseCustom, can: hasCustom },
+  ];
   return (
     <Card data-front-page-card>
       <CardHeader>
         <CardTitle>Front page</CardTitle>
-        <CardDescription>
-          Today draws the day as one scene over the photo; the Calendar layout puts the week on it.
-          Trying them adds both and keeps your layout, so you can switch back at any time.
-        </CardDescription>
+        <CardDescription>Choosing one keeps every layout you have; you can switch at any time.</CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-wrap gap-2">
-        {!hasToday && <Button onClick={() => void tryIt()} data-new-look-try>Try the new look</Button>}
-        {hasToday && previous && !previous.isDefault && (
-          <Button variant="outline" onClick={() => void switchBack()} data-new-look-back>Switch back to {previous.name}</Button>
-        )}
-        {hasToday && (!previous || previous.isDefault) && <p className="m-0 text-sm text-muted-foreground">Today is one of your layouts.</p>}
+      <CardContent className="grid gap-3 sm:grid-cols-2">
+        {choices.map((c) => {
+          const on = mode === c.kind;
+          return (
+            <button
+              key={c.kind}
+              type="button"
+              disabled={!c.can || on}
+              onClick={() => void c.pick()}
+              aria-pressed={on}
+              className={`flex min-w-0 flex-col gap-2 rounded-xl border-2 p-3 text-left transition-colors disabled:cursor-default ${on ? 'border-primary' : 'border-border hover:border-foreground/40'} ${!c.can ? 'opacity-50' : ''}`}
+              data-front-page-choice={c.kind}
+            >
+              <span className="flex items-center justify-between gap-2 font-medium">
+                {c.name}
+                {on && <span className="text-xs uppercase tracking-wide text-primary">In use</span>}
+              </span>
+              <KindPicture kind={c.kind} />
+              <span className="text-sm text-muted-foreground">{c.line}</span>
+            </button>
+          );
+        })}
       </CardContent>
     </Card>
   );
