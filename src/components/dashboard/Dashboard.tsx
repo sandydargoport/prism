@@ -250,10 +250,10 @@ export function Dashboard({
     router.push(editLink(`/d/${targetSlug}`));
   }, [router, pickDashboard]);
 
-  const handleCreateDashboard = useCallback(async (name: string, startFrom: 'blank' | 'template' | 'copy' | 'today') => {
+  const handleCreateDashboard = useCallback(async (name: string, startFrom: 'blank' | 'template' | 'copy' | 'today' | 'calendar') => {
     const { DEFAULT_TEMPLATE, TODAY_TEMPLATE } = await import('@/lib/constants/layoutTemplates');
     let widgets: WidgetConfig[];
-    if (startFrom === 'today') {
+    if (startFrom === 'today' || startFrom === 'calendar') {
       widgets = TODAY_TEMPLATE.widgets;
     } else if (startFrom === 'copy' && layout.activeLayout) {
       widgets = layout.activeLayout.widgets;
@@ -265,7 +265,7 @@ export function Dashboard({
     }
     try {
       const result = await data.layouts.saveLayout({
-        name, widgets, isDefault: false, ...(startFrom === 'today' ? { view: 'today' as const } : {}),
+        name, widgets, isDefault: false, ...(startFrom === 'today' || startFrom === 'calendar' ? { view: startFrom } : {}),
       });
       const saved = result as { slug?: string };
       if (saved?.slug) {
@@ -514,10 +514,10 @@ export function Dashboard({
               onScrollInfo={handleScrollInfo}
               scrollToRef={scrollToGridRef}
             />
-          ) : layout.activeLayout?.view === 'today' && layout.isEditing && layout.editTab !== 'idle' ? (
+          ) : (layout.activeLayout?.view === 'today' || layout.activeLayout?.view === 'calendar') && layout.isEditing && layout.editTab !== 'idle' ? (
             // Editing Today (#927): its parts, shown or hidden, never moved.
             <TodayPartsPanel widgets={layout.editingWidgets} onChange={layout.setEditingWidgets} />
-          ) : layout.activeLayout?.view === 'today' && !layout.isEditing ? (
+          ) : (layout.activeLayout?.view === 'today' || layout.activeLayout?.view === 'calendar') && !layout.isEditing ? (
             // Today (#907): one scene over the photo instead of the grid. In
             // the editor it shows as its grid of parts until the parts panel.
             <WidgetErrorBoundary>
@@ -527,6 +527,7 @@ export function Dashboard({
                 events={data.calendar.events}
                 onOpenEvent={eventSheet.open}
                 idle={calmIdle}
+                kind={layout.activeLayout?.view === 'calendar' ? 'calendar' : 'today'}
                 household={{
                   chores: data.chores.chores as unknown as ChoreLike[],
                   lists: data.shopping.lists as unknown as Array<{ id: string; name: string; items: Array<{ checked: boolean }> }>,
