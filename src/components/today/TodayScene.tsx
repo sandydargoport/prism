@@ -19,6 +19,8 @@ import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
 import { splitDayHalf } from '@/components/widgets/ClockWidget';
 import { formatTemp, MoonGlyph, weatherSentence, type WeatherData } from '@/components/widgets/WeatherWidget';
 import { isTodayNight } from '@/lib/today/night';
+import { shownWhenIdle } from '@/components/screensaver/calmMode';
+import { TODAY_TEXT_SIZES, type TodayTextSize } from './TodayPartsPanel';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import type { CalendarEvent } from '@/types/calendar';
 import { SunArc } from './SunArc';
@@ -32,6 +34,12 @@ export const TODAY_PARTS = ['clock', 'weather', 'calendar', 'birthdays', 'chores
 export function isPartShown(parts: WidgetConfig[], id: string): boolean {
   const part = parts.find((p) => p.i === id);
   return !!part && part.visible !== false;
+}
+
+/** Whether a part stays on screen while the wall is idle (#927). */
+function staysIdle(parts: WidgetConfig[], id: string): boolean {
+  const part = parts.find((p) => p.i === id);
+  return !!part && shownWhenIdle(part);
 }
 
 /** The current time, read once a minute on the minute. */
@@ -101,6 +109,10 @@ export function TodayScene({
   // After dusk: warm ink, a veil over the photo and the moon (#926).
   const night = isTodayNight(now, weather?.sunrise, weather?.sunset);
   const fades = `transition-opacity duration-1000 motion-reduce:duration-0 ${idle ? 'opacity-0' : 'opacity-100'}`;
+  // A part set to stay when idle (#927) keeps its place; the rest fade.
+  const fadeUnless = (id: string) => `transition-opacity duration-1000 motion-reduce:duration-0 ${idle && !staysIdle(parts, id) ? 'opacity-0' : 'opacity-100'}`;
+  const calendarPart = parts.find((p) => p.i === 'calendar');
+  const zoom = TODAY_TEXT_SIZES[(calendarPart?.settings?.textSize as TodayTextSize | undefined) ?? 'normal'] ?? 1;
 
   return (
     <div
@@ -121,7 +133,7 @@ export function TodayScene({
         </div>
       )}
       {isPartShown(parts, 'clock') && (
-        <div data-today-corner="left" className="absolute left-[3rem] top-[2.5rem] flex flex-col items-start">
+        <div data-today-corner="left" className={`absolute left-[3rem] top-[2.5rem] flex flex-col items-start ${fadeUnless('clock')}`}>
           <time className="text-body font-medium opacity-95" data-today-date>{date}</time>
           <time
             className="font-medium leading-none tabular-nums tracking-[-0.02em] whitespace-nowrap"
@@ -136,7 +148,7 @@ export function TodayScene({
       )}
 
       {isPartShown(parts, 'weather') && current && weather && (
-        <div data-today-corner="right" className="absolute right-[3rem] top-[2.5rem] flex flex-col items-end text-right">
+        <div data-today-corner="right" className={`absolute right-[3rem] top-[2.5rem] flex flex-col items-end text-right ${fadeUnless('weather')}`}>
           <div
             className="font-medium leading-none tabular-nums"
             style={{ fontFamily: 'var(--font-display)', fontSize: 'max(var(--text-floor), min(4rem, 7vw))' }}
@@ -153,7 +165,7 @@ export function TodayScene({
       {/* The day as the sun's path (#909), margin to margin across the middle. */}
       {isPartShown(parts, 'calendar') && (
         <div
-          className={`absolute left-[3rem] right-[3rem] h-[38%] transition-[top] duration-1000 portrait:h-[26%] ${idle ? 'top-[44%] portrait:top-[24%]' : 'top-[30%] portrait:top-[14%]'}`}
+          className={`absolute left-[3rem] right-[3rem] h-[38%] transition-[top,opacity] duration-1000 portrait:h-[26%] ${idle ? 'top-[44%] portrait:top-[24%]' : 'top-[30%] portrait:top-[14%]'} ${idle && !staysIdle(parts, 'calendar') ? 'opacity-0' : ''}`}
           data-today-arc
         >
           <SunArc events={events} now={now} sunrise={weather?.sunrise} sunset={weather?.sunset} onOpenEvent={onOpenEvent} onlyNext={idle} />
@@ -162,11 +174,11 @@ export function TodayScene({
 
       {/* Quiet lines (#911), bottom right. */}
       {household && (
-        <div className={`absolute bottom-[3rem] right-[3rem] ${fades}`} aria-hidden={idle || undefined}>
+        <div className="absolute bottom-[3rem] right-[3rem]" style={{ zoom }}>
           <QuietLines
-            chores={isPartShown(parts, 'chores') ? household.chores : []}
-            lists={isPartShown(parts, 'shopping') ? household.lists : []}
-            birthdays={isPartShown(parts, 'birthdays') ? household.birthdays : []}
+            chores={isPartShown(parts, 'chores') && (!idle || staysIdle(parts, 'chores')) ? household.chores : []}
+            lists={isPartShown(parts, 'shopping') && (!idle || staysIdle(parts, 'shopping')) ? household.lists : []}
+            birthdays={isPartShown(parts, 'birthdays') && (!idle || staysIdle(parts, 'birthdays')) ? household.birthdays : []}
             now={now}
             onTickChore={household.onTickChore}
             onAddShopping={household.onAddShopping}
@@ -180,6 +192,7 @@ export function TodayScene({
           // Portrait (#934): the sentences take the width, below the arc.
           className={`absolute bottom-[3rem] left-[3rem] w-[min(56%,60rem)] portrait:bottom-auto portrait:right-[3rem] portrait:top-[46%] portrait:w-auto ${fades}`}
           aria-hidden={idle || undefined}
+          style={{ zoom }}
           data-today-coming-wrap
         >
           <ComingDays
