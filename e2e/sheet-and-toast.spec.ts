@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { getSeededParentId } from './helpers/auth';
+import { getFirstParent, getSeededParentId } from './helpers/auth';
 
 /**
  * One sheet, pill buttons and sentence toasts (#908), measured on a touch
@@ -108,6 +108,50 @@ test.describe('sheet and toast on the wall', () => {
     } finally {
       await page.request.delete(`/api/events/${event.id}`);
       await browser.close();
+    }
+  });
+
+  // Hide in Prism shows to a screen nobody signed in to, and asks for a
+  // parent's PIN on the tap (#1048): it was there only once a parent had
+  // signed in, so a wall or phone never showed it.
+  test('signed out, Hide is there and asks for a parent\'s PIN', async ({ page, browser }) => {
+    // A parent makes the event from another browser; this page stays signed out.
+    const parentSide = await browser.newContext();
+    const parentId = getSeededParentId();
+    expect((await parentSide.request.post('/api/auth/login', { data: { userId: parentId, pin: PIN } })).ok()).toBe(true);
+    const now = new Date();
+    const title = `Hide signed out ${Date.now()}`;
+    const created = await parentSide.request.post('/api/events', {
+      data: {
+        title,
+        startTime: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 6, 0).toISOString(),
+        endTime: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 6, 30).toISOString(),
+        allDay: false,
+        createdBy: parentId,
+      },
+    });
+    expect(created.status()).toBe(201);
+    const event = await created.json();
+    try {
+      await page.setViewportSize({ width: 1920, height: 1080 });
+      await page.goto('/calendar');
+      const chip = page.getByText(title).first();
+      await chip.waitFor({ timeout: 60_000 });
+      await chip.click();
+      const hide = page.getByText('Hide in Prism');
+      await expect(hide, 'Hide shows with nobody signed in').toBeVisible();
+      await hide.click();
+      const pin = page.locator('[data-testid="pin-modal"]');
+      await expect(pin, 'the tap asks for a PIN').toBeVisible();
+      await pin.locator(`button:has-text("${(await getFirstParent(page)).name}")`).click();
+      for (const digit of PIN) { await page.keyboard.press(digit); await page.waitForTimeout(150); }
+      await expect(page.locator('[data-toast-text]').filter({ hasText: title })).toBeVisible({ timeout: 15_000 });
+      const hidden = await (await parentSide.request.get('/api/events/hidden')).json();
+      expect(JSON.stringify(hidden), 'the event is hidden').toContain(event.id);
+    } finally {
+      await parentSide.request.delete(`/api/events/${event.id}/hidden`);
+      await parentSide.request.delete(`/api/events/${event.id}`);
+      await parentSide.close();
     }
   });
 });

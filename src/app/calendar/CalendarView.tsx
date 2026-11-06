@@ -670,7 +670,7 @@ function CalendarViewHydrated() {
             onClose={() => setSelectedEvent(null)}
             onEdit={() => { setEditingEvent(selectedEvent); setSelectedEvent(null); }}
             onDeleted={() => { setSelectedEvent(null); refreshEvents(); }}
-            canHide={activeUser?.role === 'parent'}
+            canHide={!activeUser || activeUser.role === 'parent'}
             onHiddenChange={() => { setSelectedEvent(null); refreshEvents(); }}
           />
         )}
