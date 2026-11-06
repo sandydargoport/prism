@@ -5,7 +5,7 @@ import { users } from '@/lib/db/schema';
 import { memberOrder } from '@/lib/db/memberOrder';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
-import { createSession, isLoginLockedOut, recordFailedLogin, clearLoginAttempts } from '@/lib/auth/session';
+import { createSession, isLoginLockedOut, reserveLoginAttempt, recordFailedLogin, clearLoginAttempts } from '@/lib/auth/session';
 import { setSettingsVerified } from '@/lib/auth/settingsAuth';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
@@ -83,10 +83,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Count the attempt before the slow compare, so parallel guesses cannot
+    // all slip past the lockout check (#809).
+    const reservation = await reserveLoginAttempt(user.id);
+    if (!reservation.allowed) {
+      return NextResponse.json(
+        { error: 'Too many failed attempts. Please try again later.', lockedOut: true, retryAfter: reservation.retryAfter },
+        { status: 403 }
+      );
+    }
+
     const isValidPin = await bcrypt.compare(pin, user.pin);
 
     if (!isValidPin) {
-      const { remainingAttempts } = await recordFailedLogin(user.id);
+      const { remainingAttempts } = await recordFailedLogin(user.id, reservation.count);
       return NextResponse.json(
         { error: 'Invalid PIN', remainingAttempts },
         { status: 401 }
