@@ -323,7 +323,7 @@ export function TravelView() {
     <PageWrapper>
       <div className="flex flex-col h-page overflow-hidden">
         {/* Tab bar */}
-        <div className="flex items-center gap-1 px-4 pt-3 pb-0 border-b border-border shrink-0 bg-background">
+        <div className="flex items-center gap-1 px-4 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] pb-0 border-b border-border shrink-0 bg-background">
           <button
             onClick={() => setActiveTab('globe')}
             className={cn(

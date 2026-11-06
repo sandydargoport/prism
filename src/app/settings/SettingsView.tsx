@@ -244,7 +244,7 @@ export function SettingsView() {
   return (
     <PageWrapper>
       <div className="h-page flex flex-col">
-        <header className="shrink-0 border-b border-border bg-card/85 backdrop-blur-xs px-4">
+        <header className="shrink-0 border-b border-border bg-card px-4 safe-area-top md:bg-card/85 md:backdrop-blur-xs">
           <div className="flex items-center gap-4 h-16">
             {backName ? (
               <Button variant="ghost" size="sm" asChild>
