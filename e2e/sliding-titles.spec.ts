@@ -54,6 +54,14 @@ test.describe('sliding event titles', () => {
         await page.waitForTimeout(100);
       }
       expect(-furthest, 'it slides until its end is in view').toBeGreaterThanOrEqual(rest.over - 1);
+      // One way only: it never moves right while it can be seen; it fades
+      // out at the end and comes back at the start unseen.
+      const frames = await el.evaluate((e) => ((e.firstElementChild as HTMLElement).getAnimations()[0]?.effect as KeyframeEffect | undefined)?.getKeyframes()
+        .map((k: ComputedKeyframe) => ({ x: new DOMMatrix(String(k.transform)).m41, o: Number(k.opacity ?? 1) })) ?? []);
+      expect(frames.length).toBeGreaterThan(0);
+      for (let i = 1; i < frames.length; i++) {
+        if (frames[i]!.x > frames[i - 1]!.x) expect(frames[i - 1]!.o + frames[i]!.o, 'no backwards slide while visible').toBe(0);
+      }
       expect(size, 'sliding never shrinks it').toBe(rest.size);
       const floor = await page.evaluate(() => {
         const p = document.createElement('div'); p.style.fontSize = 'var(--text-floor)'; document.body.appendChild(p);
