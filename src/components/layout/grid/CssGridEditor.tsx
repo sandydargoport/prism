@@ -1,6 +1,9 @@
 'use client';
 
-import { useMemo, useState, useCallback } from 'react';
+import { createElement, useEffect, useMemo, useState, useCallback } from 'react';
+import { toast } from '@/components/ui/use-toast';
+import { ToastAction, type ToastActionElement } from '@/components/ui/toast';
+import { editorKeyAction, isTypingTarget } from './editorKeys';
 import { useLatestRef } from '@/lib/hooks/useLatestRef';
 import {
   DndContext,
@@ -91,6 +94,38 @@ export function CssGridEditor({
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 500, tolerance: 5 } }),
   );
+
+  // Keys (#987): Delete removes the selected widget (with Undo); arrows move
+  // it, or resize it in resize mode. Never while typing in a field.
+  useEffect(() => {
+    if (!selectedWidget) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.altKey || e.ctrlKey || e.metaKey || isTypingTarget(e.target)) return;
+      const before = layoutRef.current;
+      const result = editorKeyAction(before, selectedWidget, editMode, e.key, totalCols, widgetConstraints?.[selectedWidget]);
+      if (!result) {
+        if (e.key.startsWith('Arrow')) e.preventDefault();
+        return;
+      }
+      e.preventDefault();
+      onLayoutChange(result.layout);
+      if (result.kind === 'remove') {
+        const id = selectedWidget;
+        const was = before.find((w) => w.i === id)!;
+        onSelectWidget(null);
+        setEditMode('move');
+        toast({
+          title: 'Widget removed.',
+          action: createElement(ToastAction, {
+            altText: 'Undo',
+            onClick: () => onLayoutChange(layoutRef.current.map((w) => (w.i === id ? was : w))),
+          }, 'Undo') as unknown as ToastActionElement,
+        });
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectedWidget, editMode, totalCols, widgetConstraints, onLayoutChange, onSelectWidget, layoutRef]);
 
   // Cycle: unselected → move → resize → deselect
   const handleWidgetClick = useCallback((id: string) => {
