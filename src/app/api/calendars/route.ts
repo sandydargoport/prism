@@ -8,6 +8,7 @@
  *
  */
 
+import { FAMILY_COLOR } from '@/lib/constants/memberColors';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, getDisplayAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
@@ -147,7 +148,7 @@ export async function GET() {
       createdAt: source.createdAt.toISOString(),
       // For family calendars, return a virtual "Family" user
       user: source.isFamily
-        ? { id: 'FAMILY', name: 'Family', color: '#F59E0B' }
+        ? { id: 'FAMILY', name: 'Family', color: FAMILY_COLOR }
         : source.userId
           ? {
               id: source.userId,

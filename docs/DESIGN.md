@@ -129,6 +129,16 @@ nothing moves when it comes and goes.
 - No page can be lost: `dockLayout` puts each visible page on the dock or in
   More, never both (checked).
 
+## Rows and person marks (#932)
+
+- One list row (`ListRow`): at least 56px tall, no border or card of its own;
+  rows are set apart by space. A mark, the title, a quiet meta on the right.
+  Editing controls show only while the list is being managed.
+- One person mark (`PersonMark`): a dot, a ring or a bar, never a filled pill
+  with white text. Colour at two strengths (`personColor`): pastel on a photo
+  and in dark, deeper on paper, each reaching 3:1 against its ground
+  (checked). The Family calendar's default colour is coral, #FF7D68.
+
 ## Events
 
 A pale tint of the person's colour, a solid 4px bar on the leading edge, and
