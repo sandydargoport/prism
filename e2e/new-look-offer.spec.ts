@@ -64,4 +64,25 @@ test.describe('Simple or Custom', () => {
       await page.request.patch('/api/settings', { data: { key: 'newLook', value: {} } });
     }
   });
+  // #1032: after the update, a one-time note of what moved and where.
+  test("What's new shows once on a screen and stays in Help", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);
+    // ?whats-new: shown even under test automation, which otherwise keeps it away.
+    await page.goto('/?whats-new');
+    const note = page.locator('[data-whats-new]');
+    await expect(note).toBeVisible({ timeout: 60_000 });
+    expect(await note.locator('[data-whats-new-list] li').count()).toBeGreaterThanOrEqual(5);
+    await expect(note.getByText('under Manage')).toBeVisible();
+    await note.locator('[data-whats-new-ok]').click();
+    await expect(note).toBeHidden();
+    await page.reload();
+    await page.waitForTimeout(2000);
+    await expect(page.locator('[data-whats-new]'), 'once on this screen').toHaveCount(0);
+
+    // And it stays findable in Help.
+    await page.goto('/help');
+    await page.getByText("What's new", { exact: true }).first().click();
+    await expect(page.locator('[data-whats-new-list]')).toBeVisible();
+  });
 });

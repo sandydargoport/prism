@@ -1,5 +1,6 @@
 'use client';
 
+import { WhatsNewList } from '@/components/layout/WhatsNew';
 import { useState, useMemo } from 'react';
 import { HelpCircle, Search, ChevronRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -18,6 +19,7 @@ interface HelpSection {
 function useSections(isMobile: boolean): HelpSection[] {
   return useMemo(() => {
     const all: HelpSection[] = [
+      { id: 'whats-new', title: "What's new", content: <WhatsNewList /> },
       { id: 'getting-started', title: 'Getting Started', content: <GettingStarted /> },
       { id: 'roles', title: 'Roles & Permissions', content: <Roles /> },
       { id: 'dashboard', title: 'Dashboard', desktopOnly: true, content: <DashboardHelp /> },

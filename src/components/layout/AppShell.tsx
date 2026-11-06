@@ -22,6 +22,7 @@
 
 'use client';
 
+import { WhatsNew } from './WhatsNew';
 import * as React from 'react';
 import { Dock } from './Dock';
 import { MobileFab } from './MobileFab';
@@ -168,6 +169,9 @@ export function AppShell({
       {!hideNav && showMobileNav && (
         <MobileFab user={user} onLogin={onLogin} onLogout={onLogout} uiHidden={uiHidden || measureHideNav} />
       )}
+
+      {/* Once per screen after an update (#1032). */}
+      <WhatsNew />
     </div>
   );
 }
