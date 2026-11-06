@@ -26,6 +26,8 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
 /** How long the wall's dock stays after the last touch. */
 export const DOCK_WALL_MS = 10_000;
+/** How long the Menu tab stays full before it shrinks to a nub (#989). */
+export const MENU_NUB_MS = 8_000;
 
 export interface DockProps {
   /** 'wall': hidden at rest behind a Menu word; 'page': always on screen. */
@@ -69,6 +71,16 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
     };
   }, [mode]);
   const visible = mode === 'page' || shown || moreOpen;
+  // The tab's nub (#989): full when the dock has just gone or after a touch,
+  // a nub after MENU_NUB_MS of quiet.
+  const [nub, setNub] = React.useState(false);
+  React.useEffect(() => {
+    if (mode !== 'wall' || visible) return;
+    const t = setTimeout(() => setNub(true), MENU_NUB_MS);
+    const wake = () => { setNub(false); };
+    window.addEventListener('pointerdown', wake, { passive: true });
+    return () => { clearTimeout(t); window.removeEventListener('pointerdown', wake); setNub(false); };
+  }, [mode, visible]);
   // The wall's Menu word fades with the rest when the display goes idle (#926).
   const calm = useCalmIdle();
 
@@ -98,14 +110,30 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
 
   return (
     <>
+      {/* The Menu as a soft tab on the bottom edge (#989): it shrinks to a
+          nub after a few quiet seconds and grows back with a tap. The button
+          stays 44px tall either way; only the drawn tab changes. White glass
+          over a photo; the theme's card colours with none, or white on a
+          light page leaves it invisible. */}
       {mode === 'wall' && !visible && !calm && (
         <button
           type="button"
-          className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-40 flex min-h-[44px] -translate-x-1/2 items-center px-5 text-body font-medium text-white/80 [text-shadow:var(--ds-idle-text-shadow)]"
+          className="fixed bottom-0 left-1/2 z-40 flex h-[44px] min-w-[96px] -translate-x-1/2 items-end justify-center"
           onClick={() => setShown(true)}
+          aria-label={t('nav.menu', { defaultValue: 'Menu' })}
           data-dock-menu
+          data-nub={nub || undefined}
         >
-          {t('nav.menu', { defaultValue: 'Menu' })}
+          <span
+            className={cn(
+              'flex items-center justify-center overflow-hidden rounded-t-[999px] border border-b-0 border-white/35 bg-white/15 text-body font-medium text-white backdrop-blur-sm [text-shadow:var(--ds-idle-text-shadow)] [html:not([data-wallpaper])_&]:border-border [html:not([data-wallpaper])_&]:bg-card/90 [html:not([data-wallpaper])_&]:text-foreground [html:not([data-wallpaper])_&]:[text-shadow:none] transition-all duration-500 motion-reduce:duration-0',
+              nub ? 'h-[6px] w-[40px] opacity-50' : 'h-[40px] w-[140px] opacity-100',
+            )}
+            style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}
+            data-dock-menu-tab
+          >
+            <span className={cn('transition-opacity duration-300', nub ? 'opacity-0' : 'opacity-100')}>{t('nav.menu', { defaultValue: 'Menu' })}</span>
+          </span>
         </button>
       )}
 

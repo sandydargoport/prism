@@ -79,6 +79,10 @@ function dynamicMasks(page: Page) {
     page.locator('[data-widget="Clock"]'),
     page.locator('[data-widget="Weather"]'),
     page.locator('[data-widget="Photo"]'),
+    // The wall's Menu tab shrinks to a nub after 8 quiet seconds (#989), so a
+    // shot catches either state. The dock spec measures its place, size and
+    // contrast instead.
+    page.locator('[data-dock-menu]'),
   ];
 }
 
