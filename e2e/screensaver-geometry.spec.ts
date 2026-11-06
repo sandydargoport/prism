@@ -1175,7 +1175,7 @@ test.describe('corner clock and weather', () => {
       expect(time.left - clock.left, 'time hugs the left edge').toBeLessThan(40);
 
       // The weather shows icon, temperature and condition, nothing else, lined
-      // up with the right edge and centred top to bottom like the clock.
+      // up with the right edge and the top, like the clock (#988).
       await expect(page.locator('[data-weather-details]')).toBeHidden();
       const current = await rect(page, '[data-weather-current]');
       const condition = page.locator('[data-weather-condition]');
@@ -1188,8 +1188,8 @@ test.describe('corner clock and weather', () => {
       expect(cond.cut, 'condition not cut off').toBe(false);
       const temp = await rect(page, '[data-weather-current] .text-4xl');
       expect(weather.right - temp.right, 'weather hugs the right edge').toBeLessThan(40);
-      const mid = (r: Rect) => (r.top + r.bottom) / 2;
-      expect(Math.abs(mid(current) - mid(weather)), 'weather centred in its tile').toBeLessThan(8);
+      expect(current.top - weather.top, 'weather hugs the top of its tile').toBeLessThan(24);
+      expect(time.top - clock.top, 'the clock hugs the top of its tile too').toBeLessThan(40);
     } finally {
       await page.request.delete(`/api/layouts/${layout.id}`);
     }

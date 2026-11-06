@@ -434,7 +434,8 @@ export const WeatherWidget = React.memo(function WeatherWidget({
       error={error}
       className={className}
     >
-      <div className={cn('flex flex-col gap-3 h-full overflow-hidden', isVertical ? 'pb-2' : '', currentOnly && 'justify-center')}>
+      {/* Up and down by where the tile sits, or its Align setting (#988). */}
+      <div className={cn('flex flex-col gap-3 h-full overflow-hidden', isVertical ? 'pb-2' : '', currentOnly && 'justify-center in-data-[align-y=top]:justify-start in-data-[align-y=bottom]:justify-end')}>
 
         {/* CURRENT CONDITIONS */}
         <CurrentConditions
@@ -555,7 +556,7 @@ function CurrentConditions({
   // compact form lines up with that edge (data-corner on the grid cell).
   return (
     <div className="@container" data-weather-current>
-      <div className="flex items-start justify-between gap-2 in-data-[corner=right]:justify-end @min-[32rem]:in-data-[corner=right]:justify-between">
+      <div className="flex items-start justify-between gap-2 in-data-[corner=right]:justify-end in-data-[align-x=center]:justify-center @min-[32rem]:in-data-[corner=right]:justify-between @min-[32rem]:in-data-[align-x=center]:justify-between">
         {/* Left: icon + temp + description */}
         <div className="flex items-center gap-3 min-w-0">
           <WeatherIcon
