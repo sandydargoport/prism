@@ -60,6 +60,44 @@ test.describe('the dock on the wall', () => {
         await page.clock.runFor(11_000);
         await expect(page.locator('[data-dock]')).toHaveAttribute('aria-hidden', 'true');
         await expect(page.locator('[data-dock-menu]')).toBeVisible();
+
+        // #989: a tab on the bottom edge, holding Menu...
+        const tab = page.locator('[data-dock-menu-tab]');
+        await expect(tab).toContainText('Menu');
+        const rest = (await tab.boundingBox())!;
+        // ...that can be read with no photo behind it, in either theme.
+        const contrast = await tab.evaluate((el) => {
+          if (document.documentElement.hasAttribute('data-wallpaper')) return 99;
+          const rgba = (c: string) => (c.match(/[\d.]+/g) ?? []).map(Number);
+          const rgb = (c: string): [number, number, number] => { const [r = 0, g = 0, b = 0] = rgba(c); return [r, g, b]; };
+          const lum = ([r, g, b]: [number, number, number]) => {
+            const f = (v: number) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+            return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+          };
+          const text = lum(rgb(getComputedStyle(el).color));
+          // The page's own ground: the first painted background under the tab.
+          let bg = 'rgb(255, 255, 255)';
+          for (const e of document.elementsFromPoint(innerWidth / 2, innerHeight - 60)) {
+            const c = getComputedStyle(e).backgroundColor;
+            const a = rgba(c)[3];
+            if (c !== 'transparent' && (a === undefined || a > 0.5)) { bg = c; break; }
+          }
+          const page = lum(rgb(bg));
+          return (Math.max(text, page) + 0.05) / (Math.min(text, page) + 0.05);
+        });
+        expect(contrast, 'Menu readable on the page').toBeGreaterThanOrEqual(3);
+        expect(Math.abs(rest.y + rest.height - viewport.height), 'on the bottom edge').toBeLessThanOrEqual(1);
+        // ...that shrinks to a nub after a few quiet seconds...
+        await page.clock.runFor(9_000);
+        await expect(page.locator('[data-dock-menu]')).toHaveAttribute('data-nub', 'true');
+        await page.waitForTimeout(700);
+        const nub = (await tab.boundingBox())!;
+        expect(nub.width).toBeLessThanOrEqual(44);
+        expect(nub.height).toBeLessThanOrEqual(8);
+        expect(Math.abs(nub.y + nub.height - viewport.height)).toBeLessThanOrEqual(1);
+        // ...and a tap anywhere brings the dock back.
+        await page.mouse.click(viewport.width / 2, viewport.height / 2);
+        await expect(page.locator('[data-dock]')).not.toHaveAttribute('aria-hidden', 'true');
       } finally {
         await page.request.delete(`/api/layouts/${layout.id}`);
       }
