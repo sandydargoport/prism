@@ -1,5 +1,6 @@
 'use client';
 
+import { tileAlign, type AlignSetting } from '@/lib/layout/tileAlign';
 import { useEffect, useLayoutEffect, useMemo, useRef, ViewTransition } from 'react';
 import { SCHEDULE_TRANSITION } from '@/lib/displays/screenSchedule';
 import { WidgetBgOverrideProvider, WidgetEmptyReportContext } from '@/components/widgets/WidgetContainer';
@@ -304,12 +305,12 @@ export function CssGridDisplay({
           // faded widget, keeping its place (#738).
           const hiddenEmpty = emptyIds.has(w.i) && hidesWhenEmpty(w, hideEmptyByDefault);
           const gone = faded || hiddenEmpty;
-          // A small tile (a third of the width or less) on the top row that
-          // touches a side edge is a corner tile: the clock and weather line
-          // their text up with that edge instead of centring it.
-          const corner = w.y === 0 && w.w * 3 <= cols
-            ? (w.x === 0 ? 'left' : w.x + w.w >= cols ? 'right' : undefined)
+          // The clock and weather line up by where the tile sits (#988): in a
+          // screen corner they hug it, elsewhere they centre; Align overrides.
+          const align = w.i === 'clock' || w.i === 'weather'
+            ? tileAlign(w, cols, fitRows, (w.settings?.align as AlignSetting | undefined) ?? null)
             : undefined;
+          const corner = align && align.x !== 'center' ? align.x : undefined;
 
           const cell = (
             <div
@@ -318,6 +319,8 @@ export function CssGridDisplay({
               ref={(el) => { if (el) cells.current.set(w.i, el); else cells.current.delete(w.i); }}
               data-widget={w.i}
               data-corner={corner}
+              data-align-x={align?.x}
+              data-align-y={align?.y}
               data-fill={w.backgroundColor === 'glass' ? 'glass' : undefined}
               data-faded={faded || undefined}
               data-hidden-empty={hiddenEmpty || undefined}

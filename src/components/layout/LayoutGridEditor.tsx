@@ -392,6 +392,32 @@ export function LayoutGridEditor({
             ))}
           </div>
         )}
+        {/* Align (clock and weather, #988): Auto lines up by where the tile sits. */}
+        {target === 'text' && (selectedWidget === 'clock' || selectedWidget === 'weather') && (() => {
+          const current = (selectedWidgetConfig!.settings?.align as { x?: string; y?: string } | undefined) ?? {};
+          const setAlign = (axis: 'x' | 'y', value: string) => onLayoutChange(stableLayout.map(w => w.i === selectedWidget
+            ? { ...w, settings: { ...(w.settings ?? {}), align: { ...current, [axis]: value } } }
+            : w));
+          const row = (label: string, axis: 'x' | 'y', options: Array<[string, string]>) => (
+            <div className="flex items-center gap-1 flex-wrap" data-align-axis={axis}>
+              <span className="text-3xs text-muted-foreground w-14 shrink-0">{label}</span>
+              {options.map(([value, text]) => (
+                <button key={value} onClick={() => setAlign(axis, value)} onPointerDown={(e) => e.stopPropagation()}
+                  aria-pressed={(current[axis] ?? 'auto') === value}
+                  className={`h-7 min-w-7 px-1.5 rounded-full text-3xs border transition-colors touch-manipulation ${
+                    (current[axis] ?? 'auto') === value ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-accent/50'
+                  }`}
+                  data-align={value}>{text}</button>
+              ))}
+            </div>
+          );
+          return (
+            <>
+              {row('Across', 'x', [['auto', 'Auto'], ['left', 'Left'], ['center', 'Centre'], ['right', 'Right']])}
+              {row('Up/down', 'y', [['auto', 'Auto'], ['top', 'Top'], ['middle', 'Middle'], ['bottom', 'Bottom']])}
+            </>
+          );
+        })()}
         {/* Opacity (fill/outline only, not text) */}
         {target !== 'text' && (hasColor || isFrosted) && (
           <div className="flex items-center gap-1 flex-wrap">
