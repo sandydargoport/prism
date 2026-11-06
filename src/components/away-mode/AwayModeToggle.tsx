@@ -12,6 +12,7 @@ interface AwayModeToggleProps {
   size?: 'default' | 'sm' | 'lg' | 'icon';
   showLabel?: boolean;
   className?: string;
+  'data-screen-job'?: string;
 }
 
 export function AwayModeToggle({
@@ -19,6 +20,7 @@ export function AwayModeToggle({
   size = 'icon',
   showLabel = false,
   className,
+  'data-screen-job': job,
 }: AwayModeToggleProps) {
   const { isAway, toggle, loading } = useAwayMode();
   const [showPinModal, setShowPinModal] = useState(false);
@@ -52,11 +54,12 @@ export function AwayModeToggle({
         size={size}
         onClick={handleClick}
         className={className}
+        data-screen-job={job}
         title="Enable Away Mode"
         aria-label="Enable Away Mode"
       >
-        <TreePalm className="h-4 w-4" />
-        {showLabel && <span className="ml-2">Away Mode</span>}
+        <TreePalm className={showLabel ? 'h-5 w-5' : 'h-4 w-4'} />
+        {showLabel && <span>Away</span>}
       </Button>
 
       <QuickPinModal

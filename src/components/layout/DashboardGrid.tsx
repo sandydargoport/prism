@@ -228,8 +228,9 @@ export function DashboardHeader({
 
 /**
  * This screen's jobs: Edit layout, Reload, the performance badge, Babysitter
- * and Away modes, and the screensaver. The top bar draws them as icons; the
- * dock's More panel draws them with their names (#922).
+ * and Away modes, and the screensaver. The top bar draws them as icons with
+ * their names as tooltips; the dock's More panel draws every one of them with
+ * its name, the same way (#922, #1006).
  */
 export function ScreenJobs({ onEditClick, onScreensaverClick, labelled = false }: {
   onEditClick?: () => void;
@@ -242,20 +243,20 @@ export function ScreenJobs({ onEditClick, onScreensaverClick, labelled = false }
   return (
     <>
       {onEditClick && (
-        <button onClick={onEditClick} className={job} aria-label="Edit layout" data-screen-job="edit">
+        <button onClick={onEditClick} className={job} aria-label="Edit layout" title={labelled ? undefined : 'Edit layout'} data-screen-job="edit">
           <GridEditIcon />
           {labelled && <span>Edit layout</span>}
         </button>
       )}
 
-      <button onClick={() => window.location.reload()} className={job} aria-label="Refresh page" data-screen-job="reload">
+      <button onClick={() => window.location.reload()} className={job} aria-label="Refresh page" title={labelled ? undefined : 'Reload'} data-screen-job="reload">
         <RefreshCw className="h-5 w-5" />
         {labelled && <span>Reload</span>}
       </button>
 
-      <PerformanceModeBadge />
-      <BabysitterModeToggle />
-      <AwayModeToggle />
+      <PerformanceModeBadge labelled={labelled} className={labelled ? job : undefined} />
+      <BabysitterModeToggle {...(labelled ? { showLabel: true, size: 'default' as const, className: job } : {})} data-screen-job="babysitter" />
+      <AwayModeToggle {...(labelled ? { showLabel: true, size: 'default' as const, className: job } : {})} data-screen-job="away" />
 
       {onScreensaverClick && (
         <button
@@ -263,6 +264,7 @@ export function ScreenJobs({ onEditClick, onScreensaverClick, labelled = false }
           onClick={(e) => { e.stopPropagation(); onScreensaverClick(); }}
           className={job}
           aria-label="Start screensaver"
+          title={labelled ? undefined : 'Screensaver'}
           data-screen-job="screensaver"
         >
           <ScreensaverIcon />
