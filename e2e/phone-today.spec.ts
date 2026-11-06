@@ -89,6 +89,23 @@ test.describe('Today on a phone', () => {
       await expect(root.locator('[data-today-next]')).toContainText(`Phone next ${tag}`);
       await expect(root.locator('[data-today-coming]')).toBeVisible();
 
+      // #1034: the top is two aligned rows, the time with the temperature and
+      // the date with the condition.
+      const head = await page.evaluate(() => {
+        const r = (s: string) => document.querySelector(s)?.getBoundingClientRect() ?? null;
+        const size = (s: string) => getComputedStyle(document.querySelector(s)!).fontSize;
+        return { time: r('[data-phone-today-time]'), temp: r('[data-phone-today-temp]'), date: r('[data-phone-today-date]'), cond: r('[data-phone-today-condition]'),
+          dateSize: size('[data-phone-today-date]'), condSize: size('[data-phone-today-condition]') };
+      });
+      expect(Math.abs(head.time!.bottom - head.temp!.bottom), 'time and temperature on one line').toBeLessThanOrEqual(2);
+      expect(Math.abs(head.date!.top - head.cond!.top), 'date and condition on one line').toBeLessThanOrEqual(2);
+      expect(head.dateSize).toBe(head.condSize);
+
+      // #1034: it fits one screen, so it neither scrolls nor bounces.
+      const fitScreen = await page.evaluate(() => ({ doc: document.documentElement.scrollHeight, inner: innerHeight, bounce: getComputedStyle(document.documentElement).overscrollBehaviorY }));
+      expect(fitScreen.doc, 'no scroll on a page that fits').toBeLessThanOrEqual(fitScreen.inner);
+      expect(fitScreen.bounce).toBe('none');
+
       // In order, top to bottom: header, sentences, lines.
       const tops = await page.evaluate(() => {
         const top = (sel: string) => document.querySelector(sel)?.getBoundingClientRect().top ?? NaN;

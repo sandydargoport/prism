@@ -252,6 +252,17 @@ test('with both bottom corners covered the line hides, never moving to the top c
   } finally { await cleanup(); }
 });
 
+test('on a phone the photo date is not shown (#1034)', async ({ page }) => {
+  test.skip(process.env.E2E_HAS_TEST_DB !== '1', 'needs the seeded test database');
+  test.setTimeout(60_000);
+  const cleanup = await captionPage(page);
+  try {
+    await expect(page.locator('[data-photo-caption]')).toHaveText('June 2019', { timeout: 10_000 });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.locator('[data-photo-caption]')).toHaveCount(0, { timeout: 10_000 });
+  } finally { await cleanup(); }
+});
+
 /**
  * "On this day" (#959): with the setting on, a photo from this date in an
  * earlier year joins the rotation first, and its line says so.

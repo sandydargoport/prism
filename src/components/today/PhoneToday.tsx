@@ -11,6 +11,7 @@ import { useLocale } from 'next-intl';
 import { useTimeFormat } from '@/components/providers';
 import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
 import { useNow } from '@/lib/hooks/useNow';
+import { useEffect } from 'react';
 import type { CalendarEvent } from '@/types/calendar';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import type { BirthdayLike, ChoreLike } from '@/lib/today/quietLines';
@@ -40,33 +41,40 @@ export function PhoneToday({ parts, events, weather, onOpenEvent, household }: {
   const date = today.toLocaleDateString(locale, { weekday: 'long', month: 'long', day: 'numeric' });
   const calendar = isPartShown(parts, 'calendar');
   const current = weather?.current;
+  // No rubber-band bounce while the phone's Today is showing.
+  useEffect(() => {
+    const root = document.documentElement;
+    const before = root.style.overscrollBehaviorY;
+    root.style.overscrollBehaviorY = 'none';
+    return () => { root.style.overscrollBehaviorY = before; };
+  }, []);
 
   return (
-    <div className="flex min-h-[calc(var(--app-vh,100dvh)-var(--nav-bottom,0px))] flex-col" data-phone-today>
+    // Exactly one screen when it fits (#1034): the notch area is part of the
+    // screen, and the page does not bounce when there is nothing below.
+    <div className="flex min-h-[calc(var(--app-vh,100dvh)-var(--nav-bottom,0px)-env(safe-area-inset-top,0px))] flex-col" data-phone-today>
       {/* The photo shows through here in the light ink; with no photo the
           header is on the page's paper, in its ink. */}
       <header
         className={[
-          'flex items-start justify-between gap-4 px-5 pb-6 pt-10',
+          // Two aligned rows (#1034): the time and the temperature share a
+          // baseline, and so do the date and the condition below them.
+          'grid grid-cols-[1fr_auto] items-baseline gap-x-4 gap-y-1 px-5 pb-6 pt-10',
           'text-white [text-shadow:var(--ds-idle-text-shadow)]',
           '[html:not([data-wallpaper])_&]:text-foreground [html:not([data-wallpaper])_&]:[text-shadow:none]',
         ].join(' ')}
         data-phone-today-header
       >
-        <div className="flex min-w-0 flex-col gap-1">
-          {isPartShown(parts, 'clock') && (
-            <time className="text-display leading-none tabular-nums" style={{ fontFamily: 'var(--font-display)' }} data-phone-today-time>
-              {formatDisplayTime(now, timeFormat, {}, displayTimezone)}
-            </time>
-          )}
-          <span className="text-body opacity-90" data-phone-today-date>{date}</span>
-        </div>
-        {isPartShown(parts, 'weather') && current && weather && (
-          <div className="flex shrink-0 flex-col items-end gap-1" data-phone-today-weather>
-            <span className="text-title leading-none" style={{ fontFamily: 'var(--font-display)' }}>{formatTemp(current.temperature, weather.units)}</span>
-            <span className="text-caption opacity-90">{current.description}</span>
-          </div>
-        )}
+        <time className="text-display leading-none tabular-nums" style={{ fontFamily: 'var(--font-display)' }} data-phone-today-time>
+          {isPartShown(parts, 'clock') ? formatDisplayTime(now, timeFormat, {}, displayTimezone) : null}
+        </time>
+        <span className="text-display text-right leading-none" style={{ fontFamily: 'var(--font-display)' }} data-phone-today-temp>
+          {isPartShown(parts, 'weather') && current && weather ? formatTemp(current.temperature, weather.units) : null}
+        </span>
+        <span className="text-body opacity-90" data-phone-today-date>{date}</span>
+        <span className="text-body text-right opacity-90" data-phone-today-condition>
+          {isPartShown(parts, 'weather') && current ? current.description : null}
+        </span>
       </header>
 
       <section className="flex flex-1 flex-col gap-8 rounded-t-3xl bg-background px-5 pb-8 pt-6 text-foreground" data-phone-today-sheet>

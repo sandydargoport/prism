@@ -531,6 +531,14 @@ test.describe('the Today view', () => {
         return { next: y('[data-today-next]'), later: later.getBoundingClientRect().top };
       }, `List second ${tag}`);
       expect(order.next).toBeLessThan(order.later);
+      // #1034: only the event's words open it, not a tap anywhere across the list.
+      const widths = await page.evaluate(() => {
+        const wrap = document.querySelector('[data-today-list-wrap]')!.getBoundingClientRect().width;
+        const w = (e: Element) => e.getBoundingClientRect().width;
+        return { wrap, next: w(document.querySelector('[data-today-next]')!), rows: [...document.querySelectorAll('[data-today-later-row]')].map(w) };
+      });
+      expect(widths.next, 'Next is as wide as its words').toBeLessThan(widths.wrap * 0.9);
+      for (const r of widths.rows) expect(r, 'a later row is as wide as its words').toBeLessThan(widths.wrap * 0.9);
 
       // Switched on, the arc comes back in its place.
       const arcOn = TODAY_TEMPLATE.widgets.map((w) => (w.i === 'calendar' ? { ...w, settings: { ...(w.settings ?? {}), arc: true } } : w));
