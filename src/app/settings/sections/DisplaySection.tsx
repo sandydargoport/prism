@@ -47,7 +47,7 @@ function SectionDivider({ label }: { label: string }) {
 /** A small picture of each kind, for the picker. */
 function KindPicture({ kind }: { kind: 'simple' | 'custom' }) {
   return kind === 'simple' ? (
-    <svg viewBox="0 0 320 180" className="block aspect-video w-full rounded-lg" aria-hidden>
+    <svg viewBox="0 0 320 180" className="block aspect-video w-36 shrink-0 rounded-md" aria-hidden>
       <defs><linearGradient id="kind-simple" x1="0" y1="0" x2=".3" y2="1"><stop offset="0" stopColor="#5f8fa8" /><stop offset="1" stopColor="#d8c9a3" /></linearGradient></defs>
       <rect width="320" height="180" rx="8" fill="url(#kind-simple)" />
       <text x="14" y="32" fill="#fff" fontSize="20">4:00</text>
@@ -57,7 +57,7 @@ function KindPicture({ kind }: { kind: 'simple' | 'custom' }) {
       <circle cx="170" cy="82" r="5" fill="#fff6d8" />
     </svg>
   ) : (
-    <svg viewBox="0 0 320 180" className="block aspect-video w-full rounded-lg" aria-hidden>
+    <svg viewBox="0 0 320 180" className="block aspect-video w-36 shrink-0 rounded-md" aria-hidden>
       <rect width="320" height="180" rx="8" fill="#3b4a5c" />
       {[[10, 10, 140, 90], [158, 10, 152, 50], [158, 66, 72, 34], [238, 66, 72, 34], [10, 108, 92, 62], [110, 108, 200, 62]].map(([x, y, w, h]) => (
         <rect key={`${x}-${y}`} x={x} y={y} width={w} height={h} rx="6" fill="#fff" opacity=".18" />
@@ -93,15 +93,18 @@ function FrontPageCard() {
               disabled={!c.can || on}
               onClick={() => void c.pick()}
               aria-pressed={on}
-              className={`flex min-w-0 flex-col gap-2 rounded-xl border-2 p-3 text-left transition-colors disabled:cursor-default ${on ? 'border-primary' : 'border-border hover:border-foreground/40'} ${!c.can ? 'opacity-50' : ''}`}
+              className={`flex min-w-0 items-center gap-3 rounded-xl border-2 p-2.5 text-left transition-colors disabled:cursor-default ${on ? 'border-primary' : 'border-border hover:border-foreground/40'} ${!c.can ? 'opacity-50' : ''}`}
               data-front-page-choice={c.kind}
             >
-              <span className="flex items-center justify-between gap-2 font-medium">
-                {c.name}
-                {on && <span className="text-xs uppercase tracking-wide text-primary">In use</span>}
-              </span>
+              {/* A small picture beside the words, so the card is no taller than its neighbours. */}
               <KindPicture kind={c.kind} />
-              <span className="text-sm text-muted-foreground">{c.line}</span>
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span className="flex items-center gap-2 font-medium">
+                  {c.name}
+                  {on && <span className="text-xs uppercase tracking-wide text-primary">In use</span>}
+                </span>
+                <span className="text-sm text-muted-foreground">{c.line}</span>
+              </span>
             </button>
           );
         })}
