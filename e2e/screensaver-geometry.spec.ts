@@ -173,6 +173,7 @@ const DEEP = '2026-08-15T06:00:00Z';
 
 const BACKGROUNDS = {
   sky: { source: 'sky' },
+  photos: { source: 'photos' },
   dayNight: { day: 'photos', night: 'sky', switch: { by: 'sun', duskOffset: 0, dawnOffset: 0 } },
 } satisfies Record<string, IdleBackground>;
 
@@ -229,6 +230,26 @@ test.describe('screensaver night sky', () => {
       return { x: b.x, y: b.y, w: b.width, h: b.height, alpha: px[3] };
     });
   }
+
+  // #929: the screensaver wears Today's materials.
+  test('over photos the clock is in the display face, white by day and warm after dusk', async ({ page, context }) => {
+    const ink = async () => page.locator('.fixed.inset-0.z-9999 [data-clock-time]').first().evaluate((el) => ({
+      color: getComputedStyle(el).color,
+      face: getComputedStyle(el).fontFamily,
+    }));
+    await openScreensaver(page, 'photos', NOON);
+    await expect(page.locator('[data-screensaver-shade]')).toHaveCount(1);
+    const day = await ink();
+    expect(day.face, 'display face').toMatch(/Literata/i);
+    expect(day.color).toBe('rgb(255, 255, 255)');
+
+    const night = await context.newPage();
+    await openScreensaver(night, 'photos', NIGHT);
+    await expect(night.locator('[data-screensaver-night]')).toHaveCount(1);
+    const warm = await night.locator('.fixed.inset-0.z-9999 [data-clock-time]').first().evaluate((el) => getComputedStyle(el).color);
+    expect(warm).toBe('rgb(255, 226, 190)');
+    await night.close();
+  });
 
   test('Night sky fills the screen instead of the photos', async ({ page }) => {
     await openScreensaver(page, 'sky', NIGHT);
