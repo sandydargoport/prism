@@ -29,6 +29,7 @@ import {
 import { tombstoneIdSet } from '@/lib/services/settingsTombstone';
 import { decrypt, encrypt } from '@/lib/utils/crypto';
 import { validatePublicUrl, UnsafeUrlError } from '@/lib/utils/safeFetch';
+import { fetchIcal } from './fetchIcal';
 import { isGoogleCalendarWebLink, GOOGLE_WEB_LINK_ERROR } from '@/lib/utils/googleCalendarLink';
 import { localDateToFloatingAllDay } from '@/lib/utils/timeFormat';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
@@ -676,7 +677,7 @@ export async function syncIcalCalendarSource(
 
   let parsed: CalendarResponse;
   try {
-    parsed = await icalAsync.fromURL(source.icalUrl);
+    parsed = await fetchIcal(source.icalUrl);
   } catch (error) {
     const errorStr = error instanceof Error ? error.message : String(error);
     const prevErrors = (source.syncErrors as Record<string, unknown>) || {};

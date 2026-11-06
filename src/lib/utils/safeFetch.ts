@@ -57,6 +57,11 @@ function isPrivateIPv4(host: string): boolean {
   if (a === 0) return true;
   // 100.64.0.0/10 (carrier-grade NAT, often used internally)
   if (a === 100 && b >= 64 && b <= 127) return true;
+  // 192.0.0.0/24 (protocol assignments) and 198.18.0.0/15 (benchmarking)
+  if (a === 192 && b === 0 && Number(m[3]) === 0) return true;
+  if (a === 198 && (b === 18 || b === 19)) return true;
+  // 224.0.0.0 and up (multicast, reserved, broadcast)
+  if (a >= 224) return true;
   return false;
 }
 
@@ -238,6 +243,52 @@ export function validatePublicUrl(
 export interface SafeFetchOptions extends ValidatePublicUrlOptions {
   /** Maximum redirect hops to follow, each re-validated. Default 5. */
   maxRedirects?: number;
+  /**
+   * Resolve a hostname to its addresses. Given, or in production, every hop's
+   * hostname is resolved and refused if any address is private (#809).
+   */
+  resolveHost?: HostResolver;
+}
+
+export type HostResolver = (host: string) => Promise<string[]>;
+
+const dnsResolver: HostResolver = async (host) => {
+  const { lookup } = await import('node:dns/promises');
+  return (await lookup(host, { all: true })).map((a) => a.address);
+};
+
+/**
+ * The hostname literal can be public while it resolves to a private address:
+ * a Docker service name (db, redis), a .local name, or any DNS name pointed
+ * inward. Resolve it and refuse it if any address is private, unless the
+ * operator allowlisted the host or that address (#809). The rebinding window
+ * between this lookup and the fetch's own remains (see the note above).
+ */
+async function assertResolvesPublic(url: URL, options: SafeFetchOptions): Promise<void> {
+  const isProd = options.isProduction ?? process.env.NODE_ENV === 'production';
+  // Live DNS only in a real production process; tests pass a resolver.
+  const resolve = options.resolveHost ?? (process.env.NODE_ENV === 'production' ? dnsResolver : null);
+  if (!resolve) return;
+  const host = unbracket(url.hostname);
+  const allowlist = options.allowedInternalHosts ?? parseAllowedInternalHosts(process.env.PRISM_ALLOWED_INTERNAL_HOSTS);
+  if (hostAllowed(host, allowlist)) return;
+  // An IP literal was already judged by validatePublicUrl.
+  if (/^[\d.]+$/.test(host) || host.includes(':')) return;
+  let addresses: string[];
+  try {
+    addresses = await resolve(host);
+  } catch {
+    // Not resolvable here: fetch looks it up itself and reports the failure.
+    // What matters is refusing a name that resolves inward.
+    return;
+  }
+  for (const addr of addresses) {
+    if (hostAllowed(addr, allowlist)) continue;
+    const loopbackInDev = !isProd && (/^127\./.test(addr) || addr === '::1');
+    if (!loopbackInDev && (isPrivateIPv4(addr) || isPrivateIPv6(addr))) {
+      throw new UnsafeUrlError(blockedMessage(host));
+    }
+  }
 }
 
 // 3xx statuses that carry a Location we would otherwise auto-follow.
@@ -257,7 +308,8 @@ const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
  * Per-hop method handling mirrors the fetch spec: 303 (and 301/302 on a
  * non-GET/HEAD request) downgrade to GET and drop the body; 307/308 preserve
  * both. The DNS-rebinding caveat documented on validatePublicUrl() still
- * applies — each hop validates the hostname literal, not the resolved IP.
+ * applies to the gap between our lookup and fetch's own, but each hop's
+ * hostname is also resolved and refused if it points at a private address.
  */
 export async function safeFetch(
   rawUrl: string,
@@ -270,6 +322,7 @@ export async function safeFetch(
   let body = init.body;
 
   for (let hop = 0; hop <= maxRedirects; hop++) {
+    await assertResolvesPublic(new URL(currentUrl), options);
     const res = await fetch(currentUrl, { ...init, method, body, redirect: 'manual' });
 
     if (!REDIRECT_STATUSES.has(res.status)) return res;
