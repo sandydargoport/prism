@@ -1,0 +1,40 @@
+name: CI retry
+
+# Reruns a CI run once when it failed only because a job was cancelled, with
+# no job actually failing. GitHub sometimes stops a long job part-way (the E2E
+# modality suite was cut off nine minutes in, mid-suite, on a run whose rerun
+# passed), and each of those was a failure email and a manual rerun.
+#
+# A real failure is never retried: if any job's conclusion is "failure" this
+# does nothing. Only the first attempt is retried, so it cannot loop.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  retry:
+    if: github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Rerun if every unsuccessful job was cancelled
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          REPO: ${{ github.repository }}
+        run: |
+          jobs=$(gh api "repos/$REPO/actions/runs/$RUN_ID/jobs?per_page=100" --jq '[.jobs[].conclusion]')
+          failed=$(jq '[.[] | select(. == "failure" or . == "timed_out")] | length' <<<"$jobs")
+          cancelled=$(jq '[.[] | select(. == "cancelled")] | length' <<<"$jobs")
+          echo "jobs: $jobs"
+          if [ "$failed" -eq 0 ] && [ "$cancelled" -gt 0 ]; then
+            echo "Only cancelled jobs: rerunning them once."
+            gh run rerun "$RUN_ID" --failed --repo "$REPO"
+          else
+            echo "A job failed ($failed) or none was cancelled ($cancelled): not retrying."
+          fi
