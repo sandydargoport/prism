@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, requireRole } from '@/lib/auth';
+import { requireAuth, requireRole, getDisplayAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { settings } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
@@ -82,15 +82,22 @@ export async function POST(request: NextRequest) {
         const forbidden = requireRole(auth, 'canToggleAwayMode');
         if (forbidden) return forbidden;
         authUserId = auth.userId;
-      } else if (host) {
+      } else {
+        // Matching headers prove little: a non-browser caller can set both.
+        // So the caller must also be this install's screen or a person (#809),
+        // the Host must be there and match, and auto-activation is limited.
         try {
-          const originHost = new URL(origin).host;
-          if (originHost !== host) {
+          if (!host || new URL(origin).host !== host) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
           }
         } catch {
           return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
+        const display = await getDisplayAuth();
+        if (!display) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        const { rateLimitGuard } = await import('@/lib/cache/rateLimit');
+        const limited = await rateLimitGuard('household', 'away-mode-auto', 6, 60);
+        if (limited) return limited;
       }
     }
 
