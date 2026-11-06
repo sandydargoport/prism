@@ -355,4 +355,63 @@ test.describe('the Today view', () => {
       if (taskId) await page.request.delete(`/api/tasks/${taskId}`);
     }
   });
+
+  // #926: calm idle and night.
+  test('going idle fades the sentences, keeps the clock still, and the first tap only wakes', async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    const d = new Date();
+    await page.clock.setFixedTime(new Date(d.getFullYear(), d.getMonth(), d.getDate(), 9));
+    await login(page);
+    const tomorrow = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, 9);
+    const later = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 15);
+    const made: string[] = [];
+    for (const [title, start] of [[`Idle tomorrow ${Date.now()}`, tomorrow], [`Idle later ${Date.now()}`, later]] as const) {
+      const r = await postEvent(page, { title, startTime: start.toISOString(), endTime: new Date(start.getTime() + 3600_000).toISOString(), allDay: false, createdBy: getSeededParentId() });
+      made.push((await r.json()).id);
+    }
+    const layout = await (await page.request.post('/api/layouts', { data: { name: `Idle e2e ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
+    try {
+      await page.route('**/api/weather*', (route) => route.fulfill({ json: WEATHER }));
+      await page.goto(`/d/${layout.slug}`);
+      await page.locator('[data-today-coming]').waitFor({ timeout: 60_000 });
+      const clockBefore = await page.locator('[data-today-clock]').boundingBox();
+      await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
+      await expect(page.locator('[data-today-scene]')).toHaveAttribute('data-today-idle', 'true');
+      await expect.poll(() => page.locator('[data-today-coming-wrap]').evaluate((el) => getComputedStyle(el).opacity)).toBe('0');
+      const clockAfter = await page.locator('[data-today-clock]').boundingBox();
+      expect(Math.abs(clockAfter!.x - clockBefore!.x) + Math.abs(clockAfter!.y - clockBefore!.y), 'the clock stays put').toBeLessThanOrEqual(6);
+      // Only the next event keeps its label.
+      await expect(page.locator('[data-arc-label]')).toHaveCount(1);
+      // A tap on a bead while idle opens nothing.
+      const hit = page.locator('[data-arc-bead-hit]').first();
+      const box = await hit.boundingBox();
+      await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
+      await page.waitForTimeout(800);
+      await expect(page.locator('[data-event-sheet]')).toHaveCount(0);
+    } finally {
+      await page.request.delete(`/api/layouts/${layout.id}`);
+      for (const id of made) await page.request.delete(`/api/events/${id}`);
+    }
+  });
+
+  test('after dusk the ink turns warm and a veil and the moon come up', async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    const d = new Date();
+    const at = (h: number, m = 0) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m);
+    await page.clock.setFixedTime(at(21, 40));
+    await login(page);
+    const layout = await (await page.request.post('/api/layouts', { data: { name: `Night e2e ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
+    try {
+      await page.route('**/api/weather*', (route) => route.fulfill({ json: { ...WEATHER, sunrise: at(6, 30).toISOString(), sunset: at(16, 40).toISOString(), moonPhase: 0.3 } }));
+      await page.goto(`/d/${layout.slug}`);
+      await expect(page.locator('[data-today-scene]')).toHaveAttribute('data-today-night', 'true', { timeout: 60_000 });
+      const ink = await page.locator('[data-today-clock]').evaluate((el) => getComputedStyle(el).color);
+      expect(ink).toBe('rgb(255, 226, 190)');
+      await expect(page.locator('[data-today-veil]')).toHaveCount(1);
+      await expect(page.locator('[data-today-moon]')).toHaveCount(1);
+      await expect(page.locator('[data-sun-down]'), 'the sun is down').toHaveCount(1);
+    } finally {
+      await page.request.delete(`/api/layouts/${layout.id}`);
+    }
+  });
 });

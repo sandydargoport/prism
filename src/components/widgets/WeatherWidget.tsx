@@ -234,7 +234,7 @@ function moonPhasePath(cx: number, cy: number, r: number, phase: number): string
  * Small standalone moon glyph — outlined disc + lit fraction. Used next to
  * each forecast day to show the night's moon phase at a glance.
  */
-function MoonGlyph({
+export function MoonGlyph({
   phase,
   size = 14,
   color = '#60A5FA',

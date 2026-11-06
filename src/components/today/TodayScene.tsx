@@ -17,7 +17,8 @@ import { useLocale, useTranslations } from 'next-intl';
 import { useTimeFormat } from '@/components/providers';
 import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
 import { splitDayHalf } from '@/components/widgets/ClockWidget';
-import { formatTemp, weatherSentence, type WeatherData } from '@/components/widgets/WeatherWidget';
+import { formatTemp, MoonGlyph, weatherSentence, type WeatherData } from '@/components/widgets/WeatherWidget';
+import { isTodayNight } from '@/lib/today/night';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import type { CalendarEvent } from '@/types/calendar';
 import { SunArc } from './SunArc';
@@ -53,6 +54,7 @@ export function TodayScene({
   events = [],
   onOpenEvent,
   household,
+  idle = false,
   topOffset = 0,
 }: {
   parts: WidgetConfig[];
@@ -69,6 +71,12 @@ export function TodayScene({
     onTickChore?: (choreId: string) => void;
     onAddShopping?: () => void;
   };
+  /**
+   * The wall is idle (#926): the sentences and quiet lines fade, the arc
+   * keeps only the next label, and the scene takes no taps, so the first tap
+   * only wakes it.
+   */
+  idle?: boolean;
   /** Height of the bar above the scene, when it shows. */
   topOffset?: number;
 }) {
@@ -90,13 +98,28 @@ export function TodayScene({
       : current.description)
     : undefined;
   const high = weather?.forecast?.[0]?.high;
+  // After dusk: warm ink, a veil over the photo and the moon (#926).
+  const night = isTodayNight(now, weather?.sunrise, weather?.sunset);
+  const fades = `transition-opacity duration-1000 motion-reduce:duration-0 ${idle ? 'opacity-0' : 'opacity-100'}`;
 
   return (
     <div
       data-today-scene
-      className="relative w-full overflow-hidden text-white"
-      style={{ height: `calc(100dvh - ${topOffset}px)`, textShadow: 'var(--ds-idle-text-shadow)' }}
+      className={`relative w-full overflow-hidden ${idle ? 'pointer-events-none' : ''}`}
+      style={{
+        height: `calc(100dvh - ${topOffset}px)`,
+        textShadow: 'var(--ds-idle-text-shadow)',
+        color: night ? 'rgb(255 226 190)' : 'white',
+      }}
+      data-today-idle={idle || undefined}
+      data-today-night={night || undefined}
     >
+      {night && <div className="absolute inset-0 bg-black/60" aria-hidden data-today-veil />}
+      {night && weather?.moonPhase !== undefined && (
+        <div className="absolute right-[18%] top-[14%] opacity-90" aria-hidden data-today-moon>
+          <MoonGlyph phase={weather.moonPhase} size={44} color="rgb(255 226 190)" />
+        </div>
+      )}
       {isPartShown(parts, 'clock') && (
         <div data-today-corner="left" className="absolute left-[3rem] top-[2.5rem] flex flex-col items-start">
           <time className="text-body font-medium opacity-95" data-today-date>{date}</time>
@@ -129,14 +152,14 @@ export function TodayScene({
 
       {/* The day as the sun's path (#909), margin to margin across the middle. */}
       {isPartShown(parts, 'calendar') && (
-        <div className="absolute left-[3rem] right-[3rem] top-[30%] h-[38%]" data-today-arc>
-          <SunArc events={events} now={now} sunrise={weather?.sunrise} sunset={weather?.sunset} onOpenEvent={onOpenEvent} />
+        <div className={`absolute left-[3rem] right-[3rem] h-[38%] transition-[top] duration-1000 ${idle ? 'top-[44%]' : 'top-[30%]'}`} data-today-arc>
+          <SunArc events={events} now={now} sunrise={weather?.sunrise} sunset={weather?.sunset} onOpenEvent={onOpenEvent} onlyNext={idle} />
         </div>
       )}
 
       {/* Quiet lines (#911), bottom right. */}
       {household && (
-        <div className="absolute bottom-[3rem] right-[3rem]">
+        <div className={`absolute bottom-[3rem] right-[3rem] ${fades}`} aria-hidden={idle || undefined}>
           <QuietLines
             chores={isPartShown(parts, 'chores') ? household.chores : []}
             lists={isPartShown(parts, 'shopping') ? household.lists : []}
@@ -150,7 +173,7 @@ export function TodayScene({
 
       {/* The coming days as sentences (#805), bottom left. */}
       {isPartShown(parts, 'calendar') && (
-        <div className="absolute bottom-[3rem] left-[3rem] w-[min(56%,60rem)]">
+        <div className={`absolute bottom-[3rem] left-[3rem] w-[min(56%,60rem)] ${fades}`} aria-hidden={idle || undefined} data-today-coming-wrap>
           <ComingDays
             events={events}
             now={now}
