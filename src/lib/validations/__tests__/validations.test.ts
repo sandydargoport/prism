@@ -470,3 +470,20 @@ describe('update schemas leave out what the request left out', () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe('bus route walk time (#900)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { createBusRouteSchema, updateBusRouteSchema } = require('../index');
+  const base = { studentName: 'Robin', tripId: 't1', direction: 'AM', label: 'Morning bus', scheduledTime: '07:30' };
+
+  it('defaults to no walk on a new route, and takes whole minutes up to an hour', () => {
+    expect(createBusRouteSchema.parse(base).walkMinutes).toBe(0);
+    expect(createBusRouteSchema.parse({ ...base, walkMinutes: 8 }).walkMinutes).toBe(8);
+    expect(createBusRouteSchema.safeParse({ ...base, walkMinutes: 61 }).success).toBe(false);
+    expect(createBusRouteSchema.safeParse({ ...base, walkMinutes: 2.5 }).success).toBe(false);
+  });
+
+  it('leaves the walk time alone on an edit that does not mention it', () => {
+    expect(updateBusRouteSchema.parse({ label: 'School bus' })).not.toHaveProperty('walkMinutes');
+  });
+});

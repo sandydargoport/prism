@@ -174,6 +174,7 @@ CREATE TABLE IF NOT EXISTS public.bus_routes (
     checkpoints jsonb DEFAULT '[]'::jsonb NOT NULL,
     stop_name character varying(255),
     school_name character varying(255),
+    walk_minutes integer DEFAULT 0 NOT NULL,
     enabled boolean DEFAULT true NOT NULL,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
     updated_at timestamp without time zone DEFAULT now() NOT NULL,
