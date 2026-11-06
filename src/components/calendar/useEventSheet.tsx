@@ -46,7 +46,7 @@ export function useEventSheet(onChanged: () => void): {
           onClose={() => setSelected(null)}
           onEdit={() => { setEditing(selected); setSelected(null); }}
           onDeleted={() => { setSelected(null); onChanged(); }}
-          canHide={activeUser?.role === 'parent'}
+          canHide={!activeUser || activeUser.role === 'parent'}
           onHiddenChange={() => { setSelected(null); onChanged(); }}
         />
       )}

@@ -11,6 +11,7 @@
  * travel times for the wall (#806).
  */
 import { useState } from 'react';
+import { useAuth } from '@/components/providers';
 import { useTranslations } from 'next-intl';
 import { useDateLabels } from '@/lib/hooks/useDateLabels';
 import { sanitizeEventDescription } from '@/lib/utils/eventDescriptionHtml';
@@ -40,7 +41,10 @@ export function EventSheet({ event, onClose, onEdit, onDeleted, canHide, onHidde
   onClose: () => void;
   onEdit: () => void;
   onDeleted: () => void;
-  /** Parents only (#592); the hide route refuses anyone else. */
+  /**
+   * Show Hide in Prism: to a parent, and to anyone not signed in, who is asked
+   * for a parent's PIN on the tap (#1048). The hide route refuses anyone else.
+   */
   canHide: boolean;
   /** Called after a hide, and again after its Undo. */
   onHiddenChange: () => void;
@@ -50,6 +54,7 @@ export function EventSheet({ event, onClose, onEdit, onDeleted, canHide, onHidde
   const tActions = useTranslations('common.actions');
   const d = useDateLabels();
   const { confirm, dialogProps } = useConfirmDialog();
+  const { activeUser, requireAuth } = useAuth();
   const [hiding, setHiding] = useState(false);
   // On an occurrence of a series, ticking the box first asks which to hide.
   const [choosingScope, setChoosingScope] = useState(false);
@@ -57,6 +62,13 @@ export function EventSheet({ event, onClose, onEdit, onDeleted, canHide, onHidde
   // Hide in Prism (#592): applies at once, like the rest of the app, with an
   // Undo in the toast. The event stays in its source calendar.
   const handleHide = async (scope: 'event' | 'series') => {
+    // Not signed in: the usual sign-in box, then the hide (#1048).
+    const who = activeUser ?? await requireAuth(t('event.hideSignInTitle'), t('event.hideSignInBody'));
+    if (!who) return;
+    if (who.role !== 'parent') {
+      toast({ title: t('event.hideParentsOnly'), variant: 'destructive' });
+      return;
+    }
     setHiding(true);
     try {
       const response = await fetch(
