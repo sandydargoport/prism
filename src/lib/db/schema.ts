@@ -1378,6 +1378,11 @@ export const photos = pgTable('photos', {
   focalX: real('focal_x'),
   focalY: real('focal_y'),
 
+  // Where it was taken, as a short name (#958): looked up once, only while
+  // the household shows places; placeLookedUp stops a second lookup.
+  placeName: varchar('place_name', { length: 120 }),
+  placeLookedUp: boolean('place_looked_up').default(false).notNull(),
+
   // Comma-separated display contexts (e.g., "wallpaper,screensaver")
   usage: varchar('usage', { length: 100 }).default('wallpaper,gallery,screensaver').notNull(),
 
