@@ -24,7 +24,7 @@ import { rateLimitGuard } from '@/lib/cache/rateLimit';
 import { calculateNextDue } from '@/lib/utils/calculateNextDue';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { todayKey } from '@/lib/utils/zonedDate';
-import {
+import { choreNotDueYet,
   approverForNewCompletion,
   callerCanApproveChores,
   findPendingCompletion,
@@ -88,6 +88,7 @@ export async function POST(
         frequency: chores.frequency,
         customIntervalDays: chores.customIntervalDays,
         startDay: chores.startDay,
+        nextDue: chores.nextDue,
       })
       .from(chores)
       .where(eq(chores.id, choreId));
@@ -105,6 +106,16 @@ export async function POST(
         { error: 'Cannot complete a disabled chore' },
         { status: 400 }
       );
+    }
+
+    // Done for this period already (#984): another tick would award the
+    // points again and push the next due date further on.
+    if (choreNotDueYet(chore.nextDue, todayKey(await getHouseholdTimezone()))) {
+      return NextResponse.json({
+        error: 'This chore is already done',
+        message: `${chore.title} is done until ${chore.nextDue}.`,
+        notDueUntil: chore.nextDue,
+      }, { status: 409 });
     }
 
     if (auth.wall) await logWallChange('chore-complete', 'chore', choreId, `Ticked "${chore.title}" on the wall without a PIN`);

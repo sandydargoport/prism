@@ -1,4 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { todayKey } from '@/lib/utils/zonedDate';
+import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { withAuth } from '@/lib/api/withAuth';
 import { voiceOk, voiceError } from '@/lib/api/voiceResponse';
 import { db } from '@/lib/db/client';
@@ -9,6 +11,7 @@ import {
   approverForNewCompletion,
   findPendingCompletion,
   recordChoreCompletion,
+  choreNotDueYet,
 } from '@/lib/services/choreCompletion';
 import { logError } from '@/lib/utils/logError';
 
@@ -49,6 +52,7 @@ export async function POST(request: NextRequest) {
           assigneeName: users.name,
           assigneeRole: users.role,
           requiresApproval: chores.requiresApproval,
+          nextDue: chores.nextDue,
           pointValue: chores.pointValue,
           frequency: chores.frequency,
           customIntervalDays: chores.customIntervalDays,
@@ -114,6 +118,11 @@ export async function POST(request: NextRequest) {
       }
 
       const assigneeId = target.assignedTo;
+
+      // Done for this period already (#984).
+      if (choreNotDueYet(target.nextDue, todayKey(await getHouseholdTimezone()))) {
+        return voiceError(`${target.title} is already done until ${target.nextDue}.`, 409);
+      }
 
       // Same guard as the app: a child cannot stack a second completion on
       // one that is still waiting for a parent.
