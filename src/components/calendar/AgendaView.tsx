@@ -14,7 +14,6 @@ import { Calendar, UtensilsCrossed } from 'lucide-react';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui';
 import type { CalendarEvent } from '@/types/calendar';
 import type { DayBucket } from '@/lib/hooks/useWeekViewData';
 import { useDayDroppable, getMealTime, getChoreTime, getTaskTime, parseTimeOfDay, formatTimeOfDay, type OverlayItemRef } from './cells';
@@ -209,18 +208,14 @@ function AgendaDaySection({
         cards && enableDnd && droppable.isOver && 'ring-2 ring-seasonal-accent shadow-xs bg-card/40 p-1',
       )}
     >
-      <div className="flex items-center gap-2 mb-2">
-        {/* The normal text colour: a seasonal accent is a marker colour, and
-            several months' are too light to read as text on a light card. The
-            Today badge beside it marks the day (#801). */}
-        <span className="text-sm font-semibold text-foreground">
-          {formatAgendaDayHeader(date, displayTimezone, t, d)}
+      {/* The day as a word in the display face, the date as quiet meta
+          (#879): "Tomorrow  Nov 6", "Saturday  Nov 8". The normal text
+          colour: a seasonal accent is too light to read on some cards. */}
+      <div className="flex items-baseline gap-2 mb-2">
+        <span className="text-title text-foreground" style={{ fontFamily: 'var(--font-display)' }} data-agenda-day-word>
+          {agendaDayWord(date, displayTimezone, t, d)}
         </span>
-        {isSameDay(date, toDisplayDate(new Date(), displayTimezone)) && (
-          <Badge className="text-3xs px-1.5 py-0 bg-seasonal-highlight text-foreground">
-            {t('today')}
-          </Badge>
-        )}
+        <span className="text-caption text-muted-foreground" data-agenda-day-date>{d.monthDay(date)}</span>
       </div>
 
       <div className="flex flex-col gap-(--agenda-row-gap) pl-2 border-l-2 border-border">
@@ -427,15 +422,15 @@ function AgendaRowItem({ row, cards = false }: { row: AgendaRow; cards?: boolean
   );
 }
 
-function formatAgendaDayHeader(
+/** Today, Tomorrow, else the weekday; the date sits beside it as meta. */
+export function agendaDayWord(
   date: Date,
   displayTimezone: string,
   t: (key: string, values?: Record<string, string | number | Date>) => string,
   d: DateLabels,
 ): string {
   const displayNow = toDisplayDate(new Date(), displayTimezone);
-  const dayName = d.fullDate(date);
-  if (isSameDay(date, displayNow)) return t('dayHeader', { label: t('today'), date: dayName });
-  if (isSameDay(date, addDays(displayNow, 1))) return t('dayHeader', { label: t('tomorrow'), date: dayName });
-  return dayName;
+  if (isSameDay(date, displayNow)) return t('today');
+  if (isSameDay(date, addDays(displayNow, 1))) return t('tomorrow');
+  return d.weekdayLong(date);
 }
