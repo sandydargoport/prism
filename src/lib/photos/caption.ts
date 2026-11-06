@@ -52,27 +52,43 @@ export function captionText(date: string | null, place: string | null): string |
   return date ?? place ?? null;
 }
 
-export type CaptionSpot = 'bottom-right' | 'bottom-left' | 'top-centre' | 'bottom-centre';
+/** Only the bottom corners (#992): anywhere else a lone date reads as a stray heading. */
+export type CaptionSpot = 'bottom-right' | 'bottom-left';
 
 /** Where each spot's line would sit, for a screen and a line of this size. */
 function spotRect(spot: CaptionSpot, W: number, H: number, w: number, h: number, margin: number): Rect {
   switch (spot) {
     case 'bottom-right': return { left: W - margin - w, top: H - margin - h, width: w, height: h };
     case 'bottom-left': return { left: margin, top: H - margin - h, width: w, height: h };
-    case 'top-centre': return { left: (W - w) / 2, top: margin, width: w, height: h };
-    case 'bottom-centre': return { left: (W - w) / 2, top: H - margin - h, width: w, height: h };
   }
 }
 
 const overlaps = (a: Rect, b: Rect) =>
   a.left < b.left + b.width && b.left < a.left + a.width && a.top < b.top + b.height && b.top < a.top + a.height;
 
-/** The first spot where the line touches no widget; null when none is free (it then hides). */
-export function captionSpot(screen: { width: number; height: number }, covered: readonly Rect[], line = { width: 360, height: 28 }, margin = 32): CaptionSpot | null {
-  const order: CaptionSpot[] = ['bottom-right', 'bottom-left', 'top-centre', 'bottom-centre'];
+export interface CaptionPlace {
+  spot: CaptionSpot;
+  /** Pixels the line is raised to clear a small item already in that corner. */
+  lift: number;
+}
+
+/**
+ * The first bottom corner the line fits in (#992): as it is, or lifted just
+ * clear of a small item sitting in that corner (a button, a short line), but
+ * never more than 15% of the screen's height. Null when neither corner has
+ * room; the line then hides rather than moving anywhere else.
+ */
+export function captionSpot(screen: { width: number; height: number }, covered: readonly Rect[], line = { width: 360, height: 28 }, margin = 32): CaptionPlace | null {
+  const order: CaptionSpot[] = ['bottom-right', 'bottom-left'];
+  const gap = 8;
   for (const spot of order) {
     const r = spotRect(spot, screen.width, screen.height, line.width, line.height, margin);
-    if (!covered.some((c) => overlaps(r, c))) return spot;
+    const hit = covered.filter((c) => overlaps(r, c));
+    if (hit.length === 0) return { spot, lift: 0 };
+    const lift = Math.ceil(r.top + r.height - Math.min(...hit.map((c) => c.top)) + gap);
+    if (lift > 0.15 * screen.height) continue;
+    const raised = { ...r, top: r.top - lift };
+    if (!covered.some((c) => overlaps(raised, c))) return { spot, lift };
   }
   return null;
 }

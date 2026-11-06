@@ -176,7 +176,7 @@ test('a wide photo is cropped so its subject is not under a widget', async ({ pa
  * When a photo was taken (#958): a short line in a free corner, at or above
  * the text floor, unless the household turns it off.
  */
-async function captionPage(page: import('@playwright/test').Page, dateSetting?: boolean) {
+async function captionPage(page: import('@playwright/test').Page, dateSetting?: boolean, grid?: Array<{ i: string; x: number; y: number; w: number; h: number }>) {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.addInitScript(() => {
     localStorage.setItem('prism-wallpaper-enabled', 'true');
@@ -194,7 +194,9 @@ async function captionPage(page: import('@playwright/test').Page, dateSetting?: 
   await page.route('**/api/photos/dated/file', (route) => route.fulfill({ path: path.join(SCENERY, 'valley.webp'), contentType: 'image/webp' }));
   // A Today layout leaves a corner free; a full grid would hide the line.
   expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: process.env.E2E_PIN || '1234' } })).ok()).toBe(true);
-  const layout = await (await page.request.post('/api/layouts', { data: { name: `Caption ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
+  const layout = await (await page.request.post('/api/layouts', { data: grid
+    ? { name: `Caption ${Date.now()}`, widgets: grid.map((w) => ({ ...w, visible: true })) }
+    : { name: `Caption ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
   await page.goto(`/d/${layout.slug}`);
   await expect(page.locator('[data-photo-stage] [data-photo-layer="front"]').first()).toHaveCount(1, { timeout: 60_000 });
   return () => page.request.delete(`/api/layouts/${layout.id}`);
@@ -215,10 +217,13 @@ test('the photo says when it was taken, in a free corner, at the text floor or a
       .map((e) => e.getBoundingClientRect())
       .filter((c) => c.width > 0 && c.width * c.height < 0.6 * innerWidth * innerHeight)
       .filter((c) => r.left < c.right && c.left < r.right && r.top < c.bottom && c.top < r.bottom);
-    return { size: parseFloat(getComputedStyle(el).fontSize), floor, overlaps: covered.length, spot: (el as HTMLElement).dataset.photoCaption };
+    return { size: parseFloat(getComputedStyle(el).fontSize), floor, overlaps: covered.length, spot: (el as HTMLElement).dataset.photoCaption, low: r.bottom / innerHeight };
   });
   expect(m.size).toBeGreaterThanOrEqual(m.floor);
   expect(m.overlaps, `in ${m.spot}`).toBe(0);
+  // In a bottom corner (#992), lifted at most a little, never the top centre.
+  expect(m.spot).toMatch(/^bottom-(left|right)$/);
+  expect(m.low).toBeGreaterThan(0.75);
   } finally { await cleanup(); }
 });
 
@@ -227,6 +232,21 @@ test('no date line when the household turns it off', async ({ page }) => {
   test.setTimeout(60_000);
   const cleanup = await captionPage(page, false);
   try {
+    await page.waitForTimeout(2500);
+    await expect(page.locator('[data-photo-caption]')).toHaveCount(0);
+  } finally { await cleanup(); }
+});
+
+test('with both bottom corners covered the line hides, never moving to the top centre (#992)', async ({ page }) => {
+  test.skip(process.env.E2E_HAS_TEST_DB !== '1', 'needs the seeded test database');
+  test.setTimeout(60_000);
+  // A grid with widgets across the bottom left and bottom right, the top free.
+  const cleanup = await captionPage(page, true, [
+    { i: 'clock', x: 0, y: 17, w: 20, h: 10 },
+    { i: 'weather', x: 28, y: 17, w: 20, h: 10 },
+  ]);
+  try {
+    await expect(page.locator('.widget-cell').first()).toBeVisible({ timeout: 30_000 });
     await page.waitForTimeout(2500);
     await expect(page.locator('[data-photo-caption]')).toHaveCount(0);
   } finally { await cleanup(); }
