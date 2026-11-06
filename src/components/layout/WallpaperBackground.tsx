@@ -1,5 +1,6 @@
 'use client';
 
+import { useFocalPointPass } from '@/lib/photos/focalPass';
 import { PhotoStage } from './PhotoStage';
 import { useState, useEffect, useCallback } from 'react';
 import { usePhotos } from '@/lib/hooks/usePhotos';
@@ -251,6 +252,8 @@ export function WallpaperBackground() {
   const { items, scenery } = wallpaperPool(photos, photosLoading, sceneryOn);
   const usePinned = !scenery && !!pinnedId && !brokenIds.has(pinnedId);
   const pool = items.filter((p) => !brokenIds.has(p.id));
+  // Find the focal points of photos that have none yet (#956).
+  useFocalPointPass(enabled && !scenery && pool.length > 0);
 
   // Rotate photos (only if no pinned photo and interval is not "never")
   useEffect(() => {

@@ -531,6 +531,8 @@ CREATE TABLE IF NOT EXISTS public.photos (
     thumbnail_path character varying(255),
     favorite boolean DEFAULT false NOT NULL,
     orientation character varying(20),
+    focal_x real,
+    focal_y real,
     usage character varying(100) DEFAULT 'wallpaper,gallery,screensaver'::character varying NOT NULL,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
     latitude numeric(9,6),
