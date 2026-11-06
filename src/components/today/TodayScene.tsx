@@ -17,7 +17,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { useTimeFormat } from '@/components/providers';
 import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
 import { splitDayHalf } from '@/components/widgets/ClockWidget';
-import { formatTemp, MoonGlyph, weatherSentence, type WeatherData } from '@/components/widgets/WeatherWidget';
+import { formatTemp, weatherSentence, type WeatherData } from '@/components/widgets/WeatherWidget';
 import { isTodayNight } from '@/lib/today/night';
 import { shownWhenIdle } from '@/components/screensaver/calmMode';
 import { TODAY_TEXT_SIZES, type TodayTextSize } from './TodayPartsPanel';
@@ -131,11 +131,6 @@ export function TodayScene({
       data-today-night={night || undefined}
     >
       {night && <div className="absolute inset-0 bg-black/60" aria-hidden data-today-veil />}
-      {night && weather?.moonPhase !== undefined && (
-        <div className="absolute right-[18%] top-[14%] opacity-90" aria-hidden data-today-moon>
-          <MoonGlyph phase={weather.moonPhase} size={44} color="rgb(255 226 190)" />
-        </div>
-      )}
       {isPartShown(parts, 'clock') && (
         <div data-today-corner="left" className={`absolute left-[3rem] top-[2.5rem] flex flex-col items-start ${fadeUnless('clock')}`}>
           <time className="text-body font-medium opacity-95" data-today-date>{date}</time>
@@ -195,7 +190,7 @@ export function TodayScene({
           className={`absolute left-[3rem] right-[3rem] h-[38%] transition-[top,opacity] duration-1000 portrait:h-[26%] ${idle ? 'top-[44%] portrait:top-[24%]' : 'top-[30%] portrait:top-[14%]'} ${idle && !staysIdle(parts, 'calendar') ? 'opacity-0' : ''}`}
           data-today-arc
         >
-          <SunArc events={events} now={now} sunrise={weather?.sunrise} sunset={weather?.sunset} onOpenEvent={onOpenEvent} onlyNext={idle} />
+          <SunArc events={events} now={now} sunrise={weather?.sunrise} sunset={weather?.sunset} moonrise={weather?.moonrise} moonset={weather?.moonset} moonPhase={weather?.moonPhase} onOpenEvent={onOpenEvent} onlyNext={idle} />
         </div>
       )}
 

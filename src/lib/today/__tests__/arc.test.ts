@@ -1,7 +1,7 @@
 /**
  * The sun arc's geometry (#909).
  */
-import { ARC, arcAxis, arcHeight, arcPoint } from '../arc';
+import { ARC, arcAxis, arcHeight, arcPoint, bodyHeight } from '../arc';
 
 const box = { width: 1000, horizon: 300, amp: 100 };
 
@@ -19,8 +19,25 @@ describe('the arc height', () => {
     for (let h = 18; h <= 24; h += 0.5) {
       const y = arcHeight(h, sunrise, sunset);
       expect(y).toBeLessThan(0);
-      expect(y).toBeGreaterThanOrEqual(-ARC.maxDip);
+      expect(y).toBeGreaterThanOrEqual(-ARC.below * 2);
     }
+  });
+
+  it('never runs flat below the horizon (#994): it keeps falling to midnight, then rises', () => {
+    const at = (h: number) => arcHeight(h, sunrise, sunset);
+    for (let h = 18.5; h < 24; h += 0.5) expect(at(h + 0.5)).toBeLessThan(at(h));
+    for (let h = 0.5; h < 5.5; h += 0.5) expect(at(h + 0.5)).toBeGreaterThan(at(h));
+    // Over any hour of the night the curve moves, unlike the old floor.
+    for (let h = 19; h < 29; h += 1) expect(Math.abs(at((h + 1) % 24) - at(h % 24))).toBeGreaterThan(0.005);
+  });
+
+  it('the moon: up between its rise and set, wrapping past midnight', () => {
+    // Rises at 7:45 pm, sets at 9 am the next day.
+    expect(bodyHeight(19.75, 19.75, 9)).toBeCloseTo(0, 5);
+    expect(bodyHeight(9, 19.75, 9)).toBeCloseTo(0, 5);
+    expect(bodyHeight(2.375, 19.75, 9)).toBeCloseTo(1, 5);
+    expect(bodyHeight(23, 19.75, 9)).toBeGreaterThan(0);
+    expect(bodyHeight(15, 19.75, 9)).toBeLessThan(0);
   });
 });
 

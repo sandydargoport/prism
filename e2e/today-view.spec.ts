@@ -393,22 +393,55 @@ test.describe('the Today view', () => {
     }
   });
 
-  test('after dusk the ink turns warm and a veil and the moon come up', async ({ page }) => {
+  test('after dusk the ink turns warm, a veil comes up, and the moon sits on its curve', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     const d = new Date();
     const at = (h: number, m = 0) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m);
-    await page.clock.setFixedTime(at(21, 40));
+    await page.clock.setFixedTime(at(19, 0));
     await login(page);
     const layout = await (await page.request.post('/api/layouts', { data: { name: `Night e2e ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
     try {
-      await page.route('**/api/weather*', (route) => route.fulfill({ json: { ...WEATHER, sunrise: at(6, 30).toISOString(), sunset: at(16, 40).toISOString(), moonPhase: 0.3 } }));
+      const tomorrow = (h: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, h);
+      await page.route('**/api/weather*', (route) => route.fulfill({ json: { ...WEATHER, sunrise: at(6, 30).toISOString(), sunset: at(16, 40).toISOString(), moonrise: at(17, 30).toISOString(), moonset: tomorrow(9).toISOString(), moonPhase: 0.3 } }));
       await page.goto(`/d/${layout.slug}`);
       await expect(page.locator('[data-today-scene]')).toHaveAttribute('data-today-night', 'true', { timeout: 60_000 });
       const ink = await page.locator('[data-today-clock]').evaluate((el) => getComputedStyle(el).color);
       expect(ink).toBe('rgb(255, 226, 190)');
       await expect(page.locator('[data-today-veil]')).toHaveCount(1);
-      await expect(page.locator('[data-today-moon]')).toHaveCount(1);
       await expect(page.locator('[data-sun-down]'), 'the sun is down').toHaveCount(1);
+      // #994: the moon is on its own curve, not pinned in a corner.
+      await expect(page.locator('[data-today-moon]'), 'no moon pinned to a corner').toHaveCount(0);
+      await expect(page.locator('[data-arc-moon]')).toHaveCount(1);
+      const m = await page.evaluate(() => {
+        const moon = document.querySelector('[data-arc-moon]')!.getBoundingClientRect();
+        const cx = moon.left + moon.width / 2, cy = moon.top + moon.height / 2;
+        const sample = (sel: string) => {
+          const path = document.querySelector(sel) as SVGPathElement;
+          const m = path.getScreenCTM()!;
+          const pts: Array<{ x: number; y: number }> = [];
+          const len = path.getTotalLength();
+          for (let i = 0; i <= 200; i++) {
+            const p = path.getPointAtLength((len * i) / 200);
+            pts.push({ x: m.a * p.x + m.c * p.y + m.e, y: m.b * p.x + m.d * p.y + m.f });
+          }
+          return pts;
+        };
+        const moonPath = sample('[data-arc-moon-path]');
+        const night = sample('[data-arc-piece="night"]').map((p) => p.y);
+        return {
+          gap: Math.min(...moonPath.map((p) => Math.hypot(p.x - cx, p.y - cy))),
+          nightRange: Math.max(...night) - Math.min(...night),
+        };
+      });
+      expect(m.gap, 'the moon sits on its curve').toBeLessThanOrEqual(4);
+      expect(m.nightRange, 'the evening line curves, it is not flat').toBeGreaterThan(6);
+      // Nothing to do this evening: the line says so without covering the moon.
+      const empty = page.locator('[data-arc-empty]');
+      if (await empty.count()) {
+        const a = (await empty.boundingBox())!, b = (await page.locator('[data-arc-moon]').boundingBox())!;
+        const overlap = a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+        expect(overlap, '"Nothing else today" clear of the moon').toBe(false);
+      }
     } finally {
       await page.request.delete(`/api/layouts/${layout.id}`);
     }
