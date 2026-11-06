@@ -8,6 +8,8 @@ import type { NavItem } from './navItems';
 export const DEFAULT_DOCK_HREFS = ['/', '/calendar', '/chores', '/shopping', '/meals', '/photos'] as const;
 
 export const DOCK_SIZE = 6;
+/** On a phone: five pages and More (#924). */
+export const DOCK_SIZE_NARROW = 5;
 
 /**
  * Split the visible pages into the dock and More. The dock takes the chosen
@@ -17,15 +19,16 @@ export const DOCK_SIZE = 6;
 export function dockLayout(
   visible: NavItem[],
   chosen: readonly string[] = DEFAULT_DOCK_HREFS,
+  size: number = DOCK_SIZE,
 ): { dock: NavItem[]; more: NavItem[] } {
   const pages = visible.filter((i) => i.href !== '/settings');
   const byHref = new Map(pages.map((i) => [i.href, i]));
   const dock: NavItem[] = [];
   for (const href of chosen) {
     const item = byHref.get(href);
-    if (item && !dock.includes(item) && dock.length < DOCK_SIZE) dock.push(item);
+    if (item && !dock.includes(item) && dock.length < size) dock.push(item);
   }
-  for (const item of pages) if (dock.length < DOCK_SIZE && !dock.includes(item)) dock.push(item);
+  for (const item of pages) if (dock.length < size && !dock.includes(item)) dock.push(item);
   const more = visible.filter((i) => !dock.includes(i));
   return { dock, more };
 }

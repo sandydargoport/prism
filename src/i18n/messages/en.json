@@ -21,7 +21,8 @@
       "signIn": "Sign in",
       "help": "Help",
       "thisScreen": "This screen",
-      "label": "Pages"
+      "label": "Pages",
+      "home": "Home"
     },
     "actions": {
       "save": "Save",
