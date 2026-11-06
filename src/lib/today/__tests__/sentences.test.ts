@@ -10,7 +10,7 @@ const en = { locale: 'en' as const, time };
 
 describe('comingDays', () => {
   it('says nothing for days with nothing on', () => {
-    expect(comingDays([{ label: 'Friday', events: [] }, { label: 'Saturday', events: [] }], en)).toEqual({ lines: [], more: null });
+    expect(comingDays([{ label: 'Friday', events: [] }, { label: 'Saturday', events: [] }], en)).toEqual({ lines: [] });
   });
 
   it('says one thing with the person and the time', () => {
@@ -23,7 +23,7 @@ describe('comingDays', () => {
     expect(r.lines[0]!.sentence).toBe('Alex has the dentist at 9 and Piano recital at 6:30.');
   });
 
-  it('folds a third thing and days past the limit into one closing line', () => {
+  it('says what fits and leaves the rest out, with no count (#993)', () => {
     const many = [ev('A', at(6, 9)), ev('B', at(6, 10)), ev('C', at(6, 11))];
     const r = comingDays([
       { label: 'Friday', events: many },
@@ -32,12 +32,9 @@ describe('comingDays', () => {
       { label: 'Monday', events: [ev('Library', at(9, 16))] },
     ], { ...en, daysAhead: 3 });
     expect(r.lines.map((l) => l.day)).toEqual(['Tomorrow', 'Saturday']);
-    expect(r.more).toBe('Two more things later this week.');
-  });
-
-  it('says one more thing in the singular', () => {
-    const r = comingDays([{ label: 'Friday', events: [ev('A', at(6, 9)), ev('B', at(6, 10)), ev('C', at(6, 11))] }], en);
-    expect(r.more).toBe('One more thing later this week.');
+    expect(r.lines[0]!.sentence).toBe('A at 9 and B at 10.');
+    expect(r).toEqual({ lines: r.lines });
+    expect(JSON.stringify(r)).not.toMatch(/more/i);
   });
 
   it('does not repeat a name the title already has', () => {
@@ -57,7 +54,7 @@ describe('comingDays', () => {
     ], { locale: 'de', time: (d) => `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}` });
     expect(r.lines[0]).toEqual({ day: 'Morgen', sentence: 'Alex hat Zahnarzt um 9:00 und A um 10:00.' });
     expect(r.lines[1]).toEqual({ day: 'Samstag', sentence: 'Fußball um 10:00.' });
-    expect(r.more).toBe('Noch eine Sache später in der Woche.');
+    expect(r).toEqual({ lines: r.lines });
   });
 
   it('defaults to three days ahead', () => {
