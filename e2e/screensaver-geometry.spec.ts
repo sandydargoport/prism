@@ -1314,3 +1314,53 @@ test.describe('corner clock and weather', () => {
     }
   });
 });
+
+test.describe('editor keys (#987)', () => {
+  test.skip(!HAS_TEST_DB, 'needs the seeded test database to log in and edit');
+  test.use({ viewport: { width: 1280, height: 720 } });
+  test.setTimeout(90_000);
+
+  test('Delete removes the selected widget with Undo; arrows move it, and resize it in resize mode', async ({ page }) => {
+    await openScreensaverEditor(page, 'landscape');
+    const clock = page.locator('[data-editor-widget="clock"]');
+    const box = async () => (await boxes(page, '[data-editor-widget]')).clock!;
+    const near = (a: number, b: number) => Math.abs(a - b) <= 2;
+
+    // Select (move mode): an arrow moves it one cell, keeping its size.
+    await clock.click();
+    const start = await box();
+    await page.keyboard.press('ArrowRight');
+    await expect.poll(async () => (await box()).x).toBeGreaterThan(start.x + 4);
+    const moved = await box();
+    expect(near(moved.w, start.w) && near(moved.h, start.h), 'a move keeps the size').toBe(true);
+    const cell = moved.x - start.x;
+    await page.keyboard.press('ArrowLeft');
+    await expect.poll(async () => (await box()).x).toBeLessThan(moved.x - 4);
+
+    // Second tap: resize mode. Down grows it a cell, left shrinks it a cell.
+    await clock.click();
+    const before = await box();
+    await page.keyboard.press('ArrowDown');
+    await expect.poll(async () => (await box()).h).toBeGreaterThan(before.h + 4);
+    await page.keyboard.press('ArrowLeft');
+    await expect.poll(async () => (await box()).w).toBeLessThan(before.w - 4);
+    const resized = await box();
+    expect(near(resized.x, before.x) && near(resized.y, before.y), 'a resize keeps the top-left corner').toBe(true);
+    expect(Math.abs((before.w - resized.w) - cell) <= 2, 'one cell narrower').toBe(true);
+
+    // Typing in a field does nothing to the layout.
+    await page.evaluate(() => { const i = document.createElement('input'); i.id = 'typing-probe'; document.body.appendChild(i); });
+    await page.locator('#typing-probe').focus();
+    await page.keyboard.press('Backspace');
+    await page.keyboard.press('ArrowRight');
+    await expect(clock).toBeVisible();
+    expect(near((await box()).x, resized.x), 'arrows in a field leave the widget').toBe(true);
+    await page.evaluate(() => document.getElementById('typing-probe')?.remove());
+
+    // Still selected: Delete removes it; Undo brings it back.
+    await page.keyboard.press('Delete');
+    await expect(clock).toHaveCount(0);
+    await page.getByRole('listitem').filter({ hasText: 'Widget removed.' }).getByRole('button', { name: 'Undo' }).click();
+    await expect(clock).toBeVisible();
+  });
+});
