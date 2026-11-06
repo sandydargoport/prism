@@ -173,6 +173,16 @@ export const metadata: Metadata = {
   // PWA manifest
   manifest: '/manifest.json',
 
+  // iPhone home-screen app (#1041): with no status bar style, iOS draws the
+  // page under the status bar (and blurs it there) yet reports a top inset of
+  // 0, so env(safe-area-inset-top) padding does nothing. Translucent makes iOS
+  // report the real inset, and the headers' safe-area padding clears it.
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Prism',
+  },
+
   // Icons configuration
   icons: {
     icon: [

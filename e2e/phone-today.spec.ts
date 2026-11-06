@@ -10,6 +10,15 @@ import { TODAY_TEMPLATE } from '../src/lib/constants/layoutTemplates';
 const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
 const PIN = process.env.E2E_PIN || '1234';
 
+// The iPhone home-screen app reports the status bar's height only with the
+// translucent style; without it the top line sat blurred under the status bar
+// (#1041). Any page carries it: it is in the root layout.
+test('declares the translucent iPhone status bar, so safe-area padding clears it', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('meta[name="apple-mobile-web-app-status-bar-style"]')).toHaveAttribute('content', 'black-translucent');
+  await expect(page.locator('meta[name="viewport"]')).toHaveAttribute('content', /viewport-fit=cover/);
+});
+
 test.describe('Today on a phone', () => {
   test.skip(!HAS_TEST_DB, 'needs the seeded test database');
   test.setTimeout(90_000);
