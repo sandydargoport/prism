@@ -5,7 +5,10 @@
  *
  * The path behind the sun is a faint solid line, the stretch from the sun to
  * the next event is lit, the rest of the day ahead is a clean hairline, and
- * after sunset it turns dashed and dips below the horizon. Each timed event
+ * after sunset it turns dotted and keeps curving below the horizon, never flat.
+ * The moon has its own fainter curve between moonrise and moonset, and at
+ * night the moon sits on it in its phase (#994). Low and thin on purpose: an
+ * instrument line, not a picture. Each timed event
  * today is a bead in its person's colour; events still ahead carry a label
  * with the title and the time ("Scouts 6", "Soccer until 5:30"). No
  * countdowns: the time and the bead's place say when.
@@ -15,7 +18,8 @@ import { useTranslations } from 'next-intl';
 import type { CalendarEvent } from '@/types/calendar';
 import { useTimeFormat } from '@/components/providers';
 import { eventOccursOnDisplayDay, formatBareTime, toDisplayDate } from '@/lib/utils/timeFormat';
-import { arcAxis, arcPoint, arcPolyline, hourOf, type ArcPoint } from '@/lib/today/arc';
+import { arcAxis, arcPoint, arcPolyline, bodyHeight, hourOf, type ArcPoint } from '@/lib/today/arc';
+import { MoonGlyph } from '@/components/widgets/WeatherWidget';
 import { placeLabels, type Rect } from '@/lib/today/labels';
 
 /** Width of a line of text in the label's font, read from a probe element. */
@@ -49,11 +53,15 @@ function useBoxSize<T extends HTMLElement>() {
 
 const toPath = (pts: ArcPoint[]) => pts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('');
 
-export function SunArc({ events, now, sunrise, sunset, onOpenEvent, onlyNext = false }: {
+export function SunArc({ events, now, sunrise, sunset, moonrise, moonset, moonPhase, onOpenEvent, onlyNext = false }: {
   events: CalendarEvent[];
   now: Date;
   sunrise?: Date;
   sunset?: Date;
+  moonrise?: Date;
+  moonset?: Date;
+  /** 0 new, 0.5 full (as the weather gives it). */
+  moonPhase?: number;
   onOpenEvent?: (event: CalendarEvent) => void;
   /** Idle (#926): label only the next event. */
   onlyNext?: boolean;
@@ -69,8 +77,9 @@ export function SunArc({ events, now, sunrise, sunset, onOpenEvent, onlyNext = f
   const rise = sunrise ? hour(sunrise) : 7;
   const set = sunset ? hour(sunset) : 19;
 
-  // The horizon sits near the bottom of the band; the peak about two thirds up.
-  const box = { width, horizon: height * 0.8, amp: Math.min(height * 0.6, 160) };
+  // Low and flat (#994): the peak well under half the band, and room under the
+  // horizon for the night's curve.
+  const box = { width, horizon: height * 0.62, amp: Math.min(height * 0.42, 96) };
 
   const today = toDisplayDate(now, displayTimezone);
   const timed = events
@@ -94,11 +103,19 @@ export function SunArc({ events, now, sunrise, sunset, onOpenEvent, onlyNext = f
   const sunDown = nowH >= set || nowH < rise;
   // Path pieces: the past, the lit stretch to the next event, the rest by day, and after sunset.
   const pieces = ready ? [
-    { key: 'past', from: axis.start, to: Math.max(axis.start, Math.min(nowH, end)), cls: 'stroke-white/25', w: 1.5 },
-    { key: 'lit', from: Math.min(nowH, end), to: Math.min(Math.max(nowH, nextH), set, end), cls: 'stroke-white', w: 3 },
-    { key: 'ahead', from: Math.min(Math.max(nowH, nextH), end), to: Math.max(Math.min(set, end), Math.min(Math.max(nowH, nextH), end)), cls: 'stroke-white/65', w: 2 },
-    { key: 'night', from: Math.max(set, nowH, axis.start), to: end, cls: 'stroke-white/55', w: 2, dash: true },
+    { key: 'past', from: axis.start, to: Math.max(axis.start, Math.min(nowH, end)), cls: 'stroke-white/25', w: 1 },
+    { key: 'lit', from: Math.min(nowH, end), to: Math.min(Math.max(nowH, nextH), set, end), cls: 'stroke-white', w: 2 },
+    { key: 'ahead', from: Math.min(Math.max(nowH, nextH), end), to: Math.max(Math.min(set, end), Math.min(Math.max(nowH, nextH), end)), cls: 'stroke-white/65', w: 1.5 },
+    { key: 'night', from: Math.max(set, nowH, axis.start), to: end, cls: 'stroke-white/55', w: 1.25, dash: true },
   ].filter((p) => p.to > p.from) : [];
+  // The moon's own curve (#994), fainter and lower than the sun's.
+  const mr = moonrise ? hour(moonrise) : null;
+  const ms = moonset ? hour(moonset) : null;
+  const moonAt = (h: number): ArcPoint => ({ x: axis.x(h) * width, y: box.horizon - box.amp * 0.7 * bodyHeight(h, mr!, ms!) });
+  const moonPath: ArcPoint[] = [];
+  if (ready && mr !== null && ms !== null) for (let h = axis.start; h <= end + 1e-9; h += 1 / 12) moonPath.push(moonAt(Math.min(h, end)));
+  const moonUp = mr !== null && ms !== null && bodyHeight(nowH, mr, ms) > 0;
+  const moon = sunDown && moonUp && moonPhase !== undefined ? moonAt(Math.min(Math.max(nowH, axis.start), end)) : null;
   const ticks = [];
   for (let h = Math.ceil(nowH); h < end; h++) if (h > axis.start) ticks.push(h);
 
@@ -116,6 +133,7 @@ export function SunArc({ events, now, sunrise, sunset, onOpenEvent, onlyNext = f
   const sunsetText = sunset ? t('sunset', { time: time(sunset) }) : '';
   const sunsetAt = set > axis.start && set < end ? at(set) : null;
   const obstacles: Rect[] = [{ left: sun.x - 22, top: sun.y - 22, width: 44, height: 44 }];
+  if (moon) obstacles.push({ left: moon.x - 16, top: moon.y - 16, width: 32, height: 32 });
   if (sunsetAt && sunsetText) {
     const m = measure(sunsetText);
     obstacles.push({ left: sunsetAt.x - 6 - m.width, top: sunsetAt.y + 12, width: m.width, height: m.height });
@@ -137,6 +155,18 @@ export function SunArc({ events, now, sunrise, sunset, onOpenEvent, onlyNext = f
           </defs>
           {/* The whole path, unseen: what the beads sit on (and what a test measures). */}
           <path d={toPath(arcPolyline(axis, axis.start, end, rise, set, box))} fill="none" stroke="none" data-arc-path />
+          {moonPath.length > 1 && (
+            <path
+              d={toPath(moonPath)}
+              fill="none"
+              stroke="rgb(255 226 190)"
+              strokeOpacity={sunDown ? 0.55 : 0.2}
+              strokeWidth={1.25}
+              strokeDasharray="1 5"
+              strokeLinecap="round"
+              data-arc-moon-path
+            />
+          )}
           {pieces.map((p) => (
             <path
               key={p.key}
@@ -145,17 +175,18 @@ export function SunArc({ events, now, sunrise, sunset, onOpenEvent, onlyNext = f
               className={p.cls}
               strokeWidth={p.w}
               strokeLinecap="round"
-              strokeDasharray={p.dash ? '6 8' : undefined}
-              style={p.key === 'lit' ? { filter: 'drop-shadow(0 0 4px rgb(255 255 255 / 0.6))' } : undefined}
+              strokeDasharray={p.dash ? '2 6' : undefined}
+              data-arc-piece={p.key}
+              style={p.key === 'lit' ? { filter: 'drop-shadow(0 0 2px rgb(255 255 255 / 0.5))' } : undefined}
             />
           ))}
           {ticks.map((h) => {
             const p = at(h);
-            return <line key={h} x1={p.x} x2={p.x} y1={p.y - 4.5} y2={p.y + 4.5} className="stroke-white/70" strokeWidth={2.4} data-arc-tick />;
+            return <line key={h} x1={p.x} x2={p.x} y1={p.y - 3} y2={p.y + 3} className="stroke-white/60" strokeWidth={1.5} data-arc-tick />;
           })}
           {set > axis.start && set < end && (() => {
             const p = at(set);
-            return <line x1={p.x} x2={p.x} y1={p.y - 11} y2={p.y + 11} className="stroke-white/80" strokeWidth={2} data-arc-sunset />;
+            return <line x1={p.x} x2={p.x} y1={p.y - 7} y2={p.y + 7} className="stroke-white/70" strokeWidth={1.5} data-arc-sunset />;
           })()}
           {timed.map((e) => {
             const p = at(hour(e.startTime));
@@ -165,12 +196,12 @@ export function SunArc({ events, now, sunrise, sunset, onOpenEvent, onlyNext = f
                 key={e.id}
                 cx={p.x}
                 cy={p.y}
-                r={past ? 5 : 7}
+                r={past ? 3.5 : 5}
                 fill={e.color}
                 fillOpacity={past ? 0.6 : 1}
                 stroke="white"
-                strokeOpacity={past ? 0.4 : 0.9}
-                strokeWidth={2}
+                strokeOpacity={past ? 0.3 : 0.7}
+                strokeWidth={1.25}
                 data-arc-bead
                 data-start={e.startTime.getTime()}
                 data-past={past || undefined}
@@ -196,14 +227,21 @@ export function SunArc({ events, now, sunrise, sunset, onOpenEvent, onlyNext = f
           })}
           {/* Down after sunset and before sunrise: smaller, cooler, no glow (#926). */}
           {sunDown ? (
-            <circle cx={sun.x} cy={sun.y} r={5} fill="rgb(196 206 228)" opacity={0.7} data-arc-sun data-sun-down />
+            <circle cx={sun.x} cy={sun.y} r={3.5} fill="rgb(196 206 228)" opacity={0.6} data-arc-sun data-sun-down />
           ) : (
             <>
-              <circle cx={sun.x} cy={sun.y} r={16} fill="rgb(255 236 200)" opacity={0.55} filter="url(#sun-glow)" />
-              <circle cx={sun.x} cy={sun.y} r={9} fill="rgb(255 244 224)" data-arc-sun />
+              <circle cx={sun.x} cy={sun.y} r={11} fill="none" stroke="rgb(255 244 224)" strokeOpacity={0.35} strokeWidth={1} />
+              <circle cx={sun.x} cy={sun.y} r={6} fill="rgb(255 244 224)" data-arc-sun />
             </>
           )}
         </svg>
+      )}
+
+      {/* At night the moon sits on its curve, in its phase (#994). */}
+      {ready && moon && (
+        <div className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2" style={{ left: moon.x, top: moon.y }} aria-hidden data-arc-moon>
+          <MoonGlyph phase={moonPhase!} size={18} color="rgb(255 226 190)" />
+        </div>
       )}
 
       {/* Unseen: the label font, for measuring. */}
@@ -235,7 +273,8 @@ export function SunArc({ events, now, sunrise, sunset, onOpenEvent, onlyNext = f
       })}
 
       {ready && ahead.length === 0 && (
-        <div className="absolute -translate-x-1/2 -translate-y-full whitespace-nowrap text-body" style={{ left: sun.x, top: sun.y - 22 }} data-arc-empty>
+        // Under the line when the moon is up, so the two never overlap.
+        <div className={`absolute -translate-x-1/2 whitespace-nowrap text-body ${moon ? '' : '-translate-y-full'}`} style={{ left: sun.x, top: moon ? sun.y + 16 : sun.y - 22 }} data-arc-empty>
           {t('nothingElse')}
         </div>
       )}
