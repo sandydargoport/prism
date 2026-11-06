@@ -38,10 +38,8 @@ jest.mock('@/lib/integrations/google-calendar', () => ({}));
 jest.mock('@/lib/integrations/caldav', () => ({}));
 jest.mock('@/lib/utils/crypto', () => ({ decrypt: (v: string) => v, encrypt: (v: string) => v }));
 jest.mock('@/lib/householdTimezone', () => ({ getHouseholdTimezone: jest.fn().mockResolvedValue('UTC') }));
-jest.mock('node-ical', () => {
-  const actual = jest.requireActual('node-ical');
-  return { ...actual, async: { ...actual.async, fromURL: (...a: unknown[]) => mockFromURL(...a) } };
-});
+// The feed fetch (#809); the feed is still parsed by the real node-ical.
+jest.mock('@/lib/services/fetchIcal', () => ({ fetchIcal: (...a: unknown[]) => mockFromURL(...a) }));
 jest.spyOn(console, 'log').mockImplementation(() => {});
 jest.spyOn(console, 'error').mockImplementation(() => {});
 
