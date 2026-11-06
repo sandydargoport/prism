@@ -2,15 +2,17 @@
 
 /**
  * The Shopping page's first view (#881): one calm list. The add field at the
- * top; quiet category headings; rows with a ring to tick (#932). Edit and
- * delete show on the item you tap, not on every row. What is checked folds
- * into "In the cart". The category cards stay behind Manage.
+ * top; quiet category headings in the display face, each with a muted mark of
+ * its colour (#986); rows with a ring to tick (#932). Edit and delete show on
+ * the item you tap, not on every row. What is checked folds into "Checked off".
+ * The category cards stay behind Manage.
  */
 import { useState } from 'react';
 import { Check } from 'lucide-react';
 import { ListRow } from '@/components/ui/ListRow';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { mutedMark } from '@/lib/utils/color';
 import type { ShoppingItem } from '@/types';
 
 export function groupForCalmList(items: ShoppingItem[], order: string[]) {
@@ -24,7 +26,7 @@ export function groupForCalmList(items: ShoppingItem[], order: string[]) {
   return { groups: cats.map((c) => ({ category: c, items: byCat.get(c)! })), inCart: items.filter((i) => i.checked) };
 }
 
-export function ShoppingCalmList({ items, order, onToggle, onEdit, onDelete, onAdd, label }: {
+export function ShoppingCalmList({ items, order, onToggle, onEdit, onDelete, onAdd, label, color }: {
   items: ShoppingItem[];
   order: string[];
   onToggle: (id: string) => void;
@@ -32,6 +34,8 @@ export function ShoppingCalmList({ items, order, onToggle, onEdit, onDelete, onA
   onDelete: (id: string) => void;
   onAdd: (name: string) => Promise<unknown>;
   label: (category: string) => string;
+  /** The category's colour; shown muted beside its heading. */
+  color: (category: string) => string;
 }) {
   const [draft, setDraft] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
@@ -89,7 +93,10 @@ export function ShoppingCalmList({ items, order, onToggle, onEdit, onDelete, onA
 
       {groups.map((g) => (
         <section key={g.category} className="flex flex-col" data-shopping-category={g.category}>
-          <h2 className="m-0 px-3 pb-1 text-caption font-medium uppercase tracking-wide text-muted-foreground">{label(g.category)}</h2>
+          <h2 className="m-0 flex items-center gap-2.5 px-3 pb-1 text-body font-medium text-muted-foreground" style={{ fontFamily: 'var(--font-display)' }}>
+            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: mutedMark(color(g.category)) }} aria-hidden data-shopping-category-mark />
+            {label(g.category)}
+          </h2>
           {g.items.map(row)}
         </section>
       ))}
@@ -103,7 +110,7 @@ export function ShoppingCalmList({ items, order, onToggle, onEdit, onDelete, onA
             aria-expanded={cartOpen}
             data-shopping-cart-toggle
           >
-            In the cart ({inCart.length})
+            Checked off ({inCart.length})
           </button>
           {cartOpen && inCart.map(row)}
         </section>
