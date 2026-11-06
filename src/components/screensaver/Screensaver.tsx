@@ -184,6 +184,7 @@ export function Screensaver() {
         // under the corners and the foot solved for this photo.
         style={{ '--ss-ink': night ? 'rgb(255 226 190)' : 'white', ...shadeVars } as React.CSSProperties}
         data-screensaver-night={night || undefined}
+        data-screensaver
       >
         {/* Decorative layers are absolutely positioned, so in CSS paint order they
             sit ABOVE the (statically-positioned) widget grid and would swallow every

@@ -59,7 +59,9 @@ export function PhoneToday({ parts, events, weather, onOpenEvent, household }: {
         className={[
           // Two aligned rows (#1034): the time and the temperature share a
           // baseline, and so do the date and the condition below them.
-          'grid grid-cols-[1fr_auto] items-baseline gap-x-4 gap-y-1 px-5 pb-6 pt-10',
+          // Below the iPhone's status bar, which Safari draws frosted over
+          // whatever is under it (#1036).
+          'grid grid-cols-[1fr_auto] items-baseline gap-x-4 gap-y-1 px-5 pb-6 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)]',
           'text-white [text-shadow:var(--ds-idle-text-shadow)]',
           '[html:not([data-wallpaper])_&]:text-foreground [html:not([data-wallpaper])_&]:[text-shadow:none]',
         ].join(' ')}

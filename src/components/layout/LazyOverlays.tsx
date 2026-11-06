@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useIdleLogout } from '@/lib/hooks/useIdleLogout';
+import { useIsMobile } from '@/lib/hooks/useIsMobile';
 
 const Screensaver = dynamic(
   () => import('@/components/screensaver/Screensaver').then(m => ({ default: m.Screensaver })),
@@ -24,12 +25,14 @@ export function LazyOverlays() {
   // Mounted here because this component is already in the root layout, so the
   // check runs on every page rather than only on the dashboard.
   useIdleLogout();
+  // No screensaver on a phone (#1036): the phone dims and locks itself.
+  const phone = useIsMobile();
 
   return (
     <>
       <BabysitterModeOverlay />
       <AwayModeOverlay />
-      <Screensaver />
+      {!phone && <Screensaver />}
       {/* After the screensaver: same layer, so its notices show over it. */}
       <AttentionPanel />
     </>
