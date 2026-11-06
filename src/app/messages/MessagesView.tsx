@@ -13,6 +13,8 @@
 
 'use client';
 
+import { useIsMobile } from '@/lib/hooks/useIsMobile';
+import { usePageAdd } from '@/lib/hooks/usePageAdd';
 import * as React from 'react';
 import { useState, useMemo } from 'react';
 import { usePersistedState, useSessionScopedState, isBoolean, isStringArray } from '@/lib/hooks/usePersistedState';
@@ -70,6 +72,7 @@ function postedBy(msg: FamilyMessage) {
 }
 
 export function MessagesView() {
+  const isMobile = useIsMobile();
 
   const { activeUser, requireAuth } = useAuth();
   const { members: familyMembers } = useFamily();
@@ -160,6 +163,7 @@ export function MessagesView() {
     const user = await requireAuth("Who's posting?");
     if (user) setShowAddModal(true);
   };
+  usePageAdd('Add message', () => { void handleAddWithAuth(); });
 
   // Handle delete - requires auth and ownership check
   const handleDelete = async (messageId: string) => {
@@ -227,7 +231,8 @@ export function MessagesView() {
               </Badge>
             )}
           </>}
-          actions={
+          // On a phone the round button adds (#1028).
+          actions={isMobile ? undefined : (
             <Button
               onClick={handleAddWithAuth}
               size="sm"
@@ -235,7 +240,7 @@ export function MessagesView() {
               <Plus className="h-4 w-4 mr-1" />
               Add Message
             </Button>
-          }
+          )}
         />
 
         {(authors.length > 1 || messages.length > 0) && (

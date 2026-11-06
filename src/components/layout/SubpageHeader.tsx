@@ -36,7 +36,8 @@ export function SubpageHeader({ icon, title, badge, actions, overflow }: Subpage
   const isMobile = useIsMobile();
 
   return (
-    <header className="shrink-0 border-b border-border bg-card/85 backdrop-blur-xs px-4 safe-area-top">
+    // Solid on a phone (#1028): see-through with a blur, the title looked fuzzy over a photo.
+    <header className="shrink-0 border-b border-border bg-card px-4 safe-area-top md:bg-card/85 md:backdrop-blur-xs" data-subpage-header>
       <div className={cn('flex items-center justify-between gap-2', isMobile ? 'h-11' : 'h-12 pointer-coarse:h-16')}>
         <div className="flex items-center gap-4 min-w-0">
           <Button variant="ghost" size="icon" asChild className="hidden md:inline-flex shrink-0">

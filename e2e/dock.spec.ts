@@ -220,7 +220,12 @@ test.describe('the dock on the wall', () => {
 
     await page.goto('/shopping');
     await expect(page.locator('[data-shopping-manage]')).toBeVisible({ timeout: 60_000 });
-    await expect(page.locator('[data-mobile-options]'), 'no floating button over the list').toHaveCount(0);
+    await expect(page.locator('[data-mobile-options]'), 'no options button off the dashboard').toHaveCount(0);
+    // #1028: on a subpage the round button is the page's Add; here it brings up the add field.
+    const add = page.locator('[data-page-add]');
+    await expect(add).toHaveAttribute('aria-label', 'Add item');
+    await add.click();
+    await expect(page.locator('[data-shopping-add]')).toBeFocused();
     await expect(page.getByRole('button', { name: 'Add List' }), 'New list is in the menu, not a second "+"').toHaveCount(0);
     await page.getByRole('button', { name: 'More options', exact: true }).click();
     await expect(page.getByRole('menuitem', { name: 'New list' })).toBeVisible();
@@ -242,7 +247,7 @@ test.describe('the dock on the wall', () => {
       }
       return { titleWidth: title?.width ?? 0, overlaps };
     });
-    expect(hdr.titleWidth, 'the title has room').toBeGreaterThan(30);
+    await expect.poll(() => page.locator('h1').first().evaluate((e) => e.getBoundingClientRect().width), { message: 'the title has room' }).toBeGreaterThan(30);
     expect(hdr.overlaps, 'nothing in the header overlaps').toBe(0);
 
     // Never over an open window: on the dashboard, open one and the button goes.
@@ -253,6 +258,31 @@ test.describe('the dock on the wall', () => {
     await page.evaluate(() => document.getElementById('probe-dialog')?.remove());
     await expect(options).toBeVisible();
   });
+
+  // #1028: on every subpage the round button is that page's Add, the header has
+  // no "+" of its own, and the header is solid (it looked fuzzy over a photo).
+  for (const [path, label] of [
+    ['/calendar', 'Add Event'], ['/chores', 'Add chore'], ['/tasks', 'Add task'], ['/meals', 'Add meal'],
+    ['/messages', 'Add message'], ['/recipes', 'Add recipe'], ['/wishes', 'Add wish'], ['/goals', 'Add goal'],
+  ] as const) {
+    test(`on a phone, ${path}: the round button is "${label}" and the header has no "+"`, async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      const login = await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } });
+      expect(login.ok()).toBe(true);
+      await page.goto(path);
+      const add = page.locator('[data-page-add]');
+      await expect(add).toBeVisible({ timeout: 60_000 });
+      await expect(add).toHaveAttribute('aria-label', label);
+      await expect(page.locator('header svg.lucide-plus'), 'no "+" in the header').toHaveCount(0);
+      const header = page.locator('[data-subpage-header]');
+      if (await header.count()) {
+        const alpha = await header.evaluate((e) => { const m = getComputedStyle(e).backgroundColor.match(/[\d.]+/g)!.map(Number); return m.length > 3 ? m[3] : 1; });
+        expect(alpha, 'a solid header').toBe(1);
+      }
+      await add.click();
+      await expect(page.getByRole('dialog').first(), 'it opens the add form').toBeVisible({ timeout: 15_000 });
+    });
+  }
 
   // #925: the household chooses the dock's pages; the rest stay in More.
   test('a page put on the dock takes a place there and the sixth moves into More', async ({ page }) => {
