@@ -39,6 +39,10 @@ test.describe('Simple or Custom', () => {
       const card = page.locator('[data-front-page-card]');
       await expect(card.locator('[data-front-page-choice="custom"]')).toHaveAttribute('aria-pressed', 'true');
       await expect(page.getByText(/new look/i), 'no "new look" text').toHaveCount(0);
+      // A compact choice, no taller than a settings card (#991): it pushed the
+      // rest of Appearance off the first screen when it drew big pictures.
+      const h = await card.evaluate((e) => e.getBoundingClientRect().height);
+      expect(h, 'Front page card height').toBeLessThanOrEqual(240);
       await card.locator('[data-front-page-choice="simple"]').click();
       await expect.poll(async () => (await list()).filter((l) => l.view === 'today' || l.view === 'calendar').length, { timeout: 20_000 }).toBe(2);
       const after = await list();
