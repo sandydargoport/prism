@@ -1,5 +1,6 @@
 'use client';
 
+import { markWhatsNewSeen } from '@/lib/whatsNew';
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -79,6 +80,8 @@ export function CompleteStep({ firstRun = true }: { firstRun?: boolean }) {
   const markComplete = async () => {
     if (completed.current) return;
     completed.current = true;
+    // A new household has nothing that moved (#1032).
+    markWhatsNewSeen();
     setMarking(true);
     try {
       await fetch('/api/setup/complete', { method: 'POST' });
