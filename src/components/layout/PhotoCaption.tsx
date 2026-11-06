@@ -7,22 +7,20 @@
  */
 import { useEffect, useState } from 'react';
 import { useLocale } from 'next-intl';
-import { captionSpot, captionText, datePhrase, type CaptionSpot } from '@/lib/photos/caption';
+import { captionSpot, captionText, datePhrase, type CaptionPlace, type CaptionSpot } from '@/lib/photos/caption';
 import { usePhotoSettings } from '@/lib/photos/usePhotoSettings';
 import { coveredRects } from '@/lib/photos/frameDom';
 
 const SPOT_CLASS: Record<CaptionSpot, string> = {
-  'bottom-right': 'bottom-[3rem] right-[3rem] text-right',
-  'bottom-left': 'bottom-[3rem] left-[3rem]',
-  'top-centre': 'top-[2.5rem] left-1/2 -translate-x-1/2 text-center',
-  'bottom-centre': 'bottom-[3rem] left-1/2 -translate-x-1/2 text-center',
+  'bottom-right': 'right-[3rem] text-right',
+  'bottom-left': 'left-[3rem]',
 };
 
 export function PhotoCaption({ photo }: { photo: { id: string; takenAt?: string | null } | null }) {
   const locale = useLocale();
   const opts = usePhotoSettings();
   const [place, setPlace] = useState<{ id: string; name: string | null } | null>(null);
-  const [spot, setSpot] = useState<CaptionSpot | null>(null);
+  const [spot, setSpot] = useState<CaptionPlace | null>(null);
 
 
   // Keyed on the id: callers may pass a new object each render.
@@ -42,7 +40,10 @@ export function PhotoCaption({ photo }: { photo: { id: string; takenAt?: string 
   useEffect(() => {
     if (!id) return;
     const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-    const place = () => setSpot(captionSpot({ width: window.innerWidth, height: window.innerHeight }, coveredRects(), undefined, 3 * rem));
+    const place = () => setSpot((prev) => {
+      const next = captionSpot({ width: window.innerWidth, height: window.innerHeight }, coveredRects(), undefined, 3 * rem);
+      return prev && next && prev.spot === next.spot && prev.lift === next.lift ? prev : next;
+    });
     const first = setTimeout(place, 1500);
     const again = setInterval(place, 5000);
     return () => { clearTimeout(first); clearInterval(again); };
@@ -56,8 +57,9 @@ export function PhotoCaption({ photo }: { photo: { id: string; takenAt?: string 
 
   return (
     <p
-      className={`pointer-events-none absolute m-0 max-w-[24rem] text-caption text-white/90 [text-shadow:var(--ds-idle-text-shadow)] ${SPOT_CLASS[spot]}`}
-      data-photo-caption={spot}
+      className={`pointer-events-none absolute m-0 max-w-[24rem] text-caption text-white/90 [text-shadow:var(--ds-idle-text-shadow)] ${SPOT_CLASS[spot.spot]}`}
+      style={{ bottom: `calc(3rem + ${spot.lift}px)` }}
+      data-photo-caption={spot.spot}
     >
       {text}
     </p>
