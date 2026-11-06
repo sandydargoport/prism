@@ -57,6 +57,31 @@ test.describe('Meals and Messages pages', () => {
     }
   });
 
+  test('Meals on a phone: a long description is one line, not the whole recipe (#1020)', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const tag = Date.now();
+    const long = Array.from({ length: 30 }, (_, i) => `Step ${i + 1}: stir the pot and season to taste.`).join(' ');
+    const now = new Date();
+    const sun = new Date(now); sun.setDate(now.getDate() - now.getDay());
+    const mon = new Date(now); mon.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+    const name = `Long recipe dinner ${tag}`;
+    const meals: string[] = [];
+    for (const weekOf of new Set([ymd(sun), ymd(mon)])) {
+      const res = await page.request.post('/api/meals', { data: { name, weekOf, dayOfWeek: DAYS[now.getDay()], mealType: 'dinner', description: long } });
+      expect(res.ok()).toBe(true);
+      meals.push((await res.json()).id);
+    }
+    try {
+      await page.goto('/meals');
+      const desc = page.locator('[data-meal-row]').filter({ hasText: name }).first().locator('[data-meal-description]');
+      await expect(desc).toBeVisible({ timeout: 60_000 });
+      const m = await desc.evaluate((e) => ({ h: e.getBoundingClientRect().height, line: parseFloat(getComputedStyle(e).lineHeight) }));
+      expect(m.h, 'one line').toBeLessThanOrEqual(m.line + 1);
+    } finally {
+      for (const id of meals) await page.request.delete(`/api/meals/${id}`);
+    }
+  });
+
   test('Messages: quiet rows with the sender as meta and the message at prose size', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     const text = `A quiet note ${Date.now()}`;

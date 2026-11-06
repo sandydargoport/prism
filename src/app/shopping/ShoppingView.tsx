@@ -4,7 +4,7 @@ import { ShoppingCalmList } from './ShoppingCalmList';
 import { useState, useEffect } from 'react';
 import { Emoji } from '@/components/ui/Emoji';
 import { toast } from '@/components/ui/use-toast';
-import { ShoppingCart, Plus, Settings, Maximize2, Minimize2, Tags, Send, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ShoppingCart, Plus, Settings, Maximize2, Minimize2, Tags, Send, ChevronLeft, ChevronRight, ScanLine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -188,10 +188,12 @@ export function ShoppingView() {
                 <Button variant={manage ? 'secondary' : 'outline'} size="sm" onClick={() => setManage(!manage)} data-shopping-manage>
                   {manage ? 'Done' : 'Manage'}
                 </Button>
-                {activeList && activeList.items.some((i) => !i.checked) && (
+                {/* On a phone the header keeps Manage and the menu; the rest is in
+                    the menu, so the title has room and the one "+" adds an item (#1020). */}
+                {!isMobile && activeList && activeList.items.some((i) => !i.checked) && (
                   <Button
                     variant="outline"
-                    size={isMobile ? 'icon' : 'sm'}
+                    size="sm"
                     onClick={async () => {
                       const user = await requireAuth('Send to Kroger');
                       if (!user) return;
@@ -200,19 +202,36 @@ export function ShoppingView() {
                     title="Send unchecked items to Kroger / Mariano's cart"
                     aria-label="Send to Kroger"
                   >
-                    <Send className={cn('h-4 w-4', !isMobile && 'mr-1')} />
-                    {!isMobile && 'Send to Kroger'}
+                    <Send className="h-4 w-4 mr-1" />
+                    Send to Kroger
                   </Button>
                 )}
-                <Button variant="ghost" size="icon" onClick={() => setShoppingMode(true)} title="Enter shopping mode">
-                  <Maximize2 className="h-4 w-4" />
-                </Button>
-                <Button onClick={handleNewList} size={isMobile ? 'icon' : 'sm'} aria-label="Add List" title="Add List">
-                  <Plus className={cn('h-4 w-4', !isMobile && 'mr-1')} />
-                  {!isMobile && 'Add List'}
-                </Button>
+                {!isMobile && (
+                  <>
+                    <Button variant="ghost" size="icon" onClick={() => setShoppingMode(true)} title="Enter shopping mode">
+                      <Maximize2 className="h-4 w-4" />
+                    </Button>
+                    <Button onClick={handleNewList} size="sm" aria-label="Add List" title="Add List">
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add List
+                    </Button>
+                  </>
+                )}
               </>}
               overflow={[
+                ...(isMobile ? [
+                  { label: 'Scan Barcode', icon: ScanLine, onClick: () => window.dispatchEvent(new CustomEvent('prism:open-barcode-scanner')) },
+                  ...(activeList && activeList.items.some((i) => !i.checked) ? [{
+                    label: 'Send to Kroger',
+                    icon: Send,
+                    onClick: async () => {
+                      const user = await requireAuth('Send to Kroger');
+                      if (user) setShowKrogerModal(true);
+                    },
+                  }] : []),
+                  { label: 'Shopping mode', icon: Maximize2, onClick: () => setShoppingMode(true) },
+                  { label: 'New list', icon: Plus, onClick: handleNewList },
+                ] : []),
                 ...(activeList ? [{
                   label: 'Edit List',
                   icon: Settings,

@@ -321,7 +321,9 @@ function MealCard({ meal, image, onMarkCooked, onUnmarkCooked, onEdit, onDelete,
             </a>
           )}
         </div>
-        {meal.description && <p className="text-xs text-muted-foreground mt-0.5">{meal.description}</p>}
+        {/* One line (#1020): a recipe's description can be the whole recipe;
+            the full text is on the recipe. */}
+        {meal.description && <p className="mt-0.5 truncate text-xs text-muted-foreground" title={meal.description} data-meal-description>{meal.description}</p>}
         {isCooked && meal.cookedBy && (
           <div className="flex items-center gap-1 mt-1">
             <CheckCircle2 className="h-3 w-3 text-success" />
