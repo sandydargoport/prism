@@ -185,4 +185,33 @@ describe('parsePaprikaHtml', () => {
       expect(parsePaprikaHtml('<html><body></body></html>')).toEqual([]);
     });
   });
+
+  // #1062: a crafted export cannot hold the server. Each of these took 0.3 to
+  // 3 seconds on 40 to 80 KB with the old regexes; 512 KB must stay fast.
+  describe('crafted input', () => {
+    const big = 512 * 1024;
+    const cases: Array<[string, string]> = [
+      ['unclosed h1 tags', '<h1 class="'.repeat(big / 11)],
+      ['unclosed divs with classes', '<div class="ingredients'.repeat(big / 23)],
+      ['repeated labels with no value', 'prep '.repeat(big / 5)],
+      ['a long run of digits after a label', '<h1>x</h1> prep time: ' + '1'.repeat(big)],
+      ['a source label with no link', 'source:'.repeat(big / 7)],
+      ['unclosed articles', '<article '.repeat(big / 9)],
+      ['deeply nested divs', '<h1>Deep</h1><div class="notes">' + '<div>'.repeat(100_000) + 'x'],
+    ];
+    it.each(cases)('%s parses in well under a second', (_label, html) => {
+      const t0 = performance.now();
+      parsePaprikaHtml(html);
+      expect(performance.now() - t0).toBeLessThan(1000);
+    });
+
+    it('refuses markup nested past any real export, and still reads one nested a little', () => {
+      expect(parsePaprikaHtml('<h1>Deep</h1>' + '<div>'.repeat(1000))).toEqual([]);
+      const nested = parsePaprikaHtml('<h1>Shallow</h1><div class="notes">' + '<div>'.repeat(50) + 'Keep cold');
+      expect(nested[0]!.notes).toBe('Keep cold');
+      // Unclosed list items are valid HTML and do not count as nesting.
+      const list = parsePaprikaHtml('<h1>Long list</h1><div class="ingredients"><ul>' + '<li>salt'.repeat(2000) + '</ul></div>');
+      expect(list[0]!.ingredients).toHaveLength(2000);
+    });
+  });
 });
