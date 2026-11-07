@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isEmail } from '@/lib/utils/isEmail';
 import { requireAuth, requireRole, optionalAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { users } from '@/lib/db/schema';
@@ -286,8 +287,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (body.email && typeof body.email === 'string') {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(body.email)) {
+      if (!isEmail(body.email)) {
         return NextResponse.json(
           { error: 'Invalid email format' },
           { status: 400 }

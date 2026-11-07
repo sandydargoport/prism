@@ -19,6 +19,11 @@ concurrency:
 env:
   NODE_VERSION: '24'
 
+# Read-only token: no job here writes to the repo (CodeQL
+# actions/missing-workflow-permissions).
+permissions:
+  contents: read
+
 jobs:
   typecheck-lint:
     name: Type-check & lint

@@ -69,16 +69,23 @@ export function eventDescriptionToText(html: string | null | undefined): string 
 
   let text = html;
 
-  // Raw-text elements: drop the content too, or the script body reads as prose.
-  text = text.replace(/<(script|style|template)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, ' ');
-  text = text.replace(/<!--[\s\S]*?-->/g, ' ');
+  // Strip until nothing changes: one pass can rebuild what it removed.
+  // `<spa<x>n title="hidden">` loses `<x>` and becomes a whole tag, and
+  // `<!-<x>- ... -->` becomes a comment (CodeQL incomplete sanitization).
+  let before: string;
+  do {
+    before = text;
+    // Raw-text elements: drop the content too, or the script body reads as prose.
+    text = text.replace(/<(script|style|template)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, ' ');
+    text = text.replace(/<!--[\s\S]*?-->/g, ' ');
 
-  text = text.replace(BLOCK_CLOSE, '\n');
-  text = text.replace(LINE_BREAK, '\n');
-  text = text.replace(BLOCK_OPEN, '\n');
+    text = text.replace(BLOCK_CLOSE, '\n');
+    text = text.replace(LINE_BREAK, '\n');
+    text = text.replace(BLOCK_OPEN, '\n');
 
-  // Everything else goes, attributes included: this is what closes `title`.
-  text = text.replace(/<[^<>]*>/g, '');
+    // Everything else goes, attributes included: this is what closes `title`.
+    text = text.replace(/<[^<>]*>/g, '');
+  } while (text !== before);
 
   text = decodeEntities(text);
   text = text.replace(INVISIBLE, '');

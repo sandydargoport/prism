@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isEmail } from '@/lib/utils/isEmail';
 import { requireAuth, requireRole, type AuthResult } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { users, calendarGroups } from '@/lib/db/schema';
@@ -160,8 +161,7 @@ export async function PATCH(
       if (body.email === null || body.email === '') {
         updates.email = null;
       } else if (typeof body.email === 'string') {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (emailRegex.test(body.email)) {
+        if (isEmail(body.email)) {
           updates.email = body.email.trim();
         }
       }

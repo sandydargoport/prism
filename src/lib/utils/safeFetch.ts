@@ -291,6 +291,16 @@ async function assertResolvesPublic(url: URL, options: SafeFetchOptions): Promis
   }
 }
 
+/**
+ * The whole check for one URL, for a fetcher that cannot go through
+ * safeFetch: the URL's own rules, then the DNS lookup. The headless browser
+ * runs it on every request a page makes (CodeQL js/request-forgery), since
+ * Chromium follows redirects, script navigations and subresources itself.
+ */
+export async function assertPublicUrl(rawUrl: string, options: SafeFetchOptions = {}): Promise<void> {
+  await assertResolvesPublic(validatePublicUrl(rawUrl, options), options);
+}
+
 // 3xx statuses that carry a Location we would otherwise auto-follow.
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
