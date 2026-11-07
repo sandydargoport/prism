@@ -303,6 +303,18 @@ test.describe('the dock on the wall', () => {
     await page.waitForTimeout(1500);
     await expect(page.locator('[data-screensaver]'), 'no screensaver on a phone').toHaveCount(0);
 
+    // #1068: the current page's highlight is a rounded rectangle inside a
+    // rounded bar, not a pill that squashes into an oval round "Shopping".
+    await page.goto('/shopping');
+    const current = page.locator('[data-dock] [aria-current="page"]');
+    await expect(current).toBeVisible({ timeout: 60_000 });
+    const corners = await page.evaluate(() => ({
+      item: parseFloat(getComputedStyle(document.querySelector('[data-dock] [aria-current="page"]')!).borderTopLeftRadius),
+      bar: parseFloat(getComputedStyle(document.querySelector('[data-dock]')!).borderTopLeftRadius),
+    }));
+    expect(corners.item, 'highlight corner').toBeLessThanOrEqual(16);
+    expect(corners.bar, 'bar corner').toBeLessThanOrEqual(24);
+
     // #1036: menus have small corners, so their first and last items are not cut by the curve.
     await page.goto('/shopping');
     await page.getByRole('button', { name: 'More options', exact: true }).click();
