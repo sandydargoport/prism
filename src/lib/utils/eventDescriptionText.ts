@@ -86,6 +86,11 @@ export function eventDescriptionToText(html: string | null | undefined): string 
     // Everything else goes, attributes included: this is what closes `title`.
     text = text.replace(/<[^<>]*>/g, '');
   } while (text !== before);
+  // What is left of a "<" opens no tag (none has a closing ">" any more), but
+  // as plain text it has nothing to say either: drop it, so no "<script"
+  // fragment survives (CodeQL incomplete sanitization). An escaped "&lt;" is
+  // decoded below and stays.
+  text = text.replace(/</g, '');
 
   text = decodeEntities(text);
   text = text.replace(INVISIBLE, '');

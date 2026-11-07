@@ -112,6 +112,7 @@ describe('event description as plain text', () => {
     // One pass removed `<x>` and left a whole tag or comment behind.
     expect(eventDescriptionToText('<spa<x>n title="secret instruction">x</span>')).toBe('x');
     expect(eventDescriptionToText('a<!-<x>- secret instruction -->b')).toBe('a b');
+    expect(eventDescriptionToText('ok <script')).not.toContain('<');
   });
 
   it('is empty for empty input', () => {
