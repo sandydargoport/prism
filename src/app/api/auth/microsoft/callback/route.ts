@@ -5,7 +5,7 @@ import { photoSources } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { exchangeCodeForTokens } from '@/lib/integrations/onedrive';
 import { encrypt } from '@/lib/utils/crypto';
-import { logError } from '@/lib/utils/logError';
+import { logError, oneLine } from '@/lib/utils/logError';
 import { resolveRedirectUri } from '@/lib/integrations/resolveRedirectUri';
 import { fetchMicrosoftAccountEmail } from '@/lib/integrations/oauth-userinfo';
 import { consumeOAuthState } from '@/lib/auth/oauthState';
@@ -47,7 +47,8 @@ export async function GET(request: Request) {
   try {
     if (error) {
       const errorDescription = searchParams.get('error_description');
-      console.error('Microsoft OAuth error:', error, errorDescription);
+      // Both come from the redirect's query string: one line, never a format string.
+      console.error('%s', oneLine(`Microsoft OAuth error: ${error} ${errorDescription ?? ''}`));
       return NextResponse.redirect(`${BASE_URL}/settings?section=${errorSection}&error=microsoft_auth_denied${errorAnchor}`);
     }
 

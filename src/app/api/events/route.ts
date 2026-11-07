@@ -36,7 +36,7 @@ import { randomUUID } from 'crypto';
 import { formatEventRow } from '@/lib/utils/formatters';
 import { visibleEventsCondition } from '@/lib/services/hiddenEvents';
 import { logActivity } from '@/lib/services/auditLog';
-import { logError } from '@/lib/utils/logError';
+import { logError, oneLine } from '@/lib/utils/logError';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { normalizeAllDayRange } from '@/lib/utils/allDayRange';
 import { MAX_CALENDAR_EVENTS } from '@/lib/utils/calendarRange';
@@ -202,7 +202,7 @@ export async function GET(request: NextRequest) {
       // events quietly, so the cap can be raised or the fetch paginated.
       if (results.length >= limit) {
         console.warn(
-          `[events] fetch hit the ${limit}-row ceiling for ${startDateStr}..${endDateStr}; some events may be omitted.`,
+          `[events] fetch hit the ${limit}-row ceiling for ${oneLine(startDateStr)}..${oneLine(endDateStr)}; some events may be omitted.`,
         );
       }
 
@@ -245,7 +245,7 @@ export async function GET(request: NextRequest) {
         })
         .sort((a, b) => a.startTime.localeCompare(b.startTime));
       if (expanded.length > limit) {
-        console.warn(`[events] repeating events filled the ${limit}-event ceiling for ${startDateStr}..${endDateStr}; some events were omitted.`);
+        console.warn(`[events] repeating events filled the ${limit}-event ceiling for ${oneLine(startDateStr)}..${oneLine(endDateStr)}; some events were omitted.`);
       }
       const formattedEvents = expanded.slice(0, limit);
 

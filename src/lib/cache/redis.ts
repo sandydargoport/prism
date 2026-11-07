@@ -1,3 +1,4 @@
+import { oneLine } from '@/lib/utils/logError';
 import { getRedisClient } from './getRedisClient';
 
 export async function getCached<T>(
@@ -18,7 +19,7 @@ export async function getCached<T>(
       try {
         return JSON.parse(cached) as T;
       } catch {
-        console.warn(`Invalid cached data for key: ${key}`);
+        console.warn('%s', oneLine(`Invalid cached data for key: ${key}`));
       }
     }
 
