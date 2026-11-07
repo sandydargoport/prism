@@ -13,6 +13,8 @@ import type { KeyboardEvent, FocusEvent } from 'react';
 
 interface ShoppingCategoryCardProps {
   category: string;
+  /** The category's name; the card showed its id ("garden-tools") (#1053). */
+  categoryName?: string;
   items: ShoppingItem[];
   categoryColor: string;
   categoryEmoji: string;
@@ -41,6 +43,7 @@ interface ShoppingCategoryCardProps {
 
 export function ShoppingCategoryCard({
   category,
+  categoryName,
   items,
   categoryColor,
   categoryEmoji,
@@ -106,10 +109,10 @@ export function ShoppingCategoryCard({
         <GripVertical className="h-4 w-4 text-muted-foreground/50 shrink-0 hidden md:block" />
         <span className="text-xl"><Emoji e={categoryEmoji} /></span>
         <h3
-          className="text-base font-bold capitalize"
+          className={cn('text-base font-bold', !categoryName && 'capitalize')}
           style={{ color: categoryColor }}
         >
-          {category}
+          {categoryName ?? category}
         </h3>
         <Badge variant="outline" className="ml-auto text-xs">
           {items.length}
