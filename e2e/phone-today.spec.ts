@@ -119,25 +119,39 @@ test.describe('Phone subpages do not drag', () => {
         return e.defaultPrevented;
       });
       expect(refused, `${path}: pull past the top refused`).toBe(true);
-      // #1089: sized from the visible height. In the iPhone app 100vh is taller
-      // than the screen and a page that fitted scrolled into empty space;
-      // Chromium cannot show that gap, so check the rule the page loaded.
-      const fit = await page.evaluate(() => {
-        let rule = '';
-        // Utilities sit inside a CSS layer, so look through nested rules too.
-        const visit = (rules: CSSRuleList) => {
-          for (const r of Array.from(rules)) {
-            if (r instanceof CSSStyleRule && r.selectorText === '.h-page') rule = r.cssText;
-            if ('cssRules' in r) visit((r as CSSGroupingRule).cssRules);
-          }
+      // #1089, #1095: sized from the document's own height. In the iPhone app
+      // 100vh and 100dvh are both taller than the area the page lays out in,
+      // by about the status bar, so a page that fitted scrolled into empty
+      // space. Chromium cannot show that gap, so make the measured height
+      // shorter than 100dvh, as the phone reports it, and measure the page.
+      const fit = await page.evaluate(async () => {
+        const root = document.documentElement;
+        const measured = root.style.getPropertyValue('--screen-h');
+        const short = innerHeight - 59;
+        root.style.setProperty('--screen-h', `${short}px`);
+        await new Promise((r) => requestAnimationFrame(() => r(null)));
+        const pageEl = document.querySelector('.h-page') as HTMLElement;
+        const probe = document.createElement('div');
+        probe.style.height = 'var(--nav-bottom, 0px)';
+        pageEl.appendChild(probe);
+        const navPx = probe.getBoundingClientRect().height;
+        probe.remove();
+        const out = {
+          measured,
+          clientHeight: root.clientHeight,
+          pageHeight: pageEl.getBoundingClientRect().height,
+          expected: short - navPx,
+          // Everything in the page's flow, wrappers included.
+          shell: document.body.getBoundingClientRect().height,
+          short,
         };
-        for (const sheet of Array.from(document.styleSheets)) {
-          try { visit(sheet.cssRules); } catch { /* another origin's sheet */ }
-        }
-        return { rule, over: document.documentElement.scrollHeight - innerHeight };
+        root.style.setProperty('--screen-h', measured);
+        return out;
       });
-      expect(fit.over, `${path}: no page scroll`).toBeLessThanOrEqual(0);
-      expect(fit.rule, `${path}: subpage height from the visible screen`).toContain('100dvh');
+      expect(fit.measured, `${path}: the document's height is measured`).toBe(`${fit.clientHeight}px`);
+      expect(Math.abs(fit.pageHeight - fit.expected), `${path}: the page sizes from it`).toBeLessThanOrEqual(1);
+      expect(fit.shell, `${path}: and so do the wrappers around it`).toBeLessThanOrEqual(fit.short + 1);
+      expect(await page.evaluate(() => document.documentElement.scrollHeight - innerHeight), `${path}: no page scroll`).toBeLessThanOrEqual(0);
     }
   });
 });
