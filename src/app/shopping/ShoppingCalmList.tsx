@@ -8,8 +8,12 @@
  * puts it back. The pencil at the end of a row edits it, Delete included
  * (#1053), as on the Tasks and Chores widgets. The category cards stay behind
  * Manage.
+ *
+ * Adding asks where the item goes (#1070): the field gives way to the list's
+ * categories, one tap files it and the field comes back. The item is saved
+ * before the question, so walking away leaves it in Other, never lost.
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pencil } from 'lucide-react';
 import { ListRow } from '@/components/ui/ListRow';
 import { Input } from '@/components/ui/input';
@@ -27,17 +31,35 @@ export function groupForCalmList(items: ShoppingItem[], order: string[]) {
   return { groups: cats.map((c) => ({ category: c, items: byCat.get(c)! })), inCart: items.filter((i) => i.checked) };
 }
 
-export function ShoppingCalmList({ items, order, onToggle, onEdit, onAdd, label, color }: {
+export function ShoppingCalmList({ items, order, onToggle, onEdit, onAdd, onFile, label, color }: {
   items: ShoppingItem[];
   order: string[];
   onToggle: (id: string) => void;
   onEdit: (item: ShoppingItem) => void;
-  onAdd: (name: string) => Promise<unknown>;
+  /** Saves the item (in Other) and returns it, so it can then be filed. */
+  onAdd: (name: string) => Promise<{ id: string } | unknown>;
+  /** Moves a just-added item into a category. */
+  onFile: (itemId: string, category: string) => Promise<unknown>;
   label: (category: string) => string;
   /** The category's colour; shown muted beside its heading. */
   color: (category: string) => string;
 }) {
   const [draft, setDraft] = useState('');
+  // The item just added, waiting for its category; null shows the add field.
+  const [filing, setFiling] = useState<{ id: string; name: string } | null>(null);
+  const addRef = useRef<HTMLInputElement>(null);
+  const wasFiling = useRef(false);
+  useEffect(() => {
+    // Back from the question: the field is ready for the next item.
+    if (wasFiling.current && !filing) addRef.current?.focus();
+    wasFiling.current = !!filing;
+  }, [filing]);
+  const choices = order.filter((c) => c !== 'other');
+  const file = (category: string | null) => {
+    const f = filing;
+    setFiling(null);
+    if (f && category) void onFile(f.id, category);
+  };
   // Struck through for a moment before it moves to Checked off, so the tap is seen.
   const [striking, setStriking] = useState<ReadonlySet<string>>(new Set());
   const tick = (item: ShoppingItem) => {
@@ -78,23 +100,58 @@ export function ShoppingCalmList({ items, order, onToggle, onEdit, onAdd, label,
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-5" data-shopping-calm>
-      <form
-        onSubmit={async (e) => {
-          e.preventDefault();
-          const name = draft.trim();
-          if (!name) return;
-          await onAdd(name);
-          setDraft('');
-        }}
-      >
-        <Input
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="Add an item"
-          className="min-h-[52px] rounded-full px-5 text-body"
-          data-shopping-add
-        />
-      </form>
+      {filing && choices.length > 0 ? (
+        <div
+          className="flex flex-col gap-2"
+          role="group"
+          aria-label={`Category for ${filing.name}`}
+          data-shopping-file
+        >
+          <p className="m-0 px-3 text-body text-muted-foreground">Where does <span className="font-medium text-foreground">{filing.name}</span> go?</p>
+          <div className="flex flex-wrap gap-2">
+            {choices.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => file(c)}
+                className="flex min-h-[44px] items-center gap-2 rounded-full border border-border px-4 text-body hover:bg-foreground/[0.06]"
+                data-shopping-file-choice={c}
+              >
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: mutedMark(color(c)) }} aria-hidden />
+                {label(c)}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => file(null)}
+              className="flex min-h-[44px] items-center rounded-full px-4 text-body text-muted-foreground hover:bg-foreground/[0.06]"
+              data-shopping-file-skip
+            >
+              Skip
+            </button>
+          </div>
+        </div>
+      ) : (
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const name = draft.trim();
+            if (!name) return;
+            const added = await onAdd(name);
+            setDraft('');
+            if (added && typeof added === 'object' && 'id' in added) setFiling({ id: String(added.id), name });
+          }}
+        >
+          <Input
+            ref={addRef}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Add an item"
+            className="min-h-[52px] rounded-full px-5 text-body"
+            data-shopping-add
+          />
+        </form>
+      )}
 
       {groups.map((g) => (
         <section key={g.category} className="flex flex-col" data-shopping-category={g.category}>
