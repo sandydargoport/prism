@@ -1,5 +1,6 @@
 'use client';
 
+import { eventDotBackground } from '@/lib/calendar/sharedEvents';
 import { SlidingTitle } from '@/components/calendar/cells/SlidingTitle';
 import { eventTintStyle } from '@/lib/design/eventStyle';
 import { cn } from '@/lib/utils';
@@ -78,7 +79,8 @@ export function InlineCalendarEvent({
           <span
             aria-hidden
             className={cn('shrink-0 rounded-full', compact ? 'h-1 w-1' : 'h-1.5 w-1.5')}
-            style={{ backgroundColor: event.color }}
+            style={{ background: eventDotBackground(event) }}
+            data-event-mark
           />
           {time && <span className="shrink-0 tabular-nums text-muted-foreground">{time}</span>}
           <SlidingTitle className="text-foreground">{event.title}</SlidingTitle>

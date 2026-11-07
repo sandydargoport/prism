@@ -6,6 +6,7 @@
 
 'use client';
 
+import { mergeSharedEvents } from '@/lib/calendar/sharedEvents';
 import { useNow } from '@/lib/hooks/useNow';
 import { hiddenByTime } from '@/lib/calendar/displayRules';
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -152,8 +153,10 @@ export function useCalendarEvents(
         })
       );
 
-      navCacheSet(cacheKey, transformedEvents);
-      setEvents(transformedEvents);
+      // One event on two people's calendars is one event, in both colours (#1066).
+      const merged = mergeSharedEvents(transformedEvents);
+      navCacheSet(cacheKey, merged);
+      setEvents(merged);
     } catch (err) {
       console.error('Error fetching events:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch events');

@@ -154,6 +154,11 @@ export function useCalendarViewData() {
       inSeries: event.inSeries,
       calendarName: event.calendarName,
       calendarId: event.calendarId,
+      // The same event on other people's calendars (#1066).
+      alsoIds: event.alsoIds,
+      alsoCalendarIds: event.alsoCalendarIds,
+      alsoCalendarNames: event.alsoCalendarNames,
+      alsoColors: event.alsoColors,
     }));
     return deduplicateEvents(filterEvents(mapped));
   }, [apiEvents, filterEvents]);

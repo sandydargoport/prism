@@ -138,9 +138,11 @@ test.describe('Today on a phone', () => {
       expect(head.dateSize).toBe(head.condSize);
 
       // #1034: it fits one screen, so it neither scrolls nor bounces.
-      const fitScreen = await page.evaluate(() => ({ doc: document.documentElement.scrollHeight, inner: innerHeight, bounce: getComputedStyle(document.documentElement).overscrollBehaviorY }));
+      const fitScreen = await page.evaluate(() => ({ doc: document.documentElement.scrollHeight, inner: innerHeight, bounce: getComputedStyle(document.documentElement).overscrollBehaviorY, bodyBounce: getComputedStyle(document.body).overscrollBehaviorY }));
       expect(fitScreen.doc, 'no scroll on a page that fits').toBeLessThanOrEqual(fitScreen.inner);
       expect(fitScreen.bounce).toBe('none');
+      // The body too, which some iOS versions bounce instead.
+      expect(fitScreen.bodyBounce).toBe('none');
 
       // In order, top to bottom: header, sentences, lines.
       const tops = await page.evaluate(() => {
