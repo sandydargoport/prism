@@ -119,6 +119,25 @@ test.describe('Phone subpages do not drag', () => {
         return e.defaultPrevented;
       });
       expect(refused, `${path}: pull past the top refused`).toBe(true);
+      // #1089: sized from the visible height. In the iPhone app 100vh is taller
+      // than the screen and a page that fitted scrolled into empty space;
+      // Chromium cannot show that gap, so check the rule the page loaded.
+      const fit = await page.evaluate(() => {
+        let rule = '';
+        // Utilities sit inside a CSS layer, so look through nested rules too.
+        const visit = (rules: CSSRuleList) => {
+          for (const r of Array.from(rules)) {
+            if (r instanceof CSSStyleRule && r.selectorText === '.h-page') rule = r.cssText;
+            if ('cssRules' in r) visit((r as CSSGroupingRule).cssRules);
+          }
+        };
+        for (const sheet of Array.from(document.styleSheets)) {
+          try { visit(sheet.cssRules); } catch { /* another origin's sheet */ }
+        }
+        return { rule, over: document.documentElement.scrollHeight - innerHeight };
+      });
+      expect(fit.over, `${path}: no page scroll`).toBeLessThanOrEqual(0);
+      expect(fit.rule, `${path}: subpage height from the visible screen`).toContain('100dvh');
     }
   });
 });
