@@ -360,6 +360,14 @@ export function ShoppingView() {
                 onToggle={(id) => toggleItem(id)}
                 onEdit={handleEditItem}
                 onAdd={(name) => apiAddItem(activeList.id, { name, category: 'other' })}
+                onFile={async (itemId, category) => {
+                  const res = await fetch(`/api/shopping-items/${itemId}`, {
+                    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ category }),
+                  });
+                  if (!res.ok) { toast({ title: 'Could not move the item. Try again from its pencil.', variant: 'destructive' }); return; }
+                  await refreshLists();
+                }}
                 label={(id) => dynamicCategories.find((c) => c.id === id)?.name ?? (id === 'other' ? 'Other' : id.charAt(0).toUpperCase() + id.slice(1))}
                 color={getDynCategoryColor}
               />

@@ -82,6 +82,53 @@ test.describe('the Shopping page', () => {
     }
   });
 
+  // #1070: on a phone (and the wall), adding asks for the category in the
+  // field's own place; a tap files it, Skip leaves it in Other, and the field
+  // comes back for the next item.
+  test('adding an item asks where it goes, in the field\'s place', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);
+    const lists = await (await page.request.get('/api/shopping-lists')).json();
+    const list = (lists.lists ?? lists)[0];
+    const filed = `Filed ${Date.now()}`;
+    const skipped = `Skipped ${Date.now()}`;
+    const itemsNamed = async (n: string) => {
+      const all = await (await page.request.get('/api/shopping-lists?includeItems=true')).json();
+      const mine = ((all.lists ?? all) as Array<{ id: string; items: Array<{ id: string; name: string; category: string }> }>).find((l) => l.id === list.id)!;
+      return mine.items.filter((i) => i.name === n);
+    };
+    try {
+      await page.goto('/shopping');
+      const calm = page.locator('[data-shopping-calm]');
+      const field = calm.locator('[data-shopping-add]');
+      await expect(field).toBeVisible({ timeout: 60_000 });
+      const fieldTop = (await field.boundingBox())!.y;
+
+      await field.fill(filed);
+      await field.press('Enter');
+      const ask = calm.locator('[data-shopping-file]');
+      await expect(ask).toBeVisible({ timeout: 15_000 });
+      await expect(ask).toContainText(filed);
+      expect(Math.abs((await ask.boundingBox())!.y - fieldTop), 'asked where the field was').toBeLessThanOrEqual(4);
+      const dairy = ask.locator('[data-shopping-file-choice="dairy"]');
+      const db = (await dairy.boundingBox())!;
+      expect(db.height, 'a finger-sized choice').toBeGreaterThanOrEqual(44);
+      await dairy.click();
+      await expect(field, 'the field is back').toBeFocused();
+      await expect(calm.locator('[data-shopping-category="dairy"] [data-list-row]').filter({ hasText: filed })).toBeVisible({ timeout: 15_000 });
+      expect((await itemsNamed(filed)).map((i) => i.category)).toEqual(['dairy']);
+
+      await field.fill(skipped);
+      await field.press('Enter');
+      await ask.locator('[data-shopping-file-skip]').click();
+      await expect(field).toBeVisible();
+      await expect(calm.locator('[data-shopping-category="other"] [data-list-row]').filter({ hasText: skipped })).toBeVisible({ timeout: 15_000 });
+      expect((await itemsNamed(skipped)).map((i) => i.category)).toEqual(['other']);
+    } finally {
+      for (const n of [filed, skipped]) for (const i of await itemsNamed(n)) await page.request.delete(`/api/shopping-items/${i.id}`);
+    }
+  });
+
   // #1053: a category is added where the categories are, under Manage, and a
   // list that shows chosen categories gets it too, so it shows at once.
   test('Manage adds a category to this list', async ({ page }) => {
