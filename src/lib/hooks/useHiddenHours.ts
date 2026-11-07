@@ -3,6 +3,7 @@
 import { useEffect, useCallback, useMemo } from 'react';
 import { parseStored, readStored, useHydrated, useStoredString, writeStored } from './useStoredValue';
 import type { CalendarEvent } from '@/types/calendar';
+import { sharedGet } from '@/lib/utils/sharedGet';
 
 // localStorage key doubles as a fast-paint cache AND the migration source for
 // installs that stored hidden-hours locally before it moved to the database.
@@ -134,7 +135,7 @@ export function useHiddenHours() {
   // The database value is authoritative: it replaces the cache when present.
   useEffect(() => {
     let active = true;
-    fetch('/api/settings')
+    sharedGet('/api/settings')
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!active) return;

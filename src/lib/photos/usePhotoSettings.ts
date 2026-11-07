@@ -7,6 +7,7 @@
  */
 import { useEffect, useState } from 'react';
 import { PHOTO_DATE_SETTING, PHOTO_ON_THIS_DAY_SETTING, PHOTO_PLACE_SETTING } from './caption';
+import { sharedGet } from '@/lib/utils/sharedGet';
 
 export interface PhotoSettings { date: boolean; place: boolean; onThisDay: boolean }
 
@@ -14,7 +15,7 @@ const DEFAULTS: PhotoSettings = { date: true, place: false, onThisDay: false };
 let read: Promise<PhotoSettings> | null = null;
 
 function readPhotoSettings(): Promise<PhotoSettings> {
-  read ??= fetch('/api/settings')
+  read ??= sharedGet('/api/settings')
     .then((r) => (r.ok ? r.json() : null))
     .then((d) => ({
       date: d?.settings?.[PHOTO_DATE_SETTING] !== false,

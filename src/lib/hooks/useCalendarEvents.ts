@@ -18,6 +18,7 @@ import { useCachedMountFetch } from '@/lib/hooks/useCachedMountFetch';
 import { navCacheGet, navCacheSet } from '@/lib/utils/navCache';
 import { useLocalDateKey } from '@/lib/hooks/useLocalDateKey';
 import { useFetchOnMount } from './useFetchOnMount';
+import { sharedGet } from '@/lib/utils/sharedGet';
 
 interface UseCalendarEventsOptions {
   /** Number of days to fetch events for (used only when rangeStart/rangeEnd are omitted). */
@@ -231,7 +232,7 @@ export function useCalendarEvents(
   const checkAndSync = useCallback(async () => {
     if (!enabled || autoSyncMinutes <= 0) return;
     try {
-      const response = await fetch('/api/calendars');
+      const response = await sharedGet('/api/calendars');
       if (!response.ok) return;
 
       const data = await response.json();
@@ -333,7 +334,7 @@ export function useCalendarSources() {
   const fetchCalendars = useCallback(async () => {
     try {
       setError(null);
-      const response = await fetch('/api/calendars');
+      const response = await sharedGet('/api/calendars');
 
       if (!response.ok) {
         throw new Error('Failed to fetch calendars');

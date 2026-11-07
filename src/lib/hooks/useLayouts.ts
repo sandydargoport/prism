@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useFetchOnMount } from './useFetchOnMount';
 import type { IdleBackground } from '@/lib/idleBackground';
+import { sharedGet } from '@/lib/utils/sharedGet';
 
 export interface WidgetConfig {
   i: string;
@@ -67,7 +68,7 @@ export function useLayouts(): UseLayoutsResult {
   const fetchLayouts = useCallback(async () => {
     try {
       setError(null);
-      const response = await fetch('/api/layouts');
+      const response = await sharedGet('/api/layouts');
       if (!response.ok) throw new Error('Failed to fetch layouts');
       const data = await response.json();
       // Normalize widget format: DB may store {type, position:{x,y,w,h}}

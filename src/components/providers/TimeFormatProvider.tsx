@@ -16,6 +16,7 @@ import {
 import { DISPLAY_TIMEZONE_MODE_KEY, detectBrowserTimezone } from '@/lib/hooks/useTimezone';
 import { useLocalDateKey } from '@/lib/hooks/useLocalDateKey';
 import { isHouseholdZoneCandidate } from '@/lib/utils/timezone';
+import { sharedGet } from '@/lib/utils/sharedGet';
 
 const SETTING_KEY = 'timeFormat';
 const TIMEZONE_SETTING_KEY = 'timezone';
@@ -97,7 +98,7 @@ export function TimeFormatProvider({ children }: { children: React.ReactNode }) 
 
   React.useEffect(() => {
     let active = true;
-    fetch('/api/settings')
+    sharedGet('/api/settings')
       .then((response) => response.ok ? response.json() : null)
       .then((data) => {
         const saved = data?.settings?.[SETTING_KEY];

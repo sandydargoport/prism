@@ -22,6 +22,7 @@ import { useHydrated, useStoredString, writeStored } from '@/lib/hooks/useStored
 import { isInstallableTheme, MAX_INSTALLED_THEMES, type Theme } from '@/lib/themes/tokens';
 import { BUILTIN_THEMES, getBuiltinTheme, DEFAULT_THEME_ID } from '@/lib/themes/appThemes';
 import { applyThemeVars, applyThemeChrome, themeTokens } from '@/lib/themes/applyTheme';
+import { sharedGet } from '@/lib/utils/sharedGet';
 
 /**
  * Theme modes
@@ -241,7 +242,7 @@ export function ThemeProvider({
   const persistOnLoad = useEffectEvent((id: string, installed: Theme[]) => persistTheme(id, installed));
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/settings')
+    sharedGet('/api/settings')
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (cancelled) return;

@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/components/providers';
 import { useLayouts } from '@/lib/hooks/useLayouts';
 import { NEW_LOOK_SETTING_KEY, planNewLook } from '@/lib/newLook';
+import { sharedGet } from '@/lib/utils/sharedGet';
 
 export function useNewLook() {
   const { requireAuth } = useAuth();
@@ -17,7 +18,7 @@ export function useNewLook() {
 
   useEffect(() => {
     let active = true;
-    fetch('/api/settings')
+    sharedGet('/api/settings')
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (active) setPreviousDefaultId(d?.settings?.[NEW_LOOK_SETTING_KEY]?.previousDefaultId ?? null); })
       .catch(() => {});

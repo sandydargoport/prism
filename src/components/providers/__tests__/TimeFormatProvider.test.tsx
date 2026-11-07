@@ -5,6 +5,7 @@
 import * as React from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { TimeFormatProvider, useTimeFormat } from '../TimeFormatProvider';
+import { resetSharedGet } from '@/lib/utils/sharedGet';
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
   <TimeFormatProvider>{children}</TimeFormatProvider>
@@ -16,6 +17,8 @@ describe('TimeFormatProvider', () => {
   beforeEach(() => {
     fetchMock.mockReset();
     global.fetch = fetchMock;
+    // Each test is a fresh page: no read left in flight by the last one.
+    resetSharedGet();
     localStorage.clear();
     sessionStorage.clear();
   });
