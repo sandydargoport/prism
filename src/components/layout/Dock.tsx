@@ -95,7 +95,8 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
   // Shopping's lists) keeps the middle of the screen.
   const router = useRouter();
   const rowRef = React.useRef({ dock, pathname, search });
-  rowRef.current = { dock, pathname, search };
+  // Kept current after each render, for the swipe handler to read.
+  React.useEffect(() => { rowRef.current = { dock, pathname, search }; });
   React.useEffect(() => {
     if (!narrow) return;
     let start: { x: number; y: number; t: number; dir: -1 | 1 } | null = null;
