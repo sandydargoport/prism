@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import path from 'path';
 import { getFirstParent, getSeededParentId, verifySettingsPinViaAPI } from './helpers/auth';
 import { TODAY_TEMPLATE } from '../src/lib/constants/layoutTemplates';
 
@@ -57,6 +58,41 @@ test.describe('Subpages clear the iPhone status bar', () => {
       expect(top, `${path}: first text top`).toBeGreaterThanOrEqual(INSET);
     }
   });
+});
+
+// With a wallpaper photo behind it, the phone Today page paints above the
+// photo and its shade: it sat under them, so the time, the temperature and the
+// list were hidden by the tint while the date showed (#1063). Hit testing
+// follows paint order, so with the photo layers made hit-testable the topmost
+// element over the time must be the time itself.
+test('the time and the list paint above the wallpaper photo', async ({ page }) => {
+  test.skip(!HAS_TEST_DB, 'needs the seeded test database');
+  test.setTimeout(90_000);
+  const SCENERY = path.join(__dirname, '..', 'public', 'scenery');
+  const photo = { id: 'phone-bg', filename: 'phone-bg.webp', originalFilename: 'phone-bg.webp', mimeType: 'image/webp', width: 1080, height: 1920, orientation: 'portrait', usage: 'wallpaper' };
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => localStorage.setItem('prism-wallpaper-enabled', 'true'));
+  await page.route('**/api/photos?*', (route) => route.fulfill({ json: { photos: [photo], total: 1 } }));
+  await page.route('**/api/photos/phone-bg/file', (route) => route.fulfill({ path: path.join(SCENERY, 'valley.webp'), contentType: 'image/webp' }));
+  expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);
+  const layout = await (await page.request.post('/api/layouts', { data: { name: `Phone photo ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
+  try {
+    await page.goto(`/d/${layout.slug}`);
+    await expect(page.locator('[data-phone-today-time]')).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator('[data-photo-layer]').first(), 'premise: a photo behind the page').toBeAttached({ timeout: 30_000 });
+    const top = await page.evaluate(() => {
+      for (const el of document.querySelectorAll<HTMLElement>('[data-photo-layer], [data-wallpaper-shade]')) {
+        el.style.pointerEvents = 'auto';
+        if (el.parentElement) el.parentElement.style.pointerEvents = 'auto';
+      }
+      const t = document.querySelector('[data-phone-today-time]')!.getBoundingClientRect();
+      const hit = document.elementFromPoint(t.left + t.width / 2, t.top + t.height / 2);
+      return !!hit?.closest('[data-phone-today]');
+    });
+    expect(top, 'the time paints above the photo').toBe(true);
+  } finally {
+    await page.request.delete(`/api/layouts/${layout.id}`);
+  }
 });
 
 test.describe('Today on a phone', () => {

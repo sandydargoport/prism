@@ -47,6 +47,15 @@ test.describe('the Shopping page', () => {
       expect(look.transform, 'no capitals').toBe('none');
       expect(look.sat, 'a muted mark').toBeLessThanOrEqual(0.4);
 
+      // An item with no category sits under "Other", not the id "other" (#1064).
+      const loose = await (await page.request.post('/api/shopping-items', { data: { listId: list.id, name: `Loose ${Date.now()}`, category: 'other' } })).json();
+      try {
+        await page.reload();
+        await expect(calm.locator('[data-shopping-category="other"] h2')).toHaveText('Other', { timeout: 30_000 });
+      } finally {
+        await page.request.delete(`/api/shopping-items/${loose.id}`);
+      }
+
       // #1053: no ring to aim for; a tap anywhere crosses the item off, its
       // name struck through, then it moves to Checked off; a tap there puts it back.
       await expect(calm.locator('[data-shopping-ring]'), 'no ring').toHaveCount(0);

@@ -360,7 +360,7 @@ export function ShoppingView() {
                 onToggle={(id) => toggleItem(id)}
                 onEdit={handleEditItem}
                 onAdd={(name) => apiAddItem(activeList.id, { name, category: 'other' })}
-                label={(id) => dynamicCategories.find((c) => c.id === id)?.name ?? id}
+                label={(id) => dynamicCategories.find((c) => c.id === id)?.name ?? (id === 'other' ? 'Other' : id.charAt(0).toUpperCase() + id.slice(1))}
                 color={getDynCategoryColor}
               />
             </div>
