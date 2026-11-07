@@ -1,0 +1,28 @@
+name: Dependency review
+
+# Supply chain check on every pull request into master: the dependencies the
+# PR adds or changes, compared with master, against GitHub's advisory
+# database. A PR that brings in a package with a known high or critical
+# vulnerability fails here, before it can merge. It also shows each new
+# package's OpenSSF Scorecard and warns on poorly maintained ones.
+#
+# Reads only the dependency graph; runs no code from the PR. No comment is
+# posted on the PR: the result is in the job summary.
+
+on:
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294  # v5.0.0
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: never
+          show-openssf-scorecard: true
+          warn-on-openssf-scorecard-level: 3
