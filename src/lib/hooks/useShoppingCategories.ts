@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { ALL_DEFAULT_CATEGORIES, type ShoppingCategoryPreset } from '@/lib/constants/shoppingPresets';
 import { useFetchOnMount } from './useFetchOnMount';
+import { sharedGet } from '@/lib/utils/sharedGet';
 
 // Re-export shared types and helpers for consumers
 export type ShoppingCategoryDef = ShoppingCategoryPreset;
@@ -31,7 +32,7 @@ export function useShoppingCategories() {
 
   const fetchCategories = useCallback(async () => {
     try {
-      const response = await fetch('/api/settings');
+      const response = await sharedGet('/api/settings');
       if (response.ok) {
         const data = await response.json();
         const saved = data.settings?.shoppingCategories;

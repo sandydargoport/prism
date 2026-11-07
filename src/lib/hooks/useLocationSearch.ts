@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { sharedGet } from '@/lib/utils/sharedGet';
 
 export interface LocationCandidate {
   displayName: string;
@@ -44,7 +45,7 @@ export function useLocationSearch() {
 
   // Load current saved location on mount
   useEffect(() => {
-    fetch('/api/settings')
+    sharedGet('/api/settings')
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         const loc = data?.settings?.location as StoredLocation | undefined;

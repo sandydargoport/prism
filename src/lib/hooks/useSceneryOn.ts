@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { SCENERY_SETTING_KEY } from '@/lib/scenery';
+import { sharedGet } from '@/lib/utils/sharedGet';
 
 let pending: Promise<boolean> | null = null;
 
 /** One settings read per page load, however many components ask. */
 function readSceneryOn(): Promise<boolean> {
   if (typeof fetch === 'undefined') return Promise.resolve(false);
-  pending ??= fetch('/api/settings')
+  pending ??= sharedGet('/api/settings')
     .then((r) => (r.ok ? r.json() : null))
     .then((data) => data?.settings?.[SCENERY_SETTING_KEY] === true)
     .catch(() => false);

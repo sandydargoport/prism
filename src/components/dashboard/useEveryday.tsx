@@ -10,11 +10,12 @@ import { toast } from '@/components/ui/use-toast';
 import { ToastAction, type ToastActionElement } from '@/components/ui/toast';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { useFamily } from '@/components/providers';
+import { sharedGet } from '@/lib/utils/sharedGet';
 
 /** Read once per page load: may the wall tick and add without a PIN? */
 let pending: Promise<boolean> | null = null;
 function readPinFree(): Promise<boolean> {
-  pending ??= fetch('/api/settings')
+  pending ??= sharedGet('/api/settings')
     .then((r) => (r.ok ? r.json() : null))
     .then((data) => (data?.security ?? data?.settings?.security)?.requirePinForEveryChange === false)
     .catch(() => false);

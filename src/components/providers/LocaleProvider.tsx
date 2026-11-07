@@ -16,6 +16,7 @@ import * as React from 'react';
 import { NextIntlClientProvider } from 'next-intl';
 import en from '@/i18n/messages/en.json';
 import de from '@/i18n/messages/de.json';
+import { sharedGet } from '@/lib/utils/sharedGet';
 
 const MESSAGES = { en, de } as const;
 export type AppLocale = keyof typeof MESSAGES;
@@ -61,7 +62,7 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     let active = true;
-    fetch('/api/settings')
+    sharedGet('/api/settings')
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => {
         const saved = data?.settings?.[SETTING_KEY];
