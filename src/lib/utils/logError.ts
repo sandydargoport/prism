@@ -23,6 +23,11 @@ export function logError(message: string, error: unknown, requestId?: string): v
 
 /** Newlines and other control characters become spaces. */
 export function oneLine(text: string): string {
-  // Line breaks first, in the form CodeQL's log-injection check recognises.
-  return text.replace(/\r\n|\r|\n/g, ' ').replace(/[\u0000-\u001f\u007f]+/g, ' ');
+  return text
+    .replace(/\r\n|\r|\n/g, ' ')
+    .replace(/[\u0000-\u001f\u007f]+/g, ' ')
+    // Nothing is left to remove by now; this is the form CodeQL's log-injection
+    // check counts as cleaning a line (line breaks replaced by nothing), so the
+    // callers' alerts close.
+    .replace(/\n|\r/g, '');
 }
