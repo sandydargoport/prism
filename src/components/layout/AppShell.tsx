@@ -31,6 +31,7 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import { useAutoHideUI } from '@/lib/hooks/useAutoHideUI';
 import { useInactivityRedirect } from '@/lib/hooks/useInactivityRedirect';
+import { useNoRubberBand } from '@/lib/hooks/useNoRubberBand';
 
 /**
  * APP SHELL PROPS
@@ -63,6 +64,8 @@ export interface AppShellProps {
   dock?: 'wall';
   /** This screen's jobs, for the dock's More panel. */
   screenJobs?: React.ReactNode;
+  /** The phone menu's Cards and Reorder; off when the page has no cards (Simple's Today). */
+  cardTools?: boolean;
 }
 
 /**
@@ -99,8 +102,11 @@ export function AppShell({
   className,
   dock,
   screenJobs,
+  cardTools = true,
 }: AppShellProps) {
   const isMobile = useIsMobile();
+  // Every phone page: no drag past the ends, none at all on a page that fits.
+  useNoRubberBand(isMobile);
   const { uiHidden } = useAutoHideUI();
   useInactivityRedirect();
   const [measureHideNav, setMeasureHideNav] = React.useState(false);
@@ -167,7 +173,7 @@ export function AppShell({
 
       {/* MOBILE FAB - the phone's own tools (cards, reorder, scan) */}
       {!hideNav && showMobileNav && (
-        <MobileFab user={user} onLogin={onLogin} onLogout={onLogout} uiHidden={uiHidden || measureHideNav} />
+        <MobileFab user={user} onLogin={onLogin} onLogout={onLogout} uiHidden={uiHidden || measureHideNav} cardTools={cardTools} />
       )}
 
       {/* Once per screen after an update (#1032). */}

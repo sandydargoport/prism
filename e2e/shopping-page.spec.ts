@@ -87,7 +87,7 @@ test.describe('the Shopping page', () => {
   // #1070: on a phone (and the wall), adding asks for the category in the
   // field's own place; a tap files it, Skip leaves it in Other, and the field
   // comes back for the next item. A list that shows a few categories offers
-  // those first and the rest behind More; moving to another list closes it.
+  // those first, then every other one; moving to another list closes it.
   test('adding an item asks where it goes, in the field\'s place', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);
@@ -117,11 +117,11 @@ test.describe('the Shopping page', () => {
       await expect(ask).toBeVisible({ timeout: 15_000 });
       await expect(ask).toContainText(filed);
       expect(Math.abs((await ask.boundingBox())!.y - fieldTop), 'asked where the field was').toBeLessThanOrEqual(4);
-      await expect(ask.locator('[data-shopping-file-choice]'), "this list's one category first").toHaveCount(1);
-      await expect(ask.locator('[data-shopping-file-choice="produce"]')).toBeVisible();
-      await ask.locator('[data-shopping-file-more]').click();
+      // #1076: every category at once, this list's own first.
+      await expect(ask.locator('[data-shopping-file-choice]').first(), "this list's category first").toHaveAttribute('data-shopping-file-choice', 'produce');
+      expect(await ask.locator('[data-shopping-file-choice]').count(), 'every category offered').toBeGreaterThan(5);
       const dairy = ask.locator('[data-shopping-file-choice="dairy"]');
-      await expect(dairy, 'the rest behind More').toBeVisible();
+      await expect(dairy, 'no More to open first').toBeVisible();
       const db = (await dairy.boundingBox())!;
       expect(db.height, 'a finger-sized choice').toBeGreaterThanOrEqual(44);
       await dairy.click();
