@@ -8,6 +8,7 @@ import { getWidgetStyle, getWidgetContentStyle, getTextColorClass, getWidgetOutl
 import { useSquareCells } from './useSquareCells';
 import { useEmptyWidgets } from './useEmptyWidgets';
 import { hidesWhenEmpty } from './hideWhenEmpty';
+import { isSmallScreen, layoutForSmallScreen } from '@/lib/layout/smallScreen';
 import { useViewportSize } from '@/lib/hooks/useViewportSize';
 import { GRID_COLS } from '@/lib/constants/grid';
 import { resolveFitMode, containGeometry } from './fitMode';
@@ -125,6 +126,7 @@ export function CssGridDisplay({
   onEmptyChange,
   className,
   staged = false,
+  smallScreenDrop = false,
 }: CssGridDisplayProps) {
   const { containerRef, cellSize: widthCellSize, width, top, zoom, remeasure } = useSquareCells(cols, containerPadding, margin, fillHeight);
   const { width: viewportWidth, height: viewportHeight, visibleHeight } = useViewportSize();
@@ -134,9 +136,11 @@ export function CssGridDisplay({
   // math tracks the actual header height instead of a stale value.
   useEffect(() => { remeasure(); }, [headerOffset, bottomOffset, remeasure]);
 
+  // On a small screen, "Hide first" widgets drop out and the rest close up (#803).
+  const small = smallScreenDrop && isSmallScreen(viewportWidth, viewportHeight);
   const visibleWidgets = useMemo(
-    () => layout.filter(w => w.visible !== false),
-    [layout],
+    () => (small ? layoutForSmallScreen(layout) : layout).filter(w => w.visible !== false),
+    [layout, small],
   );
 
   const { emptyIds, reporterFor } = useEmptyWidgets(onEmptyChange);

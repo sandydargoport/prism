@@ -29,6 +29,8 @@ export interface WidgetConfig {
    *  where it is drawn: on for the screensaver and a calm dashboard's idle
    *  screen, off for a dashboard in use. See hideWhenEmpty.ts. */
   hideWhenEmpty?: boolean;
+  /** Left out on a small screen so the rest have room (#803). See smallScreen.ts. */
+  hideOnSmallScreen?: boolean;
   settings?: Record<string, unknown>;
 }
 

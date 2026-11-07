@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useMemo, useRef, useState, useCallback, useEffect } from 'react';
-import { EyeOff, PaintBucket, Square, Type } from 'lucide-react';
+import { EyeOff, Minimize2, PaintBucket, Square, Type } from 'lucide-react';
 import { isLightColor } from '@/lib/utils/color';
 import { WIDGET_REGISTRY } from '@/components/widgets/widgetRegistry';
 import { useScreenSafeZones } from '@/lib/hooks/useScreenSafeZones';
@@ -594,6 +594,28 @@ export function LayoutGridEditor({
             );
           })()}
 
+          {/* Hide first on a small screen (#803): left out below about 75% of
+              the design size, and the rows and columns only it used close up. */}
+          {(() => {
+            const on = selectedWidgetConfig.hideOnSmallScreen === true;
+            return (
+              <button
+                onClick={() => onLayoutChange(stableLayout.map(w => w.i === selectedWidget ? { ...w, hideOnSmallScreen: !on } : w))}
+                onPointerDown={(e) => e.stopPropagation()}
+                aria-pressed={on}
+                title={on ? 'Left out on a small screen, so the rest have room. Tap to always show it.'
+                  : 'Always shown. Tap to leave it out on a small screen, so the rest have room.'}
+                className={`flex items-center gap-1.5 px-2.5 py-2 text-xs rounded-md border transition-colors touch-manipulation min-h-[40px] ${
+                  on ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-accent/50'
+                }`}
+                data-hide-small-screen
+              >
+                <Minimize2 className="w-3.5 h-3.5" />
+                <span>Hide first on a small screen</span>
+              </button>
+            );
+          })()}
+
           {/* Spacer + close */}
           <div className="flex-1" />
           <button
@@ -800,6 +822,7 @@ export function LayoutGridEditor({
   return (
     <CssGridDisplay
       staged
+      smallScreenDrop
       layout={layout}
       renderWidget={renderWidget}
       margin={margin}
