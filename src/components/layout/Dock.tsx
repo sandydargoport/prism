@@ -96,7 +96,9 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
         onClick={() => setMoreOpen(false)}
         aria-current={active ? 'page' : undefined}
         className={cn(
-          cn('flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-full text-caption font-medium transition-colors', inMore ? 'min-w-[64px] px-3' : narrow ? 'min-w-[44px] flex-1 px-0.5' : 'min-w-[64px] px-3'),
+          // Rounded corners, not a pill: round, the highlight behind a long
+          // word ("Shopping") became an oval crowding its label (#1068).
+          cn('flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-2xl text-caption font-medium transition-colors', inMore ? 'min-w-[64px] px-3' : narrow ? 'min-w-[44px] flex-1 px-0.5' : 'min-w-[64px] px-3'),
           inMore ? 'min-h-[64px] rounded-2xl text-foreground hover:bg-muted' : 'text-white/85 hover:bg-white/10',
           active && (inMore ? 'bg-muted' : 'bg-white/15 text-white'),
         )}
@@ -140,7 +142,7 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
       <nav
         aria-label={t('nav.label', { defaultValue: 'Pages' })}
         className={cn(
-          'fixed bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 flex items-center rounded-full bg-[rgb(22_17_13)] shadow-2xl transition-[opacity,transform] duration-200',
+          'fixed bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 flex items-center rounded-[20px] bg-[rgb(22_17_13)] shadow-2xl transition-[opacity,transform] duration-200',
           // A phone: the full width less a margin, each item an equal share.
           narrow ? 'inset-x-2 justify-between p-1' : 'left-1/2 -translate-x-1/2 gap-1 p-1.5',
           visible ? 'opacity-100' : 'pointer-events-none translate-y-4 opacity-0',
@@ -153,7 +155,7 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
         <button
           type="button"
           onClick={() => setMoreOpen(true)}
-          className={cn('flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-full text-caption font-medium text-white/85 hover:bg-white/10', narrow ? 'min-w-[44px] flex-1 px-0.5' : 'min-w-[64px] px-3')}
+          className={cn('flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-2xl text-caption font-medium text-white/85 hover:bg-white/10', narrow ? 'min-w-[44px] flex-1 px-0.5' : 'min-w-[64px] px-3')}
           data-dock-more
         >
           <MoreHorizontal className="h-5 w-5" />
@@ -162,7 +164,7 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
         {!narrow && <button
           type="button"
           onClick={user ? onLogout : onLogin}
-          className="flex min-h-[56px] min-w-[64px] flex-col items-center justify-center gap-1 rounded-full px-3 text-caption font-medium text-white/85 hover:bg-white/10"
+          className="flex min-h-[56px] min-w-[64px] flex-col items-center justify-center gap-1 rounded-2xl px-3 text-caption font-medium text-white/85 hover:bg-white/10"
           data-dock-sign
         >
           {user ? <LogOut className="h-5 w-5" /> : <LogIn className="h-5 w-5" />}
