@@ -11,7 +11,7 @@
  */
 import * as React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { HelpCircle, LogIn, LogOut, MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -28,6 +28,10 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 export const DOCK_WALL_MS = 10_000;
 /** How long the Menu tab stays full before it shrinks to a nub (#989). */
 export const MENU_NUB_MS = 8_000;
+/** How close to the screen's edge a page swipe starts, how far and how fast it goes (#1087). */
+const EDGE_PX = 24;
+const SWIPE_PX = 60;
+const SWIPE_MS = 700;
 
 export interface DockProps {
   /** 'wall': hidden at rest behind a Menu word; 'page': always on screen. */
@@ -85,6 +89,47 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
   const calm = useCalmIdle();
 
   // The dashboard is "Home" on the dock, as on the wall's design.
+  // A phone: a swipe from the screen's edge moves along the dock's row (#1087).
+  // From the left edge to the previous page, from the right edge to the next.
+  // Only from the edge, so a page's own sideways swipe (Calendar's dates,
+  // Shopping's lists) keeps the middle of the screen.
+  const router = useRouter();
+  const rowRef = React.useRef({ dock, pathname, search });
+  // Kept current after each render, for the swipe handler to read.
+  React.useEffect(() => { rowRef.current = { dock, pathname, search }; });
+  React.useEffect(() => {
+    if (!narrow) return;
+    let start: { x: number; y: number; t: number; dir: -1 | 1 } | null = null;
+    const onStart = (e: TouchEvent) => {
+      start = null;
+      if (e.touches.length !== 1 || document.querySelector('[role="dialog"]')) return;
+      const { clientX: x, clientY: y } = e.touches[0]!;
+      if (x <= EDGE_PX) start = { x, y, t: Date.now(), dir: -1 };
+      else if (x >= window.innerWidth - EDGE_PX) start = { x, y, t: Date.now(), dir: 1 };
+    };
+    const onEnd = (e: TouchEvent) => {
+      const s = start;
+      start = null;
+      const end = e.changedTouches[0];
+      if (!s || !end) return;
+      const dx = end.clientX - s.x;
+      const dy = end.clientY - s.y;
+      // Towards the middle, mostly sideways, far enough and quick.
+      if (Math.sign(dx) !== -s.dir || Math.abs(dx) < SWIPE_PX || Math.abs(dx) < 1.5 * Math.abs(dy) || Date.now() - s.t > SWIPE_MS) return;
+      const { dock: row, pathname: path, search: q } = rowRef.current;
+      const at = row.findIndex((i) => isNavActive(i.href, path, q));
+      const to = row[at + s.dir];
+      if (at < 0 || !to) return;
+      router.push(scopedHref(to.href, path, q));
+    };
+    document.addEventListener('touchstart', onStart, { passive: true });
+    document.addEventListener('touchend', onEnd, { passive: true });
+    return () => {
+      document.removeEventListener('touchstart', onStart);
+      document.removeEventListener('touchend', onEnd);
+    };
+  }, [narrow, router]);
+
   const label = (item: NavItem) => (item.href === '/' ? t('nav.home', { defaultValue: 'Home' }) : t(item.i18nKey, { defaultValue: item.label }));
   const link = (item: NavItem, inMore = false) => {
     const active = isNavActive(item.href, pathname, search);

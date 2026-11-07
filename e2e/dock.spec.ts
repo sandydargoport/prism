@@ -382,4 +382,53 @@ test.describe('the dock on the wall', () => {
       await page.request.patch('/api/settings', { data: { key: 'dockPages', value: before ?? ['/', '/calendar', '/chores', '/shopping', '/meals', '/photos'] } });
     }
   });
+
+  // #1087: on a phone a swipe from the screen's edge moves along the dock's
+  // row; one in the middle is the page's own (Calendar's dates) and does not.
+  test('on a phone, a swipe from the edge moves to the next or previous page', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);
+    await page.goto('/calendar');
+    await expect(page.getByRole('navigation', { name: 'Pages' })).toBeVisible({ timeout: 60_000 });
+    // The phone check settles after the first paint; swipe once it has.
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1000);
+    const row = await page.getByRole('navigation', { name: 'Pages' }).locator('a[href]').evaluateAll((as) => as.map((a) => new URL((a as HTMLAnchorElement).href).pathname));
+    const at = row.indexOf('/calendar');
+    expect(at, 'Calendar is on the dock').toBeGreaterThan(0);
+    const swipe = (fromX: number, toX: number) => page.evaluate(([a, b]) => {
+      const target = document.elementFromPoint(a, 400) ?? document.body;
+      const t = (x: number) => [new Touch({ identifier: 0, target, clientX: x, clientY: 400 })];
+      target.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, touches: t(a), targetTouches: t(a), changedTouches: t(a) }));
+      target.dispatchEvent(new TouchEvent('touchend', { bubbles: true, touches: [], targetTouches: [], changedTouches: t(b) }));
+    }, [fromX, toX] as const);
+
+    // In the middle: the page's own swipe, the page stays.
+    await swipe(200, 60);
+    await page.waitForTimeout(800);
+    expect(new URL(page.url()).pathname).toBe('/calendar');
+    // From the right edge: the next page.
+    await swipe(385, 220);
+    await page.waitForURL((u) => u.pathname === row[at + 1], { timeout: 15_000 });
+    // The address changes before the page does; let the next page arrive.
+    await expect(page.getByRole('navigation', { name: 'Pages' }).locator(`a[href="${row[at + 1]}"]`)).toHaveAttribute('aria-current', 'page');
+    // From the left edge: back again.
+    await swipe(5, 170);
+    await page.waitForURL((u) => u.pathname === '/calendar', { timeout: 15_000 });
+  });
+
+  test('on the wall, an edge swipe does not change page', async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);
+    await page.goto('/calendar');
+    await page.waitForLoadState('networkidle');
+    await page.evaluate(() => {
+      const target = document.body;
+      const t = (x: number) => [new Touch({ identifier: 0, target, clientX: x, clientY: 500 })];
+      target.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, touches: t(1915), targetTouches: t(1915), changedTouches: t(1915) }));
+      target.dispatchEvent(new TouchEvent('touchend', { bubbles: true, touches: [], targetTouches: [], changedTouches: t(1700) }));
+    });
+    await page.waitForTimeout(1500);
+    expect(new URL(page.url()).pathname).toBe('/calendar');
+  });
 });
