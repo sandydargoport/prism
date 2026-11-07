@@ -145,3 +145,21 @@ describe('Today parts in a shared layout', () => {
   });
 });
 
+
+// #803: a widget's "Hide first on a small screen" travels with a shared
+// layout; a layout that says nothing about it stores nothing.
+describe('small-screen drop-out in a shared layout', () => {
+  it('keeps the choice when given, and adds nothing when not', () => {
+    const out = projectCommunityLayout({
+      ...valid,
+      widgets: [
+        { i: 'chores', x: 0, y: 0, w: 4, h: 2, hideOnSmallScreen: true },
+        { i: 'calendar', x: 0, y: 2, w: 4, h: 2 },
+        { i: 'weather', x: 4, y: 0, w: 4, h: 2, hideOnSmallScreen: 'yes' },
+      ],
+    });
+    expect(out.widgets[0]!.hideOnSmallScreen).toBe(true);
+    expect('hideOnSmallScreen' in out.widgets[1]!).toBe(false);
+    expect('hideOnSmallScreen' in out.widgets[2]!).toBe(false);
+  });
+});

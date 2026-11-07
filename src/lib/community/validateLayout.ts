@@ -35,6 +35,7 @@ export interface CommunityWidget {
   backgroundOpacity?: number;
   /** Stays on screen while the wall is idle. */
   showWhenIdle?: boolean;
+  hideOnSmallScreen?: boolean;
   /** Today's scene settings, on its calendar part (#927). Nothing else is carried. */
   settings?: { daysAhead?: number; textSize?: 'normal' | 'large' | 'larger' };
 }
@@ -184,6 +185,7 @@ export function projectCommunityLayout(
     if (typeof w.backgroundColor === 'string') widget.backgroundColor = w.backgroundColor;
     if (typeof w.backgroundOpacity === 'number') widget.backgroundOpacity = w.backgroundOpacity;
     if (typeof w.showWhenIdle === 'boolean') widget.showWhenIdle = w.showWhenIdle;
+    if (typeof w.hideOnSmallScreen === 'boolean') widget.hideOnSmallScreen = w.hideOnSmallScreen;
     // Only Today's two scene settings, each checked; any other setting stays home.
     const settings = (w.settings && typeof w.settings === 'object' ? w.settings : {}) as Record<string, unknown>;
     const kept: NonNullable<CommunityWidget['settings']> = {};

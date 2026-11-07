@@ -106,6 +106,8 @@ export interface CssGridDisplayProps {
    * dashboard only; the editor and screensaver render in one go.
    */
   staged?: boolean;
+  /** Leave out "Hide first" widgets on a small screen and close up (#803). Live dashboard only. */
+  smallScreenDrop?: boolean;
   className?: string;
 }
 

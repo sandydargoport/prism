@@ -422,6 +422,7 @@ const widgetConfigSchema = z.object({
   cellBackgroundOpacity: z.number().min(0).max(1).optional(),
   showWhenIdle: z.boolean().optional(),
   hideWhenEmpty: z.boolean().optional(),
+  hideOnSmallScreen: z.boolean().optional(),
   settings: z.record(z.string(), z.unknown()).optional(),
 });
 
