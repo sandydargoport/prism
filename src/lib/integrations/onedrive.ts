@@ -111,7 +111,8 @@ export async function listFolders(
   parentId?: string
 ): Promise<OneDriveItem[]> {
   const itemPath = parentId
-    ? `/me/drive/items/${parentId}/children`
+    // Encoded: parentId comes from the request and must stay one path segment.
+    ? `/me/drive/items/${encodeURIComponent(parentId)}/children`
     : '/me/drive/root/children';
 
   const response = await fetch(
@@ -142,7 +143,7 @@ export async function listPhotosInFolder(
   // $select to trim payload + ensure @microsoft.graph.downloadUrl comes
   // back.
   let nextLink: string | null =
-    `${GRAPH_API}/me/drive/items/${folderId}/children?$top=200&$select=id,name,file,image,size,photo,location,@microsoft.graph.downloadUrl`;
+    `${GRAPH_API}/me/drive/items/${encodeURIComponent(folderId)}/children?$top=200&$select=id,name,file,image,size,photo,location,@microsoft.graph.downloadUrl`;
 
   while (nextLink) {
     const url: string = nextLink;
@@ -172,7 +173,7 @@ export async function downloadPhoto(
   itemId: string
 ): Promise<Buffer> {
   const response = await fetch(
-    `${GRAPH_API}/me/drive/items/${itemId}/content`,
+    `${GRAPH_API}/me/drive/items/${encodeURIComponent(itemId)}/content`,
     { headers: { Authorization: `Bearer ${accessToken}` }, redirect: 'follow' }
   );
 

@@ -108,6 +108,13 @@ describe('event description as plain text', () => {
     expect(eventDescriptionToText('&amp;lt;b&amp;gt;')).toBe('&lt;b&gt;');
   });
 
+  it('a tag or comment split by another tag does not come back together (CodeQL)', () => {
+    // One pass removed `<x>` and left a whole tag or comment behind.
+    expect(eventDescriptionToText('<spa<x>n title="secret instruction">x</span>')).toBe('x');
+    expect(eventDescriptionToText('a<!-<x>- secret instruction -->b')).toBe('a b');
+    expect(eventDescriptionToText('ok <script')).not.toContain('<');
+  });
+
   it('is empty for empty input', () => {
     expect(eventDescriptionToText(null)).toBe('');
     expect(eventDescriptionToText(undefined)).toBe('');

@@ -9,11 +9,20 @@
  * with specific requests.
  */
 export function logError(message: string, error: unknown, requestId?: string): void {
-  const prefix = requestId ? `[${requestId}] ` : '';
+  // The message can carry request text (a search, a date). Passed as a '%s'
+  // argument, never as console's format string, and on one line, so it
+  // cannot forge or split log lines (CodeQL log injection).
+  const line = oneLine(`${requestId ? `[${requestId}] ` : ''}${message}`);
   if (process.env.NODE_ENV === 'production') {
     const msg = error instanceof Error ? error.message : String(error);
-    console.error(`${prefix}${message}`, msg);
+    console.error('%s', line, oneLine(msg));
   } else {
-    console.error(`${prefix}${message}`, error);
+    console.error('%s', line, error);
   }
+}
+
+/** Newlines and other control characters become spaces. */
+export function oneLine(text: string): string {
+  // Line breaks first, in the form CodeQL's log-injection check recognises.
+  return text.replace(/\r\n|\r|\n/g, ' ').replace(/[\u0000-\u001f\u007f]+/g, ' ');
 }

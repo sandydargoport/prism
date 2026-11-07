@@ -2,7 +2,14 @@
  * Headless browser fetch for sites that block server-side requests (Cloudflare).
  * Uses puppeteer-core with system-installed Chromium.
  * Falls back gracefully if Chromium is not available (local dev).
+ *
+ * Every request the page makes (the first navigation, each redirect, script
+ * navigations, images and scripts) passes the same check as safeFetch, or is
+ * aborted: the plain fetch before it checks only its own hops, and Chromium
+ * would otherwise follow a recipe site's redirect onto the home network.
  */
+import { assertPublicUrl, type SafeFetchOptions } from './safeFetch';
+
 
 let puppeteer: typeof import('puppeteer-core') | null = null;
 
@@ -21,7 +28,7 @@ async function getPuppeteer() {
  * Waits for the Cloudflare JS challenge to resolve, then extracts the page HTML.
  * Returns the page HTML or null if Chromium is not available or the page fails to load.
  */
-export async function browserFetch(url: string): Promise<string | null> {
+export async function browserFetch(url: string, guard: SafeFetchOptions = {}): Promise<string | null> {
   const pptr = await getPuppeteer();
   if (!pptr) return null;
 
@@ -44,6 +51,14 @@ export async function browserFetch(url: string): Promise<string | null> {
     });
 
     const page = await browser.newPage();
+
+    await page.setRequestInterception(true);
+    page.on('request', (req) => {
+      void assertPublicUrl(req.url(), guard).then(
+        () => req.continue().catch(() => {}),
+        () => req.abort('blockedbyclient').catch(() => {}),
+      );
+    });
 
     await page.setUserAgent(
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'

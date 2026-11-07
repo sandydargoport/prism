@@ -11,6 +11,11 @@ on:
       - 'community/layouts/**'
   workflow_dispatch:
 
+# Read-only token: no job here writes to the repo (CodeQL
+# actions/missing-workflow-permissions).
+permissions:
+  contents: read
+
 jobs:
   validate:
     runs-on: ubuntu-latest
