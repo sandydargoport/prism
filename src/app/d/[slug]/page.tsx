@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: PageProps) {
 export default async function DashboardSlugPage({ params }: PageProps) {
   const { slug } = await params;
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-fill bg-background">
       <DashboardSlugClient slug={slug} />
     </main>
   );

@@ -8,7 +8,7 @@ export const metadata = {
 
 export default function PhotosPage() {
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-fill bg-background">
       <Suspense fallback={<PhotosSkeleton />}>
         <PhotosView />
       </Suspense>

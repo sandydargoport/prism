@@ -364,11 +364,21 @@
 /* A page that fills the screen above the portrait bottom nav. AppShell sets
    --nav-bottom only while that nav is showing. dvh, the height actually
    visible: in the iPhone home-screen app 100vh is taller than the screen, so
-   a page that fitted still scrolled a little into empty space (#1089). vh
-   stays as the fallback for a browser without dvh. */
+   a page that fitted still scrolled a little into empty space (#1089). dvh
+   is still taller there, by about the status bar, so the page sizes from
+   --screen-h, the document's own height measured before the first paint
+   (#1095). vh stays as the fallback for a browser without dvh. */
 @utility h-page {
   height: calc(100vh - var(--nav-bottom, 0px));
-  height: calc(100dvh - var(--nav-bottom, 0px));
+  height: calc(var(--screen-h, 100dvh) - var(--nav-bottom, 0px));
+}
+
+/* At least one screen tall, from the same measured height as h-page (#1095):
+   the page wrappers used min-h-screen (100vh), which in the iPhone app is
+   taller than the document and let a page that fitted scroll. */
+@utility min-h-fill {
+  min-height: 100vh;
+  min-height: var(--screen-h, 100dvh);
 }
 
 @utility center {
