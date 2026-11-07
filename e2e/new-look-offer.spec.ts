@@ -14,6 +14,37 @@ test.describe('Simple or Custom', () => {
   test.skip(!HAS_TEST_DB, 'needs the seeded test database');
   test.setTimeout(120_000);
 
+  test('Appearance is grouped, with one palette row and rare settings folded (#1017)', async ({ page }) => {
+    expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);
+    await verifySettingsPinViaAPI(page, (await getFirstParent(page)).name);
+    await page.goto('/settings?section=display');
+
+    // Three groups, in order: the look, the background and idle, this screen.
+    const groups = page.locator('[data-appearance-group]');
+    await expect(groups).toHaveCount(3);
+    expect(await groups.evaluateAll((els) => els.map((e) => e.getAttribute('data-appearance-group'))))
+      .toEqual(['look', 'background', 'screen']);
+
+    // The palette in use is one row; the full set appears only after Change.
+    const current = page.locator('[data-palette-current]');
+    await expect(current).toBeVisible();
+    expect((await current.boundingBox())!.height).toBeLessThanOrEqual(72);
+    await expect(page.locator('[data-palette-grid]')).toHaveCount(0);
+    await page.locator('[data-palette-change]').click();
+    await expect(page.locator('[data-palette-grid]')).toBeVisible();
+
+    // Language, units and performance are folded, each showing its value while closed.
+    const folds = page.locator('[data-fold]');
+    await expect(folds).toHaveCount(3);
+    for (const f of await folds.all()) {
+      expect(await f.evaluate((d) => (d as HTMLDetailsElement).open)).toBe(false);
+      await expect(f.locator('summary [data-fold-value]')).toHaveText(/\S/);
+    }
+    const first = folds.first();
+    await first.locator('summary').click();
+    expect(await first.evaluate((d) => (d as HTMLDetailsElement).open)).toBe(true);
+  });
+
   test('offered once; Simple adds the layouts and keeps the old one; Custom switches back', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);

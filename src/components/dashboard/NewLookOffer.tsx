@@ -31,7 +31,7 @@ export function NewLookOffer() {
     try { localStorage.setItem(NEW_LOOK_DISMISSED_KEY, '1'); } catch { /* it may show again after a reload */ }
     toast({
       title: "There's a Simple layout for this screen",
-      description: "Clock and weather in the corners, the day's arc, what's next. Your layout stays; Settings switches back.",
+      description: "Clock and weather in the corners, today's list of what's next. Your layout stays; Settings switches back.",
       duration: NEW_LOOK_OFFER_MS,
       action: createElement(ToastAction, {
         altText: 'Try it',

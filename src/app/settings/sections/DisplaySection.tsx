@@ -2,7 +2,7 @@
 
 import { PHOTO_DATE_SETTING, PHOTO_ON_THIS_DAY_SETTING, PHOTO_PLACE_SETTING } from '@/lib/photos/caption';
 import { useState, useEffect, useCallback } from 'react';
-import { Sun, Moon, Monitor, Share2, Store } from 'lucide-react';
+import { Sun, Moon, Monitor, Share2, Store, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -44,6 +44,23 @@ function SectionDivider({ label }: { label: string }) {
   );
 }
 
+/**
+ * A rarely changed setting, folded to one line with its current value (#1017);
+ * a tap opens it. Native <details>, so it works with the keyboard and reader.
+ */
+function FoldCard({ id, title, value, children }: { id: string; title: string; value: string; children: React.ReactNode }) {
+  return (
+    <details className="group rounded-xl border bg-card text-card-foreground" data-fold={id}>
+      <summary className="flex min-h-[56px] cursor-pointer list-none items-center gap-3 px-6 [&::-webkit-details-marker]:hidden">
+        <span className="font-semibold">{title}</span>
+        <span className="ml-auto text-sm text-muted-foreground" data-fold-value>{value}</span>
+        <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />
+      </summary>
+      <div className="border-t [&>*]:rounded-none [&>*]:border-0 [&>*]:shadow-none">{children}</div>
+    </details>
+  );
+}
+
 /** A small picture of each kind, for the picker. */
 function KindPicture({ kind }: { kind: 'simple' | 'custom' }) {
   return kind === 'simple' ? (
@@ -74,7 +91,7 @@ function FrontPageCard() {
   const { mode, chooseSimple, chooseCustom, layouts } = useNewLook();
   const hasCustom = layouts.some((l) => l.view !== 'today' && l.view !== 'calendar');
   const choices = [
-    { kind: 'simple' as const, name: 'Simple', line: "Clock and weather in the corners, the day's arc, what's next. Few settings.", pick: chooseSimple, can: true },
+    { kind: 'simple' as const, name: 'Simple', line: "Clock and weather in the corners, today's list of what's next. Few settings.", pick: chooseSimple, can: true },
     { kind: 'custom' as const, name: 'Custom', line: 'Your grid of widgets, arranged however you like.', pick: chooseCustom, can: hasCustom },
   ];
   return (
@@ -118,6 +135,8 @@ export function DisplaySection() {
   const { seasonalTheme, setSeasonalTheme, palette } = useSeasonalTheme();
   const [sharing, setSharing] = useState(false);
   const [browsing, setBrowsing] = useState(false);
+  // The palette in use as one row; the full set only when changing it (#1017).
+  const [choosing, setChoosing] = useState(false);
   const [importErrors, setImportErrors] = useState<string[]>([]);
 
   const mode: 'auto' | 'manual' | 'off' =
@@ -139,12 +158,11 @@ export function DisplaySection() {
         </p>
       </div>
 
+      <SectionDivider label="Look" />
+      <div data-appearance-group="look" className="flex flex-col gap-4">
       <FrontPageCard />
 
-      <SectionDivider label="Theme" />
-      {/* A section spreads across the width rather than running down it:
-          Seasonal Theme sits beside Color Scheme instead of below it. The
-          divider stays full width so the grouping still reads as one thing. */}
+      {/* Seasonal Theme sits beside Color Scheme rather than below it. */}
       <div className="grid xl:grid-cols-2 2xl:grid-cols-3 gap-4 items-start">
 
       <Card>
@@ -212,7 +230,23 @@ export function DisplaySection() {
                 ))}
               </div>
             )}
-            <div className="grid grid-cols-2 gap-3">
+            {(() => {
+              const preview = resolvedTheme === 'dark' ? activePalette.dark : activePalette.light;
+              return (
+                <div className="flex min-h-[56px] items-center gap-3 rounded-lg border border-border px-3" data-palette-current>
+                  <div className="flex gap-1.5">
+                    {(['background', 'card', 'primary', 'accent', 'destructive'] as const).map((tok) => (
+                      <span key={tok} className="h-6 w-6 rounded border border-black/10" style={{ backgroundColor: `hsl(${preview[tok]})` }} />
+                    ))}
+                  </div>
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{activePalette.name}</span>
+                  <Button variant="outline" size="sm" onClick={() => setChoosing(!choosing)} aria-expanded={choosing} data-palette-change>
+                    {choosing ? 'Done' : 'Change'}
+                  </Button>
+                </div>
+              );
+            })()}
+            {choosing && <div className="grid grid-cols-2 gap-3" data-palette-grid>
               {palettes.map((p) => {
                 const preview = resolvedTheme === 'dark' ? p.dark : p.light;
                 return (
@@ -252,7 +286,7 @@ export function DisplaySection() {
                   </button>
                 );
               })}
-            </div>
+            </div>}
           </div>
         </CardContent>
       </Card>
@@ -340,32 +374,25 @@ export function DisplaySection() {
       </Card>
 
       </div>
-      <SectionDivider label="Wallpaper & Display" />
-      {/* A section spreads across the width rather than running down it:
-          Seasonal Theme sits beside Color Scheme instead of below it. The
-          divider stays full width so the grouping still reads as one thing. */}
-      <div className="grid xl:grid-cols-2 2xl:grid-cols-3 gap-4 items-start">
-
-      <PerformanceModeCard />
-
-      <OrientationCard />
-
-      <WallpaperSettingsCard />
-
       </div>
-      <SectionDivider label="Behavior" />
-      {/* A section spreads across the width rather than running down it:
-          Seasonal Theme sits beside Color Scheme instead of below it. The
-          divider stays full width so the grouping still reads as one thing. */}
-      <div className="grid xl:grid-cols-2 2xl:grid-cols-3 gap-4 items-start">
 
-      <ScreensaverCard />
-      <TimersCard />
+      {/* Grouped by what a person is doing (#1017). */}
+      <SectionDivider label="Background and idle" />
+      <div className="grid xl:grid-cols-2 2xl:grid-cols-3 gap-4 items-start" data-appearance-group="background">
+        <WallpaperSettingsCard />
+        <ScreensaverCard />
+        <TimersCard />
+      </div>
 
-      <WeatherUnitsCard />
-
-      <LanguageCard />
-
+      <SectionDivider label="This screen" />
+      <div className="grid xl:grid-cols-2 2xl:grid-cols-3 gap-4 items-start" data-appearance-group="screen">
+        <OrientationCard />
+        {/* Rarely changed: folded to one line with the current value. */}
+        <div className="flex flex-col gap-3">
+          <PerformanceModeCard />
+          <WeatherUnitsCard />
+          <LanguageCard />
+        </div>
       </div>
     </div>
   );
@@ -389,9 +416,9 @@ function LanguageCard() {
   );
 
   return (
+    <FoldCard id="language" title="Language" value={APP_LOCALES.find((l) => l.value === locale)?.label ?? locale}>
     <Card>
       <CardHeader>
-        <CardTitle>Language <span className="text-xs font-normal text-muted-foreground">(early preview)</span></CardTitle>
         <CardDescription>
           The dashboard&apos;s display language. English is the default; other languages fall back to English
           for anything not yet translated. Only part of the UI is translated so far — this is an early preview.
@@ -418,6 +445,7 @@ function LanguageCard() {
         </div>
       </CardContent>
     </Card>
+    </FoldCard>
   );
 }
 
@@ -451,9 +479,9 @@ function WeatherUnitsCard() {
   if (units === null) return null;
 
   return (
+    <FoldCard id="units" title="Units" value={units === 'metric' ? 'Metric' : 'Imperial'}>
     <Card>
       <CardHeader>
-        <CardTitle>Units</CardTitle>
         <CardDescription>
           Imperial shows °F, mph, and inches. Metric shows °C, km/h, and mm. Applies to weather everywhere it is shown (widget, mobile cards, away mode, babysitter mode) and to the live bus speed.
         </CardDescription>
@@ -489,6 +517,7 @@ function WeatherUnitsCard() {
         </div>
       </CardContent>
     </Card>
+    </FoldCard>
   );
 }
 
@@ -882,9 +911,9 @@ const LEVEL_LABEL: Record<PerfLevel, string> = { full: 'Full', reduced: 'Reduced
 function PerformanceModeCard() {
   const { mode, level, setMode } = usePerformanceMode();
   return (
+    <FoldCard id="performance" title="Performance" value={PERF_CHOICES.find((c) => c.mode === mode)?.label ?? mode}>
     <Card>
       <CardHeader>
-        <CardTitle>Performance</CardTitle>
         <CardDescription>
           How much visual work this screen does. Lighter levels suit thin clients and older mini PCs.
         </CardDescription>
@@ -913,6 +942,7 @@ function PerformanceModeCard() {
         ))}
       </CardContent>
     </Card>
+    </FoldCard>
   );
 }
 
