@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { ALWAYS_VISIBLE_HREFS } from '@/lib/constants/navItems';
 import type { NavItem } from '@/lib/constants/navItems';
 import { useFetchOnMount } from './useFetchOnMount';
+import { sharedGet } from '@/lib/utils/sharedGet';
 
 const CACHE_KEY = 'prism:hidden-pages';
 
@@ -34,7 +35,7 @@ export function useHiddenPages() {
 
   const fetchHiddenPages = useCallback(async () => {
     try {
-      const res = await fetch('/api/settings');
+      const res = await sharedGet('/api/settings');
       if (res.ok) {
         const data = await res.json();
         const val = data.settings?.hiddenPages;
