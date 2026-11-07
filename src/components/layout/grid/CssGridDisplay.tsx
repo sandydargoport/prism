@@ -1,7 +1,7 @@
 'use client';
 
 import { tileAlign, type AlignSetting } from '@/lib/layout/tileAlign';
-import { useEffect, useLayoutEffect, useMemo, useRef, ViewTransition } from 'react';
+import { startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState, ViewTransition } from 'react';
 import { SCHEDULE_TRANSITION } from '@/lib/displays/screenSchedule';
 import { WidgetBgOverrideProvider, WidgetEmptyReportContext } from '@/components/widgets/WidgetContainer';
 import { getWidgetStyle, getWidgetContentStyle, getTextColorClass, getWidgetOutlineClass } from './gridWidgetStyles';
@@ -79,6 +79,26 @@ function setCellDrift(el: HTMLElement, want: boolean) {
   el.addEventListener('transitionend', done);
 }
 
+/** How many widgets' contents fill in at first, and per step after (#1083). */
+export const STAGE_FIRST = 2;
+export const STAGE_STEP = 2;
+
+/**
+ * How many widgets may render their contents. Staged, the first STAGE_FIRST
+ * at once and STAGE_STEP more per task until all are in; the server and the
+ * first client render agree, so hydration matches. Not staged, all of them.
+ */
+function useStagedCount(total: number, staged: boolean): number {
+  const [n, setN] = useState(STAGE_FIRST);
+  useEffect(() => {
+    if (!staged || n >= total) return;
+    // A new task per step: a tap waiting between them is handled first.
+    const id = setTimeout(() => startTransition(() => setN((c) => c + STAGE_STEP)), 0);
+    return () => clearTimeout(id);
+  }, [staged, n, total]);
+  return staged ? n : total;
+}
+
 /**
  * Pure CSS Grid display for dashboard widgets. SSR-safe.
  * No drag/resize — used only for display mode and screensaver.
@@ -104,6 +124,7 @@ export function CssGridDisplay({
   hideEmptyByDefault = false,
   onEmptyChange,
   className,
+  staged = false,
 }: CssGridDisplayProps) {
   const { containerRef, cellSize: widthCellSize, width, top, zoom, remeasure } = useSquareCells(cols, containerPadding, margin, fillHeight);
   const { width: viewportWidth, height: viewportHeight, visibleHeight } = useViewportSize();
@@ -119,6 +140,13 @@ export function CssGridDisplay({
   );
 
   const { emptyIds, reporterFor } = useEmptyWidgets(onEmptyChange);
+
+  // Top-left first: the order a person reads the wall in.
+  const stageRank = useMemo(() => {
+    const order = [...visibleWidgets].sort((a, b) => a.y - b.y || a.x - b.x);
+    return new Map(order.map((w, i) => [w.i, i]));
+  }, [visibleWidgets]);
+  const shownCount = useStagedCount(visibleWidgets.length, staged);
 
   // A faded widget does not drift: there is nothing on screen to protect.
   const cells = useRef(new Map<string, HTMLDivElement>());
@@ -338,7 +366,7 @@ export function CssGridDisplay({
               <WidgetBgOverrideProvider value={{ hasCustomBg, textColor: w.textColor, textOpacity: w.textOpacity, gridLineOpacity: w.gridLineOpacity, cellBackgroundColor: w.cellBackgroundColor, cellBackgroundOpacity: w.cellBackgroundOpacity }}>
                 <WidgetEmptyReportContext.Provider value={reporterFor(w.i)}>
                   <div className="h-full w-full overflow-hidden" style={contentStyle}>
-                    {renderWidget(w)}
+                    {(stageRank.get(w.i) ?? 0) < shownCount ? renderWidget(w) : null}
                   </div>
                 </WidgetEmptyReportContext.Provider>
               </WidgetBgOverrideProvider>

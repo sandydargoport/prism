@@ -799,6 +799,7 @@ export function LayoutGridEditor({
   // Display mode (non-editable) — pure CSS Grid, SSR-safe
   return (
     <CssGridDisplay
+      staged
       layout={layout}
       renderWidget={renderWidget}
       margin={margin}
