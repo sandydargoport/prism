@@ -135,7 +135,7 @@ export function AppShell({
 
   return (
     <div
-      className={cn('relative min-h-(--app-vh,100vh)', !showWallpaper && 'bg-background')}
+      className={cn('relative min-h-(--app-vh,100dvh)', !showWallpaper && 'bg-background')}
       // The dock's height (68px, its 1rem gap and the safe area), for the page
       // to reserve and for anything else fixed at the foot to sit above (#923).
       style={pageDockShown ? ({ '--nav-bottom': 'calc(68px + 1.5rem + env(safe-area-inset-bottom, 0px))' } as React.CSSProperties) : undefined}
@@ -154,7 +154,7 @@ export function AppShell({
       {/* MAIN CONTENT AREA */}
       <main
         className={cn(
-          'min-h-(--app-vh,100vh)',
+          'min-h-(--app-vh,100dvh)',
           // Snap margin/padding when nav hides — animating layout properties causes
           // layout reflow on every frame, which is expensive on weak CPUs (Atom).
           // The nav itself slides smoothly via GPU-composited transform; the content
