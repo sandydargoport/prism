@@ -130,6 +130,9 @@ function CalendarViewHydrated() {
     events, loading, error, refreshEvents,
     goToToday, goToPrevious, goToNext, getDateRangeTitle,
   } = useCalendarViewData();
+  // A spinner only while there is nothing to show: paging into the next
+  // quarter fetches its window behind the events already on screen (#1082).
+  const firstLoad = loading && events.length === 0;
 
   // Date range covered by the active view — used by useDayBucketsForRange to
   // know which days need meal/chore/task buckets prepared.
@@ -534,7 +537,7 @@ function CalendarViewHydrated() {
         )}
 
         <div ref={swipeRef} className="flex-1 overflow-hidden p-4 min-h-0">
-          {loading && (
+          {firstLoad && (
             <div className="h-full flex items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
@@ -544,7 +547,7 @@ function CalendarViewHydrated() {
               <p className="text-destructive">{t('errors.loadFailed', { error })}</p>
             </div>
           )}
-          {!loading && !error && hasNoCalendarSources && (
+          {!firstLoad && !error && hasNoCalendarSources && (
             <EmptyState
               icon={<CalendarCog />}
               title={t('empty.title')}
@@ -557,7 +560,7 @@ function CalendarViewHydrated() {
               }
             />
           )}
-          {!loading && !error && !hasNoCalendarSources && (
+          {!firstLoad && !error && !hasNoCalendarSources && (
             <div className="h-full">
             {moveError && (
               <div className="mb-2 rounded border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">

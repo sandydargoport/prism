@@ -38,8 +38,8 @@ import { async as icalAsync, type VEvent, type CalendarResponse } from 'node-ica
 /**
  * Default sync window.
  *
- * Sized to cover the calendar's display window (getFullCalendarRange: ~1yr
- * back … ~2yr forward). If sync were narrower than the display, synced Google/
+ * Sized to cover how far the calendar's views reach (getCalendarWindow
+ * follows the shown date, and people page about a year back and two forward). If sync were narrower than the display, synced Google/
  * CalDAV events past the sync horizon would silently not appear even though the
  * views reach for them — the synced-calendar counterpart of #250, and worse
  * because it's inconsistent (a local event shows at that date, a synced one

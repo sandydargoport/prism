@@ -84,6 +84,50 @@ test.describe('the Calendar page', () => {
     expect(text.min, `smallest text "${text.where}"`).toBeGreaterThanOrEqual(text.floor);
   });
 
+  // #1082 (part of #1043): the page asks for the months around the date it
+  // shows, not four years, and paging into a later quarter still finds a
+  // later event.
+  test('fetches the months around the shown date, and paging finds later events', async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await login(page);
+    const title = `Five months on ${Date.now()}`;
+    const start = new Date(); start.setDate(15); start.setMonth(start.getMonth() + 5); start.setHours(10, 0, 0, 0);
+    const res = await page.request.post('/api/events', {
+      data: { title, startTime: start.toISOString(), endTime: new Date(start.getTime() + 3_600_000).toISOString(), allDay: false, createdBy: getSeededParentId() },
+    });
+    expect(res.status()).toBe(201);
+    const id = (await res.json()).id;
+    const spans: number[] = [];
+    page.on('request', (r) => {
+      const u = new URL(r.url());
+      if (u.pathname !== '/api/events') return;
+      const from = Date.parse(u.searchParams.get('startDate') ?? '');
+      const to = Date.parse(u.searchParams.get('endDate') ?? '');
+      if (from && to) spans.push((to - from) / 86_400_000);
+    });
+    try {
+      await page.addInitScript(() => localStorage.setItem('prism-calendar-view-type', 'month'));
+      await page.goto('/calendar');
+      await expect(page.locator('[data-calendar-add-pill]')).toBeVisible({ timeout: 60_000 });
+      await expect.poll(() => spans.length, { timeout: 15_000 }).toBeGreaterThan(0);
+      expect(Math.max(...spans), 'days asked for at once').toBeLessThan(300);
+      // Paging into the next quarter loads its window behind the events on
+      // screen: no spinner replaces the calendar.
+      await page.evaluate(() => {
+        const w = window as unknown as { __spun: boolean };
+        w.__spun = false;
+        new MutationObserver(() => { if (document.querySelector('main .animate-spin')) w.__spun = true; })
+          .observe(document.body, { childList: true, subtree: true });
+      });
+      const next = page.getByRole('button', { name: 'Next', exact: true });
+      for (let i = 0; i < 5; i++) await next.click();
+      await expect(page.getByText(title).first(), 'the later event, from the next window').toBeVisible({ timeout: 15_000 });
+      expect(await page.evaluate(() => (window as unknown as { __spun: boolean }).__spun), 'no spinner while paging').toBe(false);
+    } finally {
+      await page.request.delete(`/api/events/${id}`);
+    }
+  });
+
   test('agenda: days are headed by a word, the date beside it as meta', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await login(page);
