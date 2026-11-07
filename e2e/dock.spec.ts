@@ -308,6 +308,11 @@ test.describe('the dock on the wall', () => {
     await page.getByRole('button', { name: 'More options', exact: true }).click();
     const radius = await page.getByRole('menu').evaluate((m) => parseFloat(getComputedStyle(m).borderTopLeftRadius));
     expect(radius, 'menu corner radius').toBeLessThanOrEqual(12);
+    // #1064: and no focus ring drawn round the open menu, a thick rounded
+    // outline that read as a bubble around it (the ring is a box-shadow).
+    await page.waitForTimeout(300);
+    const ring = await page.getByRole('menu').evaluate((m) => getComputedStyle(m).boxShadow);
+    expect(ring.match(/0px 0px 0px [1-9]/g) ?? [], 'no focus ring round the menu').toEqual([]);
     await page.keyboard.press('Escape');
 
     // Never over an open window: on the dashboard, open one and the button goes.

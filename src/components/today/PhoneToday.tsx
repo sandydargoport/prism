@@ -52,7 +52,11 @@ export function PhoneToday({ parts, events, weather, onOpenEvent, household }: {
   return (
     // Exactly one screen when it fits (#1034): the notch area is part of the
     // screen, and the page does not bounce when there is nothing below.
-    <div className="flex min-h-[calc(var(--app-vh,100dvh)-var(--nav-bottom,0px)-env(safe-area-inset-top,0px))] flex-col" data-phone-today>
+    // Positioned, so it paints above the wallpaper's fixed photo and shade
+    // layers. Left in the normal flow it painted under them: the time, the
+    // temperature and the list sat behind the photo's tint, and only parts
+    // with their own opacity (the date) showed through (#1063).
+    <div className="relative z-[1] flex min-h-[calc(var(--app-vh,100dvh)-var(--nav-bottom,0px)-env(safe-area-inset-top,0px))] flex-col" data-phone-today>
       {/* The photo shows through here in the light ink; with no photo the
           header is on the page's paper, in its ink. */}
       <header
