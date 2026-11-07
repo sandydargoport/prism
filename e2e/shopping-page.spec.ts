@@ -26,6 +26,8 @@ test.describe('the Shopping page', () => {
       await page.goto('/shopping');
       const calm = page.locator('[data-shopping-calm]');
       await expect(calm).toBeVisible({ timeout: 60_000 });
+      // The list on screen is the one marked chosen, even on a first load.
+      await expect(page.locator('[data-shopping-list-pill][aria-pressed="true"]')).toHaveText(new RegExp(`^${list.name}`));
       const heights = await calm.locator('[data-list-row]').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
       for (const h of heights) expect(h).toBeGreaterThanOrEqual(56);
 
@@ -84,7 +86,8 @@ test.describe('the Shopping page', () => {
 
   // #1070: on a phone (and the wall), adding asks for the category in the
   // field's own place; a tap files it, Skip leaves it in Other, and the field
-  // comes back for the next item.
+  // comes back for the next item. A list that shows a few categories offers
+  // those first and the rest behind More; moving to another list closes it.
   test('adding an item asks where it goes, in the field\'s place', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);
@@ -92,12 +95,16 @@ test.describe('the Shopping page', () => {
     const list = (lists.lists ?? lists)[0];
     const filed = `Filed ${Date.now()}`;
     const skipped = `Skipped ${Date.now()}`;
+    const left = `Left ${Date.now()}`;
+    const before = list.visibleCategories ?? null;
     const itemsNamed = async (n: string) => {
       const all = await (await page.request.get('/api/shopping-lists?includeItems=true')).json();
       const mine = ((all.lists ?? all) as Array<{ id: string; items: Array<{ id: string; name: string; category: string }> }>).find((l) => l.id === list.id)!;
       return mine.items.filter((i) => i.name === n);
     };
     try {
+      // A list that shows only produce.
+      expect((await page.request.patch(`/api/shopping-lists/${list.id}`, { data: { visibleCategories: ['produce'] } })).ok()).toBe(true);
       await page.goto('/shopping');
       const calm = page.locator('[data-shopping-calm]');
       const field = calm.locator('[data-shopping-add]');
@@ -110,7 +117,11 @@ test.describe('the Shopping page', () => {
       await expect(ask).toBeVisible({ timeout: 15_000 });
       await expect(ask).toContainText(filed);
       expect(Math.abs((await ask.boundingBox())!.y - fieldTop), 'asked where the field was').toBeLessThanOrEqual(4);
+      await expect(ask.locator('[data-shopping-file-choice]'), "this list's one category first").toHaveCount(1);
+      await expect(ask.locator('[data-shopping-file-choice="produce"]')).toBeVisible();
+      await ask.locator('[data-shopping-file-more]').click();
       const dairy = ask.locator('[data-shopping-file-choice="dairy"]');
+      await expect(dairy, 'the rest behind More').toBeVisible();
       const db = (await dairy.boundingBox())!;
       expect(db.height, 'a finger-sized choice').toBeGreaterThanOrEqual(44);
       await dairy.click();
@@ -124,8 +135,21 @@ test.describe('the Shopping page', () => {
       await expect(field).toBeVisible();
       await expect(calm.locator('[data-shopping-category="other"] [data-list-row]').filter({ hasText: skipped })).toBeVisible({ timeout: 15_000 });
       expect((await itemsNamed(skipped)).map((i) => i.category)).toEqual(['other']);
+
+      // Moving to another list closes the question; the item stays, in Other.
+      await field.fill(left);
+      await field.press('Enter');
+      await expect(ask).toBeVisible({ timeout: 15_000 });
+      const listName = page.getByRole('button', { name: 'Next list' }).locator('xpath=..');
+      await expect(listName).toContainText(list.name);
+      await page.getByRole('button', { name: 'Next list' }).click();
+      await expect(listName, 'the arrow moves to the next list').not.toContainText(list.name);
+      await expect(ask, 'not carried to the next list').toHaveCount(0);
+      await expect(field).toBeVisible();
+      expect((await itemsNamed(left)).map((i) => i.category)).toEqual(['other']);
     } finally {
-      for (const n of [filed, skipped]) for (const i of await itemsNamed(n)) await page.request.delete(`/api/shopping-items/${i.id}`);
+      await page.request.patch(`/api/shopping-lists/${list.id}`, { data: { visibleCategories: before } });
+      for (const n of [filed, skipped, left]) for (const i of await itemsNamed(n)) await page.request.delete(`/api/shopping-items/${i.id}`);
     }
   });
 

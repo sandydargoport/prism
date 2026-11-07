@@ -147,7 +147,9 @@ export function ShoppingView() {
   // Mobile-only: swipe to switch lists. The pill bar collapses into a
   // compact prev/dots/next indicator when there's more than one list.
   // Single-list households skip the affordance entirely (UX recommendation).
-  const currentListIdx = lists.findIndex((l) => l.id === activeListId);
+  // The list on screen, not the id chosen at mount: that is empty when the
+  // lists load after the first render, which left the arrows and swipe dead.
+  const currentListIdx = lists.findIndex((l) => l.id === activeList?.id);
   const goPrevList = () => {
     if (currentListIdx > 0) setActiveListId(lists[currentListIdx - 1]!.id);
   };
@@ -286,8 +288,9 @@ export function ShoppingView() {
                     {lists.map((list) => {
                       const assignedMember = list.assignedTo ? familyMembers.find(m => m.id === list.assignedTo) : null;
                       return (
-                        <Button key={list.id} variant={activeListId === list.id ? 'secondary' : 'ghost'} size="sm"
-                          onClick={() => setActiveListId(list.id)} className="relative">
+                        <Button key={list.id} variant={activeList?.id === list.id ? 'secondary' : 'ghost'} size="sm"
+                          onClick={() => setActiveListId(list.id)} className="relative"
+                          aria-pressed={activeList?.id === list.id} data-shopping-list-pill>
                           {list.name}
                           {assignedMember && (
                             <span className="ml-1.5 w-3 h-3 rounded-full inline-block"
@@ -355,8 +358,11 @@ export function ShoppingView() {
           ) : activeList && !manage && !shoppingMode ? (
             <div className="pb-24 pt-2">
               <ShoppingCalmList
+                // A new list starts fresh: a question left open belongs to the list it was asked on.
+                key={activeList.id}
                 items={activeList.items as ShoppingItem[]}
                 order={effectiveCategoryOrder}
+                allCategories={categoryOrder}
                 onToggle={(id) => toggleItem(id)}
                 onEdit={handleEditItem}
                 onAdd={(name) => apiAddItem(activeList.id, { name, category: 'other' })}

@@ -31,9 +31,12 @@ export function groupForCalmList(items: ShoppingItem[], order: string[]) {
   return { groups: cats.map((c) => ({ category: c, items: byCat.get(c)! })), inCart: items.filter((i) => i.checked) };
 }
 
-export function ShoppingCalmList({ items, order, onToggle, onEdit, onAdd, onFile, label, color }: {
+export function ShoppingCalmList({ items, order, allCategories, onToggle, onEdit, onAdd, onFile, label, color }: {
   items: ShoppingItem[];
+  /** This list's categories, in order. */
   order: string[];
+  /** Every category, in order: the question offers the rest behind More. */
+  allCategories: string[];
   onToggle: (id: string) => void;
   onEdit: (item: ShoppingItem) => void;
   /** Saves the item (in Other) and returns it, so it can then be filed. */
@@ -54,10 +57,15 @@ export function ShoppingCalmList({ items, order, onToggle, onEdit, onAdd, onFile
     if (wasFiling.current && !filing) addRef.current?.focus();
     wasFiling.current = !!filing;
   }, [filing]);
+  // This list's own categories first; the rest behind More, since a list
+  // that shows one category would otherwise offer a single choice.
   const choices = order.filter((c) => c !== 'other');
+  const rest = allCategories.filter((c) => c !== 'other' && !choices.includes(c));
+  const [showRest, setShowRest] = useState(false);
   const file = (category: string | null) => {
     const f = filing;
     setFiling(null);
+    setShowRest(false);
     if (f && category) void onFile(f.id, category);
   };
   // Struck through for a moment before it moves to Checked off, so the tap is seen.
@@ -100,7 +108,7 @@ export function ShoppingCalmList({ items, order, onToggle, onEdit, onAdd, onFile
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-5" data-shopping-calm>
-      {filing && choices.length > 0 ? (
+      {filing && choices.length + rest.length > 0 ? (
         <div
           className="flex flex-col gap-2"
           role="group"
@@ -109,7 +117,7 @@ export function ShoppingCalmList({ items, order, onToggle, onEdit, onAdd, onFile
         >
           <p className="m-0 px-3 text-body text-muted-foreground">Where does <span className="font-medium text-foreground">{filing.name}</span> go?</p>
           <div className="flex flex-wrap gap-2">
-            {choices.map((c) => (
+            {[...choices, ...(showRest || choices.length === 0 ? rest : [])].map((c) => (
               <button
                 key={c}
                 type="button"
@@ -121,6 +129,16 @@ export function ShoppingCalmList({ items, order, onToggle, onEdit, onAdd, onFile
                 {label(c)}
               </button>
             ))}
+            {!showRest && choices.length > 0 && rest.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowRest(true)}
+                className="flex min-h-[44px] items-center rounded-full border border-dashed border-border px-4 text-body text-muted-foreground hover:bg-foreground/[0.06]"
+                data-shopping-file-more
+              >
+                More
+              </button>
+            )}
             <button
               type="button"
               onClick={() => file(null)}
