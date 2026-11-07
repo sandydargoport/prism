@@ -11,7 +11,6 @@ import { useLocale } from 'next-intl';
 import { useTimeFormat } from '@/components/providers';
 import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
 import { useNow } from '@/lib/hooks/useNow';
-import { useEffect } from 'react';
 import type { CalendarEvent } from '@/types/calendar';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import type { BirthdayLike, ChoreLike } from '@/lib/today/quietLines';
@@ -41,35 +40,6 @@ export function PhoneToday({ parts, events, weather, onOpenEvent, household }: {
   const date = today.toLocaleDateString(locale, { weekday: 'long', month: 'long', day: 'numeric' });
   const calendar = isPartShown(parts, 'calendar');
   const current = weather?.current;
-  // No rubber-band bounce while the phone's Today is showing. Set on body as
-  // well as the root: some iOS versions bounce the body, so with only the
-  // root set the page still dragged and sprang back.
-  useEffect(() => {
-    const els = [document.documentElement, document.body];
-    const before = els.map((el) => el.style.overscrollBehaviorY);
-    for (const el of els) el.style.overscrollBehaviorY = 'none';
-    // The iPhone home-screen app still dragged the page and sprang it back
-    // with both set. So a one-finger drag is cancelled unless something under
-    // it can really scroll: the page itself when it is taller than the
-    // screen, or a scrolling box such as an open event sheet. Pinch-zoom
-    // (two fingers) is left alone.
-    const scrolls = (from: EventTarget | null) => {
-      if (document.documentElement.scrollHeight > window.innerHeight + 1) return true;
-      for (let el = from instanceof Element ? from : null; el && el !== document.body; el = el.parentElement) {
-        const { overflowY } = getComputedStyle(el);
-        if ((overflowY === 'auto' || overflowY === 'scroll') && el.scrollHeight > el.clientHeight + 1) return true;
-      }
-      return false;
-    };
-    const onMove = (e: TouchEvent) => {
-      if (e.touches.length === 1 && e.cancelable && !scrolls(e.target)) e.preventDefault();
-    };
-    document.addEventListener('touchmove', onMove, { passive: false });
-    return () => {
-      document.removeEventListener('touchmove', onMove);
-      els.forEach((el, i) => { el.style.overscrollBehaviorY = before[i]!; });
-    };
-  }, []);
 
   return (
     // Exactly one screen when it fits (#1034): the notch area is part of the

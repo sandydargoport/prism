@@ -418,6 +418,7 @@ export function Dashboard({
           onLogout={activeUser ? clearActiveUser : undefined}
           onLogin={handleLogin}
           showWallpaper={phoneToday}
+          cardTools={!phoneToday}
         >
           {phoneToday ? (
             <WidgetErrorBoundary>

@@ -95,6 +95,34 @@ test('the time and the list paint above the wallpaper photo', async ({ page }) =
   }
 });
 
+// #1076: every phone page, not only Today, refuses a pull past its top; the
+// iPhone app dragged subpages and sprang them back.
+test.describe('Phone subpages do not drag', () => {
+  test.skip(!HAS_TEST_DB, 'needs the seeded test database');
+  test.setTimeout(90_000);
+  test('a pull down at the top is refused on each subpage', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);
+    for (const path of ['/calendar', '/chores', '/shopping', '/tasks', '/meals']) {
+      await page.goto(path);
+      await page.waitForLoadState('load');
+      await page.waitForTimeout(1500);
+      const refused = await page.evaluate(() => {
+        const target = document.elementFromPoint(195, 420) ?? document.body;
+        // Every scroller at its top, as when the page opens.
+        for (const el of document.querySelectorAll<HTMLElement>('*')) el.scrollTop = 0;
+        window.scrollTo(0, 0);
+        const at = (y: number) => [new Touch({ identifier: 0, target, clientX: 195, clientY: y })];
+        target.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, cancelable: true, touches: at(420), targetTouches: at(420), changedTouches: at(420) }));
+        const e = new TouchEvent('touchmove', { bubbles: true, cancelable: true, touches: at(470), targetTouches: at(470), changedTouches: at(470) });
+        target.dispatchEvent(e);
+        return e.defaultPrevented;
+      });
+      expect(refused, `${path}: pull past the top refused`).toBe(true);
+    }
+  });
+});
+
 test.describe('Today on a phone', () => {
   test.skip(!HAS_TEST_DB, 'needs the seeded test database');
   test.setTimeout(90_000);
@@ -144,24 +172,35 @@ test.describe('Today on a phone', () => {
       // The body too, which some iOS versions bounce instead.
       expect(fitScreen.bodyBounce).toBe('none');
       // The iPhone app dragged it anyway, so a one-finger drag is refused,
-      // except over something that scrolls; a pinch is left alone.
+      // except where something can scroll that way; a pinch is left alone.
       const drag = await page.evaluate(() => {
         const root = document.querySelector('[data-phone-today]')!;
         const box = document.createElement('div');
         box.style.cssText = 'height:40px;overflow-y:auto';
         box.innerHTML = '<div style="height:400px"></div>';
         root.appendChild(box);
-        const move = (target: Element, fingers: number) => {
-          const touches = Array.from({ length: fingers }, (_, i) => new Touch({ identifier: i, target, clientX: 100 + i * 50, clientY: 300 }));
-          const e = new TouchEvent('touchmove', { bubbles: true, cancelable: true, touches, targetTouches: touches, changedTouches: touches });
+        // A finger from y=300 to y=300+dy; true when the move was refused.
+        const gesture = (target: Element, dy: number, fingers = 1) => {
+          const at = (y: number) => Array.from({ length: fingers }, (_, i) => new Touch({ identifier: i, target, clientX: 100 + i * 50, clientY: y }));
+          target.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, cancelable: true, touches: at(300), targetTouches: at(300), changedTouches: at(300) }));
+          const e = new TouchEvent('touchmove', { bubbles: true, cancelable: true, touches: at(300 + dy), targetTouches: at(300 + dy), changedTouches: at(300 + dy) });
           target.dispatchEvent(e);
           return e.defaultPrevented;
         };
-        const r = { page: move(root, 1), scroller: move(box.firstElementChild!, 1), pinch: move(root, 2) };
+        const inner = box.firstElementChild!;
+        const r = { pageDown: gesture(root, 40), pageUp: gesture(root, -40), boxUp: gesture(inner, -40), boxPastTop: gesture(inner, 40), pinch: gesture(root, 40, 2) };
         box.remove();
         return r;
       });
-      expect(drag, 'drag refused on the page, allowed in a scroller and for a pinch').toEqual({ page: true, scroller: false, pinch: false });
+      expect(drag, 'refused on a page that fits and past a scroller\'s top; allowed to scroll a scroller and to pinch')
+        .toEqual({ pageDown: true, pageUp: true, boxUp: false, boxPastTop: true, pinch: false });
+
+      // #1076: Cards and Reorder act on the phone's cards; Today has none.
+      await page.locator('[data-mobile-options]').click();
+      await expect(page.getByRole('button', { name: 'Settings' }).or(page.getByRole('link', { name: 'Settings' })).first()).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Reorder' })).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'Cards' })).toHaveCount(0);
+      await page.locator('[data-mobile-options]').click();
 
       // In order, top to bottom: header, sentences, lines.
       const tops = await page.evaluate(() => {
