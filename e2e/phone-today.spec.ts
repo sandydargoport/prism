@@ -143,6 +143,25 @@ test.describe('Today on a phone', () => {
       expect(fitScreen.bounce).toBe('none');
       // The body too, which some iOS versions bounce instead.
       expect(fitScreen.bodyBounce).toBe('none');
+      // The iPhone app dragged it anyway, so a one-finger drag is refused,
+      // except over something that scrolls; a pinch is left alone.
+      const drag = await page.evaluate(() => {
+        const root = document.querySelector('[data-phone-today]')!;
+        const box = document.createElement('div');
+        box.style.cssText = 'height:40px;overflow-y:auto';
+        box.innerHTML = '<div style="height:400px"></div>';
+        root.appendChild(box);
+        const move = (target: Element, fingers: number) => {
+          const touches = Array.from({ length: fingers }, (_, i) => new Touch({ identifier: i, target, clientX: 100 + i * 50, clientY: 300 }));
+          const e = new TouchEvent('touchmove', { bubbles: true, cancelable: true, touches, targetTouches: touches, changedTouches: touches });
+          target.dispatchEvent(e);
+          return e.defaultPrevented;
+        };
+        const r = { page: move(root, 1), scroller: move(box.firstElementChild!, 1), pinch: move(root, 2) };
+        box.remove();
+        return r;
+      });
+      expect(drag, 'drag refused on the page, allowed in a scroller and for a pinch').toEqual({ page: true, scroller: false, pinch: false });
 
       // In order, top to bottom: header, sentences, lines.
       const tops = await page.evaluate(() => {
