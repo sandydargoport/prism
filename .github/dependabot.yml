@@ -18,6 +18,11 @@
 # another: an ignore rule also suppresses SECURITY updates that are only fixed in
 # the ignored major. Every entry here therefore carries the condition under which
 # it should be removed, and none of them is open-ended.
+# COOLDOWN. Version updates wait 7 days after a release before Dependabot
+# proposes them. Most malicious npm releases (a hijacked maintainer account,
+# a typosquat) are found and pulled within days, and minor and patch updates
+# here auto-merge once CI passes, so the wait keeps Prism out of that window.
+# Security updates are not delayed: they ignore cooldown.
 version: 2
 updates:
   - package-ecosystem: npm
@@ -25,6 +30,8 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
     commit-message:
       prefix: "fix(deps)"
@@ -59,6 +66,8 @@ updates:
     directory: "/.mcp"
     schedule:
       interval: monthly
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 3
     commit-message:
       prefix: "fix(mcp)"
@@ -82,6 +91,8 @@ updates:
     directory: "/"
     schedule:
       interval: monthly
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 3
     commit-message:
       prefix: "ci"
@@ -97,6 +108,8 @@ updates:
     directory: "/"
     schedule:
       interval: monthly
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 3
     commit-message:
       prefix: "fix(docker)"
