@@ -10,6 +10,7 @@
  * "Remind me" and "Leave by" are not here yet: nothing stores reminders or
  * travel times for the wall (#806).
  */
+import { eventDotBackground } from '@/lib/calendar/sharedEvents';
 import { useState } from 'react';
 import { useAuth } from '@/components/providers';
 import { useTranslations } from 'next-intl';
@@ -37,7 +38,7 @@ export function eventSentence(p: {
 }
 
 export function EventSheet({ event, onClose, onEdit, onDeleted, canHide, onHiddenChange }: {
-  event: { id: string; title: string; startTime: Date; endTime: Date; allDay: boolean; color: string; location?: string; description?: string; calendarName: string; inSeries?: boolean };
+  event: { id: string; title: string; startTime: Date; endTime: Date; allDay: boolean; color: string; location?: string; description?: string; calendarName: string; inSeries?: boolean; alsoIds?: string[]; alsoCalendarNames?: string[]; alsoColors?: string[] };
   onClose: () => void;
   onEdit: () => void;
   onDeleted: () => void;
@@ -71,20 +72,23 @@ export function EventSheet({ event, onClose, onEdit, onDeleted, canHide, onHidde
     }
     setHiding(true);
     try {
-      const response = await fetch(
-        `/api/events/${event.id}/hidden${scope === 'series' ? '?scope=series' : ''}`,
+      // On a shared event, every copy (#1066), or the other shows in its place.
+      const ids = [event.id, ...(event.alsoIds ?? [])];
+      const responses = await Promise.all(ids.map((id) => fetch(
+        `/api/events/${id}/hidden${scope === 'series' ? '?scope=series' : ''}`,
         { method: 'PUT' },
-      );
+      )));
+      const response = responses.find((r) => !r.ok) ?? responses[0]!;
       if (!response.ok) {
         const { message } = await readResponseError(response, t('errors.hideFailed'));
         toast({ title: message, variant: 'destructive' });
         setHiding(false);
         return;
       }
-      const { seriesId } = (await response.json()) as { seriesId?: string | null };
-      const undoUrl = scope === 'series' && seriesId
-        ? `/api/events/hidden-series/${seriesId}`
-        : `/api/events/${event.id}/hidden`;
+      const bodies = await Promise.all(responses.map((r) => r.json().catch(() => ({})) as Promise<{ seriesId?: string | null }>));
+      const undoUrls = ids.map((id, i) => scope === 'series' && bodies[i]?.seriesId
+        ? `/api/events/hidden-series/${bodies[i]!.seriesId}`
+        : `/api/events/${id}/hidden`);
       onHiddenChange();
       toast({
         title: t(scope === 'series' ? 'event.hiddenSeriesToast' : 'event.hiddenToast', { title: event.title }),
@@ -94,8 +98,9 @@ export function EventSheet({ event, onClose, onEdit, onDeleted, canHide, onHidde
             altText={tActions('undo')}
             onClick={async () => {
               try {
-                const undo = await fetch(undoUrl, { method: 'DELETE' });
-                if (!undo.ok) throw new Error(String(undo.status));
+                const undone = await Promise.all(undoUrls.map((u) => fetch(u, { method: 'DELETE' })));
+                const bad = undone.find((r) => !r.ok);
+                if (bad) throw new Error(String(bad.status));
                 onHiddenChange();
               } catch { toast({ title: t('errors.unhideFailed'), variant: 'destructive' }); }
             }}
@@ -136,7 +141,7 @@ export function EventSheet({ event, onClose, onEdit, onDeleted, canHide, onHidde
       <DialogContent className="max-w-md" data-event-sheet>
         {/* The person's colour dot in front of the title, as everywhere an event is named. */}
         <DialogTitle className="flex items-center gap-3">
-          <span className="inline-block h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: event.color }} aria-hidden />
+          <span className="inline-block h-3 w-3 shrink-0 rounded-full" style={{ background: eventDotBackground(event) }} aria-hidden data-event-mark />
           <span>{event.title}</span>
         </DialogTitle>
         {/* When, and where, as a sentence (#836): "Thursday, 4 to 5:30, at Community Park". */}
@@ -168,7 +173,7 @@ export function EventSheet({ event, onClose, onEdit, onDeleted, canHide, onHidde
             dangerouslySetInnerHTML={{ __html: sanitizeEventDescription(event.description) }}
           />
         )}
-        <p className="text-xs text-muted-foreground">{event.calendarName}</p>
+        <p className="text-xs text-muted-foreground" data-event-calendars>{[event.calendarName, ...(event.alsoCalendarNames ?? [])].join(', ')}</p>
         {canHide && (
           <label className="flex items-start gap-3 mt-4 cursor-pointer">
             <Checkbox

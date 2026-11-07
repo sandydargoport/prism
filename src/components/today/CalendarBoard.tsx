@@ -9,6 +9,7 @@
  * in the month opens a day sheet. A month cell shows as many events as fit,
  * measured, and never a "+N more" count (#993).
  */
+import { eventDotBackground } from '@/lib/calendar/sharedEvents';
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { addDays, addMonths, startOfMonth, startOfWeek } from 'date-fns';
@@ -98,7 +99,7 @@ export function CalendarBoard({ events, now, onOpenEvent, headingEnd }: {
         className={`flex min-h-[44px] w-full items-start gap-2 text-left ${past ? 'opacity-60' : ''}`}
         data-board-event
       >
-        <span className="mt-1 h-[1.1em] w-[3px] shrink-0 rounded-full" style={{ backgroundColor: e.color }} aria-hidden />
+        <span className="mt-1 h-[1.1em] w-[3px] shrink-0 rounded-full" style={{ background: eventDotBackground(e, '180deg') }} aria-hidden />
         <span className={`min-w-0 ${compact ? 'truncate text-caption' : 'text-body'}`}>
           {!e.allDay && <span className="mr-1.5 tabular-nums opacity-80">{time(e.startTime)}</span>}
           {e.title}
@@ -190,11 +191,11 @@ export function CalendarBoard({ events, now, onOpenEvent, headingEnd }: {
               >
                 <span data-board-date className={`tabular-nums ${isToday ? 'flex h-7 w-7 items-center justify-center rounded-full bg-white font-semibold text-black [text-shadow:none]' : ''}`}>{d.getDate()}</span>
                 {pastWeek && list.length > 0 && (
-                  <span className="flex gap-1" aria-hidden>{list.slice(0, 5).map((e) => <span key={e.id} className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: e.color }} />)}</span>
+                  <span className="flex gap-1" aria-hidden>{list.slice(0, 5).map((e) => <span key={e.id} className="h-1.5 w-1.5 rounded-full" style={{ background: eventDotBackground(e) }} />)}</span>
                 )}
                 {shown.map((e) => (
                   <span key={e.id} className="flex min-w-0 items-center gap-1.5 text-caption">
-                    <span className="h-[0.9em] w-[3px] shrink-0 rounded-full" style={{ backgroundColor: e.color }} aria-hidden />
+                    <span className="h-[0.9em] w-[3px] shrink-0 rounded-full" style={{ background: eventDotBackground(e, '180deg') }} aria-hidden />
                     <span className="truncate">{e.allDay ? e.title : `${time(e.startTime)} ${e.title}`}</span>
                   </span>
                 ))}
@@ -215,7 +216,7 @@ export function CalendarBoard({ events, now, onOpenEvent, headingEnd }: {
                 className="flex min-h-[52px] items-center gap-3 text-left text-body"
                 onClick={() => { setDayOpen(null); onOpenEvent?.(e); }}
               >
-                <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: e.color }} aria-hidden />
+                <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: eventDotBackground(e) }} aria-hidden />
                 <span className="tabular-nums text-muted-foreground">{e.allDay ? t('allDayShort') : time(e.startTime)}</span>
                 <span>{e.title}</span>
               </button>

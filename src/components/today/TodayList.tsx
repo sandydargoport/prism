@@ -6,6 +6,7 @@
  * already over faint at the end. On the wall it sits over the photo in light
  * ink; on a phone, on paper. Tapping an event opens the event sheet (#836).
  */
+import { eventDotBackground } from '@/lib/calendar/sharedEvents';
 import { useTranslations } from 'next-intl';
 import { useTimeFormat } from '@/components/providers';
 import { eventOccursOnDisplayDay, formatBareTime, toDisplayDate } from '@/lib/utils/timeFormat';
@@ -55,7 +56,7 @@ export function TodayList({ events, now, onOpenEvent, variant, onlyNext = false 
       >
         {/* Across the room on the wall (#1030): about 4.4rem at 1920 wide. */}
         <span className={cn('flex min-w-0 items-center gap-3 leading-tight', wall ? 'text-[clamp(2.4rem,3.6vw,4.4rem)]' : 'text-title')} style={{ fontFamily: 'var(--font-display)' }}>
-          <span className={cn('shrink-0 rounded-full', wall ? 'h-3.5 w-3.5' : 'h-2.5 w-2.5')} style={{ backgroundColor: next.color }} aria-hidden />
+          <span className={cn('shrink-0 rounded-full', wall ? 'h-3.5 w-3.5' : 'h-2.5 w-2.5')} style={{ background: eventDotBackground(next) }} aria-hidden data-event-mark data-shared={next.alsoColors?.length ? '' : undefined} />
           <span className="min-w-0 [text-wrap:balance]">{next.title}</span>
         </span>
         <span className={cn('tabular-nums', wall ? 'text-title opacity-85' : 'text-body text-muted-foreground')} data-today-next-time>

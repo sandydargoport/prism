@@ -552,6 +552,52 @@ test.describe('the Today view', () => {
     }
   });
 
+  // #1066: one event on two people's calendars shows once, its mark in both
+  // colours, its sheet naming both calendars, and Hide hides both copies.
+  test('an event on two calendars shows once, in both colours, and hides as one', async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await login(page);
+    const d = new Date();
+    const at = (h: number, m = 0) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m);
+    await page.clock.setFixedTime(at(9));
+    const cals = ((await (await page.request.get('/api/calendars')).json()).calendars as Array<{ id: string; enabled: boolean; color: string }>)
+      .filter((c) => c.enabled);
+    const [c1, c2] = [cals[0]!, cals.find((c) => c.color !== cals[0]!.color)!];
+    expect(c2, 'premise: two calendars in different colours').toBeTruthy();
+    const tag = Date.now();
+    const title = `Parent night ${tag}`;
+    const made: string[] = [];
+    for (const c of [c1, c2]) {
+      const res = await postEvent(page, { title, startTime: at(10).toISOString(), endTime: at(11).toISOString(), allDay: false, calendarSourceId: c.id, createdBy: getSeededParentId() });
+      expect(res.status()).toBe(201);
+      made.push((await res.json()).id);
+    }
+    const layout = await (await page.request.post('/api/layouts', { data: { name: `Shared e2e ${tag}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
+    try {
+      await page.route('**/api/weather*', (route) => route.fulfill({ json: WEATHER }));
+      await page.goto(`/d/${layout.slug}`);
+      const list = page.locator('[data-today-list="wall"]');
+      await expect(list).toBeVisible({ timeout: 60_000 });
+      await expect(list.getByText(title), 'once, not twice').toHaveCount(1);
+      const mark = list.locator('[data-today-next] [data-event-mark]');
+      await expect(mark).toHaveAttribute('data-shared', '');
+      expect(await mark.evaluate((m) => getComputedStyle(m).backgroundImage), 'both colours').toMatch(/linear-gradient/);
+
+      await list.locator('[data-today-next]').click();
+      const sheet = page.locator('[data-event-sheet]');
+      await expect(sheet).toBeVisible();
+      await expect(sheet.locator('[data-event-calendars]')).toContainText(', ');
+      await sheet.getByText('Hide in Prism').click();
+      await expect.poll(async () => {
+        const hidden = JSON.stringify(await (await page.request.get('/api/events/hidden')).json());
+        return made.every((id) => hidden.includes(id));
+      }, { timeout: 15_000, message: 'both copies hidden' }).toBe(true);
+    } finally {
+      await page.request.delete(`/api/layouts/${layout.id}`);
+      for (const id of made) { await page.request.delete(`/api/events/${id}/hidden`); await page.request.delete(`/api/events/${id}`); }
+    }
+  });
+
   test('the parts panel hides a part and sets the days ahead', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await login(page);
