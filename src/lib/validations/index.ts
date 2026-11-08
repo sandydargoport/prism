@@ -130,6 +130,8 @@ export const createChoreSchema = z.object({
   nextDueTime: z.string().regex(/^\d{2}:\d{2}$/, 'Invalid time format (HH:mm)').nullable().optional(),
   // Daily chores only (#1107); 1 is once a day.
   timesPerDay: z.number().int().min(1).max(4).optional(),
+  // A reminder (#1109): saved with no points or approval, and needs a time.
+  kind: z.enum(['chore', 'reminder']).optional(),
 });
 
 export const updateChoreSchema = updateOf(createChoreSchema).extend({

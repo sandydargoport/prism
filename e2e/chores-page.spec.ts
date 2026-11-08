@@ -109,6 +109,52 @@ test.describe('the Chores page', () => {
     }
   });
 
+  // #1109: a reminder is added with the chore form in its reminder mode, is
+  // saved with no points or approval, shows its time and is Late once that
+  // has passed; a tick takes it off the list.
+  test('a reminder with a passed time is marked Late, and a tick clears it', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);
+    const settings = (await (await page.request.get('/api/settings')).json()).settings ?? {};
+    const original = settings.security ?? {};
+    const title = `Allergy tablet ${Date.now()}`;
+    let id: string | undefined;
+    try {
+      await page.request.patch('/api/settings', { data: { key: 'security', value: { ...original, requirePinForEveryChange: false } } });
+      await page.goto('/chores');
+      await page.locator('[data-chores-add-reminder]').click();
+      const form = page.getByRole('dialog', { name: 'Add Reminder' });
+      await expect(form).toBeVisible({ timeout: 30_000 });
+      await expect(form.getByText('Points'), 'no points on a reminder').toHaveCount(0);
+      await expect(form.getByText('Requires approval'), 'no approval on a reminder').toHaveCount(0);
+      await form.getByPlaceholder(/Allergy tablet/).fill(title);
+      await expect(form.getByRole('button', { name: 'Add Reminder' }), 'a time is required').toBeDisabled();
+      // Midnight: already passed, whatever the time of day the test runs.
+      await form.locator('[data-chore-time]').fill('00:00');
+      await form.getByRole('button', { name: 'Add Reminder' }).click();
+      await expect(form).toHaveCount(0);
+
+      const saved = ((await (await page.request.get('/api/chores')).json()).chores as Array<{ id: string; title: string; kind: string; pointValue: number; requiresApproval: boolean }>).find((c) => c.title === title);
+      expect(saved, 'saved').toBeTruthy();
+      id = saved!.id;
+      expect({ kind: saved!.kind, pointValue: saved!.pointValue, requiresApproval: saved!.requiresApproval }).toEqual({ kind: 'reminder', pointValue: 0, requiresApproval: false });
+
+      const row = page.locator('[data-chores-section="today"] [data-list-row]').filter({ hasText: title });
+      await expect(row).toContainText('12:00 AM', { timeout: 30_000 });
+      await expect(row.locator('[data-chore-late]'), 'marked Late').toHaveText('Late');
+
+      await row.locator('button').first().click();
+      const who = page.getByRole('dialog', { name: 'Who did it?' });
+      const undo = page.getByRole('button', { name: 'Undo' });
+      await expect(who.or(undo).first()).toBeVisible({ timeout: 15_000 });
+      if (await who.isVisible()) await who.getByRole('button').first().click();
+      await expect(page.locator('[data-chores-do]').getByText(title, { exact: true }), 'gone once ticked').toHaveCount(0, { timeout: 15_000 });
+    } finally {
+      if (id) await page.request.delete(`/api/chores/${id}`);
+      await page.request.patch('/api/settings', { data: { key: 'security', value: original } });
+    }
+  });
+
   test('the do list follows Group by under Manage (#985)', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);

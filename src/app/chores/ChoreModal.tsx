@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useState } from 'react';
 import { DAYS_SHORT_ARRAY, DAYS_LONG_ARRAY } from '@/lib/constants/days';
 import { Trash2 } from 'lucide-react';
+import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -24,6 +25,7 @@ export function ChoreModal({
   onToggleEnabled,
   familyMembers,
   defaultAssignedTo,
+  kind: newKind = 'chore',
 }: {
   chore?: Chore;
   onClose: () => void;
@@ -35,23 +37,28 @@ export function ChoreModal({
    *  so it lands in their group instead of "Unassigned" by default. Ignored
    *  when editing an existing chore, which always keeps its own assignee. */
   defaultAssignedTo?: string;
+  /** What a brand-new item is (#1109); an existing one keeps its own. */
+  kind?: 'chore' | 'reminder';
 }) {
+  const kind = chore?.kind ?? newKind;
+  const isReminder = kind === 'reminder';
   const [title, setTitle] = useState(chore?.title || '');
   const [description, setDescription] = useState(chore?.description || '');
   const [category, setCategory] = useState<Chore['category']>(chore?.category || 'cleaning');
-  const [frequency, setFrequency] = useState<Chore['frequency']>(chore?.frequency || 'weekly');
+  const [frequency, setFrequency] = useState<Chore['frequency']>(chore?.frequency || (isReminder ? 'daily' : 'weekly'));
   const [startDay, setStartDay] = useState(chore?.startDay || '');
   const [pointValue, setPointValue] = useState(chore?.pointValue || 5);
   const [requiresApproval, setRequiresApproval] = useState(chore?.requiresApproval ?? true);
   const [enabled, setEnabled] = useState(chore?.enabled ?? true);
   const [assignedTo, setAssignedTo] = useState(chore?.assignedTo?.id || defaultAssignedTo || '');
-  const [nextDue, setNextDue] = useState<string>(chore?.nextDue || '');
+  // A new reminder starts today, so it is on the list from the start.
+  const [nextDue, setNextDue] = useState<string>(chore?.nextDue || (isReminder && !chore ? format(new Date(), 'yyyy-MM-dd') : ''));
   const [nextDueTime, setNextDueTime] = useState<string>(chore?.nextDueTime || '');
   const [timesPerDay, setTimesPerDay] = useState<number>(chore?.timesPerDay ?? 1);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim() || (isReminder && !nextDueTime)) return;
 
     const selectedMember = familyMembers.find((m) => m.id === assignedTo);
 
@@ -61,8 +68,10 @@ export function ChoreModal({
       category,
       frequency,
       startDay: startDay || undefined,
-      pointValue,
-      requiresApproval,
+      // A reminder has no points or approval (#1109); the server holds to it too.
+      pointValue: isReminder ? 0 : pointValue,
+      requiresApproval: isReminder ? false : requiresApproval,
+      kind,
       assignedTo: selectedMember || undefined,
       enabled,
       lastCompleted: chore?.lastCompleted,
@@ -77,7 +86,7 @@ export function ChoreModal({
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{chore ? 'Edit Chore' : 'Add Chore'}</DialogTitle>
+          <DialogTitle>{isReminder ? (chore ? 'Edit Reminder' : 'Add Reminder') : (chore ? 'Edit Chore' : 'Add Chore')}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -86,7 +95,7 @@ export function ChoreModal({
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Chore title..."
+              placeholder={isReminder ? 'Allergy tablet, feed the cat...' : 'Chore title...'}
               autoFocus
             />
           </div>
@@ -214,17 +223,21 @@ export function ChoreModal({
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Due Time</label>
+              <label className="text-sm font-medium" htmlFor="chore-due-time">{isReminder ? 'Time' : 'Due Time'}</label>
               <Input
+                id="chore-due-time"
                 type="time"
                 value={nextDueTime}
                 onChange={(e) => setNextDueTime(e.target.value)}
                 className="mt-1"
+                required={isReminder}
+                data-chore-time
               />
-              <p className="text-xs text-muted-foreground mt-1">Optional. Reminder only.</p>
+              <p className="text-xs text-muted-foreground mt-1">{isReminder ? 'Marked late once it passes.' : 'Optional. Marked late once it passes.'}</p>
             </div>
           </div>
 
+          {!isReminder && <>
           <div>
             <label className="text-sm font-medium">Points</label>
             <Input
@@ -244,6 +257,7 @@ export function ChoreModal({
             <label className="text-sm font-medium">Requires approval</label>
           </div>
           <p className="text-xs text-muted-foreground -mt-2">When off, a child&apos;s completion counts right away.</p>
+          </>}
 
           {chore && (
             <div className="flex items-center gap-2">
@@ -303,8 +317,8 @@ export function ChoreModal({
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={!title.trim()}>
-              {chore ? 'Save Changes' : 'Add Chore'}
+            <Button type="submit" disabled={!title.trim() || (isReminder && !nextDueTime)}>
+              {chore ? 'Save Changes' : isReminder ? 'Add Reminder' : 'Add Chore'}
             </Button>
           </div>
         </form>

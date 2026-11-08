@@ -19,6 +19,7 @@ import { db } from '@/lib/db/client';
 import { chores, users, choreCompletions } from '@/lib/db/schema';
 import { eq, and, desc, isNull, isNotNull, or, lte, gte, lt, count } from 'drizzle-orm';
 import { createChoreSchema, validateRequest } from '@/lib/validations';
+import { applyReminderRules } from '@/lib/utils/reminders';
 import { getCached } from '@/lib/cache/redis';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { dayWindowUtc, todayKey } from '@/lib/utils/zonedDate';
@@ -102,6 +103,7 @@ export async function GET(request: NextRequest) {
           nextDue: chores.nextDue,
           nextDueTime: chores.nextDueTime,
           timesPerDay: chores.timesPerDay,
+          kind: chores.kind,
           pointValue: chores.pointValue,
           requiresApproval: chores.requiresApproval,
           enabled: chores.enabled,
@@ -212,7 +214,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // A reminder has no points or approval, and needs a time (#1109).
+    const ruled = applyReminderRules(validation.data);
+    if (!ruled.ok) {
+      return NextResponse.json({ error: ruled.error }, { status: 400 });
+    }
+
     const {
+      kind,
       title,
       description,
       category,
@@ -226,7 +235,7 @@ export async function POST(request: NextRequest) {
       nextDue,
       nextDueTime,
       timesPerDay,
-    } = validation.data;
+    } = ruled.data;
 
     // Insert the chore
     const [newChore] = await db
@@ -246,6 +255,7 @@ export async function POST(request: NextRequest) {
         nextDueTime: nextDueTime ?? null,
         // More than once a day only means something for a daily chore (#1107).
         timesPerDay: frequency === 'daily' ? timesPerDay ?? 1 : 1,
+        kind: kind ?? 'chore',
       })
       .returning();
 

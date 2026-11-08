@@ -15,6 +15,7 @@ import { ListRow } from '@/components/ui/ListRow';
 import { PersonMark } from '@/components/ui/PersonMark';
 import { Button } from '@/components/ui/button';
 import type { Chore } from '@/types';
+import { isLate, formatReminderTime } from '@/lib/utils/reminders';
 
 /** Ticks a chore needs each day (#1107): more than one only for a daily chore. */
 export function timesADay(c: Chore): number {
@@ -78,20 +79,29 @@ export function ChoresDoList({ chores, today, onTick, onApprove, canApprove, gro
       setStriking((s) => { const n = new Set(s); n.delete(c.id); return n; });
     }
   };
+  // Late (#1109): its time has passed today, or its day has gone. The
+  // household's clock is the wall's.
+  const nowKey = format(today, 'yyyy-MM-dd'), nowTime = format(new Date(), 'HH:mm');
   const row = (c: Chore) => {
     const struck = striking.has(c.id);
+    const late = isLate(c, nowKey, nowTime);
+    const meta = [
+      // Under a person's heading the name would only repeat it.
+      groupBy === 'person' ? null : c.assignedTo?.name,
+      // A reminder's time (#1109), or any chore's that has one.
+      c.nextDueTime ? formatReminderTime(c.nextDueTime) : null,
+      // How many of today's ticks are done, for a chore done more than once a day (#1107).
+      timesADay(c) > 1 ? `${Math.min(c.doneToday ?? 0, timesADay(c))} of ${timesADay(c)}` : null,
+      c.pointValue ? `${c.pointValue} pts` : null,
+    ].filter(Boolean).join(' · ');
     return (
       <ListRow
         key={c.id}
         mark={<PersonMark color={c.assignedTo?.color ?? '#888888'} kind="dot" ground="paper" />}
         title={<span className={struck ? 'text-muted-foreground line-through' : undefined} data-chore-struck={struck || undefined}>{c.title}</span>}
-        // Under a person's heading the name would only repeat it.
-        meta={[
-          groupBy === 'person' ? null : c.assignedTo?.name,
-          // How many of today's ticks are done, for a chore done more than once a day (#1107).
-          timesADay(c) > 1 ? `${Math.min(c.doneToday ?? 0, timesADay(c))} of ${timesADay(c)}` : null,
-          c.pointValue ? `${c.pointValue} pts` : null,
-        ].filter(Boolean).join(' · ')}
+        meta={late
+          ? <><span className="font-medium text-destructive" data-chore-late>Late</span>{meta ? ` · ${meta}` : ''}</>
+          : meta}
         onClick={() => void strike(c)}
       />
     );

@@ -171,4 +171,22 @@ describe('POST /api/chores', () => {
     expect(body.id).toBe('new-chore');
     expect(mockInvalidateEntity).toHaveBeenCalledWith('chores');
   });
+
+  // Reminders (#1109): no points or approval, whatever is sent, and a time.
+  it('saves a reminder with no points and no approval', async () => {
+    const res = await POST(makePostRequest({
+      kind: 'reminder', title: 'Allergy tablet', category: 'other', frequency: 'daily',
+      nextDueTime: '19:00', pointValue: 10, requiresApproval: true,
+    }));
+    expect(res.status).toBe(201);
+    const values = mockInsert.mock.results[0]!.value.values as jest.Mock;
+    expect(values).toHaveBeenCalledWith(expect.objectContaining({ kind: 'reminder', pointValue: 0, requiresApproval: false, nextDueTime: '19:00' }));
+  });
+
+  it('refuses a reminder without a time', async () => {
+    const res = await POST(makePostRequest({ kind: 'reminder', title: 'Allergy tablet', category: 'other', frequency: 'daily' }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe('A reminder needs a time');
+    expect(mockInsert).not.toHaveBeenCalled();
+  });
 });

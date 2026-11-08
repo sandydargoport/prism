@@ -280,7 +280,8 @@ CREATE TABLE IF NOT EXISTS public.chores (
     created_at timestamp without time zone DEFAULT now() NOT NULL,
     updated_at timestamp without time zone DEFAULT now() NOT NULL,
     next_due_time character varying(5),
-    times_per_day integer DEFAULT 1 NOT NULL
+    times_per_day integer DEFAULT 1 NOT NULL,
+    kind character varying(20) DEFAULT 'chore' NOT NULL
 );
 
 

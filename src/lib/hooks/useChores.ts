@@ -119,6 +119,7 @@ export function useChores(options: UseChoresOptions = {}): UseChoresResult {
           nextDueTime: string | null;
           timesPerDay?: number;
           doneToday?: number;
+          kind?: 'chore' | 'reminder';
           enabled: boolean;
           requiresApproval: boolean;
           pointValue: number;
@@ -149,6 +150,7 @@ export function useChores(options: UseChoresOptions = {}): UseChoresResult {
           nextDueTime: chore.nextDueTime ?? null,
           timesPerDay: chore.timesPerDay ?? 1,
           doneToday: chore.doneToday ?? 0,
+          kind: chore.kind ?? 'chore',
           enabled: chore.enabled,
           requiresApproval: chore.requiresApproval,
           pointValue: chore.pointValue,
