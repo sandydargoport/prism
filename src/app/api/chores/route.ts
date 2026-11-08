@@ -16,8 +16,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireRole, getDisplayAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
-import { chores, users, choreCompletions } from '@/lib/db/schema';
-import { eq, and, desc, isNull, isNotNull, or, lte, gte, lt, count } from 'drizzle-orm';
+import { chores, users, choreCompletions, pets } from '@/lib/db/schema';
+import { eq, and, asc, desc, isNull, isNotNull, or, lte, gte, lt, count } from 'drizzle-orm';
 import { createChoreSchema, validateRequest } from '@/lib/validations';
 import { applyReminderRules } from '@/lib/utils/reminders';
 import { getCached } from '@/lib/cache/redis';
@@ -104,6 +104,9 @@ export async function GET(request: NextRequest) {
           nextDueTime: chores.nextDueTime,
           timesPerDay: chores.timesPerDay,
           kind: chores.kind,
+          petId: chores.petId,
+          petName: pets.name,
+          petColor: pets.color,
           pointValue: chores.pointValue,
           requiresApproval: chores.requiresApproval,
           enabled: chores.enabled,
@@ -115,7 +118,10 @@ export async function GET(request: NextRequest) {
         })
         .from(chores)
         .leftJoin(users, eq(chores.assignedTo, users.id))
-        .orderBy(desc(chores.createdAt));
+        .leftJoin(pets, eq(chores.petId, pets.id))
+        // Title breaks a tie, so chores made together keep one order
+        // whatever plan the joins get.
+        .orderBy(desc(chores.createdAt), asc(chores.title));
 
       // Apply filters
       const conditions = [];
@@ -222,6 +228,7 @@ export async function POST(request: NextRequest) {
 
     const {
       kind,
+      petId,
       title,
       description,
       category,
@@ -256,6 +263,7 @@ export async function POST(request: NextRequest) {
         // More than once a day only means something for a daily chore (#1107).
         timesPerDay: frequency === 'daily' ? timesPerDay ?? 1 : 1,
         kind: kind ?? 'chore',
+        petId: petId ?? null,
       })
       .returning();
 

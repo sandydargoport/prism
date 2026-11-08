@@ -265,6 +265,9 @@ export function formatChoreRow(row: {
   nextDueTime?: string | null;
   timesPerDay?: number;
   kind?: string;
+  petId?: string | null;
+  petName?: string | null;
+  petColor?: string | null;
   pointValue: number;
   requiresApproval: boolean;
   enabled: boolean;
@@ -291,6 +294,7 @@ export function formatChoreRow(row: {
     nextDueTime: row.nextDueTime ?? null,
     timesPerDay: row.timesPerDay ?? 1,
     kind: (row.kind === 'reminder' ? 'reminder' : 'chore') as 'chore' | 'reminder',
+    pet: row.petId ? { id: row.petId, name: row.petName ?? '', color: row.petColor ?? '#888888' } : null,
     pointValue: row.pointValue,
     requiresApproval: row.requiresApproval,
     enabled: row.enabled,

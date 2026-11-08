@@ -57,6 +57,8 @@ export interface Chore {
   doneToday?: number;
   /** A reminder (#1109): a time, no points, no approval. */
   kind?: 'chore' | 'reminder';
+  /** Who it is for, when that is a pet (#996). */
+  pet?: { id: string; name: string; color: string } | null;
   enabled: boolean;
   requiresApproval: boolean;
   pointValue: number;

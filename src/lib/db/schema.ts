@@ -365,6 +365,21 @@ export const tasks = pgTable('tasks', {
 }));
 
 
+/**
+ * Pets (#996): a name, a kind and a colour. Not household members, which are
+ * accounts with a role, PIN and sign-in; a chore or reminder can be for one.
+ */
+export const pets = pgTable('pets', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: varchar('name', { length: 100 }).notNull(),
+  kind: varchar('kind', { length: 20 }).default('other').notNull().$type<'cat' | 'dog' | 'other'>(),
+  color: varchar('color', { length: 7 }).notNull(),
+  sortOrder: integer('sort_order').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export type Pet = typeof pets.$inferSelect;
+
 export const chores = pgTable('chores', {
   id: uuid('id').defaultRandom().primaryKey(),
 
@@ -399,6 +414,8 @@ export const chores = pgTable('chores', {
   timesPerDay: integer('times_per_day').default(1).notNull(),
   // A reminder (#1109): a chore with a time, no points and no approval.
   kind: varchar('kind', { length: 20 }).default('chore').notNull().$type<'chore' | 'reminder'>(),
+  // Who it is for, when that is a pet (#996). Removing the pet clears it.
+  petId: uuid('pet_id').references(() => pets.id, { onDelete: 'set null' }),
 
   pointValue: integer('point_value').default(0).notNull(),
 

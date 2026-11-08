@@ -99,9 +99,15 @@ export function ChoresDoList({ chores, today, onTick, onApprove, canApprove, gro
         key={c.id}
         mark={<PersonMark color={c.assignedTo?.color ?? '#888888'} kind="dot" ground="paper" />}
         title={<span className={struck ? 'text-muted-foreground line-through' : undefined} data-chore-struck={struck || undefined}>{c.title}</span>}
-        meta={late
-          ? <><span className="font-medium text-destructive" data-chore-late>Late</span>{meta ? ` · ${meta}` : ''}</>
-          : meta}
+        meta={<>
+          {late && <><span className="font-medium text-destructive" data-chore-late>Late</span>{(c.pet || meta) && ' · '}</>}
+          {/* Who it is for, in the pet's colour (#996). */}
+          {c.pet && <><span className="inline-flex items-center gap-1" data-chore-pet={c.pet.name}>
+            <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: c.pet.color }} />
+            {c.pet.name}
+          </span>{meta && ' · '}</>}
+          {meta}
+        </>}
         onClick={() => void strike(c)}
       />
     );

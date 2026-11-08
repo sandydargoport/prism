@@ -17,6 +17,7 @@ interface ChoreFormData {
   nextDueTime?: string | null;
   timesPerDay?: number;
   kind?: 'chore' | 'reminder';
+  pet?: { id: string } | null;
 }
 
 interface UseChoreModalsProps {
@@ -50,6 +51,7 @@ export function useChoreModals({
           nextDueTime: chore.nextDueTime ?? undefined,
           timesPerDay: chore.timesPerDay,
           kind: chore.kind,
+          petId: chore.pet?.id,
         }),
       });
       if (!response.ok) {
@@ -85,6 +87,7 @@ export function useChoreModals({
           nextDueTime: updatedChore.nextDueTime ?? null,
           timesPerDay: updatedChore.timesPerDay,
           kind: updatedChore.kind,
+          petId: updatedChore.pet?.id ?? null,
         }),
       });
       if (!response.ok) {

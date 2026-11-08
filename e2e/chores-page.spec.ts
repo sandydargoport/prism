@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { getSeededParentId } from './helpers/auth';
+import { getSeededParentId, getFirstParent, verifySettingsPinViaAPI } from './helpers/auth';
 
 /**
  * The Chores page (#880) opens on what to do: list rows (#932) at least 56px
@@ -152,6 +152,56 @@ test.describe('the Chores page', () => {
     } finally {
       if (id) await page.request.delete(`/api/chores/${id}`);
       await page.request.patch('/api/settings', { data: { key: 'security', value: original } });
+    }
+  });
+
+  // #996: a pet is added under Family in Settings, a chore can be for it
+  // and shows its name, and removing the pet keeps the chore.
+  test('a chore for a pet shows the pet, and outlives it', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);
+    await verifySettingsPinViaAPI(page, (await getFirstParent(page)).name);
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(new Date());
+    const petName = `Biscuit ${Date.now() % 100000}`;
+    const title = `Walk the dog ${Date.now()}`;
+    let petId: string | undefined, choreId: string | undefined;
+    const pets = async () => ((await (await page.request.get('/api/pets')).json()).pets as Array<{ id: string; name: string; kind: string }>);
+    try {
+      await page.goto('/settings?section=family');
+      await page.locator('[data-pets-add]').click({ timeout: 60_000 });
+      const form = page.locator('[data-pet-form]');
+      await form.getByLabel("Pet's name").fill(petName);
+      await form.getByRole('button', { name: 'Dog' }).click();
+      await form.getByRole('button', { name: 'Add Pet' }).click();
+      await expect(page.locator(`[data-pet-row="${petName}"]`)).toBeVisible({ timeout: 15_000 });
+      const pet = (await pets()).find((p) => p.name === petName)!;
+      petId = pet.id;
+      expect(pet.kind).toBe('dog');
+
+      await page.goto('/chores');
+      await page.getByRole('button', { name: 'Add Chore' }).click({ timeout: 60_000 });
+      const dialog = page.getByRole('dialog', { name: 'Add Chore' });
+      await dialog.getByPlaceholder('Chore title...').fill(title);
+      await dialog.locator('input[type="date"]').fill(today);
+      await dialog.locator(`[data-chore-for="${petName}"]`).click();
+      await dialog.getByRole('button', { name: 'Add Chore' }).click();
+      await expect(dialog).toHaveCount(0);
+
+      const row = page.locator('[data-chores-section="today"] [data-list-row]').filter({ hasText: title });
+      await expect(row.locator(`[data-chore-pet="${petName}"]`), 'the pet on its chore').toBeVisible({ timeout: 30_000 });
+      const listed = async () => ((await (await page.request.get('/api/chores')).json()).chores as Array<{ id: string; title: string; pet: { id: string } | null }>).find((c) => c.title === title);
+      choreId = (await listed())!.id;
+      expect((await listed())!.pet?.id).toBe(petId);
+
+      // Removing the pet keeps the chore, for no one in particular.
+      expect((await page.request.delete(`/api/pets/${petId}`)).ok()).toBe(true);
+      petId = undefined;
+      const after = await listed();
+      expect(after, 'the chore stays').toBeTruthy();
+      expect(after!.pet).toBeNull();
+    } finally {
+      if (choreId) await page.request.delete(`/api/chores/${choreId}`);
+      if (petId) await page.request.delete(`/api/pets/${petId}`);
     }
   });
 

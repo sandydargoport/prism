@@ -321,6 +321,14 @@ function ChoreItem({
             </div>
           )}
 
+          {/* Who it is for, in the pet's colour (#996). */}
+          {chore.pet && (
+            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" data-chore-pet={chore.pet.name}>
+              <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: chore.pet.color }} />
+              {chore.pet.name}
+            </span>
+          )}
+
           {/* Frequency */}
           <span className="text-xs text-muted-foreground">
             {formatFrequency(chore.frequency, chore.customIntervalDays)}

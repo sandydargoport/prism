@@ -281,7 +281,22 @@ CREATE TABLE IF NOT EXISTS public.chores (
     updated_at timestamp without time zone DEFAULT now() NOT NULL,
     next_due_time character varying(5),
     times_per_day integer DEFAULT 1 NOT NULL,
-    kind character varying(20) DEFAULT 'chore' NOT NULL
+    kind character varying(20) DEFAULT 'chore' NOT NULL,
+    pet_id uuid
+);
+
+
+--
+-- Name: pets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE IF NOT EXISTS public.pets (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    name character varying(100) NOT NULL,
+    kind character varying(20) DEFAULT 'other' NOT NULL,
+    color character varying(7) NOT NULL,
+    sort_order integer DEFAULT 0 NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL
 );
 
 
@@ -2062,6 +2077,14 @@ ALTER TABLE ONLY public.chore_completions
 
 ALTER TABLE ONLY public.chores
     ADD CONSTRAINT chores_assigned_to_fkey FOREIGN KEY (assigned_to) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: chores chores_pet_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chores
+    ADD CONSTRAINT chores_pet_id_fkey FOREIGN KEY (pet_id) REFERENCES public.pets(id) ON DELETE SET NULL;
 
 
 --
