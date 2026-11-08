@@ -72,6 +72,25 @@ test.describe('calendar grid geometry', () => {
   });
 
   test('band titles and card titles start at the same offset', async ({ page }) => {
+    // Its own pair (#1102): a two-day event and a single one on its first day,
+    // tomorrow, so a cell with both is always in view. The seed's events move
+    // with the date and some days left no such cell.
+    const created: string[] = [];
+    if (HAS_TEST_DB) {
+      expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);
+      const now = new Date();
+      // 10:00 and 12:00 UTC fall on the same date in Tokyo and Chicago.
+      const day = (d: number, h: number) => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + d, h)).toISOString();
+      for (const data of [
+        { title: 'Band e2e span', startTime: day(1, 10), endTime: day(3, 10) },
+        { title: 'Band e2e card', startTime: day(1, 12), endTime: day(1, 13) },
+      ]) {
+        const res = await postEvent(page, { ...data, allDay: false, createdBy: getSeededParentId() });
+        expect(res.status()).toBe(201);
+        created.push((await res.json()).id);
+      }
+    }
+    try {
     await openCalendar(page, 'cards');
     const offsets = await page.evaluate(() => {
       const textLeft = (el: Element) => {
@@ -129,6 +148,9 @@ test.describe('calendar grid geometry', () => {
     const misaligned = offsets.filter(
       (o) => Math.abs((o.band as number) - (o.card as number)) > 0.5);
     expect(misaligned, `misaligned band/card pairs:\n${JSON.stringify(misaligned, null, 1)}`).toEqual([]);
+    } finally {
+      for (const id of created) await page.request.delete(`/api/events/${id}`);
+    }
   });
 
   test('a lane sits at the same height in every column of a row', async ({ page }) => {
@@ -287,6 +309,41 @@ async function postEvent(page: Page, data: Record<string, unknown>) {
   }
 }
 
+/**
+ * A day this month for a test to fill with its own events, clear of anything
+ * the seed put near it. The seed places events relative to the day it runs, so
+ * a fixed date (the 12th) collided with them some days and the busy day held
+ * more than the test made (#1102). Days far from today come first, and one is
+ * taken only if no seeded event touches that date in any zone CI uses: Tokyo's
+ * day starts at 15:00 UTC the day before, Chicago's ends at 06:00 UTC the day
+ * after. Returns the day of the month.
+ */
+async function quietDay(page: Page, now: Date): Promise<number> {
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const last = new Date(y, m + 1, 0).getDate();
+  const from = new Date(Date.UTC(y, m, 1) - 2 * 86_400_000).toISOString();
+  const to = new Date(Date.UTC(y, m, last) + 3 * 86_400_000).toISOString();
+  const res = await page.request.get(`/api/events?startDate=${from}&endDate=${to}&limit=5000`);
+  expect(res.ok(), 'premise: the events list loads').toBe(true);
+  const body = await res.json();
+  const events: Array<{ startTime: string; endTime?: string }> = body.events ?? body;
+  const busy = (d: number) => {
+    const a = Date.UTC(y, m, d - 1, 15);
+    const b = Date.UTC(y, m, d + 1, 6);
+    return events.some((e) => {
+      const s = new Date(e.startTime).getTime();
+      const t = new Date(e.endTime ?? e.startTime).getTime();
+      return s < b && t > a;
+    });
+  };
+  const today = now.getDate();
+  const days = Array.from({ length: last - 3 }, (_, i) => i + 2).sort((p, q) => Math.abs(q - today) - Math.abs(p - today));
+  const day = days.find((d) => !busy(d));
+  expect(day, 'premise: some day this month is free of seeded events').toBeDefined();
+  return day!;
+}
+
 async function openCalendarView(page: Page, view: string) {
   if (HAS_TEST_DB) {
     const login = await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } });
@@ -374,16 +431,17 @@ test.describe('3 Months folds a busy day', () => {
     const { browser, page } = await pointerPage(playwright, info, 1, { width: 1920, height: 1080 });
     const login = await page.request.post('/api/auth/login', { data: { userId: parentId, pin: PIN } });
     expect(login.ok(), 'precondition: login must succeed').toBe(true);
-    // The 12th of the current month is always in the middle mini month. Six is
+    // A day of the current month is always in the middle mini month. Six is
     // more than a 1080p cell holds (four) and needs no other events that day.
     const now = new Date();
-    const busyDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-12`;
+    const dom = await quietDay(page, now);
+    const busyDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(dom).padStart(2, '0')}`;
     const created: string[] = [];
     try {
       for (let i = 0; i < 6; i++) {
-        // In UTC, 07:00-12:30 on the 12th is the 12th in every zone CI uses: the
+        // In UTC, 07:00-12:30 on a day is that day in every zone CI uses: the
         // runner and server in Tokyo, the browser in Chicago or Tokyo.
-        const start = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 12, 7 + i));
+        const start = new Date(Date.UTC(now.getFullYear(), now.getMonth(), dom, 7 + i));
         const res = await postEvent(page, {
           title: `Busy day e2e ${i + 1}`,
           startTime: start.toISOString(),
@@ -453,10 +511,11 @@ test.describe('busy days page on the wall', () => {
     const { browser, page } = await pointerPage(playwright, info, 1, { width: 1920, height: 1080 });
     const login = await page.request.post('/api/auth/login', { data: { userId: parentId, pin: PIN } });
     expect(login.ok(), 'precondition: login must succeed').toBe(true);
-    // The 12th of the current month is always in the month grid. Each project
+    // A day of the current month is always in the month grid. Each project
     // runs in parallel against one database, so the titles carry its name.
     const now = new Date();
-    const busyDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-12`;
+    const dom = await quietDay(page, now);
+    const busyDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(dom).padStart(2, '0')}`;
     const tag = info.project.name;
     // Five: more than a 1080p day holds in either mode (two inline, three as
     // cards), so it pages, and few enough to stay clear of the rate limit.
@@ -467,8 +526,8 @@ test.describe('busy days page on the wall', () => {
     })).json();
     try {
       for (const [i, title] of titles.entries()) {
-        // 06:00-10:30 UTC is the 12th in every zone CI uses (Tokyo, Chicago).
-        const start = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 12, 6 + i));
+        // 06:00-10:30 UTC on a day is that day in every zone CI uses (Tokyo, Chicago).
+        const start = new Date(Date.UTC(now.getFullYear(), now.getMonth(), dom, 6 + i));
         const res = await postEvent(page, { title, startTime: start.toISOString(), endTime: new Date(start.getTime() + 30 * 60_000).toISOString(), allDay: false, createdBy: parentId });
         expect(res.status()).toBe(201);
         created.push((await res.json()).id);
