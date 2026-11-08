@@ -156,6 +156,43 @@ test.describe('Phone subpages do not drag', () => {
   });
 });
 
+// Settings on a phone neither runs past the screen's edge nor drags sideways:
+// a button pushed past the edge made the whole page slide left and right in
+// the iPhone app. Every section, at an iPhone mini's width.
+test.describe('Settings fits a phone', () => {
+  test.skip(!HAS_TEST_DB, 'needs the seeded test database');
+  test.setTimeout(240_000);
+  test('no section is wider than the screen, and the page does not scroll sideways', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);
+    await verifySettingsPinViaAPI(page, (await getFirstParent(page)).name);
+    await page.goto('/settings');
+    const pick = page.locator('select').first();
+    await expect(pick).toBeVisible({ timeout: 60_000 });
+    const sections = await pick.locator('option').allTextContents();
+    expect(sections.length, 'premise: the section picker lists them').toBeGreaterThan(5);
+    for (const name of sections) {
+      await pick.selectOption({ label: name });
+      await page.waitForTimeout(800);
+      const fit = await page.evaluate(() => {
+        // The section's scroller: the largest box that scrolls up and down.
+        const scroller = [...document.querySelectorAll<HTMLElement>('main *')]
+          .filter((e) => getComputedStyle(e).overflowY === 'auto')
+          .sort((x, y) => y.clientWidth * y.clientHeight - x.clientWidth * x.clientHeight)[0]!;
+        const past = [...scroller.querySelectorAll<HTMLElement>('*')]
+          .filter((e) => { const b = e.getBoundingClientRect(); return b.width > 0 && b.right > innerWidth + 1; })
+          .map((e) => `${e.tagName} "${(e.textContent || '').trim().slice(0, 30)}"`);
+        scroller.scrollLeft = 50;
+        const slid = scroller.scrollLeft;
+        scroller.scrollLeft = 0;
+        return { past: past.slice(0, 3), slid };
+      });
+      expect(fit.past, `${name}: nothing past the right edge`).toEqual([]);
+      expect(fit.slid, `${name}: no sideways scroll`).toBe(0);
+    }
+  });
+});
+
 test.describe('Today on a phone', () => {
   test.skip(!HAS_TEST_DB, 'needs the seeded test database');
   test.setTimeout(90_000);
