@@ -90,6 +90,9 @@ test.describe('calendar grid geometry', () => {
         created.push((await res.json()).id);
       }
     }
+    // Tall enough that the day's card is drawn, not folded into "+N more" on a
+    // day the seed also fills. Alignment does not depend on the screen's size.
+    await page.setViewportSize({ width: 1920, height: 2400 });
     try {
     await openCalendar(page, 'cards');
     const offsets = await page.evaluate(() => {
@@ -144,7 +147,15 @@ test.describe('calendar grid geometry', () => {
       return out;
     });
 
-    expect(offsets.length).toBeGreaterThan(0);
+    // What the page drew, so a run that finds no pair says why (#1102).
+    const seen = offsets.length ? '' : await page.evaluate(() => JSON.stringify({
+      url: location.pathname,
+      viewport: [innerWidth, innerHeight],
+      bands: [...document.querySelectorAll('[data-spanning-events]')].map((b) => (b.textContent || '').trim().slice(0, 40)).slice(0, 8),
+      ours: [...document.querySelectorAll('button')].map((b) => (b.textContent || '').trim()).filter((t) => t.includes('Band e2e')),
+      folds: document.querySelectorAll('[data-day-overflow]').length,
+    }));
+    expect(offsets.length, `no cell with both a band and a card: ${seen}`).toBeGreaterThan(0);
     const misaligned = offsets.filter(
       (o) => Math.abs((o.band as number) - (o.card as number)) > 0.5);
     expect(misaligned, `misaligned band/card pairs:\n${JSON.stringify(misaligned, null, 1)}`).toEqual([]);
@@ -538,7 +549,9 @@ test.describe('busy days page on the wall', () => {
           localStorage.setItem('prism-calendar-view', 'month');
           localStorage.setItem('prism-calendar-display-mode', m);
         }, mode);
-        await page.goto(`/d/${layout.slug}`, { waitUntil: 'load' });
+        // Every request settled before the pages are counted: a meal or a chore
+        // for that day arriving later added a page mid-test (#1102).
+        await page.goto(`/d/${layout.slug}`, { waitUntil: 'networkidle' });
         const day = page.locator(`.widget-cell[data-widget="calendar"] [data-month-day="${busyDate}"]`);
         const label = day.locator('[data-day-page]');
         await expect(label, `${mode}: the busy day pages`).toHaveAttribute('data-day-page', /^1\/\d+$/, { timeout: 60_000 });
