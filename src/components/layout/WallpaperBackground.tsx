@@ -330,7 +330,11 @@ function WallpaperLayers({ src, scenery, activeId, onBroken, frameFor, zoomMs, c
   const markBroken = onBroken;
 
   return (
-    <div className="fixed inset-0 z-0 pointer-events-none">
+    // Anchored at the foot and reaching up past the top inset (#1098): in the
+    // iPhone home-screen app a fixed layer's box starts below the status bar,
+    // so top 0 left the page colour showing there. The inset is 0 on a wall
+    // or a desktop, where this is the same as inset-0.
+    <div className="fixed inset-x-0 bottom-0 -top-[env(safe-area-inset-top,0px)] z-0 pointer-events-none" data-wallpaper-layer>
       {/* Validator — if this photo's file 404s, mark it broken and skip it. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
