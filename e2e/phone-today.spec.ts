@@ -71,6 +71,10 @@ test('the time and the list paint above the wallpaper photo', async ({ page }) =
   const SCENERY = path.join(__dirname, '..', 'public', 'scenery');
   const photo = { id: 'phone-bg', filename: 'phone-bg.webp', originalFilename: 'phone-bg.webp', mimeType: 'image/webp', width: 1080, height: 1920, orientation: 'portrait', usage: 'wallpaper' };
   await page.setViewportSize({ width: 390, height: 844 });
+  // The iPhone's top inset, for #1098 below.
+  const cdp = await page.context().newCDPSession(page);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await cdp.send('Emulation.setSafeAreaInsetsOverride' as any, { insets: { top: 59, bottom: 34 } }).catch(() => {});
   await page.addInitScript(() => localStorage.setItem('prism-wallpaper-enabled', 'true'));
   await page.route('**/api/photos?*', (route) => route.fulfill({ json: { photos: [photo], total: 1 } }));
   await page.route('**/api/photos/phone-bg/file', (route) => route.fulfill({ path: path.join(SCENERY, 'valley.webp'), contentType: 'image/webp' }));
@@ -90,6 +94,14 @@ test('the time and the list paint above the wallpaper photo', async ({ page }) =
       return !!hit?.closest('[data-phone-today]');
     });
     expect(top, 'the time paints above the photo').toBe(true);
+    // #1098: in the iPhone app a fixed layer's box starts below the status
+    // bar, so the photo began 59px down with the page colour above it.
+    // Chromium starts it at 0, so check the layer reaches the inset's height
+    // above its box and still ends at the foot of the screen.
+    // The layer that holds the photo and its shade.
+    const box = await page.locator('[data-wallpaper-shade]').first().evaluate((e) => { const r = e.parentElement!.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, h: innerHeight }; });
+    expect(box.top, 'the photo reaches up under the status bar').toBeLessThanOrEqual(-58);
+    expect(Math.abs(box.bottom - box.h), 'and ends at the foot of the screen').toBeLessThanOrEqual(1);
   } finally {
     await page.request.delete(`/api/layouts/${layout.id}`);
   }
