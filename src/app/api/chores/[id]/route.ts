@@ -13,6 +13,7 @@ import { db } from '@/lib/db/client';
 import { chores, users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { updateChoreSchema, validateRequest } from '@/lib/validations';
+import { applyReminderRules } from '@/lib/utils/reminders';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
@@ -60,6 +61,7 @@ export async function GET(
         nextDue: chores.nextDue,
         nextDueTime: chores.nextDueTime,
         timesPerDay: chores.timesPerDay,
+        kind: chores.kind,
         pointValue: chores.pointValue,
         requiresApproval: chores.requiresApproval,
         enabled: chores.enabled,
@@ -94,6 +96,7 @@ export async function GET(
       nextDue: choreWithUser.nextDue || null,
       nextDueTime: choreWithUser.nextDueTime || null,
       timesPerDay: choreWithUser.timesPerDay,
+      kind: choreWithUser.kind,
       pointValue: choreWithUser.pointValue,
       requiresApproval: choreWithUser.requiresApproval,
       enabled: choreWithUser.enabled,
@@ -149,7 +152,7 @@ export async function PATCH(
 
     // Check if chore exists
     const [existingChore] = await db
-      .select({ id: chores.id })
+      .select({ id: chores.id, kind: chores.kind, nextDueTime: chores.nextDueTime })
       .from(chores)
       .where(eq(chores.id, id));
 
@@ -169,9 +172,15 @@ export async function PATCH(
       );
     }
 
+    // A reminder has no points or approval, and needs a time (#1109).
+    const ruled = applyReminderRules(validation.data, existingChore);
+    if (!ruled.ok) {
+      return NextResponse.json({ error: ruled.error }, { status: 400 });
+    }
+
     // Build update object
     const updateData: Record<string, unknown> = {
-      ...validation.data,
+      ...ruled.data,
       updatedAt: new Date(),
     };
 
@@ -202,6 +211,7 @@ export async function PATCH(
         nextDue: chores.nextDue,
         nextDueTime: chores.nextDueTime,
         timesPerDay: chores.timesPerDay,
+        kind: chores.kind,
         pointValue: chores.pointValue,
         requiresApproval: chores.requiresApproval,
         enabled: chores.enabled,
@@ -245,6 +255,7 @@ export async function PATCH(
       nextDue: updatedChoreWithUser.nextDue || null,
       nextDueTime: updatedChoreWithUser.nextDueTime || null,
       timesPerDay: updatedChoreWithUser.timesPerDay,
+      kind: updatedChoreWithUser.kind,
       pointValue: updatedChoreWithUser.pointValue,
       requiresApproval: updatedChoreWithUser.requiresApproval,
       enabled: updatedChoreWithUser.enabled,

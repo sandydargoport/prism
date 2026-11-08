@@ -9,6 +9,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
   ClipboardList,
   Plus,
+  Bell,
   AlertCircle,
   History,
   Users,
@@ -151,9 +152,12 @@ export function ChoresView() {
     return groups;
   }, [groupByUser, effectiveFilteredChores, familyMembers, filterPerson]);
 
-  const handleAddWithAuth = async () => {
-    const user = await requireAuth('Add Chore', 'Please log in to add a chore');
+  // A reminder (#1109) is added with the same form, in its reminder mode.
+  const [addKind, setAddKind] = useState<'chore' | 'reminder'>('chore');
+  const handleAddWithAuth = async (kind: 'chore' | 'reminder' = 'chore') => {
+    const user = await requireAuth(kind === 'reminder' ? 'Add Reminder' : 'Add Chore', `Please log in to add a ${kind}`);
     if (!user) return;
+    setAddKind(kind);
     // Preselect the person who's adding it — only relevant when they're an
     // actual family member (not a role-less guest) present in the groups.
     setAddModalDefaultAssignee(familyMembers.some((m) => m.id === user.id) ? user.id : undefined);
@@ -187,13 +191,21 @@ export function ChoresView() {
             )}
             {/* On a phone the round button adds (#1028). */}
             {!isMobile && (
-              <Button onClick={handleAddWithAuth} size="sm" aria-label="Add Chore">
+              <Button variant="outline" onClick={() => void handleAddWithAuth('reminder')} size="sm" aria-label="Add Reminder" data-chores-add-reminder>
+                <Bell className="h-4 w-4 mr-1" />Add Reminder
+              </Button>
+            )}
+            {!isMobile && (
+              <Button onClick={() => void handleAddWithAuth()} size="sm" aria-label="Add Chore">
                 <Plus className="h-4 w-4 mr-1" />Add Chore
               </Button>
             )}
           </>}
           overflow={[
-            ...(isMobile ? [{ label: showCompletions ? 'Back to chores' : 'History', icon: History, onClick: () => setShowCompletions(!showCompletions) }] : []),
+            ...(isMobile ? [
+              { label: 'Add reminder', icon: Bell, onClick: () => void handleAddWithAuth('reminder') },
+              { label: showCompletions ? 'Back to chores' : 'History', icon: History, onClick: () => setShowCompletions(!showCompletions) },
+            ] : []),
             { label: 'Hide Completed', checked: hideCompleted, onClick: () => setHideCompleted(!hideCompleted) },
             { label: 'Show Disabled', checked: showDisabled, onClick: () => setShowDisabled(!showDisabled) },
           ] as OverflowItem[]}
@@ -251,7 +263,7 @@ export function ChoresView() {
               <EmptyState
                 icon={<ClipboardList />}
                 title="No chores found"
-                action={<Button variant="outline" size="sm" onClick={handleAddWithAuth}>Add your first chore</Button>}
+                action={<Button variant="outline" size="sm" onClick={() => void handleAddWithAuth()}>Add your first chore</Button>}
               />
             </div>
           ) : groupByUser && choresByUser && choresByUser.length > 0 ? (
@@ -285,7 +297,7 @@ export function ChoresView() {
 
         {showAddModal && (
           <ChoreModal onClose={() => setShowAddModal(false)} onSave={saveNewChore}
-            familyMembers={familyMembers} defaultAssignedTo={addModalDefaultAssignee} />
+            familyMembers={familyMembers} defaultAssignedTo={addModalDefaultAssignee} kind={addKind} />
         )}
         {editingChore && (
           <ChoreModal chore={editingChore} onClose={() => setEditingChore(null)}

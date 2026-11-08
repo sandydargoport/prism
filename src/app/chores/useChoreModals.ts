@@ -16,6 +16,7 @@ interface ChoreFormData {
   nextDue?: string | null;
   nextDueTime?: string | null;
   timesPerDay?: number;
+  kind?: 'chore' | 'reminder';
 }
 
 interface UseChoreModalsProps {
@@ -48,6 +49,7 @@ export function useChoreModals({
           nextDue: chore.nextDue || undefined,
           nextDueTime: chore.nextDueTime ?? undefined,
           timesPerDay: chore.timesPerDay,
+          kind: chore.kind,
         }),
       });
       if (!response.ok) {
@@ -82,14 +84,18 @@ export function useChoreModals({
           nextDue: updatedChore.nextDue ?? null,
           nextDueTime: updatedChore.nextDueTime ?? null,
           timesPerDay: updatedChore.timesPerDay,
+          kind: updatedChore.kind,
         }),
       });
-      if (!response.ok) throw new Error('Failed to update chore');
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to update chore');
+      }
       refreshChores();
       setEditingChore(null);
     } catch (err) {
       console.error('Error updating chore:', err);
-      toast({ title: 'Failed to update chore', variant: 'destructive' });
+      toast({ title: err instanceof Error ? err.message : 'Failed to update chore', variant: 'destructive' });
     }
   };
 

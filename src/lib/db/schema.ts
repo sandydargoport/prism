@@ -397,6 +397,8 @@ export const chores = pgTable('chores', {
   // A daily chore done more than once a day (#1107): due today until ticked
   // this many times today.
   timesPerDay: integer('times_per_day').default(1).notNull(),
+  // A reminder (#1109): a chore with a time, no points and no approval.
+  kind: varchar('kind', { length: 20 }).default('chore').notNull().$type<'chore' | 'reminder'>(),
 
   pointValue: integer('point_value').default(0).notNull(),
 

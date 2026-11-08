@@ -55,6 +55,8 @@ export interface Chore {
   timesPerDay?: number;
   /** Approved ticks today, in the household's time zone. */
   doneToday?: number;
+  /** A reminder (#1109): a time, no points, no approval. */
+  kind?: 'chore' | 'reminder';
   enabled: boolean;
   requiresApproval: boolean;
   pointValue: number;
