@@ -461,9 +461,12 @@ html.performance-mode {
    goes fully clear, so the clock and weather sit straight on the photo. The
    text turns light in either mode and carries a soft dark shadow, which is
    what keeps it readable over a bright patch of sky. Inner surfaces (the hourly
-   tiles) go clear too, except a small backing a widget marks to keep. */
+   tiles) go clear too, except a small backing a widget marks to keep. A grid
+   widget whose fill is set to None (transparent) is drawn the same way over a
+   photo (#803); with no photo it keeps the theme's ink. */
 .widget-cell.idle-clear,
-html[data-wallpaper] .widget-cell[data-corner][data-fill="glass"] {
+html[data-wallpaper] .widget-cell[data-corner][data-fill="glass"],
+html[data-wallpaper] .widget-cell[data-fill="none"] {
   --foreground: 0 0% 100%;
   --card-foreground: 0 0% 100%;
   --muted-foreground: 0 0% 90%;
@@ -474,15 +477,18 @@ html[data-wallpaper] .widget-cell[data-corner][data-fill="glass"] {
 }
 /* Text kept transparent to hold a place would show as a bare shadow. */
 .widget-cell.idle-clear .text-transparent,
-html[data-wallpaper] .widget-cell[data-corner][data-fill="glass"] .text-transparent { text-shadow: none; }
+html[data-wallpaper] .widget-cell[data-corner][data-fill="glass"] .text-transparent,
+html[data-wallpaper] .widget-cell[data-fill="none"] .text-transparent { text-shadow: none; }
 .widget-cell.idle-clear *:not([data-keep-bg]),
-html[data-wallpaper] .widget-cell[data-corner][data-fill="glass"] *:not([data-keep-bg]) {
+html[data-wallpaper] .widget-cell[data-corner][data-fill="glass"] *:not([data-keep-bg]),
+html[data-wallpaper] .widget-cell[data-fill="none"] *:not([data-keep-bg]) {
   background-color: transparent !important;
   box-shadow: none !important;
   backdrop-filter: none !important;
 }
 .widget-cell.idle-clear svg,
-html[data-wallpaper] .widget-cell[data-corner][data-fill="glass"] svg { filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.5)); }
+html[data-wallpaper] .widget-cell[data-corner][data-fill="glass"] svg,
+html[data-wallpaper] .widget-cell[data-fill="none"] svg { filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.5)); }
 /* The weather widget's sun arc over a photo (#672): its faint guide lines
    wash out on a light photo, so it gets the corner tiles' soft shadow. */
 html[data-wallpaper] [data-sun-arc] { filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.55)); }

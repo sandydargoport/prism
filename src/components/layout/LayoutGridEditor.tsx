@@ -278,6 +278,15 @@ export function LayoutGridEditor({
     );
   };
 
+  // The fill choice in words, shown under the swatches (#803).
+  const fillName = (c: string | undefined): string => {
+    if (!c) return 'Default: the theme\'s card';
+    if (c === 'transparent') return 'None: the words sit straight on the photo, in light text with a soft shadow';
+    if (c === 'glass') return 'Glass: a see-through card over the photo';
+    if (c === 'frosted') return 'Frosted: a white, blurred card';
+    return 'Solid: a card in this colour';
+  };
+
   // Helper: render color swatches popover content for fill/outline/text
   const renderColorPopover = (target: 'fill' | 'outline' | 'text') => {
     if (!selectedWidgetConfig || !selectedWidget) return null;
@@ -373,6 +382,13 @@ export function LayoutGridEditor({
               type="color" className="sr-only" value={color || '#3B82F6'} onChange={(e) => apply(e.target.value)} />
           </div>
         </div>
+        {/* What the chosen fill does, in words (#803): the swatches alone
+            carry only a tooltip, which a touchscreen never shows. */}
+        {target === 'fill' && (
+          <p className="text-3xs text-muted-foreground" data-fill-name>
+            {fillName(bgColor)}
+          </p>
+        )}
         {/* Text scale (text only) */}
         {target === 'text' && (
           <div className="flex items-center gap-1 flex-wrap">
