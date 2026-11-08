@@ -9,7 +9,13 @@
  * whoever last signed in until the 30-day cap, and anyone who walks up inherits
  * it. This bounds that to actual presence.
  */
-import { shouldLogOut, getIdleLogoutMinutes, DEFAULT_IDLE_LOGOUT_MINUTES } from '../useIdleLogout';
+import { renderHook, act } from '@testing-library/react';
+import { shouldLogOut, getIdleLogoutMinutes, DEFAULT_IDLE_LOGOUT_MINUTES, deviceIsKept, useIdleLogout } from '../useIdleLogout';
+
+const clearActiveUser = jest.fn();
+jest.mock('@/components/providers', () => ({
+  useAuth: () => ({ activeUser: { id: 'p1' }, clearActiveUser }),
+}));
 
 const MIN = 60 * 1000;
 const NOW = 1_000_000_000;
@@ -70,5 +76,55 @@ describe('getIdleLogoutMinutes', () => {
     });
     expect(getIdleLogoutMinutes()).toBe(DEFAULT_IDLE_LOGOUT_MINUTES);
     spy.mockRestore();
+  });
+});
+
+const reply = (status: number, sessions?: unknown) =>
+  jest.fn().mockResolvedValue({ ok: status < 400, status, json: async () => ({ sessions }) }) as unknown as typeof fetch;
+
+describe('deviceIsKept (#1104)', () => {
+  it('reads the kept flag of this device\'s own session', async () => {
+    expect(await deviceIsKept(reply(200, [{ current: false, kept: true }, { current: true, kept: true }]))).toBe(true);
+    expect(await deviceIsKept(reply(200, [{ current: true, kept: false }]))).toBe(false);
+  });
+
+  it('treats a session that is already gone as not kept', async () => {
+    expect(await deviceIsKept(reply(401))).toBe(false);
+  });
+
+  it('has no answer when the server cannot say, rather than guessing', async () => {
+    expect(await deviceIsKept(reply(503))).toBeNull();
+    expect(await deviceIsKept(jest.fn().mockRejectedValue(new Error('offline')) as unknown as typeof fetch)).toBeNull();
+  });
+});
+
+describe('useIdleLogout on a kept device (#1104)', () => {
+  const realFetch = global.fetch;
+  beforeEach(() => {
+    jest.useFakeTimers();
+    clearActiveUser.mockReset();
+    window.localStorage.setItem('prism-last-activity', String(Date.now() - 31 * MIN));
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+    global.fetch = realFetch;
+  });
+
+  const idleMinute = async () => {
+    renderHook(() => useIdleLogout());
+    await act(async () => { jest.advanceTimersByTime(60_000); });
+    await act(async () => { await Promise.resolve(); });
+  };
+
+  it('stays signed in when this device is kept', async () => {
+    global.fetch = reply(200, [{ current: true, kept: true }]);
+    await idleMinute();
+    expect(clearActiveUser).not.toHaveBeenCalled();
+  });
+
+  it('signs an ordinary display out after the idle time', async () => {
+    global.fetch = reply(200, [{ current: true, kept: false }]);
+    await idleMinute();
+    expect(clearActiveUser).toHaveBeenCalledTimes(1);
   });
 });
