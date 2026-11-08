@@ -296,7 +296,9 @@ export function SettingsView() {
 
           </nav>
 
-          <div className="flex-1 overflow-y-auto p-4 md:p-6">
+          {/* Scrolls up and down only: a section a little too wide for a phone
+              let the whole page drag sideways in the iPhone app. */}
+          <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6" data-settings-scroller>
             {/*
               Section selector for phones and portrait screens. The sidebar
               above shows only on a landscape screen md and wider: on a portrait

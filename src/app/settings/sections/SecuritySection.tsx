@@ -254,7 +254,8 @@ export function SecuritySection() {
             />
           </div>
 
-          <div className="flex items-center justify-between gap-4 border-t pt-4">
+          {/* Wraps on a phone: the button no longer pushes past the screen's edge. */}
+          <div className="flex flex-wrap items-center justify-between gap-4 border-t pt-4">
             <div>
               <p className="font-medium">This display</p>
               <p className="text-sm text-muted-foreground">
@@ -331,8 +332,8 @@ export function SecuritySection() {
         <CardContent className="space-y-4">
           {/* Create new token */}
           <div className="space-y-2">
-            <div className="flex gap-2">
-              <div className="flex-1">
+            <div className="flex flex-wrap gap-2">
+              <div className="min-w-48 flex-1">
                 <Label htmlFor="token-name" className="sr-only">Token name</Label>
                 <Input
                   id="token-name"
