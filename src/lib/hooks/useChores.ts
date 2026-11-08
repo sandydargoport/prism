@@ -120,6 +120,7 @@ export function useChores(options: UseChoresOptions = {}): UseChoresResult {
           timesPerDay?: number;
           doneToday?: number;
           kind?: 'chore' | 'reminder';
+          pet?: { id: string; name: string; color: string } | null;
           enabled: boolean;
           requiresApproval: boolean;
           pointValue: number;
@@ -151,6 +152,7 @@ export function useChores(options: UseChoresOptions = {}): UseChoresResult {
           timesPerDay: chore.timesPerDay ?? 1,
           doneToday: chore.doneToday ?? 0,
           kind: chore.kind ?? 'chore',
+          pet: chore.pet ?? null,
           enabled: chore.enabled,
           requiresApproval: chore.requiresApproval,
           pointValue: chore.pointValue,

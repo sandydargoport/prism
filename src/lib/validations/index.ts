@@ -132,6 +132,8 @@ export const createChoreSchema = z.object({
   timesPerDay: z.number().int().min(1).max(4).optional(),
   // A reminder (#1109): saved with no points or approval, and needs a time.
   kind: z.enum(['chore', 'reminder']).optional(),
+  // Who it is for, when that is a pet (#996); null clears it.
+  petId: uuidSchema.nullable().optional(),
 });
 
 export const updateChoreSchema = updateOf(createChoreSchema).extend({

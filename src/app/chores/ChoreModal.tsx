@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { getCategoryEmoji } from '@/app/chores/ChoreItem';
 import type { Chore, FamilyMember } from '@/types';
+import { usePets } from '@/lib/hooks/usePets';
 
 export function ChoreModal({
   chore,
@@ -55,6 +56,9 @@ export function ChoreModal({
   const [nextDue, setNextDue] = useState<string>(chore?.nextDue || (isReminder && !chore ? format(new Date(), 'yyyy-MM-dd') : ''));
   const [nextDueTime, setNextDueTime] = useState<string>(chore?.nextDueTime || '');
   const [timesPerDay, setTimesPerDay] = useState<number>(chore?.timesPerDay ?? 1);
+  // Who it is for, when that is a pet (#996).
+  const { pets } = usePets();
+  const [petId, setPetId] = useState<string>(chore?.pet?.id ?? '');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,6 +76,7 @@ export function ChoreModal({
       pointValue: isReminder ? 0 : pointValue,
       requiresApproval: isReminder ? false : requiresApproval,
       kind,
+      pet: petId ? { id: petId, name: '', color: '' } : null,
       assignedTo: selectedMember || undefined,
       enabled,
       lastCompleted: chore?.lastCompleted,
@@ -300,6 +305,25 @@ export function ChoreModal({
               ))}
             </div>
           </div>
+
+          {/* For a pet (#996): a person does it, the pet is who it is for. */}
+          {pets.length > 0 && (
+            <div>
+              <label className="text-sm font-medium" id="chore-for">For</label>
+              <div className="flex gap-2 mt-1 flex-wrap" role="group" aria-labelledby="chore-for">
+                <Button type="button" size="sm" variant={!petId ? 'default' : 'outline'} onClick={() => setPetId('')} aria-pressed={!petId}>
+                  No one
+                </Button>
+                {pets.map((p) => (
+                  <Button key={p.id} type="button" size="sm" variant={petId === p.id ? 'default' : 'outline'}
+                    onClick={() => setPetId(p.id)} aria-pressed={petId === p.id} className="gap-1" data-chore-for={p.name}>
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: p.color }} />
+                    {p.name}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center gap-2 pt-4">
             {chore && onDelete && (
