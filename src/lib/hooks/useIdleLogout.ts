@@ -61,6 +61,23 @@ export function useIdleLogoutSetting(): [number, (v: number) => void] {
   return [minutes, update];
 }
 
+/**
+ * Is the device this page runs on kept signed in (#1044)? A kept phone is a
+ * parent's own, so walking away from it is not a reason to sign it out (#1104).
+ * Asked only when the idle timer is about to fire. Null when the answer did not
+ * come back: the caller waits a minute rather than guessing either way.
+ */
+export async function deviceIsKept(fetchFn: typeof fetch = fetch): Promise<boolean | null> {
+  try {
+    const res = await fetchFn('/api/auth/sessions');
+    if (!res.ok) return res.status === 401 ? false : null;
+    const body = (await res.json()) as { sessions?: Array<{ current?: boolean; kept?: boolean }> };
+    return body.sessions?.find((s) => s.current)?.kept === true;
+  } catch {
+    return null;
+  }
+}
+
 export function useIdleLogout() {
   const { activeUser, clearActiveUser } = useAuth();
   const isSignedIn = useEffectEvent(() => Boolean(activeUser));
@@ -68,6 +85,7 @@ export function useIdleLogout() {
   useEffect(() => {
     const minutes = getIdleLogoutMinutes();
     if (minutes <= 0) return;
+    let asking = false;
 
     const check = () => {
       // Nothing to do when nobody is signed in — avoids a pointless logout
@@ -78,7 +96,11 @@ export function useIdleLogout() {
         if (raw === null) return;
         const last = Number(raw);
         if (!Number.isFinite(last)) return;
-        if (shouldLogOut(minutes, last, Date.now())) clearActiveUser();
+        if (!shouldLogOut(minutes, last, Date.now()) || asking) return;
+        asking = true;
+        void deviceIsKept()
+          .then((kept) => { if (kept === false) clearActiveUser(); })
+          .finally(() => { asking = false; });
       } catch {
         /* storage unavailable — leave the session alone rather than guessing */
       }
