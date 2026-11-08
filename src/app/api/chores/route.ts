@@ -17,7 +17,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireRole, getDisplayAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { chores, users, choreCompletions, pets } from '@/lib/db/schema';
-import { eq, and, desc, isNull, isNotNull, or, lte, gte, lt, count } from 'drizzle-orm';
+import { eq, and, asc, desc, isNull, isNotNull, or, lte, gte, lt, count } from 'drizzle-orm';
 import { createChoreSchema, validateRequest } from '@/lib/validations';
 import { applyReminderRules } from '@/lib/utils/reminders';
 import { getCached } from '@/lib/cache/redis';
@@ -119,7 +119,9 @@ export async function GET(request: NextRequest) {
         .from(chores)
         .leftJoin(users, eq(chores.assignedTo, users.id))
         .leftJoin(pets, eq(chores.petId, pets.id))
-        .orderBy(desc(chores.createdAt));
+        // Title breaks a tie, so chores made together keep one order
+        // whatever plan the joins get.
+        .orderBy(desc(chores.createdAt), asc(chores.title));
 
       // Apply filters
       const conditions = [];
