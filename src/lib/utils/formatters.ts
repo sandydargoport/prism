@@ -263,6 +263,7 @@ export function formatChoreRow(row: {
   lastCompleted: Date | null;
   nextDue: string | null;
   nextDueTime?: string | null;
+  timesPerDay?: number;
   pointValue: number;
   requiresApproval: boolean;
   enabled: boolean;
@@ -287,6 +288,7 @@ export function formatChoreRow(row: {
     lastCompleted: row.lastCompleted?.toISOString() || null,
     nextDue: row.nextDue || null,
     nextDueTime: row.nextDueTime ?? null,
+    timesPerDay: row.timesPerDay ?? 1,
     pointValue: row.pointValue,
     requiresApproval: row.requiresApproval,
     enabled: row.enabled,

@@ -47,6 +47,7 @@ export function ChoreModal({
   const [assignedTo, setAssignedTo] = useState(chore?.assignedTo?.id || defaultAssignedTo || '');
   const [nextDue, setNextDue] = useState<string>(chore?.nextDue || '');
   const [nextDueTime, setNextDueTime] = useState<string>(chore?.nextDueTime || '');
+  const [timesPerDay, setTimesPerDay] = useState<number>(chore?.timesPerDay ?? 1);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,6 +69,7 @@ export function ChoreModal({
       // Allow explicit clearing: empty input → null/undefined, not fallback to old value.
       nextDue: nextDue || undefined,
       nextDueTime: nextDueTime || null,
+      timesPerDay: frequency === 'daily' ? timesPerDay : 1,
     });
   };
 
@@ -133,6 +135,21 @@ export function ChoreModal({
               ))}
             </div>
           </div>
+
+          {/* More than once a day (#1107): feeding a pet morning and evening. */}
+          {frequency === 'daily' && (
+            <div>
+              <label className="text-sm font-medium" id="times-a-day">Times a day</label>
+              <div className="mt-1 flex gap-2" role="group" aria-labelledby="times-a-day">
+                {[1, 2, 3, 4].map((n) => (
+                  <Button key={n} type="button" size="sm" variant={timesPerDay === n ? 'default' : 'outline'}
+                    onClick={() => setTimesPerDay(n)} aria-pressed={timesPerDay === n} data-chore-times-a-day={n}>
+                    {n === 1 ? 'Once' : `${n} times`}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Start Day / Reset Day */}
           {(['weekly', 'biweekly'].includes(frequency)) && (

@@ -87,6 +87,7 @@ export async function POST(
         frequency: chores.frequency,
         customIntervalDays: chores.customIntervalDays,
         startDay: chores.startDay,
+        timesPerDay: chores.timesPerDay,
         nextDue: chores.nextDue,
       })
       .from(chores)

@@ -17,11 +17,11 @@
 
 import { db } from '@/lib/db/client';
 import { chores, choreCompletions } from '@/lib/db/schema';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, count, eq, gte, isNotNull, isNull, lt } from 'drizzle-orm';
 import { requireRole, type AuthResult } from '@/lib/auth';
 import { calculateNextDue, type ChoreFrequency } from '@/lib/utils/calculateNextDue';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
-import { todayKey } from '@/lib/utils/zonedDate';
+import { dayWindowUtc, todayKey } from '@/lib/utils/zonedDate';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logActivity } from '@/lib/services/auditLog';
 
@@ -33,7 +33,42 @@ export type CompletableChore = {
   frequency: ChoreFrequency;
   customIntervalDays: number | null;
   startDay: string | null;
+  /** Ticks a daily chore needs each day (#1107); 1 when absent. */
+  timesPerDay?: number | null;
 };
+
+/** Something that can run a select: the database or a transaction. */
+type Reader = Pick<typeof db, 'select'>;
+
+/**
+ * The chore's due date once a tick is approved. A daily chore done more than
+ * once a day (#1107) stays due today until it has that many approved ticks
+ * today, in the household's time zone; anything else moves on from today as
+ * before. Call it after the tick is approved, inside the same transaction, so
+ * the count includes it.
+ */
+export async function dueAfterApprovedTick(
+  reader: Reader,
+  chore: CompletableChore,
+  today: string,
+  timeZone: string,
+): Promise<string> {
+  const times = chore.frequency === 'daily' ? Math.max(1, chore.timesPerDay ?? 1) : 1;
+  if (times > 1) {
+    const { start, end } = dayWindowUtc(today, timeZone);
+    const [row] = await reader
+      .select({ n: count() })
+      .from(choreCompletions)
+      .where(and(
+        eq(choreCompletions.choreId, chore.id),
+        isNotNull(choreCompletions.approvedBy),
+        gte(choreCompletions.completedAt, start),
+        lt(choreCompletions.completedAt, end),
+      ));
+    if ((row?.n ?? 0) < times) return today;
+  }
+  return calculateNextDue(chore.frequency, chore.customIntervalDays, chore.startDay, today);
+}
 
 /**
  * Whether an authenticated caller can approve chores. This is the same check
@@ -86,7 +121,8 @@ export async function recordChoreCompletion(params: {
   const { chore, completedBy, approvedBy, actorUserId } = params;
   const approved = approvedBy !== null;
   const now = new Date();
-  const today = todayKey(await getHouseholdTimezone());
+  const timeZone = await getHouseholdTimezone();
+  const today = todayKey(timeZone);
 
   const completion = await db.transaction(async (tx) => {
     const [comp] = await tx
@@ -112,7 +148,7 @@ export async function recordChoreCompletion(params: {
         .update(chores)
         .set({
           lastCompleted: comp.completedAt,
-          nextDue: calculateNextDue(chore.frequency, chore.customIntervalDays, chore.startDay, today),
+          nextDue: await dueAfterApprovedTick(tx, chore, today, timeZone),
           updatedAt: now,
         })
         .where(eq(chores.id, chore.id));

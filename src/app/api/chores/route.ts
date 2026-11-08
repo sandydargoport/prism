@@ -17,11 +17,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireRole, getDisplayAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { chores, users, choreCompletions } from '@/lib/db/schema';
-import { eq, and, desc, isNull, or, lte } from 'drizzle-orm';
+import { eq, and, desc, isNull, isNotNull, or, lte, gte, lt, count } from 'drizzle-orm';
 import { createChoreSchema, validateRequest } from '@/lib/validations';
 import { getCached } from '@/lib/cache/redis';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
-import { todayKey } from '@/lib/utils/zonedDate';
+import { dayWindowUtc, todayKey } from '@/lib/utils/zonedDate';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logActivity } from '@/lib/services/auditLog';
 import { formatChoreRow } from '@/lib/utils/formatters';
@@ -48,7 +48,8 @@ export async function GET(request: NextRequest) {
 
     // The household's today, not the server's. In the key so the cached list
     // rolls over at the household's midnight.
-    const today = todayKey(await getHouseholdTimezone());
+    const timeZone = await getHouseholdTimezone();
+    const today = todayKey(timeZone);
     const cacheKey = `chores:${assignedTo || 'all'}:${enabledOnly}:future=${includeFuture}:${today}`;
 
     const data = await getCached(cacheKey, async () => {
@@ -100,6 +101,7 @@ export async function GET(request: NextRequest) {
           lastCompleted: chores.lastCompleted,
           nextDue: chores.nextDue,
           nextDueTime: chores.nextDueTime,
+          timesPerDay: chores.timesPerDay,
           pointValue: chores.pointValue,
           requiresApproval: chores.requiresApproval,
           enabled: chores.enabled,
@@ -140,9 +142,22 @@ export async function GET(request: NextRequest) {
             return isDue || hasPending || recentlyCompleted;
           });
 
+      // Approved ticks today, for a chore done more than once a day (#1107).
+      const { start, end } = dayWindowUtc(today, timeZone);
+      const ticks = await db
+        .select({ choreId: choreCompletions.choreId, n: count() })
+        .from(choreCompletions)
+        .where(and(
+          isNotNull(choreCompletions.approvedBy),
+          gte(choreCompletions.completedAt, start),
+          lt(choreCompletions.completedAt, end),
+        ))
+        .groupBy(choreCompletions.choreId);
+      const doneToday = new Map(ticks.map((t) => [t.choreId, Number(t.n)]));
+
       const formattedChores = filteredResults.map(row => {
         const pendingCompletion = pendingMap.get(row.id);
-        return formatChoreRow(row, pendingCompletion);
+        return { ...formatChoreRow(row, pendingCompletion), doneToday: doneToday.get(row.id) ?? 0 };
       });
 
       return { chores: formattedChores };
@@ -210,6 +225,7 @@ export async function POST(request: NextRequest) {
       createdBy,
       nextDue,
       nextDueTime,
+      timesPerDay,
     } = validation.data;
 
     // Insert the chore
@@ -228,6 +244,8 @@ export async function POST(request: NextRequest) {
         createdBy: createdBy || null,
         nextDue: nextDue || undefined,
         nextDueTime: nextDueTime ?? null,
+        // More than once a day only means something for a daily chore (#1107).
+        timesPerDay: frequency === 'daily' ? timesPerDay ?? 1 : 1,
       })
       .returning();
 

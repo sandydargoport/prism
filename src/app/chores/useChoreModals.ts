@@ -15,6 +15,7 @@ interface ChoreFormData {
   enabled?: boolean;
   nextDue?: string | null;
   nextDueTime?: string | null;
+  timesPerDay?: number;
 }
 
 interface UseChoreModalsProps {
@@ -46,6 +47,7 @@ export function useChoreModals({
           assignedTo: chore.assignedTo?.id,
           nextDue: chore.nextDue || undefined,
           nextDueTime: chore.nextDueTime ?? undefined,
+          timesPerDay: chore.timesPerDay,
         }),
       });
       if (!response.ok) {
@@ -79,6 +81,7 @@ export function useChoreModals({
           // and leave the prior value in place.
           nextDue: updatedChore.nextDue ?? null,
           nextDueTime: updatedChore.nextDueTime ?? null,
+          timesPerDay: updatedChore.timesPerDay,
         }),
       });
       if (!response.ok) throw new Error('Failed to update chore');
