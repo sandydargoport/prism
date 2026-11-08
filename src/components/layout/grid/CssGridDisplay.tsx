@@ -353,7 +353,7 @@ export function CssGridDisplay({
               data-corner={corner}
               data-align-x={align?.x}
               data-align-y={align?.y}
-              data-fill={w.backgroundColor === 'glass' ? 'glass' : undefined}
+              data-fill={w.backgroundColor === 'glass' ? 'glass' : w.backgroundColor === 'transparent' ? 'none' : undefined}
               data-faded={faded || undefined}
               data-hidden-empty={hiddenEmpty || undefined}
               aria-hidden={gone || undefined}
