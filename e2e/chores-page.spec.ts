@@ -78,6 +78,37 @@ test.describe('the Chores page', () => {
       await page.request.patch('/api/settings', { data: { key: 'security', value: original } });
     }
   });
+  // #1107: a daily chore done twice a day stays on the do list after the
+  // first tick, showing how many are done, and leaves after the second.
+  test('a chore done twice a day stays until its second tick', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(new Date());
+    const title = `Feed the cat ${Date.now()}`;
+    const res = await page.request.post('/api/chores', { data: { title, category: 'pets', frequency: 'daily', timesPerDay: 2, pointValue: 0, requiresApproval: false, nextDue: today } });
+    expect(res.status()).toBe(201);
+    const chore = await res.json();
+    try {
+      expect(chore.timesPerDay, 'saved').toBe(2);
+      const row = page.locator('[data-chores-section="today"] [data-list-row]').filter({ hasText: title });
+      await page.goto('/chores');
+      await expect(row).toContainText('0 of 2', { timeout: 60_000 });
+
+      expect((await page.request.post(`/api/chores/${chore.id}/complete`, { data: { completedBy: getSeededParentId() } })).ok()).toBe(true);
+      await page.reload();
+      await expect(row, 'still due after one tick').toContainText('1 of 2', { timeout: 30_000 });
+
+      expect((await page.request.post(`/api/chores/${chore.id}/complete`, { data: { completedBy: getSeededParentId() } })).ok()).toBe(true);
+      const third = await page.request.post(`/api/chores/${chore.id}/complete`, { data: { completedBy: getSeededParentId() } });
+      expect(third.status(), 'a third tick is refused: done for today').toBe(409);
+      await page.reload();
+      await expect(page.locator('[data-chores-do]')).toBeVisible({ timeout: 30_000 });
+      await expect(row, 'gone after the second tick').toHaveCount(0);
+    } finally {
+      await page.request.delete(`/api/chores/${chore.id}`);
+    }
+  });
+
   test('the do list follows Group by under Manage (#985)', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);

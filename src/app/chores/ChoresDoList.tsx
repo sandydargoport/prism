@@ -16,14 +16,22 @@ import { PersonMark } from '@/components/ui/PersonMark';
 import { Button } from '@/components/ui/button';
 import type { Chore } from '@/types';
 
+/** Ticks a chore needs each day (#1107): more than one only for a daily chore. */
+export function timesADay(c: Chore): number {
+  return c.frequency === 'daily' ? Math.max(1, c.timesPerDay ?? 1) : 1;
+}
+
 export function choreGroups(chores: Chore[], today: Date) {
   const key = (d: Date) => format(d, 'yyyy-MM-dd');
   const t = key(today), tomorrow = key(addDays(today, 1)), week = key(addDays(today, 7));
   const live = chores.filter((c) => c.enabled && c.nextDue);
   const due = (c: Chore) => c.nextDue!.slice(0, 10);
   // Done today (#984): not the next round waiting under Tomorrow or Later;
-  // the page leaves it out altogether (#1051).
-  const doneToday = (c: Chore) => !!c.lastCompleted && key(new Date(c.lastCompleted)) === t;
+  // the page leaves it out altogether (#1051). A chore done more than once a
+  // day (#1107) is done only once the server has moved it past today.
+  const doneToday = (c: Chore) => timesADay(c) > 1
+    ? due(c) > t
+    : !!c.lastCompleted && key(new Date(c.lastCompleted)) === t;
   const open = live.filter((c) => !c.pendingApproval && !doneToday(c));
   return {
     waiting: chores.filter((c) => c.pendingApproval),
@@ -78,7 +86,12 @@ export function ChoresDoList({ chores, today, onTick, onApprove, canApprove, gro
         mark={<PersonMark color={c.assignedTo?.color ?? '#888888'} kind="dot" ground="paper" />}
         title={<span className={struck ? 'text-muted-foreground line-through' : undefined} data-chore-struck={struck || undefined}>{c.title}</span>}
         // Under a person's heading the name would only repeat it.
-        meta={[groupBy === 'person' ? null : c.assignedTo?.name, c.pointValue ? `${c.pointValue} pts` : null].filter(Boolean).join(' · ')}
+        meta={[
+          groupBy === 'person' ? null : c.assignedTo?.name,
+          // How many of today's ticks are done, for a chore done more than once a day (#1107).
+          timesADay(c) > 1 ? `${Math.min(c.doneToday ?? 0, timesADay(c))} of ${timesADay(c)}` : null,
+          c.pointValue ? `${c.pointValue} pts` : null,
+        ].filter(Boolean).join(' · ')}
         onClick={() => void strike(c)}
       />
     );

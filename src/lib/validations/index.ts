@@ -128,6 +128,8 @@ export const createChoreSchema = z.object({
   // from frequency.
   nextDue: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)').nullable().optional(),
   nextDueTime: z.string().regex(/^\d{2}:\d{2}$/, 'Invalid time format (HH:mm)').nullable().optional(),
+  // Daily chores only (#1107); 1 is once a day.
+  timesPerDay: z.number().int().min(1).max(4).optional(),
 });
 
 export const updateChoreSchema = updateOf(createChoreSchema).extend({

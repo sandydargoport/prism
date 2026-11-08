@@ -394,6 +394,9 @@ export const chores = pgTable('chores', {
   // Optional time-of-day for the chore (HH:mm). Null = "top of day" / floats.
   // Used by time-grid calendar views to place the chore at a specific hour.
   nextDueTime: varchar('next_due_time', { length: 5 }),
+  // A daily chore done more than once a day (#1107): due today until ticked
+  // this many times today.
+  timesPerDay: integer('times_per_day').default(1).notNull(),
 
   pointValue: integer('point_value').default(0).notNull(),
 
