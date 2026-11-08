@@ -3,7 +3,6 @@
 import { usePageAdd } from '@/lib/hooks/usePageAdd';
 import { ShoppingCalmList } from './ShoppingCalmList';
 import { useState, useEffect } from 'react';
-import { Emoji } from '@/components/ui/Emoji';
 import { toast } from '@/components/ui/use-toast';
 import { ShoppingCart, Plus, Settings, Maximize2, Minimize2, Tags, Send, ChevronLeft, ChevronRight, ScanLine } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -14,22 +13,21 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { PageLoader } from '@/components/ui/spinner';
 import { PageWrapper, SubpageHeader, UndoButton } from '@/components/layout';
 import type { OverflowItem } from '@/components/layout';
-import { ShoppingItemRow } from '@/app/shopping/ShoppingItemRow';
-import { ShoppingCategoryCard } from '@/app/shopping/ShoppingCategoryCard';
+import { ShoppingManage } from '@/app/shopping/ShoppingManage';
 import { ItemModal } from '@/app/shopping/ItemModal';
 import { ListModal } from '@/app/shopping/ListModal';
 import { ShoppingCelebration } from '@/app/shopping/ShoppingCelebration';
-import { ManageCategoriesModal } from '@/app/shopping/ManageCategoriesModal';
 import { ScanFlowSheet } from '@/app/shopping/ScanFlowSheet';
 import { KrogerCartModal } from '@/app/shopping/KrogerCartModal';
 import { useShoppingViewData } from './useShoppingViewData';
 import { useShoppingCategories } from '@/lib/hooks/useShoppingCategories';
 import { useShoppingDragReorder } from './useShoppingDragReorder';
-import { useShoppingInlineInput, BASE_EMPTY_LINES } from './useShoppingInlineInput';
 import { useShoppingCelebration } from './useShoppingCelebration';
 import { useShoppingScanFlow } from './useShoppingScanFlow';
 import { useShoppingCrudHandlers } from './useShoppingCrudHandlers';
-import { useOrientation } from '@/lib/hooks/useOrientation';
+import { ALL_DEFAULT_CATEGORIES } from '@/lib/constants/shoppingPresets';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import { useSwipeNavigation } from '@/lib/hooks/useSwipeNavigation';
 import { cn } from '@/lib/utils';
@@ -104,13 +102,13 @@ export function ShoppingView() {
 
   const {
     categories: dynamicCategories,
-    addCategory, removeCategory, reorderCategories,
+    addCategory, removeCategory, reorderCategories, updateCategory,
     getCategoryEmoji: getDynCategoryEmoji,
     getCategoryColor: getDynCategoryColor,
   } = useShoppingCategories();
 
   const [defaultCategory, setDefaultCategory] = useState<string | null>(null);
-  const [showCategoriesModal, setShowCategoriesModal] = useState(false);
+  const { confirm, dialogProps: confirmProps } = useConfirmDialog();
 
   const categoryOrder = dynamicCategories.map(c => c.id);
   const effectiveCategoryOrder = activeList?.visibleCategories
@@ -123,14 +121,8 @@ export function ShoppingView() {
     startTouchDrag, moveTouchDrag, endTouchDrag,
   } = useShoppingDragReorder({ categoryOrder, dynamicCategories, reorderCategories });
 
-  const {
-    inlineInputs, setInlineInputs, extraRows,
-    handleInlineKeyDown, handleInlineBlur, addExtraRows,
-  } = useShoppingInlineInput({ activeList, requireAuth, apiAddItem });
-
   const { showCelebration, setShowCelebration } = useShoppingCelebration(activeListId, checkedItems, totalItems);
 
-  const orientation = useOrientation();
   const isMobile = useIsMobile();
   // On a phone the round button adds an item (#1028): it brings up the list's add field.
   usePageAdd('Add item', () => {
@@ -138,11 +130,9 @@ export function ShoppingView() {
     field?.scrollIntoView({ block: 'center' });
     field?.focus();
   });
-  const isPortrait = orientation === 'portrait';
   const [shoppingMode, setShoppingMode] = useState(false);
   // The page opens on one calm list (#881); the category cards are behind Manage.
   const [manage, setManage] = useState(false);
-  const [newCategory, setNewCategory] = useState('');
 
   // Mobile-only: swipe to switch lists. The pill bar collapses into a
   // compact prev/dots/next indicator when there's more than one list.
@@ -165,14 +155,23 @@ export function ShoppingView() {
     threshold: 60,
   });
 
-  const groceryCategoryItems = effectiveCategoryOrder.map((cat) => ({
-    category: cat,
-    items: (filteredItems[cat] || []) as ShoppingItem[],
-  }));
+  // Items still to buy on this list, by category, for Manage's rows (#1055).
+  const toBuy: Record<string, number> = {};
+  for (const item of activeList?.items ?? []) {
+    if (!item.checked) toBuy[item.category ?? 'other'] = (toBuy[item.category ?? 'other'] ?? 0) + 1;
+  }
 
-  const otherItems = Object.entries(filteredItems).filter(
-    ([cat]) => !effectiveCategoryOrder.includes(cat)
-  );
+  // Manage changes the household's categories: a signed-in person, as adding one needed (#1053).
+  const changeCategories = async () => Boolean(await requireAuth('Change the categories'));
+  const setListCategories = async (visible: string[]) => {
+    if (!activeList) return;
+    const res = await fetch(`/api/shopping-lists/${activeList.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visibleCategories: visible }),
+    });
+    if (!res.ok) toast({ title: 'Could not change this list. Try again.', variant: 'destructive' });
+    await refreshLists();
+  };
 
   const {
     handleAddItem, handleNewList, handleEditItem, handleDeleteItem,
@@ -252,7 +251,7 @@ export function ShoppingView() {
                     else if (user) toast({ title: 'Only parents can edit list settings', variant: 'warning' });
                   },
                 }] : []),
-                { label: 'Manage Categories', icon: Tags, onClick: () => setShowCategoriesModal(true) },
+                { label: 'Manage Categories', icon: Tags, onClick: () => setManage(true) },
                 { label: showChecked ? 'Hide Checked Items' : 'Show Checked Items', checked: showChecked, onClick: () => setShowChecked(!showChecked) },
               ] as OverflowItem[]}
             />
@@ -325,17 +324,6 @@ export function ShoppingView() {
           </header>
         )}
 
-        {activeList && totalItems > 0 && !shoppingMode && manage && (
-          <div className="shrink-0 px-3 py-1 bg-card/85 backdrop-blur-xs">
-            <div className="max-w-6xl mx-auto flex items-center gap-3">
-              <Progress value={progress} className="h-2 flex-1" />
-              <span className="text-sm text-muted-foreground whitespace-nowrap">
-                {checkedItems}/{totalItems} ({Math.round(progress)}%)
-              </span>
-            </div>
-          </div>
-        )}
-
         <div ref={swipeRef} className="flex-1 overflow-y-auto p-2">
           {loading ? (
             <div className="flex items-center justify-center h-full">
@@ -379,110 +367,54 @@ export function ShoppingView() {
               />
             </div>
           ) : activeList ? (
-            // pb-24 lives here (not on the scroll container above) so it only
-            // reserves clearance for the mobile FAB below actual list content —
-            // putting it on the scroll container instead skewed EmptyState's
-            // centering upward (min-h-full centers within the padded content
-            // box, and that box's center shifts when top/bottom padding differ).
-            <div className="max-w-7xl mx-auto pb-24">
-              <div className={cn(
-                'grid gap-2',
-                isMobile ? 'grid-cols-1' : isPortrait ? 'grid-cols-2' : 'grid-cols-3'
-              )}>
-                {groceryCategoryItems.map(({ category, items }) => {
-                  const categoryExtraRows = extraRows[category] || 0;
-                  const totalEmptyLines = BASE_EMPTY_LINES + categoryExtraRows;
-                  const emptyLinesNeeded = Math.max(0, totalEmptyLines - items.length);
-                  return (
-                    <ShoppingCategoryCard
-                      key={category}
-                      category={category}
-                      categoryName={dynamicCategories.find((c) => c.id === category)?.name}
-                      items={items}
-                      categoryColor={getDynCategoryColor(category)}
-                      categoryEmoji={getDynCategoryEmoji(category)}
-                      isDragging={draggedCategory === category}
-                      emptyLinesNeeded={emptyLinesNeeded}
-                      extraRowCount={categoryExtraRows}
-                      baseEmptyLines={BASE_EMPTY_LINES}
-                      inlineInputValue={inlineInputs[category] || ''}
-                      onDragStart={() => handleDragStart(category)}
-                      onDragOver={(e) => handleDragOver(e, category)}
-                      onDragEnd={handleDragEnd}
-                      onTouchDragStart={() => startTouchDrag(category)}
-                      onTouchDragMove={moveTouchDrag}
-                      onTouchDragEnd={endTouchDrag}
-                      onToggleItem={(itemId) => toggleItem(itemId)}
-                      onEditItem={handleEditItem}
-                      onDeleteItem={(itemId) => handleDeleteItem(itemId)}
-                      onAddItem={handleAddItem}
-                      onInlineInputChange={(cat, value) => setInlineInputs(prev => ({ ...prev, [cat]: value }))}
-                      onInlineKeyDown={handleInlineKeyDown}
-                      onInlineBlur={handleInlineBlur}
-                      onAddExtraRows={addExtraRows}
-                      isMobile={isMobile}
-                    />
-                  );
-                })}
-              </div>
-
-              {/* Add a category where the categories are (#1053): it was only in
-                  the menu's Manage Categories, and a list that shows chosen
-                  categories also needed it ticked in Edit List. */}
-              <form
-                className="mt-3 flex max-w-md items-center gap-2"
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  const name = newCategory.trim();
-                  if (!name) return;
-                  const user = await requireAuth('Add a category');
-                  if (!user) return;
-                  const added = await addCategory(name);
-                  if (!added) { toast({ title: `There is already a ${name} category.`, variant: 'warning' }); return; }
-                  if (activeList.visibleCategories) {
-                    await fetch(`/api/shopping-lists/${activeList.id}`, {
-                      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ visibleCategories: [...activeList.visibleCategories, added.id] }),
-                    });
-                    refreshLists();
-                  }
-                  setNewCategory('');
-                  toast({ title: `Added ${name} to ${activeList.name}.` });
+            <div className="pb-24 pt-2">
+              <ShoppingManage
+                categories={dynamicCategories}
+                listName={activeList.name}
+                counts={toBuy}
+                shown={(id) => effectiveCategoryOrder.includes(id)}
+                drag={{
+                  dragged: draggedCategory,
+                  onDragStart: handleDragStart, onDragOver: handleDragOver, onDragEnd: handleDragEnd,
+                  onTouchStart: startTouchDrag, onTouchMove: moveTouchDrag, onTouchEnd: endTouchDrag,
                 }}
-              >
-                <Input
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value)}
-                  placeholder="New category"
-                  className="min-h-[44px] rounded-full px-4"
-                  aria-label="New category"
-                  data-shopping-new-category
-                />
-                <Button type="submit" variant="outline" disabled={!newCategory.trim()} data-shopping-add-category>
-                  <Plus className="h-4 w-4 mr-1" />Add category
-                </Button>
-              </form>
-
-              {otherItems.length > 0 && (
-                <div className="mt-6 space-y-4">
-                  <h3 className="text-lg font-semibold text-muted-foreground">Other Items</h3>
-                  {otherItems.map(([category, items]) => (
-                    <div key={category} className="border rounded-lg p-3 bg-card/90 backdrop-blur-xs">
-                      <h4 className="text-base font-semibold text-muted-foreground mb-2 capitalize flex items-center gap-2">
-                        <span><Emoji e={getDynCategoryEmoji(category)} /></span><span>{category}</span>
-                      </h4>
-                      <div className="space-y-1">
-                        {(items as ShoppingItem[]).map((item) => (
-                          <ShoppingItemRow key={item.id} item={item}
-                            onToggle={() => toggleItem(item.id)}
-                            onEdit={() => handleEditItem(item)}
-                            onDelete={() => handleDeleteItem(item.id)} />
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                onShow={async (id, show) => {
+                  if (!(await changeCategories())) return;
+                  const now = activeList.visibleCategories ?? categoryOrder;
+                  await setListCategories(show ? [...now.filter((c) => c !== id), id] : now.filter((c) => c !== id));
+                }}
+                onRename={async (id, name) => {
+                  if (!(await changeCategories())) return;
+                  await updateCategory(id, { name });
+                }}
+                onEmoji={async (id, emoji) => {
+                  if (!(await changeCategories())) return;
+                  await updateCategory(id, { emoji });
+                }}
+                onRemove={async (cat) => {
+                  if (!(await changeCategories())) return;
+                  const ok = await confirm(`Remove "${cat.name}"?`, 'This removes the category from every shopping list. Its items move to Other.');
+                  if (!ok) return;
+                  await removeCategory(cat.id);
+                  toast({ title: `Removed ${cat.name}.` });
+                }}
+                onAdd={async (name) => {
+                  if (!(await changeCategories())) return false;
+                  const added = await addCategory(name);
+                  if (!added) { toast({ title: `There is already a ${name} category.`, variant: 'warning' }); return false; }
+                  // A list that shows chosen categories gets the new one too (#1053).
+                  if (activeList.visibleCategories) await setListCategories([...activeList.visibleCategories, added.id]);
+                  toast({ title: `Added ${name} to ${activeList.name}.` });
+                  return true;
+                }}
+                onReset={async () => {
+                  if (!(await changeCategories())) return;
+                  const ok = await confirm('Reset the categories?', 'This puts back the default categories and their order, for every list.');
+                  if (!ok) return;
+                  await reorderCategories([...ALL_DEFAULT_CATEGORIES]);
+                  toast({ title: 'The default categories are back.' });
+                }}
+              />
             </div>
           ) : null}
         </div>
@@ -505,7 +437,7 @@ export function ShoppingView() {
             onSave={handleSaveList} onDelete={handleDeleteList} />
         )}
 
-        <ManageCategoriesModal open={showCategoriesModal} onOpenChange={setShowCategoriesModal} />
+        <ConfirmDialog {...confirmProps} />
 
         {showCameraScanner && (
           <CameraScannerOverlay
