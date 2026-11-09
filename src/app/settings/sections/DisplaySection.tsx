@@ -84,21 +84,26 @@ function KindPicture({ kind }: { kind: 'simple' | 'custom' }) {
 }
 
 /**
- * The front page (#808, #991): Simple (the Today and Calendar layouts) or
- * Custom (a grid of widgets). Choosing one never changes or removes a layout.
+ * The front page (#808, #991): Simple (the premade Today page) or Custom (a
+ * grid of widgets), for this screen when it has a name (#1117). Choosing one
+ * never changes or removes a layout.
  */
 function FrontPageCard() {
-  const { mode, chooseSimple, chooseCustom, layouts } = useNewLook();
+  const { mode, chooseSimple, chooseCustom, layouts, screenName } = useNewLook();
   const hasCustom = layouts.some((l) => l.view !== 'today' && l.view !== 'calendar');
   const choices = [
-    { kind: 'simple' as const, name: 'Simple', line: "Clock and weather in the corners, today's list of what's next. Few settings.", pick: chooseSimple, can: true },
+    { kind: 'simple' as const, name: 'Simple', line: "Ready made: clock and weather in the corners, today's list of what's next.", pick: chooseSimple, can: true },
     { kind: 'custom' as const, name: 'Custom', line: 'Your grid of widgets, arranged however you like.', pick: chooseCustom, can: hasCustom },
   ];
   return (
     <Card data-front-page-card>
       <CardHeader>
         <CardTitle>Front page</CardTitle>
-        <CardDescription>Choosing one keeps every layout you have; you can switch at any time.</CardDescription>
+        <CardDescription data-front-page-for>
+          {screenName
+            ? `For this screen, ${screenName}. Other screens keep their own. Choosing one keeps every layout you have.`
+            : 'For the screens without a name of their own. Choosing one keeps every layout you have.'}
+        </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3 sm:grid-cols-2">
         {choices.map((c) => {
