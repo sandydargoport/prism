@@ -11,6 +11,11 @@ site_dir: site
 theme:
   name: material
   custom_dir: overrides
+  logo: assets/logo.svg
+  favicon: assets/logo.svg
+  font:
+    text: Inter
+    code: JetBrains Mono
   features:
     - navigation.instant
     - navigation.tracking
@@ -26,15 +31,15 @@ theme:
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: indigo
-      accent: indigo
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-sunny
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: indigo
-      accent: indigo
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-night
         name: Switch to light mode
@@ -75,6 +80,7 @@ plugins:
 
 extra_css:
   - stylesheets/extra.css
+  - stylesheets/landing.css
 
 extra:
   social:
@@ -120,8 +126,6 @@ nav:
       - Public demo (self-hosting recipe): demo-deployment.md
   - Releases:
       - Changelog: CHANGELOG.md
-  - Credits: credits.md
-  - Repo Traffic: traffic/index.html
 
 # Files present in docs/ but intentionally not in the rendered nav.
 # Two reasons something might be here:
@@ -131,6 +135,7 @@ nav:
 #     They stay in the build → sitemap.xml → are crawlable, but don't
 #     appear in the side nav.
 not_in_nav: |
+  /credits.md
   /planning.md
   /arch-review-v4.md
   /audit-2026-07.md
