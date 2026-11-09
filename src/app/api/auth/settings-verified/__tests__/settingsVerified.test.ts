@@ -37,6 +37,15 @@ jest.mock('@/lib/auth/settingsAuth', () => ({
   isSettingsVerified: (...a: unknown[]) => mockIsSettingsVerified(...a),
 }));
 
+const mockValidateSession = jest.fn();
+jest.mock('@/lib/auth/session', () => ({
+  validateSession: (...a: unknown[]) => mockValidateSession(...a),
+}));
+const mockPinEveryChange = jest.fn();
+jest.mock('@/lib/auth/everydayAuth', () => ({
+  pinRequiredForEveryChange: () => mockPinEveryChange(),
+}));
+
 jest.mock('@/lib/utils/logError', () => ({ logError: jest.fn() }));
 
 import { GET } from '../route';
@@ -53,7 +62,13 @@ function withSession(token: string | null) {
 beforeEach(() => {
   jest.clearAllMocks();
   mockIsSettingsVerified.mockResolvedValue(false);
+  mockValidateSession.mockResolvedValue({ ok: false, reason: 'invalid' });
+  mockPinEveryChange.mockResolvedValue(true);
 });
+
+function signedInAs(role: string) {
+  mockValidateSession.mockResolvedValue({ ok: true, session: { userId: 'u1', role } });
+}
 
 describe('GET /api/auth/settings-verified', () => {
   it('reports pinRequired: false when no parent has a PIN', async () => {
@@ -105,5 +120,32 @@ describe('GET /api/auth/settings-verified', () => {
     const body = await (await GET()).json();
 
     expect(body).toEqual({ verified: false, pinRequired: true });
+  });
+
+  describe('a parent already signed in', () => {
+    beforeEach(() => { withParentPin(true); withSession('session-token'); });
+
+    it('opens Settings without the PIN when the PIN is not required for every change', async () => {
+      signedInAs('parent');
+      mockPinEveryChange.mockResolvedValue(false);
+      expect(await (await GET()).json()).toEqual({ verified: true, pinRequired: true });
+    });
+
+    it('still asks for the PIN when the PIN is required for every change', async () => {
+      signedInAs('parent');
+      mockPinEveryChange.mockResolvedValue(true);
+      expect((await (await GET()).json()).verified).toBe(false);
+    });
+
+    it('still asks a signed-in child for the PIN', async () => {
+      signedInAs('child');
+      mockPinEveryChange.mockResolvedValue(false);
+      expect((await (await GET()).json()).verified).toBe(false);
+    });
+
+    it('still asks when the session has expired', async () => {
+      mockPinEveryChange.mockResolvedValue(false);
+      expect((await (await GET()).json()).verified).toBe(false);
+    });
   });
 });

@@ -4,6 +4,8 @@ import { db } from '@/lib/db/client';
 import { users } from '@/lib/db/schema';
 import { and, eq, isNotNull } from 'drizzle-orm';
 import { isSettingsVerified } from '@/lib/auth/settingsAuth';
+import { validateSession } from '@/lib/auth/session';
+import { pinRequiredForEveryChange } from '@/lib/auth/everydayAuth';
 import { logError } from '@/lib/utils/logError';
 
 /**
@@ -39,7 +41,15 @@ export async function GET() {
       return NextResponse.json({ verified: false, pinRequired });
     }
 
-    const verified = await isSettingsVerified(sessionToken);
+    if (await isSettingsVerified(sessionToken)) {
+      return NextResponse.json({ verified: true, pinRequired });
+    }
+    // With "Require the PIN for every change" off, a parent already signed in
+    // on this device opens Settings without a second PIN. Anyone else, or the
+    // setting on, still gets the prompt; the setting fails closed.
+    const session = await validateSession(sessionToken);
+    const parentSignedIn = session.ok && session.session.role === 'parent';
+    const verified = parentSignedIn && !(await pinRequiredForEveryChange());
     return NextResponse.json({ verified, pinRequired });
   } catch (error) {
     logError('Error checking settings verification:', error);
