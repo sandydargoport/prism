@@ -117,3 +117,16 @@ describe('the social preview', () => {
     expect([meta.width, meta.height]).toEqual([1280, 640]);
   });
 });
+
+describe('the social preview keeps the whole hero', () => {
+  it('fills the sides with the backdrop instead of cropping the devices', async () => {
+    await frameAll(dir);
+    const social = path.join(dir, 'social-preview.png');
+    // The hero is 16:9; on a 2:1 card the outermost columns are backdrop.
+    const hex = BACKDROP.light.from.replace('#', '');
+    const backdrop = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16));
+    expect(await pixel(social, 2, 320)).toEqual(backdrop);
+    // And the middle is the hero itself: the wall's screen.
+    expect(await pixel(social, 640, 200)).not.toEqual(backdrop);
+  });
+});

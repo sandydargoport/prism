@@ -366,12 +366,13 @@ export const FEATURE_SHOTS: CaptureSpec[] = [
 /**
  * The docs front page's "A day at home" tabs: the same Simple wall in the
  * morning, after school and in the evening. The fixed moment is 4:10 PM, so
- * the morning is 7:30 AM and the evening 6:45 PM.
+ * these are 7:30 AM (the whole day ahead), 5:40 PM (soccer done, scouts next)
+ * and 8:45 PM (the day over, after sunset).
  */
 export const DAY_SHOTS: CaptureSpec[] = [
   { name: 'day-morning', when: 'morning', shiftMinutes: -520 },
-  { name: 'day-afternoon', when: 'after school', shiftMinutes: -25 },
-  { name: 'day-evening', when: 'evening', shiftMinutes: 155 },
+  { name: 'day-afternoon', when: 'after school', shiftMinutes: 90 },
+  { name: 'day-evening', when: 'evening', shiftMinutes: 275 },
 ].map(({ name, when, shiftMinutes }) => ({
   name,
   url: '/',

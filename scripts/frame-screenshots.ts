@@ -118,13 +118,14 @@ export async function composeHero(mode: Mode, shots: Record<DeviceName, string>,
 export const SOCIAL = { width: 1280, height: 640 } as const;
 
 /**
- * The link-preview card: the light hero, cropped to 2:1 from the middle, so
- * the three devices fill it. GitHub draws the repo name itself, so there is
+ * The link-preview card: the whole light hero, centred on a 2:1 card. GitHub draws the repo name itself, so there is
  * no text on it.
  */
 export async function composeSocial(heroFile: string, outFile: string): Promise<void> {
   await sharp(heroFile)
-    .resize(SOCIAL.width, SOCIAL.height, { fit: 'cover', position: 'centre' })
+    // Contain, not cover: a 16:9 hero cropped to 2:1 loses the top of the wall
+    // and the foot of the phone. The sides fill with the backdrop's own colour.
+    .resize(SOCIAL.width, SOCIAL.height, { fit: 'contain', background: BACKDROP.light.from })
     .png({ compressionLevel: 9 })
     .toFile(outFile);
 }
