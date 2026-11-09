@@ -361,12 +361,14 @@ export function formatBareTime(
   date: Date | number,
   timeFormat: TimeFormat,
   timeZone?: string,
+  /** Say am or pm even in the daytime: the end of a range, "10 – 11:30 am". */
+  { dayHalf = false }: { dayHalf?: boolean } = {},
 ): string {
   const { hour, minute } = wallClockTime(date, timeZone);
   if (timeFormat === '24h') return `${pad2(hour)}:${pad2(minute)}`;
   const digits = minute === 0 ? `${hour12(hour)}` : `${hour12(hour)}:${pad2(minute)}`;
   const daytime = hour >= 8 && hour < 20;
-  return daytime ? digits : `${digits} ${hour < 12 ? 'am' : 'pm'}`;
+  return daytime && !dayHalf ? digits : `${digits} ${hour < 12 ? 'am' : 'pm'}`;
 }
 
 /**

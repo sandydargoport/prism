@@ -396,6 +396,32 @@ test.describe('the Today view', () => {
     }
   });
 
+  test('idle, everything on Simple drifts slowly against burn-in, and settles back on waking', async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await login(page);
+    const layout = await (await page.request.post('/api/layouts', { data: { name: `Drift e2e ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
+    try {
+      await page.route('**/api/weather*', (route) => route.fulfill({ json: WEATHER }));
+      await page.goto(`/d/${layout.slug}`);
+      const layer = page.locator('[data-today-drift]');
+      await expect(page.locator('[data-today-clock]')).toBeVisible({ timeout: 60_000 });
+      await expect(layer).not.toHaveAttribute('data-drift', '');
+      await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
+      await expect(page.locator('[data-today-scene]')).toHaveAttribute('data-today-idle', 'true');
+      await expect(layer).toHaveAttribute('data-drift', '');
+      // The clock is inside the layer, and the layer is moving.
+      expect(await page.locator('[data-today-drift] [data-today-clock]').count()).toBe(1);
+      const shift = () => layer.evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).m41);
+      const a = await shift();
+      await page.waitForTimeout(3000);
+      const b = await shift();
+      expect(Math.abs(b - a), 'moved in 3 s').toBeGreaterThan(0.05);
+      expect(Math.abs(b), 'at most 4px').toBeLessThanOrEqual(4.01);
+    } finally {
+      await page.request.delete(`/api/layouts/${layout.id}`);
+    }
+  });
+
   test('after dusk the ink turns warm, a veil comes up, and the moon sits on its curve', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     const d = new Date();
@@ -522,6 +548,16 @@ test.describe('the Today view', () => {
       await expect(list).toBeVisible({ timeout: 60_000 });
       await expect(page.locator('[data-today-arc]'), 'no arc by default').toHaveCount(0);
       await expect(list.locator('[data-today-next]')).toContainText(`List first ${tag}`);
+      // The end time says am or pm, even in the daytime.
+      await expect(list.locator('[data-today-next-time]')).toHaveText(/^10\s–\s11 am/);
+      // The title is in the script face and written out left to right.
+      const written = await list.locator('[data-today-next-title]').evaluate((el) => {
+        const cs = getComputedStyle(el);
+        return { font: cs.fontFamily, animation: cs.animationName, mask: cs.maskImage || cs.getPropertyValue('-webkit-mask-image') };
+      });
+      expect(written.font).toMatch(/Dancing|script/i);
+      expect(written.animation).toBe('prism-write');
+      expect(written.mask).toContain('linear-gradient');
       await expect(list.getByText('Next', { exact: true })).toBeVisible();
       await expect(list.locator('[data-today-later-row]').filter({ hasText: `List second ${tag}` })).toBeVisible();
       // Next comes before later today.

@@ -557,6 +557,7 @@ export function Dashboard({
                 events={data.calendar.events}
                 onOpenEvent={eventSheet.open}
                 idle={calmIdle}
+                drift={idleDrift}
                 kind={layout.activeLayout?.view === 'calendar' ? 'calendar' : 'today'}
                 household={{
                   chores: data.chores.chores as unknown as ChoreLike[],

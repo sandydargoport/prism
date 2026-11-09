@@ -54,7 +54,7 @@ function driftPhase(): number {
  * wakes. So the cell is pinned where it is at that instant and eased home over
  * the same second the faded widgets take to come back.
  */
-function setCellDrift(el: HTMLElement, want: boolean) {
+export function setCellDrift(el: HTMLElement, want: boolean) {
   if ((el.dataset.drift !== undefined) === want) return;
   if (want) {
     el.style.transitionProperty = ''; // in case it was still easing home

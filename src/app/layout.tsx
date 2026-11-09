@@ -43,7 +43,7 @@ import type { Metadata, Viewport } from 'next';
 
 // Inter font from Google Fonts (loaded by Next.js for performance)
 // Next.js automatically optimizes font loading to prevent layout shift
-import { Inter, Literata, Nunito, JetBrains_Mono } from 'next/font/google';
+import { Inter, Literata, Nunito, JetBrains_Mono, Dancing_Script } from 'next/font/google';
 
 // Providers (theme, auth, etc.)
 import { Providers } from '@/components/providers';
@@ -106,6 +106,13 @@ const literata = Literata({
 const nunito = Nunito({
   subsets: ['latin'],
   variable: '--font-rounded',
+  display: 'swap',
+});
+
+// Dancing Script: the next event's title on Simple, written out (TodayList).
+const dancingScript = Dancing_Script({
+  subsets: ['latin'],
+  variable: '--font-script',
   display: 'swap',
 });
 
@@ -287,7 +294,7 @@ export default async function RootLayout({
       // (--font-sans, --font-display, a theme's --theme-font) are declared on
       // :root and resolve there, so a face defined lower down never reached
       // them and the Serif role drew Tailwind's default serif instead (#800).
-      className={`${inter.variable} ${literata.variable} ${nunito.variable} ${jetbrainsMono.variable}`}
+      className={`${inter.variable} ${literata.variable} ${nunito.variable} ${jetbrainsMono.variable} ${dancingScript.variable}`}
       // Suppress hydration warnings from browser extensions
       // that might modify the HTML (password managers, etc.)
       suppressHydrationWarning

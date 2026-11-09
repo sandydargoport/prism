@@ -238,6 +238,12 @@ describe('formatBareTime', () => {
     expect(formatBareTime(at(19, 59), '12h')).toBe('7:59');
   });
 
+  it('says am or pm in the daytime too when asked, for the end of a range', () => {
+    expect(formatBareTime(at(11), '12h', undefined, { dayHalf: true })).toBe('11 am');
+    expect(formatBareTime(at(17, 30), '12h', undefined, { dayHalf: true })).toBe('5:30 pm');
+    expect(formatBareTime(at(17, 30), '24h', undefined, { dayHalf: true })).toBe('17:30');
+  });
+
   it('keeps am or pm outside it, still without :00', () => {
     expect(formatBareTime(at(20), '12h')).toBe('8 pm');
     expect(formatBareTime(at(7, 15), '12h')).toBe('7:15 am');
