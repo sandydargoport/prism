@@ -122,10 +122,14 @@ export const SOCIAL = { width: 1280, height: 640 } as const;
  * no text on it.
  */
 export async function composeSocial(heroFile: string, outFile: string): Promise<void> {
-  await sharp(heroFile)
-    // Contain, not cover: a 16:9 hero cropped to 2:1 loses the top of the wall
-    // and the foot of the phone. The sides fill with the backdrop's own colour.
-    .resize(SOCIAL.width, SOCIAL.height, { fit: 'contain', background: BACKDROP.light.from })
+  // Fit, not crop: a 16:9 hero cropped to 2:1 loses the top of the wall and
+  // the foot of the phone. The sides repeat the hero's edge, so the backdrop
+  // gradient runs on with no seam.
+  const fitted = await sharp(heroFile).resize({ height: SOCIAL.height }).png().toBuffer();
+  const { width = SOCIAL.width } = await sharp(fitted).metadata();
+  const spare = Math.max(0, SOCIAL.width - width);
+  await sharp(fitted)
+    .extend({ left: Math.floor(spare / 2), right: Math.ceil(spare / 2), extendWith: 'copy' })
     .png({ compressionLevel: 9 })
     .toFile(outFile);
 }

@@ -119,14 +119,21 @@ describe('the social preview', () => {
 });
 
 describe('the social preview keeps the whole hero', () => {
-  it('fills the sides with the backdrop instead of cropping the devices', async () => {
+  it('fits the whole hero and runs its backdrop out to the edges, with no seam', async () => {
+    const hero = path.join(dir, 'hero-light.png');
     await frameAll(dir);
     const social = path.join(dir, 'social-preview.png');
-    // The hero is 16:9; on a 2:1 card the outermost columns are backdrop.
-    const hex = BACKDROP.light.from.replace('#', '');
-    const backdrop = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16));
-    expect(await pixel(social, 2, 320)).toEqual(backdrop);
-    // And the middle is the hero itself: the wall's screen.
-    expect(await pixel(social, 640, 200)).not.toEqual(backdrop);
+    // Not cropped: the hero's top row (backdrop above the wall) is the card's
+    // top row, and the card is the hero scaled to 640 high.
+    const scaled = 640 / CANVAS.height;
+    const heroWidth = Math.round(CANVAS.width * scaled);
+    const left = Math.floor((1280 - heroWidth) / 2);
+    // Each side column matches the hero's edge column on the same row.
+    for (const y of [10, 320, 630]) {
+      const edge = await pixel(social, left, y);
+      const outside = await pixel(social, 1, y);
+      expect(outside).toEqual(edge);
+    }
+    expect(fs.existsSync(hero)).toBe(true);
   });
 });
