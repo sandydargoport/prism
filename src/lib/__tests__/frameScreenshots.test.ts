@@ -104,6 +104,16 @@ describe('frame-screenshots', () => {
 
   it('frames only the modes whose three shots exist', async () => {
     const written = await frameAll(dir);
-    expect(written.map((f) => path.basename(f))).toEqual(['hero-light.png']);
+    expect(written.map((f) => path.basename(f))).toEqual(['hero-light.png', 'social-preview.png']);
+  });
+});
+
+describe('the social preview', () => {
+  it('is written at GitHub social-preview size, from the light hero', async () => {
+    const written = await frameAll(dir);
+    const social = path.join(dir, 'social-preview.png');
+    expect(written).toContain(social);
+    const meta = await sharp(social).metadata();
+    expect([meta.width, meta.height]).toEqual([1280, 640]);
   });
 });
