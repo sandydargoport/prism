@@ -1,8 +1,10 @@
-# Mobile & PWA
+# On your phone
+
+Install Prism on your phone like an app, for lists and the calendar when you are out.
 
 ![Mobile dashboard](../demos/dashboard-mobile.png){ .hero-image-mobile width="300" }
 
-Prism is built as a Progressive Web App (PWA) that adapts to whatever you install it on: phone, tablet, kiosk, or wall-mounted display. Same code, same data, different UI surface depending on screen size, orientation, and pointer type.
+The same install works on a phone, a tablet or a wall screen. Prism changes its layout to fit the screen it is on.
 
 ---
 

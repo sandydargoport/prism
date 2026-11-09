@@ -1,8 +1,10 @@
 # Recipes
 
+Keep your family's recipes in one place, add their ingredients to the shopping list, and cook from a screen you can read from the stove.
+
 ![Recipe library](../demos/recipes.png){ .hero-image }
 
-Browse, import (URL, Paprika, paste-text), photograph, scale, and cook recipes, designed for a large kitchen screen so you don't have to keep unlocking your phone while your hands are covered in flour.
+Import a recipe from a web page, a Paprika export or pasted text, add a photo, and scale it up or down.
 
 ---
 

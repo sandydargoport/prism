@@ -1,8 +1,8 @@
-# Bus Tracking
+# School bus
 
-School bus arrival predictions on the dashboard, with adaptive polling that ramps from 60s down to 5s as the bus approaches. Works by parsing the geofence-notification emails that **FirstView** (the bus-tracking service used by many North American school districts) sends to your Gmail inbox.
+See on the wall when the school bus is coming. This works if your district uses FirstView.
 
-If your district uses FirstView, you can have your dashboard show "Bus 4 minutes away" without installing the FirstView app or constantly checking your phone.
+Prism reads the arrival emails FirstView sends to your Gmail and shows "Bus 4 minutes away" on the screen, so nobody needs to keep checking the app. It checks more often as the bus gets close.
 
 ---
 

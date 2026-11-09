@@ -1,9 +1,11 @@
-# Home Assistant Integration
+# Home Assistant
 
-This guide covers two ways to connect Prism with Home Assistant:
+Run Prism as a Home Assistant add-on, show it in the sidebar, or use Prism's data in your automations.
 
-1. **Show Prism** in the HA sidebar as a Webpage dashboard
-2. **Pull Prism data** into HA sensors via REST API
+To install the add-on, see [Install](getting-started/install.md). This page covers the other two:
+
+1. **Show Prism** in the Home Assistant sidebar as a Webpage dashboard.
+2. **Use Prism's data** in Home Assistant sensors, through its REST API.
 
 ---
 
@@ -193,7 +195,7 @@ automation:
 
 ## 5. Voice API (recommended surface)
 
-Prism ships a purpose-built **Voice API** under `/api/v1/voice/*` that is the supported integration surface for Home Assistant and voice assistants. Each endpoint returns a ready-to-speak `spoken` field alongside structured data, so you don't have to assemble sentences from raw fields in Jinja templates. A **Voice API only** scoped token (the default) is all these endpoints need.
+Prism ships a purpose-built **Voice API** under `/api/v1/voice/*` that is the supported way to connect Home Assistant and voice assistants. Each endpoint returns a ready-to-speak `spoken` field alongside structured data, so you don't have to assemble sentences from raw fields in Jinja templates. A **Voice API only** scoped token (the default) is all these endpoints need.
 
 Available endpoints include:
 

@@ -1,16 +1,13 @@
-# Languages (i18n)
+# Languages
 
-Prism's interface can be shown in a language other than English. Pick one under
-**Settings → Appearance → Language**; the choice is saved per install and applies
-to everyone using that dashboard.
+Show Prism in English or German.
 
-English is always the fallback. Any string a translation hasn't covered yet
-renders in English rather than breaking or showing a raw key, so a partial
-translation is perfectly usable.
+Pick one under **Settings → Appearance → Language**. The choice applies to everyone using that install.
+
+Anything not yet translated shows in English, so a partly translated language still works.
 
 !!! note "Status: in progress"
-    Translation is being done in stages. The table below is the live picture of
-    what is and isn't translated yet.
+    Translation is being done in stages. The table below shows what is translated so far.
 
 ## Available languages
 

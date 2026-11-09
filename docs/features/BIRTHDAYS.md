@@ -1,4 +1,4 @@
-# Birthdays & Milestones
+# Birthdays
 
 The Birthdays widget shows upcoming birthdays, anniversaries and milestones, with
 how many days away each one is and how old the person is turning.

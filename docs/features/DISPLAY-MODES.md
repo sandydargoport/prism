@@ -1,12 +1,12 @@
-# Display Modes
+# Idle, away and sitter screens
 
-Three "what's on the screen right now" modes beyond the default dashboard:
+What the wall shows when nobody is using it, when you are away, and when a sitter is in charge.
 
-- **Screensaver**: idle photo slideshow with widget overlays.
-- **Away Mode**: privacy screen showing only photos + clock, parent PIN to exit.
-- **Babysitter Mode**: caregiver overlay with house info, contacts, child notes.
+- **Screensaver**: your photos, with the time and a few widgets on top, when nobody is using the screen.
+- **Away mode**: only photos and the clock, for when the house is empty. A parent PIN turns it off.
+- **Babysitter mode**: house information, contacts and notes about the children, for a sitter.
 
-All three are layered on top of the dashboard. The dashboard is always running behind the scenes; these modes just cover it with a different presentation.
+Each one covers the dashboard, which keeps running underneath.
 
 ---
 

@@ -1,10 +1,12 @@
-# Voice API (`/api/v1/voice/*`)
+# Voice and automation API
 
-The Voice API is a versioned, token-authenticated surface designed for voice and home-automation integrations (Alexa skills, Home Assistant components, Google Assistant via HA, scripting hooks). It is intentionally separate from the internal session-cookie-authenticated routes the dashboard uses. The contract here is **stable** and external callers can rely on it.
+Ask Prism what is on today, or add to the shopping list, from a voice assistant or a script.
+
+The API lives under `/api/v1/voice/*` and needs a token. It works with Alexa skills, Home Assistant and your own scripts. It is separate from the routes the app itself uses, and it is **stable**: it will not change under you.
 
 ## Auth
 
-Every Voice API endpoint requires `Authorization: Bearer <token>` where the token's scopes include either `voice` or `*`. **Session cookies are rejected**: this is intentionally a machine-to-machine surface, so a stolen browser session can't reach voice endpoints.
+Every Voice API endpoint requires `Authorization: Bearer <token>` where the token's scopes include either `voice` or `*`. **Session cookies are rejected**: it is meant for machines, not browsers, so a stolen browser session can't reach voice endpoints.
 
 Tokens are issued via `POST /api/auth/tokens` (parent-only), SHA-256 hashed at rest, and never re-displayed after creation. The recommended scope for voice integrations is `['voice']` so a token leak cannot read or modify anything outside `/api/v1/voice/*`.
 
