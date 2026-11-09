@@ -242,7 +242,7 @@ export function SecuritySection() {
               <p className="text-sm text-muted-foreground">
                 {pinEveryChange
                   ? 'On: ticking a chore, a task or a shopping item asks for a PIN, like everything else.'
-                  : 'Off: anyone at the wall can tick chores, tasks and shopping items and add to the list, with an Undo. Approving, points, editing, deleting and settings still need a parent.'}
+                  : 'Off: anyone at the wall can tick chores, tasks and shopping items and add to the list, with an Undo. Approving, points, editing, deleting and settings still need a parent; a parent signed in on the screen opens Settings without the PIN again.'}
               </p>
             </div>
             <Switch
