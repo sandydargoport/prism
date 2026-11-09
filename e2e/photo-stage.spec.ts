@@ -176,7 +176,7 @@ test('a wide photo is cropped so its subject is not under a widget', async ({ pa
  * When a photo was taken (#958): a short line in a free corner, at or above
  * the text floor, unless the household turns it off.
  */
-async function captionPage(page: import('@playwright/test').Page, dateSetting?: boolean, grid?: Array<{ i: string; x: number; y: number; w: number; h: number }>) {
+async function captionPage(page: import('@playwright/test').Page, dateSetting?: boolean, grid?: Array<{ i: string; x: number; y: number; w: number; h: number }> | 'simple') {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.addInitScript(() => {
     localStorage.setItem('prism-wallpaper-enabled', 'true');
@@ -192,11 +192,12 @@ async function captionPage(page: import('@playwright/test').Page, dateSetting?: 
   }
   await page.route('**/api/photos?*', (route) => route.fulfill({ json: { photos: [{ ...photo('dated'), takenAt: '2019-06-02T12:00:00.000Z' }], total: 1 } }));
   await page.route('**/api/photos/dated/file', (route) => route.fulfill({ path: path.join(SCENERY, 'valley.webp'), contentType: 'image/webp' }));
-  // A Today layout leaves a corner free; a full grid would hide the line.
   expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: process.env.E2E_PIN || '1234' } })).ok()).toBe(true);
-  const layout = await (await page.request.post('/api/layouts', { data: grid
-    ? { name: `Caption ${Date.now()}`, widgets: grid.map((w) => ({ ...w, visible: true })) }
-    : { name: `Caption ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
+  // Simple never shows the line, so the default page is a grid with only the
+  // top left used: both bottom corners free.
+  const layout = await (await page.request.post('/api/layouts', { data: grid === 'simple'
+    ? { name: `Caption ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' }
+    : { name: `Caption ${Date.now()}`, widgets: (grid ?? [{ i: 'clock', x: 0, y: 0, w: 12, h: 6 }]).map((w) => ({ ...w, visible: true })) } })).json();
   await page.goto(`/d/${layout.slug}`);
   await expect(page.locator('[data-photo-stage] [data-photo-layer="front"]').first()).toHaveCount(1, { timeout: 60_000 });
   return () => page.request.delete(`/api/layouts/${layout.id}`);
@@ -252,6 +253,17 @@ test('with both bottom corners covered the line hides, never moving to the top c
   } finally { await cleanup(); }
 });
 
+test('Simple never shows the photo date, even with the setting on', async ({ page }) => {
+  test.skip(process.env.E2E_HAS_TEST_DB !== '1', 'needs the seeded test database');
+  test.setTimeout(60_000);
+  const cleanup = await captionPage(page, true, 'simple');
+  try {
+    await expect(page.locator('[data-today-scene]')).toBeVisible({ timeout: 30_000 });
+    await page.waitForTimeout(6500); // past the first placement and one recheck
+    await expect(page.locator('[data-photo-caption]')).toHaveCount(0);
+  } finally { await cleanup(); }
+});
+
 test('on a phone the photo date is not shown (#1034)', async ({ page }) => {
   test.skip(process.env.E2E_HAS_TEST_DB !== '1', 'needs the seeded test database');
   test.setTimeout(60_000);
@@ -294,7 +306,7 @@ test('On this day: a photo from this date in an earlier year comes first, and sa
   });
   await page.route('**/api/photos/*/file', (route) => route.fulfill({ path: path.join(SCENERY, 'valley.webp'), contentType: 'image/webp' }));
   expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: process.env.E2E_PIN || '1234' } })).ok()).toBe(true);
-  const layout = await (await page.request.post('/api/layouts', { data: { name: `OTD ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
+  const layout = await (await page.request.post('/api/layouts', { data: { name: `OTD ${Date.now()}`, widgets: [{ i: 'clock', x: 0, y: 0, w: 12, h: 6, visible: true }] } })).json();
   try {
     await page.goto(`/d/${layout.slug}`);
     await expect(page.locator('[data-photo-stage] [data-photo-layer]').first()).toHaveAttribute('style', /otd/, { timeout: 60_000 });

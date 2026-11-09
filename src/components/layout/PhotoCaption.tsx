@@ -3,7 +3,7 @@
 /**
  * The line on the wallpaper and the screensaver that says when a photo was
  * taken, and where if the household shows places (#958). Small, in the one
- * light ink, in the first corner no widget uses.
+ * light ink, in the first corner no widget uses. Never on Simple.
  */
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import { useEffect, useState } from 'react';
@@ -45,6 +45,8 @@ export function PhotoCaption({ photo }: { photo: { id: string; takenAt?: string 
     if (!id) return;
     const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
     const place = () => setSpot((prev) => {
+      // Simple (#1117) is premade and says nothing about the photo.
+      if (document.querySelector('[data-today-kind="today"]')) return null;
       const next = captionSpot({ width: window.innerWidth, height: window.innerHeight }, coveredRects(), undefined, 3 * rem);
       return prev && next && prev.spot === next.spot && prev.lift === next.lift ? prev : next;
     });

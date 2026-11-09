@@ -1423,6 +1423,29 @@ html[data-virtual-keyboard-open] [data-keyboard-aware-dialog] {
   [data-drift] { animation: none; }
 }
 
+/* Writing a line out left to right (TodayList's next title): a soft edge in
+   a mask slides across, so the words appear as if written. The mask is wider
+   than the text, opaque on its left half; moving it from right to left
+   uncovers the words. --write-s sets how long. */
+@keyframes prism-write {
+  from { -webkit-mask-position: 100% 0; mask-position: 100% 0; }
+  to   { -webkit-mask-position: 0 0;    mask-position: 0 0; }
+}
+[data-write] {
+  -webkit-mask-image: linear-gradient(90deg, #000 46%, transparent 54%);
+  mask-image: linear-gradient(90deg, #000 46%, transparent 54%);
+  -webkit-mask-size: 220% 100%;
+  mask-size: 220% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: 0 0;
+  mask-position: 0 0;
+  animation: prism-write var(--write-s, 3s) cubic-bezier(0.45, 0.05, 0.35, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-write] { animation: none; -webkit-mask-image: none; mask-image: none; }
+}
+
 /* A screen's schedule changing the dashboard (#692). React names each widget
    for the change (CssGridDisplay); a widget on both dashboards slides and
    resizes to its new place, slowly, each a little after the one before, and

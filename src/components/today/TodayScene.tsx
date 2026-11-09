@@ -12,7 +12,8 @@
  * The clock and weather share their formatting with the widgets (the same
  * time format, date and weather sentence), so the two cannot drift apart.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { setCellDrift } from '@/components/layout/grid/CssGridDisplay';
 import { useLocale, useTranslations } from 'next-intl';
 import { useTimeFormat } from '@/components/providers';
 import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
@@ -67,6 +68,7 @@ export function TodayScene({
   idle = false,
   kind = 'today',
   topOffset = 0,
+  drift = false,
 }: {
   parts: WidgetConfig[];
   weather: WeatherData | null;
@@ -92,8 +94,18 @@ export function TodayScene({
   kind?: 'today' | 'calendar';
   /** Height of the bar above the scene, when it shows. */
   topOffset?: number;
+  /**
+   * Burn-in drift while idle: the same slow 4px figure eight the grid's
+   * widgets make, on everything the scene draws, so the clock, weather and
+   * Next never sit on the same pixels for hours.
+   */
+  drift?: boolean;
 }) {
   const now = useMinute();
+  const driftRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (driftRef.current) setCellDrift(driftRef.current, drift);
+  }, [drift]);
   const locale = useLocale();
   const t = useTranslations('weather');
   const { timeFormat, displayTimezone } = useTimeFormat();
@@ -131,9 +143,12 @@ export function TodayScene({
         color: night ? 'rgb(255 226 190)' : 'white',
       }}
       data-today-idle={idle || undefined}
+      data-today-kind={kind}
       data-today-night={night || undefined}
     >
       {night && <div className="absolute inset-0 bg-black/60" aria-hidden data-today-veil />}
+      {/* Everything drawn on the photo, in one layer that drifts while idle. */}
+      <div ref={driftRef} className="absolute inset-0 duration-1000" data-today-drift>
       {isPartShown(parts, 'clock') && (
         <div data-today-corner="left" className={`absolute left-[3rem] top-[2.5rem] flex flex-col items-start ${fadeUnless('clock')}`}>
           <time className="text-body font-medium opacity-95" data-today-date>{date}</time>
@@ -238,6 +253,7 @@ export function TodayScene({
           />
         </div>
       )}
+      </div>
     </div>
   );
 }

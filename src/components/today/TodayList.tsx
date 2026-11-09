@@ -6,6 +6,7 @@
  * already over faint at the end. On the wall it sits over the photo in light
  * ink; on a phone, on paper. Tapping an event opens the event sheet (#836).
  */
+import { useEffect, useState } from 'react';
 import { eventDotBackground } from '@/lib/calendar/sharedEvents';
 import { useTranslations } from 'next-intl';
 import { useTimeFormat } from '@/components/providers';
@@ -27,7 +28,10 @@ export function TodayList({ events, now, onOpenEvent, variant, onlyNext = false 
   const today = toDisplayDate(now, displayTimezone);
   const { next, later, done } = todayAgenda(events, now, (e) => eventOccursOnDisplayDay(e.startTime, e.endTime, e.allDay, today, displayTimezone));
   const time = (d: Date) => formatBareTime(d, timeFormat, displayTimezone);
-  const when = (e: CalendarEvent) => (e.allDay ? t('allDayShort') : `${time(e.startTime)} – ${time(e.endTime)}`);
+  // The end says am or pm, so a range never leaves the day half to guess.
+  const when = (e: CalendarEvent) => (e.allDay
+    ? t('allDayShort')
+    : `${time(e.startTime)} – ${formatBareTime(e.endTime, timeFormat, displayTimezone, { dayHalf: true })}`);
   const wall = variant === 'wall';
   const label = cn('m-0 text-caption font-semibold uppercase tracking-[0.14em]', wall ? 'opacity-70' : 'text-muted-foreground');
   const open = (e: CalendarEvent) => onOpenEvent?.(e);
@@ -57,7 +61,9 @@ export function TodayList({ events, now, onOpenEvent, variant, onlyNext = false 
         {/* Across the room on the wall (#1030): about 4.4rem at 1920 wide. */}
         <span className={cn('flex min-w-0 items-center gap-3 leading-tight', wall ? 'text-[clamp(2.4rem,3.6vw,4.4rem)]' : 'text-title')} style={{ fontFamily: 'var(--font-display)' }}>
           <span className={cn('shrink-0 rounded-full', wall ? 'h-3.5 w-3.5' : 'h-2.5 w-2.5')} style={{ background: eventDotBackground(next) }} aria-hidden data-event-mark data-shared={next.alsoColors?.length ? '' : undefined} />
-          <span className="min-w-0 [text-wrap:balance]">{next.title}</span>
+          {wall
+            ? <WrittenTitle title={next.title} />
+            : <span className="min-w-0 [text-wrap:balance]">{next.title}</span>}
         </span>
         <span className={cn('tabular-nums', wall ? 'text-title opacity-85' : 'text-body text-muted-foreground')} data-today-next-time>
           {when(next)}{next.location ? `, ${next.location}` : ''}
@@ -93,5 +99,38 @@ export function TodayList({ events, now, onOpenEvent, variant, onlyNext = false 
         </>
       )}
     </div>
+  );
+}
+
+/** How often the wall writes Next out again, for a little slow motion. */
+export const REWRITE_MS = 5 * 60_000;
+
+/** Seconds to write a title: about a letter every 0.15 s, 2.5 to 6 s. */
+export function writeSeconds(title: string): number {
+  return Math.min(6, Math.max(2.5, title.length * 0.15));
+}
+
+/**
+ * The next event's title on the wall, in a script face, written out left to
+ * right: when it changes and again every few minutes. The writing is a soft
+ * edge sliding across (prism-write in globals.css), so nothing jumps; with
+ * reduced motion the title just shows.
+ */
+function WrittenTitle({ title }: { title: string }) {
+  const [round, setRound] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setRound((r) => r + 1), REWRITE_MS);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <span
+      key={`${title}-${round}`}
+      className="min-w-0 pb-[0.08em] [text-wrap:balance]"
+      style={{ fontFamily: 'var(--font-script)', fontWeight: 600, ['--write-s' as string]: `${writeSeconds(title)}s` }}
+      data-write
+      data-today-next-title
+    >
+      {title}
+    </span>
   );
 }
