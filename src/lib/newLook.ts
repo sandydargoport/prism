@@ -45,3 +45,25 @@ export function planNewLook(layouts: Array<{ id: string; isDefault: boolean; vie
 export function shouldOfferNewLook(layouts: Array<{ view?: string }>, accepted: boolean, dismissedHere: boolean): boolean {
   return !accepted && !dismissedHere && layouts.length > 0 && !layouts.some((l) => l.view === 'today');
 }
+
+/** Simple is the premade Today or Calendar page (#1117); anything else is Custom. */
+export function isSimpleView(view: string | undefined | null): boolean {
+  return view === 'today' || view === 'calendar';
+}
+
+/** What the new-look setting remembers: the old default, and each named screen's old dashboard. */
+export interface NewLookSetting {
+  previousDefaultId?: string | null;
+  /** Per named screen (by id): the Custom dashboard it had before Simple. */
+  screens?: Record<string, string>;
+}
+
+/**
+ * Where Custom goes back to: the remembered dashboard while it is still a
+ * Custom one, else the first Custom one there is, else nowhere.
+ */
+export function customTarget<L extends { id: string; view?: string }>(rememberedId: string | null | undefined, layouts: L[]): L | null {
+  const remembered = layouts.find((l) => l.id === rememberedId);
+  if (remembered && !isSimpleView(remembered.view)) return remembered;
+  return layouts.find((l) => !isSimpleView(l.view)) ?? null;
+}

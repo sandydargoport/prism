@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { isSimpleView } from '@/lib/newLook';
 import { DEFAULT_TEMPLATE } from '@/lib/constants/layoutTemplates';
 import {
   loadScreensaverLayout,
@@ -114,6 +115,8 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     ? activeLayout.id
     : null;
   const beginEditing = useCallback(() => {
+    // Simple is premade (#1117): there is nothing to edit.
+    if (isSimpleView(activeLayout?.view)) return;
     const current = activeLayout?.widgets ?? DEFAULT_TEMPLATE.widgets;
     setPreEditWidgets(current);
     setEditingWidgets(current);

@@ -9,8 +9,11 @@ import { getFirstParent, getSeededParentId, verifySettingsPinViaAPI } from './he
  */
 const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
 const PIN = process.env.E2E_PIN || '1234';
+const ONE_WIDGET = [{ i: 'clock', x: 0, y: 0, w: 8, h: 8 }];
 
 test.describe('Simple or Custom', () => {
+  // The tests share the household's layouts and the new-look setting.
+  test.describe.configure({ mode: 'serial' });
   test.skip(!HAS_TEST_DB, 'needs the seeded test database');
   test.setTimeout(120_000);
 
@@ -95,6 +98,59 @@ test.describe('Simple or Custom', () => {
       await page.request.patch('/api/settings', { data: { key: 'newLook', value: {} } });
     }
   });
+  // #1117: on a named screen the choice is that screen's own dashboard, and
+  // the household default stays as it was.
+  test('on a named screen, Simple and Custom change that screen only', async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);
+    type L = { id: string; name: string; slug: string; isDefault: boolean; view?: string };
+    const list = async () => ((await (await page.request.get('/api/layouts')).json()).layouts ?? []) as L[];
+    const NAME = `Porch ${Date.now()}`;
+    const made: string[] = [];
+    const before = await list();
+    const householdDefault = before.find((l) => l.isDefault)!;
+    let today = before.find((l) => l.view === 'today');
+    if (!today) {
+      today = await (await page.request.post('/api/layouts', { data: { name: 'Today', view: 'today', widgets: ONE_WIDGET } })).json();
+      made.push(today!.id);
+    }
+    const own = await (await page.request.post('/api/layouts', { data: { name: `Porch grid ${Date.now()}`, view: 'grid', widgets: ONE_WIDGET } })).json();
+    made.push(own.id);
+    const screen = await (await page.request.post('/api/displays', { data: { name: NAME } })).json();
+    const screenId = (screen.display ?? screen).id as string;
+    const screenDashboard = async () => {
+      const { displays } = await (await page.request.get('/api/displays')).json();
+      return (displays as Array<{ id: string; dashboardId: string | null }>).find((d) => d.id === screenId)?.dashboardId ?? null;
+    };
+    try {
+      expect((await page.request.patch(`/api/displays/${screenId}`, { data: { dashboardId: own.id } })).ok()).toBe(true);
+      await verifySettingsPinViaAPI(page, (await getFirstParent(page)).name);
+      await page.goto('/settings?section=display');
+      const card = page.locator('[data-front-page-card]');
+      await expect(card.locator('[data-front-page-for]')).toContainText(NAME, { timeout: 30_000 });
+      await expect(card.locator('[data-front-page-choice="custom"]')).toHaveAttribute('aria-pressed', 'true');
+
+      await card.locator('[data-front-page-choice="simple"]').click();
+      await expect.poll(screenDashboard, { timeout: 20_000 }).toBe(today!.id);
+      expect((await list()).find((l) => l.isDefault)?.id, 'the household default stays').toBe(householdDefault.id);
+      await expect(card.locator('[data-front-page-choice="simple"]')).toHaveAttribute('aria-pressed', 'true');
+
+      // The screen opens on Today now.
+      await page.goto('/');
+      await expect(page).toHaveURL(new RegExp(`/d/${today!.slug}$`), { timeout: 30_000 });
+
+      // Custom brings back the screen's own grid, not the household's.
+      await page.goto('/settings?section=display');
+      await card.locator('[data-front-page-choice="custom"]').click();
+      await expect.poll(screenDashboard, { timeout: 20_000 }).toBe(own.id);
+      expect((await list()).find((l) => l.isDefault)?.id).toBe(householdDefault.id);
+    } finally {
+      await page.request.delete(`/api/displays/${screenId}`);
+      for (const id of made) await page.request.delete(`/api/layouts/${id}`);
+      await page.request.patch('/api/settings', { data: { key: 'newLook', value: {} } });
+    }
+  });
+
   // #1032: after the update, a one-time note of what moved and where.
   test("What's new shows once on a screen and stays in Help", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });

@@ -40,7 +40,7 @@ import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import { parseIdleBackground, withoutDashboard, PHOTOS, type IdleBackground } from '@/lib/idleBackground';
 import { TodayScene } from '@/components/today/TodayScene';
 import { PhoneToday } from '@/components/today/PhoneToday';
-import { TodayPartsPanel } from '@/components/today/TodayPartsPanel';
+import { isSimpleView } from '@/lib/newLook';
 import type { ChoreLike } from '@/lib/today/quietLines';
 import { useEventSheet } from '@/components/calendar/useEventSheet';
 import { NewLookOffer } from './NewLookOffer';
@@ -145,6 +145,8 @@ export function Dashboard({
   });
   const layout = useDashboardLayout(data.layouts, schedule.slug);
   useEffect(() => { editingRef.current = layout.isEditing; }, [layout.isEditing]);
+  // Simple is premade (#1117): no Edit layout, no idle screen editor.
+  const simplePage = isSimpleView(layout.activeLayout?.view);
 
   // Persist visible widget IDs to localStorage for next load's prioritized fetching
   useEffect(() => {
@@ -463,7 +465,7 @@ export function Dashboard({
           <ScreenJobs
             labelled
             onScreensaverClick={() => window.dispatchEvent(new Event('prism:screensaver'))}
-            onEditClick={activeUser && activeUser.role !== 'parent' ? undefined : layout.handleEditStart}
+            onEditClick={simplePage || (activeUser && activeUser.role !== 'parent') ? undefined : layout.handleEditStart}
           />
         }
       >
@@ -472,7 +474,7 @@ export function Dashboard({
           {!wallDock && (
             <DashboardHeader
               onScreensaverClick={() => window.dispatchEvent(new Event('prism:screensaver'))}
-              onEditClick={activeUser && activeUser.role !== 'parent' ? undefined : layout.handleEditStart}
+              onEditClick={simplePage || (activeUser && activeUser.role !== 'parent') ? undefined : layout.handleEditStart}
             />
           )}
 
@@ -545,9 +547,6 @@ export function Dashboard({
               onScrollInfo={handleScrollInfo}
               scrollToRef={scrollToGridRef}
             />
-          ) : (layout.activeLayout?.view === 'today' || layout.activeLayout?.view === 'calendar') && layout.isEditing && layout.editTab !== 'idle' ? (
-            // Editing Today (#927): its parts, shown or hidden, never moved.
-            <TodayPartsPanel widgets={layout.editingWidgets} onChange={layout.setEditingWidgets} />
           ) : (layout.activeLayout?.view === 'today' || layout.activeLayout?.view === 'calendar') && !layout.isEditing ? (
             // Today (#907): one scene over the photo instead of the grid. In
             // the editor it shows as its grid of parts until the parts panel.

@@ -1,7 +1,7 @@
 /**
  * Trying the new look (#808).
  */
-import { newLookLayouts, planNewLook, shouldOfferNewLook } from '../newLook';
+import { customTarget, isSimpleView, newLookLayouts, planNewLook, shouldOfferNewLook } from '../newLook';
 
 describe('planNewLook', () => {
   const existing = [
@@ -38,5 +38,30 @@ describe('shouldOfferNewLook', () => {
 describe('newLookLayouts', () => {
   it('makes Today the default and leaves the Calendar layout beside it', () => {
     expect(newLookLayouts().filter((l) => l.isDefault).map((l) => l.view)).toEqual(['today']);
+  });
+});
+
+describe('Simple or Custom on one screen (#1117)', () => {
+  const layouts = [
+    { id: 'today', view: 'today' },
+    { id: 'family', view: 'grid' },
+    { id: 'kitchen', view: 'grid' },
+  ];
+
+  it('Simple is the Today and Calendar pages', () => {
+    expect(isSimpleView('today')).toBe(true);
+    expect(isSimpleView('calendar')).toBe(true);
+    expect(isSimpleView('grid')).toBe(false);
+    expect(isSimpleView(undefined)).toBe(false);
+  });
+
+  it('Custom goes back to the dashboard the screen had before', () => {
+    expect(customTarget('kitchen', layouts)?.id).toBe('kitchen');
+  });
+
+  it('or to the first Custom one when that is gone or was not Custom', () => {
+    expect(customTarget('gone', layouts)?.id).toBe('family');
+    expect(customTarget('today', layouts)?.id).toBe('family');
+    expect(customTarget(null, [{ id: 'today', view: 'today' }])).toBeNull();
   });
 });

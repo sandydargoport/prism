@@ -11,6 +11,7 @@ import { useTimeFormat } from '@/components/providers/TimeFormatProvider';
 import { loadBase } from '@/lib/displays/displaySettingsSync';
 import { parseSchedule, scheduledDashboard, SCHEDULE_TRANSITION, SCREEN_SCHEDULE_KEY } from '@/lib/displays/screenSchedule';
 import { pageZoomVars } from '@/lib/utils/zoomVars';
+import { isSimpleView } from '@/lib/newLook';
 
 /**
  * Time-of-day layouts on the screen itself (#692).
@@ -85,6 +86,8 @@ export function useScreenSchedule({ routeSlug, layouts, loading, editing }: Inpu
     const base = typeof window === 'undefined' ? null : loadBase();
     if (!base || rules.length === 0 || !routeLayout) return { rule: -1, id: routeLayout?.id ?? null };
     const homeId = layouts.some((l) => l.id === base.dashboardId) ? base.dashboardId! : defaultLayout?.id ?? null;
+    // A Simple screen keeps its premade page all day (#1117).
+    if (isSimpleView(layouts.find((l) => l.id === homeId)?.view)) return { rule: -1, id: homeId };
     const { rule, dashboardId } = scheduledDashboard(rules, now, householdTimezone, (id) => layouts.some((l) => l.id === id));
     return { rule, id: dashboardId ?? homeId };
   }, [rules, routeLayout, layouts, defaultLayout, householdTimezone]);

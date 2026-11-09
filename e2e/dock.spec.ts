@@ -119,7 +119,8 @@ test.describe('the dock on the wall', () => {
       expect(onDock.filter((h) => inMore.includes(h)), 'no page in both').toEqual([]);
       await expect(panel.locator('[data-screen-job="reload"]')).toBeVisible();
       await expect(panel.locator('[data-screen-job="screensaver"]')).toBeVisible();
-      await expect(panel.locator('[data-screen-job="edit"]')).toBeVisible();
+      // #1117: Simple is premade, so Today has no Edit layout.
+      await expect(panel.locator('[data-screen-job="edit"]')).toHaveCount(0);
       // #1006: every job is named, the same way, in the same pill.
       await expect(panel.locator('[data-screen-job="away"]')).toBeVisible();
       await expect(panel.locator('[data-screen-job="babysitter"]')).toBeVisible();
