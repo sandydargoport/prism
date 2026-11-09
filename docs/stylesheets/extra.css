@@ -38,3 +38,39 @@
 [data-md-color-scheme="slate"] .md-content .grid.cards img {
   border-color: var(--md-default-fg-color--lighter);
 }
+
+/* Site palette from docs/DESIGN.md: warm paper, warm ink, one blue accent.
+   The header is the page colour with ink text, not a coloured bar. */
+:root, [data-md-color-scheme="default"] {
+  --md-primary-fg-color: hsl(214 62% 40%);
+  --md-primary-fg-color--light: hsl(214 62% 50%);
+  --md-primary-fg-color--dark: hsl(214 62% 32%);
+  --md-accent-fg-color: hsl(214 62% 40%);
+  --md-default-bg-color: hsl(40 30% 97%);
+  --md-default-fg-color: hsl(30 12% 14%);
+  --md-typeset-a-color: hsl(214 62% 40%);
+}
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: hsl(212 80% 72%);
+  --md-primary-fg-color--light: hsl(212 80% 80%);
+  --md-primary-fg-color--dark: hsl(212 60% 60%);
+  --md-accent-fg-color: hsl(212 80% 72%);
+  --md-default-bg-color: hsl(30 8% 8%);
+  --md-typeset-a-color: hsl(212 80% 72%);
+  --md-hue: 30;
+}
+.md-header, .md-tabs {
+  background: color-mix(in srgb, var(--md-default-bg-color) 88%, transparent);
+  color: var(--md-default-fg-color);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.md-header { box-shadow: none; border-bottom: 1px solid var(--md-default-fg-color--lightest); }
+.md-header--shadow { box-shadow: none; }
+.md-tabs { border-bottom: 1px solid var(--md-default-fg-color--lightest); }
+.md-tabs__link { opacity: 0.75; }
+.md-tabs__link--active, .md-tabs__link:hover { opacity: 1; color: var(--md-primary-fg-color); }
+.md-search__form { background: var(--md-default-fg-color--lightest); }
+.md-header__title { font-weight: 700; }
+.md-typeset h1 { font-weight: 750; letter-spacing: -0.02em; color: var(--md-default-fg-color); }
+.md-typeset h2 { font-weight: 700; letter-spacing: -0.01em; }

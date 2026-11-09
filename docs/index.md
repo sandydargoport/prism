@@ -1,4 +1,6 @@
 ---
+title: Prism, the self-hosted family display
+template: home.html
 hide:
   - navigation
   - toc
