@@ -44,13 +44,28 @@ describe('BusLivePanel', () => {
     expect(screen.getByText('14 of 22')).toBeTruthy();
   });
 
-  it('shows the lateness against the schedule and against the usual', () => {
+  it('says how late against the usual in one short phrase, so the row is not cut off', () => {
     render(
       <BusLivePanel
         track={{ ...track(null), shiftMs: 12 * 60_000, shiftMeasured: true, typicalLateMs: 8 * 60_000 }}
         speedUnit="mph" now={Date.now()} formatTime={(iso) => iso} detail={false} />,
     );
-    expect(screen.getByText('12 min late · 4 min later than usual')).toBeTruthy();
+    expect(screen.getByText('4 min later than usual')).toBeTruthy();
+    expect(screen.queryByText(/12 min late/)).toBeNull();
+  });
+
+  it('falls back to the habit, then to the schedule', () => {
+    const { unmount } = render(
+      <BusLivePanel track={{ ...track(null), shiftMs: 6 * 60_000, shiftMeasured: false, typicalLateMs: 9 * 60_000 }}
+        speedUnit="mph" now={Date.now()} formatTime={(iso) => iso} detail={false} />,
+    );
+    expect(screen.getByText('Usually 9 min late')).toBeTruthy();
+    unmount();
+    render(
+      <BusLivePanel track={{ ...track(null), shiftMs: 11 * 60_000, shiftMeasured: true, typicalLateMs: null }}
+        speedUnit="mph" now={Date.now()} formatTime={(iso) => iso} detail={false} />,
+    );
+    expect(screen.getByText('11 min late')).toBeTruthy();
   });
 
   it('leaves the Stops row out before the provider sends a count', () => {
