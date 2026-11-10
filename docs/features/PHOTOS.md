@@ -1,8 +1,10 @@
 # Photos
 
+Show your photos on the wall when nobody is using it. Upload them, or sync a OneDrive folder.
+
 ![Photo gallery](../demos/photos.png){ .hero-image }
 
-Photo gallery, screensaver feed, wallpaper source, and the GPS-linked photo strip on the Travel Map. Backed by local uploads plus OneDrive sync (with a folder picker so you don't have to sync the whole drive).
+The same photos fill the gallery, the idle screen, the wallpaper and the photo strip on the travel map. With OneDrive you pick the folders, so you never sync the whole drive.
 
 ---
 

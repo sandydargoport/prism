@@ -1,8 +1,10 @@
 # Calendar
 
+See everyone's events in one calendar, each person in their own colour. Connect Google, iCloud or any calendar link.
+
 ![Calendar month view](../demos/calendar-month.png){ .hero-image }
 
-The calendar brings every family member's schedule together with meals, chores, and tasks in one place. It supports Google Calendar OAuth (read+write), iCal subscriptions (read-only), seven views, drag-and-drop, click-to-edit from the dashboard widget, and a server-side sync cron that keeps events current even when nobody's looking at the dashboard.
+Meals, chores and to-dos show alongside events. Google calendars sync both ways; calendar links are read-only. There are seven views, you can drag an event to move it, and Prism keeps syncing even when nobody is looking at the screen.
 
 ---
 

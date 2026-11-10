@@ -1,8 +1,8 @@
 # Messages
 
-![Family message board](../demos/messages.png){ .hero-image }
+Leave a note for the family on the wall. Everyone sees it when they walk past, and nobody gets a notification.
 
-Family message board for shared updates. Lower-friction than texting (no notifications, no group chat noise), more persistent than a sticky note on the fridge. Built for the "drop a note that everyone will see when they walk past the wall display" pattern.
+![Family message board](../demos/messages.png){ .hero-image }
 
 ---
 

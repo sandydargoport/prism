@@ -1,8 +1,10 @@
-# Weekend Ideas
+# Weekend ideas
+
+Keep a list of local places to go, for the next time someone asks what to do this weekend.
 
 ![Weekend activity board](../demos/weekend.png){ .hero-image }
 
-A family activity board for local places to visit. Lower-stakes than the Travel Map (which is global trips and bucket-list pins), more structured than a Notes-app list. Built around the question: *"what should we do this weekend?"*
+The [travel map](TRAVEL.md) is for trips; this list is for places nearby.
 
 ---
 
@@ -96,7 +98,7 @@ The same presets drive the tag grouping on the page: a place lands in the sectio
 
 ### "What should we do Saturday?"
 
-Filter to `Want to Try`, then narrow by a tag or two you're in the mood for. Surface places you haven't been yet.
+Filter to `Want to Try`, then narrow by a tag or two you're in the mood for. That shows the places you have not been yet.
 
 ### "Where do we always have a good time?"
 
@@ -125,7 +127,7 @@ The current Weekend Ideas is Phase 1 (manual entry, list/filter UI). On the road
 - **Per-visit history**: record each visit as its own dated entry (who went, rating, notes) rather than just a running count.
 - **Location editing + geocoder**: search a place by name or paste a maps link to attach coordinates from the app.
 - **POI search + map view**: search nearby attractions and add directly from results; visualize your backlog as pins on a regional map.
-- **Suggest mode**: given current weather + season + family preferences, surface a few suggestions for "today's outing."
+- **Suggest mode**: given current weather + season + family preferences, suggest a few places for "today's outing."
 - **Share / collaborate**: share a backlog with another family.
 
 ---

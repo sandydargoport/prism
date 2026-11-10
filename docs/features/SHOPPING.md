@@ -1,8 +1,10 @@
 # Shopping
 
+Keep shared shopping lists that everyone can add to, then shop from your phone or send the list to your grocery cart.
+
 ![Shopping list with categories](../demos/shopping.png){ .hero-image }
 
-Multiple lists, drag-to-reorder categories, per-person attribution, camera + USB barcode scanning, Microsoft To Do sync, and one-click push to your online Kroger cart at any banner. Built for the in-store experience as much as the at-home planning one.
+You can keep several lists, sort items by category, scan a barcode with the camera or a USB scanner, sync a list with Microsoft To Do, and send it to your online Kroger cart in one tap.
 
 ---
 
@@ -151,7 +153,7 @@ Each shopping list can sync to one Microsoft To Do list. Configure it in the **M
 - Pick a Microsoft To Do list to sync it with.
 - Toggle sync on.
 
-Bidirectional, newest-wins. Adds and check-offs on either side propagate. Useful when other family members use the MS To Do mobile app instead of Prism directly.
+Two-way, newest change wins. Adds and check-offs on either side propagate. Useful when other family members use the MS To Do mobile app instead of Prism directly.
 
 ---
 

@@ -1,6 +1,6 @@
-# First-Time Setup
+# First-time setup
 
-After [installing Prism](install.md), the first run drops you into a short, keyless setup wizard. No accounts or API keys needed to get going.
+The first time you open Prism, a short wizard sets up your family. You do not need an account or an API key.
 
 ## The setup wizard
 
@@ -35,7 +35,7 @@ You don't need any of these to share or assign events: Prism gives every member 
 
 Most families want at least:
 
-- **Google Calendar**: for school, work, and shared family events. OAuth-based bidirectional sync.
+- **Google Calendar**: for school, work, and shared family events. Syncs both ways.
 - **Weather**: Open-Meteo is the zero-config default (no API key). OpenWeatherMap and Pirate Weather are alternatives.
 - **OneDrive**: for the photo slideshow on the screensaver and the dashboard photo widget.
 - **Microsoft To Do**: if your family already uses it for tasks, shopping, or wish lists.

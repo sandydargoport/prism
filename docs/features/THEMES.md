@@ -1,6 +1,8 @@
-# Themes
+# Looks and colours
 
-Prism ships seven palettes. Choose one under *Settings → Appearance → Palette*.
+Choose how Prism looks (a photo behind glass, the same kept dark, or plain paper), then pick a colour palette.
+
+There are seven palettes. Choose one under *Settings → Appearance → Palette*.
 
 | | |
 |---|---|

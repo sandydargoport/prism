@@ -1,8 +1,10 @@
-# Wishes & Gift Ideas
+# Wish lists
+
+Each person keeps a wish list. Others can mark a gift as taken without the wisher seeing.
 
 ![Wish lists with claim tracking](../demos/wishes.png){ .hero-image }
 
-Per-family-member wish lists with secret claim tracking for gift surprises, plus private gift-idea tracking for the gift-giver side. Built around the family-gift-giving problem: kids and parents want to keep wish lists, but gift-givers also want their own private "what I'm planning to buy" notes that the recipient never sees.
+Gift givers also get a private list of their own gift ideas, which the person they are for never sees.
 
 ---
 
@@ -62,7 +64,7 @@ But here's the catch: **if someone else has already secretly bought it,** crossi
 
 ### Microsoft To Do sync
 
-Each family member's wish list can sync bidirectionally with a Microsoft To Do list. Configure it under *Settings → Integrations → Microsoft card → Wish lists* sub-section (the legacy *?section=wish* URL now redirects there):
+Each family member's wish list can sync both ways with a Microsoft To Do list. Configure it under *Settings → Integrations → Microsoft card → Wish lists* sub-section (the legacy *?section=wish* URL now redirects there):
 
 - Per-member configuration.
 - Pick which MS To Do list maps to that member's wish list.

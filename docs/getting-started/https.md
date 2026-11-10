@@ -1,4 +1,6 @@
-# Using Prism over https at home
+# Using https at home
+
+Some features, such as the microphone and the barcode camera, only work when Prism is opened over https. This page shows how to set that up at home.
 
 Browsers only allow some features on a **secure page**: one opened over `https://`, or from `localhost` on the same machine. Opened over a plain `http://` address such as `http://<server-ip>:3000`, Prism works, but the browser turns these off before Prism can use them:
 

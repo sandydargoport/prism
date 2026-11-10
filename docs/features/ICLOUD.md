@@ -1,14 +1,12 @@
-# iCloud integration
+# Apple iCloud
 
-What Prism can and can't pull from iCloud, and why.
-
-If you have an Apple household and want Prism to surface family data living in iCloud (calendars, contacts, photos, Reminders, Notes, Find My), read this once. The answer is consistent across the table, the rule explains the table, and the rule isn't going to change.
+Show your iCloud calendars in Prism. This page also lists what iCloud does not let Prism read.
 
 ---
 
 ## What works, what doesn't
 
-| iCloud surface | Supported? | How / why not |
+| iCloud service | Supported? | How / why not |
 |---|---|---|
 | **Calendars** | ✅ Yes | CalDAV (`caldav.icloud.com`): read + upstream delete of single events; full create/edit write-back is not yet wired. See [Calendar setup](CALENDAR.md#apple-icloud-caldav-private-calendars-reminders-alpha). |
 | **Contacts** (incl. birthdays) | ✅ Yes, read-only | CardDAV (`contacts.icloud.com`). Used by the planned [family contacts page](https://github.com/sandydargoport/prism/issues/75). |

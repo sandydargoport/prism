@@ -1,8 +1,8 @@
-# Prism User Guide
+# Guide
 
-A configurable family dashboard for large wall-mounted screens, tablets, and phones. Connects to Google Calendar, Microsoft To Do, Google Tasks, OneDrive, Kroger, Gmail/FirstView, and more, surfacing the information your family actually needs in one place.
+Everything Prism does, one feature per page. Start here when setup is done.
 
-> **This page is the overview.** For deep-dive guides on each feature, follow the links below.
+Each section below is a short summary with a link to the full page.
 
 ---
 
@@ -55,7 +55,7 @@ A parent can hide an event in Prism without deleting it from its calendar (**Hid
 
 ### [Shopping](features/SHOPPING.md)
 
-Multiple lists with category layouts, per-person attribution, camera + USB barcode scanning, Microsoft To Do bidirectional sync, and one-click push to your online Kroger cart at any banner. The dashboard and screensaver widget hide checked items; one ticked by mistake stays for five seconds so it can be unticked.
+Multiple lists with category layouts, per-person attribution, camera + USB barcode scanning, two-way Microsoft To Do sync, and one-click push to your online Kroger cart at any banner. The dashboard and screensaver widget hide checked items; one ticked by mistake stays for five seconds so it can be unticked.
 
 ### [Recipes](features/RECIPES.md)
 
@@ -63,7 +63,7 @@ URL import (schema.org), Paprika import, paste-text import (OCR-friendly with in
 
 ### [Tasks](features/TASKS.md)
 
-To-do items with assignment, due dates, priorities, lists, nested grouping (Person → List), bidirectional sync to **Microsoft To Do or Google Tasks**.
+To-do items with assignment, due dates, priorities, lists, nested grouping (Person → List), two-way sync with **Microsoft To Do or Google Tasks**.
 
 ### [Chores](features/CHORES.md)
 
@@ -119,7 +119,7 @@ Installable as a PWA on iOS, Android, and desktop. Phone viewports get a Floatin
 
 ## Other features (covered inline below)
 
-A few smaller surfaces are documented here rather than on dedicated pages.
+A few smaller features are described here rather than on dedicated pages.
 
 ### Meals
 

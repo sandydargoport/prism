@@ -1,10 +1,12 @@
-# Kroger online cart integration
+# Grocery cart
 
-Push your Prism shopping list straight into the online cart of any Kroger banner, for pickup, delivery, or in-store reference. One Kroger account works across every banner:
+Send your shopping list to your online cart at Kroger or any of its stores, such as Mariano's or Ralphs.
+
+Use the cart for pickup, delivery, or as a list in the store. One Kroger account works at every store in the group:
 
 > Kroger · Mariano's · Ralphs · King Soopers · Fred Meyer · QFC · Smith's · Fry's · Harris Teeter · Pick 'n Save · Metro Market · Pay Less · Food 4 Less · Foods Co. · Bakers' Plus · City Market · Copps · Dillons · Gerbes · Jay C · Ruler Foods
 
-The integration uses Kroger's public Developer API. It's free, has a 10,000-call/day quota (plenty for a family), and respects OAuth 2.0 user consent. Prism never sees your shopper password.
+Prism uses Kroger's free public API. You sign in on Kroger's own page, so Prism never sees your password.
 
 ---
 
