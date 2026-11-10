@@ -95,12 +95,11 @@ describe('POST /api/setup/complete', () => {
   });
 
   describe('first screen of a new install (#808)', () => {
-    it('starts on Today as the default, with the Calendar layout beside it, created by the primary parent (#808)', async () => {
+    it('starts on Today as the default and makes nothing else, created by the primary parent (#808, #1151)', async () => {
       await POST();
       const layouts = insertedLayouts();
-      expect(layouts).toHaveLength(2);
+      expect(layouts).toHaveLength(1);
       expect(layouts[0]).toMatchObject({ name: 'Today', view: 'today', slug: 'home', isDefault: true, createdBy: 'parent-1' });
-      expect(layouts[1]).toMatchObject({ name: 'Calendar', view: 'calendar', isDefault: false, createdBy: 'parent-1' });
       expect((layouts[0]!.widgets as Array<{ i: string }>).map((w) => w.i)).toEqual(TODAY_TEMPLATE.widgets.map((w) => w.i));
     });
 
