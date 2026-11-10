@@ -18,6 +18,7 @@
 
 'use client';
 
+import { remotePortalRoot } from '@/lib/displays/remoteEdit';
 import * as React from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
@@ -87,7 +88,7 @@ const DialogContent = React.forwardRef<
     else if (ref) ref.current = el;
   }, [ref]);
   return (
-  <DialogPortal>
+  <DialogPortal container={remotePortalRoot()}>
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={setSide}

@@ -74,13 +74,13 @@ You can make a separate dashboard for each room or display. The dashboard-name d
 
 #### Interludes: other dashboards at set times
 
-A named screen (*Settings → Displays*) can show another dashboard for a while, for example the bus on school mornings. Each of these is an **Interlude**: one dashboard from a start to an end time on the days you tick. Add them in the editor's **Through the day** sheet, or with **Interludes** on the screen's row in *Settings → Displays*. Outside all of them the screen shows its own dashboard, Today included. Times use the household time zone. One that ends before it starts runs past midnight, and one that starts and ends at the same time lasts all day. When two overlap, the one higher in the list wins.
+A named screen (*Settings → Screens*) can show another dashboard for a while, for example the bus on school mornings. Each of these is an **Interlude**: one dashboard from a start to an end time on the days you tick. Add them in the editor's **Through the day** sheet, on the screen or from a phone with **Edit** on its row in *Settings → Screens*. Outside all of them the screen shows its own dashboard, Today included. Times use the household time zone. One that ends before it starts runs past midnight, and one that starts and ends at the same time lasts all day. When two overlap, the one higher in the list wins.
 
 Make the dashboard for an Interlude with **Make a copy** in the Dashboard sheet and rearrange it there. When an Interlude starts or ends, the screen changes over in place: widgets that are on both dashboards slide to their new spots and the others fade. The change waits until nobody has touched the screen for a minute, and it never happens while someone is editing the layout. If you open another dashboard by hand, the screen keeps it until the next Interlude starts or ends. With reduced motion turned on the dashboards crossfade, and at the **Minimal** performance level they swap instantly.
 
 #### Notices
 
-A named screen can show small notice cards down the top right of its dashboard. In *Settings → Displays*, **Notices** on the screen's row turns each kind on and sets how many minutes ahead it looks:
+A named screen can show small notice cards down the top right of its dashboard. In the editing bar's **More** sheet, **Notices** turns each kind on and sets how many minutes ahead it looks:
 
 - **Bus**: the bus is due at your stop within the set minutes, using the live position where there is one and the emailed estimate otherwise. The card goes once the bus has passed the stop.
 - **Event**: a timed event starts within the set minutes. The card goes when the event starts. All-day events never show.

@@ -27,6 +27,7 @@ import { ScreenSchedulePanel } from '@/app/settings/sections/ScreenSchedulePanel
 import { SCREENSAVER_TIMEOUT_OPTIONS, useScreensaverTimeout } from '@/lib/hooks/useScreensaverTimeout';
 import { useStoredString, writeStored } from '@/lib/hooks/useStoredValue';
 import { loadBase } from '@/lib/displays/displaySettingsSync';
+import { remoteEditHost } from '@/lib/displays/remoteEdit';
 import { parseSchedule, scheduledDashboard, SCREEN_SCHEDULE_KEY, type ScheduleRule } from '@/lib/displays/screenSchedule';
 import { sameIdleBackground, tonight, type IdleBackground, type IdleSource, type IdleSwitch } from '@/lib/idleBackground';
 import { asDayAndNight, DEFAULT_NIGHT, screenStateAt, type ScreenState } from '@/lib/throughTheDay';
@@ -297,12 +298,13 @@ export function ThroughTheDaySheet({
             dashboards={allDashboards.map((d) => ({ id: d.id, name: d.name }))}
             homeId={homeId}
             online
+            savedText={remoteEditHost() ? 'Kept. The screen gets it when you press Done.' : 'Saved. This screen follows it from now on.'}
             save={async (raw) => { writeStored(SCREEN_SCHEDULE_KEY, raw); return true; }}
           />
         ) : (
           <p className="m-0 text-body text-muted-foreground" data-interludes-unnamed>
             An Interlude shows another dashboard for a while, like the bus each school morning. They belong to a
-            named screen: <Link href="/settings?section=displays" className="underline">name this one in Settings &gt; Displays</Link>.
+            named screen: <Link href="/settings?section=displays" className="underline">name this one in Settings &gt; Screens</Link>.
           </p>
         )}
       </section>

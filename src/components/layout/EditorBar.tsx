@@ -46,11 +46,13 @@ export const EditorBar = React.forwardRef<HTMLDivElement, EditorBarProps>(functi
   ref,
 ) {
   const title = SHEETS.find((s) => s.id === open)?.label;
-  const item = 'flex min-h-[56px] min-w-[64px] flex-col items-center justify-center gap-1 rounded-2xl px-3 text-caption font-medium transition-colors';
+  // On a phone (#1153) the five sheets share one row and their labels may
+  // wrap; Cancel and Done sit on a row of their own.
+  const item = 'flex min-h-[56px] min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 text-center text-caption font-medium leading-tight transition-colors sm:min-w-[64px] sm:px-3';
   return (
     <div
       ref={ref}
-      className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-200 -translate-x-1/2"
+      className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-200 w-[calc(100vw-1rem)] -translate-x-1/2 sm:w-auto"
       data-editor-bar
     >
       {open && sheet && (
@@ -80,7 +82,7 @@ export const EditorBar = React.forwardRef<HTMLDivElement, EditorBarProps>(functi
           <button type="button" onClick={onLeaveResting} className="min-h-[44px] rounded-full bg-muted px-4 hover:bg-muted/70">Back to in use</button>
         </div>
       )}
-      <nav aria-label="Edit" className="flex items-center gap-1 rounded-[20px] bg-[rgb(22_17_13)] p-1.5 shadow-2xl">
+      <nav aria-label="Edit" className="grid grid-cols-5 gap-1 rounded-[20px] bg-[rgb(22_17_13)] p-1.5 shadow-2xl sm:flex sm:items-center">
         {SHEETS.map(({ id, label, Icon }) => (
           <button
             key={id}
@@ -91,12 +93,12 @@ export const EditorBar = React.forwardRef<HTMLDivElement, EditorBarProps>(functi
             data-editor-open={id}
           >
             <Icon className="h-5 w-5" />
-            <span className="whitespace-nowrap">{label}</span>
+            <span className="sm:whitespace-nowrap">{label}</span>
             {dirty[id] && <span aria-label="unsaved changes" className="absolute right-2 top-2 h-2 w-2 rounded-full bg-white" />}
           </button>
         ))}
-        <span className="mx-1 h-8 w-px bg-white/20" aria-hidden />
-        <button type="button" onClick={onCancel} className={cn(item, 'text-white/85 hover:bg-white/10')} data-editor-cancel>
+        <span className="mx-1 hidden h-8 w-px bg-white/20 sm:block" aria-hidden />
+        <button type="button" onClick={onCancel} className={cn(item, 'col-span-2 text-white/85 hover:bg-white/10')} data-editor-cancel>
           <X className="h-5 w-5" />
           <span>Cancel</span>
         </button>
@@ -105,7 +107,7 @@ export const EditorBar = React.forwardRef<HTMLDivElement, EditorBarProps>(functi
           onClick={onDone}
           disabled={!!doneBlocked}
           title={doneBlocked ?? undefined}
-          className={cn(item, 'bg-white text-[rgb(22_17_13)] hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50')}
+          className={cn(item, 'col-span-3 bg-white text-[rgb(22_17_13)] hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50')}
           data-editor-done
         >
           <Check className="h-5 w-5" />

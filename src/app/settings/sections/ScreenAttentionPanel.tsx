@@ -23,6 +23,7 @@ export function ScreenAttentionPanel({
   stored,
   online,
   save,
+  savedText,
 }: {
   name: string;
   /** The stored value of the attention setting. */
@@ -30,6 +31,8 @@ export function ScreenAttentionPanel({
   online: boolean;
   /** Stores the new value (null for all off); false when that failed (the caller shows why). */
   save: (raw: string | null) => Promise<boolean>;
+  /** What to say once saved, in place of when the screen follows it. */
+  savedText?: string;
 }) {
   const [settings, setSettings] = useState<AttentionSettings>(() => parseAttention(stored));
   const [saving, setSaving] = useState(false);
@@ -89,7 +92,7 @@ export function ScreenAttentionPanel({
           Save notices
         </Button>
         <span className="text-xs text-muted-foreground" aria-live="polite">
-          {saved && (online ? `Saved. ${name} follows it within a minute.` : `Saved. ${name} follows it when it is next switched on.`)}
+          {saved && (savedText ?? (online ? `Saved. ${name} follows it within a minute.` : `Saved. ${name} follows it when it is next switched on.`))}
         </span>
       </div>
     </div>

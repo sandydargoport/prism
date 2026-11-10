@@ -18,6 +18,7 @@
 
 'use client';
 
+import { remotePortalRoot } from '@/lib/displays/remoteEdit';
 import * as React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
@@ -419,6 +420,6 @@ export function QuickPinModal({
         </div>
       </div>
     </div>,
-    document.body
+    remotePortalRoot() ?? document.body
   );
 }

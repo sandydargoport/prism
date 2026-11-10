@@ -228,7 +228,7 @@ export function SettingsView() {
     { id: 'integrations', label: 'Integrations', icon: Link2 },
     // Calendar management moved onto the Calendar page (Manage calendars button).
     { id: 'display', label: 'Appearance', icon: Palette },
-    { id: 'displays', label: 'Displays', icon: Monitor },
+    { id: 'displays', label: 'Screens', icon: Monitor },
     { id: 'photos', label: 'Photos', icon: ImageIcon },
     { id: 'bus', label: 'Bus Tracking', icon: Bus },
     { id: 'input', label: 'Input', icon: KeyboardIcon },
@@ -324,7 +324,7 @@ export function SettingsView() {
               </select>
             </div>
             {/* Sections use the whole width they are given. A 42rem cap cut
-                screen names in Settings > Displays down to one letter on a
+                screen names in Settings > Screens down to one letter on a
                 1080p screen, with half of it left empty beside them. On a wide
                 screen Appearance lays its cards out in columns of its own. */}
             <div>

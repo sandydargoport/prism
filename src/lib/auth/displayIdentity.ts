@@ -118,3 +118,20 @@ export function setDisplayCookies(store: CookieStore, displayId: string | null, 
 export function isOnline(lastSeenAt: Date | null, now = Date.now()): boolean {
   return lastSeenAt !== null && now - lastSeenAt.getTime() < DISPLAY_ONLINE_WINDOW_MS;
 }
+
+/**
+ * How long an edit from another device holds the "being edited" note without
+ * that device checking in (#1153). The editing page renews it every minute.
+ */
+export const DISPLAY_EDITING_WINDOW_MS = 150 * 1000;
+
+export function isBeingEdited(editingAt: Date | null, now = Date.now()): boolean {
+  return editingAt !== null && now - editingAt.getTime() < DISPLAY_EDITING_WINDOW_MS;
+}
+
+/** A reported screen side in CSS pixels, or null when it is not a sensible one. */
+export function cleanScreenSide(raw: unknown): number | null {
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) return null;
+  const px = Math.round(raw);
+  return px >= 200 && px <= 10000 ? px : null;
+}

@@ -1,5 +1,6 @@
 'use client';
 
+import { remoteEditHost } from '@/lib/displays/remoteEdit';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { DEFAULT_TEMPLATE } from '@/lib/constants/layoutTemplates';
 import {
@@ -109,7 +110,9 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
   // Switching dashboards from the editor opens the next one with ?edit=1, and
   // it opens in edit mode once its layout has loaded. Only for a parent, so a
   // link kept past a logout or session expiry does not re-engage edit mode.
-  const resumeEditing = useUrlParam(EDIT_PARAM) === '1';
+  // The frame of a phone editing a screen is always in edit mode (#1153), a
+  // reload included.
+  const resumeEditing = useUrlParam(EDIT_PARAM) === '1' || remoteEditHost() !== null;
   const resumeKey = resumeEditing && activeLayout && activeUser?.role === 'parent'
     ? activeLayout.id
     : null;

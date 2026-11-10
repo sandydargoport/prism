@@ -31,6 +31,7 @@ export function ScreenSchedulePanel({
   homeId,
   online,
   save,
+  savedText,
 }: {
   name: string;
   /** The stored value of the schedule setting. */
@@ -41,6 +42,8 @@ export function ScreenSchedulePanel({
   online: boolean;
   /** Stores the new value (null for no rules); false when that failed (the caller shows why). */
   save: (raw: string | null) => Promise<boolean>;
+  /** What to say once saved, in place of when the screen follows it. */
+  savedText?: string;
 }) {
   const [rules, setRules] = useState<ScheduleRule[]>(() => parseSchedule(stored));
   const [saving, setSaving] = useState(false);
@@ -152,7 +155,7 @@ export function ScreenSchedulePanel({
           {noDays
             ? 'Pick at least one day for each Interlude.'
             : saved
-              ? online ? `Saved. ${name} follows it within a minute.` : `Saved. ${name} follows it when it is next switched on.`
+              ? savedText ?? (online ? `Saved. ${name} follows it within a minute.` : `Saved. ${name} follows it when it is next switched on.`)
               : 'Times are in the household time zone.'}
         </span>
       </div>

@@ -20,6 +20,17 @@ import type { LayoutEditorProps } from './LayoutEditorTypes';
 import { copyLayoutToOther } from './copyLayout';
 import { idleSaveProblem } from './IdleBackgroundBar';
 import { toast } from '@/components/ui/use-toast';
+import { createPortal } from 'react-dom';
+import { remotePortalRoot } from '@/lib/displays/remoteEdit';
+
+/**
+ * Editing a screen from a phone (#1153), the bar and its dialogs are drawn on
+ * the phone's page at the phone's size, not shrunk with the picture.
+ */
+function onPhone(node: React.ReactElement): React.ReactElement {
+  const root = remotePortalRoot();
+  return root ? createPortal(node, root) : node;
+}
 
 export type { SavedLayout, DashboardInfo, LayoutEditorProps } from './LayoutEditorTypes';
 
@@ -183,7 +194,7 @@ export function LayoutEditor({
   };
 
   if (measureMode) {
-    return (
+    return onPhone(
       <LayoutEditorMeasureBar
         measureHideNav={measureHideNav}
         onToggleNav={toggleMeasureNav}
@@ -293,7 +304,7 @@ export function LayoutEditor({
     }
   })();
 
-  return (
+  return onPhone(
     <>
       <EditorBar
         ref={toolbarRef}

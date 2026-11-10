@@ -18,6 +18,12 @@ import type { DashboardInfo } from './LayoutEditorTypes';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import type { ScreenSafeZones } from '@/lib/hooks/useScreenSafeZones';
 import { cn } from '@/lib/utils';
+import { useStoredString, writeStored } from '@/lib/hooks/useStoredValue';
+import { changesFor, currentOption, SCREEN_SETTING_FIELDS, type ScreenSettingField } from '@/lib/displays/screenSettingFields';
+import { SCREEN_ATTENTION_KEY } from '@/lib/displays/screenAttention';
+import { loadBase } from '@/lib/displays/displaySettingsSync';
+import { remoteEditHost } from '@/lib/displays/remoteEdit';
+import { ScreenAttentionPanel } from '@/app/settings/sections/ScreenAttentionPanel';
 
 /** Today is the one built-in dashboard: it cannot be deleted, only edited and reset. */
 export function isBuiltIn(d: { view?: string | null } | undefined): boolean {
@@ -218,7 +224,57 @@ export function LookSheet({ orientation, onOrientationChange, onMeasure }: {
         <h3 className={section}>Check it</h3>
         <button type="button" className={action} onClick={onMeasure}>See it at a screen size</button>
       </section>
+      <section data-screen-options>
+        <h3 className={section}>This screen</h3>
+        <div className="flex flex-col gap-1">
+          {SCREEN_SETTING_FIELDS.filter((f) => f.group === 'Screen').map((f) => <ScreenOption key={f.key} field={f} />)}
+        </div>
+      </section>
     </div>
+  );
+}
+
+/**
+ * One of the screen's own options (#1153), kept as soon as it changes, as on
+ * the screen's own settings. From a phone it is the edited screen's, sent on
+ * Done.
+ */
+function ScreenOption({ field }: { field: ScreenSettingField }) {
+  const stored = useStoredString(field.key);
+  const value = currentOption(field, stored === null ? {} : { [field.key]: stored });
+  return (
+    <label className="flex min-h-[52px] items-center justify-between gap-3 text-body">
+      <span>{field.label}</span>
+      <select
+        aria-label={field.label}
+        className="min-h-[44px] rounded-lg border border-border bg-background px-2 text-body"
+        value={value}
+        onChange={(e) => {
+          for (const [key, raw] of Object.entries(changesFor(field, e.target.value))) writeStored(key, raw ?? null);
+        }}
+      >
+        {field.options.map((o) => <option key={o.raw} value={o.raw}>{o.label}</option>)}
+      </select>
+    </label>
+  );
+}
+
+/** The screen's notices (#1153): small cards at the side when something is close. Named screens only. */
+function NoticesSection() {
+  const stored = useStoredString(SCREEN_ATTENTION_KEY);
+  const [named] = useState(() => (typeof window === 'undefined' ? null : loadBase()));
+  if (!named) return null;
+  return (
+    <section data-notices-section>
+      <h3 className={section}>Notices</h3>
+      <ScreenAttentionPanel
+        name="This screen"
+        stored={stored ?? undefined}
+        online
+        savedText={remoteEditHost() ? 'Kept. The screen gets it when you press Done.' : 'Saved. This screen shows them from now on.'}
+        save={async (raw) => { writeStored(SCREEN_ATTENTION_KEY, raw); return true; }}
+      />
+    </section>
   );
 }
 
@@ -246,6 +302,7 @@ export function MoreSheet({
           {preview}
         </section>
       )}
+      <NoticesSection />
       <section>
         <h3 className={section}>Share and back up</h3>
         <div className="flex flex-wrap gap-2">
