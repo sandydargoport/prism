@@ -81,6 +81,15 @@ describe('useScreenSchedule', () => {
     expect(result.current.slug).toBeUndefined();
   });
 
+  it('an Interlude switches a screen on Today too, at its start (#1152)', () => {
+    const today = [layout(HOME, null, { view: 'today' } as Partial<Layout>), ...LAYOUTS.slice(1)];
+    jest.setSystemTime(at('06:59'));
+    const { result } = renderHook(() => useScreenSchedule({ routeSlug: undefined, layouts: today, loading: false, editing: { current: false } }));
+    expect(result.current.slug).toBeUndefined();
+    tick('07:00');
+    expect(result.current.slug).toBe('morning');
+  });
+
   it('the first open of a page load follows the schedule, whatever the address', () => {
     // A reload at an address an earlier change over left behind.
     const { result } = open('morning', '09:00');

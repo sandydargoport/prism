@@ -5,8 +5,7 @@ import { focalOf } from '@/lib/photos/focalPoint';
 import { CENTRED, photoFrame } from '@/lib/photos/frame';
 import { coveredRects } from '@/lib/photos/frameDom';
 import { PhotoStage } from '@/components/layout/PhotoStage';
-import * as SunCalc from 'suncalc';
-import { isTodayNight } from '@/lib/today/night';
+import { isNightAt, nightRule } from '@/lib/throughTheDay';
 import { usePhotoTone } from '@/components/layout/WallpaperBackground';
 import { waterVars } from '@/lib/design/water';
 import * as React from 'react';
@@ -95,6 +94,8 @@ export function Screensaver() {
   const source = useIdleSource(background, lat, lon, idle);
   const calm = source === 'dashboard';
   const showSky = source === 'sky';
+  // Under the sky or a black screen there are no photos to load.
+  const noPhotos = showSky || source === 'off';
   const isIdle = idle && !calm;
   useEffect(() => {
     setCalmIdle(idle && calm);
@@ -131,11 +132,11 @@ export function Screensaver() {
 
   // Only rotate if no pinned photo and interval is not "never" (0)
   useEffect(() => {
-    if (!isIdle || showSky || photos.length <= 1 || pinnedId || screensaverInterval === 0) return;
+    if (!isIdle || noPhotos || photos.length <= 1 || pinnedId || screensaverInterval === 0) return;
     // The photo stage crossfades to the next one (#954).
     const timer = setInterval(() => setCurrentIndex((i) => (i + 1) % photos.length), screensaverInterval * 1000);
     return () => clearInterval(timer);
-  }, [isIdle, showSky, photos.length, pinnedId, screensaverInterval]);
+  }, [isIdle, noPhotos, photos.length, pinnedId, screensaverInterval]);
 
   // Fade in a tick after it mounts; start over transparent each time it ends.
   useResetOn(isIdle, () => {
@@ -149,28 +150,42 @@ export function Screensaver() {
 
   // Use pinned photo if set, otherwise use rotating photos. None at all under
   // the sky, so it loads nothing for as long as it is up.
-  const src = showSky ? '' : pinnedId
+  const src = noPhotos ? '' : pinnedId
     ? `/api/photos/${pinnedId}/file`
     : photos[currentIndex]
       ? `/api/photos/${photos[currentIndex]!.id}/file`
       : '';
 
-  // Night ink from the place's sun, or 8 pm to 6 am without a place (#929).
+  // Night by the dashboard's one rule (#1152): the warm ink (#929) and the dim.
   const [nowTick, setNowTick] = useState(() => Date.now());
   useEffect(() => {
     const t = setInterval(() => setNowTick(Date.now()), 60_000);
     return () => clearInterval(t);
   }, []);
-  const sunTimes = lat !== undefined && lon !== undefined ? SunCalc.getTimes(new Date(nowTick), lat, lon) : null;
-  const night = isTodayNight(new Date(nowTick), sunTimes?.sunrise ?? undefined, sunTimes?.sunset ?? undefined);
+  useResetOn(idle, () => setNowTick(Date.now()));
+  const night = isNightAt(nightRule(background), new Date(nowTick), lat, lon);
   const tone = usePhotoTone(isIdle && src ? src : null);
   const shadeVars = waterVars(tone, 0.25);
 
   // Over both idle screens, so it is outside the overlay below and stays
   // mounted while a calm dashboard is idle. Same place in both returns, so it
   // keeps its state and eases out on waking.
-  const dim = <IdleDim idle={idle} />;
+  const dim = <IdleDim idle={idle} night={night} />;
   if (!isIdle) return <>{dim}{null}</>;
+
+  // Night look "off" (#1152): nothing but black until a touch.
+  if (source === 'off') {
+    return (
+      <>
+        {dim}
+        <div
+          className={`fixed inset-0 z-9999 bg-black transition-opacity duration-1000 ${visible ? 'opacity-100' : 'opacity-0'}`}
+          data-screensaver
+          data-screensaver-off
+        />
+      </>
+    );
+  }
 
 
   return (

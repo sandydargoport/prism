@@ -736,7 +736,7 @@ test.describe('calm mode idle screen', () => {
 
       // Photos behind it: the canvas becomes the screensaver layout. Then back
       // to this dashboard, which is what gets saved.
-      const behind = (name: string) => page.getByRole('radio', { name, exact: true });
+      const behind = (name: string) => page.getByRole('radiogroup', { name: 'While resting' }).getByRole('radio', { name, exact: true });
       await behind('Photos').click();
       await expect(page.locator('[data-idle-toggle]')).toHaveCount(0);
       await expect(page.locator('[data-editor-widget]').first()).toBeVisible();
@@ -767,10 +767,9 @@ test.describe('calm mode idle screen', () => {
 });
 
 /**
- * The Idle screen tab's Behind it (#782): a day and night pair previews each
- * half on the canvas, moves its edges by offsets, shows tonight's times, and
- * is saved with the rest; offsets that cross near midsummer far north are
- * refused.
+ * Through the day (#1152): resting by day and a night look after dark, night
+ * moved by offsets behind More, tonight's times shown, saved with Done;
+ * offsets that cross near midsummer far north are refused.
  */
 test.describe('idle background picker', () => {
   test.skip(!HAS_TEST_DB, 'needs the seeded test database to log in and create a dashboard');
@@ -793,29 +792,31 @@ test.describe('idle background picker', () => {
     await page.goto(`/d/${layout.slug}`);
     await openEditor(page);
     await openSheet(page, 'day');
-    await page.getByRole('radio', { name: 'Changes with the time of day' }).click();
     return layout as { id: string };
   }
 
-  test('a day and night pair: preview each half, move an edge, and Save', async ({ page }) => {
+  test('resting and night each show on the canvas, an edge moves, and Done saves', async ({ page }) => {
     const layout = await editIdle(page, { lat: 45, lon: -100 });
     try {
-      // By day it is this dashboard: Stays / Fades. After dark, the sky's layout.
+      const sheet = page.locator('[data-editor-sheet="day"]');
+      // Resting is this dashboard: Stays / Fades. A night sky after dark has its own layout.
+      await sheet.locator('[data-day-state="resting"]').click();
       await expect(page.locator('[data-idle-toggle]').first()).toBeVisible();
-      await page.getByRole('button', { name: 'Night', exact: true }).click();
+      await sheet.locator('[data-night-look="sky"]').click();
+      await expect(sheet.locator('[data-day-state="night"]')).toHaveAttribute('aria-checked', 'true');
       await expect(page.locator('[data-idle-toggle]')).toHaveCount(0);
-      await page.getByRole('button', { name: 'Day', exact: true }).click();
+      await sheet.locator('[data-day-state="resting"]').click();
       await expect(page.locator('[data-idle-toggle]').first()).toBeVisible();
 
-      await page.getByLabel('Starts: amount').fill('30');
+      await expect(sheet.locator('[data-night-start]')).toContainText(/\d/);
+      await expect(sheet.locator('[data-night-end]')).toContainText(/\d/);
+      await sheet.getByRole('button', { name: 'More' }).click();
       await page.getByLabel('Ends: unit').selectOption('hr');
       await page.getByLabel('Ends: amount').fill('1');
-      await expect(page.locator('[data-night-start]')).toContainText(/\d/);
-      await expect(page.locator('[data-night-end]')).toContainText(/\d/);
       await expect(page.locator('[data-idle-crossed]')).toHaveCount(0);
 
       await done(page).click();
-      await expect(page.locator('[data-idle-background-bar]')).toHaveCount(0);
+      await expect(page.locator('[data-editor-bar]')).toHaveCount(0);
       const saved = await (await page.request.get(`/api/layouts/${layout.id}`)).json();
       expect(saved.idleBackground).toEqual({
         day: 'dashboard', night: 'sky', switch: { by: 'sun', duskOffset: 30, dawnOffset: -60 },
@@ -828,6 +829,7 @@ test.describe('idle background picker', () => {
   test('offsets that cross near midsummer far north are refused', async ({ page }) => {
     const layout = await editIdle(page, { lat: 64, lon: -150 });
     try {
+      await page.locator('[data-editor-sheet="day"]').getByRole('button', { name: 'More' }).click();
       await page.getByLabel('Starts: unit').selectOption('hr');
       await page.getByLabel('Starts: amount').fill('6');
       await page.getByLabel('Ends: unit').selectOption('hr');
@@ -843,13 +845,13 @@ test.describe('idle background picker', () => {
 });
 
 /**
- * Dim when idle (#691): during the hours the calendar hides, the idle screen
- * darkens behind a black layer that never takes a tap, and a touch lifts it.
- * The hours come from Calendar Hours, shared by every screen, and are read on
- * the screen's own clock, so the browser is put in a zone west of UTC.
+ * Dim when idle (#691): at night the idle screen darkens behind a black layer
+ * that never takes a tap, and a touch lifts it. Night is the dashboard's own
+ * rule (#1152), read on the screen's own clock, so the browser is put in a
+ * zone west of UTC.
  */
 test.describe('dim when idle', () => {
-  test.skip(!HAS_TEST_DB, 'needs the seeded test database to change Calendar Hours');
+  test.skip(!HAS_TEST_DB, 'needs the seeded test database to create a dashboard');
   test.use({ viewport: { width: 1280, height: 720 }, timezoneId: 'America/Chicago' });
   test.setTimeout(90_000);
 
@@ -862,33 +864,35 @@ test.describe('dim when idle', () => {
     });
   }
 
-  /** Calendar Hours hides 11 pm to 7 am for the test, and is put back after it. */
-  async function withCalendarHours(page: Page, run: () => Promise<void>) {
+  /** A dashboard whose night runs 11 pm to 7 am, removed after the test. */
+  async function withNightDashboard(page: Page, run: (slug: string) => Promise<void>) {
     await verifySettingsPinViaAPI(page, (await getFirstParent(page)).name, PIN);
-    const before = (await (await page.request.get('/api/settings')).json()).settings?.calendarHiddenHours
-      ?? { mode: 'manual', startHour: 0, endHour: 6, bufferHours: 1, enabled: false };
-    const put = (value: unknown) =>
-      page.request.patch('/api/settings', { data: { key: 'calendarHiddenHours', value } });
-    // Not shown in the calendar (enabled: false): the dim follows the range anyway.
-    expect((await put({ mode: 'manual', startHour: 23, endHour: 7, bufferHours: 1, enabled: false })).ok()).toBe(true);
+    const created = await page.request.post('/api/layouts', {
+      data: {
+        name: `Dim e2e ${Date.now()}`,
+        widgets: [{ i: 'clock', x: 0, y: 0, w: 16, h: 12 }],
+        idleBackground: { day: 'photos', night: 'photos', switch: { by: 'clock', from: '23:00', to: '07:00' } },
+      },
+    });
+    expect(created.status()).toBe(201);
+    const layout = await created.json();
     try {
-      await run();
+      await run(layout.slug);
     } finally {
-      await put(before);
+      await page.request.delete(`/api/layouts/${layout.id}`);
     }
   }
 
-  test('darkens the idle screen during the calendar\'s hidden hours, and a touch lifts it', async ({ page }) => {
+  test('darkens the idle screen at night by the dashboard\'s rule, and a touch lifts it', async ({ page }) => {
     // 11:30 pm in Chicago, 04:30 UTC: inside 11 pm to 7 am only on the screen's clock.
     await page.clock.setFixedTime(new Date('2026-10-28T04:30:00Z'));
-    await withCalendarHours(page, async () => {
+    await withNightDashboard(page, async (slug) => {
       await page.goto('/settings?section=display');
-      const level = page.getByLabel('Dim when idle');
+      const level = page.getByLabel('Dim at night');
       await level.waitFor({ timeout: 60000 });
-      await expect(page.locator('[data-dim-hours]')).toContainText('from 11 pm to 7 am');
       await level.selectOption({ label: '50% darker' });
 
-      await page.goto('/');
+      await page.goto(`/d/${slug}`);
       await page.waitForLoadState('networkidle');
       expect(await dim(page), 'awake, nothing is dimmed').toEqual({ opacity: 0, takesTaps: false });
 
@@ -904,12 +908,12 @@ test.describe('dim when idle', () => {
     });
   });
 
-  test('leaves the idle screen alone outside those hours', async ({ page }) => {
+  test('leaves the idle screen alone by day', async ({ page }) => {
     await page.addInitScript(() => localStorage.setItem('prism-screensaver-dim', '0.5'));
-    // 6 pm in Chicago, which is 11 pm UTC: the hours must not be read in UTC.
+    // 6 pm in Chicago, which is 11 pm UTC: night must not be read in UTC.
     await page.clock.setFixedTime(new Date('2026-10-28T23:00:00Z'));
-    await withCalendarHours(page, async () => {
-      await page.goto('/');
+    await withNightDashboard(page, async (slug) => {
+      await page.goto(`/d/${slug}`);
       await page.waitForLoadState('networkidle');
       await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
       await page.waitForTimeout(5000);

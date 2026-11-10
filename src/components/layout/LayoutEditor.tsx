@@ -240,7 +240,12 @@ export function LayoutEditor({
             onIdleBackgroundChange={onIdleBackgroundChange}
             idleHalf={idleHalf}
             onIdleHalfChange={onIdleHalfChange}
+            editTab={editTab}
+            onEditTabChange={onEditTabChange}
             idleCheck={idleCheck}
+            allDashboards={allDashboards}
+            currentDashboardId={currentDashboardId}
+            onSwitchDashboard={onSwitchDashboard}
           />
         );
       case 'look':

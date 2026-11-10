@@ -429,7 +429,10 @@ test.describe('the Today view', () => {
     const at = (h: number, m = 0) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m);
     await page.clock.setFixedTime(at(19, 0));
     await login(page);
-    const layout = await (await page.request.post('/api/layouts', { data: { name: `Night e2e ${Date.now()}`, widgets: ARC_WIDGETS, view: 'today' } })).json();
+    // Night by this dashboard's own rule (#1152), so the test does not hang on
+    // where the sun sets at the season it runs in.
+    const idleBackground = { day: 'dashboard', night: 'dashboard', switch: { by: 'clock', from: '18:00', to: '06:00' } };
+    const layout = await (await page.request.post('/api/layouts', { data: { name: `Night e2e ${Date.now()}`, widgets: ARC_WIDGETS, view: 'today', idleBackground } })).json();
     try {
       const tomorrow = (h: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, h);
       await page.route('**/api/weather*', (route) => route.fulfill({ json: { ...WEATHER, sunrise: at(6, 30).toISOString(), sunset: at(16, 40).toISOString(), moonrise: at(17, 30).toISOString(), moonset: tomorrow(9).toISOString(), moonPhase: 0.3 } }));
@@ -640,6 +643,55 @@ test.describe('the Today view', () => {
     } finally {
       await deleteLayout(page, layout.id);
       for (const id of made) { await page.request.delete(`/api/events/${id}/hidden`); await page.request.delete(`/api/events/${id}`); }
+    }
+  });
+
+  // #1152: Through the day shows the screen in each state at once.
+  test('Through the day: tapping Night shows the night look on Today, and Active brings the day back', async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    const d = new Date();
+    await page.clock.setFixedTime(new Date(d.getFullYear(), d.getMonth(), d.getDate(), 10));
+    await login(page);
+    const layout = await (await page.request.post('/api/layouts', { data: { name: `Day e2e ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
+    try {
+      await page.route('**/api/weather*', (route) => route.fulfill({ json: WEATHER }));
+      await page.goto(`/d/${layout.slug}`);
+      const scene = page.locator('[data-today-scene]');
+      await expect(scene).toBeVisible({ timeout: 60_000 });
+      await expect(scene, '10 am is day').not.toHaveAttribute('data-today-night', 'true');
+      await page.locator('[data-dock-menu]').click();
+      await page.locator('[data-dock-more]').click();
+      await page.locator('[data-dock-more-panel] [data-screen-job="edit"]').click();
+      await page.locator('[data-editor-open="day"]').click();
+      const sheet = page.locator('[data-editor-sheet="day"]');
+      await expect(sheet).toBeVisible();
+
+      // Night: warm ink and the veil, at once.
+      await sheet.locator('[data-day-state="night"]').click();
+      await expect(scene).toHaveAttribute('data-today-night', 'true');
+      await expect(page.locator('[data-today-veil]')).toHaveCount(1);
+      // The ink eases to warm.
+      await expect.poll(() => page.locator('[data-today-clock]').evaluate((el) => getComputedStyle(el).color)).toBe('rgb(255, 226, 190)');
+
+      // Screen off: the preview goes black over the scene, under the bar.
+      await sheet.locator('[data-night-look="off"]').click();
+      const off = page.locator('[data-preview-night="off"]');
+      await expect(off).toHaveCount(1);
+      expect(await off.evaluate((el) => getComputedStyle(el).opacity)).toBe('1');
+      await expect(page.locator('[data-editor-bar] nav')).toBeVisible();
+
+      // Active: the day again.
+      await sheet.locator('[data-day-state="active"]').click();
+      await expect(scene).not.toHaveAttribute('data-today-night', 'true');
+      await expect(off).toHaveCount(0);
+
+      // Done keeps the night look with the dashboard.
+      await page.locator('[data-editor-done]').click();
+      await expect(page.locator('[data-editor-bar]')).toHaveCount(0);
+      const saved = await (await page.request.get(`/api/layouts/${layout.id}`)).json();
+      expect(saved.idleBackground).toEqual({ day: 'dashboard', night: 'off', switch: { by: 'sun', duskOffset: 30, dawnOffset: -30 } });
+    } finally {
+      await deleteLayout(page, layout.id);
     }
   });
 

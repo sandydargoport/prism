@@ -8,6 +8,7 @@
  */
 import { test, expect, type BrowserContext, type Page } from '@playwright/test';
 import { getFirstParent, verifySettingsPinViaAPI } from './helpers/auth';
+import { deleteLayout } from './helpers/cleanup';
 
 const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
 
@@ -272,15 +273,15 @@ test.describe('Time-of-day layouts', () => {
       await wall.getByLabel('Name for this screen').fill(PORCH);
       await wall.getByRole('button', { name: 'Name this display' }).click();
       const row = wall.getByTestId('display-row').filter({ hasText: PORCH });
-      await row.getByRole('button', { name: 'Schedule' }).click();
+      await row.getByRole('button', { name: 'Interludes' }).click();
       const panel = wall.getByTestId('screen-schedule');
-      await panel.getByRole('button', { name: 'Add a time' }).click();
+      await panel.getByRole('button', { name: 'Add an Interlude' }).click();
       await panel.getByLabel('Dashboard for time 1').selectOption({ label: MORNING });
       await panel.getByLabel('Start of time 1').fill(wallTime(start, zone));
       await panel.getByLabel('End of time 1').fill(wallTime(start + 3600_000, zone));
       const days = panel.getByRole('group', { name: 'Days for time 1' });
       for (const day of ['Sunday', 'Saturday']) await days.getByRole('button', { name: day }).click();
-      await panel.getByRole('button', { name: 'Save schedule' }).click();
+      await panel.getByRole('button', { name: 'Save Interludes' }).click();
       await expect(panel).toContainText(`Saved. ${PORCH} follows it within a minute.`);
       await expect.poll(() => readStorage(wall, 'prism-screen-schedule')).toContain(morning.id);
 
@@ -346,6 +347,19 @@ test.describe('Time-of-day layouts', () => {
       const opened = await wall.request.get('/', { maxRedirects: 0 });
       expect(opened.status()).toBe(307);
       expect(opened.headers().location).toBe(`/d/${morning.slug}`);
+
+      // On Today too (#1152): a screen whose own dashboard is Today still
+      // opens the Interlude in force.
+      const today = await (await wall.request.post('/api/layouts', { data: { name: `Today ${tag}`, widgets: home.widgets, view: 'today' } })).json();
+      try {
+        await wall.request.patch(`/api/displays/${porch.id}`, { data: { dashboardId: today.id } });
+        const onToday = await wall.request.get('/', { maxRedirects: 0 });
+        expect(onToday.status()).toBe(307);
+        expect(onToday.headers().location).toBe(`/d/${morning.slug}`);
+      } finally {
+        await wall.request.patch(`/api/displays/${porch.id}`, { data: { dashboardId: null } });
+        await deleteLayout(wall, today.id);
+      }
 
       await wall.request.delete(`/api/displays/${porch.id}`);
       await wall.request.delete(`/api/layouts/${morning.id}`);

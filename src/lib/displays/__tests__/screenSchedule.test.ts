@@ -131,7 +131,7 @@ describe('screenDashboardAt', () => {
     expect(screenDashboardAt(screen, at, CHICAGO)).toBe(MORNING);
   });
 
-  it('keeps a Simple screen on its premade page all day (#1117)', () => {
-    expect(screenDashboardAt(screen, at, CHICAGO, () => true, (id) => id === OWN)).toBe(OWN);
+  it('goes back to the screen\'s own dashboard when the rule ends', () => {
+    expect(screenDashboardAt(screen, Date.parse('2026-11-09T14:00:00Z'), CHICAGO)).toBe(OWN);
   });
 });

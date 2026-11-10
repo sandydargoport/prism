@@ -19,7 +19,6 @@ import { useTimeFormat } from '@/components/providers';
 import { formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
 import { splitDayHalf } from '@/components/widgets/ClockWidget';
 import { formatTemp, weatherSentence, type WeatherData } from '@/components/widgets/WeatherWidget';
-import { isTodayNight } from '@/lib/today/night';
 import { shownWhenIdle } from '@/components/screensaver/calmMode';
 import { TODAY_TEXT_SIZES, type TodayTextSize } from './TodayPartsPanel';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
@@ -69,6 +68,7 @@ export function TodayScene({
   kind = 'today',
   topOffset = 0,
   drift = false,
+  night = false,
 }: {
   parts: WidgetConfig[];
   weather: WeatherData | null;
@@ -100,6 +100,12 @@ export function TodayScene({
    * Next never sit on the same pixels for hours.
    */
   drift?: boolean;
+  /**
+   * Night by the dashboard's rule (#1152): warm ink, a veil over the photo
+   * and the moon (#926). The caller decides, so the veil, the dim and the
+   * night backdrop all go by the one rule.
+   */
+  night?: boolean;
 }) {
   const now = useMinute();
   const driftRef = useRef<HTMLDivElement>(null);
@@ -123,8 +129,6 @@ export function TodayScene({
       : current.description)
     : undefined;
   const high = weather?.forecast?.[0]?.high;
-  // After dusk: warm ink, a veil over the photo and the moon (#926).
-  const night = isTodayNight(now, weather?.sunrise, weather?.sunset);
   const fades = `transition-opacity duration-1000 motion-reduce:duration-0 ${idle ? 'opacity-0' : 'opacity-100'}`;
   // A part set to stay when idle (#927) keeps its place; the rest fade.
   // The arc is an option on the Today scene (#1030), off unless switched on.

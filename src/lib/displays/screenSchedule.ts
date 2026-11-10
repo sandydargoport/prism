@@ -1,8 +1,9 @@
 import { todayKey, wallTimeAt, weekdayOfKey } from '@/lib/utils/zonedDate';
 
 /**
- * Time-of-day rules for a named screen (#692): "weekdays 07:00-07:45, show
- * Morning". Outside every rule the screen shows its own dashboard.
+ * Time-of-day rules for a named screen (#692), called Interludes in the app
+ * (#1152): "weekdays 07:00-07:45, show Bus". Outside every rule the screen
+ * shows its own dashboard.
  *
  * Stored as one of the screen's settings (see SCREEN_SETTING_KEYS), so it is
  * kept on the screen's row, edited from any device and picked up by the screen
@@ -105,17 +106,14 @@ export function scheduledDashboard(
 /**
  * The dashboard a named screen should be showing at `now`: the scheduled one
  * while a rule is in force, otherwise its own (null is the household default).
- * A screen on Simple (#1117) shows its premade page all day: the schedule is
- * for Custom screens.
+ * Interludes work on every dashboard, Today included (#1152).
  */
 export function screenDashboardAt(
   screen: { dashboardId: string | null; settings: Record<string, string> },
   now: Date | number,
   timeZone: string,
   exists: (dashboardId: string) => boolean = () => true,
-  isSimple: (dashboardId: string | null) => boolean = () => false,
 ): string | null {
-  if (isSimple(screen.dashboardId)) return screen.dashboardId;
   const rules = parseSchedule(screen.settings[SCREEN_SCHEDULE_KEY]);
   return scheduledDashboard(rules, now, timeZone, exists).dashboardId ?? screen.dashboardId;
 }

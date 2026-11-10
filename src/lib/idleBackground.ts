@@ -12,9 +12,10 @@ import { z } from 'zod';
  *    stay showing (calm mode, #691).
  *  - photos: the screensaver layout over the photo slideshow.
  *  - sky: the screensaver layout over the night sky.
+ *  - off: nothing, a black screen (#1152), for a room that wants no light.
  */
 
-export const IDLE_SOURCES = ['dashboard', 'photos', 'sky'] as const;
+export const IDLE_SOURCES = ['dashboard', 'photos', 'sky', 'off'] as const;
 export type IdleSource = (typeof IDLE_SOURCES)[number];
 
 /** An offset can move an edge by up to half a day either way. */
@@ -74,9 +75,13 @@ export function usesSource(bg: IdleBackground, s: IdleSource): boolean {
   return idleSources(bg).includes(s);
 }
 
-/** Whether working out what shows needs the household location. */
+/**
+ * Whether working out what shows needs the household location. Night always
+ * has a rule (#1152), the default going by the sun, so only one set to clock
+ * times without the sky can do without.
+ */
 export function needsLocation(bg: IdleBackground): boolean {
-  return usesSource(bg, 'sky') || ('switch' in bg && bg.switch.by === 'sun');
+  return usesSource(bg, 'sky') || !('switch' in bg) || bg.switch.by === 'sun';
 }
 
 /**
