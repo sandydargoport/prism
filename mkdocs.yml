@@ -96,34 +96,31 @@ nav:
       - Updating: getting-started/updating.md
       - Using https at home: getting-started/https.md
   - User Guide:
-      - Overview: HELP.md
-      - Dashboard & Layouts: features/DASHBOARD.md
+      - Guide: HELP.md
+      - The wall screen: features/DASHBOARD.md
       - Calendar: features/CALENDAR.md
       - Shopping: features/SHOPPING.md
       - Recipes: features/RECIPES.md
-      - Tasks: features/TASKS.md
+      - To-dos: features/TASKS.md
       - Chores: features/CHORES.md
-      - Goals: features/GOALS.md
+      - Points and rewards: features/GOALS.md
       - Messages: features/MESSAGES.md
-      - Wishes & Gift Ideas: features/WISHES.md
+      - Wish lists: features/WISHES.md
       - Photos: features/PHOTOS.md
-      - Travel Map: features/TRAVEL.md
-      - Weekend Ideas: features/WEEKEND.md
-      - Bus Tracking: features/BUS.md
-      - Birthdays & Milestones: features/BIRTHDAYS.md
-      - Languages (i18n): features/LANGUAGES.md
-      - Display Modes: features/DISPLAY-MODES.md
-      - Themes & Looks: features/THEMES.md
-      - Mobile (PWA): features/MOBILE.md
-      - Global input: features/global-input-system.md
-      - Anonymous update check: features/TELEMETRY.md
+      - Travel map: features/TRAVEL.md
+      - Weekend ideas: features/WEEKEND.md
+      - School bus: features/BUS.md
+      - Birthdays: features/BIRTHDAYS.md
+      - Languages: features/LANGUAGES.md
+      - Idle, away and sitter screens: features/DISPLAY-MODES.md
+      - Looks and colours: features/THEMES.md
+      - On your phone: features/MOBILE.md
+      - Update check: features/TELEMETRY.md
   - Integrations:
       - Apple iCloud: features/ICLOUD.md
-      - Kroger / Mariano's: features/KROGER.md
+      - Grocery cart: features/KROGER.md
       - Home Assistant: home-assistant.md
-      - Voice API: voice-api.md
-  - Deployment:
-      - Public demo (self-hosting recipe): demo-deployment.md
+      - Voice and automation API: voice-api.md
   - Releases:
       - Changelog: CHANGELOG.md
 
@@ -146,3 +143,5 @@ not_in_nav: |
   /api-auth-levels.md
   /alternatives.md
   /features-index.md
+  /features/global-input-system.md
+  /demo-deployment.md

@@ -1,8 +1,10 @@
-# Tasks
+# To-dos
+
+Keep to-dos for each person, with due dates, and sync them with Microsoft To Do or Google Tasks.
 
 ![Tasks page with multiple lists](../demos/tasks.png){ .hero-image }
 
-To-do items with assignment, due dates, priorities, lists, and bidirectional sync to either Microsoft To Do or Google Tasks. Pick whichever your family already uses; same UI in Prism either way.
+Each to-do can have a person, a due date, a priority and a list. Use whichever sync service your family already has; Prism looks the same either way.
 
 ---
 
@@ -34,7 +36,7 @@ Create lists in *Settings → Integrations → (Google or Microsoft) card → Ne
 - **Name**
 - **Color**: colored dot in the picker + per-task tag.
 - **Sort order**: drag to reorder in the picker.
-- **External sync source**: optional Microsoft To Do or Google Tasks list to bidirectionally sync with.
+- **External sync source**: optional Microsoft To Do or Google Tasks list to sync with both ways.
 
 Delete a list and its tasks become unassigned (moved to the inbox); they're not deleted.
 
@@ -114,7 +116,7 @@ Pick one provider per Prism instance:
 1. *Settings → Integrations → Microsoft* card: connect your account.
 2. In the same card, for each Prism list pick an MS To Do list to sync it with.
 
-Bidirectional, newest-wins. Fields synced: title, notes (= description), completed, due date.
+Two-way, newest change wins. Fields synced: title, notes (= description), completed, due date.
 
 Steps (MS To Do's sub-items) are **not** imported — Prism has no subtask
 concept, so they are skipped rather than flattened. Attachments are not
@@ -125,7 +127,7 @@ imported either.
 1. *Settings → Integrations → Google* card: connect your account (same Google OAuth used for Calendar, Tasks scope added).
 2. In the same card, pick which Google Tasks list maps to which Prism list.
 
-Same shape as MS: bidirectional, newest-wins, title + notes + completed + due date.
+Same as Microsoft: two-way, newest change wins, title + notes + completed + due date.
 Subtasks and attachments are not imported.
 
 **No public web address?** Google's browser sign-in needs a redirect address

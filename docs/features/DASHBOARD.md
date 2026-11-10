@@ -1,8 +1,10 @@
-# Dashboard & Layouts
+# The wall screen
 
-The dashboard is the wall-display face of Prism: a full-screen board of live widgets (calendar, weather, clock, meals, tasks, chores, photos, and more) arranged however you like. You design it with a drag-and-resize layout editor, start from one of six built-in templates, borrow a design from the community gallery, and keep separate boards for separate rooms.
+Choose what the wall screen shows and where. Start from a premade layout, or arrange your own.
 
-Everything on this page is edited in **dashboard edit mode** (parent only). It is a desktop/large-screen tool: the editor is hidden on phones, which get a simplified single-column dashboard instead (see [Mobile (PWA)](MOBILE.md)).
+You can start from one of the built-in layouts, borrow one from the community gallery, or drag and resize widgets (calendar, weather, clock, meals, chores, photos and more) yourself. Each screen in the house can have its own layout.
+
+Layouts are edited in **edit mode**, by a parent, on a large screen. Phones do not show the editor; they get a simpler one-column view (see [On your phone](MOBILE.md)).
 
 ---
 

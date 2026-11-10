@@ -1,4 +1,4 @@
-# Anonymous update check
+# Update check
 
 Prism checks for updates once a week. In the same request it adds **one
 anonymous install** to a count the maintainer uses to understand how many people

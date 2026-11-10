@@ -1,8 +1,10 @@
-# Goals & Points
+# Points and rewards
+
+Kids earn points for chores and spend them on rewards they chose.
 
 ![Goals page with points waterfall](../demos/goals.png){ .hero-image }
 
-Kids earn points by completing chores. Parents set goals (toys, treats, privileges) with point costs. Earned points flow into goals in priority order via a "waterfall" allocation, and seasonal celebrations fire when a goal is achieved.
+A parent sets each reward (a toy, a treat, a privilege) and how many points it costs. Points fill the rewards in the order you choose, and the screen celebrates when one is reached.
 
 ---
 

@@ -1,4 +1,6 @@
-# Updating Prism
+# Updating
+
+Update Prism to the latest release. Your family's data is kept.
 
 ## From the latest stable release
 
