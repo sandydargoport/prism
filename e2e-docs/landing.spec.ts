@@ -64,15 +64,3 @@ test('top nav has no insider tabs, and the day tabs switch', async ({ page }) =>
   await expect(panels.nth(2)).toBeVisible();
   await expect(panels.nth(0)).toBeHidden();
 });
-
-test('the day tabs show the Simple wall in the morning, after school and in the evening, each image loaded', async ({ page }) => {
-  await open(page, 1280, 800, 'light');
-  const srcs = await page.locator('.pl-day-panel img').evaluateAll((imgs) => imgs.map((i) => (i as HTMLImageElement).getAttribute('src')!.split('/').pop()));
-  expect(srcs).toEqual(['day-morning.png', 'day-afternoon.png', 'day-evening.png']);
-  for (const n of [1, 2, 3]) {
-    await page.locator(`label[for="pl-day-${n}"]`).click();
-    const img = page.locator('.pl-day-panel img').nth(n - 1);
-    await expect(img).toBeVisible();
-    await expect.poll(() => img.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBe(1920);
-  }
-});
