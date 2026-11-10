@@ -40,6 +40,17 @@ async function openEditor(page: Page) {
   }
 }
 
+/** The editing bar's sheets (#1151). */
+async function openSheet(page: Page, id: 'dashboard' | 'widgets' | 'day' | 'look' | 'more') {
+  await page.locator(`[data-editor-open="${id}"]`).click();
+  await expect(page.locator(`[data-editor-sheet="${id}"]`)).toBeVisible();
+}
+async function closeSheet(page: Page) {
+  await page.locator('[data-editor-sheet] button[aria-label="Close"]').click();
+  await expect(page.locator('[data-editor-sheet]')).toHaveCount(0);
+}
+const done = (page: Page) => page.locator('[data-editor-done]');
+
 const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
 const PIN = process.env.E2E_PIN || '1234';
 
@@ -80,14 +91,18 @@ async function openScreensaverEditor(page: Page, orientation: 'landscape' | 'por
   }, LAYOUT);
   await page.goto('/');
   await openEditor(page);
-  // The seeded dashboard shows the screensaver over photos, so the Idle
-  // screen tab arranges its layout.
-  await page.getByRole('tab', { name: /Idle screen/ }).click();
+  // The seeded dashboard shows the screensaver over photos, so the resting
+  // screen (Through the day) arranges its layout; it stays after the sheet closes.
+  await openSheet(page, 'day');
+  await closeSheet(page);
+  await expect(page.locator('[data-editor-resting]')).toBeVisible();
   // The guide orientation is saved on the dashboard, so another test may have
   // left it either way.
-  const toggle = page.getByRole('button', { name: /Landscape|Portrait/ });
-  if (!(await toggle.textContent())?.toLowerCase().includes(orientation)) await toggle.click();
-  await expect(toggle).toContainText(orientation === 'landscape' ? 'Landscape' : 'Portrait');
+  await openSheet(page, 'look');
+  const shape = page.getByRole('radio', { name: orientation === 'landscape' ? 'Landscape' : 'Portrait' });
+  await shape.click();
+  await expect(shape).toHaveAttribute('aria-checked', 'true');
+  await closeSheet(page);
   await page.locator('[data-editor-widget="clock"]').waitFor();
   await page.waitForTimeout(800);
 }
@@ -690,11 +705,13 @@ test.describe('calm mode idle screen', () => {
       await page.goto(`/d/${layout.slug}`);
       await openEditor(page);
       const toggle = (i: string) => page.locator(`[data-editor-widget="${i}"] [data-idle-toggle]`);
-      const tab = (name: RegExp) => page.getByRole('tab', { name });
-      // The Dashboard tab arranges the dashboard; what stays when idle is the Idle screen tab's.
-      await expect(tab(/Dashboard/)).toHaveAttribute('aria-selected', 'true');
+      const resting = page.locator('[data-editor-resting]');
+      const dot = (id: string) => page.locator(`[data-editor-open="${id}"] [aria-label="unsaved changes"]`);
+      // In use, the dashboard is arranged; what stays while resting is Through the day's.
+      await expect(resting).toHaveCount(0);
       await expect(page.locator('[data-idle-toggle]')).toHaveCount(0);
-      await tab(/Idle screen/).click();
+      await openSheet(page, 'day');
+      await closeSheet(page);
       await expect(toggle('clock')).toHaveAttribute('aria-pressed', 'true');
       await expect(toggle('clock')).toContainText('Stays');
       await expect(toggle('tasks')).toHaveAttribute('aria-pressed', 'false');
@@ -706,15 +723,14 @@ test.describe('calm mode idle screen', () => {
       await expect(toggle('clock')).toHaveAttribute('aria-pressed', 'false');
       // The button changes only this; it does not select the widget to move it.
       await expect(page.getByText(/^Tap to (resize|deselect)$/)).toHaveCount(0);
-      // Only the Idle screen tab is marked as changed.
-      await expect(tab(/Idle screen/)).toHaveAttribute('data-dirty', 'true');
-      await expect(tab(/Dashboard/)).not.toHaveAttribute('data-dirty', 'true');
+      // Only Through the day is marked as changed.
+      await expect(dot('day')).toBeVisible();
+      await expect(dot('widgets')).toHaveCount(0);
 
-      // To the Dashboard tab and back: the unsaved ticks are still there.
-      await tab(/Dashboard/).click();
+      // Back to in use and to resting again: the unsaved ticks are still there.
+      await resting.getByRole('button', { name: 'Back to in use' }).click();
       await expect(page.locator('[data-idle-toggle]')).toHaveCount(0);
-      await tab(/Idle screen/).click();
-      await expect(toggle('tasks')).toHaveAttribute('aria-pressed', 'true');
+      await openSheet(page, 'day');
 
       // Photos behind it: the canvas becomes the screensaver layout. Then back
       // to this dashboard, which is what gets saved.
@@ -723,12 +739,13 @@ test.describe('calm mode idle screen', () => {
       await expect(page.locator('[data-idle-toggle]')).toHaveCount(0);
       await expect(page.locator('[data-editor-widget]').first()).toBeVisible();
       await behind('This dashboard').click();
+      await closeSheet(page);
       await expect(toggle('tasks')).toHaveAttribute('aria-pressed', 'true');
       // Nothing is stored before Save.
       const before = await (await page.request.get(`/api/layouts/${layout.id}`)).json();
       expect(before.widgets.map((w: { showWhenIdle?: boolean }) => w.showWhenIdle)).toEqual([undefined, undefined]);
 
-      await page.getByRole('button', { name: 'Save', exact: true }).click();
+      await done(page).click();
       await expect(page.locator('[data-idle-toggle]')).toHaveCount(0);
       const saved = await (await page.request.get(`/api/layouts/${layout.id}`)).json();
       const tick = Object.fromEntries(saved.widgets.map((w: { i: string; showWhenIdle?: boolean }) => [w.i, w.showWhenIdle]));
@@ -773,7 +790,7 @@ test.describe('idle background picker', () => {
     });
     await page.goto(`/d/${layout.slug}`);
     await openEditor(page);
-    await page.getByRole('tab', { name: /Idle screen/ }).click();
+    await openSheet(page, 'day');
     await page.getByRole('radio', { name: 'Changes with the time of day' }).click();
     return layout as { id: string };
   }
@@ -795,7 +812,7 @@ test.describe('idle background picker', () => {
       await expect(page.locator('[data-night-end]')).toContainText(/\d/);
       await expect(page.locator('[data-idle-crossed]')).toHaveCount(0);
 
-      await page.getByRole('button', { name: 'Save', exact: true }).click();
+      await done(page).click();
       await expect(page.locator('[data-idle-background-bar]')).toHaveCount(0);
       const saved = await (await page.request.get(`/api/layouts/${layout.id}`)).json();
       expect(saved.idleBackground).toEqual({
@@ -814,7 +831,7 @@ test.describe('idle background picker', () => {
       await page.getByLabel('Ends: unit').selectOption('hr');
       await page.getByLabel('Ends: amount').fill('6');
       await expect(page.locator('[data-idle-crossed]')).toContainText('night would end before it starts');
-      await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeDisabled();
+      await expect(done(page)).toBeDisabled();
       const stored = await (await page.request.get(`/api/layouts/${layout.id}`)).json();
       expect(stored.idleBackground).toEqual({ source: 'dashboard' });
     } finally {

@@ -1,6 +1,6 @@
 /**
  * Today as a list (#1030): what is next, what comes later today, and what is
- * already over. The Simple layout leads with this on the wall and the phone;
+ * already over. Today leads with this on the wall and the phone;
  * the arc is an option.
  */
 export interface AgendaEventLike {

@@ -81,11 +81,11 @@ async function writeFirstScreen(createdBy: string) {
 
   const [anyLayout] = await db.select({ id: layouts.id }).from(layouts).limit(1);
   if (!anyLayout) {
-    // A new install starts on Today, with the Calendar layout beside it (#808).
+    // A new install starts on Today, the built-in dashboard (#1151).
     for (const l of newLookLayouts()) {
       await db.insert(layouts).values({
         name: l.name,
-        slug: l.view === 'today' ? 'home' : 'calendar',
+        slug: 'home',
         isDefault: l.isDefault,
         orientation: 'landscape',
         widgets: l.widgets,

@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { getSeededParentId } from './helpers/auth';
 import { TODAY_TEMPLATE } from '../src/lib/constants/layoutTemplates';
+import { deleteLayout } from './helpers/cleanup';
 
 /** The Today parts with the arc switched on (#1030: it is an option, off by default). */
 const ARC_WIDGETS = TODAY_TEMPLATE.widgets.map((w) => (w.i === 'calendar' ? { ...w, settings: { ...(w.settings ?? {}), arc: true } } : w));
@@ -63,7 +64,7 @@ test.describe('the Today view', () => {
       const bad = await page.request.patch(`/api/layouts/${t.id}`, { data: { view: 'freeform' } });
       expect(bad.status()).toBe(400);
     } finally {
-      for (const id of made) await page.request.delete(`/api/layouts/${id}`);
+      for (const id of made) await deleteLayout(page, id);
     }
   });
 
@@ -106,7 +107,7 @@ test.describe('the Today view', () => {
         expect(m.clockFont, 'the clock in the display face').toMatch(/Literata/i);
         await expect(page.locator('[data-today-weather]')).toHaveText('Partly Cloudy, high 79°F');
       } finally {
-        await page.request.delete(`/api/layouts/${layout.id}`);
+        await deleteLayout(page, layout.id);
       }
     });
   }
@@ -149,7 +150,7 @@ test.describe('the Today view', () => {
         if (byStart[i]!.start > byStart[i - 1]!.start) expect(byStart[i]!.cx, 'later is further right').toBeGreaterThan(byStart[i - 1]!.cx);
       }
     } finally {
-      await page.request.delete(`/api/layouts/${layout.id}`);
+      await deleteLayout(page, layout.id);
       for (const id of made) await page.request.delete(`/api/events/${id}`);
     }
   });
@@ -206,7 +207,7 @@ test.describe('the Today view', () => {
       expect(m.counts, 'no "+N" count anywhere on the arc').toBe(0);
       expect(m.hits, 'every event is a bead that can be tapped').toBeGreaterThanOrEqual(m.ahead);
     } finally {
-      await page.request.delete(`/api/layouts/${layout.id}`);
+      await deleteLayout(page, layout.id);
       for (const id of made) await page.request.delete(`/api/events/${id}`);
     }
   });
@@ -260,7 +261,7 @@ test.describe('the Today view', () => {
       await page.locator('[data-calendar-add]').click({ timeout: 15_000 });
       await expect(page.getByRole('dialog').getByText(/New Event/i)).toBeVisible();
     } finally {
-      for (const id of made) await page.request.delete(`/api/layouts/${id}`);
+      for (const id of made) await deleteLayout(page, id);
       await page.request.delete(`/api/events/${event.id}`);
     }
   });
@@ -301,7 +302,7 @@ test.describe('the Today view', () => {
       expect(m.b.bottom).toBeLessThanOrEqual(m.scene.bottom);
       for (const s of m.sizes) expect(s).toBeGreaterThanOrEqual(m.floor - 0.01);
     } finally {
-      await page.request.delete(`/api/layouts/${layout.id}`);
+      await deleteLayout(page, layout.id);
       await page.request.delete(`/api/events/${event.id}`);
     }
   });
@@ -352,7 +353,7 @@ test.describe('the Today view', () => {
       await page.waitForTimeout(1500);
       await expect(page.locator('[data-today-nudge]')).toHaveCount(0);
     } finally {
-      await page.request.delete(`/api/layouts/${layout.id}`);
+      await deleteLayout(page, layout.id);
       await page.request.delete(`/api/birthdays/${birthday.id}`);
       if (taskId) await page.request.delete(`/api/tasks/${taskId}`);
     }
@@ -391,7 +392,7 @@ test.describe('the Today view', () => {
       await page.waitForTimeout(800);
       await expect(page.locator('[data-event-sheet]')).toHaveCount(0);
     } finally {
-      await page.request.delete(`/api/layouts/${layout.id}`);
+      await deleteLayout(page, layout.id);
       for (const id of made) await page.request.delete(`/api/events/${id}`);
     }
   });
@@ -418,7 +419,7 @@ test.describe('the Today view', () => {
       expect(Math.abs(b - a), 'moved in 3 s').toBeGreaterThan(0.05);
       expect(Math.abs(b), 'at most 4px').toBeLessThanOrEqual(4.01);
     } finally {
-      await page.request.delete(`/api/layouts/${layout.id}`);
+      await deleteLayout(page, layout.id);
     }
   });
 
@@ -472,7 +473,7 @@ test.describe('the Today view', () => {
         expect(overlap, '"Nothing else today" clear of the moon').toBe(false);
       }
     } finally {
-      await page.request.delete(`/api/layouts/${layout.id}`);
+      await deleteLayout(page, layout.id);
     }
   });
 
@@ -519,7 +520,7 @@ test.describe('the Today view', () => {
       expect(m.small, 'text under the floor').toBe(0);
       expect(m.sideways).toBe(false);
     } finally {
-      await page.request.delete(`/api/layouts/${layout.id}`);
+      await deleteLayout(page, layout.id);
       await page.request.delete(`/api/events/${event.id}`);
     }
   });
@@ -591,7 +592,7 @@ test.describe('the Today view', () => {
       await expect(page.locator('[data-today-arc]')).toHaveCount(1, { timeout: 60_000 });
       await expect(page.locator('[data-today-list="wall"]')).toHaveCount(0);
     } finally {
-      await page.request.delete(`/api/layouts/${layout.id}`);
+      await deleteLayout(page, layout.id);
       for (const id of made) await page.request.delete(`/api/events/${id}`);
     }
   });
@@ -637,30 +638,93 @@ test.describe('the Today view', () => {
         return made.every((id) => hidden.includes(id));
       }, { timeout: 15_000, message: 'both copies hidden' }).toBe(true);
     } finally {
-      await page.request.delete(`/api/layouts/${layout.id}`);
+      await deleteLayout(page, layout.id);
       for (const id of made) { await page.request.delete(`/api/events/${id}/hidden`); await page.request.delete(`/api/events/${id}`); }
     }
   });
 
-  // #1117: Simple is premade. Today offers no Edit layout, and an edit link
-  // (the editor's own ?edit=1) opens it as it is.
-  test('Today cannot be edited, even from an edit link', async ({ page }) => {
+  // #1151: Today, the built-in dashboard, is edited from the bar at the foot
+  // of the screen, where editing starts; nothing is drawn at the top.
+  test('Today is edited from the bottom bar: widgets show and hide live, and it cannot be deleted', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await login(page);
-    const layout = await (await page.request.post('/api/layouts', { data: { name: `Premade e2e ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
+    const layout = await (await page.request.post('/api/layouts', { data: { name: `Built in e2e ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
     try {
       await page.route('**/api/weather*', (route) => route.fulfill({ json: WEATHER }));
-      await page.goto(`/d/${layout.slug}?edit=1`);
+      await page.goto(`/d/${layout.slug}`);
       await expect(page.locator('[data-today-scene]')).toBeVisible({ timeout: 60_000 });
-      await page.waitForTimeout(1500);
-      await expect(page.locator('[data-today-scene]'), 'still the scene, not an editor').toBeVisible();
-      await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0);
       await page.locator('[data-dock-menu]').click();
       await page.locator('[data-dock-more]').click();
-      await expect(page.locator('[data-dock-more-panel] [data-screen-job="reload"]')).toBeVisible();
-      await expect(page.locator('[data-dock-more-panel] [data-screen-job="edit"]')).toHaveCount(0);
+      await page.locator('[data-dock-more-panel] [data-screen-job="edit"]').click();
+
+      // The bar takes the dock's place at the foot, and no control is in the top half.
+      const bar = page.locator('[data-editor-bar] nav');
+      await expect(bar).toBeVisible({ timeout: 60_000 });
+      const geometry = await page.evaluate(() => {
+        const vh = window.innerHeight;
+        const nav = document.querySelector('[data-editor-bar] nav')!.getBoundingClientRect();
+        const topControls = [...document.querySelectorAll('button, [role="tab"]')]
+          .filter((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.bottom < vh / 2; })
+          .filter((el) => !el.closest('[data-today-scene]'))
+          .map((el) => el.textContent?.trim() || el.getAttribute('aria-label'));
+        return { navTop: nav.top, navBottom: nav.bottom, vh, topControls };
+      });
+      expect(geometry.navTop, 'the bar sits at the foot').toBeGreaterThan(geometry.vh * 0.85);
+      expect(geometry.navBottom).toBeLessThanOrEqual(geometry.vh);
+      expect(geometry.topControls, 'no editing control at the top').toEqual([]);
+      await expect(page.locator('[data-today-scene]'), 'Today stays the scene while editing').toBeVisible();
+
+      // Widgets: hiding the weather takes it off the scene at once.
+      await expect(page.locator('[data-today-corner="right"]')).toBeVisible();
+      await page.locator('[data-editor-open="widgets"]').click();
+      await page.locator('[data-part-show="weather"]').click();
+      await expect(page.locator('[data-today-corner="right"]')).toHaveCount(0);
+
+      // Dashboard: Today is marked built in, and Delete is off, in the bar and on the server.
+      await page.locator('[data-editor-open="dashboard"]').click();
+      const row = page.locator(`[data-dashboard-row="${layout.id}"]`);
+      await expect(row.locator('[data-built-in-mark]')).toBeVisible();
+      await expect(page.locator('[data-dashboard-delete]')).toBeDisabled();
+      await expect(page.locator('[data-built-in-note]')).toBeVisible();
+      expect((await page.request.delete(`/api/layouts/${layout.id}`)).status(), "the server refuses too").toBe(409);
+
+      // Done saves: the weather stays hidden after a reload.
+      await page.locator('[data-editor-done]').click();
+      await expect(page.locator('[data-editor-bar]')).toHaveCount(0);
+      const saved = await (await page.request.get(`/api/layouts/${layout.id}`)).json();
+      expect(saved.widgets.find((w: { i: string }) => w.i === 'weather')?.visible).toBe(false);
     } finally {
-      await page.request.delete(`/api/layouts/${layout.id}`);
+      await deleteLayout(page, layout.id);
+    }
+  });
+
+  // #1151: a fresh install has only Today; the Dashboard sheet makes one of its own.
+  test('the Dashboard sheet makes a new dashboard of your own', async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await login(page);
+    const layout = await (await page.request.post('/api/layouts', { data: { name: `From Today e2e ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
+    const name = `Own board e2e ${Date.now()}`;
+    try {
+      await page.route('**/api/weather*', (route) => route.fulfill({ json: WEATHER }));
+      await page.goto(`/d/${layout.slug}`);
+      await expect(page.locator('[data-today-scene]')).toBeVisible({ timeout: 60_000 });
+      await page.locator('[data-dock-menu]').click();
+      await page.locator('[data-dock-more]').click();
+      await page.locator('[data-dock-more-panel] [data-screen-job="edit"]').click();
+      await page.locator('[data-editor-open="dashboard"]').click({ timeout: 60_000 });
+      await page.locator('[data-dashboard-new]').click();
+      await page.getByPlaceholder('e.g. Kitchen Display').fill(name);
+      await page.getByRole('button', { name: 'Create' }).click();
+      await expect.poll(async () => {
+        const all = (await (await page.request.get('/api/layouts')).json()).layouts as Array<{ name: string; view?: string }>;
+        return all.find((l) => l.name === name)?.view ?? 'missing';
+      }, { timeout: 15_000 }).not.toBe('missing');
+      const all = (await (await page.request.get('/api/layouts')).json()).layouts as Array<{ id: string; name: string; view?: string | null }>;
+      const made = all.find((l) => l.name === name)!;
+      expect(made.view === 'today', 'a new dashboard is the family\'s own, not built in').toBe(false);
+      await deleteLayout(page, made.id);
+    } finally {
+      await deleteLayout(page, layout.id);
     }
   });
 
@@ -704,7 +768,7 @@ test.describe('the Today view', () => {
         await expect(page.locator('[data-calendar-board]')).toHaveAttribute('data-board-mode', 'month');
         await expect(page.locator('[data-board-month] [data-board-today]')).toHaveCount(1);
       } finally {
-        await page.request.delete(`/api/layouts/${layout.id}`);
+        await deleteLayout(page, layout.id);
         await page.request.delete(`/api/events/${event.id}`);
       }
     });
@@ -747,7 +811,7 @@ test.describe('the Today view', () => {
       expect(m.shown).toBeLessThan(16);
       expect(m.inside, 'every line shown sits fully inside its day').toBe(true);
     } finally {
-      await page.request.delete(`/api/layouts/${layout.id}`);
+      await deleteLayout(page, layout.id);
       for (const id of made) await page.request.delete(`/api/events/${id}`);
     }
   });

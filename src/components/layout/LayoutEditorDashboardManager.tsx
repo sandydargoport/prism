@@ -1,47 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { PopoverButton } from './LayoutEditorPopover';
-import { CheckIcon } from './LayoutEditorIcons';
 import type { DashboardInfo } from './LayoutEditorTypes';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { editLink } from '@/components/dashboard/useDashboardLayout';
-
-const moreItemClass = 'w-full text-left px-3 py-1.5 text-sm hover:bg-accent transition-colors';
-
-export function DashboardDropdown({ layoutName, isActive, onToggle, allDashboards, currentDashboardId, onSwitchDashboard, onClose, onCreateOpen }: {
-  layoutName?: string; isActive: boolean; onToggle: () => void;
-  allDashboards: DashboardInfo[]; currentDashboardId?: string;
-  onSwitchDashboard?: (slug: string) => void; onClose: () => void; onCreateOpen: () => void;
-}) {
-  return (
-    <PopoverButton
-      label={<span className="font-medium">{layoutName || 'Untitled'}</span>}
-      isActive={isActive}
-      onToggle={onToggle}
-      width={220}
-    >
-      <div className="py-1 max-h-[40vh] overflow-auto">
-        {allDashboards.map(d => (
-          <button key={d.id} onClick={() => {
-            if (d.id !== currentDashboardId && d.slug) {
-              onSwitchDashboard?.(d.slug);
-            } else if (d.id !== currentDashboardId && d.isDefault) {
-              window.location.href = editLink('/');
-            }
-            onClose();
-          }} className={`w-full text-left px-3 py-1.5 text-sm hover:bg-accent transition-colors flex items-center gap-2 ${d.id === currentDashboardId ? 'bg-accent/50' : ''}`}>
-            <span className="flex-1 truncate">{d.name}</span>
-            {d.id === currentDashboardId && <CheckIcon />}
-            {d.isDefault && d.id !== currentDashboardId && <span className="text-3xs text-muted-foreground">default</span>}
-          </button>
-        ))}
-        <div className="border-t border-border my-1" />
-        <button onClick={onCreateOpen} className={`${moreItemClass} text-primary`}>+ New Dashboard...</button>
-      </div>
-    </PopoverButton>
-  );
-}
 
 /**
  * Save-As picker. Lets the user save the current edit session either as a
@@ -203,35 +164,24 @@ export function CreateDashboardDialog({
         </div>
         <div>
           <label className="text-xs text-muted-foreground block mb-1">Start from</label>
-          {/* Grouped by kind (#991): Simple layouts, then Custom grids. */}
-          <div className="flex flex-col gap-1.5" data-start-from>
+          {/* Today is the one built-in dashboard (#1151): a new one is the family's own grid. */}
+          <div className="flex flex-wrap items-center gap-2" data-start-from>
             {([
-              { kind: 'Simple', opts: [
-                { value: 'today' as const, label: 'Today' },
-                { value: 'calendar' as const, label: 'Calendar' },
-              ] },
-              { kind: 'Custom', opts: [
-                { value: 'template' as const, label: 'Default Template' },
-                { value: 'copy' as const, label: 'Copy Current' },
-                { value: 'blank' as const, label: 'Blank' },
-              ] },
-            ]).map(group => (
-              <div key={group.kind} className="flex flex-wrap items-center gap-2" data-start-from-kind={group.kind.toLowerCase()}>
-                <span className="w-14 shrink-0 text-xs font-medium">{group.kind}</span>
-                {group.opts.map(opt => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setCreateForm(f => ({ ...f, startFrom: opt.value }))}
-                    className={`px-2 py-1 text-xs rounded-md border transition-colors ${
-                      createForm.startFrom === opt.value
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-muted border-border hover:bg-accent'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
+              { value: 'template' as const, label: 'Default Template' },
+              { value: 'copy' as const, label: 'Copy Current' },
+              { value: 'blank' as const, label: 'Blank' },
+            ]).map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => setCreateForm(f => ({ ...f, startFrom: opt.value }))}
+                className={`px-2 py-1 text-xs rounded-md border transition-colors ${
+                  createForm.startFrom === opt.value
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-muted border-border hover:bg-accent'
+                }`}
+              >
+                {opt.label}
+              </button>
             ))}
           </div>
         </div>

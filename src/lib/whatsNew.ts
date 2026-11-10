@@ -10,9 +10,9 @@ export const WHATS_NEW = {
     { what: 'Chores', where: "open on what's due. The switches, points, categories and History are under Manage." },
     { what: 'Shopping', where: 'is one calm list. Tap an item for Edit and Delete; ticked items fold into Checked off.' },
     { what: 'Calendar', where: 'is calmer. Manage calendars is in the View menu.' },
-    { what: 'The front page', where: 'can be Simple (today at a glance) or Custom (your grid of widgets): Settings, Appearance, Front page. Your layouts are unchanged.' },
+    { what: 'Editing a dashboard', where: 'happens in the bar at the bottom: More, then Edit layout. Today, the built-in dashboard, can be edited too. Your dashboards are unchanged.' },
     { what: 'On a phone,', where: 'the round button at the bottom right adds on each page; on the dashboard it holds the dashboard options.' },
-    { what: 'In the editor,', where: 'Delete removes the selected widget, and the arrow keys move it, or resize it in resize mode.' },
+    { what: 'In the editor,', where: 'the Delete key removes the selected widget, and the arrow keys move it, or resize it in resize mode.' },
   ],
 } as const;
 

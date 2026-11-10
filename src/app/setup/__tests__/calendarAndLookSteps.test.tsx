@@ -72,14 +72,14 @@ describe('LookStep', () => {
   });
 });
 
-// #930: the last step shows the two front pages a first run sets up.
+// #930, #1151: the last step shows Today, the one dashboard a first run sets up.
 describe('CompleteStep', () => {
-  it('a first run shows Today and Calendar, and starts on Today', () => {
+  it('a first run shows Today only, and starts on it', () => {
     render(<CompleteStep firstRun />);
     const pages = document.querySelectorAll('[data-setup-front-page]');
-    expect([...pages].map((p) => p.getAttribute('data-setup-front-page'))).toEqual(['today', 'calendar']);
+    expect([...pages].map((p) => p.getAttribute('data-setup-front-page'))).toEqual(['today']);
     expect(screen.getByText('Today')).toBeTruthy();
-    expect(screen.getByText('Calendar')).toBeTruthy();
+    expect(screen.queryByText('Calendar')).toBeNull();
     expect(screen.getByRole('button', { name: 'Start on Today' })).toBeTruthy();
   });
 

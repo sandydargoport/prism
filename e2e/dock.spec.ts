@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { getSeededParentId } from './helpers/auth';
 import { TODAY_TEMPLATE } from '../src/lib/constants/layoutTemplates';
+import { deleteLayout } from './helpers/cleanup';
 
 /**
  * The dock on the wall (#922): a Menu word at rest, a labelled one-row dock on
@@ -99,7 +100,7 @@ test.describe('the dock on the wall', () => {
         await page.mouse.click(viewport.width / 2, viewport.height / 2);
         await expect(page.locator('[data-dock]')).not.toHaveAttribute('aria-hidden', 'true');
       } finally {
-        await page.request.delete(`/api/layouts/${layout.id}`);
+        await deleteLayout(page, layout.id);
       }
     });
   }
@@ -119,8 +120,8 @@ test.describe('the dock on the wall', () => {
       expect(onDock.filter((h) => inMore.includes(h)), 'no page in both').toEqual([]);
       await expect(panel.locator('[data-screen-job="reload"]')).toBeVisible();
       await expect(panel.locator('[data-screen-job="screensaver"]')).toBeVisible();
-      // #1117: Simple is premade, so Today has no Edit layout.
-      await expect(panel.locator('[data-screen-job="edit"]')).toHaveCount(0);
+      // #1151: Today is the built-in dashboard, and it is edited like any other.
+      await expect(panel.locator('[data-screen-job="edit"]')).toBeVisible();
       // #1006: every job is named, the same way, in the same pill.
       await expect(panel.locator('[data-screen-job="away"]')).toBeVisible();
       await expect(panel.locator('[data-screen-job="babysitter"]')).toBeVisible();
@@ -157,7 +158,7 @@ test.describe('the dock on the wall', () => {
       expect(new Set(stacked.map((j) => j.size)).size, `one icon size: ${JSON.stringify(stacked)}`).toBe(1);
       expect(new Set(stacked.map((j) => j.top)).size, `icons on one line: ${JSON.stringify(stacked)}`).toBe(1);
     } finally {
-      await page.request.delete(`/api/layouts/${layout.id}`);
+      await deleteLayout(page, layout.id);
     }
   });
 

@@ -79,3 +79,13 @@ export async function deleteShoppingItem(page: Page, id: string): Promise<boolea
   const delRes = await page.request.delete(`/api/shopping-items/${id}`);
   return delRes.ok();
 }
+
+/**
+ * Remove a dashboard a test made. Today is built in and the API refuses to
+ * delete it (#1151), so a test's own Today is turned back into a plain
+ * dashboard first.
+ */
+export async function deleteLayout(page: Page, id: string): Promise<void> {
+  await page.request.patch(`/api/layouts/${id}`, { data: { view: 'grid' } });
+  await page.request.delete(`/api/layouts/${id}`);
+}

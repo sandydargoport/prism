@@ -9,10 +9,10 @@ import { PartyPopper, Settings, ShieldCheck } from 'lucide-react';
 import { SCENERY } from '@/lib/scenery';
 
 /**
- * The two front pages a first run sets up (#808), drawn small (#930): Today,
- * where the wall starts, and Calendar, the week as a board.
+ * Today, the built-in dashboard a first run starts on (#1151), drawn small
+ * (#930).
  */
-function FrontPagePreview({ kind }: { kind: 'today' | 'calendar' }) {
+function FrontPagePreview({ kind }: { kind: 'today' }) {
   return (
     <div
       aria-hidden
@@ -25,7 +25,7 @@ function FrontPagePreview({ kind }: { kind: 'today' | 'calendar' }) {
         <div className={kind === 'today' ? 'h-[14px] w-full rounded-sm bg-white/90' : 'h-[9px] w-[70%] rounded-sm bg-white/90'} />
       </div>
       <div className="absolute right-[7%] top-[9%] h-[9px] w-[16%] rounded-sm bg-white/80" />
-      {kind === 'today' ? (
+
         <>
           <svg className="absolute left-[7%] top-[40%] h-[28%] w-[86%]" viewBox="0 0 100 30" preserveAspectRatio="none">
             <path d="M0 28 Q50 -10 100 28" fill="none" stroke="white" strokeOpacity="0.85" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
@@ -35,15 +35,7 @@ function FrontPagePreview({ kind }: { kind: 'today' | 'calendar' }) {
             {[90, 70].map((w) => <div key={w} className="h-[3px] rounded-full bg-white/80" style={{ width: `${w}%` }} />)}
           </div>
         </>
-      ) : (
-        <div className="absolute bottom-[10%] left-[7%] right-[7%] top-[34%] grid grid-cols-5 gap-[3%]">
-          {[3, 2, 4, 1, 2].map((n, i) => (
-            <div key={i} className="space-y-[12%] border-t border-white/60 pt-[10%]">
-              {Array.from({ length: n }, (_, j) => <div key={j} className="h-[4px] rounded-full bg-white/80" />)}
-            </div>
-          ))}
-        </div>
-      )}
+
     </div>
   );
 }
@@ -129,14 +121,14 @@ export function CompleteStep({ firstRun = true }: { firstRun?: boolean }) {
           <h1 className="text-2xl">You&apos;re all set</h1>
           <p className="text-muted-foreground">
             {firstRun
-              ? 'Prism sets up two front pages. The wall starts on Today; Calendar is one tap away on the dock.'
+              ? 'The wall starts on Today. To change what it shows, or to arrange a dashboard of your own, choose More, then Edit layout.'
               : 'Head to your dashboard, or visit Settings to connect accounts, add family members, or fine-tune your display.'}
           </p>
         </div>
 
         {firstRun && (
-          <div className="grid grid-cols-2 gap-4 text-left" data-setup-front-pages>
-            {([['today', 'Today', 'The day at a glance'], ['calendar', 'Calendar', 'The week as a board']] as const).map(([kind, name, body]) => (
+          <div className="mx-auto grid max-w-xs gap-4 text-left" data-setup-front-pages>
+            {([['today', 'Today', 'The day at a glance']] as const).map(([kind, name, body]) => (
               <figure key={kind} className="m-0 space-y-2" data-setup-front-page={kind}>
                 <FrontPagePreview kind={kind} />
                 <figcaption>

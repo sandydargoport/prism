@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { getSeededParentId } from './helpers/auth';
 import { TODAY_TEMPLATE } from '../src/lib/constants/layoutTemplates';
+import { deleteLayout } from './helpers/cleanup';
 
 /**
  * Touch targets on the wall (#837): on a touch screen at 1080p, every button
@@ -38,7 +39,7 @@ test('every control on the wall is a 44px target on a touch screen', async ({ pl
       expect(await undersized(page), `on ${url}`).toEqual([]);
     }
   } finally {
-    await page.request.delete(`/api/layouts/${layout.id}`);
+    await deleteLayout(page, layout.id);
     await browser.close();
   }
 });
