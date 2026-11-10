@@ -177,7 +177,7 @@ async function stageLook(browser: Browser, stage: Stage): Promise<() => Promise<
   await loginAsAlex(page);
   const listed = await page.request.get('/api/layouts');
   const json = await listed.json().catch(() => ({}));
-  type Listed = { id: string; name?: string; isDefault?: boolean; widgets: unknown; idleBackground?: unknown };
+  type Listed = { id: string; name?: string; isDefault?: boolean; widgets: unknown; idleBackground?: unknown; view?: string | null };
   const all: Listed[] = json.layouts ?? [];
   const layout = all.find((l) => l.isDefault);
   if (!layout) {
@@ -195,7 +195,7 @@ async function stageLook(browser: Browser, stage: Stage): Promise<() => Promise<
     page.request.patch('/api/settings', { data: { key, value } });
 
   const original = {
-    widgets: layout.widgets, idleBackground: layout.idleBackground,
+    widgets: layout.widgets, idleBackground: layout.idleBackground, view: layout.view,
     theme: settings.theme, scenery: settings.wallpaperScenery,
   };
   const widgets = STAGE_LAYOUTS[stage.layout].map((w) =>
@@ -203,7 +203,9 @@ async function stageLook(browser: Browser, stage: Stage): Promise<() => Promise<
   );
   for (const resp of [
     await page.request.patch(`/api/layouts/${layout.id}`, {
-      data: { widgets, idleBackground: { source: 'dashboard' } },
+      // Simple is the default page drawn as one scene (view 'today'); the
+      // other staged dashboards are grids.
+      data: { widgets, idleBackground: { source: 'dashboard' }, view: stage.layout === 'simple' ? 'today' : 'grid' },
     }),
     await setSetting('theme', { ...(original.theme as object | undefined), paletteId: look.paletteId }),
     await setSetting('wallpaperScenery', look.scenery),
@@ -216,7 +218,7 @@ async function stageLook(browser: Browser, stage: Stage): Promise<() => Promise<
     // to start from whatever this one left behind.
     const answers = [
       await page.request.patch(`/api/layouts/${layout.id}`, {
-        data: { widgets: original.widgets, idleBackground: original.idleBackground ?? { source: 'photos' } },
+        data: { widgets: original.widgets, idleBackground: original.idleBackground ?? { source: 'photos' }, view: original.view ?? 'grid' },
       }),
       await setSetting('theme', original.theme ?? { mode: 'system' }),
       await setSetting('wallpaperScenery', original.scenery ?? false),
@@ -305,13 +307,16 @@ async function captureOnce(spec: CaptureSpec): Promise<void> {
     });
   }
   if (FIXED_NOW) {
-    await page.clock.setFixedTime(new Date(FIXED_NOW));
+    // A shot of the same day's morning or evening moves the page's clock only;
+    // the seed and the server stay on the fixed moment, so "today" agrees.
+    const at = new Date(Date.parse(FIXED_NOW) + (spec.shiftMinutes ?? 0) * 60_000).toISOString();
+    await page.clock.setFixedTime(new Date(at));
     // The forecast is live; draw the fixed moment's weather instead, or a June
     // afternoon shows November's hours, sunrise and sunset.
     await context.route('**/api/weather**', async (route) => {
       const response = await route.fetch();
       if (!response.ok()) return route.fulfill({ response });
-      await route.fulfill({ response, json: freezeWeather(await response.json(), FIXED_NOW) });
+      await route.fulfill({ response, json: freezeWeather(await response.json(), at) });
     });
   }
 

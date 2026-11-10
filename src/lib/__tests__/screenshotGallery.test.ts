@@ -97,3 +97,30 @@ describe('the gallery page', () => {
     expect(shown.filter((n) => !allowed.has(n))).toEqual([]);
   });
 });
+
+describe('the hero and the day shots show Simple (#1123)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { HERO_SHOTS, DAY_SHOTS, SIMPLE_LAYOUT } = require('../../../scripts/screenshot-specs');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { TODAY_TEMPLATE } = require('../constants/layoutTemplates');
+  type Spec = { name: string; stage?: { layout: string }; shiftMinutes?: number; device?: string; signedOut?: boolean };
+
+  it('stages the hero on the Simple front page', () => {
+    for (const s of HERO_SHOTS as Spec[]) expect([s.name, s.stage?.layout]).toEqual([s.name, 'simple']);
+  });
+
+  it('places Simple the way the premade Today page does', () => {
+    expect(SIMPLE_LAYOUT.map((w: { i: string }) => w.i)).toEqual(TODAY_TEMPLATE.widgets.map((w: { i: string }) => w.i));
+  });
+
+  it('shoots the morning, after school and the evening of one day, on a signed-out Simple wall', () => {
+    const day = DAY_SHOTS as Spec[];
+    expect(day.map((s) => s.name)).toEqual(['day-morning', 'day-afternoon', 'day-evening']);
+    for (const s of day) expect([s.name, s.stage?.layout, s.device, s.signedOut]).toEqual([s.name, 'simple', 'wall', true]);
+    const shifts = day.map((s) => s.shiftMinutes!);
+    expect([...shifts].sort((a, b) => a - b)).toEqual(shifts);
+    // The fixed moment is 4:10 PM: all three stay inside the same day.
+    expect(16 * 60 + 10 + shifts[0]!).toBeGreaterThan(6 * 60);
+    expect(16 * 60 + 10 + shifts[2]!).toBeLessThan(21 * 60);
+  });
+});

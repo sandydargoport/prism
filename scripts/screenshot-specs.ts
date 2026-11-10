@@ -12,6 +12,7 @@
 
 import type { Page } from '@playwright/test';
 import { LOOK_IDS, LOOKS, type LookId } from '../src/lib/looks';
+import { TODAY_TEMPLATE } from '../src/lib/constants/layoutTemplates';
 
 /**
  * Touch-screen devices for the hero and gallery shots. Pointer type has to be
@@ -44,10 +45,11 @@ type StagedCell = { i: StagedWidget; x: number; y: number; w: number; h: number;
 /**
  * A new install's look (src/lib/looks.ts) on one of the staged dashboards.
  * The capture script applies it before the shot and puts everything back after.
+ * 'simple' is the Simple front page (#1117): the day drawn as one scene.
  */
 export type Stage = {
   look: LookId;
-  layout: 'hero' | 'gallery';
+  layout: 'hero' | 'gallery' | 'simple';
 };
 
 export type CaptureSpec = {
@@ -95,6 +97,11 @@ export type CaptureSpec = {
   widget?: StagedWidget;
   /** Shown in the docs gallery (docs/screenshots.md). */
   gallery?: boolean;
+  /**
+   * Shoot this many minutes before (negative) or after the fixed moment, the
+   * same day: the morning and the evening of the day the seed draws.
+   */
+  shiftMinutes?: number;
 };
 
 /**
@@ -124,7 +131,12 @@ export const GALLERY_LAYOUT = [
   { i: 'shopping', x: 30, y: 17, w: 18, h: 10, showWhenIdle: false },
 ] satisfies StagedCell[];
 
-export const STAGE_LAYOUTS = { hero: HERO_LAYOUT, gallery: GALLERY_LAYOUT } as const;
+/** Simple's parts, as the premade Today page places them. */
+export const SIMPLE_LAYOUT = TODAY_TEMPLATE.widgets.map((w) => ({
+  i: w.i as StagedWidget, x: w.x, y: w.y, w: w.w, h: w.h, showWhenIdle: w.showWhenIdle ?? false,
+})) satisfies StagedCell[];
+
+export const STAGE_LAYOUTS = { hero: HERO_LAYOUT, gallery: GALLERY_LAYOUT, simple: SIMPLE_LAYOUT } as const;
 
 /**
  * The hero set: the same moment on a wall, a tablet and a phone, in light and
@@ -133,10 +145,10 @@ export const STAGE_LAYOUTS = { hero: HERO_LAYOUT, gallery: GALLERY_LAYOUT } as c
  * tablet the idle screen (the photo with the clock and weather), the phone
  * the mobile home. The wall and the tablet are signed out, as they would be
  * in a kitchen; the phone is a parent's, signed in. They show a new install
- * in the Photo look.
+ * in the Photo look, on the Simple front page a new install starts on.
  */
 export const HERO_SHOTS: CaptureSpec[] = (['light', 'dark'] as const).flatMap((theme) => {
-  const stage: Stage = { look: 'photo', layout: 'hero' };
+  const stage: Stage = { look: 'photo', layout: 'simple' };
   return [
     {
       name: `hero-wall-${theme}`,
@@ -351,7 +363,29 @@ export const FEATURE_SHOTS: CaptureSpec[] = [
   { name: 'messages', url: '/messages', description: 'Family message board', settleMs: 1000 },
 ];
 
-export const SCREENSHOTS: CaptureSpec[] = [...HERO_SHOTS, ...GALLERY_SHOTS, ...FEATURE_SHOTS];
+/**
+ * The docs front page's "A day at home" tabs: the same Simple wall in the
+ * morning, after school and in the evening. The fixed moment is 4:10 PM, so
+ * these are 7:30 AM (the whole day ahead), 5:40 PM (soccer done, scouts next)
+ * and 8:45 PM (the day over, after sunset).
+ */
+export const DAY_SHOTS: CaptureSpec[] = [
+  { name: 'day-morning', when: 'morning', shiftMinutes: -520 },
+  { name: 'day-afternoon', when: 'after school', shiftMinutes: 90 },
+  { name: 'day-evening', when: 'evening', shiftMinutes: 275 },
+].map(({ name, when, shiftMinutes }) => ({
+  name,
+  url: '/',
+  description: `The Simple wall in the ${when}`,
+  device: 'wall' as const,
+  signedOut: true,
+  idleChrome: true,
+  stage: { look: 'photo' as const, layout: 'simple' as const },
+  shiftMinutes,
+  settleMs: 15000,
+}));
+
+export const SCREENSHOTS: CaptureSpec[] = [...HERO_SHOTS, ...GALLERY_SHOTS, ...DAY_SHOTS, ...FEATURE_SHOTS];
 
 /** The light or dark mode a shot runs in: its own, else its look's. */
 export function themeOf(spec: CaptureSpec): 'light' | 'dark' | undefined {
