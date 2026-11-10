@@ -4,20 +4,9 @@ Leave a note for the family on the wall. Everyone sees it when they walk past, a
 
 ![Family message board](../demos/messages.png){ .hero-image }
 
----
+## Use it
 
-## What a message has
-
-- **Message text**: what you're saying. Up to 500 characters (a live counter shows remaining length while posting/editing).
-- **Author**: whoever was logged in when it was posted.
-- **Pinned**: boolean. Pinned messages sort to the top regardless of age.
-- **Important**: boolean. Renders with red accent / icon for visual emphasis.
-- **Expires at**: optional timestamp. After the window passes the message is hidden from all views (filtered server-side on read); the row stays in the database.
-- **Created at** / **Updated at**: auto.
-
----
-
-## Posting
+### Posting
 
 Two ways:
 
@@ -26,13 +15,11 @@ Two ways:
 
 Both require login. The author is auto-set to the logged-in user; you can't impersonate someone else.
 
-### Notes from the babysitter
+#### Notes from the babysitter
 
 While Babysitter Mode is on, the babysitter can leave a note from the Babysitter Mode screen or the `/babysitter` page, without logging in. It appears on the board as **Babysitter** (or **Babysitter (Sam)** if they gave a name) with a 🍼 avatar. See [Display Modes](DISPLAY-MODES.md#leaving-a-note-for-the-family).
 
----
-
-## Expiration
+### Expiration
 
 Pick from a dropdown when posting:
 
@@ -47,9 +34,7 @@ Useful for temporary notices: "Pizza in the fridge from tonight" (expires in 12h
 
 Once a message's expiration window passes it is hidden from every view (the server filters expired rows out on read). The rows themselves remain in the database. There is no periodic purge job.
 
----
-
-## Pinning
+### Pinning
 
 Pinning is chosen **when you post**, via the **Pin to top** checkbox in the Post Message dialog. There is currently no in-list pin/unpin toggle. To change a message's pinned state you re-post it. Pinned messages:
 
@@ -58,9 +43,7 @@ Pinning is chosen **when you post**, via the **Pin to top** checkbox in the Post
 
 Pin the standing-house-rules-style notes ("WiFi: TacosForever42", "Gate code: 4297").
 
----
-
-## Important flag
+### Important flag
 
 Mark a message **important** for visual emphasis:
 
@@ -70,9 +53,7 @@ Mark a message **important** for visual emphasis:
 
 Independent from pinning, a message can be pinned + important, just pinned, just important, or neither.
 
----
-
-## Editing
+### Editing
 
 Hover over a message (or tap on mobile) to reveal the **pencil icon**. Click to edit in place:
 
@@ -83,9 +64,7 @@ Hover over a message (or tap on mobile) to reveal the **pencil icon**. Click to 
 
 Anyone can edit their own messages. Parents can edit any message.
 
----
-
-## Deleting
+### Deleting
 
 Trash icon on each message (visible on hover/long-press):
 
@@ -96,9 +75,7 @@ Trash icon on each message (visible on hover/long-press):
 
 A confirmation dialog ("Delete this message?" / "This action cannot be undone.") appears before the message is removed. Deletion is permanent. There is no undo.
 
----
-
-## Group by person
+### Group by person
 
 The Messages page has a **Group by Person** toggle:
 
@@ -107,9 +84,7 @@ The Messages page has a **Group by Person** toggle:
 
 Group-by mode is useful when you have a lot of message traffic and want to see "what has Jordan posted recently?" at a glance.
 
----
-
-## Dashboard MessagesWidget
+### Dashboard MessagesWidget
 
 The widget shows the most-recent N messages with:
 
@@ -120,11 +95,9 @@ The widget shows the most-recent N messages with:
 
 Sized for a corner of the dashboard.
 
----
+### Use cases
 
-## Use cases
-
-### Standing house info
+#### Standing house info
 
 Pin notes for things everyone should always be able to find:
 
@@ -136,7 +109,7 @@ Pin notes for things everyone should always be able to find:
 
 These pinned messages function as a lightweight house wiki.
 
-### Time-sensitive announcements
+#### Time-sensitive announcements
 
 Expire-in-1-day messages for things that matter today and not tomorrow:
 
@@ -144,40 +117,47 @@ Expire-in-1-day messages for things that matter today and not tomorrow:
 - "Don't use the upstairs shower. Fixing it Wednesday."
 - "Mom's at the dentist 'til 3."
 
-### Encouragement / "great job"
+#### Encouragement / "great job"
 
 A throwaway "Great job on your spelling test, Emma! 🌟" lands in the family's space without needing a phone notification.
 
-### Coordination between parents
+#### Coordination between parents
 
 Sometimes you and your spouse need a shared note that's more durable than a text. Posting "Grandma is coming Sunday" as a message ensures both of you see it next time you walk past the dashboard, and you can pin it until she's gone.
 
----
+## Details
 
-## Privacy
+### What a message has
+
+- **Message text**: what you're saying. Up to 500 characters (a live counter shows remaining length while posting/editing).
+- **Author**: whoever was logged in when it was posted.
+- **Pinned**: boolean. Pinned messages sort to the top regardless of age.
+- **Important**: boolean. Renders with red accent / icon for visual emphasis.
+- **Expires at**: optional timestamp. After the window passes the message is hidden from all views (filtered server-side on read); the row stays in the database.
+- **Created at** / **Updated at**: auto.
+
+### Privacy
 
 Messages are family-internal: only logged-in family members see them. The babysitter and away-mode views do not show messages. A babysitter can add a note while Babysitter Mode is on, but cannot read the board, including their own notes.
 
 Messages live in your Prism database. No external sync to MS To Do, Google, or anywhere else (intentionally: messages are ephemeral; they're not lists, they don't belong in a task-tracking system).
 
----
+### Troubleshooting
 
-## Troubleshooting
-
-### Message vanished after a few hours
+#### Message vanished after a few hours
 
 Most likely an expiration was set. Check the expiration dropdown when posting. The default is "No expiration."
 
-### Edit pencil doesn't appear
+#### Edit pencil doesn't appear
 
 Either:
 - Not logged in. (Messages are read-only when no user is authenticated.)
 - Not the author and not a parent. Children can't edit others' messages.
 
-### Message order looks weird
+#### Message order looks weird
 
 Sort is: pinned first (within pinned, newest first), then non-pinned by created_at descending. If you're seeing different order, you're probably looking at the per-person grouped view, where each person's section sorts independently.
 
-### Important badge color clashes with theme
+#### Important badge color clashes with theme
 
 The important-message accent uses your theme's destructive color (typically red). On the default light theme it's pure red; on dark theme it's slightly muted. Custom theme palettes may override, so check *Settings → Appearance*.

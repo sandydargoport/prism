@@ -6,22 +6,9 @@ Keep to-dos for each person, with due dates, and sync them with Microsoft To Do 
 
 Each to-do can have a person, a due date, a priority and a list. Use whichever sync service your family already has; Prism looks the same either way.
 
----
+## Set it up
 
-## What's in a task
-
-- **Title** (required)
-- **Description**: not editable in the Prism task modal; it only round-trips from Microsoft To Do / Google Tasks notes on sync.
-- **List**: which task list it belongs to. Nullable (inbox).
-- **Assigned to**: family member, or unassigned.
-- **Due date**: date+time, optional.
-- **Priority**: high / medium / low. Defaults to medium; there is no "none".
-- **Category**: free-form tag (`Health`, `School`, `Errands`, `Shopping`).
-- **Completed**: boolean. When completed, `completedAt` and `completedBy` populate.
-
----
-
-## Task lists
+### Task lists
 
 Lists are the primary organizational unit. Common patterns:
 
@@ -40,78 +27,11 @@ Create lists in *Settings → Integrations → (Google or Microsoft) card → Ne
 
 Delete a list and its tasks become unassigned (moved to the inbox); they're not deleted.
 
----
-
-## Adding tasks
-
-- **Add Task** button: opens the modal with all fields.
-- **Inline text input**: at the top of the Tasks page, type a title, press Enter, task created in the current filter view.
-
-Both require login (parent or child). The inline form auto-assigns the current logged-in user as `createdBy`.
-
----
-
-## Completing tasks
-
-Tap the checkbox to mark complete. The row strikes through and dims. The undo button in the nav bar lets you reverse the check for ~5 seconds.
-
-If the task syncs to MS To Do / Google Tasks, the completed status propagates to the external provider on the next sync cycle.
-
----
-
-## Deleting tasks
-
-Parents only. Two places: the trash icon on the task row, and the **Delete**
-button inside the task's edit window. Both confirm first.
-
-Deleting a synced task also deletes it in the provider. That happens
-immediately, not on the next sync. If the provider cannot be reached the task
-is still removed from Prism and a tombstone stops the next sync re-adding it,
-so the deletion sticks either way.
-
----
-
-## Filtering + sorting
-
-- **By list**: picker dropdown, "All lists" / "Unassigned" / specific list.
-- **By person**: avatar filter pills at the top.
-- **By priority**: filter chip.
-- **Show completed** toggle: off by default. When on, completed tasks appear at the bottom with the strikethrough.
-
-Sort options:
-
-- **By due date**: overdue first, then today, then upcoming, then no-date last.
-- **By priority**: high → medium → low.
-- **By title**: alphabetical (A→Z).
-
----
-
-## Grouping
-
-The Group dropdown supports nested grouping:
-
-- **None**: flat list.
-- **By Person**: cards per family member.
-- **By List**: cards per task list.
-- **Then by** secondary group: when the primary group is Person, you can also sub-group by List (or vice versa). Sub-groups render as colored left-border dividers inside the primary group card.
-
-The drag-reordered order of the group columns persists to localStorage (`prism:task-group-order` when flat-grouped, `prism:task-nested-group-order` when nested). The chosen grouping mode itself is not persisted.
-
----
-
-## Reordering
-
-Drag-and-drop within a group (touch + mouse). Note there is no per-task order persistence: only the drag order of the group columns is stored (see Grouping).
-
-For cross-list moves, drag a task onto a different list's card header to reassign.
-
----
-
-## Sync providers
+### Sync providers
 
 Pick one provider per Prism instance:
 
-### Microsoft To Do (bidirectional)
+#### Microsoft To Do (bidirectional)
 
 1. *Settings → Integrations → Microsoft* card: connect your account.
 2. In the same card, for each Prism list pick an MS To Do list to sync it with.
@@ -122,7 +42,7 @@ Steps (MS To Do's sub-items) are **not** imported — Prism has no subtask
 concept, so they are skipped rather than flattened. Attachments are not
 imported either.
 
-### Google Tasks (bidirectional)
+#### Google Tasks (bidirectional)
 
 1. *Settings → Integrations → Google* card: connect your account (same Google OAuth used for Calendar, Tasks scope added).
 2. In the same card, pick which Google Tasks list maps to which Prism list.
@@ -138,7 +58,7 @@ token minted in Google's OAuth Playground — include
 straight to the list picker. See CALENDAR.md for the full walkthrough; the
 only difference is the scope.
 
-### Removed tasks are held for review
+#### Removed tasks are held for review
 
 When a task you sync stops being listed by the provider, Prism does **not**
 delete it. It stays visible and a **Review** button appears in the Tasks
@@ -163,7 +83,7 @@ with no action from you.
 
 Apple Reminders (CalDAV) task sources behave the same way.
 
-### Auto-sync
+#### Auto-sync
 
 - Parents only. A child profile does not run sync; the page still shows tasks,
   it just does not fetch new ones.
@@ -175,15 +95,66 @@ Apple Reminders (CalDAV) task sources behave the same way.
 
 Manual sync button always available, useful right after adding a task on the other side.
 
----
+## Use it
 
-## Undo
+### Adding tasks
+
+- **Add Task** button: opens the modal with all fields.
+- **Inline text input**: at the top of the Tasks page, type a title, press Enter, task created in the current filter view.
+
+Both require login (parent or child). The inline form auto-assigns the current logged-in user as `createdBy`.
+
+### Completing tasks
+
+Tap the checkbox to mark complete. The row strikes through and dims. The undo button in the nav bar lets you reverse the check for ~5 seconds.
+
+If the task syncs to MS To Do / Google Tasks, the completed status propagates to the external provider on the next sync cycle.
+
+### Deleting tasks
+
+Parents only. Two places: the trash icon on the task row, and the **Delete**
+button inside the task's edit window. Both confirm first.
+
+Deleting a synced task also deletes it in the provider. That happens
+immediately, not on the next sync. If the provider cannot be reached the task
+is still removed from Prism and a tombstone stops the next sync re-adding it,
+so the deletion sticks either way.
+
+### Filtering + sorting
+
+- **By list**: picker dropdown, "All lists" / "Unassigned" / specific list.
+- **By person**: avatar filter pills at the top.
+- **By priority**: filter chip.
+- **Show completed** toggle: off by default. When on, completed tasks appear at the bottom with the strikethrough.
+
+Sort options:
+
+- **By due date**: overdue first, then today, then upcoming, then no-date last.
+- **By priority**: high → medium → low.
+- **By title**: alphabetical (A→Z).
+
+### Grouping
+
+The Group dropdown supports nested grouping:
+
+- **None**: flat list.
+- **By Person**: cards per family member.
+- **By List**: cards per task list.
+- **Then by** secondary group: when the primary group is Person, you can also sub-group by List (or vice versa). Sub-groups render as colored left-border dividers inside the primary group card.
+
+The drag-reordered order of the group columns persists to localStorage (`prism:task-group-order` when flat-grouped, `prism:task-nested-group-order` when nested). The chosen grouping mode itself is not persisted.
+
+### Reordering
+
+Drag-and-drop within a group (touch + mouse). Note there is no per-task order persistence: only the drag order of the group columns is stored (see Grouping).
+
+For cross-list moves, drag a task onto a different list's card header to reassign.
+
+### Undo
 
 A global undo stack covers tasks, chores, shopping items, and wishes. After completing or deleting a task, an **Undo** button appears in the nav bar for ~5 seconds. Tap to reverse the most recent action.
 
----
-
-## Mobile behavior
+### Mobile behavior
 
 - Single-column layout.
 - Compact header.
@@ -191,51 +162,60 @@ A global undo stack covers tasks, chores, shopping items, and wishes. After comp
 - GripVertical drag icons hidden (touch-drag uses long-press on the row).
 - Card-level drag disabled so vertical scroll works naturally; item-level drag still works.
 
----
+### Common workflows
 
-## Common workflows
-
-### Recurring chore that's really a task
+#### Recurring chore that's really a task
 
 Sometimes "Take out trash every Friday" is more of a personal todo than a points-eligible chore. Add it as a task with a weekly due date in the Home list. When you complete it, manually duplicate it with next Friday's date.
 
 (Native recurring-task support isn't shipped; it's tracked as a follow-up.)
 
-### Grocery list as tasks
+#### Grocery list as tasks
 
 Some families prefer the Shopping page; others would rather have everything in one task list. The Microsoft To Do sync lets shopping items flow into a To Do list automatically. See the [Shopping guide](SHOPPING.md) for the per-list sync config.
 
-### Sharing a list with a non-Prism family member
+#### Sharing a list with a non-Prism family member
 
 The MS To Do / Google Tasks sync is the bridge. Share the Microsoft/Google list with the other person on their side; they see and edit in MS To Do or Google Tasks, you see the same data in Prism via the sync.
 
----
+## Details
 
-## Troubleshooting
+### What's in a task
 
-### Tasks not syncing
+- **Title** (required)
+- **Description**: not editable in the Prism task modal; it only round-trips from Microsoft To Do / Google Tasks notes on sync.
+- **List**: which task list it belongs to. Nullable (inbox).
+- **Assigned to**: family member, or unassigned.
+- **Due date**: date+time, optional.
+- **Priority**: high / medium / low. Defaults to medium; there is no "none".
+- **Category**: free-form tag (`Health`, `School`, `Errands`, `Shopping`).
+- **Completed**: boolean. When completed, `completedAt` and `completedBy` populate.
+
+### Troubleshooting
+
+#### Tasks not syncing
 
 1. *Settings → Integrations → (Google or Microsoft) card*: is the provider still connected?
 2. In the same card: is the per-list connection enabled?
 3. Tap **Sync now** to force a refresh.
 4. Check the external list directly: does it have the task you expect?
 
-### Two-way sync created duplicates
+#### Two-way sync created duplicates
 
 Usually a one-time glitch when a task was created in both places before the first sync ran. Delete the duplicate; the deletion propagates.
 
-### Completed task came back uncompleted
+#### Completed task came back uncompleted
 
 The external system marked it incomplete and the newest-wins resolver applied that update. Check what happened on the external side; mark complete again if you want it gone.
 
-### "Create List" button missing
+#### "Create List" button missing
 
 Lists are created from *Settings → Integrations → (Google or Microsoft) card → New List*. There's no inline list-creation button on the Tasks page; the picker only shows existing lists.
 
-### List deletion deleted my tasks
+#### List deletion deleted my tasks
 
 It shouldn't: tasks become unassigned (inbox) when a list is deleted. If tasks did disappear, check the audit log (*Settings → Activity Log*) for the actual operation.
 
-### Sub-grouping (Person → List) looks weird
+#### Sub-grouping (Person → List) looks weird
 
 The nested group view is opinionated about visual hierarchy: primary group as the card, sub-groups as colored-left-border dividers. If the nested mode confuses the layout, switch to a single grouping level or "Group: None" and sort instead.

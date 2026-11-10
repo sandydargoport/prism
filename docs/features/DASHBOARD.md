@@ -6,47 +6,15 @@ You can start from one of the built-in layouts, borrow one from the community ga
 
 Layouts are edited in **edit mode**, by a parent, on a large screen. Phones do not show the editor; they get a simpler one-column view (see [On your phone](MOBILE.md)).
 
----
+## Set it up
 
-## Entering the editor
+### Entering the editor
 
 Tap the **grid icon** (four squares) in the dashboard header to enter edit mode. Only members with layout-edit permission (parents) see it.
 
 Edit mode swaps the live board for an editable grid and reveals two toolbars: a slim vertical toolbar on the left (Widgets, Templates, Community, Mini-map) and a right-hand toolbar (Preview, orientation, Screensaver, Save, and the **More** menu). Exit by saving or leaving edit mode.
 
----
-
-## The layout grid
-
-Prism lays widgets out on a fixed **design canvas**, not on your literal pixels, so one design looks right on many screens:
-
-- **Landscape** canvas: **48 columns × 27 rows** (16:9).
-- **Portrait** canvas: **36 columns × 64 rows** (9:16).
-
-On the live dashboard the content bounding box is stretched to fill the actual screen, so a layout that tiles the whole canvas fills the display edge-to-edge regardless of its exact resolution.
-
-### Placing and sizing widgets
-
-- **Drag** a widget to reposition it on the grid.
-- **Resize** by dragging the corner handles.
-- Open the **Widgets** button to show/hide each widget and to type exact `x / y / w / h` coordinates when you want pixel-precise placement.
-
-Available widgets: **Clock, Weather, Calendar, Tasks, Chores, Shopping, Meals, Messages, Photos, Points/Goals, Birthdays, Wishes, and Bus Tracker.**
-
-### Widget properties
-
-Click a widget to select it, then use the **properties toolbar** to style it individually:
-
-- Background color (including a **frosted-glass** option used by the Ambient templates)
-- Opacity
-- Outline, including **None** to remove the widget's border
-- Text color
-- Text size
-- **Hide when empty**: the widget is not drawn while it has nothing to show (no open tasks, no messages, an empty shopping list, no birthdays coming up, no meals planned) and comes back when something arrives. Its space stays empty, so nothing else moves. On by default on the screensaver and on a calm dashboard's idle screen, off by default on a dashboard in use. Clock, Weather, Calendar, Photos and Travel always have something to show, so they don't offer it. In the editor the widget always shows, marked **Empty: hidden** when the live screen leaves it out.
-
----
-
-## Built-in templates
+### Built-in templates
 
 The **Templates** button loads a pre-designed arrangement as a starting point you then rearrange. There are **six** templates, and each ships in **both landscape and portrait** versions (the picker offers the orientation matching your current canvas). The screensaver has its own matching set (see below).
 
@@ -65,9 +33,7 @@ Most templates tile the canvas exactly; **Ambient** is the intentional exception
 
 > There is also an internal weather-forward **Default** fallback layout applied to a brand-new empty dashboard (a fresh install hasn't connected a calendar yet, so it deliberately omits the calendar hero). It isn't shown in the template picker.
 
----
-
-## Community gallery
+### Community gallery
 
 Click **Community** in the editor toolbar to browse dashboard layouts shared by other Prism users. The gallery loads a community index and shows each layout as a card with a live thumbnail preview, its name, description, author, widget count, and orientation.
 
@@ -79,51 +45,23 @@ Click **Community** in the editor toolbar to browse dashboard layouts shared by 
 
 The gallery has a separate **dashboard** and **screensaver** mode, so screensaver layouts are browsed the same way.
 
-### Sharing your layout with the community
+#### Sharing your layout with the community
 
 Made a board worth sharing? Open the **More** menu and click **Share**, fill in a name, description, author, and orientation, then submit. Prism opens a pre-filled submission for you (this works from any instance, including hosted ones), and once it's approved your layout appears in everyone's Community gallery.
 
 Submitting to the gallery needs a GitHub account. Without one, use **Download file** in the same dialog and send the file however you like; the other household loads it through **Import**.
 
-### Copy between the dashboard and the screensaver
+#### Copy between the dashboard and the screensaver
 
 **More → Use as idle screen** replaces the idle screen's layout with the dashboard you are editing, and switches to the Idle screen tab so you can check it; **Save** keeps it and **Cancel** puts the old one back. On the Idle screen tab the same item reads **Use as dashboard**. Both need photos or the night sky behind the idle screen, since a dashboard that is its own idle screen has no separate layout. The screensaver shows fewer kinds of widget than the dashboard, so any it cannot show are left out, and the confirmation says which.
 
-### Export & Import
+#### Export & Import
 
 - **Export** (More → Export): copy your current layout as JSON to hand to someone directly.
 - **Share → Download file**: save the layout as a `.json` file instead.
 - **Import** (More → Import): paste a layout JSON, or **Choose file…** to load a downloaded one.
 
----
-
-## Mini-map & validation
-
-Click **Mini-map** in the left toolbar to see a miniature map of your whole layout. It shows widget positions and flags issues like overlapping or undersized widgets. Click anywhere on the mini-map to scroll the grid to that area.
-
-Alongside it, a **device preview gallery** shows how your single design renders on each common screen size, so you can confirm one layout works across your displays without maintaining a separate design per resolution.
-
----
-
-## Preview mode
-
-Click **Preview** in the right toolbar (or press **Ctrl+Shift+M**) to temporarily hide the editor chrome and see the board as it will actually appear; click **Exit Preview** to return. Use the **Show Nav / Hide Nav** toggle to check how it looks with and without the navigation sidebar. Useful for fine-tuning layouts on dedicated wall displays.
-
-For a permanently clean look, enable **Auto-Hide Navigation** in *Settings → Appearance*: the nav and toolbar hide after a period of inactivity and reappear on click or keyboard input.
-
----
-
-## Screensaver layout
-
-Each dashboard has its **own** screensaver layout. In edit mode, click the **Screensaver** button to switch to editing the screensaver widget arrangement (the Templates and Community pickers switch to their screensaver sets too).
-
-The screensaver activates after a configurable idle period. Set it under *Settings → Appearance → Timers & Auto-Activation (Screensaver → Activate after)*; the timeout options are **30s / 1m / 2m / 10m / 1h / Never**, defaulting to **2m**. It shows a photo slideshow with your chosen widgets overlaid. The screensaver templates keep the calendar, or tonight's meals, as the hero, with small clock, weather, and message accents floating over one clean photo region so the wallpaper stays the star.
-
-See [Display Modes](DISPLAY-MODES.md) for more on the screensaver and Away Mode.
-
----
-
-## Multiple dashboards
+### Multiple dashboards
 
 Create separate dashboards for different rooms or displays. Click the dashboard-name dropdown in the editor toolbar to switch between dashboards or create new ones.
 
@@ -132,13 +70,13 @@ Create separate dashboards for different rooms or displays. Click the dashboard-
 - Each dashboard has an **independent** widget layout, screensaver layout, and orientation.
 - Bookmark a dashboard URL on a dedicated device for instant access.
 
-### Different dashboards at different times
+#### Different dashboards at different times
 
 A named screen (*Settings → Displays*) can show other dashboards at set times, for example a morning dashboard with the bus large on school days. In *Settings → Displays*, **Schedule** on the screen's row lists its times: each shows one dashboard from a start to an end time on the days ticked. Outside every time the screen shows its own dashboard. Times are in the household time zone; one that ends before it starts runs past midnight, and one that starts and ends at the same time lasts the whole day. When two times overlap, the higher one in the list wins.
 
 Make the dashboard for a time with **Save As** in the editor and rearrange it there. When a time starts or ends, the screen changes over in place: widgets that are on both dashboards slide to their new places and the rest fade. The change waits until nobody has touched the screen for a minute, and never happens while the layout is being edited. Opening another dashboard by hand keeps it until the next time starts or ends. With reduced motion the dashboards crossfade, and at the **Minimal** performance level they swap at once.
 
-### Notices
+#### Notices
 
 A named screen can show small notice cards down the top right of its dashboard. In *Settings → Displays*, **Notices** on the screen's row turns each kind on, with how many minutes it covers:
 
@@ -148,34 +86,82 @@ A named screen can show small notice cards down the top right of its dashboard. 
 
 The newest card is on top and at most four show. New messages are checked for every half minute and events every minute. Tap the **×** on a card to dismiss it. The dashboard underneath does not move; the cards cover what is behind them until they go. Cards show on dashboards only, also over the screensaver, where they turn dark and keep updating, and dim with it.
 
-### Saving
+#### Saving
 
 - **Save** overwrites the current dashboard's layout.
 - The dropdown arrow next to Save offers **Save As**, which creates a named copy (a new dashboard).
 - **More → Reset** reverts unsaved edits back to the last saved layout.
 
----
-
-## Orientation
+### Orientation
 
 Toggle between **Landscape** and **Portrait** with the orientation button in the editor toolbar. This flips the design canvas between the 48×27 landscape frame and the 36×64 portrait frame, so you can lay out each orientation independently for however that display is mounted.
 
----
+## Use it
 
-## Troubleshooting
+### The layout grid
 
-### The grid/edit icon is missing
+Prism lays widgets out on a fixed **design canvas**, not on your literal pixels, so one design looks right on many screens:
+
+- **Landscape** canvas: **48 columns × 27 rows** (16:9).
+- **Portrait** canvas: **36 columns × 64 rows** (9:16).
+
+On the live dashboard the content bounding box is stretched to fill the actual screen, so a layout that tiles the whole canvas fills the display edge-to-edge regardless of its exact resolution.
+
+#### Placing and sizing widgets
+
+- **Drag** a widget to reposition it on the grid.
+- **Resize** by dragging the corner handles.
+- Open the **Widgets** button to show/hide each widget and to type exact `x / y / w / h` coordinates when you want pixel-precise placement.
+
+Available widgets: **Clock, Weather, Calendar, Tasks, Chores, Shopping, Meals, Messages, Photos, Points/Goals, Birthdays, Wishes, and Bus Tracker.**
+
+#### Widget properties
+
+Click a widget to select it, then use the **properties toolbar** to style it individually:
+
+- Background color (including a **frosted-glass** option used by the Ambient templates)
+- Opacity
+- Outline, including **None** to remove the widget's border
+- Text color
+- Text size
+- **Hide when empty**: the widget is not drawn while it has nothing to show (no open tasks, no messages, an empty shopping list, no birthdays coming up, no meals planned) and comes back when something arrives. Its space stays empty, so nothing else moves. On by default on the screensaver and on a calm dashboard's idle screen, off by default on a dashboard in use. Clock, Weather, Calendar, Photos and Travel always have something to show, so they don't offer it. In the editor the widget always shows, marked **Empty: hidden** when the live screen leaves it out.
+
+### Mini-map & validation
+
+Click **Mini-map** in the left toolbar to see a miniature map of your whole layout. It shows widget positions and flags issues like overlapping or undersized widgets. Click anywhere on the mini-map to scroll the grid to that area.
+
+Alongside it, a **device preview gallery** shows how your single design renders on each common screen size, so you can confirm one layout works across your displays without maintaining a separate design per resolution.
+
+### Preview mode
+
+Click **Preview** in the right toolbar (or press **Ctrl+Shift+M**) to temporarily hide the editor chrome and see the board as it will actually appear; click **Exit Preview** to return. Use the **Show Nav / Hide Nav** toggle to check how it looks with and without the navigation sidebar. Useful for fine-tuning layouts on dedicated wall displays.
+
+For a permanently clean look, enable **Auto-Hide Navigation** in *Settings → Appearance*: the nav and toolbar hide after a period of inactivity and reappear on click or keyboard input.
+
+### Screensaver layout
+
+Each dashboard has its **own** screensaver layout. In edit mode, click the **Screensaver** button to switch to editing the screensaver widget arrangement (the Templates and Community pickers switch to their screensaver sets too).
+
+The screensaver activates after a configurable idle period. Set it under *Settings → Appearance → Timers & Auto-Activation (Screensaver → Activate after)*; the timeout options are **30s / 1m / 2m / 10m / 1h / Never**, defaulting to **2m**. It shows a photo slideshow with your chosen widgets overlaid. The screensaver templates keep the calendar, or tonight's meals, as the hero, with small clock, weather, and message accents floating over one clean photo region so the wallpaper stays the star.
+
+See [Display Modes](DISPLAY-MODES.md) for more on the screensaver and Away Mode.
+
+## Details
+
+### Troubleshooting
+
+#### The grid/edit icon is missing
 
 Layout editing is parent-only. Log in as a member with layout-edit permission.
 
-### My layout doesn't fill the screen / leaves a gap
+#### My layout doesn't fill the screen / leaves a gap
 
 The live board stretches the content bounding box to fill the display. If a template leaves a gap, it usually means the widgets don't reach the canvas edge: extend the outermost widgets to the last row/column, or start from a template that tiles the full canvas.
 
-### Edit-mode toolbar clicks don't respond under browser fullscreen (F11)
+#### Edit-mode toolbar clicks don't respond under browser fullscreen (F11)
 
 Browser F11 reserves the top edge for its own chrome, which can eat top-toolbar clicks. Install Prism as a PWA (or just maximize the window) instead of using F11.
 
-### A community layout applied but looks empty
+#### A community layout applied but looks empty
 
 Community layouts only carry widget positions, not your data. Widgets like calendar or meals render empty until the underlying feature has data (e.g. a connected calendar).

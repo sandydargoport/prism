@@ -2,9 +2,22 @@
 
 Household jobs that come round again: empty the dishwasher, feed the pets, take the bins out. Each chore has a person (or anyone), how often it comes back, and how many points it earns. Points from approved chores fill the family's [goals](GOALS.md).
 
----
+## Set it up
 
-## The Chores page
+### What's in a chore
+
+- **Title** (required) and an optional description.
+- **Category**: Cleaning, Laundry, Dishes, Yard, Pets, Trash or Other. It sets the chore's icon.
+- **Assigned to**: one family member, or nobody, which means anyone can do it.
+- **Frequency**: daily, weekly, every two weeks, monthly, quarterly, every six months, yearly, or custom (every so many days).
+- **Reset day** (optional): which day of the week a weekly chore comes back, which day of the month (1 to 28) for a monthly one, or the date (for example 03-15) for a yearly one.
+- **Time of day** (optional): places the chore at that hour in the calendar's time views. Without one it sits at the top of the day.
+- **Points**: what it earns when approved.
+- **Requires approval**: on by default. See below.
+
+## Use it
+
+### The Chores page
 
 The page opens on what to do, as a list:
 
@@ -25,22 +38,7 @@ A chore that is waiting for a parent to approve shows as one line, for example *
 
 Tap **Done** to go back to the do list.
 
----
-
-## What's in a chore
-
-- **Title** (required) and an optional description.
-- **Category**: Cleaning, Laundry, Dishes, Yard, Pets, Trash or Other. It sets the chore's icon.
-- **Assigned to**: one family member, or nobody, which means anyone can do it.
-- **Frequency**: daily, weekly, every two weeks, monthly, quarterly, every six months, yearly, or custom (every so many days).
-- **Reset day** (optional): which day of the week a weekly chore comes back, which day of the month (1 to 28) for a monthly one, or the date (for example 03-15) for a yearly one.
-- **Time of day** (optional): places the chore at that hour in the calendar's time views. Without one it sits at the top of the day.
-- **Points**: what it earns when approved.
-- **Requires approval**: on by default. See below.
-
----
-
-## Ticking a chore off
+### Ticking a chore off
 
 **Requires approval** decides what happens when a child ticks a chore:
 
@@ -51,7 +49,7 @@ A parent's own tick always counts at once.
 
 When the chore is done, its next due date moves on by its frequency (or to its reset day), and it drops off the do list until then.
 
-### On the wall, without the PIN
+#### On the wall, without the PIN
 
 *Settings → Security → Require the PIN for every change* decides whether the wall asks for a PIN to tick a chore.
 
@@ -60,23 +58,19 @@ When the chore is done, its next due date moves on by its frequency (or to its r
 
 Ticks made this way are written to the activity log. The wall can never approve a chore: on one that requires approval, its tick waits for a parent like any other. Approving, editing and settings always need a parent.
 
----
-
-## On the dashboard
+### On the dashboard
 
 On the Today front page, a quiet line in the bottom corner says how many chores are left today, with a ring per chore in its person's colour. Tap a ring to tick that chore.
 
 The Chores widget on a grid dashboard lists the same chores.
 
----
-
-## Points and goals
+### Points and goals
 
 Approved chores add their points to the person who did them. Points fill that person's goals in priority order; see [Goals & Points](GOALS.md).
 
----
+## Details
 
-## Tips
+### Tips
 
 - Keep chores small and specific: *Empty the dishwasher* is easier to tick than *Kitchen*.
 - Leave **Requires approval** on for chores you want to check, and turn it off for the small daily ones.

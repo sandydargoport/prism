@@ -8,19 +8,19 @@ What the wall shows when nobody is using it, when you are away, and when a sitte
 
 Each one covers the dashboard, which keeps running underneath.
 
----
+## Use it
 
-## Screensaver
+### Screensaver
 
 Activates after a configurable idle period. Shows a rotating photo slideshow with a configurable set of overlay widgets: clock, weather, calendar, etc.
 
-### Each dashboard has its own screensaver
+#### Each dashboard has its own screensaver
 
 Screensaver layouts are dashboard-scoped. Your kitchen dashboard (`/d/kitchen`) can have a screensaver showing big clock + weather + a slow photo cycle, while your bedroom dashboard (`/d/bedroom`) has a smaller clock + tomorrow's calendar.
 
 The layout editor has two tabs: **Dashboard** and **Idle screen**. The Idle screen tab sets what shows when nobody is using the display (**Behind it**) and arranges the screensaver layout. One **Save** keeps both tabs, and **Cancel** undoes both; a dot on a tab marks changes not yet saved.
 
-### A calm dashboard is its own idle screen
+#### A calm dashboard is its own idle screen
 
 A dashboard with **Behind it** set to **This dashboard** (on the editor's Idle
 screen tab) has no separate screensaver. When the display goes idle,
@@ -31,7 +31,7 @@ On the Idle screen tab, each widget on a calm dashboard has a **Stays** or **Fad
 button in its top-right corner. Tap it to choose, then **Save**. Until a widget is set,
 the clock, weather and calendar stay and everything else fades.
 
-### Background: photos or the night sky
+#### Background: photos or the night sky
 
 **Behind it**, on the layout editor's Idle screen tab, sets what sits behind the screensaver's widgets. It is saved with the dashboard, so every screen showing that dashboard shows the same; a screen that should idle differently gets its own dashboard (*Settings → Displays*).
 
@@ -41,7 +41,7 @@ the clock, weather and calendar stay and everything else fades.
 
 Everything is worked out on the display from the date and location; nothing is fetched, except the aurora forecast when it is switched on. The server fetches that from NOAA's Space Weather Prediction Center at most every 30 minutes, and only while a display is showing the night sky after dark; if NOAA does not answer, the line is left off. It reads the forecast at the household location, so it needs a location set in *Settings → General*. With no location set, the time zone stands in for it, so the change at sunset is right to within about an hour.
 
-### Widget transitions
+#### Widget transitions
 
 By default the screensaver shows every widget in its layout, all the time. It can
 instead show a subset and rotate which ones, so the board changes slowly. That is
@@ -71,7 +71,7 @@ Fireworks is the only one that costs anything material. It is turned down to a
 plain fade automatically on hardware that reports itself as low-end, and whenever
 the display asks for reduced motion.
 
-### Drift
+#### Drift
 
 Independently of transitions, the widgets that *are* showing move very slowly
 in a figure eight, 4 px each way over a minute and a half. This is for the
@@ -85,7 +85,7 @@ pixels lit and does nothing. Four pixels moves thin outlines and text clear of
 where they were; it cannot move a large stroke, such as the clock's digits,
 fully off its pixels, and more movement would start to be noticed.
 
-### Dim when idle
+#### Dim when idle
 
 During the hours the calendar hides, the idle screen darkens: a black layer over
 the screensaver or the calm dashboard, eased in over a few seconds. A touch
@@ -102,7 +102,7 @@ panel the black layer is real dimming; on an LCD the backlight stays on, but
 less light reaches the room. A screen that should go fully dark at night still
 needs the computer's own display sleep.
 
-### Configuration
+#### Configuration
 
 Screensaver settings live under *Settings → Appearance → Screensaver*, and can
 also be reached from the screensaver itself — see below.
@@ -130,7 +130,7 @@ also be reached from the screensaver itself — see below.
   hours. Off by default.
 - **Show a settings shortcut on the screensaver**: off by default.
 
-### Changing it from the screensaver
+#### Changing it from the screensaver
 
 Judging a transition means watching it, and every adjustment otherwise meant
 leaving the screensaver, finding the settings page, changing one value and
@@ -171,7 +171,7 @@ Which photos appear is configured under *Settings → Photos:*
 - **Orientation filter**: landscape / portrait / square, applied per display context (gallery / wallpaper / screensaver).
 - **Pinned photo**: override the slideshow with a single static photo (for the surfaces you want stable).
 
-### Activation behavior
+#### Activation behavior
 
 - Mouse / touch / keyboard activity resets the idle timer.
 - Tab visibility doesn't matter. Even an idle but visible tab triggers the screensaver. (This is the kiosk use case: nobody's interacting with the wall display, so show the slideshow.)
@@ -180,24 +180,22 @@ Which photos appear is configured under *Settings → Photos:*
   - A modal is open.
   - The PWA detects mobile mode (auto-disabled: phones don't need screensavers).
 
-### Exiting
+#### Exiting
 
 - Tap anywhere, press a key, or move the mouse. The screensaver fades back to the dashboard.
 - No PIN required (anyone can dismiss).
 
----
-
-## Away Mode
+### Away Mode
 
 A privacy overlay for when nobody's home (or when you don't want a casual passerby to see the dashboard's content). Shows only a photo slideshow + a compact header bar with clock and weather.
 
-### Why this exists
+#### Why this exists
 
 Imagine your dashboard is mounted in a kitchen visible from the front door. A delivery person, neighbor, or visiting house sitter glances through the window. The dashboard shows your family's calendar, today's chores, what tasks are due. Too much information for a stranger to see.
 
 Away mode strips that down to: clock, weather, photo. Nothing else.
 
-### Activation
+#### Activation
 
 Two ways:
 
@@ -214,7 +212,7 @@ Two ways:
 
 The auto-activation timer resets on any user interaction (touch, click, keyboard).
 
-### The Away Mode display
+#### The Away Mode display
 
 - Top header bar:
   - Clock (left).
@@ -226,26 +224,24 @@ The auto-activation timer resets on any user interaction (touch, click, keyboard
 
 No calendar, no chores, no tasks, no messages, no widgets. Just the time, weather, and a slideshow.
 
-### Exiting
+#### Exiting
 
 Tap anywhere. A PIN keypad appears. Enter a **parent PIN** to exit. Children can't exit Away mode, by design, since the use case is keeping the family's info private during periods when adults aren't around to authorize seeing it.
 
 If you forget the PIN: reset it offline with the bundled recovery script from inside the app container: `docker compose exec app node scripts/reset-pin.js --list` to see member names, then `docker compose exec app node scripts/reset-pin.js "Name" 1234` to set a new PIN for that member. It hashes the PIN exactly like the app and touches only that member's row.
 
-### Use cases
+#### Use cases
 
 - **Kitchen with view of the street**: auto-activate after 8 hours so the dashboard goes private overnight.
 - **Vacation home**: manual-activate when leaving so the cleaner / property manager doesn't see your full schedule.
 - **Extended trips**: auto-activate at 1 week so even house-sitters don't see returning family's schedule.
 - **Always-on screens used part-time**: auto-activate at 4 hours so the screen doesn't sit on the dashboard view during work hours when nobody's checking.
 
----
-
-## Babysitter Mode
+### Babysitter Mode
 
 A caregiver overlay with essential household details. Activates manually (or via a public URL) when a babysitter, family friend, or other temporary caregiver is at the house.
 
-### What's on it
+#### What's on it
 
 Configurable in *Settings → Babysitter Info.* Sections include:
 
@@ -255,7 +251,7 @@ Configurable in *Settings → Babysitter Info.* Sections include:
 - **House rules**: guidelines for the caregiver. Screen time policy, snack policy, what to do if [scenario], whatever you want them to know.
 - **Pet info** (if you set it up): feeding schedule, where pet food lives, vet contact.
 
-### Sensitive sections
+#### Sensitive sections
 
 Mark any section as **sensitive** in *Settings → Babysitter Info.* Sensitive sections appear in the overlay but require a tap-to-reveal with a parent PIN. Useful for:
 
@@ -265,14 +261,14 @@ Mark any section as **sensitive** in *Settings → Babysitter Info.* Sensitive s
 
 Sensitive sections show a placeholder ("Tap to reveal: parent PIN required") until unlocked. Once unlocked, they stay visible for that session.
 
-### Activation
+#### Activation
 
 Two ways:
 
 1. **Tap the babysitter icon** in the dashboard header.
 2. **Share the public URL** `/babysitter`: works without login. You can send this URL to a sitter ahead of time so they have the info on their phone too.
 
-### The /babysitter public URL
+#### The /babysitter public URL
 
 Anyone with the URL can access the babysitter view. Use cases:
 
@@ -282,7 +278,7 @@ Anyone with the URL can access the babysitter view. Use cases:
 
 The public URL respects the sensitive-section gating: sensitive sections still require PIN unlock when viewed via the public URL.
 
-### Leaving a note for the family
+#### Leaving a note for the family
 
 While Babysitter Mode is on, the Babysitter Mode screen has a **Leave a note for the family** box. The screen covers every page while the mode is on, so a sitter who opens `/babysitter` on their phone gets the box too. The sitter types a note (up to 500 characters) and, if they like, their name, and taps **Send**. The note goes on the [Messages](MESSAGES.md) board marked as from the babysitter, for example "Everyone ate dinner. One of the kids bumped an elbow, Band-Aid on."
 
@@ -291,7 +287,7 @@ While Babysitter Mode is on, the Babysitter Mode screen has a **Leave a note for
 - The sitter cannot read the Messages board. Only a parent can edit or delete a sitter's note.
 - With the authentication wall on, the note box only works on a trusted device, like the rest of `/babysitter`.
 
-### Today's meals
+#### Today's meals
 
 While Babysitter Mode is on, the Babysitter Mode screen shows a **Today's Meals** card with what the meal planner has for today: each meal's name and whether it is breakfast, lunch, snack or dinner, in that order. It is read-only. The screen covers every page while the mode is on, so a sitter on `/babysitter` sees it too.
 
@@ -300,22 +296,22 @@ While Babysitter Mode is on, the Babysitter Mode screen shows a **Today's Meals*
 - Nothing planned today, no card. When the mode is turned off, the server stops answering for the card.
 - Changes to the plan show up within about five minutes.
 
-### Exiting
+#### Exiting
 
 Tap anywhere → PIN keypad → enter parent PIN → returns to the dashboard.
 
 (The public URL `/babysitter` doesn't have an exit per se. It's just a webpage. Close the tab.)
 
-### Use cases
+#### Use cases
 
 - **First-time sitter**: they arrive, you tap babysitter mode, walk through the screen with them, leave. The wall display now shows the info they need without needing your phone for any of it.
 - **Grandparents visiting**: same idea, even if they're family. House codes, WiFi password, your phone numbers all visible.
 - **Pet sitter**: extends the babysitter sections to include pet-specific info.
 - **Long-term caregivers**: set sensitive sections so the day-to-day visible info is the basics; PIN-protect medications + bedrooms + specific medical notes.
 
----
+## Details
 
-## Layered behavior
+### Layered behavior
 
 These modes are layered, not exclusive. The dashboard always exists underneath; the active mode overlays on top.
 
@@ -325,9 +321,7 @@ These modes are layered, not exclusive. The dashboard always exists underneath; 
 
 Switching between modes is done via the header icons (when not in away/babysitter, those require PIN to exit first).
 
----
-
-## Performance considerations
+### Performance considerations
 
 Each overlay is lazy-loaded: the screensaver, away mode, and babysitter mode components only load when activated, not on every dashboard render. The transitive import chain that pulled them into the root layout was broken in v1.0.4 specifically to keep the dashboard's first paint fast.
 
@@ -337,9 +331,7 @@ At the Reduced and Minimal performance levels (*Settings → Appearance → Perf
 - At Minimal, fades between idle and awake are near-instant.
 - Away mode and babysitter mode run normally.
 
----
-
-## Privacy summary
+### Privacy summary
 
 | Mode | Shows | Reachable without login? |
 |---|---|---|
@@ -352,45 +344,43 @@ If you're worried about what a casual passerby can see: Away mode is the answer.
 
 If you're worried about what a babysitter or short-term guest needs to know: Babysitter mode is the answer.
 
----
+### Troubleshooting
 
-## Troubleshooting
-
-### Screensaver doesn't activate
+#### Screensaver doesn't activate
 
 - Check *Settings → Appearance → Timers & Auto-Activation → Screensaver Timeout*. Is it set to "Never"?
 - Is the dashboard in edit mode? Edit mode suppresses the screensaver.
 - Is a modal open? Modals suppress the screensaver.
 - On mobile PWA installs, the screensaver is intentionally auto-disabled. This is by design.
 
-### Away mode won't exit
+#### Away mode won't exit
 
 You need the parent PIN. If you've forgotten it, reset it offline with the bundled script from inside the app container: `docker compose exec app node scripts/reset-pin.js --list` to see member names, then `docker compose exec app node scripts/reset-pin.js "Name" 1234` to set a new PIN for that member.
 
-### Babysitter info shows blank
+#### Babysitter info shows blank
 
 You haven't configured anything in *Settings → Babysitter Info.* Add at least one section so the page has content.
 
-### Sensitive section won't unlock with the right PIN
+#### Sensitive section won't unlock with the right PIN
 
 Check that the PIN belongs to a **parent** role. Child PINs can't unlock sensitive sections.
 
-### Public /babysitter URL not loading
+#### Public /babysitter URL not loading
 
 Make sure you've configured at least one section in *Settings → Babysitter Info*. An empty babysitter view has nothing to render. Also confirm the device can reach the Prism host on your network.
 
-### Photo slideshow stutters during screensaver
+#### Photo slideshow stutters during screensaver
 
 The screen may be running at the Minimal performance level, where the Photo widget shows a single image. Check *Settings → Appearance → Performance*; with Auto it shows the level it is running at.
 
-### Wrong photo source on the screensaver
+#### Wrong photo source on the screensaver
 
 The screensaver photo filters (sources, per-context orientation, pinned photo) live in *Settings → Photos* under the **screensaver** display context. Adjust them there.
 
-### Babysitter QR code for WiFi doesn't work
+#### Babysitter QR code for WiFi doesn't work
 
 The QR uses the standard `WIFI:` URI format. Some older Android devices don't support QR Wi-Fi join; on those, the sitter has to type the password manually. Confirm the password works typed in directly before blaming the QR code.
 
-### Clock in away mode showing wrong time
+#### Clock in away mode showing wrong time
 
 Browser TZ issue. Check the system TZ on the device running the dashboard. Prism uses the browser's local TZ for the away-mode clock.

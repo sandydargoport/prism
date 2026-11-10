@@ -6,7 +6,9 @@ how many days away each one is and how old the person is turning.
 **You don't type birthdays into Prism.** It reads them from the calendars and
 contacts you already keep, so they stay correct in one place rather than two.
 
-## Where they come from
+## Set it up
+
+### Where they come from
 
 | Source | What Prism reads |
 |---|---|
@@ -22,7 +24,7 @@ and calendars created inside Prism itself.
     phone come straight through. Tick **contact birthdays** when connecting
     iCloud under *Settings → Integrations*.
 
-## Adding one Prism can't find
+### Adding one Prism can't find
 
 Give it a source: put the birthday on a calendar, and Prism picks it up on the
 next sync. Your own local Prism calendar is fine for this — you don't need an
@@ -37,7 +39,9 @@ external account.
 
 Without a year you still get the date and the countdown, just no age.
 
-## Anniversaries and milestones
+## Use it
+
+### Anniversaries and milestones
 
 **Anniversaries** work the same way — put **anniversary** in the title.
 
@@ -53,20 +57,22 @@ If you keep a calendar where *everything* on it is a life event, open
 **Manage calendars** and turn on **"Treat every all-day event here as a birthday
 or milestone"**. Titles on that calendar then need no keyword at all.
 
-## Other languages
+### Other languages
 
 Titles are matched in English and German — `Geburtstag`, `Hochzeitstag` and
 `Jubiläum` all work. Adding another language is a one-line change in
 `src/lib/services/birthday-detect.ts`; contributions welcome.
 
-## Removing one
+### Removing one
 
 Deleting a birthday in Prism keeps it deleted. It won't come back on the next
 sync even though the calendar event still exists, so you can prune the list
 without editing the underlying calendar. Delete the calendar event too if you
 want it gone everywhere.
 
-## What Prism deliberately ignores
+## Details
+
+### What Prism deliberately ignores
 
 - **Read-only calendars you subscribe to** — school terms, public holidays and
   the like. This is what stops "No School — Martin Luther King's Birthday"

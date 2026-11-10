@@ -6,9 +6,9 @@ Keep a list of local places to go, for the next time someone asks what to do thi
 
 The [travel map](TRAVEL.md) is for trips; this list is for places nearby.
 
----
+## Use it
 
-## What it tracks
+### What it tracks
 
 A "weekend place" is anywhere your family might spend a few hours: parks, restaurants, museums, trails, farms, drive-ins, indoor play spots. Each entry has:
 
@@ -25,9 +25,7 @@ A "weekend place" is anywhere your family might spend a few hours: parks, restau
 
 Places also carry optional location fields (place name, address, latitude/longitude) that show in the detail panel when present, but these are not currently editable from the app UI.
 
----
-
-## Adding a place
+### Adding a place
 
 *Weekend → Add place* opens the modal. Required: name. Everything else optional.
 
@@ -36,11 +34,9 @@ Two starting statuses:
 - **Want to Try**: default. You haven't been yet, this is something to try.
 - **Been There**: already been; you're adding it retroactively as a favorite or for record-keeping. Marking a place "Been There" reveals the star rating field.
 
----
+### The Weekend page
 
-## The Weekend page
-
-### Cards grouped by tag
+#### Cards grouped by tag
 
 When your places span more than one tag, place cards group into sections (one section per preset tag they use, in preset order) so you can scan by activity type at a glance. Each section is headed by the tag's emoji and label (e.g. 🌳 Outdoor, 🍽️ Food, 🏛️ Museum, 🌾 Farm) with a count. A place is bucketed by the first of its tags that matches a preset.
 
@@ -48,11 +44,11 @@ Places whose tags don't match any preset (or have no tags) fall into a final �
 
 Cards keep the list's default order within a section (most recently updated first); there is no separate in-group sort. When every place shares a single tag category, the page shows a flat grid with no section headers.
 
-### Visit-frequency dots
+#### Visit-frequency dots
 
 Each visited card shows pip dots representing visit count, grouped in 5s. So 12 visits = `●●●●● ●●●●● ●●`. Pips are shown for up to 15 visits; past that the display collapses to a `×N` count. At a glance you can see which places get heavy rotation vs. one-off visits.
 
-### Filters
+#### Filters
 
 Filter chips at the top:
 
@@ -61,7 +57,7 @@ Filter chips at the top:
 - **Tags**: multi-select chips from the preset palette; a place must carry every selected tag to show.
 - **Search**: free-text match on place name.
 
-### Side panel detail view
+#### Side panel detail view
 
 Tap any card to slide out the detail panel with:
 
@@ -70,9 +66,7 @@ Tap any card to slide out the detail panel with:
 - **Mark as Visited** action (labeled **Log Another Visit** once the place has already been visited).
 - **Favorite** toggle.
 
----
-
-## Marking a visit
+### Marking a visit
 
 Tapping **Mark as Visited** (or **Log Another Visit** on a place you've already been to) is a single tap. There's no per-visit date/rating/notes prompt. It immediately:
 
@@ -82,9 +76,7 @@ Tapping **Mark as Visited** (or **Log Another Visit** on a place you've already 
 
 Rating lives on the place itself and is set via **Edit**, not per visit. Subsequent visits don't change status. They just increment the count and update last-visited.
 
----
-
-## Tags
+### Tags
 
 Tags come from a fixed preset palette, selected as toggle chips in the Add/Edit form and in the filter row. There is no free-text tag entry. The full set:
 
@@ -92,35 +84,31 @@ Tags come from a fixed preset palette, selected as toggle chips in the Add/Edit 
 
 The same presets drive the tag grouping on the page: a place lands in the section of the first preset tag it carries; anything untagged (or with no preset match) goes to **Other**.
 
----
+### Use cases
 
-## Use cases
-
-### "What should we do Saturday?"
+#### "What should we do Saturday?"
 
 Filter to `Want to Try`, then narrow by a tag or two you're in the mood for. That shows the places you have not been yet.
 
-### "Where do we always have a good time?"
+#### "Where do we always have a good time?"
 
 Turn on **Favorites only**: your regulars, and the ones with the fullest pip rows, rise to the top.
 
-### "We're hosting cousins this weekend"
+#### "We're hosting cousins this weekend"
 
 Filter by tags like `family` + `outdoor`. Open the detail panel of any place you're considering and screenshot to share with the visiting parents.
 
-### Family activity scrapbook
+#### Family activity scrapbook
 
 Marking visits builds a running count and last-visited date per place, so you can tell which spots are in heavy rotation and roughly when you last went.
 
----
+## Details
 
-## Privacy
+### Privacy
 
 Weekend places are local to your Prism database. Nothing about your places, visits, or notes is sent to any external service.
 
----
-
-## Roadmap (not shipped yet)
+### Roadmap (not shipped yet)
 
 The current Weekend Ideas is Phase 1 (manual entry, list/filter UI). On the roadmap:
 
@@ -130,14 +118,12 @@ The current Weekend Ideas is Phase 1 (manual entry, list/filter UI). On the road
 - **Suggest mode**: given current weather + season + family preferences, suggest a few places for "today's outing."
 - **Share / collaborate**: share a backlog with another family.
 
----
+### Troubleshooting
 
-## Troubleshooting
-
-### Side panel doesn't open on tap
+#### Side panel doesn't open on tap
 
 Was a bug in v1.5.0: `WeekendView` was missing its `<PageWrapper>` wrapper, causing the side panel context to not initialize. Fixed in v1.5.1. If you still see this, hard-reload.
 
-### Group "Other" has places I expected to be categorized
+#### Group "Other" has places I expected to be categorized
 
 Grouping is driven by the fixed tag presets. A place only lands in a named section if it carries one of the preset tags; anything else falls into **Other**. To move it, edit the place and add a recognized preset tag.
