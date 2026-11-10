@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import path from 'path';
 import { getSeededParentId } from './helpers/auth';
 import { TODAY_TEMPLATE } from '../src/lib/constants/layoutTemplates';
+import { deleteLayout } from './helpers/cleanup';
 
 /**
  * One photo stage with a true crossfade (#954). Two stand-in photos (the
@@ -168,7 +169,7 @@ test('a wide photo is cropped so its subject is not under a widget', async ({ pa
     expect(under, `subject at ${Math.round(subject.x)},${Math.round(subject.y)}`).toEqual([]);
     expect(Math.abs(subject.x - cx), 'it moved from the centred crop').toBeGreaterThan(20);
   } finally {
-    await page.request.delete(`/api/layouts/${layout.id}`);
+    await deleteLayout(page, layout.id);
   }
 });
 
@@ -200,7 +201,7 @@ async function captionPage(page: import('@playwright/test').Page, dateSetting?: 
     : { name: `Caption ${Date.now()}`, widgets: (grid ?? [{ i: 'clock', x: 0, y: 0, w: 12, h: 6 }]).map((w) => ({ ...w, visible: true })) } })).json();
   await page.goto(`/d/${layout.slug}`);
   await expect(page.locator('[data-photo-stage] [data-photo-layer="front"]').first()).toHaveCount(1, { timeout: 60_000 });
-  return () => page.request.delete(`/api/layouts/${layout.id}`);
+  return () => deleteLayout(page, layout.id);
 }
 
 test('the photo says when it was taken, in a free corner, at the text floor or above', async ({ page }) => {
@@ -313,6 +314,6 @@ test('On this day: a photo from this date in an earlier year comes first, and sa
     expect(askedForThisDay, "asked for the screen's own date").toBe(`${now.getMonth() + 1}-${now.getDate()}`);
     await expect(page.locator('[data-photo-caption]')).toHaveText(`On this day, ${then.getFullYear()}`, { timeout: 10_000 });
   } finally {
-    await page.request.delete(`/api/layouts/${layout.id}`);
+    await deleteLayout(page, layout.id);
   }
 });

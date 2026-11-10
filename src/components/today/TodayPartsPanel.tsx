@@ -33,9 +33,11 @@ export function todayParts(widgets: WidgetConfig[]): WidgetConfig[] {
   return TODAY_TEMPLATE.widgets.map((t) => have.get(t.i) ?? { ...t, visible: false });
 }
 
-export function TodayPartsPanel({ widgets, onChange }: {
+export function TodayPartsPanel({ widgets, onChange, bare = false }: {
   widgets: WidgetConfig[];
   onChange: (next: WidgetConfig[]) => void;
+  /** Inside the editing bar's Widgets sheet (#1151): no card or heading of its own. */
+  bare?: boolean;
 }) {
   const parts = todayParts(widgets);
   const calendar = parts.find((p) => p.i === 'calendar');
@@ -49,13 +51,17 @@ export function TodayPartsPanel({ widgets, onChange }: {
 
   return (
     // On its own solid sheet, readable over any photo (#908's sheet material).
-    <div className="relative z-10 mx-auto mt-8 flex w-full max-w-2xl flex-col gap-6 rounded-[1.4rem] bg-card p-8 text-card-foreground shadow-2xl dark:bg-[rgb(22_17_13)]" data-today-parts>
-      <div>
-        <h2 className="m-0 text-title font-medium" style={{ fontFamily: 'var(--font-display)' }}>Today</h2>
-        <p className="m-0 mt-1 text-body text-muted-foreground">
-          Today places each part by what it is, so parts are shown or hidden here rather than moved.
-        </p>
-      </div>
+    <div className={bare ? 'flex flex-col gap-5' : 'relative z-10 mx-auto mt-8 flex w-full max-w-2xl flex-col gap-6 rounded-[1.4rem] bg-card p-8 text-card-foreground shadow-2xl dark:bg-[rgb(22_17_13)]'} data-today-parts>
+      {bare ? (
+        <p className="m-0 text-body text-muted-foreground">Today places each widget where it belongs, so you choose what shows and it finds the spot.</p>
+      ) : (
+        <div>
+          <h2 className="m-0 text-title font-medium" style={{ fontFamily: 'var(--font-display)' }}>Today</h2>
+          <p className="m-0 mt-1 text-body text-muted-foreground">
+            Today places each widget where it belongs, so you choose what shows and it finds the spot.
+          </p>
+        </div>
+      )}
 
       <ul className="m-0 flex list-none flex-col gap-1 p-0">
         {parts.map((p) => {
@@ -64,12 +70,12 @@ export function TodayPartsPanel({ widgets, onChange }: {
             <li key={p.i} className="flex min-h-[56px] items-center gap-4 rounded-xl px-3 hover:bg-muted/50" data-part={p.i}>
               <span className="flex-1 text-body">{PART_NAMES[p.i] ?? p.i}</span>
               <label className="flex items-center gap-2 text-caption text-muted-foreground">
-                Stays when idle
+                Stays when resting
                 <Switch
                   checked={shownWhenIdle(p)}
                   disabled={!shown}
                   onCheckedChange={(v) => update(p.i, { showWhenIdle: v })}
-                  aria-label={`${PART_NAMES[p.i]} stays when idle`}
+                  aria-label={`${PART_NAMES[p.i]} stays when resting`}
                   data-part-idle={p.i}
                 />
               </label>

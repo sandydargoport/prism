@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isBuiltInView } from '@/lib/newLook';
 import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { layouts } from '@/lib/db/schema';
@@ -141,7 +142,7 @@ export async function DELETE(
     const { id } = await params;
 
     const [existing] = await db
-      .select({ id: layouts.id, name: layouts.name, isDefault: layouts.isDefault })
+      .select({ id: layouts.id, name: layouts.name, isDefault: layouts.isDefault, view: layouts.view })
       .from(layouts)
       .where(eq(layouts.id, id));
 
@@ -149,6 +150,14 @@ export async function DELETE(
       return NextResponse.json(
         { error: 'Layout not found' },
         { status: 404 }
+      );
+    }
+
+    // Today is the built-in dashboard (#1151): it is edited and reset, never deleted.
+    if (isBuiltInView(existing.view)) {
+      return NextResponse.json(
+        { error: 'Today is built in and cannot be deleted' },
+        { status: 409 }
       );
     }
 

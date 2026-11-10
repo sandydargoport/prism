@@ -16,6 +16,8 @@ export interface DashboardInfo {
   name: string;
   slug: string | null;
   isDefault: boolean;
+  /** 'today' is the built-in dashboard (#1151); anything else is the family's own. */
+  view?: string | null;
 }
 
 export interface LayoutEditorProps {
@@ -70,6 +72,10 @@ export interface LayoutEditorProps {
   onCreateDashboard?: (name: string, startFrom: 'blank' | 'template' | 'copy' | 'today' | 'calendar') => void;
   onRenameDashboard?: (newName: string) => void;
   onDeleteDashboard?: () => void;
+  /** The edited dashboard's kind: 'today' is the built-in one, edited by its widgets list, not a grid. */
+  view?: string | null;
+  /** Put the built-in dashboard's widgets back as they came. */
+  onResetBuiltIn?: () => void;
 }
 
 export interface ExportWidget {

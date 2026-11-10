@@ -12,13 +12,13 @@ import { LayoutEditorImportDialog } from './LayoutEditorImportExport';
 import { CreateDashboardDialog, SaveAsDialog } from './LayoutEditorDashboardManager';
 import { RenameDashboardDialog } from './LayoutEditorRenameDashboard';
 import { LayoutEditorMeasureBar } from './LayoutEditorMeasureBar';
-import { LayoutEditorToolbarLeft } from './LayoutEditorToolbarLeft';
-import { LayoutEditorToolbarRight } from './LayoutEditorToolbarRight';
+import { EditorBar, type EditorSheet } from './EditorBar';
+import { DashboardSheet, DaySheet, LookSheet, MoreSheet, WidgetsSheet, LayoutEditorPreviewPanel } from './EditorSheets';
 import { useMeasureMode } from './useMeasureMode';
 import { useLayoutEditorState } from './useLayoutEditorState';
 import type { LayoutEditorProps } from './LayoutEditorTypes';
 import { copyLayoutToOther } from './copyLayout';
-import { IdleBackgroundBar, idleSaveProblem } from './IdleBackgroundBar';
+import { idleSaveProblem } from './IdleBackgroundBar';
 import { toast } from '@/components/ui/use-toast';
 
 export type { SavedLayout, DashboardInfo, LayoutEditorProps } from './LayoutEditorTypes';
@@ -68,6 +68,8 @@ export function LayoutEditor({
   onCreateDashboard,
   onRenameDashboard,
   onDeleteDashboard,
+  view,
+  onResetBuiltIn,
 }: LayoutEditorProps) {
   const { zones, allSizeNames } = useScreenSafeZones();
   const { confirm: confirmDelete, dialogProps: confirmDialogProps } = useConfirmDialog();
@@ -75,6 +77,18 @@ export function LayoutEditor({
   const effectiveEnabledSizes = enabledSizes.length > 0 ? enabledSizes : allSizeNames;
 
   const [activePopover, setActivePopover] = useState<ActivePopover>(null);
+  // The editing bar's open sheet (#1151). Through the day shows the screen as
+  // it rests, so it is the Idle screen tab underneath.
+  const [sheet, setSheetState] = useState<EditorSheet | null>(null);
+  // Opening it moves to the resting screen, which stays after the sheet
+  // closes so its layout can be arranged; Dashboard, or the label above the
+  // bar, goes back.
+  const setSheet = useCallback((next: EditorSheet | null) => {
+    setSheetState(next);
+    if (next === 'day') onEditTabChange?.('idle');
+    else if (next === 'dashboard') onEditTabChange?.('dashboard');
+  }, [onEditTabChange]);
+  const builtIn = view === 'today';
   // There is a screensaver layout to copy to or from only when something
   // other than the dashboard itself shows behind it.
   const hasIdleLayout = !!idleBackground && editsIdleLayout(idleBackground);
@@ -129,10 +143,6 @@ export function LayoutEditor({
     setActivePopover: closePopover,
   });
 
-  const togglePopover = useCallback((name: ActivePopover) => {
-    setActivePopover(prev => prev === name ? null : name);
-  }, []);
-
   // Close popover when clicking outside toolbar
   useEffect(() => {
     if (!activePopover) return;
@@ -182,82 +192,117 @@ export function LayoutEditor({
     );
   }
 
-  return (
-    <>
-      <div ref={toolbarRef} className="relative z-200 bg-card/85 backdrop-blur-xs px-4 py-2">
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <LayoutEditorToolbarLeft
-            editingScreensaver={editingScreensaver}
-            idleTab={editTab === 'idle'}
-            layoutName={layoutName}
-            mode={state.mode}
-            activePopover={activePopover}
-            onTogglePopover={togglePopover}
-            screenGuideOrientation={screenGuideOrientation}
-            onScreenGuideOrientationChange={onScreenGuideOrientationChange}
-            currentWidgets={currentWidgets}
-            visibleWidgets={visibleWidgets}
-            onWidgetsChange={onWidgetsChange}
-            onSelectScreensaverPreset={onSelectScreensaverPreset}
-            onSelectScreensaverTemplate={onSelectScreensaverTemplate}
-            onSaveAs={onSaveAs}
-            onScreensaverSaveAs={onScreensaverSaveAs}
-            onApplyCommunityLayout={state.handleApplyCommunityLayout}
-            focusedWidget={focusedWidget}
-            onFocusedWidgetChange={setFocusedWidget}
-            gridScrollY={gridScrollY}
-            gridVisibleRows={gridVisibleRows}
-            gridScrollX={gridScrollX}
-            gridVisibleCols={gridVisibleCols}
-            scrollToGridRef={scrollToGridRef}
-            allSizeNames={allSizeNames}
-            effectiveEnabledSizes={effectiveEnabledSizes}
-            onToggleSize={onToggleSize}
-            zones={zones}
-            validation={state.validation}
+  const setDefault = async () => {
+    if (!currentDashboardId) return;
+    try {
+      const res = await fetch(`/api/layouts/${currentDashboardId}/default`, { method: 'POST' });
+      if (res.ok) window.location.reload();
+    } catch { /* the sheet stays put on failure */ }
+  };
+
+  // A dialog opens over the screen, so the sheet closes first: left open, it
+  // would sit over the dialog's buttons.
+  const sheetContent = (() => {
+    switch (sheet) {
+      case 'dashboard':
+        return (
+          <DashboardSheet
             allDashboards={allDashboards}
             currentDashboardId={currentDashboardId}
             onSwitchDashboard={onSwitchDashboard}
-            onCreateOpen={() => { state.setShowCreateDialog(true); setActivePopover(null); }}
-            onRenameOpen={state.handleRenameOpen}
+            onAddToday={onCreateDashboard ? () => onCreateDashboard('Today', 'today') : undefined}
+            onCreateOpen={() => { setSheet(null); state.setShowCreateDialog(true); }}
+            onRenameOpen={() => { setSheet(null); state.handleRenameOpen(); }}
+            onSaveAsOpen={() => { setSheet(null); state.setShowSaveAsDialog(true); }}
+            onSetDefault={setDefault}
+            onDelete={() => { setSheet(null); state.handleDelete(); }}
+            onResetBuiltIn={onResetBuiltIn}
           />
-          <LayoutEditorToolbarRight
+        );
+      case 'widgets':
+        return (
+          <WidgetsSheet
+            builtIn={builtIn}
             editingScreensaver={editingScreensaver}
-            editTab={editTab}
-            onEditTabChange={(tab) => onEditTabChange?.(tab)}
-            dashboardDirty={dashboardDirty}
-            idleDirty={idleDirty}
-            activePopover={activePopover}
-            onTogglePopover={togglePopover}
-            saveFeedback={state.saveFeedback}
+            orientation={screenGuideOrientation}
+            widgets={currentWidgets}
+            onWidgetsChange={onWidgetsChange}
+            onScreensaverPreset={onSelectScreensaverPreset}
+            onScreensaverTemplate={onSelectScreensaverTemplate}
+            onApplyCommunityLayout={state.handleApplyCommunityLayout}
+            onFocusedWidgetChange={setFocusedWidget}
+          />
+        );
+      case 'day':
+        return (
+          <DaySheet
+            idleBackground={idleBackground}
+            onIdleBackgroundChange={onIdleBackgroundChange}
+            idleHalf={idleHalf}
+            onIdleHalfChange={onIdleHalfChange}
+            idleCheck={idleCheck}
+          />
+        );
+      case 'look':
+        return (
+          <LookSheet
+            orientation={screenGuideOrientation}
+            onOrientationChange={onScreenGuideOrientationChange}
+            onMeasure={() => { setSheet(null); toggleMeasureMode(); }}
+          />
+        );
+      case 'more':
+        return (
+          <MoreSheet
+            builtIn={builtIn}
+            editingScreensaver={editingScreensaver}
+            hasIdleLayout={hasIdleLayout}
+            idleTab={editTab === 'idle'}
             exportFeedback={state.exportFeedback}
-            allDashboards={allDashboards}
-            currentDashboardId={currentDashboardId}
-            onToggleMeasureMode={toggleMeasureMode}
-            saveBlocked={saveBlocked}
-            onSave={state.handleSave}
-            onSaveAs={() => { state.setShowSaveAsDialog(true); setActivePopover(null); }}
-            onReset={onReset}
-            onScreensaverReset={onScreensaverReset}
-            onCancel={onCancel}
             onExport={state.handleExport}
-            onImportOpen={() => { state.setShowImportDialog(true); setActivePopover(null); }}
-            onShareOpen={() => { state.setShowShareDialog(true); setActivePopover(null); }}
-            onCopyToOther={hasIdleLayout && (editTab === 'dashboard' || editingScreensaver) ? handleCopyToOther : undefined}
-            onDeleteDashboard={onDeleteDashboard}
-            onHandleDelete={state.handleDelete}
+            onImportOpen={() => { setSheet(null); state.setShowImportDialog(true); }}
+            onShareOpen={() => { setSheet(null); state.setShowShareDialog(true); }}
+            onReset={() => (editingScreensaver ? onScreensaverReset?.() : onReset())}
+            onCopyToOther={() => { setSheet(null); void handleCopyToOther(); }}
+            preview={(
+              <LayoutEditorPreviewPanel
+                visibleWidgets={visibleWidgets}
+                focusedWidget={focusedWidget ?? undefined}
+                gridScrollY={gridScrollY}
+                gridVisibleRows={gridVisibleRows}
+                gridScrollX={gridScrollX}
+                gridVisibleCols={gridVisibleCols}
+                scrollToGridRef={scrollToGridRef}
+                screenGuideOrientation={screenGuideOrientation}
+                effectiveEnabledSizes={effectiveEnabledSizes}
+                onToggleSize={onToggleSize}
+                allSizeNames={allSizeNames}
+                zones={zones}
+                validation={state.validation}
+              />
+            )}
           />
-        </div>
-        {editTab === 'idle' && idleBackground && onIdleBackgroundChange && (
-          <IdleBackgroundBar
-            value={idleBackground}
-            onChange={onIdleBackgroundChange}
-            half={idleHalf}
-            onHalfChange={(h) => onIdleHalfChange?.(h)}
-            check={idleCheck}
-          />
-        )}
-      </div>
+        );
+      default:
+        return null;
+    }
+  })();
+
+  return (
+    <>
+      <EditorBar
+        ref={toolbarRef}
+        open={sheet}
+        onOpenChange={setSheet}
+        sheet={sheetContent}
+        dirty={{ widgets: dashboardDirty, day: idleDirty }}
+        doneLabel={state.saveFeedback || 'Done'}
+        doneBlocked={saveBlocked}
+        onDone={state.handleSave}
+        onCancel={onCancel}
+        resting={editTab === 'idle'}
+        onLeaveResting={() => onEditTabChange?.('dashboard')}
+      />
 
       <CreateDashboardDialog
         open={state.showCreateDialog}

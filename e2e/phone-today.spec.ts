@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import path from 'path';
 import { getFirstParent, getSeededParentId, verifySettingsPinViaAPI } from './helpers/auth';
 import { TODAY_TEMPLATE } from '../src/lib/constants/layoutTemplates';
+import { deleteLayout } from './helpers/cleanup';
 
 /**
  * Today on a phone (#928): a short photo header with the date and the next
@@ -103,7 +104,7 @@ test('the time and the list paint above the wallpaper photo', async ({ page }) =
     expect(box.top, 'the photo reaches up under the status bar').toBeLessThanOrEqual(-58);
     expect(Math.abs(box.bottom - box.h), 'and ends at the foot of the screen').toBeLessThanOrEqual(1);
   } finally {
-    await page.request.delete(`/api/layouts/${layout.id}`);
+    await deleteLayout(page, layout.id);
   }
 });
 
@@ -325,7 +326,7 @@ test.describe('Today on a phone', () => {
       await next.click();
       await expect(page.locator('[data-event-sheet]').getByRole('heading', { name: `Phone next ${tag}` })).toBeVisible();
     } finally {
-      await page.request.delete(`/api/layouts/${layout.id}`);
+      await deleteLayout(page, layout.id);
       for (const id of made) await page.request.delete(`/api/events/${id}`);
     }
   });

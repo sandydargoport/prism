@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Today as a list (#1030), what the Simple layout leads with: "Next" with the
+ * Today as a list (#1030), what Today, the built-in dashboard, leads with: "Next" with the
  * event, its person's colour and its time, then "Later today", with what is
  * already over faint at the end. On the wall it sits over the photo in light
  * ink; on a phone, on paper. Tapping an event opens the event sheet (#836).

@@ -41,9 +41,9 @@ import { parseIdleBackground, withoutDashboard, PHOTOS, type IdleBackground } fr
 import { TodayScene } from '@/components/today/TodayScene';
 import { PhoneToday } from '@/components/today/PhoneToday';
 import { isSimpleView } from '@/lib/newLook';
+import { TODAY_TEMPLATE } from '@/lib/constants/layoutTemplates';
 import type { ChoreLike } from '@/lib/today/quietLines';
 import { useEventSheet } from '@/components/calendar/useEventSheet';
-import { NewLookOffer } from './NewLookOffer';
 import { usePinFreeEveryday, useWhoDidIt } from './useEveryday';
 import { WidgetErrorBoundary } from '@/components/dashboard/WidgetErrorBoundary';
 import { WidgetExpandProvider, useWidgetExpand } from '@/components/dashboard/WidgetExpandProvider';
@@ -145,8 +145,9 @@ export function Dashboard({
   });
   const layout = useDashboardLayout(data.layouts, schedule.slug);
   useEffect(() => { editingRef.current = layout.isEditing; }, [layout.isEditing]);
-  // Simple is premade (#1117): no Edit layout, no idle screen editor.
-  const simplePage = isSimpleView(layout.activeLayout?.view);
+  // Today is the built-in dashboard (#1151): it is edited like any other,
+  // through its widgets list instead of a grid.
+  const todayPage = isSimpleView(layout.activeLayout?.view);
 
   // Persist visible widget IDs to localStorage for next load's prioritized fetching
   useEffect(() => {
@@ -255,7 +256,7 @@ export function Dashboard({
   }, [router, pickDashboard]);
 
   const handleCreateDashboard = useCallback(async (name: string, startFrom: 'blank' | 'template' | 'copy' | 'today' | 'calendar') => {
-    const { DEFAULT_TEMPLATE, TODAY_TEMPLATE } = await import('@/lib/constants/layoutTemplates');
+    const { DEFAULT_TEMPLATE } = await import('@/lib/constants/layoutTemplates');
     let widgets: WidgetConfig[];
     if (startFrom === 'today' || startFrom === 'calendar') {
       widgets = TODAY_TEMPLATE.widgets;
@@ -306,11 +307,9 @@ export function Dashboard({
   const removeBirthday = useRemoveBirthday(confirmAction);
   // Tonight's times and crossed offsets for a day and night pair being edited.
   const idleCheck = useIdleSwitchCheck(layout.isEditing ? layout.editingBackground : null);
-  // The Idle screen tab's Behind it bar sits under the toolbar: one row, or
-  // about four with a day and night pair.
-  const idleBarHeight = layout.isEditing && layout.editTab === 'idle'
-    ? ('switch' in layout.editingBackground ? 130 : 36)
-    : 0;
+  // The editing bar sits at the foot of the screen (#1151), so the grid keeps
+  // the top and leaves the bar its room at the bottom.
+  const editorBarRoom = layout.isEditing ? 104 : 0;
   // One event sheet for the calendar widget and Today's arc (#836).
   const eventSheet = useEventSheet(() => { void data.calendar.refresh(); });
   // Everyday jobs without a PIN (#835).
@@ -465,16 +464,17 @@ export function Dashboard({
           <ScreenJobs
             labelled
             onScreensaverClick={() => window.dispatchEvent(new Event('prism:screensaver'))}
-            onEditClick={simplePage || (activeUser && activeUser.role !== 'parent') ? undefined : layout.handleEditStart}
+            onEditClick={activeUser && activeUser.role !== 'parent' ? undefined : layout.handleEditStart}
           />
         }
       >
         <DashboardLayout className={className}>
           {/* On the wall in landscape the dock's More has these (#922). */}
-          {!wallDock && (
+          {/* While editing, the editing bar at the foot is the only control (#1151). */}
+          {!wallDock && !layout.isEditing && (
             <DashboardHeader
               onScreensaverClick={() => window.dispatchEvent(new Event('prism:screensaver'))}
-              onEditClick={simplePage || (activeUser && activeUser.role !== 'parent') ? undefined : layout.handleEditStart}
+              onEditClick={activeUser && activeUser.role !== 'parent' ? undefined : layout.handleEditStart}
             />
           )}
 
@@ -518,12 +518,14 @@ export function Dashboard({
               gridTotalRows={gridTotalRows}
               gridTotalCols={gridTotalCols}
               scrollToGridRef={scrollToGridRef}
-              allDashboards={data.layouts.allLayouts.map(l => ({ id: l.id, name: l.name, slug: l.slug, isDefault: l.isDefault }))}
+              allDashboards={data.layouts.allLayouts.map(l => ({ id: l.id, name: l.name, slug: l.slug, isDefault: l.isDefault, view: l.view }))}
               currentDashboardId={layout.activeLayout?.id}
               onSwitchDashboard={handleSwitchDashboard}
               onCreateDashboard={handleCreateDashboard}
               onRenameDashboard={handleRenameDashboard}
               onDeleteDashboard={handleDeleteDashboard}
+              view={layout.activeLayout?.view}
+              onResetBuiltIn={() => layout.setEditingWidgets(TODAY_TEMPLATE.widgets.map((w) => ({ ...w })))}
             />
           )}
 
@@ -534,8 +536,8 @@ export function Dashboard({
               isEditable
               renderWidget={renderSsWidget}
               margin={4}
-              headerOffset={100 + idleBarHeight}
-              bottomOffset={bottomOffset}
+              headerOffset={16}
+              bottomOffset={bottomOffset + editorBarRoom}
               minVisibleRows={8}
               theme={SCREENSAVER_THEME}
               previewFit="contain"
@@ -547,9 +549,10 @@ export function Dashboard({
               onScrollInfo={handleScrollInfo}
               scrollToRef={scrollToGridRef}
             />
-          ) : (layout.activeLayout?.view === 'today' || layout.activeLayout?.view === 'calendar') && !layout.isEditing ? (
-            // Today (#907): one scene over the photo instead of the grid. In
-            // the editor it shows as its grid of parts until the parts panel.
+          ) : todayPage ? (
+            // Today (#907): one scene over the photo instead of the grid. While
+            // editing it stays the scene, so the Widgets sheet's changes show
+            // on it as they are made (#1151).
             <WidgetErrorBoundary>
               <TodayScene
                 parts={layout.activeWidgets}
@@ -566,7 +569,7 @@ export function Dashboard({
                   onTickChore: widgetProps.chores?.onChoreComplete as ((id: string) => void) | undefined,
                   onAddShopping: widgetProps.shopping?.onAddClick as (() => void) | undefined,
                 }}
-                topOffset={uiHidden || wallDock ? 0 : 56}
+                topOffset={uiHidden || wallDock || layout.isEditing ? 0 : 56}
               />
             </WidgetErrorBoundary>
           ) : (
@@ -586,8 +589,8 @@ export function Dashboard({
                   idleToggles={layout.isEditing && layout.editTab === 'idle' && !isMobile}
                   widgetConstraints={dashboardConstraints}
                   margin={8}
-                  headerOffset={layout.isEditing ? 140 + idleBarHeight : uiHidden || wallDock ? 0 : 56}
-                  bottomOffset={bottomOffset}
+                  headerOffset={layout.isEditing ? 16 : uiHidden || wallDock ? 0 : 56}
+                  bottomOffset={bottomOffset + editorBarRoom}
                   screenGuideOrientation={screenGuideOrientation}
                   enabledSizes={enabledSizes}
                   onScrollInfo={handleScrollInfo}
@@ -598,8 +601,6 @@ export function Dashboard({
           )}
 
           {eventSheet.element}
-          {/* The one-time offer of the Simple layout to an existing household (#808, #991). */}
-          {!layout.isEditing && !calmIdle && <NewLookOffer />}
           {whoDidIt.element}
           {showAddTask && (
             <AddTaskModal open={showAddTask} onOpenChange={setShowAddTask}
