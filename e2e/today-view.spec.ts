@@ -558,6 +558,14 @@ test.describe('the Today view', () => {
       expect(written.font).toMatch(/Dancing|script/i);
       expect(written.animation).toBe('prism-write');
       expect(written.mask).toContain('linear-gradient');
+      // #1140: the time and place are a detail, at the size of a later row,
+      // so the title is the only large thing.
+      const sizes = await list.evaluate((el) => {
+        const px = (s: string) => parseFloat(getComputedStyle(el.querySelector(s)!).fontSize);
+        return { title: px('[data-today-next-title]'), time: px('[data-today-next-time]'), row: px('[data-today-later-row]') };
+      });
+      expect(sizes.time, 'the time line is no larger than a later row').toBeLessThanOrEqual(sizes.row + 0.5);
+      expect(sizes.time, 'the time line is well under the title').toBeLessThan(sizes.title * 0.5);
       await expect(list.getByText('Next', { exact: true })).toBeVisible();
       await expect(list.locator('[data-today-later-row]').filter({ hasText: `List second ${tag}` })).toBeVisible();
       // Next comes before later today.
