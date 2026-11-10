@@ -65,7 +65,8 @@ export function TodayList({ events, now, onOpenEvent, variant, onlyNext = false 
             ? <WrittenTitle title={next.title} />
             : <span className="min-w-0 [text-wrap:balance]">{next.title}</span>}
         </span>
-        <span className={cn('tabular-nums', wall ? 'text-title opacity-85' : 'text-body text-muted-foreground')} data-today-next-time>
+        {/* A detail of Next, at a later row's size (#1140): only the title is large. */}
+        <span className={cn('tabular-nums', wall ? 'text-body opacity-80' : 'text-body text-muted-foreground')} data-today-next-time>
           {when(next)}{next.location ? `, ${next.location}` : ''}
         </span>
       </button>
