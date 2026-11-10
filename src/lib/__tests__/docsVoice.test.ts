@@ -46,6 +46,36 @@ describe('docs voice', () => {
     expect(files).not.toContain('demo-deployment.md');
   });
 
+  it('links between docs pages land on headings that exist', () => {
+    const anchorsOf = (file: string) => {
+      const text = fs.readFileSync(file, 'utf8').replace(/^(```|~~~)[\s\S]*?^\1/gm, '');
+      return [...text.matchAll(/^#{1,6} (.+)$/gm)].map((h) => slug(h[1]!));
+    };
+    const broken: string[] = [];
+    for (const [, page] of pages) {
+      const from = path.join(DOCS, page);
+      const text = fs.readFileSync(from, 'utf8');
+      for (const m of text.matchAll(/\]\(([\w./-]*?\.md)?#([\w-]+)\)/g)) {
+        const target = m[1] ? path.resolve(path.dirname(from), m[1]) : from;
+        if (!fs.existsSync(target) || !anchorsOf(target).includes(m[2]!)) broken.push(`${page} -> ${m[1] ?? ''}#${m[2]}`);
+      }
+    }
+    expect(broken).toEqual([]);
+  });
+
+  it('orders each feature page as Set it up, then Use it, then Details', () => {
+    const grouped = ['DASHBOARD', 'CALENDAR', 'SHOPPING', 'RECIPES', 'TASKS', 'CHORES', 'GOALS', 'MESSAGES', 'WISHES',
+      'PHOTOS', 'TRAVEL', 'WEEKEND', 'BUS', 'DISPLAY-MODES', 'MOBILE', 'KROGER', 'BIRTHDAYS'];
+    const order = ['Set it up', 'Use it', 'Details'];
+    for (const name of grouped) {
+      const text = fs.readFileSync(path.join(DOCS, 'features', `${name}.md`), 'utf8').replace(/^(```|~~~)[\s\S]*?^\1/gm, '');
+      const h2 = [...text.matchAll(/^## (.+)$/gm)].map((m) => m[1]!.trim());
+      // Only the three groups at the top level, in order, Use it always there.
+      expect([name, h2]).toEqual([name, order.filter((g) => h2.includes(g))]);
+      expect([name, h2.includes('Use it')]).toEqual([name, true]);
+    }
+  });
+
   it('sends every docs link in the app to a page and heading that exist', () => {
     const broken: string[] = [];
     for (const file of sourceFiles(path.join(ROOT, 'src'))) {

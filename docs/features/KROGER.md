@@ -8,27 +8,15 @@ Use the cart for pickup, delivery, or as a list in the store. One Kroger account
 
 Prism uses Kroger's free public API. You sign in on Kroger's own page, so Prism never sees your password.
 
----
+## Set it up
 
-## What it does
-
-- **Per-user OAuth**: each Prism family member who wants to push to Kroger connects their own shopper account in **Settings → Integrations → "Kroger / Mariano's cart"** card. Tokens are AES-256-GCM encrypted at rest with the existing `ENCRYPTION_KEY`.
-- **SKU picker per item**: for each unchecked shopping item, Prism fetches up to 5 candidate products from Kroger and shows them in a picker with image, name, size, price, and a normalized unit price (lb / fl oz / ct) so candidates within a page are directly comparable.
-- **SKU caching**: once you pick *"Mariano's 2% Reduced Fat Milk Gallon"* for the abstract item *"milk"*, that productId is remembered on the shopping item. Next time you push *"milk"*, the same SKU is pre-selected. One-tap weekly staples after the first trip.
-- **Quantity controls**: bump the cart quantity per item (1-99) with +/- buttons; review-screen shows `× 2` next to multiples.
-- **Search override**: every page has an editable search box so you can refine the term when the parser strips too much (or not enough).
-- **Default-store picker**: set your preferred Mariano's (or any banner) by zip code. Subsequent searches use that store's location-aware pricing and stock.
-- **Modifier-aware parsing**: recipe-derived items like *"1 Fresno pepper, seeded and sliced, or ½ teaspoon crushed red pepper flakes"* search Kroger for *"Fresno pepper"* (drops quantity, unit, comma modifiers, `" or "` alternatives, and parentheticals).
-
----
-
-## One-time setup
+### One-time setup
 
 You need to register a Kroger Developer application for your Prism deployment. Same reason your Google and Microsoft integrations require one: each install runs on its own domain, and Kroger requires the redirect URI to be exact-match-registered.
 
 This takes about 5 minutes.
 
-### 1. Create a Kroger developer account
+#### 1. Create a Kroger developer account
 
 - Go to **https://developer.kroger.com/**
 - Click **Sign In** (top right). You can use your existing Kroger / Mariano's shopper account. Kroger creates a separate "developer" profile automatically.
@@ -36,7 +24,7 @@ This takes about 5 minutes.
 
 > **Heads up on the 403 trap:** the developer portal's session sometimes drops without telling you. If you hit `403 Forbidden` trying to create an app, sign out and back in (or use an incognito window). Ad blockers and Brave's strict mode can also break the portal. Disable them on `developer.kroger.com` if needed.
 
-### 2. Register the application
+#### 2. Register the application
 
 - Manage → **Applications** → **Add Application** (https://developer.kroger.com/manage/apps).
 - Fill in:
@@ -47,7 +35,7 @@ This takes about 5 minutes.
 - **Logo URL (optional)**: only the OAuth consent screen sees it, and only you / your family will see it. If you want a logo, use a public PNG URL. **Don't use a URL behind Cloudflare Access or any login gate**: Kroger's servers can't fetch it. The Prism repo icon works: `https://raw.githubusercontent.com/sandydargoport/prism/master/public/icons/icon-512.png`. Or leave blank.
 - Save.
 
-### 3. Configure the app
+#### 3. Configure the app
 
 On the app's detail page:
 
@@ -67,11 +55,11 @@ Exact-match. No trailing slash, must be `https`. If you reach Prism from multipl
 
 Save. Kroger sometimes shows the app as "pending approval" for a few minutes after registration. If OAuth fails on the first try, wait ~5 min.
 
-### 4. Copy your credentials
+#### 4. Copy your credentials
 
 The app detail page shows a **Client ID** and a **Client Secret**. Click **Show** / **Reveal** to expose the secret. Kroger sometimes only shows it once, so copy it now.
 
-### 5. Plug into Prism
+#### 5. Plug into Prism
 
 In Prism:
 
@@ -83,9 +71,19 @@ In Prism:
 
 You're done. Go to **Shopping**, add some items, and tap **Send to Kroger** in the header.
 
----
+## Use it
 
-## Things to know
+### What it does
+
+- **Per-user OAuth**: each Prism family member who wants to push to Kroger connects their own shopper account in **Settings → Integrations → "Kroger / Mariano's cart"** card. Tokens are AES-256-GCM encrypted at rest with the existing `ENCRYPTION_KEY`.
+- **SKU picker per item**: for each unchecked shopping item, Prism fetches up to 5 candidate products from Kroger and shows them in a picker with image, name, size, price, and a normalized unit price (lb / fl oz / ct) so candidates within a page are directly comparable.
+- **SKU caching**: once you pick *"Mariano's 2% Reduced Fat Milk Gallon"* for the abstract item *"milk"*, that productId is remembered on the shopping item. Next time you push *"milk"*, the same SKU is pre-selected. One-tap weekly staples after the first trip.
+- **Quantity controls**: bump the cart quantity per item (1-99) with +/- buttons; review-screen shows `× 2` next to multiples.
+- **Search override**: every page has an editable search box so you can refine the term when the parser strips too much (or not enough).
+- **Default-store picker**: set your preferred Mariano's (or any banner) by zip code. Subsequent searches use that store's location-aware pricing and stock.
+- **Modifier-aware parsing**: recipe-derived items like *"1 Fresno pepper, seeded and sliced, or ½ teaspoon crushed red pepper flakes"* search Kroger for *"Fresno pepper"* (drops quantity, unit, comma modifiers, `" or "` alternatives, and parentheticals).
+
+### Things to know
 
 - **The Kroger consent prompt wants your *shopper* account, not your dev portal account**. They can be the same email or different. If you accidentally try to consent with the dev account you'll either fail or end up writing to the wrong cart.
 - **Kroger rotates the Client Secret occasionally** when you edit an app's URI list or scopes. If OAuth starts failing after a config change, re-copy the Client Secret from the dev portal and re-paste into Prism's Kroger card.
@@ -93,17 +91,15 @@ You're done. Go to **Shopping**, add some items, and tap **Send to Kroger** in t
 - **"No price" on every candidate** = no default store set (or store has no pricing data for that product). Set your store first.
 - **OAuth state** is bound to your Prism user via Redis with a 10-minute TTL so the callback can't be hijacked or replayed.
 
----
+## Details
 
-## Privacy
+### Privacy
 
 - Stored on your Prism instance: encrypted access + refresh tokens, your preferred Kroger location id + display name, and a `kroger_product_id` cache on each shopping item. Nothing else.
 - Sent to Kroger: only what you'd send by using their website yourself: product search terms, productIds for items you choose to add to your cart, and standard OAuth identity claims.
 - Disconnect anytime from the same settings card. That wipes the encrypted tokens; Kroger's side can also be revoked at https://www.kroger.com/account/secure-preferences.
 
----
-
-## Troubleshooting
+### Troubleshooting
 
 | Symptom | Cause + fix |
 |---|---|
@@ -114,9 +110,7 @@ You're done. Go to **Shopping**, add some items, and tap **Send to Kroger** in t
 | Picker can't find your item | Use the search box above the candidates to refine the term (e.g. shorten `"jumbo, raw, tail-on shrimp, peeled and deveined"` to `"shrimp"`). |
 | "Too many items (max 200 per request)" | One shopping list has more than 200 unchecked items. Split it. |
 
----
-
-## What's NOT supported (yet)
+### What's NOT supported (yet)
 
 - The in-Kroger-app "shopping list" feature has no public API endpoint. The cart is what we write to; the in-app list is separate.
 - Coupons / digital coupon application. Kroger has a Coupons API but Prism doesn't surface it.
