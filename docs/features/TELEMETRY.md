@@ -4,12 +4,9 @@ Prism checks for updates once a week. In the same request it adds **one
 anonymous install** to a count the maintainer uses to understand how many people
 run Prism. It is on by default and you can turn it off with a single switch.
 
-This page tells you exactly what is sent, why, and how to disable it — whether
-you prefer a checkbox or an environment variable.
-
 ## What is sent
 
-Exactly four fields, once a week:
+Prism sends these fields once a week (`schema` only says which version of this list it is):
 
 ```json
 {
@@ -21,67 +18,68 @@ Exactly four fields, once a week:
 }
 ```
 
-The `deployment` field lets the maintainer see the split between Home Assistant,
-one-click hosts like PikaPods, and plain self-hosted Docker — nothing more
-specific than the channel you installed through.
+The `deployment` field shows the maintainer how installs split between Home
+Assistant, one-click hosts such as PikaPods, and plain self-hosted Docker. It
+says which channel you installed through and nothing more specific.
 
-You can see the live payload for your own install any time under
+You can see exactly what your own install sends at any time under
 **Settings → About → Anonymous update check → "Show exactly what's sent."**
 
 ## What is **not** sent
 
-- **No IP address.** The collector is built to never read or store client
-  addresses.
-- **No personal data.** No names, emails, family members, events, photos,
-  locations, or any content you put into Prism.
-- **No usage data.** Which pages you open, what you click, how long the screen
-  is on — none of it is collected.
-- **No account link.** The `id` is a random UUID generated on your install. It
-  is not derived from your hardware, hostname, or any account, and it means
-  nothing outside the maintainer's count.
+- No IP address. The collector is written so it never reads or stores the
+  address a request comes from.
+- No personal data: no names, emails, family members, events, photos,
+  locations or anything else you put into Prism.
+- No usage data. Prism collects nothing about which pages you open, what you
+  click or how long the screen is on.
+- No link to an account. The `id` is a random UUID (a long random identifier)
+  made on your install. It doesn't come from your hardware, hostname or any
+  account, and it means nothing outside the maintainer's count.
 
-The id exists for one reason: so an install that updates every week counts as
-**one** install instead of dozens. That is what makes the number trustworthy —
-and it is also why registry "download" counts are not (they double-count every
-re-pull and every CI job).
+The id has one job: an install that checks every week counts as one install,
+where it would otherwise count as dozens. That is why the number can be trusted.
+Registry download counts can't be, because they count every re-pull and every CI
+job again.
 
 ## Why it's on by default
 
-A self-hosted server has no other way to tell you a new version exists, and the
-maintainer has no other honest way to tell how many people the project actually
-serves. Keeping it on by default — like Next.js, Astro, and Homebrew do — is
-what makes the install count reflect reality instead of only the handful of
-people who go looking for a setting to switch on. It is anonymous, it is one
-request a week, and it is one click to stop.
+A self-hosted server has no other way to tell you a new version is out, and the
+maintainer has no other honest way to know how many people use the project.
+Next.js, Astro and Homebrew also keep it on by default. If it were off, the
+count would only include the few people who go looking for a setting to switch
+on. The check is anonymous and runs once a week, and stopping it takes one
+click.
 
 ## Update notices are quiet
 
-The weekly check may learn that a newer version is available. If so, Prism shows
-a small line under **Settings → About** — never a pop-up, never anything on the
-dashboard itself. Patch releases (`1.14.1` → `1.14.2`) are **not** surfaced at
-all; you're only nudged when a new **minor or major** version lands, so a busy
-release schedule never turns into nagging.
+When the weekly check finds a newer version, Prism shows a small line under
+**Settings → About**. It never shows a pop-up and puts nothing on the dashboard.
+Patch releases (`1.14.1` → `1.14.2`) don't show at all. You only see a notice
+when a new **minor or major** version comes out, so a busy release schedule
+never turns into nagging.
 
-It is also disclosed **at first-run setup** — the final step of the setup wizard
-shows exactly this, with an off switch right there — so it is never a surprise
-you have to go hunting for.
+The check is also explained **at first-run setup**: the last step of the setup
+wizard shows this information with an off switch right there, so you never have
+to go looking for it.
 
 ## How to turn it off
 
-Any one of these disables it:
+Any one of these turns it off:
 
 - **In the app:** Settings → About → **Anonymous update check** → switch off.
-  Nothing further is sent.
+  Nothing more is sent.
 - **Home Assistant:** the addon's **Configuration** tab has an **Anonymous
-  stats** toggle — turn it off there and the addon disables it at startup.
-- **Environment variable:** set `PRISM_DISABLE_TELEMETRY=true`. This hard-disables
-  the feature for the whole install (useful for distro or workplace builds) and
-  greys the switch out in the UI.
+  stats** toggle. Turn it off there and the addon switches the check off when it
+  starts.
+- **Environment variable:** set `PRISM_DISABLE_TELEMETRY=true`. This turns the
+  feature off for the whole install, which suits distro or workplace builds, and
+  greys out the switch in the app.
 
 ## Self-hosting the collector
 
-The collector is a small open Cloudflare Worker in
+The collector is a small open-source Cloudflare Worker in
 [`/collector`](https://github.com/sandydargoport/prism/tree/master/collector).
 If you run your own Prism fork and want your own counts, deploy it and point
-installs at it with `PRISM_TELEMETRY_URL=https://your-worker-url`. If no endpoint
-is configured, Prism sends nothing at all.
+installs at it with `PRISM_TELEMETRY_URL=https://your-worker-url`. If no
+endpoint is set, Prism sends nothing at all.

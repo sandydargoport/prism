@@ -5,30 +5,30 @@ hide:
 
 # Screenshots
 
-What a family sees, captured against a fresh seed (the synthetic Alex / Jordan / Emma / Sophie family) in the looks a new install offers. Your own dashboard will look different. These images are illustrative. The feature pages show the screens for setting things up.
+These are the screens a family sees, captured on a freshly seeded install with a made-up family (Alex, Jordan, Emma and Sophie) in each look a new install offers. They are examples, and your own dashboard will look different. The feature pages show the screens for setting things up.
 
 ![Prism on a wall display, a tablet and a phone](demos/hero-light.png#only-light)
 ![Prism on a wall display, a tablet and a phone](demos/hero-dark.png#only-dark)
 
 === "The wall"
 
-    Setup offers three looks. Each is a starting point: the palette, the photo and the card fill can each be changed later.
+    Setup offers three looks to start from. You can change the palette, the photo and the card fill later.
 
     <div class="grid cards" markdown>
 
-    -   **Photo**: a photo behind glass cards (park scenery until the family adds its own)
+    -   **Photo**: a photo behind glass cards, showing park scenery until the family adds its own
 
         ![The wall in the Photo look](demos/look-photo.png)
 
-    -   **Night**: the same, dark
+    -   **Night**: the Photo look, kept dark
 
         ![The wall in the Night look](demos/look-night.png)
 
-    -   **Paper**: solid cards, no photo
+    -   **Paper**: solid cards with no photo behind them
 
         ![The wall in the Paper look](demos/look-paper.png)
 
-    -   **When nobody is using it**: the photo, the clock and the weather
+    -   **When nobody is using it**: the wall shows the photo, the clock and the weather
 
         ![The idle screen](demos/idle-screen.png)
 

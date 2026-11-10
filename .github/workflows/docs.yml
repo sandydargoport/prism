@@ -11,6 +11,10 @@ on:
       - 'overrides/**'
       - 'e2e-docs/**'
       - 'playwright.docs.config.ts'
+      - 'README.md'
+      - 'scripts/check-prose.py'
+      - 'scripts/check-prose-allow.txt'
+      - 'scripts/test_check_prose.py'
   pull_request:
     paths:
       - 'docs/**'
@@ -20,6 +24,10 @@ on:
       - 'overrides/**'
       - 'e2e-docs/**'
       - 'playwright.docs.config.ts'
+      - 'README.md'
+      - 'scripts/check-prose.py'
+      - 'scripts/check-prose-allow.txt'
+      - 'scripts/test_check_prose.py'
   workflow_dispatch:
 
 # Least privilege by default; the deploy job elevates for itself.
@@ -46,6 +54,15 @@ jobs:
       - run: pip install -r requirements-docs.txt
 
       - run: mkdocs build --strict
+
+      # The README, the front page and every page in the menu stay free of
+      # the patterns that read as machine-written (#1143): dashes, "not X but
+      # Y" contrasts, hype words and two-word sentences. A hit that is right
+      # as written goes in scripts/check-prose-allow.txt.
+      - name: Check the writing
+        run: |
+          python3 -m unittest scripts/test_check_prose.py
+          python3 scripts/check-prose.py
 
       # The front page is a custom template (overrides/home.html); measure
       # it in a browser so a layout break fails the PR, not the live site.

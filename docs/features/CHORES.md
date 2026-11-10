@@ -13,7 +13,7 @@ Household jobs that come round again: empty the dishwasher, feed the pets, take 
 - **Reset day** (optional): which day of the week a weekly chore comes back, which day of the month (1 to 28) for a monthly one, or the date (for example 03-15) for a yearly one.
 - **Time of day** (optional): places the chore at that hour in the calendar's time views. Without one it sits at the top of the day.
 - **Points**: what it earns when approved.
-- **Requires approval**: on by default. See below.
+- **Requires approval**: on by default. [Ticking a chore off](#ticking-a-chore-off) explains what it does.
 
 ## Use it
 
@@ -33,8 +33,8 @@ A chore that is waiting for a parent to approve shows as one line, for example *
 
 - **Add Chore**, and edit or delete a chore by tapping it.
 - Group by **Person** or **None**, and sort by **Next Due**, **Frequency** or **Category**.
-- **Hide Completed** and **Show Disabled**.
-- An on and off switch per chore. A chore that is off keeps its history but stops coming back until it is on again.
+- Use **Hide Completed** and **Show Disabled** to choose which chores the list shows.
+- Each chore has an on and off switch. A chore that is off keeps its history but stops coming back until it is on again.
 
 Tap **Done** to go back to the do list.
 
@@ -66,7 +66,7 @@ The Chores widget on a grid dashboard lists the same chores.
 
 ### Points and goals
 
-Approved chores add their points to the person who did them. Points fill that person's goals in priority order; see [Goals & Points](GOALS.md).
+Approved chores add their points to the person who did them, and those points fill that person's goals in priority order. [Goals & Points](GOALS.md) covers how.
 
 ## Details
 

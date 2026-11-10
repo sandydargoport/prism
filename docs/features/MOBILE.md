@@ -17,165 +17,165 @@ The same install works on a phone, a tablet or a wall screen. Prism changes its 
 3. Select **Add to Home Screen**.
 4. Tap **Add**.
 
-The app opens without browser chrome (no URL bar, no Safari toolbar). Standard iOS PWA: supports notification badges, theme color, splash screen.
+The app opens without the browser's own controls, so there is no URL bar or Safari toolbar. It is a standard iOS PWA (a web app installed to the home screen), which supports notification badges, a theme color and a splash screen.
 
 #### Android (Chrome / Edge)
 
 1. Open Prism in Chrome.
-2. Tap **Menu** (three dots) → **Install app** (or **Add to Home Screen** on older versions).
+2. Tap **Menu** (three dots) → **Install app**, or **Add to Home Screen** on older versions.
 3. Confirm.
 
-App launches standalone, full screen.
+The app then opens on its own, full screen.
 
 #### Desktop (Chrome / Edge / Brave)
 
 1. Open Prism in the browser.
 2. Click the **install icon** in the address bar (the small `+` or computer icon).
-3. The app opens in its own window without browser chrome.
+3. The app opens in its own window without the browser's controls.
 
-Useful for a dedicated dashboard machine: pin to taskbar, set to launch on startup.
+On a computer that only runs the dashboard, you can pin the app to the taskbar and set it to open at startup.
 
 ### App icon shortcuts (Android + desktop Chromium)
 
-Long-press the app icon (or right-click on desktop) for quick-jump shortcuts:
+Long-press the app icon, or right-click it on a desktop, for shortcuts that jump straight to a page:
 
 - **Shopping**
 - **Tasks**
 - **Messages**
 
-Custom shortcuts can be added by editing `public/manifest.json`.
+You can add your own shortcuts by editing `public/manifest.json`.
 
 ## Use it
 
 ### Navigation by surface
 
-Prism uses three different nav components depending on screen size + orientation:
+Prism has three navigation components and picks one by screen size and orientation:
 
 | Layout | Component | When |
 |---|---|---|
-| **SideNav** | Collapsible left sidebar | Landscape desktop / large tablet. Default for most kiosks. |
-| **PortraitNav** | Bottom drawer + sliding panel | Portrait tablets. Bottom bar with drawer that slides up for more pages. |
-| **MobileNav (FAB)** | Floating action button | Phone viewports. Replaces bottom nav with a single floating button. |
+| **SideNav** | Collapsible left sidebar | Landscape desktops and large tablets. This is what most kiosks use. |
+| **PortraitNav** | Bottom drawer + sliding panel | Portrait tablets. A bar at the bottom has a drawer that slides up for more pages. |
+| **MobileNav (FAB)** | Floating action button | Phones. One floating button takes the place of the bottom bar. |
 
-The `AppShell` component picks the right nav based on the active viewport + orientation. Switching orientation triggers a re-evaluation.
+The `AppShell` component chooses the navigation from the current screen size and orientation, and chooses again whenever the orientation changes.
 
 #### FAB (phone PWA)
 
-The Floating Action Button is a single circular button in the bottom corner. Tap it to expand a small menu. Which actions appear depends on the current page:
+The Floating Action Button is one round button in the bottom corner. Tap it to open a small menu. The actions in it depend on the page you are on.
 
-Always available:
+On every page:
 
-- **Home**: back to dashboard.
+- **Home**: goes back to the dashboard.
 - **Settings**: opens the full Settings page.
-- **Login / Logout**: switch users (shows **Login** when logged out).
+- **Login / Logout**: switches users. It shows **Login** when nobody is logged in.
 
 On the dashboard only:
 
-- **Reorder**: drag cards on the dashboard into your preferred order.
-- **Cards**: show/hide dashboard cards (plus layout + theme controls, see below).
+- **Reorder**: drag the dashboard cards into the order you want.
+- **Cards**: show or hide dashboard cards, with layout and theme controls too (see below).
 
 On the Shopping page only:
 
-- **Scan Barcode**: scan an item into the active list.
+- **Scan Barcode**: scans an item into the active list.
 
-Designed to use minimum screen space and stay out of the way during regular use.
+The button takes up as little of the screen as possible and stays out of the way the rest of the time.
 
 #### Card reorder mode
 
-In FAB → Reorder, dashboard cards become draggable with grip pills on each one. Drag to reorder, tap **Done** to save. Persists per user.
+In FAB → Reorder, each dashboard card gets a grip so you can drag it. Drag the cards into order and tap **Done** to save. Each user keeps their own order.
 
 #### FAB → Cards
 
-FAB → Cards shows a toggle for each available card. Turn off cards you don't use (e.g. Bus Tracker if you don't have one). Hidden cards don't render at all. Saves render cycles on a phone.
+FAB → Cards has a toggle for each card. Turn off the ones you don't use, for example Bus Tracker if you have no bus to track. Hidden cards aren't drawn at all, which saves the phone some work.
 
-The same panel also carries two extra controls:
+The same panel has two more controls:
 
-- **Layout**: switch the mobile dashboard between **Rows** and **Tiles**.
-- **Theme**: cycle **Light / Dark / Auto**.
+- **Layout**: switches the mobile dashboard between **Rows** and **Tiles**.
+- **Theme**: steps through **Light / Dark / Auto**.
 
 ### Mobile dashboard
 
-On phones, the full dashboard grid collapses into a single-column summary card layout:
+On a phone, the dashboard grid turns into a single column of summary cards:
 
-- **Weather card**: current temp + conditions + a small forecast strip.
-- **Calendar card**: agenda-only, next 5 events.
-- **Tasks card**: top 5 incomplete tasks.
-- **Shopping card**: top 5 active list items.
-- **Chores card**: pending chores for everyone.
-- **Meals card**: today's planned meals.
-- **Messages card**: last 3 messages.
-- **Birthdays card**: upcoming birthdays.
+- **Weather card**: the current temperature and conditions, with a small forecast strip.
+- **Calendar card**: the next 5 events, as an agenda.
+- **Tasks card**: the top 5 unfinished tasks.
+- **Shopping card**: the top 5 items on the active list.
+- **Chores card**: chores still waiting, for everyone.
+- **Meals card**: the meals planned for today.
+- **Messages card**: the last 3 messages.
+- **Birthdays card**: birthdays coming up.
 
-These eight are the defaults. **Clock, Bus Tracker, Recipes, Goals, Wishes, and Photos** are also available and can be turned on via FAB → Cards.
+Those eight show by default. **Clock, Bus Tracker, Recipes, Goals, Wishes, and Photos** are also available, and you can turn them on in FAB → Cards.
 
-Tap any card to navigate to the full page for that feature. The cards are reorderable + can be individually hidden via the FAB controls.
+Tap a card to open the full page for that feature. You can reorder the cards and hide any of them from the FAB.
 
 ### Calendar on mobile
 
-The calendar collapses to **agenda view only** on phone viewports:
+On a phone the calendar only shows the **agenda view**:
 
-- View switcher hidden.
-- Day/Week chevron navigation hidden (no-op for agenda anyway).
-- Today button hidden.
-- Header reads "Upcoming Events" instead of the date.
-- `useEffect` forces agenda mode on mobile regardless of what was last selected on desktop.
+- The view switcher is hidden.
+- The day and week chevrons are hidden, since they do nothing in the agenda.
+- The Today button is hidden.
+- The header reads "Upcoming Events" in place of the date.
+- A `useEffect` switches to agenda on mobile, whatever view was last picked on a desktop.
 
-Why: the multi-week + month + schedule grid views don't fit comfortably on a phone, and on the go what you actually want is the agenda.
+The multi-week, month and schedule grids don't fit well on a phone, and when you are out you mostly want the agenda anyway.
 
 ### Touch targets + interactions
 
-All interactive elements meet or exceed the **44px touch target** minimum (Apple HIG standard, also Material Design's recommendation). Buttons, list rows, checkboxes, drag handles: everything is sized to be tappable without precision.
+Every button, list row, checkbox and drag handle is at least **44px** across, the minimum touch target in Apple's guidelines and the size Material Design recommends, so you can hit them without aiming carefully.
 
-Common gestures:
+The usual gestures:
 
-- **Tap**: primary action. Shopping items toggle, calendar cards open, dashboard cards navigate.
-- **Long-press**: secondary actions (edit, delete, drag). Some lists also use long-press for drag activation so vertical scrolling stays the default.
-- **Swipe left/right**: navigate calendar periods. 50px threshold so accidental swipes during scroll don't trigger.
+- **Tap** does the main thing: it ticks off a shopping item, opens a calendar card or opens the page behind a dashboard card.
+- **Long-press** gives the other actions (edit, delete, drag). Some lists start a drag on long-press so that swiping up and down still scrolls.
+- **Swipe left or right** moves between calendar periods. A swipe has to travel 50px, so a stray sideways movement while scrolling doesn't count.
 
 ### Screensaver + Away mode behavior on PWA
 
-PWA installations **auto-disable** screensaver and Away mode. Rationale:
+An installed PWA turns off the screensaver and Away mode automatically, for these reasons:
 
-- Phone PWAs don't have idle states the way kiosks do. Your phone is either in your pocket or actively in use.
-- Auto-activating Away mode on a phone would lock the family member out of their own device.
-- Screensaver photo slideshow on a phone screen is wasted battery.
+- A phone has no idle time the way a kiosk does. It is either in your pocket or in your hand.
+- If Away mode turned on by itself on a phone, it would lock the family member out of their own device.
+- A photo slideshow on a phone screen only uses up the battery.
 
-The `useIsPWA` hook detects standalone display mode and short-circuits both.
+The `useIsPWA` hook detects that the app is running standalone and skips both.
 
-If you specifically want the screensaver on a phone (rare, maybe a kid's bedside iPad), turn off PWA mode by opening Prism in the browser instead of the installed app.
+If you do want the screensaver on a phone or tablet (rare, but maybe on a child's bedside iPad), open Prism in the browser instead of the installed app.
 
 ### Common workflows
 
 #### Phone in pocket, occasional checks
 
-Install as PWA on the phone. Default opens to dashboard summary cards. Tap a card to dive into the full feature. Use the FAB to switch users when needed.
+Install Prism as a PWA on the phone. It opens on the dashboard summary cards, and a tap on a card opens the full feature. Use the FAB to switch users when you need to.
 
 #### Tablet permanently mounted in the kitchen
 
-Don't install as PWA. Open in fullscreen Chrome or use kiosk mode. SideNav stays visible, no nav restrictions, dashboard grid + Calendar + Shopping all accessible. Set orientation override to whatever the mount uses.
+Don't install it as a PWA. Open it in full-screen Chrome or use kiosk mode. The SideNav stays visible with nothing held back, so the dashboard grid, Calendar and Shopping are all there. Set the orientation override to match how the tablet is mounted.
 
 #### Phone in shopping mode at the grocery store
 
-Install as PWA. Open Shopping. Hit the maximize icon (top right) to enter shopping mode: full screen, no nav, tap items to strike through. Camera icon in the header to scan barcodes.
+Install Prism as a PWA and open the Shopping page. Tap the maximize icon (top right) to enter shopping mode, which fills the screen, hides the navigation and lets you tap items to strike them out. The camera icon in the header scans barcodes.
 
 #### Spouse uses iOS, you use Android
 
-Both install as PWA on their own devices. Different shopping mode preferences, different filter presets, but the same data, the same family. PIN-based login means switching users on a shared device (e.g. the kitchen tablet) is a tap + a per-member PIN (4 or 6 digits).
+Each of you installs the PWA on your own device. You can have different shopping mode preferences and filter presets while sharing the same data and the same family. With PIN login, switching users on a shared device such as the kitchen tablet takes a tap and that member's PIN (4 or 6 digits).
 
 ## Details
 
 ### Service worker + offline support
 
-The service worker (`public/sw.js`) precaches static assets:
+The service worker (`public/sw.js`, a script the browser runs in the background to cache files) stores static files ahead of time:
 
-- App shell (the `_next` static assets: CSS, JS chunks) is precached on install.
-- The start URL (`/`) is served **network-first**, falling back to the cached copy when offline.
+- The app shell (the `_next` static files: CSS and JS chunks) is cached when the app is installed.
+- The start URL (`/`) is fetched from the network first, and the cached copy is used when the device is offline.
 
-That's the extent of it. There is **no** API-response caching, **no** offline mutation queue, and **no** background-sync retry. Prism is not an offline-first app. If the device is offline, expect to refresh manually once you're back online, and don't expect changes made while offline to be captured.
+That is all it does. It doesn't cache API responses, queue changes made offline or retry them in the background. Prism is built to be used online. If the device goes offline, plan to refresh by hand once you are back online, and expect changes made while offline to be lost.
 
 ### Responsive font sizes
 
-Font scale adapts to the device class:
+The base font size depends on the kind of device:
 
 ```css
 html { font-size: 16px; }                                        /* phone default */
@@ -185,54 +185,54 @@ html { font-size: 16px; }                                        /* phone defaul
 @media (min-width: 1400px) and (pointer: coarse) { font-size: 22px; }  /* kiosk */
 ```
 
-The `pointer: fine` vs `pointer: coarse` media query distinguishes mouse-controlled (desktop laptop) from touch (tablet kiosk) at the same screen size. Same physical 13" display gets 14px on a laptop (mouse) but 20px on a tablet (touch).
+The `pointer: fine` and `pointer: coarse` media queries tell a mouse (a laptop) apart from touch (a tablet kiosk) at the same screen size. The same 13" screen gets 14px on a laptop with a mouse and 20px on a touch tablet.
 
-Override globally via *Settings → Appearance → Font Scale* (planned, not yet shipped as of v1.8).
+A global override in *Settings → Appearance → Font Scale* is planned and had not shipped as of v1.8.
 
 ### Orientation detection
 
-The `useOrientation` hook listens to `resize` + `orientationchange` events and returns the current orientation. The `AppShell` re-evaluates nav choice on every orientation change.
+The `useOrientation` hook listens for `resize` and `orientationchange` events and returns the current orientation. The `AppShell` picks the navigation again on every orientation change.
 
-Set an orientation in *Settings → Appearance → Orientation Override* (Landscape / Portrait / Auto). Note this override only drives **photo and wallpaper orientation matching**. It does not change which navigation or layout is shown. The nav still follows the physically detected orientation (width vs height).
+You can set an orientation in *Settings → Appearance → Orientation Override* (Landscape, Portrait or Auto). This override only affects which photos and wallpapers are matched by orientation. The navigation and layout keep following the detected orientation of the screen (its width against its height).
 
 ### Notification badges (planned)
 
-iOS 16+ and Android Chrome support PWA notification badges (the little number next to the icon). Prism doesn't currently set badge counts, but the infrastructure is in place, tracked as a follow-up to surface unapproved chores or unread messages.
+iOS 16+ and Android Chrome support PWA notification badges, the small number on the app icon. Prism doesn't set a badge count yet. The groundwork is in place, and a follow-up is tracked to show unapproved chores or unread messages there.
 
 ### Troubleshooting
 
 #### "Install" prompt missing
 
-PWA install criteria: served over HTTPS, valid manifest, valid service worker, not already installed. If the install prompt doesn't appear in Chrome, check the address bar for the install icon (small `+`), or DevTools → Application → Manifest for errors.
+To be installable, Prism has to be served over HTTPS with a valid manifest and a valid service worker, and it can't already be installed. If Chrome doesn't offer to install it, look for the install icon (a small `+`) in the address bar, or check DevTools → Application → Manifest for errors.
 
-iOS Safari doesn't show a "Install" prompt at all. Install is always via Share → Add to Home Screen.
+iOS Safari never shows an install prompt. You always install through Share → Add to Home Screen.
 
 #### Updates not showing after a deploy
 
-The service worker caches aggressively. After a deploy:
+The service worker caches heavily. After a deploy, try one of these:
 
-- Force-refresh: hard reload (Ctrl+Shift+R on desktop, pull down + hold in Chrome on mobile).
-- Or: uninstall the PWA, reinstall.
-- Or: DevTools → Application → Service Workers → Update / Unregister.
+- Force a refresh with a hard reload (Ctrl+Shift+R on a desktop, or pull down and hold in Chrome on mobile).
+- Uninstall the PWA and install it again.
+- In DevTools → Application → Service Workers, use Update or Unregister.
 
-The service worker is configured to skip-waiting on new versions, so reloads usually pick up the update within seconds. But sometimes a cached page sticks.
+The service worker is set to take over as soon as a new version arrives, so a reload usually picks up the update within seconds. Now and then a cached page sticks anyway.
 
 #### Bottom nav covers content
 
-Mobile pages have extra bottom padding to clear the nav bar. If you see overlap, file an issue with the specific page: almost always a missing `pb-20` (or equivalent) on a recently-added page.
+Mobile pages have extra space at the bottom to clear the nav bar. If something is hidden behind it, file an issue naming the page. The cause is almost always a missing `pb-20` (or similar) on a page added recently.
 
 #### Calendar showing month view on phone (not agenda)
 
-The agenda-only restriction was added in v1.8. If you're seeing month view on your phone, you're on an older client build. Hard-refresh.
+The agenda-only rule arrived in v1.8. If your phone shows the month view, it is running an older build of the app. Do a hard refresh.
 
 #### FAB missing
 
-FAB only shows on phone viewports (`max-width: 767px`). On tablets you should see PortraitNav (bottom drawer) instead. The FAB is present on phone viewports whether or not anyone is logged in. When logged out it simply offers a **Login** action.
+The FAB only shows on phone-sized screens (`max-width: 767px`). On a tablet you get the PortraitNav bottom drawer in its place. On a phone the FAB is there whether or not anyone is logged in, and when nobody is, it offers a **Login** action.
 
 #### Cards in mobile dashboard appearing in wrong order
 
-Did you customize the order in FAB → Reorder? It persists per user. Switching users will load that user's saved order. Tap FAB → Reorder → drag → Done to reset.
+Check whether someone changed the order in FAB → Reorder. Each user keeps their own order, so switching users loads that user's saved order. To set it again, tap FAB → Reorder, drag the cards and tap Done.
 
 #### Service worker registration fails
 
-Usually a service-worker file path issue. Check DevTools → Console for `Failed to register a ServiceWorker` errors. The `public/sw.js` must be served from the root scope (`/sw.js`). If you've moved it, the registration in the app entrypoint needs updating.
+This is usually a problem with the service worker file's path. Look in DevTools → Console for `Failed to register a ServiceWorker` errors. `public/sw.js` has to be served from the root scope (`/sw.js`). If you moved it, the registration in the app's entry point needs updating too.

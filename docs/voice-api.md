@@ -2,13 +2,13 @@
 
 Ask Prism what is on today, or add to the shopping list, from a voice assistant or a script.
 
-The API lives under `/api/v1/voice/*` and needs a token. It works with Alexa skills, Home Assistant and your own scripts. It is separate from the routes the app itself uses, and it is **stable**: it will not change under you.
+The API lives under `/api/v1/voice/*` and needs a token. It works with Alexa skills, Home Assistant and your own scripts. It is separate from the routes the app itself uses, and it is stable: it will not change under you.
 
 ## Auth
 
-Every Voice API endpoint requires `Authorization: Bearer <token>` where the token's scopes include either `voice` or `*`. **Session cookies are rejected**: it is meant for machines, not browsers, so a stolen browser session can't reach voice endpoints.
+Every Voice API endpoint requires `Authorization: Bearer <token>`, where the token's scopes include `voice` or `*`. Session cookies are rejected, because the API is for machines, so a stolen browser session can't reach voice endpoints.
 
-Tokens are issued via `POST /api/auth/tokens` (parent-only), SHA-256 hashed at rest, and never re-displayed after creation. The recommended scope for voice integrations is `['voice']` so a token leak cannot read or modify anything outside `/api/v1/voice/*`.
+Tokens are issued by `POST /api/auth/tokens` (parents only), stored as SHA-256 hashes, and never shown again after creation. Use the scope `['voice']` for voice integrations, so a leaked token cannot read or change anything outside `/api/v1/voice/*`.
 
 ```bash
 curl -X POST http://localhost:3000/api/auth/tokens \
@@ -17,7 +17,7 @@ curl -X POST http://localhost:3000/api/auth/tokens \
   -d '{ "name": "Alexa skill", "scopes": ["voice"] }'
 ```
 
-The response includes `token`. Store it immediately, it is not retrievable later.
+The response includes `token`. Store it at once, because it cannot be retrieved later.
 
 ### Known scopes
 
@@ -39,24 +39,24 @@ Every endpoint returns:
 ```
 
 - `ok`: boolean. `false` for errors.
-- `spoken`: natural-language string the caller speaks back to the user. Pre-formatted on the server so callers don't need templating.
-- `data`: optional structured payload. Present on success; omitted on error.
+- `spoken`: a plain-language sentence the caller reads back to the user. The server formats it, so callers need no templating.
+- `data`: optional structured payload, present on success and omitted on error.
 
-Errors return the same shape with `ok: false`, an HTTP error status, and a user-friendly `spoken` apology (no stack traces or IDs).
+Errors return the same shape with `ok: false`, an HTTP error status, and a friendly `spoken` apology with no stack traces or IDs.
 
 ## Rate limiting
 
-Per-token, 60 requests per 60 seconds. Returns `429` with a `voice`-shaped error body when exceeded.
+Each token gets 60 requests per 60 seconds. Past that, the API returns `429` with an error body in the shape above.
 
 ## Versioning
 
-The path prefix `/api/v1/` is the contract version. Breaking changes ship under `/api/v2/` with `/api/v1/` continuing to function. New non-breaking endpoints can be added to `v1` freely.
+The path prefix `/api/v1/` is the contract version. Breaking changes ship under `/api/v2/`, and `/api/v1/` keeps working. New endpoints that break nothing can be added to `v1` at any time.
 
 ## Endpoints
 
 ### `GET /api/v1/voice/family`
 
-Lists family members, excluding guest accounts. Useful for syncing Alexa custom slot types (`FAMILY_MEMBER`).
+Lists family members, leaving out guest accounts. Use it to sync Alexa custom slot types (`FAMILY_MEMBER`).
 
 **Response data**: `{ count, members: [{ id, name, role, color }] }`
 
@@ -111,7 +111,7 @@ Incomplete tasks due today in the household time zone.
 
 **Body**: `{ item: string, list?: string, quantity?: number, unit?: string }`
 
-Fuzzy-matches the list by name when `list` is given; otherwise adds to the first list (by `sortOrder`). Invalidates the `shopping-lists` cache on success.
+Fuzzy-matches the list by name when `list` is given, and otherwise adds to the first list (by `sortOrder`). Clears the `shopping-lists` cache on success.
 
 **Spoken**: `"Added milk to Grocery."`
 
@@ -129,13 +129,13 @@ Fuzzy-matches the chore name (case-insensitive substring on `title`). See "Secur
 
 **Body**: `{ message: string }`
 
-Author defaults to the first parent (by `sortOrder`). Voice has no way to verify which family member is speaking, so attributing posts to a designated parent keeps the audit trail honest. A future `voiceUser` setting could let households pick a different default.
+The author is the first parent (by `sortOrder`). Voice has no way to check which family member is speaking, so posting as one set parent keeps the audit trail honest. A future `voiceUser` setting could let a household pick a different default.
 
 **Spoken**: `"Posted message: 'soccer practice moved to 4pm today.'"`
 
 ### `GET /api/v1/voice/weather/today`
 
-Returns current conditions plus today's high/low. Reuses the active weather provider (`WEATHER_PROVIDER=meteo|pirate|openweather`) and the household location setting.
+Returns current conditions and today's high and low, using the active weather provider (`WEATHER_PROVIDER=meteo|pirate|openweather`) and the household location setting.
 
 **Response data**: `{ location, currentTemp, feelsLike, description, condition, humidity, high, low, precipProbability }`
 
@@ -143,7 +143,7 @@ Returns current conditions plus today's high/low. Reuses the active weather prov
 
 ### `GET /api/v1/voice/bus/status?student=Emma`
 
-Returns active bus routes for today with arrival predictions. Optional `student` filter narrows by `studentName` (case-insensitive substring). Today-active is determined by each route's `activeDays` array.
+Returns today's active bus routes with arrival predictions. The optional `student` filter narrows by `studentName` (case-insensitive substring). Each route's `activeDays` array decides whether it is active today.
 
 **Response data**: `{ count, routes: [{ id, label, studentName, direction, scheduledTime, prediction }] }`
 
@@ -155,7 +155,7 @@ Returns active bus routes for today with arrival predictions. Optional `student`
 
 ### `GET /api/v1/voice/birthdays/upcoming?days=N`
 
-Returns upcoming birthdays/anniversaries in the next `N` days (default 30, clamped 1..365). Compares on month/day so historic birth years are tolerated; reports the age the person is turning when the original year is available.
+Returns birthdays and anniversaries in the next `N` days (default 30, clamped to 1..365). It compares month and day only, so old birth years work, and reports the age the person is turning when the year is known.
 
 **Response data**: `{ count, birthdays: [{ id, name, eventType, nextOccurrence, turning }] }`
 
@@ -166,7 +166,7 @@ Returns upcoming birthdays/anniversaries in the next `N` days (default 30, clamp
 
 ### `GET /api/v1/voice/meals/today`
 
-Returns meals planned for today (breakfast, lunch, dinner, snack), ordered by meal type. Tolerates either Sunday- or Monday-start week conventions by scanning meal entries within ±7 days of today.
+Returns meals planned for today (breakfast, lunch, dinner, snack), ordered by meal type. It reads meal entries within ±7 days of today, so weeks that start on Sunday or Monday both work.
 
 **Response data**: `{ count, meals: [{ id, name, mealType, mealTime }] }`
 
@@ -178,7 +178,7 @@ Returns meals planned for today (breakfast, lunch, dinner, snack), ordered by me
 
 ### `GET /api/v1/voice/chores/today?assignee=Emma`
 
-Returns enabled chores due today or overdue. With `assignee` set, returns chores assigned to that family member (case-insensitive name match) plus chores with no assignee (anyone-can-do). Without `assignee`, returns all chores due today.
+Returns enabled chores that are due today or overdue. With `assignee` set, it returns that family member's chores (case-insensitive name match) and chores with no assignee, which anyone can do. Without `assignee`, it returns all chores due today.
 
 **Response data**: `{ count, chores: [{ id, title, assignedTo, nextDue, pointValue }], assigneeName }`
 
@@ -202,13 +202,13 @@ Returns the most recent (non-expired) family messages, newest first. `count` def
 
 ## Security model for write operations
 
-Voice cannot escalate privileges. Specifically:
+Voice cannot gain more rights than the app gives:
 
-- **Chore completions inherit the chore's `assignedTo`** as the completer. Voice does not let one family member claim another's points.
-- **Ambiguous chore names require disambiguation.** If a fuzzy name match returns multiple chores assigned to different family members (e.g. both Emma and Sophie have "Feed the dog"), the endpoint returns `ok: false` with a `spoken` prompt asking for the assignee (*"Multiple chores match 'feed the dog'. Which family member?"*) and `data.candidates: [...]`. The caller resends with `assignee` in the body. A single match completes immediately.
-- **A chore without `requiresApproval` is approved at once**, with the assignee recorded as approver, as it is in the app. A child cannot add a second completion (HTTP 409) while one is still pending. Pending completions keep their points, which count once a parent approves.
-- **Chores with `requiresApproval: true` are always *pending*** when completed via voice, even a parent's. The `spoken` response makes this explicit (e.g. *"Marked feed the dog complete. A parent will need to approve in the app."*).
-- **Approval is in-app only**, behind the Parent PIN. Voice has no way to approve a pending chore: there is no way to verify the speaker is a parent.
+- A chore completion records the chore's `assignedTo` as the completer, so one family member cannot claim another's points by voice.
+- An ambiguous chore name must be resolved. If a fuzzy name match returns multiple chores assigned to different family members (e.g. both Emma and Sophie have "Feed the dog"), the endpoint returns `ok: false` with a `spoken` prompt asking for the assignee (*"Multiple chores match 'feed the dog'. Which family member?"*) and `data.candidates: [...]`. The caller resends with `assignee` in the body. A single match completes immediately.
+- A chore without `requiresApproval` is approved at once, with the assignee recorded as approver, as it is in the app. A child cannot add a second completion (HTTP 409) while one is still pending. Pending completions keep their points, which count once a parent approves.
+- A chore with `requiresApproval: true` is always *pending* when completed by voice, even a parent's. The `spoken` response makes this explicit (e.g. *"Marked feed the dog complete. A parent will need to approve in the app."*).
+- Approval happens only in the app, behind the Parent PIN. Voice cannot approve a pending chore, because it cannot verify that the speaker is a parent.
 
 ## Roadmap
 
