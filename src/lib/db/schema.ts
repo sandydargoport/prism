@@ -1024,6 +1024,12 @@ export const displays = pgTable('displays', {
   settingsUpdatedAt: timestamp('settings_updated_at'),
   // The dashboard this screen opens on; null is the household default.
   dashboardId: uuid('dashboard_id').references(() => layouts.id, { onDelete: 'set null' }),
+  // The size the screen last reported, in CSS pixels, so a phone editing it
+  // shows its dashboard at the same size and shape (#1153).
+  screenWidth: integer('screen_width'),
+  screenHeight: integer('screen_height'),
+  // Set and kept fresh while another device edits this screen (#1153).
+  editingAt: timestamp('editing_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

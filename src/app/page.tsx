@@ -40,8 +40,12 @@ export const dynamic = 'force-dynamic';
 // wrapper, so the Display Settings slider had no effect on the main
 // dashboard — fix is to fetch the default layout's fontScale here and apply
 // the same zoom wrapper.
-export default async function HomePage() {
-  const slug = await screenDashboardSlug();
+export default async function HomePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  // A phone editing another screen opens that screen's dashboard here with
+  // ?screen= (#1153); it chose the dashboard already, so this browser's own
+  // screen must not redirect it.
+  const { screen } = await searchParams;
+  const slug = screen ? null : await screenDashboardSlug();
   if (slug) redirect(`/d/${slug}`);
 
   let fontScale = 100;

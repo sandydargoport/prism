@@ -1,5 +1,6 @@
 'use client';
 
+import { remotePortalRoot } from '@/lib/displays/remoteEdit';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
@@ -251,7 +252,7 @@ export function ScreensaverSettingsPanel({
           </p>
       </div>
     </div>,
-    document.body,
+    remotePortalRoot() ?? document.body,
   );
 }
 

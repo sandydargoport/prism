@@ -49,6 +49,7 @@ import { WidgetErrorBoundary } from '@/components/dashboard/WidgetErrorBoundary'
 import { WidgetExpandProvider, useWidgetExpand } from '@/components/dashboard/WidgetExpandProvider';
 import { useDashboardData } from './useDashboardData';
 import { useDashboardLayout, editLink } from './useDashboardLayout';
+import { remoteEditHost } from '@/lib/displays/remoteEdit';
 import { useScreenSchedule } from './useScreenSchedule';
 import { useRemoveBirthday } from './useRemoveBirthday';
 import { useIdleSwitchCheck } from '@/components/layout/useIdleSwitchCheck';
@@ -148,6 +149,27 @@ export function Dashboard({
   });
   const layout = useDashboardLayout(data.layouts, schedule.slug);
   useEffect(() => { editingRef.current = layout.isEditing; }, [layout.isEditing]);
+  // In the frame of a phone editing this screen (#1153): say which dashboard
+  // is on show, and when editing ends.
+  const remote = remoteEditHost();
+  const activeId = layout.activeLayout?.id;
+  const activeIsDefault = layout.activeLayout?.isDefault ?? false;
+  useEffect(() => {
+    if (remote && activeId) remote.onDashboard(activeId, activeIsDefault);
+  }, [remote, activeId, activeIsDefault]);
+  const { handleSave, handleSaveAs, handleCancel } = layout;
+  const onEditorSave = useCallback(async (name?: string) => {
+    await handleSave(name);
+    remote?.onFinish(true);
+  }, [handleSave, remote]);
+  const onEditorSaveAs = useCallback(async (opts?: Parameters<typeof handleSaveAs>[0]) => {
+    await handleSaveAs(opts);
+    remote?.onFinish(true);
+  }, [handleSaveAs, remote]);
+  const onEditorCancel = useCallback(() => {
+    handleCancel();
+    remote?.onFinish(false);
+  }, [handleCancel, remote]);
   // Today is the built-in dashboard (#1151): it is edited like any other,
   // through its widgets list instead of a grid.
   const todayPage = isSimpleView(layout.activeLayout?.view);
@@ -498,10 +520,10 @@ export function Dashboard({
             <LayoutEditor
               widgets={layout.editingWidgets}
               onWidgetsChange={layout.setEditingWidgets}
-              onSave={layout.handleSave}
-              onSaveAs={layout.handleSaveAs}
+              onSave={onEditorSave}
+              onSaveAs={onEditorSaveAs}
               onReset={layout.handleReset}
-              onCancel={layout.handleCancel}
+              onCancel={onEditorCancel}
               onDeleteLayout={data.layouts.deleteLayout}
               layoutName={layout.activeLayout?.name}
               savedLayouts={data.layouts.allLayouts.map(l => ({ id: l.id, name: l.name, widgets: l.widgets }))}

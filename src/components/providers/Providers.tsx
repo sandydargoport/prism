@@ -7,6 +7,8 @@
 
 'use client';
 
+// First: in the frame of a phone editing a screen, storage is swapped before anything reads it (#1153).
+import '@/lib/displays/remoteEdit';
 import { trackLastPointer } from '@/lib/input/lastPointer';
 import * as React from 'react';
 import dynamic from 'next/dynamic';

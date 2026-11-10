@@ -31,6 +31,14 @@ describe('buildSecurityHeaders', () => {
       expect(csp!.value).toContain("frame-ancestors 'self'");
     });
 
+    it('lets Prism frame its own pages, and nothing else (#1153: a phone edits a screen over a frame of it)', () => {
+      for (const raw of [undefined, '*', 'http://homeassistant.local:8123']) {
+        const { csp } = buildFramePolicy(raw);
+        expect(csp).toContain("frame-src 'self'");
+        expect(csp).not.toMatch(/frame-src[^;]*(\*|https?:)/);
+      }
+    });
+
     it('always includes X-Content-Type-Options', () => {
       const headers = buildSecurityHeaders();
       const header = headers.find((h: { key: string; value: string }) => h.key === 'X-Content-Type-Options');

@@ -16,7 +16,7 @@ async function openDisplays(context: BrowserContext, parentName: string): Promis
   const page = await context.newPage();
   await verifySettingsPinViaAPI(page, parentName);
   await page.goto('/settings?section=displays');
-  await expect(page.getByRole('heading', { name: 'Displays', level: 2 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Screens', level: 2 })).toBeVisible();
   return page;
 }
 
@@ -137,8 +137,8 @@ test.describe('Display settings follow the screen', () => {
         data: { name: `Hall board ${tag}`, widgets: [{ i: 'clock', x: 0, y: 0, w: 16, h: 12 }] },
       });
       const board = await created.json();
-      await phone.reload();
-      await phone.getByLabel(`Dashboard for ${HALL}`).selectOption({ label: `Hall board ${tag}` });
+      const picked = await phone.request.patch(`/api/displays/${hall.id}`, { data: { dashboardId: board.id } });
+      expect(picked.ok()).toBe(true);
       await expect.poll(async () => (await stored())?.dashboardId).toBe(board.id);
       await wall.goto('/');
       await expect(wall).toHaveURL(new RegExp(`/d/${board.slug}$`));
@@ -160,57 +160,87 @@ test.describe('Display settings follow the screen', () => {
   });
 });
 
-test.describe('Another screen\'s settings', () => {
-  test('changed from a phone in Settings > Displays, and the screen uses them', async ({ browser }) => {
+test.describe('Editing a screen from a phone', () => {
+  test('the phone shows the screen at its own shape, the screen says it is being edited, and changes after Done', async ({ browser }) => {
     test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
-    test.setTimeout(180_000);
+    test.setTimeout(240_000);
     const tag = Date.now().toString(36);
     const DEN = `Den ${tag}`;
+    const WALL = { width: 1280, height: 800 };
 
     const probe = await browser.newPage();
     const parent = await getFirstParent(probe);
     await probe.close();
 
-    const wallContext = await browser.newContext();
-    const phoneContext = await browser.newContext();
+    const wallContext = await browser.newContext({ viewport: WALL });
+    const phoneContext = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
     try {
       const wall = await openDisplays(wallContext, parent.name);
       await wall.getByLabel('Name for this screen').fill(DEN);
       await wall.getByRole('button', { name: 'Name this display' }).click();
       await expect(wall.getByText('This screen is named')).toContainText(DEN);
-      // A screen's own settings are on its own pages, not in its row.
-      await expect(wall.getByTestId('display-row').filter({ hasText: DEN })
-        .getByRole('button', { name: 'Settings' })).toHaveCount(0);
+      await wall.goto('/');
 
       const phone = await openDisplays(phoneContext, parent.name);
-      await phone.getByTestId('display-row').filter({ hasText: DEN })
-        .getByRole('button', { name: 'Settings' }).click();
-      const panel = phone.getByTestId('screen-settings');
-      await panel.getByLabel(`Activate after on ${DEN}`).selectOption({ label: '1 hour' });
-      await expect(panel).toContainText(`Saved. ${DEN} changes within a minute.`);
-      // Only shown once there is an effect to time.
-      await expect(panel.getByLabel(`Change every on ${DEN}`)).toHaveCount(0);
-      await panel.getByLabel(`Widget transition effect on ${DEN}`).selectOption({ label: 'Smoke' });
-      await expect(panel.getByLabel(`Change every on ${DEN}`)).toBeVisible();
-      await panel.getByLabel(`Drift on ${DEN}`).selectOption({ label: 'Off' });
-      await panel.getByLabel(`On-screen keyboard on ${DEN}`).selectOption({ label: 'Never' });
-      await expect(panel.getByLabel(`On-screen keyboard on ${DEN}`)).toHaveValue('"never"');
+      const den = async () => {
+        const { displays } = await (await phone.request.get('/api/displays')).json();
+        return displays.find((d: { name: string }) => d.name === DEN);
+      };
+      // The wall reports its size with its heartbeat.
+      await expect.poll(async () => { const d = await den(); return d && [d.width, d.height]; }, { timeout: 30_000 })
+        .toEqual([WALL.width, WALL.height]);
 
-      // On the screen: stored as its own controls store them, and shown there.
+      // The row: what it shows and how it rests, and one Edit.
+      await phone.reload();
+      const row = phone.getByTestId('display-row').filter({ hasText: DEN });
+      await expect(row.locator('[data-screen-summary]')).toContainText('Rests after 2 min');
+      await expect(row.getByRole('button', { name: 'Settings' })).toHaveCount(0);
+      await row.getByRole('link', { name: 'Edit' }).click();
+      await expect(phone).toHaveURL(/\/screens\//, { timeout: 60_000 });
+
+      // A live picture at the wall's own shape, its dashboard laid out at the wall's size.
+      const picture = phone.locator('[data-remote-picture]');
+      await expect(picture).toBeVisible({ timeout: 60_000 });
+      const box = await picture.evaluate((el) => el.getBoundingClientRect().toJSON());
+      expect(box.width / box.height).toBeCloseTo(WALL.width / WALL.height, 1);
+      expect(box.width).toBeLessThanOrEqual(390);
+      const frame = (await (await phone.locator('[data-remote-frame]').elementHandle())!.contentFrame())!;
+      await expect.poll(() => frame.evaluate(() => [window.innerWidth, window.innerHeight]), { timeout: 30_000 })
+        .toEqual([WALL.width, WALL.height]);
+
+      // The editing bar is on the phone, at the phone's size, inside its width.
+      const bar = phone.locator('[data-remote-edit-root] nav[aria-label="Edit"]');
+      await expect(bar).toBeVisible({ timeout: 60_000 });
+      const barBox = await bar.evaluate((el) => el.getBoundingClientRect().toJSON());
+      expect(barBox.left).toBeGreaterThanOrEqual(0);
+      expect(barBox.right).toBeLessThanOrEqual(390);
+
+      // The wall says so.
       await wall.reload();
-      await expect.poll(() => readStorage(wall, 'prism-screensaver-timeout'), { timeout: 30_000 }).toBe('3600');
-      expect(await readStorage(wall, 'prism-screensaver-motion')).toBe('smoke');
-      expect(await readStorage(wall, 'prism-screensaver-motion-v2')).toBe('1');
-      expect(await readStorage(wall, 'prism-screensaver-drift')).toBe('off');
-      expect(await readStorage(wall, 'prism:keyboard-on-this-device')).toBe('"never"');
-      await wall.goto('/settings?section=display');
-      const screensaver = wall.locator('#screensaver-settings');
-      await expect(screensaver.locator('select').first()).toHaveValue('3600', { timeout: 30_000 });
-      await expect(screensaver.getByRole('checkbox', { name: 'Drift' })).not.toBeChecked();
+      await expect(wall.locator('[data-remote-editing-note]')).toHaveText('Being edited from a phone', { timeout: 30_000 });
 
-      const { displays } = await (await phone.request.get('/api/displays')).json();
-      const den = displays.find((d: { name: string }) => d.name === DEN);
-      await phone.request.delete(`/api/displays/${den.id}`);
+      // Change how long until it rests and its keyboard, then Done.
+      await phone.locator('[data-editor-open="day"]').click();
+      // An open sheet stops short of the picture, so the change can be watched.
+      const sheet = await phone.locator('[data-editor-sheet]').evaluate((el) => el.getBoundingClientRect().toJSON());
+      const shown = await picture.evaluate((el) => el.getBoundingClientRect().toJSON());
+      expect(sheet.top).toBeGreaterThanOrEqual(shown.bottom);
+      await phone.getByLabel('Rest after').selectOption({ label: '1 hour' });
+      await phone.locator('[data-editor-open="look"]').click();
+      await phone.locator('[data-screen-options]').getByLabel('On-screen keyboard').selectOption({ label: 'Never' });
+      // Nothing changed on the phone itself.
+      expect(await readStorage(phone, 'prism-screensaver-timeout')).toBeNull();
+      await phone.locator('[data-remote-edit-root] [data-editor-done]').click();
+      await expect(phone.locator('[data-screen-saved]')).toContainText(`Saved. ${DEN} shows the change in a few seconds.`, { timeout: 30_000 });
+
+      // The wall has it within a few seconds, and the note is gone.
+      await expect.poll(() => readStorage(wall, 'prism-screensaver-timeout'), { timeout: 30_000 }).toBe('3600');
+      expect(await readStorage(wall, 'prism:keyboard-on-this-device')).toBe('"never"');
+      await expect(wall.locator('[data-remote-editing-note]')).toHaveCount(0, { timeout: 30_000 });
+      expect(await readStorage(phone, 'prism-screensaver-timeout')).toBeNull();
+      expect(await readStorage(phone, 'prism:keyboard-on-this-device')).toBeNull();
+
+      await phone.request.delete(`/api/displays/${(await den()).id}`);
     } finally {
       await wallContext.close();
       await phoneContext.close();
@@ -272,8 +302,10 @@ test.describe('Time-of-day layouts', () => {
       await wall.goto('/settings?section=displays');
       await wall.getByLabel('Name for this screen').fill(PORCH);
       await wall.getByRole('button', { name: 'Name this display' }).click();
-      const row = wall.getByTestId('display-row').filter({ hasText: PORCH });
-      await row.getByRole('button', { name: 'Interludes' }).click();
+      await expect(wall.getByText('This screen is named')).toContainText(PORCH);
+      // Interludes are on the screen's editing bar, in Through the day.
+      await wall.goto('/?edit=1');
+      await wall.locator('[data-editor-open="day"]').click({ timeout: 60_000 });
       const panel = wall.getByTestId('screen-schedule');
       await panel.getByRole('button', { name: 'Add an Interlude' }).click();
       await panel.getByLabel('Dashboard for time 1').selectOption({ label: MORNING });
@@ -282,8 +314,9 @@ test.describe('Time-of-day layouts', () => {
       const days = panel.getByRole('group', { name: 'Days for time 1' });
       for (const day of ['Sunday', 'Saturday']) await days.getByRole('button', { name: day }).click();
       await panel.getByRole('button', { name: 'Save Interludes' }).click();
-      await expect(panel).toContainText(`Saved. ${PORCH} follows it within a minute.`);
+      await expect(panel).toContainText('Saved. This screen follows it from now on.');
       await expect.poll(() => readStorage(wall, 'prism-screen-schedule')).toContain(morning.id);
+      await wall.locator('[data-editor-cancel]').click();
 
       // The wall's clock, ninety seconds before the window. Drift off, so an
       // idle screen's widgets stand still to be measured.
@@ -370,7 +403,7 @@ test.describe('Time-of-day layouts', () => {
 });
 
 test.describe('Attention notices', () => {
-  test('turned on in Settings > Displays, new messages show as cards at the top right, newest first, and keep coming while idle', async ({ browser }) => {
+  test('turned on in the editing bar More sheet, new messages show as cards at the top right, newest first, and keep coming while idle', async ({ browser }) => {
     test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
     test.setTimeout(120_000);
     const tag = Date.now().toString(36);
@@ -390,13 +423,17 @@ test.describe('Attention notices', () => {
       await wall.goto('/settings?section=displays');
       await wall.getByLabel('Name for this screen').fill(HALL);
       await wall.getByRole('button', { name: 'Name this display' }).click();
-      const row = wall.getByTestId('display-row').filter({ hasText: HALL });
-      await row.getByRole('button', { name: 'Notices' }).click();
+      await expect(wall.getByText('This screen is named')).toContainText(HALL);
+      // Notices are on the screen's editing bar, under More.
+      await wall.goto('/?edit=1');
+      await wall.locator('[data-editor-open="more"]').click({ timeout: 60_000 });
       const panel = wall.getByTestId('screen-attention');
       await panel.getByLabel('A message was posted in the last', { exact: true }).check();
       await panel.getByRole('button', { name: 'Save notices' }).click();
-      await expect(panel).toContainText(`Saved. ${HALL} follows it within a minute.`);
+      await expect(panel).toContainText('Saved. This screen shows them from now on.');
       await expect.poll(() => readStorage(wall, 'prism-screen-attention')).toBe('{"message":120}');
+      await wall.locator('[data-editor-cancel]').click();
+      await wall.goto('/settings?section=displays');
       // Off the dashboard, nothing shows.
       await expect(wall.getByTestId('attention-panel')).toHaveCount(0);
 
@@ -495,7 +532,7 @@ test.describe('Settings width', () => {
         expect(clipped, `${label}: the screen name is cut off`).toBe(false);
 
         // The section fills its scroll area (less padding), not a narrow column.
-        const fill = await page.getByRole('heading', { name: 'Displays', level: 2 }).evaluate((h) => {
+        const fill = await page.getByRole('heading', { name: 'Screens', level: 2 }).evaluate((h) => {
           const card = h.closest('div.space-y-6') ?? h.parentElement!.parentElement!;
           const area = card.closest('.overflow-y-auto')!;
           return card.getBoundingClientRect().width / area.clientWidth;
@@ -504,7 +541,7 @@ test.describe('Settings width', () => {
 
         const portrait = viewport.height > viewport.width;
         await expect(page.locator('#settings-section-select')).toBeVisible({ visible: portrait });
-        await expect(page.getByRole('navigation').getByRole('button', { name: 'Displays' })).toBeVisible({ visible: !portrait });
+        await expect(page.getByRole('navigation').getByRole('button', { name: 'Screens' })).toBeVisible({ visible: !portrait });
       }
     } finally {
       if (id) await context.request.delete(`/api/displays/${id}`).catch(() => {});

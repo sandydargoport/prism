@@ -60,8 +60,9 @@ function buildFramePolicy(allowedAncestorsRaw) {
     "media-src 'self' blob:",
     // PWA service worker
     "worker-src 'self' blob:",
-    // Prism never loads external frames
-    "frame-src 'none'",
+    // Prism frames only itself: editing a screen from a phone shows that
+    // screen's dashboard in a frame (#1153). Never another site.
+    "frame-src 'self'",
     // Block all plugin content (Flash, etc.)
     "object-src 'none'",
     // Prevent base tag injection attacks
