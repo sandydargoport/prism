@@ -131,7 +131,9 @@ for (const [orientation, viewport] of [
       expect(frame, 'the editor draws a Screen frame').not.toBeNull();
 
       // Preview claims to show the screen as the screensaver will draw it.
-      await page.getByRole('button', { name: 'Preview', exact: true }).click();
+      // Check it at a screen size, from the editing bar's Look sheet (#1151).
+      await openSheet(page, 'look');
+      await page.getByRole('button', { name: 'See it at a screen size' }).click();
       await page.waitForTimeout(800);
       const previewed = await boxes(page, '.widget-cell[data-widget]');
       await page.keyboard.press('Control+Shift+M');
