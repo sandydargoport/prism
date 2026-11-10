@@ -4,33 +4,33 @@ Keep shared shopping lists that everyone can add to, then shop from your phone o
 
 ![Shopping list with categories](../demos/shopping.png){ .hero-image }
 
-You can keep several lists, sort items by category, scan a barcode with the camera or a USB scanner, sync a list with Microsoft To Do, and send it to your online Kroger cart in one tap.
+You can keep several lists and sort items by category. Add items by typing or by scanning a barcode with the phone camera or a USB scanner. A list can sync with Microsoft To Do, and one tap sends it to your online Kroger cart.
 
 ## Set it up
 
 ### Lists
 
-A Prism instance can hold any number of shopping lists. Common shapes:
+Prism holds as many shopping lists as you like. Families tend to set up something like these:
 
-- **Grocery**: produce / dairy / meat / bakery / frozen / pantry layout.
-- **Hardware**: Home Depot / Lowe's style.
-- **General**: Target, Costco, anywhere else with mixed categories.
-- **Per-store lists**: separate Mariano's and Costco lists for the same week (different default stores in the Kroger picker).
+- A grocery list laid out by produce, dairy, meat, bakery, frozen and pantry.
+- A hardware list for Home Depot or Lowe's runs.
+- A general list for Target, Costco or anywhere else that sells a bit of everything.
+- One list per store, for example separate Mariano's and Costco lists for the same week, each with its own default store in the Kroger picker.
 
 Create one in *Shopping → New List*. Each list has:
 
 - **Name**
-- **Icon** (Lucide icon name)
+- **Icon** (a Lucide icon name)
 - **Color**
-- **List type**: `grocery` / `hardware` / `general`. Affects category layout (grocery uses the 6-category grid).
-- **Visible categories**: null = show all; or pick a subset for non-grocery lists.
-- **Assigned member** (optional): for personal lists that should only show to one family member.
+- **List type**: `grocery`, `hardware` or `general`. This sets the category layout; grocery uses the six-category grid.
+- **Visible categories**: leave it empty (null) to show all, or pick a subset for a non-grocery list.
+- **Assigned member** (optional): for a personal list that only one family member should see.
 
-Tap a list tab to switch between them. The active list persists in localStorage.
+Tap a list's tab to switch to it. The list you were on is remembered in the browser's localStorage.
 
 ### Categories
 
-For grocery lists, items fall into a 6-category grid:
+Grocery lists sort items into a grid of six categories:
 
 - **Produce** (green)
 - **Bakery** (brown)
@@ -39,170 +39,165 @@ For grocery lists, items fall into a 6-category grid:
 - **Frozen** (cyan)
 - **Pantry** (amber)
 
-For non-grocery lists, categories are open-ended: you can use any string (`clothes`, `housewares`, `electronics`, `garden`).
+On other lists a category can be any word you like, such as `clothes`, `housewares`, `electronics` or `garden`.
 
 #### Drag-to-reorder
 
-With a mouse, drag a category by its header (the **grip icon** ⋮⋮ marks it). On a touchscreen, press and hold anywhere on a category for half a second, then drag it, the same as moving a meal; a swipe that moves straight away scrolls the page instead. Put categories in the order that matches your store. The order persists to localStorage as `prism:grocery-category-order` and applies to all grocery lists.
+With a mouse, drag a category by its header, which carries a **grip icon** (⋮⋮). On a touchscreen, press and hold anywhere on a category for half a second and then drag it, the same way you move a meal. If your finger moves straight away, the page scrolls instead. Put the categories in the order you walk through your store. The order is saved in localStorage as `prism:grocery-category-order` and applies to every grocery list.
 
 #### Empty rows
 
-Each category card shows 6 empty lines by default. **+1 / -1 / +5** buttons adjust per-card; minimum 1 empty line so there's always somewhere to tap.
+Each category card starts with six empty lines to type into. The **+1**, **-1** and **+5** buttons change the count for that card. A card always keeps at least one empty line so you have somewhere to tap.
 
 ### Microsoft To Do sync
 
-Each shopping list can sync to one Microsoft To Do list. Configure it in the **Microsoft** provider card under *Settings → Integrations*:
+Each shopping list can sync with one Microsoft To Do list. Set it up in the **Microsoft** provider card under *Settings → Integrations*:
 
-- Connect Microsoft via OAuth (one-time).
-- Pick a Prism shopping list.
-- Pick a Microsoft To Do list to sync it with.
-- Toggle sync on.
+1. Connect Microsoft (a one-time OAuth sign-in).
+2. Pick a Prism shopping list.
+3. Pick the Microsoft To Do list to sync it with.
+4. Turn sync on.
 
-Two-way, newest change wins. Adds and check-offs on either side propagate. Useful when other family members use the MS To Do mobile app instead of Prism directly.
+Sync runs both ways, and when the two sides disagree the newest change wins. Items added or checked off on either side show up on the other. This helps when some of the family use the Microsoft To Do phone app and never open Prism.
 
 ## Use it
 
 ### Adding items
 
-Three ways:
+You can add an item three ways:
 
-1. **Inline input**: text field in each category card. Type, press Enter, item added with that category pre-assigned. Tab or click away also adds.
-2. **+ button** in the category header: opens the Add Item modal with the category pre-selected. Use this when you want to set quantity, unit, or notes at creation time.
-3. **Barcode scan**: phone camera or USB scanner (see below). Auto-fills name from Open Food Facts, picks a category.
+1. Type in the text field inside a category card and press Enter. The item goes into that category. Pressing Tab or clicking away also adds it.
+2. Tap the **+** button in a category header to open the Add Item window with that category already chosen. Use this when you want to set a quantity, unit or note as you add it.
+3. Scan a barcode with the phone camera or a USB scanner (see below). Prism fills in the name from Open Food Facts and picks a category.
 
-Each item supports:
+Each item has:
 
 - **Name** (required)
-- **Quantity** (integer)
-- **Unit** (`gallon`, `lbs`, `oz`, `dozen`, `box`, etc., free text)
+- **Quantity** (a whole number)
+- **Unit** (free text, such as `gallon`, `lbs`, `oz`, `dozen` or `box`)
 - **Category**
 - **Notes**
 
 ### Toggling items
 
-Tap an item row to mark it checked. Visually: strikethrough text, dimmed color. The progress bar at the top of each list animates in real time as items get checked off.
+Tap an item's row to check it off. The text gets a line through it and fades. The progress bar at the top of the list moves as you go.
 
-No checkboxes: the entire row is the tap target. Cleaner on mobile, easier in-store with one hand.
+There are no checkboxes because the whole row is the tap target, which is easier to hit with one hand in the store.
 
-Optimistic UI: the check fires before the API responds, so the strikethrough is instant even on a slow connection. If the server rejects (rare), the row reverts.
+The line appears as soon as you tap, before the server has answered, so it feels instant on a slow connection. In the rare case the server refuses the change, the row goes back to how it was.
 
 ### Editing / Deleting
 
-Each item row has always-visible inline **Edit** (pencil) and **Delete** (trash) buttons on the right:
+Every item row has an **Edit** (pencil) and a **Delete** (trash) button on the right, always visible:
 
-- **Edit**: tap to open the modal with current values.
-- **Delete**: removes immediately. There is no undo for deletes; the Undo button in the nav bar only reverses a check-off.
+- **Edit** opens the item's window with its current values.
+- **Delete** removes the item at once. Deletes cannot be undone; the Undo button in the nav bar only reverses a check-off.
 
 ### Barcode scanning
 
 #### Phone camera (PWA + browser)
 
-Tap the **camera icon** in the Shopping header to open a full-screen scanner overlay. Uses the device camera + ZXing for barcode decoding. On a successful scan:
+Tap the **camera icon** in the Shopping header to open a full-screen scanner. It uses the device camera and the ZXing library to read the barcode. When a scan succeeds:
 
-1. Haptic feedback fires (where supported).
-2. Audio tone plays (unlocks on iOS via the synchronous "Open Camera" tap).
-3. Overlay auto-dismisses.
-4. Product is looked up against **Open Food Facts** (no API key required): name, category, image.
-5. Item is added to the active list with a suggested category.
+1. The phone vibrates, where the device supports it.
+2. A tone plays. On iOS, tapping "Open Camera" is what allows the sound to play.
+3. The scanner closes by itself.
+4. Prism looks the product up on **Open Food Facts**, which needs no API key, for its name, category and image.
+5. The item is added to the active list with a suggested category.
 
-If the scanned item is already on a list, Prism prompts you to pick which list to add it to (or cancel).
+If the scanned item is already on a list, Prism asks which list to add it to, or you can cancel.
 
 #### USB HID scanners
 
-Plug-and-play on desktop. USB barcode scanners act as a keyboard at the OS level, so they "type" the barcode into whatever has focus. Prism captures global keypress events and, when it detects a barcode-shaped sequence, treats it as a scan. No drivers, no configuration.
+A USB barcode scanner works on a desktop as soon as you plug it in. The computer treats it as a keyboard (HID, the standard for keyboards and mice), so the scanner "types" the barcode into whatever has focus. Prism listens for key presses across the page, and when a run of keys looks like a barcode it treats it as a scan. You need no drivers and no settings.
 
-Tested with Honeywell, Eyoyo, Symcode, NADAMOO scanners.
+It has been tested with scanners from Honeywell, Eyoyo, Symcode and NADAMOO.
 
 ### Send to Kroger / Mariano's
 
-If you've connected a Kroger account (*Settings → Integrations → Kroger*), the Shopping header gains a **Send to Kroger** button. Tap to launch the SKU picker.
+Once you connect a Kroger account (*Settings → Integrations → Kroger*), the Shopping header shows a **Send to Kroger** button. Tap it to open the SKU picker (a SKU is one specific product in the store's catalog).
 
-The picker walks through each unchecked item in the active list:
+The picker goes through each unchecked item on the active list in turn:
 
-- Up to 5 SKU candidates per item.
-- Each candidate shows: product image, name (line-clamp-2), brand, size, **price**, and a **normalized unit price** (lb / fl oz / ct) so candidates within the page can be compared directly.
-- **Quantity controls**: +/- buttons bump cart count (1-99) per item.
-- **Search override**: refine the search term when the parser strips too much.
-- **Skip**: leave the item out of the cart (still on the Prism list).
-- **Back**: re-pick the previous item.
-- **Add**: push the chosen SKU to the cart, advance.
+- It offers up to five products for each item.
+- Each product shows its image, name (cut to two lines), brand, size, **price** and a **normalized unit price** (per lb, fl oz or count) so you can compare the products on the page directly.
+- **Quantity controls**: the +/- buttons set how many go in the cart, from 1 to 99.
+- **Search override**: change the search words when the parser has cut too much.
+- **Skip**: leave this item out of the cart. It stays on the Prism list.
+- **Back**: go back and pick the previous item again.
+- **Add**: put the chosen product in the cart and move to the next item.
 
-When the picker finishes, you get a review screen showing every SKU added with `× N` for multiples and total estimated price. Then you open the Kroger / Mariano's app or website to choose a pickup time and check out.
+At the end a review screen lists every product added, with `× N` beside anything you added more than one of, and the estimated total. You then open the Kroger or Mariano's app or website to choose a pickup time and check out.
 
 #### Banners supported
 
-One Kroger account works at every banner:
+One Kroger account works at every store brand Kroger owns:
 
 > Kroger · Mariano's · Ralphs · King Soopers · Fred Meyer · QFC · Smith's · Fry's · Harris Teeter · Pick 'n Save · Metro Market · Pay Less · Food 4 Less · Foods Co. · Bakers' Plus · City Market · Copps · Dillons · Gerbes · Jay C · Ruler Foods
 
 #### SKU caching
 
-Once you pick a specific product (`Mariano's 2% Reduced Fat Milk Gallon`) for the abstract item `milk`, the productId is remembered on the Prism shopping item. Next time you push `milk`, that SKU is pre-selected. Weekly staples become one-tap after the first trip.
+When you pick a specific product (`Mariano's 2% Reduced Fat Milk Gallon`) for a plain item like `milk`, Prism saves that product's ID on the shopping item. The next time you send `milk`, that product is already selected, so after the first trip your weekly staples take one tap each.
 
 #### Setup
 
-Full setup walkthrough in the [Kroger integration guide](KROGER.md), covers creating the Kroger developer app, getting Client ID / Secret, connecting in Prism, picking your default store.
+The [Kroger integration guide](KROGER.md) walks through the whole setup: creating the Kroger developer app, getting the Client ID and Secret, connecting it in Prism and picking your default store.
 
 ### Shopping mode (full-screen in-store)
 
-Tap the **maximize icon** in the list header to enter shopping mode:
+Tap the **maximize icon** in the list header to switch to shopping mode. The list fills the screen, the list tabs and filter buttons are hidden, and a small header shows the list name and a progress badge, so all the height goes to items.
 
-- Full-screen, list tabs hidden.
-- Compact header with list name + progress badge.
-- Filter buttons hidden.
-- All vertical space dedicated to items.
-
-Designed for one-handed phone use while pushing a cart. Tap **minimize** to exit.
+It is meant for using a phone in one hand while you push a cart. Tap **minimize** to leave.
 
 ### Progress + celebration
 
-A progress bar at the top of each list shows checked / total. When you check off the last item, the celebration animation plays: a shopping cart slides across the screen with a kid riding inside (arms up), confetti exhaust particles, and an "All Done!" text bounce. Auto-dismisses after 3 seconds.
+The progress bar at the top of each list shows how many items are checked out of the total. When you check off the last one, a short animation plays: a shopping cart rolls across the screen with a kid riding in it, arms up, trailing confetti, and "All Done!" bounces in. It goes away by itself after 3 seconds.
 
-The animation honors `prefers-reduced-motion` and a Reduced or Minimal performance level. Both skip it.
+The animation is skipped if the device asks for reduced motion (`prefers-reduced-motion`) or Prism's performance level is set to Reduced or Minimal.
 
 ### Multiple shopping lists workflow
 
-Common family pattern:
+Here is one way a family might split things up:
 
-1. **Grocery**: the primary list, syncs to MS To Do, pushed to Kroger weekly.
-2. **Costco**: separate list, no Kroger push (Costco isn't on the Kroger API), bulk items only.
-3. **Hardware**: non-grocery, Home Depot / Lowe's runs.
-4. **Target**: open category list for the random Target trip.
+1. **Grocery** is the main list. It syncs to Microsoft To Do and goes to Kroger each week.
+2. **Costco** is a separate list for bulk items. It never goes to Kroger, because Costco is not part of the Kroger API.
+3. **Hardware** is a non-grocery list for Home Depot or Lowe's runs.
+4. **Target** uses open categories for whatever the next Target trip needs.
 
-Each has its own default store, its own check-off cadence, its own sync config.
+Each list keeps its own default store, gets checked off on its own schedule and has its own sync settings.
 
 ## Details
 
 ### Per-person attribution
 
-Each item carries an `addedBy`, the family member who added it. This is stored with the item, but the list UI does not currently surface it or offer a per-person filter.
+Each item stores `addedBy`, the family member who added it. The list does not show this yet, and you cannot filter by person.
 
 ### Troubleshooting
 
 #### "Failed to add item: too many requests"
 
-Rate limit kicked in. Recipe imports add ingredients in a sequential loop and can briefly hit the 120/min cap. Wait a minute and the lockout clears.
+You have hit the rate limit of 120 requests a minute. Recipe imports add ingredients one at a time and can briefly go over it. Wait a minute and you can add items again.
 
 #### Send to Kroger button missing
 
-Either Kroger isn't connected (*Settings → Integrations → Kroger*) or the active list has no unchecked items. The button only appears when there's something to push.
+The button only appears when there is something to send. Either Kroger is not connected (*Settings → Integrations → Kroger*) or the active list has no unchecked items.
 
 #### SKU picker shows "no price" everywhere
 
-No default store set. *Settings → Integrations → Kroger → Set store* and enter your zip code. Without a store, Kroger's API returns nationwide-default product data without per-store pricing.
+You have not set a default store. Go to *Settings → Integrations → Kroger → Set store* and enter your zip code. With no store set, Kroger's API returns nationwide product data with no store prices.
 
 #### SKU picker can't find an obvious item
 
-The search parser drops quantity, units, comma modifiers, and `" or "` alternatives. For `1 Fresno pepper, seeded and sliced, or ½ teaspoon crushed red pepper flakes`, it searches `Fresno pepper`. Sometimes that's still wrong. Use the **search override** input above the candidates to refine the term.
+Before searching, the parser removes quantities, units, anything after a comma and any `" or "` alternative. For `1 Fresno pepper, seeded and sliced, or ½ teaspoon crushed red pepper flakes`, it searches for `Fresno pepper`. That can still miss, so type a better term in the **search override** box above the products.
 
 #### Barcode scanner shows the wrong category
 
-Open Food Facts data is community-curated and category mappings can be off. Edit the item after adding to fix.
+Open Food Facts is built by volunteers and its categories are sometimes off. Edit the item after it is added to fix it.
 
 #### USB scanner not capturing
 
-USB HID scanners need keyboard focus on something in the Prism page. If a modal is open that captures keypresses (e.g. inside an `<input>`), the global capture is suspended. Close the input or switch to the list view.
+The scanner only reaches Prism when the Prism page has keyboard focus. If an open window is taking the key presses itself (an `<input>`, for example), Prism stops listening for scans. Close the input or go back to the list.
 
 #### Microsoft To Do sync stuck
 
-In the **Microsoft** provider card under *Settings → Integrations*, tap **Sync now**. If still stuck, check that card's connection: the token may have expired.
+Open the **Microsoft** provider card under *Settings → Integrations* and tap **Sync now**. If that does not help, check the card's connection, because the sign-in may have expired.
