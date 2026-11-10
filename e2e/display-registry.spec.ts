@@ -190,8 +190,23 @@ test.describe('Editing a screen from a phone', () => {
       await expect.poll(async () => { const d = await den(); return d && [d.width, d.height]; }, { timeout: 30_000 })
         .toEqual([WALL.width, WALL.height]);
 
+      // Its own dashboard, so Done saves that one and not the household's
+      // default, which the screensaver specs that follow rely on.
+      const created = await phone.request.post('/api/layouts', {
+        data: { name: `Den board ${tag}`, widgets: [{ i: 'clock', x: 0, y: 0, w: 16, h: 12 }] },
+      });
+      const board = await created.json();
+      expect((await phone.request.patch(`/api/displays/${(await den()).id}`, { data: { dashboardId: board.id } })).ok()).toBe(true);
+      // The wall syncs, sees its new dashboard and goes to it once; let it settle there.
+      await wall.goto('/');
+      await expect.poll(async () => (await readStorage(wall, 'prism:display-sync-base')) ?? '', { timeout: 30_000 }).toContain(board.id);
+      await expect.poll(() => wall.url(), { timeout: 30_000 }).toContain(`/d/${board.slug}`);
+      await wall.waitForTimeout(3_000);
+      await wall.waitForLoadState('load');
+
       // The row: what it shows and how it rests, and one Edit.
       await phone.reload();
+      await expect(phone.getByTestId('display-row').filter({ hasText: DEN }).locator('[data-screen-summary]')).toContainText(`Shows Den board ${tag}`);
       const row = phone.getByTestId('display-row').filter({ hasText: DEN });
       await expect(row.locator('[data-screen-summary]')).toContainText('Rests after 2 min');
       await expect(row.getByRole('button', { name: 'Settings' })).toHaveCount(0);
@@ -241,6 +256,7 @@ test.describe('Editing a screen from a phone', () => {
       expect(await readStorage(phone, 'prism:keyboard-on-this-device')).toBeNull();
 
       await phone.request.delete(`/api/displays/${(await den()).id}`);
+      await phone.request.delete(`/api/layouts/${board.id}`);
     } finally {
       await wallContext.close();
       await phoneContext.close();
