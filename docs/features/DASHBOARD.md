@@ -10,9 +10,11 @@ A parent edits layouts in **edit mode** on a large screen. Phones don't show the
 
 ### Entering the editor
 
-Tap the **grid icon** (four squares) in the dashboard header to enter edit mode. Only members with layout-edit permission, which means parents, can see it.
+Open **More** on the dock at the foot of the screen and choose **Edit**. Only parents can see it.
 
-Edit mode replaces the live board with a grid you can edit and shows two toolbars. A slim vertical one on the left holds Widgets, Templates, Community and Mini-map. The one on the right holds Preview, orientation, Screensaver, Save and the **More** menu. You leave edit mode by saving or by exiting it.
+Editing keeps the controls where editing starts: a dark bar takes the dock's place at the foot of the screen, and nothing is drawn at the top. The bar reads **Dashboard**, **Widgets**, **Through the day**, **Look** and **More**, then **Cancel** and **Done**. Each one opens a sheet that rises from the bar. A dot on a button means that sheet has changes you haven't saved. **Done** saves everything and **Cancel** puts it all back.
+
+Today, the built-in dashboard, is edited the same way. Its Widgets sheet lists the parts of the scene to show or hide, and it can be reset but not deleted.
 
 ### Built-in templates
 
@@ -53,7 +55,7 @@ You need a GitHub account to submit to the gallery. Without one, use **Download 
 
 #### Copy between the dashboard and the screensaver
 
-**More → Use as idle screen** replaces the idle screen's layout with the dashboard you are editing and switches to the Idle screen tab so you can check it. **Save** keeps it and **Cancel** puts the old one back. On the Idle screen tab the same item reads **Use as dashboard**. Both need photos or the night sky behind the idle screen, because a dashboard that acts as its own idle screen has no separate layout. The screensaver can show fewer kinds of widget than the dashboard, so any it can't show are left out, and the confirmation lists them.
+**More → Use while resting** replaces the resting screen's layout with the dashboard you are editing. **Done** keeps it and **Cancel** puts the old one back. While the editor shows the resting screen the same item reads **Use as the dashboard**. Both need photos or the night sky behind the idle screen, because a dashboard that acts as its own idle screen has no separate layout. The screensaver can show fewer kinds of widget than the dashboard, so any it can't show are left out, and the confirmation lists them.
 
 #### Export & Import
 
@@ -70,11 +72,11 @@ You can make a separate dashboard for each room or display. The dashboard-name d
 - Each dashboard has its own widget layout, screensaver layout and orientation.
 - Bookmark a dashboard URL on a device that only shows that dashboard, so it opens straight to it.
 
-#### Different dashboards at different times
+#### Interludes: other dashboards at set times
 
-A named screen (*Settings → Displays*) can show other dashboards at set times, for example a morning dashboard with a large bus widget on school days. In *Settings → Displays*, **Schedule** on the screen's row lists its times. Each time shows one dashboard from a start to an end time on the days you tick. Outside all of its times the screen shows its own dashboard. Times use the household time zone. A time that ends before it starts runs past midnight, and one that starts and ends at the same time lasts all day. When two times overlap, the one higher in the list wins.
+A named screen (*Settings → Displays*) can show another dashboard for a while, for example the bus on school mornings. Each of these is an **Interlude**: one dashboard from a start to an end time on the days you tick. Add them in the editor's **Through the day** sheet, or with **Interludes** on the screen's row in *Settings → Displays*. Outside all of them the screen shows its own dashboard, Today included. Times use the household time zone. One that ends before it starts runs past midnight, and one that starts and ends at the same time lasts all day. When two overlap, the one higher in the list wins.
 
-Make the dashboard for a time with **Save As** in the editor and rearrange it there. When a time starts or ends, the screen changes over in place: widgets that are on both dashboards slide to their new spots and the others fade. The change waits until nobody has touched the screen for a minute, and it never happens while someone is editing the layout. If you open another dashboard by hand, the screen keeps it until the next time starts or ends. With reduced motion turned on the dashboards crossfade, and at the **Minimal** performance level they swap instantly.
+Make the dashboard for an Interlude with **Make a copy** in the Dashboard sheet and rearrange it there. When an Interlude starts or ends, the screen changes over in place: widgets that are on both dashboards slide to their new spots and the others fade. The change waits until nobody has touched the screen for a minute, and it never happens while someone is editing the layout. If you open another dashboard by hand, the screen keeps it until the next Interlude starts or ends. With reduced motion turned on the dashboards crossfade, and at the **Minimal** performance level they swap instantly.
 
 #### Notices
 
@@ -88,9 +90,9 @@ The newest card is on top, and up to four show at once. Prism checks for new mes
 
 #### Saving
 
-- **Save** overwrites the current dashboard's layout.
-- The arrow next to Save offers **Save As**, which makes a named copy as a new dashboard.
-- **More → Reset** throws away unsaved edits and goes back to the last saved layout.
+- **Done** saves the dashboard you are editing.
+- **Make a copy** in the Dashboard sheet saves it as a new dashboard.
+- **More → Reset this layout** throws away unsaved edits and goes back to the last saved layout.
 
 ### Orientation
 
@@ -140,9 +142,9 @@ To keep the screen clean all the time, turn on **Auto-Hide Navigation** in *Sett
 
 ### Screensaver layout
 
-Each dashboard has its own screensaver layout. In edit mode, click the **Screensaver** button to edit the screensaver's widget arrangement. The Templates and Community pickers switch to their screensaver sets as well.
+Each dashboard has its own screensaver layout, used when photos or the night sky show while the screen rests. In edit mode, open **Through the day**, tap **Resting** or **Night**, then open **Widgets** to arrange it. The templates and the community gallery switch to their screensaver sets as well.
 
-The screensaver starts after the screen has been idle for a time you choose, under *Settings → Appearance → Timers & Auto-Activation (Screensaver → Activate after)*. The options are **30s / 1m / 2m / 10m / 1h / Never**, and the default is **2m**. It shows a photo slideshow with your chosen widgets on top. The screensaver templates keep the calendar, or tonight's meals, as the hero, with small clock, weather and message accents over one clear area of the photo so the wallpaper stays the main thing.
+The screen rests after the time set as **Rest after** in the Through the day sheet: 30 seconds, 1 minute, 2 minutes, 10 minutes, 1 hour or never, 2 minutes by default. The screensaver templates keep the calendar, or tonight's meals, as the hero, with small clock, weather and message accents over one clear area of the photo so the wallpaper stays the main thing.
 
 See [Display Modes](DISPLAY-MODES.md) for more on the screensaver and Away Mode.
 

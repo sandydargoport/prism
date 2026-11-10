@@ -255,8 +255,8 @@ export function DisplaysSection() {
           <CardTitle>All screens</CardTitle>
           <CardDescription>
             A screen shows as online while it is switched on. Pick the dashboard each one
-            opens on; a screen showing its home page switches within a minute. Schedule
-            shows other dashboards at set times, such as a morning one on school days. Notices
+            opens on; a screen showing its home page switches within a minute. Interludes
+            show other dashboards at set times, such as the bus on school mornings. Notices
             puts a small card at the side when the bus is close, an event is about to start or
             a message comes in.
           </CardDescription>
@@ -329,7 +329,7 @@ export function DisplaysSection() {
                       aria-expanded={scheduleId === d.id}
                       onClick={() => setScheduleId(scheduleId === d.id ? null : d.id)}
                     >
-                      Schedule
+                      Interludes
                     </Button>
                     <Button
                       size="sm"

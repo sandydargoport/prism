@@ -5,7 +5,6 @@ import { currentDisplay } from '@/lib/auth/displayIdentity';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { screenDashboardAt } from '@/lib/displays/screenSchedule';
 import { pageZoomVars } from '@/lib/utils/zoomVars';
-import { isSimpleView } from '@/lib/newLook';
 
 /**
  * A named screen with its own dashboard set (#690) opens on that one instead
@@ -16,12 +15,10 @@ async function screenDashboardSlug(): Promise<string | null> {
   try {
     const screen = await currentDisplay();
     if (!screen) return null;
-    const all = await db.query.layouts.findMany({ columns: { id: true, slug: true, isDefault: true, view: true } });
-    const own = (d: string | null) => all.find((l) => (d ? l.id === d : l.isDefault));
+    const all = await db.query.layouts.findMany({ columns: { id: true, slug: true, isDefault: true } });
     const id = screenDashboardAt(
       screen, Date.now(), await getHouseholdTimezone(),
       (d) => all.some((l) => l.id === d),
-      (d) => isSimpleView(own(d)?.view),
     );
     const layout = all.find((l) => l.id === id);
     return layout && !layout.isDefault ? layout.slug : null;

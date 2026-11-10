@@ -9,18 +9,13 @@ import { useMemo, useState } from 'react';
 import { Lock } from 'lucide-react';
 import { LAYOUT_TEMPLATES } from '@/lib/constants/layoutTemplates';
 import { SCREENSAVER_TEMPLATES } from '@/lib/constants/screensaverTemplates';
-import { ScreensaverSettingsPanel } from '@/components/screensaver/ScreensaverQuickSettings';
 import { TodayPartsPanel } from '@/components/today/TodayPartsPanel';
 import { editLink } from '@/components/dashboard/useDashboardLayout';
 import { CommunityGallery } from './CommunityGallery';
 import { CoordinateEditor } from './CoordinateEditor';
 import { LayoutEditorPreviewPanel } from './LayoutEditorPreviewPanel';
-import { IdleBackgroundBar } from './IdleBackgroundBar';
 import type { DashboardInfo } from './LayoutEditorTypes';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
-import type { IdleBackground } from '@/lib/idleBackground';
-import type { IdleHalf } from '@/components/dashboard/useDashboardLayout';
-import type { IdleSwitchCheck } from './useIdleSwitchCheck';
 import type { ScreenSafeZones } from '@/lib/hooks/useScreenSafeZones';
 import { cn } from '@/lib/utils';
 
@@ -193,27 +188,7 @@ export function WidgetsSheet({
   );
 }
 
-export function DaySheet({ idleBackground, onIdleBackgroundChange, idleHalf, onIdleHalfChange, idleCheck }: {
-  idleBackground?: IdleBackground;
-  onIdleBackgroundChange?: (bg: IdleBackground) => void;
-  idleHalf: IdleHalf;
-  onIdleHalfChange?: (h: IdleHalf) => void;
-  idleCheck: IdleSwitchCheck;
-}) {
-  const [motionOpen, setMotionOpen] = useState(false);
-  return (
-    <div className="flex flex-col gap-4" data-day-sheet>
-      <p className="m-0 text-body text-muted-foreground">What this screen shows behind it when nobody is using it, by day and after dark.</p>
-      {idleBackground && onIdleBackgroundChange && (
-        <IdleBackgroundBar value={idleBackground} onChange={onIdleBackgroundChange} half={idleHalf} onHalfChange={(h) => onIdleHalfChange?.(h)} check={idleCheck} />
-      )}
-      <div>
-        <button type="button" className={action} onClick={() => setMotionOpen(true)}>Timing and motion</button>
-      </div>
-      <ScreensaverSettingsPanel open={motionOpen} onClose={() => setMotionOpen(false)} />
-    </div>
-  );
-}
+export { ThroughTheDaySheet as DaySheet } from './ThroughTheDaySheet';
 
 export function LookSheet({ orientation, onOrientationChange, onMeasure }: {
   orientation: 'landscape' | 'portrait';

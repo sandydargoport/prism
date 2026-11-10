@@ -46,7 +46,7 @@ export function shownIdleSource(bg: IdleBackground, half: IdleHalf): IdleSource 
  * or the sky on either half has one to edit.
  */
 export function editsIdleLayout(bg: IdleBackground): boolean {
-  return idleSources(bg).some(s => s !== 'dashboard');
+  return idleSources(bg).some(s => s !== 'dashboard' && s !== 'off');
 }
 
 /** Whether a widget stays or fades when idle: the part of a widget the Idle screen tab owns. */
@@ -309,7 +309,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     idleHalf, setIdleHalf,
     // The Idle screen tab showing a screensaver layout to edit, rather than
     // the dashboard's own Stays / Fades.
-    editingScreensaver: isEditing && editTab === 'idle' && shownIdleSource(editingBackground, idleHalf) !== 'dashboard',
+    editingScreensaver: isEditing && editTab === 'idle' && !['dashboard', 'off'].includes(shownIdleSource(editingBackground, idleHalf)),
     editingBackground, setEditingBackground: setEditedBackground,
     dashboardDirty, idleDirty,
     ssLayout, ssPresets,

@@ -57,6 +57,9 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { useLocalCopy } from '@/lib/hooks/useLocalCopy';
 import { setActiveIdleBackground, shownWhenIdle, useCalmIdle } from '@/components/screensaver/calmMode';
+import { useNightNow } from '@/components/screensaver/useIdleBackground';
+import { dimLevel, useIdleDimSetting } from '@/components/screensaver/idleDim';
+import { backdropFor, nightRule, type ScreenState } from '@/lib/throughTheDay';
 import { useScreensaverMotion } from '@/components/screensaver/useScreensaverMotion';
 
 class WidgetBoundary extends React.Component<
@@ -198,6 +201,19 @@ export function Dashboard({
   // board all night does not hold every edge on the same pixels (part 2).
   const { drift } = useScreensaverMotion();
   const idleDrift = calmIdle && drift;
+  // Through the day (#1152): the state the editor is showing, if any. The
+  // Through the day sheet's strip sets it: Active is the dashboard in use,
+  // Resting and Night are the idle screen by day and by night.
+  const previewState: ScreenState | null = !layout.isEditing ? null
+    : layout.editTab !== 'idle' ? 'active'
+      : layout.idleHalf === 'night' ? 'night' : 'resting';
+  const shownBackground = layout.isEditing ? layout.editingBackground : idleBackground;
+  // One night for the veil, the dim and the backdrop: the dashboard's rule.
+  const nightNow = useNightNow(nightRule(shownBackground));
+  const sceneNight = previewState === 'night' || (previewState !== 'resting' && nightNow);
+  const previewBackdrop = previewState ? backdropFor(shownBackground, previewState) : null;
+  const { level: dimRaw } = useIdleDimSetting();
+  const previewDim = previewState === 'night' && previewBackdrop === 'dashboard' ? dimLevel(dimRaw) : 0;
 
   // Orientation from active layout (DB), fallback to landscape
   // A choice made here holds until the active layout's orientation changes.
@@ -559,7 +575,8 @@ export function Dashboard({
                 weather={data.weather.data ?? null}
                 events={data.calendar.events}
                 onOpenEvent={eventSheet.open}
-                idle={calmIdle}
+                idle={calmIdle || previewState === 'resting' || previewState === 'night'}
+                night={sceneNight}
                 drift={idleDrift}
                 kind={layout.activeLayout?.view === 'calendar' ? 'calendar' : 'today'}
                 household={{
@@ -600,6 +617,16 @@ export function Dashboard({
             </WidgetErrorBoundary>
           )}
 
+          {/* The editor's Night preview: the dim over this dashboard, or the
+              black of a screen set to go off (#1152). Under the editing bar. */}
+          {previewState === 'night' && (previewBackdrop === 'off' || previewDim > 0) && (
+            <div
+              aria-hidden
+              className="pointer-events-none fixed inset-0 z-150 bg-black"
+              style={{ opacity: previewBackdrop === 'off' ? 1 : previewDim }}
+              data-preview-night={previewBackdrop === 'off' ? 'off' : 'dim'}
+            />
+          )}
           {eventSheet.element}
           {whoDidIt.element}
           {showAddTask && (
