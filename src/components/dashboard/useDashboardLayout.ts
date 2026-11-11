@@ -183,17 +183,24 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
         name: name || activeLayout?.name || 'My Layout',
         widgets: editingWidgets,
         isDefault: activeLayout?.isDefault ?? true,
-        screensaverWidgets: ssLayout,
-        idleBackground: editingBackground,
         orientation: activeLayout?.orientation || 'landscape',
       };
+      // Done saves only what changed (#1162). A dashboard with no screensaver
+      // layout or background of its own keeps none until someone sets one;
+      // saving the default it was showing would pin it there for good.
+      if (activeLayout?.screensaverWidgets || JSON.stringify(ssLayout) !== JSON.stringify(preEditSs)) {
+        saveData.screensaverWidgets = ssLayout;
+      }
+      if (activeLayout?.idleBackground || !sameIdleBackground(editingBackground, savedBackground)) {
+        saveData.idleBackground = editingBackground;
+      }
       await layouts.saveLayout(saveData);
     } catch (err) {
       console.error('Failed to save layout:', err);
     } finally {
       finishEditing();
     }
-  }, [activeLayout, editingWidgets, ssLayout, editingBackground, layouts, finishEditing]);
+  }, [activeLayout, editingWidgets, ssLayout, preEditSs, editingBackground, savedBackground, layouts, finishEditing]);
 
   // Save-As supports two modes:
   //   - { id }: overwrite an existing dashboard. Preserves the target's
