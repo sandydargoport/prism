@@ -7,7 +7,7 @@
  * Runs against a fresh-seeded database only (it adds and removes a row).
  */
 import { test, expect, type BrowserContext, type Page } from '@playwright/test';
-import { getFirstParent, verifySettingsPinViaAPI } from './helpers/auth';
+import { getFirstParent, getSeededParentId, verifySettingsPinViaAPI } from './helpers/auth';
 import { deleteLayout } from './helpers/cleanup';
 
 const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
@@ -563,5 +563,48 @@ test.describe('Settings width', () => {
       if (id) await context.request.delete(`/api/displays/${id}`).catch(() => {});
       await context.close();
     }
+  });
+});
+
+test.describe('Settings keeps what is for all screens', () => {
+  test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
+  test.setTimeout(120_000);
+  const PIN = process.env.E2E_PIN || '1234';
+
+  // #1159: one screen's settings left Appearance and Input for its editing bar,
+  // and Away's timer is the household's.
+  test('Appearance and Input keep only what is for all screens, and Away is set once (#1159)', async ({ page }) => {
+    expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);
+    await verifySettingsPinViaAPI(page, (await getFirstParent(page)).name);
+    await page.goto('/settings?section=display');
+    const away = page.locator('[data-away-card]');
+    await expect(away).toBeVisible({ timeout: 60_000 });
+
+    for (const title of ['Screensaver', 'Timers & Auto-Activation', 'Screen Orientation']) {
+      await expect(page.getByText(title, { exact: true }), `${title} is on the editing bar now`).toHaveCount(0);
+    }
+    for (const label of ['Activate after', 'Dim at night', 'Sign out after', 'Auto-Hide Navigation']) {
+      await expect(page.getByText(label, { exact: true }), `${label} is on the editing bar now`).toHaveCount(0);
+    }
+    await expect(page.locator('[data-fold="performance"]')).toHaveCount(0);
+    await expect(page.locator('[data-screen-settings-moved] a')).toHaveAttribute('href', '/settings?section=displays');
+
+    // Away: says it is for all screens, and is kept for the household.
+    await expect(away).toContainText('All screens');
+    const select = away.getByLabel('Turn Away mode on after');
+    await expect(select).toBeEnabled();
+    await select.selectOption({ label: '2 days' });
+    await expect.poll(async () => (await (await page.request.get('/api/away-mode')).json()).autoAfterHours).toBe(48);
+    expect(await page.evaluate(() => localStorage.getItem('prism-away-mode-timeout'))).toBeNull();
+    await page.reload();
+    await expect(page.locator('[data-away-card]').getByLabel('Turn Away mode on after')).toHaveValue('48', { timeout: 60_000 });
+    await page.locator('[data-away-card]').getByLabel('Turn Away mode on after').selectOption({ label: 'Never (only by hand)' });
+    await expect.poll(async () => (await (await page.request.get('/api/away-mode')).json()).autoAfterHours).toBe(0);
+
+    // Input: the household switch stays and says so; the one-screen choice is on Look.
+    await page.goto('/settings?section=input');
+    await expect(page.getByLabel('Enable on-screen keyboard')).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByText(/^All screens\. To choose Always or Never/)).toBeVisible();
+    await expect(page.getByText('On-screen keyboard on this device')).toHaveCount(0);
   });
 });

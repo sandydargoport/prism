@@ -52,6 +52,8 @@ export function ScreensaverSettingsPanel({
     carbonation, setCarbonation,
     waterClear, setWaterClear,
     wobble, setWobble,
+    drift, setDrift,
+    shortcut, setShortcut,
   } = useScreensaverMotion();
   const { timeout: ssTimeout, setTimeout: setSsTimeout } = useScreensaverTimeout();
   const { interval: photoInterval, setInterval: setPhotoInterval } = useScreensaverInterval();
@@ -210,6 +212,26 @@ export function ScreensaverSettingsPanel({
                 </>
               )}
 
+            {/* Drift and the shortcut came here from Settings > Appearance (#1159). */}
+            <label className="flex items-center justify-between gap-3 cursor-pointer">
+              <span className="text-sm text-white/70">Drift, so nothing sits on the same pixels for months</span>
+              <input
+                type="checkbox"
+                checked={drift}
+                onChange={(e) => setDrift(e.target.checked)}
+                className="h-4 w-4 rounded border-white/30"
+              />
+            </label>
+            <label className="flex items-center justify-between gap-3 cursor-pointer">
+              <span className="text-sm text-white/70">Settings shortcut in the screensaver&apos;s corner</span>
+              <input
+                type="checkbox"
+                checked={shortcut}
+                onChange={(e) => setShortcut(e.target.checked)}
+                className="h-4 w-4 rounded border-white/30"
+              />
+            </label>
+
             <div className="h-px bg-white/10 my-1" />
 
             <label className="flex items-center justify-between gap-3">
@@ -236,6 +258,7 @@ export function ScreensaverSettingsPanel({
                 className={select}
               >
                 <option value={5}>5 seconds</option>
+                <option value={10}>10 seconds</option>
                 <option value={15}>15 seconds</option>
                 <option value={30}>30 seconds</option>
                 <option value={60}>1 minute</option>

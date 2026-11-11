@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useIsPWA } from './useIsPWA';
+import { resolveAwayAutoAfter } from '@/lib/awayMode/autoAfter';
 
 const STORAGE_KEY = 'prism-screensaver-timeout';
-const AWAY_MODE_STORAGE_KEY = 'prism-away-mode-timeout';
 const LAST_ACTIVITY_KEY = 'prism-last-activity';
 const DEFAULT_TIMEOUT = 120;
 
@@ -12,12 +12,6 @@ function getStoredTimeout(): number {
   if (typeof window === 'undefined') return DEFAULT_TIMEOUT;
   const stored = localStorage.getItem(STORAGE_KEY);
   return stored !== null ? Number(stored) : DEFAULT_TIMEOUT;
-}
-
-function getAwayModeTimeout(): number {
-  if (typeof window === 'undefined') return 0;
-  const stored = localStorage.getItem(AWAY_MODE_STORAGE_KEY);
-  return stored !== null ? Number(stored) : 0;
 }
 
 function updateLastActivity() {
@@ -35,7 +29,6 @@ function getLastActivity(): number {
 export function useIdleDetection(initialTimeout?: number) {
   const isPWA = useIsPWA();
   const [timeout, setTimeoutValue] = useState(() => initialTimeout ?? getStoredTimeout());
-  const [awayModeTimeout, setAwayModeTimeout] = useState(() => getAwayModeTimeout());
   const [isIdle, setIsIdle] = useState(false);
   const forcedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -48,15 +41,6 @@ export function useIdleDetection(initialTimeout?: number) {
     };
     window.addEventListener('prism:screensaver-timeout-change', handler as EventListener);
     return () => window.removeEventListener('prism:screensaver-timeout-change', handler as EventListener);
-  }, []);
-
-  // Listen for away mode timeout changes from settings
-  useEffect(() => {
-    const handler = (e: CustomEvent<number>) => {
-      setAwayModeTimeout(e.detail);
-    };
-    window.addEventListener('prism:away-mode-timeout-change', handler as EventListener);
-    return () => window.removeEventListener('prism:away-mode-timeout-change', handler as EventListener);
   }, []);
 
   // Reset idle timer on user activity (restarts countdown)
@@ -152,9 +136,11 @@ export function useIdleDetection(initialTimeout?: number) {
     return () => window.removeEventListener('prism:screensaver', handler);
   }, [forceIdle]);
 
-  // Away mode auto-activation based on extended inactivity
+  // Away mode auto-activation based on extended inactivity. How long is the
+  // household's (#1159), read with the state on every check, so a change in
+  // Settings reaches every screen within a minute.
   useEffect(() => {
-    if (awayModeTimeout <= 0 || isPWA) {
+    if (isPWA) {
       // Clear timer if disabled
       if (awayModeTimerRef.current) {
         clearInterval(awayModeTimerRef.current);
@@ -174,6 +160,8 @@ export function useIdleDetection(initialTimeout?: number) {
         if (!stateRes.ok) return;
         const state = await stateRes.json();
         if (state.enabled) return;
+        const awayModeTimeout = await resolveAwayAutoAfter(state);
+        if (awayModeTimeout <= 0) return;
 
         const disabledAt = state.disabledAt ? Date.parse(state.disabledAt) : 0;
         const lastActivity = Math.max(getLastActivity(), Number.isNaN(disabledAt) ? 0 : disabledAt);
@@ -203,7 +191,7 @@ export function useIdleDetection(initialTimeout?: number) {
         awayModeTimerRef.current = null;
       }
     };
-  }, [awayModeTimeout, isPWA]);
+  }, [isPWA]);
 
   return { isIdle, forceIdle };
 }

@@ -668,13 +668,13 @@ test.describe('calm mode idle screen', () => {
     expect(created.status()).toBe(201);
     const layout = await created.json();
     try {
-      // Chosen the way a person would, in Settings, past its PIN gate.
-      await verifySettingsPinViaAPI(page, (await getFirstParent(page)).name, PIN);
-      await page.goto('/settings?section=display');
-      // Performance is folded under This screen (#1017); open it first.
-      await page.locator('[data-fold="performance"] summary').click();
-      await page.getByRole('radio', { name: /^Minimal/ }).check();
+      // Chosen the way a person would: on the screen's editing bar, Look (#1159).
+      await page.goto(`/d/${layout.slug}`);
+      await openEditor(page);
+      await openSheet(page, 'look');
+      await page.locator('[data-screen-options]').getByLabel('Performance').selectOption({ label: 'Minimal' });
       await expect(page.locator('html')).toHaveClass(/perf-minimal/);
+      await closeSheet(page);
 
       await page.goto(`/d/${layout.slug}`);
       await page.locator('.widget-cell[data-widget="tasks"]').waitFor({ timeout: 60000 });
@@ -887,10 +887,14 @@ test.describe('dim when idle', () => {
     // 11:30 pm in Chicago, 04:30 UTC: inside 11 pm to 7 am only on the screen's clock.
     await page.clock.setFixedTime(new Date('2026-10-28T04:30:00Z'));
     await withNightDashboard(page, async (slug) => {
-      await page.goto('/settings?section=display');
-      const level = page.getByLabel('Dim at night');
-      await level.waitFor({ timeout: 60000 });
-      await level.selectOption({ label: '50% darker' });
+      // How dark is the screen's own, on its editing bar: Through the day (#1159).
+      await page.goto(`/d/${slug}`);
+      await openEditor(page);
+      await openSheet(page, 'day');
+      await page.getByLabel('How dark at night').selectOption({ label: '50% darker' });
+      await closeSheet(page);
+      await done(page).click();
+      await expect(done(page)).toHaveCount(0);
 
       await page.goto(`/d/${slug}`);
       await page.waitForLoadState('networkidle');
