@@ -690,6 +690,44 @@ test.describe('calm mode idle screen', () => {
     }
   });
 
+  test('Done with nothing changed leaves the dashboard as it was, and it still rests the same', async ({ page }) => {
+    const login = await page.request.post('/api/auth/login', {
+      data: { userId: getSeededParentId(), pin: PIN },
+    });
+    expect(login.ok(), 'precondition: login must succeed').toBe(true);
+    const created = await page.request.post('/api/layouts', {
+      data: { name: `Calm done e2e ${Date.now()}`, widgets: WIDGETS },
+    });
+    expect(created.status()).toBe(201);
+    const layout = await created.json();
+    expect(layout.screensaverWidgets, 'premise: no screensaver layout of its own').toBeNull();
+    await page.addInitScript(() => localStorage.setItem('prism-screensaver-drift', 'off'));
+    try {
+      await page.goto(`/d/${layout.slug}`);
+      await openEditor(page);
+      const save = page.waitForResponse((r) => r.url().endsWith(`/api/layouts/${layout.id}`) && r.request().method() === 'PATCH');
+      await done(page).click();
+      expect((await save).ok()).toBe(true);
+      await expect(page.locator('[data-editor-resting]')).toHaveCount(0);
+
+      const saved = await (await page.request.get(`/api/layouts/${layout.id}`)).json();
+      expect(saved.screensaverWidgets, 'Done saved no screensaver layout of its own').toBeNull();
+      expect(saved.idleBackground).toEqual(layout.idleBackground);
+      expect(saved.widgets).toEqual(layout.widgets);
+
+      await page.reload();
+      await page.locator('.widget-cell[data-widget="weather"]').waitFor({ timeout: 60000 });
+      await page.waitForTimeout(800);
+      await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
+      await page.waitForTimeout(1500);
+      const idle = await cells(page);
+      expect(idle.weather!.opacity, 'weather still fades').toBe(0);
+      expect(idle.shopping!.opacity, 'shopping still stays').toBe(1);
+    } finally {
+      await page.request.delete(`/api/layouts/${layout.id}`);
+    }
+  });
+
   test('Stays / Fades is on the Idle screen tab, and one Save keeps it with the background', async ({ page }) => {
     const login = await page.request.post('/api/auth/login', {
       data: { userId: getSeededParentId(), pin: PIN },
