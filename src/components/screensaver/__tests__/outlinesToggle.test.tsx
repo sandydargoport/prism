@@ -27,13 +27,17 @@ describe('Hide widget outlines', () => {
   });
 });
 
-describe('Hide widget outlines in Settings', () => {
-  it('is offered in Settings → Appearance → Screensaver with no transition effect', async () => {
-    global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: async () => ({}) } as Response)) as unknown as typeof fetch;
-    const { ScreensaverCard } = await import('@/app/settings/sections/DisplaySection');
-    render(<ScreensaverCard />);
-    const toggle = screen.getByRole('checkbox', { name: /hide widget outlines/i }) as HTMLInputElement;
-    fireEvent.click(toggle);
-    expect(localStorage.getItem('prism-screensaver-outlines')).toBe('off');
+// Drift and the shortcut left Settings > Appearance for this panel (#1159).
+describe('Drift and the settings shortcut', () => {
+  it('are offered in the screensaver panel and kept for the screen', () => {
+    render(<ScreensaverSettingsPanel open onClose={() => {}} />);
+    const drift = screen.getByRole('checkbox', { name: /drift/i }) as HTMLInputElement;
+    const shortcut = screen.getByRole('checkbox', { name: /settings shortcut/i }) as HTMLInputElement;
+    expect(drift.checked).toBe(true);
+    expect(shortcut.checked).toBe(false);
+    fireEvent.click(drift);
+    fireEvent.click(shortcut);
+    expect(localStorage.getItem('prism-screensaver-drift')).toBe('off');
+    expect(localStorage.getItem('prism-screensaver-shortcut')).toBe('on');
   });
 });

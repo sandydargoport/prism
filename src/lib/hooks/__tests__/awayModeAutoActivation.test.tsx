@@ -38,7 +38,7 @@ const HOUR = 60 * 60 * 1000;
 const LAST_ACTIVITY = 'prism-last-activity';
 
 /** Whatever GET /api/away-mode should answer for this test. */
-let serverState: Record<string, unknown> = { enabled: false, disabledAt: null };
+let serverState: Record<string, unknown> = { enabled: false, disabledAt: null, autoAfterHours: 24 };
 let posted: Array<Record<string, unknown>> = [];
 
 beforeEach(() => {
@@ -46,7 +46,7 @@ beforeEach(() => {
   mockTimeout = 120;
   window.localStorage.clear();
   posted = [];
-  serverState = { enabled: false, disabledAt: null };
+  serverState = { enabled: false, disabledAt: null, autoAfterHours: 24 };
   global.fetch = jest.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
     if (init?.method === 'POST') {
       posted.push(JSON.parse(String(init.body)));
@@ -103,7 +103,6 @@ describe('away mode auto-activation', () => {
   });
 
   it('still arms after a genuinely long idle period', async () => {
-    window.localStorage.setItem('prism-away-mode-timeout', '24');
     // "Never": the configuration in which the activity clock can actually go
     // stale, because nothing re-seeds it on mount.
     window.localStorage.setItem('prism-screensaver-timeout', '0');
@@ -116,14 +115,13 @@ describe('away mode auto-activation', () => {
   });
 
   it('stands down after a human has just switched it off', async () => {
-    window.localStorage.setItem('prism-away-mode-timeout', '24');
     // "Never": the configuration in which the activity clock can actually go
     // stale, because nothing re-seeds it on mount.
     window.localStorage.setItem('prism-screensaver-timeout', '0');
     // This client's own clock is stale — it has been sitting untouched.
     window.localStorage.setItem(LAST_ACTIVITY, String(Date.now() - 30 * HOUR));
     // But somebody turned Away Mode off at the wall display a moment ago.
-    serverState = { enabled: false, disabledAt: new Date().toISOString() };
+    serverState = { enabled: false, disabledAt: new Date().toISOString(), autoAfterHours: 24 };
 
     renderHook(() => useIdleDetection());
     await settle();
@@ -132,12 +130,11 @@ describe('away mode auto-activation', () => {
   });
 
   it('arms again once the switch-off is itself older than the timeout', async () => {
-    window.localStorage.setItem('prism-away-mode-timeout', '24');
     // "Never": the configuration in which the activity clock can actually go
     // stale, because nothing re-seeds it on mount.
     window.localStorage.setItem('prism-screensaver-timeout', '0');
     window.localStorage.setItem(LAST_ACTIVITY, String(Date.now() - 30 * HOUR));
-    serverState = { enabled: false, disabledAt: new Date(Date.now() - 30 * HOUR).toISOString() };
+    serverState = { enabled: false, disabledAt: new Date(Date.now() - 30 * HOUR).toISOString(), autoAfterHours: 24 };
 
     renderHook(() => useIdleDetection());
     await settle();
@@ -146,12 +143,35 @@ describe('away mode auto-activation', () => {
   });
 
   it('does not re-post while away mode is already on', async () => {
-    window.localStorage.setItem('prism-away-mode-timeout', '24');
     // "Never": the configuration in which the activity clock can actually go
     // stale, because nothing re-seeds it on mount.
     window.localStorage.setItem('prism-screensaver-timeout', '0');
     window.localStorage.setItem(LAST_ACTIVITY, String(Date.now() - 30 * HOUR));
-    serverState = { enabled: true, disabledAt: null };
+    serverState = { enabled: true, disabledAt: null, autoAfterHours: 24 };
+
+    renderHook(() => useIdleDetection());
+    await settle();
+
+    expect(posted).toHaveLength(0);
+  });
+
+  // #1159: how long is the household's, so a screen nobody set it on follows it.
+  it('uses the household hours on a screen that never set its own', async () => {
+    window.localStorage.setItem('prism-screensaver-timeout', '0');
+    window.localStorage.setItem(LAST_ACTIVITY, String(Date.now() - 30 * HOUR));
+    expect(window.localStorage.getItem('prism-away-mode-timeout')).toBeNull();
+
+    renderHook(() => useIdleDetection());
+    await settle();
+
+    expect(posted).toContainEqual({ enabled: true, autoActivated: true });
+  });
+
+  it('does not arm when the household chose "only by hand", whatever this browser kept', async () => {
+    window.localStorage.setItem('prism-away-mode-timeout', '4');
+    window.localStorage.setItem('prism-screensaver-timeout', '0');
+    window.localStorage.setItem(LAST_ACTIVITY, String(Date.now() - 30 * HOUR));
+    serverState = { enabled: false, disabledAt: null, autoAfterHours: 0 };
 
     renderHook(() => useIdleDetection());
     await settle();

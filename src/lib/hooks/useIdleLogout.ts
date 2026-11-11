@@ -7,18 +7,9 @@ import { useAuth } from '@/components/providers';
 /** Written by useIdleDetection on any interaction anywhere in the app. */
 const LAST_ACTIVITY_KEY = 'prism-last-activity';
 
-/** Minutes of inactivity before the display signs itself out. */
-export const IDLE_LOGOUT_KEY = 'prism-idle-logout-minutes';
-export const DEFAULT_IDLE_LOGOUT_MINUTES = 30;
+import { DEFAULT_IDLE_LOGOUT_MINUTES, IDLE_LOGOUT_KEY } from './idleLogoutOptions';
 
-export const IDLE_LOGOUT_OPTIONS = [
-  { value: 0, label: 'Never' },
-  { value: 5, label: '5 minutes' },
-  { value: 15, label: '15 minutes' },
-  { value: 30, label: '30 minutes' },
-  { value: 60, label: '1 hour' },
-  { value: 240, label: '4 hours' },
-] as const;
+export { DEFAULT_IDLE_LOGOUT_MINUTES, IDLE_LOGOUT_KEY, IDLE_LOGOUT_OPTIONS } from './idleLogoutOptions';
 
 function parseMinutes(stored: string | null): number {
   if (stored === null) return DEFAULT_IDLE_LOGOUT_MINUTES;

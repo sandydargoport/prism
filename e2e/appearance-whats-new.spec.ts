@@ -20,11 +20,12 @@ test.describe('Appearance and what moved', () => {
     await verifySettingsPinViaAPI(page, (await getFirstParent(page)).name);
     await page.goto('/settings?section=display');
 
-    // Three groups, in order: the look, the background and idle, this screen.
+    // Three groups, in order: the look, the background and away, all screens.
+    // One screen's own settings are on its editing bar, not here (#1159).
     const groups = page.locator('[data-appearance-group]');
     await expect(groups).toHaveCount(3);
     expect(await groups.evaluateAll((els) => els.map((e) => e.getAttribute('data-appearance-group'))))
-      .toEqual(['look', 'background', 'screen']);
+      .toEqual(['look', 'background', 'household']);
 
     // The palette in use is one row; the full set appears only after Change.
     const current = page.locator('[data-palette-current]');
@@ -34,9 +35,9 @@ test.describe('Appearance and what moved', () => {
     await page.locator('[data-palette-change]').click();
     await expect(page.locator('[data-palette-grid]')).toBeVisible();
 
-    // Language, units and performance are folded, each showing its value while closed.
+    // Language and units are folded, each showing its value while closed.
     const folds = page.locator('[data-fold]');
-    await expect(folds).toHaveCount(3);
+    await expect(folds).toHaveCount(2);
     for (const f of await folds.all()) {
       expect(await f.evaluate((d) => (d as HTMLDetailsElement).open)).toBe(false);
       await expect(f.locator('summary [data-fold-value]')).toHaveText(/\S/);
