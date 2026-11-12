@@ -27,13 +27,44 @@ function getLastActivity(): number {
   return stored !== null ? Number(stored) : Date.now();
 }
 
+/** How long after a waking touch its follow-on events are still that tap's. */
+export const WAKE_TAP_MS = 600;
+
+const TAP_TAIL = ['pointerup', 'mousedown', 'mouseup', 'click'] as const;
+
+/**
+ * Stop the rest of the waking tap (its pointerup, compatibility mouse events
+ * and click) from reaching the dashboard under the screensaver. The click ends
+ * the tap; a timer ends it if no click comes, so a later tap is never eaten.
+ */
+function swallowRestOfTap() {
+  if (typeof window === 'undefined') return;
+  const swallow = (e: Event) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'click') stop();
+  };
+  const stop = () => {
+    clearTimeout(timer);
+    TAP_TAIL.forEach((t) => window.removeEventListener(t, swallow, true));
+  };
+  TAP_TAIL.forEach((t) => window.addEventListener(t, swallow, true));
+  const timer = setTimeout(stop, WAKE_TAP_MS);
+}
+
 export function useIdleDetection(initialTimeout?: number) {
   const isPWA = useIsPWA();
   const [timeout, setTimeoutValue] = useState(() => initialTimeout ?? getStoredTimeout());
   const [isIdle, setIsIdle] = useState(false);
   const forcedRef = useRef(false);
+  const isIdleRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const awayModeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // The dismiss listener reads this, so it knows whether a touch woke the screen.
+  useEffect(() => {
+    isIdleRef.current = isIdle;
+  }, [isIdle]);
 
   // Listen for timeout changes from settings
   useEffect(() => {
@@ -102,6 +133,12 @@ export function useIdleDetection(initialTimeout?: number) {
       const target = e.target as Element | null;
       if (target && typeof target.closest === 'function' && target.closest('[data-screensaver-keep]')) {
         return;
+      }
+      // A touch that wakes the screen ends on whatever is under the finger,
+      // because the overlay is gone before the touch is over. Without this
+      // the same tap that woke the wall also checked off a task (#1112).
+      if (e.type === 'touchstart' && isIdleRef.current && !forcedRef.current) {
+        swallowRestOfTap();
       }
       dismissIdle();
     };
