@@ -128,6 +128,11 @@ nothing moves when it comes and goes.
   layout, Reload, the performance badge, Babysitter and Away modes, Screensaver.
 - No page can be lost: `dockLayout` puts each visible page on the dock or in
   More, never both (checked).
+- Until the household chooses, the dock is the default six, topped up when one
+  is hidden. Once it chooses, the dock is Home and exactly the ticked pages
+  that are switched on, however few; a switched-off page does not hold a place
+  (#1173). A change in Settings reaches the dock on the same screen at once
+  (#1172).
 
 ## Rows and person marks (#932)
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { ALWAYS_VISIBLE_HREFS } from '@/lib/constants/navItems';
 import type { NavItem } from '@/lib/constants/navItems';
 import { useFetchOnMount } from './useFetchOnMount';
@@ -25,6 +25,17 @@ function readCachedDockPages(): string[] | null {
     const v = cached ? JSON.parse(cached) : null;
     return Array.isArray(v) ? v : null;
   } catch { return null; }
+}
+
+/**
+ * Every useHiddenPages() keeps its own copy, so a change in Settings tells the
+ * others (the dock on the same screen) through this event (#1172).
+ */
+const CHANGE_EVENT = 'prism:nav-pages-change';
+type NavPagesChange = { hiddenPages?: string[]; dockPages?: string[] };
+
+function announce(detail: NavPagesChange) {
+  window.dispatchEvent(new CustomEvent<NavPagesChange>(CHANGE_EVENT, { detail }));
 }
 
 export function useHiddenPages() {
@@ -55,9 +66,20 @@ export function useHiddenPages() {
 
   useFetchOnMount(fetchHiddenPages);
 
+  useEffect(() => {
+    const onChange = (e: Event) => {
+      const { hiddenPages: hidden, dockPages: dock } = (e as CustomEvent<NavPagesChange>).detail ?? {};
+      if (hidden) setHiddenPagesState(hidden);
+      if (dock) setDockPagesState(dock);
+    };
+    window.addEventListener(CHANGE_EVENT, onChange);
+    return () => window.removeEventListener(CHANGE_EVENT, onChange);
+  }, []);
+
   const setHiddenPages = useCallback(async (pages: string[]) => {
     setHiddenPagesState(pages);
     localStorage.setItem(CACHE_KEY, JSON.stringify(pages));
+    announce({ hiddenPages: pages });
     try {
       await fetch('/api/settings', {
         method: 'PATCH',
@@ -70,6 +92,7 @@ export function useHiddenPages() {
   const setDockPages = useCallback(async (pages: string[]) => {
     setDockPagesState(pages);
     localStorage.setItem(DOCK_CACHE_KEY, JSON.stringify(pages));
+    announce({ dockPages: pages });
     try {
       await fetch('/api/settings', {
         method: 'PATCH',
