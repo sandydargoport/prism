@@ -3,8 +3,12 @@
  * scripts/screenshot-specs.ts is the list scripts/capture-screenshots.ts
  * shoots; these check the gallery part of it.
  */
-import { GALLERY_SHOTS, STAGE_LAYOUTS, themeOf } from '../../../scripts/screenshot-specs';
+import fs from 'node:fs';
+import {
+  DAY_SHOTS, GALLERY_SHOTS, HERO_SHOTS, PHOTOS, STAGE_LAYOUTS, scenerySource, themeOf,
+} from '../../../scripts/screenshot-specs';
 import { LOOK_IDS } from '../looks';
+import { SCENERY } from '../scenery';
 
 /** Pages a family uses day to day. Everything else is settings, admin or editing. */
 const FAMILY_PAGES = ['/', '/calendar', '/shopping'];
@@ -13,10 +17,10 @@ const names = GALLERY_SHOTS.map((s) => s.name);
 const shot = (name: string) => GALLERY_SHOTS.find((s) => s.name === name)!;
 
 describe('the docs gallery', () => {
-  it('shoots the wall in every look, the idle screen, three widgets and the phone', () => {
-    expect(names.sort()).toEqual(
+  it('shoots the Simple wall, a kitchen layout, the idle screen, three widgets and the phone', () => {
+    expect([...names].sort()).toEqual(
       [
-        ...LOOK_IDS.map((l) => `look-${l}`),
+        'wall-simple', 'wall-night', 'wall-kitchen',
         'idle-screen',
         'widget-calendar', 'widget-chores', 'widget-shopping',
         'phone-home', 'phone-calendar', 'phone-shopping',
@@ -24,13 +28,27 @@ describe('the docs gallery', () => {
     );
   });
 
-  it('shows no admin or editing page', () => {
-    for (const s of GALLERY_SHOTS) expect([s.name, FAMILY_PAGES.includes(s.url)]).toEqual([s.name, true]);
+  it('leaves the old three-widget grid in each look out (#1142)', () => {
+    for (const look of LOOK_IDS) expect(names).not.toContain(`look-${look}`);
+    const walls = GALLERY_SHOTS.filter((s) => s.device === 'wall' && !s.widget && !s.idle);
+    for (const s of walls) expect([s.name, s.stage?.layout]).not.toEqual([s.name, 'gallery']);
   });
 
-  it('stages every shot in a look, on the gallery dashboard', () => {
-    for (const s of GALLERY_SHOTS) expect([s.name, s.stage?.layout]).toEqual([s.name, 'gallery']);
-    for (const look of LOOK_IDS) expect(shot(`look-${look}`).stage?.look).toBe(look);
+  it('still shows every look a new install offers', () => {
+    const looks = new Set(GALLERY_SHOTS.filter((s) => s.name.startsWith('wall-')).map((s) => s.stage?.look));
+    expect([...looks].sort()).toEqual([...LOOK_IDS].sort());
+  });
+
+  it('stages each wall on the dashboard and in the look it names', () => {
+    expect([shot('wall-simple').stage, shot('wall-night').stage, shot('wall-kitchen').stage]).toEqual([
+      { look: 'photo', layout: 'simple' },
+      { look: 'night', layout: 'simple' },
+      { look: 'paper', layout: 'kitchen' },
+    ]);
+  });
+
+  it('shows no admin or editing page', () => {
+    for (const s of GALLERY_SHOTS) expect([s.name, FAMILY_PAGES.includes(s.url)]).toEqual([s.name, true]);
   });
 
   it('shoots the wall signed out with the rail and top bar hidden', () => {
@@ -40,9 +58,9 @@ describe('the docs gallery', () => {
   });
 
   it('draws the Night look dark and the others light', () => {
-    expect(themeOf(shot('look-night'))).toBe('dark');
-    expect(themeOf(shot('look-photo'))).not.toBe('dark');
-    expect(themeOf(shot('look-paper'))).not.toBe('dark');
+    expect(themeOf(shot('wall-night'))).toBe('dark');
+    expect(themeOf(shot('wall-simple'))).not.toBe('dark');
+    expect(themeOf(shot('wall-kitchen'))).not.toBe('dark');
   });
 
   it('puts every close-up widget on the dashboard it is shot from', () => {
@@ -51,8 +69,53 @@ describe('the docs gallery', () => {
     }
   });
 
+  it('keeps the kitchen layout on the grid without overlaps', () => {
+    const cells = STAGE_LAYOUTS.kitchen;
+    const taken = new Set<string>();
+    for (const c of cells) {
+      expect(c.x + c.w).toBeLessThanOrEqual(48);
+      expect(c.y + c.h).toBeLessThanOrEqual(27);
+      for (let x = c.x; x < c.x + c.w; x++) for (let y = c.y; y < c.y + c.h; y++) {
+        expect(taken.has(`${x},${y}`)).toBe(false);
+        taken.add(`${x},${y}`);
+      }
+    }
+  });
+
   it('puts the idle screen in idle', () => {
     expect(shot('idle-screen').idle).toBe(true);
+  });
+});
+
+describe('each shot names the landscape it is taken on (#1142)', () => {
+  const ids = SCENERY.map((s) => s.id);
+
+  it('takes the hero and the Simple wall on the most striking landscape', () => {
+    expect(PHOTOS.hero).toBe('dunes-sunset');
+    for (const s of [...HERO_SHOTS, shot('wall-simple'), shot('idle-screen')]) expect([s.name, s.photo]).toEqual([s.name, PHOTOS.hero]);
+  });
+
+  it('takes the morning in morning light and the evening at sunset', () => {
+    expect(DAY_SHOTS.map((s) => [s.name, s.photo])).toEqual([
+      ['day-morning', 'morning-hills'],
+      ['day-afternoon', 'dunes-sunset'],
+      ['day-evening', 'river-sunset'],
+    ]);
+  });
+
+  it('names only bundled photos, on a look that shows the scenery', () => {
+    for (const s of [...HERO_SHOTS, ...GALLERY_SHOTS, ...DAY_SHOTS].filter((x) => x.photo)) {
+      expect([s.name, ids.includes(s.photo!)]).toEqual([s.name, true]);
+      expect(fs.existsSync(scenerySource(s.photo!))).toBe(true);
+      expect([s.name, s.stage?.look]).not.toEqual([s.name, 'paper']);
+    }
+    expect(() => scenerySource('not-a-photo')).toThrow(/No bundled scenery photo/);
+  });
+
+  it('serves the named photo in place of the first, with the service worker out of the way', () => {
+    const script = fs.readFileSync(require.resolve('../../../scripts/capture-screenshots.ts'), 'utf8');
+    expect(script).toMatch(/serviceWorkers: spec\.photo \? 'block'/);
+    expect(script).toMatch(/context\.route\(`\*\*\$\{SCENERY\[0\]!\.src\}`, \(route\) => route\.fulfill\(\{ path: scenerySource\(spec\.photo!\) \}\)\)/);
   });
 });
 
