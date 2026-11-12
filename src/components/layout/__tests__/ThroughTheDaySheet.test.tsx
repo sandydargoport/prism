@@ -128,6 +128,13 @@ describe('ThroughTheDaySheet', () => {
     expect(milestone('night-start').style.left).toBe(`${(1320 / 1440) * 100}%`);
   });
 
+  it('names a stretch only where its name fits, never cut to a letter', () => {
+    render(<Harness initial={{ day: 'photos', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } }} />);
+    const nights = Array.from(document.querySelectorAll<HTMLElement>('[data-day-stretch="night"]')).map((e) => e.textContent);
+    // Midnight to 6:30 is named; 9 pm to midnight, three hours, is not.
+    expect(nights).toEqual(['Night sky', '']);
+  });
+
   it('tapping the resting stretch shows the screen resting and opens what resting is', () => {
     render(<Harness initial={{ day: 'photos', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } }} />);
     fireEvent.click(document.querySelector<HTMLElement>('[data-day-stretch="resting"]')!);

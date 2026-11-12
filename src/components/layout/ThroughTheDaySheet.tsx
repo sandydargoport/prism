@@ -64,6 +64,9 @@ type Picked =
   | { kind: 'resting' }
   | { kind: 'interlude'; index: number };
 
+/** A stretch shorter than this has no room for its name. */
+const LABEL_MIN_MINUTES = 4 * 60;
+
 /** Left edge, as a share of the line, of a minute of the day. */
 const at = (minute: number) => `${(minute / DAY_MINUTES) * 100}%`;
 
@@ -385,8 +388,10 @@ export function ThroughTheDaySheet({
           // still a 44px target and never lands on a stretch's label.
           <div className="relative h-[44px]" data-day-interludes>
             {spans.map((sp) => {
-              const mid = ((sp.from + sp.to) / 2 / DAY_MINUTES) * 100;
               const width = ((sp.to - sp.from) / DAY_MINUTES) * 100;
+              // As wide as its name, at least its hours and 44px; held from the
+              // edge it is nearer, so a block late in the day never runs off.
+              const late = sp.from + sp.to > DAY_MINUTES;
               return (
                 <button
                   key={`i-${sp.index}-${sp.from}`}
@@ -395,12 +400,12 @@ export function ThroughTheDaySheet({
                   aria-label={`Interlude: ${dashboardName(interludes[sp.index]!.dashboardId)}, ${timeOfMinute(sp.from)} to ${timeOfMinute(sp.to)}`}
                   aria-pressed={isPicked({ kind: 'interlude', index: sp.index })}
                   className={cn(
-                    'absolute inset-y-0 truncate rounded-lg bg-primary px-2 text-caption text-primary-foreground',
+                    'absolute inset-y-0 w-max max-w-full whitespace-nowrap rounded-lg bg-primary px-2 text-caption text-primary-foreground',
                     isPicked({ kind: 'interlude', index: sp.index }) && 'ring-2 ring-foreground ring-offset-1',
                   )}
                   style={{
-                    width: `max(44px, ${width}%)`,
-                    left: `clamp(0px, calc(${mid}% - max(22px, ${width / 2}%)), calc(100% - max(44px, ${width}%)))`,
+                    minWidth: `max(44px, ${width}%)`,
+                    ...(late ? { right: at(DAY_MINUTES - sp.to) } : { left: at(sp.from) }),
                   }}
                   data-day-interlude={sp.index}
                   data-from={sp.from}
@@ -429,7 +434,9 @@ export function ThroughTheDaySheet({
               style={{ left: at(st.from), width: at(st.to - st.from) }}
               data-day-stretch={st.kind}
             >
-              {st.kind === 'night' ? nightLabel : restingLabel}
+              {/* A stretch under four hours goes unlabelled rather than cut to
+                  a letter; the stretch of the same colour names it. */}
+              {st.to - st.from < LABEL_MIN_MINUTES ? null : st.kind === 'night' ? nightLabel : restingLabel}
             </button>
           ))}
           {playedMinute !== null && (
