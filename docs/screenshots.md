@@ -12,60 +12,57 @@ These are the screens a family sees, captured on a freshly seeded install with a
 
 === "The wall"
 
-    Setup offers three looks to start from. You can change the palette, the photo and the card fill later.
+    Setup offers three looks to start from. You can change the palette, the photo and the card fill later. Scroll sideways to see each one.
 
-    <div class="grid cards" markdown>
-
-    -   **Photo**: a photo behind glass cards, showing park scenery until the family adds its own
-
-        ![The wall in the Photo look](demos/look-photo.png)
-
-    -   **Night**: the Photo look, kept dark
-
-        ![The wall in the Night look](demos/look-night.png)
-
-    -   **Paper**: solid cards with no photo behind them
-
-        ![The wall in the Paper look](demos/look-paper.png)
-
-    -   **When nobody is using it**: the wall shows the photo, the clock and the weather
-
-        ![The idle screen](demos/idle-screen.png)
-
+    <div class="shot-strip" markdown>
+    <figure markdown="span">
+      ![The wall in the Photo look](demos/look-photo.png)
+      <figcaption><strong>Photo</strong>: a photo behind glass cards, showing park scenery until the family adds its own.</figcaption>
+    </figure>
+    <figure markdown="span">
+      ![The wall in the Night look](demos/look-night.png)
+      <figcaption><strong>Night</strong>: the Photo look, kept dark.</figcaption>
+    </figure>
+    <figure markdown="span">
+      ![The wall in the Paper look](demos/look-paper.png)
+      <figcaption><strong>Paper</strong>: solid cards with no photo behind them.</figcaption>
+    </figure>
+    <figure markdown="span">
+      ![The idle screen](demos/idle-screen.png)
+      <figcaption><strong>When nobody is using it</strong>, the wall shows the photo, the clock and the weather.</figcaption>
+    </figure>
     </div>
 
 === "Close up"
 
-    <div class="grid cards" markdown>
-
-    -   **Calendar**
-
-        ![The calendar widget](demos/widget-calendar.png)
-
-    -   **Chores**
-
-        ![The chores widget](demos/widget-chores.png)
-
-    -   **Shopping**
-
-        ![The shopping widget](demos/widget-shopping.png)
-
+    <div class="shot-strip" markdown>
+    <figure markdown="span">
+      ![The calendar widget](demos/widget-calendar.png)
+      <figcaption><strong>Calendar</strong>: each person in their own colour.</figcaption>
+    </figure>
+    <figure markdown="span">
+      ![The chores widget](demos/widget-chores.png)
+      <figcaption><strong>Chores</strong>: who does what today, and the points it earns.</figcaption>
+    </figure>
+    <figure markdown="span">
+      ![The shopping widget](demos/widget-shopping.png)
+      <figcaption><strong>Shopping</strong>: the list, grouped by category.</figcaption>
+    </figure>
     </div>
 
 === "On a phone"
 
-    <div class="grid cards" markdown>
-
-    -   **Home**
-
-        ![Phone home screen](demos/phone-home.png){ width="300" }
-
-    -   **Calendar**
-
-        ![Phone calendar](demos/phone-calendar.png){ width="300" }
-
-    -   **Shopping**
-
-        ![Phone shopping list](demos/phone-shopping.png){ width="300" }
-
+    <div class="shot-strip shot-strip--phone" markdown>
+    <figure markdown="span">
+      ![Phone home screen](demos/phone-home.png)
+      <figcaption><strong>Home</strong>: the day at a glance.</figcaption>
+    </figure>
+    <figure markdown="span">
+      ![Phone calendar](demos/phone-calendar.png)
+      <figcaption><strong>Calendar</strong>: the week as an agenda.</figcaption>
+    </figure>
+    <figure markdown="span">
+      ![Phone shopping list](demos/phone-shopping.png)
+      <figcaption><strong>Shopping</strong>: the list in the shop.</figcaption>
+    </figure>
     </div>
