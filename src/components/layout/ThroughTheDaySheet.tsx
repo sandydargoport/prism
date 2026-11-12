@@ -461,8 +461,9 @@ export function ThroughTheDaySheet({
               aria-label={`${st.kind === 'night' ? `Night: ${nightLabel}` : `Resting: ${restingLabel}`}, ${timeOfMinute(st.from)} to ${timeOfMinute(st.to)}`}
               aria-pressed={isPicked({ kind: st.kind })}
               className={cn(
-                // Clear of the dot on each edge, and cut with an ellipsis when it does not fit.
-                'absolute inset-y-0 truncate px-6 text-left text-caption first:rounded-l-full last:rounded-r-full',
+                // Clear of the dot on each edge. A name that does not fit is hidden
+                // whole (see the fitting above), so no ellipsis is drawn for it.
+                'absolute inset-y-0 overflow-hidden whitespace-nowrap px-6 text-left text-caption first:rounded-l-full last:rounded-r-full',
                 st.kind === 'night' ? 'bg-foreground/85 text-background' : 'bg-muted text-foreground',
                 isPicked({ kind: st.kind }) && 'ring-2 ring-inset ring-primary',
               )}
