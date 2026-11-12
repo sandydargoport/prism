@@ -588,6 +588,29 @@ test.describe('the Today view', () => {
       expect(widths.next, 'Next is as wide as its words').toBeLessThan(widths.wrap * 0.9);
       for (const r of widths.rows) expect(r, 'a later row is as wide as its words').toBeLessThan(widths.wrap * 0.9);
 
+      // #1186: a shade sits behind the day on the left, under the list, so its
+      // smaller lines read over a bright photo.
+      const shade = await page.evaluate(() => {
+        const s = document.querySelector('[data-today-shade]');
+        const l = document.querySelector('[data-today-list="wall"]')!.getBoundingClientRect();
+        if (!s) return null;
+        const r = s.getBoundingClientRect();
+        return { covers: r.left <= l.left && r.top <= l.top && r.bottom >= l.bottom, image: getComputedStyle(s).backgroundImage };
+      });
+      expect(shade, 'the day has a shade behind it').not.toBeNull();
+      expect(shade!.covers).toBe(true);
+      expect(shade!.image).toContain('radial-gradient');
+
+      // #1186: once both are over, they are earlier today, not later.
+      await page.clock.setFixedTime(at(16));
+      await page.reload();
+      await expect(list).toBeVisible({ timeout: 60_000 });
+      const earlier = list.locator('[data-today-group="earlierToday"]');
+      await expect(earlier.getByText('Earlier today', { exact: true })).toBeVisible();
+      await expect(earlier.locator('[data-today-later-row]').filter({ hasText: `List first ${tag}` })).toBeVisible();
+      await expect(earlier.locator('[data-today-later-row]').filter({ hasText: `List second ${tag}` })).toBeVisible();
+      await expect(list.locator('[data-today-group="laterToday"] [data-today-later-row]').filter({ hasText: String(tag) })).toHaveCount(0);
+
       // Switched on, the arc comes back in its place.
       const arcOn = TODAY_TEMPLATE.widgets.map((w) => (w.i === 'calendar' ? { ...w, settings: { ...(w.settings ?? {}), arc: true } } : w));
       await page.request.patch(`/api/layouts/${layout.id}`, { data: { widgets: arcOn } });
@@ -670,6 +693,8 @@ test.describe('the Today view', () => {
       await sheet.locator('[data-day-state="night"]').click();
       await expect(scene).toHaveAttribute('data-today-night', 'true');
       await expect(page.locator('[data-today-veil]')).toHaveCount(1);
+      // The veil stands in for the day's shade (#1186).
+      await expect(page.locator('[data-today-shade]')).toHaveCount(0);
       // The ink eases to warm.
       await expect.poll(() => page.locator('[data-today-clock]').evaluate((el) => getComputedStyle(el).color)).toBe('rgb(255, 226, 190)');
 
@@ -685,6 +710,7 @@ test.describe('the Today view', () => {
       await sheet.locator('[data-day-state="active"]').click();
       await expect(scene).not.toHaveAttribute('data-today-night', 'true');
       await expect(off).toHaveCount(0);
+      await expect(page.locator('[data-today-shade]')).toHaveCount(1);
 
       // Done keeps the night look with the dashboard.
       await page.locator('[data-editor-done]').click();

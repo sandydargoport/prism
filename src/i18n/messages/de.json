@@ -290,6 +290,7 @@
     "allDay": "Ganztägig: {titles}",
     "more": "+{count}",
     "laterToday": "Später heute",
+    "earlierToday": "Früher heute",
     "choresLeft": "{count, plural, one {# Aufgabe übrig} other {# Aufgaben übrig}}",
     "tick": "{title} erledigt",
     "listCount": "{name} {count}",
