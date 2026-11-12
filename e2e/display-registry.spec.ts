@@ -240,6 +240,8 @@ test.describe('Editing a screen from a phone', () => {
       const sheet = await phone.locator('[data-editor-sheet]').evaluate((el) => el.getBoundingClientRect().toJSON());
       const shown = await picture.evaluate((el) => el.getBoundingClientRect().toJSON());
       expect(sheet.top).toBeGreaterThanOrEqual(shown.bottom);
+      // Rest after is in the resting stretch's card on the line (#1170).
+      await phone.locator('[data-day-stretch="resting"]').first().click();
       await phone.getByLabel('Rest after').selectOption({ label: '1 hour' });
       await phone.locator('[data-editor-open="look"]').click();
       await phone.locator('[data-screen-options]').getByLabel('On-screen keyboard').selectOption({ label: 'Never' });

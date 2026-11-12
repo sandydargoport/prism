@@ -171,6 +171,19 @@ export function tonight(now: Date, sw: IdleSwitch, lat: number, lon: number): Ni
   return null;
 }
 
+/**
+ * Every night that touches the local day of `day`: the one from the evening
+ * before, the one that starts that day, and one past midnight on a clock rule
+ * that starts after it. What the Through the day line draws (#1170).
+ */
+export function nightsTouching(day: Date, sw: IdleSwitch, lat: number, lon: number): NightSpan[] {
+  const from = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+  const to = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
+  return [-1, 0, 1]
+    .map((days) => nightOf(localNoon(day, days), sw, lat, lon))
+    .filter((n): n is NightSpan => !!n && n.end > from && n.start < to);
+}
+
 /** Whether `now` falls in a night, by the switch's own rule. */
 export function isNight(now: Date, sw: IdleSwitch, lat: number, lon: number): boolean {
   if (sw.by === 'sun') {

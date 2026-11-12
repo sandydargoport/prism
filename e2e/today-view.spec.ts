@@ -674,6 +674,7 @@ test.describe('the Today view', () => {
       await expect.poll(() => page.locator('[data-today-clock]').evaluate((el) => getComputedStyle(el).color)).toBe('rgb(255, 226, 190)');
 
       // Screen off: the preview goes black over the scene, under the bar.
+      await sheet.locator('[data-day-milestone="night-start"]').click();
       await sheet.locator('[data-night-look="off"]').click();
       const off = page.locator('[data-preview-night="off"]');
       await expect(off).toHaveCount(1);
