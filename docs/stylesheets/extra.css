@@ -74,3 +74,20 @@
 .md-header__title { font-weight: 700; }
 .md-typeset h1 { font-weight: 750; letter-spacing: -0.02em; color: var(--md-default-fg-color); }
 .md-typeset h2 { font-weight: 700; letter-spacing: -0.01em; }
+
+/* Screenshots page (#1144): one screen at a time, scrolled sideways, with
+   the next one peeking in at the edge. CSS only, so it survives instant
+   navigation. */
+.md-typeset .shot-strip {
+  display: flex; gap: 1rem; overflow-x: auto; overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory; padding: 0.25rem 0 1rem; margin: 1rem 0;
+}
+.md-typeset .shot-strip > figure {
+  flex: 0 0 88%; margin: 0; scroll-snap-align: start; display: flex; flex-direction: column; align-items: stretch;
+}
+.md-typeset .shot-strip img {
+  display: block; width: 100%; height: auto; border-radius: 0.6rem;
+  border: 1px solid var(--md-default-fg-color--lightest);
+}
+.md-typeset .shot-strip figcaption { max-width: none; margin: 0.6rem 0 0; text-align: left; font-size: 0.8rem; }
+.md-typeset .shot-strip--phone > figure { flex-basis: min(88%, 20rem); }
