@@ -138,6 +138,9 @@
 .pl .md-typeset .pl-card h3, .pl-card h3 { margin: 0 0 0.4rem; font-size: 1.1rem; font-weight: 700; color: var(--pl-ink); }
 .pl-card p { margin: 0; color: var(--pl-muted); font-size: 0.95rem; }
 .pl-card pre { margin: 0.5rem 0 0; }
+.pl-keeps .pl-install { grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); }
+.pl-more { margin: 1.5rem 0 0; font-size: 1rem; }
+.pl-more a { color: var(--pl-accent); font-weight: 600; }
 .pl-card pre code { font-size: 0.72rem; white-space: pre-wrap; word-break: break-all; }
 
 /* FAQ */
