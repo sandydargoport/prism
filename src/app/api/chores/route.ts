@@ -17,7 +17,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireRole, getDisplayAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { chores, users, choreCompletions, pets } from '@/lib/db/schema';
-import { eq, and, asc, desc, isNull, isNotNull, or, lte, gte, lt, count } from 'drizzle-orm';
+import { eq, and, asc, desc, inArray, isNull, isNotNull, or, lte, gte, lt, count } from 'drizzle-orm';
 import { createChoreSchema, validateRequest } from '@/lib/validations';
 import { applyReminderRules } from '@/lib/utils/reminders';
 import { getCached } from '@/lib/cache/redis';
@@ -163,9 +163,31 @@ export async function GET(request: NextRequest) {
         .groupBy(choreCompletions.choreId);
       const doneToday = new Map(ticks.map((t) => [t.choreId, Number(t.n)]));
 
+      // A chore for a pet (#856): today's ticks with who and when, approved or
+      // waiting, so the house can see the dog was fed at 7:40 and not feed it again.
+      const petChoreIds = filteredResults.filter((r) => r.petId).map((r) => r.id);
+      const petTicks = petChoreIds.length === 0 ? [] : await db
+        .select({ choreId: choreCompletions.choreId, at: choreCompletions.completedAt, name: users.name, color: users.color })
+        .from(choreCompletions)
+        .innerJoin(users, eq(choreCompletions.completedBy, users.id))
+        .where(and(
+          inArray(choreCompletions.choreId, petChoreIds),
+          gte(choreCompletions.completedAt, start),
+          lt(choreCompletions.completedAt, end),
+        ))
+        .orderBy(asc(choreCompletions.completedAt));
+      const ticksByChore = new Map<string, Array<{ at: string; by: { name: string; color: string } }>>();
+      for (const k of petTicks) {
+        ticksByChore.set(k.choreId, [...(ticksByChore.get(k.choreId) ?? []), { at: k.at.toISOString(), by: { name: k.name, color: k.color } }]);
+      }
+
       const formattedChores = filteredResults.map(row => {
         const pendingCompletion = pendingMap.get(row.id);
-        return { ...formatChoreRow(row, pendingCompletion), doneToday: doneToday.get(row.id) ?? 0 };
+        return {
+          ...formatChoreRow(row, pendingCompletion),
+          doneToday: doneToday.get(row.id) ?? 0,
+          ...(row.petId ? { todayTicks: ticksByChore.get(row.id) ?? [] } : {}),
+        };
       });
 
       return { chores: formattedChores };

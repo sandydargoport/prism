@@ -14,6 +14,7 @@ Household jobs that come round again: empty the dishwasher, feed the pets, take 
 - **Time of day** (optional): places the chore at that hour in the calendar's time views. Without one it sits at the top of the day.
 - **Points**: what it earns when approved.
 - **Requires approval**: on by default. [Ticking a chore off](#ticking-a-chore-off) explains what it does.
+- **For** (optional): one of the household's pets, added under *Settings → Family Members*. A person still does the job; the chore shows the pet's name in its colour.
 
 ## Use it
 
@@ -26,6 +27,8 @@ The page opens on what to do, as a list:
 - **Later this week**
 
 Each row shows the chore, a ring in the colour of the person it belongs to, and their name and points. Tap the ring to tick it. With nothing due this week, the page says so.
+
+A chore for a pet says who did it today and when, for example *Emma 7:40 AM*. Once it is done for the day it stays at the foot of the list under **Pets, done today**, so everyone can see the dog was fed. Other chores leave the list once they are done.
 
 A chore that is waiting for a parent to approve shows as one line, for example *Clean room: waiting for a parent to approve (done by Emma)*, with **Approve** for parents.
 
