@@ -151,11 +151,12 @@ export const SIMPLE_LAYOUT = TODAY_TEMPLATE.widgets.map((w) => ({
  * across the top. Every name and event is the seeded demo family's.
  */
 export const KITCHEN_LAYOUT = [
-  { i: 'clock', x: 0, y: 0, w: 12, h: 5, showWhenIdle: true },
-  { i: 'weather', x: 36, y: 0, w: 12, h: 5, showWhenIdle: true },
-  { i: 'calendar', x: 0, y: 5, w: 24, h: 22, showWhenIdle: false },
-  { i: 'chores', x: 24, y: 5, w: 12, h: 22, showWhenIdle: false },
-  { i: 'shopping', x: 36, y: 5, w: 12, h: 13, showWhenIdle: false },
+  { i: 'clock', x: 0, y: 0, w: 12, h: 4, showWhenIdle: true },
+  { i: 'weather', x: 36, y: 0, w: 12, h: 4, showWhenIdle: true },
+  { i: 'calendar', x: 0, y: 4, w: 24, h: 23, showWhenIdle: false },
+  { i: 'chores', x: 24, y: 4, w: 12, h: 23, showWhenIdle: false },
+  // Tall enough that the list ends on a whole row (#1142 review).
+  { i: 'shopping', x: 36, y: 4, w: 12, h: 14, showWhenIdle: false },
   { i: 'birthdays', x: 36, y: 18, w: 12, h: 9, showWhenIdle: false },
 ] satisfies StagedCell[];
 
