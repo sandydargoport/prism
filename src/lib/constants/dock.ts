@@ -12,23 +12,26 @@ export const DOCK_SIZE = 6;
 export const DOCK_SIZE_NARROW = 5;
 
 /**
- * Split the visible pages into the dock and More. The dock takes the chosen
- * pages that are visible, topped up from the visible pages in their usual
- * order; More has every other visible page. Settings always lives in More.
+ * Split the visible pages into the dock and More. A household that has never
+ * chosen gets the default six, topped up from the visible pages in their usual
+ * order. Once the household has chosen, the dock is Home and exactly the
+ * chosen pages that are visible, however few (#1173). More has every other
+ * visible page. Settings always lives in More.
  */
 export function dockLayout(
   visible: NavItem[],
-  chosen: readonly string[] = DEFAULT_DOCK_HREFS,
+  chosen?: readonly string[] | null,
   size: number = DOCK_SIZE,
 ): { dock: NavItem[]; more: NavItem[] } {
   const pages = visible.filter((i) => i.href !== '/settings');
   const byHref = new Map(pages.map((i) => [i.href, i]));
   const dock: NavItem[] = [];
-  for (const href of chosen) {
+  const hrefs = chosen ? ['/', ...chosen] : DEFAULT_DOCK_HREFS;
+  for (const href of hrefs) {
     const item = byHref.get(href);
     if (item && !dock.includes(item) && dock.length < size) dock.push(item);
   }
-  for (const item of pages) if (dock.length < size && !dock.includes(item)) dock.push(item);
+  if (!chosen) for (const item of pages) if (dock.length < size && !dock.includes(item)) dock.push(item);
   const more = visible.filter((i) => !dock.includes(i));
   return { dock, more };
 }

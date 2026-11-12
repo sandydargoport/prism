@@ -37,4 +37,21 @@ describe('dockLayout', () => {
     expect([...dock, ...more].map((i) => i.href)).not.toContain('/recipes');
     expect(dock[1]!.href).toBe('/messages');
   });
+
+  it('shows only Home and the chosen pages, however few (#1173)', () => {
+    expect(dockLayout(ALL_NAV_ITEMS, ['/']).dock.map((i) => i.href)).toEqual(['/']);
+    const { dock, more } = dockLayout(ALL_NAV_ITEMS, ['/', '/recipes']);
+    expect(dock.map((i) => i.href)).toEqual(['/', '/recipes']);
+    expect([...dock, ...more]).toHaveLength(ALL_NAV_ITEMS.length);
+  });
+
+  it('does not fill a switched-off page\'s place with an unchosen one (#1173)', () => {
+    const visible = ALL_NAV_ITEMS.filter((i) => i.href !== '/goals');
+    const { dock } = dockLayout(visible, ['/', '/calendar', '/tasks', '/chores', '/goals', '/shopping']);
+    expect(dock.map((i) => i.href)).toEqual(['/', '/calendar', '/tasks', '/chores', '/shopping']);
+  });
+
+  it('keeps Home on the dock even when a saved choice leaves it out', () => {
+    expect(dockLayout(ALL_NAV_ITEMS, ['/recipes']).dock.map((i) => i.href)).toEqual(['/', '/recipes']);
+  });
 });

@@ -8,17 +8,23 @@ import { DEFAULT_DOCK_HREFS, DOCK_SIZE } from '@/lib/constants/dock';
 
 export function FeaturesSection() {
   const { hiddenPages, loaded, setHiddenPages, dockPages, setDockPages } = useHiddenPages();
-  // The dock's pages (#925): Home is always on it; up to five more.
+  // The dock's pages (#925): Home is always on it; up to five more. A page
+  // that is switched off stays in the list, so it comes back when switched on,
+  // but it does not take one of the places (#1173).
   const onDock = dockPages ?? [...DEFAULT_DOCK_HREFS];
+  const placesTaken = onDock.filter((h) => h === '/' || !hiddenPages.includes(h)).length;
+  const dockFull = placesTaken >= DOCK_SIZE;
   const toggleDock = (href: string) => {
     if (onDock.includes(href)) setDockPages(onDock.filter((h) => h !== href));
-    else if (onDock.length < DOCK_SIZE) setDockPages([...onDock, href]);
+    else if (!dockFull) setDockPages([...onDock, href]);
   };
 
   const togglePage = (href: string) => {
     const isCurrentlyHidden = hiddenPages.includes(href);
     if (isCurrentlyHidden) {
       setHiddenPages(hiddenPages.filter((h) => h !== href));
+      // Its place was given away while it was off; it comes back in More.
+      if (dockFull && onDock.includes(href)) setDockPages(onDock.filter((h) => h !== href));
     } else {
       setHiddenPages([...hiddenPages, href]);
     }
@@ -41,7 +47,8 @@ export function FeaturesSection() {
           <CardTitle>Navigation Pages</CardTitle>
           <CardDescription>
             Toggle pages on or off. Dashboard and Settings are always visible.
-            Up to six pages sit on the dock; the rest are one tap away in More.
+            The dock holds Home and up to five pages you tick; the rest are one
+            tap away in More.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -61,7 +68,7 @@ export function FeaturesSection() {
                         type="checkbox"
                         className="h-4 w-4"
                         checked={isEnabled && onDock.includes(item.href)}
-                        disabled={!isEnabled || (!onDock.includes(item.href) && onDock.length >= DOCK_SIZE)}
+                        disabled={!isEnabled || (!onDock.includes(item.href) && dockFull)}
                         onChange={() => toggleDock(item.href)}
                         data-dock-choice={item.href}
                       />

@@ -51,7 +51,7 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
   const { filterNavItems, dockPages } = useHiddenPages();
   // A phone has room for five pages and More; Sign in moves into More (#924).
   const narrow = useIsMobile();
-  const { dock, more } = dockLayout(filterNavItems(ALL_NAV_ITEMS), dockPages ?? undefined, narrow ? DOCK_SIZE_NARROW : undefined);
+  const { dock, more } = dockLayout(filterNavItems(ALL_NAV_ITEMS), dockPages, narrow ? DOCK_SIZE_NARROW : undefined);
   const [moreOpen, setMoreOpen] = React.useState(false);
   // In More, Settings has its own place at the top (#1014); the rest are pages.
   const settingsItem = more.find((i) => i.href === '/settings');
