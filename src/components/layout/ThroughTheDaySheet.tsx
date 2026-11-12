@@ -309,7 +309,7 @@ export function ThroughTheDaySheet({
                 // An Interlude keeps at least one day; Remove takes it away.
                 disabled={on && r.days.length === 1}
                 onClick={() => editInterlude(i, { days: on ? r.days.filter((x) => x !== d) : [...r.days, d].sort() })}
-                className={cn('flex h-11 w-11 items-center justify-center rounded-full text-caption font-medium disabled:opacity-100',
+                className={cn('flex h-[44px] w-[44px] items-center justify-center rounded-full text-caption font-medium disabled:opacity-100',
                   on ? 'bg-foreground text-background' : 'border border-foreground/30 text-muted-foreground')}
               >
                 {DAY_NAMES[d]}
@@ -380,7 +380,39 @@ export function ThroughTheDaySheet({
           )}
         </div>
 
-        <div className="relative h-11" data-day-line>
+        {spans.length > 0 && (
+          // Interludes sit in their own row above the line, so a short one is
+          // still a 44px target and never lands on a stretch's label.
+          <div className="relative h-[44px]" data-day-interludes>
+            {spans.map((sp) => {
+              const mid = ((sp.from + sp.to) / 2 / DAY_MINUTES) * 100;
+              const width = ((sp.to - sp.from) / DAY_MINUTES) * 100;
+              return (
+                <button
+                  key={`i-${sp.index}-${sp.from}`}
+                  type="button"
+                  onClick={() => { setPicked({ kind: 'interlude', index: sp.index }); play(sp.from); }}
+                  aria-label={`Interlude: ${dashboardName(interludes[sp.index]!.dashboardId)}, ${timeOfMinute(sp.from)} to ${timeOfMinute(sp.to)}`}
+                  aria-pressed={isPicked({ kind: 'interlude', index: sp.index })}
+                  className={cn(
+                    'absolute inset-y-0 truncate rounded-lg bg-primary px-2 text-caption text-primary-foreground',
+                    isPicked({ kind: 'interlude', index: sp.index }) && 'ring-2 ring-foreground ring-offset-1',
+                  )}
+                  style={{
+                    width: `max(44px, ${width}%)`,
+                    left: `clamp(0px, calc(${mid}% - max(22px, ${width / 2}%)), calc(100% - max(44px, ${width}%)))`,
+                  }}
+                  data-day-interlude={sp.index}
+                  data-from={sp.from}
+                  data-to={sp.to}
+                >
+                  {dashboardName(interludes[sp.index]!.dashboardId)}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        <div className="relative h-[44px]" data-day-line>
           {line.stretches.map((st) => (
             <button
               key={`${st.kind}-${st.from}`}
@@ -389,7 +421,8 @@ export function ThroughTheDaySheet({
               aria-label={`${st.kind === 'night' ? `Night: ${nightLabel}` : `Resting: ${restingLabel}`}, ${timeOfMinute(st.from)} to ${timeOfMinute(st.to)}`}
               aria-pressed={isPicked({ kind: st.kind })}
               className={cn(
-                'absolute inset-y-0 overflow-hidden whitespace-nowrap px-3 text-left text-caption first:rounded-l-full last:rounded-r-full',
+                // Clear of the dot on each edge, and cut with an ellipsis when it does not fit.
+                'absolute inset-y-0 truncate px-6 text-left text-caption first:rounded-l-full last:rounded-r-full',
                 st.kind === 'night' ? 'bg-foreground/85 text-background' : 'bg-muted text-foreground',
                 isPicked({ kind: st.kind }) && 'ring-2 ring-inset ring-primary',
               )}
@@ -397,23 +430,6 @@ export function ThroughTheDaySheet({
               data-day-stretch={st.kind}
             >
               {st.kind === 'night' ? nightLabel : restingLabel}
-            </button>
-          ))}
-          {spans.map((sp) => (
-            <button
-              key={`i-${sp.index}-${sp.from}`}
-              type="button"
-              onClick={() => { setPicked({ kind: 'interlude', index: sp.index }); play(sp.from); }}
-              aria-label={`Interlude: ${dashboardName(interludes[sp.index]!.dashboardId)}, ${timeOfMinute(sp.from)} to ${timeOfMinute(sp.to)}`}
-              aria-pressed={isPicked({ kind: 'interlude', index: sp.index })}
-              className={cn(
-                'absolute inset-y-1 z-10 overflow-hidden whitespace-nowrap rounded-md bg-primary px-1 text-caption text-primary-foreground',
-                isPicked({ kind: 'interlude', index: sp.index }) && 'ring-2 ring-foreground',
-              )}
-              style={{ left: at(sp.from), width: at(sp.to - sp.from) }}
-              data-day-interlude={sp.index}
-            >
-              {dashboardName(interludes[sp.index]!.dashboardId)}
             </button>
           ))}
           {playedMinute !== null && (
@@ -428,7 +444,7 @@ export function ThroughTheDaySheet({
                 onClick={() => { setPicked({ kind: 'night', edge }); play(edge === 'start' ? m.minute : Math.max(0, m.minute - 1)); }}
                 aria-label={`Night ${edge === 'start' ? 'starts' : 'ends'} ${timeOfMinute(m.minute)}`}
                 aria-pressed={isPicked({ kind: 'night', edge })}
-                className="absolute top-1/2 z-30 flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center"
+                className="absolute top-1/2 z-30 flex h-[44px] w-[44px] -translate-x-1/2 -translate-y-1/2 items-center justify-center"
                 style={{ left: at(m.minute) }}
                 data-day-milestone={m.kind}
               >

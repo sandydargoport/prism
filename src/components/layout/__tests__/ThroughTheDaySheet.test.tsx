@@ -146,11 +146,11 @@ describe('ThroughTheDaySheet', () => {
     expect(JSON.parse(localStorage.getItem(SCHEDULE)!)).toEqual([{ days: [today], from: '07:00', to: '08:00', dashboardId: 'bus' }]);
     const block = document.querySelector<HTMLElement>('[data-day-interlude="0"]')!;
     expect(block.textContent).toBe('Bus');
-    expect(block.style.left).toBe(`${(420 / 1440) * 100}%`);
+    expect([block.dataset.from, block.dataset.to]).toEqual(['420', '480']);
 
     fireEvent.change(screen.getByLabelText('Interlude ends'), { target: { value: '08:30' } });
     expect(JSON.parse(localStorage.getItem(SCHEDULE)!)[0].to).toBe('08:30');
-    expect(document.querySelector<HTMLElement>('[data-day-interlude="0"]')!.style.width).toBe(`${(90 / 1440) * 100}%`);
+    expect(document.querySelector<HTMLElement>('[data-day-interlude="0"]')!.dataset.to).toBe('510');
 
     fireEvent.click(document.querySelector<HTMLElement>('[data-interlude-remove]')!);
     expect(localStorage.getItem(SCHEDULE)).toBeNull();
