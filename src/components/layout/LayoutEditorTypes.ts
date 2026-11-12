@@ -69,7 +69,7 @@ export interface LayoutEditorProps {
   allDashboards?: DashboardInfo[];
   currentDashboardId?: string;
   onSwitchDashboard?: (slug: string) => void;
-  onCreateDashboard?: (name: string, startFrom: 'blank' | 'template' | 'copy' | 'today' | 'calendar') => void;
+  onCreateDashboard?: (name: string, startFrom: 'blank' | 'template' | 'copy' | 'today') => void;
   onRenameDashboard?: (newName: string) => void;
   onDeleteDashboard?: () => void;
   /** The edited dashboard's kind: 'today' is the built-in one, edited by its widgets list, not a grid. */

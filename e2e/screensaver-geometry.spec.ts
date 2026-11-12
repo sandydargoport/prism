@@ -52,6 +52,14 @@ async function closeSheet(page: Page) {
 const done = (page: Page) => page.locator('[data-editor-done]');
 
 const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
+
+// These tests seed a screensaver arrangement in the browser. A browser that
+// has not run since v1.30.1 would carry it onto the dashboard it shows
+// (#1154), which would then stay on the shared seeded dashboard for every
+// later test. Each browser here has already run, except in the upgrade test.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('prism-screensaver-carried', '1'));
+});
 const PIN = process.env.E2E_PIN || '1234';
 
 /** Inside both default frames (48x27 landscape, 36x64 portrait) and short of
@@ -1429,5 +1437,109 @@ test.describe('editor keys (#987)', () => {
     await expect(clock).toHaveCount(0);
     await page.getByRole('listitem').filter({ hasText: 'Widget removed.' }).getByRole('button', { name: 'Undo' }).click();
     await expect(clock).toBeVisible();
+  });
+});
+
+/**
+ * The upgrade from v1.30.1 (#1154). v1.30.1 kept one screensaver arrangement
+ * in each browser, and a dashboard with none of its own showed it over
+ * photos. The upgrade (0036, 0039) leaves such a dashboard resting over
+ * photos with no arrangement, and once any other dashboard has one, the
+ * default would show instead. The browser carries its arrangement onto the
+ * dashboard it shows, so resting and night look as they did.
+ */
+test.describe('the upgrade from v1.30.1', () => {
+  test.skip(!HAS_TEST_DB, 'needs the seeded test database to log in and create dashboards');
+  test.use({ viewport: { width: 1280, height: 720 } });
+  test.setTimeout(120_000);
+
+  // Shopping and the clock, where the default has the clock, weather and messages.
+  const KEPT = [
+    { i: 'clock', x: 2, y: 2, w: 16, h: 10, visible: true },
+    { i: 'shopping', x: 24, y: 4, w: 14, h: 14, visible: true },
+    { i: 'messages', x: 32, y: 16, w: 16, h: 12, visible: false },
+    { i: 'weather', x: 32, y: 28, w: 16, h: 8, visible: false },
+  ];
+  const OTHER = [{ i: 'weather', x: 0, y: 0, w: 16, h: 8, visible: true }];
+
+  async function resting(page: Page, slug: string, at: string) {
+    await page.clock.setFixedTime(new Date(at));
+    await page.goto(`/d/${slug}`);
+    await page.locator('.widget-cell[data-widget]').first().waitFor({ timeout: 60000 });
+    await page.waitForLoadState('networkidle');
+    await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
+    await page.locator('.fixed.inset-0.z-9999 .widget-cell[data-widget]').first().waitFor();
+    await page.waitForTimeout(1500);
+    return page.evaluate(() => {
+      const out: Record<string, { x: number; y: number; w: number; h: number }> = {};
+      document.querySelectorAll<HTMLElement>('.fixed.inset-0.z-9999 .widget-cell[data-widget]').forEach((el) => {
+        const b = el.getBoundingClientRect();
+        out[el.dataset.widget!] = { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height) };
+      });
+      return {
+        widgets: out,
+        sky: !!document.querySelector('[data-testid="night-sky"]'),
+        night: !!document.querySelector('[data-screensaver-night]'),
+        dim: (() => { const d = document.querySelector('[data-idle-dim]'); return d ? Number(getComputedStyle(d).opacity) : 0; })(),
+      };
+    });
+  }
+
+  test('a dashboard with no screensaver of its own rests, by day and at night, with the one this browser kept, and keeps it', async ({ page }) => {
+    const login = await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } });
+    expect(login.ok(), 'precondition: login must succeed').toBe(true);
+    const stamp = Date.now();
+    // Both as the upgrade leaves a v1.30.1 dashboard: over photos, one with
+    // an arrangement saved in the editor, one never saved.
+    const saved = await (await page.request.post('/api/layouts', {
+      data: { name: `Upgrade saved ${stamp}`, widgets: FIRST_SCREEN_TEMPLATE.widgets, screensaverWidgets: OTHER, idleBackground: { source: 'photos' } },
+    })).json();
+    const plain = await (await page.request.post('/api/layouts', {
+      data: { name: `Upgrade plain ${stamp}`, widgets: FIRST_SCREEN_TEMPLATE.widgets, idleBackground: { source: 'photos' } },
+    })).json();
+    expect(plain.screensaverWidgets, 'precondition: no arrangement of its own').toBeNull();
+
+    await page.route('**/api/weather*', async (route) => {
+      const response = await route.fetch();
+      if (!response.ok()) return route.fulfill({ response });
+      return route.fulfill({ response, json: { ...(await response.json()), lat: 45, lon: -100 } });
+    });
+    await page.addInitScript((kept) => {
+      // Once per test: what a v1.30.1 browser holds. Drift is stilled only to measure.
+      if (sessionStorage.getItem('upgrade-seeded')) return;
+      localStorage.removeItem('prism-screensaver-carried');
+      localStorage.setItem('prism-screensaver-layout', JSON.stringify(kept));
+      localStorage.setItem('prism-screensaver-drift', 'off');
+      localStorage.setItem('prism-perf-mode', 'false');
+      sessionStorage.setItem('upgrade-seeded', '1');
+    }, KEPT);
+
+    try {
+      const day = await resting(page, plain.slug, NOON);
+      expect(Object.keys(day.widgets).sort(), 'by day: the arrangement this browser kept').toEqual(['clock', 'shopping']);
+      expect(day.sky).toBe(false);
+
+      // Carried onto the dashboard, so the phone editor and every screen see it.
+      const carried = async () => ((await (await page.request.get(`/api/layouts/${plain.id}`)).json()).screensaverWidgets ?? [])
+        .filter((w: { visible?: boolean }) => w.visible).map((w: { i: string }) => w.i).sort();
+      await expect.poll(carried).toEqual(['clock', 'shopping']);
+      expect(await page.evaluate(() => localStorage.getItem('prism-screensaver-carried'))).toBe('1');
+
+      // At night the same widgets in the same places, over photos, not dimmed.
+      const night = await resting(page, plain.slug, NIGHT);
+      expect(day.night, 'precondition: noon is day').toBe(false);
+      expect(night.night, 'precondition: it is night by the dashboard\'s rule').toBe(true);
+      expect(night.widgets, 'night: unchanged from the day').toEqual(day.widgets);
+      expect(night.sky, 'night: still photos').toBe(false);
+      expect(night.dim, 'night: no dimming').toBe(0);
+
+      // A carry-over never replaces an arrangement already saved.
+      const again = await page.request.patch(`/api/layouts/${saved.id}`, { data: { screensaverWidgets: KEPT, carryOver: true } });
+      expect(again.ok()).toBe(true);
+      expect((await again.json()).screensaverWidgets).toEqual(OTHER);
+    } finally {
+      await page.request.delete(`/api/layouts/${saved.id}`);
+      await page.request.delete(`/api/layouts/${plain.id}`);
+    }
   });
 });

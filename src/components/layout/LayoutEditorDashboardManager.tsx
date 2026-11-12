@@ -133,9 +133,9 @@ export function CreateDashboardDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  onCreate: (name: string, startFrom: 'blank' | 'template' | 'copy' | 'today' | 'calendar') => void;
+  onCreate: (name: string, startFrom: 'blank' | 'template' | 'copy' | 'today') => void;
 }) {
-  const [createForm, setCreateForm] = useState({ name: '', startFrom: 'template' as 'blank' | 'template' | 'copy' | 'today' | 'calendar' });
+  const [createForm, setCreateForm] = useState({ name: '', startFrom: 'template' as 'blank' | 'template' | 'copy' | 'today' });
 
   if (!open) return null;
 

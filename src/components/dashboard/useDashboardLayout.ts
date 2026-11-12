@@ -8,6 +8,9 @@ import {
   saveScreensaverLayout,
   DEFAULT_SCREENSAVER_LAYOUT,
   screensaverForDashboard,
+  legacyScreensaver,
+  markScreensaverCarried,
+  owesLegacyScreensaver,
   getScreensaverPresets,
   saveScreensaverPreset,
   deleteScreensaverPreset,
@@ -55,6 +58,23 @@ const withoutIdleTicks = (widgets: WidgetConfig[]) =>
   JSON.stringify(widgets.map(({ showWhenIdle: _ignored, ...w }) => w));
 const idleTicks = (widgets: WidgetConfig[]) => JSON.stringify(widgets.map(w => [w.i, w.showWhenIdle]));
 
+/**
+ * Offers a browser's kept screensaver to a dashboard (#1154). True when the
+ * dashboard has one now, whether this one or one saved meanwhile.
+ */
+async function carryScreensaver(id: string, widgets: WidgetConfig[]): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/layouts/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ screensaverWidgets: widgets, carryOver: true }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 /** A link to the dashboard at `path` that opens it in edit mode. */
 export function editLink(path: string): string {
   return `${path}?${EDIT_PARAM}=1`;
@@ -99,7 +119,19 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     if (bridgedLayoutId.current === activeLayout.id) return;
     bridgedLayoutId.current = activeLayout.id;
 
-    const widgets = screensaverForDashboard(activeLayout, layouts.allLayouts);
+    // The upgrade from v1.30.1 (#1154): a dashboard with no screensaver of its
+    // own showed the one this browser kept. It is read before the line below
+    // writes over it, shown, and carried onto the dashboard; the server keeps
+    // it only while the dashboard still has none. Until that works (a wall
+    // nobody signed in to cannot save) it keeps showing here, as before.
+    const legacy = remoteEditHost() ? null : legacyScreensaver();
+    const owed = owesLegacyScreensaver(activeLayout, editsIdleLayout(parseIdleBackground(activeLayout.idleBackground)), legacy);
+    const widgets = owed ? legacy : screensaverForDashboard(activeLayout, layouts.allLayouts);
+    if (owed) {
+      void carryScreensaver(activeLayout.id, legacy).then((ok) => { if (ok) markScreensaverCarried(); });
+    } else {
+      markScreensaverCarried();
+    }
     setSsLayout(widgets);
     // Also what Cancel returns to and the dot compares with, for a dashboard
     // that finishes loading after editing starts.
