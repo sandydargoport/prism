@@ -12,7 +12,7 @@ Prism reads the arrival emails FirstView sends to your Gmail and shows "Bus 4 mi
 
 Go to *Settings → Bus Tracking → Gmail Connection → Connect.*
 
-This opens Google's sign-in (OAuth, the standard way to grant an app access without giving it your password). Prism asks for read-only access to your Gmail, the `gmail.readonly` scope. It doesn't send mail, change labels or delete anything. All it does is list and read the messages that match the bus filter.
+This opens Google's sign-in (OAuth, the standard way to grant an app access without giving it your password). Prism asks for the `gmail.modify` scope so it can mark each bus email read once it has it. It doesn't send or delete mail. All it does is list and read the messages that match the bus filter and mark them read. A token with only the `gmail.readonly` scope still works, and the emails stay unread.
 
 #### 2. Auto-discover routes
 

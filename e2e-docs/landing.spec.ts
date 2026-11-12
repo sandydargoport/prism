@@ -76,3 +76,29 @@ test('the day tabs show the Simple wall in the morning, after school and in the 
     await expect.poll(() => img.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBe(1920);
   }
 });
+
+// "Your data stays where it is" (#1145): one card per area, side by side on a
+// desktop and stacked on a phone, each opening its section of the services page.
+for (const [label, width, height, perRow] of [
+  ['desktop', 1280, 800, 4],
+  ['phone', 390, 844, 1],
+] as const) {
+  test(`${label}: the services section shows each area and links to its list`, async ({ page }) => {
+    await open(page, width, height, 'light');
+    const cards = page.locator('.pl-keeps .pl-card');
+    await expect(cards).toHaveCount(4);
+    const boxes = await cards.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().toJSON()));
+    const firstRow = boxes.filter((b) => Math.abs(b.top - boxes[0]!.top) < 1);
+    expect(firstRow).toHaveLength(perRow);
+    for (const b of boxes) expect(b.width).toBeGreaterThanOrEqual(Math.min(208, width - 32));
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+
+    const hrefs = await cards.evaluateAll((els) => els.map((el) => (el as HTMLAnchorElement).href));
+    for (const href of hrefs) {
+      const id = new URL(href).hash.slice(1);
+      await page.goto(href);
+      await expect(page.locator(`h2#${id}`)).toBeVisible();
+    }
+  });
+}
