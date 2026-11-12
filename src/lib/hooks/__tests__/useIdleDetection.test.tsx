@@ -132,3 +132,67 @@ describe('useIdleDetection — going idle by itself in an installed app (#1156)'
     expect(awayChecks()).toBe(2);
   });
 });
+
+describe('useIdleDetection — the tap that wakes the screen stops there (#1112)', () => {
+  /** A finger on a task row: the touch, then what the browser sends after it. */
+  const fingerOn = (el: Element) => {
+    el.dispatchEvent(new Event('touchstart', { bubbles: true }));
+    el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+  };
+
+  let row: HTMLButtonElement;
+  let toggled: jest.Mock;
+  beforeEach(() => {
+    jest.useFakeTimers();
+    toggled = jest.fn();
+    row = document.createElement('button');
+    row.addEventListener('click', toggled);
+    row.addEventListener('mouseup', toggled);
+    document.body.appendChild(row);
+  });
+  afterEach(() => {
+    document.body.removeChild(row);
+    jest.useRealTimers();
+  });
+
+  const goIdle = () => act(() => { jest.advanceTimersByTime(mockTimeout * 1000 + 1); });
+
+  it('wakes the screen without checking off the task under the finger', () => {
+    const { result } = renderHook(() => useIdleDetection(mockTimeout));
+    goIdle();
+    expect(result.current.isIdle).toBe(true);
+
+    act(() => { fingerOn(row); });
+    expect(result.current.isIdle).toBe(false);
+    expect(toggled).not.toHaveBeenCalled();
+  });
+
+  it('lets the next tap through once the waking tap is over', () => {
+    const { result } = renderHook(() => useIdleDetection(mockTimeout));
+    goIdle();
+    act(() => { fingerOn(row); });
+    expect(result.current.isIdle).toBe(false);
+
+    act(() => { fingerOn(row); });
+    expect(toggled).toHaveBeenCalled();
+  });
+
+  it('lets a tap through when the waking tap sent no click', () => {
+    const { result } = renderHook(() => useIdleDetection(mockTimeout));
+    goIdle();
+    act(() => { row.dispatchEvent(new Event('touchstart', { bubbles: true })); });
+    expect(result.current.isIdle).toBe(false);
+
+    act(() => { jest.advanceTimersByTime(700); });
+    row.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(toggled).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves taps alone while the screen is awake', () => {
+    renderHook(() => useIdleDetection(mockTimeout));
+    act(() => { fingerOn(row); });
+    expect(toggled).toHaveBeenCalledTimes(2);
+  });
+});
