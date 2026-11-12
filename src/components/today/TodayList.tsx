@@ -2,8 +2,8 @@
 
 /**
  * Today as a list (#1030), what Today, the built-in dashboard, leads with: "Next" with the
- * event, its person's colour and its time, then "Later today", with what is
- * already over faint at the end. On the wall it sits over the photo in light
+ * event, its person's colour and its time, then "Later today", and what is
+ * already over, faint, under "Earlier today" (#1186). On the wall it sits over the photo in light
  * ink; on a phone, on paper. Tapping an event opens the event sheet (#836).
  */
 import { useEffect, useState } from 'react';
@@ -71,11 +71,13 @@ export function TodayList({ events, now, onOpenEvent, variant, onlyNext = false 
         </span>
       </button>
 
-      {!onlyNext && later.length + done.length > 0 && (
-        <>
-          <p className={cn(label, 'mt-3')}>{t('laterToday')}</p>
+      {/* What is still to come, then what is over (#1186), each under its own
+          label: at 8:45 pm the soccer at 4 is earlier today, not later. */}
+      {!onlyNext && ([['laterToday', later, false], ['earlierToday', done, true]] as const).map(([key, rows, past]) => rows.length > 0 && (
+        <div key={key} data-today-group={key}>
+          <p className={cn(label, 'mt-3')}>{t(key)}</p>
           <ul className="m-0 flex list-none flex-col p-0" data-today-later>
-            {[...later.map((e) => ({ e, past: false })), ...done.map((e) => ({ e, past: true }))].map(({ e, past }) => (
+            {rows.map((e) => (
               <li key={e.id}>
                 <button
                   type="button"
@@ -97,8 +99,8 @@ export function TodayList({ events, now, onOpenEvent, variant, onlyNext = false 
               </li>
             ))}
           </ul>
-        </>
-      )}
+        </div>
+      ))}
     </div>
   );
 }
