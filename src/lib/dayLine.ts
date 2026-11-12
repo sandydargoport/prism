@@ -71,3 +71,25 @@ export function hhmm(minute: number): string {
   const m = ((Math.round(minute) % DAY_MINUTES) + DAY_MINUTES) % DAY_MINUTES;
   return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 }
+
+export type Placed = { left: number; lane: number };
+
+/**
+ * Where Interlude blocks go once their widths are known, in px on a line
+ * `lineWidth` wide: each at its own start, moved left only as far as the
+ * line's end forces, and down a row when it would touch one already placed.
+ */
+export function placeBlocks(blocks: { start: number; width: number }[], lineWidth: number, gap = 4): Placed[] {
+  const order = blocks.map((b, i) => i).sort((a, b) => blocks[a]!.start - blocks[b]!.start);
+  const laneEnds: number[] = [];
+  const placed: Placed[] = new Array(blocks.length);
+  for (const i of order) {
+    const { start, width } = blocks[i]!;
+    const left = Math.max(0, Math.min(start, lineWidth - width));
+    let lane = laneEnds.findIndex((end) => left >= end + gap);
+    if (lane === -1) { lane = laneEnds.length; laneEnds.push(0); }
+    laneEnds[lane] = left + width;
+    placed[i] = { left, lane };
+  }
+  return placed;
+}

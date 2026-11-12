@@ -2,7 +2,7 @@
  * The Through the day line (#1170): night and resting across one day on the
  * wall clock, where night starts and ends, and the Interludes that day.
  */
-import { dayLine, hhmm, interludeSpans } from '../dayLine';
+import { dayLine, hhmm, interludeSpans, placeBlocks } from '../dayLine';
 
 const day = new Date(2026, 10, 12); // a Thursday
 
@@ -53,5 +53,24 @@ describe('interludeSpans', () => {
   it('writes a minute as a clock time, wrapping past midnight', () => {
     expect(hhmm(420)).toBe('07:00');
     expect(hhmm(1440 + 30)).toBe('00:30');
+  });
+});
+
+describe('placeBlocks', () => {
+  it('keeps each block at its start, inside the line', () => {
+    expect(placeBlocks([{ start: 100, width: 120 }], 400)).toEqual([{ left: 100, lane: 0 }]);
+    expect(placeBlocks([{ start: 350, width: 120 }], 400)).toEqual([{ left: 280, lane: 0 }]);
+  });
+
+  it('drops a block that would touch another to the next row', () => {
+    // The late one is pushed left by the line's end into the early one.
+    expect(placeBlocks([{ start: 100, width: 128 }, { start: 380, width: 125 }], 355)).toEqual([
+      { left: 100, lane: 0 },
+      { left: 230, lane: 1 },
+    ]);
+    expect(placeBlocks([{ start: 0, width: 50 }, { start: 60, width: 50 }], 400)).toEqual([
+      { left: 0, lane: 0 },
+      { left: 60, lane: 0 },
+    ]);
   });
 });

@@ -899,6 +899,17 @@ test.describe('idle background picker', () => {
       expect(Math.abs(fill.from)).toBeLessThanOrEqual(1);
       expect(Math.abs(fill.to)).toBeLessThanOrEqual(1);
 
+      // A stretch's name shows whole or not at all: 9 pm to midnight is too
+      // short for "Night sky" at this width, midnight to 6:30 is not.
+      const labels = await sheet.locator('[data-day-stretch]').evaluateAll((els) => els.map((el) => {
+        const label = el.querySelector('[data-stretch-label]') as HTMLElement;
+        const cs = getComputedStyle(el);
+        const room = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+        return { hidden: getComputedStyle(label).visibility === 'hidden', fits: label.getBoundingClientRect().width <= room + 0.5 };
+      }));
+      for (const l of labels) expect(l.hidden || l.fits).toBe(true);
+      expect(labels.filter((l) => !l.hidden).length).toBeGreaterThan(0);
+
       await sheet.locator('[data-day-milestone="night-start"]').click();
       await expect(sheet.locator('[data-day-state="night"]')).toHaveAttribute('aria-checked', 'true');
       await expect(sheet.locator('[data-day-card="night"]')).toBeVisible();

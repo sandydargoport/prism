@@ -14,7 +14,7 @@
  * Settings.
  */
 import * as React from 'react';
-import { useMemo, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react';
 import Link from 'next/link';
 import { useTimeFormat } from '@/components/providers/TimeFormatProvider';
@@ -27,7 +27,7 @@ import { useStoredString, writeStored } from '@/lib/hooks/useStoredValue';
 import { loadBase } from '@/lib/displays/displaySettingsSync';
 import { remoteEditHost } from '@/lib/displays/remoteEdit';
 import { MAX_SCHEDULE_RULES, parseSchedule, scheduledDashboard, serializeSchedule, SCREEN_SCHEDULE_KEY, type ScheduleRule } from '@/lib/displays/screenSchedule';
-import { DAY_MINUTES, dayLine, hhmm, interludeSpans } from '@/lib/dayLine';
+import { DAY_MINUTES, dayLine, hhmm, interludeSpans, placeBlocks, type Placed } from '@/lib/dayLine';
 import { sameIdleBackground, tonight, type IdleBackground, type IdleSource, type IdleSwitch } from '@/lib/idleBackground';
 import { asDayAndNight, DEFAULT_NIGHT, screenStateAt, type ScreenState } from '@/lib/throughTheDay';
 import type { IdleHalf, EditTab } from '@/components/dashboard/useDashboardLayout';
@@ -64,8 +64,9 @@ type Picked =
   | { kind: 'resting' }
   | { kind: 'interlude'; index: number };
 
-/** A stretch shorter than this has no room for its name. */
-const LABEL_MIN_MINUTES = 4 * 60;
+/** Height of a row of Interlude blocks, and the space between rows. */
+const LANE_PX = 44;
+const LANE_GAP_PX = 4;
 
 /** Left edge, as a share of the line, of a minute of the day. */
 const at = (minute: number) => `${(minute / DAY_MINUTES) * 100}%`;
@@ -182,6 +183,41 @@ export function ThroughTheDaySheet({
     setPicked({ kind: 'interlude', index: interludes.length });
     setPlayed(from);
   };
+
+  // Fitted after layout, from real widths: a stretch's name shows whole or not
+  // at all, and an Interlude block, as wide as its name, starts at its time
+  // and drops a row rather than touch another.
+  const lineRef = useRef<HTMLDivElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [placed, setPlaced] = useState<Placed[]>([]);
+  const [bare, setBare] = useState<string[]>([]);
+  const fitKey = JSON.stringify([line.stretches, spans, storedSchedule, idleBackground, allDashboards.map((d) => d.name)]);
+  useLayoutEffect(() => {
+    const lineEl = lineRef.current;
+    if (!lineEl) return;
+    const fit = () => {
+      const width = lineEl.clientWidth;
+      const nextBare = Array.from(lineEl.querySelectorAll<HTMLElement>('[data-day-stretch]')).filter((el) => {
+        const label = el.querySelector<HTMLElement>('[data-stretch-label]');
+        const cs = getComputedStyle(el);
+        const room = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+        return !!label && label.getBoundingClientRect().width > room + 0.5;
+      }).map((el) => el.dataset.key!);
+      setBare((was) => (JSON.stringify(was) === JSON.stringify(nextBare) ? was : nextBare));
+      const blocks = Array.from(rowRef.current?.querySelectorAll<HTMLElement>('[data-day-interlude]') ?? []).map((el) => ({
+        start: (Number(el.dataset.from) / DAY_MINUTES) * width,
+        width: el.offsetWidth,
+      }));
+      const next = placeBlocks(blocks, width);
+      setPlaced((was) => (JSON.stringify(was) === JSON.stringify(next) ? was : next));
+    };
+    fit();
+    if (typeof ResizeObserver === 'undefined') return;
+    const watch = new ResizeObserver(fit);
+    watch.observe(lineEl);
+    return () => watch.disconnect();
+  }, [fitKey]);
+  const lanes = Math.max(1, ...placed.map((p) => p.lane + 1));
 
   const nightLabel = NIGHT_LOOKS.find((o) => o.value === pair.night)?.label ?? (pair.night === 'photos' ? 'Photos' : '');
   const restingLabel = RESTING.find((o) => o.value === pair.day)?.label ?? '';
@@ -386,12 +422,10 @@ export function ThroughTheDaySheet({
         {spans.length > 0 && (
           // Interludes sit in their own row above the line, so a short one is
           // still a 44px target and never lands on a stretch's label.
-          <div className="relative h-[44px]" data-day-interludes>
-            {spans.map((sp) => {
+          <div ref={rowRef} className="relative" style={{ height: lanes * LANE_PX + (lanes - 1) * LANE_GAP_PX }} data-day-interludes>
+            {spans.map((sp, n) => {
               const width = ((sp.to - sp.from) / DAY_MINUTES) * 100;
-              // As wide as its name, at least its hours and 44px; held from the
-              // edge it is nearer, so a block late in the day never runs off.
-              const late = sp.from + sp.to > DAY_MINUTES;
+              const place = placed[n];
               return (
                 <button
                   key={`i-${sp.index}-${sp.from}`}
@@ -400,12 +434,13 @@ export function ThroughTheDaySheet({
                   aria-label={`Interlude: ${dashboardName(interludes[sp.index]!.dashboardId)}, ${timeOfMinute(sp.from)} to ${timeOfMinute(sp.to)}`}
                   aria-pressed={isPicked({ kind: 'interlude', index: sp.index })}
                   className={cn(
-                    'absolute inset-y-0 w-max max-w-full whitespace-nowrap rounded-lg bg-primary px-2 text-caption text-primary-foreground',
+                    'absolute h-[44px] w-max max-w-full whitespace-nowrap rounded-lg bg-primary px-2 text-caption text-primary-foreground',
                     isPicked({ kind: 'interlude', index: sp.index }) && 'ring-2 ring-foreground ring-offset-1',
                   )}
                   style={{
                     minWidth: `max(44px, ${width}%)`,
-                    ...(late ? { right: at(DAY_MINUTES - sp.to) } : { left: at(sp.from) }),
+                    left: place ? place.left : at(sp.from),
+                    top: place ? place.lane * (LANE_PX + LANE_GAP_PX) : 0,
                   }}
                   data-day-interlude={sp.index}
                   data-from={sp.from}
@@ -417,7 +452,7 @@ export function ThroughTheDaySheet({
             })}
           </div>
         )}
-        <div className="relative h-[44px]" data-day-line>
+        <div ref={lineRef} className="relative h-[44px]" data-day-line>
           {line.stretches.map((st) => (
             <button
               key={`${st.kind}-${st.from}`}
@@ -433,10 +468,11 @@ export function ThroughTheDaySheet({
               )}
               style={{ left: at(st.from), width: at(st.to - st.from) }}
               data-day-stretch={st.kind}
+              data-key={`${st.kind}-${st.from}`}
             >
-              {/* A stretch under four hours goes unlabelled rather than cut to
-                  a letter; the stretch of the same colour names it. */}
-              {st.to - st.from < LABEL_MIN_MINUTES ? null : st.kind === 'night' ? nightLabel : restingLabel}
+              <span className={cn(bare.includes(`${st.kind}-${st.from}`) && 'invisible')} data-stretch-label>
+                {st.kind === 'night' ? nightLabel : restingLabel}
+              </span>
             </button>
           ))}
           {playedMinute !== null && (
