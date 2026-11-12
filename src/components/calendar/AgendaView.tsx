@@ -1,5 +1,7 @@
 'use client';
 
+import { useNow } from '@/lib/hooks/useNow';
+import { isInProgress } from '@/lib/calendar/nowNext';
 import { eventTintStyle } from '@/lib/design/eventStyle';
 import {
   format,
@@ -12,7 +14,6 @@ import { Calendar, UtensilsCrossed } from 'lucide-react';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui';
 import type { CalendarEvent } from '@/types/calendar';
 import type { DayBucket } from '@/lib/hooks/useWeekViewData';
 import { useDayDroppable, getMealTime, getChoreTime, getTaskTime, parseTimeOfDay, formatTimeOfDay, type OverlayItemRef } from './cells';
@@ -28,7 +29,6 @@ import {
 } from '@/lib/utils/timeFormat';
 import { withoutEndedEvents } from '@/lib/utils/pastEvents';
 import { usePastEventsMode } from '@/lib/hooks/usePastEventsMode';
-import { useNow } from '@/lib/hooks/useNow';
 import { eventsOverlappingRange } from '@/lib/utils/calendarRange';
 import { useDateLabels, type DateLabels } from '@/lib/hooks/useDateLabels';
 
@@ -72,6 +72,10 @@ type AgendaRow = {
   /** An event that has already ended (dimmed, not struck through: it was not
    *  "done", it is just over). */
   ended?: boolean;
+  /** A timed event happening right now (#806): gets a "Now" tag. */
+  inProgress?: boolean;
+  /** Translated "Now", carried on the row so the item needs no hook. */
+  nowLabel?: string;
   pendingApproval?: boolean;
   onClick?: () => void;
 };
@@ -107,9 +111,10 @@ export function AgendaView({
   const t = useTranslations('calendar');
   const cards = displayMode === 'cards';
   const { mode: pastEvents } = usePastEventsMode();
-  // Ticks each minute, so an event leaves (or dims) when it ends rather than
-  // at the next data refresh, and the agenda rolls over at midnight.
-  const now = useNow();
+  // Ticks every 30 seconds, so an event leaves (or dims) when it ends rather
+  // than at the next data refresh, the "Now" tag moves on as events start and
+  // end, and the agenda rolls over at midnight.
+  const now = useNow(30_000);
   const startDate = startOfDay(toDisplayDate(now, displayTimezone));
 
   // Scope the wide event list to the agenda horizon once, so the per-day
@@ -209,7 +214,6 @@ function AgendaDaySection({
   const t = useTranslations('calendar');
   const d = useDateLabels();
   const droppable = useDayDroppable({ date, enabled: cards && enableDnd });
-  const isToday = isSameDay(date, toDisplayDate(now, displayTimezone));
   const rows = buildAgendaRows({ date, events, bucket, onEventClick, mealColor, onItemClick, timeFormat, displayTimezone, t, now, dimEnded });
   const displayRows = maxEvents > 0 ? rows.slice(0, maxEvents) : rows;
   const remainingCount = maxEvents > 0 ? rows.length - maxEvents : 0;
@@ -223,18 +227,14 @@ function AgendaDaySection({
         cards && enableDnd && droppable.isOver && 'ring-2 ring-seasonal-accent shadow-xs bg-card/40 p-1',
       )}
     >
-      <div className="flex items-center gap-2 mb-2">
-        {/* The normal text colour: a seasonal accent is a marker colour, and
-            several months' are too light to read as text on a light card. The
-            Today badge beside it marks the day (#801). */}
-        <span className="text-sm font-semibold text-foreground">
-          {formatAgendaDayHeader(date, displayTimezone, t, d)}
+      {/* The day as a word in the display face, the date as quiet meta
+          (#879): "Tomorrow  Nov 6", "Saturday  Nov 8". The normal text
+          colour: a seasonal accent is too light to read on some cards. */}
+      <div className="flex items-baseline gap-2 mb-2">
+        <span className="text-title text-foreground" style={{ fontFamily: 'var(--font-display)' }} data-agenda-day-word>
+          {agendaDayWord(date, displayTimezone, t, d)}
         </span>
-        {isToday && (
-          <Badge className="text-3xs px-1.5 py-0 bg-seasonal-highlight text-foreground">
-            {t('today')}
-          </Badge>
-        )}
+        <span className="text-caption text-muted-foreground" data-agenda-day-date>{d.monthDay(date)}</span>
       </div>
 
       <div className="flex flex-col gap-(--agenda-row-gap) pl-2 border-l-2 border-border">
@@ -303,6 +303,8 @@ function buildAgendaRows({
       title: event.title,
       subtitle: event.location,
       ended: dimEnded && isCalendarEventPast(event.startTime, event.endTime, event.allDay, now, displayTimezone),
+      inProgress: isInProgress(event, now),
+      nowLabel: t('now'),
       onClick: onEventClick ? () => onEventClick(event) : undefined,
     });
   }
@@ -416,8 +418,16 @@ function AgendaRowItem({ row, cards = false }: { row: AgendaRow; cards?: boolean
         />
       )}
       <div className="flex-1 min-w-0">
-        <div className={cn('text-xs', cards ? 'text-muted-foreground' : 'opacity-80')}>
-          {row.timeLabel}
+        <div className="flex items-center gap-1.5">
+          <span className={cn('text-xs', cards ? 'text-muted-foreground' : 'opacity-80')}>
+            {row.timeLabel}
+          </span>
+          {row.inProgress && (
+            // Solid fill with its own foreground: readable over glass (#891).
+            <span data-agenda-now className="rounded-full bg-primary px-1.5 py-px text-xs font-semibold leading-tight text-primary-foreground">
+              {row.nowLabel}
+            </span>
+          )}
         </div>
         <div className={cn('flex items-center gap-1 text-sm font-medium', 'text-foreground', row.muted && 'line-through')}>
           {row.dragId?.startsWith('meal:') && (
@@ -435,15 +445,15 @@ function AgendaRowItem({ row, cards = false }: { row: AgendaRow; cards?: boolean
   );
 }
 
-function formatAgendaDayHeader(
+/** Today, Tomorrow, else the weekday; the date sits beside it as meta. */
+export function agendaDayWord(
   date: Date,
   displayTimezone: string,
   t: (key: string, values?: Record<string, string | number | Date>) => string,
   d: DateLabels,
 ): string {
   const displayNow = toDisplayDate(new Date(), displayTimezone);
-  const dayName = d.fullDate(date);
-  if (isSameDay(date, displayNow)) return t('dayHeader', { label: t('today'), date: dayName });
-  if (isSameDay(date, addDays(displayNow, 1))) return t('dayHeader', { label: t('tomorrow'), date: dayName });
-  return dayName;
+  if (isSameDay(date, displayNow)) return t('today');
+  if (isSameDay(date, addDays(displayNow, 1))) return t('tomorrow');
+  return d.weekdayLong(date);
 }

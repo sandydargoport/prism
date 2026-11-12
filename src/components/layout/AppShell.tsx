@@ -22,16 +22,16 @@
 
 'use client';
 
+import { WhatsNew } from './WhatsNew';
 import * as React from 'react';
-import { SideNav } from './SideNav';
+import { Dock } from './Dock';
 import { MobileFab } from './MobileFab';
-import { PortraitNav } from './PortraitNav';
 import { WallpaperBackground } from './WallpaperBackground';
 import { cn } from '@/lib/utils';
-import { useOrientation } from '@/lib/hooks/useOrientation';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import { useAutoHideUI } from '@/lib/hooks/useAutoHideUI';
 import { useInactivityRedirect } from '@/lib/hooks/useInactivityRedirect';
+import { useNoRubberBand } from '@/lib/hooks/useNoRubberBand';
 
 /**
  * APP SHELL PROPS
@@ -56,6 +56,16 @@ export interface AppShellProps {
   showWallpaper?: boolean;
   /** Additional CSS classes for main content area */
   className?: string;
+  /**
+   * The wall (#922): in landscape on a larger screen, the rail gives way to
+   * the dock, hidden at rest behind a Menu word. Portrait and phones keep
+   * their own navigation for now (#924).
+   */
+  dock?: 'wall';
+  /** This screen's jobs, for the dock's More panel. */
+  screenJobs?: React.ReactNode;
+  /** The phone menu's Cards and Reorder; off when the page has no cards (Simple's Today). */
+  cardTools?: boolean;
 }
 
 /**
@@ -90,9 +100,13 @@ export function AppShell({
   hideNav = false,
   showWallpaper = false,
   className,
+  dock,
+  screenJobs,
+  cardTools = true,
 }: AppShellProps) {
-  const orientation = useOrientation();
   const isMobile = useIsMobile();
+  // Every phone page: no drag past the ends, none at all on a page that fits.
+  useNoRubberBand(isMobile);
   const { uiHidden } = useAutoHideUI();
   useInactivityRedirect();
   const [measureHideNav, setMeasureHideNav] = React.useState(false);
@@ -112,58 +126,58 @@ export function AppShell({
     return () => window.removeEventListener('prism:measure-mode', handler);
   }, []);
 
-  // Determine which nav to show:
-  // - Mobile (small screens): MobileNav (simplified)
-  // - Larger screens in landscape: SideNav
-  // - Larger screens in portrait: PortraitNav (bottom drawer)
-  const showSideNav = !isMobile && orientation === 'landscape';
-  const showPortraitNav = !isMobile && orientation === 'portrait';
+  // One navigation everywhere (#924): the wall's dock on a dashboard on a
+  // larger screen, in either orientation; the dock on screen everywhere else,
+  // phones included. The rail and the portrait bar are gone.
+  const wallDock = dock === 'wall' && !isMobile;
+  const pageDockShown = !hideNav && !wallDock && !measureHideNav;
   const showMobileNav = isMobile;
-  const portraitNavShown = !hideNav && showPortraitNav && !measureHideNav && !uiHidden;
 
   return (
-    <div className={cn('relative min-h-(--app-vh,100vh)', !showWallpaper && 'bg-background')}>
+    <div
+      className={cn('relative min-h-[var(--app-vh,var(--screen-h,100dvh))]', !showWallpaper && 'bg-background')}
+      // The dock's height (68px, its 1rem gap and the safe area), for the page
+      // to reserve and for anything else fixed at the foot to sit above (#923).
+      style={pageDockShown ? ({ '--nav-bottom': 'calc(68px + 1.5rem + env(safe-area-inset-bottom, 0px))' } as React.CSSProperties) : undefined}
+    >
       {/* WALLPAPER BACKGROUND (only on dashboard/screensaver) */}
       {showWallpaper && <WallpaperBackground />}
 
-      {/* SIDE NAVIGATION - landscape mode on larger screens */}
-      {!hideNav && showSideNav && (
-        <SideNav user={user} onLogout={onLogout} onLogin={onLogin} uiHidden={uiHidden || measureHideNav} />
+      {/* THE DOCK ON EVERY OTHER PAGE (#923) */}
+      {pageDockShown && <Dock mode="page" user={user} onLogin={onLogin} onLogout={onLogout} />}
+
+      {/* THE DOCK ON THE WALL (#922) */}
+      {!hideNav && wallDock && !measureHideNav && (
+        <Dock mode="wall" user={user} onLogin={onLogin} onLogout={onLogout} screenJobs={screenJobs} />
       )}
 
       {/* MAIN CONTENT AREA */}
       <main
         className={cn(
-          'min-h-(--app-vh,100vh)',
+          'min-h-[var(--app-vh,var(--screen-h,100dvh))]',
           // Snap margin/padding when nav hides — animating layout properties causes
           // layout reflow on every frame, which is expensive on weak CPUs (Atom).
           // The nav itself slides smoothly via GPU-composited transform; the content
           // just needs to reflow once when the class changes.
-          !hideNav && showSideNav && !measureHideNav && !uiHidden && 'ml-16',
-          portraitNavShown && 'pb-(--nav-bottom)',
+          pageDockShown && 'pb-(--nav-bottom)',
           className
         )}
-        // Height of the fixed bottom nav (PortraitNav: h-20, a 1px top border and
-        // the safe area). Full-height pages size themselves with `h-page`, which
-        // subtracts it, so nothing sits under the nav.
-        style={
-          portraitNavShown
-            ? ({ '--nav-bottom': 'calc(5rem + 1px + env(safe-area-inset-bottom, 0px))' } as React.CSSProperties)
-            : undefined
-        }
+        // Height of the dock (68px plus its 1rem gap and the safe area).
+        // Full-height pages size themselves with `h-page`, which subtracts it,
+        // so nothing sits under the dock and a list's last row can always
+        // scroll clear (#923).
+
       >
         {children}
       </main>
 
-      {/* PORTRAIT BOTTOM NAVIGATION - portrait mode on larger screens */}
-      {!hideNav && showPortraitNav && (
-        <PortraitNav user={user} onLogin={onLogin} onLogout={onLogout} uiHidden={uiHidden || measureHideNav} />
+      {/* MOBILE FAB - the phone's own tools (cards, reorder, scan) */}
+      {!hideNav && showMobileNav && (
+        <MobileFab user={user} onLogin={onLogin} onLogout={onLogout} uiHidden={uiHidden || measureHideNav} cardTools={cardTools} />
       )}
 
-      {/* MOBILE FAB - small screens only */}
-      {!hideNav && showMobileNav && (
-        <MobileFab user={user} onLogin={onLogin} onLogout={onLogout} uiHidden={uiHidden || measureHideNav} />
-      )}
+      {/* Once per screen after an update (#1032). */}
+      <WhatsNew />
     </div>
   );
 }

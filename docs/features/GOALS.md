@@ -1,123 +1,113 @@
-# Goals & Points
+# Points and rewards
+
+Kids earn points for chores and spend them on rewards they chose.
 
 ![Goals page with points waterfall](../demos/goals.png){ .hero-image }
 
-Kids earn points by completing chores. Parents set goals (toys, treats, privileges) with point costs. Earned points flow into goals in priority order via a "waterfall" allocation, and seasonal celebrations fire when a goal is achieved.
+A parent sets each reward (a toy, a treat, a privilege) and how many points it costs. Points fill the rewards in the order you choose, and the screen celebrates when one is reached.
 
----
+## Set it up
 
-## How points work
+### Goals
 
-### Earning
+A goal is something a kid works toward by collecting points. The sample data comes with these:
 
-Points come from approved chore completions:
-
-1. A parent creates a chore with a `pointValue` (any integer, 0+).
-2. A child marks the chore complete.
-3. If the chore is flagged **Requires approval** (the default for new chores), the completion sits in "Pending approval": points haven't been awarded yet. It waits for a parent whether it was marked in the app or by voice. A chore without the flag is approved as soon as the child completes it, and steps 3 and 4 are skipped.
-4. A parent approves. Points hit the child's running totals.
-5. If a parent marks the chore complete (for themselves, or crediting the child), it is approved at once and step 4 is instant. By voice, a chore flagged `requiresApproval` always waits for in-app approval, because the speaker cannot be verified.
-
-Each completion records the point value awarded (`pointsAwarded` column on `chore_completions`), copied from the chore's default `pointValue` at completion time. To change what a chore is worth, edit the chore's point value in the chore editor.
-
-### Counters
-
-Each child has running totals at multiple windows:
-
-- **This week**: Sun-Sat (or Mon-Sun depending on *Settings → General → Week Starts On*).
-- **This month**: calendar month.
-- **This year**: calendar year.
-- **All time**: since the chore tracking started.
-
-Pending-approval points (chores marked complete but not yet approved) display separately so kids can see what's queued.
-
----
-
-## Goals
-
-A goal is a thing kids work toward by accumulating points. Examples from the seed:
-
-- **Weekly Allowance**: 50 pts, recurring weekly. Resets every Sunday.
-- **Ice Cream Trip**: 100 pts, one-time. Accumulates across weeks.
+- **Weekly Allowance**: 50 pts, recurring weekly. It resets every Sunday.
+- **Ice Cream Trip**: 100 pts, one-time. Points build up across weeks.
 - **Movie Night Pick**: 75 pts, one-time.
-- **New LEGO Set**: 300 pts, one-time. Slow burn.
+- **New LEGO Set**: 300 pts, one-time. This one takes a good while to reach.
 - **Sleepover**: 200 pts, one-time.
 
-### Per-goal config
+#### Per-goal config
 
 - **Name** (required)
 - **Description**
-- **Emoji**: chosen from a fixed palette of preset icons (🎯 🍦 🎬 🎮 📱 🎁 🏖️ 🎪 ⭐ 💰 🍕 🎵).
+- **Emoji**: picked from a fixed set of icons (🎯 🍦 🎬 🎮 📱 🎁 🏖️ 🎪 ⭐ 💰 🍕 🎵).
 - **Point cost**
-- **Priority**: integer, 1 = highest. Used for the waterfall.
-- **Recurring**: boolean.
-- **Recurrence period**: `weekly` / `monthly` / `yearly` when recurring.
+- **Priority**: a whole number, where 1 is the highest. It decides the fill order (see [The waterfall](#the-waterfall)).
+- **Recurring**: yes or no.
+- **Recurrence period**: `weekly`, `monthly` or `yearly`, for a recurring goal.
 
-### One-time vs. Recurring
+#### One-time vs. Recurring
 
-- **One-time**: points accumulate continuously until the goal is achieved. Once a parent resets an achieved goal, its progress starts over at 0 (or it can be deleted).
-- **Recurring**: points only count for the current period. At period reset (Sunday midnight for weekly), unspent points expire. The kid has to re-earn them next period. Used for steady rewards like allowance.
+- **One-time**: points keep adding up until the goal is reached. When a parent resets a reached goal, its progress starts again at 0. A parent can also delete it.
+- **Recurring**: only points from the current period count. When the period ends (Sunday midnight for a weekly goal), any unspent points expire and the kid earns them again next period. This suits a steady reward like an allowance.
 
----
+### Permissions
 
-## The waterfall
+| Action | Parent | Child |
+|---|---|---|
+| View goals + progress | Yes | Yes |
+| Create / edit / delete goals | Yes | No |
+| Reorder priority | Yes | No |
+| Reset an achieved goal | Yes | No |
+| See pending-approval queue | Yes | Own only |
 
-When a child earns points, those points fill goals in priority order, not equally. The algorithm:
+## Use it
 
-1. Sort the child's active goals by priority (1 = highest first).
-2. For each goal:
-   - Calculate `available_for_this_goal = min(points_remaining, goal.pointCost - current_progress)`.
-   - Add to that goal's progress.
-   - Subtract from `points_remaining`.
-   - If a recurring goal: only points from the current period count toward its target.
-3. Once `points_remaining = 0`, stop.
+### How points work
 
-In practice this means: if Emma has 50 points and her Weekly Allowance (50 pts, priority 1) isn't filled, every point goes there first. Once allowance is filled, overflow continues down the list to Ice Cream Trip, Movie Night, etc.
+#### Earning
 
-You can change which goal gets filled first by adjusting priority order: *Goals page → priority arrows ▲▼* next to each goal.
+Points come from chores once they are approved:
 
----
+1. A parent creates a chore with a `pointValue` (any whole number from 0 up).
+2. A child marks the chore done.
+3. If the chore has **Requires approval** turned on (new chores do), the completion waits as "Pending approval" and no points are given yet. It waits for a parent whether the child marked it in the app or by voice. A chore without approval is approved the moment the child marks it, with no waiting for step 4.
+4. A parent approves it, and the points go onto the child's totals.
+5. When a parent marks a chore done (for themselves, or on a child's behalf), it is approved at once with no separate approval step. By voice, a chore with `requiresApproval` always waits for approval in the app, because Prism cannot tell who is speaking.
 
-## Goals page
+Each completion stores the points it earned (the `pointsAwarded` column on `chore_completions`), copied from the chore's `pointValue` at the moment it was done. To change what a chore is worth, edit its point value in the chore editor.
 
-### Per-child sections
+#### Counters
 
-Each child has their own section showing:
+Each child has running totals over four periods:
 
-- Avatar + name + color.
-- **Point counters**: This Week / This Month / This Year totals.
-- **Goal progress cards**: one per active goal, with progress bar.
+- **This week**: Sunday to Saturday, or Monday to Sunday, following *Settings → General → Week Starts On*.
+- **This month**: the calendar month.
+- **This year**: the calendar year.
+- **All time**: since chore tracking began.
 
-Click into a goal card for details and (parent-only) controls.
+Points waiting for approval (chores marked done but not yet approved) are shown apart from these totals, so kids can see what is on the way.
 
-### Goal cards
+### Goals page
+
+#### Per-child sections
+
+Each child has a section with:
+
+- Their avatar, name and color.
+- **Point counters**: This Week, This Month and This Year totals.
+- **Goal progress cards**: one for each active goal, with a progress bar.
+
+Click a goal card to see its details, and, for parents, the controls.
+
+#### Goal cards
 
 Each card shows:
 
-- Emoji + goal name.
-- Point cost.
-- Progress bar: child's progress toward the goal.
-- **Recurring** badge (if applicable) with the period.
-- **Achieved!** checkmark when the bar fills.
+- The emoji and goal name.
+- The point cost.
+- A progress bar for the child's progress toward the goal.
+- A **Recurring** badge with the period, on recurring goals.
+- An **Achieved!** checkmark once the bar is full.
 
-When a goal is achieved, the celebration animation fires (see below).
+Reaching a goal plays a celebration (see [Celebrations](#celebrations)).
 
-### Parent controls
+#### Parent controls
 
-Parents see additional controls per goal:
+Parents get extra controls on each goal:
 
-- **Edit**: modify any field.
+- **Edit**: change any field.
 - **Delete**: remove the goal.
-- **Reorder priority**: ▲▼ buttons or drag.
-- **Reset**: an inline button on achieved one-time goals. Clears the goal's achieved/progress state and starts it over from 0.
+- **Reorder priority**: the ▲▼ buttons, or drag.
+- **Reset**: a button on reached one-time goals. It clears the goal's reached state and progress and starts it again from 0.
 
-Children see goals and progress but cannot create, edit, or reset.
+Children can see goals and progress, but cannot create, edit or reset them.
 
----
+### Celebrations
 
-## Celebrations
-
-When a child's progress on a goal hits 100%, an animation plays. The animation is **season-aware**: the same "you reached your goal" event plays a different scene depending on the week of the year:
+When a child's progress on a goal reaches 100%, an animation plays. The scene changes with the season, depending on which week of the year it is:
 
 | Window | Animation |
 |---|---|
@@ -133,105 +123,95 @@ When a child's progress on a goal hits 100%, an animation plays. The animation i
 | New Year's week | Fireworks + confetti |
 | All other times | Trophy + confetti |
 
-The animation respects `prefers-reduced-motion` and a Reduced or Minimal performance level. Both skip the visual but still fire the completion event so the celebration counter increments.
+If the device asks for reduced motion (`prefers-reduced-motion`) or Prism's performance level is Reduced or Minimal, the animation is skipped. The completion event still fires, so the celebration count still goes up.
 
----
+### Dashboard widgets
 
-## Dashboard widgets
+#### PointsWidget
 
-### PointsWidget
+A small summary on the dashboard. For each child it shows their name and color, the points they earned this week, a progress bar for their top-priority goal, and a checkmark on any goal they have reached. The widget loads only when it is needed (lazy-loaded).
 
-Compact summary on the dashboard:
+It is sized for a corner of a 4-column grid, 3×5 cells to start with.
 
-- Per-child name + color.
-- This week's points earned.
-- Top-priority goal progress bar.
-- Checkmark on achieved goals.
-- Lazy-loaded.
+#### ChoresWidget
 
-Sized for a corner of a 4-column grid (default 3×5 cells).
+This is a chores widget, but it is also where parents see points waiting for approval. Chores waiting for approval sit at the top of the widget for parents, and tapping one approves it and gives the points straight away.
 
-### ChoresWidget
+### Resetting an achieved goal
 
-Not strictly a goals widget, but it's where pending-approval points become visible. Parents see pending-approval chores at the top of the widget; tapping one approves and awards points immediately.
+When a one-time goal is reached, a parent can reset it to start again:
 
----
+1. Tap the **Reset** button on the reached goal.
+2. Prism deletes the goal's `goal_achievements` rows and updates its `lastResetAt`, so progress starts again at 0.
 
-## Resetting an achieved goal
+Reset clears the reached state and progress for the whole goal, for every child who was working toward it. It does not ask for a PIN and is not written to the activity log.
 
-When a one-time goal is achieved, a parent can reset it to start over:
+Reset is for the moment you hand over the reward and start fresh. Prism keeps the score and leaves the handing over to you.
 
-1. Tap the inline **Reset** button on the achieved goal.
-2. The goal's `goal_achievements` rows are deleted and its `lastResetAt` is bumped, so progress starts over at 0.
+Recurring goals such as an allowance have no reset. Their points roll over when the period ends.
 
-Reset clears the goal's achieved/progress state for the goal as a whole (all children who were working toward it), not just one child. It is not PIN-gated and is not recorded in the activity log.
+### Common workflows
 
-The reset is the "give the kid the reward, then start fresh" moment. Prism doesn't track delivery, just the bookkeeping.
+#### Allowance + occasional treats
 
-For recurring goals (allowance), reset isn't a thing. The points simply roll over at period reset.
+- Make "Weekly Allowance" a recurring weekly goal at priority 1, costing 50.
+- Add 2 or 3 one-time goals (Ice Cream Trip, Movie Night, LEGO Set) at lower priorities.
+- The allowance always fills first, and anything left over goes into the bigger goals.
 
----
+#### Saving for a big-ticket item
 
-## Permissions
+- Make "Bike Helmet Upgrade" a one-time goal of 500 pts at priority 1.
+- Every point earned goes there until it is full, and the kids watch the bar climb week by week.
+- Once it is reached and reset, lower its priority or delete it.
 
-| Action | Parent | Child |
-|---|---|---|
-| View goals + progress | Yes | Yes |
-| Create / edit / delete goals | Yes | No |
-| Reorder priority | Yes | No |
-| Reset an achieved goal | Yes | No |
-| See pending-approval queue | Yes | Own only |
+#### Behavior incentive
 
----
+- Add a quick-win goal with a low cost (25 pts, "Pick the dinner") at a high priority.
+- Have it reset weekly, and a kid who does their chores will earn it nearly every week.
 
-## Cache invalidation
+## Details
 
-The chores-points-goals chain is the most interconnected cache surface in Prism:
+### The waterfall
 
-- **Chore CRUD** invalidates `chores:*` and triggers a cascade to `points:*` and `goals:*`.
-- **Chore approval** invalidates the same chain.
-- **Goal CRUD** invalidates `goals:*` and `points:*`.
-- **Goal reset** invalidates `goals:*` and `points:*`.
+When a child earns points, they fill goals one at a time in priority order, and are not shared out evenly. The steps are:
 
-If you ever see stale point totals after a chore approval, hit Sync on the dashboard or check the Redis cache; cache invalidation went through three rewrites before landing on the centralized `invalidateEntity()` helper that now handles this correctly.
+1. Sort the child's active goals by priority, 1 first.
+2. For each goal:
+   - Work out `available_for_this_goal = min(points_remaining, goal.pointCost - current_progress)`.
+   - Add that to the goal's progress.
+   - Take it off `points_remaining`.
+   - For a recurring goal, count only points from the current period toward its target.
+3. Stop when `points_remaining = 0`.
 
----
+So if Emma has 50 points and her Weekly Allowance (50 pts, priority 1) is not full, every point goes there first. Once the allowance is full, the rest carries on down the list to Ice Cream Trip, Movie Night and so on.
 
-## Common workflows
+To change which goal fills first, change the priority order with the ▲▼ arrows next to each goal on the Goals page (*Goals page → priority arrows ▲▼*).
 
-### Allowance + occasional treats
+### Cache invalidation
 
-- Set "Weekly Allowance" recurring weekly, priority 1, cost 50.
-- Set 2-3 one-time goals (Ice Cream Trip, Movie Night, LEGO Set) at lower priorities.
-- Result: allowance always fills first, overflow rolls into the bigger goals.
+Prism caches results to answer faster, and has to clear (invalidate) the cache when the data changes. Chores, points and goals depend on each other more than anything else in Prism:
 
-### Saving for a big-ticket item
+- Creating, editing or deleting a chore clears `chores:*`, which in turn clears `points:*` and `goals:*`.
+- Approving a chore clears the same chain.
+- Creating, editing or deleting a goal clears `goals:*` and `points:*`.
+- Resetting a goal clears `goals:*` and `points:*`.
 
-- Set "Bike Helmet Upgrade" one-time, 500 pts, priority 1.
-- All earned points go there until it fills. Kids see the bar climb week by week.
-- Once achieved and reset, drop priority or delete.
+If point totals look out of date after you approve a chore, tap Sync on the dashboard or check the Redis cache. This part was rewritten three times before it settled on the shared `invalidateEntity()` helper, which now handles it correctly.
 
-### Behavior incentive
+### Troubleshooting
 
-- Quick-win goal at low point cost (25 pts, "Pick the dinner") at high priority.
-- Resets weekly. Kid earns it almost every week if they do their chores.
+#### "I approved a chore but points didn't update"
 
----
+Hard-reload the dashboard. The cache should clear by itself, but a tab left open for a long time can miss the refresh. Check the audit log to confirm the approval was recorded.
 
-## Troubleshooting
+#### Recurring goal didn't reset on Sunday
 
-### "I approved a chore but points didn't update"
+The reset happens at midnight local time at the start of the week you have set. If *Week Starts On* is Monday, weekly recurring goals reset on Mondays.
 
-Hard-reload the dashboard. The cache invalidation should be automatic but a stale tab might miss the refresh. Check the audit log to confirm the approval recorded.
+#### Two kids have the same goal: point totals are wrong
 
-### Recurring goal didn't reset on Sunday
+There is one row per goal for the whole family, but each child's progress is tracked separately in the `goal_achievements` table, so two children on the same goal never share progress. If the totals look wrong, check `completedBy` on the chore completion. That field decides which child gets the points.
 
-The reset happens at midnight local time on the configured week start. If your *Week Starts On* setting is Monday, recurring weekly goals reset Mondays.
+#### Celebration animation didn't fire
 
-### Two kids have the same goal: point totals are wrong
-
-Goals are global (one row per goal), but progress is tracked per-child via the `goal_achievements` table. Each child has independent progress on the same goal. If you're seeing wrong totals, check that the chore completion `completedBy` is correct. That's the field that determines whose points-jar gets credit.
-
-### Celebration animation didn't fire
-
-Check `prefers-reduced-motion` (System Settings → Accessibility) and a Reduced or Minimal performance level (*Settings → Appearance → Performance*). Either one suppresses the animation, but the goal-achievement event still records.
+Check the device's reduced-motion setting (`prefers-reduced-motion`, under System Settings → Accessibility) and Prism's performance level (*Settings → Appearance → Performance*). Reduced motion on the device, or a Reduced or Minimal level in Prism, stops the animation, but the goal is still recorded as reached.

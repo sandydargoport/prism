@@ -11,6 +11,11 @@ site_dir: site
 theme:
   name: material
   custom_dir: overrides
+  logo: assets/logo.svg
+  favicon: assets/logo.svg
+  font:
+    text: Inter
+    code: JetBrains Mono
   features:
     - navigation.instant
     - navigation.tracking
@@ -26,15 +31,15 @@ theme:
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: indigo
-      accent: indigo
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-sunny
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: indigo
-      accent: indigo
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-night
         name: Switch to light mode
@@ -75,6 +80,7 @@ plugins:
 
 extra_css:
   - stylesheets/extra.css
+  - stylesheets/landing.css
 
 extra:
   social:
@@ -90,37 +96,33 @@ nav:
       - Updating: getting-started/updating.md
       - Using https at home: getting-started/https.md
   - User Guide:
-      - Overview: HELP.md
-      - Dashboard & Layouts: features/DASHBOARD.md
+      - Guide: HELP.md
+      - The wall screen: features/DASHBOARD.md
       - Calendar: features/CALENDAR.md
       - Shopping: features/SHOPPING.md
       - Recipes: features/RECIPES.md
-      - Tasks: features/TASKS.md
-      - Goals: features/GOALS.md
+      - To-dos: features/TASKS.md
+      - Chores: features/CHORES.md
+      - Points and rewards: features/GOALS.md
       - Messages: features/MESSAGES.md
-      - Wishes & Gift Ideas: features/WISHES.md
+      - Wish lists: features/WISHES.md
       - Photos: features/PHOTOS.md
-      - Travel Map: features/TRAVEL.md
-      - Weekend Ideas: features/WEEKEND.md
-      - Bus Tracking: features/BUS.md
-      - Birthdays & Milestones: features/BIRTHDAYS.md
-      - Languages (i18n): features/LANGUAGES.md
-      - Display Modes: features/DISPLAY-MODES.md
-      - Themes & Looks: features/THEMES.md
-      - Mobile (PWA): features/MOBILE.md
-      - Global input: features/global-input-system.md
-      - Anonymous update check: features/TELEMETRY.md
+      - Travel map: features/TRAVEL.md
+      - Weekend ideas: features/WEEKEND.md
+      - School bus: features/BUS.md
+      - Birthdays: features/BIRTHDAYS.md
+      - Languages: features/LANGUAGES.md
+      - Idle, away and sitter screens: features/DISPLAY-MODES.md
+      - Looks and colours: features/THEMES.md
+      - On your phone: features/MOBILE.md
+      - Update check: features/TELEMETRY.md
   - Integrations:
       - Apple iCloud: features/ICLOUD.md
-      - Kroger / Mariano's: features/KROGER.md
+      - Grocery cart: features/KROGER.md
       - Home Assistant: home-assistant.md
-      - Voice API: voice-api.md
-  - Deployment:
-      - Public demo (self-hosting recipe): demo-deployment.md
+      - Voice and automation API: voice-api.md
   - Releases:
       - Changelog: CHANGELOG.md
-  - Credits: credits.md
-  - Repo Traffic: traffic/index.html
 
 # Files present in docs/ but intentionally not in the rendered nav.
 # Two reasons something might be here:
@@ -130,6 +132,7 @@ nav:
 #     They stay in the build → sitemap.xml → are crawlable, but don't
 #     appear in the side nav.
 not_in_nav: |
+  /credits.md
   /planning.md
   /arch-review-v4.md
   /audit-2026-07.md
@@ -140,3 +143,5 @@ not_in_nav: |
   /api-auth-levels.md
   /alternatives.md
   /features-index.md
+  /features/global-input-system.md
+  /demo-deployment.md

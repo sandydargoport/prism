@@ -12,6 +12,7 @@ interface BabysitterModeToggleProps {
   size?: 'default' | 'sm' | 'lg' | 'icon';
   showLabel?: boolean;
   className?: string;
+  'data-screen-job'?: string;
 }
 
 export function BabysitterModeToggle({
@@ -19,6 +20,7 @@ export function BabysitterModeToggle({
   size = 'icon',
   showLabel = false,
   className,
+  'data-screen-job': job,
 }: BabysitterModeToggleProps) {
   const { isActive, toggle, loading } = useBabysitterMode();
   const [showPinModal, setShowPinModal] = useState(false);
@@ -52,11 +54,12 @@ export function BabysitterModeToggle({
         size={size}
         onClick={handleClick}
         className={className}
+        data-screen-job={job}
         title="Enable Babysitter Mode"
         aria-label="Enable Babysitter Mode"
       >
-        <Baby className="h-4 w-4" />
-        {showLabel && <span className="ml-2">Babysitter Mode</span>}
+        <Baby className={showLabel ? 'h-5 w-5' : 'h-4 w-4'} />
+        {showLabel && <span>Babysitter mode</span>}
       </Button>
 
       <QuickPinModal

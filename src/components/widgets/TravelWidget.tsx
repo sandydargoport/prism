@@ -105,7 +105,7 @@ export const TravelWidget = React.memo(function TravelWidget({ className }: Trav
           {/* Recent trips */}
           {recentTrips.length > 0 && (
             <div className="flex-1 overflow-hidden">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1 px-0.5">
+              <p className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground mb-1 px-0.5">
                 Recent trips
               </p>
               <ul className="space-y-1">
@@ -122,7 +122,7 @@ export const TravelWidget = React.memo(function TravelWidget({ className }: Trav
                       <span className="flex-1 min-w-0">
                         <span className="text-xs font-medium truncate block">{pin.name}</span>
                         {pin.visitedDate && (
-                          <span className="text-[10px] text-muted-foreground">
+                          <span className="text-3xs text-muted-foreground">
                             {pin.visitedEndDate
                               ? `${format(parseISO(pin.visitedDate), 'MMM d')}–${format(parseISO(pin.visitedEndDate), 'MMM d, yyyy')}`
                               : format(parseISO(pin.visitedDate), 'MMM yyyy')}

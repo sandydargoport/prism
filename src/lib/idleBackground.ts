@@ -12,9 +12,10 @@ import { z } from 'zod';
  *    stay showing (calm mode, #691).
  *  - photos: the screensaver layout over the photo slideshow.
  *  - sky: the screensaver layout over the night sky.
+ *  - off: nothing, a black screen (#1152), for a room that wants no light.
  */
 
-export const IDLE_SOURCES = ['dashboard', 'photos', 'sky'] as const;
+export const IDLE_SOURCES = ['dashboard', 'photos', 'sky', 'off'] as const;
 export type IdleSource = (typeof IDLE_SOURCES)[number];
 
 /** An offset can move an edge by up to half a day either way. */
@@ -74,9 +75,13 @@ export function usesSource(bg: IdleBackground, s: IdleSource): boolean {
   return idleSources(bg).includes(s);
 }
 
-/** Whether working out what shows needs the household location. */
+/**
+ * Whether working out what shows needs the household location. Night always
+ * has a rule (#1152), the default going by the sun, so only one set to clock
+ * times without the sky can do without.
+ */
 export function needsLocation(bg: IdleBackground): boolean {
-  return usesSource(bg, 'sky') || ('switch' in bg && bg.switch.by === 'sun');
+  return usesSource(bg, 'sky') || !('switch' in bg) || bg.switch.by === 'sun';
 }
 
 /**
@@ -164,6 +169,19 @@ export function tonight(now: Date, sw: IdleSwitch, lat: number, lon: number): Ni
     if (span && span.end > now) return span;
   }
   return null;
+}
+
+/**
+ * Every night that touches the local day of `day`: the one from the evening
+ * before, the one that starts that day, and one past midnight on a clock rule
+ * that starts after it. What the Through the day line draws (#1170).
+ */
+export function nightsTouching(day: Date, sw: IdleSwitch, lat: number, lon: number): NightSpan[] {
+  const from = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+  const to = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
+  return [-1, 0, 1]
+    .map((days) => nightOf(localNoon(day, days), sw, lat, lon))
+    .filter((n): n is NightSpan => !!n && n.end > from && n.start < to);
 }
 
 /** Whether `now` falls in a night, by the switch's own rule. */

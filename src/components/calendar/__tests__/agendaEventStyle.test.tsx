@@ -13,10 +13,17 @@ import type { CalendarEvent } from '@/types/calendar';
 // #801: the agenda draws an event as a pale tint of the person's colour with a
 // bar on the leading edge, in the normal text colour, never white on a block.
 
-// The agenda reads the household's past-events setting on mount; answer with
-// no settings, so it keeps its default.
+// A fixed afternoon in Chicago, where the agenda is drawn. On the real clock,
+// "an hour from now" fell on Chicago's tomorrow between 11pm and midnight
+// there, and the one-day agenda was empty. The agenda also reads the
+// household's past-events setting on mount; answer with no settings, so it
+// keeps its default.
 beforeEach(() => {
+  jest.useFakeTimers({ now: new Date('2026-11-03T21:00:00Z') }); // 3:00 PM CST
   global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ settings: {} }) })) as unknown as typeof fetch;
+});
+afterEach(() => {
+  jest.useRealTimers();
 });
 
 function soonEvent(): CalendarEvent {
@@ -44,7 +51,23 @@ it('draws an agenda event as a tint with a bar, in the normal text colour', () =
 // text on a light card. Today's heading uses the normal text colour.
 it("draws today's heading in the normal text colour, not the seasonal accent", () => {
   const { container } = render(<AgendaView events={[soonEvent()]} days={1} onEventClick={() => {}} />);
-  const heading = container.querySelector('span.text-sm.font-semibold')!;
+  const heading = container.querySelector('[data-agenda-day-word]')!;
   expect(heading.className).toContain('text-foreground');
   expect(heading.className).not.toContain('text-seasonal-accent');
+});
+
+// #806: an event happening right now carries a "Now" tag; one later today does not.
+it('tags the event in progress as Now, and only that one', () => {
+  const start = new Date();
+  start.setMinutes(start.getMinutes() - 30, 0, 0);
+  const current = {
+    id: 'e2', title: 'Piano lesson', startTime: start, endTime: new Date(start.getTime() + 3600_000),
+    allDay: false, color: '#3b82f6', calendarName: 'Family', calendarId: 'c1',
+  } as CalendarEvent;
+  render(<AgendaView events={[current, soonEvent()]} days={1} onEventClick={() => {}} />);
+  const tags = document.querySelectorAll('[data-agenda-now]');
+  expect(tags).toHaveLength(1);
+  expect(screen.getByText('Piano lesson').closest('button')!.contains(tags[0]!)).toBe(true);
+  expect(tags[0]!.textContent).toBe('Now');
+  expect(tags[0]!.className).toContain('bg-primary');
 });

@@ -31,7 +31,13 @@ describe('wallpaperPool', () => {
   it('prefers photos the family added, as soon as there are any', () => {
     const { items, scenery } = wallpaperPool([{ id: 'p1' }], false, true);
     expect(scenery).toBe(false);
-    expect(items).toEqual([{ id: 'p1', src: '/api/photos/p1/file' }]);
+    // A photo without a focal point (#956) is anchored on its centre.
+    expect(items).toEqual([{ id: 'p1', src: '/api/photos/p1/file', focal: { x: 0.5, y: 0.5 }, aspect: undefined, takenAt: null }]);
+  });
+
+  it('carries a photo\'s focal point for the zoom (#955)', () => {
+    const { items } = wallpaperPool([{ id: 'p2', focalX: 0.2, focalY: 0.9 }], false, false);
+    expect(items[0]!.focal).toEqual({ x: 0.2, y: 0.9 });
   });
 
   it('waits for photos to load, so a household with photos never flashes scenery', () => {

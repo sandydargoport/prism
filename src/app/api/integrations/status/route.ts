@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDisplayAuth } from '@/lib/auth';
+import { getDisplayAuth, requireRole } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { calendarSources, taskSources, shoppingListSources, photoSources, apiCredentials } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
@@ -82,6 +82,11 @@ export async function GET() {
     const microsoftEmails = distinctEmails([...msTaskSources, ...msShoppingSources]);
     const onedriveEmails = distinctEmails(onedriveSources);
 
+    // Account email addresses are a parent's business (#809); the wall and
+    // children see only whether each account is connected.
+    const parent = requireRole(auth, 'canModifySettings') === null;
+    const emails = <T,>(v: T): T | null => (parent ? v : null);
+    const emailList = (v: string[]): string[] => (parent ? v : []);
     return NextResponse.json({
       google: {
         connected: googleConnected || googleTaskSources.length > 0,
@@ -89,25 +94,25 @@ export async function GET() {
         calendarCount: googleSources.length,
         taskSourceCount: googleTaskSources.length,
         lastSynced: lastSyncedDates[0]?.toISOString() || null,
-        accountEmail: googleEmails[0] ?? null,
-        accountEmails: googleEmails,
+        accountEmail: emails(googleEmails[0] ?? null),
+        accountEmails: emailList(googleEmails),
       },
       microsoft: {
         connected: microsoftConnected,
         taskSourceCount: msTaskSources.length,
         shoppingSourceCount: msShoppingSources.length,
-        accountEmail: microsoftEmails[0] ?? null,
-        accountEmails: microsoftEmails,
+        accountEmail: emails(microsoftEmails[0] ?? null),
+        accountEmails: emailList(microsoftEmails),
       },
       onedrive: {
         connected: onedriveSources.length > 0,
         sourceCount: onedriveSources.length,
-        accountEmail: onedriveEmails[0] ?? null,
-        accountEmails: onedriveEmails,
+        accountEmail: emails(onedriveEmails[0] ?? null),
+        accountEmails: emailList(onedriveEmails),
       },
       gmail: {
         connected: !!gmailCred,
-        accountEmail: gmailCred?.accountEmail ?? null,
+        accountEmail: emails(gmailCred?.accountEmail ?? null),
       },
     });
   } catch (error) {

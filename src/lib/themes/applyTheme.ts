@@ -2,7 +2,7 @@
  * Turning a theme into CSS, on the client and on the server.
  */
 import {
-  ALL_THEME_TOKENS, isValidTokenValue, normalizeShape, normalizeFont, normalizeModes,
+  ALL_THEME_TOKENS, isValidFont, isValidTokenValue, normalizeShape, normalizeFont, normalizeModes,
   THEME_FONTS, type Theme, type ThemeTokens,
 } from './tokens';
 
@@ -147,10 +147,16 @@ function chromeProperties(theme: Theme): Array<[string, string]> {
   // The face is named by role; the variable behind the role is ours. A theme
   // never supplies a family name, so nothing submitted reaches this string.
   const font = THEME_FONTS[normalizeFont(theme.font)].varName;
+  const numeral = THEME_FONTS[normalizeFont(theme.numeralFont ?? theme.font)].varName;
 
   return [
     ...shapeProperties(theme),
     ['--theme-font', `var(${font}), var(--font-inter, Inter)`],
+    ['--theme-font-numeral', `var(${numeral}), var(--font-inter, Inter)`],
+    // The display face is Literata unless the theme names a numeral face.
+    ['--theme-font-display', theme.numeralFont && isValidFont(theme.numeralFont)
+      ? `var(${THEME_FONTS[theme.numeralFont].varName}), var(--font-serif)`
+      : 'var(--font-serif)'],
     ...modeVars,
   ];
 }

@@ -228,7 +228,7 @@ export function SettingsView() {
     { id: 'integrations', label: 'Integrations', icon: Link2 },
     // Calendar management moved onto the Calendar page (Manage calendars button).
     { id: 'display', label: 'Appearance', icon: Palette },
-    { id: 'displays', label: 'Displays', icon: Monitor },
+    { id: 'displays', label: 'Screens', icon: Monitor },
     { id: 'photos', label: 'Photos', icon: ImageIcon },
     { id: 'bus', label: 'Bus Tracking', icon: Bus },
     { id: 'input', label: 'Input', icon: KeyboardIcon },
@@ -244,7 +244,7 @@ export function SettingsView() {
   return (
     <PageWrapper>
       <div className="h-page flex flex-col">
-        <header className="shrink-0 border-b border-border bg-card/85 backdrop-blur-xs px-4">
+        <header className="shrink-0 border-b border-border bg-card px-4 safe-area-top md:bg-card/85 md:backdrop-blur-xs">
           <div className="flex items-center gap-4 h-16">
             {backName ? (
               <Button variant="ghost" size="sm" asChild>
@@ -272,7 +272,8 @@ export function SettingsView() {
         </header>
 
         <div className="flex-1 flex overflow-hidden">
-          <nav className="hidden md:landscape:block w-64 shrink-0 border-r border-border bg-card/85 backdrop-blur-xs p-4">
+          {/* Scrolls on its own when the window is short (#843). */}
+          <nav className="hidden md:landscape:block w-64 shrink-0 overflow-y-auto border-r border-border bg-card/85 backdrop-blur-xs p-4">
             <div className="space-y-1">
               {sections.map((section) => {
                 const Icon = section.icon;
@@ -295,7 +296,9 @@ export function SettingsView() {
 
           </nav>
 
-          <div className="flex-1 overflow-y-auto p-4 md:p-6">
+          {/* Scrolls up and down only: a section a little too wide for a phone
+              let the whole page drag sideways in the iPhone app. */}
+          <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6" data-settings-scroller>
             {/*
               Section selector for phones and portrait screens. The sidebar
               above shows only on a landscape screen md and wider: on a portrait
@@ -321,7 +324,7 @@ export function SettingsView() {
               </select>
             </div>
             {/* Sections use the whole width they are given. A 42rem cap cut
-                screen names in Settings > Displays down to one letter on a
+                screen names in Settings > Screens down to one letter on a
                 1080p screen, with half of it left empty beside them. On a wide
                 screen Appearance lays its cards out in columns of its own. */}
             <div>

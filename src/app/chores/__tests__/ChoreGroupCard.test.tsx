@@ -47,11 +47,11 @@ describe('ChoreGroupCard due label', () => {
 
   it('marks a chore from an earlier day as overdue', () => {
     renderCard({ nextDue: '2026-09-27' });
-    expect(screen.getByText(/^Due .* ago$/).parentElement!.className).toContain('text-destructive');
+    expect(screen.getByText(/^Due .* ago$/).closest('[data-status-pill="danger"]')).not.toBeNull();
   });
 
   it('marks a timed chore overdue once its time has passed', () => {
     renderCard({ nextDue: '2026-09-28', nextDueTime: '18:00' });
-    expect(screen.getByText(/^Due .* ago$/).parentElement!.className).toContain('text-destructive');
+    expect(screen.getByText(/^Due .* ago$/).closest('[data-status-pill="danger"]')).not.toBeNull();
   });
 });

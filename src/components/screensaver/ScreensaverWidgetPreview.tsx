@@ -29,7 +29,7 @@ export function renderScreensaverPreview(widget: WidgetConfig) {
     case 'messages':
       return (
         <div className={`h-full flex flex-col justify-end text-right p-3 rounded-lg ${textClass} ${bgClass}`}>
-          <div className="text-[10px] uppercase tracking-wider opacity-60 mb-1">Family Messages</div>
+          <div className="text-3xs uppercase tracking-wider opacity-60 mb-1">Family Messages</div>
           <p className="text-sm opacity-90">Sample message text...</p>
           <p className="text-xs opacity-50 mt-0.5">&mdash; Family</p>
         </div>
@@ -37,7 +37,7 @@ export function renderScreensaverPreview(widget: WidgetConfig) {
     case 'calendar':
       return (
         <div className={`h-full flex flex-col justify-end text-right p-3 rounded-lg ${textClass} ${bgClass}`}>
-          <div className="text-[10px] uppercase tracking-wider opacity-60 mb-1">Upcoming</div>
+          <div className="text-3xs uppercase tracking-wider opacity-60 mb-1">Upcoming</div>
           <p className="text-sm opacity-90">Doctor appt @ 2pm</p>
           <p className="text-xs opacity-50 mt-0.5">Tomorrow</p>
         </div>
@@ -45,14 +45,22 @@ export function renderScreensaverPreview(widget: WidgetConfig) {
     case 'birthdays':
       return (
         <div className={`h-full flex flex-col justify-end text-right p-3 rounded-lg ${textClass} ${bgClass}`}>
-          <div className="text-[10px] uppercase tracking-wider opacity-60 mb-1">Birthdays</div>
+          <div className="text-3xs uppercase tracking-wider opacity-60 mb-1">Birthdays</div>
           <p className="text-sm opacity-90">Mom in 3 days</p>
+        </div>
+      );
+    case 'nowNext':
+      return (
+        <div className={`h-full flex flex-col justify-end text-right p-3 rounded-lg ${textClass} ${bgClass}`}>
+          <div className="text-3xs uppercase tracking-wider opacity-60 mb-1">Now & Next</div>
+          <p className="text-sm opacity-90">Soccer · until 5:30</p>
+          <p className="text-xs opacity-50 mt-0.5">Scouts in 50 min</p>
         </div>
       );
     case 'tasks':
       return (
         <div className={`h-full flex flex-col justify-end text-right p-3 rounded-lg ${textClass} ${bgClass}`}>
-          <div className="text-[10px] uppercase tracking-wider opacity-60 mb-1">Tasks</div>
+          <div className="text-3xs uppercase tracking-wider opacity-60 mb-1">Tasks</div>
           <p className="text-sm opacity-90">Buy groceries</p>
           <p className="text-xs opacity-50 mt-0.5">3 more tasks</p>
         </div>
@@ -60,7 +68,7 @@ export function renderScreensaverPreview(widget: WidgetConfig) {
     case 'chores':
       return (
         <div className={`h-full flex flex-col justify-end text-right p-3 rounded-lg ${textClass} ${bgClass}`}>
-          <div className="text-[10px] uppercase tracking-wider opacity-60 mb-1">Chores</div>
+          <div className="text-3xs uppercase tracking-wider opacity-60 mb-1">Chores</div>
           <p className="text-sm opacity-90">Vacuum living room</p>
           <p className="text-xs opacity-50 mt-0.5">Due today</p>
         </div>
@@ -68,7 +76,7 @@ export function renderScreensaverPreview(widget: WidgetConfig) {
     case 'shopping':
       return (
         <div className={`h-full flex flex-col justify-end text-right p-3 rounded-lg ${textClass} ${bgClass}`}>
-          <div className="text-[10px] uppercase tracking-wider opacity-60 mb-1">Shopping</div>
+          <div className="text-3xs uppercase tracking-wider opacity-60 mb-1">Shopping</div>
           <p className="text-sm opacity-90">Milk, Eggs, Bread</p>
           <p className="text-xs opacity-50 mt-0.5">5 items</p>
         </div>
@@ -76,14 +84,14 @@ export function renderScreensaverPreview(widget: WidgetConfig) {
     case 'meals':
       return (
         <div className={`h-full flex flex-col justify-end text-right p-3 rounded-lg ${textClass} ${bgClass}`}>
-          <div className="text-[10px] uppercase tracking-wider opacity-60 mb-1">Tonight&apos;s Dinner</div>
+          <div className="text-3xs uppercase tracking-wider opacity-60 mb-1">Tonight&apos;s Dinner</div>
           <p className="text-sm opacity-90">Pasta Primavera</p>
         </div>
       );
     case 'photos':
       return (
         <div className={`h-full flex flex-col justify-end text-right p-3 rounded-lg ${textClass} ${bgClass}`}>
-          <div className="text-[10px] uppercase tracking-wider opacity-60 mb-1">Photos</div>
+          <div className="text-3xs uppercase tracking-wider opacity-60 mb-1">Photos</div>
           <p className="text-sm opacity-90">Family slideshow</p>
         </div>
       );

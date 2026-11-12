@@ -1,6 +1,9 @@
 'use client';
 
-import { useMemo, useState, useCallback } from 'react';
+import { createElement, useEffect, useMemo, useState, useCallback } from 'react';
+import { toast } from '@/components/ui/use-toast';
+import { ToastAction, type ToastActionElement } from '@/components/ui/toast';
+import { editorKeyAction, isTypingTarget } from './editorKeys';
 import { useLatestRef } from '@/lib/hooks/useLatestRef';
 import {
   DndContext,
@@ -91,6 +94,38 @@ export function CssGridEditor({
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 500, tolerance: 5 } }),
   );
+
+  // Keys (#987): Delete removes the selected widget (with Undo); arrows move
+  // it, or resize it in resize mode. Never while typing in a field.
+  useEffect(() => {
+    if (!selectedWidget) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.altKey || e.ctrlKey || e.metaKey || isTypingTarget(e.target)) return;
+      const before = layoutRef.current;
+      const result = editorKeyAction(before, selectedWidget, editMode, e.key, totalCols, widgetConstraints?.[selectedWidget]);
+      if (!result) {
+        if (e.key.startsWith('Arrow')) e.preventDefault();
+        return;
+      }
+      e.preventDefault();
+      onLayoutChange(result.layout);
+      if (result.kind === 'remove') {
+        const id = selectedWidget;
+        const was = before.find((w) => w.i === id)!;
+        onSelectWidget(null);
+        setEditMode('move');
+        toast({
+          title: 'Widget removed.',
+          action: createElement(ToastAction, {
+            altText: 'Undo',
+            onClick: () => onLayoutChange(layoutRef.current.map((w) => (w.i === id ? was : w))),
+          }, 'Undo') as unknown as ToastActionElement,
+        });
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectedWidget, editMode, totalCols, widgetConstraints, onLayoutChange, onSelectWidget, layoutRef]);
 
   // Cycle: unselected → move → resize → deselect
   const handleWidgetClick = useCallback((id: string) => {
@@ -411,7 +446,7 @@ function DraggableWidget({
       {/* Edit mode always shows the widget, so say when the live screen does
           not (#738). Top edge at the left; the idle switch is at the right. */}
       {emptyHidden && !isDragging && (
-        <div data-empty-marker className="absolute -top-2.5 left-3 z-30 flex items-center gap-1 rounded-full bg-neutral-600 px-2 py-0.5 text-[11px] leading-4 font-medium text-white shadow-xs pointer-events-none">
+        <div data-empty-marker className="absolute -top-2.5 left-3 z-30 flex items-center gap-1 rounded-full bg-neutral-600 px-2 py-0.5 text-2xs leading-4 font-medium text-white shadow-xs pointer-events-none">
           <EyeOff className="h-3.5 w-3.5" aria-hidden />
           {emptyHidden === 'idle' ? 'Empty: hidden when idle' : 'Empty: hidden'}
         </div>
@@ -419,7 +454,7 @@ function DraggableWidget({
 
       {/* Mode label — visible when selected */}
       {isSelected && !isDragging && (
-        <div className={`absolute top-1 left-1/2 -translate-x-1/2 z-10 text-white rounded-full px-2 py-0.5 flex items-center gap-1 pointer-events-none text-[10px] font-medium shadow-xs ${
+        <div className={`absolute top-1 left-1/2 -translate-x-1/2 z-10 text-white rounded-full px-2 py-0.5 flex items-center gap-1 pointer-events-none text-3xs font-medium shadow-xs ${
           inResizeMode ? 'bg-warning/90' : 'bg-blue-500/90'
         }`}>
           {inResizeMode ? (
@@ -442,7 +477,7 @@ function DraggableWidget({
 
       {/* Hint: tap again to switch mode */}
       {isSelected && !isDragging && (
-        <div className="absolute bottom-1 left-1/2 -translate-x-1/2 z-10 bg-black/60 text-white rounded-full px-2 py-0.5 pointer-events-none text-[9px] shadow-xs whitespace-nowrap">
+        <div className="absolute bottom-1 left-1/2 -translate-x-1/2 z-10 bg-black/60 text-white rounded-full px-2 py-0.5 pointer-events-none text-4xs shadow-xs whitespace-nowrap">
           Tap to {inResizeMode ? 'deselect' : 'resize'}
         </div>
       )}
@@ -470,7 +505,7 @@ function IdleToggle({ stays, onToggle }: { stays: boolean; onToggle: () => void 
       data-idle-toggle
       aria-pressed={stays}
       title={stays ? 'Stays on screen when idle. Tap to fade it.' : 'Fades out when idle. Tap to keep it.'}
-      className={`absolute -top-2.5 right-3 z-30 flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] leading-4 font-medium shadow-xs touch-manipulation ${
+      className={`absolute -top-2.5 right-3 z-30 flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs leading-4 font-medium shadow-xs touch-manipulation ${
         stays ? 'bg-primary text-primary-foreground' : 'bg-neutral-600 text-white'
       }`}
       onClick={(e) => { e.stopPropagation(); onToggle(); }}

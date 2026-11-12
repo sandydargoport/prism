@@ -16,7 +16,7 @@ import { useCalendarEvents, useCalendarFilter } from '@/lib/hooks';
 import { useDateLabels } from '@/lib/hooks/useDateLabels';
 import { useWeekStartsOn } from '@/lib/hooks/useWeekStartsOn';
 import { deduplicateEvents } from '@/lib/utils/calendarDedup';
-import { getFullCalendarRange, MAX_CALENDAR_EVENTS } from '@/lib/utils/calendarRange';
+import { getCalendarWindow, MAX_CALENDAR_EVENTS } from '@/lib/utils/calendarRange';
 import type { CalendarEvent } from '@/types/calendar';
 import { useTimeFormat } from '@/components/providers';
 import { useFollowToday } from '@/lib/hooks/useFollowToday';
@@ -121,11 +121,12 @@ export function useCalendarViewData() {
   }, [overlays]);
 
   const { selectedCalendarIds, toggleCalendar, filterEvents, calendarGroups } = useCalendarFilter();
-  // Fetch a wide, static window (Jan 1 last year … Dec 31 +2yr) rather than a
-  // rolling today-anchored one, so events don't vanish from the views once
-  // they're more than a couple months out (#250). Fixed window => navigation
-  // reuses one cached dataset instead of refetching on every prev/next.
-  const fetchRange = useMemo(() => getFullCalendarRange(new Date()), []);
+  // The window around the date shown (#1082), not four years: one request per
+  // quarter, so paging within it is instant. Agenda always lists from today.
+  const windowDate = viewType === 'agenda' ? new Date() : currentDate;
+  const windowKey = getCalendarWindow(windowDate).start.getTime();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const fetchRange = useMemo(() => getCalendarWindow(windowDate), [windowKey]);
   const { events: apiEvents, loading, error, refresh: refreshEvents } = useCalendarEvents({
     rangeStart: fetchRange.start,
     rangeEnd: fetchRange.end,
@@ -154,6 +155,11 @@ export function useCalendarViewData() {
       inSeries: event.inSeries,
       calendarName: event.calendarName,
       calendarId: event.calendarId,
+      // The same event on other people's calendars (#1066).
+      alsoIds: event.alsoIds,
+      alsoCalendarIds: event.alsoCalendarIds,
+      alsoCalendarNames: event.alsoCalendarNames,
+      alsoColors: event.alsoColors,
     }));
     return deduplicateEvents(filterEvents(mapped));
   }, [apiEvents, filterEvents]);

@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useResetOn } from '@/lib/hooks/useResetOn';
 import { useWeather } from '@/lib/hooks/useWeather';
-import { idleSourceAt, type IdleBackground, type IdleSource } from '@/lib/idleBackground';
+import { idleSourceAt, type IdleBackground, type IdleSource, type IdleSwitch } from '@/lib/idleBackground';
+import { isNightAt } from '@/lib/throughTheDay';
 import type { Eclipse } from '@/lib/integrations/eclipse';
 
 /**
@@ -43,4 +44,19 @@ export function useIdleSource(
     return () => window.clearInterval(timer);
   }, [active, changes]);
   return idleSourceAt(bg, now, lat, lon);
+}
+
+/**
+ * Whether it is night now by `rule` (#1152), rechecked each minute: what
+ * Today's veil and warm ink go by, the same rule the dim and the night
+ * backdrop use.
+ */
+export function useNightNow(rule: IdleSwitch): boolean {
+  const { lat, lon } = useSkyLocation(rule.by === 'sun');
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  return isNightAt(rule, now, lat, lon);
 }

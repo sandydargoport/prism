@@ -100,7 +100,7 @@ export function BabysitterView() {
   return (
     <PageWrapper>
       {/* Header */}
-      <header className="flex items-center justify-between h-16 border-b border-border bg-card/85 backdrop-blur-xs px-4 mb-6 print:mb-4 print:border-0">
+      <header className="flex items-center justify-between h-[calc(4rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)] border-b border-border bg-card px-4 mb-6 md:bg-card/85 md:backdrop-blur-xs print:mb-4 print:border-0">
         <div className="flex items-center gap-3">
           <Link href="/">
             <Button variant="ghost" size="icon" className="print:hidden">

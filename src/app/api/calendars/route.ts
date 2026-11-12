@@ -8,8 +8,10 @@
  *
  */
 
+import { lifeEventsOnly, withoutErrorText } from '@/lib/auth/redact';
+import { FAMILY_COLOR } from '@/lib/constants/memberColors';
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, getDisplayAuth } from '@/lib/auth';
+import { requireAuth, getDisplayAuth, requireRole } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { calendarSources, users, calendarGroups } from '@/lib/db/schema';
 import { eq, asc } from 'drizzle-orm';
@@ -94,6 +96,7 @@ export async function GET() {
   if (!auth) {
     return NextResponse.json({ calendars: [], total: 0 });
   }
+  const parent = requireRole(auth, 'canModifySettings') === null;
 
   try {
     await ensureDefaultCalendars();
@@ -114,6 +117,7 @@ export async function GET() {
         lastSynced: calendarSources.lastSynced,
         syncErrors: calendarSources.syncErrors,
         providerConfig: calendarSources.providerConfig,
+        displayRules: calendarSources.displayRules,
         createdAt: calendarSources.createdAt,
         // User info
         userId: calendarSources.userId,
@@ -142,12 +146,15 @@ export async function GET() {
       groupName: source.groupName,
       groupColor: source.groupColor,
       lastSynced: source.lastSynced?.toISOString() || null,
-      syncErrors: source.syncErrors,
-      providerConfig: source.providerConfig,
+      // A parent sees the CalDAV server and username and the raw sync error;
+      // the wall and children get only the flags the screens use (#809).
+      syncErrors: parent ? source.syncErrors : withoutErrorText(source.syncErrors),
+      providerConfig: parent ? source.providerConfig : lifeEventsOnly(source.providerConfig),
+      displayRules: source.displayRules ?? null,
       createdAt: source.createdAt.toISOString(),
       // For family calendars, return a virtual "Family" user
       user: source.isFamily
-        ? { id: 'FAMILY', name: 'Family', color: '#F59E0B' }
+        ? { id: 'FAMILY', name: 'Family', color: FAMILY_COLOR }
         : source.userId
           ? {
               id: source.userId,

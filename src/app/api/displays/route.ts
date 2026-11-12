@@ -1,8 +1,9 @@
 /**
  * The display registry (#690).
  *
- * GET  — every named screen, with whether it is online, its dashboard and
- *        settings, and which one (if any) this browser is
+ * GET  — every named screen, with whether it is online, its dashboard,
+ *        settings and size, whether it is being edited from another device,
+ *        and which one (if any) this browser is
  * POST — name this browser's screen. Parent only. A browser already named is
  *        renamed rather than given a second row. With `id` instead of `name`,
  *        this browser becomes that existing screen: how a screen whose browser
@@ -18,6 +19,7 @@ import {
   cleanDisplayName,
   currentDisplay,
   DISPLAY_NAME_MAX_LENGTH,
+  isBeingEdited,
   isDisplayId,
   isOnline,
   setDisplayCookies,
@@ -53,6 +55,10 @@ export async function GET() {
         online: isOnline(d.lastSeenAt, now),
         dashboardId: d.dashboardId,
         settings: d.settings,
+        // Its size, for showing it at its own shape on a phone (#1153).
+        width: d.screenWidth ?? null,
+        height: d.screenHeight ?? null,
+        editing: isBeingEdited(d.editingAt ?? null, now),
       })),
       currentId: mine?.id ?? null,
     });

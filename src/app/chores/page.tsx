@@ -33,7 +33,7 @@ export const metadata = {
  */
 export default function ChoresPage() {
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-fill bg-background">
       <Suspense fallback={<ChoresSkeleton />}>
         <ChoresView />
       </Suspense>

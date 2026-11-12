@@ -55,7 +55,7 @@ interface UseChoresResult {
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
-  completeChore: (choreId: string, data?: { completedBy?: string; notes?: string }) => Promise<ChoreCompletion>;
+  completeChore: (choreId: string, data?: { completedBy?: string; completedByIndex?: number; notes?: string }) => Promise<ChoreCompletion>;
   approveChore: (choreId: string, completionId?: string) => Promise<void>;
 }
 
@@ -117,6 +117,10 @@ export function useChores(options: UseChoresOptions = {}): UseChoresResult {
           lastCompleted: string | null;
           nextDue: string | null;
           nextDueTime: string | null;
+          timesPerDay?: number;
+          doneToday?: number;
+          kind?: 'chore' | 'reminder';
+          pet?: { id: string; name: string; color: string } | null;
           enabled: boolean;
           requiresApproval: boolean;
           pointValue: number;
@@ -145,6 +149,10 @@ export function useChores(options: UseChoresOptions = {}): UseChoresResult {
           lastCompleted: chore.lastCompleted ? new Date(chore.lastCompleted) : undefined,
           nextDue: chore.nextDue || undefined,
           nextDueTime: chore.nextDueTime ?? null,
+          timesPerDay: chore.timesPerDay ?? 1,
+          doneToday: chore.doneToday ?? 0,
+          kind: chore.kind ?? 'chore',
+          pet: chore.pet ?? null,
           enabled: chore.enabled,
           requiresApproval: chore.requiresApproval,
           pointValue: chore.pointValue,
@@ -168,7 +176,7 @@ export function useChores(options: UseChoresOptions = {}): UseChoresResult {
    * Mark a chore as completed
    */
   const completeChore = useCallback(
-    async (choreId: string, data?: { completedBy?: string; notes?: string }) => {
+    async (choreId: string, data?: { completedBy?: string; completedByIndex?: number; notes?: string }) => {
       try {
         const response = await fetch(`/api/chores/${choreId}/complete`, {
           method: 'POST',

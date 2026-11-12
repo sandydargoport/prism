@@ -31,6 +31,19 @@ import {
   getCacheTTL,
 } from '../redis';
 
+describe('getCached logging', () => {
+  it('names a bad cache entry on one line, as a %s argument', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    mockGetRedisClient.mockResolvedValue(mockRedisClient);
+    mockRedisClient.get.mockResolvedValueOnce('{not json');
+    await getCached('search:milk\nERROR forged', jest.fn().mockResolvedValue(1));
+    const call = warn.mock.calls.find((c) => String(c[1]).includes('Invalid cached data'))!;
+    expect(call[0]).toBe('%s');
+    expect(call[1]).toBe('Invalid cached data for key: search:milk ERROR forged');
+    warn.mockRestore();
+  });
+});
+
 describe('getCached', () => {
   beforeEach(() => {
     jest.clearAllMocks();

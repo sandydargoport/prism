@@ -25,6 +25,7 @@
 
 'use client';
 
+import { StatusPill } from '@/components/ui/StatusPill';
 import * as React from 'react';
 import { useMemo, useCallback } from 'react';
 import { format } from 'date-fns';
@@ -254,7 +255,7 @@ function TaskItem({
 
           {/* Priority badge */}
           {task.priority === 'high' && (
-            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+            <Badge variant="destructive" className="text-3xs px-1.5 py-0">
               High
             </Badge>
           )}
@@ -270,7 +271,7 @@ function TaskItem({
                 color={task.assignedTo.color}
                 imageUrl={task.assignedTo.avatarUrl}
                 size="sm"
-                className="h-4 w-4 text-[8px]"
+                className="h-6 w-6 text-4xs"
               />
               <span className="text-xs text-muted-foreground">
                 {task.assignedTo.name}
@@ -280,17 +281,13 @@ function TaskItem({
 
           {/* Due date */}
           {dueDateDisplay && (
-            <span
-              className={cn(
-                'text-xs',
-                isOverdue
-                  ? 'text-destructive font-medium'
-                  : 'text-muted-foreground'
-              )}
-            >
-              {isOverdue && <AlertCircle className="h-3 w-3 inline mr-0.5" />}
-              {dueDateDisplay}
-            </span>
+            isOverdue ? (
+              <StatusPill tone="danger" icon={<AlertCircle aria-hidden className="h-3 w-3 shrink-0" />}>
+                {dueDateDisplay}
+              </StatusPill>
+            ) : (
+              <span className="text-xs text-muted-foreground">{dueDateDisplay}</span>
+            )
           )}
         </div>
       </div>

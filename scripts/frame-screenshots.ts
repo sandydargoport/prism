@@ -1,7 +1,8 @@
 /**
  * Put the wall, tablet and phone screenshots into plain device frames on one
  * image, in light and dark: docs/demos/hero-light.png and hero-dark.png, for
- * the README, the website and store listings.
+ * the README, the website and store listings; and from the light one, the
+ * 1280x640 docs/demos/social-preview.png for link previews.
  *
  * Reads docs/demos/hero-{wall,tablet,phone}-{light,dark}.png, which
  * capture-screenshots.ts writes (`npm run screenshots:capture -- hero`), and
@@ -113,7 +114,27 @@ export async function composeHero(mode: Mode, shots: Record<DeviceName, string>,
   await sharp(backdropSvg(mode)).composite(layers).png({ compressionLevel: 9 }).toFile(outFile);
 }
 
-/** Frame both modes from docs/demos. Returns the files written. */
+/** GitHub's social preview size (Settings > Social preview takes an upload). */
+export const SOCIAL = { width: 1280, height: 640 } as const;
+
+/**
+ * The link-preview card: the whole light hero, centred on a 2:1 card. GitHub draws the repo name itself, so there is
+ * no text on it.
+ */
+export async function composeSocial(heroFile: string, outFile: string): Promise<void> {
+  // Fit, not crop: a 16:9 hero cropped to 2:1 loses the top of the wall and
+  // the foot of the phone. The sides repeat the hero's edge, so the backdrop
+  // gradient runs on with no seam.
+  const fitted = await sharp(heroFile).resize({ height: SOCIAL.height }).png().toBuffer();
+  const { width = SOCIAL.width } = await sharp(fitted).metadata();
+  const spare = Math.max(0, SOCIAL.width - width);
+  await sharp(fitted)
+    .extend({ left: Math.floor(spare / 2), right: Math.ceil(spare / 2), extendWith: 'copy' })
+    .png({ compressionLevel: 9 })
+    .toFile(outFile);
+}
+
+/** Frame both modes from docs/demos, then the social preview. Returns the files written. */
 export async function frameAll(dir: string): Promise<string[]> {
   const written: string[] = [];
   for (const mode of ['light', 'dark'] as Mode[]) {
@@ -130,6 +151,12 @@ export async function frameAll(dir: string): Promise<string[]> {
     const out = path.join(dir, `hero-${mode}.png`);
     await composeHero(mode, shots, out);
     written.push(out);
+  }
+  const light = path.join(dir, 'hero-light.png');
+  if (written.includes(light)) {
+    const social = path.join(dir, 'social-preview.png');
+    await composeSocial(light, social);
+    written.push(social);
   }
   return written;
 }

@@ -3,6 +3,7 @@
  * controls would have written (#690).
  */
 import { KEYBOARD_DEVICE_PREFS } from '@/lib/input/keyboardDevicePref';
+import { DEFAULT_IDLE_LOGOUT_MINUTES, IDLE_LOGOUT_KEY, IDLE_LOGOUT_OPTIONS } from '@/lib/hooks/idleLogoutOptions';
 import { SCREEN_SETTING_KEYS } from '../screenSettings';
 import { changesFor, currentOption, SCREEN_SETTING_FIELDS } from '../screenSettingFields';
 
@@ -32,6 +33,18 @@ describe('SCREEN_SETTING_FIELDS', () => {
       .toEqual(KEYBOARD_DEVICE_PREFS.map((p) => JSON.stringify(p)));
     expect(currentOption(field('prism:keyboard-on-this-device'), { 'prism:keyboard-on-this-device': 'never' }))
       .toBe('"household"');
+  });
+});
+
+// #1159: the sign-out timer left Settings > Appearance for the screen's Look sheet.
+describe('Sign out after', () => {
+  it('is one of the screen\'s own options, with the choices and default it had in Settings', () => {
+    const f = field(IDLE_LOGOUT_KEY);
+    expect(f).toBeDefined();
+    expect(f.group).toBe('Screen');
+    expect(f.options.map((o) => o.raw)).toEqual(IDLE_LOGOUT_OPTIONS.map((o) => String(o.value)));
+    expect(currentOption(f, {})).toBe(String(DEFAULT_IDLE_LOGOUT_MINUTES));
+    expect(currentOption(f, { [IDLE_LOGOUT_KEY]: '240' })).toBe('240');
   });
 });
 

@@ -12,6 +12,7 @@ import { shoppingItems, shoppingLists, users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { updateShoppingItemSchema, validateRequest } from '@/lib/validations';
 import { requireAuth } from '@/lib/auth';
+import { requireEverydayAuth, logWallChange } from '@/lib/auth/everydayAuth';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
@@ -43,12 +44,18 @@ export async function PATCH(
   request: NextRequest,
   { params }: RouteParams
 ) {
-  const auth = await requireAuth();
+  const auth = await requireEverydayAuth('shopping-check');
   if (auth instanceof NextResponse) return auth;
 
   try {
     const { id } = await params;
     const body = await request.json();
+
+    // The wall without a PIN may only check an item off or back on (#835).
+    if (auth.wall && !(body && typeof body === 'object' && Object.keys(body).length > 0 && Object.keys(body).every((k) => k === 'checked'))) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+    if (auth.wall) await logWallChange('shopping-check', 'shopping_item', id, `${body.checked ? 'Checked off' : 'Put back'} an item on the wall without a PIN`);
 
     // Check if item exists and get list info
     const [existingItem] = await db

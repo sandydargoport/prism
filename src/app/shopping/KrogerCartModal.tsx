@@ -497,12 +497,12 @@ export function KrogerCartModal({ items, onClose }: KrogerCartModalProps) {
                               {(() => {
                                 const u = unitPriceDisplay(c.price, c.size, canonicalDim);
                                 return u ? (
-                                  <span className="text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">{u}</span>
+                                  <span className="text-3xs text-muted-foreground tabular-nums whitespace-nowrap">{u}</span>
                                 ) : null;
                               })()}
                             </>
                           ) : (
-                            <span className="text-[10px] text-muted-foreground">no price</span>
+                            <span className="text-3xs text-muted-foreground">no price</span>
                           )}
                         </div>
                         {selected && <Check className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0 self-center" />}

@@ -6,6 +6,7 @@
 import { freezeWeather } from '../../../scripts/frozen-weather';
 import { afternoonTripEvents } from '../db/seedBusTrip';
 import { serverNow } from '../utils/serverNow';
+import { SCREENSHOTS } from '../../../scripts/screenshot-specs';
 
 const MOMENT = '2026-06-17T21:10:00Z'; // 4:10 PM CDT, a Wednesday
 
@@ -134,5 +135,24 @@ describe('the screenshot run uses all of the above', () => {
 
   it('seeds today\'s afternoon trip', () => {
     expect(read('src/lib/db/seed.ts')).toMatch(/afternoonTripEvents\(NOW\)/);
+  });
+});
+
+describe('dashboard screenshots without the side rail and top bar', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const fs = require('node:fs') as typeof import('node:fs');
+  const script = fs.readFileSync(require.resolve('../../../scripts/capture-screenshots.ts'), 'utf8');
+
+  it('asks for the auto-hidden chrome on every wall and tablet dashboard', () => {
+    const walls = SCREENSHOTS.filter((s) => s.url === '/' && (s.device === 'wall' || s.device === 'tablet'));
+    expect(walls.length).toBeGreaterThan(0);
+    for (const s of walls) expect([s.name, s.idleChrome]).toEqual([s.name, true]);
+  });
+
+  it('turns auto-hide on for the screen, and waits until the rail is gone', () => {
+    expect(script).toMatch(/localStorage\.setItem\('prism:auto-hide-ui', 'true'\)/);
+    // Measured on screen: the rail off the left edge, the top bar collapsed.
+    expect(script).toMatch(/querySelector\('aside'\)\?\.getBoundingClientRect\(\)/);
+    expect(script).toMatch(/rail\.right <= 1\) && \(!bar \|\| bar\.height <= 1\)/);
   });
 });

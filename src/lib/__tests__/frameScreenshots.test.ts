@@ -104,6 +104,36 @@ describe('frame-screenshots', () => {
 
   it('frames only the modes whose three shots exist', async () => {
     const written = await frameAll(dir);
-    expect(written.map((f) => path.basename(f))).toEqual(['hero-light.png']);
+    expect(written.map((f) => path.basename(f))).toEqual(['hero-light.png', 'social-preview.png']);
+  });
+});
+
+describe('the social preview', () => {
+  it('is written at GitHub social-preview size, from the light hero', async () => {
+    const written = await frameAll(dir);
+    const social = path.join(dir, 'social-preview.png');
+    expect(written).toContain(social);
+    const meta = await sharp(social).metadata();
+    expect([meta.width, meta.height]).toEqual([1280, 640]);
+  });
+});
+
+describe('the social preview keeps the whole hero', () => {
+  it('fits the whole hero and runs its backdrop out to the edges, with no seam', async () => {
+    const hero = path.join(dir, 'hero-light.png');
+    await frameAll(dir);
+    const social = path.join(dir, 'social-preview.png');
+    // Not cropped: the hero's top row (backdrop above the wall) is the card's
+    // top row, and the card is the hero scaled to 640 high.
+    const scaled = 640 / CANVAS.height;
+    const heroWidth = Math.round(CANVAS.width * scaled);
+    const left = Math.floor((1280 - heroWidth) / 2);
+    // Each side column matches the hero's edge column on the same row.
+    for (const y of [10, 320, 630]) {
+      const edge = await pixel(social, left, y);
+      const outside = await pixel(social, 1, y);
+      expect(outside).toEqual(edge);
+    }
+    expect(fs.existsSync(hero)).toBe(true);
   });
 });

@@ -60,8 +60,9 @@ function buildFramePolicy(allowedAncestorsRaw) {
     "media-src 'self' blob:",
     // PWA service worker
     "worker-src 'self' blob:",
-    // Prism never loads external frames
-    "frame-src 'none'",
+    // Prism frames only itself: editing a screen from a phone shows that
+    // screen's dashboard in a frame (#1153). Never another site.
+    "frame-src 'self'",
     // Block all plugin content (Flash, etc.)
     "object-src 'none'",
     // Prevent base tag injection attacks
@@ -96,10 +97,13 @@ function buildSecurityHeaders() {
     value: 'max-age=31536000; includeSubDomains',
   });
 
-  // Restrict unused browser features. Microphone kept for voice input.
+  // Restrict unused browser features. Microphone is kept for voice input,
+  // and the camera for Prism's own pages, for the barcode scanner (#852):
+  // camera=() also forbade it to Prism itself, and Chrome then refuses the
+  // camera at once without asking, while Firefox ignores the header.
   headers.push({
     key: 'Permissions-Policy',
-    value: 'camera=(), geolocation=(), payment=(), usb=(), bluetooth=()',
+    value: 'camera=(self), geolocation=(), payment=(), usb=(), bluetooth=()',
   });
 
   headers.push({ key: 'X-DNS-Prefetch-Control', value: 'off' });

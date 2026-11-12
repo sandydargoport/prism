@@ -10,6 +10,7 @@ const DEFERRED_LOAD_DELAY_MS = 2000;
 /** Maps widget IDs to the data domains they require */
 const WIDGET_DOMAIN_MAP: Record<string, string[]> = {
   calendar: ['calendar'],
+  nowNext: ['calendar'],
   weather: ['weather'],
   messages: ['messages'],
   tasks: ['tasks'],
@@ -70,6 +71,7 @@ export function useDashboardData(
     events: calendarEvents,
     loading: calendarLoading,
     error: calendarError,
+    refresh: refreshCalendar,
   } = useCalendarEvents({ daysToShow: 30, enabled: isEnabled('calendar') });
 
   const {
@@ -199,7 +201,7 @@ export function useDashboardData(
   }, [autoSyncTasks]);
 
   return {
-    calendar: { events: calendarEvents, loading: calendarLoading, error: calendarError },
+    calendar: { events: calendarEvents, loading: calendarLoading, error: calendarError, refresh: refreshCalendar },
     weather: { data: weatherData, loading: weatherLoading, error: weatherError },
     messages: { messages, loading: messagesLoading, error: messagesError, refresh: refreshMessages, deleteMessage },
     tasks: { tasks, loading: tasksLoading, error: tasksError, refresh: refreshTasks, toggleTask },

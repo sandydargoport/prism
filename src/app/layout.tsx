@@ -43,7 +43,7 @@ import type { Metadata, Viewport } from 'next';
 
 // Inter font from Google Fonts (loaded by Next.js for performance)
 // Next.js automatically optimizes font loading to prevent layout shift
-import { Inter, Fraunces, Nunito, JetBrains_Mono } from 'next/font/google';
+import { Inter, Literata, Nunito, JetBrains_Mono, Dancing_Script } from 'next/font/google';
 
 // Providers (theme, auth, etc.)
 import { Providers } from '@/components/providers';
@@ -61,6 +61,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { getServerTheme, getServerDefaultMode, firstPaintScript } from '@/lib/themes/serverTheme';
 import { themeCss } from '@/lib/themes/applyTheme';
 import { PERF_CLASS_SCRIPT } from '@/lib/perfLevel';
+import { SCREEN_HEIGHT_SCRIPT } from '@/lib/screenHeight';
 
 
 /**
@@ -93,8 +94,11 @@ const inter = Inter({
  * theme actually selects, so the cost of the three unused ones is disk in the
  * container, not bytes on a display.
  */
-const fraunces = Fraunces({
+// Literata: a book face drawn for an e-reader. Its optical-size axis tightens
+// the letters at the clock's size and opens them at title size (#800).
+const literata = Literata({
   subsets: ['latin'],
+  axes: ['opsz'],
   variable: '--font-serif',
   display: 'swap',
 });
@@ -102,6 +106,13 @@ const fraunces = Fraunces({
 const nunito = Nunito({
   subsets: ['latin'],
   variable: '--font-rounded',
+  display: 'swap',
+});
+
+// Dancing Script: the next event's title on Simple, written out (TodayList).
+const dancingScript = Dancing_Script({
+  subsets: ['latin'],
+  variable: '--font-script',
   display: 'swap',
 });
 
@@ -169,6 +180,16 @@ export const metadata: Metadata = {
 
   // PWA manifest
   manifest: '/manifest.json',
+
+  // iPhone home-screen app (#1041): with no status bar style, iOS draws the
+  // page under the status bar (and blurs it there) yet reports a top inset of
+  // 0, so env(safe-area-inset-top) padding does nothing. Translucent makes iOS
+  // report the real inset, and the headers' safe-area padding clears it.
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Prism',
+  },
 
   // Icons configuration
   icons: {
@@ -269,6 +290,11 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
+      // The font variables sit on <html>, not <body>: the role variables
+      // (--font-sans, --font-display, a theme's --theme-font) are declared on
+      // :root and resolve there, so a face defined lower down never reached
+      // them and the Serif role drew Tailwind's default serif instead (#800).
+      className={`${inter.variable} ${literata.variable} ${nunito.variable} ${jetbrainsMono.variable} ${dancingScript.variable}`}
       // Suppress hydration warnings from browser extensions
       // that might modify the HTML (password managers, etc.)
       suppressHydrationWarning
@@ -308,7 +334,7 @@ export default async function RootLayout({
         */}
         <script
           dangerouslySetInnerHTML={{
-            __html: firstPaintScript(defaultMode, PERF_CLASS_SCRIPT),
+            __html: `${firstPaintScript(defaultMode, PERF_CLASS_SCRIPT)};${SCREEN_HEIGHT_SCRIPT}`,
           }}
         />
       </head>
@@ -321,7 +347,7 @@ export default async function RootLayout({
         - antialiased: Smooth font rendering
         - bg-background: Background color from theme
         - text-foreground: Text color from theme
-        - min-h-screen: At least full viewport height
+        - min-h-fill: At least the screen's height, as the page measured it
         - overflow-hidden: Prevent scrolling (dashboard fills screen)
 
         NOTE: overflow-hidden is specific to our kiosk-style dashboard.
@@ -329,15 +355,11 @@ export default async function RootLayout({
       */}
       <body
         className={`
-          ${inter.variable}
-          ${fraunces.variable}
-          ${nunito.variable}
-          ${jetbrainsMono.variable}
           font-sans
           antialiased
           bg-background
           text-foreground
-          min-h-screen
+          min-h-fill
           md:overflow-hidden
         `}
       >

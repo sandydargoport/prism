@@ -4,14 +4,27 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Switch } from '@/components/ui/switch';
 import { useHiddenPages } from '@/lib/hooks/useHiddenPages';
 import { HIDEABLE_NAV_ITEMS } from '@/lib/constants/navItems';
+import { DEFAULT_DOCK_HREFS, DOCK_SIZE } from '@/lib/constants/dock';
 
 export function FeaturesSection() {
-  const { hiddenPages, loaded, setHiddenPages } = useHiddenPages();
+  const { hiddenPages, loaded, setHiddenPages, dockPages, setDockPages } = useHiddenPages();
+  // The dock's pages (#925): Home is always on it; up to five more. A page
+  // that is switched off stays in the list, so it comes back when switched on,
+  // but it does not take one of the places (#1173).
+  const onDock = dockPages ?? [...DEFAULT_DOCK_HREFS];
+  const placesTaken = onDock.filter((h) => h === '/' || !hiddenPages.includes(h)).length;
+  const dockFull = placesTaken >= DOCK_SIZE;
+  const toggleDock = (href: string) => {
+    if (onDock.includes(href)) setDockPages(onDock.filter((h) => h !== href));
+    else if (!dockFull) setDockPages([...onDock, href]);
+  };
 
   const togglePage = (href: string) => {
     const isCurrentlyHidden = hiddenPages.includes(href);
     if (isCurrentlyHidden) {
       setHiddenPages(hiddenPages.filter((h) => h !== href));
+      // Its place was given away while it was off; it comes back in More.
+      if (dockFull && onDock.includes(href)) setDockPages(onDock.filter((h) => h !== href));
     } else {
       setHiddenPages([...hiddenPages, href]);
     }
@@ -34,6 +47,8 @@ export function FeaturesSection() {
           <CardTitle>Navigation Pages</CardTitle>
           <CardDescription>
             Toggle pages on or off. Dashboard and Settings are always visible.
+            The dock holds Home and up to five pages you tick; the rest are one
+            tap away in More.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -46,11 +61,26 @@ export function FeaturesSection() {
                   <Icon className="h-5 w-5 text-muted-foreground" />
                   <span className="text-sm font-medium">{item.label}</span>
                 </div>
-                <Switch
-                  checked={isEnabled}
-                  onCheckedChange={() => togglePage(item.href)}
-                  className="data-[state=checked]:bg-blue-500"
-                />
+                <div className="flex items-center gap-4">
+                  {item.href !== '/settings' && (
+                    <label className="flex min-h-[44px] items-center gap-2 text-sm text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4"
+                        checked={isEnabled && onDock.includes(item.href)}
+                        disabled={!isEnabled || (!onDock.includes(item.href) && dockFull)}
+                        onChange={() => toggleDock(item.href)}
+                        data-dock-choice={item.href}
+                      />
+                      On the dock
+                    </label>
+                  )}
+                  <Switch
+                    checked={isEnabled}
+                    onCheckedChange={() => togglePage(item.href)}
+                    className="data-[state=checked]:bg-blue-500"
+                  />
+                </div>
               </div>
             );
           })}

@@ -93,3 +93,10 @@ export function isTooLightForWhiteText(color: string): boolean {
 export function isTooDarkForDarkTheme(color: string): boolean {
   return isHexColor(color) && contrastRatioHex(color, DARK_BACKGROUND) < MIN_DARK_BACKGROUND_CONTRAST;
 }
+
+
+/**
+ * The Family calendar's colour when the household has not picked one: coral
+ * (#932). A saved colour always wins; this is only the default.
+ */
+export const FAMILY_COLOR = '#FF7D68';

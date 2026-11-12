@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useMemo, useRef, ViewTransition } from 'react';
+import { tileAlign, type AlignSetting } from '@/lib/layout/tileAlign';
+import { startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState, ViewTransition } from 'react';
 import { SCHEDULE_TRANSITION } from '@/lib/displays/screenSchedule';
 import { WidgetBgOverrideProvider, WidgetEmptyReportContext } from '@/components/widgets/WidgetContainer';
 import { getWidgetStyle, getWidgetContentStyle, getTextColorClass, getWidgetOutlineClass } from './gridWidgetStyles';
 import { useSquareCells } from './useSquareCells';
 import { useEmptyWidgets } from './useEmptyWidgets';
 import { hidesWhenEmpty } from './hideWhenEmpty';
+import { isSmallScreen, layoutForSmallScreen } from '@/lib/layout/smallScreen';
 import { useViewportSize } from '@/lib/hooks/useViewportSize';
 import { GRID_COLS } from '@/lib/constants/grid';
 import { resolveFitMode, containGeometry } from './fitMode';
@@ -52,7 +54,7 @@ function driftPhase(): number {
  * wakes. So the cell is pinned where it is at that instant and eased home over
  * the same second the faded widgets take to come back.
  */
-function setCellDrift(el: HTMLElement, want: boolean) {
+export function setCellDrift(el: HTMLElement, want: boolean) {
   if ((el.dataset.drift !== undefined) === want) return;
   if (want) {
     el.style.transitionProperty = ''; // in case it was still easing home
@@ -76,6 +78,26 @@ function setCellDrift(el: HTMLElement, want: boolean) {
     el.removeEventListener('transitionend', done);
   };
   el.addEventListener('transitionend', done);
+}
+
+/** How many widgets' contents fill in at first, and per step after (#1083). */
+export const STAGE_FIRST = 2;
+export const STAGE_STEP = 2;
+
+/**
+ * How many widgets may render their contents. Staged, the first STAGE_FIRST
+ * at once and STAGE_STEP more per task until all are in; the server and the
+ * first client render agree, so hydration matches. Not staged, all of them.
+ */
+function useStagedCount(total: number, staged: boolean): number {
+  const [n, setN] = useState(STAGE_FIRST);
+  useEffect(() => {
+    if (!staged || n >= total) return;
+    // A new task per step: a tap waiting between them is handled first.
+    const id = setTimeout(() => startTransition(() => setN((c) => c + STAGE_STEP)), 0);
+    return () => clearTimeout(id);
+  }, [staged, n, total]);
+  return staged ? n : total;
 }
 
 /**
@@ -103,6 +125,8 @@ export function CssGridDisplay({
   hideEmptyByDefault = false,
   onEmptyChange,
   className,
+  staged = false,
+  smallScreenDrop = false,
 }: CssGridDisplayProps) {
   const { containerRef, cellSize: widthCellSize, width, top, zoom, remeasure } = useSquareCells(cols, containerPadding, margin, fillHeight);
   const { width: viewportWidth, height: viewportHeight, visibleHeight } = useViewportSize();
@@ -112,12 +136,21 @@ export function CssGridDisplay({
   // math tracks the actual header height instead of a stale value.
   useEffect(() => { remeasure(); }, [headerOffset, bottomOffset, remeasure]);
 
+  // On a small screen, "Hide first" widgets drop out and the rest close up (#803).
+  const small = smallScreenDrop && isSmallScreen(viewportWidth, viewportHeight);
   const visibleWidgets = useMemo(
-    () => layout.filter(w => w.visible !== false),
-    [layout],
+    () => (small ? layoutForSmallScreen(layout) : layout).filter(w => w.visible !== false),
+    [layout, small],
   );
 
   const { emptyIds, reporterFor } = useEmptyWidgets(onEmptyChange);
+
+  // Top-left first: the order a person reads the wall in.
+  const stageRank = useMemo(() => {
+    const order = [...visibleWidgets].sort((a, b) => a.y - b.y || a.x - b.x);
+    return new Map(order.map((w, i) => [w.i, i]));
+  }, [visibleWidgets]);
+  const shownCount = useStagedCount(visibleWidgets.length, staged);
 
   // A faded widget does not drift: there is nothing on screen to protect.
   const cells = useRef(new Map<string, HTMLDivElement>());
@@ -304,6 +337,12 @@ export function CssGridDisplay({
           // faded widget, keeping its place (#738).
           const hiddenEmpty = emptyIds.has(w.i) && hidesWhenEmpty(w, hideEmptyByDefault);
           const gone = faded || hiddenEmpty;
+          // The clock and weather line up by where the tile sits (#988): in a
+          // screen corner they hug it, elsewhere they centre; Align overrides.
+          const align = w.i === 'clock' || w.i === 'weather'
+            ? tileAlign(w, cols, fitRows, (w.settings?.align as AlignSetting | undefined) ?? null)
+            : undefined;
+          const corner = align && align.x !== 'center' ? align.x : undefined;
 
           const cell = (
             <div
@@ -311,6 +350,10 @@ export function CssGridDisplay({
               className={`widget-cell relative overflow-hidden ${textClass} ${outlineClass} ${clear ? 'idle-clear' : ''} transition-opacity duration-1000 motion-reduce:duration-200`}
               ref={(el) => { if (el) cells.current.set(w.i, el); else cells.current.delete(w.i); }}
               data-widget={w.i}
+              data-corner={corner}
+              data-align-x={align?.x}
+              data-align-y={align?.y}
+              data-fill={w.backgroundColor === 'glass' ? 'glass' : w.backgroundColor === 'transparent' ? 'none' : undefined}
               data-faded={faded || undefined}
               data-hidden-empty={hiddenEmpty || undefined}
               aria-hidden={gone || undefined}
@@ -327,7 +370,7 @@ export function CssGridDisplay({
               <WidgetBgOverrideProvider value={{ hasCustomBg, textColor: w.textColor, textOpacity: w.textOpacity, gridLineOpacity: w.gridLineOpacity, cellBackgroundColor: w.cellBackgroundColor, cellBackgroundOpacity: w.cellBackgroundOpacity }}>
                 <WidgetEmptyReportContext.Provider value={reporterFor(w.i)}>
                   <div className="h-full w-full overflow-hidden" style={contentStyle}>
-                    {renderWidget(w)}
+                    {(stageRank.get(w.i) ?? 0) < shownCount ? renderWidget(w) : null}
                   </div>
                 </WidgetEmptyReportContext.Provider>
               </WidgetBgOverrideProvider>

@@ -13,7 +13,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from '@/components/ui/use-toast';
-import { useKeyboardDevicePref, type KeyboardDevicePref } from '@/lib/input/keyboardDevicePref';
 
 interface ShoppingListOption {
   id: string;
@@ -22,7 +21,6 @@ interface ShoppingListOption {
 
 export function InputSection() {
   const [keyboardEnabled, setKeyboardEnabled] = useState(true);
-  const devicePref = useKeyboardDevicePref();
   const [scannerEnabled, setScannerEnabled] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [soundStyle, setSoundStyle] = useState<'beep' | 'scan'>('beep');
@@ -97,8 +95,7 @@ export function InputSection() {
             <div>
               <CardTitle className="text-lg">Virtual Keyboard</CardTitle>
               <CardDescription>
-                Shows an on-screen keyboard when tapping text fields on a touchscreen.
-                Disable if using a physical keyboard.
+                Shows an on-screen keyboard when a text field is tapped on a touchscreen.
               </CardDescription>
             </div>
           </div>
@@ -116,32 +113,9 @@ export function InputSection() {
                 }}
               />
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              The household setting. Applies to every device that uses it.
-            </p>
-          </div>
-
-          <div className="space-y-1">
-            <Label htmlFor="kb-device">On-screen keyboard on this device</Label>
-            <Select
-              value={devicePref.pref}
-              onValueChange={v => devicePref.setPref(v as KeyboardDevicePref)}
-              disabled={!devicePref.ready}
-            >
-              <SelectTrigger id="kb-device">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="household">
-                  Use household setting ({keyboardEnabled ? 'on' : 'off'})
-                </SelectItem>
-                <SelectItem value="always">Always</SelectItem>
-                <SelectItem value="never">Never</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-[11px] text-muted-foreground">
-              Saved in this browser only. Choose Never on a tablet to use its own keyboard,
-              or Always on a display that has no other keyboard.
+            <p className="text-2xs text-muted-foreground">
+              All screens. To choose Always or Never for one screen, such as a tablet with its own
+              keyboard, edit that screen and open Look.
             </p>
           </div>
         </CardContent>
@@ -156,7 +130,7 @@ export function InputSection() {
               <CardTitle className="text-lg">Barcode Scanner</CardTitle>
               <CardDescription>
                 Plug in a USB or Bluetooth barcode scanner to add items to your shopping list
-                by scanning barcodes.
+                by scanning barcodes. All screens.
               </CardDescription>
             </div>
           </div>
@@ -195,7 +169,7 @@ export function InputSection() {
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-2xs text-muted-foreground">
               Scanned items go here. Falls back to the first list named &quot;Groceries&quot; if not set.
             </p>
           </div>

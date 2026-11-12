@@ -139,7 +139,7 @@ export function MemberColorPicker({
         {selected ? (
           <Check className="h-4 w-4" aria-hidden />
         ) : owner ? (
-          <span className="text-[11px] font-semibold leading-none" aria-hidden>
+          <span className="text-2xs font-semibold leading-none" aria-hidden>
             {initialOf(owner.name)}
           </span>
         ) : null}
@@ -213,18 +213,18 @@ export function MemberColorPicker({
                 style={{ backgroundColor: isHexColor(value) ? value : undefined }}
                 data-testid="custom-color-preview"
               />
-              <span className="text-[11px] font-medium">This one</span>
+              <span className="text-2xs font-medium">This one</span>
             </div>
             {taken.map((t) => (
               <div key={`${t.name}-${t.color}`} className="flex flex-col items-center gap-1">
                 <span
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-semibold"
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-2xs font-semibold"
                   style={{ backgroundColor: t.color, color: contrastText(t.color) }}
                   aria-hidden
                 >
                   {initialOf(t.name)}
                 </span>
-                <span className="max-w-14 truncate text-[11px] text-muted-foreground">{t.name}</span>
+                <span className="max-w-14 truncate text-2xs text-muted-foreground">{t.name}</span>
               </div>
             ))}
           </div>

@@ -12,7 +12,7 @@ import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { shoppingLists } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
-import { createShoppingListSchema, validateRequest } from '@/lib/validations';
+import { updateShoppingListSchema, validateRequest } from '@/lib/validations';
 import { logError } from '@/lib/utils/logError';
 
 /**
@@ -97,7 +97,7 @@ export async function PATCH(
     }
 
     // Validate with partial schema
-    const validation = validateRequest(createShoppingListSchema.partial(), body);
+    const validation = validateRequest(updateShoppingListSchema, body);
     if (!validation.success) {
       return NextResponse.json(
         { error: 'Validation failed', details: validation.error.issues },

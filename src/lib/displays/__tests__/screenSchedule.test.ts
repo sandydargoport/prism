@@ -7,6 +7,8 @@ import {
   parseSchedule,
   ruleCovers,
   scheduledDashboard,
+  screenDashboardAt,
+  SCREEN_SCHEDULE_KEY,
   serializeSchedule,
   type ScheduleRule,
 } from '../screenSchedule';
@@ -116,5 +118,20 @@ describe('stored value', () => {
     const { SCREEN_SETTING_MAX_LENGTH } = await import('../screenSettings');
     const full = Array.from({ length: MAX_SCHEDULE_RULES }, () => ({ ...morning, days: [0, 1, 2, 3, 4, 5, 6] }));
     expect(serializeSchedule(full)!.length).toBeLessThanOrEqual(SCREEN_SETTING_MAX_LENGTH);
+  });
+});
+
+describe('screenDashboardAt', () => {
+  const OWN = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+  // A Monday at 07:15 in Chicago, inside the morning rule.
+  const at = Date.parse('2026-11-09T13:15:00Z');
+  const screen = { dashboardId: OWN, settings: { [SCREEN_SCHEDULE_KEY]: serializeSchedule([morning])! } };
+
+  it('shows the scheduled dashboard while its rule is in force', () => {
+    expect(screenDashboardAt(screen, at, CHICAGO)).toBe(MORNING);
+  });
+
+  it('goes back to the screen\'s own dashboard when the rule ends', () => {
+    expect(screenDashboardAt(screen, Date.parse('2026-11-09T14:00:00Z'), CHICAGO)).toBe(OWN);
   });
 });

@@ -13,7 +13,7 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core';
 import { useTranslations } from 'next-intl';
-import { Calendar, Loader2, AlertTriangle } from 'lucide-react';
+import { Calendar, Loader2, AlertTriangle, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { isLightColor } from '@/lib/utils/color';
@@ -32,6 +32,8 @@ import { useWeekStartsOn } from '@/lib/hooks/useWeekStartsOn';
 import { useCalendarWidgetPrefs, VIEW_OPTIONS, CalendarPrefsScopeContext } from '@/lib/hooks/useCalendarWidgetPrefs';
 import { useCalendarSyncHealth } from '@/lib/hooks/useCalendarSyncHealth';
 import { CalendarWidgetControls } from './CalendarWidgetControls';
+import { DayPagingContext } from '@/lib/hooks/useDayPaging';
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import type { CalendarEvent } from '@/types/calendar';
 export type { CalendarEvent };
 
@@ -47,6 +49,8 @@ export interface CalendarWidgetProps {
   loading?: boolean;
   error?: string | null;
   onEventClick?: (event: CalendarEvent) => void;
+  /** "+": add an event on the day the widget shows (#836). */
+  onAddEvent?: (day: Date) => void;
   titleHref?: string;
   className?: string;
   gridW?: number;
@@ -58,6 +62,7 @@ export const CalendarWidget = React.memo(function CalendarWidget({
   loading: externalLoading,
   error: externalError,
   onEventClick,
+  onAddEvent,
   titleHref,
   className,
   gridW = 2,
@@ -264,6 +269,9 @@ export const CalendarWidget = React.memo(function CalendarWidget({
     </div>
   ) : null;
 
+  // A wall or tablet screen pages a busy day; a phone keeps "+N more" (#801).
+  const pageBusyDays = useMediaQuery('(min-width: 768px)');
+
   return (
     <WidgetContainer
       title={t('title')}
@@ -272,7 +280,7 @@ export const CalendarWidget = React.memo(function CalendarWidget({
       size="large"
       loading={loading}
       error={error}
-      actions={
+      actions={<>
         <CalendarWidgetControls
           viewType={viewType}
           setViewType={setViewType}
@@ -297,7 +305,18 @@ export const CalendarWidget = React.memo(function CalendarWidget({
           goToToday={goToToday}
           goToNext={goToNext}
         />
-      }
+        {onAddEvent && (
+        <button
+          type="button"
+          onClick={() => onAddEvent(currentDate)}
+          className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+          aria-label={t('addEvent')}
+          data-calendar-add
+        >
+          <Plus className="h-5 w-5" />
+        </button>
+        )}
+      </>}
       className={className}
     >
       {calendarChips}
@@ -335,6 +354,7 @@ export const CalendarWidget = React.memo(function CalendarWidget({
           onDragEnd={handleDragEnd}
           onDragCancel={() => { setActiveDragId(null); setMoveError(null); }}
         >
+          <DayPagingContext.Provider value={pageBusyDays}>
           <Suspense fallback={<div className="h-full flex items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
             {resolvedView === 'agenda' && (
               <AgendaView
@@ -437,6 +457,7 @@ export const CalendarWidget = React.memo(function CalendarWidget({
               </div>
             )}
           </Suspense>
+          </DayPagingContext.Provider>
         </DndContext>
         )}
       </div>

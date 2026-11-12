@@ -83,6 +83,24 @@ describe('ChoresWidget', () => {
     expect(screen.getByTestId('widget-empty')).toBeTruthy();
   });
 
+  // #1109: a chore or reminder with a time shows it, and Late once its day has gone.
+  // #996: a chore for a pet shows the pet's name.
+  it('shows the pet a chore is for', () => {
+    const { container } = render(<ChoresWidget chores={[{ ...mockChore, pet: { id: 'p1', name: 'Biscuit', color: '#F59E0B' } }]} />);
+    expect(container.querySelector('[data-chore-pet="Biscuit"]')?.textContent).toBe('Biscuit');
+  });
+
+  it('marks a timed chore Late once its day has gone, and shows the time', () => {
+    const { container } = render(<ChoresWidget chores={[
+      { ...mockChore, id: 'r1', title: 'Allergy tablet', kind: 'reminder', nextDue: '2020-01-01', nextDueTime: '19:00' },
+      { ...mockChore, id: 'r2', title: 'Feed the cat', kind: 'reminder', nextDue: '2099-01-01', nextDueTime: '07:30' },
+    ]} />);
+    const late = container.querySelectorAll('[data-chore-late]');
+    expect(late).toHaveLength(1);
+    expect(late[0]!.textContent).toBe('Late · 7:00 PM');
+    expect(screen.getByText('7:30 AM')).toBeTruthy();
+  });
+
   it('shows loading state', () => {
     render(<ChoresWidget loading={true} />);
     // WidgetContainer handles loading display

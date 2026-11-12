@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
 import { layouts, settings, users } from '@/lib/db/schema';
-import { FIRST_SCREEN_TEMPLATE, NEW_INSTALL_HIDDEN_PAGES } from '@/lib/constants/layoutTemplates';
+import { NEW_INSTALL_HIDDEN_PAGES } from '@/lib/constants/layoutTemplates';
+import { newLookLayouts } from '@/lib/newLook';
 import { SCENERY_SETTING_KEY } from '@/lib/scenery';
 import {
-  DEFAULT_LOOK, DEFAULT_MODE_SETTING_KEY, FIRST_LOOK_SETTING_KEY, LOOKS, firstScreenWidgets, isLookId, type LookId,
+  DEFAULT_LOOK, DEFAULT_MODE_SETTING_KEY, FIRST_LOOK_SETTING_KEY, LOOKS, isLookId, type LookId,
 } from '@/lib/looks';
 import { memberOrder } from '@/lib/db/memberOrder';
 import { eq } from 'drizzle-orm';
@@ -80,14 +81,18 @@ async function writeFirstScreen(createdBy: string) {
 
   const [anyLayout] = await db.select({ id: layouts.id }).from(layouts).limit(1);
   if (!anyLayout) {
-    await db.insert(layouts).values({
-      name: FIRST_SCREEN_TEMPLATE.name,
-      slug: 'home',
-      isDefault: true,
-      orientation: FIRST_SCREEN_TEMPLATE.orientation,
-      widgets: firstScreenWidgets(look),
-      createdBy,
-    });
+    // A new install starts on Today, the built-in dashboard (#1151).
+    for (const l of newLookLayouts()) {
+      await db.insert(layouts).values({
+        name: l.name,
+        slug: 'home',
+        isDefault: l.isDefault,
+        orientation: 'landscape',
+        widgets: l.widgets,
+        view: l.view,
+        createdBy,
+      });
+    }
   }
   if (!(await read('hiddenPages'))) {
     await db.insert(settings).values({ key: 'hiddenPages', value: [...NEW_INSTALL_HIDDEN_PAGES] });
@@ -104,6 +109,16 @@ async function writeFirstScreen(createdBy: string) {
     await db.insert(settings).values({ key: 'theme', value: { paletteId: look.paletteId } });
   } else if (typeof themeValue?.paletteId !== 'string') {
     await db.update(settings).set({ value: { ...themeValue, paletteId: look.paletteId } }).where(eq(settings.key, 'theme'));
+  }
+  // A new install does the everyday jobs without a PIN (#835): ticking and
+  // adding from the wall. An existing install never gets here, so it keeps
+  // asking for the PIN until a parent changes the setting.
+  const security = await read('security');
+  const securityValue = (security?.value ?? null) as Record<string, unknown> | null;
+  if (!security) {
+    await db.insert(settings).values({ key: 'security', value: { requirePinForEveryChange: false } });
+  } else if (typeof securityValue?.requirePinForEveryChange !== 'boolean') {
+    await db.update(settings).set({ value: { ...securityValue, requirePinForEveryChange: false } }).where(eq(settings.key, 'security'));
   }
   if (look.mode && !(await read(DEFAULT_MODE_SETTING_KEY))) {
     await db.insert(settings).values({ key: DEFAULT_MODE_SETTING_KEY, value: look.mode });

@@ -1,11 +1,15 @@
 'use client';
 
+import { usePageAdd } from '@/lib/hooks/usePageAdd';
+import { ChoresDoList } from './ChoresDoList';
+import { useChoreTick } from '@/components/dashboard/useEveryday';
 import { useState, useMemo } from 'react';
 import { usePersistedState, useSessionScopedStringSet, isBoolean } from '@/lib/hooks/usePersistedState';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
   ClipboardList,
   Plus,
+  Bell,
   AlertCircle,
   History,
   Users,
@@ -39,7 +43,7 @@ const CHORE_CATEGORIES = [
 
 export function ChoresView() {
   const isMobile = useIsMobile();
-  const { requireAuth } = useAuth();
+  const { requireAuth, activeUser } = useAuth();
   const {
     loading, error, refreshChores, familyMembers,
     filterPerson, setFilterPerson,
@@ -75,6 +79,10 @@ export function ChoresView() {
     'prism-chores-group-by-user', false, isBoolean,
   );
   const [celebratingUser, setCelebratingUser] = useState<{ id: string; name: string } | null>(null);
+  // The page opens on what to do (#880); switches, points and categories are
+  // behind Manage.
+  const [manage, setManage] = useState(false);
+  const { tick, element: whoDidIt } = useChoreTick(() => { void refreshChores(); });
   const [inlineChore, setInlineChore] = useState('');
   const [inlineChoreByUser, setInlineChoreByUser] = useState<Record<string, string>>({});
   // Session-scoped, not persisted outright: this one NARROWS the list, and
@@ -144,14 +152,18 @@ export function ChoresView() {
     return groups;
   }, [groupByUser, effectiveFilteredChores, familyMembers, filterPerson]);
 
-  const handleAddWithAuth = async () => {
-    const user = await requireAuth('Add Chore', 'Please log in to add a chore');
+  // A reminder (#1109) is added with the same form, in its reminder mode.
+  const [addKind, setAddKind] = useState<'chore' | 'reminder'>('chore');
+  const handleAddWithAuth = async (kind: 'chore' | 'reminder' = 'chore') => {
+    const user = await requireAuth(kind === 'reminder' ? 'Add Reminder' : 'Add Chore', `Please log in to add a ${kind}`);
     if (!user) return;
+    setAddKind(kind);
     // Preselect the person who's adding it — only relevant when they're an
     // actual family member (not a role-less guest) present in the groups.
     setAddModalDefaultAssignee(familyMembers.some((m) => m.id === user.id) ? user.id : undefined);
     setShowAddModal(true);
   };
+  usePageAdd('Add chore', () => { void handleAddWithAuth(); });
 
   return (
     <PageWrapper>
@@ -159,26 +171,47 @@ export function ChoresView() {
         <SubpageHeader
           icon={<ClipboardList className="h-5 w-5 text-primary" />}
           title="Chores"
-          badge={<>
-            <Badge variant="secondary">{enabledCount} active</Badge>
-            {dueCount > 0 && <Badge variant="destructive">{dueCount} due</Badge>}
-          </>}
+          // On a phone (#1020): one short badge, and History in the menu, so
+          // nothing in the header overlaps and the title has room.
+          badge={isMobile
+            ? (dueCount > 0 ? <Badge variant="destructive" data-chores-due-badge>{dueCount} due</Badge> : undefined)
+            : <>
+              <Badge variant="secondary">{enabledCount} active</Badge>
+              {dueCount > 0 && <Badge variant="destructive">{dueCount} due</Badge>}
+            </>}
           actions={<>
-            <Button variant={showCompletions ? 'secondary' : 'outline'} size="sm"
-              onClick={() => setShowCompletions(!showCompletions)}>
-              <History className="h-4 w-4 mr-1" />History
+            <Button variant={manage ? 'secondary' : 'outline'} size="sm" onClick={() => setManage(!manage)} data-chores-manage>
+              {manage ? 'Done' : 'Manage'}
             </Button>
-            <Button onClick={handleAddWithAuth} size="sm">
-              <Plus className="h-4 w-4 mr-1" />Add Chore
-            </Button>
+            {!isMobile && (
+              <Button variant={showCompletions ? 'secondary' : 'outline'} size="sm"
+                onClick={() => setShowCompletions(!showCompletions)}>
+                <History className="h-4 w-4 mr-1" />History
+              </Button>
+            )}
+            {/* On a phone the round button adds (#1028). */}
+            {!isMobile && (
+              <Button variant="outline" onClick={() => void handleAddWithAuth('reminder')} size="sm" aria-label="Add Reminder" data-chores-add-reminder>
+                <Bell className="h-4 w-4 mr-1" />Add Reminder
+              </Button>
+            )}
+            {!isMobile && (
+              <Button onClick={() => void handleAddWithAuth()} size="sm" aria-label="Add Chore">
+                <Plus className="h-4 w-4 mr-1" />Add Chore
+              </Button>
+            )}
           </>}
           overflow={[
+            ...(isMobile ? [
+              { label: 'Add reminder', icon: Bell, onClick: () => void handleAddWithAuth('reminder') },
+              { label: showCompletions ? 'Back to chores' : 'History', icon: History, onClick: () => setShowCompletions(!showCompletions) },
+            ] : []),
             { label: 'Hide Completed', checked: hideCompleted, onClick: () => setHideCompleted(!hideCompleted) },
             { label: 'Show Disabled', checked: showDisabled, onClick: () => setShowDisabled(!showDisabled) },
           ] as OverflowItem[]}
         />
 
-        <FilterBar>
+        {manage && <FilterBar>
           <PersonFilter members={familyMembers} selected={filterPerson} onSelect={setFilterPerson} />
           <div className="w-px h-5 bg-border shrink-0" />
           <FilterDropdown label="Category" options={CHORE_CATEGORIES} selected={categoryFilters}
@@ -200,7 +233,7 @@ export function ChoresView() {
               <X className="h-3 w-3 mr-1" />Clear
             </Button>
           )}
-        </FilterBar>
+        </FilterBar>}
 
         <div className="flex-1 overflow-y-auto p-4">
           {showCompletions ? (
@@ -210,6 +243,16 @@ export function ChoresView() {
             <div className="flex items-center justify-center h-full">
               <PageLoader label="Loading chores..." />
             </div>
+          ) : !manage && !error ? (
+            <ChoresDoList
+              chores={effectiveFilteredChores}
+              today={new Date()}
+              onTick={(c) => tick(c, () => completeChore(c.id))}
+              onApprove={(c) => void completeChore(c.id)}
+              canApprove={activeUser?.role === 'parent'}
+              groupBy={groupByUser ? 'person' : 'none'}
+              people={familyMembers.filter((m) => m.id)}
+            />
           ) : error ? (
             <div className="flex flex-col items-center justify-center h-full text-destructive">
               <AlertCircle className="h-12 w-12 mb-4 opacity-50" /><p>{error}</p>
@@ -220,7 +263,7 @@ export function ChoresView() {
               <EmptyState
                 icon={<ClipboardList />}
                 title="No chores found"
-                action={<Button variant="outline" size="sm" onClick={handleAddWithAuth}>Add your first chore</Button>}
+                action={<Button variant="outline" size="sm" onClick={() => void handleAddWithAuth()}>Add your first chore</Button>}
               />
             </div>
           ) : groupByUser && choresByUser && choresByUser.length > 0 ? (
@@ -254,7 +297,7 @@ export function ChoresView() {
 
         {showAddModal && (
           <ChoreModal onClose={() => setShowAddModal(false)} onSave={saveNewChore}
-            familyMembers={familyMembers} defaultAssignedTo={addModalDefaultAssignee} />
+            familyMembers={familyMembers} defaultAssignedTo={addModalDefaultAssignee} kind={addKind} />
         )}
         {editingChore && (
           <ChoreModal chore={editingChore} onClose={() => setEditingChore(null)}
@@ -266,6 +309,7 @@ export function ChoresView() {
         <PlaneCelebration show={!!celebratingUser} userName={celebratingUser?.name || ''}
           onComplete={() => setCelebratingUser(null)} />
         <ConfirmDialog {...confirmDialogProps} />
+        {whoDidIt}
       </div>
     </PageWrapper>
   );

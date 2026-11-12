@@ -12,7 +12,7 @@ import { tmpdir } from 'os';
  *   - CI: postgres is a GitHub Actions service container exposed on
  *     localhost:5432; the runner has `psql`. Use DATABASE_URL directly.
  */
-function runSQL(sql: string) {
+export function runSQL(sql: string) {
   const tmpFile = join(tmpdir(), `prism-e2e-${Date.now()}.sql`);
   writeFileSync(tmpFile, sql, 'utf-8');
   try {

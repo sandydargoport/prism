@@ -83,7 +83,7 @@ export function PinPhotoGrid({ pinId, radiusKm }: PinPhotoGridProps) {
         <p className="text-xs text-muted-foreground">
           No geotagged photos within {radiusKm ?? 50} km
         </p>
-        <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+        <p className="text-3xs text-muted-foreground/60 mt-0.5">
           Photos with GPS data sync from OneDrive automatically
         </p>
       </div>

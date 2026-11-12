@@ -1,10 +1,12 @@
 'use client';
 
+import { usePageAdd } from '@/lib/hooks/usePageAdd';
+import { useHydrated } from '@/lib/hooks/useStoredValue';
+import { CalendarSkeleton } from './CalendarSkeleton';
+import { FAMILY_COLOR } from '@/lib/constants/memberColors';
 import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { useDateLabels } from '@/lib/hooks/useDateLabels';
-import { sanitizeEventDescription } from '@/lib/utils/eventDescriptionHtml';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays, addWeeks } from 'date-fns';
 import {
   DndContext,
@@ -17,10 +19,6 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core';
 import { toast } from '@/components/ui/use-toast';
-import { ToastAction } from '@/components/ui/toast';
-import { Checkbox } from '@/components/ui/checkbox';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import {
   ChevronLeft,
   ChevronRight,
@@ -32,11 +30,12 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { contrastText } from '@/lib/utils/color';
 import { useFamily, useTimeFormat } from '@/components/providers';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { AddEventModal } from '@/components/modals';
+import { EventSheet } from '@/components/calendar/EventSheet';
+import { PersonMark } from '@/components/ui/PersonMark';
 import { ManageCalendarsModal } from './ManageCalendarsModal';
 import { PendingDeletionsModal } from './PendingDeletionsModal';
 import { usePendingDeletions } from '@/lib/hooks/usePendingDeletions';
@@ -72,9 +71,8 @@ import { TaskModal } from '@/app/tasks/TaskModal';
 import { useChoreModals } from '@/app/chores/useChoreModals';
 import type { OverlayItemRef } from '@/components/calendar/cells';
 import type { Chore, Task, Meal } from '@/types';
-import { eventStartDisplayDate, formatDisplayTime, toDisplayDate } from '@/lib/utils/timeFormat';
+import { formatDisplayTime } from '@/lib/utils/timeFormat';
 import { readResponseError } from '@/lib/utils/responseError';
-import { parseEventId } from '@/lib/utils/occurrenceId';
 
 const MEAL_TYPE_ORDER = { breakfast: 0, lunch: 1, snack: 2, dinner: 3 } as const;
 const EMPTY_EVENTS: CalendarEvent[] = [];
@@ -93,7 +91,19 @@ function sortMealsByType<T extends { mealType: 'breakfast' | 'lunch' | 'dinner' 
 // be opened directly from the calendar without yanking in all of MealsView.
 const MealModal = lazy(() => import('@/app/meals/MealsView').then(m => ({ default: m.MealModal })));
 
+/**
+ * The calendar reads its view, display mode and options from this browser's
+ * storage, which the server cannot see. So the server and the browser's first
+ * render both show the skeleton, and the calendar draws once hydrated (#479):
+ * otherwise the server drew the default view, the browser its saved one, and
+ * React threw the server's away.
+ */
 export function CalendarView() {
+  const hydrated = useHydrated();
+  return hydrated ? <CalendarViewHydrated /> : <CalendarSkeleton />;
+}
+
+function CalendarViewHydrated() {
   const t = useTranslations('calendar');
   const { activeUser, requireAuth } = useAuth();
   const { members: familyMembers } = useFamily();
@@ -120,6 +130,9 @@ export function CalendarView() {
     events, loading, error, refreshEvents,
     goToToday, goToPrevious, goToNext, getDateRangeTitle,
   } = useCalendarViewData();
+  // A spinner only while there is nothing to show: paging into the next
+  // quarter fetches its window behind the events already on screen (#1082).
+  const firstLoad = loading && events.length === 0;
 
   // Date range covered by the active view — used by useDayBucketsForRange to
   // know which days need meal/chore/task buckets prepared.
@@ -177,7 +190,7 @@ export function CalendarView() {
     if (!familyGroup) return true;
     return showAll || selectedCalendarIds.has(familyGroup.id);
   }, [familyGroup, selectedCalendarIds, showAll]);
-  const mealColor = familyGroup?.color ?? '#F59E0B';
+  const mealColor = familyGroup?.color ?? FAMILY_COLOR;
 
   // Set of family-member user IDs whose calendar pill is currently selected.
   // Used to filter chores/tasks by their `assignedTo` so the profile pills
@@ -364,6 +377,8 @@ export function CalendarView() {
     if (!user) return;
     setShowAddEvent(true);
   };
+  // On a phone the round button is this page's Add (#1028).
+  usePageAdd(t('toolbar.addEvent'), () => { void handleAddWithAuth(); });
 
   // Mobile is agenda-only.
   useEffect(() => {
@@ -444,6 +459,16 @@ export function CalendarView() {
                 overlays={overlays}
                 onOverlaysChange={setOverlays}
                 showOverlayRows={cardsMode}
+                footer={!isMobile ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowManageCalendars(true)}
+                    className="flex w-full min-h-[44px] items-center gap-2 rounded-md px-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+                    data-calendar-manage
+                  >
+                    <CalendarCog className="h-4 w-4" />{t('toolbar.manageCalendars')}
+                  </button>
+                ) : undefined}
                 onReset={() => {
                   setDisplayMode('inline');
                   setWeeksBordered(false);
@@ -454,14 +479,11 @@ export function CalendarView() {
                 }}
               />
             </div>
+            {/* One Add pill (#879), the height of the header's other
+                buttons; Manage calendars lives in the menu. */}
             {!isMobile && (
-              <Button variant="outline" size="sm" onClick={() => setShowManageCalendars(true)} className="h-9" title={t('toolbar.manageCalendars')}>
-                <CalendarCog className="h-4 w-4 mr-1" />{t('toolbar.manage')}
-              </Button>
-            )}
-            {!isMobile && (
-              <Button size="sm" onClick={handleAddWithAuth}>
-                <Plus className="h-4 w-4 mr-1" />{t('toolbar.addEvent')}
+              <Button size="sm" onClick={handleAddWithAuth} className="h-9" data-calendar-add-pill>
+                <Plus className="h-4 w-4" />{t('toolbar.addEvent')}
               </Button>
             )}
           </>}
@@ -469,29 +491,35 @@ export function CalendarView() {
 
         {!isMobile && calendarGroups.length > 0 && (
           <FilterBar>
-            <span className="text-sm text-muted-foreground shrink-0">{t('toolbar.show')}</span>
-            <Button
-              variant={selectedCalendarIds.has('all') ? 'default' : 'outline'}
-              size="sm"
+            {/* A quiet row of person dots, not filled chips (#879): a shown
+                calendar is its dot and name at full strength, a hidden one
+                fades to a ring. */}
+            <span className="text-caption text-muted-foreground shrink-0">{t('toolbar.show')}</span>
+            <button
+              type="button"
               onClick={() => toggleCalendar('all')}
-              className="h-7 text-xs"
+              aria-pressed={selectedCalendarIds.has('all')}
+              className={cn('min-h-[44px] rounded-full px-3 text-body transition-colors hover:bg-foreground/[0.06]',
+                selectedCalendarIds.has('all') ? 'text-foreground font-medium' : 'text-muted-foreground')}
+              data-calendar-filter="all"
             >
               {t('toolbar.all')}
-            </Button>
+            </button>
             {calendarGroups.map((group) => {
               const isSelected = selectedCalendarIds.has(group.id) || selectedCalendarIds.has('all');
               return (
-                <Button
+                <button
                   key={group.id}
-                  variant={isSelected ? 'default' : 'outline'}
-                  size="sm"
+                  type="button"
                   onClick={() => toggleCalendar(group.id)}
-                  className={cn('h-7 text-xs gap-1.5', isSelected && 'border-transparent')}
-                  style={isSelected ? { backgroundColor: group.color, color: contrastText(group.color) } : undefined}
+                  aria-pressed={isSelected}
+                  className={cn('flex min-h-[44px] items-center gap-2 rounded-full px-3 text-body transition-colors hover:bg-foreground/[0.06]',
+                    isSelected ? 'text-foreground' : 'text-muted-foreground')}
+                  data-calendar-filter={group.id}
                 >
-                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: isSelected ? 'rgba(255,255,255,0.55)' : group.color }} />
+                  <PersonMark color={group.color} kind={isSelected ? 'dot' : 'ring'} className={isSelected ? undefined : 'h-3 w-3 border-2 opacity-60'} />
                   {group.name}
-                </Button>
+                </button>
               );
             })}
             {(viewType === 'weekVertical' || viewType === 'day') && calendarGroups.length > 1 && (
@@ -510,7 +538,7 @@ export function CalendarView() {
         )}
 
         <div ref={swipeRef} className="flex-1 overflow-hidden p-4 min-h-0">
-          {loading && (
+          {firstLoad && (
             <div className="h-full flex items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
@@ -520,7 +548,7 @@ export function CalendarView() {
               <p className="text-destructive">{t('errors.loadFailed', { error })}</p>
             </div>
           )}
-          {!loading && !error && hasNoCalendarSources && (
+          {!firstLoad && !error && hasNoCalendarSources && (
             <EmptyState
               icon={<CalendarCog />}
               title={t('empty.title')}
@@ -533,7 +561,7 @@ export function CalendarView() {
               }
             />
           )}
-          {!loading && !error && !hasNoCalendarSources && (
+          {!firstLoad && !error && !hasNoCalendarSources && (
             <div className="h-full">
             {moveError && (
               <div className="mb-2 rounded border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -641,12 +669,12 @@ export function CalendarView() {
         </div>
 
         {selectedEvent && (
-          <EventDetailModal
+          <EventSheet
             event={selectedEvent}
             onClose={() => setSelectedEvent(null)}
             onEdit={() => { setEditingEvent(selectedEvent); setSelectedEvent(null); }}
             onDeleted={() => { setSelectedEvent(null); refreshEvents(); }}
-            canHide={activeUser?.role === 'parent'}
+            canHide={!activeUser || activeUser.role === 'parent'}
             onHiddenChange={() => { setSelectedEvent(null); refreshEvents(); }}
           />
         )}
@@ -774,162 +802,6 @@ export function CalendarView() {
   );
 }
 
-
-function EventDetailModal({ event, onClose, onEdit, onDeleted, canHide, onHiddenChange }: {
-  event: { id: string; title: string; startTime: Date; endTime: Date; allDay: boolean; color: string; location?: string; description?: string; calendarName: string; inSeries?: boolean };
-  onClose: () => void;
-  onEdit: () => void;
-  onDeleted: () => void;
-  /** Parents only (#592); the hide route refuses anyone else. */
-  canHide: boolean;
-  /** Called after a hide, and again after its Undo. */
-  onHiddenChange: () => void;
-}) {
-  const { timeFormat, displayTimezone } = useTimeFormat();
-  const t = useTranslations('calendar');
-  const tActions = useTranslations('common.actions');
-  const d = useDateLabels();
-  const { confirm, dialogProps } = useConfirmDialog();
-  const [hiding, setHiding] = useState(false);
-  // On an occurrence of a series, ticking the box first asks which to hide.
-  const [choosingScope, setChoosingScope] = useState(false);
-
-  // Hide in Prism (#592): applies at once, like the rest of the app, with an
-  // Undo in the toast. The event stays in its source calendar.
-  const handleHide = async (scope: 'event' | 'series') => {
-    setHiding(true);
-    try {
-      const response = await fetch(
-        `/api/events/${event.id}/hidden${scope === 'series' ? '?scope=series' : ''}`,
-        { method: 'PUT' },
-      );
-      if (!response.ok) {
-        const { message } = await readResponseError(response, t('errors.hideFailed'));
-        toast({ title: message, variant: 'destructive' });
-        setHiding(false);
-        return;
-      }
-      const { seriesId } = (await response.json()) as { seriesId?: string | null };
-      const undoUrl = scope === 'series' && seriesId
-        ? `/api/events/hidden-series/${seriesId}`
-        : `/api/events/${event.id}/hidden`;
-      onHiddenChange();
-      toast({
-        title: t(scope === 'series' ? 'event.hiddenSeriesToast' : 'event.hiddenToast', { title: event.title }),
-        description: t('event.hiddenToastBody'),
-        action: (
-          <ToastAction
-            altText={tActions('undo')}
-            onClick={async () => {
-              try {
-                const undo = await fetch(undoUrl, { method: 'DELETE' });
-                if (!undo.ok) throw new Error(String(undo.status));
-                onHiddenChange();
-              } catch { toast({ title: t('errors.unhideFailed'), variant: 'destructive' }); }
-            }}
-          >
-            {tActions('undo')}
-          </ToastAction>
-        ),
-      });
-    } catch {
-      toast({ title: t('errors.hideFailed'), variant: 'destructive' });
-      setHiding(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    // An occurrence of a series Prism keeps is deleted with its series.
-    const wholeSeries = parseEventId(event.id).occurrenceStart !== null;
-    const ok = await confirm(
-      t('event.deleteConfirmTitle'),
-      t(wholeSeries ? 'event.deleteSeriesConfirmBody' : 'event.deleteConfirmBody'),
-    );
-    if (!ok) return;
-    try {
-      const response = await fetch(`/api/events/${event.id}`, { method: 'DELETE' });
-      if (!response.ok) {
-        // Same reason as the save path: .json() on an HTML error page threw a
-        // parser complaint that replaced the real status.
-        const { message } = await readResponseError(response, t('errors.deleteFailed'));
-        toast({ title: message, variant: 'destructive' });
-        return;
-      }
-      onDeleted();
-    } catch { toast({ title: t('errors.deleteFailed'), variant: 'destructive' }); }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-card rounded-lg p-6 max-w-md w-full mx-4 shadow-lg border border-border" onClick={(e) => e.stopPropagation()}>
-        <div className="w-full h-2 rounded-t-lg -mt-6 -mx-6 mb-4" style={{ backgroundColor: event.color }} />
-        <h2 className="text-xl font-bold mb-2">{event.title}</h2>
-        <p className="text-sm text-muted-foreground mb-1">
-          {event.allDay
-            ? d.weekdayLongMonthDay(eventStartDisplayDate(event.startTime, true))
-            : t('dateAtTime', {
-                date: d.weekdayLongMonthDay(toDisplayDate(event.startTime, displayTimezone)),
-                time: formatDisplayTime(event.startTime, timeFormat, {}, displayTimezone),
-              })}
-        </p>
-        {event.location && <p className="text-sm text-muted-foreground mb-2">{event.location}</p>}
-        {/*
-          Descriptions arrive as HTML from Google ("<b>BOLD</b>" and the like),
-          so they are rendered rather than printed as tags. The source is an
-          external calendar, which makes it untrusted markup: see
-          sanitizeEventDescription for what survives the allowlist.
-
-          Capped in height with its own scroll: some events carry a whole
-          meeting agenda, and the modal should not grow to fit one.
-        */}
-        {event.description && (
-          <div
-            className="mb-4 max-h-40 overflow-y-auto rounded border border-border/50 bg-muted/30 px-2 py-1.5 text-sm text-foreground [&_a]:underline [&_li]:ml-4 [&_li]:list-disc [&_p]:mb-1"
-            dangerouslySetInnerHTML={{ __html: sanitizeEventDescription(event.description) }}
-          />
-        )}
-        <p className="text-xs text-muted-foreground">{event.calendarName}</p>
-        {canHide && (
-          <label className="flex items-start gap-3 mt-4 cursor-pointer">
-            <Checkbox
-              checked={hiding || choosingScope}
-              disabled={hiding}
-              onCheckedChange={(checked) => {
-                if (checked !== true) setChoosingScope(false);
-                else if (event.inSeries) setChoosingScope(true);
-                else handleHide('event');
-              }}
-            />
-            <span className="text-sm">
-              <span className="block font-medium">{t('event.hideInPrism')}</span>
-              <span className="block text-muted-foreground">{t('event.hideInPrismHint')}</span>
-            </span>
-          </label>
-        )}
-        {canHide && choosingScope && (
-          <div className="flex flex-wrap gap-2 mt-3 ml-9">
-            <Button size="sm" variant="outline" disabled={hiding} onClick={() => handleHide('event')}>
-              {t('event.hideThisEvent')}
-            </Button>
-            <Button size="sm" variant="outline" disabled={hiding} onClick={() => handleHide('series')}>
-              {t('event.hideWholeSeries')}
-            </Button>
-          </div>
-        )}
-        <div className="flex justify-between mt-6">
-          <Button variant="destructive" onClick={handleDelete}>
-            {tActions('delete')}
-          </Button>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose}>{tActions('close')}</Button>
-            <Button onClick={onEdit}>{tActions('edit')}</Button>
-          </div>
-        </div>
-      </div>
-      <ConfirmDialog {...dialogProps} />
-    </div>
-  );
-}
 
 const PRIORITY_COLORS = {
   high: '#ef4444',

@@ -40,6 +40,16 @@ export async function GET(request: NextRequest) {
     const sort = searchParams.get('sort') || 'chronological';
     const belowHd = searchParams.get('belowHd') === 'true';
     const idsOnly = searchParams.get('idsOnly') === 'true';
+    // Photos whose focal point is not found yet (#956), for the wall's pass.
+    const missingFocal = searchParams.get('missingFocal') === 'true';
+    // "On this day" (#959): photos taken on this month and day in an earlier
+    // year. The screen sends its own date, so the server's zone never decides.
+    const otdMonth = Number(searchParams.get('onThisDayMonth'));
+    const otdDay = Number(searchParams.get('onThisDayDay'));
+    const otdYear = Number(searchParams.get('onThisDayYear'));
+    const onThisDay = Number.isInteger(otdMonth) && otdMonth >= 1 && otdMonth <= 12
+      && Number.isInteger(otdDay) && otdDay >= 1 && otdDay <= 31
+      && Number.isInteger(otdYear) && otdYear > 1900;
     const limit = parseInt(searchParams.get('limit') || '50', 10);
     const offset = parseInt(searchParams.get('offset') || '0', 10);
 
@@ -47,6 +57,12 @@ export async function GET(request: NextRequest) {
       const conditions = [];
       if (sourceId) conditions.push(eq(photos.sourceId, sourceId));
       if (favorite === 'true') conditions.push(eq(photos.favorite, true));
+      if (missingFocal) conditions.push(sql`${photos.focalX} IS NULL`);
+      if (onThisDay) {
+        conditions.push(sql`EXTRACT(MONTH FROM ${photos.takenAt}) = ${otdMonth}`);
+        conditions.push(sql`EXTRACT(DAY FROM ${photos.takenAt}) = ${otdDay}`);
+        conditions.push(sql`EXTRACT(YEAR FROM ${photos.takenAt}) < ${otdYear}`);
+      }
       if (orientation) conditions.push(eq(photos.orientation, orientation as 'landscape' | 'portrait' | 'square'));
       if (usage) {
         const tag = usage.replace(/_or_all$/, '').replace(/_or_both$/, '');
@@ -109,7 +125,7 @@ export async function GET(request: NextRequest) {
 
     // Skip caching for random sort (fresh selection each time) and idsOnly
     // (different response shape, cheap single-column scan).
-    const result = sort === 'random' || idsOnly
+    const result = sort === 'random' || idsOnly || missingFocal || onThisDay
       ? await runQuery()
       : await getCached(
           `photos:${sourceId ?? 'all'}:${favorite ?? 'any'}:${usage ?? 'all'}:${orientation ?? 'any'}:${belowHd ? 'belowhd' : 'allres'}:${sort}:${limit}:${offset}`,

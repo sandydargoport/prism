@@ -49,6 +49,8 @@ describe('screensaver per dashboard', () => {
 
   it('starts a dashboard with none on the default even when opened directly', () => {
     localStorage.setItem(KEY, JSON.stringify(custom));
+    // A browser that has run since the upgrade from v1.30.1 (#1154).
+    localStorage.setItem('prism-screensaver-carried', '1');
     const layouts = data([dashboard('a', custom), dashboard('b', null)]);
     const { result } = renderHook(() => useDashboardLayout(layouts, 'b'));
     expect(result.current.ssLayout).toEqual(DEFAULT_SCREENSAVER_LAYOUT);
@@ -61,6 +63,43 @@ describe('screensaver per dashboard', () => {
     const { result } = renderHook(() => useDashboardLayout(layouts, 'a'));
     expect(result.current.ssLayout.find((w) => w.i === 'clock')).toMatchObject(custom[0]!);
     expect(stored().find((w: WidgetConfig) => w.i === 'clock')).toMatchObject(custom[0]!);
+  });
+});
+
+describe('the upgrade from v1.30.1 (#1154)', () => {
+  const fetchMock = jest.fn();
+  beforeEach(() => { fetchMock.mockReset(); global.fetch = fetchMock as unknown as typeof fetch; });
+
+  it('shows a dashboard with none of its own the arrangement this browser kept, and carries it there once', async () => {
+    localStorage.setItem(KEY, JSON.stringify(custom));
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({}) });
+    const layouts = data([dashboard('a', [{ i: 'weather', x: 0, y: 0, w: 8, h: 8, visible: true }]), dashboard('b', null)]);
+    const { result } = renderHook(() => useDashboardLayout(layouts, 'b'));
+    expect(result.current.ssLayout.find((w) => w.i === 'clock')).toMatchObject(custom[0]!);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe('/api/layouts/b');
+    expect(JSON.parse(init.body)).toMatchObject({ carryOver: true });
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    expect(localStorage.getItem('prism-screensaver-carried')).toBe('1');
+  });
+
+  it('keeps showing it, and tries again next time, when the carry is refused', async () => {
+    localStorage.setItem(KEY, JSON.stringify(custom));
+    fetchMock.mockResolvedValue({ ok: false, json: async () => ({}) });
+    const layouts = data([dashboard('a', [{ i: 'weather', x: 0, y: 0, w: 8, h: 8, visible: true }]), dashboard('b', null)]);
+    const { result } = renderHook(() => useDashboardLayout(layouts, 'b'));
+    expect(result.current.ssLayout.find((w) => w.i === 'clock')).toMatchObject(custom[0]!);
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    expect(localStorage.getItem('prism-screensaver-carried')).toBeNull();
+  });
+
+  it('carries nothing to a dashboard that rests as itself', () => {
+    localStorage.setItem(KEY, JSON.stringify(custom));
+    const calm = { ...dashboard('b', null), idleBackground: { source: 'dashboard' } } as Layout;
+    renderHook(() => useDashboardLayout(data([dashboard('a', custom), calm]), 'b'));
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(localStorage.getItem('prism-screensaver-carried')).toBe('1');
   });
 });
 

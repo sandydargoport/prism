@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAuth, requireRole } from '@/lib/auth';
 import { encrypt } from '@/lib/utils/crypto';
 import { getRedisClient } from '@/lib/cache/getRedisClient';
-import { logError } from '@/lib/utils/logError';
+import { logError, oneLine } from '@/lib/utils/logError';
 import { resolveRedirectUri } from '@/lib/integrations/resolveRedirectUri';
 import { fetchMicrosoftAccountEmail } from '@/lib/integrations/oauth-userinfo';
 
@@ -95,7 +95,8 @@ export async function GET(request: Request) {
 
     if (error) {
       const errorDescription = searchParams.get('error_description');
-      console.error('Microsoft Tasks OAuth error:', error, errorDescription);
+      // Both come from the redirect's query string: one line, never a format string.
+      console.error('%s', oneLine(`Microsoft Tasks OAuth error: ${error} ${errorDescription ?? ''}`));
       return NextResponse.redirect(
         `${BASE_URL}/settings?section=${returnSection}&error=microsoft_auth_denied${errorAnchor}`
       );

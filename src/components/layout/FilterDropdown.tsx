@@ -89,7 +89,7 @@ export function FilterDropdown({
           {icon}
           <span>{singleLabel ? `${label}: ${singleLabel}` : label}</span>
           {mode === 'multi' && activeCount > 0 && (
-            <Badge variant="default" className="ml-0.5 h-4 min-w-4 px-1 text-[10px] leading-none">
+            <Badge variant="default" className="ml-0.5 h-4 min-w-4 px-1 text-3xs leading-none">
               {activeCount}
             </Badge>
           )}

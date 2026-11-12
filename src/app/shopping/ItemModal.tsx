@@ -22,6 +22,7 @@ export function ItemModal({
   defaultCategory,
   onClose,
   onSave,
+  onDelete,
 }: {
   listId: string;
   item?: ShoppingItem;
@@ -29,6 +30,8 @@ export function ItemModal({
   defaultCategory?: ShoppingItem['category'];
   onClose: () => void;
   onSave: (item: Omit<ShoppingItem, 'id' | 'createdAt'>) => void | Promise<void>;
+  /** Editing an item: Delete sits here, behind the row's pencil (#1053). */
+  onDelete?: (id: string) => void;
 }) {
   const [name, setName] = useState(item?.name || '');
   const [selectedListId, setSelectedListId] = useState(listId);
@@ -165,6 +168,11 @@ export function ItemModal({
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
+            {item && onDelete && (
+              <Button type="button" variant="ghost" className="mr-auto text-destructive" onClick={() => onDelete(item.id)} disabled={saving} data-shopping-item-delete>
+                Delete
+              </Button>
+            )}
             <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
               Cancel
             </Button>

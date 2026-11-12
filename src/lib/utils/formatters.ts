@@ -4,6 +4,7 @@
  * formatting logic across GET, POST, and PATCH endpoints.
  */
 
+import { FAMILY_COLOR } from '@/lib/constants/memberColors';
 import { guestAuthor, type GuestKind } from '@/lib/messages/guestNotes';
 
 /**
@@ -188,7 +189,7 @@ export function formatEventRow(row: {
   if (!eventColor && row.groupColor) eventColor = row.groupColor;
   if (!eventColor && row.userColor) eventColor = row.userColor;
   if (!eventColor && row.calendarSourceColor) eventColor = row.calendarSourceColor;
-  if (!eventColor && row.calendarSourceIsFamily) eventColor = '#F59E0B';
+  if (!eventColor && row.calendarSourceIsFamily) eventColor = FAMILY_COLOR;
 
   return {
     id: row.id,
@@ -262,6 +263,11 @@ export function formatChoreRow(row: {
   lastCompleted: Date | null;
   nextDue: string | null;
   nextDueTime?: string | null;
+  timesPerDay?: number;
+  kind?: string;
+  petId?: string | null;
+  petName?: string | null;
+  petColor?: string | null;
   pointValue: number;
   requiresApproval: boolean;
   enabled: boolean;
@@ -286,6 +292,9 @@ export function formatChoreRow(row: {
     lastCompleted: row.lastCompleted?.toISOString() || null,
     nextDue: row.nextDue || null,
     nextDueTime: row.nextDueTime ?? null,
+    timesPerDay: row.timesPerDay ?? 1,
+    kind: (row.kind === 'reminder' ? 'reminder' : 'chore') as 'chore' | 'reminder',
+    pet: row.petId ? { id: row.petId, name: row.petName ?? '', color: row.petColor ?? '#888888' } : null,
     pointValue: row.pointValue,
     requiresApproval: row.requiresApproval,
     enabled: row.enabled,

@@ -64,6 +64,45 @@ describe('font role', () => {
   });
 });
 
+// Clock digits (#800): a numeral face of their own, or the theme's face.
+describe('numeral font role', () => {
+  it('sets the clock digits in the numeral role a theme names', () => {
+    expect(themeCss(theme({ font: 'sans', numeralFont: 'rounded' }))).toContain('--theme-font-numeral:var(--font-rounded)');
+  });
+
+  it('follows the theme face when no numeral role is named', () => {
+    expect(themeCss(theme({ font: 'serif' }))).toContain('--theme-font-numeral:var(--font-serif)');
+  });
+
+  it('refuses a theme whose numeral role is a family name, and never emits it', () => {
+    expect(isInstallableTheme(theme({ numeralFont: 'Comic Sans MS' } as unknown as Partial<Theme>))).toBe(false);
+    const css = themeCss(theme({ numeralFont: 'x"; } body { display: none' } as unknown as Partial<Theme>));
+    expect(css).not.toContain('display: none');
+  });
+
+  it('is the face the clock draws its digits in', () => {
+    const css = readFileSync(join(__dirname, '../../../styles/globals.css'), 'utf8');
+    expect(css).toMatch(/--font-numeral: var\(--theme-font-numeral, var\(--font-sans\)\);/);
+  });
+});
+
+// The display face (#800): Literata for the clock, the temperature and titles,
+// unless a theme names a numeral face of its own.
+describe('display face role', () => {
+  it('is Literata when the theme names no numeral face', () => {
+    expect(themeCss(theme({ font: 'sans' }))).toContain('--theme-font-display:var(--font-serif)');
+  });
+
+  it('keeps the numeral face a theme names', () => {
+    expect(themeCss(theme({ font: 'sans', numeralFont: 'mono' }))).toContain('--theme-font-display:var(--font-mono-theme), var(--font-serif)');
+  });
+
+  it('falls back to the serif face, never to the text face', () => {
+    const css = readFileSync(join(__dirname, '../../../styles/globals.css'), 'utf8');
+    expect(css).toMatch(/--font-display:\s*var\(--theme-font-display, var\(--font-serif, Literata\)\), Georgia,/);
+  });
+});
+
 describe('display modes', () => {
   it('accepts a listed option', () => {
     expect(isValidModes({ events: 'compact' })).toBe(true);
@@ -277,6 +316,6 @@ describe('the modes reach real components', () => {
     // house likes it tight". Collapsing the two would let a theme override a
     // decision the layout made about available space.
     const chip = read('src/components/calendar/cells/InlineCalendarEvent.tsx');
-    expect(chip).toContain("compact ? 'px-0.5 py-px text-[8px]'");
+    expect(chip).toContain("compact ? 'px-0.5 py-px text-4xs'");
   });
 });

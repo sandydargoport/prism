@@ -202,7 +202,7 @@ export function AddMessageModal({
                   color={currentUser.color}
                   imageUrl={currentUser.avatarUrl || undefined}
                   size="sm"
-                  className="h-6 w-6 text-[10px]"
+                  className="h-6 w-6 text-3xs"
                 />
                 <span className="font-medium">{currentUser.name}</span>
               </div>
@@ -221,7 +221,7 @@ export function AddMessageModal({
                           color={member.color}
                           imageUrl={member.avatarUrl || undefined}
                           size="sm"
-                          className="h-5 w-5 text-[10px]"
+                          className="h-5 w-5 text-3xs"
                         />
                         <span>{member.name}</span>
                       </div>
@@ -306,7 +306,7 @@ export function AddMessageModal({
                   color={selectedAuthor.color}
                   imageUrl={selectedAuthor.avatarUrl || undefined}
                   size="sm"
-                  className="h-6 w-6 text-[10px]"
+                  className="h-6 w-6 text-3xs"
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">

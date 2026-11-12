@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { sharedGet } from '@/lib/utils/sharedGet';
 
 const STORAGE_KEY = 'prism:week-starts-on';
 
@@ -27,7 +28,7 @@ export function useWeekStartsOn(): {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch('/api/settings');
+        const res = await sharedGet('/api/settings');
         if (res.ok) {
           const data = await res.json();
           const v = data.settings?.weekStartsOn;

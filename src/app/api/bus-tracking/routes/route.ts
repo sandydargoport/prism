@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
         checkpoints: validation.data.checkpoints,
         stopName: validation.data.stopName,
         schoolName: validation.data.schoolName,
+        walkMinutes: validation.data.walkMinutes,
         enabled: validation.data.enabled,
         sortOrder: validation.data.sortOrder,
       }).returning();

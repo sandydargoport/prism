@@ -1,5 +1,6 @@
 'use client';
 
+import { remoteEditHost } from '@/lib/displays/remoteEdit';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { DEFAULT_TEMPLATE } from '@/lib/constants/layoutTemplates';
 import {
@@ -7,6 +8,9 @@ import {
   saveScreensaverLayout,
   DEFAULT_SCREENSAVER_LAYOUT,
   screensaverForDashboard,
+  legacyScreensaver,
+  markScreensaverCarried,
+  owesLegacyScreensaver,
   getScreensaverPresets,
   saveScreensaverPreset,
   deleteScreensaverPreset,
@@ -46,13 +50,30 @@ export function shownIdleSource(bg: IdleBackground, half: IdleHalf): IdleSource 
  * or the sky on either half has one to edit.
  */
 export function editsIdleLayout(bg: IdleBackground): boolean {
-  return idleSources(bg).some(s => s !== 'dashboard');
+  return idleSources(bg).some(s => s !== 'dashboard' && s !== 'off');
 }
 
 /** Whether a widget stays or fades when idle: the part of a widget the Idle screen tab owns. */
 const withoutIdleTicks = (widgets: WidgetConfig[]) =>
   JSON.stringify(widgets.map(({ showWhenIdle: _ignored, ...w }) => w));
 const idleTicks = (widgets: WidgetConfig[]) => JSON.stringify(widgets.map(w => [w.i, w.showWhenIdle]));
+
+/**
+ * Offers a browser's kept screensaver to a dashboard (#1154). True when the
+ * dashboard has one now, whether this one or one saved meanwhile.
+ */
+async function carryScreensaver(id: string, widgets: WidgetConfig[]): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/layouts/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ screensaverWidgets: widgets, carryOver: true }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
 
 /** A link to the dashboard at `path` that opens it in edit mode. */
 export function editLink(path: string): string {
@@ -98,7 +119,19 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     if (bridgedLayoutId.current === activeLayout.id) return;
     bridgedLayoutId.current = activeLayout.id;
 
-    const widgets = screensaverForDashboard(activeLayout, layouts.allLayouts);
+    // The upgrade from v1.30.1 (#1154): a dashboard with no screensaver of its
+    // own showed the one this browser kept. It is read before the line below
+    // writes over it, shown, and carried onto the dashboard; the server keeps
+    // it only while the dashboard still has none. Until that works (a wall
+    // nobody signed in to cannot save) it keeps showing here, as before.
+    const legacy = remoteEditHost() ? null : legacyScreensaver();
+    const owed = owesLegacyScreensaver(activeLayout, editsIdleLayout(parseIdleBackground(activeLayout.idleBackground)), legacy);
+    const widgets = owed ? legacy : screensaverForDashboard(activeLayout, layouts.allLayouts);
+    if (owed) {
+      void carryScreensaver(activeLayout.id, legacy).then((ok) => { if (ok) markScreensaverCarried(); });
+    } else {
+      markScreensaverCarried();
+    }
     setSsLayout(widgets);
     // Also what Cancel returns to and the dot compares with, for a dashboard
     // that finishes loading after editing starts.
@@ -109,7 +142,9 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
   // Switching dashboards from the editor opens the next one with ?edit=1, and
   // it opens in edit mode once its layout has loaded. Only for a parent, so a
   // link kept past a logout or session expiry does not re-engage edit mode.
-  const resumeEditing = useUrlParam(EDIT_PARAM) === '1';
+  // The frame of a phone editing a screen is always in edit mode (#1153), a
+  // reload included.
+  const resumeEditing = useUrlParam(EDIT_PARAM) === '1' || remoteEditHost() !== null;
   const resumeKey = resumeEditing && activeLayout && activeUser?.role === 'parent'
     ? activeLayout.id
     : null;
@@ -180,17 +215,24 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
         name: name || activeLayout?.name || 'My Layout',
         widgets: editingWidgets,
         isDefault: activeLayout?.isDefault ?? true,
-        screensaverWidgets: ssLayout,
-        idleBackground: editingBackground,
         orientation: activeLayout?.orientation || 'landscape',
       };
+      // Done saves only what changed (#1162). A dashboard with no screensaver
+      // layout or background of its own keeps none until someone sets one;
+      // saving the default it was showing would pin it there for good.
+      if (activeLayout?.screensaverWidgets || JSON.stringify(ssLayout) !== JSON.stringify(preEditSs)) {
+        saveData.screensaverWidgets = ssLayout;
+      }
+      if (activeLayout?.idleBackground || !sameIdleBackground(editingBackground, savedBackground)) {
+        saveData.idleBackground = editingBackground;
+      }
       await layouts.saveLayout(saveData);
     } catch (err) {
       console.error('Failed to save layout:', err);
     } finally {
       finishEditing();
     }
-  }, [activeLayout, editingWidgets, ssLayout, editingBackground, layouts, finishEditing]);
+  }, [activeLayout, editingWidgets, ssLayout, preEditSs, editingBackground, savedBackground, layouts, finishEditing]);
 
   // Save-As supports two modes:
   //   - { id }: overwrite an existing dashboard. Preserves the target's
@@ -309,7 +351,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     idleHalf, setIdleHalf,
     // The Idle screen tab showing a screensaver layout to edit, rather than
     // the dashboard's own Stays / Fades.
-    editingScreensaver: isEditing && editTab === 'idle' && shownIdleSource(editingBackground, idleHalf) !== 'dashboard',
+    editingScreensaver: isEditing && editTab === 'idle' && !['dashboard', 'off'].includes(shownIdleSource(editingBackground, idleHalf)),
     editingBackground, setEditingBackground: setEditedBackground,
     dashboardDirty, idleDirty,
     ssLayout, ssPresets,

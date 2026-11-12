@@ -99,6 +99,15 @@ export interface CssGridDisplayProps {
   hideEmptyByDefault?: boolean;
   /** Which widgets are showing their empty state, as it changes. */
   onEmptyChange?: (emptyIds: ReadonlySet<string>) => void;
+  /**
+   * Fill the widgets in a few at a time (#1083): every card's frame at once,
+   * then their contents two by two, top-left first, each pair in its own short
+   * task, so a tap gets through while the dashboard builds. The live
+   * dashboard only; the editor and screensaver render in one go.
+   */
+  staged?: boolean;
+  /** Leave out "Hide first" widgets on a small screen and close up (#803). Live dashboard only. */
+  smallScreenDrop?: boolean;
   className?: string;
 }
 

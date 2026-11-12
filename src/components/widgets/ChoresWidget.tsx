@@ -24,6 +24,7 @@
 
 'use client';
 
+import { StatusPill } from '@/components/ui/StatusPill';
 import * as React from 'react';
 import { Emoji } from '@/components/ui/Emoji';
 import { useState, useMemo, useCallback } from 'react';
@@ -39,6 +40,7 @@ import { Button, Badge, UserAvatar } from '@/components/ui';
  */
 // Chore type imported from shared types
 import type { Chore } from '@/types';
+import { isLate, formatReminderTime } from '@/lib/utils/reminders';
 import { useLocalDateKey } from '@/lib/hooks/useLocalDateKey';
 export type { Chore };
 
@@ -265,24 +267,23 @@ function ChoreItem({
           {/* Title */}
           <span className={cn(
             'text-sm font-medium truncate',
-            isPendingApproval && 'text-warning',
             completing && 'line-through text-muted-foreground'
           )}>{chore.title}</span>
 
           {/* Points badge */}
           {chore.pointValue > 0 && (
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+            <Badge variant="secondary" className="text-3xs px-1.5 py-0">
               +{chore.pointValue}
             </Badge>
           )}
 
           {/* Pending approval badge - takes priority over "requires approval" */}
           {isPendingApproval ? (
-            <Badge variant="default" className="text-[10px] px-1.5 py-0 bg-warning hover:bg-warning">
+            <Badge variant="default" className="text-3xs px-1.5 py-0 bg-warning hover:bg-warning">
               Pending
             </Badge>
           ) : chore.requiresApproval && (
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+            <Badge variant="outline" className="text-3xs px-1.5 py-0">
               Approval
             </Badge>
           )}
@@ -297,11 +298,11 @@ function ChoreItem({
                 name={chore.pendingApproval.completedBy.name}
                 color={chore.pendingApproval.completedBy.color}
                 size="sm"
-                className="h-4 w-4 text-[8px]"
+                className="h-6 w-6 text-4xs"
               />
-              <span className="text-xs text-warning">
+              <StatusPill tone="warning">
                 Done by {chore.pendingApproval.completedBy.name}
-              </span>
+              </StatusPill>
             </div>
           )}
 
@@ -312,7 +313,7 @@ function ChoreItem({
                 name={chore.assignedTo.name}
                 color={chore.assignedTo.color}
                 size="sm"
-                className="h-4 w-4 text-[8px]"
+                className="h-6 w-6 text-4xs"
               />
               <span className="text-xs text-muted-foreground">
                 {chore.assignedTo.name}
@@ -320,24 +321,35 @@ function ChoreItem({
             </div>
           )}
 
+          {/* Who it is for, in the pet's colour (#996). */}
+          {chore.pet && (
+            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" data-chore-pet={chore.pet.name}>
+              <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: chore.pet.color }} />
+              {chore.pet.name}
+            </span>
+          )}
+
           {/* Frequency */}
           <span className="text-xs text-muted-foreground">
             {formatFrequency(chore.frequency, chore.customIntervalDays)}
           </span>
 
+          {/* Its time, and Late once that has passed (#1109). */}
+          {!isPendingApproval && chore.nextDueTime && (
+            isLate(chore, format(new Date(), 'yyyy-MM-dd'), format(new Date(), 'HH:mm'))
+              ? <span data-chore-late><StatusPill tone="danger">Late · {formatReminderTime(chore.nextDueTime)}</StatusPill></span>
+              : <span className="text-xs text-muted-foreground">{formatReminderTime(chore.nextDueTime)}</span>
+          )}
+
           {/* Due date - only show if not pending */}
           {!isPendingApproval && dueDateDisplay && (
-            <span
-              className={cn(
-                'text-xs',
-                isOverdue
-                  ? 'text-destructive font-medium'
-                  : 'text-muted-foreground'
-              )}
-            >
-              {isOverdue && <AlertCircle className="h-3 w-3 inline mr-0.5" />}
-              {dueDateDisplay}
-            </span>
+            isOverdue ? (
+              <StatusPill tone="danger" icon={<AlertCircle aria-hidden className="h-3 w-3 shrink-0" />}>
+                {dueDateDisplay}
+              </StatusPill>
+            ) : (
+              <span className="text-xs text-muted-foreground">{dueDateDisplay}</span>
+            )
           )}
         </div>
       </div>

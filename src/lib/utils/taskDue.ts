@@ -86,13 +86,15 @@ export function parseTaskDueInput(
     if (raw === null || raw === '') {
       return { ok: true, due: { dueDate: null, dueTime: null } };
     }
-    if (typeof raw !== 'string') return { ok: false, error: 'Invalid dueDate format' };
+    // A date or an ISO instant is never longer; a long string made the
+    // instant test below backtrack for seconds (CodeQL polynomial ReDoS).
+    if (typeof raw !== 'string' || raw.length > 40) return { ok: false, error: 'Invalid dueDate format' };
 
     const dateKey = /^\d{4}-\d{2}-\d{2}$/.test(raw.trim()) ? parseDateOnly(raw) : null;
     if (dateKey) {
       due.dueDate = dateKey;
     } else {
-      const instant = /T.*(Z|[+-]\d{2}:?\d{2})$/i.test(raw) ? new Date(raw) : null;
+      const instant = /^\d{4}-\d{2}-\d{2}T[\d:.]+(Z|[+-]\d{2}:?\d{2})$/i.test(raw.trim()) ? new Date(raw) : null;
       if (!instant || Number.isNaN(instant.getTime())) {
         return { ok: false, error: 'Invalid dueDate format' };
       }

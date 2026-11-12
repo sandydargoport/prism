@@ -87,6 +87,15 @@
     -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial,
     sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol,
     Noto Color Emoji;
+  /* Digits on the clock (#800). The theme's face unless a theme names a
+     numeral face of its own (--theme-font-numeral, set by applyTheme). */
+  --font-numeral: var(--theme-font-numeral, var(--font-sans));
+  /* The display face (#800): the clock, the temperature and page and sheet
+     titles. Literata, unless a theme names a numeral face of its own
+     (--theme-font-display, set by applyTheme). Everything else stays sans. */
+  --font-display:
+    var(--theme-font-display, var(--font-serif, Literata)), Georgia,
+    Times New Roman, serif;
   --font-mono:
     JetBrains Mono, Menlo, Monaco, Consolas, Liberation Mono, Courier New,
     monospace;
@@ -105,6 +114,10 @@
   --text-display--line-height: 1.1;
   --text-clock: max(calc(var(--text-floor) * var(--zoom-inv, 1)), 5rem);
   --text-clock--line-height: 1;
+  /* Prose: sentences on the wall. The title's size, regular weight, looser
+     lines (PROSE in tokens.ts). */
+  --text-prose: var(--text-title);
+  --text-prose--line-height: 1.35;
 
   /* Floored (see the text floor above). Each line height is its old rem value
      or the same ratio in em, whichever is larger: identical while the size is
@@ -143,6 +156,8 @@
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
   --animate-fade-in: fade-in 0.2s ease-out;
+  /* A clock digit sliding in when it changes (#800). */
+  --animate-digit-in: digit-in 380ms cubic-bezier(0.2, 0.8, 0.2, 1);
   --animate-slide-up: slide-up 0.2s ease-out;
   --animate-slide-down: slide-down 0.2s ease-out;
   --animate-scale-up: scale-up 0.15s ease-out;
@@ -181,6 +196,16 @@
       opacity: 0;
     }
     to {
+      opacity: 1;
+    }
+  }
+  @keyframes digit-in {
+    from {
+      transform: translateY(-0.3em);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
       opacity: 1;
     }
   }
@@ -337,9 +362,23 @@
 }
 
 /* A page that fills the screen above the portrait bottom nav. AppShell sets
-   --nav-bottom only while that nav is showing. */
+   --nav-bottom only while that nav is showing. dvh, the height actually
+   visible: in the iPhone home-screen app 100vh is taller than the screen, so
+   a page that fitted still scrolled a little into empty space (#1089). dvh
+   is still taller there, by about the status bar, so the page sizes from
+   --screen-h, the document's own height measured before the first paint
+   (#1095). vh stays as the fallback for a browser without dvh. */
 @utility h-page {
   height: calc(100vh - var(--nav-bottom, 0px));
+  height: calc(var(--screen-h, 100dvh) - var(--nav-bottom, 0px));
+}
+
+/* At least one screen tall, from the same measured height as h-page (#1095):
+   the page wrappers used min-h-screen (100vh), which in the iPhone app is
+   taller than the document and let a page that fitted scroll. */
+@utility min-h-fill {
+  min-height: 100vh;
+  min-height: var(--screen-h, 100dvh);
 }
 
 @utility center {
@@ -390,14 +429,44 @@ html.performance-mode [class*="backdrop-blur"] {
 html.performance-mode {
   --ds-glass-filter: none;
   --ds-glass-alpha: 0.94;
+  --ds-water-filter: none;
+}
+
+/* Sheet (#908, docs/DESIGN.md "Sheet"). On the wall a sheet opens on the side
+   that was touched, never in the middle over what the family was looking at:
+   the left or right third opens it on that side, the middle from the bottom.
+   Phones and desks keep the centred dialog. */
+@media (min-width: 1024px) and (pointer: coarse), (min-width: 1024px) and (pointer: none) {
+  [data-sheet][data-sheet-side="left"] {
+    left: 2rem !important; right: auto !important; top: 50% !important;
+    translate: 0 -50% !important;
+    --tw-enter-translate-x: -2rem !important; --tw-enter-translate-y: 0 !important;
+    --tw-exit-translate-x: -2rem !important; --tw-exit-translate-y: 0 !important;
+  }
+  [data-sheet][data-sheet-side="right"] {
+    left: auto !important; right: 2rem !important; top: 50% !important;
+    translate: 0 -50% !important;
+    --tw-enter-translate-x: 2rem !important; --tw-enter-translate-y: 0 !important;
+    --tw-exit-translate-x: 2rem !important; --tw-exit-translate-y: 0 !important;
+  }
+  [data-sheet][data-sheet-side="bottom"] {
+    top: auto !important; bottom: 2rem !important; left: 50% !important;
+    translate: -50% 0 !important; margin-bottom: 0 !important;
+    --tw-enter-translate-x: 0 !important; --tw-enter-translate-y: 2rem !important;
+    --tw-exit-translate-x: 0 !important; --tw-exit-translate-y: 2rem !important;
+  }
 }
 
 /* The calm idle screen (docs/DESIGN.md "Idle screen"): a glass card that stays
    goes fully clear, so the clock and weather sit straight on the photo. The
    text turns light in either mode and carries a soft dark shadow, which is
    what keeps it readable over a bright patch of sky. Inner surfaces (the hourly
-   tiles) go clear too, except a small backing a widget marks to keep. */
-.widget-cell.idle-clear {
+   tiles) go clear too, except a small backing a widget marks to keep. A grid
+   widget whose fill is set to None (transparent) is drawn the same way over a
+   photo (#803); with no photo it keeps the theme's ink. */
+.widget-cell.idle-clear,
+html[data-wallpaper] .widget-cell[data-corner][data-fill="glass"],
+html[data-wallpaper] .widget-cell[data-fill="none"] {
   --foreground: 0 0% 100%;
   --card-foreground: 0 0% 100%;
   --muted-foreground: 0 0% 90%;
@@ -407,13 +476,59 @@ html.performance-mode {
   text-shadow: var(--ds-idle-text-shadow);
 }
 /* Text kept transparent to hold a place would show as a bare shadow. */
-.widget-cell.idle-clear .text-transparent { text-shadow: none; }
-.widget-cell.idle-clear *:not([data-keep-bg]) {
+.widget-cell.idle-clear .text-transparent,
+html[data-wallpaper] .widget-cell[data-corner][data-fill="glass"] .text-transparent,
+html[data-wallpaper] .widget-cell[data-fill="none"] .text-transparent { text-shadow: none; }
+.widget-cell.idle-clear *:not([data-keep-bg]),
+html[data-wallpaper] .widget-cell[data-corner][data-fill="glass"] *:not([data-keep-bg]),
+html[data-wallpaper] .widget-cell[data-fill="none"] *:not([data-keep-bg]) {
   background-color: transparent !important;
   box-shadow: none !important;
   backdrop-filter: none !important;
 }
-.widget-cell.idle-clear svg { filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.5)); }
+.widget-cell.idle-clear svg,
+html[data-wallpaper] .widget-cell[data-corner][data-fill="glass"] svg,
+html[data-wallpaper] .widget-cell[data-fill="none"] svg { filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.5)); }
+/* The weather widget's sun arc over a photo (#672): its faint guide lines
+   wash out on a light photo, so it gets the corner tiles' soft shadow. */
+html[data-wallpaper] [data-sun-arc] { filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.55)); }
+
+/* Water (#799, docs/DESIGN.md "Water"). While a wallpaper shows, the clock and
+   weather corner tiles sit straight on the photo, awake as on the idle screen,
+   over the shade WallpaperBackground draws under them. */
+html[data-wallpaper] .widget-cell[data-corner][data-fill="glass"] {
+  background-color: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+/* Every other glass card over the photo is water: one light ink on a thin warm
+   tint, only as thick as this photo needs (--ds-water-alpha, set from the
+   photo's tone), with a little blur and a faint edge. The cell's colour tokens
+   follow the ink, so muted text and inner backings do too. */
+html[data-wallpaper] .widget-cell[data-fill="glass"]:not([data-corner]):not(.idle-clear) {
+  --foreground: 36 45% 94%;
+  --card-foreground: 36 45% 94%;
+  --popover-foreground: 36 45% 94%;
+  --muted-foreground: 36 18% 82%;
+  --background: 30 15% 6%;
+  --card: 30 15% 9%;
+  --muted: 30 10% 22%;
+  --secondary: 30 10% 22%;
+  --accent: 30 10% 24%;
+  --border: 30 8% 36%;
+  /* Events are a see-through tint of the person's colour, not a solid block
+     that hides the photo; the colour bar stays. */
+  --ds-event-ground: transparent;
+  --ds-event-tint: var(--ds-water-event-tint, 24%);
+  color: hsl(var(--foreground));
+  background-color: rgb(24 21 17 / var(--ds-water-alpha, 0.6)) !important;
+  -webkit-backdrop-filter: var(--ds-water-filter) !important;
+  backdrop-filter: var(--ds-water-filter) !important;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.1), 0 8px 24px rgb(0 0 0 / 0.28);
+}
+html.performance-mode[data-wallpaper] .widget-cell[data-fill="glass"]:not([data-corner]):not(.idle-clear) {
+  background-color: rgb(24 21 17 / var(--ds-water-alpha-reduced, 0.7)) !important;
+}
 
 @layer base {
   :root {
@@ -426,6 +541,8 @@ html.performance-mode {
     --ds-glass-alpha: 0.65;
     --ds-glass-blur: 24px;
     --ds-glass-filter: blur(var(--ds-glass-blur)) saturate(1.2);
+    --ds-water-blur: 10px;
+    --ds-water-filter: blur(var(--ds-water-blur)) saturate(1.2);
     --ds-idle-text-shadow: 0 1px 2px rgb(0 0 0 / 0.6), 0 0 16px rgb(0 0 0 / 0.45);
     --ds-event-bar: 4px;
     --ds-event-tint: 16%;
@@ -1306,6 +1423,29 @@ html[data-virtual-keyboard-open] [data-keyboard-aware-dialog] {
   [data-drift] { animation: none; }
 }
 
+/* Writing a line out left to right (TodayList's next title): a soft edge in
+   a mask slides across, so the words appear as if written. The mask is wider
+   than the text, opaque on its left half; moving it from right to left
+   uncovers the words. --write-s sets how long. */
+@keyframes prism-write {
+  from { -webkit-mask-position: 100% 0; mask-position: 100% 0; }
+  to   { -webkit-mask-position: 0 0;    mask-position: 0 0; }
+}
+[data-write] {
+  -webkit-mask-image: linear-gradient(90deg, #000 46%, transparent 54%);
+  mask-image: linear-gradient(90deg, #000 46%, transparent 54%);
+  -webkit-mask-size: 220% 100%;
+  mask-size: 220% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: 0 0;
+  mask-position: 0 0;
+  animation: prism-write var(--write-s, 3s) cubic-bezier(0.45, 0.05, 0.35, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-write] { animation: none; -webkit-mask-image: none; mask-image: none; }
+}
+
 /* A screen's schedule changing the dashboard (#692). React names each widget
    for the change (CssGridDisplay); a widget on both dashboards slides and
    resizes to its new place, slowly, each a little after the one before, and
@@ -1421,4 +1561,26 @@ html.perf-minimal .widget-cell {
 }
 .member-color-slider::-moz-range-track {
   background: transparent;
+}
+
+/* Setup wizard (#930): titles in the display face, and every button a 44px
+   target, the colour swatches included. The inline "See what's sent" link
+   and the switch keep their own size. */
+[data-setup-wizard] :is(h1, h3) {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+[data-setup-wizard] button:not([role="switch"]):not([data-inline-link]) {
+  min-height: 44px;
+}
+[data-setup-wizard] [role="group"][aria-label="Color"] > button {
+  width: 44px;
+  height: 44px;
+}
+
+/* Editing a screen from a phone (#1153): an open sheet stops short of the
+   live picture above it, so the change can be seen as it is made. */
+[data-remote-edit-root] [data-editor-sheet] {
+  max-height: var(--remote-sheet-max-h);
 }

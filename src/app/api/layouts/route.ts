@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { name, slug: requestedSlug, isDefault, widgets, screensaverWidgets, idleBackground, orientation, createdBy } = validation.data;
+    const { name, slug: requestedSlug, isDefault, widgets, screensaverWidgets, idleBackground, orientation, view, createdBy } = validation.data;
 
     const newLayout = await db.transaction(async (tx) => {
       if (isDefault) {
@@ -118,6 +118,7 @@ export async function POST(request: NextRequest) {
           screensaverWidgets: screensaverWidgets || null,
           ...(idleBackground ? { idleBackground } : {}),
           orientation: orientation || 'landscape',
+          ...(view ? { view } : {}),
           createdBy: createdBy || null,
         })
         .returning();

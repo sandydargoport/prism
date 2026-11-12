@@ -6,6 +6,7 @@ import { WIDGET_REGISTRY } from '@/components/widgets/widgetRegistry';
 import { validateCommunityLayout } from '@/lib/community/validateLayout';
 import type { LayoutExportV2, ExportWidget } from './LayoutEditorTypes';
 import { EXPORT_VERSION } from './LayoutEditorTypes';
+import { copyOrDownloadJson, slugify } from '@/lib/utils/downloadJson';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 
 interface UseLayoutEditorStateOptions {
@@ -88,12 +89,16 @@ export function useLayoutEditorState({
     const exportData = buildExportData();
     const result = validateCommunityLayout(exportData);
     if (result.warnings.length > 0) console.warn('Layout export warnings:', result.warnings);
-    navigator.clipboard.writeText(JSON.stringify(exportData, null, 2)).then(() => {
-      setExportFeedback('Copied!');
+    // Copy when the page may, else save a file (#1147). The menu closes on
+    // the click, so the result is said in a toast, not on the menu item.
+    copyOrDownloadJson(`prism-layout-${slugify(exportData.name) || 'dashboard'}.json`, exportData).then((how) => {
+      setExportFeedback(how === 'copied' ? 'Copied!' : 'Saved');
       setTimeout(() => setExportFeedback(''), 2000);
+      toast({ title: how === 'copied' ? 'Layout copied' : 'Layout saved as a file' });
     }).catch(() => {
       setExportFeedback('Failed');
       setTimeout(() => setExportFeedback(''), 2000);
+      toast({ title: 'Could not export the layout', variant: 'destructive' });
     });
     setActivePopover(null);
   }, [buildExportData, setActivePopover]);

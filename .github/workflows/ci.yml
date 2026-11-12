@@ -19,6 +19,11 @@ concurrency:
 env:
   NODE_VERSION: '24'
 
+# Read-only token: no job here writes to the repo (CodeQL
+# actions/missing-workflow-permissions).
+permissions:
+  contents: read
+
 jobs:
   typecheck-lint:
     name: Type-check & lint
@@ -172,7 +177,10 @@ jobs:
   e2e-modality:
     name: E2E modality suite (reverse-proxy)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Three suites in a row (modality, calendar geometry, screensaver); with
+    # retries of a flaky test they now run past 20 minutes and the job was
+    # cancelled mid-suite with nothing failing.
+    timeout-minutes: 35
     needs: playwright-image
 
     # Use the official Playwright container so Chromium is preinstalled.

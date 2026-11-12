@@ -188,7 +188,7 @@ export function GoogleManualTokenForm({ onSaved }: { onSaved?: () => void }) {
           {PASTEABLE.map(({ key, blurb, note }) => (
             <li key={key}>
               <strong>{GOOGLE_CAPABILITIES[key].label}</strong> &mdash; {blurb}
-              <code className="mt-0.5 block break-all text-[11px]">
+              <code className="mt-0.5 block break-all text-2xs">
                 {GOOGLE_CAPABILITIES[key].playgroundScopes.join(' ')}
               </code>
               {note ? <span className="mt-0.5 block">{note}</span> : null}

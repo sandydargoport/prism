@@ -1,47 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { PopoverButton } from './LayoutEditorPopover';
-import { CheckIcon } from './LayoutEditorIcons';
 import type { DashboardInfo } from './LayoutEditorTypes';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { editLink } from '@/components/dashboard/useDashboardLayout';
-
-const moreItemClass = 'w-full text-left px-3 py-1.5 text-sm hover:bg-accent transition-colors';
-
-export function DashboardDropdown({ layoutName, isActive, onToggle, allDashboards, currentDashboardId, onSwitchDashboard, onClose, onCreateOpen }: {
-  layoutName?: string; isActive: boolean; onToggle: () => void;
-  allDashboards: DashboardInfo[]; currentDashboardId?: string;
-  onSwitchDashboard?: (slug: string) => void; onClose: () => void; onCreateOpen: () => void;
-}) {
-  return (
-    <PopoverButton
-      label={<span className="font-medium">{layoutName || 'Untitled'}</span>}
-      isActive={isActive}
-      onToggle={onToggle}
-      width={220}
-    >
-      <div className="py-1 max-h-[40vh] overflow-auto">
-        {allDashboards.map(d => (
-          <button key={d.id} onClick={() => {
-            if (d.id !== currentDashboardId && d.slug) {
-              onSwitchDashboard?.(d.slug);
-            } else if (d.id !== currentDashboardId && d.isDefault) {
-              window.location.href = editLink('/');
-            }
-            onClose();
-          }} className={`w-full text-left px-3 py-1.5 text-sm hover:bg-accent transition-colors flex items-center gap-2 ${d.id === currentDashboardId ? 'bg-accent/50' : ''}`}>
-            <span className="flex-1 truncate">{d.name}</span>
-            {d.id === currentDashboardId && <CheckIcon />}
-            {d.isDefault && d.id !== currentDashboardId && <span className="text-[10px] text-muted-foreground">default</span>}
-          </button>
-        ))}
-        <div className="border-t border-border my-1" />
-        <button onClick={onCreateOpen} className={`${moreItemClass} text-primary`}>+ New Dashboard...</button>
-      </div>
-    </PopoverButton>
-  );
-}
 
 /**
  * Save-As picker. Lets the user save the current edit session either as a
@@ -107,10 +68,10 @@ export function SaveAsDialog({
                   >
                     <span className="flex-1 truncate">{d.name}</span>
                     {d.id === currentDashboardId && (
-                      <span className="text-[10px] text-muted-foreground">current</span>
+                      <span className="text-3xs text-muted-foreground">current</span>
                     )}
                     {d.isDefault && d.id !== currentDashboardId && (
-                      <span className="text-[10px] text-muted-foreground">default</span>
+                      <span className="text-3xs text-muted-foreground">default</span>
                     )}
                   </button>
                 ))}
@@ -172,9 +133,9 @@ export function CreateDashboardDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  onCreate: (name: string, startFrom: 'blank' | 'template' | 'copy') => void;
+  onCreate: (name: string, startFrom: 'blank' | 'template' | 'copy' | 'today') => void;
 }) {
-  const [createForm, setCreateForm] = useState({ name: '', startFrom: 'template' as 'blank' | 'template' | 'copy' });
+  const [createForm, setCreateForm] = useState({ name: '', startFrom: 'template' as 'blank' | 'template' | 'copy' | 'today' });
 
   if (!open) return null;
 
@@ -203,7 +164,8 @@ export function CreateDashboardDialog({
         </div>
         <div>
           <label className="text-xs text-muted-foreground block mb-1">Start from</label>
-          <div className="flex gap-2">
+          {/* Today is the one built-in dashboard (#1151): a new one is the family's own grid. */}
+          <div className="flex flex-wrap items-center gap-2" data-start-from>
             {([
               { value: 'template' as const, label: 'Default Template' },
               { value: 'copy' as const, label: 'Copy Current' },

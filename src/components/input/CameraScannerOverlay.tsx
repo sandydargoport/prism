@@ -217,7 +217,14 @@ export function CameraScannerOverlay({ onClose, onScan }: CameraScannerOverlayPr
                 <AlertCircle className="h-10 w-10 text-destructive" />
                 <p className="font-medium">Camera unavailable</p>
                 <p className="text-sm text-white/70">{errorMessage}</p>
-                <Button variant="secondary" onClick={handleClose} className="mt-2">Close</Button>
+                <p className="text-sm text-white/70">
+                  If the browser blocked it, allow the camera for this site in its site settings, then try again.
+                </p>
+                <div className="mt-2 flex gap-2">
+                  {/* Back to idle, which starts the camera again (#852). */}
+                  <Button onClick={stop}>Try again</Button>
+                  <Button variant="secondary" onClick={handleClose}>Close</Button>
+                </div>
               </div>
             )}
           </div>

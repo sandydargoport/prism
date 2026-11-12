@@ -24,13 +24,21 @@ screen in: the clock, then the next thing, then the rows.
 | `text-body` | 20px | 400 | List rows: a chore, a shopping item, an agenda line |
 | `text-title` | 28px | 600 | What a row is about: an event in Now/Next, a person |
 | `text-display` | 48px | 600 | The date line; one headline per screen |
-| `text-clock` | 100px | 300 | The clock, with tabular figures |
+| `text-clock` | 100px | 500 | The clock: date above, tabular figures, seconds small and dimmed |
+| `text-prose` | 28px | 400 | Sentences on the wall ("Tomorrow Alex has the dentist at 9"); the title's size, looser lines |
 
 - Nothing renders under the text floor: 14px on a touch or kiosk screen, 12px
   at a desk or on a phone, after any zoom (#798). Every class above is floored.
 - Widget names are captions, not headings. The content is the heading.
-- One family per screen (the theme's font). Weight and size make the hierarchy,
-  not colour.
+- Two faces: the text face (the theme's font, Inter by default) for everything
+  people read, and the display face (`--font-display`) for the clock, the
+  temperature and page and sheet titles. A theme that names a numeral face
+  (`numeralFont`) sets the display face with it. Weight and size make the
+  hierarchy, not colour.
+- Times are written as people say them (`formatBareTime`): "9", "5:30", and am
+  or pm only before 8 am and from 8 pm.
+- Clock digits slide in when they change (about 380ms), never on first paint,
+  and not at all under reduced motion.
 
 ## Colour
 
@@ -74,6 +82,67 @@ One material everywhere. Only the fill changes.
 - Performance Reduced drops the blur and raises the opacity; it never drops
   readability.
 - Spacing is on a 4px grid: 4, 8, 12, 16, 24, 32, 48.
+
+### Water: cards and text over a photo (#799)
+
+While a wallpaper shows (`data-wallpaper` on `<html>`), a Glass card is drawn
+as water, and the clock and weather corner tiles have no card at all.
+
+- One ink on a photo: warm near-white (247 242 234). No dark or coloured text
+  over a photo.
+- A water card is a warm near-black tint (24 21 17) with a 10px blur and a faint
+  edge. Its thickness (`--ds-water-alpha`, 0.18 to 0.60) is solved per photo so
+  the ink reaches 4.8:1 over the brightest part of it (`src/lib/design/water.ts`,
+  checked). Until the photo is read it is 0.60.
+- The corner tiles sit straight on the photo, over a shade drawn only under the
+  two top corners and the bottom, each as dark as that part needs for 4.5:1, up
+  to 0.45 (past that the text shadow carries it; a darker shade reads as fog).
+- Events on water are a see-through tint of the person's colour, so the photo
+  still shows through them.
+- Performance Reduced: no blur, and 0.10 more tint, up to 0.70.
+
+## Sheet, buttons and toasts (#908)
+
+- **Sheet**: every dialog draws one sheet: solid (the card colour in light, warm
+  near-black in dark), 1.4rem corners, generous padding, a 48px close button, a
+  display-face title, actions as pills at the bottom (52px tall in a footer). No
+  blur. On a wall (a touch screen 1024px wide or more) it opens on the side that
+  was touched: the left or right third on that side, the middle from the bottom.
+- **Buttons** are pills: filled with the ink for the one main action, a 1.5px
+  outline for a second one, plain text for "Not now". 44px or more on a touch
+  screen.
+- **Toasts** are one pill with a sentence and a text "Undo" (44px), in the top
+  band, centred; on the wall that is between the clock and the weather.
+
+## The dock (#922)
+
+One navigation component. On the wall (a landscape dashboard on a larger
+screen) a small "Menu" word sits at the bottom at rest; any touch raises the
+dock, and it goes after ten quiet seconds. It is drawn over the page, so
+nothing moves when it comes and goes.
+
+- Six pages (Home, Calendar, Chores, Shopping, Meals, Photos by default), More,
+  and Sign in or the signed-in person, each with its label; the current page as
+  a soft pill. Solid, no blur, one row at 1280x800, every target 44px or more.
+- More holds every other page, Settings and Help, and "This screen": Edit
+  layout, Reload, the performance badge, Babysitter and Away modes, Screensaver.
+- No page can be lost: `dockLayout` puts each visible page on the dock or in
+  More, never both (checked).
+- Until the household chooses, the dock is the default six, topped up when one
+  is hidden. Once it chooses, the dock is Home and exactly the ticked pages
+  that are switched on, however few; a switched-off page does not hold a place
+  (#1173). A change in Settings reaches the dock on the same screen at once
+  (#1172).
+
+## Rows and person marks (#932)
+
+- One list row (`ListRow`): at least 56px tall, no border or card of its own;
+  rows are set apart by space. A mark, the title, a quiet meta on the right.
+  Editing controls show only while the list is being managed.
+- One person mark (`PersonMark`): a dot, a ring or a bar, never a filled pill
+  with white text. Colour at two strengths (`personColor`): pastel on a photo
+  and in dark, deeper on paper, each reaching 3:1 against its ground
+  (checked). The Family calendar's default colour is coral, #FF7D68.
 
 ## Events
 

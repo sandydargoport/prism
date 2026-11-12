@@ -1,5 +1,6 @@
 'use client';
 
+import { SlidingTitle } from '@/components/calendar/cells/SlidingTitle';
 import * as React from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
@@ -11,6 +12,8 @@ export type WeekItemSize = 'xs' | 'sm' | 'md' | 'lg';
 export type WeekItemLayout = 'column' | 'row';
 
 interface WeekItemCardProps {
+  /** Extra classes on the card, such as the page-turn fade (#801). */
+  className?: string;
   variant: WeekItemVariant;
   /** Hex or CSS color used for the left stripe and (optionally) icon tint */
   stripeColor: string;
@@ -141,6 +144,7 @@ export function WeekItemCard({
   dragId,
   size = 'md',
   layout = 'column',
+  className,
 }: WeekItemCardProps) {
   const draggable = useDraggable({
     id: dragId ?? `__static__:${variant}:${title}`,
@@ -195,6 +199,7 @@ export function WeekItemCard({
           muted && 'opacity-60',
           subdued && 'opacity-55 saturate-[0.65]',
           styles.padding,
+          className,
         )}
       >
         {pendingApproval && (
@@ -208,7 +213,7 @@ export function WeekItemCard({
         )}
         <span className={cn('flex min-w-0 flex-1 items-center gap-1 text-foreground', styles.titleText, styles.titleWeight, muted && 'line-through')}>
           {showMealIcon && <UtensilsCrossed aria-hidden className="h-3 w-3 shrink-0" style={{ color: stripeColor }} />}
-          <span className="truncate">{title}</span>
+          <SlidingTitle>{title}</SlidingTitle>
         </span>
         {styles.showSubtitle && subtitle && (
           <span className={cn('shrink-0 truncate text-muted-foreground', styles.metaText)}>
@@ -243,6 +248,7 @@ export function WeekItemCard({
         draggable.isDragging && 'opacity-60 ring-2 ring-seasonal-accent shadow-xl',
         muted && 'opacity-60',
         subdued && 'opacity-55 saturate-[0.65]',
+        className,
       )}
     >
       {pendingApproval && (
@@ -258,7 +264,7 @@ export function WeekItemCard({
         )}
         <span className={cn('flex min-w-0 items-center gap-1 text-foreground', styles.titleText, styles.titleWeight, muted && 'line-through')}>
           {showMealIcon && <UtensilsCrossed aria-hidden className="h-3 w-3 shrink-0" style={{ color: stripeColor }} />}
-          <span className="truncate">{title}</span>
+          <SlidingTitle>{title}</SlidingTitle>
         </span>
         {styles.showSubtitle && subtitle && (
           <span className={cn('truncate text-muted-foreground', styles.metaText)}>

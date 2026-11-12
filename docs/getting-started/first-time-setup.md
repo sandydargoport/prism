@@ -1,62 +1,62 @@
-# First-Time Setup
+# First-time setup
 
-After [installing Prism](install.md), the first run drops you into a short, keyless setup wizard. No accounts or API keys needed to get going.
+The first time you open Prism, a short wizard helps you set up your family. You do not need an account or an API key for any of it.
 
 ## The setup wizard
 
-A fresh install boots straight into the wizard (there's no default-PIN login screen). It has six steps:
+A fresh install opens straight into the wizard, since there is no default PIN to log in with. The wizard has six steps:
 
-1. **Welcome**: a quick intro.
-2. **Family**: add each family member (name, role, avatar) and choose a **4- or 6-digit PIN** for each one.
-3. **Household**: set your location by city or ZIP/postal code (time zone is detected automatically) and pick which day your week starts on.
-4. **Calendars**: paste a calendar link (Google's secret iCal address, an iCloud public calendar, an Outlook published calendar, or a school or team feed). Add as many as you like, or skip. Two-way Google and Outlook sync is connected in Settings afterwards.
-5. **Look**: **Photo** (national park scenery behind glass cards), **Night** (the same, always dark) or **Paper** (plain warm cards, no photo). Running setup again skips this step.
-6. **Done**: you land on a dashboard that already shows your calendar, with no one needing to sign in.
+1. **Welcome** gives a short introduction.
+2. **Family** is where you add each family member with a name, role and avatar, and choose a 4- or 6-digit PIN for each one.
+3. **Household** sets your location by city or ZIP or postal code, and the day your week starts on. Prism works out the time zone from the location.
+4. **Calendars** takes calendar links: Google's secret iCal address, an iCloud public calendar, an Outlook published calendar, or a feed from a school or team. Add as many as you like, or skip the step. Two-way sync with Google and Outlook is connected later, in Settings.
+5. **Look** offers **Photo** (national park scenery behind glass cards), **Night** (the Photo look, always dark) or **Paper** (plain warm cards with no photo). If you run setup again, it skips this step.
+6. **Done** takes you to a dashboard that already shows your calendar, and nobody has to sign in to see it.
 
-Everything the wizard sets can be revisited later in Settings. The steps below cover those edit paths plus the optional extras (integrations, layout, PWA install).
+You can change anything the wizard set later, in Settings. The steps below show where, and cover the optional extras: integrations, the layout and installing Prism as an app.
 
 ## 1. Add or edit family members
 
 **Settings → Family Members → Add Member.**
 
-Each member gets a name, role (parent or child), and an avatar. Parents can approve chores, exit Away Mode, and reset goals; children get a more limited UI.
+Each member has a name, a role (parent or child) and an avatar. Parents can approve chores, exit Away Mode and reset goals. Children see fewer options.
 
 ## 2. Set PINs
 
 **Settings → Family Members** (or **Settings → Security**).
 
-Each member has their own PIN: **4 or 6 digits**, chosen per member (first in the wizard's Family step, later here). The pad auto-submits once that member's digit count is reached, so it's fast on shared devices. There is no shared family PIN and no default child PIN. Set a real PIN for everyone before exposing a deployment.
+Each member has their own PIN of 4 or 6 digits, chosen first in the wizard's Family step and changed here later. The PIN pad submits as soon as the last digit is in, which keeps sign-in quick on a shared screen. There is no shared family PIN and no default child PIN. Give everyone a real PIN before you make Prism reachable from outside your home.
 
 ## 3. Connect integrations
 
 **Settings → Integrations.**
 
-You don't need any of these to share or assign events: Prism gives every member their own personal calendar plus a shared **Family** calendar out of the box, so events are color-coded and assignable with zero third-party setup. Connected accounts layer on top of that.
+You can share and assign events without any of these. From the start, Prism gives every member a personal calendar and adds a shared **Family** calendar, so events get a colour and an owner with nothing else to set up. Accounts you connect add to that.
 
-Most families want at least:
+Most families connect at least these:
 
-- **Google Calendar**: for school, work, and shared family events. OAuth-based bidirectional sync.
-- **Weather**: Open-Meteo is the zero-config default (no API key). OpenWeatherMap and Pirate Weather are alternatives.
-- **OneDrive**: for the photo slideshow on the screensaver and the dashboard photo widget.
-- **Microsoft To Do**: if your family already uses it for tasks, shopping, or wish lists.
+- **Google Calendar** for school, work and shared family events. It syncs both ways.
+- **Weather**. Open-Meteo is the default and needs no setup or API key. OpenWeatherMap and Pirate Weather also work.
+- **OneDrive** for the photo slideshow on the screensaver and the dashboard photo widget.
+- **Microsoft To Do**, if your family already uses it for tasks, shopping or wish lists.
 
-Optional but popular:
+Many families also add these:
 
-- **[Kroger / Mariano's cart push](../features/KROGER.md)**: send your shopping list straight into your online cart for pickup or delivery.
-- **Gmail + FirstView**: school bus arrival tracking via geofence email notifications.
+- [Kroger / Mariano's cart push](../features/KROGER.md) sends your shopping list straight into your online cart for pickup or delivery.
+- Gmail with FirstView tracks when the school bus will arrive, using the emails FirstView sends when the bus passes set points on its route.
 
 ## 4. Customize the dashboard
 
-Click the **Edit** button (top right) to enter layout mode. Drag widgets, resize them on the 48-column grid, and add new ones from the widget picker. Save when you're done.
+Click the **Edit** button at the top right to start layout mode. Drag widgets around, resize them on the 48-column grid and add new ones from the widget picker, then save.
 
-Each "display" (e.g. `/d/kitchen`, `/d/bedroom`) has its own independent layout and screensaver. The default URL `/` is one of them.
+Each display (for example `/d/kitchen` or `/d/bedroom`) has its own layout and screensaver. The default address `/` counts as one of them.
 
 ## 5. Install as a PWA
 
-On phones, tablets, and even desktop Chromium, the **Install** prompt adds Prism to the home screen. It launches without browser chrome and runs offline-tolerant for already-loaded data.
+On phones, tablets and desktop Chromium, the **Install** prompt adds Prism to the home screen. It then opens without the browser's address bar and buttons, and data it has already loaded stays readable when the connection drops.
 
-On iOS Safari: Share → Add to Home Screen.
+In Safari on iOS, use **Share → Add to Home Screen**.
 
 ---
 
-Next: [updating Prism](updating.md), or jump to the [user guide](../HELP.md) for the full feature tour.
+Next, read [updating Prism](updating.md), or go to the [user guide](../HELP.md) for a tour of every feature.

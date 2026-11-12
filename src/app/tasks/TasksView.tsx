@@ -1,5 +1,6 @@
 'use client';
 
+import { usePageAdd } from '@/lib/hooks/usePageAdd';
 import { useState, useMemo } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -77,6 +78,7 @@ export function TasksView() {
     if (!user) return;
     handleAddClick();
   };
+  usePageAdd('Add task', () => { void handleAddWithAuth(); });
 
   const overflowItems: OverflowItem[] = [
     { label: 'Show Completed', checked: showCompleted, onClick: () => setShowCompleted(!showCompleted) },
@@ -141,9 +143,12 @@ export function TasksView() {
               </Button>
             )}
             <UndoButton />
-            <Button onClick={handleAddWithAuth} size="sm">
-              <Plus className="h-4 w-4 mr-1" />Add Task
-            </Button>
+            {/* On a phone the round button adds (#1028). */}
+            {!isMobile && (
+              <Button onClick={handleAddWithAuth} size="sm">
+                <Plus className="h-4 w-4 mr-1" />Add Task
+              </Button>
+            )}
           </>}
           overflow={overflowItems}
         />

@@ -1,32 +1,31 @@
-import { startOfYear, endOfYear, subYears, addYears } from 'date-fns';
+import { addMonths, endOfMonth, startOfMonth, startOfQuarter, subMonths } from 'date-fns';
 
 /**
  * Maximum events a single calendar fetch will return. Sized well above a busy
- * family's instance count across {@link getFullCalendarRange} so the window can
- * never silently truncate; the API logs a warning if a fetch ever hits it.
+ * family's instance count across a {@link getCalendarWindow}, so the window
+ * never silently truncates; the API logs a warning if a fetch ever hits it.
  */
 export const MAX_CALENDAR_EVENTS = 5000;
 
 /**
- * The date window the full calendar page fetches: from Jan 1 of last year
- * through Dec 31 two years out (~4 years, anchored to calendar-year
- * boundaries).
+ * The date window the Calendar page fetches for the date it shows (#1082):
+ * from the month before that date's quarter through six months after the
+ * quarter starts, about eight months.
  *
- * Why a wide *static* window instead of one that tracks the viewed month:
- *   - Postgres range scans over years are sub-millisecond (indexed on start
- *     time), and recurring events are stored as individual instance rows —
- *     there is no client-side recurrence expansion to blow up — so a wide
- *     window costs little.
- *   - A fixed window keeps navigation instant: paging months reuses one cached
- *     dataset instead of refetching (and flickering) on every prev/next.
- *   - It fixes the class of bug where events past a rolling horizon silently
- *     vanished from every view (#250).
+ * It used to be a fixed four years (Jan 1 last year to Dec 31 two years on),
+ * which a slow wall tablet had to parse and lay out on every visit (#1043).
+ * This keeps what that bought:
+ *   - Paging stays instant: every date in one quarter gives the same window,
+ *     so moving within it reuses one request; and since a step moves at most a
+ *     month, the window on screen already covers the next view while the next
+ *     window loads.
+ *   - Nothing past a horizon vanishes (#250): the window moves with the date
+ *     shown, and always reaches past what any view draws (a month grid's lead
+ *     week, the three-month view's last month and trailing week).
  */
-export function getFullCalendarRange(today: Date): { start: Date; end: Date } {
-  return {
-    start: startOfYear(subYears(today, 1)),
-    end: endOfYear(addYears(today, 2)),
-  };
+export function getCalendarWindow(viewDate: Date): { start: Date; end: Date } {
+  const quarter = startOfQuarter(viewDate);
+  return { start: startOfMonth(subMonths(quarter, 1)), end: endOfMonth(addMonths(quarter, 6)) };
 }
 
 const DAY_MS = 86_400_000;

@@ -1,5 +1,6 @@
 'use client';
 
+import { SlidingTitle } from '@/components/calendar/cells/SlidingTitle';
 import { eventTintStyle } from '@/lib/design/eventStyle';
 import { addDays, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -223,7 +224,7 @@ export function SpanningEventRows({
   // properties, so a bar and a chip are the same height with their text
   // starting at the same offset under any theme.
   const barMetrics = compact
-    ? 'px-0.5 py-px text-[8px]'
+    ? 'px-0.5 py-px text-4xs'
     : cards
       ? 'flex items-stretch gap-2 pr-1 text-3xs'
       : 'px-(--event-padding-x,0.25rem) py-(--event-padding-y,0.125rem) text-event font-(--event-font-weight)';
@@ -353,9 +354,14 @@ export function SpanningEventRows({
               stripe stopped short of the card's edges and the corner had
               nothing to mask.
             */}
-            <span className={cn(cards && 'min-w-0 flex-1 truncate py-0.5', cards && titleClass)}>
-              {showsLabel ? label : '\u00A0'}
-            </span>
+            {cards && showsLabel ? (
+              // Too long for its band, it slides (#901).
+              <SlidingTitle className={cn('flex-1 py-0.5', titleClass)}>{label}</SlidingTitle>
+            ) : (
+              <span className={cn(cards && 'min-w-0 flex-1 truncate py-0.5', cards && titleClass)}>
+                {showsLabel ? label : '\u00A0'}
+              </span>
+            )}
           </Tag>
         );
       })}

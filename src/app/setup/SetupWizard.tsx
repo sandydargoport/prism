@@ -52,7 +52,8 @@ export function SetupWizard({ firstRun = true }: { firstRun?: boolean }) {
   const showProgress = currentStep !== 'welcome' && currentStep !== 'complete';
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+    // The paper ground, display-face titles and 44px buttons (#930, globals.css).
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4" data-setup-wizard>
       {/* Progress bar */}
       {showProgress && (
         <div className="w-full max-w-lg mb-6">
@@ -61,8 +62,8 @@ export function SetupWizard({ firstRun = true }: { firstRun?: boolean }) {
               <div
                 key={step.id}
                 className={cn(
-                  'text-xs font-medium transition-colors',
-                  i <= contentIndex ? 'text-primary' : 'text-muted-foreground',
+                  'text-caption font-medium transition-colors',
+                  i <= contentIndex ? 'text-foreground' : 'text-muted-foreground',
                 )}
               >
                 {step.label}
@@ -71,7 +72,7 @@ export function SetupWizard({ firstRun = true }: { firstRun?: boolean }) {
           </div>
           <div className="h-1.5 bg-muted rounded-full overflow-hidden">
             <div
-              className="h-full bg-primary rounded-full transition-all duration-500"
+              className="h-full bg-foreground rounded-full transition-all duration-500"
               style={{ width: `${((contentIndex + 1) / CONTENT_STEPS.length) * 100}%` }}
             />
           </div>
@@ -85,12 +86,12 @@ export function SetupWizard({ firstRun = true }: { firstRun?: boolean }) {
         {currentStep === 'household' && <HouseholdStep onNext={goNext} onBack={goBack} />}
         {currentStep === 'calendar' && <CalendarStep onNext={goNext} onBack={goBack} />}
         {currentStep === 'look' && <LookStep onNext={goNext} onBack={goBack} />}
-        {currentStep === 'complete' && <CompleteStep />}
+        {currentStep === 'complete' && <CompleteStep firstRun={firstRun} />}
       </div>
 
       {/* Step counter */}
       {showProgress && (
-        <p className="mt-4 text-xs text-muted-foreground">
+        <p className="mt-4 text-caption text-muted-foreground">
           Step {contentIndex + 1} of {CONTENT_STEPS.length}
         </p>
       )}

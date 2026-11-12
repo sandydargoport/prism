@@ -1,0 +1,187 @@
+{% extends "main.html" %}
+
+{#
+  The site's front page (docs/index.md sets `template: home.html`).
+  The landing sections replace the docs layout on this page only; every
+  other page keeps the normal sidebar + content. Interactive bits are
+  CSS-only (radio tabs, <details>) so they keep working after Material's
+  instant navigation swaps the page in without re-running inline scripts.
+#}
+
+{% set img = base_url ~ "/demos/" %}
+
+{% block tabs %}
+  {{ super() }}
+  <div class="pl">
+
+    <section class="pl-hero">
+      <div class="pl-wrap">
+        <p class="pl-eyebrow">Self-hosted family display</p>
+        <h1 class="pl-title">Your family's day, <em>on the wall.</em></h1>
+        <p class="pl-sub">Calendars, chores, meals and shopping on one calm screen, and in every pocket. No subscription, no account. Your data stays in your house.</p>
+        <div class="pl-cta">
+          <a class="pl-btn pl-btn--primary" href="{{ base_url }}/getting-started/install/">Install Prism</a>
+          <a class="pl-btn" href="{{ base_url }}/screenshots/">See every screen</a>
+          <a class="pl-btn pl-btn--ghost" href="https://github.com/sandydargoport/prism">GitHub</a>
+        </div>
+      </div>
+      <div class="pl-shot">
+        {# Two images, not <picture>: the site's light/dark toggle sets
+           data-md-color-scheme, which a media query cannot see. #}
+        <img class="pl-hero-img pl-only-light" src="{{ img }}hero-light.png" width="2400" height="1350" alt="Prism on a wall display, a tablet and a phone">
+        <img class="pl-hero-img pl-only-dark" src="{{ img }}hero-dark.png" width="2400" height="1350" alt="Prism on a wall display, a tablet and a phone, in dark mode">
+      </div>
+      <ul class="pl-proof">
+        <li>Runs on a Raspberry Pi 4, a NAS or a mini PC</li>
+        <li>Home Assistant add-on</li>
+        <li>amd64 + arm64 images</li>
+        <li>English and German</li>
+        <li>No account, no subscription</li>
+      </ul>
+    </section>
+
+    <section class="pl-section">
+      <div class="pl-wrap">
+        <div class="pl-head">
+          <p class="pl-eyebrow">Works together</p>
+          <h2>One thing leads to the next.</h2>
+          <p>Recipes, lists, chores and calendars usually sit in separate apps. In Prism they share one household, so something you add in one place shows up wherever it is needed.</p>
+        </div>
+        <div class="pl-flows">
+          <article class="pl-flow">
+            <ol class="pl-steps"><li>Recipe</li><li>Shopping list</li><li>Grocery cart</li></ol>
+            <p>Add a recipe's ingredients to the shopping list, then send the whole list to your cart at a Kroger-family store with one tap.</p>
+            <img src="{{ img }}shopping.png" alt="The shopping list grouped by category" loading="lazy">
+          </article>
+          <article class="pl-flow">
+            <ol class="pl-steps"><li>Chore done</li><li>Points</li><li>Goal reached</li></ol>
+            <p>Kids tick off chores on the wall and a parent approves them. The points go toward a reward the kid picked.</p>
+            <img src="{{ img }}chores.png" alt="Chores with points and an approval waiting" loading="lazy">
+          </article>
+          <article class="pl-flow">
+            <ol class="pl-steps"><li>Google or iCloud</li><li>Wall</li><li>Phone</li></ol>
+            <p>The calendars you already keep show up on the wall and on everyone's phone, with each person in their own colour.</p>
+            <img src="{{ img }}calendar-week.png" alt="A week of family events in the calendar" loading="lazy">
+          </article>
+          <article class="pl-flow">
+            <ol class="pl-steps"><li>Your photos</li><li>Idle screen</li><li>Travel map</li></ol>
+            <p>When nobody is using the wall, it turns into a photo frame with the time and weather, and your trips show up as pins on a globe.</p>
+            <img src="{{ img }}travel-globe.png" alt="The travel globe with pins for visited places" loading="lazy">
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="pl-section pl-section--tint">
+      <div class="pl-wrap">
+        <div class="pl-head">
+          <p class="pl-eyebrow">A day at home</p>
+          <h2>The right thing at the right time.</h2>
+          <p>What the family needs to know changes through the day, and the same screen keeps up with it.</p>
+        </div>
+        <div class="pl-day">
+          <input type="radio" name="pl-day" id="pl-day-1" checked>
+          <input type="radio" name="pl-day" id="pl-day-2">
+          <input type="radio" name="pl-day" id="pl-day-3">
+          <div class="pl-day-tabs" role="tablist">
+            <label for="pl-day-1">Morning</label>
+            <label for="pl-day-2">After school</label>
+            <label for="pl-day-3">Evening</label>
+          </div>
+          <figure class="pl-day-panel">
+            <img src="{{ img }}day-morning.png" width="1920" height="1080" alt="The wall at 7:30 in the morning: the day's events, the weather and the next three days" loading="lazy">
+            <figcaption>7:30 am: the whole day ahead, the weather, and the next three days below.</figcaption>
+          </figure>
+          <figure class="pl-day-panel">
+            <img src="{{ img }}day-afternoon.png" width="1920" height="1080" alt="The wall at 5:40 in the afternoon: soccer practice is over and the scouts meeting is next" loading="lazy">
+            <figcaption>5:40 pm: soccer is over and fades; the scouts meeting is next.</figcaption>
+          </figure>
+          <figure class="pl-day-panel">
+            <img src="{{ img }}day-evening.png" width="1920" height="1080" alt="The wall at 8:45 in the evening: family movie night is on and tomorrow is already listed" loading="lazy">
+            <figcaption>8:45 pm: movie night is on, and tomorrow's dentist appointment is already there.</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="pl-section">
+      <div class="pl-wrap">
+        <div class="pl-head">
+          <p class="pl-eyebrow">Install</p>
+          <h2>Runs on hardware you already have.</h2>
+          <p>Prism runs as a set of Docker containers. Each of these ways takes a few minutes, so pick the one that suits your setup.</p>
+        </div>
+        <div class="pl-install md-typeset">
+          <a class="pl-card" href="{{ base_url }}/home-assistant/">
+            <h3>Home Assistant add-on</h3>
+            <p>You do not need a terminal. Add the repository in the add-on store and press Install.</p>
+          </a>
+          <a class="pl-card" href="{{ base_url }}/getting-started/install/">
+            <h3>Docker</h3>
+            <p>Pull the pre-built image onto any Linux machine, a NAS or a Raspberry Pi 4.</p>
+          </a>
+          <a class="pl-card" href="{{ base_url }}/getting-started/install/">
+            <h3>Build it yourself</h3>
+            <pre><code>git clone https://github.com/sandydargoport/prism.git
+cd prism && bash scripts/install.sh</code></pre>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section class="pl-section pl-section--tint">
+      <div class="pl-wrap pl-wrap--narrow">
+        <div class="pl-head">
+          <p class="pl-eyebrow">Before you install</p>
+          <h2>The questions people usually ask.</h2>
+        </div>
+        <div class="pl-faq">
+          <details>
+            <summary>What does it cost?</summary>
+            <p><strong>Nothing.</strong> There is no paid tier and no subscription, and you never make an account.</p>
+          </details>
+          <details>
+            <summary>Where does my family's data live?</summary>
+            <p><strong>On your own machine,</strong> in a Postgres database next to the app. You can export it from Settings &gt; Backup.</p>
+          </details>
+          <details>
+            <summary>What does it connect to?</summary>
+            <p><strong>It talks to the services you switch on</strong> (calendars, photos, weather, grocery) and makes one anonymous update check a week, which you can turn off. <a href="{{ base_url }}/features/TELEMETRY/">What it sends</a>.</p>
+          </details>
+          <details>
+            <summary>What is the licence?</summary>
+            <p><strong>Prism is free for personal and non-commercial use</strong> under PolyForm Noncommercial 1.0.0. You can run it, change it and share it; you cannot sell it or run it as a paid service.</p>
+          </details>
+          <details>
+            <summary>What if the project stops?</summary>
+            <p><strong>Your install keeps working.</strong> It does not depend on any server of ours, and your data sits in a standard database that you own.</p>
+          </details>
+          <details>
+            <summary>What screen do I need?</summary>
+            <p><strong>Anything with a web browser will do:</strong> a TV or monitor on the wall, a tablet, or a phone, where you can install it as an app.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section class="pl-section pl-close">
+      <div class="pl-wrap pl-wrap--narrow">
+        <h2>Put it on the wall this weekend.</h2>
+        <div class="pl-cta">
+          <a class="pl-btn pl-btn--primary" href="{{ base_url }}/getting-started/install/">Install Prism</a>
+          <a class="pl-btn" href="{{ base_url }}/HELP/">Read the guide</a>
+        </div>
+        <p class="pl-meta">
+          <a href="{{ base_url }}/CHANGELOG/">Changelog</a> ·
+          <a href="https://github.com/sandydargoport/prism/discussions">Discussions</a> ·
+          <a href="{{ base_url }}/credits/">Credits</a> ·
+          <a href="{{ base_url }}/traffic/">Repo traffic</a>
+        </p>
+      </div>
+    </section>
+
+  </div>
+{% endblock %}
+
+{% block site_nav %}{% endblock %}
+{% block container %}{% endblock %}

@@ -11,6 +11,7 @@ import { UserAvatar } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { useAuth, useFamily } from '@/components/providers';
 import { MemberModal } from '../components/MemberModal';
+import { PetsSection } from './PetsSection';
 import { parentCanResetPin } from '@/lib/auth/pinReset';
 import type { MemberModalSaveData } from '../components/MemberModal';
 import type { FamilyMember } from '../components/PinEditModal';
@@ -258,6 +259,9 @@ export function FamilySection() {
           );
         })}
       </div>
+
+      {/* Pets (#996): not members, but who a chore can be for. */}
+      <PetsSection />
 
       {(showAddMember || editingMember) && (
         <MemberModal
