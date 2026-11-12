@@ -234,6 +234,8 @@ export interface Theme {
   shape?: Partial<ThemeShape>;
   /** Typeface role. Absent means the default sans. */
   font?: ThemeFont;
+  /** Typeface role for clock digits (#800). Absent means the same as `font`. */
+  numeralFont?: ThemeFont;
   /** Presentation choices. Absent, or partly absent, takes the defaults. */
   modes?: Partial<ThemeModes>;
 }
@@ -334,6 +336,7 @@ export function isInstallableTheme(value: unknown): value is Theme {
     // the same render path the colours do, and a stored row is not the same
     // thing as a trusted one.
     (t.font === undefined || isValidFont(t.font)) &&
+    (t.numeralFont === undefined || isValidFont(t.numeralFont)) &&
     isValidModes(t.modes)
   );
 }

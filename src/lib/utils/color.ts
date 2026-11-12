@@ -131,3 +131,14 @@ export function hslToHex(hsl: string): string {
 
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
+
+/**
+ * A quiet version of a category or accent colour (#986): the same hue with
+ * saturation capped at 35% and lightness kept mid-range, so a small mark keeps
+ * things apart without the bright, toy-box look. Non-hex input comes back as is.
+ */
+export function mutedMark(hex: string): string {
+  if (!/^#?[0-9a-f]{6}$/i.test(hex)) return hex;
+  const [h, s, l] = hexToHslValues(hex.startsWith('#') ? hex : `#${hex}`).split(' ').map((v) => parseFloat(v));
+  return hslToHex(`${h} ${Math.min(s!, 35)}% ${Math.min(Math.max(l!, 45), 62)}%`);
+}

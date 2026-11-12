@@ -80,6 +80,10 @@ function dynamicMasks(page: Page) {
     page.locator('[data-widget="Clock"]'),
     page.locator('[data-widget="Weather"]'),
     page.locator('[data-widget="Photo"]'),
+    // The wall's Menu tab shrinks to a nub after 8 quiet seconds (#989), so a
+    // shot catches either state; expectPainted() pins its width so this mask
+    // is one size. The dock spec measures its place, size and contrast instead.
+    page.locator('[data-dock-menu]'),
   ];
 }
 
@@ -103,6 +107,8 @@ async function setClientFlags(
       localStorage.setItem('prism-perf-mode', String(p));
       // Disable auto-hide so the toolbar stays visible during screenshots.
       localStorage.setItem('prism:auto-hide-ui', 'false');
+      // The one-time new-look offer (#808) is a toast; keep it out of the shots.
+      localStorage.setItem('prism-new-look-offer-dismissed', '1');
     },
     [theme, perfMode],
   );
@@ -117,6 +123,11 @@ async function setClientFlags(
 async function expectPainted(page: Page, marker?: Locator) {
   await page.waitForFunction(() => (document.body?.innerText ?? '').trim().length > 40, null, { timeout: 30000 });
   if (marker) await expect(marker).toBeVisible({ timeout: 30000 });
+  // The Menu tab's button is 96px wide while the tab is a nub and 140px while
+  // it is full, and it shrinks after 8 quiet seconds, so how long the page took
+  // to load decided the size of its mask. Pinned on the page, not through the
+  // screenshot's `style` option: masks are placed before that style applies.
+  await page.addStyleTag({ content: '[data-dock-menu] { width: 140px !important; }' });
 }
 
 /**
@@ -435,7 +446,11 @@ test.describe('Visual regression', () => {
       await setClientFlags(page, { theme });
       await page.goto('/');
       await waitForQuiet(page);
-      await page.click('button[aria-label="Log in"]');
+      // Sign in lives on the dock (#922). On the wall the dock rests as a
+      // Menu word, so open it first when it is folded away.
+      const signIn = page.getByRole('button', { name: 'Sign in', exact: true });
+      if (!(await signIn.isVisible())) await page.locator('[data-dock-menu]').click();
+      await signIn.click();
       await page.waitForSelector('[data-testid="pin-modal"]', { timeout: 5000 });
       await page.waitForTimeout(400);
 

@@ -36,8 +36,10 @@ export function SubpageHeader({ icon, title, badge, actions, overflow }: Subpage
   const isMobile = useIsMobile();
 
   return (
-    <header className="shrink-0 border-b border-border bg-card/85 backdrop-blur-xs px-4 safe-area-top">
-      <div className={cn('flex items-center justify-between gap-2', isMobile ? 'h-11' : 'h-12 pointer-coarse:h-16')}>
+    // Solid on a phone (#1028): see-through with a blur, the title looked fuzzy over a photo.
+    <header className="shrink-0 border-b border-border bg-card px-4 safe-area-top md:bg-card/85 md:backdrop-blur-xs" data-subpage-header>
+      {/* Tall enough on a phone for its 44px buttons to sit inside it (#1034). */}
+      <div className={cn('flex items-center justify-between gap-2', isMobile ? 'h-14' : 'h-12 pointer-coarse:h-16')}>
         <div className="flex items-center gap-4 min-w-0">
           <Button variant="ghost" size="icon" asChild className="hidden md:inline-flex shrink-0">
             <Link href="/" aria-label="Back to dashboard">
@@ -46,7 +48,8 @@ export function SubpageHeader({ icon, title, badge, actions, overflow }: Subpage
           </Button>
           <div className="flex items-center gap-2 min-w-0">
             {!isMobile && icon && <span className="shrink-0 flex">{icon}</span>}
-            <h1 className={cn('font-bold truncate', isMobile ? 'text-base' : 'text-xl')}>{title}</h1>
+            {/* The page title in the display face (#923). */}
+            <h1 className={cn('font-medium truncate', isMobile ? 'text-base' : 'text-title')} style={{ fontFamily: 'var(--font-display)' }}>{title}</h1>
             {badge}
           </div>
         </div>

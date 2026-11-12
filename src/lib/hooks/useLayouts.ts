@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useFetchOnMount } from './useFetchOnMount';
 import type { IdleBackground } from '@/lib/idleBackground';
+import { sharedGet } from '@/lib/utils/sharedGet';
 
 export interface WidgetConfig {
   i: string;
@@ -28,6 +29,8 @@ export interface WidgetConfig {
    *  where it is drawn: on for the screensaver and a calm dashboard's idle
    *  screen, off for a dashboard in use. See hideWhenEmpty.ts. */
   hideWhenEmpty?: boolean;
+  /** Left out on a small screen so the rest have room (#803). See smallScreen.ts. */
+  hideOnSmallScreen?: boolean;
   settings?: Record<string, unknown>;
 }
 
@@ -41,6 +44,8 @@ export interface Layout {
   idleBackground?: IdleBackground;
   orientation: string;
   fontScale: number | null;
+  /** How it is drawn (#907): the widget grid, or Today, one scene over the photo. */
+  view?: 'grid' | 'today' | 'calendar';
   createdBy?: string;
   createdAt: string;
   updatedAt: string;
@@ -65,7 +70,7 @@ export function useLayouts(): UseLayoutsResult {
   const fetchLayouts = useCallback(async () => {
     try {
       setError(null);
-      const response = await fetch('/api/layouts');
+      const response = await sharedGet('/api/layouts');
       if (!response.ok) throw new Error('Failed to fetch layouts');
       const data = await response.json();
       // Normalize widget format: DB may store {type, position:{x,y,w,h}}

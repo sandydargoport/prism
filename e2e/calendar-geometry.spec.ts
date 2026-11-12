@@ -59,7 +59,8 @@ test.describe('calendar grid geometry', () => {
       };
       document.querySelectorAll('[data-spanning-events] > *').forEach((el) => collect(el, 'band'));
       document.querySelectorAll('[data-droppable-day] button, .relative button').forEach((el) => {
-        if (!el.closest('[data-spanning-events]')) collect(el, 'card');
+        // The person filter chips (#879) carry a dot, not a stripe: not event cards.
+        if (!el.closest('[data-spanning-events]') && !el.closest('[data-calendar-filter]')) collect(el, 'card');
       });
       return out;
     });
@@ -73,6 +74,28 @@ test.describe('calendar grid geometry', () => {
   });
 
   test('band titles and card titles start at the same offset', async ({ page }) => {
+    // Its own pair (#1102): a two-day event and a single one on its first day,
+    // tomorrow, so a cell with both is always in view. The seed's events move
+    // with the date and some days left no such cell.
+    const created: string[] = [];
+    if (HAS_TEST_DB) {
+      expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);
+      const now = new Date();
+      // 10:00 and 12:00 UTC fall on the same date in Tokyo and Chicago.
+      const day = (d: number, h: number) => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + d, h)).toISOString();
+      for (const data of [
+        { title: 'Band e2e span', startTime: day(1, 10), endTime: day(3, 10) },
+        { title: 'Band e2e card', startTime: day(1, 12), endTime: day(1, 13) },
+      ]) {
+        const res = await postEvent(page, { ...data, allDay: false, createdBy: getSeededParentId() });
+        expect(res.status()).toBe(201);
+        created.push((await res.json()).id);
+      }
+    }
+    // Tall enough that the day's card is drawn, not folded into "+N more" on a
+    // day the seed also fills. Alignment does not depend on the screen's size.
+    await page.setViewportSize({ width: 1920, height: 2400 });
+    try {
     await openCalendar(page, 'cards');
     const offsets = await page.evaluate(() => {
       const textLeft = (el: Element) => {
@@ -126,10 +149,21 @@ test.describe('calendar grid geometry', () => {
       return out;
     });
 
-    expect(offsets.length).toBeGreaterThan(0);
+    // What the page drew, so a run that finds no pair says why (#1102).
+    const seen = offsets.length ? '' : await page.evaluate(() => JSON.stringify({
+      url: location.pathname,
+      viewport: [innerWidth, innerHeight],
+      bands: [...document.querySelectorAll('[data-spanning-events]')].map((b) => (b.textContent || '').trim().slice(0, 40)).slice(0, 8),
+      ours: [...document.querySelectorAll('button')].map((b) => (b.textContent || '').trim()).filter((t) => t.includes('Band e2e')),
+      folds: document.querySelectorAll('[data-day-overflow]').length,
+    }));
+    expect(offsets.length, `no cell with both a band and a card: ${seen}`).toBeGreaterThan(0);
     const misaligned = offsets.filter(
       (o) => Math.abs((o.band as number) - (o.card as number)) > 0.5);
     expect(misaligned, `misaligned band/card pairs:\n${JSON.stringify(misaligned, null, 1)}`).toEqual([]);
+    } finally {
+      for (const id of created) await page.request.delete(`/api/events/${id}`);
+    }
   });
 
   test('a lane sits at the same height in every column of a row', async ({ page }) => {
@@ -215,10 +249,11 @@ test.describe('calendar grid geometry', () => {
  * 12px at a desk. Measured as the rendered size: computed font-size times the
  * CSS zoom in force, for every visible text node on screen.
  *
- * 3 Months is left out until its compact events are reworked (the dense views
- * part of #798); it still draws events at 8px.
+ * 3 Months is in since #894: its compact events draw at the floor and a busy
+ * day folds the rest into "+N" (see the test below). The calendar widget has no
+ * 3 Months view, so WIDGET_VIEWS does not list it.
  */
-const FLOOR_VIEWS = ['agenda', 'day', 'week', 'weekVertical', 'multiWeek', 'month'];
+const FLOOR_VIEWS = ['agenda', 'day', 'week', 'weekVertical', 'multiWeek', 'month', 'threeMonth'];
 const WIDGET_VIEWS = ['agenda', 'list', 'day', 'week', 'multiWeek2', 'month'];
 const POINTERS = [
   // Blink bitmask: none=1, fine=4. Set at launch; CDP emulation is ignored.
@@ -271,6 +306,55 @@ async function pointerPage(
   });
   const context = await browser.newContext({ viewport, baseURL: info.project.use.baseURL, timezoneId: info.project.use.timezoneId });
   return { browser, page: await context.newPage() };
+}
+
+/**
+ * Create an event, waiting out the per-user rate limit (30 a minute). Both
+ * browser projects create events for the same seeded parent at about the same
+ * time, so a run can hit the limit through no fault of the code under test.
+ */
+async function postEvent(page: Page, data: Record<string, unknown>) {
+  for (let attempt = 0; ; attempt++) {
+    const res = await page.request.post('/api/events', { data });
+    if (res.status() !== 429 || attempt >= 3) return res;
+    const wait = Number(res.headers()['retry-after'] ?? '20');
+    await page.waitForTimeout(Math.min(Math.max(wait, 1), 65) * 1000);
+  }
+}
+
+/**
+ * A day this month for a test to fill with its own events, clear of anything
+ * the seed put near it. The seed places events relative to the day it runs, so
+ * a fixed date (the 12th) collided with them some days and the busy day held
+ * more than the test made (#1102). Days far from today come first, and one is
+ * taken only if no seeded event touches that date in any zone CI uses: Tokyo's
+ * day starts at 15:00 UTC the day before, Chicago's ends at 06:00 UTC the day
+ * after. Returns the day of the month.
+ */
+async function quietDay(page: Page, now: Date): Promise<number> {
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const last = new Date(y, m + 1, 0).getDate();
+  const from = new Date(Date.UTC(y, m, 1) - 2 * 86_400_000).toISOString();
+  const to = new Date(Date.UTC(y, m, last) + 3 * 86_400_000).toISOString();
+  const res = await page.request.get(`/api/events?startDate=${from}&endDate=${to}&limit=5000`);
+  expect(res.ok(), 'premise: the events list loads').toBe(true);
+  const body = await res.json();
+  const events: Array<{ startTime: string; endTime?: string }> = body.events ?? body;
+  const busy = (d: number) => {
+    const a = Date.UTC(y, m, d - 1, 15);
+    const b = Date.UTC(y, m, d + 1, 6);
+    return events.some((e) => {
+      const s = new Date(e.startTime).getTime();
+      const t = new Date(e.endTime ?? e.startTime).getTime();
+      return s < b && t > a;
+    });
+  };
+  const today = now.getDate();
+  const days = Array.from({ length: last - 3 }, (_, i) => i + 2).sort((p, q) => Math.abs(q - today) - Math.abs(p - today));
+  const day = days.find((d) => !busy(d));
+  expect(day, 'premise: some day this month is free of seeded events').toBeDefined();
+  return day!;
 }
 
 async function openCalendarView(page: Page, view: string) {
@@ -348,6 +432,226 @@ for (const pointer of POINTERS) {
 }
 
 /**
+ * 3 Months at the floor (#894). A day cell there is about 82x145 at 1080p and
+ * 52x79 at 720p, so at 14px only a few events fit. A busy day must show what
+ * fits and fold the rest into "+N", never spill out of the cell, never scroll
+ * inside it, and never fold while there is room for another event.
+ */
+test.describe('3 Months folds a busy day', () => {
+  test('at 1080p and 720p a busy day shows "+N" and keeps every event inside its cell', async ({ playwright }, info) => {
+    test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
+    test.setTimeout(180_000);
+    const parentId = getSeededParentId();
+    // One set of events for both sizes: creating events is rate limited per user.
+    const { browser, page } = await pointerPage(playwright, info, 1, { width: 1920, height: 1080 });
+    const login = await page.request.post('/api/auth/login', { data: { userId: parentId, pin: PIN } });
+    expect(login.ok(), 'precondition: login must succeed').toBe(true);
+    // A day of the current month is always in the middle mini month. Six is
+    // more than a 1080p cell holds (four) and needs no other events that day.
+    const now = new Date();
+    const dom = await quietDay(page, now);
+    const busyDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(dom).padStart(2, '0')}`;
+    const created: string[] = [];
+    try {
+      for (let i = 0; i < 6; i++) {
+        // In UTC, 07:00-12:30 on a day is that day in every zone CI uses: the
+        // runner and server in Tokyo, the browser in Chicago or Tokyo.
+        const start = new Date(Date.UTC(now.getFullYear(), now.getMonth(), dom, 7 + i));
+        const res = await postEvent(page, {
+          title: `Busy day e2e ${i + 1}`,
+          startTime: start.toISOString(),
+          endTime: new Date(start.getTime() + 30 * 60_000).toISOString(),
+          allDay: false,
+          createdBy: parentId,
+        });
+        expect(res.status()).toBe(201);
+        created.push((await res.json()).id);
+      }
+      for (const [width, height] of [[1920, 1080], [1280, 720]] as const) {
+        await page.setViewportSize({ width, height });
+        await openCalendarView(page, 'threeMonth');
+        // Found by date, not by title: at 720p the cell shows one event, and a
+        // seeded event that sorts first (all-day, or earlier) may take that spot.
+        const day = page.locator(`[data-three-month-day="${busyDate}"]`);
+        await expect(day, `${width}x${height}: the busy day`).toHaveCount(1);
+        // The cell is drawn before its events arrive: wait for the fold, or
+        // the measurement can run on an empty day.
+        await expect(day.locator('[data-day-overflow]'), `${width}x${height}: the busy day folds`).toBeVisible();
+        const box = await day.evaluate((cell) => {
+          const r = cell.getBoundingClientRect();
+          const chips = [...cell.querySelectorAll('li button')].map((b) => b.getBoundingClientRect());
+          const trigger = cell.querySelector('[data-day-overflow]');
+          const t = trigger?.getBoundingClientRect();
+          const list = trigger?.parentElement?.parentElement?.getBoundingClientRect();
+          return {
+            label: trigger?.textContent?.trim() ?? null,
+            name: trigger?.getAttribute('aria-label') ?? null,
+            triggerFont: trigger ? parseFloat(getComputedStyle(trigger).fontSize) : 0,
+            chips: chips.length,
+            chipHeight: chips.length ? Math.max(...chips.map((c) => c.height)) : 0,
+            spill: [...chips, ...(t ? [t] : [])].filter((c) => c.bottom > r.bottom + 0.5 || c.right > r.right + 0.5).length,
+            free: t && list ? list.bottom - t.bottom : 0,
+          };
+        });
+        const at = `${width}x${height}`;
+        expect(box.label, `${at}: a busy day folds into +N`).toMatch(/^\+\d+$/);
+        expect(box.name, `${at}: the short label keeps its full accessible name`).toMatch(/\d/);
+        expect(box.triggerFont, `${at}: +N at the floor`).toBeGreaterThanOrEqual(13.95);
+        expect(box.spill, `${at}: nothing drawn past the cell`).toBe(0);
+        // Shown plus folded is every event that day (6 added, plus any seeded).
+        expect(box.chips + Number(box.label!.slice(1))).toBeGreaterThanOrEqual(6);
+        // Folding only when out of room: the space left under the trigger is
+        // less than one more event would need.
+        if (box.chips > 0) expect(box.free, `${at}: folded with room to spare`).toBeLessThan(box.chipHeight);
+      }
+    } finally {
+      for (const id of created) await page.request.delete(`/api/events/${id}`);
+      await browser.close();
+    }
+  });
+});
+
+/**
+ * Busy days page on the wall (#801). On a dashboard calendar widget at wall
+ * width, a day with more events than fit shows a page of them with a "1/N"
+ * label and turns the page every 8 seconds, so every event gets on screen
+ * without anyone tapping. Checked in both display modes, since inline is the
+ * widget's default and cards is the other. The Calendar page keeps "+N more".
+ */
+test.describe('busy days page on the wall', () => {
+  test('a busy day in the widget pages through every event; the Calendar page still folds', async ({ playwright }, info) => {
+    test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
+    test.setTimeout(240_000);
+    const parentId = getSeededParentId();
+    const { browser, page } = await pointerPage(playwright, info, 1, { width: 1920, height: 1080 });
+    const login = await page.request.post('/api/auth/login', { data: { userId: parentId, pin: PIN } });
+    expect(login.ok(), 'precondition: login must succeed').toBe(true);
+    // A day of the current month is always in the month grid. Each project
+    // runs in parallel against one database, so the titles carry its name.
+    const now = new Date();
+    const dom = await quietDay(page, now);
+    const busyDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(dom).padStart(2, '0')}`;
+    const tag = info.project.name;
+    // Five: more than a 1080p day holds in either mode (two inline, three as
+    // cards), so it pages, and few enough to stay clear of the rate limit.
+    const titles = Array.from({ length: 5 }, (_, i) => `Paged e2e ${tag} ${i + 1}`);
+    const created: string[] = [];
+    const layout = await (await page.request.post('/api/layouts', {
+      data: { name: `Paging e2e ${Date.now()}`, widgets: [{ i: 'calendar', x: 0, y: 0, w: 32, h: 32 }] },
+    })).json();
+    try {
+      for (const [i, title] of titles.entries()) {
+        // 06:00-10:30 UTC on a day is that day in every zone CI uses (Tokyo, Chicago).
+        const start = new Date(Date.UTC(now.getFullYear(), now.getMonth(), dom, 6 + i));
+        const res = await postEvent(page, { title, startTime: start.toISOString(), endTime: new Date(start.getTime() + 30 * 60_000).toISOString(), allDay: false, createdBy: parentId });
+        expect(res.status()).toBe(201);
+        created.push((await res.json()).id);
+      }
+      await page.clock.install({ time: now });
+      for (const mode of ['inline', 'cards'] as const) {
+        await page.addInitScript((m) => {
+          localStorage.setItem('prism-calendar-view', 'month');
+          localStorage.setItem('prism-calendar-display-mode', m);
+        }, mode);
+        // Every request settled before the pages are counted: a meal or a chore
+        // for that day arriving later added a page mid-test (#1102).
+        await page.goto(`/d/${layout.slug}`);
+        await waitForQuiet(page);
+        const day = page.locator(`.widget-cell[data-widget="calendar"] [data-month-day="${busyDate}"]`);
+        const label = day.locator('[data-day-page]');
+        await expect(label, `${mode}: the busy day pages`).toHaveAttribute('data-day-page', /^1\/\d+$/, { timeout: 60_000 });
+        const pages = Number((await label.getAttribute('data-day-page'))!.split('/')[1]);
+        expect(pages, `${mode}: more than one page`).toBeGreaterThan(1);
+        const seen = new Set<string>();
+        for (let p = 1; p <= pages; p++) {
+          await expect(label, `${mode}: page ${p}`).toHaveAttribute('data-day-page', `${p}/${pages}`);
+          const shot = await day.evaluate((cell) => {
+            const r = cell.getBoundingClientRect();
+            const rows = [...cell.querySelectorAll('button')].filter((b) => /Paged e2e/.test(b.textContent ?? ''));
+            return {
+              titles: rows.map((b) => (b.textContent ?? '').replace(/^.*?(Paged e2e)/, '$1').trim()),
+              spill: rows.filter((b) => { const x = b.getBoundingClientRect(); return x.bottom > r.bottom + 0.5 || x.right > r.right + 0.5; }).length,
+            };
+          });
+          expect(shot.spill, `${mode} page ${p}: nothing drawn past the cell`).toBe(0);
+          for (const t of shot.titles) seen.add(t);
+          await page.clock.runFor(8_000);
+        }
+        expect(await label.getAttribute('data-day-page'), `${mode}: wraps to the first page`).toBe(`1/${pages}`);
+        for (const t of titles) expect([...seen].some((s) => s.startsWith(t)), `${mode}: "${t}" was on a page`).toBe(true);
+      }
+      // The Calendar page keeps "+N more": tapping is quicker there.
+      await openCalendarView(page, 'month');
+      const pageDay = page.locator(`[data-month-day="${busyDate}"]`);
+      await expect(pageDay.locator('[data-day-overflow]')).toBeVisible();
+      await expect(pageDay.locator('[data-day-page]')).toHaveCount(0);
+    } finally {
+      for (const id of created) await page.request.delete(`/api/events/${id}`);
+      await page.request.delete(`/api/layouts/${layout.id}`);
+      await browser.close();
+    }
+  });
+});
+
+/**
+ * Now & Next (#806). The page clock is fixed at 12:00 UTC on a far date, and
+ * the events sit around it, so "today" is one day in any zone CI uses (UTC,
+ * Chicago) and the countdown is exact. Measured on a wall screen at 1080p:
+ * the lines say what is on and what is next, nothing is under the floor and
+ * nothing is drawn outside the widget.
+ */
+test.describe('Now & Next widget', () => {
+  test('shows the event in progress, the next one with its countdown, at the floor', async ({ playwright }, info) => {
+    test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
+    test.setTimeout(120_000);
+    const { browser, page } = await pointerPage(playwright, info, 1, { width: 1920, height: 1080 });
+    const parentId = getSeededParentId();
+    const login = await page.request.post('/api/auth/login', { data: { userId: parentId, pin: PIN } });
+    expect(login.ok(), 'precondition: login must succeed').toBe(true);
+    const T = new Date('2028-03-15T12:00:00Z');
+    const at = (min: number) => new Date(T.getTime() + min * 60_000).toISOString();
+    const created: string[] = [];
+    // Each project runs in parallel against one database: own titles.
+    const tag = `${info.project.name} ${Date.now()}`;
+    const nowTitle = `Now e2e lesson ${tag}`;
+    const nextTitle = `Next e2e practice ${tag}`;
+    const layout = await (await page.request.post('/api/layouts', {
+      data: { name: `Now next e2e ${Date.now()}`, widgets: [{ i: 'nowNext', x: 0, y: 0, w: 24, h: 8 }] },
+    })).json();
+    try {
+      for (const [title, start, end] of [[nowTitle, -20, 40], [nextTitle, 90, 150]] as const) {
+        const res = await postEvent(page, { title, startTime: at(start), endTime: at(end), allDay: false, createdBy: parentId });
+        expect(res.status()).toBe(201);
+        created.push((await res.json()).id);
+      }
+      await page.clock.setFixedTime(T);
+      await page.goto(`/d/${layout.slug}`, { waitUntil: 'load' });
+      const cell = page.locator('.widget-cell[data-widget="nowNext"]');
+      await expect(cell.locator('[data-now-next="now"]', { hasText: nowTitle })).toBeVisible({ timeout: 60_000 });
+      // The other project's events can be on too; the next one is still ours
+      // or its twin, both 90 minutes out.
+      await expect(cell.locator('[data-now-next="next"]')).toContainText('Next e2e practice');
+      await expect(cell.locator('[data-now-next="next"]')).toContainText('in 1 h 30 min');
+      const { count, under } = await textUnder(page, 14, '.widget-cell[data-widget="nowNext"]');
+      expect(count).toBeGreaterThan(3);
+      expect(under, 'Now & Next text under 14px').toEqual([]);
+      const spill = await cell.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return [...el.querySelectorAll('[data-now-next]')].filter((l) => {
+          const b = l.getBoundingClientRect();
+          return b.bottom > r.bottom + 0.5 || b.right > r.right + 0.5;
+        }).length;
+      });
+      expect(spill, 'lines drawn outside the widget').toBe(0);
+    } finally {
+      for (const id of created) await page.request.delete(`/api/events/${id}`);
+      await page.request.delete(`/api/layouts/${layout.id}`);
+      await browser.close();
+    }
+  });
+});
+
+/**
  * The clock fits its tile (#808 hero). A tablet is a touch screen at 1180px, so
  * it gets the 20px wall root; at that size "4:10 PM" in a small tile wrapped
  * onto two lines and the date ran out of the box. The clock now sizes from its
@@ -386,14 +690,18 @@ test.describe('clock fits its tile', () => {
         expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches), 'premise: coarse pointer').toBe(true);
         const m = await cell.evaluate((el) => {
           const box = el.getBoundingClientRect();
-          const [time, date] = Array.from(el.querySelectorAll('time'), (t) => {
+          const [time, date] = (['[data-clock-time]', '[data-clock-date]'] as const).map((sel) => {
+            const t = el.querySelector(sel)!;
             const r = t.getBoundingClientRect();
             const cs = getComputedStyle(t);
-            return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, height: r.height, line: parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2 };
+            return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, height: r.height, line: parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2, weight: cs.fontWeight };
           });
           return { box: { left: box.left, right: box.right, top: box.top, bottom: box.bottom }, time: time!, date: date! };
         });
         expect(m.time.height, 'time is one line').toBeLessThan(m.time.line * 1.5);
+        // A lock screen (#800): the date sits above the time, which is medium weight.
+        expect(m.date.bottom, 'date above the time').toBeLessThanOrEqual(m.time.top + 0.5);
+        expect(m.time.weight, 'time at medium weight').toBe('500');
         for (const [name, r] of [['time', m.time], ['date', m.date]] as const) {
           expect(r.left, `${name} inside on the left`).toBeGreaterThanOrEqual(m.box.left - 0.5);
           expect(r.right, `${name} inside on the right`).toBeLessThanOrEqual(m.box.right + 0.5);

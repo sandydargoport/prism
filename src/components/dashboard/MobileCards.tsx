@@ -352,7 +352,7 @@ export function BusTrackingCard({ routes, live, provider }: {
           <span className="text-xs font-medium truncate block">{live.routeLabel}</span>
           <div className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full shrink-0 bg-amber-500" />
-            <LiveBusSummary track={live} className="text-[11px] text-muted-foreground" />
+            <LiveBusSummary track={live} className="text-2xs text-muted-foreground" />
           </div>
         </div>
       </CardShell>
@@ -380,15 +380,15 @@ export function BusTrackingCard({ routes, live, provider }: {
             <div key={r.id} className="space-y-0.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium truncate">{r.label}</span>
-                <span className="text-[11px] text-muted-foreground shrink-0 ml-2">{r.scheduledTime}</span>
+                <span className="text-2xs text-muted-foreground shrink-0 ml-2">{r.scheduledTime}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className={`w-2 h-2 rounded-full shrink-0 ${busStatusColor(r.prediction)}`} />
-                <span className="text-[11px] text-muted-foreground">{busStatusText(r.prediction)}</span>
+                <span className="text-2xs text-muted-foreground">{busStatusText(r.prediction)}</span>
               </div>
               {r.prediction.lastCheckpointName && r.prediction.minutesSinceLastCheckpoint != null &&
                 r.prediction.status === 'in_transit' && (
-                <p className="text-[10px] text-muted-foreground/70 pl-3.5">
+                <p className="text-3xs text-muted-foreground/70 pl-3.5">
                   Last: {r.prediction.lastCheckpointName} ({r.prediction.minutesSinceLastCheckpoint}m ago)
                 </p>
               )}

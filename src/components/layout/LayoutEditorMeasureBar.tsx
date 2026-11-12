@@ -33,7 +33,7 @@ export function LayoutEditorMeasureBar({ measureHideNav, onToggleNav, onExit }: 
         >
           Exit Preview
         </button>
-        <span className="text-[10px] text-muted-foreground hidden sm:inline">Ctrl+Shift+M</span>
+        <span className="text-3xs text-muted-foreground hidden sm:inline">Ctrl+Shift+M</span>
       </div>
     </div>
   );

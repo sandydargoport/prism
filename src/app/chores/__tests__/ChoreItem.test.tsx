@@ -46,4 +46,21 @@ describe('Chores page list row', () => {
     fireEvent.click(screen.getByText('Water the plants'));
     expect(h.onComplete).not.toHaveBeenCalled();
   });
+
+  // #891: a status word sits on its own solid fill. Coloured text alone was
+  // unreadable over glass, where the photo behind decides the contrast.
+  it('shows an overdue chore as a red status pill, title in the normal colour', () => {
+    renderItem({ nextDue: '2020-01-01' });
+    const pill = document.querySelector('[data-status-pill="danger"]');
+    expect(pill).not.toBeNull();
+    expect(pill!.className).toContain('bg-destructive');
+    expect(screen.getByText('Water the plants').className).not.toMatch(/text-(destructive|warning)/);
+  });
+
+  it('shows who completed a chore awaiting approval as an amber status pill', () => {
+    renderItem({ pendingApproval: { id: 'p1', completedBy: { id: 'u1', name: 'Robin', color: '#3B82F6' }, completedAt: '2026-09-28' } } as unknown as Partial<Chore>);
+    const pill = document.querySelector('[data-status-pill="warning"]');
+    expect(pill?.textContent).toContain('Completed by Robin');
+    expect(screen.getByText('Water the plants').className).not.toMatch(/text-(destructive|warning)/);
+  });
 });

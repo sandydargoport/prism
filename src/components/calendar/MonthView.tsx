@@ -22,7 +22,8 @@ import { DAYS_SHORT_ARRAY } from '@/lib/constants/days';
 import { useDateLabels } from '@/lib/hooks/useDateLabels';
 import type { CalendarEvent } from '@/types/calendar';
 import { seasonalPalettes } from '@/lib/themes/seasonalThemes';
-import { CardHeightProbe, DayOverflowPopover, DroppableOverlayCell, InlineCalendarEvent, SpanningEventRows, useDayDroppable, type OverlayItemRef } from './cells';
+import { splitDay, useDayPageTick, useDayPagingEnabled } from '@/lib/hooks/useDayPaging';
+import { CardHeightProbe, ChipProbe, DayEventList, DayOverflowPopover, DroppableOverlayCell, useChipMetrics, type ChipMetrics, SpanningEventRows, useDayDroppable, type OverlayItemRef } from './cells';
 import { useCardCapacity } from '@/lib/hooks/useCardCapacity';
 import type { DayBucket } from '@/lib/hooks/useWeekViewData';
 import { useTimeFormat } from '@/components/providers';
@@ -71,6 +72,7 @@ export function MonthView({
   const cards = displayMode === 'cards';
   const { weekStartsOn } = useWeekStartsOn();
   const [cardHeight, setCardHeight] = React.useState<number | undefined>(undefined);
+  const [chip, onChip] = useChipMetrics();
   const bgOverride = useWidgetBgOverride();
   const transparentMode = bgOverride?.hasCustomBg === true;
   const cellBg = bgOverride?.cellBackgroundColor;
@@ -119,6 +121,7 @@ export function MonthView({
   return (
     <div className="h-full min-h-0 flex flex-col overflow-hidden">
       {cards && <CardHeightProbe size="xs" onMeasure={setCardHeight} />}
+      {!cards && <ChipProbe onMeasure={onChip} />}
       {showMonthHeader && (
         <div
           className="shrink-0 text-center py-1 font-semibold text-sm text-white rounded-t-md shadow-xs"
@@ -185,6 +188,7 @@ export function MonthView({
               cards={cards}
               enableDnd={enableDnd}
               cardHeight={cardHeight}
+              chip={chip}
               currentDate={currentDate}
               isPast={isPast}
               transparentMode={transparentMode}
@@ -214,6 +218,7 @@ function MonthDayCell({
   cards,
   enableDnd,
   cardHeight,
+  chip,
   currentDate,
   isPast,
   transparentMode,
@@ -230,6 +235,7 @@ function MonthDayCell({
   cards: boolean;
   enableDnd: boolean;
   cardHeight: number | undefined;
+  chip: ChipMetrics | undefined;
   currentDate: Date;
   isPast: boolean;
   transparentMode: boolean;
@@ -247,6 +253,7 @@ function MonthDayCell({
     <div
       ref={cards && enableDnd ? droppable.setNodeRef : undefined}
       data-droppable-day={cards && enableDnd ? droppable.droppableId : undefined}
+      data-month-day={format(date, 'yyyy-MM-dd')}
       onClick={() => onDateClick(date)}
       className={cn(
         'relative cursor-pointer overflow-visible',
@@ -258,12 +265,12 @@ function MonthDayCell({
     >
       <div className="flex shrink-0 items-center justify-center h-(--daynum-row)">
         <span className={cn(
-          'inline-flex items-center justify-center rounded-full px-1 font-medium',
+          'inline-flex items-center justify-center rounded-full px-1',
           'h-(--daynum-box) min-w-(--daynum-box) text-daynum',
-          today && 'bg-primary font-bold text-primary-foreground',
+          today && 'bg-foreground text-background',
           !today && isPast && 'text-muted-foreground',
           !today && !isSameMonth(date, currentDate) && 'text-muted-foreground/55',
-        )}>
+        )} style={{ fontFamily: 'var(--font-display)' }} data-month-daynum data-today={today || undefined}>
           {format(date, 'd')}
         </span>
       </div>
@@ -287,15 +294,16 @@ function MonthDayCell({
           onItemClick={onItemClick}
         />
       ) : (
-        // Row gap follows the theme's events mode; the fallback is the
-        // 0.125rem that space-y-0.5 used to hard-code.
-        <ul className="flex-1 overflow-y-auto list-none m-0 px-1 pb-1 pt-0 flex flex-col gap-(--event-gap,0.125rem)">
-          {dayEvents.map((event) => (
-            <li key={event.id}>
-              <InlineCalendarEvent event={event} onClick={onEventClick} />
-            </li>
-          ))}
-        </ul>
+        // What fits, then "+N more", or on a wall the day pages (#801). It
+        // used to scroll inside the cell, which nobody can do on a wall.
+        <DayEventList
+          date={date}
+          events={dayEvents}
+          chip={chip}
+          onEventClick={onEventClick}
+          className="px-1 pb-1"
+          triggerClassName="min-h-0 py-px leading-tight"
+        />
       )}
     </div>
   );
@@ -342,16 +350,11 @@ function DayCardsCell({
 
   // If every event fits without a popover, show all. Otherwise reserve the
   // last visible slot for the popover trigger so overflow is always explicit
-  // and never clipped by the cell's overflow:hidden.
-  let visibleCount: number;
-  if (events.length <= noOverflowFit) {
-    visibleCount = events.length;
-  } else {
-    visibleCount = overflowFit;
-  }
-
-  const visible = events.slice(0, Math.max(0, visibleCount));
-  const hidden = events.slice(visible.length);
+  // and never clipped by the cell's overflow:hidden. On the wall the day pages
+  // through its events instead (#801).
+  const paging = useDayPagingEnabled();
+  const tick = useDayPageTick(paging);
+  const { shown: visible, rest: hidden, page } = splitDay(events, noOverflowFit, overflowFit, paging, tick);
 
   return (
     <div
@@ -360,13 +363,15 @@ function DayCardsCell({
     >
       {visible.map((event) => (
         <button
-          key={event.id}
+          // Keyed by page too, so a turned page fades in rather than swapping.
+          key={page ? `${event.id}:${page.index}` : event.id}
           onClick={(e) => {
             e.stopPropagation();
             onEventClick(event);
           }}
           className={cn(
             'w-full text-left text-3xs px-1 py-0.5 rounded-md bg-card/85 backdrop-blur-xs border border-border/40 shadow-xs truncate hover:bg-card transition-colors leading-tight',
+            page && 'motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500',
             isCalendarEventPast(
               event.startTime,
               event.endTime,
@@ -382,7 +387,7 @@ function DayCardsCell({
       ))}
       {hidden.length > 0 && (
         <div onClick={(e) => e.stopPropagation()}>
-          <DayOverflowPopover date={date} hiddenEvents={hidden} onEventClick={onEventClick} />
+          <DayOverflowPopover date={date} hiddenEvents={hidden} onEventClick={onEventClick} page={page} />
         </div>
       )}
       {/* Meals/chores/tasks overlay floats to the bottom of the cell, inside a

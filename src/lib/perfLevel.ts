@@ -52,10 +52,20 @@ export function autoLevelFrom(raw: string | null): PerfLevel {
   return isLevel(raw) ? raw : 'full';
 }
 
-/** The level a screen runs at, from its two stored strings. */
-export function levelFrom(modeRaw: string | null, autoRaw: string | null): PerfLevel {
+/**
+ * The system settings that ask a screen for less (#1084): "Reduce
+ * transparency", and "Remove animations" / "Reduce motion", which is the one
+ * an Android tablet offers. In Auto, either makes the screen run at least at
+ * reduced; a level chosen by hand is left alone.
+ */
+export const SYSTEM_LESS_QUERY = '(prefers-reduced-transparency: reduce), (prefers-reduced-motion: reduce)';
+
+/** The level a screen runs at, from its two stored strings and the system's ask. */
+export function levelFrom(modeRaw: string | null, autoRaw: string | null, systemAsksLess = false): PerfLevel {
   const mode = modeFrom(modeRaw);
-  return mode === 'auto' ? autoLevelFrom(autoRaw) : mode;
+  if (mode !== 'auto') return mode;
+  const measured = autoLevelFrom(autoRaw);
+  return systemAsksLess && measured === 'full' ? 'reduced' : measured;
 }
 
 /**
@@ -65,6 +75,7 @@ export function levelFrom(modeRaw: string | null, autoRaw: string | null): PerfL
 export const PERF_CLASS_SCRIPT =
   `var p=localStorage.getItem('${PERF_MODE_KEY}');` +
   `if(p==='true')p='reduced';else if(p==='false')p='full';` +
-  `else if(p!=='full'&&p!=='reduced'&&p!=='minimal')p=localStorage.getItem('${PERF_AUTO_LEVEL_KEY}');` +
+  `else if(p!=='full'&&p!=='reduced'&&p!=='minimal'){p=localStorage.getItem('${PERF_AUTO_LEVEL_KEY}');` +
+  `if(p!=='reduced'&&p!=='minimal'&&window.matchMedia&&matchMedia('${SYSTEM_LESS_QUERY}').matches)p='reduced';}` +
   `if(p==='reduced'||p==='minimal')document.documentElement.classList.add('${PERF_CLASS}');` +
   `if(p==='minimal')document.documentElement.classList.add('${PERF_MINIMAL_CLASS}');`;

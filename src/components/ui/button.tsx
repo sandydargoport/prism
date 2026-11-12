@@ -47,8 +47,10 @@ const buttonVariants = cva(
     'inline-flex items-center justify-center gap-2',
     // Typography
     'text-sm font-medium whitespace-nowrap',
-    // Shape
-    'rounded-md',
+    // Shape: pills (#908)
+    'rounded-full',
+    // Anything a finger presses is 44px or more on a touch screen (#908)
+    'pointer-coarse:min-h-11 pointer-coarse:min-w-11',
     // Transitions (smooth hover/focus effects)
     'transition-colors duration-200',
     // Focus state (accessibility)
@@ -67,8 +69,9 @@ const buttonVariants = cva(
        */
       variant: {
         // Primary action - most prominent
+        // Filled with the ink: the one main action (#908)
         default:
-          'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 active:bg-primary/80',
+          'bg-foreground text-background hover:bg-foreground/90 active:bg-foreground/80',
 
         // Destructive action - delete, remove, etc.
         destructive:
@@ -79,8 +82,9 @@ const buttonVariants = cva(
           'bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80 active:bg-secondary/70',
 
         // Outlined button - bordered, transparent background
+        // A 1.5px ink outline: a second action (#908)
         outline:
-          'border border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground active:bg-accent/80',
+          'border-[1.5px] border-foreground/70 bg-transparent hover:bg-foreground/5 active:bg-foreground/10',
 
         // Ghost button - minimal, for toolbars and icon buttons
         ghost:
@@ -97,16 +101,16 @@ const buttonVariants = cva(
        */
       size: {
         // Default size - good for most uses
-        default: 'h-10 px-4 py-2',
+        default: 'h-11 px-5 py-2',
 
         // Small size - for compact UIs (still touch-friendly at 36px)
-        sm: 'h-9 rounded-md px-3 text-xs',
+        sm: 'h-9 px-3 text-xs',
 
         // Large size - for primary CTAs, easier to tap
-        lg: 'h-12 rounded-md px-8 text-base',
+        lg: 'h-12 px-8 text-base',
 
         // Icon button - square, for icon-only buttons
-        icon: 'h-10 w-10',
+        icon: 'h-11 w-11',
 
         // Touch-optimized - extra large for wall-mounted displays
         touch: 'h-14 px-6 text-base',
@@ -183,6 +187,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
+        // The shared pill (#908); tests measure these.
+        data-pill=""
         ref={ref}
         {...props}
       />

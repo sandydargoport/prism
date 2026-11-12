@@ -11,6 +11,11 @@ jest.mock('@/lib/auth', () => ({
   requireAuth: jest.fn(async () => ({ userId: 'p1', role: 'parent' })),
   requireRole: jest.fn(),
 }));
+// The route asks through the everyday helper (#835); here the caller is a parent.
+jest.mock('@/lib/auth/everydayAuth', () => ({
+  requireEverydayAuth: jest.fn(async () => ({ userId: 'p1', role: 'parent' })),
+  logWallChange: jest.fn(),
+}));
 jest.mock('@/lib/db/client', () => ({
   db: {
     select: () => ({

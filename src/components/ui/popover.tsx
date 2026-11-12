@@ -1,5 +1,6 @@
 'use client';
 
+import { remotePortalRoot } from '@/lib/displays/remoteEdit';
 import * as React from 'react';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import { cn } from '@/lib/utils';
@@ -13,7 +14,7 @@ const PopoverContent = React.forwardRef<
   React.ElementRef<typeof PopoverPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
 >(({ className, align = 'center', sideOffset = 4, onInteractOutside, ...props }, ref) => (
-  <PopoverPrimitive.Portal>
+  <PopoverPrimitive.Portal container={remotePortalRoot()}>
     <PopoverPrimitive.Content
       ref={ref}
       align={align}
@@ -27,7 +28,7 @@ const PopoverContent = React.forwardRef<
         onInteractOutside?.(e);
       }}
       className={cn(
-        'z-50 w-72 rounded-md border bg-popover p-3 text-popover-foreground shadow-md outline-hidden',
+        'z-50 w-72 rounded-md border bg-popover p-3 text-popover-foreground shadow-md focus-visible:ring-0 focus-visible:ring-offset-0 outline-hidden',
         'data-[state=open]:animate-in data-[state=closed]:animate-out',
         'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
         'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',

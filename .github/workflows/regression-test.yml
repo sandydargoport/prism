@@ -7,9 +7,13 @@ name: Regression test
 # request passes when it changes a test file, or when its body says in one line
 # why it has none ("No regression test: <reason>"). Dependency bumps, docs and
 # other prefixes are not checked.
+# Only pull requests into master: a stacked pull request is checked when it is
+# retargeted to master (that is an edit), not on every restack push, which
+# started and cancelled dozens of runs at a time.
 on:
   pull_request:
     types: [opened, edited, synchronize, reopened]
+    branches: [master]
 
 concurrency:
   group: regression-test-${{ github.event.pull_request.number }}

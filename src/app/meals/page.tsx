@@ -32,7 +32,7 @@ export const metadata = {
  */
 export default function MealsPage() {
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-fill bg-background">
       <Suspense fallback={<MealsSkeleton />}>
         <MealsView />
       </Suspense>

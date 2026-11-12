@@ -1,5 +1,6 @@
 'use client';
 
+import { SlidingTitle } from '@/components/calendar/cells/SlidingTitle';
 import {
   format,
   startOfWeek,
@@ -247,7 +248,7 @@ export function WeekView({
                             }
                       }
                     >
-                      <span className={cn('truncate w-full text-3xs font-medium leading-tight', cards && 'text-foreground')}>{event.title}</span>
+                      <SlidingTitle className={cn('w-full text-3xs font-medium leading-tight', cards && 'text-foreground')}>{event.title}</SlidingTitle>
                       {cards && durationMin >= 30 && (
                         <span className="text-4xs leading-tight text-muted-foreground truncate w-full">
                           {formatDisplayTimeRange(event.startTime, event.endTime ?? new Date(event.startTime.getTime() + 3600000), timeFormat, displayTimezone)}
@@ -527,7 +528,7 @@ export function WeekView({
                                   fit whole into a second column, which the
                                   block's overflow-hidden clips, so a short
                                   event shows its title alone, not half a time. */}
-                              <div className={cn('font-medium truncate w-full text-3xs leading-tight', cards && 'text-foreground')}>{event.title}</div>
+                              <SlidingTitle className={cn('font-medium w-full text-3xs leading-tight', cards && 'text-foreground')}>{event.title}</SlidingTitle>
                               {cards && durationMin >= 60 && (
                                 <div className="text-4xs leading-tight text-muted-foreground truncate w-full">
                                   {formatDisplayTimeRange(event.startTime, event.endTime ?? new Date(event.startTime.getTime() + 3600000), timeFormat, displayTimezone)}

@@ -14,26 +14,30 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireRole } from '@/lib/auth';
+import { requireEverydayAuth, logWallChange } from '@/lib/auth/everydayAuth';
 import { db } from '@/lib/db/client';
 import { chores, choreCompletions, users } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { completeChoreSchema, validateRequest } from '@/lib/validations';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { rateLimitGuard } from '@/lib/cache/rateLimit';
-import { calculateNextDue } from '@/lib/utils/calculateNextDue';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { todayKey } from '@/lib/utils/zonedDate';
-import {
+import { choreNotDueYet,
   approverForNewCompletion,
   callerCanApproveChores,
   findPendingCompletion,
   recordChoreCompletion,
 } from '@/lib/services/choreCompletion';
 import { logError } from '@/lib/utils/logError';
+import { memberOrder } from '@/lib/db/memberOrder';
 
 /**
  * Route params type
  */
+/** How long the wall's Undo can take back a tick (#835). */
+const WALL_UNDO_MS = 2 * 60_000;
+
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
@@ -61,7 +65,8 @@ export async function POST(
   request: NextRequest,
   { params }: RouteParams
 ) {
-  const auth = await requireAuth();
+  // A signed-out wall may tick a chore when the PIN setting is off (#835).
+  const auth = await requireEverydayAuth('chore-complete');
   if (auth instanceof NextResponse) return auth;
 
   const limited = await rateLimitGuard(auth.userId, 'chore-complete', 20, 60);
@@ -82,6 +87,8 @@ export async function POST(
         frequency: chores.frequency,
         customIntervalDays: chores.customIntervalDays,
         startDay: chores.startDay,
+        timesPerDay: chores.timesPerDay,
+        nextDue: chores.nextDue,
       })
       .from(chores)
       .where(eq(chores.id, choreId));
@@ -101,6 +108,18 @@ export async function POST(
       );
     }
 
+    // Done for this period already (#984): another tick would award the
+    // points again and push the next due date further on.
+    if (choreNotDueYet(chore.nextDue, todayKey(await getHouseholdTimezone()))) {
+      return NextResponse.json({
+        error: 'This chore is already done',
+        message: `${chore.title} is done until ${chore.nextDue}.`,
+        notDueUntil: chore.nextDue,
+      }, { status: 409 });
+    }
+
+    if (auth.wall) await logWallChange('chore-complete', 'chore', choreId, `Ticked "${chore.title}" on the wall without a PIN`);
+
     // Validate completion data
     const validation = validateRequest(completeChoreSchema, body);
     if (!validation.success) {
@@ -110,7 +129,16 @@ export async function POST(
       );
     }
 
-    const { completedBy, photoUrl, notes } = validation.data;
+    const { photoUrl, notes } = validation.data;
+    let completedBy = validation.data.completedBy;
+    if (!completedBy && validation.data.completedByIndex !== undefined) {
+      // The same ordering the PIN pad and sign-in use (memberOrder).
+      const members = await db.select({ id: users.id }).from(users).orderBy(...memberOrder);
+      completedBy = members[validation.data.completedByIndex]?.id;
+    }
+    if (!completedBy) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
 
     // Look up the completing user to check their role
     const [completingUser] = await db
@@ -226,11 +254,13 @@ export async function DELETE(
   _request: NextRequest,
   { params }: RouteParams
 ) {
-  const auth = await requireAuth();
+  const auth = await requireEverydayAuth('chore-undo');
   if (auth instanceof NextResponse) return auth;
 
-  // Undoing a completion reverses an approval — parent-only.
-  const forbidden = requireRole(auth, 'canApproveChores');
+  // Undoing a completion reverses an approval: parent-only, except that the
+  // wall may take back its own tick from the last two minutes (the toast's
+  // Undo, #835).
+  const forbidden = auth.wall ? null : requireRole(auth, 'canApproveChores');
   if (forbidden) return forbidden;
 
   try {
@@ -238,7 +268,7 @@ export async function DELETE(
 
     // Find the most recent completion
     const [latest] = await db
-      .select({ id: choreCompletions.id })
+      .select({ id: choreCompletions.id, completedAt: choreCompletions.completedAt })
       .from(choreCompletions)
       .where(eq(choreCompletions.choreId, choreId))
       .orderBy(desc(choreCompletions.completedAt))
@@ -247,10 +277,17 @@ export async function DELETE(
     if (!latest) {
       return NextResponse.json({ error: 'No completion to undo' }, { status: 404 });
     }
+    if (auth.wall && Date.now() - new Date(latest.completedAt).getTime() > WALL_UNDO_MS) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+    if (auth.wall) await logWallChange('chore-undo', 'chore', choreId, 'Undid a tick on the wall without a PIN');
 
-    // Undo the completion, then rebuild the chore's schedule fields from
-    // whichever completion (if any) is now the most recent.
-    const today = todayKey(await getHouseholdTimezone());
+    // Undo the completion: the chore is due again on the day it was ticked
+    // (a tick is refused before a chore is due, so that is on or after the
+    // date it replaced), and lastCompleted falls back to the one before.
+    // nextDue used to become null when no earlier completion remained, which
+    // took the chore off the do list for good (#1051).
+    const dueAgain = todayKey(await getHouseholdTimezone(), latest.completedAt);
     await db.transaction(async (tx) => {
       await tx.delete(choreCompletions).where(eq(choreCompletions.id, latest.id));
 
@@ -262,16 +299,11 @@ export async function DELETE(
         .limit(1);
       const mostRecent = remaining[0];
 
-      const [chore] = await tx.select().from(chores).where(eq(chores.id, choreId));
-
       await tx
         .update(chores)
         .set({
           lastCompleted: mostRecent?.completedAt ?? null,
-          nextDue:
-            mostRecent && chore
-              ? calculateNextDue(chore.frequency, chore.customIntervalDays, chore.startDay, today)
-              : null,
+          nextDue: dueAgain,
           updatedAt: new Date(),
         })
         .where(eq(chores.id, choreId));

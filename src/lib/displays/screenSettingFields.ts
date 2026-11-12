@@ -1,6 +1,7 @@
 import { normalise as normaliseMotion } from '@/components/screensaver/useScreensaverMotion';
 import { DEFAULT_DIM_LEVEL, DIM_LEVELS } from '@/components/screensaver/idleDim';
 import { modeFrom } from '@/lib/perfLevel';
+import { DEFAULT_IDLE_LOGOUT_MINUTES, IDLE_LOGOUT_OPTIONS } from '@/lib/hooks/idleLogoutOptions';
 import type { ScreenSettingChanges, ScreenSettingKey, ScreenSettings } from './screenSettings';
 
 /**
@@ -227,6 +228,13 @@ export const SCREEN_SETTING_FIELDS: ScreenSettingField[] = [
     group: 'Screen',
     options: trueFalse,
     fallback: 'false',
+  },
+  {
+    key: 'prism-idle-logout-minutes',
+    label: 'Sign out after',
+    group: 'Screen',
+    options: IDLE_LOGOUT_OPTIONS.map((o) => ({ raw: String(o.value), label: o.value === 0 ? 'Never' : `${o.label} untouched` })),
+    fallback: String(DEFAULT_IDLE_LOGOUT_MINUTES),
   },
 ];
 

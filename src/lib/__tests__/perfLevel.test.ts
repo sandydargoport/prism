@@ -21,20 +21,28 @@ describe('performance levels', () => {
     expect(levelFrom('full', 'minimal')).toBe('full');
   });
 
+  // #1084: a system that asks for less transparency or motion gets no blur in Auto.
+  it('in Auto, a system asking for less runs at least reduced; a chosen level is left alone', () => {
+    expect(levelFrom(null, null, true)).toBe('reduced');
+    expect(levelFrom('auto', 'minimal', true)).toBe('minimal');
+    expect(levelFrom('full', null, true)).toBe('full');
+  });
+
   // The script runs before the first paint, the hook after it. If they read
   // the keys differently, a screen flashes one level and then shows another.
   const modes = [null, 'true', 'false', 'auto', 'full', 'reduced', 'minimal', 'junk'];
   const autos = [null, 'full', 'reduced', 'minimal', 'junk'];
-  it.each(modes.flatMap(m => autos.map(a => [m, a] as const)))(
-    'the pre-paint script agrees with the hook for mode %s, auto %s',
-    (mode, auto) => {
+  it.each(modes.flatMap(m => autos.flatMap(a => [false, true].map(ask => [m, a, ask] as const))))(
+    'the pre-paint script agrees with the hook for mode %s, auto %s, system asks less %s',
+    (mode, auto, ask) => {
+      window.matchMedia = ((q: string) => ({ matches: ask && /reduced-(transparency|motion)/.test(q), media: q })) as unknown as typeof window.matchMedia;
       localStorage.clear();
       if (mode !== null) localStorage.setItem(PERF_MODE_KEY, mode);
       if (auto !== null) localStorage.setItem(PERF_AUTO_LEVEL_KEY, auto);
       const classes = document.documentElement.classList;
       classes.remove('performance-mode', 'perf-minimal');
       new Function(PERF_CLASS_SCRIPT)();
-      const level = levelFrom(mode, auto);
+      const level = levelFrom(mode, auto, ask);
       expect(classes.contains('performance-mode')).toBe(level !== 'full');
       expect(classes.contains('perf-minimal')).toBe(level === 'minimal');
     },

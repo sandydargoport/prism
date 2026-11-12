@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { useNow } from '@/lib/hooks/useNow';
 import { useSkyLocation } from '@/components/screensaver/useIdleBackground';
 import { firstCrossedNight, tonight, type IdleBackground, type NightSpan } from '@/lib/idleBackground';
+import { nightRule } from '@/lib/throughTheDay';
 
 export type IdleSwitchCheck = {
   /** Tonight's night, or the one in progress, as the display will switch. */
@@ -20,7 +21,8 @@ export type IdleSwitchCheck = {
  * household location as the display will, and the first night they cross.
  */
 export function useIdleSwitchCheck(bg: IdleBackground | null): IdleSwitchCheck {
-  const sw = bg && 'switch' in bg ? bg.switch : null;
+  // Every dashboard has a night (#1152), its own or the default.
+  const sw = bg ? nightRule(bg) : null;
   const bySun = sw?.by === 'sun';
   const { lat, lon, guessed } = useSkyLocation(bySun);
   const now = useNow();

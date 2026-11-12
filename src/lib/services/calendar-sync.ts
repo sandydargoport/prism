@@ -29,6 +29,7 @@ import {
 import { tombstoneIdSet } from '@/lib/services/settingsTombstone';
 import { decrypt, encrypt } from '@/lib/utils/crypto';
 import { validatePublicUrl, UnsafeUrlError } from '@/lib/utils/safeFetch';
+import { fetchIcal } from './fetchIcal';
 import { isGoogleCalendarWebLink, GOOGLE_WEB_LINK_ERROR } from '@/lib/utils/googleCalendarLink';
 import { localDateToFloatingAllDay } from '@/lib/utils/timeFormat';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
@@ -37,8 +38,8 @@ import { async as icalAsync, type VEvent, type CalendarResponse } from 'node-ica
 /**
  * Default sync window.
  *
- * Sized to cover the calendar's display window (getFullCalendarRange: ~1yr
- * back … ~2yr forward). If sync were narrower than the display, synced Google/
+ * Sized to cover how far the calendar's views reach (getCalendarWindow
+ * follows the shown date, and people page about a year back and two forward). If sync were narrower than the display, synced Google/
  * CalDAV events past the sync horizon would silently not appear even though the
  * views reach for them — the synced-calendar counterpart of #250, and worse
  * because it's inconsistent (a local event shows at that date, a synced one
@@ -676,7 +677,7 @@ export async function syncIcalCalendarSource(
 
   let parsed: CalendarResponse;
   try {
-    parsed = await icalAsync.fromURL(source.icalUrl);
+    parsed = await fetchIcal(source.icalUrl);
   } catch (error) {
     const errorStr = error instanceof Error ? error.message : String(error);
     const prevErrors = (source.syncErrors as Record<string, unknown>) || {};

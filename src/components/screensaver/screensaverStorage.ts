@@ -16,6 +16,7 @@ export const DEFAULT_SCREENSAVER_LAYOUT: WidgetConfig[] = [
   { i: 'photos', x: 16, y: 16, w: 16, h: 16, visible: false },
   { i: 'wishes', x: 16, y: 0, w: 12, h: 16, visible: false },
   { i: 'busTracking', x: 36, y: 0, w: 12, h: 12, visible: false },
+  { i: 'nowNext', x: 0, y: 0, w: 24, h: 6, visible: false },
 ];
 
 export function loadScreensaverLayout(): WidgetConfig[] {
@@ -51,6 +52,43 @@ export function screensaverForDashboard(
   if (active.screensaverWidgets) return active.screensaverWidgets;
   const upgrading = !all.some((l) => l.screensaverWidgets);
   return upgrading ? loadScreensaverLayout() : DEFAULT_SCREENSAVER_LAYOUT;
+}
+
+/**
+ * Set once this browser no longer holds an arrangement from before dashboards
+ * had their own (#1154): it was carried onto the dashboard it shows, or there
+ * was nothing to carry.
+ */
+export const SCREENSAVER_CARRIED_KEY = 'prism-screensaver-carried';
+
+/**
+ * The arrangement this browser kept from v1.30.1, which a dashboard with none
+ * of its own showed there, until it is carried onto that dashboard. Null once
+ * carried, or when the browser kept none.
+ */
+export function legacyScreensaver(): WidgetConfig[] | null {
+  try {
+    if (localStorage.getItem(SCREENSAVER_CARRIED_KEY) === '1') return null;
+    if (!localStorage.getItem(SCREENSAVER_LAYOUT_KEY)) return null;
+  } catch { return null; }
+  return loadScreensaverLayout();
+}
+
+export function markScreensaverCarried() {
+  try { localStorage.setItem(SCREENSAVER_CARRIED_KEY, '1'); } catch { /* storage refused */ }
+}
+
+/**
+ * Whether the arrangement this browser kept is still owed to the dashboard it
+ * shows: the dashboard has none of its own and rests over photos or the sky,
+ * where a screensaver arrangement shows. Otherwise there is nothing to carry.
+ */
+export function owesLegacyScreensaver(
+  active: { screensaverWidgets?: WidgetConfig[] | null },
+  restsOverScreensaver: boolean,
+  legacy: WidgetConfig[] | null,
+): legacy is WidgetConfig[] {
+  return !!legacy && !active.screensaverWidgets && restsOverScreensaver;
 }
 
 export function saveScreensaverLayout(layout: WidgetConfig[]) {

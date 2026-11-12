@@ -14,7 +14,7 @@ import { chores, choreCompletions, users } from '@/lib/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 import { requireAuth, requireRole } from '@/lib/auth';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
-import { calculateNextDue } from '@/lib/utils/calculateNextDue';
+import { dueAfterApprovedTick } from '@/lib/services/choreCompletion';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { todayKey } from '@/lib/utils/zonedDate';
 import { logActivity } from '@/lib/services/auditLog';
@@ -78,6 +78,7 @@ export async function POST(
         frequency: chores.frequency,
         customIntervalDays: chores.customIntervalDays,
         startDay: chores.startDay,
+        timesPerDay: chores.timesPerDay,
       })
       .from(chores)
       .where(eq(chores.id, choreId));
@@ -137,12 +138,8 @@ export async function POST(
 
     // Approve completion + update chore atomically
     const now = new Date();
-    const nextDue = calculateNextDue(
-      chore.frequency,
-      chore.customIntervalDays,
-      chore.startDay,
-      todayKey(await getHouseholdTimezone()),
-    );
+    const timeZone = await getHouseholdTimezone();
+    const today = todayKey(timeZone);
 
     await db.transaction(async (tx) => {
       await tx
@@ -153,11 +150,13 @@ export async function POST(
         })
         .where(eq(choreCompletions.id, pendingCompletion.id));
 
+      // After the approval, so a twice-a-day chore counts this tick (#1107).
+      const nextDue = await dueAfterApprovedTick(tx, chore, today, timeZone);
       await tx
         .update(chores)
         .set({
           lastCompleted: pendingCompletion.completedAt,
-          nextDue: nextDue,
+          nextDue,
           updatedAt: now,
         })
         .where(eq(chores.id, choreId));

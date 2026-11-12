@@ -14,6 +14,8 @@
  * keyboard and the screen layout settings. Theme stays per browser for now.
  * The time-of-day schedule and the attention panel joined 2026-10-30 (#692).
  * The screensaver background left 2026-10-31 for the dashboard (#782).
+ * The sign-out timer joined 2026-11-11 (#1159), when it left Settings for the
+ * editing bar.
  * Derived values (the screensaver layout bridged from the dashboard) and
  * per-browser memory (which constellation was last taught) are left out.
  */
@@ -41,6 +43,8 @@ export const SCREEN_SETTING_KEYS = [
   'prism-orientation-override',
   'prism:screen-safe-zones',
   'prism:auto-hide-ui',
+  // How long until the screen stops being signed in as whoever used it.
+  'prism-idle-logout-minutes',
   // Which dashboard it shows at which time of day (#692).
   'prism-screen-schedule',
   // Which notices it shows in the attention panel (#692).

@@ -63,6 +63,7 @@ jest.mock('drizzle-orm', () => ({
   eq: jest.fn(),
   and: jest.fn(),
   isNull: jest.fn(),
+  asc: jest.fn(),
 }));
 
 // --- Auth mock ---
@@ -72,6 +73,13 @@ const mockRequireRole = jest.fn();
 jest.mock('@/lib/auth', () => ({
   requireAuth: () => mockRequireAuth(),
   requireRole: (...args: unknown[]) => mockRequireRole(...args),
+}));
+
+// The route asks requireEverydayAuth (#835); here it is the signed-in user,
+// as with the PIN required for every change.
+jest.mock('@/lib/auth/everydayAuth', () => ({
+  requireEverydayAuth: () => mockRequireAuth(),
+  logWallChange: jest.fn(),
 }));
 
 jest.mock('@/lib/cache/redis', () => ({
@@ -283,6 +291,29 @@ describe('POST /api/chores/[id]/complete', () => {
 
     expect(res.status).toBe(400);
     expect(data.error).toContain('disabled');
+  });
+
+  it('refuses a second tick while the chore is done until a later day (#984)', async () => {
+    queryResults = [
+      [{ ...sampleChore, nextDue: '2999-01-01' }],
+    ];
+
+    const res = await completeChore(makeRequest({ completedBy: 'parent-1' }), routeParams);
+    const data = await res.json();
+
+    expect(res.status).toBe(409);
+    expect(data.notDueUntil).toBe('2999-01-01');
+    expect(mockTransaction).not.toHaveBeenCalled();
+  });
+
+  it('still takes a tick on the day the chore is due (#984)', async () => {
+    const today = todayKey('America/Chicago');
+    queryResults = [
+      [{ ...sampleChore, nextDue: today }],
+    ];
+
+    const res = await completeChore(makeRequest({ completedBy: 'parent-1' }), routeParams);
+    expect(res.status).not.toBe(409);
   });
 
   it('returns 404 for nonexistent chore', async () => {

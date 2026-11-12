@@ -220,40 +220,62 @@ export function DashboardHeader({
       hidden ? 'opacity-0 max-h-0 py-0' : 'max-h-20 py-2 delay-200'
     )}>
       <div className="flex items-center justify-end gap-2">
-        {onEditClick && (
-          <button
-            onClick={onEditClick}
-            className="p-2 rounded-md hover:bg-accent transition-colors"
-            aria-label="Edit layout"
-          >
-            <GridEditIcon />
-          </button>
-        )}
-
-        <button
-          onClick={() => window.location.reload()}
-          className="p-2 rounded-md hover:bg-accent transition-colors"
-          aria-label="Refresh page"
-        >
-          <RefreshCw className="h-5 w-5" />
-        </button>
-
-        <PerformanceModeBadge />
-        <BabysitterModeToggle />
-        <AwayModeToggle />
-
-        {onScreensaverClick && (
-          <button
-            onMouseDown={(e) => { e.stopPropagation(); }}
-            onClick={(e) => { e.stopPropagation(); onScreensaverClick(); }}
-            className="p-2 rounded-md hover:bg-accent transition-colors"
-            aria-label="Start screensaver"
-          >
-            <ScreensaverIcon />
-          </button>
-        )}
+        <ScreenJobs onEditClick={onEditClick} onScreensaverClick={onScreensaverClick} />
       </div>
     </header>
+  );
+}
+
+/**
+ * This screen's jobs: Edit layout, Reload, the performance badge, Babysitter
+ * and Away modes, and the screensaver. The top bar draws them as icons with
+ * their names as tooltips; the dock's More panel draws every one of them with
+ * its name, the same way (#922, #1006).
+ */
+export function ScreenJobs({ onEditClick, onScreensaverClick, labelled = false }: {
+  onEditClick?: () => void;
+  onScreensaverClick?: () => void;
+  labelled?: boolean;
+}) {
+  // Labelled, a job is a tile like the More panel's pages: the icon above its
+  // name (#1006). h-auto undoes the Button's fixed height on the mode toggles.
+  const job = labelled
+    ? 'flex h-auto min-h-[64px] min-w-[64px] flex-col items-center justify-center gap-1 rounded-2xl px-3 py-2 text-caption font-medium text-foreground hover:bg-muted [&_svg]:size-5'
+    : 'p-2 rounded-md hover:bg-accent transition-colors';
+  return (
+    <>
+      {onEditClick && (
+        <button onClick={onEditClick} className={job} aria-label="Edit layout" title={labelled ? undefined : 'Edit layout'} data-screen-job="edit">
+          <GridEditIcon />
+          {labelled && <span>Edit layout</span>}
+        </button>
+      )}
+
+      <button onClick={() => window.location.reload()} className={job} aria-label="Refresh page" title={labelled ? undefined : 'Reload'} data-screen-job="reload">
+        <RefreshCw className="h-5 w-5" />
+        {labelled && <span>Reload</span>}
+      </button>
+
+      <PerformanceModeBadge labelled={labelled} className={labelled ? job : undefined} />
+      {/* Modes stay one tap from the dashboard. In More they sit under "This
+          screen", apart from the Babysitter page under "Pages" (#1014). */}
+      <BabysitterModeToggle {...(labelled ? { showLabel: true, size: 'default' as const, className: job } : {})} data-screen-job="babysitter" />
+      <AwayModeToggle {...(labelled ? { showLabel: true, size: 'default' as const, className: job } : {})} data-screen-job="away" />
+
+      {onScreensaverClick && (
+        <button
+          onMouseDown={(e) => { e.stopPropagation(); }}
+          onClick={(e) => { e.stopPropagation(); onScreensaverClick(); }}
+          className={job}
+          aria-label="Start screensaver"
+          title={labelled ? undefined : 'Screensaver'}
+          data-screen-job="screensaver"
+        >
+          <ScreensaverIcon />
+          {labelled && <span>Screensaver</span>}
+        </button>
+      )}
+    </>
   );
 }
 

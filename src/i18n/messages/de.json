@@ -15,7 +15,15 @@
       "babysitter": "Babysitter",
       "travel": "Reisen",
       "weekend": "Wochenendideen",
-      "settings": "Einstellungen"
+      "settings": "Einstellungen",
+      "menu": "Menü",
+      "more": "Mehr",
+      "signIn": "Anmelden",
+      "help": "Hilfe",
+      "thisScreen": "Dieser Bildschirm",
+      "pages": "Seiten",
+      "label": "Seiten",
+      "home": "Start"
     },
     "actions": {
       "save": "Speichern",
@@ -46,6 +54,7 @@
     "nothingPlanned": "Nichts geplant",
     "noUpcomingEvents": "Keine anstehenden Termine",
     "moreEvents": "+ {count} weitere",
+    "dayPageLabel": "Seite {page} von {pages}, {count} weitere",
     "moreItems": "+{count} weitere Einträge",
     "dayHeader": "{label} – {date}",
     "dateAtTime": "{date} um {time}",
@@ -115,13 +124,19 @@
       "deleteConfirmTitle": "Diesen Termin löschen?",
       "deleteConfirmBody": "Soll dieser Termin wirklich gelöscht werden?",
       "deleteSeriesConfirmBody": "Damit werden alle Termine dieser Serie gelöscht.",
+      "hideSignInTitle": "Termin ausblenden",
+      "hideSignInBody": "Zum Ausblenden braucht es die PIN eines Elternteils.",
+      "hideParentsOnly": "Nur Eltern können einen Termin ausblenden.",
       "hideInPrism": "In Prism ausblenden",
       "hideInPrismHint": "Der Termin bleibt in seinem Kalender. Unter Einstellungen > Kalender wieder einblenden.",
       "hiddenToast": "„{title}“ ausgeblendet",
       "hiddenToastBody": "Unter Einstellungen > Kalender wieder einblenden.",
       "hideThisEvent": "Nur diesen Termin",
       "hideWholeSeries": "Alle Termine der Serie",
-      "hiddenSeriesToast": "Alle „{title}“ ausgeblendet"
+      "hiddenSeriesToast": "Alle „{title}“ ausgeblendet",
+      "allDay": "ganztägig",
+      "to": "bis",
+      "at": "in"
     },
     "eventForm": {
       "titleNew": "Neuer Termin",
@@ -203,7 +218,9 @@
       "title": "Holen Sie Ihre Kalender herein",
       "body": "Verbinden Sie Google, iCloud, Outlook oder einen Kalender-Link, und die Woche der Familie erscheint hier.",
       "action": "Kalender verbinden"
-    }
+    },
+    "now": "Jetzt",
+    "addEvent": "Termin hinzufügen"
   },
   "birthdays": {
     "title": "Anstehende Geburtstage & Meilensteine",
@@ -243,6 +260,56 @@
       },
       "line": "{name}: {begin} bis {end}, Maximum {peak}",
       "marker": "Finsternis {peak}"
-    }
+    },
+    "high": "bis {temp}"
+  },
+  "nowNext": {
+    "title": "Jetzt & Danach",
+    "now": "Jetzt",
+    "next": "Danach",
+    "until": "bis {time}",
+    "at": "{time} · in {countdown}",
+    "startsIn": "beginnt in {countdown}",
+    "noEvents": "Heute: keine Termine",
+    "nothingElse": "Heute nichts mehr",
+    "bus": "Bus",
+    "busAt": "an der Haltestelle {time} · in {countdown}",
+    "busHere": "jetzt an der Haltestelle",
+    "leave": "Losgehen",
+    "leaveIn": "in {countdown}",
+    "leaveNow": "jetzt",
+    "minutes": "{count} Min.",
+    "hours": "{count} Std.",
+    "hoursMinutes": "{h} Std. {m} Min."
+  },
+  "today": {
+    "at": "{title} {time}",
+    "until": "{title} bis {time}",
+    "nothingElse": "Heute nichts mehr",
+    "sunset": "Sonnenuntergang {time}",
+    "allDay": "Ganztägig: {titles}",
+    "more": "+{count}",
+    "laterToday": "Später heute",
+    "choresLeft": "{count, plural, one {# Aufgabe übrig} other {# Aufgaben übrig}}",
+    "tick": "{title} erledigt",
+    "listCount": "{name} {count}",
+    "addToList": "Zu {name} hinzufügen",
+    "nudgeAge": "{name} wird am {day} {age}. Karte bis {mailDay} abschicken?",
+    "nudgeNoAge": "{name} hat am {day} Geburtstag. Karte bis {mailDay} abschicken?",
+    "addIt": "Hinzufügen",
+    "notNow": "Nicht jetzt",
+    "nothingElseToday": "Heute nichts mehr",
+    "nudgeTask": "Karte an {name} schicken",
+    "nudgeAdded": "Steht für {day} auf der Liste.",
+    "nudgeFailed": "Das wurde nicht gespeichert. Bitte noch einmal.",
+    "nudgeWho": "Wer fügt das hinzu?",
+    "weekRange": "{from} bis {to}",
+    "view": "Ansicht",
+    "week": "Woche",
+    "month": "Monat",
+    "earlier": "Früher",
+    "later": "Später",
+    "allDayShort": "Ganztägig",
+    "next": "Als Nächstes"
   }
 }

@@ -6,6 +6,9 @@
 
 'use client';
 
+import { mergeSharedEvents } from '@/lib/calendar/sharedEvents';
+import { useNow } from '@/lib/hooks/useNow';
+import { hiddenByTime } from '@/lib/calendar/displayRules';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { addDays, subDays, startOfDay, endOfDay } from 'date-fns';
 import type { CalendarEvent } from '@/types/calendar';
@@ -15,6 +18,7 @@ import { useCachedMountFetch } from '@/lib/hooks/useCachedMountFetch';
 import { navCacheGet, navCacheSet } from '@/lib/utils/navCache';
 import { useLocalDateKey } from '@/lib/hooks/useLocalDateKey';
 import { useFetchOnMount } from './useFetchOnMount';
+import { sharedGet } from '@/lib/utils/sharedGet';
 
 interface UseCalendarEventsOptions {
   /** Number of days to fetch events for (used only when rangeStart/rangeEnd are omitted). */
@@ -129,6 +133,7 @@ export function useCalendarEvents(
             id: string;
             name: string;
             color?: string;
+            hideAfter?: string;
           };
         }) => ({
           id: event.id,
@@ -145,11 +150,14 @@ export function useCalendarEvents(
           inSeries: event.inSeries,
           calendarName: event.calendarSource?.name || 'Local Calendar',
           calendarId: event.calendarSource?.id || 'local',
+          ...(event.calendarSource?.hideAfter ? { hideAfter: event.calendarSource.hideAfter } : {}),
         })
       );
 
-      navCacheSet(cacheKey, transformedEvents);
-      setEvents(transformedEvents);
+      // One event on two people's calendars is one event, in both colours (#1066).
+      const merged = mergeSharedEvents(transformedEvents);
+      navCacheSet(cacheKey, merged);
+      setEvents(merged);
     } catch (err) {
       console.error('Error fetching events:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch events');
@@ -224,7 +232,7 @@ export function useCalendarEvents(
   const checkAndSync = useCallback(async () => {
     if (!enabled || autoSyncMinutes <= 0) return;
     try {
-      const response = await fetch('/api/calendars');
+      const response = await sharedGet('/api/calendars');
       if (!response.ok) return;
 
       const data = await response.json();
@@ -252,13 +260,49 @@ export function useCalendarEvents(
   // Periodic sync check — pauses when tab is hidden
   useVisibilityPolling(checkAndSync, enabled && autoSyncMinutes > 0 ? autoSyncMinutes * 60 * 1000 : 0);
 
+  // A calendar set to hide after a time of day (#877): its events on today's
+  // date leave the screen once that time passes, by this screen's clock, and
+  // are back the next day. Checked each minute.
+  const now = useNow();
+  const visibleEvents = useMemo(() => {
+    if (!events.some((e) => e.hideAfter)) return events;
+    const todayKey = localDayKey(now);
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    return events.filter((e) => !hiddenByTime({
+      hideAfter: e.hideAfter,
+      eventDayKeys: eventLocalDayKeys(e),
+      todayKey,
+      nowMinutes,
+    }));
+  }, [events, now]);
+
   return {
-    events,
+    events: visibleEvents,
     loading,
     error,
     refresh: fetchEvents,
     syncCalendars,
   };
+}
+
+/** YYYY-MM-DD of a date on this screen's clock. */
+function localDayKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * The days an event falls on, on this screen's clock. An all-day event is
+ * stored as UTC midnight of its dates with an exclusive end.
+ */
+function eventLocalDayKeys(e: CalendarEvent): string[] {
+  if (e.allDay) {
+    const keys: string[] = [];
+    for (let t = e.startTime.getTime(); t < e.endTime.getTime() && keys.length < 31; t += 86_400_000) {
+      keys.push(new Date(t).toISOString().slice(0, 10));
+    }
+    return keys.length ? keys : [e.startTime.toISOString().slice(0, 10)];
+  }
+  return [localDayKey(e.startTime)];
 }
 
 /**
@@ -290,7 +334,7 @@ export function useCalendarSources() {
   const fetchCalendars = useCallback(async () => {
     try {
       setError(null);
-      const response = await fetch('/api/calendars');
+      const response = await sharedGet('/api/calendars');
 
       if (!response.ok) {
         throw new Error('Failed to fetch calendars');

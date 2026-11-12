@@ -1,56 +1,54 @@
-# iCloud integration
+# Apple iCloud
 
-What Prism can and can't pull from iCloud, and why.
-
-If you have an Apple household and want Prism to surface family data living in iCloud (calendars, contacts, photos, Reminders, Notes, Find My), read this once. The answer is consistent across the table, the rule explains the table, and the rule isn't going to change.
+Show your iCloud calendars in Prism. This page also lists what iCloud does not let Prism read.
 
 ---
 
 ## What works, what doesn't
 
-| iCloud surface | Supported? | How / why not |
+| iCloud service | Supported? | How / why not |
 |---|---|---|
-| **Calendars** | ✅ Yes | CalDAV (`caldav.icloud.com`): read + upstream delete of single events; full create/edit write-back is not yet wired. See [Calendar setup](CALENDAR.md#apple-icloud-caldav-private-calendars-reminders-alpha). |
-| **Contacts** (incl. birthdays) | ✅ Yes, read-only | CardDAV (`contacts.icloud.com`). Used by the planned [family contacts page](https://github.com/sandydargoport/prism/issues/75). |
-| **Reminders / Tasks** | ❌ No | Apple migrated Reminders off CalDAV-VTODO years ago; iCloud Reminders are CloudKit-only with no public web API. |
-| **Notes** | ❌ No | iCloud-synced Notes have always been CloudKit-only. No IMAP-style or web API. |
-| **Photos (shared album)** | ❌ No (was attempted) | Apple migrated public shares from the old `sharedstreams` endpoint to a new "iCloud Links" CloudKit backend in 2024–2025. The legacy endpoint returns 404 for modern shares; no public replacement exists, and no community library targets the new backend as of mid-2026. See [photo source setup](PHOTOS.md#sources) for the OneDrive-based workaround. |
-| **Photos (full library)** | ❌ No | Would require CloudKit Web, which requires an Apple Developer subscription, container ID per app, and per-user consent flow. Wrong shape for a self-hosted family dashboard. |
-| **Find My** (devices / people) | ❌ No | The iCloud.com web client uses an undocumented private CloudKit endpoint. Community libraries like `pyicloud` scrape it, but Apple breaks them with each iOS release, and **Advanced Data Protection** end-to-end encrypts Find My data so the scrape no longer returns it at all. Best upstream path today: [Home Assistant's iCloud3 / FindMy integration](https://github.com/gcobb321/icloud3), which has a community actively wrangling these breaks; Prism could in principle read HA's `device_tracker` entities. Not on the roadmap, but the door isn't closed. |
-| **Health / Activity** | ❌ No | HealthKit data is on-device + iCloud-encrypted; only accessible via a paired iOS app, no web API. |
-| **iMessage** | ❌ No | No public API, ever. |
-| **Apple Music** | ❌ No (no plan) | MusicKit Web exists but the consent flow is single-user and the wrong fit for a shared household display. |
+| **Calendars** | ✅ Yes | CalDAV (`caldav.icloud.com`): Prism reads events and can delete a single event upstream. Creating and editing events from Prism isn't connected yet. See [Calendar setup](CALENDAR.md#apple-icloud-caldav-private-calendars-reminders-alpha). |
+| **Contacts** (incl. birthdays) | ✅ Yes, read-only | CardDAV (`contacts.icloud.com`). The planned [family contacts page](https://github.com/sandydargoport/prism/issues/75) will use it. |
+| **Reminders / Tasks** | ❌ No | Apple moved Reminders off CalDAV-VTODO years ago. iCloud Reminders now live only in CloudKit, which has no public web API. |
+| **Notes** | ❌ No | iCloud Notes have always lived only in CloudKit, with no IMAP-style or web API. |
+| **Photos (shared album)** | ❌ No (was attempted) | In 2024 to 2025 Apple moved public shares from the old `sharedstreams` endpoint to a new "iCloud Links" backend in CloudKit. The old endpoint returns 404 for current shares, nothing public replaces it, and as of mid-2026 no community library works with the new backend. See [photo source setup](PHOTOS.md#sources) for the OneDrive workaround. |
+| **Photos (full library)** | ❌ No | This would need CloudKit Web, which needs an Apple Developer subscription, a container ID for each app and a consent step for each user. That doesn't suit a self-hosted family dashboard. |
+| **Find My** (devices / people) | ❌ No | The iCloud.com web client uses an undocumented private CloudKit endpoint. Community libraries such as `pyicloud` scrape it, but Apple breaks them with each iOS release, and **Advanced Data Protection** encrypts Find My data end to end, so the scrape returns nothing at all. The best route today is [Home Assistant's iCloud3 / FindMy integration](https://github.com/gcobb321/icloud3), whose community keeps up with the breakage; Prism could in principle read HA's `device_tracker` entities. It isn't on the roadmap, and it hasn't been ruled out either. |
+| **Health / Activity** | ❌ No | HealthKit data stays on the device and is encrypted in iCloud. Only a paired iOS app can reach it, and there is no web API. |
+| **iMessage** | ❌ No | There has never been a public API. |
+| **Apple Music** | ❌ No (no plan) | MusicKit Web exists, but its consent step is for one user, which doesn't fit a display shared by a household. |
 
 ---
 
 ## The rule that explains the table
 
-**Apple integration is possible if and only if the underlying protocol is an open standard.** CalDAV and CardDAV are IETF standards Apple chose to support; Prism rides those standards exactly like Nextcloud, Radicale, or any other DAV consumer.
+**Apple integration is possible if and only if the underlying protocol is an open standard.** CalDAV and CardDAV are IETF standards that Apple chose to support, and Prism uses them exactly as Nextcloud, Radicale or any other DAV client does.
 
-Everything else lives in CloudKit, which is:
+Everything else lives in CloudKit, Apple's own cloud database, which is:
 
 1. Proprietary
-2. Not publicly documented for third-party server access
-3. Designed around per-user iOS-app consent, not server-to-server federation
-4. Increasingly end-to-end encrypted via Advanced Data Protection. Even if you reverse-engineer the endpoints, the payloads are useless without the user's device keys
+2. Not publicly documented for access from third-party servers
+3. Built around consent given by each user in an iOS app, with no server-to-server access
+4. More and more often end-to-end encrypted through Advanced Data Protection. Even if you reverse-engineer the endpoints, the data is unreadable without the user's device keys
 
-This means there's no "more research" path that turns a ❌ into a ✅. If you see a community library that claims iCloud Reminders or Find My, it is either:
+So no amount of further research turns a ❌ into a ✅. A community library that claims to do iCloud Reminders or Find My is one of these:
 
-- A wrapper around the private CloudKit web endpoints (will break, and already broken for ADP users), or
-- Hardware-side (e.g. AirTag-finding via Bluetooth, not cloud data access)
+- A wrapper around the private CloudKit web endpoints (it will break, and it already fails for ADP users), or
+- Hardware-based, such as finding AirTags over Bluetooth, with no access to cloud data
 
 ---
 
 ## Practical advice for Apple households
 
-- **Calendars + birthdays:** wire them up via CalDAV / CardDAV in the *Apple/CalDAV* provider card under *Settings → Integrations*. These genuinely work and stay working.
-- **Photos:** use OneDrive (or another supported source) as the canonical backup target. iOS's OneDrive app + a one-tap iOS Shortcut covers the "share to Prism" workflow without iCloud Shared Albums. See [Photos setup](PHOTOS.md#getting-photos-into-the-folder-from-your-iphone).
-- **Reminders / Notes / Find My:** mirror them somewhere else first (Microsoft To Do supports two-way sync with Prism Tasks; Home Assistant for presence). Prism integrates the mirror, not iCloud directly.
+- **Calendars + birthdays:** connect them through CalDAV and CardDAV on the *Apple/CalDAV* provider card under *Settings → Integrations*. These work and keep working.
+- **Photos:** make OneDrive (or another supported source) the main backup for your photos. The OneDrive app on iOS and a one-tap iOS Shortcut give you a "share to Prism" step without iCloud Shared Albums. See [Photos setup](PHOTOS.md#getting-photos-into-the-folder-from-your-iphone).
+- **Reminders / Notes / Find My:** copy them to another service first (Microsoft To Do syncs both ways with Prism Tasks, and Home Assistant handles presence). Prism then connects to that service, and iCloud stays out of the loop.
 
 ---
 
 ## Why this page exists
 
-Because every six months somebody (often me) asks "wait, can't we just hit the iCloud API for X?" and goes off to investigate, finds a stale community library, builds half of an integration, and discovers the same wall. This page is the doctrine note: the wall is structural, not "we haven't tried hard enough," and the energy is better spent on the mirror approach.
+Every six months somebody (often me) asks "wait, can't we just hit the iCloud API for X?", goes off to look, finds a stale community library, builds half an integration and runs into the same wall. This page records the decision: the wall is part of how Apple built iCloud, more effort won't get through it, and the time is better spent on copying the data to another service.
 
-The shared-album resolver that hit this wall (the legacy `sharedstreams` protocol details: partition discovery, the `330` / `X-Apple-MMe-Host` redirect, short-lived signed URLs) was captured in the [decisions log](../decisions-log.md) before its branch was deleted, so the next person doesn't re-reverse-engineer it.
+The shared-album resolver that hit this wall (the details of the old `sharedstreams` protocol: partition discovery, the `330` / `X-Apple-MMe-Host` redirect, short-lived signed URLs) was written up in the [decisions log](../decisions-log.md) before its branch was deleted, so the next person doesn't have to reverse-engineer it again.

@@ -152,7 +152,7 @@ export function InlineChildAdd({ childType, onAdd }: InlineChildAddProps) {
             >
               <div className="font-medium truncate">{r.displayName}</div>
               {r.fullName && r.fullName !== r.displayName && (
-                <div className="text-muted-foreground truncate text-[10px]">{r.fullName}</div>
+                <div className="text-muted-foreground truncate text-3xs">{r.fullName}</div>
               )}
             </button>
           ))}
@@ -169,7 +169,7 @@ export function InlineChildAdd({ childType, onAdd }: InlineChildAddProps) {
               className="w-full text-left px-2.5 py-1.5 text-xs hover:bg-accent transition-colors border-b border-border last:border-0 flex items-center gap-1.5"
             >
               <Emoji e="🌲" /> <span className="font-medium">{u.name}</span>
-              <span className="text-muted-foreground text-[10px] ml-auto">{u.type}</span>
+              <span className="text-muted-foreground text-3xs ml-auto">{u.type}</span>
             </button>
           )) : (
             <p className="px-2.5 py-2 text-xs text-muted-foreground">No matches</p>

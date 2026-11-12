@@ -13,6 +13,8 @@
 
 'use client';
 
+import { useIsMobile } from '@/lib/hooks/useIsMobile';
+import { usePageAdd } from '@/lib/hooks/usePageAdd';
 import * as React from 'react';
 import { useState, useMemo } from 'react';
 import { usePersistedState, useSessionScopedState, isBoolean, isStringArray } from '@/lib/hooks/usePersistedState';
@@ -36,6 +38,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { UserAvatar } from '@/components/ui/avatar';
+import { PersonMark } from '@/components/ui/PersonMark';
 import { PageWrapper, SubpageHeader, FilterBar, PersonFilter } from '@/components/layout';
 import { useMessages } from '@/lib/hooks';
 import { useAuth, useTimeFormat } from '@/components/providers';
@@ -69,6 +72,7 @@ function postedBy(msg: FamilyMessage) {
 }
 
 export function MessagesView() {
+  const isMobile = useIsMobile();
 
   const { activeUser, requireAuth } = useAuth();
   const { members: familyMembers } = useFamily();
@@ -159,6 +163,7 @@ export function MessagesView() {
     const user = await requireAuth("Who's posting?");
     if (user) setShowAddModal(true);
   };
+  usePageAdd('Add message', () => { void handleAddWithAuth(); });
 
   // Handle delete - requires auth and ownership check
   const handleDelete = async (messageId: string) => {
@@ -226,7 +231,8 @@ export function MessagesView() {
               </Badge>
             )}
           </>}
-          actions={
+          // On a phone the round button adds (#1028).
+          actions={isMobile ? undefined : (
             <Button
               onClick={handleAddWithAuth}
               size="sm"
@@ -234,7 +240,7 @@ export function MessagesView() {
               <Plus className="h-4 w-4 mr-1" />
               Add Message
             </Button>
-          }
+          )}
         />
 
         {(authors.length > 1 || messages.length > 0) && (
@@ -460,7 +466,7 @@ function MessageCard({
                   <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={cancelEdit} disabled={saving}>
                     Cancel
                   </Button>
-                  <span className="text-[10px] text-muted-foreground ml-auto">Ctrl+Enter</span>
+                  <span className="text-3xs text-muted-foreground ml-auto">Ctrl+Enter</span>
                 </div>
               </div>
             ) : (
@@ -469,12 +475,12 @@ function MessageCard({
                 <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                   <span className="text-xs text-muted-foreground" title={fullDate}>{timeAgo}</span>
                   {message.pinned && (
-                    <Badge variant="outline" className="gap-0.5 text-[10px] h-4 px-1">
+                    <Badge variant="outline" className="gap-0.5 text-3xs h-4 px-1">
                       <Pin className="h-2.5 w-2.5" />Pinned
                     </Badge>
                   )}
                   {message.important && (
-                    <Badge variant="destructive" className="gap-0.5 text-[10px] h-4 px-1">
+                    <Badge variant="destructive" className="gap-0.5 text-3xs h-4 px-1">
                       <AlertTriangle className="h-2.5 w-2.5" />
                     </Badge>
                   )}
@@ -510,30 +516,23 @@ function MessageCard({
   }
 
   return (
+    // A quiet row, not a card (#882, #932): the person's dot and name as
+    // meta, the message at prose size.
     <div
       className={cn(
-        'p-4 rounded-lg border border-border bg-card/85 backdrop-blur-xs',
-        'hover:border-seasonal-accent hover:ring-2 hover:ring-seasonal-accent/50 transition-all',
+        'min-h-[56px] rounded-2xl px-3 py-3 transition-colors hover:bg-foreground/[0.04]',
         'group',
-        message.important && 'bg-destructive/10 border-destructive/20'
+        message.important && 'bg-destructive/10'
       )}
+      data-message-row
     >
       {/* Header: Author and badges */}
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2">
-          <UserAvatar
-            name={message.author.name}
-            color={message.author.color}
-            imageUrl={message.author.avatarUrl}
-            size="md"
-            className="h-8 w-8 text-sm"
-          />
+          <PersonMark color={message.author.color} kind="dot" ground="paper" />
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
-              <span
-                className="font-medium"
-                style={{ color: message.author.color }}
-              >
+              <span className="text-caption font-medium text-muted-foreground" data-message-sender>
                 {message.author.name}
               </span>
               {message.pinned && (
@@ -614,7 +613,7 @@ function MessageCard({
           </div>
         </div>
       ) : (
-        <p className="text-sm text-foreground whitespace-pre-wrap pl-10">
+        <p className="m-0 pl-5 text-prose text-foreground whitespace-pre-wrap" data-message-text>
           {message.message}
         </p>
       )}

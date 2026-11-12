@@ -139,7 +139,7 @@ export function NestedGroupedTaskGrid({
                   <div className="flex items-center gap-1.5 py-1">
                     <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: sub.color }} />
                     <span className="text-xs font-medium text-muted-foreground">{sub.label}</span>
-                    <Badge variant="outline" className="ml-auto text-[10px] h-4 px-1">
+                    <Badge variant="outline" className="ml-auto text-3xs h-4 px-1">
                       {sub.tasks.filter(t => t.completed).length}/{sub.tasks.length}
                     </Badge>
                   </div>

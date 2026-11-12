@@ -22,8 +22,10 @@ test('Dashboard overview — logged in with layout editor', async ({ page }) => 
   await page.mouse.move(640, 360);
   await page.waitForTimeout(1000);
 
-  // Click the edit layout button
-  await page.click('button[aria-label="Edit layout"]');
+  // Open the editor from the dock: Menu, More, Edit layout (#922)
+  await page.click('[data-dock-menu]');
+  await page.click('[data-dock-more]');
+  await page.click('[data-dock-more-panel] [data-screen-job="edit"]');
   await page.waitForTimeout(2000);
 
   // Toggle screen safe zone sizes to show the dashed lines

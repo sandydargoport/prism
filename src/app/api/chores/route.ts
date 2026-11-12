@@ -16,12 +16,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireRole, getDisplayAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
-import { chores, users, choreCompletions } from '@/lib/db/schema';
-import { eq, and, desc, isNull, or, lte } from 'drizzle-orm';
+import { chores, users, choreCompletions, pets } from '@/lib/db/schema';
+import { eq, and, asc, desc, isNull, isNotNull, or, lte, gte, lt, count } from 'drizzle-orm';
 import { createChoreSchema, validateRequest } from '@/lib/validations';
+import { applyReminderRules } from '@/lib/utils/reminders';
 import { getCached } from '@/lib/cache/redis';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
-import { todayKey } from '@/lib/utils/zonedDate';
+import { dayWindowUtc, todayKey } from '@/lib/utils/zonedDate';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logActivity } from '@/lib/services/auditLog';
 import { formatChoreRow } from '@/lib/utils/formatters';
@@ -48,7 +49,8 @@ export async function GET(request: NextRequest) {
 
     // The household's today, not the server's. In the key so the cached list
     // rolls over at the household's midnight.
-    const today = todayKey(await getHouseholdTimezone());
+    const timeZone = await getHouseholdTimezone();
+    const today = todayKey(timeZone);
     const cacheKey = `chores:${assignedTo || 'all'}:${enabledOnly}:future=${includeFuture}:${today}`;
 
     const data = await getCached(cacheKey, async () => {
@@ -100,6 +102,11 @@ export async function GET(request: NextRequest) {
           lastCompleted: chores.lastCompleted,
           nextDue: chores.nextDue,
           nextDueTime: chores.nextDueTime,
+          timesPerDay: chores.timesPerDay,
+          kind: chores.kind,
+          petId: chores.petId,
+          petName: pets.name,
+          petColor: pets.color,
           pointValue: chores.pointValue,
           requiresApproval: chores.requiresApproval,
           enabled: chores.enabled,
@@ -111,7 +118,10 @@ export async function GET(request: NextRequest) {
         })
         .from(chores)
         .leftJoin(users, eq(chores.assignedTo, users.id))
-        .orderBy(desc(chores.createdAt));
+        .leftJoin(pets, eq(chores.petId, pets.id))
+        // Title breaks a tie, so chores made together keep one order
+        // whatever plan the joins get.
+        .orderBy(desc(chores.createdAt), asc(chores.title));
 
       // Apply filters
       const conditions = [];
@@ -140,9 +150,22 @@ export async function GET(request: NextRequest) {
             return isDue || hasPending || recentlyCompleted;
           });
 
+      // Approved ticks today, for a chore done more than once a day (#1107).
+      const { start, end } = dayWindowUtc(today, timeZone);
+      const ticks = await db
+        .select({ choreId: choreCompletions.choreId, n: count() })
+        .from(choreCompletions)
+        .where(and(
+          isNotNull(choreCompletions.approvedBy),
+          gte(choreCompletions.completedAt, start),
+          lt(choreCompletions.completedAt, end),
+        ))
+        .groupBy(choreCompletions.choreId);
+      const doneToday = new Map(ticks.map((t) => [t.choreId, Number(t.n)]));
+
       const formattedChores = filteredResults.map(row => {
         const pendingCompletion = pendingMap.get(row.id);
-        return formatChoreRow(row, pendingCompletion);
+        return { ...formatChoreRow(row, pendingCompletion), doneToday: doneToday.get(row.id) ?? 0 };
       });
 
       return { chores: formattedChores };
@@ -197,7 +220,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // A reminder has no points or approval, and needs a time (#1109).
+    const ruled = applyReminderRules(validation.data);
+    if (!ruled.ok) {
+      return NextResponse.json({ error: ruled.error }, { status: 400 });
+    }
+
     const {
+      kind,
+      petId,
       title,
       description,
       category,
@@ -210,7 +241,8 @@ export async function POST(request: NextRequest) {
       createdBy,
       nextDue,
       nextDueTime,
-    } = validation.data;
+      timesPerDay,
+    } = ruled.data;
 
     // Insert the chore
     const [newChore] = await db
@@ -228,6 +260,10 @@ export async function POST(request: NextRequest) {
         createdBy: createdBy || null,
         nextDue: nextDue || undefined,
         nextDueTime: nextDueTime ?? null,
+        // More than once a day only means something for a daily chore (#1107).
+        timesPerDay: frequency === 'daily' ? timesPerDay ?? 1 : 1,
+        kind: kind ?? 'chore',
+        petId: petId ?? null,
       })
       .returning();
 

@@ -1,44 +1,32 @@
-# Themes
+# Looks and colours
 
-Prism ships seven palettes. Choose one under *Settings → Appearance → Palette*.
+Choose how Prism looks (a photo behind glass, the same kept dark, or plain paper), then pick a colour palette.
+
+There are seven palettes, and you choose one under *Settings → Appearance → Palette*.
 
 | | |
 |---|---|
-| **Prism** | The original. Cool blues on a clean surface. |
-| **Paper** | Warm paper neutrals with one blue accent. The colour comes from the family. New installs start on it. |
-| **Clay** | Warm earth tones. Easier on the eyes in a bright kitchen. |
-| **Harvest** | Late autumn. Amber, bark and a low sun. |
-| **Snow Day** | Cold light and pale blue. Quiet, and easy to read. |
-| **Arcade** | Sixteen-bit console. Saturated primaries on near-black. |
-| **Notice Board** | Near-white and flat, packed tight. The events supply the colour. |
+| **Prism** | The original palette, with cool blues on a clean surface. |
+| **Paper** | Warm paper neutrals with one blue accent, so the colour comes from the family. New installs start on it. |
+| **Clay** | Warm earth tones that are easier on the eyes in a bright kitchen. |
+| **Harvest** | Late autumn: amber, bark and a low sun. |
+| **Snow Day** | Cold light and pale blue, quiet and easy to read. |
+| **Arcade** | A sixteen-bit console look, with saturated primaries on near-black. |
+| **Notice Board** | Near-white, flat and tightly packed, so the events supply the colour. |
 
 ## What is per-screen and what is not
 
-**The palette is for the whole house.** Change it on a phone and the kitchen
-display changes too. It is a decision about how your home looks, and a house
-where every screen is a different colour is a house where something looks
-broken.
+The palette is set for the whole house. If you change it on a phone, the kitchen display changes too. It decides how your home looks, and when every screen is a different colour the house looks like something is broken.
 
-**Light and dark are per-screen.** That is a decision about the room a
-particular screen is in — a hallway display at night and a tablet in a bright
-kitchen want different answers, and both are right at the same time. A screen
-that never chose follows its system setting, or dark on an install that picked
-the **Night** look in setup.
+Light and dark are set per screen, because that choice depends on the room the screen is in. A hallway display at night and a tablet in a bright kitchen need different answers, and both are right at the same time. A screen that has never been set follows its system setting, or uses dark on an install that picked the **Night** look during setup.
 
-The same split applies to the screensaver timeout and text size, which are
-also per-screen.
+The screensaver timeout and text size are per screen as well.
 
 ## Readability
 
-Every palette is checked before it can ship. Contrast is measured on eight
-text pairs in both light and dark; anything that falls below a readable ratio
-is rejected rather than shipped and apologised for.
+Every palette is checked before it can ship. Contrast is measured on eight pairs of text and background colours, in both light and dark, and any palette with a pair below a readable ratio is turned away before release.
 
-This is stricter than it sounds for a reason. Prism is read from across a
-room, often by someone who is not wearing their glasses, sometimes by a child.
-A palette that looks striking on a laptop and turns the calendar into grey on
-grey is worse than no palette at all, because the person looking at it usually
-cannot tell whether the fault is the theme or the screen.
+The check is strict for a reason. People read Prism from across a room, often without their glasses on, and sometimes they are children. A palette that looks striking on a laptop but turns the calendar into grey on grey is worse than no palette, because the person looking at it usually can't tell whether the theme or the screen is at fault.
 
 ## If a palette makes Prism unreadable
 
@@ -48,56 +36,38 @@ Add `?theme=default` to the address:
 http://your-prism-address/?theme=default
 ```
 
-That resets to the default palette and saves the change, so the screen comes
-back the next time it loads too.
+That switches back to the default palette and saves the change, so the screen still has it the next time it loads.
 
-It exists because a wall display has no keyboard, and a palette with a broken
-background and text pairing can make the Settings page itself unreadable —
-which would otherwise mean opening a terminal to recover a colour choice.
+This is there because a wall display has no keyboard, and a palette with a bad pairing of background and text can make the Settings page itself unreadable. Without it, you would need to open a terminal to undo a colour choice.
 
 ## Sharing a theme
 
-A theme is nothing but colour values, so it can be passed between households.
-Three ways, and they differ in what happens to your work:
+A theme is only colour values, so households can pass themes to each other. There are three ways, and each treats your work differently:
 
-- **As a file**: *Settings → Display → Palette → Share → Download file* saves
-  the palette in use as a `.json` file. Send it however you like; the other
-  household installs it with **Import**, next to Browse. No GitHub account is
-  needed, and the file goes only to the people you send it to.
-- **Through the gallery**: anyone can install it, and it stays yours.
-  Submitting needs a GitHub account.
-- **As a contribution**: it ships with Prism for everyone, which needs the
-  Contributor License Agreement, because Prism then distributes it.
+- **As a file**: *Settings → Display → Palette → Share → Download file* saves the palette you are using as a `.json` file. Send it any way you like, and the other household installs it with **Import**, next to Browse. You don't need a GitHub account, and only the people you send it to get the file.
+- **Through the gallery**: anyone can install it, and it stays yours. You need a GitHub account to submit it.
+- **As a contribution**: it ships with Prism for everyone. That needs the Contributor License Agreement, because Prism then distributes it.
 
-Neither of the last two is better. `community/themes/README.md` has the
-detail, including what is checked and what is not allowed.
+The gallery and a contribution are equally good choices. `community/themes/README.md` has the details, including what gets checked and what isn't allowed.
 
-An imported file gets the same checks as a gallery theme. It is refused if its
-name matches a built-in palette or a theme already installed, so an import
-never replaces one; remove the old one first or rename the theme in the file.
+An imported file goes through the same checks as a gallery theme. Prism refuses it if its name matches a built-in palette or a theme you already have, so an import never replaces anything. Remove the old theme first, or rename the theme in the file.
 
 ## Beyond colour
 
-A palette also carries three shape values, which is what stops the themes
-reading as tints of one another:
+A palette also sets three shape values, which keep the themes from looking like tints of one another:
 
-- **Corner rounding** — square through to soft. Arcade is square; Snow Day is
-  the roundest.
-- **Density** — how much space sits inside and between cards. Snow Day is airy,
-  Arcade is tight.
-- **Border weight** — from none to heavy. Snow Day has no borders at all and
-  separates things with space; Arcade outlines everything.
+- **Corner rounding** runs from square to soft. Arcade is square, and Snow Day is the roundest.
+- **Density** is how much space sits inside and between cards. Snow Day is airy and Arcade is tight.
+- **Border weight** runs from none to heavy. Snow Day has no borders at all and separates things with space, while Arcade outlines everything.
 
-All three are capped. Past a point they stop being style and start looking like
-a layout fault, and whoever installed the theme cannot tell the difference.
+All three have limits. Past a certain point they look like a broken layout, and whoever installed the theme can't tell which it is.
 
 ## What a theme cannot change
 
-Themes set surface and text colours. They do not currently change:
+Themes set the colours of surfaces and text. For now they don't change:
 
-- family member colours, which are per-person and set on each member
-- the fixed colours used for chore status and task priority
+- family member colours, which belong to each person and are set on each member
+- the fixed colours for chore status and task priority
 - fonts, spacing or corner radius
 
-Family member colours are deliberately excluded: they identify a person across
-the whole app, and a palette should not be able to reassign who is green.
+Family member colours are left out on purpose. They identify a person everywhere in the app, and a palette shouldn't be able to change who is green.

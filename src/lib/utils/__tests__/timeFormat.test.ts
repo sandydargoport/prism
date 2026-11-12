@@ -2,6 +2,7 @@ import {
   eventOccursOnDisplayDay,
   eventStartsOnDisplayDay,
   eventSpansMultipleDisplayDays,
+  formatBareTime,
   formatDisplayDateTime,
   formatDisplayHour,
   formatDisplayTime,
@@ -223,5 +224,35 @@ describe('wallClockMinutesBetween', () => {
   it('is the elapsed time on an ordinary day, or without a zone', () => {
     expect(wallClockMinutesBetween(new Date('2026-06-01T15:00:00Z'), new Date('2026-06-01T16:30:00Z'), 'America/Chicago')).toBe(90);
     expect(wallClockMinutesBetween(new Date('2026-06-01T15:00:00Z'), new Date('2026-06-01T16:30:00Z'))).toBe(90);
+  });
+});
+
+// Times as people say them on the wall (#800).
+describe('formatBareTime', () => {
+  const at = (h: number, m = 0) => new Date(2026, 0, 15, h, m);
+
+  it('drops :00 and the day half inside 8:00 am to 7:59 pm', () => {
+    expect(formatBareTime(at(8), '12h')).toBe('8');
+    expect(formatBareTime(at(12, 30), '12h')).toBe('12:30');
+    expect(formatBareTime(at(17, 30), '12h')).toBe('5:30');
+    expect(formatBareTime(at(19, 59), '12h')).toBe('7:59');
+  });
+
+  it('says am or pm in the daytime too when asked, for the end of a range', () => {
+    expect(formatBareTime(at(11), '12h', undefined, { dayHalf: true })).toBe('11 am');
+    expect(formatBareTime(at(17, 30), '12h', undefined, { dayHalf: true })).toBe('5:30 pm');
+    expect(formatBareTime(at(17, 30), '24h', undefined, { dayHalf: true })).toBe('17:30');
+  });
+
+  it('keeps am or pm outside it, still without :00', () => {
+    expect(formatBareTime(at(20), '12h')).toBe('8 pm');
+    expect(formatBareTime(at(7, 15), '12h')).toBe('7:15 am');
+    expect(formatBareTime(at(0), '12h')).toBe('12 am');
+    expect(formatBareTime(at(21, 5), '12h')).toBe('9:05 pm');
+  });
+
+  it('leaves the 24-hour format as it is', () => {
+    expect(formatBareTime(at(17), '24h')).toBe('17:00');
+    expect(formatBareTime(at(9, 5), '24h')).toBe('09:05');
   });
 });

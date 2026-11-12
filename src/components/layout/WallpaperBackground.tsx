@@ -1,10 +1,21 @@
 'use client';
 
+import { mixOnThisDay } from '@/lib/photos/caption';
+import { usePhotoSettings } from '@/lib/photos/usePhotoSettings';
+import type { Photo } from '@/lib/hooks/usePhotos';
+import { PhotoCaption } from './PhotoCaption';
+import { focalOf, type FocalPoint } from '@/lib/photos/focalPoint';
+import { CENTRED, photoFrame, type Frame } from '@/lib/photos/frame';
+import { coveredRects } from '@/lib/photos/frameDom';
+import { useFocalPointPass } from '@/lib/photos/focalPass';
+import { PhotoStage } from './PhotoStage';
 import { useState, useEffect, useCallback } from 'react';
 import { usePhotos } from '@/lib/hooks/usePhotos';
 import { useScreenOrientation } from '@/lib/hooks/useScreenOrientation';
 import { SCENERY } from '@/lib/scenery';
 import { useSceneryOn } from '@/lib/hooks/useSceneryOn';
+import { photoTone, waterVars, type PhotoTone } from '@/lib/design/water';
+import { PHOTO_DIM } from '@/lib/design/tokens';
 
 const STORAGE_KEY = 'prism-wallpaper-enabled';
 const INTERVAL_KEY = 'prism-wallpaper-interval';
@@ -133,15 +144,104 @@ export function usePinnedPhoto(context: 'wallpaper' | 'screensaver') {
   return { pinnedId, setPinnedId };
 }
 
+/** Tones already measured, by image URL: a photo is read once per page load. */
+const toneCache = new Map<string, PhotoTone | null>();
+
+/**
+ * The photo's tone, read from a 48x27 copy of it (#799). Null until it is
+ * read, and for an image the browser cannot read back.
+ */
+export function usePhotoTone(src: string | null): PhotoTone | null {
+  // The last tone read, with the photo it belongs to; a cached photo needs no read.
+  const [read, setRead] = useState<{ src: string; tone: PhotoTone | null } | null>(null);
+  useEffect(() => {
+    if (!src || toneCache.has(src)) return;
+    let cancelled = false;
+    const setTone = (tone: PhotoTone | null) => setRead({ src, tone });
+    const img = new Image();
+    img.decoding = 'async';
+    img.onload = () => {
+      let measured: PhotoTone | null = null;
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 48; canvas.height = 27;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (ctx) {
+          // Cover-crop to the screen's shape, as the wallpaper draws it.
+          const screen = window.innerWidth / Math.max(1, window.innerHeight);
+          const photo = img.naturalWidth / Math.max(1, img.naturalHeight);
+          let sw = img.naturalWidth, sh = img.naturalHeight, sx = 0, sy = 0;
+          if (photo > screen) { sw = sh * screen; sx = (img.naturalWidth - sw) / 2; }
+          else { sh = sw / screen; sy = (img.naturalHeight - sh) / 2; }
+          ctx.drawImage(img, sx, sy, sw, sh, 0, 0, 48, 27);
+          measured = photoTone(ctx.getImageData(0, 0, 48, 27).data, 48, 27);
+        }
+      } catch {
+        measured = null; // a tainted or unreadable image keeps the safe values
+      }
+      toneCache.set(src, measured);
+      if (!cancelled) setTone(measured);
+    };
+    img.onerror = () => { toneCache.set(src, null); if (!cancelled) setTone(null); };
+    img.src = src;
+    return () => { cancelled = true; };
+  }, [src]);
+  if (!src) return null;
+  if (toneCache.has(src)) return toneCache.get(src) ?? null;
+  return read?.src === src ? read.tone : null;
+}
+
+/**
+ * While a wallpaper shows, the page knows it (`data-wallpaper` on <html>) and
+ * carries the water values for that photo, so CSS can draw cards as water and
+ * the corner tiles straight on the photo (globals.css, "Water").
+ */
+function useWaterOnPage(src: string | null, scenery: boolean) {
+  const tone = usePhotoTone(src);
+  useEffect(() => {
+    if (!src) return;
+    const root = document.documentElement;
+    // The lighter of the two mode dims: the harder case, so both modes read.
+    const dim = scenery ? PHOTO_DIM.scenery.light : PHOTO_DIM.photos.light;
+    const vars = waterVars(tone, dim);
+    root.dataset.wallpaper = scenery ? 'scenery' : 'photo';
+    for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
+    return () => {
+      delete root.dataset.wallpaper;
+      for (const k of Object.keys(vars)) root.style.removeProperty(k);
+    };
+  }, [src, scenery, tone]);
+}
+
 /** What to show: wallpaper photos added to Prism, or the bundled scenery when there are none. */
 export function wallpaperPool(
-  photos: Array<{ id: string }>,
+  photos: Array<{ id: string; focalX?: number | null; focalY?: number | null; width?: number | null; height?: number | null; takenAt?: string | null }>,
   photosLoading: boolean,
   sceneryOn: boolean,
-): { items: Array<{ id: string; src: string }>; scenery: boolean } {
-  if (photos.length > 0) return { items: photos.map((p) => ({ id: p.id, src: `/api/photos/${p.id}/file` })), scenery: false };
+): { items: Array<{ id: string; src: string; focal?: FocalPoint; aspect?: number; takenAt?: string | null }>; scenery: boolean } {
+  if (photos.length > 0) return { items: photos.map((p) => ({
+    id: p.id, src: `/api/photos/${p.id}/file`, focal: focalOf(p),
+    aspect: p.width && p.height ? p.width / p.height : undefined,
+    takenAt: p.takenAt ?? null,
+  })), scenery: false };
   if (sceneryOn && !photosLoading) return { items: SCENERY.map((s) => ({ id: s.id, src: s.src })), scenery: true };
   return { items: [], scenery: false };
+}
+
+/** This screen's date's photos from earlier years, when on (#959). */
+function useOnThisDayPhotos(on: boolean) {
+  const [list, setList] = useState<Photo[]>([]);
+  useEffect(() => {
+    if (!on) return;
+    const now = new Date();
+    let active = true;
+    fetch(`/api/photos?usage=wallpaper&sort=random&limit=20&onThisDayMonth=${now.getMonth() + 1}&onThisDayDay=${now.getDate()}&onThisDayYear=${now.getFullYear()}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { photos?: Photo[] } | null) => { if (active) setList(d?.photos ?? []); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [on]);
+  return on ? list : [];
 }
 
 export function WallpaperBackground() {
@@ -165,7 +265,6 @@ export function WallpaperBackground() {
   const photos = orientedPhotos.length > 0 ? orientedPhotos : allPhotos;
 
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [fadingOut, setFadingOut] = useState(false);
 
   // Track photos whose file is missing/deleted (the image 404s) so we skip past
   // them instead of showing a blank background. A broken pinned photo falls back
@@ -177,21 +276,22 @@ export function WallpaperBackground() {
   }, []);
 
   const sceneryOn = useSceneryOn();
-  const { items, scenery } = wallpaperPool(photos, photosLoading, sceneryOn);
+  const { items: everyday, scenery } = wallpaperPool(photos, photosLoading, sceneryOn);
+  // "On this day" (#959): photos from this date in earlier years, every
+  // other photo, when the household turns it on.
+  const photoSettings = usePhotoSettings();
+  const onThisDay = useOnThisDayPhotos(!!photoSettings?.onThisDay && !scenery);
+  const items = mixOnThisDay(everyday, wallpaperPool(onThisDay, false, false).items);
   const usePinned = !scenery && !!pinnedId && !brokenIds.has(pinnedId);
   const pool = items.filter((p) => !brokenIds.has(p.id));
+  // Find the focal points of photos that have none yet (#956).
+  useFocalPointPass(enabled && !scenery && pool.length > 0);
 
   // Rotate photos (only if no pinned photo and interval is not "never")
   useEffect(() => {
     if (!enabled || pool.length <= 1 || usePinned || interval === 0) return;
-    const timer = window.setInterval(() => {
-      setFadingOut(true);
-      // After fade out, switch image and fade back in
-      setTimeout(() => {
-        setCurrentIndex((i) => i + 1);
-        setFadingOut(false);
-      }, 1000);
-    }, interval * 1000);
+    // The photo stage crossfades to the next one (#954).
+    const timer = window.setInterval(() => setCurrentIndex((i) => i + 1), interval * 1000);
     return () => window.clearInterval(timer);
   }, [enabled, pool.length, interval, usePinned]);
 
@@ -201,11 +301,40 @@ export function WallpaperBackground() {
   const rotationPhoto = pool.length > 0 ? pool[currentIndex % pool.length] : undefined;
   const activeId = usePinned ? pinnedId : (rotationPhoto?.id ?? null);
   const src = usePinned ? `/api/photos/${pinnedId}/file` : (rotationPhoto?.src ?? null);
+  // A pinned photo, or "never", stays put: no zoom (#955).
+  const zoomMs = usePinned || interval === 0 ? 0 : interval * 1000;
+  // Frame each photo's subject clear of the widgets (#957).
+  const frameFor = (url: string) => {
+    const item = pool.find((p) => p.src === url);
+    if (!item?.aspect || !item.focal) return CENTRED;
+    return photoFrame({ aspect: item.aspect, screen: { width: window.innerWidth, height: window.innerHeight }, covered: coveredRects(), focal: item.focal });
+  };
 
+  // When it was taken, and where if shown (#958). Not for the bundled scenery.
+  const caption = scenery || !activeId ? null : { id: activeId, takenAt: usePinned ? null : rotationPhoto?.takenAt ?? null };
+
+  return <WallpaperLayers src={src} scenery={scenery} activeId={activeId} onBroken={markBroken} frameFor={frameFor} zoomMs={zoomMs} caption={caption} />;
+}
+
+function WallpaperLayers({ src, scenery, activeId, onBroken, frameFor, zoomMs, caption }: {
+  caption: { id: string; takenAt: string | null } | null;
+  src: string | null;
+  scenery: boolean;
+  frameFor: (src: string) => Frame;
+  zoomMs: number;
+  activeId: string | null;
+  onBroken: (id: string) => void;
+}) {
+  useWaterOnPage(src, scenery);
   if (!src) return null;
+  const markBroken = onBroken;
 
   return (
-    <div className="fixed inset-0 z-0 pointer-events-none">
+    // Anchored at the foot and reaching up past the top inset (#1098): in the
+    // iPhone home-screen app a fixed layer's box starts below the status bar,
+    // so top 0 left the page colour showing there. The inset is 0 on a wall
+    // or a desktop, where this is the same as inset-0.
+    <div className="fixed inset-x-0 bottom-0 -top-[env(safe-area-inset-top,0px)] z-0 pointer-events-none" data-wallpaper-layer>
       {/* Validator — if this photo's file 404s, mark it broken and skip it. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
@@ -215,19 +344,22 @@ export function WallpaperBackground() {
         className="hidden"
         onError={() => activeId && markBroken(activeId)}
       />
-      {/* Photo */}
-      <div
-        className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
-        style={{
-          backgroundImage: `url(${src})`,
-          opacity: fadingOut ? 0 : 1,
-        }}
-      />
+      {/* Photo: the shared stage crossfades to the next (#954). */}
+      <PhotoStage src={src} frameFor={frameFor} zoomMs={zoomMs} />
       {/* Black layer that keeps widgets readable, PHOTO_DIM in
           src/lib/design/tokens.ts (a test holds these classes to it). The
           bundled scenery is shown with glass widgets, so it is only lightly
           dimmed and the photo shows. */}
       <div className={scenery ? 'absolute inset-0 bg-black/10 dark:bg-black/40' : 'absolute inset-0 bg-black/60 dark:bg-black/70'} />
+      {/* Shades only where text sits on the photo: the two top corners and
+          the bottom, each as dark as that part of the photo needs (#799). */}
+      <div className="absolute inset-0" data-wallpaper-shade style={{ backgroundImage: [
+        'radial-gradient(45% 40% at 0% 0%, rgb(0 0 0 / var(--ds-shade-tl, 0.35)), transparent)',
+        'radial-gradient(45% 40% at 100% 0%, rgb(0 0 0 / var(--ds-shade-tr, 0.35)), transparent)',
+        'linear-gradient(to top, rgb(0 0 0 / var(--ds-shade-bottom, 0.35)), transparent 35%)',
+      ].join(', ') }} />
+      {/* Above the dim and shades, so it reads in the full light ink. */}
+      <PhotoCaption photo={caption} />
     </div>
   );
 }

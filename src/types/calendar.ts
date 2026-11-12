@@ -26,6 +26,16 @@ export interface CalendarEvent {
   calendarId: string;
   /** The calendar group this event belongs to (for split-column views) */
   groupId?: string;
+  /** Its calendar's "hide after" time of day, HH:mm (#877). */
+  hideAfter?: string;
+  /**
+   * The same event on other people's calendars, merged into this one (#1066):
+   * their event ids, calendars and colours (colours other than this one's).
+   */
+  alsoIds?: string[];
+  alsoCalendarIds?: string[];
+  alsoCalendarNames?: string[];
+  alsoColors?: string[];
 }
 
 /**

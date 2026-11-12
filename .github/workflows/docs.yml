@@ -8,12 +8,26 @@ on:
       - 'mkdocs.yml'
       - 'requirements-docs.txt'
       - '.github/workflows/docs.yml'
+      - 'overrides/**'
+      - 'e2e-docs/**'
+      - 'playwright.docs.config.ts'
+      - 'README.md'
+      - 'scripts/check-prose.py'
+      - 'scripts/check-prose-allow.txt'
+      - 'scripts/test_check_prose.py'
   pull_request:
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
       - 'requirements-docs.txt'
       - '.github/workflows/docs.yml'
+      - 'overrides/**'
+      - 'e2e-docs/**'
+      - 'playwright.docs.config.ts'
+      - 'README.md'
+      - 'scripts/check-prose.py'
+      - 'scripts/check-prose-allow.txt'
+      - 'scripts/test_check_prose.py'
   workflow_dispatch:
 
 # Least privilege by default; the deploy job elevates for itself.
@@ -31,7 +45,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7
         with:
           python-version: '3.12'
           cache: pip
@@ -40,6 +54,25 @@ jobs:
       - run: pip install -r requirements-docs.txt
 
       - run: mkdocs build --strict
+
+      # The README, the front page and every page in the menu stay free of
+      # the patterns that read as machine-written (#1143): dashes, "not X but
+      # Y" contrasts, hype words and two-word sentences. A hit that is right
+      # as written goes in scripts/check-prose-allow.txt.
+      - name: Check the writing
+        run: |
+          python3 -m unittest scripts/test_check_prose.py
+          python3 scripts/check-prose.py
+
+      # The front page is a custom template (overrides/home.html); measure
+      # it in a browser so a layout break fails the PR, not the live site.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test -c playwright.docs.config.ts
 
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9  # v5.0.0
         if: github.event_name != 'pull_request'

@@ -72,7 +72,7 @@ jest.mock('@/lib/db/client', () => ({
   },
 }));
 jest.mock('@/lib/db/schema', () => ({
-  displays: { id: 'id', name: 'name', lastSeenAt: 'last_seen_at' },
+  displays: { id: 'id', name: 'name', lastSeenAt: 'last_seen_at', screenWidth: 'screen_width', screenHeight: 'screen_height' },
   layouts: { id: 'id' },
 }));
 jest.mock('@/lib/displays/displaySettingsStore', () => ({
@@ -89,6 +89,7 @@ import { NextRequest } from 'next/server';
 import { GET, POST } from '../route';
 import { PATCH, DELETE } from '../[id]/route';
 import { POST as HEARTBEAT } from '../heartbeat/route';
+import { POST as EDITING } from '../[id]/editing/route';
 import { DISPLAY_COOKIE, DISPLAY_MARKER_COOKIE, issueDisplayToken } from '@/lib/auth/displayIdentity';
 
 const PARENT = { userId: 'p1', role: 'parent' };
@@ -297,8 +298,25 @@ describe('POST /api/displays/heartbeat', () => {
     mockSelectWhere.mockReturnValue([{ id: KITCHEN, name: 'Kitchen', settingsUpdatedAt: edited }]);
     const body = await (await HEARTBEAT(json('/api/displays/heartbeat', 'POST'))).json();
     // The screen compares this with its last sync to notice a remote edit.
-    expect(body.display).toEqual({ id: KITCHEN, name: 'Kitchen', settingsUpdatedAt: edited.toISOString() });
+    expect(body.display).toEqual({ id: KITCHEN, name: 'Kitchen', settingsUpdatedAt: edited.toISOString(), editing: false });
     expect(mockUpdateSet).toHaveBeenCalledWith({ lastSeenAt: expect.any(Date) });
+  });
+
+  it('stores the size the screen reports, and ignores one that is not a screen size (#1153)', async () => {
+    mockJar.set(DISPLAY_COOKIE, issueDisplayToken(KITCHEN));
+    mockSelectWhere.mockReturnValue([{ id: KITCHEN, name: 'Kitchen', settingsUpdatedAt: null }]);
+    await HEARTBEAT(json('/api/displays/heartbeat', 'POST', { width: 1280, height: 800 }));
+    expect(mockUpdateSet).toHaveBeenLastCalledWith({ lastSeenAt: expect.any(Date), screenWidth: 1280, screenHeight: 800 });
+    await HEARTBEAT(json('/api/displays/heartbeat', 'POST', { width: 5, height: 'tall' }));
+    expect(mockUpdateSet).toHaveBeenLastCalledWith({ lastSeenAt: expect.any(Date) });
+  });
+
+  it('says the screen is being edited while a recent mark stands, and not once it is old (#1153)', async () => {
+    mockJar.set(DISPLAY_COOKIE, issueDisplayToken(KITCHEN));
+    mockSelectWhere.mockReturnValue([{ id: KITCHEN, name: 'Kitchen', settingsUpdatedAt: null, editingAt: new Date() }]);
+    expect((await (await HEARTBEAT(json('/api/displays/heartbeat', 'POST'))).json()).display.editing).toBe(true);
+    mockSelectWhere.mockReturnValue([{ id: KITCHEN, name: 'Kitchen', settingsUpdatedAt: null, editingAt: new Date(Date.now() - 10 * 60_000) }]);
+    expect((await (await HEARTBEAT(json('/api/displays/heartbeat', 'POST'))).json()).display.editing).toBe(false);
   });
 
   it('ignores a forged cookie', async () => {
@@ -316,5 +334,25 @@ describe('POST /api/displays/heartbeat', () => {
     expect(body.display).toBeNull();
     expect(mockJar.has(DISPLAY_COOKIE)).toBe(false);
     expect(mockJar.has(DISPLAY_MARKER_COOKIE)).toBe(false);
+  });
+});
+
+describe('POST /api/displays/:id/editing (#1153)', () => {
+  it('marks and clears a screen as being edited', async () => {
+    mockUpdateReturning.mockReturnValue([{ id: KITCHEN }]);
+    const on = await EDITING(json(`/api/displays/${KITCHEN}/editing`, 'POST', { editing: true }), params(KITCHEN));
+    expect(on.status).toBe(200);
+    expect(mockUpdateSet).toHaveBeenLastCalledWith({ editingAt: expect.any(Date) });
+    await EDITING(json(`/api/displays/${KITCHEN}/editing`, 'POST', { editing: false }), params(KITCHEN));
+    expect(mockUpdateSet).toHaveBeenLastCalledWith({ editingAt: null });
+  });
+
+  it('is parent only, and refuses a body that does not say', async () => {
+    mockRequireAuth.mockResolvedValue(CHILD);
+    expect((await EDITING(json(`/api/displays/${KITCHEN}/editing`, 'POST', { editing: true }), params(KITCHEN))).status).toBe(403);
+    mockRequireAuth.mockResolvedValue(PARENT);
+    expect((await EDITING(json(`/api/displays/${KITCHEN}/editing`, 'POST', {}), params(KITCHEN))).status).toBe(400);
+    mockUpdateReturning.mockReturnValue([]);
+    expect((await EDITING(json(`/api/displays/${KITCHEN}/editing`, 'POST', { editing: true }), params(KITCHEN))).status).toBe(404);
   });
 });

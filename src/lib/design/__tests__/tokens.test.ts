@@ -6,7 +6,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import {
-  CARD, EVENT, PAPER, PAPER_CONTRAST_MIN, PHOTO_DIM, REFERENCE_ROOT_PX, SPACE_PX,
+  CARD, EVENT, PAPER, PAPER_CONTRAST_MIN, PHOTO_DIM, PROSE, REFERENCE_ROOT_PX, SPACE_PX,
   TARGET_MIN_PX, TEXT_FLOOR_PX, TYPE_SCALE, TYPE_STEP_MIN, type TypeRole,
 } from '../tokens';
 import { checkThemeContrast, EDGE_MIN } from '@/lib/themes/contrast';
@@ -61,6 +61,34 @@ describe('type scale', () => {
     expect(Number(cssValue(`--text-${role}--line-height`))).toBe(TYPE_SCALE[role].lineHeight);
   });
 
+  it('prose reads at a role size, not a sixth step, with looser lines (#800)', () => {
+    expect(ROLES).toContain(PROSE.size);
+    expect(cssValue('--text-prose')).toBe(`var(--text-${PROSE.size})`);
+    expect(Number(cssValue('--text-prose--line-height'))).toBe(PROSE.lineHeight);
+    expect(PROSE.lineHeight).toBeGreaterThan(TYPE_SCALE[PROSE.size].lineHeight);
+  });
+
+  it('no component draws text at a fixed pixel size, which would skip the floor (#893, #894)', () => {
+    // text-[10px] compiles to a plain font-size and never meets --text-floor.
+    // The floored sizes are text-2xs (11px), text-3xs (10px), text-4xs (8-9px).
+    const offenders: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          if (entry.name !== '__tests__') walk(full);
+        } else if (/\.(tsx?|css)$/.test(entry.name)) {
+          const rel = path.relative(ROOT, full);
+          fs.readFileSync(full, 'utf8').split('\n').forEach((line, i) => {
+            if (/text-\[\d+(\.\d+)?px\]/.test(line)) offenders.push(`${rel}:${i + 1}`);
+          });
+        }
+      }
+    };
+    walk(path.join(ROOT, 'src'));
+    expect(offenders).toEqual([]);
+  });
+
   it('cn keeps a role size next to a text colour', () => {
     for (const role of ROLES) {
       expect(cn(`text-${role}`, 'text-muted-foreground')).toBe(`text-${role} text-muted-foreground`);
@@ -97,6 +125,26 @@ describe('glass under Performance Mode', () => {
     expect(block).toMatch(/--ds-glass-filter:\s*none;/);
     const alpha = Number(/--ds-glass-alpha:\s*([\d.]+);/.exec(block)?.[1]);
     expect(alpha).toBeGreaterThan(Math.max(CARD.glassAlpha.light, CARD.glassAlpha.dark));
+  });
+});
+
+describe('status pills (#891)', () => {
+  // Status words sit on a solid fill, so their contrast is the fill against its
+  // own foreground, never the photo behind a glass card.
+  it.each(MODES)('the Paper red pill reads at 4.5:1 in %s', (mode) => {
+    const ratio = contrastRatioHex(hslToHex(PAPER[mode]['destructive-foreground']), hslToHex(PAPER[mode].destructive));
+    expect(ratio).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('the amber pill reads at 4.5:1 in light and dark (globals.css, Paper sets none)', () => {
+    const block = (sel: RegExp) => sel.exec(css)?.[1] ?? '';
+    const light = block(/:root\s*\{([^}]*--warning:[^}]*)\}/);
+    const dark = block(/\.dark\s*\{([^}]*--warning:[^}]*)\}/);
+    for (const b of [light, dark]) {
+      const v = (n: string) => new RegExp(`${n}:\\s*([^;]+);`).exec(b)![1]!.trim();
+      expect(contrastRatioHex(hslToHex(v('--warning-foreground')), hslToHex(v('--warning')))).toBeGreaterThanOrEqual(4.5);
+    }
+    expect(light).not.toBe(dark);
   });
 });
 

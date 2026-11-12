@@ -4,6 +4,7 @@
  * Parses recipe data from Paprika 3's HTML export format.
  * Paprika exports recipes as HTML files with structured content.
  */
+import { parse, type DefaultTreeAdapterMap } from 'parse5';
 
 export interface PaprikaRecipe {
   name: string;
@@ -85,154 +86,182 @@ function parseRating(ratingStr: string | undefined): number | undefined {
   return undefined;
 }
 
-/**
- * Extract text content from HTML element, handling nested tags.
- */
-function extractText(html: string): string {
-  return html
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/p>/gi, '\n\n')
-    .replace(/<\/div>/gi, '\n')
-    .replace(/<\/li>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+// ---------------------------------------------------------------------------
+// Reading the export (#1062)
+//
+// The export is parsed once into a tree (parse5, linear in its size) and every
+// field is read from that tree. Nothing scans the whole file with a pattern:
+// regexes over the raw HTML took seconds on a crafted file and held the
+// server's only thread. Labelled fields ("Prep time: 30 min") are read from
+// one text node at a time, and only from its first VALUE_MAX characters.
+// ---------------------------------------------------------------------------
+
+type Node = DefaultTreeAdapterMap['node'];
+type ParentNode = DefaultTreeAdapterMap['parentNode'];
+type Element = DefaultTreeAdapterMap['element'];
+type TextNode = DefaultTreeAdapterMap['textNode'];
+
+const VALUE_MAX = 200;
+
+const isElement = (n: Node): n is Element => 'tagName' in n;
+const isText = (n: Node): n is TextNode => n.nodeName === '#text';
+const kids = (n: Node): Node[] => ('childNodes' in n ? (n as ParentNode).childNodes : []);
+const attr = (el: Element, name: string) => el.attrs.find((a) => a.name === name)?.value;
+const hasClass = (el: Element, re: RegExp) => re.test(attr(el, 'class') ?? '');
+
+/** Every node under `root`, in document order, without recursion. */
+function* walk(root: Node): Generator<Node> {
+  const stack: Node[] = [...kids(root)].reverse();
+  while (stack.length) {
+    const n = stack.pop()!;
+    yield n;
+    const c = kids(n);
+    for (let i = c.length - 1; i >= 0; i--) stack.push(c[i]!);
+  }
+}
+
+function find(root: Node, test: (el: Element) => boolean): Element | undefined {
+  for (const n of walk(root)) if (isElement(n) && test(n)) return n;
+  return undefined;
+}
+
+function findAll(root: Node, test: (el: Element) => boolean): Element[] {
+  const out: Element[] = [];
+  for (const n of walk(root)) if (isElement(n) && test(n)) out.push(n);
+  return out;
+}
+
+/** An element's text: <br> is a line break, a paragraph ends with a blank line. */
+function textOf(root: Node): string {
+  let out = '';
+  // Iterative, so deeply nested markup cannot overflow the stack. A string on
+  // the stack is text to emit once an element's children are done.
+  const stack: Array<Node | string> = [...kids(root)].reverse();
+  while (stack.length) {
+    const n = stack.pop()!;
+    if (typeof n === 'string') { out += n; continue; }
+    if (isText(n)) { out += n.value; continue; }
+    if (!isElement(n)) continue;
+    if (n.tagName === 'br') { out += '\n'; continue; }
+    if (n.tagName === 'p') stack.push('\n\n');
+    else if (n.tagName === 'div' || n.tagName === 'li') stack.push('\n');
+    const c = kids(n);
+    for (let i = c.length - 1; i >= 0; i--) stack.push(c[i]!);
+  }
+  return out.replace(/\u00a0/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 /**
- * Parse a single recipe from Paprika HTML content.
+ * The text after a label such as "Prep time:", from the first text node that
+ * has one. `label` must not end in an open-ended repeat.
  */
-function parseRecipeSection(html: string): PaprikaRecipe | null {
-  // Try to find recipe name
-  const nameMatch = html.match(/<h1[^>]*class="[^"]*title[^"]*"[^>]*>([\s\S]*?)<\/h1>/i) ||
-                    html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i) ||
-                    html.match(/<title>([\s\S]*?)<\/title>/i);
-
-  const nameContent = nameMatch?.[1];
-  const name = nameContent ? extractText(nameContent) : 'Untitled Recipe';
-
-  if (!name || name === 'Untitled Recipe') {
-    return null;
+function labelled(root: Node, label: RegExp): string | undefined {
+  for (const n of walk(root)) {
+    if (!isText(n)) continue;
+    const m = label.exec(n.value);
+    if (!m) continue;
+    const rest = n.value.slice(m.index + m[0].length, m.index + m[0].length + VALUE_MAX).replace(/^[:\s]+/, '');
+    if (rest.trim()) return rest;
   }
+  return undefined;
+}
 
-  const recipe: PaprikaRecipe = {
-    name,
-    ingredients: [],
-  };
+/** Each list item's text; with no list items, each non-empty line. */
+function lines(el: Element): string[] {
+  const items = findAll(el, (e) => e.tagName === 'li');
+  const raw = items.length ? items.map(textOf) : textOf(el).split('\n');
+  return raw.map((t) => t.trim()).filter(Boolean);
+}
 
-  // Description
-  const descMatch = html.match(/<div[^>]*class="[^"]*description[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
-  const descContent = descMatch?.[1];
-  if (descContent) {
-    recipe.description = extractText(descContent);
+const DEPTH_MAX = 500;
+// Elements that never nest (void) or that close themselves when the next one
+// opens (an unclosed <li> or <p> is valid HTML), so they do not deepen a page.
+const FLAT = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr',
+  'li', 'p', 'dt', 'dd', 'option', 'tr', 'td', 'th', 'tbody', 'thead', 'tfoot', 'colgroup', 'rb', 'rt', 'rp', 'optgroup']);
+
+/** The deepest nesting of open tags, from one linear pass over the text. */
+function nestingDepth(html: string): number {
+  let depth = 0;
+  let max = 0;
+  const tag = /<(\/?)([a-zA-Z][a-zA-Z0-9-]{0,30})/g;
+  for (let m = tag.exec(html); m; m = tag.exec(html)) {
+    const name = m[2]!.toLowerCase();
+    if (FLAT.has(name)) continue;
+    if (m[1]) depth = Math.max(0, depth - 1);
+    else if (++depth > max) max = depth;
   }
+  return max;
+}
 
-  // Ingredients - look for ingredient list/section
-  const ingredientsMatch = html.match(/<div[^>]*class="[^"]*ingredients?[^"]*"[^>]*>([\s\S]*?)<\/div>/i) ||
-                           html.match(/<section[^>]*class="[^"]*ingredients?[^"]*"[^>]*>([\s\S]*?)<\/section>/i);
+/**
+ * Parse a single recipe from a part of the export.
+ */
+function parseRecipeSection(root: Node): PaprikaRecipe | null {
+  const nameEl = find(root, (e) => e.tagName === 'h1' && hasClass(e, /title/i))
+    ?? find(root, (e) => e.tagName === 'h1')
+    ?? find(root, (e) => e.tagName === 'title');
+  const name = nameEl ? textOf(nameEl) : '';
+  if (!name) return null;
 
-  const ingredientHtml = ingredientsMatch?.[1];
-  if (ingredientHtml) {
-    // Split by list items or newlines
-    const ingredientLines = ingredientHtml
-      .split(/<li[^>]*>/i)
-      .map(extractText)
-      .filter(line => line.trim().length > 0);
+  const recipe: PaprikaRecipe = { name, ingredients: [] };
+  const block = (re: RegExp) => find(root, (e) => (e.tagName === 'div' || e.tagName === 'section') && hasClass(e, re));
 
-    recipe.ingredients = ingredientLines.map(text => ({ text }));
+  const desc = find(root, (e) => e.tagName === 'div' && hasClass(e, /description/i));
+  if (desc) recipe.description = textOf(desc);
+
+  const ingredients = block(/ingredient/i);
+  if (ingredients) {
+    recipe.ingredients = lines(ingredients).map((text) => ({ text }));
   } else {
-    // Fallback: look for lines after "Ingredients" heading
-    const afterIngredients = html.match(/ingredients[:\s]*<\/h\d>[\s\S]*?(<ul[^>]*>[\s\S]*?<\/ul>)/i);
-    const ulContent = afterIngredients?.[1];
-    if (ulContent) {
-      const items = ulContent.split(/<li[^>]*>/i).map(extractText).filter(Boolean);
-      recipe.ingredients = items.map(text => ({ text }));
+    // A heading "Ingredients" followed by a list.
+    let afterHeading = false;
+    for (const n of walk(root)) {
+      if (!isElement(n)) continue;
+      if (/^h[1-6]$/.test(n.tagName) && /ingredients[:\s]*$/i.test(textOf(n).slice(-VALUE_MAX))) afterHeading = true;
+      else if (afterHeading && n.tagName === 'ul') {
+        recipe.ingredients = lines(n).map((text) => ({ text }));
+        break;
+      }
     }
   }
 
-  // Instructions/Directions
-  const instructionsMatch = html.match(/<div[^>]*class="[^"]*(?:instructions?|directions?)[^"]*"[^>]*>([\s\S]*?)<\/div>/i) ||
-                            html.match(/<section[^>]*class="[^"]*(?:instructions?|directions?)[^"]*"[^>]*>([\s\S]*?)<\/section>/i);
+  const instructions = block(/instruction|direction/i);
+  if (instructions) recipe.instructions = textOf(instructions);
 
-  const instructionsContent = instructionsMatch?.[1];
-  if (instructionsContent) {
-    recipe.instructions = extractText(instructionsContent);
+  recipe.prepTime = parseTimeString(labelled(root, /prep(?:\s{0,10}time)?/i));
+  recipe.cookTime = parseTimeString(labelled(root, /cook(?:\s{0,10}time)?/i));
+  recipe.totalTime = parseTimeString(labelled(root, /total(?:\s{0,10}time)?/i));
+  recipe.servings = parseServingsString(labelled(root, /servings?|serves|makes/i));
+  for (const k of ['prepTime', 'cookTime', 'totalTime', 'servings'] as const) if (recipe[k] === undefined) delete recipe[k];
+
+  // "Source: <a href=...>": a label right before a link.
+  for (const n of walk(root)) {
+    if (isText(n) && /(?:source|original)[:\s]{0,10}$/i.test(n.value.slice(-VALUE_MAX))) {
+      const parent = n.parentNode as ParentNode | null;
+      const next = parent ? parent.childNodes[parent.childNodes.indexOf(n) + 1] : undefined;
+      const href = next && isElement(next) && next.tagName === 'a' ? attr(next, 'href') : undefined;
+      if (href) { recipe.sourceUrl = href; break; }
+    }
   }
 
-  // Prep time
-  const prepMatch = html.match(/prep(?:\s*time)?[:\s]*([^<]+)/i);
-  if (prepMatch?.[1]) {
-    recipe.prepTime = parseTimeString(prepMatch[1]);
-  }
+  const source = labelled(root, /source/i)?.trim();
+  if (source && !source.includes('http')) recipe.source = source;
 
-  // Cook time
-  const cookMatch = html.match(/cook(?:\s*time)?[:\s]*([^<]+)/i);
-  if (cookMatch?.[1]) {
-    recipe.cookTime = parseTimeString(cookMatch[1]);
-  }
+  const categories = labelled(root, /categor(?:y|ies)/i);
+  if (categories) recipe.categories = categories.split(/[,;]/).map((c) => c.trim()).filter(Boolean);
 
-  // Total time
-  const totalMatch = html.match(/total(?:\s*time)?[:\s]*([^<]+)/i);
-  if (totalMatch?.[1]) {
-    recipe.totalTime = parseTimeString(totalMatch[1]);
-  }
+  const image = find(root, (e) => e.tagName === 'img' && hasClass(e, /recipe/i))
+    ?? find(root, (e) => e.tagName === 'img' && (attr(e, 'src') ?? '').startsWith('data:image'));
+  const src = image ? attr(image, 'src') : undefined;
+  if (src) recipe.imageUrl = src;
 
-  // Servings
-  const servingsMatch = html.match(/(?:servings?|serves|makes)[:\s]*([^<]+)/i);
-  if (servingsMatch?.[1]) {
-    recipe.servings = parseServingsString(servingsMatch[1]);
-  }
+  const notes = find(root, (e) => e.tagName === 'div' && hasClass(e, /notes?/i));
+  if (notes) recipe.notes = textOf(notes);
 
-  // Source URL
-  const sourceUrlMatch = html.match(/(?:source|original)[:\s]*<a[^>]*href="([^"]+)"/i);
-  if (sourceUrlMatch?.[1]) {
-    recipe.sourceUrl = sourceUrlMatch[1];
-  }
-
-  // Source name
-  const sourceMatch = html.match(/source[:\s]*([^<]+)/i);
-  const sourceContent = sourceMatch?.[1];
-  if (sourceContent && !sourceContent.includes('http')) {
-    recipe.source = extractText(sourceContent);
-  }
-
-  // Categories
-  const categoriesMatch = html.match(/categor(?:y|ies)[:\s]*([^<]+)/i);
-  const categoriesContent = categoriesMatch?.[1];
-  if (categoriesContent) {
-    recipe.categories = categoriesContent
-      .split(/[,;]/)
-      .map(c => c.trim())
-      .filter(Boolean);
-  }
-
-  // Image
-  const imageMatch = html.match(/<img[^>]*class="[^"]*recipe[^"]*"[^>]*src="([^"]+)"/i) ||
-                     html.match(/<img[^>]*src="([^"]+)"[^>]*class="[^"]*recipe[^"]*"/i) ||
-                     html.match(/<img[^>]*src="(data:image[^"]+)"/i);
-  if (imageMatch?.[1]) {
-    recipe.imageUrl = imageMatch[1];
-  }
-
-  // Notes
-  const notesMatch = html.match(/<div[^>]*class="[^"]*notes?[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
-  const notesContent = notesMatch?.[1];
-  if (notesContent) {
-    recipe.notes = extractText(notesContent);
-  }
-
-  // Rating
-  const ratingMatch = html.match(/rating[:\s]*([^<]+)/i) ||
-                      html.match(/class="[^"]*rating[^"]*"[^>]*>([^<]+)/i);
-  if (ratingMatch?.[1]) {
-    recipe.rating = parseRating(ratingMatch[1]);
-  }
+  const ratingText = labelled(root, /rating/i)
+    ?? (() => { const el = find(root, (e) => hasClass(e, /rating/i)); return el ? textOf(el).slice(0, VALUE_MAX) : undefined; })();
+  const rating = parseRating(ratingText);
+  if (rating !== undefined) recipe.rating = rating;
 
   return recipe;
 }
@@ -244,27 +273,15 @@ function parseRecipeSection(html: string): PaprikaRecipe | null {
  * @returns Array of parsed recipes
  */
 export function parsePaprikaHtml(html: string): PaprikaRecipe[] {
-  const recipes: PaprikaRecipe[] = [];
-
-  // Paprika exports can have multiple recipes as separate articles/sections
-  const articleMatches = html.match(/<article[^>]*>[\s\S]*?<\/article>/gi);
-
-  if (articleMatches && articleMatches.length > 0) {
-    for (const article of articleMatches) {
-      const recipe = parseRecipeSection(article);
-      if (recipe) {
-        recipes.push(recipe);
-      }
-    }
-  } else {
-    // Single recipe or different structure - try to parse the whole thing
-    const recipe = parseRecipeSection(html);
-    if (recipe) {
-      recipes.push(recipe);
-    }
-  }
-
-  return recipes;
+  // The HTML parser slows down sharply with nesting depth (100,000 nested
+  // divs took two minutes), and a real export is nearly flat. Refuse anything
+  // deeper than DEPTH_MAX before parsing.
+  if (nestingDepth(html) > DEPTH_MAX) return [];
+  const doc = parse(html);
+  // Paprika exports can have multiple recipes as separate articles.
+  const articles = findAll(doc, (e) => e.tagName === 'article');
+  const parts: Node[] = articles.length ? articles : [doc];
+  return parts.map(parseRecipeSection).filter((r): r is PaprikaRecipe => r !== null);
 }
 
 export default parsePaprikaHtml;

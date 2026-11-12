@@ -1,12 +1,14 @@
-# Birthdays & Milestones
+# Birthdays
 
 The Birthdays widget shows upcoming birthdays, anniversaries and milestones, with
 how many days away each one is and how old the person is turning.
 
-**You don't type birthdays into Prism.** It reads them from the calendars and
-contacts you already keep, so they stay correct in one place rather than two.
+You don't type birthdays into Prism. It reads them from the calendars and
+contacts you already keep, so you only ever keep them up to date in one place.
 
-## Where they come from
+## Set it up
+
+### Where they come from
 
 | Source | What Prism reads |
 |---|---|
@@ -14,65 +16,69 @@ contacts you already keep, so they stay correct in one place rather than two.
 | iCloud / CardDAV contacts | The birthday field on your contact cards |
 | Google Contacts | Google's own generated birthday calendar |
 
-Calendars of every kind are scanned — Google, iCloud/CalDAV, iCal subscriptions,
-and calendars created inside Prism itself.
+Prism looks through every kind of calendar: Google, iCloud/CalDAV, iCal
+subscriptions and calendars you made inside Prism.
 
 !!! tip "iPhone birthdays"
-    iCloud contacts are CardDAV, so the birthdays saved against contacts on your
-    phone come straight through. Tick **contact birthdays** when connecting
-    iCloud under *Settings → Integrations*.
+    iCloud contacts use CardDAV (the standard for syncing contacts), so the
+    birthdays saved on contacts on your phone come straight through. Tick
+    **contact birthdays** when you connect iCloud under *Settings → Integrations*.
 
-## Adding one Prism can't find
+### Adding one Prism can't find
 
-Give it a source: put the birthday on a calendar, and Prism picks it up on the
-next sync. Your own local Prism calendar is fine for this — you don't need an
-external account.
+Put the birthday on a calendar and Prism picks it up on the next sync. Your own
+local Prism calendar works for this, so you don't need an outside account.
 
-1. Create an **all-day** event on the birthday. A timed event is read as
-   something happening *near* a birthday rather than the birthday itself.
-2. Title it with the person's name and the word **birthday**:
+1. Create an **all-day** event on the birthday. Prism reads a timed event as
+   something happening *near* a birthday, and skips it.
+2. Give it a title with the person's name and the word **birthday**:
    `Grandma's Birthday`
-3. Optionally add the year in brackets to show their age:
+3. If you want their age shown, add the birth year in brackets:
    `Grandma's Birthday (1948)`
 
-Without a year you still get the date and the countdown, just no age.
+Without a year you still get the date and the countdown, but no age.
 
-## Anniversaries and milestones
+## Use it
 
-**Anniversaries** work the same way — put **anniversary** in the title.
+### Anniversaries and milestones
 
-**Milestones** have no obvious keyword, so Prism looks for the shape instead: an
-all-day event that **repeats every year** and carries a **year** in the title.
+**Anniversaries** work the same way: put **anniversary** in the title.
+
+**Milestones** have no keyword to look for, so Prism goes by the event's shape: an
+all-day event that **repeats every year** and has a **year** in the title.
 
 ```
 Ana and Ben (2005)     ✅ milestone
 Moved into the house     ❌ no year, so it's just an event
 ```
 
-If you keep a calendar where *everything* on it is a life event, open
+If you keep a calendar that holds nothing but life events, open
 **Manage calendars** and turn on **"Treat every all-day event here as a birthday
 or milestone"**. Titles on that calendar then need no keyword at all.
 
-## Other languages
+### Other languages
 
-Titles are matched in English and German — `Geburtstag`, `Hochzeitstag` and
-`Jubiläum` all work. Adding another language is a one-line change in
-`src/lib/services/birthday-detect.ts`; contributions welcome.
+Prism matches titles in English and German, so `Geburtstag`, `Hochzeitstag` and
+`Jubiläum` all work. Adding another language takes one line in
+`src/lib/services/birthday-detect.ts`, and contributions are welcome.
 
-## Removing one
+### Removing one
 
-Deleting a birthday in Prism keeps it deleted. It won't come back on the next
-sync even though the calendar event still exists, so you can prune the list
-without editing the underlying calendar. Delete the calendar event too if you
+A birthday you delete in Prism stays deleted. It won't come back on the next
+sync, even though the calendar event is still there, so you can tidy the list
+without touching the calendar itself. Delete the calendar event as well if you
 want it gone everywhere.
 
-## What Prism deliberately ignores
+## Details
 
-- **Read-only calendars you subscribe to** — school terms, public holidays and
-  the like. This is what stops "No School — Martin Luther King's Birthday"
-  becoming a family birthday.
-- **Events happening near a birthday** — "birthday party", "prep for Sam's
-  birthday", "birthday dinner". These describe the celebration, not the day.
+### What Prism deliberately ignores
 
-If a birthday you expect is missing, check the event is all-day and that its
-calendar isn't a read-only subscription.
+- **Read-only calendars you subscribe to**, such as school terms and public
+  holidays. This is what keeps "No School: Martin Luther King's Birthday" from
+  turning into a family birthday.
+- **Events happening near a birthday**, such as "birthday party", "prep for
+  Sam's birthday" or "birthday dinner". These are about the celebration, and the
+  birthday itself is a different day.
+
+If a birthday you expect is missing, check that the event is all-day and that
+its calendar isn't a read-only subscription.

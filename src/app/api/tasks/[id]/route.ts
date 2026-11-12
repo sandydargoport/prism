@@ -20,6 +20,7 @@ import { db } from '@/lib/db/client';
 import { tasks, users, dismissedTasks } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { requireAuth, requireRole } from '@/lib/auth';
+import { requireEverydayAuth, logWallChange } from '@/lib/auth/everydayAuth';
 import { formatTaskRow } from '@/lib/utils/formatters';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logActivity } from '@/lib/services/auditLog';
@@ -57,6 +58,11 @@ async function deleteTaskUpstream(taskSourceId: string, externalId: string): Pro
  * Next.js 14 App Router provides route params as a Promise.
  * This type defines the expected shape of our dynamic route params.
  */
+/** True when `body` sets nothing but these keys. */
+function onlyKeys(body: unknown, keys: string[]): boolean {
+  return !!body && typeof body === 'object' && Object.keys(body).length > 0 && Object.keys(body).every((k) => keys.includes(k));
+}
+
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
@@ -176,12 +182,18 @@ export async function PATCH(
   request: NextRequest,
   { params }: RouteParams
 ) {
-  const auth = await requireAuth();
+  const auth = await requireEverydayAuth('task-toggle');
   if (auth instanceof NextResponse) return auth;
 
   try {
     const { id } = await params;
     const body = await request.json();
+
+    // The wall without a PIN may only tick a task, nothing else (#835).
+    if (auth.wall && !onlyKeys(body, ['completed'])) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+    if (auth.wall) await logWallChange('task-toggle', 'task', id, `${body.completed ? 'Ticked' : 'Unticked'} a task on the wall without a PIN`);
 
     // Check if task exists and get ownership info
     const [existingTask] = await db

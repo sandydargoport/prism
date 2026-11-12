@@ -17,8 +17,6 @@ const ROOT = path.join(process.cwd(), 'src');
 const EXEMPT: Record<string, string> = {
   // A decorative star next to a place name, not a control.
   'src/components/widgets/TravelWidget.tsx': 'decoration',
-  // The toast close button: a toast is dismissed by swiping on touch.
-  'src/components/ui/toast.tsx': 'swipe to dismiss',
 };
 
 function tsxFiles(dir: string): string[] {

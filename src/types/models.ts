@@ -51,6 +51,14 @@ export interface Chore {
   nextDue?: string;
   /** Optional HH:mm time-of-day; null/undefined → floats above the time grid. */
   nextDueTime?: string | null;
+  /** Ticks a daily chore needs each day (#1107); 1 when absent. */
+  timesPerDay?: number;
+  /** Approved ticks today, in the household's time zone. */
+  doneToday?: number;
+  /** A reminder (#1109): a time, no points, no approval. */
+  kind?: 'chore' | 'reminder';
+  /** Who it is for, when that is a pet (#996). */
+  pet?: { id: string; name: string; color: string } | null;
   enabled: boolean;
   requiresApproval: boolean;
   pointValue: number;

@@ -1,4 +1,4 @@
-import { isLightColor } from '../color';
+import { isLightColor, mutedMark, hexToHslValues } from '../color';
 
 describe('isLightColor', () => {
   // --- Clearly light colors ---
@@ -76,5 +76,23 @@ describe('isLightColor', () => {
 
   it('handles mixed case hex', () => {
     expect(isLightColor('#FfFfFf')).toBe(true);
+  });
+});
+
+describe('mutedMark (#986)', () => {
+  const sat = (hex: string) => parseFloat(hexToHslValues(hex).split(' ')[1]!);
+  it('caps saturation and keeps the hue', () => {
+    const out = mutedMark('#ff0000');
+    expect(sat(out)).toBeLessThanOrEqual(35);
+    expect(hexToHslValues(out).split(' ')[0]).toBe('0');
+  });
+  it('keeps lightness mid-range so the mark shows on light and dark', () => {
+    const light = parseFloat(hexToHslValues(mutedMark('#fff7c2')).split(' ')[2]!);
+    const dark = parseFloat(hexToHslValues(mutedMark('#0a1a40')).split(' ')[2]!);
+    expect(light).toBeLessThanOrEqual(62);
+    expect(dark).toBeGreaterThanOrEqual(45);
+  });
+  it('passes through what is not a hex colour', () => {
+    expect(mutedMark('var(--primary)')).toBe('var(--primary)');
   });
 });

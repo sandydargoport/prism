@@ -1,5 +1,6 @@
 'use client';
 
+import { StatusPill } from '@/components/ui/StatusPill';
 import { format } from 'date-fns';
 import { AlertCircle, Trash2, Edit2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -89,17 +90,20 @@ export function TaskItem({
                 name={task.assignedTo.name}
                 color={task.assignedTo.color}
                 size="sm"
-                className="h-4 w-4 text-[8px]"
+                className="h-6 w-6 text-4xs"
               />
               <span>{task.assignedTo.name}</span>
             </div>
           )}
 
           {task.dueDate && (
-            <span className={cn(isOverdue && 'text-destructive font-medium')}>
-              {isOverdue && <AlertCircle className="h-3 w-3 inline mr-1" />}
-              {formatDueDate(task.dueDate)}
-            </span>
+            isOverdue ? (
+              <StatusPill tone="danger" icon={<AlertCircle aria-hidden className="h-3 w-3 shrink-0" />}>
+                {formatDueDate(task.dueDate)}
+              </StatusPill>
+            ) : (
+              <span>{formatDueDate(task.dueDate)}</span>
+            )
           )}
         </div>
       </div>

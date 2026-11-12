@@ -32,11 +32,30 @@ export const TYPE_SCALE = {
   title: { px: 28, weight: 600, lineHeight: 1.25 },
   /** The date line and the one headline per screen. */
   display: { px: 48, weight: 600, lineHeight: 1.1 },
-  /** The clock. Light weight, tabular figures. */
-  clock: { px: 100, weight: 300, lineHeight: 1 },
+  /** The clock. Medium weight, tight spacing, tabular figures (#800). */
+  clock: { px: 100, weight: 500, lineHeight: 1 },
 } as const;
 
 export type TypeRole = keyof typeof TYPE_SCALE;
+
+/**
+ * Prose: sentences on the wall ("Tomorrow Alex has the dentist at 9"). Not a
+ * sixth step: it reads at the title's size in regular weight with looser
+ * lines, so a sentence sits level with the row titles without shouting.
+ */
+export const PROSE = { size: 'title', weight: 400, lineHeight: 1.35 } as const satisfies {
+  size: TypeRole; weight: number; lineHeight: number;
+};
+
+/**
+ * Faces by role (#800). The display face (Literata) draws the clock, the
+ * temperature and page and sheet titles; everything else is the theme's text
+ * face (Inter by default). A theme that names its own numeral face keeps it.
+ */
+export const FACE = {
+  display: { family: 'Literata', roles: ['clock', 'display'] as TypeRole[] },
+  text: { family: 'Inter' },
+} as const;
 
 /** Minimum step between adjacent type roles. */
 export const TYPE_STEP_MIN = 1.25;

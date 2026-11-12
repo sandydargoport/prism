@@ -25,6 +25,11 @@ on:
       - '.github/workflows/test-install.yml'
   workflow_dispatch:  # Allow manual trigger
 
+# Read-only token: no job here writes to the repo (CodeQL
+# actions/missing-workflow-permissions).
+permissions:
+  contents: read
+
 jobs:
   test-install:
     runs-on: ubuntu-latest

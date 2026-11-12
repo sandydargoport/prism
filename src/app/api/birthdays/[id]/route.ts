@@ -14,7 +14,7 @@ import { db } from '@/lib/db/client';
 import { birthdays, users } from '@/lib/db/schema';
 import { dismissBirthday } from '@/lib/services/birthday-detect';
 import { eq } from 'drizzle-orm';
-import { createBirthdaySchema, validateRequest } from '@/lib/validations';
+import { updateBirthdaySchema, validateRequest } from '@/lib/validations';
 import { logError } from '@/lib/utils/logError';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
@@ -130,7 +130,7 @@ export async function PATCH(
     }
 
     // Validate request body
-    const validation = validateRequest(createBirthdaySchema.partial(), body);
+    const validation = validateRequest(updateBirthdaySchema, body);
     if (!validation.success) {
       return NextResponse.json(
         { error: 'Validation failed', details: validation.error.issues },

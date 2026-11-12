@@ -234,7 +234,7 @@ function moonPhasePath(cx: number, cy: number, r: number, phase: number): string
  * Small standalone moon glyph — outlined disc + lit fraction. Used next to
  * each forecast day to show the night's moon phase at a glance.
  */
-function MoonGlyph({
+export function MoonGlyph({
   phase,
   size = 14,
   color = '#60A5FA',
@@ -298,7 +298,7 @@ function tempToColor(fahrenheit: number): string {
 }
 
 
-function formatTemp(value: number, units: WeatherUnits): string {
+export function formatTemp(value: number, units: WeatherUnits): string {
   return `${Math.round(value)}°${units.temperature}`;
 }
 
@@ -419,6 +419,11 @@ export const WeatherWidget = React.memo(function WeatherWidget({
   // enough that it doesn't squeeze the actual forecast. Below that, favor the
   // forecast (e.g. the small weather tile on School Mornings).
   const showSunArc = !!weatherData.sunrise && !!weatherData.sunset && !showPrecipChart && gridH >= 12;
+  // A tile too short for the hourly row or the forecast shows the current
+  // conditions alone, centred, so it lines up with a clock tile beside it.
+  const currentOnly =
+    !(showHourly && weatherData.hourly && weatherData.hourly.length > 0) &&
+    !(showForecast && hasDays && resolvedDays > 0);
 
   return (
     <WidgetContainer
@@ -429,7 +434,8 @@ export const WeatherWidget = React.memo(function WeatherWidget({
       error={error}
       className={className}
     >
-      <div className={cn('flex flex-col gap-3 h-full overflow-hidden', isVertical ? 'pb-2' : '')}>
+      {/* Up and down by where the tile sits, or its Align setting (#988). */}
+      <div className={cn('flex flex-col gap-3 h-full overflow-hidden', isVertical ? 'pb-2' : '', currentOnly && 'justify-center in-data-[align-y=top]:justify-start in-data-[align-y=bottom]:justify-end')}>
 
         {/* CURRENT CONDITIONS */}
         <CurrentConditions
@@ -441,6 +447,7 @@ export const WeatherWidget = React.memo(function WeatherWidget({
           moonPhase={weatherData.moonPhase}
           moonPhaseName={weatherData.moonPhaseName}
           timezone={weatherData.timezone}
+          todayHigh={weatherData.forecast?.[0]?.high}
         />
 
         {/* HOURLY FORECAST */}
@@ -458,7 +465,7 @@ export const WeatherWidget = React.memo(function WeatherWidget({
                 clips to WHOLE rows (maxDayRows) so a day is never half-cut. */}
             <div className="flex-1 min-h-0 flex flex-col">
               {shownForecast.length > 0 && (
-                <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <span className="shrink-0 text-3xs font-semibold uppercase tracking-wider text-muted-foreground">
                   {shownForecast.length}-Day Forecast
                 </span>
               )}
@@ -508,6 +515,11 @@ export const WeatherWidget = React.memo(function WeatherWidget({
 });
 
 
+/** "Sunny" + "high 79°" -> "Sunny, high 79°". Either part may be missing. */
+export function weatherSentence(condition: string | undefined, high: string | undefined): string {
+  return [condition?.trim(), high].filter(Boolean).join(', ');
+}
+
 /**
  * CURRENT CONDITIONS SECTION
  */
@@ -520,6 +532,7 @@ function CurrentConditions({
   moonPhase,
   moonPhaseName,
   timezone,
+  todayHigh,
 }: {
   weather: CurrentWeather;
   location: string;
@@ -529,68 +542,81 @@ function CurrentConditions({
   moonPhase?: number;
   moonPhaseName?: string;
   timezone?: string;
+  /** Today's forecast high, for the one-line "Sunny, high 79" (#800). */
+  todayHigh?: number;
 }) {
   const { timeFormat } = useTimeFormat();
   const t = useTranslations('weather');
   const temp  = formatTemp(weather.temperature, units);
   const feels = formatTemp(weather.feelsLike, units);
 
+  // A small tile shows only icon, temperature and condition; the stats
+  // column and location come back once the tile is 32rem wide (container
+  // query on this row). In a tile on the right edge of the top row the
+  // compact form lines up with that edge (data-corner on the grid cell).
   return (
-    <div className="flex items-start justify-between gap-2">
-      {/* Left: icon + temp + description */}
-      <div className="flex items-center gap-3">
-        <WeatherIcon
-          condition={weather.condition}
-          className="h-10 w-10 text-primary shrink-0"
-        />
-        <div>
-          <div className="text-4xl font-bold leading-none">{temp}</div>
-          <div className="text-sm text-muted-foreground capitalize mt-0.5">
-            {weather.descriptionKey && typeof t.has === 'function' && t.has(`conditions.${weather.descriptionKey}`)
-              ? t(`conditions.${weather.descriptionKey}`)
-              : weather.description}
+    <div className="@container" data-weather-current>
+      <div className="flex items-start justify-between gap-2 in-data-[corner=right]:justify-end in-data-[align-x=center]:justify-center @min-[32rem]:in-data-[corner=right]:justify-between @min-[32rem]:in-data-[align-x=center]:justify-between">
+        {/* Left: icon + temp + description */}
+        <div className="flex items-center gap-3 min-w-0">
+          <WeatherIcon
+            condition={weather.condition}
+            className="h-10 w-10 text-primary shrink-0"
+          />
+          <div className="min-w-0">
+            {/* The temperature in the display face, like the clock (#800) */}
+            <div className="text-4xl font-medium tracking-[-0.02em] leading-none whitespace-nowrap tabular-nums" style={{ fontFamily: 'var(--font-display)' }} data-weather-temp>{temp}</div>
+            {/* One line: "Sunny, high 79" */}
+            <div className="text-sm text-muted-foreground mt-0.5 whitespace-nowrap truncate first-letter:uppercase" data-weather-condition>
+              {weatherSentence(
+                weather.descriptionKey && typeof t.has === 'function' && t.has(`conditions.${weather.descriptionKey}`)
+                  ? t(`conditions.${weather.descriptionKey}`)
+                  : weather.description,
+                todayHigh === undefined ? undefined : t('high', { temp: formatTemp(todayHigh, units) }),
+              )}
+            </div>
+            {location && (
+              <div className="hidden @min-[32rem]:block text-xs text-muted-foreground/70 mt-0.5 truncate max-w-[140px]">
+                {formatLocation(location)}
+              </div>
+            )}
           </div>
-          {location && (
-            <div className="text-xs text-muted-foreground/70 mt-0.5 truncate max-w-[140px]">
-              {formatLocation(location)}
+        </div>
+
+        {/* Right: stats, only when the tile has room for them */}
+        <div className="hidden @min-[32rem]:block shrink-0 text-right text-xs text-muted-foreground space-y-1 pt-0.5" data-weather-details>
+          <div className="text-sm">Feels like {feels}</div>
+          <div className="flex items-center justify-end gap-1">
+            <Droplets className="h-3 w-3" />
+            <span>{weather.humidity}%</span>
+          </div>
+          <div className="flex items-center justify-end gap-1">
+            <Wind className="h-3 w-3" />
+            <span>{weather.windSpeed} {units.windSpeed}</span>
+          </div>
+          {moonPhase !== undefined && (
+            <div className="flex items-center justify-end gap-1 pt-0.5">
+              <MoonGlyph phase={moonPhase} size={12} />
+              {moonPhaseName && <span>{moonPhaseName}</span>}
+            </div>
+          )}
+          {(sunrise || sunset) && (
+            <div data-keep-bg data-testid="header-sun-times" className="flex items-center justify-end gap-2 tabular-nums whitespace-nowrap self-end rounded-full bg-background/55 px-2 text-foreground">
+              {sunrise && (
+                <span className="flex items-center gap-0.5" title="Sunrise">
+                  <Sunrise className="h-3 w-3" style={{ color: '#FBBF24' }} />
+                  {formatDisplayTime(sunrise, timeFormat, {}, timezone)}
+                </span>
+              )}
+              {sunset && (
+                <span className="flex items-center gap-0.5" title="Sunset">
+                  <Sunset className="h-3 w-3" style={{ color: '#F97316' }} />
+                  {formatDisplayTime(sunset, timeFormat, {}, timezone)}
+                </span>
+              )}
             </div>
           )}
         </div>
-      </div>
-
-      {/* Right: stats */}
-      <div className="text-right text-xs text-muted-foreground space-y-1 pt-0.5">
-        <div className="text-sm">Feels like {feels}</div>
-        <div className="flex items-center justify-end gap-1">
-          <Droplets className="h-3 w-3" />
-          <span>{weather.humidity}%</span>
-        </div>
-        <div className="flex items-center justify-end gap-1">
-          <Wind className="h-3 w-3" />
-          <span>{weather.windSpeed} {units.windSpeed}</span>
-        </div>
-        {moonPhase !== undefined && (
-          <div className="flex items-center justify-end gap-1 pt-0.5">
-            <MoonGlyph phase={moonPhase} size={12} />
-            {moonPhaseName && <span>{moonPhaseName}</span>}
-          </div>
-        )}
-        {(sunrise || sunset) && (
-          <div data-keep-bg data-testid="header-sun-times" className="flex items-center justify-end gap-2 tabular-nums self-end rounded-full bg-background/55 px-2 text-foreground">
-            {sunrise && (
-              <span className="flex items-center gap-0.5" title="Sunrise">
-                <Sunrise className="h-3 w-3" style={{ color: '#FBBF24' }} />
-                {formatDisplayTime(sunrise, timeFormat, {}, timezone)}
-              </span>
-            )}
-            {sunset && (
-              <span className="flex items-center gap-0.5" title="Sunset">
-                <Sunset className="h-3 w-3" style={{ color: '#F97316' }} />
-                {formatDisplayTime(sunset, timeFormat, {}, timezone)}
-              </span>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );
@@ -652,11 +678,11 @@ function DayHeader({
             {/* Day label + precip % + weather icon + moon phase glyph */}
             <div className="flex items-center gap-1.5 w-28 shrink-0">
               <div className="w-12 shrink-0 h-8 flex flex-col justify-center">
-                <div className="text-[11px] font-bold tracking-wide text-foreground leading-tight whitespace-nowrap">
+                <div className="text-2xs font-bold tracking-wide text-foreground leading-tight whitespace-nowrap">
                   {label}
                 </div>
                 {day.precipProbability !== undefined && (
-                  <div className="flex items-center gap-0.5 text-[10px] text-blue-500 leading-tight">
+                  <div className="flex items-center gap-0.5 text-3xs text-blue-500 leading-tight">
                     <Droplets className="h-2.5 w-2.5 shrink-0" />
                     <span>{day.precipProbability}%</span>
                   </div>
@@ -674,7 +700,7 @@ function DayHeader({
                 inside. Low and high temps sit at fixed left/right positions so
                 they line up across days too. */}
             <div className="flex-1 flex items-center gap-1.5 min-w-0">
-              <span className="text-[11px] text-muted-foreground tabular-nums w-7 text-right shrink-0">
+              <span className="text-2xs text-muted-foreground tabular-nums w-7 text-right shrink-0">
                 {fmt(day.low)}°
               </span>
               <div className="flex-1 relative h-4 rounded-full bg-black/10 dark:bg-white/15 ring-1 ring-inset ring-black/10 dark:ring-white/15 overflow-hidden min-w-0">
@@ -687,7 +713,7 @@ function DayHeader({
                   }}
                 />
               </div>
-              <span className="text-[11px] font-semibold tabular-nums w-7 text-left shrink-0">
+              <span className="text-2xs font-semibold tabular-nums w-7 text-left shrink-0">
                 {fmt(day.high)}°
               </span>
             </div>
@@ -741,7 +767,7 @@ function HourlyTimeline({ hourly, units, timezone }: { hourly: HourlyForecast[];
 
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <span className="text-3xs font-semibold uppercase tracking-wider text-muted-foreground">
         Next {upcoming.length} Hours
       </span>
       <div className="flex gap-1.5">
@@ -761,7 +787,7 @@ function HourlyTimeline({ hourly, units, timezone }: { hourly: HourlyForecast[];
               )}
             >
               <span className={cn(
-                'text-[10px] font-medium tabular-nums',
+                'text-3xs font-medium tabular-nums',
                 isNow ? 'text-primary' : 'text-muted-foreground',
               )}>
                 {timeLabel}
@@ -771,7 +797,7 @@ function HourlyTimeline({ hourly, units, timezone }: { hourly: HourlyForecast[];
                 {Math.round(h.temp)}°
               </span>
               <span className={cn(
-                'text-[10px] tabular-nums',
+                'text-3xs tabular-nums',
                 showPrecip ? 'text-blue-500 font-medium' : 'text-transparent',
               )}>
                 {showPrecip ? `${precipPct}%` : '0%'}
@@ -855,11 +881,11 @@ function PrecipitationChart({ minutely }: { minutely: MinutelyData[] }) {
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+        <span className="text-3xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
           <CloudRain className="h-3 w-3 text-blue-400" />
           Rain next hour
         </span>
-        <span className="text-[10px] text-blue-400 font-medium">{rainMessage}</span>
+        <span className="text-3xs text-blue-400 font-medium">{rainMessage}</span>
       </div>
       <div ref={containerRef} className="w-full">
         <svg width={width} height={totalH} style={{ display: 'block' }}>
@@ -1142,7 +1168,7 @@ function SunriseSunsetArc({
 
   return (
     <div ref={containerRef} className="flex flex-col gap-1 w-full">
-      <svg width={width} height={H} style={{ display: 'block', overflow: 'visible' }}>
+      <svg width={width} height={H} style={{ display: 'block', overflow: 'visible' }} data-sun-arc>
         {/* Altitude-based color gradient for the sun arc — red at the
             horizon, orange at low altitude, amber at zenith. Matches the
             atmospheric-scattering color shift you'd actually see in the sky. */}
@@ -1291,7 +1317,7 @@ function SunriseSunsetArc({
         )}
       </div>
       {eclipseNow && (
-        <div data-testid="eclipse-line" className="text-[11px] tabular-nums opacity-80"
+        <div data-testid="eclipse-line" className="text-2xs tabular-nums opacity-80"
           style={{ color: eclipseNow.body === 'sun' ? SUN_COLOR : MOON_COLOR }}>
           {t('line', {
             name: t(`${eclipseNow.body}.${eclipseNow.kind}`),

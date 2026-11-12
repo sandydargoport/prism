@@ -18,10 +18,12 @@
  *
  */
 
+import { birthdayTitle, parseDisplayRules, type DisplayRules } from '@/lib/calendar/displayRules';
+import { floatingUtcToDateKey, todayKey } from '@/lib/utils/zonedDate';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireRole, getDisplayAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
-import { events, calendarSources, users, calendarGroups } from '@/lib/db/schema';
+import { events, calendarSources, users, calendarGroups, birthdays } from '@/lib/db/schema';
 import { eq, and, or, gte, lte, asc, isNotNull, isNull } from 'drizzle-orm';
 import { createEventSchema, validateRequest } from '@/lib/validations';
 import { eventDescriptionToText } from '@/lib/utils/eventDescriptionText';
@@ -34,7 +36,7 @@ import { randomUUID } from 'crypto';
 import { formatEventRow } from '@/lib/utils/formatters';
 import { visibleEventsCondition } from '@/lib/services/hiddenEvents';
 import { logActivity } from '@/lib/services/auditLog';
-import { logError } from '@/lib/utils/logError';
+import { logError, oneLine } from '@/lib/utils/logError';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { normalizeAllDayRange } from '@/lib/utils/allDayRange';
 import { MAX_CALENDAR_EVENTS } from '@/lib/utils/calendarRange';
@@ -160,6 +162,7 @@ export async function GET(request: NextRequest) {
           calendarSourceIsFamily: calendarSources.isFamily,
           calendarSourceUserId: calendarSources.userId,
           calendarSourceGroupId: calendarSources.groupId,
+          calendarSourceDisplayRules: calendarSources.displayRules,
           // User data (for color)
           userName: users.name,
           userColor: users.color,
@@ -199,7 +202,7 @@ export async function GET(request: NextRequest) {
       // events quietly, so the cap can be raised or the fetch paginated.
       if (results.length >= limit) {
         console.warn(
-          `[events] fetch hit the ${limit}-row ceiling for ${startDateStr}..${endDateStr}; some events may be omitted.`,
+          `[events] fetch hit the ${limit}-row ceiling for ${oneLine(startDateStr)}..${oneLine(endDateStr)}; some events may be omitted.`,
         );
       }
 
@@ -209,6 +212,17 @@ export async function GET(request: NextRequest) {
       // each under an id naming its start, so an edit or delete reaches the
       // series row (see recurrence.ts).
       const timeZone = await getHouseholdTimezone();
+      // Per-calendar display rules (#877). Birthdays read the list only when a
+      // calendar asks for it.
+      const rulesBySource = new Map<string, DisplayRules>();
+      for (const r of results) {
+        const rules = r.calendarSourceId ? parseDisplayRules(r.calendarSourceDisplayRules) : null;
+        if (rules) rulesBySource.set(r.calendarSourceId!, rules);
+      }
+      const needsBirthdays = [...rulesBySource.values()].some((r) => r.birthdays);
+      const birthdayList = needsBirthdays
+        ? await db.select({ name: birthdays.name, birthDate: birthdays.birthDate }).from(birthdays)
+        : [];
       const expanded: EventResponse[] = results
         .flatMap((row) => {
           if (!isSeriesRow(row)) return [formatEventRow(row)];
@@ -217,9 +231,21 @@ export async function GET(request: NextRequest) {
             id: occurrenceId(row.id, start),
           }));
         })
+        .map((event) => {
+          const rules = event.calendarSource ? rulesBySource.get(event.calendarSource.id) : undefined;
+          if (!rules) return event;
+          const start = new Date(event.startTime);
+          const occursOn = event.allDay ? floatingUtcToDateKey(start) : todayKey(timeZone, start);
+          return {
+            ...event,
+            ...(rules.busyOnly ? { title: 'Busy', description: null, location: null } : {}),
+            ...(rules.birthdays && !rules.busyOnly ? { title: birthdayTitle(event.title, occursOn, birthdayList.map((b) => ({ name: b.name, birthDate: String(b.birthDate) }))) } : {}),
+            ...(rules.hideAfter && event.calendarSource ? { calendarSource: { ...event.calendarSource, hideAfter: rules.hideAfter } } : {}),
+          };
+        })
         .sort((a, b) => a.startTime.localeCompare(b.startTime));
       if (expanded.length > limit) {
-        console.warn(`[events] repeating events filled the ${limit}-event ceiling for ${startDateStr}..${endDateStr}; some events were omitted.`);
+        console.warn(`[events] repeating events filled the ${limit}-event ceiling for ${oneLine(startDateStr)}..${oneLine(endDateStr)}; some events were omitted.`);
       }
       const formattedEvents = expanded.slice(0, limit);
 

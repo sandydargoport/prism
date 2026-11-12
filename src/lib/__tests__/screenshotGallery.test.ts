@@ -1,0 +1,126 @@
+/**
+ * The docs gallery shows what a family sees, in a new install's looks (#878).
+ * scripts/screenshot-specs.ts is the list scripts/capture-screenshots.ts
+ * shoots; these check the gallery part of it.
+ */
+import { GALLERY_SHOTS, STAGE_LAYOUTS, themeOf } from '../../../scripts/screenshot-specs';
+import { LOOK_IDS } from '../looks';
+
+/** Pages a family uses day to day. Everything else is settings, admin or editing. */
+const FAMILY_PAGES = ['/', '/calendar', '/shopping'];
+
+const names = GALLERY_SHOTS.map((s) => s.name);
+const shot = (name: string) => GALLERY_SHOTS.find((s) => s.name === name)!;
+
+describe('the docs gallery', () => {
+  it('shoots the wall in every look, the idle screen, three widgets and the phone', () => {
+    expect(names.sort()).toEqual(
+      [
+        ...LOOK_IDS.map((l) => `look-${l}`),
+        'idle-screen',
+        'widget-calendar', 'widget-chores', 'widget-shopping',
+        'phone-home', 'phone-calendar', 'phone-shopping',
+      ].sort(),
+    );
+  });
+
+  it('shows no admin or editing page', () => {
+    for (const s of GALLERY_SHOTS) expect([s.name, FAMILY_PAGES.includes(s.url)]).toEqual([s.name, true]);
+  });
+
+  it('stages every shot in a look, on the gallery dashboard', () => {
+    for (const s of GALLERY_SHOTS) expect([s.name, s.stage?.layout]).toEqual([s.name, 'gallery']);
+    for (const look of LOOK_IDS) expect(shot(`look-${look}`).stage?.look).toBe(look);
+  });
+
+  it('shoots the wall signed out with the rail and top bar hidden', () => {
+    const wall = GALLERY_SHOTS.filter((s) => s.device === 'wall');
+    expect(wall.length).toBe(7);
+    for (const s of wall) expect([s.name, s.signedOut, s.idleChrome]).toEqual([s.name, true, true]);
+  });
+
+  it('draws the Night look dark and the others light', () => {
+    expect(themeOf(shot('look-night'))).toBe('dark');
+    expect(themeOf(shot('look-photo'))).not.toBe('dark');
+    expect(themeOf(shot('look-paper'))).not.toBe('dark');
+  });
+
+  it('puts every close-up widget on the dashboard it is shot from', () => {
+    for (const s of GALLERY_SHOTS.filter((g) => g.widget)) {
+      expect(STAGE_LAYOUTS[s.stage!.layout].map((w) => w.i)).toContain(s.widget);
+    }
+  });
+
+  it('puts the idle screen in idle', () => {
+    expect(shot('idle-screen').idle).toBe(true);
+  });
+});
+
+describe('a failed staging explains itself', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const fs = require('node:fs') as typeof import('node:fs');
+  const read = (p: string) => fs.readFileSync(require.resolve(`../../../${p}`), 'utf8');
+
+  it('prints the server log when the capture fails', () => {
+    expect(read('.github/workflows/refresh-screenshots.yml')).toMatch(/npm run screenshots:capture \|\| \{[\s\S]*tail -120 \/tmp\/dev\.log/);
+  });
+
+  it('checks every answer when putting a look back', () => {
+    expect(read('scripts/capture-screenshots.ts')).toMatch(/const failed = answers\.filter\(\(r\) => !r\.ok\(\)\)/);
+  });
+});
+
+describe('no dev overlay in a shot', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const fs = require('node:fs') as typeof import('node:fs');
+  const script = fs.readFileSync(require.resolve('../../../scripts/capture-screenshots.ts'), 'utf8');
+
+  it('removes the Next.js overlay right before each screenshot', () => {
+    const removal = script.indexOf("querySelectorAll('nextjs-portal').forEach((el) => el.remove())");
+    expect(removal).toBeGreaterThan(-1);
+    expect(removal).toBeLessThan(script.indexOf('const outPath = path.join(OUT_DIR'));
+  });
+});
+
+describe('the gallery page', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const fs = require('node:fs') as typeof import('node:fs');
+  const page = fs.readFileSync(require.resolve('../../../docs/screenshots.md'), 'utf8');
+  const shown = [...page.matchAll(/\(demos\/([a-z0-9-]+)\.png/g)].map((m) => m[1]!);
+
+  it('shows every gallery shot', () => {
+    for (const s of GALLERY_SHOTS) expect(shown).toContain(s.name);
+  });
+
+  it('shows nothing but the gallery and the hero', () => {
+    const allowed = new Set([...GALLERY_SHOTS.map((s) => s.name), 'hero-light', 'hero-dark']);
+    expect(shown.filter((n) => !allowed.has(n))).toEqual([]);
+  });
+});
+
+describe('the hero and the day shots show Simple (#1123)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { HERO_SHOTS, DAY_SHOTS, SIMPLE_LAYOUT } = require('../../../scripts/screenshot-specs');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { TODAY_TEMPLATE } = require('../constants/layoutTemplates');
+  type Spec = { name: string; stage?: { layout: string }; shiftMinutes?: number; device?: string; signedOut?: boolean };
+
+  it('stages the hero on the Simple front page', () => {
+    for (const s of HERO_SHOTS as Spec[]) expect([s.name, s.stage?.layout]).toEqual([s.name, 'simple']);
+  });
+
+  it('places Simple the way the premade Today page does', () => {
+    expect(SIMPLE_LAYOUT.map((w: { i: string }) => w.i)).toEqual(TODAY_TEMPLATE.widgets.map((w: { i: string }) => w.i));
+  });
+
+  it('shoots the morning, after school and the evening of one day, on a signed-out Simple wall', () => {
+    const day = DAY_SHOTS as Spec[];
+    expect(day.map((s) => s.name)).toEqual(['day-morning', 'day-afternoon', 'day-evening']);
+    for (const s of day) expect([s.name, s.stage?.layout, s.device, s.signedOut]).toEqual([s.name, 'simple', 'wall', true]);
+    const shifts = day.map((s) => s.shiftMinutes!);
+    expect([...shifts].sort((a, b) => a - b)).toEqual(shifts);
+    // The fixed moment is 4:10 PM: all three stay inside the same day.
+    expect(16 * 60 + 10 + shifts[0]!).toBeGreaterThan(6 * 60);
+    expect(16 * 60 + 10 + shifts[2]!).toBeLessThan(21 * 60);
+  });
+});

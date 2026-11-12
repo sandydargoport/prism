@@ -9,8 +9,11 @@ name: Repo hygiene
 # What remains is what a fork actually benefits from. A committed credential is
 # every self-hoster's problem, and docs/demos/ is published to the docs site
 # where no text scanner can read what a screenshot contains.
+# Pull requests into master only. A stacked one is checked after it is
+# retargeted there, on its next push or reopen (see regression-test.yml).
 on:
   pull_request:
+    branches: [master]
   push:
     branches: [master]
 

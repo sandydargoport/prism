@@ -48,6 +48,7 @@ const WIDGET_COLORS: Record<string, string> = {
   birthdays: '#A855F7', // purple
   photos: '#14B8A6',    // teal
   points: '#EAB308',    // yellow
+  nowNext: '#0EA5E9',   // sky
 };
 
 const WIDGET_LABELS: Record<string, string> = {
@@ -62,6 +63,7 @@ const WIDGET_LABELS: Record<string, string> = {
   birthdays: 'BDY',
   photos: 'PHO',
   points: 'PTS',
+  nowNext: 'NOW',
 };
 
 /**
@@ -193,7 +195,7 @@ export function LayoutPreview({
           }}
         >
           <span
-            className="absolute text-[7px] px-0.5 rounded-tl font-medium pointer-events-none"
+            className="absolute text-4xs px-0.5 rounded-tl font-medium pointer-events-none"
             style={{ backgroundColor: zone.color, color: 'white', bottom: 1, right: 1 }}
           >
             {zone.name}

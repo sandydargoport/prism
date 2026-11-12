@@ -141,3 +141,16 @@ describe('isTaskOverdue in a display zone', () => {
     expect(isTaskOverdue({ dueDate: '2000-01-01' }, now, 'Not/AZone')).toBe(true);
   });
 });
+
+describe('parseTaskDueInput on long input (CodeQL polynomial ReDoS)', () => {
+  // Editing a task passed any dueDate string to a regex that took 38 s on
+  // 200 KB, holding the server's only thread.
+  it('refuses a long string at once, and still reads an ISO instant', () => {
+    const t0 = Date.now();
+    expect(parseTaskDueInput({ dueDate: 'T'.repeat(20_000) }, CHICAGO).ok).toBe(false);
+    expect(parseTaskDueInput({ dueDate: '2026-09-29T' + '1'.repeat(30) + 'x' }, CHICAGO).ok).toBe(false);
+    expect(Date.now() - t0).toBeLessThan(100);
+    expect(parseTaskDueInput({ dueDate: '2026-09-29T01:30:00Z' }, CHICAGO).ok).toBe(true);
+    expect(parseTaskDueInput({ dueDate: '2026-09-29T01:30:00.000+09:00' }, TOKYO).ok).toBe(true);
+  });
+});

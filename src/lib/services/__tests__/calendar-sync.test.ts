@@ -99,10 +99,9 @@ jest.mock('@/lib/householdTimezone', () => ({
   getHouseholdTimezone: jest.fn().mockResolvedValue('UTC'),
 }));
 
-jest.mock('node-ical', () => ({
-  async: {
-    fromURL: (...args: unknown[]) => mockIcalFromURL(...args),
-  },
+// The feed fetch goes through fetchIcal (safeFetch + parse, #809).
+jest.mock('@/lib/services/fetchIcal', () => ({
+  fetchIcal: (...args: unknown[]) => mockIcalFromURL(...args),
 }));
 
 // Suppress console.log/error from sync logging

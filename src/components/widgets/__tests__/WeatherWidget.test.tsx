@@ -390,12 +390,30 @@ describe('current conditions', () => {
     expect(screen.queryByText('0°C')).not.toBeNull();
   });
 
-  it('renders the weather description', () => {
+  it('renders the weather description with the day\'s high as one line (#800)', () => {
+    const base = makeWeatherData();
     const data = makeWeatherData({
-      current: { ...makeWeatherData().current, description: 'Heavy thunderstorm' },
+      current: { ...base.current, description: 'Heavy thunderstorm' },
+      forecast: base.forecast.map((d, i) => (i === 0 ? { ...d, high: 79 } : d)),
     });
-    render(<WeatherWidget data={data} />);
-    expect(screen.queryByText('Heavy thunderstorm')).not.toBeNull();
+    const { container } = render(<WeatherWidget data={data} />);
+    const line = container.querySelector('[data-weather-condition]');
+    expect(line?.textContent).toBe('Heavy thunderstorm, high 79°F');
+  });
+
+  it('leaves the high out when there is no forecast', () => {
+    const data = makeWeatherData({
+      current: { ...makeWeatherData().current, description: 'Clear' },
+      forecast: [],
+    });
+    const { container } = render(<WeatherWidget data={data} />);
+    expect(container.querySelector('[data-weather-condition]')?.textContent).toBe('Clear');
+  });
+
+  it('draws the temperature in the display face, like the clock (#800)', () => {
+    const { container } = render(<WeatherWidget data={makeWeatherData()} />);
+    const temp = container.querySelector('[data-weather-temp]') as HTMLElement;
+    expect(temp.style.fontFamily).toBe('var(--font-display)');
   });
 
   it('renders the location name', () => {

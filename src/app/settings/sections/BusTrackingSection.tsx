@@ -69,6 +69,7 @@ interface BusRoute {
   checkpoints: { name: string; sortOrder: number }[];
   stopName: string | null;
   schoolName: string | null;
+  walkMinutes?: number;
   enabled: boolean;
   sortOrder: number;
 }
@@ -433,7 +434,7 @@ function GmailConnectionCard({
                 placeholder="e.g. bus"
                 className="h-8 text-sm"
               />
-              <p className="text-[11px] text-muted-foreground mt-0.5">
+              <p className="text-2xs text-muted-foreground mt-0.5">
                 If you filter bus emails to a Gmail label, enter it here. Leave blank to search all mail.
               </p>
             </div>
@@ -485,7 +486,7 @@ function SortableRouteRow({
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="font-medium text-sm truncate">{route.label}</span>
-            <Badge variant="outline" className="text-[10px]">{route.direction}</Badge>
+            <Badge variant="outline" className="text-3xs">{route.direction}</Badge>
           </div>
           <div className="text-xs text-muted-foreground">
             Trip {route.tripId} &middot; {route.scheduledTime}
@@ -546,7 +547,7 @@ function SortableCheckpointItem({
         className="flex-1 h-7 text-sm"
       />
       {isStop && (
-        <Badge variant="outline" className="text-[10px] shrink-0">stop</Badge>
+        <Badge variant="outline" className="text-3xs shrink-0">stop</Badge>
       )}
       <Button
         size="icon"
@@ -583,6 +584,7 @@ function RouteDialog({
     scheduledTime: route?.scheduledTime || '07:00',
     stopName: route?.stopName || '',
     schoolName: route?.schoolName || '',
+    walkMinutes: route?.walkMinutes ?? 0,
     checkpoints: route?.checkpoints || [] as { name: string; sortOrder: number }[],
   });
   const [newCheckpointName, setNewCheckpointName] = useState('');
@@ -753,10 +755,27 @@ function RouteDialog({
                 value={form.scheduledTime}
                 onChange={e => setForm(p => ({ ...p, scheduledTime: e.target.value }))}
               />
-              <p className="text-[11px] text-muted-foreground mt-0.5">
+              <p className="text-2xs text-muted-foreground mt-0.5">
                 Expected arrival at your stop.
               </p>
             </div>
+          </div>
+
+          {/* Leave-by in Now & Next (#900). */}
+          <div>
+            <Label htmlFor="bus-walk-minutes">Minutes to walk to the stop</Label>
+            <Input
+              id="bus-walk-minutes"
+              type="number"
+              min={0}
+              max={60}
+              value={form.walkMinutes}
+              onChange={(e) => setForm((p) => ({ ...p, walkMinutes: Math.min(60, Math.max(0, Math.trunc(Number(e.target.value) || 0))) }))}
+              className="w-28"
+            />
+            <p className="text-2xs text-muted-foreground mt-0.5">
+              Now &amp; Next then says when to leave. 0 shows no leave time.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -784,7 +803,7 @@ function RouteDialog({
                   disabled={checkpointNames.length === 0}
                 />
               )}
-              <p className="text-[11px] text-muted-foreground mt-0.5">
+              <p className="text-2xs text-muted-foreground mt-0.5">
                 ETA target — select the checkpoint where your child gets off.
               </p>
             </div>

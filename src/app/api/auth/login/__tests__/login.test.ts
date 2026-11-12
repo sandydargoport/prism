@@ -33,12 +33,14 @@ jest.mock('@/lib/db/schema', () => ({
 // --- Auth/session mock ---
 const mockIsLoginLockedOut = jest.fn();
 const mockRecordFailedLogin = jest.fn();
+const mockReserveLoginAttempt = jest.fn().mockResolvedValue({ allowed: true, count: 1 });
 const mockClearLoginAttempts = jest.fn();
 const mockCreateSession = jest.fn();
 
 jest.mock('@/lib/auth/session', () => ({
   isLoginLockedOut: (...a: unknown[]) => mockIsLoginLockedOut(...a),
   recordFailedLogin: (...a: unknown[]) => mockRecordFailedLogin(...a),
+  reserveLoginAttempt: (...a: unknown[]) => mockReserveLoginAttempt(...a),
   clearLoginAttempts: (...a: unknown[]) => mockClearLoginAttempts(...a),
   createSession: (...a: unknown[]) => mockCreateSession(...a),
 }));
@@ -127,7 +129,8 @@ describe('POST /api/auth/login', () => {
     mockBcryptCompare.mockResolvedValue(false);
     const res = await POST(makeRequest({ userId: 'parent-1', pin: '0000' }));
     expect(res.status).toBe(401);
-    expect(mockRecordFailedLogin).toHaveBeenCalledWith('parent-1');
+    // The attempt was counted before the compare; the failure reuses that count (#809).
+    expect(mockRecordFailedLogin).toHaveBeenCalledWith('parent-1', 1);
   });
 
   it('logs in successfully with valid PIN (userId path)', async () => {
@@ -208,5 +211,13 @@ describe('POST /api/auth/login', () => {
     mockBcryptCompare.mockResolvedValue(false);
     await POST(makeRequest({ userId: 'parent-1', pin: '0000', timeZone: 'America/Denver' }));
     expect(mockSaveHouseholdTimezone).not.toHaveBeenCalled();
+  });
+
+  it('refuses at once when the attempt cannot be reserved, before checking the PIN (#809)', async () => {
+    mockReserveLoginAttempt.mockResolvedValueOnce({ allowed: false, retryAfter: 120 });
+    const res = await POST(makeRequest({ userId: 'parent-1', pin: '1234' }));
+    expect(res.status).toBe(403);
+    expect((await res.json()).lockedOut).toBe(true);
+    expect(mockRecordFailedLogin).not.toHaveBeenCalled();
   });
 });

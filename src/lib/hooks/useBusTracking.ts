@@ -34,6 +34,8 @@ export interface BusRouteStatus {
   checkpoints: BusCheckpoint[];
   stopName: string | null;
   schoolName: string | null;
+  /** Minutes to walk to the stop (#900); 0 or absent: no leave-by line. */
+  walkMinutes?: number;
   prediction: BusPrediction;
 }
 

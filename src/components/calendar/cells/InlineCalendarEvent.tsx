@@ -1,5 +1,7 @@
 'use client';
 
+import { eventDotBackground } from '@/lib/calendar/sharedEvents';
+import { SlidingTitle } from '@/components/calendar/cells/SlidingTitle';
 import { eventTintStyle } from '@/lib/design/eventStyle';
 import { cn } from '@/lib/utils';
 import type { CalendarEvent } from '@/types/calendar';
@@ -59,7 +61,7 @@ export function InlineCalendarEvent({
         'font-(--event-font-weight)',
         'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-seasonal-accent',
         'leading-tight',
-        compact ? 'px-0.5 py-px text-[8px]' : 'px-(--event-padding-x,0.25rem) py-(--event-padding-y,0.125rem) text-event',
+        compact ? 'px-0.5 py-px text-4xs' : 'px-(--event-padding-x,0.25rem) py-(--event-padding-y,0.125rem) text-event',
         event.allDay ? 'block hover:brightness-95' : 'flex items-center gap-1 hover:bg-accent/60',
         past && 'opacity-55 saturate-[0.65]',
         className
@@ -77,10 +79,11 @@ export function InlineCalendarEvent({
           <span
             aria-hidden
             className={cn('shrink-0 rounded-full', compact ? 'h-1 w-1' : 'h-1.5 w-1.5')}
-            style={{ backgroundColor: event.color }}
+            style={{ background: eventDotBackground(event) }}
+            data-event-mark
           />
           {time && <span className="shrink-0 tabular-nums text-muted-foreground">{time}</span>}
-          <span className="truncate text-foreground">{event.title}</span>
+          <SlidingTitle className="text-foreground">{event.title}</SlidingTitle>
         </>
       )}
     </button>

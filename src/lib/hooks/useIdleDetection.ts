@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useIsPWA } from './useIsPWA';
+import { resolveAwayAutoAfter } from '@/lib/awayMode/autoAfter';
+import { isNamedScreen } from '@/lib/displays/namedScreen';
 
 const STORAGE_KEY = 'prism-screensaver-timeout';
-const AWAY_MODE_STORAGE_KEY = 'prism-away-mode-timeout';
 const LAST_ACTIVITY_KEY = 'prism-last-activity';
 const DEFAULT_TIMEOUT = 120;
 
@@ -12,12 +13,6 @@ function getStoredTimeout(): number {
   if (typeof window === 'undefined') return DEFAULT_TIMEOUT;
   const stored = localStorage.getItem(STORAGE_KEY);
   return stored !== null ? Number(stored) : DEFAULT_TIMEOUT;
-}
-
-function getAwayModeTimeout(): number {
-  if (typeof window === 'undefined') return 0;
-  const stored = localStorage.getItem(AWAY_MODE_STORAGE_KEY);
-  return stored !== null ? Number(stored) : 0;
 }
 
 function updateLastActivity() {
@@ -32,14 +27,44 @@ function getLastActivity(): number {
   return stored !== null ? Number(stored) : Date.now();
 }
 
+/** How long after a waking touch its follow-on events are still that tap's. */
+export const WAKE_TAP_MS = 600;
+
+const TAP_TAIL = ['pointerup', 'mousedown', 'mouseup', 'click'] as const;
+
+/**
+ * Stop the rest of the waking tap (its pointerup, compatibility mouse events
+ * and click) from reaching the dashboard under the screensaver. The click ends
+ * the tap; a timer ends it if no click comes, so a later tap is never eaten.
+ */
+function swallowRestOfTap() {
+  if (typeof window === 'undefined') return;
+  const swallow = (e: Event) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'click') stop();
+  };
+  const stop = () => {
+    clearTimeout(timer);
+    TAP_TAIL.forEach((t) => window.removeEventListener(t, swallow, true));
+  };
+  TAP_TAIL.forEach((t) => window.addEventListener(t, swallow, true));
+  const timer = setTimeout(stop, WAKE_TAP_MS);
+}
+
 export function useIdleDetection(initialTimeout?: number) {
   const isPWA = useIsPWA();
   const [timeout, setTimeoutValue] = useState(() => initialTimeout ?? getStoredTimeout());
-  const [awayModeTimeout, setAwayModeTimeout] = useState(() => getAwayModeTimeout());
   const [isIdle, setIsIdle] = useState(false);
   const forcedRef = useRef(false);
+  const isIdleRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const awayModeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // The dismiss listener reads this, so it knows whether a touch woke the screen.
+  useEffect(() => {
+    isIdleRef.current = isIdle;
+  }, [isIdle]);
 
   // Listen for timeout changes from settings
   useEffect(() => {
@@ -48,15 +73,6 @@ export function useIdleDetection(initialTimeout?: number) {
     };
     window.addEventListener('prism:screensaver-timeout-change', handler as EventListener);
     return () => window.removeEventListener('prism:screensaver-timeout-change', handler as EventListener);
-  }, []);
-
-  // Listen for away mode timeout changes from settings
-  useEffect(() => {
-    const handler = (e: CustomEvent<number>) => {
-      setAwayModeTimeout(e.detail);
-    };
-    window.addEventListener('prism:away-mode-timeout-change', handler as EventListener);
-    return () => window.removeEventListener('prism:away-mode-timeout-change', handler as EventListener);
   }, []);
 
   // Reset idle timer on user activity (restarts countdown)
@@ -118,6 +134,12 @@ export function useIdleDetection(initialTimeout?: number) {
       if (target && typeof target.closest === 'function' && target.closest('[data-screensaver-keep]')) {
         return;
       }
+      // A touch that wakes the screen ends on whatever is under the finger,
+      // because the overlay is gone before the touch is over. Without this
+      // the same tap that woke the wall also checked off a task (#1112).
+      if (e.type === 'touchstart' && isIdleRef.current && !forcedRef.current) {
+        swallowRestOfTap();
+      }
       dismissIdle();
     };
     const dismissEvents = ['mousedown', 'keydown', 'touchstart'] as const;
@@ -130,8 +152,12 @@ export function useIdleDetection(initialTimeout?: number) {
     };
   }, [dismissIdle]);
 
+  // A phone has no idle state, so an installed app does not go idle by itself.
+  // A screen named in Settings > Screens does, installed or not: installing the
+  // app is how a wall tablet runs full-screen, and its screensaver and Away
+  // Mode must still start (#1156).
   useEffect(() => {
-    if (timeout <= 0 || isPWA) return;
+    if (timeout <= 0 || (isPWA && !isNamedScreen())) return;
 
     // Mousemove/scroll only reset the idle timer, they don't dismiss the screensaver
     const moveEvents = ['mousemove', 'scroll'] as const;
@@ -152,9 +178,11 @@ export function useIdleDetection(initialTimeout?: number) {
     return () => window.removeEventListener('prism:screensaver', handler);
   }, [forceIdle]);
 
-  // Away mode auto-activation based on extended inactivity
+  // Away mode auto-activation based on extended inactivity. How long is the
+  // household's (#1159), read with the state on every check, so a change in
+  // Settings reaches every screen within a minute.
   useEffect(() => {
-    if (awayModeTimeout <= 0 || isPWA) {
+    if (isPWA && !isNamedScreen()) {
       // Clear timer if disabled
       if (awayModeTimerRef.current) {
         clearInterval(awayModeTimerRef.current);
@@ -174,6 +202,8 @@ export function useIdleDetection(initialTimeout?: number) {
         if (!stateRes.ok) return;
         const state = await stateRes.json();
         if (state.enabled) return;
+        const awayModeTimeout = await resolveAwayAutoAfter(state);
+        if (awayModeTimeout <= 0) return;
 
         const disabledAt = state.disabledAt ? Date.parse(state.disabledAt) : 0;
         const lastActivity = Math.max(getLastActivity(), Number.isNaN(disabledAt) ? 0 : disabledAt);
@@ -203,7 +233,7 @@ export function useIdleDetection(initialTimeout?: number) {
         awayModeTimerRef.current = null;
       }
     };
-  }, [awayModeTimeout, isPWA]);
+  }, [isPWA]);
 
   return { isIdle, forceIdle };
 }

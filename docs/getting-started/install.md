@@ -1,12 +1,12 @@
-# Installing Prism
+# Install
 
-Prism ships as a Docker Compose application, and as a Home Assistant add-on. You have three install paths:
+Install Prism on a computer that stays on at home. There are three ways to do it, and each takes a few minutes:
 
-1. **Clone and build**: for any platform with Docker + git.
-2. **Pull pre-built image**: for amd64 or ARM64 (Raspberry Pi).
-3. **Home Assistant add-on**: if you already run Home Assistant, no terminal or certificate work needed.
+- If you already run Home Assistant, use the add-on (Option 3). You will not need a terminal or any certificates.
+- If you have Docker on an amd64 or ARM64 machine (such as a Raspberry Pi), pull the pre-built image (Option 2).
+- On any machine with Docker and git, clone the code and build it (Option 1).
 
-After installation, open **<http://localhost:3000>**. A fresh install has no accounts yet, so it opens the **setup wizard** (Welcome → Family → Household → Calendars → Look → Done), where you create each family member and choose their PIN. (If you loaded the optional demo seed instead, every seeded user has PIN `1234`.)
+When it is running, open **<http://localhost:3000>**. A fresh install opens the **setup wizard** (Welcome → Family → Household → Calendars → Look → Done), where you add each family member and choose their PIN. If you loaded the optional demo family instead, every demo account uses the PIN `1234`.
 
 ---
 
@@ -14,16 +14,16 @@ After installation, open **<http://localhost:3000>**. A fresh install has no acc
 
 ### HTTPS / Nginx certificate prerequisite (Linux / WSL)
 
-Some features (the microphone, camera scanning, copy buttons, installing as an app) only work over `https://`. For a certificate every device trusts without warnings, see [Using https at home](https.md).
+The microphone, camera scanning, copy buttons and installing as an app only work when Prism is opened over `https://`. If you want a certificate that every device trusts without a warning, follow [Using https at home](https.md).
 
-Prism's default Nginx config terminates TLS on port `443` and expects:
+Prism's default Nginx config handles TLS (the encryption behind `https://`) on port `443` and expects these two files:
 
 - `config/certs/prism.crt`
 - `config/certs/prism.key`
 
-If these files are missing, Nginx fails with `cannot load certificate "/etc/nginx/certs/prism.crt"`.
+If they are missing, Nginx stops with `cannot load certificate "/etc/nginx/certs/prism.crt"`.
 
-Generate a local self-signed cert:
+To make a self-signed certificate on your machine, run:
 
 ```bash
 mkdir -p config/certs
@@ -34,7 +34,7 @@ openssl req -x509 -nodes -days 365 \
   -subj "/CN=localhost"
 ```
 
-If you see `Permission denied` while writing certs:
+If you see `Permission denied` while the certificate is being written, take ownership of the folder:
 
 ```bash
 sudo chown -R "$USER:$USER" config/certs
@@ -49,13 +49,13 @@ bash scripts/install.sh
 ```
 
 !!! tip
-    If you prefer `./scripts/install.sh`, make it executable first with `chmod +x scripts/install.sh`.
+    If you would like to run it as `./scripts/install.sh`, make it executable first with `chmod +x scripts/install.sh`.
 
 ---
 
 ## Option 2: Pull pre-built image
 
-Works on both amd64 and ARM64. The manifest auto-selects the right binary.
+The image works on amd64 and ARM64, and Docker picks the right one for your machine on its own.
 
 ```bash
 # Download docker-compose.yml and .env.example
@@ -64,17 +64,17 @@ curl -O https://raw.githubusercontent.com/sandydargoport/prism/master/.env.examp
 cp .env.example .env
 # Edit .env with your secrets
 
-docker-compose up -d
+docker compose up -d
 ```
 
 !!! note "Raspberry Pi"
-    Tested on Pi 4 (4 GB+). Works with the pre-built ARM64 image, no compilation needed.
+    Prism has been tested on a Pi 4 with 4 GB of memory or more. The pre-built ARM64 image runs on it as is, with nothing to compile.
 
 ---
 
 ## Option 3: Home Assistant add-on
 
-If you already run Home Assistant (OS or Supervised), Prism installs as an add-on. No Docker Compose, no Nginx, no certificates.
+If you already run Home Assistant (OS or Supervised), Prism installs as an add-on, and you do not have to deal with Docker Compose, Nginx or certificates.
 
 1. Go to **Settings → Add-ons → Add-on store**.
 2. Open the **⋮** menu in the top right and choose **Repositories**.
@@ -82,41 +82,42 @@ If you already run Home Assistant (OS or Supervised), Prism installs as an add-o
 4. Find **Prism** in the store and click **Install**.
 5. On the **Info** tab, click **Start**. The add-on panel then links to the web UI on port 3000.
 
-Postgres and Redis run inside the add-on container by default (`bundled_db: true`), and every piece of state lives under Home Assistant's `/data` volume, so add-on updates and HA snapshots preserve your family's history. Point the add-on at an existing Postgres instead by setting `bundled_db: false` plus `database_url`.
+By default the add-on runs its own Postgres and Redis inside its container (`bundled_db: true`) and keeps everything under Home Assistant's `/data` volume, so add-on updates and Home Assistant snapshots keep your family's history. To use a Postgres you already have, set `bundled_db: false` and fill in `database_url`.
 
 !!! note "Add-ons are not HACS"
-    HACS distributes integrations, dashboard cards and themes, not add-ons, so Prism will not appear there. The custom-repository flow above is the install path.
+    HACS (the Home Assistant Community Store) only carries integrations, dashboard cards and themes, so Prism does not appear there. Install it by adding the repository as shown above.
 
-Full option reference, the `/data` layout and add-on troubleshooting are in [`ha-app/README.md`](https://github.com/sandydargoport/prism/blob/master/ha-app/README.md). To connect Google Calendar on a LAN-only add-on install, see [Google Calendar without a public URL](../features/CALENDAR.md#google-calendar-without-a-public-url-oauth-playground).
+Every add-on option, the layout of `/data` and add-on troubleshooting are in [`ha-app/README.md`](https://github.com/sandydargoport/prism/blob/master/ha-app/README.md). If your add-on is only reachable on your home network and you want Google Calendar, follow [Google Calendar without a public URL](../features/CALENDAR.md#google-calendar-without-a-public-url-oauth-playground).
 
 ---
 
 ## First login
 
-Open **<http://localhost:3000>**. On a fresh install this lands on the **setup wizard**, where you create your family members and set each one's PIN (4 or 6 digits). There is no default login PIN: you choose them here. (The optional demo seed is the only case with preset PINs, and it uses `1234` for every user.)
+Open **<http://localhost:3000>**. On a fresh install this takes you to the **setup wizard**, where you add your family members and set a 4- or 6-digit PIN for each one. There is no default PIN to log in with, because you choose every PIN here. The optional demo family is the only case with preset PINs, and it uses `1234` for everyone.
 
-Next: [first-time setup](first-time-setup.md).
+The next step is [first-time setup](first-time-setup.md).
 
 ## Troubleshooting
 
 ### Photo or avatar uploads return a 500
 
-The app container runs as uid `1001`. If the bind-mounted `data/` directory is
-owned by a different user, the app can't write photos/avatars and uploads fail
-with a 500 (`EACCES … mkdir '/app/data/...'` in `docker logs prism-app`). The
-installer chowns it for you; if you created the directory manually, fix it with:
+The app container runs as uid `1001` (the user ID inside the container). If the
+`data/` folder mounted into it belongs to a different user, the app cannot save
+photos or avatars, and uploads fail with a 500 (`docker logs prism-app` shows
+`EACCES … mkdir '/app/data/...'`). The installer sets the owner for you. If you
+made the folder yourself, fix it with:
 
 ```bash
 docker run --rm -v "$PWD/data":/d alpine chown -R 1001:1001 /d
 ```
 
-No container restart is needed. Permissions are checked at write time.
+You do not need to restart the container, because the permissions are checked each time a file is written.
 
 ### Locked out: forgot a PIN
 
-Each member picks their own PIN (**4 or 6 digits**) in the setup wizard or
-under **Settings → Security**. If someone forgets their PIN, that member can be
-locked out. Reset it from the server with the recovery script:
+Each member picks their own 4- or 6-digit PIN in the setup wizard or under
+**Settings → Security**. Someone who forgets their PIN can be locked out. You
+can reset it from the server with the recovery script:
 
 ```bash
 # List family members:
@@ -126,5 +127,5 @@ docker compose exec app node scripts/reset-pin.js --list
 docker compose exec app node scripts/reset-pin.js "Jordan" 1234
 ```
 
-It hashes the new PIN exactly like the app and updates only that member. They
-can log in immediately with the new PIN, no restart needed.
+The script stores the new PIN the same way the app does and changes only that
+member. They can log in with the new PIN straight away, without a restart.

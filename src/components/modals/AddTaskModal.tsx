@@ -205,7 +205,7 @@ export function AddTaskModal({
                         color={member.color}
                         imageUrl={member.avatarUrl || undefined}
                         size="sm"
-                        className="h-5 w-5 text-[10px]"
+                        className="h-5 w-5 text-3xs"
                       />
                       <span>{member.name}</span>
                     </div>

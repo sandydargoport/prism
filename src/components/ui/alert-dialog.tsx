@@ -1,5 +1,6 @@
 'use client';
 
+import { remotePortalRoot } from '@/lib/displays/remoteEdit';
 import * as React from 'react';
 import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog';
 import { cn } from '@/lib/utils';
@@ -31,7 +32,7 @@ const AlertDialogContent = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
 >(({ className, ...props }, ref) => (
-  <AlertDialogPortal>
+  <AlertDialogPortal container={remotePortalRoot()}>
     <AlertDialogOverlay />
     <AlertDialogPrimitive.Content
       ref={ref}

@@ -178,8 +178,9 @@ export const LAYOUT_TEMPLATES: Record<string, LayoutTemplate> = {
 // What a brand-new install opens on (#808), written as a real layout when
 // setup first finishes. Calendar first; until a calendar is connected the
 // calendar widget shows a "Connect a calendar" invitation instead of an empty
-// list. Clock and weather share the right column at full height, weather
-// taller so its forecast has whole rows. No list widgets: on day one they are
+// list. Clock and weather are small tiles in the two top corners with the
+// photo between them (#905), so when idle the time and weather sit on the
+// photo's corners rather than in a column of cards. No list widgets: on day one they are
 // empty, and a hidden widget does not yet give its space back. Glass cards
 // over the bundled scenery (src/lib/scenery.ts) until the household adds
 // photos. When the wall is idle the calendar fades (calm mode), leaving the
@@ -187,17 +188,36 @@ export const LAYOUT_TEMPLATES: Record<string, LayoutTemplate> = {
 // keep what they have.
 export const FIRST_SCREEN_TEMPLATE: LayoutTemplate = {
   name: 'Home',
-  description: 'Calendar first, with the clock and weather beside it',
+  description: 'Calendar first, with the clock and weather in the top corners',
   orientation: 'landscape',
   widgets: [
-    { i: 'calendar', x: 0,  y: 0, w: 32, h: 27, backgroundColor: 'glass', showWhenIdle: false },
-    { i: 'clock',    x: 32, y: 0, w: 16, h: 9,  backgroundColor: 'glass' },
-    { i: 'weather',  x: 32, y: 9, w: 16, h: 18, backgroundColor: 'glass' },
+    { i: 'calendar', x: 0,  y: 5, w: 48, h: 22, backgroundColor: 'glass', showWhenIdle: false },
+    { i: 'clock',    x: 0,  y: 0, w: 12, h: 5,  backgroundColor: 'glass' },
+    { i: 'weather',  x: 36, y: 0, w: 12, h: 5,  backgroundColor: 'glass' },
   ],
 };
 
 /** Pages a brand-new install starts with hidden (#808). Settings > Features shows them again. */
 export const NEW_INSTALL_HIDDEN_PAGES = ['/wishes', '/travel', '/weekend'] as const;
+
+/**
+ * Today (#907): the front page drawn as one scene. Its widgets are the parts
+ * the scene shows; their positions are only a fallback should the layout ever
+ * be drawn as a grid.
+ */
+export const TODAY_TEMPLATE: LayoutTemplate = {
+  name: 'Today',
+  description: 'The day as one scene over the photo',
+  orientation: 'landscape',
+  widgets: [
+    { i: 'clock',     x: 0,  y: 0,  w: 12, h: 5,  showWhenIdle: true },
+    { i: 'weather',   x: 36, y: 0,  w: 12, h: 5,  showWhenIdle: true },
+    { i: 'calendar',  x: 0,  y: 5,  w: 32, h: 22, showWhenIdle: true },
+    { i: 'birthdays', x: 32, y: 5,  w: 16, h: 6,  showWhenIdle: false },
+    { i: 'chores',    x: 32, y: 11, w: 16, h: 8,  showWhenIdle: false },
+    { i: 'shopping',  x: 32, y: 19, w: 16, h: 8,  showWhenIdle: false },
+  ],
+};
 
 // New-user / empty-layout fallback. Deliberately weather-forward with NO
 // calendar/birthdays/points — a fresh install hasn't connected a calendar yet,

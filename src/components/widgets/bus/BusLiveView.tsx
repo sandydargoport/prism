@@ -72,6 +72,17 @@ export function versusUsual(shiftMs: number | null, typicalMs: number | null, me
   return diff > 0 ? `${diff} min later than usual` : `${-diff} min earlier than usual`;
 }
 
+/**
+ * The card's Running row, one short phrase so it fits the narrow card: against
+ * the bus's habit when today is measured and the habit is known ("2 min later
+ * than usual"), else the habit ("Usually 9 min late"), else against the
+ * schedule ("11 min late"). The arrival time above already says when it comes.
+ */
+export function running(shiftMs: number | null, typicalMs: number | null, measured: boolean): string | null {
+  const text = versusUsual(shiftMs, typicalMs, measured) ?? lateness(shiftMs);
+  return text && text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 export function formatSpeed(metresPerSecond: number, unit: 'mph' | 'km/h'): string {
   const value = unit === 'mph' ? metresPerSecond * 2.23694 : metresPerSecond * 3.6;
   return `${Math.round(value)} ${unit}`;
@@ -231,8 +242,8 @@ export function BusLivePanel({
   }
 
   const rows: [string, React.ReactNode][] = [];
-  const usual = versusUsual(track.shiftMs, track.typicalLateMs, track.shiftMeasured);
-  if (late) rows.push(['Running', usual ? `${late} · ${usual}` : late]);
+  const runningText = running(track.shiftMs, track.typicalLateMs, track.shiftMeasured);
+  if (runningText) rows.push(['Running', runningText]);
   // High in the list, beside how late it is: how fresh the position is
   // decides how far to trust everything else, so it is never the row dropped.
   if (lastFixMs === null) {

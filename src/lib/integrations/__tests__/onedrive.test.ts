@@ -164,6 +164,13 @@ describe('listFolders', () => {
     expect(url).toContain('/me/drive/root/children');
   });
 
+  it('keeps a folder id as one path segment (CodeQL request forgery)', async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ value: [] }) });
+    await listFolders('access-token', '../../users/other/drive/root');
+    const url = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+    expect(url).toContain('/me/drive/items/..%2F..%2Fusers%2Fother%2Fdrive%2Froot/children');
+  });
+
   it('fetches children of a specific folder', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,

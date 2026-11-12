@@ -35,6 +35,7 @@ import { logError } from '@/lib/utils/logError';
 import {
   createSession,
   isLoginLockedOut,
+  reserveLoginAttempt,
   recordFailedLogin,
   clearLoginAttempts,
 } from '@/lib/auth/session';
@@ -237,11 +238,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Count the attempt before the slow compare, so parallel guesses cannot
+    // all slip past the lockout check (#809).
+    const reservation = await reserveLoginAttempt(user.id);
+    if (!reservation.allowed) {
+        return NextResponse.json(
+          {
+            error: 'Too many failed attempts. Please try again later.',
+            lockedOut: true,
+            retryAfter: reservation.retryAfter,
+          },
+          { status: 403 }
+        );
+    }
+
     // Verify PIN using bcrypt
     const isValidPin = await bcrypt.compare(body.pin, user.pin);
 
     if (!isValidPin) {
-      const { remainingAttempts } = await recordFailedLogin(user.id);
+      const { remainingAttempts } = await recordFailedLogin(user.id, reservation.count);
 
       return NextResponse.json(
         {

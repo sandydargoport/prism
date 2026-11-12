@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { sharedGet } from '@/lib/utils/sharedGet';
 
 const STORAGE_KEY = 'prism:timezone';
 export const DISPLAY_TIMEZONE_MODE_KEY = 'prism:display-timezone-mode';
@@ -54,7 +55,7 @@ export function useTimezone(): {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch('/api/settings');
+        const res = await sharedGet('/api/settings');
         if (res.ok) {
           const data = await res.json();
           const v = data.settings?.timezone;

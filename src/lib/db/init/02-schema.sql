@@ -174,6 +174,7 @@ CREATE TABLE IF NOT EXISTS public.bus_routes (
     checkpoints jsonb DEFAULT '[]'::jsonb NOT NULL,
     stop_name character varying(255),
     school_name character varying(255),
+    walk_minutes integer DEFAULT 0 NOT NULL,
     enabled boolean DEFAULT true NOT NULL,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
     updated_at timestamp without time zone DEFAULT now() NOT NULL,
@@ -225,6 +226,7 @@ CREATE TABLE IF NOT EXISTS public.calendar_sources (
     color character varying(7),
     enabled boolean DEFAULT true NOT NULL,
     show_in_event_modal boolean DEFAULT true NOT NULL,
+    display_rules jsonb,
     is_family boolean DEFAULT false NOT NULL,
     group_id uuid,
     access_token text,
@@ -277,7 +279,24 @@ CREATE TABLE IF NOT EXISTS public.chores (
     created_by uuid,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
     updated_at timestamp without time zone DEFAULT now() NOT NULL,
-    next_due_time character varying(5)
+    next_due_time character varying(5),
+    times_per_day integer DEFAULT 1 NOT NULL,
+    kind character varying(20) DEFAULT 'chore' NOT NULL,
+    pet_id uuid
+);
+
+
+--
+-- Name: pets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE IF NOT EXISTS public.pets (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    name character varying(100) NOT NULL,
+    kind character varying(20) DEFAULT 'other' NOT NULL,
+    color character varying(7) NOT NULL,
+    sort_order integer DEFAULT 0 NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL
 );
 
 
@@ -416,7 +435,8 @@ CREATE TABLE IF NOT EXISTS public.layouts (
     orientation character varying(20) DEFAULT 'landscape'::character varying,
     font_scale integer,
     screensaver_mode character varying(20) DEFAULT 'calm'::character varying NOT NULL,
-    idle_background jsonb DEFAULT '{"source": "dashboard"}'::jsonb NOT NULL
+    idle_background jsonb DEFAULT '{"source": "dashboard"}'::jsonb NOT NULL,
+    view character varying(20) DEFAULT 'grid'::character varying NOT NULL
 );
 
 
@@ -530,6 +550,10 @@ CREATE TABLE IF NOT EXISTS public.photos (
     thumbnail_path character varying(255),
     favorite boolean DEFAULT false NOT NULL,
     orientation character varying(20),
+    focal_x real,
+    focal_y real,
+    place_name character varying(120),
+    place_looked_up boolean DEFAULT false NOT NULL,
     usage character varying(100) DEFAULT 'wallpaper,gallery,screensaver'::character varying NOT NULL,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
     latitude numeric(9,6),
@@ -2053,6 +2077,14 @@ ALTER TABLE ONLY public.chore_completions
 
 ALTER TABLE ONLY public.chores
     ADD CONSTRAINT chores_assigned_to_fkey FOREIGN KEY (assigned_to) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: chores chores_pet_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chores
+    ADD CONSTRAINT chores_pet_id_fkey FOREIGN KEY (pet_id) REFERENCES public.pets(id) ON DELETE SET NULL;
 
 
 --

@@ -1,5 +1,8 @@
 'use client';
 
+import { MoreHorizontal } from 'lucide-react';
+import { useIsMobile } from '@/lib/hooks/useIsMobile';
+import { usePageAdd } from '@/lib/hooks/usePageAdd';
 import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { toast } from '@/components/ui/use-toast';
@@ -36,6 +39,7 @@ import { latestRecord } from '@/lib/utils/latestRecord';
 type ViewMode = 'all' | 'favorites';
 
 export function RecipesView() {
+  const isMobile = useIsMobile();
   const { requireAuth } = useAuth();
   const { confirm, dialogProps: confirmDialogProps } = useConfirmDialog();
   const searchParams = useSearchParams();
@@ -91,6 +95,7 @@ export function RecipesView() {
     if (!await requireAuth('Add Recipe', 'Please log in to add a recipe')) return;
     setShowAddModal(true);
   };
+  usePageAdd('Add recipe', () => { void handleAddWithAuth(); });
 
   const handleImportUrlWithAuth = async () => {
     if (!await requireAuth('Import Recipe', 'Please log in to import a recipe')) return;
@@ -122,9 +127,10 @@ export function RecipesView() {
           actions={
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button size="sm">
-                  <Plus className="h-4 w-4 mr-1" />Add<ChevronDown className="h-3 w-3 ml-1 opacity-70" />
-                </Button>
+                {/* On a phone the round button adds a recipe (#1028); this keeps imports. */}
+                {isMobile
+                  ? <Button size="icon" variant="ghost" aria-label="More ways to add"><MoreHorizontal className="h-5 w-5" /></Button>
+                  : <Button size="sm"><Plus className="h-4 w-4 mr-1" />Add<ChevronDown className="h-3 w-3 ml-1 opacity-70" /></Button>}
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem onClick={handleImportUrlWithAuth}>

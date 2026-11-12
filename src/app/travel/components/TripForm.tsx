@@ -97,7 +97,7 @@ export function TripForm({ initialData, hideHeader, onSave, onCancel }: TripForm
               >
                 <span className="text-lg leading-none">{cfg.icon}</span>
                 <span className="text-xs font-medium">{cfg.label}</span>
-                <span className="text-[10px] leading-snug opacity-75">{cfg.description}</span>
+                <span className="text-3xs leading-snug opacity-75">{cfg.description}</span>
               </button>
             ))}
           </div>

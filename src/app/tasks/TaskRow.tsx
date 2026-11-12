@@ -1,5 +1,6 @@
 'use client';
 
+import { StatusPill } from '@/components/ui/StatusPill';
 import { format, formatDistanceToNow } from 'date-fns';
 import { CalendarDays, Settings, Trash2 } from 'lucide-react';
 import { UserAvatar } from '@/components/ui/avatar';
@@ -62,11 +63,11 @@ export function TaskRow({
                 {dueDate && (
                   <div className={cn(
                     'flex items-center gap-1 text-xs',
-                    isOverdue ? 'text-destructive' : 'text-muted-foreground'
+                    'text-muted-foreground'
                   )}>
                     <CalendarDays className="h-3 w-3" />
                     {isOverdue ? (
-                      <span>Due {formatDistanceToNow(dueDate, { addSuffix: true })}</span>
+                      <StatusPill tone="danger">Due {formatDistanceToNow(dueDate, { addSuffix: true })}</StatusPill>
                     ) : daysUntil === 0 ? (
                       <span>Due today</span>
                     ) : daysUntil === 1 ? (

@@ -1,12 +1,15 @@
 'use client';
 import { Emoji } from '@/components/ui/Emoji';
 
+import { useCurrentPageAdd } from '@/lib/hooks/usePageAdd';
 import { useState, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+  SlidersHorizontal,
   Plus,
+  X,
   Home,
   Sun,
   Moon,
@@ -16,7 +19,6 @@ import {
   ArrowUpDown,
   Eye,
   EyeOff,
-  ScanLine,
   Rows3,
   LayoutDashboard,
   Settings as SettingsIcon,
@@ -35,6 +37,8 @@ export interface MobileFabProps {
   } | null;
   onLogin?: () => void;
   onLogout?: () => void;
+  /** Cards and Reorder act on the phone's cards; a page without them hides both. */
+  cardTools?: boolean;
   uiHidden?: boolean;
 }
 
@@ -55,8 +59,10 @@ const ALL_CARDS: { id: string; label: string }[] = [
   { id: 'photos', label: 'Photos' },
 ];
 
-export function MobileFab({ user, onLogin, onLogout, uiHidden }: MobileFabProps) {
+export function MobileFab({ user, onLogin, onLogout, uiHidden, cardTools = true }: MobileFabProps) {
   const pathname = usePathname();
+  // A subpage's own Add (#1028); the dashboard has none and keeps its options.
+  const pageAdd = useCurrentPageAdd();
   const [isOpen, setIsOpen] = useState(false);
   const [showCards, setShowCards] = useState(false);
   const [hiddenCards, setHiddenCards] = useHiddenCards();
@@ -87,7 +93,6 @@ export function MobileFab({ user, onLogin, onLogout, uiHidden }: MobileFabProps)
   const themeLabel = theme === 'light' ? 'Light' : theme === 'dark' ? 'Dark' : 'Auto';
 
   const isDashboard = pathname === '/' || pathname?.startsWith('/d/');
-  const isShopping = pathname === '/shopping';
 
   const actions = [
     {
@@ -108,18 +113,7 @@ export function MobileFab({ user, onLogin, onLogout, uiHidden }: MobileFabProps)
       onClick: () => setIsOpen(false),
       href: '/settings',
     },
-    ...(isShopping ? [
-      {
-        key: 'scan',
-        icon: <ScanLine className="h-5 w-5" />,
-        label: 'Scan Barcode',
-        onClick: () => {
-          setIsOpen(false);
-          window.dispatchEvent(new CustomEvent('prism:open-barcode-scanner'));
-        },
-      },
-    ] : []),
-    ...(isDashboard ? [
+    ...(isDashboard && cardTools ? [
       {
         key: 'reorder',
         icon: <ArrowUpDown className="h-5 w-5" />,
@@ -140,7 +134,7 @@ export function MobileFab({ user, onLogin, onLogout, uiHidden }: MobileFabProps)
       key: 'auth',
       icon: user ? (
         <div
-          className="relative h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
+          className="relative h-5 w-5 rounded-full flex items-center justify-center text-3xs font-bold text-white"
           style={{ backgroundColor: user.color || '#6B7280' }}
         >
           {user.avatarUrl?.startsWith('emoji:') ? (
@@ -163,6 +157,27 @@ export function MobileFab({ user, onLogin, onLogout, uiHidden }: MobileFabProps)
     },
   ];
 
+  // Off the dashboard (#1020, #1028) it is the page's Add, or nothing.
+  if (!isDashboard) {
+    if (!pageAdd) return null;
+    return (
+      <button
+        type="button"
+        onClick={pageAdd.run}
+        aria-label={pageAdd.label}
+        data-page-add
+        className={cn(
+          'fixed right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg',
+          'transition-all duration-300 ease-in-out active:scale-95 [body:has([role=dialog])_&]:hidden',
+          uiHidden && 'translate-y-24 opacity-0',
+        )}
+        style={{ bottom: 'calc(var(--nav-bottom, 0px) + 1rem)' }}
+      >
+        <Plus className="h-6 w-6" />
+      </button>
+    );
+  }
+
   return (
     <>
       {/* Backdrop */}
@@ -175,7 +190,7 @@ export function MobileFab({ user, onLogin, onLogout, uiHidden }: MobileFabProps)
 
       {/* Cards settings panel */}
       {showCards && (
-        <div className="fixed inset-x-4 bottom-24 z-50 bg-card rounded-2xl shadow-2xl border border-border p-4 max-h-[60vh] overflow-y-auto safe-area-bottom animate-in fade-in slide-in-from-bottom-4">
+        <div className="fixed inset-x-4 bottom-[calc(var(--nav-bottom,0px)+5.5rem)] z-50 bg-card rounded-2xl shadow-2xl border border-border p-4 max-h-[60vh] overflow-y-auto safe-area-bottom animate-in fade-in slide-in-from-bottom-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-base">Dashboard Cards</h3>
             <button
@@ -252,7 +267,7 @@ export function MobileFab({ user, onLogin, onLogout, uiHidden }: MobileFabProps)
 
       {/* Action items */}
       {isOpen && (
-        <div className="fixed bottom-24 right-6 z-50 flex flex-col-reverse items-end gap-3 safe-area-bottom">
+        <div className="fixed bottom-[calc(var(--nav-bottom,0px)+5.5rem)] right-6 z-50 flex flex-col-reverse items-end gap-3 safe-area-bottom">
           {actions.map((action, i) => {
             const content = (
               <div
@@ -284,23 +299,26 @@ export function MobileFab({ user, onLogin, onLogout, uiHidden }: MobileFabProps)
         </div>
       )}
 
-      {/* FAB button */}
+      {/* The phone dashboard's options (#1020): a sliders mark, not a "+",
+          since it adds nothing; never over an open window. */}
       <button
         onClick={() => { if (showCards) { setShowCards(false); } else { setIsOpen(!isOpen); } }}
-        aria-label={isOpen || showCards ? 'Close menu' : 'Open menu'}
+        aria-label={isOpen || showCards ? 'Close options' : 'Dashboard options'}
+        data-mobile-options
         className={cn(
-          'fixed right-6 z-50 w-14 h-14 rounded-full',
+          'fixed right-6 z-50 w-14 h-14 rounded-full [body:has([role=dialog])_&]:hidden',
           'bg-primary text-primary-foreground shadow-lg',
           'flex items-center justify-center',
           'transition-all duration-300 ease-in-out',
           'active:scale-95',
-          (isOpen || showCards) && 'rotate-45 bg-muted text-muted-foreground',
+          (isOpen || showCards) && 'bg-muted text-muted-foreground',
           reorderMode && !isOpen && 'bg-warning text-white',
           uiHidden && !isOpen && !showCards && 'translate-y-24 opacity-0'
         )}
-        style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}
+        // Above the dock (#924).
+        style={{ bottom: 'calc(var(--nav-bottom, 0px) + 1rem)' }}
       >
-        <Plus className="h-6 w-6" />
+        {isOpen || showCards ? <X className="h-6 w-6" /> : <SlidersHorizontal className="h-6 w-6" />}
       </button>
     </>
   );

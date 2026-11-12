@@ -2,7 +2,7 @@
  * @jest-environment node
  */
 import { POST } from '../route';
-import { FIRST_SCREEN_TEMPLATE, NEW_INSTALL_HIDDEN_PAGES } from '@/lib/constants/layoutTemplates';
+import { NEW_INSTALL_HIDDEN_PAGES, TODAY_TEMPLATE } from '@/lib/constants/layoutTemplates';
 
 /**
  * A small in-memory stand-in for the three tables the route touches. Reads
@@ -95,18 +95,12 @@ describe('POST /api/setup/complete', () => {
   });
 
   describe('first screen of a new install (#808)', () => {
-    it('writes the calendar-first layout as the default, created by the primary parent', async () => {
+    it('starts on Today as the default and makes nothing else, created by the primary parent (#808, #1151)', async () => {
       await POST();
       const layouts = insertedLayouts();
       expect(layouts).toHaveLength(1);
-      expect(layouts[0]).toMatchObject({
-        name: FIRST_SCREEN_TEMPLATE.name,
-        isDefault: true,
-        createdBy: 'parent-1',
-      });
-      expect((layouts[0]!.widgets as Array<{ i: string }>).map((w) => w.i))
-        .toEqual(FIRST_SCREEN_TEMPLATE.widgets.map((w) => w.i));
-      expect(FIRST_SCREEN_TEMPLATE.widgets[0]!.i).toBe('calendar');
+      expect(layouts[0]).toMatchObject({ name: 'Today', view: 'today', slug: 'home', isDefault: true, createdBy: 'parent-1' });
+      expect((layouts[0]!.widgets as Array<{ i: string }>).map((w) => w.i)).toEqual(TODAY_TEMPLATE.widgets.map((w) => w.i));
     });
 
     it('hides Wishes, Travel and Weekend', async () => {
@@ -124,12 +118,31 @@ describe('POST /api/setup/complete', () => {
       expect(insertedSetting('wallpaperScenery')).toBeUndefined();
     });
 
+    // #835: a new install does everyday jobs without a PIN; an existing one
+    // never runs this, so it keeps the PIN for everything.
+    it('turns "Require the PIN for every change" off, keeping other security settings', async () => {
+      await POST();
+      expect(insertedSetting('security')?.value).toEqual({ requirePinForEveryChange: false });
+      inserted = [];
+      state.settings = { security: { sessionTimeout: 30 } };
+      await POST();
+      expect(updatedValues.security).toEqual({ sessionTimeout: 30, requirePinForEveryChange: false });
+    });
+
+    it('never overrides a PIN choice already made', async () => {
+      state.settings = { security: { requirePinForEveryChange: true } };
+      await POST();
+      expect(insertedSetting('security')).toBeUndefined();
+      expect(updatedValues.security).toBeUndefined();
+    });
+
     it('leaves an install that already finished setup exactly as it is', async () => {
       state.settings.setupComplete = { completedAt: '2026-01-01T00:00:00Z' };
       await POST();
       expect(insertedLayouts()).toEqual([]);
       expect(insertedSetting('hiddenPages')).toBeUndefined();
       expect(insertedSetting('wallpaperScenery')).toBeUndefined();
+      expect(insertedSetting('security')).toBeUndefined();
       expect(updated).toEqual(['setupComplete']);
     });
 
@@ -147,11 +160,10 @@ describe('POST /api/setup/complete', () => {
   });
 
   describe('the look picked in the wizard (#808)', () => {
-    const fills = () => (insertedLayouts()[0]!.widgets as Array<{ backgroundColor?: string }>).map((w) => w.backgroundColor);
-
-    it("with no pick, starts on Photo: glass cards, scenery, the Paper palette, each device's own mode", async () => {
+    // The first screen is Today (#808), drawn as a scene with no cards, so a
+    // look sets the scenery, palette and mode, not a card fill.
+    it("with no pick, starts on Photo: scenery, the Paper palette, each device's own mode", async () => {
       await POST();
-      expect(fills()).toEqual(['glass', 'glass', 'glass']);
       expect(insertedSetting('wallpaperScenery')?.value).toBe(true);
       expect(insertedSetting('theme')?.value).toEqual({ paletteId: 'paper' });
       expect(insertedSetting('defaultThemeMode')).toBeUndefined();
@@ -160,15 +172,13 @@ describe('POST /api/setup/complete', () => {
     it('Night is Photo, dark on every display that never chose', async () => {
       state.settings.firstLook = 'night';
       await POST();
-      expect(fills()).toEqual(['glass', 'glass', 'glass']);
       expect(insertedSetting('wallpaperScenery')?.value).toBe(true);
       expect(insertedSetting('defaultThemeMode')?.value).toBe('dark');
     });
 
-    it('Paper has solid cards and no scenery', async () => {
+    it('Paper has no scenery', async () => {
       state.settings.firstLook = 'paper';
       await POST();
-      expect(fills()).toEqual([undefined, undefined, undefined]);
       expect(insertedSetting('wallpaperScenery')?.value).toBe(false);
       expect(insertedSetting('theme')?.value).toEqual({ paletteId: 'paper' });
       expect(insertedSetting('defaultThemeMode')).toBeUndefined();
@@ -189,7 +199,7 @@ describe('POST /api/setup/complete', () => {
     it('ignores a stored look it does not know', async () => {
       state.settings.firstLook = 'neon';
       await POST();
-      expect(fills()).toEqual(['glass', 'glass', 'glass']);
+      expect(insertedSetting('wallpaperScenery')?.value).toBe(true);
     });
   });
 });

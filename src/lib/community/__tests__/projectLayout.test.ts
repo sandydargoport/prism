@@ -108,3 +108,60 @@ describe('projectCommunityLayout', () => {
     expect(out.widgets).toEqual([]);
   });
 });
+
+// How a layout is drawn travels with it (#907).
+describe('the Today view in a shared layout', () => {
+  it('a Today layout exported and imported again is still Today', () => {
+    const exported = projectCommunityLayout({ ...valid, view: 'today' });
+    expect(exported.view).toBe('today');
+    expect(projectCommunityLayout(JSON.parse(JSON.stringify(exported))).view).toBe('today');
+  });
+
+  it('a grid layout says nothing, and an unknown view becomes the grid', () => {
+    expect('view' in projectCommunityLayout(valid)).toBe(false);
+    expect('view' in projectCommunityLayout({ ...valid, view: 'freeform' })).toBe(false);
+    // The retired Calendar layout (#1154) is shared as a regular grid.
+    expect('view' in projectCommunityLayout({ ...valid, view: 'calendar' })).toBe(false);
+  });
+});
+
+// Today's parts travel with it (#927): shown or hidden, staying when idle,
+// days ahead and text size, and no other setting.
+describe('Today parts in a shared layout', () => {
+  it('keeps each part\'s choices and the scene settings', () => {
+    const out = projectCommunityLayout({
+      ...valid,
+      view: 'today',
+      widgets: [
+        { i: 'chores', x: 0, y: 0, w: 4, h: 2, visible: false, showWhenIdle: true },
+        { i: 'calendar', x: 0, y: 2, w: 4, h: 2, settings: { daysAhead: 2, textSize: 'large', apiKey: 'x', daysAheadExtra: 9 } },
+      ],
+    });
+    expect(out.widgets[0]).toMatchObject({ visible: false, showWhenIdle: true });
+    expect(out.widgets[1]!.settings).toEqual({ daysAhead: 2, textSize: 'large' });
+  });
+
+  it('drops a scene setting out of range', () => {
+    const out = projectCommunityLayout({ ...valid, widgets: [{ i: 'calendar', x: 0, y: 0, w: 4, h: 2, settings: { daysAhead: 30, textSize: 'huge' } }] });
+    expect('settings' in out.widgets[0]!).toBe(false);
+  });
+});
+
+
+// #803: a widget's "Hide first on a small screen" travels with a shared
+// layout; a layout that says nothing about it stores nothing.
+describe('small-screen drop-out in a shared layout', () => {
+  it('keeps the choice when given, and adds nothing when not', () => {
+    const out = projectCommunityLayout({
+      ...valid,
+      widgets: [
+        { i: 'chores', x: 0, y: 0, w: 4, h: 2, hideOnSmallScreen: true },
+        { i: 'calendar', x: 0, y: 2, w: 4, h: 2 },
+        { i: 'weather', x: 4, y: 0, w: 4, h: 2, hideOnSmallScreen: 'yes' },
+      ],
+    });
+    expect(out.widgets[0]!.hideOnSmallScreen).toBe(true);
+    expect('hideOnSmallScreen' in out.widgets[1]!).toBe(false);
+    expect('hideOnSmallScreen' in out.widgets[2]!).toBe(false);
+  });
+});

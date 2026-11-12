@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { readStored, useHydrated, useStoredString, writeStored } from './useStoredValue';
 import {
   PERF_AUTO_LEVEL_KEY, PERF_CLASS, PERF_MINIMAL_CLASS, PERF_MODE_KEY,
-  autoLevelFrom, levelFrom, modeFrom, type PerfLevel, type PerfMode,
+  autoLevelFrom, levelFrom, modeFrom, SYSTEM_LESS_QUERY, type PerfLevel, type PerfMode,
 } from '@/lib/perfLevel';
 import { afterFade, fadeWasBad, watchFrames, WATCH_MS } from '@/lib/autoPerf';
 
@@ -23,7 +23,20 @@ function setMode(mode: PerfMode): void {
  * hydration, as on the server, then the screen's own value.
  */
 export function usePerformanceLevel(): PerfLevel {
-  return levelFrom(useStoredString(PERF_MODE_KEY), useStoredString(PERF_AUTO_LEVEL_KEY));
+  return levelFrom(useStoredString(PERF_MODE_KEY), useStoredString(PERF_AUTO_LEVEL_KEY), useSystemAsksLess());
+}
+
+/** Whether the system asks for less transparency or motion (#1084); false on the server. */
+function useSystemAsksLess(): boolean {
+  return useSyncExternalStore(
+    (onChange) => {
+      const q = window.matchMedia?.(SYSTEM_LESS_QUERY);
+      q?.addEventListener?.('change', onChange);
+      return () => q?.removeEventListener?.('change', onChange);
+    },
+    () => !!window.matchMedia?.(SYSTEM_LESS_QUERY).matches,
+    () => false,
+  );
 }
 
 /**
@@ -81,6 +94,22 @@ export function usePerformanceMode() {
 
 /** Bad fades so far, for this page view. A reload starts the count again. */
 let badInARow = 0;
+
+/**
+ * Time the frames of one piece of motion the screen does on its own and let
+ * Auto step down when such motion keeps dropping frames. The idle fade and
+ * the photo swap with its zoom (#955) share this count.
+ */
+export function judgeMotion(): void {
+  if (typeof document === 'undefined' || document.hidden) return;
+  if (modeFrom(readStored(PERF_MODE_KEY)) !== 'auto') return;
+  void watchFrames(WATCH_MS).then(gaps => {
+    const before = autoLevelFrom(readStored(PERF_AUTO_LEVEL_KEY));
+    const next = afterFade({ level: before, badInARow }, fadeWasBad(gaps));
+    badInARow = next.badInARow;
+    if (next.level !== before) writeStored(PERF_AUTO_LEVEL_KEY, next.level);
+  });
+}
 
 /**
  * Times the frames of the fade that follows each change of `idle`, and lets

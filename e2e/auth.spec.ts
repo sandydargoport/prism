@@ -88,3 +88,69 @@ test.describe('Authentication', () => {
     await expect(page.locator('button[aria-label="Log out"]')).toBeVisible({ timeout: 5000 });
   });
 });
+
+// Keep this device signed in, and sign out another one (#1044): a phone used
+// every day stays signed in for a year, and a lost one is a tap away.
+test.describe('Signed-in devices', () => {
+  test.skip(process.env.E2E_HAS_TEST_DB !== '1', 'needs the seeded test database');
+  test.setTimeout(120_000);
+
+  test('keep this device signed in for a year; sign another device out', async ({ page, browser }) => {
+    const PIN = process.env.E2E_PIN || '1234';
+    const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
+    const { getSeededParentId, verifySettingsPinViaAPI } = await import('./helpers/auth');
+    const other = await browser.newContext({ userAgent: IPHONE });
+    try {
+      // The other device: a phone signed in as the same parent.
+      const phone = await other.newPage();
+      expect((await phone.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);
+      const mine = await phone.request.get('/api/auth/sessions');
+      expect(mine.ok()).toBe(true);
+      const phoneId = ((await mine.json()).sessions as { id: string; current: boolean; device: string }[]).find((x) => x.current)!;
+      expect(phoneId.device).toBe('iPhone · Safari');
+
+      expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);
+      await verifySettingsPinViaAPI(page, (await getFirstParent(page)).name);
+      await page.goto('/settings?section=security');
+      const card = page.locator('[data-signed-in-devices]');
+      await expect(card).toBeVisible({ timeout: 30_000 });
+
+      // Before: the session cookie lasts a week at most.
+      const cookieDays = async () => {
+        const c = (await page.context().cookies()).find((k) => k.name === 'prism_session')!;
+        return (c.expires * 1000 - Date.now()) / 86_400_000;
+      };
+      expect(await cookieDays()).toBeLessThanOrEqual(7.01);
+      await card.locator('[data-keep-signed-in]').click();
+      await expect(card.locator('[data-keep-signed-in]')).toHaveAttribute('aria-pressed', 'true');
+      expect(await cookieDays()).toBeGreaterThan(360);
+
+      // The phone shows by name; signing it out ends its session.
+      const row = card.locator(`[data-device-row="${phoneId.id}"]`);
+      await expect(row).toContainText('iPhone · Safari');
+      await row.locator('[data-device-sign-out]').click();
+      await expect(row).toHaveCount(0);
+      expect((await phone.request.get('/api/auth/sessions')).status()).toBe(401);
+      // And this device is still signed in and kept.
+      await page.reload();
+      await expect(page.locator('[data-keep-signed-in]')).toHaveAttribute('aria-pressed', 'true');
+
+      // However many sessions pile up, the list stays short, and one button
+      // signs out everything but this device.
+      for (let i = 0; i < 7; i++) {
+        const ctx = await browser.newContext();
+        await ctx.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } });
+        await ctx.close();
+      }
+      await page.reload();
+      await expect(card.locator('[data-device-row]')).toHaveCount(5);
+      expect((await card.boundingBox())!.height).toBeLessThan(900);
+      await expect(card.locator('[data-device-more]')).toContainText('more');
+      await card.locator('[data-device-sign-out-others]').click();
+      await expect(card.locator('[data-device-row]')).toHaveCount(0);
+      await expect(card.locator('[data-device-current]')).toBeVisible();
+    } finally {
+      await other.close();
+    }
+  });
+});

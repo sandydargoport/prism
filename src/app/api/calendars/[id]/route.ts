@@ -9,6 +9,8 @@
  *
  */
 
+import { invalidateEntity } from '@/lib/cache/cacheKeys';
+import { parseDisplayRules } from '@/lib/calendar/displayRules';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireRole } from '@/lib/auth';
 import { db } from '@/lib/db/client';
@@ -162,6 +164,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       updates.showInEventModal = body.showInEventModal;
     }
 
+    // Display rules (#877): only the known rules, in their shapes; null clears.
+    if ('displayRules' in body) {
+      updates.displayRules = parseDisplayRules(body.displayRules);
+    }
+
     // Handle the life-events calendar flag. Only this single key is accepted
     // and it is merged server-side — providerConfig also carries CalDAV
     // credentials (serverUrl, username), so accepting a client-supplied object
@@ -198,6 +205,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         { status: 500 }
       );
     }
+    // Events are served from a cache; new display rules apply at once (#877).
+    if ('displayRules' in body) await invalidateEntity('events');
 
     return NextResponse.json({
       id: updated.id,
@@ -206,6 +215,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       displayName: updated.displayName,
       color: updated.color,
       enabled: updated.enabled,
+      displayRules: updated.displayRules ?? null,
       lastSynced: updated.lastSynced?.toISOString() || null,
       updatedAt: updated.updatedAt.toISOString(),
     });

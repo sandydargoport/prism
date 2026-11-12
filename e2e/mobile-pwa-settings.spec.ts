@@ -68,8 +68,8 @@ test.describe('Mobile PWA settings reachability', () => {
     await waitForQuiet(page);
 
     // Mobile nav at <md is MobileFab — a floating action button that opens
-    // a stack of action items. The FAB itself is aria-labeled "Open menu".
-    const fab = page.locator('button[aria-label="Open menu"]');
+    // a stack of action items. The FAB itself is aria-labeled "Dashboard options".
+    const fab = page.locator('button[aria-label="Dashboard options"]');
     await expect(fab).toBeVisible();
     await fab.click();
 
