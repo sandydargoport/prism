@@ -781,7 +781,9 @@ test.describe('calm mode idle screen', () => {
       await openSheet(page, 'day');
 
       // Photos behind it: the canvas becomes the screensaver layout. Then back
-      // to this dashboard, which is what gets saved.
+      // to this dashboard, which is what gets saved. What shows while resting
+      // is in the resting stretch's card on the line (#1170).
+      await page.locator('[data-editor-sheet="day"] [data-day-stretch="resting"]').first().click();
       const behind = (name: string) => page.getByRole('radiogroup', { name: 'While resting' }).getByRole('radio', { name, exact: true });
       await behind('Photos').click();
       await expect(page.locator('[data-idle-toggle]')).toHaveCount(0);
@@ -822,11 +824,11 @@ test.describe('idle background picker', () => {
   test.use({ viewport: { width: 1600, height: 900 } });
   test.setTimeout(90_000);
 
-  async function editIdle(page: Page, place: { lat: number; lon: number }) {
+  async function editIdle(page: Page, place: { lat: number; lon: number }, idleBackground?: unknown) {
     const login = await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } });
     expect(login.ok(), 'precondition: login must succeed').toBe(true);
     const created = await page.request.post('/api/layouts', {
-      data: { name: `Behind it e2e ${Date.now()}`, widgets: [{ i: 'clock', x: 0, y: 0, w: 16, h: 12 }, { i: 'tasks', x: 16, y: 0, w: 16, h: 12 }] },
+      data: { name: `Behind it e2e ${Date.now()}`, widgets: [{ i: 'clock', x: 0, y: 0, w: 16, h: 12 }, { i: 'tasks', x: 16, y: 0, w: 16, h: 12 }], ...(idleBackground ? { idleBackground } : {}) },
     });
     expect(created.status()).toBe(201);
     const layout = await created.json();
@@ -848,6 +850,8 @@ test.describe('idle background picker', () => {
       // Resting is this dashboard: Stays / Fades. A night sky after dark has its own layout.
       await sheet.locator('[data-day-state="resting"]').click();
       await expect(page.locator('[data-idle-toggle]').first()).toBeVisible();
+      // Night's settings are in the card under its dot on the line (#1170).
+      await sheet.locator('[data-day-milestone="night-start"]').click();
       await sheet.locator('[data-night-look="sky"]').click();
       await expect(sheet.locator('[data-day-state="night"]')).toHaveAttribute('aria-checked', 'true');
       await expect(page.locator('[data-idle-toggle]')).toHaveCount(0);
@@ -856,7 +860,7 @@ test.describe('idle background picker', () => {
 
       await expect(sheet.locator('[data-night-start]')).toContainText(/\d/);
       await expect(sheet.locator('[data-night-end]')).toContainText(/\d/);
-      await sheet.getByRole('button', { name: 'More' }).click();
+      await sheet.locator('[data-day-milestone="night-end"]').click();
       await page.getByLabel('Ends: unit').selectOption('hr');
       await page.getByLabel('Ends: amount').fill('1');
       await expect(page.locator('[data-idle-crossed]')).toHaveCount(0);
@@ -872,12 +876,64 @@ test.describe('idle background picker', () => {
     }
   });
 
+  test('the line puts each dot at its time, and tapping one shows night and moves with its setting', async ({ page }) => {
+    const layout = await editIdle(page, { lat: 45, lon: -100 }, { day: 'photos', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } });
+    try {
+      const sheet = page.locator('[data-editor-sheet="day"]');
+      /** How far a dot's centre is from where its minute falls on the line, in px. */
+      const offBy = (kind: string, minute: number) => sheet.locator('[data-day-line]').evaluate((line, [k, m]) => {
+        const l = line.getBoundingClientRect();
+        const dot = line.querySelector(`[data-day-milestone="${k}"]`)!.getBoundingClientRect();
+        return Math.abs(dot.left + dot.width / 2 - (l.left + (l.width * (m as number)) / 1440));
+      }, [kind, minute] as const);
+      await expect(sheet.locator('[data-day-milestone]')).toHaveCount(2);
+      expect(await offBy('night-end', 6 * 60 + 30)).toBeLessThanOrEqual(1);
+      expect(await offBy('night-start', 21 * 60)).toBeLessThanOrEqual(1);
+
+      // Each dot is a touch target, and the stretches fill the line end to end.
+      const dot = (await sheet.locator('[data-day-milestone="night-start"]').boundingBox())!;
+      expect(Math.min(dot.width, dot.height)).toBeGreaterThanOrEqual(44);
+      const fill = await sheet.locator('[data-day-line]').evaluate((line) => {
+        const l = line.getBoundingClientRect();
+        const parts = [...line.querySelectorAll('[data-day-stretch]')].map((e) => e.getBoundingClientRect());
+        return { from: Math.min(...parts.map((p) => p.left)) - l.left, to: l.right - Math.max(...parts.map((p) => p.right)) };
+      });
+      expect(Math.abs(fill.from)).toBeLessThanOrEqual(1);
+      expect(Math.abs(fill.to)).toBeLessThanOrEqual(1);
+
+      // A stretch's name shows whole or not at all: 9 pm to midnight is too
+      // short for "Night sky" at this width, midnight to 6:30 is not.
+      const labels = await sheet.locator('[data-day-stretch]').evaluateAll((els) => els.map((el) => {
+        const label = el.querySelector('[data-stretch-label]') as HTMLElement;
+        const cs = getComputedStyle(el);
+        const room = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+        return { hidden: getComputedStyle(label).visibility === 'hidden', fits: label.getBoundingClientRect().width <= room + 0.5 };
+      }));
+      for (const l of labels) expect(l.hidden || l.fits).toBe(true);
+      expect(labels.filter((l) => !l.hidden).length).toBeGreaterThan(0);
+
+      await sheet.locator('[data-day-milestone="night-start"]').click();
+      await expect(sheet.locator('[data-day-state="night"]')).toHaveAttribute('aria-checked', 'true');
+      await expect(sheet.locator('[data-day-card="night"]')).toBeVisible();
+      await sheet.getByLabel('Night starts', { exact: true }).fill('22:00');
+      await expect.poll(() => offBy('night-start', 22 * 60)).toBeLessThanOrEqual(1);
+
+      await sheet.locator('[data-day-stretch="resting"]').click();
+      await expect(sheet.locator('[data-day-state="resting"]')).toHaveAttribute('aria-checked', 'true');
+      await expect(sheet.locator('[data-day-card="resting"]')).toBeVisible();
+    } finally {
+      await page.request.delete(`/api/layouts/${layout.id}`);
+    }
+  });
+
   test('offsets that cross near midsummer far north are refused', async ({ page }) => {
     const layout = await editIdle(page, { lat: 64, lon: -150 });
     try {
-      await page.locator('[data-editor-sheet="day"]').getByRole('button', { name: 'More' }).click();
+      const sheet = page.locator('[data-editor-sheet="day"]');
+      await sheet.locator('[data-day-milestone="night-start"]').click();
       await page.getByLabel('Starts: unit').selectOption('hr');
       await page.getByLabel('Starts: amount').fill('6');
+      await sheet.locator('[data-day-milestone="night-end"]').click();
       await page.getByLabel('Ends: unit').selectOption('hr');
       await page.getByLabel('Ends: amount').fill('6');
       await expect(page.locator('[data-idle-crossed]')).toContainText('night would end before it starts');
@@ -937,6 +993,7 @@ test.describe('dim when idle', () => {
       await page.goto(`/d/${slug}`);
       await openEditor(page);
       await openSheet(page, 'day');
+      await page.locator('[data-editor-sheet="day"] [data-day-milestone="night-start"]').click();
       await page.getByLabel('How dark at night').selectOption({ label: '50% darker' });
       await closeSheet(page);
       await done(page).click();
