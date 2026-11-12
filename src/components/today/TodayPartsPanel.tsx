@@ -53,12 +53,12 @@ export function TodayPartsPanel({ widgets, onChange, bare = false }: {
     // On its own solid sheet, readable over any photo (#908's sheet material).
     <div className={bare ? 'flex flex-col gap-5' : 'relative z-10 mx-auto mt-8 flex w-full max-w-2xl flex-col gap-6 rounded-[1.4rem] bg-card p-8 text-card-foreground shadow-2xl dark:bg-[rgb(22_17_13)]'} data-today-parts>
       {bare ? (
-        <p className="m-0 text-body text-muted-foreground">Today places each widget where it belongs, so you choose what shows and it finds the spot.</p>
+        <p className="m-0 text-body text-muted-foreground">Glance places each widget where it belongs, so you choose what shows and it finds the spot.</p>
       ) : (
         <div>
-          <h2 className="m-0 text-title font-medium" style={{ fontFamily: 'var(--font-display)' }}>Today</h2>
+          <h2 className="m-0 text-title font-medium" style={{ fontFamily: 'var(--font-display)' }}>Glance</h2>
           <p className="m-0 mt-1 text-body text-muted-foreground">
-            Today places each widget where it belongs, so you choose what shows and it finds the spot.
+            Glance places each widget where it belongs, so you choose what shows and it finds the spot.
           </p>
         </div>
       )}

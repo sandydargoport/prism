@@ -9,7 +9,7 @@ import { PartyPopper, Settings, ShieldCheck } from 'lucide-react';
 import { SCENERY } from '@/lib/scenery';
 
 /**
- * Today, the built-in dashboard a first run starts on (#1151), drawn small
+ * Glance, the built-in dashboard a first run starts on (#1151, #1187), drawn small
  * (#930).
  */
 function FrontPagePreview({ kind }: { kind: 'today' }) {
@@ -121,14 +121,14 @@ export function CompleteStep({ firstRun = true }: { firstRun?: boolean }) {
           <h1 className="text-2xl">You&apos;re all set</h1>
           <p className="text-muted-foreground">
             {firstRun
-              ? 'The wall starts on Today. To change what it shows, or to arrange a dashboard of your own, choose More, then Edit layout.'
+              ? 'The wall starts on Glance. To change what it shows, or to arrange a dashboard of your own, choose More, then Edit layout.'
               : 'Head to your dashboard, or visit Settings to connect accounts, add family members, or fine-tune your display.'}
           </p>
         </div>
 
         {firstRun && (
           <div className="mx-auto grid max-w-xs gap-4 text-left" data-setup-front-pages>
-            {([['today', 'Today', 'The day at a glance']] as const).map(([kind, name, body]) => (
+            {([['today', 'Glance', 'The day as one scene']] as const).map(([kind, name, body]) => (
               <figure key={kind} className="m-0 space-y-2" data-setup-front-page={kind}>
                 <FrontPagePreview kind={kind} />
                 <figcaption>
@@ -147,7 +147,7 @@ export function CompleteStep({ firstRun = true }: { firstRun?: boolean }) {
             size="lg"
             className="w-full"
           >
-            {firstRun ? 'Start on Today' : 'Go to dashboard'}
+            {firstRun ? 'Start on Glance' : 'Go to dashboard'}
           </Button>
           <Button
             variant="outline"
