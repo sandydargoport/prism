@@ -781,7 +781,9 @@ test.describe('calm mode idle screen', () => {
       await openSheet(page, 'day');
 
       // Photos behind it: the canvas becomes the screensaver layout. Then back
-      // to this dashboard, which is what gets saved.
+      // to this dashboard, which is what gets saved. What shows while resting
+      // is in the resting stretch's card on the line (#1170).
+      await page.locator('[data-editor-sheet="day"] [data-day-stretch="resting"]').first().click();
       const behind = (name: string) => page.getByRole('radiogroup', { name: 'While resting' }).getByRole('radio', { name, exact: true });
       await behind('Photos').click();
       await expect(page.locator('[data-idle-toggle]')).toHaveCount(0);
@@ -913,7 +915,7 @@ test.describe('idle background picker', () => {
       await sheet.locator('[data-day-milestone="night-start"]').click();
       await expect(sheet.locator('[data-day-state="night"]')).toHaveAttribute('aria-checked', 'true');
       await expect(sheet.locator('[data-day-card="night"]')).toBeVisible();
-      await sheet.getByLabel('Night starts').fill('22:00');
+      await sheet.getByLabel('Night starts', { exact: true }).fill('22:00');
       await expect.poll(() => offBy('night-start', 22 * 60)).toBeLessThanOrEqual(1);
 
       await sheet.locator('[data-day-stretch="resting"]').click();
