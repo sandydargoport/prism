@@ -321,18 +321,24 @@ test.describe('Time-of-day layouts', () => {
       await wall.getByLabel('Name for this screen').fill(PORCH);
       await wall.getByRole('button', { name: 'Name this display' }).click();
       await expect(wall.getByText('This screen is named')).toContainText(PORCH);
-      // Interludes are on the screen's editing bar, in Through the day.
+      // Interludes are on the screen's editing bar, on the Through the day
+      // line: + Interlude adds one and opens its card (#1170).
       await wall.goto('/?edit=1');
       await wall.locator('[data-editor-open="day"]').click({ timeout: 60_000 });
-      const panel = wall.getByTestId('screen-schedule');
-      await panel.getByRole('button', { name: 'Add an Interlude' }).click();
-      await panel.getByLabel('Dashboard for time 1').selectOption({ label: MORNING });
-      await panel.getByLabel('Start of time 1').fill(wallTime(start, zone));
-      await panel.getByLabel('End of time 1').fill(wallTime(start + 3600_000, zone));
-      const days = panel.getByRole('group', { name: 'Days for time 1' });
-      for (const day of ['Sunday', 'Saturday']) await days.getByRole('button', { name: day }).click();
-      await panel.getByRole('button', { name: 'Save Interludes' }).click();
-      await expect(panel).toContainText('Saved. This screen follows it from now on.');
+      const sheet = wall.locator('[data-editor-sheet="day"]');
+      await sheet.locator('[data-interlude-add]').click();
+      const card = sheet.locator('[data-day-card="interlude"]');
+      await card.getByLabel('Interlude dashboard').selectOption({ label: MORNING });
+      await card.getByLabel('Interlude starts').fill(wallTime(start, zone));
+      await card.getByLabel('Interlude ends').fill(wallTime(start + 3600_000, zone));
+      // Every day, so the window half a day away is covered whichever day it falls on.
+      const days = card.getByRole('group', { name: 'Interlude days' });
+      for (const day of ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']) {
+        const button = days.getByRole('button', { name: day });
+        if (await button.getAttribute('aria-pressed') === 'false') await button.click();
+      }
+      await expect(days.locator('[aria-pressed="true"]')).toHaveCount(7);
+      await expect(card).toContainText('Kept.');
       await expect.poll(() => readStorage(wall, 'prism-screen-schedule')).toContain(morning.id);
       await wall.locator('[data-editor-cancel]').click();
 
