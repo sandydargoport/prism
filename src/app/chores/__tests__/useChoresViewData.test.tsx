@@ -5,8 +5,9 @@
  * The Chores page asks for future-dated chores (#1132): without
  * includeFuture the API drops them, so Tomorrow and Later can never fill.
  */
-import { renderHook } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
 import { useChoresViewData } from '../useChoresViewData';
+import { choreGroups } from '../ChoresDoList';
 
 const mockUseChores = jest.fn();
 
@@ -67,5 +68,33 @@ describe('useChoresViewData', () => {
     const { result } = renderHook(() => useChoresViewData());
     expect(mockUseChores).toHaveBeenCalledWith({ showDisabled: true, includeFuture: true });
     expect(result.current.filteredChores.map((c) => c.id)).toEqual(['c1', 'c2']);
+  });
+});
+
+// What the page receives, through the real hook: the API leaves out a chore
+// not yet due unless asked for it (`includeFuture`), as /api/chores does.
+describe('the Chores page with a chore due tomorrow (#1132)', () => {
+  const apiChore = (c: typeof dueToday | typeof dueTomorrow) => ({
+    ...c, description: null, customIntervalDays: null, nextDueTime: null,
+    assignedTo: null, pendingApproval: null,
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockUseChores.mockImplementation(jest.requireActual('@/lib/hooks/useChores').useChores);
+    global.fetch = jest.fn(async (url: string) => {
+      const future = new URL(url, 'http://prism.test').searchParams.get('includeFuture') === 'true';
+      const chores = future ? [dueToday, dueTomorrow] : [dueToday];
+      return { ok: true, json: async () => ({ chores: chores.map(apiChore) }) };
+    }) as unknown as typeof fetch;
+  });
+
+  it('lists it under Tomorrow and counts it among the active chores', async () => {
+    const { result } = renderHook(() => useChoresViewData());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    const groups = choreGroups(result.current.filteredChores, new Date(2026, 10, 10));
+    expect(groups.today.map((c) => c.title)).toEqual(['Take out the trash']);
+    expect(groups.tomorrow.map((c) => c.title)).toEqual(['Mop the kitchen']);
+    expect(result.current.enabledCount).toBe(2);
   });
 });
