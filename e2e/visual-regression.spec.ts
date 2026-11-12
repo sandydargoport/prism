@@ -80,8 +80,8 @@ function dynamicMasks(page: Page) {
     page.locator('[data-widget="Weather"]'),
     page.locator('[data-widget="Photo"]'),
     // The wall's Menu tab shrinks to a nub after 8 quiet seconds (#989), so a
-    // shot catches either state. The dock spec measures its place, size and
-    // contrast instead.
+    // shot catches either state; SCREENSHOT_OPTIONS.style keeps this mask one
+    // size. The dock spec measures its place, size and contrast instead.
     page.locator('[data-dock-menu]'),
   ];
 }
@@ -92,6 +92,11 @@ const SCREENSHOT_OPTIONS = {
   maxDiffPixels: 50,
   animations: 'disabled' as const,
   fullPage: false,
+  // The Menu tab's button is 96px wide while the tab is a nub and 140px while
+  // it is full, and it shrinks after 8 quiet seconds, so how long the page
+  // took to load decided the size of its mask. One width for the shot makes
+  // the mask the same in both states.
+  style: '[data-dock-menu] { width: 140px !important; }',
 };
 
 /** Set theme + perf mode via localStorage before any page script runs. */
