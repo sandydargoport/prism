@@ -479,9 +479,10 @@ function CalendarViewHydrated() {
                 }}
               />
             </div>
-            {/* One Add pill (#879); Manage calendars lives in the menu. */}
+            {/* One Add pill (#879), the height of the header's other
+                buttons; Manage calendars lives in the menu. */}
             {!isMobile && (
-              <Button onClick={handleAddWithAuth} className="min-h-[44px] px-5" data-calendar-add-pill>
+              <Button size="sm" onClick={handleAddWithAuth} className="h-9" data-calendar-add-pill>
                 <Plus className="h-4 w-4" />{t('toolbar.addEvent')}
               </Button>
             )}
