@@ -765,6 +765,7 @@ test.describe('the Today view', () => {
       await expect(row.locator('[data-built-in-mark]')).toBeVisible();
       await expect(page.locator('[data-dashboard-delete]')).toBeDisabled();
       await expect(page.locator('[data-built-in-note]')).toBeVisible();
+      await expect(page.locator('[data-built-in-note]')).toContainText('Glance is built in');
       expect((await page.request.delete(`/api/layouts/${layout.id}`)).status(), "the server refuses too").toBe(409);
 
       // Done saves: the weather stays hidden after a reload.

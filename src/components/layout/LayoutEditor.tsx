@@ -221,7 +221,7 @@ export function LayoutEditor({
             allDashboards={allDashboards}
             currentDashboardId={currentDashboardId}
             onSwitchDashboard={onSwitchDashboard}
-            onAddToday={onCreateDashboard ? () => onCreateDashboard('Today', 'today') : undefined}
+            onAddToday={onCreateDashboard ? () => onCreateDashboard('Glance', 'today') : undefined}
             onCreateOpen={() => { setSheet(null); state.setShowCreateDialog(true); }}
             onRenameOpen={() => { setSheet(null); state.handleRenameOpen(); }}
             onSaveAsOpen={() => { setSheet(null); state.setShowSaveAsDialog(true); }}

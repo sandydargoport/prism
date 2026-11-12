@@ -60,7 +60,7 @@ Ticks made this way are written to the activity log. The wall can never approve 
 
 ### On the dashboard
 
-On the Today front page, a quiet line in the bottom corner says how many chores are left today, with a ring per chore in its person's colour. Tap a ring to tick that chore.
+On the Glance front page, a quiet line in the bottom corner says how many chores are left today, with a ring per chore in its person's colour. Tap a ring to tick that chore.
 
 The Chores widget on a grid dashboard lists the same chores.
 

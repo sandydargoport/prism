@@ -14,7 +14,7 @@ Open **More** on the dock at the foot of the screen and choose **Edit**. Only pa
 
 Editing keeps the controls where editing starts: a dark bar takes the dock's place at the foot of the screen, and nothing is drawn at the top. The bar reads **Dashboard**, **Widgets**, **Through the day**, **Look** and **More**, then **Cancel** and **Done**. Each one opens a sheet that rises from the bar. A dot on a button means that sheet has changes you haven't saved. **Done** saves everything and **Cancel** puts it all back.
 
-Today, the built-in dashboard, is edited the same way. Its Widgets sheet lists the parts of the scene to show or hide, and it can be reset but not deleted.
+Glance, the built-in dashboard, is edited the same way. Its Widgets sheet lists the parts of the scene to show or hide, and it can be reset but not deleted.
 
 ### Built-in templates
 
@@ -74,7 +74,7 @@ You can make a separate dashboard for each room or display. The dashboard-name d
 
 #### Interludes: other dashboards at set times
 
-A named screen (*Settings → Screens*) can show another dashboard for a while, for example the bus on school mornings. Each of these is an **Interlude**: one dashboard from a start to an end time on the days you tick. Add one with **+ Interlude** on the editor's **Through the day** line, on the screen or from a phone with **Edit** on its row in *Settings → Screens*; it starts where the slider is. Each shows as a block on the line, and tapping it opens its dashboard, days, times, order and Remove. Outside all of them the screen shows its own dashboard, Today included. Times use the household time zone. One that ends before it starts runs past midnight, and one that starts and ends at the same time lasts all day. When two overlap, the one higher in the list wins.
+A named screen (*Settings → Screens*) can show another dashboard for a while, for example the bus on school mornings. Each of these is an **Interlude**: one dashboard from a start to an end time on the days you tick. Add one with **+ Interlude** on the editor's **Through the day** line, on the screen or from a phone with **Edit** on its row in *Settings → Screens*; it starts where the slider is. Each shows as a block on the line, and tapping it opens its dashboard, days, times, order and Remove. Outside all of them the screen shows its own dashboard, Glance included. Times use the household time zone. One that ends before it starts runs past midnight, and one that starts and ends at the same time lasts all day. When two overlap, the one higher in the list wins.
 
 Make the dashboard for an Interlude with **Make a copy** in the Dashboard sheet and rearrange it there. When an Interlude starts or ends, the screen changes over in place: widgets that are on both dashboards slide to their new spots and the others fade. The change waits until nobody has touched the screen for a minute, and it never happens while someone is editing the layout. If you open another dashboard by hand, the screen keeps it until the next Interlude starts or ends. With reduced motion turned on the dashboards crossfade, and at the **Minimal** performance level they swap instantly.
 
