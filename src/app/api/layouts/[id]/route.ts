@@ -3,7 +3,7 @@ import { isBuiltInView } from '@/lib/newLook';
 import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { layouts } from '@/lib/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { and, eq, desc, isNull } from 'drizzle-orm';
 import { updateLayoutSchema, validateRequest } from '@/lib/validations';
 import { logError } from '@/lib/utils/logError';
 
@@ -71,6 +71,22 @@ export async function PATCH(
         { error: 'Layout not found' },
         { status: 404 }
       );
+    }
+
+    // The upgrade from v1.30.1 (#1154): a browser offers the screensaver it
+    // kept to the dashboard it shows. Kept only while the dashboard has none
+    // of its own, so it never replaces one somebody saved.
+    if (body?.carryOver === true) {
+      const carried = validateRequest(updateLayoutSchema.pick({ screensaverWidgets: true }), body);
+      if (!carried.success || !carried.data.screensaverWidgets) {
+        return NextResponse.json({ error: 'Validation failed' }, { status: 400 });
+      }
+      await db
+        .update(layouts)
+        .set({ screensaverWidgets: carried.data.screensaverWidgets, updatedAt: new Date() })
+        .where(and(eq(layouts.id, id), isNull(layouts.screensaverWidgets)));
+      const [row] = await db.select().from(layouts).where(eq(layouts.id, id));
+      return NextResponse.json(row);
     }
 
     const validation = validateRequest(updateLayoutSchema, body);

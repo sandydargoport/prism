@@ -331,13 +331,13 @@ describe('createLayoutSchema', () => {
 // How a dashboard is drawn (#907).
 describe('layout view', () => {
   const base = { name: 'Kitchen', widgets: [{ i: 'clock', x: 0, y: 0, w: 4, h: 4 }] };
-  it('accepts the grid, Today and the Calendar layout', () => {
+  it('accepts the grid and Today', () => {
     expect(createLayoutSchema.parse({ ...base, view: 'today' }).view).toBe('today');
-    expect(createLayoutSchema.parse({ ...base, view: 'calendar' }).view).toBe('calendar');
     expect(createLayoutSchema.parse({ ...base, view: 'grid' }).view).toBe('grid');
   });
-  it('refuses any other view', () => {
+  it('refuses any other view, the retired Calendar layout included (#1154)', () => {
     expect(createLayoutSchema.safeParse({ ...base, view: 'freeform' }).success).toBe(false);
+    expect(createLayoutSchema.safeParse({ ...base, view: 'calendar' }).success).toBe(false);
   });
   it('leaves the view unset when not given, so an update keeps it', () => {
     expect(createLayoutSchema.parse(base).view).toBeUndefined();

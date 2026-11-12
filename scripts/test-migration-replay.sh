@@ -353,6 +353,113 @@ expect_bg 'F night' '{"day": "photos", "night": "sky", "switch": {"by": "sun", "
 log "Scenario F: PASS"
 
 # ----------------------------------------------------------------------------
+# Scenario G: 0050 retires the Calendar view.
+# A dashboard saved as the Calendar ready-made layout becomes a regular grid
+# dashboard with the same widgets. Today and grid dashboards are left alone.
+# ----------------------------------------------------------------------------
+log "=== Scenario G: 0050 Calendar view becomes a grid dashboard ==="
+
+layout_view() {
+  docker exec "$CONTAINER_NAME" psql -U prism -d prism -t -A -c \
+    "SELECT view || '|' || widgets::text FROM layouts WHERE name = '$1'"
+}
+
+psql_exec "
+INSERT INTO layouts (name, widgets, view) VALUES
+  ('G calendar', '[{\"i\": \"calendar\", \"x\": 0, \"y\": 5, \"w\": 32, \"h\": 22}]'::jsonb, 'calendar'),
+  ('G today', '[{\"i\": \"clock\", \"x\": 0, \"y\": 0, \"w\": 12, \"h\": 5}]'::jsonb, 'today');
+DELETE FROM public.__prism_migrations;
+"
+run_migrate
+GOT=$(layout_view 'G calendar')
+if [ "$GOT" != 'grid|[{"h": 22, "i": "calendar", "w": 32, "x": 0, "y": 5}]' ]; then
+  echo "ERROR: 0050 gave the Calendar dashboard '$GOT' (want grid, same widgets)" >&2
+  exit 1
+fi
+GOT=$(layout_view 'G today')
+case "$GOT" in today\|*) ;; *) echo "ERROR: 0050 changed Today ('$GOT')" >&2; exit 1 ;; esac
+
+log "Scenario G: PASS"
+
+# ----------------------------------------------------------------------------
+# Scenario H: a v1.30.1 install upgrades to what it showed (#1154).
+# The database is built by v1.30.1 itself: its init schema and its own
+# migrate.js, from the release tag. Its dashboards, as v1.30.1 saved them,
+# then go through every migration since. Each must come out on the grid,
+# resting over photos with the screensaver arrangement it had, the default
+# still the default, and nothing added (no Today, no other dashboard).
+# ----------------------------------------------------------------------------
+reset_pg
+log "=== Scenario H: v1.30.1 install upgrades to what it showed ==="
+
+OLD_TAG="v1.30.1"
+if ! git rev-parse -q --verify "refs/tags/$OLD_TAG" >/dev/null; then
+  git fetch -q --depth 1 origin "refs/tags/$OLD_TAG:refs/tags/$OLD_TAG"
+fi
+OLD_DIR="$(mktemp -d)"
+git archive "$OLD_TAG" src/lib/db/init drizzle scripts/migrate.js | tar -x -C "$OLD_DIR"
+
+INIT_DIR_SAVED="$INIT_DIR"
+INIT_DIR="$OLD_DIR/src/lib/db/init"
+start_pg
+INIT_DIR="$INIT_DIR_SAVED"
+
+log "Bring it up to v1.30.1 with v1.30.1's own migrate.js..."
+DATABASE_URL="postgresql://prism:${DB_PASS}@localhost:${TEST_PORT}/prism" \
+  NODE_PATH="${REPO_ROOT}/node_modules" node "$OLD_DIR/scripts/migrate.js"
+
+log "Two dashboards as v1.30.1 saved them: the default, edited (its screensaver saved), and one by link, never edited..."
+psql_exec "
+INSERT INTO layouts (name, slug, is_default, widgets, screensaver_widgets) VALUES
+  ('H kitchen', 'kitchen', true,
+   '[{\"i\": \"calendar\", \"x\": 0, \"y\": 0, \"w\": 32, \"h\": 27}, {\"i\": \"clock\", \"x\": 32, \"y\": 0, \"w\": 16, \"h\": 8}]'::jsonb,
+   '[{\"i\": \"clock\", \"x\": 2, \"y\": 2, \"w\": 16, \"h\": 10, \"visible\": true}]'::jsonb),
+  ('H hall', 'hall', false,
+   '[{\"i\": \"weather\", \"x\": 0, \"y\": 0, \"w\": 24, \"h\": 24}]'::jsonb,
+   NULL);
+"
+snapshot() {
+  docker exec "$CONTAINER_NAME" psql -U prism -d prism -t -A -c \
+    "SELECT string_agg(name || '|' || COALESCE(slug, '') || '|' || is_default || '|' || widgets::text || '|' || COALESCE(screensaver_widgets::text, 'null'), E'\n' ORDER BY name) FROM layouts"
+}
+BEFORE=$(snapshot)
+
+log "Upgrade with this checkout's migrate.js..."
+run_migrate
+
+AFTER=$(snapshot)
+if [ "$BEFORE" != "$AFTER" ]; then
+  echo "ERROR: the upgrade changed a v1.30.1 dashboard or added one" >&2
+  echo "  BEFORE: $BEFORE" >&2
+  echo "  AFTER:  $AFTER" >&2
+  exit 1
+fi
+SHAPE=$(docker exec "$CONTAINER_NAME" psql -U prism -d prism -t -A -c \
+  "SELECT string_agg(name || '|' || view || '|' || idle_background::text, E'\n' ORDER BY name) FROM layouts")
+WANT=$'H hall|grid|{"source": "photos"}\nH kitchen|grid|{"source": "photos"}'
+if [ "$SHAPE" != "$WANT" ]; then
+  echo "ERROR: upgraded dashboards are not grids resting over photos:" >&2
+  echo "$SHAPE" >&2
+  exit 1
+fi
+SCREENS=$(docker exec "$CONTAINER_NAME" psql -U prism -d prism -t -A -c "SELECT count(*) FROM displays")
+if [ "$SCREENS" != "0" ]; then
+  echo "ERROR: the upgrade named a screen ($SCREENS)" >&2
+  exit 1
+fi
+
+log "And a replay is a no-op on it..."
+psql_exec "DELETE FROM public.__prism_migrations WHERE name <> '0000_upgrade';"
+run_migrate
+if [ "$(snapshot)" != "$BEFORE" ]; then
+  echo "ERROR: replaying the migrations changed an upgraded dashboard" >&2
+  exit 1
+fi
+rm -rf "$OLD_DIR"
+
+log "Scenario H: PASS"
+
+# ----------------------------------------------------------------------------
 echo
 echo "=========================================="
 echo "  All migration-replay scenarios passed"

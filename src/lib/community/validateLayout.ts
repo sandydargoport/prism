@@ -213,7 +213,7 @@ export function projectCommunityLayout(
       : [],
     orientation: obj.orientation as 'landscape' | 'portrait',
     // Only the one other view is carried; anything else is the grid (#907).
-    ...(obj.view === 'today' || obj.view === 'calendar' ? { view: obj.view } : {}),
+    ...(obj.view === 'today' ? { view: obj.view } : {}),
     widgets,
   };
 }

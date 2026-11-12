@@ -120,6 +120,8 @@ describe('the Today view in a shared layout', () => {
   it('a grid layout says nothing, and an unknown view becomes the grid', () => {
     expect('view' in projectCommunityLayout(valid)).toBe(false);
     expect('view' in projectCommunityLayout({ ...valid, view: 'freeform' })).toBe(false);
+    // The retired Calendar layout (#1154) is shared as a regular grid.
+    expect('view' in projectCommunityLayout({ ...valid, view: 'calendar' })).toBe(false);
   });
 });
 

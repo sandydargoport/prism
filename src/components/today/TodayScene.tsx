@@ -27,7 +27,6 @@ import { SunArc } from './SunArc';
 import { TodayList } from './TodayList';
 import { ComingDays } from './ComingDays';
 import { QuietLines } from './QuietLines';
-import { CalendarBoard } from './CalendarBoard';
 import type { BirthdayLike, ChoreLike } from '@/lib/today/quietLines';
 
 /** The parts a Today layout can show, by widget id. */
@@ -65,7 +64,6 @@ export function TodayScene({
   onOpenEvent,
   household,
   idle = false,
-  kind = 'today',
   topOffset = 0,
   drift = false,
   night = false,
@@ -90,8 +88,6 @@ export function TodayScene({
    * only wakes it.
    */
   idle?: boolean;
-  /** Today's arc and sentences, or the Calendar layout's board (#931). */
-  kind?: 'today' | 'calendar';
   /** Height of the bar above the scene, when it shows. */
   topOffset?: number;
   /**
@@ -147,7 +143,7 @@ export function TodayScene({
         color: night ? 'rgb(255 226 190)' : 'white',
       }}
       data-today-idle={idle || undefined}
-      data-today-kind={kind}
+      data-today-kind="today"
       data-today-night={night || undefined}
     >
       {night && <div className="absolute inset-0 bg-black/60" aria-hidden data-today-veil />}
@@ -159,7 +155,7 @@ export function TodayScene({
           <time
             className="font-medium leading-none tabular-nums tracking-[-0.02em] whitespace-nowrap"
             // Smaller on the Calendar layout, to give the board its height (#931).
-            style={{ fontFamily: 'var(--font-display)', fontSize: kind === 'calendar' ? 'max(var(--text-floor), min(6rem, 10vw))' : 'max(var(--text-floor), min(8rem, 14vw))' }}
+            style={{ fontFamily: 'var(--font-display)', fontSize: 'max(var(--text-floor), min(8rem, 14vw))' }}
             data-today-clock
           >
             {dayHalfFirst && dayHalfSpan}
@@ -184,30 +180,8 @@ export function TodayScene({
         </div>
       )}
 
-      {/* The Calendar layout (#931): the board under the corners. */}
-      {kind === 'calendar' && isPartShown(parts, 'calendar') && (
-        <div className={`absolute bottom-[4.5rem] left-[3rem] right-[3rem] top-[11.5rem] ${fades}`} style={{ zoom }} data-calendar-layout>
-          <CalendarBoard
-            events={events}
-            now={now}
-            onOpenEvent={onOpenEvent}
-            headingEnd={household && (
-              <QuietLines
-                inline
-                chores={isPartShown(parts, 'chores') ? household.chores : []}
-                lists={isPartShown(parts, 'shopping') ? household.lists : []}
-                birthdays={[]}
-                now={now}
-                onTickChore={household.onTickChore}
-                onAddShopping={household.onAddShopping}
-              />
-            )}
-          />
-        </div>
-      )}
-
       {/* Simple leads with today as a list (#1030): Next, then later today. */}
-      {kind === 'today' && isPartShown(parts, 'calendar') && !showArc && (
+      {isPartShown(parts, 'calendar') && !showArc && (
         <div
           className={`absolute left-[3rem] w-[min(58%,62rem)] transition-[top,opacity] duration-1000 portrait:right-[3rem] portrait:w-auto ${idle ? 'top-[40%] portrait:top-[22%]' : 'top-[28%] portrait:top-[14%]'} ${idle && !staysIdle(parts, 'calendar') ? 'opacity-0' : ''}`}
           style={{ zoom }}
@@ -218,7 +192,7 @@ export function TodayScene({
       )}
 
       {/* The day as the sun's path (#909), now an option (#1030), margin to margin across the middle. */}
-      {kind === 'today' && isPartShown(parts, 'calendar') && showArc && (
+      {isPartShown(parts, 'calendar') && showArc && (
         <div
           className={`absolute left-[3rem] right-[3rem] h-[38%] transition-[top,opacity] duration-1000 portrait:h-[26%] ${idle ? 'top-[44%] portrait:top-[24%]' : 'top-[30%] portrait:top-[14%]'} ${idle && !staysIdle(parts, 'calendar') ? 'opacity-0' : ''}`}
           data-today-arc
@@ -228,7 +202,7 @@ export function TodayScene({
       )}
 
       {/* Quiet lines (#911), bottom right. */}
-      {kind === 'today' && household && (
+      {household && (
         <div className="absolute bottom-[3rem] right-[3rem]" style={{ zoom }}>
           <QuietLines
             chores={isPartShown(parts, 'chores') && (!idle || staysIdle(parts, 'chores')) ? household.chores : []}
@@ -242,7 +216,7 @@ export function TodayScene({
       )}
 
       {/* The coming days as sentences (#805), bottom left. */}
-      {kind === 'today' && isPartShown(parts, 'calendar') && (
+      {isPartShown(parts, 'calendar') && (
         <div
           // Portrait (#934): the sentences take the width, below the arc.
           className={`absolute bottom-[3rem] left-[3rem] w-[min(56%,60rem)] portrait:bottom-auto portrait:right-[3rem] portrait:top-[46%] portrait:w-auto ${fades}`}

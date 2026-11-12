@@ -433,7 +433,7 @@ const widgetConfigSchema = z.object({
 });
 
 /** How a dashboard is drawn (#907). */
-export const LAYOUT_VIEWS = ['grid', 'today', 'calendar'] as const;
+export const LAYOUT_VIEWS = ['grid', 'today'] as const;
 export type LayoutView = (typeof LAYOUT_VIEWS)[number];
 
 export const createLayoutSchema = z.object({

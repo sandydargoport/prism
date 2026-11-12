@@ -40,7 +40,7 @@ import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import { parseIdleBackground, withoutDashboard, PHOTOS, type IdleBackground } from '@/lib/idleBackground';
 import { TodayScene } from '@/components/today/TodayScene';
 import { PhoneToday } from '@/components/today/PhoneToday';
-import { isSimpleView } from '@/lib/newLook';
+import { isBuiltInView } from '@/lib/newLook';
 import { TODAY_TEMPLATE } from '@/lib/constants/layoutTemplates';
 import type { ChoreLike } from '@/lib/today/quietLines';
 import { useEventSheet } from '@/components/calendar/useEventSheet';
@@ -172,7 +172,7 @@ export function Dashboard({
   }, [handleCancel, remote]);
   // Today is the built-in dashboard (#1151): it is edited like any other,
   // through its widgets list instead of a grid.
-  const todayPage = isSimpleView(layout.activeLayout?.view);
+  const todayPage = isBuiltInView(layout.activeLayout?.view);
 
   // Persist visible widget IDs to localStorage for next load's prioritized fetching
   useEffect(() => {
@@ -293,10 +293,10 @@ export function Dashboard({
     router.push(editLink(`/d/${targetSlug}`));
   }, [router, pickDashboard]);
 
-  const handleCreateDashboard = useCallback(async (name: string, startFrom: 'blank' | 'template' | 'copy' | 'today' | 'calendar') => {
+  const handleCreateDashboard = useCallback(async (name: string, startFrom: 'blank' | 'template' | 'copy' | 'today') => {
     const { DEFAULT_TEMPLATE } = await import('@/lib/constants/layoutTemplates');
     let widgets: WidgetConfig[];
-    if (startFrom === 'today' || startFrom === 'calendar') {
+    if (startFrom === 'today') {
       widgets = TODAY_TEMPLATE.widgets;
     } else if (startFrom === 'copy' && layout.activeLayout) {
       widgets = layout.activeLayout.widgets;
@@ -308,7 +308,7 @@ export function Dashboard({
     }
     try {
       const result = await data.layouts.saveLayout({
-        name, widgets, isDefault: false, ...(startFrom === 'today' || startFrom === 'calendar' ? { view: startFrom } : {}),
+        name, widgets, isDefault: false, ...(startFrom === 'today' ? { view: 'today' as const } : {}),
       });
       const saved = result as { slug?: string };
       if (saved?.slug) {
@@ -447,9 +447,8 @@ export function Dashboard({
   // Always this wrapper, styled or not, so a change of text size does not
   // remount the dashboard under it.
   if (isMobile) {
-    // A Today or Calendar layout reads as a phone Today (#928); a grid
-    // layout keeps its cards.
-    const phoneToday = layout.activeLayout?.view === 'today' || layout.activeLayout?.view === 'calendar';
+    // Today reads as a phone Today (#928); a grid layout keeps its cards.
+    const phoneToday = todayPage;
     return (
       <div style={schedule.zoomStyle}>
         <AppShell
@@ -600,7 +599,6 @@ export function Dashboard({
                 idle={calmIdle || previewState === 'resting' || previewState === 'night'}
                 night={sceneNight}
                 drift={idleDrift}
-                kind={layout.activeLayout?.view === 'calendar' ? 'calendar' : 'today'}
                 household={{
                   chores: data.chores.chores as unknown as ChoreLike[],
                   lists: data.shopping.lists as unknown as Array<{ id: string; name: string; items: Array<{ checked: boolean }> }>,
