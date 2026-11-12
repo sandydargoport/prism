@@ -35,7 +35,7 @@ export function useChoresViewData() {
     error,
     refresh: refreshChores,
     approveChore: apiApproveChore,
-  } = useChores({ showDisabled: true });
+  } = useChores({ showDisabled: true, includeFuture: true });
 
   const { members: familyMembers } = useFamily();
 
