@@ -46,8 +46,11 @@ test.describe('the Calendar page', () => {
     await page.goto('/calendar');
     const add = page.locator('[data-calendar-add-pill]');
     await expect(add).toBeVisible({ timeout: 60_000 });
+    // The Add pill is the height of Today beside it, not a size above the
+    // rest of the header.
     const box = (await add.boundingBox())!;
-    expect(box.height).toBeGreaterThanOrEqual(44);
+    const today = (await page.getByRole('button', { name: /^Today$/ }).boundingBox())!;
+    expect(Math.abs(box.height - today.height)).toBeLessThanOrEqual(1);
     await expect(page.locator('[data-calendar-add-pill]'), 'one Add').toHaveCount(1);
     await expect(page.getByRole('button', { name: /^Manage$/ }), 'Manage is in the menu').toHaveCount(0);
 
