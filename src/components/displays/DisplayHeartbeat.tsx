@@ -9,7 +9,7 @@ import {
   resetSyncBase,
   syncScreenSettings,
 } from '@/lib/displays/displaySettingsSync';
-import { remoteEditHost } from '@/lib/displays/remoteEdit';
+import { isNamedScreen as isNamed } from '@/lib/displays/namedScreen';
 
 /**
  * Keeps a named screen in touch with the server (#690): a heartbeat for
@@ -31,13 +31,6 @@ import { remoteEditHost } from '@/lib/displays/remoteEdit';
 const BEAT_MS = 60 * 1000;
 const EDITING_BEAT_MS = 5 * 1000;
 const LOCAL_CHECK_MS = 5 * 1000;
-
-function isNamed(): boolean {
-  // The frame of a phone editing a screen shares the phone's cookies, but it
-  // is not the phone's screen and must never sync as it (#1153).
-  if (remoteEditHost()) return false;
-  return document.cookie.split('; ').includes('prism_display_named=1');
-}
 
 let syncing = false;
 
