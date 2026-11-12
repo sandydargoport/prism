@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useIsPWA } from './useIsPWA';
 import { resolveAwayAutoAfter } from '@/lib/awayMode/autoAfter';
+import { isNamedScreen } from '@/lib/displays/namedScreen';
 
 const STORAGE_KEY = 'prism-screensaver-timeout';
 const LAST_ACTIVITY_KEY = 'prism-last-activity';
@@ -114,8 +115,12 @@ export function useIdleDetection(initialTimeout?: number) {
     };
   }, [dismissIdle]);
 
+  // A phone has no idle state, so an installed app does not go idle by itself.
+  // A screen named in Settings > Screens does, installed or not: installing the
+  // app is how a wall tablet runs full-screen, and its screensaver and Away
+  // Mode must still start (#1156).
   useEffect(() => {
-    if (timeout <= 0 || isPWA) return;
+    if (timeout <= 0 || (isPWA && !isNamedScreen())) return;
 
     // Mousemove/scroll only reset the idle timer, they don't dismiss the screensaver
     const moveEvents = ['mousemove', 'scroll'] as const;
@@ -140,7 +145,7 @@ export function useIdleDetection(initialTimeout?: number) {
   // household's (#1159), read with the state on every check, so a change in
   // Settings reaches every screen within a minute.
   useEffect(() => {
-    if (isPWA) {
+    if (isPWA && !isNamedScreen()) {
       // Clear timer if disabled
       if (awayModeTimerRef.current) {
         clearInterval(awayModeTimerRef.current);

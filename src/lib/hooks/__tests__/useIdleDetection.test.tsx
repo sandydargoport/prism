@@ -90,3 +90,45 @@ describe('useIdleDetection — dismissing what the button opened', () => {
     document.body.removeChild(keeper);
   });
 });
+
+describe('useIdleDetection — going idle by itself in an installed app (#1156)', () => {
+  const NAMED = 'prism_display_named=1';
+  let fetchMock: jest.Mock;
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    mockIsPWA = true;
+    fetchMock = jest.fn().mockResolvedValue({ ok: false, json: async () => ({}) });
+    global.fetch = fetchMock as unknown as typeof fetch;
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+    document.cookie = `${NAMED}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+  });
+
+  const awayChecks = () => fetchMock.mock.calls.filter(([url]) => url === '/api/away-mode').length;
+
+  it('never goes idle on a phone (an installed app that is not a named screen)', () => {
+    const { result } = renderHook(() => useIdleDetection(60));
+    act(() => { jest.advanceTimersByTime(61_000); });
+    expect(result.current.isIdle).toBe(false);
+    expect(awayChecks()).toBe(0);
+  });
+
+  it('goes idle after the timeout on a named screen, even as an installed app', () => {
+    document.cookie = NAMED;
+    const { result } = renderHook(() => useIdleDetection(60));
+    act(() => { jest.advanceTimersByTime(59_000); });
+    expect(result.current.isIdle).toBe(false);
+    act(() => { jest.advanceTimersByTime(2_000); });
+    expect(result.current.isIdle).toBe(true);
+  });
+
+  it('checks whether to start Away Mode on a named screen, even as an installed app', () => {
+    document.cookie = NAMED;
+    renderHook(() => useIdleDetection(60));
+    expect(awayChecks()).toBe(1);
+    act(() => { jest.advanceTimersByTime(60_000); });
+    expect(awayChecks()).toBe(2);
+  });
+});
