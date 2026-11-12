@@ -50,3 +50,15 @@ export function formatReminderTime(hhmm: string): string {
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return `${h12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
 }
+
+/**
+ * A pet chore's ticks today as one line (#856): "Emma 7:40 AM, Jordan 5:15 PM",
+ * on the household's wall clock. Empty when nobody has done it yet today.
+ */
+export function petTickLine(ticks: Array<{ at: string; by: { name: string } }> | undefined): string {
+  return (ticks ?? []).map((k) => {
+    const d = new Date(k.at);
+    const hhmm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    return `${k.by.name} ${formatReminderTime(hhmm)}`;
+  }).join(', ');
+}
