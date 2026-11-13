@@ -28,6 +28,8 @@ export interface NormalizedRecipe {
   tags: string[];
   /** Absolute remote image URL to download with the source token, or null. */
   remoteImageUrl: string | null;
+  /** How many steps the source splits the recipe into (#1215: steps go back only with one). */
+  stepCount?: number;
 }
 
 /** Best-effort download of a remote image via safeFetch (Bearer). Null on any failure. */
@@ -129,11 +131,13 @@ export async function loadRecipeFieldsToPush(localId: string) {
       servings: recipes.servings,
       prepTime: recipes.prepTime,
       cookTime: recipes.cookTime,
+      ingredients: recipes.ingredients,
+      instructions: recipes.instructions,
     })
     .from(recipes)
     .where(eq(recipes.id, localId));
   if (!row) throw new Error('The recipe is no longer in Prism.');
-  return row;
+  return { ...row, ingredients: (row.ingredients ?? []) as Array<{ text?: string; heading?: string }> };
 }
 
 /** After a recipe is sent: keep the source's new time, so it is not read as a change made there. */

@@ -11,6 +11,8 @@ import { previewSync } from '@/lib/sync/runner';
 import { getRecipeAdapter } from '@/lib/sync/adapters/registry';
 import { UnsafeUrlError } from '@/lib/integrations/tandoor';
 import { readSourceConfig } from '@/lib/sync/sourceConfig';
+import { describeRecipePush } from '@/lib/sync/adapters/ingredientLines';
+import { loadRecipeFieldsToPush, type NormalizedRecipe } from '@/lib/sync/adapters/recipeWriter';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -49,6 +51,18 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       push: cfg.canWrite ? { knownExternalIds: new Set(cfg.recipeIds ?? []) } : undefined,
     });
     const remote = src.provider === 'mealie' ? 'Mealie' : 'Tandoor';
+    // What sending each edit does to ingredients and steps (#1215).
+    const pushNotes = new Map<string, string[]>();
+    for (const c of diff.changes) {
+      if (c.kind !== 'push-update' || !c.localId || !c.payload) continue;
+      const p = c.payload as NormalizedRecipe;
+      const local = await loadRecipeFieldsToPush(c.localId);
+      pushNotes.set(c.externalId, describeRecipePush(
+        local,
+        { ingredients: p.ingredients, instructions: p.instructions, stepCount: p.stepCount ?? 1 },
+        remote,
+      ));
+    }
 
     // Stash the full diff (with payloads) for /apply; hand the UI a light view.
     const diffId = randomUUID();
@@ -68,7 +82,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       // A deletion in Prism is only an offer: say what ticking it does.
       reason: c.kind === 'push-delete'
         ? `Deleted in Prism. It stays in ${remote} unless ticked; ticking deletes it there too.`
-        : c.reason,
+        : [c.reason, ...(pushNotes.get(c.externalId) ?? [])].join(' · '),
       defaultChecked: c.defaultChecked,
       remoteUpdatedAt: c.remoteUpdatedAt ?? null,
       localUpdatedAt: c.localUpdatedAt ?? null,

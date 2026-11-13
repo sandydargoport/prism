@@ -38,7 +38,11 @@ jest.mock('@/lib/cache/getRedisClient', () => ({
 }));
 jest.mock('@/lib/cache/cacheKeys', () => ({ invalidateEntity: jest.fn() }));
 jest.mock('@/lib/utils/logError', () => ({ logError: jest.fn() }));
-jest.mock('@/lib/sync/adapters/recipeWriter', () => ({ syncedRecipeIds: (...a: unknown[]) => mockRecipeIds(...a) }));
+const mockLocalFields = jest.fn();
+jest.mock('@/lib/sync/adapters/recipeWriter', () => ({
+  syncedRecipeIds: (...a: unknown[]) => mockRecipeIds(...a),
+  loadRecipeFieldsToPush: (...a: unknown[]) => mockLocalFields(...a),
+}));
 jest.mock('@/lib/sync/runner', () => ({
   ...jest.requireActual('@/lib/sync/runner'),
   previewSync: (...a: unknown[]) => mockPreview(...a),
@@ -117,4 +121,20 @@ it('sends a ticked edit and keeps the recipe ids Prism now holds', async () => {
   expect((await res.json()).sent).toEqual({ add: 0, update: 1, delete: 0 });
   expect(mockRecipeIds).toHaveBeenCalledWith('s1');
   expect(mockUpdateSet.mock.calls[0][0].providerConfig).toEqual({ canWrite: true, recipeIds: ['2', '5'] });
+});
+
+it('says what sending an edit does to ingredients and steps (#1215)', async () => {
+  mockSelectWhere.mockResolvedValue([{ id: 's1', provider: 'tandoor', lastSynced: null, providerConfig: { canWrite: true } }]);
+  mockLocalFields.mockResolvedValue({ ingredients: [{ text: '1 onion' }, { text: 'salt' }], instructions: 'New text' });
+  mockPreview.mockResolvedValue({
+    changes: [{ ...EDIT, payload: { ingredients: [{ text: '1 onion' }], instructions: 'Chop.', stepCount: 3 } }],
+    counts: { add: 0, update: 0, delete: 0 },
+    pushCounts: { add: 0, update: 1, delete: 0 },
+    massDeleteGuardTripped: false, withheldDeletes: 0, pushDeleteGuardTripped: false, withheldPushDeletes: 0,
+  });
+  const body = await (await PREVIEW(new NextRequest('http://localhost/x', { method: 'POST' }), ctx)).json();
+  expect(mockLocalFields).toHaveBeenCalledWith('l2');
+  expect(body.changes[0].reason).toBe(
+    'Changed in Prism · 1 ingredient line goes as plain notes · the steps stay as they are in Tandoor, which has 3',
+  );
 });
