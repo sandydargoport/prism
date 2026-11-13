@@ -115,6 +115,28 @@ export async function testTandoorConnection(
   return { count: data.count ?? 0 };
 }
 
+/**
+ * Whether the token can write, without writing anything (#1205). Tandoor is
+ * Django REST Framework: an OPTIONS request lists a POST action only when the
+ * token may create, which a token needs the `write` scope for. Never throws: a
+ * failed check reports false, and reading carries on as before.
+ */
+export async function checkTandoorWriteAccess(serverUrl: string, token: string): Promise<boolean> {
+  try {
+    validatePublicUrl(serverUrl);
+    const res = await safeFetch(`${baseUrl(serverUrl)}/api/meal-plan/`, {
+      method: 'OPTIONS',
+      headers: authHeaders(token),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return false;
+    const data = (await res.json()) as { actions?: Record<string, unknown> } | null;
+    return Boolean(data?.actions && 'POST' in data.actions);
+  } catch {
+    return false;
+  }
+}
+
 /** Page through /api/recipe/ collecting recipe ids (bounded). */
 async function listRecipeIds(base: string, token: string): Promise<number[]> {
   const ids: number[] = [];

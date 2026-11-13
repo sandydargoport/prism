@@ -56,6 +56,8 @@ interface RecipeSource {
   name: string | null;
   serverUrl: string;
   lastSynced: string | null;
+  /** Whether the token can write back to the server (#1205). */
+  canWrite: boolean;
 }
 
 interface PreviewResult {
@@ -229,7 +231,9 @@ export function RecipeSyncModal({ entity, onClose, onSynced }: RecipeSyncModalPr
   const connectForm = (
     <div className="space-y-3 rounded-md border border-border p-3">
       <p className="text-sm text-muted-foreground">
-        Connect a recipe server. Create a read API token in the app and paste it below.
+        Connect a recipe server. Create an API token in the app and paste it below. In Tandoor, a
+        token with the <span className="font-medium">read write</span> scope lets Prism send changes
+        back; a <span className="font-medium">read</span> token only brings things in.
       </p>
       <div className="space-y-2">
         <Label htmlFor="sync-provider">Provider</Label>
@@ -310,6 +314,15 @@ export function RecipeSyncModal({ entity, onClose, onSynced }: RecipeSyncModalPr
                       {s.serverUrl}
                       {s.lastSynced && <> · last synced {new Date(s.lastSynced).toLocaleString()}</>}
                     </div>
+                    <div className="text-xs text-muted-foreground" data-source-access={s.canWrite ? 'write' : 'read'}>
+                      {s.canWrite ? 'Reads and writes' : 'Reads only'}
+                    </div>
+                    {!s.canWrite && s.provider === 'tandoor' && (
+                      <div className="text-xs text-muted-foreground">
+                        To send changes back, make a token with the read write scope in Tandoor
+                        (Settings, API) and connect it here.
+                      </div>
+                    )}
                   </div>
                   <Button size="sm" onClick={() => handleSyncNow(s)} disabled={syncingId === s.id}>
                     {syncingId === s.id ? 'Checking…' : 'Sync now'}
