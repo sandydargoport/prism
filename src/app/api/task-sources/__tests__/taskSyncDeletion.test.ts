@@ -230,3 +230,25 @@ describe('a parent that vanished with its subtasks', () => {
     expect(body.flagged ?? body.result?.flagged).toBe(1);
   });
 });
+
+// #1201: Google subtasks are placed under their parent's local row, and one
+// moved to the top level at Google goes back to the top level here.
+describe('subtasks from the provider', () => {
+  const remote = (id: string, parentId: string | null) =>
+    ({ id, title: id, completed: false, updatedAt: LONG_AGO, dueDate: null, description: null, priority: null, completedAt: null, parentId });
+
+  it('point at their parent, and leave it when they move to the top level', async () => {
+    localRows = [
+      syncedRow({ id: 'local-parent', externalId: 'parent', updatedAt: LONG_AGO }),
+      syncedRow({ id: 'local-sub1', externalId: 'sub1', updatedAt: LONG_AGO }),
+      syncedRow({ id: 'local-sub2', externalId: 'sub2', updatedAt: LONG_AGO, parentId: 'local-parent' }),
+    ];
+    mockFetchTasks.mockResolvedValue([remote('parent', null), remote('sub1', 'parent'), remote('sub2', null)]);
+
+    await run();
+
+    const placed = writes.filter((w) => w.op === 'update' && w.payload && 'parentId' in (w.payload as object)).map((w) => w.payload);
+    expect(placed).toEqual([{ parentId: 'local-parent' }, { parentId: null }]);
+    expect(deletedTasks()).toBe(false);
+  });
+});
