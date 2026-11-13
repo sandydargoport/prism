@@ -830,7 +830,8 @@ CREATE TABLE IF NOT EXISTS public.users (
     created_at timestamp without time zone DEFAULT now() NOT NULL,
     updated_at timestamp without time zone DEFAULT now() NOT NULL,
     sort_order integer DEFAULT 0 NOT NULL,
-    pin_length integer DEFAULT 4 NOT NULL
+    pin_length integer DEFAULT 4 NOT NULL,
+    pin_kind character varying(16) DEFAULT 'digits'::character varying NOT NULL
 );
 
 

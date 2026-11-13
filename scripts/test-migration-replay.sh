@@ -496,6 +496,27 @@ fi
 log "Scenario I: PASS"
 
 # ----------------------------------------------------------------------------
+# Scenario J: 0052 adds what a member signs in with (#1197).
+# Every member already there has a PIN ('digits'); a replay changes nothing.
+# ----------------------------------------------------------------------------
+log "=== Scenario J: 0052 members keep their PINs ==="
+
+KINDS=$(docker exec "$CONTAINER_NAME" psql -U prism -d prism -t -A -c \
+  "SELECT count(*) || '|' || count(*) FILTER (WHERE pin_kind = 'digits') FROM users")
+TOTAL=${KINDS%%|*}
+if [ "$KINDS" != "$TOTAL|$TOTAL" ]; then
+  echo "ERROR: 0052 left members without a PIN kind: $KINDS (all|digits)" >&2
+  exit 1
+fi
+psql_exec "DELETE FROM public.__prism_migrations WHERE name <> '0000_upgrade';"
+run_migrate
+if [ "$(docker exec "$CONTAINER_NAME" psql -U prism -d prism -t -A -c "SELECT count(*) FILTER (WHERE pin_kind <> 'digits') FROM users")" != "0" ]; then
+  echo "ERROR: replaying 0052 changed a member's PIN kind" >&2
+  exit 1
+fi
+
+log "Scenario J: PASS"
+# ----------------------------------------------------------------------------
 # Scenario K: 0053 lets a task have subtasks (#1200).
 # A subtask points at its parent; deleting the parent deletes the subtasks,
 # and leaves every other task alone. A replay changes nothing.

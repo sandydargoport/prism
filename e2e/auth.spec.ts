@@ -78,6 +78,52 @@ test.describe('Authentication', () => {
     await expect(modal.locator('.text-destructive')).toBeVisible({ timeout: 5000 });
   });
 
+  // #1197: a passcode is typed on the pad's letters, which widen the card.
+  test('a child with a passcode signs in on the letter pad', async ({ page }) => {
+    const PIN = process.env.E2E_PIN || '1234';
+    await loginViaAPI(page, parent.name);
+    const fam = await (await page.request.get('/api/family')).json();
+    const kid = ((fam.members ?? fam) as Array<{ id: string; name: string; pinLength?: number }>).find((m) => m.name === child.name)!;
+    const set = (data: Record<string, unknown>) => page.request.patch(`/api/family/${kid.id}`, { data });
+    expect((await set({ pinKind: 'passcode', pinLength: 6, pin: 'kite42' })).ok()).toBe(true);
+    try {
+      await logout(page);
+      await page.goto('/');
+      await page.click('button[aria-label="Log in"]');
+      const modal = page.locator(MODAL_SELECTOR);
+      await expect(modal).toBeVisible({ timeout: 5000 });
+      await modal.locator(`button:has-text("${child.name}")`).click();
+
+      await modal.getByRole('button', { name: 'Letters' }).click();
+      const letters = modal.locator('[data-pin-letters]');
+      await expect(letters).toBeVisible();
+      const m = await modal.evaluate((el) => {
+        const card = (el.querySelector('[data-pin-letters]') as HTMLElement).closest('.bg-card')!.getBoundingClientRect();
+        const pad = el.querySelector('[data-pin-letters]')!.getBoundingClientRect();
+        const keys = [...el.querySelectorAll('[data-pin-letters] button')].map((b) => b.getBoundingClientRect());
+        return {
+          inside: pad.left >= card.left - 0.5 && pad.right <= card.right + 0.5,
+          narrowest: Math.min(...keys.map((k) => k.width)),
+          lowest: Math.min(...keys.map((k) => k.height)),
+          overflow: document.documentElement.scrollWidth - window.innerWidth,
+        };
+      });
+      expect(m.inside, 'the letters fit in the card').toBe(true);
+      expect(m.narrowest, 'a letter key is wide enough to tap').toBeGreaterThanOrEqual(30);
+      expect(m.lowest, 'and tall enough').toBeGreaterThanOrEqual(40);
+      expect(m.overflow).toBeLessThanOrEqual(0);
+
+      for (const ch of ['k', 'i', 't', 'e']) await modal.getByRole('button', { name: ch, exact: true }).click();
+      await modal.getByRole('button', { name: 'Numbers' }).click();
+      for (const d of ['4', '2']) await modal.getByRole('button', { name: d, exact: true }).click();
+      await expect(page.locator('button[aria-label="Log out"]')).toBeVisible({ timeout: 10_000 });
+    } finally {
+      await logout(page);
+      await loginViaAPI(page, parent.name);
+      await set({ pinKind: 'digits', pinLength: kid.pinLength ?? PIN.length, pin: PIN });
+    }
+  });
+
   test('child login via API succeeds', async ({ page }) => {
     await loginViaAPI(page, child.name);
     await page.goto('/');

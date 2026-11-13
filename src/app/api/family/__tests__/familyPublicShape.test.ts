@@ -26,7 +26,8 @@ describe('the unauthenticated family payload', () => {
   it('still carries what the login pad needs to render', () => {
     // Removing any of these breaks sign-in on a display that has never
     // authenticated, which is worse than the disclosure being fixed.
-    for (const field of ['name', 'avatarUrl', 'role', 'loginIndex', 'pinLength']) {
+    // pinKind (#1197) tells the pad whether to offer letters.
+    for (const field of ['name', 'avatarUrl', 'role', 'loginIndex', 'pinLength', 'pinKind']) {
       expect(PUBLIC_MEMBER_FIELDS).toContain(field);
     }
   });
@@ -35,7 +36,7 @@ describe('the unauthenticated family payload', () => {
     // The guard: this test fails when someone widens the payload, forcing
     // them to justify the addition rather than discovering it in production.
     expect([...PUBLIC_MEMBER_FIELDS].sort()).toEqual(
-      ['avatarUrl', 'color', 'id', 'loginIndex', 'name', 'pinLength', 'role'].sort(),
+      ['avatarUrl', 'color', 'id', 'loginIndex', 'name', 'pinKind', 'pinLength', 'role'].sort(),
     );
   });
 });

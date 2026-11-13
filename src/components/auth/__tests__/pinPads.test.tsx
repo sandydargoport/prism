@@ -72,3 +72,45 @@ describe.each(screens)('the PIN pad on %s', (_name, ui, size, endpoint) => {
     expect(calls.find((c) => c.url.includes(endpoint))!.body).toContain('1239');
   });
 });
+
+// #1197: a member with a passcode gets ABC on the pad, which swaps in
+// lowercase letters; what they type, on the pad or a keyboard, is sent in
+// lowercase. A member with a PIN never sees letters.
+describe('a passcode on the pad (#1197)', () => {
+  const sam = { ...alex, id: 'm2', loginIndex: 1, name: 'Sam', pinLength: 6, pinKind: 'passcode' as const };
+  const signIn = (who: typeof alex | typeof sam) =>
+    render(<QuickPinModal open onOpenChange={jest.fn()} title="Sign in" onAuthenticated={jest.fn()} preSelectedMember={who} />);
+
+  it('offers no letters to a member with a PIN', () => {
+    signIn(alex);
+    expect(document.querySelector('[data-pin-key="abc"]')).toBeNull();
+  });
+
+  it('swaps to letters and back, and sends what was typed in lowercase', async () => {
+    signIn(sam);
+    fireEvent.click(screen.getByRole('button', { name: 'Letters' }));
+    expect(document.querySelector('[data-pin-letters]')).toBeTruthy();
+    for (const ch of ['m', 'a', 'p', 'l', 'e']) fireEvent.click(screen.getByRole('button', { name: ch }));
+    expect(document.querySelector<HTMLElement>('[data-pin-dots]')!.dataset.pinDots).toBe('5');
+    fireEvent.click(screen.getByRole('button', { name: 'Numbers' }));
+    expect(document.querySelector('[data-pin-letters]')).toBeNull();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: '2' })); });
+    await waitFor(() => expect(calls.map((c) => c.url)).toContain('/api/auth/login'));
+    expect(JSON.parse(calls.find((c) => c.url === '/api/auth/login')!.body).pin).toBe('maple2');
+  });
+
+  it('takes letters from a keyboard, lowercased', async () => {
+    signIn(sam);
+    await act(async () => {
+      for (const key of ['K', 'i', 't', 'e', '4', '2']) fireEvent.keyDown(document, { key });
+    });
+    await waitFor(() => expect(calls.map((c) => c.url)).toContain('/api/auth/login'));
+    expect(JSON.parse(calls.find((c) => c.url === '/api/auth/login')!.body).pin).toBe('kite42');
+  });
+
+  it('ignores letters from a keyboard for a member with a PIN', () => {
+    signIn(alex);
+    fireEvent.keyDown(document, { key: 'a' });
+    expect(document.querySelector<HTMLElement>('[data-pin-dots]')!.dataset.pinDots).toBe('0');
+  });
+});

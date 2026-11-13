@@ -34,6 +34,7 @@ export function ExitAwayModeModal({
       color: m.color,
       avatarUrl: m.avatarUrl ?? undefined,
       pinLength: m.pinLength,
+      pinKind: m.pinKind,
     }));
 
   const [selectedParent, setSelectedParent] = useState<typeof parents[0] | null>(null);
@@ -45,6 +46,8 @@ export function ExitAwayModeModal({
   // Every pad requires exactly the SELECTED parent's own PIN length, not a
   // family-wide constant — members can have different-length PINs.
   const pinLength = selectedParent?.pinLength ?? DEFAULT_PIN_LENGTH;
+  // A passcode takes letters too (#1197).
+  const passcode = selectedParent?.pinKind === 'passcode';
 
   // Reset state when modal closes
   useResetOn(open, () => {
@@ -77,9 +80,9 @@ export function ExitAwayModeModal({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isVerifying) return;
-      if (e.key >= '0' && e.key <= '9') {
+      if ((e.key >= '0' && e.key <= '9') || (passcode && /^[a-z]$/i.test(e.key))) {
         e.preventDefault();
-        handleKeyPress(e.key);
+        handleKeyPress(e.key.toLowerCase());
       } else if (e.key === 'Backspace') {
         e.preventDefault();
         handleBackspace();
@@ -91,7 +94,7 @@ export function ExitAwayModeModal({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [open, selectedParent, isVerifying, handleKeyPress, handleBackspace, onOpenChange]);
+  }, [open, selectedParent, isVerifying, handleKeyPress, handleBackspace, onOpenChange, passcode]);
 
   // Auto-submit when PIN is complete
   useEffect(() => {
@@ -147,7 +150,7 @@ export function ExitAwayModeModal({
       }}
     >
       <div
-        className="bg-card rounded-2xl p-6 max-w-sm w-full mx-4 shadow-xl"
+        className="bg-card rounded-2xl p-6 max-w-sm w-full mx-4 shadow-xl has-[[data-pin-letters]]:max-w-[34rem]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -242,7 +245,7 @@ export function ExitAwayModeModal({
             </div>
 
             {/* Number pad */}
-            <NumberPad onKeyPress={handleKeyPress} onBackspace={handleBackspace} disabled={isVerifying} size="large" />
+            <NumberPad letters={passcode} onKeyPress={handleKeyPress} onBackspace={handleBackspace} disabled={isVerifying} size="large" />
 
             {/* Loading indicator */}
             <div className="h-6 mt-3 flex items-center justify-center">

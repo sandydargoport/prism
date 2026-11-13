@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -14,6 +15,12 @@ import { cn } from '@/lib/utils';
  * Two sizes, as the screens drew them before they shared it: `compact` (48px
  * keys) in the sign-in and Settings cards, `large` (64px keys) on the
  * full-screen Away and Babysitter exits.
+ *
+ * For a member with a passcode (#1197) the blank key is **ABC**, which swaps
+ * in lowercase letters (a QWERTY layout, then **123** and Del). The letter
+ * layout is marked `data-pin-letters`, so the card around it can widen while
+ * it shows (`has-[[data-pin-letters]]:`). It is not the on-screen keyboard:
+ * that one's first-tap fix stays out of the sign-in path.
  */
 export type PadSize = 'compact' | 'large';
 
@@ -29,15 +36,70 @@ export interface NumberPadProps {
   onBackspace: () => void;
   disabled?: boolean;
   size?: PadSize;
+  /** Offer letters as well as digits: the member has a passcode. */
+  letters?: boolean;
   className?: string;
 }
 
-export function NumberPad({ onKeyPress, onBackspace, disabled = false, size = 'compact', className }: NumberPadProps) {
+const LETTER_ROWS = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
+
+export function NumberPad({ onKeyPress, onBackspace, disabled = false, size = 'compact', letters = false, className }: NumberPadProps) {
   const s = PAD[size];
+  const [abc, setAbc] = useState(false);
+  const flat = 'rounded-lg flex items-center justify-center transition-all duration-100';
+  const digitKey = 'bg-secondary hover:bg-secondary/80 active:bg-primary active:text-primary-foreground active:scale-95 font-semibold';
+  const quietKey = 'bg-muted hover:bg-muted/80 active:bg-accent active:scale-95 text-muted-foreground';
+
+  if (letters && abc) {
+    const h = size === 'large' ? 'h-14' : 'h-11';
+    return (
+      <div className={cn('flex w-full flex-col gap-1.5', className)} data-pin-pad={size} data-pin-letters>
+        {LETTER_ROWS.map((row) => (
+          <div key={row} className="flex justify-center gap-1">
+            {[...row].map((ch) => (
+              <button
+                key={ch}
+                type="button"
+                onClick={() => onKeyPress(ch)}
+                disabled={disabled}
+                aria-label={ch}
+                data-pin-key={ch}
+                className={cn(flat, h, 'min-w-0 flex-1 max-w-12', digitKey, s.digit, disabled && 'opacity-50')}
+              >
+                {ch}
+              </button>
+            ))}
+          </div>
+        ))}
+        <div className="flex justify-center gap-1">
+          <button type="button" onClick={() => setAbc(false)} disabled={disabled} aria-label="Numbers" data-pin-key="123"
+            className={cn(flat, h, 'w-24', quietKey, s.del, disabled && 'opacity-50')}>123</button>
+          <button type="button" onClick={onBackspace} disabled={disabled} aria-label="Delete last digit" data-pin-key="del"
+            className={cn(flat, h, 'w-24', quietKey, s.del, disabled && 'opacity-50')}>Del</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={cn('grid grid-cols-3 mx-auto', s.grid, className)} data-pin-pad={size}>
       {KEYS.map((key, idx) => {
-        if (key === '') return <div key={idx} />;
+        if (key === '') {
+          if (!letters) return <div key={idx} />;
+          return (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => setAbc(true)}
+              disabled={disabled}
+              aria-label="Letters"
+              data-pin-key="abc"
+              className={cn(s.key, 'rounded-full mx-auto flex items-center justify-center transition-all duration-100', quietKey, s.del, disabled && 'opacity-50')}
+            >
+              ABC
+            </button>
+          );
+        }
         const del = key === 'del';
         return (
           <button

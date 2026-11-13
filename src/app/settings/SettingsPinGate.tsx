@@ -99,6 +99,7 @@ function SettingsPinPrompt({
       color: m.color,
       avatarUrl: m.avatarUrl ?? undefined,
       pinLength: m.pinLength,
+      pinKind: m.pinKind,
     })), [members]);
 
   const [chosenParent, setChosenParent] = useState<(typeof parents)[0] | null>(null);
@@ -114,6 +115,8 @@ function SettingsPinPrompt({
   // Every pad requires exactly the SELECTED parent's own PIN length, not a
   // family-wide constant — members can have different-length PINs.
   const pinLength = selectedParent?.pinLength ?? DEFAULT_PIN_LENGTH;
+  // A passcode takes letters too (#1197).
+  const passcode = selectedParent?.pinKind === 'passcode';
 
   // pinLength must be a dependency — it changes per selected parent (their
   // own configured length), not just once per session.
@@ -138,9 +141,9 @@ function SettingsPinPrompt({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isVerifying) return;
-      if (e.key >= '0' && e.key <= '9') {
+      if ((e.key >= '0' && e.key <= '9') || (passcode && /^[a-z]$/i.test(e.key))) {
         e.preventDefault();
-        handleKeyPress(e.key);
+        handleKeyPress(e.key.toLowerCase());
       } else if (e.key === 'Backspace') {
         e.preventDefault();
         handleBackspace();
@@ -152,7 +155,7 @@ function SettingsPinPrompt({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [selectedParent, isVerifying, handleKeyPress, handleBackspace, onDismiss]);
+  }, [selectedParent, isVerifying, handleKeyPress, handleBackspace, onDismiss, passcode]);
 
   // Auto-submit when PIN is complete
   useEffect(() => {
@@ -210,7 +213,7 @@ function SettingsPinPrompt({
       onClick={onDismiss}
     >
       <div
-        className="bg-card rounded-2xl p-3 max-w-[20rem] w-full mx-4 shadow-lg"
+        className="bg-card rounded-2xl p-3 max-w-[20rem] w-full mx-4 shadow-lg has-[[data-pin-letters]]:max-w-[34rem]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -285,7 +288,7 @@ function SettingsPinPrompt({
               </div>
 
               {/* Number pad */}
-              <NumberPad onKeyPress={handleKeyPress} onBackspace={handleBackspace} disabled={isVerifying} size="compact" />
+              <NumberPad letters={passcode} onKeyPress={handleKeyPress} onBackspace={handleBackspace} disabled={isVerifying} size="compact" />
 
               {/* Loading */}
               <div className="h-4 mt-1.5 flex items-center justify-center">
