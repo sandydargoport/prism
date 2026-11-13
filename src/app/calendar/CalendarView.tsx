@@ -142,11 +142,12 @@ function CalendarViewHydrated() {
         return { rangeFrom: new Date(), rangeTo: addDays(new Date(), 30) };
       case 'day':
         return { rangeFrom: currentDate, rangeTo: currentDate };
-      case 'week':
-      case 'weekVertical': {
+      case 'week': {
         const ws = startOfWeek(currentDate, { weekStartsOn });
         return { rangeFrom: ws, rangeTo: addDays(ws, 6) };
       }
+      // List shows next week too on a wide screen (#671).
+      case 'weekVertical':
       case 'multiWeek': {
         const ws = startOfWeek(currentDate, { weekStartsOn });
         return { rangeFrom: ws, rangeTo: endOfWeek(addWeeks(ws, 1), { weekStartsOn }) };

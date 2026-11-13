@@ -1,5 +1,6 @@
 'use client';
 
+import { useLayoutEffect, useRef, useState } from 'react';
 import { eventTintStyle } from '@/lib/design/eventStyle';
 import {
   format,
@@ -76,10 +77,10 @@ export function WeekVerticalView({
   const cellBgOpacity = bgOverride?.cellBackgroundOpacity ?? 1;
   const cellBgStyle = cellBg ? { backgroundColor: hexToRgba(cellBg, cellBgOpacity) } : undefined;
   const t = useTranslations('calendar');
+  const d = useDateLabels();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const width = useElementWidth(rootRef);
   const weekStart = startOfWeek(currentDate, { weekStartsOn });
-  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-  // Scope the wide event list to this week once; passed into each day row.
-  const scopedEvents = eventsOverlappingRange(events, weekStart, addDays(weekStart, 7));
   const now = toDisplayDate(new Date(), displayTimezone);
   const today = startOfDay(now);
 
@@ -97,57 +98,190 @@ export function WeekVerticalView({
     return dayEvents.filter((e) => e.groupId === gid);
   };
 
-  return (
-    <div className="h-full overflow-y-auto">
-      {/* Group column headers (no background bar to match day view) */}
-      {(calendarGroups.length > 0 || showNotes) && (
-        <div className="sticky top-0 z-10 flex">
-          <div className="w-16 shrink-0" />
-          {displayGroups.map((group) => (
-            <div key={group.id} className="flex-1 min-w-0 px-1 py-1">
-              <div
-                className="text-sm font-medium text-center py-1 rounded"
-                style={{ backgroundColor: group.color, color: '#fff' }}
-              >
-                {group.name}
-              </div>
-            </div>
-          ))}
-          {showNotes && (
-            <div className="w-2/5 min-w-[180px] border-l border-border px-1 py-1">
-              <div
-                className="text-sm font-medium text-center py-1 rounded text-white"
-                style={{ backgroundColor: '#6366f1' }}
-              >
-                Notes
-              </div>
-            </div>
-          )}
+  // A wide screen shows this week and next side by side (#671), when each
+  // week's person columns still get a readable width. The notes column needs
+  // the room, so with notes on the view stays one week. Measured on the view
+  // itself, so the Calendar widget follows its own size, not the window's.
+  const twoWeeks = !showNotes
+    && width >= TWO_WEEK_MIN_WIDTH
+    && (width / 2 - DAY_GUTTER_PX) / displayGroups.length >= MIN_GROUP_COLUMN_PX;
+  const weekCount = twoWeeks ? 2 : 1;
+  // Scope the wide event list to the shown weeks once; passed into each day row.
+  const scopedEvents = eventsOverlappingRange(events, weekStart, addDays(weekStart, 7 * weekCount));
+  const weeks = Array.from({ length: weekCount }, (_, w) =>
+    Array.from({ length: 7 }, (_, i) => addDays(weekStart, w * 7 + i)));
+
+  // A day with nothing on it folds into one line with its empty neighbours.
+  // Today never folds, and with notes on every day keeps its note editor.
+  const isEmptyDay = (day: Date) => {
+    if (showNotes || isSameDay(day, today)) return false;
+    const bucket = bucketsByDate?.get(format(day, 'yyyy-MM-dd'));
+    if (bucket && (bucket.meals.length || bucket.chores.length || bucket.tasks.length)) return false;
+    return !scopedEvents.some((event) => eventOccursOnDisplayDay(
+      event.startTime,
+      event.endTime,
+      event.allDay,
+      day,
+      displayTimezone,
+    ));
+  };
+
+  const groupHeader = (calendarGroups.length > 0 || showNotes) && (
+    <div className={cn('sticky top-0 z-10 flex', twoWeeks && 'bg-background/80 backdrop-blur-xs')}>
+      <div className="w-14 shrink-0" />
+      {displayGroups.map((group) => (
+        <div key={group.id} className="flex-1 min-w-0 px-1 py-1">
+          <div
+            className="text-sm font-medium text-center py-0.5 rounded truncate"
+            style={{ backgroundColor: group.color, color: '#fff' }}
+          >
+            {group.name}
+          </div>
+        </div>
+      ))}
+      {showNotes && (
+        <div className="w-2/5 min-w-[180px] border-l border-border px-1 py-1">
+          <div
+            className="text-sm font-medium text-center py-0.5 rounded text-white"
+            style={{ backgroundColor: '#6366f1' }}
+          >
+            Notes
+          </div>
         </div>
       )}
-
-      {days.map((day) => (
-        <WeekListDayRow
-          key={day.toISOString()}
-          day={day}
-          today={today}
-          events={scopedEvents}
-          displayGroups={displayGroups}
-          getEventsForGroup={getEventsForGroup}
-          bordered={bordered}
-          cellBgStyle={cellBgStyle}
-          onEventClick={onEventClick}
-          showNotes={showNotes}
-          notesByDate={notesByDate}
-          onNoteChange={onNoteChange}
-          displayMode={displayMode}
-          bucketsByDate={bucketsByDate}
-          enableDnd={enableDnd}
-          mealColor={mealColor}
-          onItemClick={onItemClick}
-        />
-      ))}
     </div>
+  );
+
+  return (
+    <div ref={rootRef} className="h-full overflow-y-auto">
+      <div className={cn(twoWeeks && 'grid grid-cols-2 gap-x-3 items-start')}>
+        {weeks.map((week) => (
+          <section key={week[0]!.toISOString()} data-list-week={format(week[0]!, 'yyyy-MM-dd')} className="min-w-0">
+            {twoWeeks && (
+              <h3 className="px-2 pt-1 text-sm font-semibold text-muted-foreground">
+                {d.range(week[0]!, week[6]!)}
+              </h3>
+            )}
+            {groupHeader}
+            {foldEmptyDays(week, isEmptyDay).map((run) => run.empty ? (
+              <FoldedDays
+                key={run.days[0]!.toISOString()}
+                days={run.days}
+                bordered={bordered}
+                enableDnd={displayMode === 'cards' && enableDnd}
+                label={t('nothingPlanned')}
+              />
+            ) : (
+              <WeekListDayRow
+                key={run.days[0]!.toISOString()}
+                day={run.days[0]!}
+                today={today}
+                events={scopedEvents}
+                displayGroups={displayGroups}
+                getEventsForGroup={getEventsForGroup}
+                bordered={bordered}
+                cellBgStyle={cellBgStyle}
+                onEventClick={onEventClick}
+                showNotes={showNotes}
+                notesByDate={notesByDate}
+                onNoteChange={onNoteChange}
+                displayMode={displayMode}
+                bucketsByDate={bucketsByDate}
+                enableDnd={enableDnd}
+                mealColor={mealColor}
+                onItemClick={onItemClick}
+              />
+            ))}
+          </section>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Below this width the List view shows one week. */
+const TWO_WEEK_MIN_WIDTH = 1100;
+/** The day-label gutter (w-14) plus a little slack, per week column. */
+const DAY_GUTTER_PX = 64;
+/** Narrowest a person's column may get before two weeks fall back to one. */
+const MIN_GROUP_COLUMN_PX = 120;
+
+/**
+ * Splits a week into runs: each day with something on it is its own run, and
+ * consecutive empty days share one run, drawn as a single folded line.
+ */
+export function foldEmptyDays(days: Date[], isEmpty: (day: Date) => boolean) {
+  const runs: Array<{ empty: boolean; days: Date[] }> = [];
+  for (const day of days) {
+    const empty = isEmpty(day);
+    const last = runs[runs.length - 1];
+    if (empty && last?.empty) last.days.push(day);
+    else runs.push({ empty, days: [day] });
+  }
+  return runs;
+}
+
+/** Width of an element, kept current as it resizes; 0 until measured. */
+function useElementWidth(ref: React.RefObject<HTMLElement | null>) {
+  const [width, setWidth] = useState(0);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    setWidth(el.clientWidth);
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => setWidth(el.clientWidth));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref]);
+  return width;
+}
+
+/**
+ * A run of empty days as one line: "Tue 10 – Thu 12 · Nothing planned". With
+ * drag and drop on, each day still gets its own drop zone, laid side by side
+ * behind the line, so a chore dropped on the line lands on the day under it.
+ */
+function FoldedDays({
+  days,
+  bordered,
+  enableDnd,
+  label,
+}: {
+  days: Date[];
+  bordered: boolean;
+  enableDnd: boolean;
+  label: string;
+}) {
+  const d = useDateLabels();
+  const first = days[0]!;
+  const last = days[days.length - 1]!;
+  const dayLabel = (day: Date) => `${d.weekdayShort(day)} ${format(day, 'd')}`;
+  return (
+    <div
+      data-list-folded={`${format(first, 'yyyy-MM-dd')}/${format(last, 'yyyy-MM-dd')}`}
+      className={cn('relative flex items-baseline gap-2 px-2 py-1 text-muted-foreground', bordered && 'border-b border-border')}
+    >
+      {enableDnd && (
+        <div className="absolute inset-0 flex">
+          {days.map((day) => <FoldedDayDropZone key={day.toISOString()} day={day} />)}
+        </div>
+      )}
+      <span className="relative text-xs font-medium uppercase tracking-wide whitespace-nowrap">
+        {days.length > 1 ? `${dayLabel(first)} – ${dayLabel(last)}` : dayLabel(first)}
+      </span>
+      <span className="relative text-xs truncate">{label}</span>
+    </div>
+  );
+}
+
+function FoldedDayDropZone({ day }: { day: Date }) {
+  const { setNodeRef, droppableId, isOver } = useDayDroppable({ date: day, enabled: true });
+  return (
+    <div
+      ref={setNodeRef}
+      data-droppable-day={droppableId}
+      className={cn('flex-1', isOver && 'ring-2 ring-inset ring-seasonal-accent')}
+    />
   );
 }
 
@@ -215,6 +349,7 @@ function WeekListDayRow({
     <div
       ref={cards && enableDnd ? droppable.setNodeRef : undefined}
       data-droppable-day={cards && enableDnd ? droppable.droppableId : undefined}
+      data-list-day={format(day, 'yyyy-MM-dd')}
       className={cn(
         'flex',
         bordered && 'border-b border-border',
@@ -225,7 +360,7 @@ function WeekListDayRow({
     >
       <div
         className={cn(
-          'w-16 shrink-0 p-2 flex flex-col items-center justify-start',
+          'w-14 shrink-0 px-1 py-1 flex flex-col items-center justify-start',
           bordered && 'border-r border-border',
           isPast && !isCurrentDay && 'bg-muted/15',
           isCurrentDay && 'bg-primary text-primary-foreground',
@@ -238,17 +373,20 @@ function WeekListDayRow({
           {d.weekdayShort(day)}
         </span>
         <span className={cn(
-          'text-2xl font-bold leading-tight',
+          'text-xl font-bold leading-none',
           isCurrentDay ? 'text-primary-foreground' : 'text-foreground'
         )}>
           {format(day, 'd')}
         </span>
-        <span className={cn(
-          'text-3xs',
-          isCurrentDay ? 'text-primary-foreground/80' : 'text-muted-foreground'
-        )}>
-          {d.monthShort(day)}
-        </span>
+        {/* The month shows where it changes; the week's heading carries it otherwise. */}
+        {day.getDate() === 1 && (
+          <span className={cn(
+            'text-3xs',
+            isCurrentDay ? 'text-primary-foreground/80' : 'text-muted-foreground'
+          )}>
+            {d.monthShort(day)}
+          </span>
+        )}
       </div>
 
       {displayGroups.length > 1 ? (
@@ -280,7 +418,7 @@ function WeekListDayRow({
                 }
               : undefined;
             return (
-              <div key={group.id} className="flex-1 min-w-0 border-l border-border p-1 space-y-0.5">
+              <div key={group.id} className="flex-1 min-w-0 border-l border-border px-1 py-0.5 space-y-0.5">
                 <DayEventList
                   day={day}
                   allDayEvents={groupAllDay}
@@ -306,7 +444,7 @@ function WeekListDayRow({
           })}
         </div>
       ) : (
-        <div className="flex-1 p-1.5 min-w-0 space-y-1">
+        <div className="flex-1 px-1 py-0.5 min-w-0 space-y-0.5">
           <DayEventList
             day={day}
             allDayEvents={allDayEvents}
@@ -374,7 +512,7 @@ function DayEventList({
           key={event.id}
           onClick={() => onEventClick(event)}
           className={cn(
-            'w-full text-left text-xs px-1.5 py-1 rounded hover:opacity-80 transition-opacity truncate block',
+            'w-full text-left text-xs px-1.5 py-0.5 rounded hover:opacity-80 transition-opacity truncate block',
             cards && 'bg-card/85 backdrop-blur-xs border border-border/40 shadow-xs',
           )}
           style={
@@ -405,7 +543,7 @@ function DayEventList({
             key={event.id}
             onClick={() => onEventClick(event)}
             className={cn(
-              'w-full text-left text-xs px-1.5 py-1 rounded hover:opacity-90 transition-opacity truncate block',
+              'w-full text-left text-xs px-1.5 py-0.5 rounded hover:opacity-90 transition-opacity truncate block',
               cards
                 ? 'bg-card/85 backdrop-blur-xs border border-border/40 shadow-xs text-foreground'
                 : 'text-foreground',

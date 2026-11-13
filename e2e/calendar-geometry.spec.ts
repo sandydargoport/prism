@@ -709,3 +709,84 @@ test.describe('clock fits its tile', () => {
     });
   }
 });
+
+/**
+ * List view (#671). The page clock is fixed on a far Wednesday, and one event
+ * of our own sits on its Monday. The seed's weekly events never fall on a
+ * Sunday or a Monday, so next week's Sunday and Monday (the weeks start on
+ * Sunday) are a run of empty days. Measured: on a wall the view shows two week
+ * columns side by side, that run is one short line with no day rows of its
+ * own, and a day with one event is a short row. Below the two-week width it is
+ * one column again.
+ */
+test.describe('List view', () => {
+  test('a wall shows this week and next side by side and folds empty days; a narrower screen shows one week', async ({ page }, info) => {
+    test.skip(!HAS_TEST_DB, 'Set E2E_HAS_TEST_DB=1 against a fresh-seeded DB');
+    test.setTimeout(120_000);
+    const parentId = getSeededParentId();
+    expect((await page.request.post('/api/auth/login', { data: { userId: parentId, pin: PIN } })).ok()).toBe(true);
+    const T = new Date('2029-10-17T12:00:00Z');
+    const tag = `${info.project.name} ${Date.now()}`;
+    // List draws a column per calendar group, and an event with no calendar
+    // sits in none of them: put ours on a calendar that has a group.
+    const list = await (await page.request.get('/api/calendars')).json();
+    const cal = (list.calendars ?? list).find((c: { enabled: boolean; groupId: string | null }) => c.enabled && c.groupId);
+    expect(cal, 'a calendar with a group').toBeTruthy();
+    const created: string[] = [];
+    try {
+      // 15:00 UTC is the same date in UTC and Chicago.
+      for (const date of ['2029-10-15']) {
+        const res = await postEvent(page, {
+          title: `List e2e ${date} ${tag}`,
+          startTime: `${date}T15:00:00.000Z`,
+          endTime: `${date}T16:00:00.000Z`,
+          allDay: false,
+          createdBy: parentId,
+          calendarSourceId: cal.id,
+        });
+        expect(res.status()).toBe(201);
+        created.push((await res.json()).id);
+      }
+      await page.clock.setFixedTime(T);
+      await page.addInitScript(() => {
+        localStorage.setItem('prism-calendar-view-type', 'weekVertical');
+        localStorage.setItem('prism-calendar-bordered', 'true');
+      });
+
+      const measure = () => page.evaluate(() => {
+        const box = (el: Element | null) => {
+          if (!el) return null;
+          const r = el.getBoundingClientRect();
+          return { left: r.left, right: r.right, top: r.top, height: r.height };
+        };
+        return {
+          weeks: [...document.querySelectorAll('[data-list-week]')].map(box),
+          folded: box(document.querySelector('[data-list-folded="2029-10-21/2029-10-22"]')),
+          foldedRows: ['2029-10-21', '2029-10-22'].filter((k) => document.querySelector(`[data-list-day="${k}"]`)),
+          monday: box(document.querySelector('[data-list-day="2029-10-15"]')),
+        };
+      });
+
+      await page.setViewportSize({ width: 1920, height: 1080 });
+      await page.goto('/calendar', { waitUntil: 'networkidle' });
+      await expect(page.locator('[data-list-day="2029-10-15"]')).toContainText('List e2e', { timeout: 60_000 });
+      const wall = await measure();
+      expect(wall.weeks, 'two week columns at wall width').toHaveLength(2);
+      const [a, b] = wall.weeks as Array<{ left: number; right: number; top: number }>;
+      expect(b!.left, 'next week sits to the right of this week').toBeGreaterThanOrEqual(a!.right - 0.5);
+      expect(Math.abs(b!.top - a!.top), 'both weeks start at the same height').toBeLessThanOrEqual(1);
+      expect(wall.folded, 'next Sunday and Monday fold into one line').not.toBeNull();
+      expect(wall.foldedRows, 'folded days draw no rows of their own').toEqual([]);
+      // One line of text and its padding, at the 20px wall root.
+      expect(wall.folded!.height).toBeLessThanOrEqual(36);
+      // A day with one event: one event line, no stacked month under the date.
+      // It was 74px at 14px root before #671.
+      expect(wall.monday!.height).toBeLessThanOrEqual(60);
+
+      await page.setViewportSize({ width: 1000, height: 900 });
+      await expect(page.locator('[data-list-week]')).toHaveCount(1);
+    } finally {
+      for (const id of created) await page.request.delete(`/api/events/${id}`);
+    }
+  });
+});

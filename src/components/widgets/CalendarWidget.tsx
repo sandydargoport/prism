@@ -112,9 +112,14 @@ export const CalendarWidget = React.memo(function CalendarWidget({
   const cardsMode = displayMode === 'cards';
   const { from: bucketsFrom, to: bucketsTo } = useMemo(() => {
     if (resolvedView === 'day') return { from: currentDate, to: currentDate };
-    if (resolvedView === 'list' || resolvedView === 'week') {
+    if (resolvedView === 'week') {
       const ws = startOfWeek(currentDate, { weekStartsOn });
       return { from: ws, to: endOfWeek(currentDate, { weekStartsOn }) };
+    }
+    if (resolvedView === 'list') {
+      // List shows next week too when the widget is wide (#671).
+      const ws = startOfWeek(currentDate, { weekStartsOn });
+      return { from: ws, to: addDays(ws, 13) };
     }
     if (resolvedView === 'multiWeek') {
       const ws = startOfWeek(currentDate, { weekStartsOn });

@@ -131,7 +131,7 @@ The calendar subpage and the dashboard widget offer the same seven views, except
 |---|---|
 | **Agenda** | A list of upcoming events. This is the default on mobile. |
 | **Day** | An hour-by-hour day with calendar columns side by side. |
-| **List** | A vertical week where each day stacks its events. Goes well with the notes column. |
+| **List** | Each day is a row of its events. A wide screen shows this week and next side by side; days with nothing on them fold into one line. With the notes column on, it is one week with a row per day. |
 | **Schedule** | The week as one tall column. Good for narrow displays. |
 | **2W** | Two weeks as a grid of days. |
 | **Month** | The usual calendar grid, drawn over six weeks. |
