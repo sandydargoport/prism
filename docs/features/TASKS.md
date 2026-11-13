@@ -38,7 +38,7 @@ Each Prism instance uses one provider.
 
 Sync runs both ways, and the newest change wins. It covers the title, the notes (which become the description), whether it is completed, and the due date.
 
-Microsoft To Do's steps (its sub-items) are **not** imported. Prism has no subtasks, so it skips them instead of folding them into the task. Attachments are not imported either.
+Microsoft To Do's steps come in as subtasks, indented under their task. A step has only a title and whether it is checked, and ticking one off in Prism checks it in To Do. Attachments are not imported.
 
 #### Google Tasks (bidirectional)
 
