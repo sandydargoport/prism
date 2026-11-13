@@ -10,7 +10,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 
-const alex = { id: 'm1', loginIndex: 0, name: 'Alex', color: '#3b82f6', role: 'parent', pinLength: 4, hasPin: true };
+const alex = { id: 'm1', loginIndex: 0, name: 'Alex', color: '#3b82f6', role: 'parent' as const, pinLength: 4, hasPin: true };
 jest.mock('@/components/providers', () => ({
   useFamily: () => ({ loading: false, members: [alex] }),
   useAuth: () => ({ setActiveUser: jest.fn() }),
