@@ -55,7 +55,7 @@ import { frameAll } from './frame-screenshots';
 import { SCENERY } from '../src/lib/scenery';
 import { freezeWeather } from './frozen-weather';
 import { LOOKS } from '../src/lib/looks';
-import { DEVICES, SCREENSHOTS, STAGE_LAYOUTS, themeOf, type CaptureSpec, type Stage } from './screenshot-specs';
+import { DEVICES, SCREENSHOTS, STAGE_LAYOUTS, scenerySource, themeOf, type CaptureSpec, type Stage } from './screenshot-specs';
 
 // Refuse to run against anything that is not a declared test database. This is
 // the same flag e2e/*.spec.ts gate on. It is a deliberate choice rather than a
@@ -296,7 +296,13 @@ async function captureOnce(spec: CaptureSpec): Promise<void> {
     timezoneId: TIMEZONE,
     reducedMotion: 'reduce',
     colorScheme: themeOf(spec) === 'dark' ? 'dark' : 'light',
+    // The service worker would answer the scenery from its own cache, out of
+    // reach of the route below.
+    serviceWorkers: spec.photo ? 'block' : 'allow',
   });
+  // The scenery opens on its first photo; serve the shot's chosen landscape
+  // in its place (#1142), so each shot gets the one that suits it.
+  if (spec.photo) await context.route(`**${SCENERY[0]!.src}`, (route) => route.fulfill({ path: scenerySource(spec.photo!) }));
 
   const page = await context.newPage();
   // This screen's own auto-hide choice, so the rail and bar hide whatever the

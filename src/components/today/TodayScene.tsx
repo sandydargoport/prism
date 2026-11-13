@@ -147,6 +147,17 @@ export function TodayScene({
       data-today-night={night || undefined}
     >
       {night && <div className="absolute inset-0 bg-black/60" aria-hidden data-today-veil />}
+      {/* A soft shade behind the day on the left (#1186): the photo's own shade
+          darkens the corners and the foot, and over a bright sky or fog the
+          smaller lines of Next and Later today washed out. Night has its veil. */}
+      {!night && (
+        <div
+          className="pointer-events-none absolute inset-0"
+          aria-hidden
+          data-today-shade
+          style={{ backgroundImage: 'radial-gradient(50% 55% at 0% 45%, rgb(0 0 0 / 0.38), transparent)' }}
+        />
+      )}
       {/* Everything drawn on the photo, in one layer that drifts while idle. */}
       <div ref={driftRef} className="absolute inset-0 duration-1000" data-today-drift>
       {isPartShown(parts, 'clock') && (

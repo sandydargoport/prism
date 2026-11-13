@@ -81,7 +81,7 @@ async function writeFirstScreen(createdBy: string) {
 
   const [anyLayout] = await db.select({ id: layouts.id }).from(layouts).limit(1);
   if (!anyLayout) {
-    // A new install starts on Today, the built-in dashboard (#1151).
+    // A new install starts on Glance, the built-in dashboard (#1151, #1187).
     for (const l of newLookLayouts()) {
       await db.insert(layouts).values({
         name: l.name,

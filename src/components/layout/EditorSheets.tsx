@@ -25,7 +25,7 @@ import { loadBase } from '@/lib/displays/displaySettingsSync';
 import { remoteEditHost } from '@/lib/displays/remoteEdit';
 import { ScreenAttentionPanel } from '@/app/settings/sections/ScreenAttentionPanel';
 
-/** Today is the one built-in dashboard: it cannot be deleted, only edited and reset. */
+/** Glance is the one built-in dashboard: it cannot be deleted, only edited and reset. */
 export function isBuiltIn(d: { view?: string | null } | undefined): boolean {
   return d?.view === 'today';
 }
@@ -65,7 +65,7 @@ export function DashboardSheet({
         {!hasToday && onAddToday && (
           <li>
             <button type="button" onClick={onAddToday} className={row} data-dashboard-row="today-add">
-              <span className="flex-1 italic" style={{ fontFamily: 'var(--font-display)' }}>Today</span>
+              <span className="flex-1 italic" style={{ fontFamily: 'var(--font-display)' }}>Glance</span>
               <BuiltInMark />
               <span className="text-caption text-muted-foreground">Add</span>
             </button>
@@ -107,7 +107,7 @@ export function DashboardSheet({
           type="button"
           onClick={onDelete}
           disabled={builtIn || allDashboards.length <= 1}
-          title={builtIn ? 'Today is built in and cannot be deleted' : undefined}
+          title={builtIn ? 'Glance is built in and cannot be deleted' : undefined}
           className={cn(action, !builtIn && 'text-destructive')}
           data-dashboard-delete
         >
@@ -116,7 +116,7 @@ export function DashboardSheet({
       </div>
       {builtIn && (
         <p className="m-0 text-caption text-muted-foreground" data-built-in-note>
-          Today is built in. You can change what it shows and reset it, but not delete it. Make a copy to arrange one of your own.
+          Glance is built in. You can change what it shows and reset it, but not delete it. Make a copy to arrange one of your own.
         </p>
       )}
     </div>

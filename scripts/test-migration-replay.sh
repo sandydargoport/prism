@@ -460,6 +460,42 @@ rm -rf "$OLD_DIR"
 log "Scenario H: PASS"
 
 # ----------------------------------------------------------------------------
+# Scenario I: 0051 names the built-in dashboard Glance (#1187).
+# The built-in (view today) still called Today becomes Glance, with its slug
+# kept. One the household renamed, and a grid dashboard someone called Today,
+# keep their names. A replay changes nothing more.
+# ----------------------------------------------------------------------------
+log "=== Scenario I: 0051 Today becomes Glance ==="
+
+psql_exec "
+INSERT INTO layouts (name, slug, widgets, view) VALUES
+  ('Today', 'today', '[]'::jsonb, 'today'),
+  ('I mornings', 'i-mornings', '[]'::jsonb, 'today'),
+  ('Today', 'i-grid-today', '[]'::jsonb, 'grid');
+DELETE FROM public.__prism_migrations WHERE name <> '0000_upgrade';
+"
+run_migrate
+names() {
+  docker exec "$CONTAINER_NAME" psql -U prism -d prism -t -A -c \
+    "SELECT string_agg(slug || '|' || view || '|' || name, E'\n' ORDER BY slug) FROM layouts WHERE slug IN ('today', 'i-mornings', 'i-grid-today')"
+}
+WANT=$'i-grid-today|grid|Today\ni-mornings|today|I mornings\ntoday|today|Glance'
+GOT=$(names)
+if [ "$GOT" != "$WANT" ]; then
+  echo "ERROR: 0051 named the dashboards:" >&2
+  echo "$GOT" >&2
+  exit 1
+fi
+psql_exec "DELETE FROM public.__prism_migrations WHERE name <> '0000_upgrade';"
+run_migrate
+if [ "$(names)" != "$WANT" ]; then
+  echo "ERROR: replaying 0051 changed the names again" >&2
+  exit 1
+fi
+
+log "Scenario I: PASS"
+
+# ----------------------------------------------------------------------------
 echo
 echo "=========================================="
 echo "  All migration-replay scenarios passed"

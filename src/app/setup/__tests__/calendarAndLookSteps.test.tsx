@@ -78,9 +78,9 @@ describe('CompleteStep', () => {
     render(<CompleteStep firstRun />);
     const pages = document.querySelectorAll('[data-setup-front-page]');
     expect([...pages].map((p) => p.getAttribute('data-setup-front-page'))).toEqual(['today']);
-    expect(screen.getByText('Today')).toBeTruthy();
+    expect(screen.getByText('Glance')).toBeTruthy();
     expect(screen.queryByText('Calendar')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Start on Today' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Start on Glance' })).toBeTruthy();
   });
 
   it('running setup again sets up no pages, so it shows none', () => {

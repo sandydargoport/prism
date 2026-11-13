@@ -8,9 +8,9 @@ Show your iCloud calendars in Prism. This page also lists what iCloud does not l
 
 | iCloud service | Supported? | How / why not |
 |---|---|---|
-| **Calendars** | ✅ Yes | CalDAV (`caldav.icloud.com`): Prism reads events and can delete a single event upstream. Creating and editing events from Prism isn't connected yet. See [Calendar setup](CALENDAR.md#apple-icloud-caldav-private-calendars-reminders-alpha). |
+| **Calendars** | ✅ Yes | CalDAV (`caldav.icloud.com`): Prism reads events, and events you create or edit in Prism change in iCloud too. Deleting a single event deletes it in iCloud; deleting a repeating series removes it from Prism only. See [Calendar setup](CALENDAR.md#apple-icloud-caldav-private-calendars-reminders-alpha). |
 | **Contacts** (incl. birthdays) | ✅ Yes, read-only | CardDAV (`contacts.icloud.com`). The planned [family contacts page](https://github.com/sandydargoport/prism/issues/75) will use it. |
-| **Reminders / Tasks** | ❌ No | Apple moved Reminders off CalDAV-VTODO years ago. iCloud Reminders now live only in CloudKit, which has no public web API. |
+| **Reminders / Tasks** | ⚠️ Only older lists, read-only | A Reminders list still on CalDAV syncs into Prism's Tasks, one way. Apple has moved most lists to CloudKit, which has no public web API, and those do not come through. |
 | **Notes** | ❌ No | iCloud Notes have always lived only in CloudKit, with no IMAP-style or web API. |
 | **Photos (shared album)** | ❌ No (was attempted) | In 2024 to 2025 Apple moved public shares from the old `sharedstreams` endpoint to a new "iCloud Links" backend in CloudKit. The old endpoint returns 404 for current shares, nothing public replaces it, and as of mid-2026 no community library works with the new backend. See [photo source setup](PHOTOS.md#sources) for the OneDrive workaround. |
 | **Photos (full library)** | ❌ No | This would need CloudKit Web, which needs an Apple Developer subscription, a container ID for each app and a consent step for each user. That doesn't suit a self-hosted family dashboard. |

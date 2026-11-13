@@ -40,7 +40,7 @@ import { Button, Badge, UserAvatar } from '@/components/ui';
  */
 // Chore type imported from shared types
 import type { Chore } from '@/types';
-import { isLate, formatReminderTime } from '@/lib/utils/reminders';
+import { isLate, formatReminderTime, petTickLine } from '@/lib/utils/reminders';
 import { useLocalDateKey } from '@/lib/hooks/useLocalDateKey';
 export type { Chore };
 
@@ -327,6 +327,10 @@ function ChoreItem({
               <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: chore.pet.color }} />
               {chore.pet.name}
             </span>
+          )}
+          {/* Who did it today and when (#856), so nobody feeds the dog twice. */}
+          {chore.pet && petTickLine(chore.todayTicks) && (
+            <span className="text-xs text-muted-foreground" data-chore-pet-ticks>{petTickLine(chore.todayTicks)}</span>
           )}
 
           {/* Frequency */}
