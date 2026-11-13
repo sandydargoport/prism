@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { AlertTriangle, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { AlertTriangle, Plus, RefreshCw, Trash2, Upload } from 'lucide-react';
 
 /**
  * Generic review-and-approve modal for the sync framework. Entity-agnostic:
@@ -19,8 +19,10 @@ import { AlertTriangle, Plus, RefreshCw, Trash2 } from 'lucide-react';
  * hands back the user's selection. Reused across recipes, tasks, shopping, etc.
  */
 
+export type SyncReviewKind = 'add' | 'update' | 'delete' | 'push-add' | 'push-update' | 'push-delete';
+
 export interface SyncReviewChange {
-  kind: 'add' | 'update' | 'delete';
+  kind: SyncReviewKind;
   externalId: string;
   label: string;
   reason: string;
@@ -33,8 +35,14 @@ export interface SyncReviewModalProps {
   entityLabel?: string;
   changes: SyncReviewChange[];
   counts: { add: number; update: number; delete: number };
+  /** Changes made in Prism to send to the source (#1206). */
+  pushCounts?: { add: number; update: number; delete: number };
+  /** The source's name for the send groups, e.g. "Tandoor". */
+  remoteName?: string;
   massDeleteGuardTripped?: boolean;
   withheldDeletes?: number;
+  pushDeleteGuardTripped?: boolean;
+  withheldPushDeletes?: number;
   /** Optional informational notes (e.g. side-effects) shown above the list. */
   notes?: string[];
   applying?: boolean;
@@ -42,11 +50,16 @@ export interface SyncReviewModalProps {
   onClose: () => void;
 }
 
-const KIND_META = {
+const KIND_META = (remote: string) => ({
   add: { label: 'New', icon: Plus, cls: 'text-success' },
   update: { label: 'Changed', icon: RefreshCw, cls: 'text-blue-600 dark:text-blue-400' },
   delete: { label: 'Removed in source', icon: Trash2, cls: 'text-destructive' },
-} as const;
+  'push-add': { label: `Add to ${remote}`, icon: Upload, cls: 'text-success' },
+  'push-update': { label: `Change in ${remote}`, icon: Upload, cls: 'text-blue-600 dark:text-blue-400' },
+  'push-delete': { label: `Remove from ${remote}`, icon: Upload, cls: 'text-destructive' },
+}) as const;
+
+const ORDER: SyncReviewKind[] = ['add', 'update', 'delete', 'push-add', 'push-update', 'push-delete'];
 
 const keyOf = (c: SyncReviewChange) => `${c.kind}:${c.externalId}`;
 
@@ -55,8 +68,12 @@ export function SyncReviewModal({
   entityLabel = 'items',
   changes,
   counts,
+  pushCounts,
+  remoteName = 'the source',
   massDeleteGuardTripped,
   withheldDeletes = 0,
+  pushDeleteGuardTripped,
+  withheldPushDeletes = 0,
   notes = [],
   applying,
   onApply,
@@ -76,14 +93,12 @@ export function SyncReviewModal({
     });
   };
 
+  const meta = KIND_META(remoteName);
   const grouped = useMemo(
-    () => ({
-      add: changes.filter((c) => c.kind === 'add'),
-      update: changes.filter((c) => c.kind === 'update'),
-      delete: changes.filter((c) => c.kind === 'delete'),
-    }),
+    () => Object.fromEntries(ORDER.map((k) => [k, changes.filter((c) => c.kind === k)])) as Record<SyncReviewKind, SyncReviewChange[]>,
     [changes],
   );
+  const toSend = pushCounts ? pushCounts.add + pushCounts.update + pushCounts.delete : 0;
 
   const nothing = changes.length === 0;
   const selectedList = Array.from(selected).map((k) => {
@@ -105,8 +120,9 @@ export function SyncReviewModal({
             </p>
           ) : (
             <p className="text-sm text-muted-foreground">
-              {counts.add} new · {counts.update} changed · {counts.delete} removed. Adds and
-              updates are pre-selected; removals are opt-in.
+              {counts.add} new · {counts.update} changed · {counts.delete} removed
+              {toSend > 0 && <> · {toSend} to send to {remoteName}</>}. Adds and updates are
+              pre-selected; removals are opt-in. Nothing is sent to {remoteName} unless it is ticked.
             </p>
           )}
 
@@ -129,21 +145,32 @@ export function SyncReviewModal({
             </div>
           )}
 
+          {pushDeleteGuardTripped && (
+            <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm">
+              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-warning" />
+              <span>
+                {withheldPushDeletes} {entityLabel} look removed in Prism. Removing that many from{' '}
+                {remoteName} at once is held back, so a slip in Prism can&apos;t empty it. Remove
+                them in {remoteName} itself if that was meant.
+              </span>
+            </div>
+          )}
+
           {!nothing && (
             <ScrollArea className="max-h-[50vh] pr-3">
               <div className="space-y-3">
-                {(['add', 'update', 'delete'] as const).map(
+                {ORDER.map(
                   (kind) =>
                     grouped[kind].length > 0 && (
-                      <div key={kind} className="space-y-1">
+                      <div key={kind} className="space-y-1" data-review-group={kind}>
                         <div
-                          className={`flex items-center gap-1.5 text-xs font-medium ${KIND_META[kind].cls}`}
+                          className={`flex items-center gap-1.5 text-xs font-medium ${meta[kind].cls}`}
                         >
                           {(() => {
-                            const Icon = KIND_META[kind].icon;
+                            const Icon = meta[kind].icon;
                             return <Icon className="h-3.5 w-3.5" />;
                           })()}
-                          {KIND_META[kind].label} ({grouped[kind].length})
+                          {meta[kind].label} ({grouped[kind].length})
                         </div>
                         {grouped[kind].map((c) => (
                           <label

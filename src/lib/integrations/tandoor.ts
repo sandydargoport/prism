@@ -313,6 +313,114 @@ export async function fetchTandoorMealPlan(
   return out.slice(0, MAX_MEAL_PLAN);
 }
 
+// --- Write-back (#1206): meal-plan entries. Needs a token with `write`. ---
+
+/** A Tandoor meal type (Breakfast, Dinner, ...) as /api/meal-type/ lists it. */
+export interface TandoorMealType {
+  id: number;
+  name: string;
+  /** Naive default time, "18:00:00", or null. */
+  time?: string | null;
+}
+
+/** What Prism sends for one meal-plan entry. */
+export interface TandoorMealPlanWrite {
+  /** The meal's name (Tandoor needs a title or a recipe). */
+  title: string;
+  /** Tandoor recipe id, when the meal's recipe came from this server. */
+  recipeId: number | null;
+  servings: number;
+  note: string;
+  /** When it is, as an instant (ISO with offset or Z). */
+  fromDate: string;
+  /** An existing meal type's id, or a name Tandoor will add as a new type. */
+  mealType: { id: number } | { name: string };
+}
+
+async function writeOrThrow(res: Response, what: string): Promise<void> {
+  if (res.ok) return;
+  if (res.status === 401 || res.status === 403) {
+    throw new Error(`Tandoor refused to ${what}: the token needs the write scope.`);
+  }
+  let detail = '';
+  try { detail = JSON.stringify(await res.json()).slice(0, 200); } catch { /* no body */ }
+  throw new Error(`Tandoor could not ${what}: ${res.status} ${res.statusText}${detail ? ` ${detail}` : ''}`);
+}
+
+function mealPlanBody(entry: TandoorMealPlanWrite): Record<string, unknown> {
+  return {
+    title: entry.title,
+    recipe: entry.recipeId, // a plain id is accepted for a nested object
+    servings: entry.servings,
+    note: entry.note,
+    from_date: entry.fromDate,
+    to_date: entry.fromDate,
+    meal_type: 'id' in entry.mealType ? entry.mealType.id : entry.mealType,
+  };
+}
+
+/** The server's meal types, for matching Prism's breakfast/lunch/dinner/snack. */
+export async function fetchTandoorMealTypes(serverUrl: string, token: string): Promise<TandoorMealType[]> {
+  validatePublicUrl(serverUrl);
+  const res = await safeFetch(`${baseUrl(serverUrl)}/api/meal-type/?page_size=100`, { headers: authHeaders(token) });
+  if (!res.ok) throw new Error(`Failed to list Tandoor meal types: ${res.status} ${res.statusText}`);
+  const data = (await res.json()) as unknown;
+  const list = Array.isArray(data) ? data : ((data as { results?: unknown[] }).results ?? []);
+  return (list as TandoorMealType[]).filter((t) => t && typeof t.id === 'number' && typeof t.name === 'string');
+}
+
+/** Create a meal-plan entry; returns it as Tandoor stored it. */
+export async function createTandoorMealPlanEntry(
+  serverUrl: string,
+  token: string,
+  entry: TandoorMealPlanWrite,
+): Promise<TandoorMealPlanEntry> {
+  validatePublicUrl(serverUrl);
+  const res = await safeFetch(`${baseUrl(serverUrl)}/api/meal-plan/`, {
+    method: 'POST',
+    headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify(mealPlanBody(entry)),
+  });
+  await writeOrThrow(res, 'add the meal');
+  return storedEntry(await res.json(), 'added');
+}
+
+function storedEntry(data: unknown, verb: string): TandoorMealPlanEntry {
+  const e = data as TandoorMealPlanEntry | null;
+  if (!e || typeof e.id !== 'number' || typeof e.from_date !== 'string') {
+    throw new Error(`Tandoor ${verb} the meal but did not return it.`);
+  }
+  return e;
+}
+
+/** Replace an entry's fields with Prism's (a move, a new recipe, servings). */
+export async function updateTandoorMealPlanEntry(
+  serverUrl: string,
+  token: string,
+  id: string,
+  entry: TandoorMealPlanWrite,
+): Promise<TandoorMealPlanEntry> {
+  validatePublicUrl(serverUrl);
+  const res = await safeFetch(`${baseUrl(serverUrl)}/api/meal-plan/${encodeURIComponent(id)}/`, {
+    method: 'PATCH',
+    headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify(mealPlanBody(entry)),
+  });
+  await writeOrThrow(res, 'change the meal');
+  return storedEntry(await res.json(), 'changed');
+}
+
+/** Remove an entry. One that is already gone counts as removed. */
+export async function deleteTandoorMealPlanEntry(serverUrl: string, token: string, id: string): Promise<void> {
+  validatePublicUrl(serverUrl);
+  const res = await safeFetch(`${baseUrl(serverUrl)}/api/meal-plan/${encodeURIComponent(id)}/`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  if (res.status === 404) return;
+  await writeOrThrow(res, 'remove the meal');
+}
+
 /**
  * Fetch + normalize a single Tandoor recipe by id. Used when a meal-plan entry
  * references a recipe that isn't imported yet (auto-import on apply). Returns

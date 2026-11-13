@@ -9,7 +9,15 @@
  * pieces (diff computation, the review UI, apply orchestration) stay shared.
  */
 
-export type SyncChangeKind = 'add' | 'update' | 'delete';
+/**
+ * add / update / delete bring a change from the source into Prism (pull).
+ * The push- kinds send a change made in Prism back to the source (#1206):
+ * only for a source whose token can write, and only after review, like a pull.
+ */
+export type SyncChangeKind = 'add' | 'update' | 'delete' | 'push-add' | 'push-update' | 'push-delete';
+
+export const PUSH_KINDS: readonly SyncChangeKind[] = ['push-add', 'push-update', 'push-delete'];
+export const isPushKind = (k: SyncChangeKind) => PUSH_KINDS.includes(k);
 
 /** A remote item, already normalized into the local insert shape. */
 export interface RemoteItem<TPayload> {
@@ -46,7 +54,10 @@ export interface LocalItem {
 /** One proposed change in a diff. */
 export interface SyncChange<TPayload> {
   kind: SyncChangeKind;
-  /** Remote id (the change key). For deletes, the local row's externalId. */
+  /**
+   * Remote id (the change key). For deletes, the local row's externalId. A
+   * push-add has no remote id yet, so its key is `local:<localId>`.
+   */
   externalId: string;
   label: string;
   /** Present for update / delete. */
@@ -64,6 +75,8 @@ export interface SyncChange<TPayload> {
 export interface SyncDiff<TPayload> {
   changes: SyncChange<TPayload>[];
   counts: { add: number; update: number; delete: number };
+  /** Changes made in Prism to send back, when the source can write. */
+  pushCounts: { add: number; update: number; delete: number };
   /**
    * True when the run would have deleted an unusually large share of the
    * synced set — the deletes are withheld and must be reviewed/re-run.
@@ -71,6 +84,12 @@ export interface SyncDiff<TPayload> {
   massDeleteGuardTripped: boolean;
   /** How many deletes were withheld by the guard (0 when it didn't trip). */
   withheldDeletes: number;
+  /**
+   * The same guard for removals made in Prism: sending many at once is held
+   * back, so a wiped local table cannot empty the source's plan.
+   */
+  pushDeleteGuardTripped: boolean;
+  withheldPushDeletes: number;
 }
 
 /**
@@ -87,4 +106,17 @@ export interface EntitySyncAdapter<TPayload> {
   applyAdd(sourceId: string, change: SyncChange<TPayload>): Promise<void>;
   applyUpdate(sourceId: string, change: SyncChange<TPayload>): Promise<void>;
   applyDelete(sourceId: string, change: SyncChange<TPayload>): Promise<void>;
+  /** Sending Prism's changes back (#1206). Absent: the entity only pulls. */
+  push?: EntityPushAdapter<TPayload>;
+}
+
+export interface EntityPushAdapter<TPayload> {
+  /** Rows made in Prism that could be sent to the source as new entries. */
+  loadCandidates(sourceId: string): Promise<LocalItem[]>;
+  /** Create the entry in the source and link the local row to it. */
+  pushAdd(sourceId: string, change: SyncChange<TPayload>): Promise<void>;
+  /** Send the local row's current state to its entry in the source. */
+  pushUpdate(sourceId: string, change: SyncChange<TPayload>): Promise<void>;
+  /** Remove the entry from the source (the local row is already gone). */
+  pushDelete(sourceId: string, change: SyncChange<TPayload>): Promise<void>;
 }

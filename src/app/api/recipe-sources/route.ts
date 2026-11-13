@@ -8,12 +8,8 @@ import { decrypt, encrypt } from '@/lib/utils/crypto';
 import { logError } from '@/lib/utils/logError';
 import { UnsafeUrlError } from '@/lib/integrations/tandoor';
 import { checkProviderWriteAccess, isSupportedProvider, testProviderConnection } from '@/lib/sync/adapters/registry';
+import { readSourceConfig, type RecipeSourceConfig } from '@/lib/sync/sourceConfig';
 
-/** What Prism knows about a source's token, kept in providerConfig (#1205). */
-interface RecipeSourceConfig {
-  canWrite?: boolean;
-  writeCheckedAt?: string;
-}
 
 const RECHECK_NO_AFTER_MS = 24 * 60 * 60 * 1000;
 
@@ -49,7 +45,7 @@ export async function GET() {
     .orderBy(desc(recipeSources.createdAt));
 
   const sources = await Promise.all(rows.map(async ({ accessToken, providerConfig, ...row }) => {
-    const cfg = (providerConfig as RecipeSourceConfig | null) ?? {};
+    const cfg = readSourceConfig(providerConfig);
     let canWrite = cfg.canWrite;
     // A "no" is asked again after a day: it may have been a server that was
     // down for a moment, not a token that reads only.

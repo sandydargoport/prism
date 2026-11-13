@@ -254,4 +254,90 @@ export async function fetchMealieMealPlan(
   return out.slice(0, MAX_MEAL_PLAN);
 }
 
+// --- Write-back (#1206): meal-plan entries. ---
+
+/** What Prism sends for one Mealie meal-plan entry (date-only, no time). */
+export interface MealieMealPlanWrite {
+  date: string; // YYYY-MM-DD
+  entryType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  title: string;
+  text: string;
+  /** Mealie recipe id (uuid), when the meal's recipe came from this server. */
+  recipeId: string | null;
+}
+
+async function writeOrThrow(res: Response, what: string): Promise<void> {
+  if (res.ok) return;
+  if (res.status === 401 || res.status === 403) {
+    throw new Error(`Mealie refused to ${what}: check the token in Mealie → Profile → API Tokens.`);
+  }
+  let detail = '';
+  try { detail = JSON.stringify(await res.json()).slice(0, 200); } catch { /* no body */ }
+  throw new Error(`Mealie could not ${what}: ${res.status} ${res.statusText}${detail ? ` ${detail}` : ''}`);
+}
+
+/** Create a meal-plan entry in the token's household; returns it as stored. */
+export async function createMealieMealPlanEntry(
+  serverUrl: string,
+  token: string,
+  entry: MealieMealPlanWrite,
+): Promise<MealieMealPlanEntry> {
+  validatePublicUrl(serverUrl);
+  const res = await safeFetch(`${baseUrl(serverUrl)}/api/households/mealplans`, {
+    method: 'POST',
+    headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify(entry),
+  });
+  await writeOrThrow(res, 'add the meal');
+  return storedMealieEntry(await res.json(), 'added');
+}
+
+function storedMealieEntry(data: unknown, verb: string): MealieMealPlanEntry {
+  const e = data as MealieMealPlanEntry | null;
+  if (!e || typeof e.id !== 'number' || typeof e.date !== 'string') {
+    throw new Error(`Mealie ${verb} the meal but did not return it.`);
+  }
+  return e;
+}
+
+/**
+ * Change an entry. Mealie's update replaces the whole entry and needs its
+ * group and user, so the entry is read first and sent back with Prism's fields.
+ */
+export async function updateMealieMealPlanEntry(
+  serverUrl: string,
+  token: string,
+  id: string,
+  entry: MealieMealPlanWrite,
+): Promise<MealieMealPlanEntry> {
+  validatePublicUrl(serverUrl);
+  const url = `${baseUrl(serverUrl)}/api/households/mealplans/${encodeURIComponent(id)}`;
+  const current = await safeFetch(url, { headers: authHeaders(token) });
+  await writeOrThrow(current, 'find the meal to change');
+  const existing = (await current.json()) as Record<string, unknown>;
+  const res = await safeFetch(url, {
+    method: 'PUT',
+    headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      id: existing.id,
+      groupId: existing.groupId,
+      userId: existing.userId,
+      ...entry,
+    }),
+  });
+  await writeOrThrow(res, 'change the meal');
+  return storedMealieEntry(await res.json(), 'changed');
+}
+
+/** Remove an entry. One that is already gone counts as removed. */
+export async function deleteMealieMealPlanEntry(serverUrl: string, token: string, id: string): Promise<void> {
+  validatePublicUrl(serverUrl);
+  const res = await safeFetch(`${baseUrl(serverUrl)}/api/households/mealplans/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  if (res.status === 404) return;
+  await writeOrThrow(res, 'remove the meal');
+}
+
 export { UnsafeUrlError };

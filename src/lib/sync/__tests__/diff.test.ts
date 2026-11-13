@@ -146,3 +146,66 @@ describe('computeSyncDiff — combined', () => {
     expect(d.counts).toEqual({ add: 1, update: 1, delete: 1 });
   });
 });
+
+describe('computeSyncDiff — sending Prism changes back (#1206)', () => {
+  const PUSH = (known: string[] = [], candidates: LocalItem[] = []): ComputeDiffOptions => ({
+    lastSynced: T1,
+    push: { candidates, knownExternalIds: new Set(known) },
+  });
+
+  it('sends a meal moved in Prism since the last sync instead of pulling the old one back', () => {
+    // No timestamps (meal plans): the two differ by fingerprint, Prism's row is newer than the sync.
+    const d = computeSyncDiff([remote('r1', null, 'Tacos', 'tue')], [local('l1', 'r1', T2, 'Tacos', 'wed')], PUSH());
+    expect(d.changes).toEqual([expect.objectContaining({ kind: 'push-update', externalId: 'r1', localId: 'l1', defaultChecked: true })]);
+    expect(d.pushCounts).toEqual({ add: 0, update: 1, delete: 0 });
+    expect(d.counts.update).toBe(0);
+  });
+
+  it('still pulls a change made in the source when Prism has not touched the meal', () => {
+    const d = computeSyncDiff([remote('r1', null, 'Tacos', 'tue')], [local('l1', 'r1', T0, 'Tacos', 'wed')], PUSH());
+    expect(d.changes[0]).toMatchObject({ kind: 'update' });
+  });
+
+  it('without a token that writes, a Prism edit is pulled over as before', () => {
+    const d = computeSyncDiff([remote('r1', null, 'Tacos', 'tue')], [local('l1', 'r1', T2, 'Tacos', 'wed')], OPTS());
+    expect(d.changes[0]).toMatchObject({ kind: 'update' });
+    expect(d.pushCounts).toEqual({ add: 0, update: 0, delete: 0 });
+  });
+
+  it('a source that keeps timestamps and is newer still wins over a Prism edit', () => {
+    const later = new Date('2026-07-25T00:00:00Z');
+    const d = computeSyncDiff([remote('r1', later)], [local('l1', 'r1', T2)], PUSH());
+    expect(d.changes[0]).toMatchObject({ kind: 'update' });
+  });
+
+  it('sends a removal for an entry Prism had at the last sync and no longer has, unticked', () => {
+    const d = computeSyncDiff([remote('r1', null, 'Soup')], [], PUSH(['r1']));
+    expect(d.changes).toEqual([expect.objectContaining({ kind: 'push-delete', externalId: 'r1', defaultChecked: false })]);
+  });
+
+  it('pulls an entry Prism never had as new, even with a token that writes', () => {
+    const d = computeSyncDiff([remote('r1', null, 'Soup')], [], PUSH([]));
+    expect(d.changes[0]).toMatchObject({ kind: 'add' });
+  });
+
+  it('offers meals made in Prism as new entries, pre-ticked only when made since the last sync', () => {
+    const d = computeSyncDiff([], [], PUSH([], [local('n1', null, T2, 'Pasta'), local('n2', null, T0, 'Curry')]));
+    expect(d.changes).toEqual([
+      expect.objectContaining({ kind: 'push-add', externalId: 'local:n1', localId: 'n1', defaultChecked: true }),
+      expect.objectContaining({ kind: 'push-add', externalId: 'local:n2', localId: 'n2', defaultChecked: false }),
+    ]);
+  });
+
+  it('on a first sync nothing to send is pre-ticked', () => {
+    const d = computeSyncDiff([], [], { lastSynced: null, push: { candidates: [local('n1', null, T2)], knownExternalIds: new Set() } });
+    expect(d.changes[0]).toMatchObject({ kind: 'push-add', defaultChecked: false });
+  });
+
+  it('holds back many removals made in Prism at once', () => {
+    const ids = Array.from({ length: 12 }, (_, i) => `r${i}`);
+    const d = computeSyncDiff(ids.map((id) => remote(id, null)), [], PUSH(ids));
+    expect(d.pushDeleteGuardTripped).toBe(true);
+    expect(d.withheldPushDeletes).toBe(12);
+    expect(d.changes.filter((c) => c.kind === 'push-delete')).toEqual([]);
+  });
+});

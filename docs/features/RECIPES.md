@@ -68,6 +68,23 @@ If you already keep your recipes in [Tandoor](https://tandoor.dev/) or [Mealie](
 - Each sync shows you a list of changes to approve first. New and changed recipes are ticked already. Removals are only made if you tick them, and a guard stops a wrongly set up source from deleting your whole library in one go.
 - Running the sync again is **idempotent**, meaning it gives the same result however often you run it: recipes you already imported are matched and updated in place, so you never get a second copy.
 
+#### Send meal-plan changes back
+
+*Meals → Add → Sync meal plan…*, on a server whose card says **Reads and writes**.
+
+The meal-plan sync also lists what changed in Prism since the last sync, to send to Tandoor or Mealie. Nothing is sent unless it is ticked.
+
+- **Add to …**: a meal planned in Prism from today on that the other app does not have. It is ticked when it was planned since the last sync; older ones, and everything on the first sync, start unticked. Once sent, it is linked, so it is offered only once.
+- **Change in …**: a synced meal moved to another day or meal, or renamed, in Prism since the last sync. Prism's version is sent instead of the other app's being pulled over it.
+- **Remove from …**: a synced meal deleted in Prism. Unticked to start with; removing many at once is held back, so a slip in Prism cannot empty the other app's plan.
+
+Details:
+
+- In Tandoor a meal goes under the meal type of the same kind (Breakfast, Lunch, Dinner, a snack or dessert type). If there is none, Tandoor adds that type. The time is the meal's own, or else the meal type's.
+- Mealie plans have no time of day or servings, so Prism keeps its own for those.
+- A meal linked to a recipe that came from the same server is sent with that recipe; otherwise it goes as a titled entry.
+- A meal's time of day is not compared between the two apps, so changing only the time in either one does not show as a change.
+
 ### Per-recipe photo upload
 
 Each recipe can have its own photo. In the recipe form you can choose:
