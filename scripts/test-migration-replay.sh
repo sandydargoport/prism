@@ -496,6 +496,28 @@ fi
 log "Scenario I: PASS"
 
 # ----------------------------------------------------------------------------
+# Scenario K: 0053 lets a task have subtasks (#1200).
+# A subtask points at its parent; deleting the parent deletes the subtasks,
+# and leaves every other task alone. A replay changes nothing.
+# ----------------------------------------------------------------------------
+log "=== Scenario K: 0053 subtasks go with their parent ==="
+
+psql_exec "
+INSERT INTO tasks (id, title) VALUES ('00000000-0000-0000-0000-00000000a001', 'K parent'), ('00000000-0000-0000-0000-00000000a009', 'K other');
+INSERT INTO tasks (title, parent_id) VALUES ('K sub 1', '00000000-0000-0000-0000-00000000a001'), ('K sub 2', '00000000-0000-0000-0000-00000000a001');
+DELETE FROM public.__prism_migrations WHERE name <> '0000_upgrade';
+"
+run_migrate
+psql_exec "DELETE FROM tasks WHERE id = '00000000-0000-0000-0000-00000000a001';"
+LEFT=$(docker exec "$CONTAINER_NAME" psql -U prism -d prism -t -A -c "SELECT string_agg(title, ',' ORDER BY title) FROM tasks WHERE title LIKE 'K %'")
+if [ "$LEFT" != "K other" ]; then
+  echo "ERROR: deleting a parent left '$LEFT' (want only K other)" >&2
+  exit 1
+fi
+
+log "Scenario K: PASS"
+
+# ----------------------------------------------------------------------------
 echo
 echo "=========================================="
 echo "  All migration-replay scenarios passed"

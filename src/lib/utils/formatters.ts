@@ -21,6 +21,7 @@ export function formatTaskRow(row: {
   completed: boolean;
   completedAt: Date | null;
   listId?: string | null;
+  parentId?: string | null;
   taskSourceId?: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -40,6 +41,7 @@ export function formatTaskRow(row: {
     completed: row.completed,
     completedAt: row.completedAt?.toISOString() || null,
     listId: row.listId || null,
+    parentId: row.parentId || null,
     taskSourceId: row.taskSourceId || null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),

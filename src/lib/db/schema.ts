@@ -13,6 +13,7 @@ import {
   date,
   index,
   uniqueIndex,
+  type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 import type { IdleBackground } from '../idleBackground';
@@ -312,6 +313,10 @@ export const tasks = pgTable('tasks', {
 
   // Which list this task belongs to (null = default/inbox)
   listId: uuid('list_id').references(() => taskLists.id, { onDelete: 'cascade' }),
+
+  // The task this one is a subtask of (#1200): a Google Tasks subtask or a
+  // To Do step. Deleting the parent deletes its subtasks, as Google does.
+  parentId: uuid('parent_id').references((): AnyPgColumn => tasks.id, { onDelete: 'cascade' }),
 
   assignedTo: uuid('assigned_to').references(() => users.id, { onDelete: 'set null' }),
 

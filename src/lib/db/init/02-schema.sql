@@ -722,6 +722,7 @@ CREATE TABLE IF NOT EXISTS public.tasks (
     title character varying(255) NOT NULL,
     description text,
     list_id uuid,
+    parent_id uuid,
     assigned_to uuid,
     due_date date,
     due_time character varying(5),

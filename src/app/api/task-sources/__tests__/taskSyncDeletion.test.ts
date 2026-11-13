@@ -204,3 +204,29 @@ describe('a task the provider is listing again', () => {
     );
   });
 });
+
+// #1200: a subtask that went with its parent is not one more task to review;
+// confirming the parent deletes it with the parent.
+describe('a parent that vanished with its subtasks', () => {
+  it('is the only one flagged', async () => {
+    localRows = [
+      syncedRow({ id: 'local-keep', externalId: 'keep' }),
+      syncedRow({ id: 'local-other', externalId: 'other' }),
+      syncedRow({ id: 'local-parent', externalId: 'parent' }),
+      syncedRow({ id: 'local-sub1', externalId: 'sub1', parentId: 'local-parent' }),
+      syncedRow({ id: 'local-sub2', externalId: 'sub2', parentId: 'local-parent' }),
+    ];
+    mockFetchTasks.mockResolvedValue([
+      { id: 'keep', title: 'A task', completed: false, updatedAt: LONG_AGO, dueDate: null, description: null, priority: null, completedAt: null },
+      { id: 'other', title: 'A task', completed: false, updatedAt: LONG_AGO, dueDate: null, description: null, priority: null, completedAt: null },
+    ]);
+
+    const res = await run();
+    const body = await res.json();
+
+    expect(deletedTasks()).toBe(false);
+    const flags = writes.filter((w) => w.op === 'update' && (w.payload as { pendingDeletion?: unknown }).pendingDeletion instanceof Date);
+    expect(flags).toHaveLength(1);
+    expect(body.flagged ?? body.result?.flagged).toBe(1);
+  });
+});
