@@ -64,8 +64,11 @@ interface PreviewResult {
   diffId: string;
   changes: SyncReviewChange[];
   counts: { add: number; update: number; delete: number };
+  pushCounts?: { add: number; update: number; delete: number };
   massDeleteGuardTripped: boolean;
   withheldDeletes: number;
+  pushDeleteGuardTripped?: boolean;
+  withheldPushDeletes?: number;
   notes?: string[];
 }
 
@@ -94,6 +97,7 @@ export function RecipeSyncModal({ entity, onClose, onSynced }: RecipeSyncModalPr
   // sync
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [activeSourceId, setActiveSourceId] = useState<string | null>(null);
+  const activeSource = sources.find((s) => s.id === activeSourceId);
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [applying, setApplying] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -180,7 +184,15 @@ export function RecipeSyncModal({ entity, onClose, onSynced }: RecipeSyncModalPr
         return;
       }
       const a = data.applied;
-      setResult(`Applied ${a.add} added, ${a.update} updated, ${a.delete} removed.`);
+      const sent = data.sent as { add: number; update: number; delete: number } | undefined;
+      const sentTotal = sent ? sent.add + sent.update + sent.delete : 0;
+      const remote = activeSource ? providerLabel(activeSource.provider) : 'the server';
+      const errors = Array.isArray(data.errors) && data.errors.length ? ` ${data.errors.length} could not be done: ${data.errors.join('; ')}` : '';
+      setResult(
+        `Applied ${a.add} added, ${a.update} updated, ${a.delete} removed.`
+        + (sentTotal ? ` Sent to ${remote}: ${sent!.add} added, ${sent!.update} changed, ${sent!.delete} removed.` : '')
+        + errors,
+      );
       setPreview(null);
       onSynced();
     } catch (err) {
@@ -197,8 +209,12 @@ export function RecipeSyncModal({ entity, onClose, onSynced }: RecipeSyncModalPr
         entityLabel={cfg.entityLabel}
         changes={preview.changes}
         counts={preview.counts}
+        pushCounts={preview.pushCounts}
+        remoteName={activeSource ? providerLabel(activeSource.provider) : undefined}
         massDeleteGuardTripped={preview.massDeleteGuardTripped}
         withheldDeletes={preview.withheldDeletes}
+        pushDeleteGuardTripped={preview.pushDeleteGuardTripped}
+        withheldPushDeletes={preview.withheldPushDeletes}
         notes={preview.notes}
         applying={applying}
         onApply={handleApply}
