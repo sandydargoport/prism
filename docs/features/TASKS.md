@@ -45,7 +45,7 @@ Microsoft To Do's steps (its sub-items) are **not** imported. Prism has no subta
 1. In *Settings → Integrations → Google* card, connect your account. This is the same Google sign-in used for Calendar, with Tasks access added.
 2. In the same card, choose which Google Tasks list goes with which Prism list.
 
-It works the same as Microsoft: both ways, newest change wins, and it syncs the title, notes, completed state and due date. Subtasks and attachments are not imported.
+It works the same as Microsoft: both ways, newest change wins, and it syncs the title, notes, completed state and due date. Subtasks come in too, indented under their task in the order Google keeps them, each with its own due date and notes, and ticking one off in Prism ticks it off in Google. Ticking a task leaves its subtasks as they are, as Google does. Attachments are not imported.
 
 **No public web address?** Google's browser sign-in has to send you back to an address Google accepts, and an install that only runs on your home network has none. Use *Connect without a public URL (advanced)* on the same card and paste a refresh token (a long-lived key that lets Prism sign in again on its own) made in Google's OAuth Playground, with `https://www.googleapis.com/auth/tasks` among the scopes. Prism then takes you straight to the list picker. CALENDAR.md has the full walkthrough; the only change for tasks is the scope.
 
