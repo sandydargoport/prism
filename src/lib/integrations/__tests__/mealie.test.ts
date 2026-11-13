@@ -8,6 +8,8 @@ import {
   createMealieMealPlanEntry,
   updateMealieMealPlanEntry,
   deleteMealieMealPlanEntry,
+  updateMealieRecipe,
+  deleteMealieRecipe,
 } from '../mealie';
 
 const STORED = {
@@ -61,5 +63,38 @@ describe('Mealie meal-plan writes', () => {
     expect(fetchMock.mock.calls[0][1].method).toBe('DELETE');
     global.fetch = jest.fn().mockResolvedValue(answer(404, null)) as unknown as typeof fetch;
     await expect(deleteMealieMealPlanEntry('https://mealie.example.com', 'tok', '12')).resolves.toBeUndefined();
+  });
+});
+
+describe('Mealie recipe writes (#1207)', () => {
+  it('sends name, description, servings and times as a partial update by id, and returns Mealie\'s new time', async () => {
+    const fetchMock = jest.fn().mockResolvedValue(answer(200, { id: 'uuid-1', slug: 'tacos', updatedAt: '2026-11-13T11:00:00Z' }));
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const seen = await updateMealieRecipe('https://mealie.example.com', 'tok', 'uuid-1', {
+      name: 'Tacos', description: 'Weeknight', servings: 4, prepTime: 15, cookTime: null,
+    });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('https://mealie.example.com/api/recipes/uuid-1');
+    expect(init.method).toBe('PATCH');
+    expect(JSON.parse(init.body)).toEqual({
+      name: 'Tacos', description: 'Weeknight', recipeServings: 4, prepTime: '15 minutes', performTime: null,
+    });
+    expect(seen).toEqual(new Date('2026-11-13T11:00:00Z'));
+  });
+
+  it('reports a refusal (a recipe someone else locked) for that recipe', async () => {
+    global.fetch = jest.fn().mockResolvedValue(answer(403, { detail: 'Forbidden' })) as unknown as typeof fetch;
+    await expect(updateMealieRecipe('https://mealie.example.com', 'tok', 'uuid-1', {
+      name: 'Tacos', description: null, servings: null, prepTime: null, cookTime: null,
+    })).rejects.toThrow(/Mealie refused/);
+  });
+
+  it('deletes a recipe, and one already gone counts as deleted', async () => {
+    const fetchMock = jest.fn().mockResolvedValue(answer(200, {}));
+    global.fetch = fetchMock as unknown as typeof fetch;
+    await deleteMealieRecipe('https://mealie.example.com', 'tok', 'uuid-1');
+    expect(fetchMock.mock.calls[0][1].method).toBe('DELETE');
+    global.fetch = jest.fn().mockResolvedValue(answer(404, null)) as unknown as typeof fetch;
+    await expect(deleteMealieRecipe('https://mealie.example.com', 'tok', 'uuid-1')).resolves.toBeUndefined();
   });
 });

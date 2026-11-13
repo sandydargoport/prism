@@ -12,6 +12,8 @@ import {
   createTandoorMealPlanEntry,
   updateTandoorMealPlanEntry,
   deleteTandoorMealPlanEntry,
+  updateTandoorRecipe,
+  deleteTandoorRecipe,
   fetchTandoorImage,
   UnsafeUrlError,
   type TandoorRecipeDetail,
@@ -244,5 +246,41 @@ describe('Tandoor meal-plan writes (#1206)', () => {
   it('says the token needs the write scope when Tandoor refuses', async () => {
     global.fetch = answer(403, { detail: 'You do not have permission' }) as unknown as typeof fetch;
     await expect(createTandoorMealPlanEntry('https://tandoor.example.com', 'tok', WRITE)).rejects.toThrow(/write scope/);
+  });
+});
+
+describe('Tandoor recipe writes (#1207)', () => {
+  const answer = (status: number, body: unknown) => jest.fn().mockResolvedValue({
+    ok: status >= 200 && status < 300, status, statusText: '', headers: new Headers(), json: () => Promise.resolve(body),
+  });
+
+  it('sends name, description, servings and times with a PATCH, and returns Tandoor\'s new time', async () => {
+    const fetchMock = answer(200, { id: 2, name: 'Pasta e Fagioli', updated_at: '2026-11-13T05:00:00.000000-06:00' });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const seen = await updateTandoorRecipe('https://tandoor.example.com', 'tok', '2', {
+      name: 'Pasta e Fagioli', description: null, servings: 6, prepTime: 15, cookTime: null,
+    });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('https://tandoor.example.com/api/recipe/2/');
+    expect(init.method).toBe('PATCH');
+    // Only these fields: ingredients and steps are left as Tandoor has them.
+    expect(JSON.parse(init.body)).toEqual({ name: 'Pasta e Fagioli', description: '', servings: 6, working_time: 15, waiting_time: 0 });
+    expect(seen).toEqual(new Date('2026-11-13T11:00:00.000Z'));
+  });
+
+  it('leaves servings alone when Prism has none', async () => {
+    const fetchMock = answer(200, { id: 2 });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    await updateTandoorRecipe('https://tandoor.example.com', 'tok', '2', { name: 'X', description: 'd', servings: null, prepTime: null, cookTime: 30 });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).not.toHaveProperty('servings');
+  });
+
+  it('deletes a recipe, and one already gone counts as deleted', async () => {
+    const fetchMock = answer(204, null);
+    global.fetch = fetchMock as unknown as typeof fetch;
+    await deleteTandoorRecipe('https://tandoor.example.com', 'tok', '2');
+    expect(fetchMock.mock.calls[0][1].method).toBe('DELETE');
+    global.fetch = answer(404, null) as unknown as typeof fetch;
+    await expect(deleteTandoorRecipe('https://tandoor.example.com', 'tok', '2')).resolves.toBeUndefined();
   });
 });

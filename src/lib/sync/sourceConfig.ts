@@ -12,6 +12,8 @@ export interface RecipeSourceConfig {
    * in Prism, and is offered as a removal to send back.
    */
   mealEntryIds?: string[];
+  /** The same for recipes (#1207): a recipe deleted in Prism is offered, unticked, as a deletion. */
+  recipeIds?: string[];
 }
 
 export function readSourceConfig(value: unknown): RecipeSourceConfig {

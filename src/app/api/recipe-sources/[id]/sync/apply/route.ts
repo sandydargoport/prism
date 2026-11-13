@@ -9,7 +9,9 @@ import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logError } from '@/lib/utils/logError';
 import { applySync } from '@/lib/sync/runner';
 import { getRecipeAdapter } from '@/lib/sync/adapters/registry';
-import type { SyncChange } from '@/lib/sync/types';
+import { isPushKind, type SyncChange } from '@/lib/sync/types';
+import { readSourceConfig } from '@/lib/sync/sourceConfig';
+import { syncedRecipeIds } from '@/lib/sync/adapters/recipeWriter';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -57,9 +59,17 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    const cfg = readSourceConfig(src.providerConfig);
     const allChanges = JSON.parse(stored) as SyncChange<unknown>[];
     const selectedKeys = new Set(selected.map((s) => `${s.kind}:${s.externalId}`));
     const toApply = allChanges.filter((c) => selectedKeys.has(`${c.kind}:${c.externalId}`));
+    // Recipe edits go back only to a source whose token can write (#1207).
+    if (!cfg.canWrite && toApply.some((c) => isPushKind(c.kind))) {
+      return NextResponse.json(
+        { error: 'This server’s token can only read, so Prism cannot send changes to it.' },
+        { status: 403 },
+      );
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = await applySync(getRecipeAdapter(src.provider), id, toApply as any);
@@ -70,13 +80,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         lastSynced: new Date(),
         updatedAt: new Date(),
         syncErrors: result.errors.length ? { lastError: result.errors.join('; ') } : null,
+        // The recipes Prism now holds, so the next sync can tell one deleted in Prism.
+        providerConfig: { ...cfg, recipeIds: await syncedRecipeIds(id) },
       })
       .where(eq(recipeSources.id, id));
 
     await invalidateEntity('recipes');
     if (redis) await redis.del(`sync-diff:${diffId}`);
 
-    return NextResponse.json({ applied: result.applied, errors: result.errors });
+    return NextResponse.json({ applied: result.applied, sent: result.sent, errors: result.errors });
   } catch (error) {
     logError('Error applying recipe sync:', error);
     return NextResponse.json({ error: 'Failed to apply the sync.' }, { status: 500 });

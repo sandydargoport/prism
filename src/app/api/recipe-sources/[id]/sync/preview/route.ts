@@ -10,6 +10,7 @@ import { logError } from '@/lib/utils/logError';
 import { previewSync } from '@/lib/sync/runner';
 import { getRecipeAdapter } from '@/lib/sync/adapters/registry';
 import { UnsafeUrlError } from '@/lib/integrations/tandoor';
+import { readSourceConfig } from '@/lib/sync/sourceConfig';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -24,6 +25,9 @@ const DIFF_TTL_SECONDS = 900; // 15 minutes
  * Computes the review diff (never applies anything), stashes the full diff in
  * Redis under a diffId, and returns a lightweight view for the review modal.
  * The user selects which changes to apply; /apply consumes the stashed diff.
+ *
+ * For a source whose token can write, it also holds recipe edits made in
+ * Prism to send back, and recipes deleted in Prism, offered unticked (#1207).
  */
 export async function POST(_request: NextRequest, { params }: RouteParams) {
   const auth = await requireAuth();
@@ -40,7 +44,11 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
     if (!src) {
       return NextResponse.json({ error: 'Recipe source not found.' }, { status: 404 });
     }
-    const diff = await previewSync(getRecipeAdapter(src.provider), { id: src.id, lastSynced: src.lastSynced });
+    const cfg = readSourceConfig(src.providerConfig);
+    const diff = await previewSync(getRecipeAdapter(src.provider), { id: src.id, lastSynced: src.lastSynced }, {
+      push: cfg.canWrite ? { knownExternalIds: new Set(cfg.recipeIds ?? []) } : undefined,
+    });
+    const remote = src.provider === 'mealie' ? 'Mealie' : 'Tandoor';
 
     // Stash the full diff (with payloads) for /apply; hand the UI a light view.
     const diffId = randomUUID();
@@ -57,7 +65,10 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       kind: c.kind,
       externalId: c.externalId,
       label: c.label,
-      reason: c.reason,
+      // A deletion in Prism is only an offer: say what ticking it does.
+      reason: c.kind === 'push-delete'
+        ? `Deleted in Prism. It stays in ${remote} unless ticked; ticking deletes it there too.`
+        : c.reason,
       defaultChecked: c.defaultChecked,
       remoteUpdatedAt: c.remoteUpdatedAt ?? null,
       localUpdatedAt: c.localUpdatedAt ?? null,
@@ -67,8 +78,11 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       diffId,
       changes,
       counts: diff.counts,
+      pushCounts: diff.pushCounts,
       massDeleteGuardTripped: diff.massDeleteGuardTripped,
       withheldDeletes: diff.withheldDeletes,
+      pushDeleteGuardTripped: diff.pushDeleteGuardTripped,
+      withheldPushDeletes: diff.withheldPushDeletes,
     });
   } catch (error) {
     if (error instanceof UnsafeUrlError) {

@@ -101,6 +101,7 @@ export async function loadLocalRecipes(sourceId: string): Promise<LocalItem[]> {
       id: recipes.id,
       externalId: recipes.externalId,
       updatedAt: recipes.updatedAt,
+      externalUpdatedAt: recipes.externalUpdatedAt,
       name: recipes.name,
     })
     .from(recipes)
@@ -110,9 +111,46 @@ export async function loadLocalRecipes(sourceId: string): Promise<LocalItem[]> {
       localId: row.id,
       externalId: row.externalId,
       updatedAt: row.updatedAt,
+      // What Prism last saw from the source, so its own push does not echo back.
+      remoteSeenAt: row.externalUpdatedAt,
       label: row.name,
     }),
   );
+}
+
+// --- Write-back (#1207) ---
+
+/** The fields of a local recipe that are sent back. */
+export async function loadRecipeFieldsToPush(localId: string) {
+  const [row] = await db
+    .select({
+      name: recipes.name,
+      description: recipes.description,
+      servings: recipes.servings,
+      prepTime: recipes.prepTime,
+      cookTime: recipes.cookTime,
+    })
+    .from(recipes)
+    .where(eq(recipes.id, localId));
+  if (!row) throw new Error('The recipe is no longer in Prism.');
+  return row;
+}
+
+/** After a recipe is sent: keep the source's new time, so it is not read as a change made there. */
+export async function recordPushedRecipe(localId: string, remoteUpdatedAt: Date | null): Promise<void> {
+  await db
+    .update(recipes)
+    .set({ externalUpdatedAt: remoteUpdatedAt, updatedAt: new Date() })
+    .where(eq(recipes.id, localId));
+}
+
+/** The source ids Prism holds a recipe for, kept after each sync to spot deletions. */
+export async function syncedRecipeIds(sourceId: string): Promise<string[]> {
+  const rows = await db
+    .select({ externalId: recipes.externalId })
+    .from(recipes)
+    .where(and(eq(recipes.sourceId, sourceId), isNotNull(recipes.externalId)));
+  return rows.map((r) => r.externalId).filter((v): v is string => v !== null);
 }
 
 /**
