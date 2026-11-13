@@ -58,29 +58,62 @@ export interface ComputeDiffOptions {
   };
 }
 
-type UpdateSignal = 'timestamp' | 'fingerprint' | 'refresh';
+type UpdateSignal = 'fingerprint' | 'refresh';
 
 /**
- * Decide whether a matched remote item should be proposed as an update, and by
- * which signal:
- *  - timestamp   — remote exposes updatedAt and it's newer than local.
- *  - fingerprint — remote has no updatedAt but both sides carry a content
- *                  fingerprint; propose only when they differ.
- *  - refresh     — no timestamp and no fingerprints → always refresh (the old
- *                  behavior; the remote is the source of truth).
+ * For a source without timestamps: whether a matched item differs.
+ *  - fingerprint — both sides carry a content fingerprint; differ → update.
+ *  - refresh     — no fingerprints → always refresh (the remote is the
+ *                  source of truth).
  * Returns null when nothing should change.
  */
 function updateSignal<TPayload>(
   remote: RemoteItem<TPayload>,
   local: LocalItem,
 ): UpdateSignal | null {
-  if (remote.updatedAt !== null) {
-    return remote.updatedAt.getTime() > local.updatedAt.getTime() ? 'timestamp' : null;
-  }
   if (remote.fingerprint !== undefined && local.fingerprint !== undefined) {
     return remote.fingerprint !== local.fingerprint ? 'fingerprint' : null;
   }
   return 'refresh';
+}
+
+/**
+ * For a remote item matched to a local row: pull the source's version, send
+ * Prism's, or leave both.
+ *
+ * With timestamps (#1207), "the source changed" means its time is past the
+ * one Prism last saw from it (remoteSeenAt), so Prism's own push does not come
+ * back as a change made there. "Prism changed" means edited since the last
+ * sync. When both changed, the newer one wins and the reason says which.
+ * Without remoteSeenAt the source's time is compared with the local row's, as
+ * before.
+ *
+ * Without timestamps (meal plans, #1206): the two differ by fingerprint; a
+ * Prism edit since the last sync is sent, anything else is pulled.
+ */
+function decideMatched<TPayload>(
+  r: RemoteItem<TPayload>,
+  local: LocalItem,
+  localChanged: boolean,
+  push: boolean,
+): { kind: 'update' | 'push-update'; reason: string } | null {
+  if (r.updatedAt !== null) {
+    const seen = local.remoteSeenAt ?? local.updatedAt;
+    const remoteChanged = r.updatedAt.getTime() > seen.getTime();
+    if (remoteChanged && localChanged) {
+      if (r.updatedAt.getTime() > local.updatedAt.getTime()) {
+        return { kind: 'update', reason: 'Changed in both places; the other app’s is newer' };
+      }
+      return push ? { kind: 'push-update', reason: 'Changed in both places; Prism’s is newer' } : null;
+    }
+    if (remoteChanged) return { kind: 'update', reason: 'Changed in source (newer than local)' };
+    if (localChanged && push) return { kind: 'push-update', reason: 'Changed in Prism' };
+    return null;
+  }
+  const signal = updateSignal(r, local);
+  if (!signal) return null;
+  if (push && localChanged) return { kind: 'push-update', reason: 'Changed in Prism' };
+  return { kind: 'update', reason: signal === 'fingerprint' ? 'Changed in source' : 'Refreshed from source' };
 }
 
 export function computeSyncDiff<TPayload>(
@@ -124,46 +157,33 @@ export function computeSyncDiff<TPayload>(
       });
       continue;
     }
-    const signal = updateSignal(r, existing);
-    // Prism edited it since the last sync and the source is not newer: send
-    // Prism's version. With timestamps that is "the source is not newer"
-    // (no update signal); without them, "the two differ" (any signal).
-    const localWins = Boolean(opts.push) && editedSinceSync(existing)
-      && (r.updatedAt === null ? signal !== null : signal === null);
-    if (localWins) {
+    const decision = decideMatched(r, existing, editedSinceSync(existing), Boolean(opts.push));
+    if (decision?.kind === 'push-update') {
       changes.push({
         kind: 'push-update',
         externalId: r.externalId,
         localId: existing.localId,
         label: existing.label,
-        reason: 'Changed in Prism',
+        reason: decision.reason,
         remoteUpdatedAt: r.updatedAt,
         localUpdatedAt: existing.updatedAt,
         defaultChecked: true,
       });
-      continue;
-    }
-    if (signal) {
-      const reason =
-        signal === 'timestamp'
-          ? 'Changed in source (newer than local)'
-          : signal === 'fingerprint'
-            ? 'Changed in source'
-            : 'Refreshed from source';
+    } else if (decision?.kind === 'update') {
       changes.push({
         kind: 'update',
         externalId: r.externalId,
         localId: existing.localId,
         label: r.label,
         payload: r.payload,
-        reason,
+        reason: decision.reason,
         remoteUpdatedAt: r.updatedAt,
         localUpdatedAt: existing.updatedAt,
         defaultChecked: true,
       });
     }
-    // else: local is newer / unchanged → keep local (nothing proposed);
-    // write-back handles pushing a newer local edit upstream later.
+    // else: unchanged, or only Prism changed and the source only reads →
+    // keep the local row as it is.
   }
 
   // Delete candidates: previously synced, now absent from the remote.

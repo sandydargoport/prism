@@ -340,4 +340,54 @@ export async function deleteMealieMealPlanEntry(serverUrl: string, token: string
   await writeOrThrow(res, 'remove the meal');
 }
 
+/** The recipe fields Prism sends back (#1207). Ingredients and steps stay (#1215). */
+export interface MealieRecipeFieldsWrite {
+  name: string;
+  description: string | null;
+  servings: number | null;
+  prepTime: number | null;
+  cookTime: number | null;
+}
+
+const minutes = (n: number | null) => (n ? `${n} minutes` : null);
+
+/**
+ * Send a recipe's name, description, servings and times (a partial update, by
+ * id). Returns Mealie's new last-modified time. A recipe another person locked
+ * is refused by Mealie, and the refusal is reported for that recipe.
+ */
+export async function updateMealieRecipe(
+  serverUrl: string,
+  token: string,
+  id: string,
+  fields: MealieRecipeFieldsWrite,
+): Promise<Date | null> {
+  validatePublicUrl(serverUrl);
+  const res = await safeFetch(`${baseUrl(serverUrl)}/api/recipes/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: fields.name,
+      description: fields.description ?? '',
+      recipeServings: fields.servings ?? 0,
+      prepTime: minutes(fields.prepTime),
+      performTime: minutes(fields.cookTime),
+    }),
+  });
+  await writeOrThrow(res, 'change the recipe');
+  const data = (await res.json()) as { updatedAt?: string | null };
+  return data.updatedAt ? new Date(data.updatedAt) : null;
+}
+
+/** Delete a recipe. One that is already gone counts as deleted. */
+export async function deleteMealieRecipe(serverUrl: string, token: string, id: string): Promise<void> {
+  validatePublicUrl(serverUrl);
+  const res = await safeFetch(`${baseUrl(serverUrl)}/api/recipes/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  if (res.status === 404) return;
+  await writeOrThrow(res, 'delete the recipe');
+}
+
 export { UnsafeUrlError };

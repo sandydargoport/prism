@@ -209,3 +209,50 @@ describe('computeSyncDiff — sending Prism changes back (#1206)', () => {
     expect(d.changes.filter((c) => c.kind === 'push-delete')).toEqual([]);
   });
 });
+
+describe('computeSyncDiff — recipes changed in Prism, the source, or both (#1207)', () => {
+  // A synced recipe: Prism last saw the source's version from T0, and the
+  // local row was last written at the sync (T1, not after it).
+  const SEEN = T0;
+  const recipe = (updatedAt: Date) => ({ ...local('l1', 'r1', updatedAt), remoteSeenAt: SEEN });
+  const PUSH: ComputeDiffOptions = { lastSynced: T1, push: { candidates: [], knownExternalIds: new Set(['r1']) } };
+  const LATER = new Date('2026-07-25T00:00:00Z');
+
+  it('sends a recipe edited only in Prism', () => {
+    const d = computeSyncDiff([remote('r1', SEEN)], [recipe(T2)], PUSH);
+    expect(d.changes).toEqual([expect.objectContaining({ kind: 'push-update', reason: 'Changed in Prism' })]);
+  });
+
+  it('does not read its own push back as a change made in the source', () => {
+    // After a push Prism keeps the source's new time as remoteSeenAt; the
+    // source's clock is later than Prism's row, which used to look "newer".
+    const pushedAt = new Date('2026-07-21T00:00:00Z');
+    const row = { ...local('l1', 'r1', T1), remoteSeenAt: pushedAt };
+    expect(computeSyncDiff([remote('r1', pushedAt)], [row], PUSH).changes).toEqual([]);
+  });
+
+  it('pulls a recipe changed only in the source', () => {
+    const d = computeSyncDiff([remote('r1', T2)], [recipe(T1)], PUSH);
+    expect(d.changes[0]).toMatchObject({ kind: 'update', reason: 'Changed in source (newer than local)' });
+  });
+
+  it('changed in both: the source is newer, so it is pulled, and the review says why', () => {
+    const d = computeSyncDiff([remote('r1', LATER)], [recipe(T2)], PUSH);
+    expect(d.changes[0]).toMatchObject({ kind: 'update', reason: 'Changed in both places; the other app’s is newer' });
+  });
+
+  it('changed in both: Prism is newer, so it is sent, and the review says why', () => {
+    const d = computeSyncDiff([remote('r1', T2)], [recipe(LATER)], PUSH);
+    expect(d.changes[0]).toMatchObject({ kind: 'push-update', reason: 'Changed in both places; Prism’s is newer' });
+  });
+
+  it('changed in both with a token that only reads: Prism keeps its newer edit, nothing is proposed', () => {
+    const d = computeSyncDiff([remote('r1', T2)], [recipe(LATER)], { lastSynced: T1 });
+    expect(d.changes).toEqual([]);
+  });
+
+  it('offers a recipe deleted in Prism as an unticked deletion', () => {
+    const d = computeSyncDiff([remote('r1', SEEN)], [], PUSH);
+    expect(d.changes[0]).toMatchObject({ kind: 'push-delete', externalId: 'r1', defaultChecked: false });
+  });
+});

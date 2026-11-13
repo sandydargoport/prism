@@ -359,6 +359,54 @@ function mealPlanBody(entry: TandoorMealPlanWrite): Record<string, unknown> {
   };
 }
 
+/** The recipe fields Prism sends back (#1207). Ingredients and steps stay (#1215). */
+export interface RecipeFieldsWrite {
+  name: string;
+  description: string | null;
+  servings: number | null;
+  prepTime: number | null;
+  cookTime: number | null;
+}
+
+/**
+ * Send a recipe's name, description, servings and times. Returns Tandoor's new
+ * last-modified time, which Prism keeps so its own change does not read as
+ * one made in Tandoor next time.
+ */
+export async function updateTandoorRecipe(
+  serverUrl: string,
+  token: string,
+  id: string,
+  fields: RecipeFieldsWrite,
+): Promise<Date | null> {
+  validatePublicUrl(serverUrl);
+  const res = await safeFetch(`${baseUrl(serverUrl)}/api/recipe/${encodeURIComponent(id)}/`, {
+    method: 'PATCH',
+    headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: fields.name,
+      description: fields.description ?? '',
+      ...(fields.servings ? { servings: fields.servings } : {}),
+      working_time: fields.prepTime ?? 0,
+      waiting_time: fields.cookTime ?? 0,
+    }),
+  });
+  await writeOrThrow(res, 'change the recipe');
+  const data = (await res.json()) as { updated_at?: string | null };
+  return data.updated_at ? new Date(data.updated_at) : null;
+}
+
+/** Delete a recipe. One that is already gone counts as deleted. */
+export async function deleteTandoorRecipe(serverUrl: string, token: string, id: string): Promise<void> {
+  validatePublicUrl(serverUrl);
+  const res = await safeFetch(`${baseUrl(serverUrl)}/api/recipe/${encodeURIComponent(id)}/`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  if (res.status === 404) return;
+  await writeOrThrow(res, 'delete the recipe');
+}
+
 /** The server's meal types, for matching Prism's breakfast/lunch/dinner/snack. */
 export async function fetchTandoorMealTypes(serverUrl: string, token: string): Promise<TandoorMealType[]> {
   validatePublicUrl(serverUrl);

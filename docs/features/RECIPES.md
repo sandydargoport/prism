@@ -68,6 +68,16 @@ If you already keep your recipes in [Tandoor](https://tandoor.dev/) or [Mealie](
 - Each sync shows you a list of changes to approve first. New and changed recipes are ticked already. Removals are only made if you tick them, and a guard stops a wrongly set up source from deleting your whole library in one go.
 - Running the sync again is **idempotent**, meaning it gives the same result however often you run it: recipes you already imported are matched and updated in place, so you never get a second copy.
 
+#### Send recipe edits back
+
+*Recipes → Add → Sync recipes…*, on a server whose card says **Reads and writes**.
+
+- A synced recipe edited in Prism since the last sync is listed under **Change in …**, ticked. What goes back is its **name, description, servings, prep time and cook time**. Ingredients and steps stay as the other app has them, because both apps keep them as structured data that Prism's plain lines would replace.
+- A recipe changed in both places since the last sync: the newer one wins, and the review says which ("Changed in both places; Prism's is newer").
+- A recipe deleted in Prism is listed under **Remove from …**, unticked. It stays in the other app unless you tick it.
+- New recipes made in Prism are not sent.
+- In Mealie, a recipe someone else locked is refused by Mealie, and the sync says so for that recipe.
+
 #### Send meal-plan changes back
 
 *Meals → Add → Sync meal plan…*, on a server whose card says **Reads and writes**.

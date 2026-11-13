@@ -48,6 +48,12 @@ export interface LocalItem {
   updatedAt: Date;
   /** Content fingerprint recomputed from the local row (see RemoteItem). */
   fingerprint?: string;
+  /**
+   * The source's own last-modified time as Prism last saw it (#1207). When
+   * set, "changed in the source" is measured against it rather than against
+   * the local row's time, so a change Prism sent does not echo back.
+   */
+  remoteSeenAt?: Date | null;
   label: string;
 }
 

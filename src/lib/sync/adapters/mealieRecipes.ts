@@ -5,13 +5,15 @@
  * path with no fingerprint needed.
  */
 
-import { fetchMealieRecipes, fetchMealieRecipeBySlug } from '@/lib/integrations/mealie';
+import { fetchMealieRecipes, fetchMealieRecipeBySlug, updateMealieRecipe, deleteMealieRecipe } from '@/lib/integrations/mealie';
 import { loadSourceConnection } from './tandoorSource';
 import {
   writeRecipeRow,
   loadLocalRecipes,
   deleteRecipeRow,
   ensureRecipeImported as ensureImported,
+  loadRecipeFieldsToPush,
+  recordPushedRecipe,
   type NormalizedRecipe,
 } from './recipeWriter';
 import type { EntitySyncAdapter, RemoteItem } from '../types';
@@ -66,5 +68,24 @@ export const mealieRecipeAdapter: EntitySyncAdapter<Payload> = {
 
   async applyDelete(_sourceId, change) {
     if (change.localId) await deleteRecipeRow(change.localId);
+  },
+
+  // #1207: edits and deletions go back; recipes made in Prism are not offered.
+  push: {
+    loadCandidates: async () => [],
+    async pushAdd() {
+      throw new Error('New recipes are not sent to Mealie.');
+    },
+    async pushUpdate(sourceId, change) {
+      if (!change.localId) return;
+      const source = await loadSourceConnection(sourceId);
+      const fields = await loadRecipeFieldsToPush(change.localId);
+      const seen = await updateMealieRecipe(source.serverUrl, source.token, change.externalId, fields);
+      await recordPushedRecipe(change.localId, seen);
+    },
+    async pushDelete(sourceId, change) {
+      const source = await loadSourceConnection(sourceId);
+      await deleteMealieRecipe(source.serverUrl, source.token, change.externalId);
+    },
   },
 };
