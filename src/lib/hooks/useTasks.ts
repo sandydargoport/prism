@@ -24,6 +24,7 @@ function transformTasks(json: unknown): Task[] {
       priority: 'high' | 'medium' | 'low' | null;
       category: string | null;
       listId: string | null;
+      parentId?: string | null;
       taskSourceId: string | null;
       assignedTo: {
         id: string;
@@ -43,6 +44,7 @@ function transformTasks(json: unknown): Task[] {
     priority: task.priority || 'medium',
     category: task.category || undefined,
     listId: task.listId || undefined,
+    parentId: task.parentId || undefined,
     taskSourceId: task.taskSourceId || undefined,
     assignedTo: task.assignedTo
       ? {

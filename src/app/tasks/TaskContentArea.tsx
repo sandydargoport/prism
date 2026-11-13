@@ -11,6 +11,7 @@ import { GroupedTaskGrid } from '@/app/tasks/GroupedTaskGrid';
 import { NestedGroupedTaskGrid } from '@/app/tasks/NestedGroupedTaskGrid';
 import type { Task } from '@/types';
 import type { GroupMode } from '@/app/tasks/taskGroupTypes';
+import { withSubtasks } from '@/lib/tasks/subtasks';
 
 interface TaskContentAreaProps {
   loading: boolean;
@@ -205,10 +206,11 @@ export function TaskContentArea({
         }}
         className="h-9 mb-2"
       />
-      {filteredTasks.map((task) => (
+      {withSubtasks(filteredTasks).map(({ task, nested }) => (
         <TaskRow
           key={task.id}
           task={task}
+          nested={nested}
           onToggle={() => toggleTask(task.id)}
           onEdit={() => editTask(task)}
           onDelete={() => deleteTask(task.id)}

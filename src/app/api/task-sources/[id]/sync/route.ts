@@ -426,9 +426,14 @@ async function performSync(
       return now.getTime() - t.lastSynced.getTime() > MISSING_GRACE_MS;
     });
 
+    // A subtask that went with its parent is not one more task to review
+    // (#1200): confirming the parent deletes its subtasks with it.
+    const goneIds = new Set(flaggable.map((t) => t.id));
+    const toReview = flaggable.filter((t) => !(t.parentId && goneIds.has(t.parentId)));
+
     const review = decideDeletionReview({
-      syncedCount: localTasks.filter((t) => t.externalId && t.taskSourceId === sourceId).length,
-      missingCount: flaggable.length,
+      syncedCount: localTasks.filter((t) => t.externalId && t.taskSourceId === sourceId && !t.parentId).length,
+      missingCount: toReview.length,
     });
 
     if (review.guardTripped) {
@@ -440,7 +445,7 @@ async function performSync(
         `change, so none were touched. Check the connection, then sync again.`,
       );
     } else if (review.flag) {
-      for (const localTask of flaggable) {
+      for (const localTask of toReview) {
         // Only when not already flagged, so the original time survives and the
         // count does not climb every five minutes.
         if (localTask.pendingDeletion) continue;

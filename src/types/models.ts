@@ -28,6 +28,8 @@ export interface Task {
   completedAt?: string | null;
   source?: string;
   listId?: string | null;
+  /** The task this one is a subtask of (#1200). */
+  parentId?: string | null;
   taskSourceId?: string | null;
   assignedTo?: {
     id: string;

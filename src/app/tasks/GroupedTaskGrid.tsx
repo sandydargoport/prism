@@ -11,6 +11,7 @@ import { CarouselArrows } from '@/components/ui/CarouselArrows';
 import { TaskRow } from '@/app/tasks/TaskRow';
 import type { Task } from '@/types';
 import type { GroupDef } from '@/app/tasks/taskGroupTypes';
+import { withSubtasks } from '@/lib/tasks/subtasks';
 
 export function GroupedTaskGrid({
   groups,
@@ -140,10 +141,11 @@ export function GroupedTaskGrid({
                   draggable={false}
                 />
               </div>
-              {group.tasks.map((task) => (
+              {withSubtasks(group.tasks).map(({ task, nested }) => (
                 <TaskRow
                   key={task.id}
                   task={task}
+                  nested={nested}
                   onToggle={async () => {
                     const success = await toggleTask(task.id);
                     if (success && group.celebrationTarget && !task.completed) {
