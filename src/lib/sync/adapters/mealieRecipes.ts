@@ -5,7 +5,14 @@
  * path with no fingerprint needed.
  */
 
-import { fetchMealieRecipes, fetchMealieRecipeBySlug, updateMealieRecipe, deleteMealieRecipe } from '@/lib/integrations/mealie';
+import {
+  fetchMealieRecipes,
+  fetchMealieRecipeBySlug,
+  fetchMealieRecipeDetail,
+  mergeMealieRecipe,
+  updateMealieRecipe,
+  deleteMealieRecipe,
+} from '@/lib/integrations/mealie';
 import { loadSourceConnection } from './tandoorSource';
 import {
   writeRecipeRow,
@@ -70,7 +77,7 @@ export const mealieRecipeAdapter: EntitySyncAdapter<Payload> = {
     if (change.localId) await deleteRecipeRow(change.localId);
   },
 
-  // #1207: edits and deletions go back; recipes made in Prism are not offered.
+  // #1207, #1215: edits and deletions go back; recipes made in Prism are not offered.
   push: {
     loadCandidates: async () => [],
     async pushAdd() {
@@ -80,7 +87,10 @@ export const mealieRecipeAdapter: EntitySyncAdapter<Payload> = {
       if (!change.localId) return;
       const source = await loadSourceConnection(sourceId);
       const fields = await loadRecipeFieldsToPush(change.localId);
-      const seen = await updateMealieRecipe(source.serverUrl, source.token, change.externalId, fields);
+      // Lines that did not change keep their Mealie ingredient objects (#1215).
+      const detail = await fetchMealieRecipeDetail(source.serverUrl, source.token, change.externalId);
+      const merged = mergeMealieRecipe(detail, fields);
+      const seen = await updateMealieRecipe(source.serverUrl, source.token, change.externalId, fields, merged);
       await recordPushedRecipe(change.localId, seen);
     },
     async pushDelete(sourceId, change) {

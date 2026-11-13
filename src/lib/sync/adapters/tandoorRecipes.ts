@@ -9,6 +9,8 @@ import {
   fetchTandoorRecipeById,
   updateTandoorRecipe,
   deleteTandoorRecipe,
+  fetchTandoorRecipeDetail,
+  mergeTandoorSteps,
   type NormalizedTandoorRecipe,
 } from '@/lib/integrations/tandoor';
 import { loadTandoorSource } from './tandoorSource';
@@ -73,7 +75,7 @@ export const tandoorRecipeAdapter: EntitySyncAdapter<Payload> = {
     if (change.localId) await deleteRecipeRow(change.localId);
   },
 
-  // #1207: edits and deletions go back; recipes made in Prism are not offered.
+  // #1207, #1215: edits and deletions go back; recipes made in Prism are not offered.
   push: {
     loadCandidates: async () => [],
     async pushAdd() {
@@ -83,7 +85,10 @@ export const tandoorRecipeAdapter: EntitySyncAdapter<Payload> = {
       if (!change.localId) return;
       const source = await loadTandoorSource(sourceId);
       const fields = await loadRecipeFieldsToPush(change.localId);
-      const seen = await updateTandoorRecipe(source.serverUrl, source.token, change.externalId, fields);
+      // Lines that did not change keep their Tandoor ingredient objects (#1215).
+      const detail = await fetchTandoorRecipeDetail(source.serverUrl, source.token, change.externalId);
+      const steps = mergeTandoorSteps(detail, fields);
+      const seen = await updateTandoorRecipe(source.serverUrl, source.token, change.externalId, fields, steps);
       await recordPushedRecipe(change.localId, seen);
     },
     async pushDelete(sourceId, change) {

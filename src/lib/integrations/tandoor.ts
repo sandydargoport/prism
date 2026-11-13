@@ -9,6 +9,7 @@
  */
 
 import { validatePublicUrl, safeFetch, UnsafeUrlError } from '@/lib/utils/safeFetch';
+import { matchLines, sameInstructions, sameLines } from '@/lib/sync/adapters/ingredientLines';
 
 /** A recipe normalized into Prism's insert shape (minus createdBy/sourceType). */
 export interface NormalizedTandoorRecipe {
@@ -28,6 +29,8 @@ export interface NormalizedTandoorRecipe {
   tags: string[];
   /** Absolute remote image URL to download, or null. */
   remoteImageUrl: string | null;
+  /** How many steps Tandoor splits the recipe into (#1215). */
+  stepCount?: number;
 }
 
 // --- Partial shapes of the Tandoor API responses we read ---
@@ -38,6 +41,8 @@ interface TandoorListResponse {
 }
 interface TandoorNamed { name?: string | null }
 interface TandoorIngredient {
+  id?: number;
+  order?: number;
   food?: TandoorNamed | null;
   unit?: TandoorNamed | null;
   amount?: number | string | null;
@@ -47,9 +52,14 @@ interface TandoorIngredient {
   original_text?: string | null;
 }
 interface TandoorStep {
+  id?: number;
   name?: string | null;
   instruction?: string | null;
   ingredients?: TandoorIngredient[];
+  time?: number | null;
+  order?: number | null;
+  show_as_header?: boolean | null;
+  show_ingredients_table?: boolean | null;
 }
 export interface TandoorRecipeDetail {
   id: number;
@@ -184,26 +194,106 @@ function normalizeIngredients(steps: TandoorStep[]): Array<{ text?: string; head
   const out: Array<{ text?: string; heading?: string }> = [];
   for (const step of steps) {
     for (const ing of step.ingredients ?? []) {
-      if (ing.is_header) {
-        const heading = (ing.note || ing.food?.name || '').trim();
-        if (heading) out.push({ heading });
-        continue;
-      }
-      // Prefer the user's original typed line when Tandoor kept it.
-      if (ing.original_text && ing.original_text.trim()) {
-        out.push({ text: ing.original_text.trim() });
-        continue;
-      }
-      const amount = ing.no_amount ? '' : formatAmount(ing.amount);
-      const unit = (ing.unit?.name || '').trim();
-      const food = (ing.food?.name || '').trim();
-      const note = (ing.note || '').trim();
-      const main = [amount, unit, food].filter(Boolean).join(' ').trim();
-      const text = note ? (main ? `${main} (${note})` : note) : main;
-      if (text) out.push({ text });
+      const line = tandoorIngredientLine(ing);
+      if (line) out.push(line);
     }
   }
   return out;
+}
+
+/** One Tandoor ingredient as the Prism line a pull shows, or null if it shows none. */
+function tandoorIngredientLine(ing: TandoorIngredient): { text?: string; heading?: string } | null {
+  if (ing.is_header) {
+    const heading = (ing.note || ing.food?.name || '').trim();
+    return heading ? { heading } : null;
+  }
+  // Prefer the user's original typed line when Tandoor kept it.
+  if (ing.original_text && ing.original_text.trim()) return { text: ing.original_text.trim() };
+  const amount = ing.no_amount ? '' : formatAmount(ing.amount);
+  const unit = (ing.unit?.name || '').trim();
+  const food = (ing.food?.name || '').trim();
+  const note = (ing.note || '').trim();
+  const main = [amount, unit, food].filter(Boolean).join(' ').trim();
+  const text = note ? (main ? `${main} (${note})` : note) : main;
+  return text ? { text } : null;
+}
+
+/**
+ * Prism's ingredient lines and instructions merged into a Tandoor recipe's
+ * steps (#1215). A line that did not change keeps its ingredient object (food,
+ * unit, amount and their links) in its own step; a new or edited line goes in
+ * as a plain note, in the step of the line before it; a removed line is
+ * dropped. Instructions are set only on a recipe with one step (or none); with
+ * more, the steps' text stays as it is. Returns null when nothing changed.
+ */
+export function mergeTandoorSteps(
+  detail: TandoorRecipeDetail,
+  local: { ingredients: Array<{ text?: string; heading?: string }>; instructions: string | null },
+): Array<Record<string, unknown>> | null {
+  const steps = (detail.steps ?? []) as Array<TandoorStep & Record<string, unknown>>;
+  // Every remote ingredient, in pull order, with the line it shows (if any).
+  const entries: Array<{ step: number; ing: TandoorIngredient; line: { text?: string; heading?: string } | null }> = [];
+  steps.forEach((step, i) => (step.ingredients ?? []).forEach((ing) => entries.push({ step: i, ing, line: tandoorIngredientLine(ing) })));
+  const shown = entries.filter((e) => e.line !== null);
+  const remoteLines = shown.map((e) => e.line!);
+  const ingredientsChanged = !sameLines(local.ingredients, remoteLines);
+  const instructionsChanged = !sameInstructions(local.instructions, normalizeInstructions(steps))
+    && steps.length <= 1;
+  if (!ingredientsChanged && !instructionsChanged) return null;
+
+  const perStep: TandoorIngredient[][] = steps.length ? steps.map(() => []) : [[]];
+  if (ingredientsChanged) {
+    const match = matchLines(local.ingredients, remoteLines);
+    let current = 0;
+    local.ingredients.forEach((line, i) => {
+      const m = match[i];
+      if (m !== null && m !== undefined) {
+        current = shown[m]!.step;
+        perStep[current]!.push(shown[m]!.ing);
+      } else {
+        perStep[current]!.push(plainTandoorIngredient(line));
+      }
+    });
+    // Ingredients a pull never showed (blank lines) stay where they were.
+    for (const e of entries) if (e.line === null) perStep[e.step]!.push(e.ing);
+  } else {
+    steps.forEach((step, i) => { perStep[i] = [...(step.ingredients ?? [])]; });
+  }
+
+  const instruction = (step: TandoorStep | undefined) => {
+    if (!instructionsChanged) return step?.instruction ?? '';
+    const text = (local.instructions ?? '').trim();
+    // A pull put a one-step recipe's step name on the first line.
+    const name = (step?.name ?? '').trim();
+    return name && text.startsWith(`${name}\n`) ? text.slice(name.length + 1).trim() : text;
+  };
+  const withOrder = (list: TandoorIngredient[]) => list.map((ing, order) => ({ ...ing, order }));
+
+  if (!steps.length) return [{ instruction: instruction(undefined), ingredients: withOrder(perStep[0]!), order: 0 }];
+  return steps.map((step, i) => ({
+    id: step.id,
+    name: step.name ?? '',
+    instruction: i === 0 ? instruction(step) : (step.instruction ?? ''),
+    ingredients: withOrder(perStep[i]!),
+    time: step.time ?? 0,
+    order: step.order ?? i,
+    show_as_header: step.show_as_header ?? false,
+    show_ingredients_table: step.show_ingredients_table ?? true,
+  }));
+}
+
+/** A Prism line as a Tandoor ingredient with no food or unit: Tandoor shows the note. */
+function plainTandoorIngredient(line: { text?: string; heading?: string }): TandoorIngredient {
+  const note = (line.heading ?? line.text ?? '').trim();
+  return {
+    food: null,
+    unit: null,
+    amount: 0,
+    note,
+    is_header: Boolean(line.heading),
+    no_amount: true,
+    original_text: line.heading ? null : note,
+  };
 }
 
 /** Join Tandoor steps into one plain-text instructions block. */
@@ -255,6 +345,7 @@ export function normalizeTandoorRecipe(
     servings: positive(detail.servings),
     tags: (detail.keywords ?? []).map((k) => (k.name || '').trim()).filter(Boolean),
     remoteImageUrl,
+    stepCount: steps.length,
   };
 }
 
@@ -359,7 +450,7 @@ function mealPlanBody(entry: TandoorMealPlanWrite): Record<string, unknown> {
   };
 }
 
-/** The recipe fields Prism sends back (#1207). Ingredients and steps stay (#1215). */
+/** The recipe fields Prism sends back (#1207); ingredients and steps go via mergeTandoorSteps (#1215). */
 export interface RecipeFieldsWrite {
   name: string;
   description: string | null;
@@ -378,6 +469,8 @@ export async function updateTandoorRecipe(
   token: string,
   id: string,
   fields: RecipeFieldsWrite,
+  /** From mergeTandoorSteps (#1215); omitted, ingredients and steps are left alone. */
+  steps?: Array<Record<string, unknown>> | null,
 ): Promise<Date | null> {
   validatePublicUrl(serverUrl);
   const res = await safeFetch(`${baseUrl(serverUrl)}/api/recipe/${encodeURIComponent(id)}/`, {
@@ -389,11 +482,18 @@ export async function updateTandoorRecipe(
       ...(fields.servings ? { servings: fields.servings } : {}),
       working_time: fields.prepTime ?? 0,
       waiting_time: fields.cookTime ?? 0,
+      ...(steps ? { steps } : {}),
     }),
   });
   await writeOrThrow(res, 'change the recipe');
   const data = (await res.json()) as { updated_at?: string | null };
   return data.updated_at ? new Date(data.updated_at) : null;
+}
+
+/** A recipe as Tandoor stores it, for merging Prism's lines into its steps. */
+export async function fetchTandoorRecipeDetail(serverUrl: string, token: string, id: string): Promise<TandoorRecipeDetail> {
+  validatePublicUrl(serverUrl);
+  return fetchRecipeDetail(baseUrl(serverUrl), token, Number(id));
 }
 
 /** Delete a recipe. One that is already gone counts as deleted. */

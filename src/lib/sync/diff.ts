@@ -164,6 +164,8 @@ export function computeSyncDiff<TPayload>(
         externalId: r.externalId,
         localId: existing.localId,
         label: existing.label,
+        // The source's version, so the review can say what sending will change.
+        payload: r.payload,
         reason: decision.reason,
         remoteUpdatedAt: r.updatedAt,
         localUpdatedAt: existing.updatedAt,

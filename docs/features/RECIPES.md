@@ -72,7 +72,11 @@ If you already keep your recipes in [Tandoor](https://tandoor.dev/) or [Mealie](
 
 *Recipes → Add → Sync recipes…*, on a server whose card says **Reads and writes**.
 
-- A synced recipe edited in Prism since the last sync is listed under **Change in …**, ticked. What goes back is its **name, description, servings, prep time and cook time**. Ingredients and steps stay as the other app has them, because both apps keep them as structured data that Prism's plain lines would replace.
+- A synced recipe edited in Prism since the last sync is listed under **Change in …**, ticked. Its name, description, servings, prep time and cook time go back, and so do its ingredients and steps, without losing what the other app knows about them:
+  - An ingredient line you did not change keeps the other app's ingredient (its food, unit and amount, and the shopping-list and nutrition links that come with them).
+  - A new or edited line goes in as a plain note, and a line you removed is removed.
+  - The steps' text goes back only to a recipe with one step there. A recipe split into several steps keeps its steps as they are.
+  - The review says what will happen, for example "2 ingredient lines go as plain notes · the steps stay as they are in Tandoor, which has 3".
 - A recipe changed in both places since the last sync: the newer one wins, and the review says which ("Changed in both places; Prism's is newer").
 - A recipe deleted in Prism is listed under **Remove from …**, unticked. It stays in the other app unless you tick it.
 - New recipes made in Prism are not sent.

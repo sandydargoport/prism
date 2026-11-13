@@ -13,6 +13,8 @@
 
 import { validatePublicUrl, safeFetch, UnsafeUrlError } from '@/lib/utils/safeFetch';
 import type { NormalizedRecipe } from '@/lib/sync/adapters/recipeWriter';
+import { matchLines, sameInstructions, sameLines } from '@/lib/sync/adapters/ingredientLines';
+import { randomUUID } from 'crypto';
 
 const PAGE_SIZE = 50;
 const MAX_RECIPES = 1000;
@@ -41,7 +43,7 @@ interface MealieIngredient {
   title?: string | null;
   originalText?: string | null;
 }
-interface MealieStep { title?: string | null; text?: string | null }
+interface MealieStep { id?: string | null; title?: string | null; text?: string | null }
 export interface MealieRecipeDetail {
   id: string;
   slug: string;
@@ -128,6 +130,76 @@ function normalizeIngredients(list: MealieIngredient[]): Array<{ text?: string; 
   return out;
 }
 
+/**
+ * Prism's ingredient lines and instructions merged into a Mealie recipe
+ * (#1215). An ingredient whose line did not change keeps its object (food,
+ * unit, quantity); a new or edited line goes in as a note; a removed one is
+ * dropped. A heading is Mealie's `title` on the ingredient after it. The steps
+ * are set only on a recipe with one step (or none). Null fields: unchanged.
+ */
+export function mergeMealieRecipe(
+  detail: MealieRecipeDetail,
+  local: { ingredients: Array<{ text?: string; heading?: string }>; instructions: string | null },
+): { recipeIngredient: Array<Record<string, unknown>> | null; recipeInstructions: Array<Record<string, unknown>> | null } {
+  const objects = (detail.recipeIngredient ?? []) as Array<MealieIngredient & Record<string, unknown>>;
+  // The text line each object shows (its heading is separate, see below).
+  const textOf = (ing: MealieIngredient) => (ing.display || ing.originalText || '').trim();
+  const remoteLines = normalizeIngredients(objects);
+  let recipeIngredient: Array<Record<string, unknown>> | null = null;
+  if (!sameLines(local.ingredients, remoteLines)) {
+    const shown = objects.filter((o) => textOf(o));
+    const textLocal = local.ingredients.filter((l) => !l.heading);
+    const match = matchLines(textLocal, shown.map((o) => ({ text: textOf(o) })));
+    const out: Array<Record<string, unknown>> = [];
+    let heading = '';
+    let t = 0;
+    for (const line of local.ingredients) {
+      if (line.heading) {
+        if (heading) out.push(plainMealieIngredient('', heading)); // a heading with nothing under it
+        heading = line.heading.trim();
+        continue;
+      }
+      const m = match[t++];
+      out.push(m !== null && m !== undefined
+        ? { ...shown[m]!, title: heading }
+        : plainMealieIngredient(line.text ?? '', heading));
+      heading = '';
+    }
+    if (heading) out.push(plainMealieIngredient('', heading));
+    recipeIngredient = out;
+  }
+  const steps = detail.recipeInstructions ?? [];
+  let recipeInstructions: Array<Record<string, unknown>> | null = null;
+  if (steps.length <= 1 && !sameInstructions(local.instructions, normalizeInstructions(steps))) {
+    const text = (local.instructions ?? '').trim();
+    recipeInstructions = text
+      ? [{ id: steps[0]?.id ?? randomUUID(), title: steps[0]?.title ?? '', text: stripTitle(text, steps[0]?.title) }]
+      : [];
+  }
+  return { recipeIngredient, recipeInstructions };
+}
+
+/** A pull put a one-step recipe's step title on the first line; take it off again. */
+function stripTitle(text: string, title: string | null | undefined): string {
+  const name = (title ?? '').trim();
+  const prefix = name + '\n';
+  return name && text.startsWith(prefix) ? text.slice(prefix.length).trim() : text;
+}
+
+/** A Prism line as a Mealie ingredient with no food or unit: Mealie shows the note. */
+function plainMealieIngredient(text: string, heading: string): Record<string, unknown> {
+  return {
+    referenceId: randomUUID(),
+    title: heading,
+    note: text,
+    originalText: text || null,
+    quantity: 0,
+    unit: null,
+    food: null,
+    display: text,
+  };
+}
+
 function normalizeInstructions(steps: MealieStep[]): string | null {
   const parts: string[] = [];
   for (const step of steps) {
@@ -161,6 +233,7 @@ export function normalizeMealieRecipe(detail: MealieRecipeDetail, base: string):
     servings,
     tags: (detail.tags ?? []).map((t) => (t.name || '').trim()).filter(Boolean),
     remoteImageUrl: detail.image ? `${base}/api/media/recipes/${detail.id}/images/original.webp` : null,
+    stepCount: (detail.recipeInstructions ?? []).length,
   };
 }
 
@@ -340,7 +413,7 @@ export async function deleteMealieMealPlanEntry(serverUrl: string, token: string
   await writeOrThrow(res, 'remove the meal');
 }
 
-/** The recipe fields Prism sends back (#1207). Ingredients and steps stay (#1215). */
+/** The recipe fields Prism sends back (#1207). */
 export interface MealieRecipeFieldsWrite {
   name: string;
   description: string | null;
@@ -361,6 +434,8 @@ export async function updateMealieRecipe(
   token: string,
   id: string,
   fields: MealieRecipeFieldsWrite,
+  /** From mergeMealieRecipe (#1215); a null part is left as Mealie has it. */
+  merged?: ReturnType<typeof mergeMealieRecipe>,
 ): Promise<Date | null> {
   validatePublicUrl(serverUrl);
   const res = await safeFetch(`${baseUrl(serverUrl)}/api/recipes/${encodeURIComponent(id)}`, {
@@ -372,11 +447,19 @@ export async function updateMealieRecipe(
       recipeServings: fields.servings ?? 0,
       prepTime: minutes(fields.prepTime),
       performTime: minutes(fields.cookTime),
+      ...(merged?.recipeIngredient ? { recipeIngredient: merged.recipeIngredient } : {}),
+      ...(merged?.recipeInstructions ? { recipeInstructions: merged.recipeInstructions } : {}),
     }),
   });
   await writeOrThrow(res, 'change the recipe');
   const data = (await res.json()) as { updatedAt?: string | null };
   return data.updatedAt ? new Date(data.updatedAt) : null;
+}
+
+/** A recipe as Mealie stores it (by id or slug), for merging Prism's lines. */
+export async function fetchMealieRecipeDetail(serverUrl: string, token: string, idOrSlug: string): Promise<MealieRecipeDetail> {
+  validatePublicUrl(serverUrl);
+  return fetchRecipeDetail(baseUrl(serverUrl), token, idOrSlug);
 }
 
 /** Delete a recipe. One that is already gone counts as deleted. */
