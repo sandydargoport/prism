@@ -8,6 +8,7 @@
 import {
   normalizeTandoorRecipe,
   testTandoorConnection,
+  checkTandoorWriteAccess,
   fetchTandoorImage,
   UnsafeUrlError,
   type TandoorRecipeDetail,
@@ -136,5 +137,39 @@ describe('fetchTandoorImage', () => {
     }) as unknown as typeof fetch;
 
     expect(await fetchTandoorImage('https://tandoor.example.com/media/missing.jpg', 'tok')).toBeNull();
+  });
+});
+
+describe('checkTandoorWriteAccess (#1205)', () => {
+  // OPTIONS /api/meal-plan/ as a Tandoor v1 server answered it: a `read` token
+  // gets the view's description only, a `read write` token also gets a POST
+  // action, and a token with neither scope is refused.
+  const READ_ONLY = { name: 'Meal Plan List', description: '', renders: ['application/json'], parses: ['application/json'] };
+  const READ_WRITE = { ...READ_ONLY, actions: { POST: { title: { type: 'string' } } } };
+  const answer = (status: number, body: unknown) => jest.fn().mockResolvedValue({
+    ok: status >= 200 && status < 300,
+    status,
+    headers: new Headers(),
+    json: () => Promise.resolve(body),
+  });
+
+  it('reports a read token as reading only', async () => {
+    global.fetch = answer(200, READ_ONLY) as unknown as typeof fetch;
+    expect(await checkTandoorWriteAccess('https://tandoor.example.com', 'tok')).toBe(false);
+  });
+
+  it('reports a read write token as writing, asking with OPTIONS so nothing is written', async () => {
+    const fetchMock = answer(200, READ_WRITE);
+    global.fetch = fetchMock as unknown as typeof fetch;
+    expect(await checkTandoorWriteAccess('https://tandoor.example.com/', 'tok')).toBe(true);
+    expect(fetchMock.mock.calls[0][0]).toBe('https://tandoor.example.com/api/meal-plan/');
+    expect(fetchMock.mock.calls[0][1].method).toBe('OPTIONS');
+  });
+
+  it('reports false, never throws, when the check fails', async () => {
+    global.fetch = answer(403, { detail: 'denied' }) as unknown as typeof fetch;
+    expect(await checkTandoorWriteAccess('https://tandoor.example.com', 'tok')).toBe(false);
+    global.fetch = jest.fn().mockRejectedValue(new Error('ECONNRESET')) as unknown as typeof fetch;
+    expect(await checkTandoorWriteAccess('https://tandoor.example.com', 'tok')).toBe(false);
   });
 });

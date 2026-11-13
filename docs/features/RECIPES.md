@@ -61,7 +61,9 @@ When nothing else fits, use *Recipes → Add → Create manually*, which gives y
 
 *Recipes → Add → Sync recipes (Tandoor / Mealie)…*
 
-If you already keep your recipes in [Tandoor](https://tandoor.dev/) or [Mealie](https://mealie.io/), connect that server with its base URL and a **read-only API token** and Prism pulls the recipes in.
+If you already keep your recipes in [Tandoor](https://tandoor.dev/) or [Mealie](https://mealie.io/), connect that server with its base URL and an API token and Prism pulls the recipes in.
+
+- The server's card says whether the token **Reads only** or **Reads and writes**. In Tandoor that is the token's scope: `read` reads only, `read write` reads and writes (*Settings → API* makes one). A Mealie token always reads and writes, because Mealie has no read-only tokens. A token that reads only works as before.
 
 - Each sync shows you a list of changes to approve first. New and changed recipes are ticked already. Removals are only made if you tick them, and a guard stops a wrongly set up source from deleting your whole library in one go.
 - Running the sync again is **idempotent**, meaning it gives the same result however often you run it: recipes you already imported are matched and updated in place, so you never get a second copy.

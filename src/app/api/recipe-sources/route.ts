@@ -1,16 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { desc } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import { recipeSources } from '@/lib/db/schema';
 import { requireAuth, requireRole } from '@/lib/auth';
 import { rateLimitGuard } from '@/lib/cache/rateLimit';
-import { encrypt } from '@/lib/utils/crypto';
+import { decrypt, encrypt } from '@/lib/utils/crypto';
 import { logError } from '@/lib/utils/logError';
 import { UnsafeUrlError } from '@/lib/integrations/tandoor';
-import { isSupportedProvider, testProviderConnection } from '@/lib/sync/adapters/registry';
+import { checkProviderWriteAccess, isSupportedProvider, testProviderConnection } from '@/lib/sync/adapters/registry';
+
+/** What Prism knows about a source's token, kept in providerConfig (#1205). */
+interface RecipeSourceConfig {
+  canWrite?: boolean;
+  writeCheckedAt?: string;
+}
+
+const RECHECK_NO_AFTER_MS = 24 * 60 * 60 * 1000;
+
+function writeConfig(canWrite: boolean): RecipeSourceConfig {
+  return { canWrite, writeCheckedAt: new Date().toISOString() };
+}
 
 /**
- * GET /api/recipe-sources — list connected recipe servers (no secrets).
+ * GET /api/recipe-sources — list connected recipe servers (no secrets), with
+ * whether each token can write. A source connected before that was recorded
+ * is checked once here and the answer kept.
  */
 export async function GET() {
   const auth = await requireAuth();
@@ -27,11 +41,34 @@ export async function GET() {
       enabled: recipeSources.enabled,
       lastSynced: recipeSources.lastSynced,
       syncErrors: recipeSources.syncErrors,
+      providerConfig: recipeSources.providerConfig,
+      accessToken: recipeSources.accessToken,
       createdAt: recipeSources.createdAt,
     })
     .from(recipeSources)
     .orderBy(desc(recipeSources.createdAt));
-  return NextResponse.json({ sources: rows });
+
+  const sources = await Promise.all(rows.map(async ({ accessToken, providerConfig, ...row }) => {
+    const cfg = (providerConfig as RecipeSourceConfig | null) ?? {};
+    let canWrite = cfg.canWrite;
+    // A "no" is asked again after a day: it may have been a server that was
+    // down for a moment, not a token that reads only.
+    const stale = canWrite === false
+      && Date.now() - new Date(cfg.writeCheckedAt ?? 0).getTime() > RECHECK_NO_AFTER_MS;
+    if ((canWrite === undefined || stale) && accessToken) {
+      try {
+        canWrite = await checkProviderWriteAccess(row.provider, row.serverUrl, decrypt(accessToken));
+        await db.update(recipeSources)
+          .set({ providerConfig: { ...cfg, ...writeConfig(canWrite) } })
+          .where(eq(recipeSources.id, row.id));
+      } catch (error) {
+        logError('Error checking a recipe source token:', error);
+        canWrite = undefined;
+      }
+    }
+    return { ...row, canWrite: canWrite ?? false };
+  }));
+  return NextResponse.json({ sources });
 }
 
 /**
@@ -62,8 +99,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Server URL and API token are required.' }, { status: 400 });
     }
 
-    // Verify the server + token before storing anything.
+    // Verify the server + token before storing anything. Whether it can write
+    // is only reported: a token that reads still connects.
     await testProviderConnection(provider, serverUrl, token);
+    const canWrite = await checkProviderWriteAccess(provider, serverUrl, token);
 
     const [row] = await db
       .insert(recipeSources)
@@ -72,11 +111,12 @@ export async function POST(request: NextRequest) {
         name: name || null,
         serverUrl,
         accessToken: encrypt(token),
+        providerConfig: writeConfig(canWrite),
         createdBy: auth.userId,
       })
       .returning({ id: recipeSources.id });
 
-    return NextResponse.json({ id: row?.id }, { status: 201 });
+    return NextResponse.json({ id: row?.id, canWrite }, { status: 201 });
   } catch (error) {
     if (error instanceof UnsafeUrlError) {
       return NextResponse.json({ error: error.message }, { status: 400 });

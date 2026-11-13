@@ -85,6 +85,22 @@ export async function testMealieConnection(
   return { ok: true };
 }
 
+/**
+ * Whether the token can write (#1205). Mealie has no read-only tokens: a token
+ * carries its user's rights, and any member of a household may add, move and
+ * remove that household's meal-plan entries. So a token that authenticates can
+ * write. (A recipe someone else locked stays theirs; that is checked per
+ * recipe when one is sent back.) Never throws: a failed check reports false.
+ */
+export async function checkMealieWriteAccess(serverUrl: string, token: string): Promise<boolean> {
+  try {
+    await testMealieConnection(serverUrl, token);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Parse a Mealie duration ("30 minutes", "1 hour 15 min", "PT30M") to minutes. */
 function parseDurationMinutes(s: string | null | undefined): number | null {
   if (!s) return null;

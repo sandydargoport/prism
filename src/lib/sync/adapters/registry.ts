@@ -10,8 +10,8 @@ import { tandoorRecipeAdapter } from './tandoorRecipes';
 import { tandoorMealPlanAdapter } from './tandoorMealPlan';
 import { mealieRecipeAdapter } from './mealieRecipes';
 import { mealieMealPlanAdapter } from './mealieMealPlan';
-import { testTandoorConnection } from '@/lib/integrations/tandoor';
-import { testMealieConnection } from '@/lib/integrations/mealie';
+import { testTandoorConnection, checkTandoorWriteAccess } from '@/lib/integrations/tandoor';
+import { testMealieConnection, checkMealieWriteAccess } from '@/lib/integrations/mealie';
 
 export const SUPPORTED_PROVIDERS = ['tandoor', 'mealie'] as const;
 export type Provider = (typeof SUPPORTED_PROVIDERS)[number];
@@ -48,3 +48,23 @@ export async function testProviderConnection(
   }
   throw new Error(`Unsupported provider "${provider}".`);
 }
+
+/**
+ * Whether a source's token can write back to the provider (#1205). Never
+ * throws: an unknown provider or a failed check reports false, and reading is
+ * unaffected either way.
+ */
+export async function checkProviderWriteAccess(
+  provider: string,
+  serverUrl: string,
+  token: string,
+): Promise<boolean> {
+  const check = provider === 'tandoor' ? checkTandoorWriteAccess(serverUrl, token)
+    : provider === 'mealie' ? checkMealieWriteAccess(serverUrl, token)
+      : Promise.resolve(false);
+  // A server that never answers reads as "can't write", not a hung request.
+  const timeout = new Promise<boolean>((resolve) => setTimeout(() => resolve(false), WRITE_CHECK_TIMEOUT_MS).unref?.());
+  return Promise.race([check, timeout]);
+}
+
+const WRITE_CHECK_TIMEOUT_MS = 6000;
