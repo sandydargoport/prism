@@ -193,6 +193,20 @@ test.describe('the Chores page', () => {
       choreId = (await listed())!.id;
       expect((await listed())!.pet?.id).toBe(petId);
 
+      // #856: once done it stays, under Pets, done today, saying who did it
+      // and when; the API carries today's ticks for it.
+      const fam = await (await page.request.get('/api/family')).json();
+      const me = ((fam.members ?? fam) as Array<{ id: string; name: string }>).find((m) => m.id === getSeededParentId())!;
+      expect((await page.request.post(`/api/chores/${choreId}/complete`, { data: { completedBy: getSeededParentId() } })).ok()).toBe(true);
+      const ticks = ((await (await page.request.get('/api/chores')).json()).chores as Array<{ id: string; todayTicks?: Array<{ at: string; by: { name: string } }> }>).find((c) => c.id === choreId)!.todayTicks;
+      expect(ticks?.map((k) => k.by.name)).toEqual([me.name]);
+      await page.reload();
+      const done = page.locator('[data-chores-section="pets-done"] [data-list-row]').filter({ hasText: title });
+      await expect(done, 'kept once done, for the pet').toBeVisible({ timeout: 30_000 });
+      await expect(done).toContainText(new RegExp(`${me.name} \\d{1,2}:\\d{2} (AM|PM)`));
+      await expect(row, 'no longer due').toHaveCount(0);
+      await expect(done.locator('button'), 'a done row is not ticked again').toHaveCount(0);
+
       // Removing the pet keeps the chore, for no one in particular.
       expect((await page.request.delete(`/api/pets/${petId}`)).ok()).toBe(true);
       petId = undefined;

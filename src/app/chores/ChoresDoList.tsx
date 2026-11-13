@@ -15,7 +15,7 @@ import { ListRow } from '@/components/ui/ListRow';
 import { PersonMark } from '@/components/ui/PersonMark';
 import { Button } from '@/components/ui/button';
 import type { Chore } from '@/types';
-import { isLate, formatReminderTime } from '@/lib/utils/reminders';
+import { isLate, formatReminderTime, petTickLine } from '@/lib/utils/reminders';
 
 /** Ticks a chore needs each day (#1107): more than one only for a daily chore. */
 export function timesADay(c: Chore): number {
@@ -40,6 +40,9 @@ export function choreGroups(chores: Chore[], today: Date) {
     done: live.filter((c) => !c.pendingApproval && doneToday(c)),
     tomorrow: open.filter((c) => due(c) === tomorrow),
     later: open.filter((c) => due(c) > tomorrow && due(c) <= week),
+    // A pet's chore stays once done (#856), with who did it and when, so
+    // nobody feeds the dog twice. Every other done chore leaves (#1051).
+    petsDone: live.filter((c) => c.pet && !c.pendingApproval && doneToday(c)),
   };
 }
 
@@ -82,12 +85,14 @@ export function ChoresDoList({ chores, today, onTick, onApprove, canApprove, gro
   // Late (#1109): its time has passed today, or its day has gone. The
   // household's clock is the wall's.
   const nowKey = format(today, 'yyyy-MM-dd'), nowTime = format(new Date(), 'HH:mm');
-  const row = (c: Chore) => {
-    const struck = striking.has(c.id);
+  const row = (c: Chore, done = false) => {
+    const struck = !done && striking.has(c.id);
     const late = isLate(c, nowKey, nowTime);
     const meta = [
+      // Who did it today and when, for a pet (#856).
+      c.pet ? petTickLine(c.todayTicks) || null : null,
       // Under a person's heading the name would only repeat it.
-      groupBy === 'person' ? null : c.assignedTo?.name,
+      done || groupBy === 'person' ? null : c.assignedTo?.name,
       // A reminder's time (#1109), or any chore's that has one.
       c.nextDueTime ? formatReminderTime(c.nextDueTime) : null,
       // How many of today's ticks are done, for a chore done more than once a day (#1107).
@@ -108,25 +113,27 @@ export function ChoresDoList({ chores, today, onTick, onApprove, canApprove, gro
           </span>{meta && ' · '}</>}
           {meta}
         </>}
-        onClick={() => void strike(c)}
+        onClick={done ? undefined : () => void strike(c)}
+        className={done ? 'opacity-70' : undefined}
       />
     );
   };
-  const section = (title: string, list: Chore[], id: string, small = false) => list.length > 0 && (
+  const section = (title: string, list: Chore[], id: string, small = false, done = false) => list.length > 0 && (
     <section key={id} className="flex flex-col gap-1" data-chores-section={id}>
       {small
         ? <h3 className="m-0 px-3 pb-1 text-caption font-medium uppercase tracking-wide text-muted-foreground">{title}</h3>
         : <h2 className="m-0 px-3 pb-1 text-title font-medium" style={{ fontFamily: 'var(--font-display)' }}>{title}</h2>}
-      {list.map((c) => row(c))}
+      {list.map((c) => row(c, done))}
     </section>
   );
   const days = (d: ReturnType<typeof choreGroups>, small = false) => [
     section('Due today', d.today, 'today', small),
     section('Tomorrow', d.tomorrow, 'tomorrow', small),
     section('Later this week', d.later, 'later', small),
+    section('Pets, done today', d.petsDone, 'pets-done', small, true),
   ];
 
-  if (g.today.length + g.tomorrow.length + g.later.length + g.waiting.length === 0) {
+  if (g.today.length + g.tomorrow.length + g.later.length + g.waiting.length + g.petsDone.length === 0) {
     return <p className="mx-auto max-w-3xl p-6 text-body text-muted-foreground" data-chores-done>Nothing to do this week.</p>;
   }
 
@@ -144,7 +151,7 @@ export function ChoresDoList({ chores, today, onTick, onApprove, canApprove, gro
         // Side by side as the width allows (#1051), one column on a phone.
         ? <div className="grid grid-cols-1 items-start gap-x-8 gap-y-6 md:grid-cols-2 xl:grid-cols-3" data-chores-people>{choresByPerson(chores.filter((c) => !c.pendingApproval), people).map(({ person, chores: mine }) => {
           const d = choreGroups(mine, today);
-          if (d.today.length + d.tomorrow.length + d.later.length === 0) return null;
+          if (d.today.length + d.tomorrow.length + d.later.length + d.petsDone.length === 0) return null;
           return (
             <div key={person?.id ?? 'anyone'} className="flex flex-col gap-3" data-chores-person={person?.id ?? 'anyone'}>
               <h2 className="m-0 flex items-center gap-3 px-3 text-title font-medium" style={{ fontFamily: 'var(--font-display)' }}>

@@ -172,7 +172,7 @@ export async function DELETE(
     // Today is the built-in dashboard (#1151): it is edited and reset, never deleted.
     if (isBuiltInView(existing.view)) {
       return NextResponse.json(
-        { error: 'Today is built in and cannot be deleted' },
+        { error: 'Glance is built in and cannot be deleted' },
         { status: 409 }
       );
     }

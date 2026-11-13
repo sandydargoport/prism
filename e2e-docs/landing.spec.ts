@@ -76,3 +76,60 @@ test('the day tabs show the Simple wall in the morning, after school and in the 
     await expect.poll(() => img.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBe(1920);
   }
 });
+
+// "Your data stays where it is" (#1145): one card per area, side by side on a
+// desktop and stacked on a phone, each opening its section of the services page.
+for (const [label, width, height, perRow] of [
+  ['desktop', 1280, 800, 4],
+  ['phone', 390, 844, 1],
+] as const) {
+  test(`${label}: the services section shows each area and links to its list`, async ({ page }) => {
+    await open(page, width, height, 'light');
+    const cards = page.locator('.pl-keeps .pl-card');
+    await expect(cards).toHaveCount(4);
+    const boxes = await cards.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().toJSON()));
+    const firstRow = boxes.filter((b) => Math.abs(b.top - boxes[0]!.top) < 1);
+    expect(firstRow).toHaveLength(perRow);
+    for (const b of boxes) expect(b.width).toBeGreaterThanOrEqual(Math.min(208, width - 32));
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+
+    const hrefs = await cards.evaluateAll((els) => els.map((el) => (el as HTMLAnchorElement).href));
+    for (const href of hrefs) {
+      const id = new URL(href).hash.slice(1);
+      await page.goto(href);
+      await expect(page.locator(`h2#${id}`)).toBeVisible();
+    }
+  });
+}
+
+// "Works together" (#1144): one flow per row, a large screenshot beside its
+// words on a desktop (alternating sides), stacked under them on a phone.
+for (const [label, width, height] of [
+  ['desktop', 1280, 800],
+  ['phone', 390, 844],
+] as const) {
+  test(`${label}: each flow is a row with one large screenshot`, async ({ page }) => {
+    await open(page, width, height, 'light');
+    const rows = page.locator('.pl-row');
+    await expect(rows).toHaveCount(3);
+    const wrap = await page.locator('.pl-rows').evaluate((el) => el.getBoundingClientRect().width);
+    for (let i = 0; i < 3; i++) {
+      const row = rows.nth(i);
+      const text = await row.locator('.pl-row-text').evaluate((el) => el.getBoundingClientRect().toJSON());
+      const img = await row.locator('img').evaluate((el) => el.getBoundingClientRect().toJSON());
+      if (label === 'desktop') {
+        expect(img.width).toBeGreaterThanOrEqual(wrap * 0.55);
+        // Side by side, the image on the right on odd rows and the left on even ones.
+        expect(Math.abs(img.top + img.height / 2 - (text.top + text.height / 2))).toBeLessThan(img.height / 2);
+        if (i % 2 === 0) expect(img.left).toBeGreaterThan(text.right);
+        else expect(img.right).toBeLessThan(text.left);
+      } else {
+        expect(img.width).toBeGreaterThanOrEqual(wrap - 1);
+        expect(img.top).toBeGreaterThan(text.bottom);
+      }
+    }
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+  });
+}

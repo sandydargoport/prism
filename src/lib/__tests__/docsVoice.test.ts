@@ -76,6 +76,51 @@ describe('docs voice', () => {
     }
   });
 
+  it('lists every integration on the services page (#1145)', () => {
+    // Each integration file and the service name its row on the page carries.
+    const listed: Record<string, string> = {
+      'aurora.ts': 'NOAA aurora forecast',
+      'bus-email-parser.ts': 'FirstView bus emails',
+      'caldav.ts': 'CalDAV servers',
+      'carddav.ts': 'Contacts over CardDAV',
+      'gmail.ts': 'Gmail',
+      'google-calendar.ts': 'Google Calendar',
+      'immich.ts': 'Immich',
+      'kroger/client.ts': 'Kroger',
+      'mealie.ts': 'Mealie',
+      'onedrive.ts': 'OneDrive',
+      'openmeteo.ts': 'Open-Meteo',
+      'openweather.ts': 'OpenWeatherMap',
+      'pirateweather.ts': 'Pirate Weather',
+      'product-lookup.ts': 'Open Food Facts and UPCitemdb',
+      'shopping/microsoft-todo.ts': 'Microsoft To Do: shopping lists',
+      'tandoor.ts': 'Tandoor',
+      'tasks/google-tasks.ts': 'Google Tasks',
+      'tasks/microsoft-todo.ts': 'Microsoft To Do: tasks',
+      'wish-items/microsoft-todo.ts': 'Microsoft To Do: wish lists',
+    };
+    // Sign-in plumbing, provider registries and on-device sky maths: no service of their own.
+    const helpers = new Set([
+      'credentialStore.ts', 'eclipse.ts', 'googleCalendarStore.ts', 'googleManualConnect.ts',
+      'googleManualScopes.ts', 'googleScopes.ts', 'kroger/redirect.ts', 'kroger/tokens.ts', 'moon.ts',
+      'oauth-userinfo.ts', 'oauthSetupRedirect.ts', 'resolveRedirectUri.ts', 'weather.ts',
+      'shopping/index.ts', 'shopping/types.ts', 'tasks/index.ts', 'tasks/providerAuth.ts', 'tasks/types.ts',
+      'wish-items/index.ts', 'wish-items/types.ts',
+    ]);
+    const dir = path.join(ROOT, 'src/lib/integrations');
+    const files = sourceFiles(dir).map((f) => path.relative(dir, f).split(path.sep).join('/'));
+    // A new integration file needs a row on the page (and an entry above) before it ships.
+    expect(files.filter((f) => !(f in listed) && !helpers.has(f))).toEqual([]);
+
+    expect(pages.map(([, f]) => f)).toContain('integrations.md');
+    const rows = fs.readFileSync(path.join(DOCS, 'integrations.md'), 'utf8')
+      .split('\n').filter((l) => l.startsWith('| **'));
+    const missing = Object.entries(listed)
+      .filter(([, name]) => !rows.some((r) => r.includes(name)))
+      .map(([file, name]) => `${file}: no row naming "${name}"`);
+    expect(missing).toEqual([]);
+  });
+
   it('sends every docs link in the app to a page and heading that exist', () => {
     const broken: string[] = [];
     for (const file of sourceFiles(path.join(ROOT, 'src'))) {

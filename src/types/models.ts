@@ -59,6 +59,8 @@ export interface Chore {
   kind?: 'chore' | 'reminder';
   /** Who it is for, when that is a pet (#996). */
   pet?: { id: string; name: string; color: string } | null;
+  /** A pet chore's ticks today, oldest first, approved or waiting (#856). */
+  todayTicks?: Array<{ at: string; by: { name: string; color: string } }>;
   enabled: boolean;
   requiresApproval: boolean;
   pointValue: number;

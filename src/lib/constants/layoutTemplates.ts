@@ -201,12 +201,12 @@ export const FIRST_SCREEN_TEMPLATE: LayoutTemplate = {
 export const NEW_INSTALL_HIDDEN_PAGES = ['/wishes', '/travel', '/weekend'] as const;
 
 /**
- * Today (#907): the front page drawn as one scene. Its widgets are the parts
+ * Glance (#907, named in #1187): the front page drawn as one scene. Its widgets are the parts
  * the scene shows; their positions are only a fallback should the layout ever
  * be drawn as a grid.
  */
 export const TODAY_TEMPLATE: LayoutTemplate = {
-  name: 'Today',
+  name: 'Glance',
   description: 'The day as one scene over the photo',
   orientation: 'landscape',
   widgets: [

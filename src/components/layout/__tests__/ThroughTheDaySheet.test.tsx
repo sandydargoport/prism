@@ -140,6 +140,11 @@ describe('ThroughTheDaySheet', () => {
   it('adds an Interlude on the line, edits it in its card and removes it, on a named screen', () => {
     mockNamed = { displayId: 'd1', dashboardId: 'home', settings: {} };
     render(<Harness initial={{ source: 'dashboard' }} dashboards={DASHBOARDS} />);
+    // The slider starts on the clock's hour, and a change to the value it
+    // already shows fires nothing: between 7 and 8 in the zone the suite runs
+    // in, setting 7:00 left it unplayed and the Interlude took the clock's
+    // quarter hour. Going through another time first always plays 7:00.
+    fireEvent.change(screen.getByLabelText('Time of day'), { target: { value: String(10 * 60) } });
     fireEvent.change(screen.getByLabelText('Time of day'), { target: { value: String(7 * 60) } });
     fireEvent.click(document.querySelector<HTMLElement>('[data-interlude-add]')!);
     const today = new Date().getDay();

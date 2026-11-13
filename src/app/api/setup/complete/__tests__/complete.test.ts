@@ -99,7 +99,7 @@ describe('POST /api/setup/complete', () => {
       await POST();
       const layouts = insertedLayouts();
       expect(layouts).toHaveLength(1);
-      expect(layouts[0]).toMatchObject({ name: 'Today', view: 'today', slug: 'home', isDefault: true, createdBy: 'parent-1' });
+      expect(layouts[0]).toMatchObject({ name: 'Glance', view: 'today', slug: 'home', isDefault: true, createdBy: 'parent-1' });
       expect((layouts[0]!.widgets as Array<{ i: string }>).map((w) => w.i)).toEqual(TODAY_TEMPLATE.widgets.map((w) => w.i));
     });
 

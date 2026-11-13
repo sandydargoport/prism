@@ -11,7 +11,9 @@
  */
 
 import type { Page } from '@playwright/test';
-import { LOOK_IDS, LOOKS, type LookId } from '../src/lib/looks';
+import * as path from 'path';
+import { SCENERY } from '../src/lib/scenery';
+import { LOOKS, type LookId } from '../src/lib/looks';
 import { TODAY_TEMPLATE } from '../src/lib/constants/layoutTemplates';
 
 /**
@@ -49,7 +51,7 @@ type StagedCell = { i: StagedWidget; x: number; y: number; w: number; h: number;
  */
 export type Stage = {
   look: LookId;
-  layout: 'hero' | 'gallery' | 'simple';
+  layout: 'hero' | 'gallery' | 'simple' | 'kitchen';
 };
 
 export type CaptureSpec = {
@@ -93,6 +95,12 @@ export type CaptureSpec = {
   idle?: boolean;
   /** Shoot in this look on this staged dashboard. Staged shots run before any demo photos exist. */
   stage?: Stage;
+  /**
+   * The bundled park photo the scenery opens on for this shot (an id from
+   * src/lib/scenery.ts), so each shot gets the landscape that suits it (#1142).
+   * The capture serves it in place of the first scenery file; the app is unchanged.
+   */
+  photo?: string;
   /** Shoot only this dashboard widget, close up, instead of the whole screen. */
   widget?: StagedWidget;
   /** Shown in the docs gallery (docs/screenshots.md). */
@@ -136,7 +144,39 @@ export const SIMPLE_LAYOUT = TODAY_TEMPLATE.widgets.map((w) => ({
   i: w.i as StagedWidget, x: w.x, y: w.y, w: w.w, h: w.h, showWhenIdle: w.showWhenIdle ?? false,
 })) satisfies StagedCell[];
 
-export const STAGE_LAYOUTS = { hero: HERO_LAYOUT, gallery: GALLERY_LAYOUT, simple: SIMPLE_LAYOUT } as const;
+/**
+ * A family's own kitchen dashboard (#1142), made up for the gallery: the week
+ * on the left where everyone passes, today's chores beside it, the shopping
+ * list and the birthdays coming up on the right, with the clock and weather
+ * across the top. Every name and event is the seeded demo family's.
+ */
+export const KITCHEN_LAYOUT = [
+  { i: 'clock', x: 0, y: 0, w: 12, h: 4, showWhenIdle: true },
+  { i: 'weather', x: 36, y: 0, w: 12, h: 4, showWhenIdle: true },
+  { i: 'calendar', x: 0, y: 4, w: 24, h: 23, showWhenIdle: false },
+  { i: 'chores', x: 24, y: 4, w: 12, h: 23, showWhenIdle: false },
+  // Tall enough that the list ends on a whole row (#1142 review).
+  { i: 'shopping', x: 36, y: 4, w: 12, h: 14, showWhenIdle: false },
+  { i: 'birthdays', x: 36, y: 18, w: 12, h: 9, showWhenIdle: false },
+] satisfies StagedCell[];
+
+export const STAGE_LAYOUTS = { hero: HERO_LAYOUT, gallery: GALLERY_LAYOUT, simple: SIMPLE_LAYOUT, kitchen: KITCHEN_LAYOUT } as const;
+
+/** The bundled file for a scenery id; throws on an id that is not bundled. */
+export function scenerySource(id: string): string {
+  const s = SCENERY.find((x) => x.id === id);
+  if (!s) throw new Error(`No bundled scenery photo "${id}"; see src/lib/scenery.ts`);
+  return path.join(__dirname, '..', 'public', s.src);
+}
+
+/** The landscapes (#1142): the most striking for the hero and Simple, then one to suit each hour. */
+export const PHOTOS = {
+  hero: 'dunes-sunset',
+  morning: 'morning-hills',
+  afternoon: 'dunes-sunset',
+  evening: 'river-sunset',
+  night: 'lake-clouds',
+} as const;
 
 /**
  * The hero set: the same moment on a wall, a tablet and a phone, in light and
@@ -159,6 +199,7 @@ export const HERO_SHOTS: CaptureSpec[] = (['light', 'dark'] as const).flatMap((t
       signedOut: true,
       idleChrome: true,
       stage,
+      photo: PHOTOS.hero,
       settleMs: 15000,
     },
     {
@@ -171,6 +212,7 @@ export const HERO_SHOTS: CaptureSpec[] = (['light', 'dark'] as const).flatMap((t
       idleChrome: true,
       idle: true,
       stage,
+      photo: PHOTOS.hero,
       settleMs: 15000,
     },
     {
@@ -180,20 +222,19 @@ export const HERO_SHOTS: CaptureSpec[] = (['light', 'dark'] as const).flatMap((t
       theme,
       device: 'phone' as const,
       stage,
+      photo: PHOTOS.hero,
       settleMs: 15000,
     },
   ];
 });
 
-const LOOK_NAMES: Record<LookId, string> = { photo: 'Photo', night: 'Night', paper: 'Paper' };
-
-/** A signed-out wall on the gallery dashboard, rail and bar hidden. */
-const wall = (look: LookId) => ({
+/** A signed-out wall, rail and bar hidden, in a look on one of the staged dashboards. */
+const wall = (look: LookId, layout: Stage['layout'] = 'gallery') => ({
   url: '/',
   device: 'wall' as const,
   signedOut: true,
   idleChrome: true,
-  stage: { look, layout: 'gallery' as const },
+  stage: { look, layout },
   gallery: true,
   settleMs: 15000,
 });
@@ -208,21 +249,20 @@ const phone = (url: string) => ({
 });
 
 /**
- * The gallery: what a family sees. The wall in each look a new install
- * offers, its idle screen, the widgets they use close up, and a parent's
+ * The gallery: what a family sees. The Simple wall in the Photo and Night
+ * looks, a family's own kitchen layout in Paper, the idle screen, the widgets they use close up, and a parent's
  * phone. Admin and editing screens stay out; the feature docs show those.
  */
 export const GALLERY_SHOTS: CaptureSpec[] = [
-  ...LOOK_IDS.map((look) => ({
-    name: `look-${look}`,
-    description: `The wall in the ${LOOK_NAMES[look]} look`,
-    ...wall(look),
-  })),
+  { name: 'wall-simple', description: 'The Simple wall in the Photo look', ...wall('photo', 'simple'), photo: PHOTOS.hero },
+  { name: 'wall-night', description: 'The Simple wall in the Night look', ...wall('night', 'simple'), photo: PHOTOS.night },
+  { name: 'wall-kitchen', description: "A family's own kitchen layout in the Paper look", ...wall('paper', 'kitchen') },
   {
     name: 'idle-screen',
     description: 'The wall when nobody is using it: the photo, the clock and the weather',
     ...wall('photo'),
     idle: true,
+    photo: PHOTOS.hero,
   },
   ...(['calendar', 'chores', 'shopping'] as const).map((widget) => ({
     name: `widget-${widget}`,
@@ -370,10 +410,10 @@ export const FEATURE_SHOTS: CaptureSpec[] = [
  * and 8:45 PM (the day over, after sunset).
  */
 export const DAY_SHOTS: CaptureSpec[] = [
-  { name: 'day-morning', when: 'morning', shiftMinutes: -520 },
-  { name: 'day-afternoon', when: 'after school', shiftMinutes: 90 },
-  { name: 'day-evening', when: 'evening', shiftMinutes: 275 },
-].map(({ name, when, shiftMinutes }) => ({
+  { name: 'day-morning', when: 'morning', shiftMinutes: -520, photo: PHOTOS.morning },
+  { name: 'day-afternoon', when: 'after school', shiftMinutes: 90, photo: PHOTOS.afternoon },
+  { name: 'day-evening', when: 'evening', shiftMinutes: 275, photo: PHOTOS.evening },
+].map(({ name, when, shiftMinutes, photo }) => ({
   name,
   url: '/',
   description: `The Simple wall in the ${when}`,
@@ -381,6 +421,7 @@ export const DAY_SHOTS: CaptureSpec[] = [
   signedOut: true,
   idleChrome: true,
   stage: { look: 'photo' as const, layout: 'simple' as const },
+  photo,
   shiftMinutes,
   settleMs: 15000,
 }));

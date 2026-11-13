@@ -47,32 +47,62 @@
           <h2>One thing leads to the next.</h2>
           <p>Recipes, lists, chores and calendars usually sit in separate apps. In Prism they share one household, so something you add in one place shows up wherever it is needed.</p>
         </div>
-        <div class="pl-flows">
-          <article class="pl-flow">
-            <ol class="pl-steps"><li>Recipe</li><li>Shopping list</li><li>Grocery cart</li></ol>
-            <p>Add a recipe's ingredients to the shopping list, then send the whole list to your cart at a Kroger-family store with one tap.</p>
-            <img src="{{ img }}shopping.png" alt="The shopping list grouped by category" loading="lazy">
+        <div class="pl-rows">
+          <article class="pl-row">
+            <div class="pl-row-text">
+              <ol class="pl-steps"><li>Recipe</li><li>Shopping list</li><li>Grocery cart</li></ol>
+              <p>Add a recipe's ingredients to the shopping list, then send the whole list to your cart at a Kroger-family store with one tap.</p>
+            </div>
+            <img src="{{ img }}shopping.png" width="1440" height="900" alt="The shopping list grouped by category" loading="lazy">
           </article>
-          <article class="pl-flow">
-            <ol class="pl-steps"><li>Chore done</li><li>Points</li><li>Goal reached</li></ol>
-            <p>Kids tick off chores on the wall and a parent approves them. The points go toward a reward the kid picked.</p>
-            <img src="{{ img }}chores.png" alt="Chores with points and an approval waiting" loading="lazy">
+          <article class="pl-row">
+            <div class="pl-row-text">
+              <ol class="pl-steps"><li>Chore done</li><li>Points</li><li>Goal reached</li></ol>
+              <p>Kids tick off chores on the wall and a parent approves them. The points go toward a reward the kid picked.</p>
+            </div>
+            <img src="{{ img }}chores.png" width="1440" height="900" alt="Chores with points and an approval waiting" loading="lazy">
           </article>
-          <article class="pl-flow">
-            <ol class="pl-steps"><li>Google or iCloud</li><li>Wall</li><li>Phone</li></ol>
-            <p>The calendars you already keep show up on the wall and on everyone's phone, with each person in their own colour.</p>
-            <img src="{{ img }}calendar-week.png" alt="A week of family events in the calendar" loading="lazy">
-          </article>
-          <article class="pl-flow">
-            <ol class="pl-steps"><li>Your photos</li><li>Idle screen</li><li>Travel map</li></ol>
-            <p>When nobody is using the wall, it turns into a photo frame with the time and weather, and your trips show up as pins on a globe.</p>
-            <img src="{{ img }}travel-globe.png" alt="The travel globe with pins for visited places" loading="lazy">
+          <article class="pl-row">
+            <div class="pl-row-text">
+              <ol class="pl-steps"><li>Your photos</li><li>Idle screen</li><li>Travel map</li></ol>
+              <p>When nobody is using the wall, it turns into a photo frame with the time and weather, and your trips show up as pins on a globe.</p>
+            </div>
+            <img src="{{ img }}travel-globe.png" width="1440" height="900" alt="The travel globe with pins for visited places" loading="lazy">
           </article>
         </div>
       </div>
     </section>
 
-    <section class="pl-section pl-section--tint">
+    <section class="pl-section pl-section--tint pl-keeps">
+      <div class="pl-wrap">
+        <div class="pl-head">
+          <p class="pl-eyebrow">Works with what you use</p>
+          <h2>Your data stays where it is.</h2>
+          <p>Prism shows the services your family already keeps things in, and where a service allows it, a change made in Prism goes back to it. Nobody has to move anything or keep a second copy.</p>
+        </div>
+        <div class="pl-install md-typeset">
+          <a class="pl-card" href="{{ base_url }}/integrations/#calendars">
+            <h3>Calendars</h3>
+            <p>Your calendars stay in Google or iCloud. Events you add or edit on the wall change there too, and any calendar link works.</p>
+          </a>
+          <a class="pl-card" href="{{ base_url }}/integrations/#tasks-and-lists">
+            <h3>Lists</h3>
+            <p>Your to-dos stay in Microsoft To Do or Google Tasks, and your shopping and wish lists in To Do. A tick on the wall ticks the item there too.</p>
+          </a>
+          <a class="pl-card" href="{{ base_url }}/integrations/#recipes-and-groceries">
+            <h3>Recipes</h3>
+            <p>Your recipes and meal plans stay in Tandoor or Mealie, and the shopping list goes to your Kroger cart.</p>
+          </a>
+          <a class="pl-card" href="{{ base_url }}/integrations/#photos">
+            <h3>Photos</h3>
+            <p>Your photos stay in OneDrive or Immich and fill the wall when nobody is using it.</p>
+          </a>
+        </div>
+        <p class="pl-more"><a href="{{ base_url }}/integrations/">Every service Prism works with</a></p>
+      </div>
+    </section>
+
+    <section class="pl-section">
       <div class="pl-wrap">
         <div class="pl-head">
           <p class="pl-eyebrow">A day at home</p>
@@ -104,7 +134,7 @@
       </div>
     </section>
 
-    <section class="pl-section">
+    <section class="pl-section pl-section--tint">
       <div class="pl-wrap">
         <div class="pl-head">
           <p class="pl-eyebrow">Install</p>
@@ -129,7 +159,7 @@ cd prism && bash scripts/install.sh</code></pre>
       </div>
     </section>
 
-    <section class="pl-section pl-section--tint">
+    <section class="pl-section">
       <div class="pl-wrap pl-wrap--narrow">
         <div class="pl-head">
           <p class="pl-eyebrow">Before you install</p>

@@ -19,7 +19,7 @@ export interface NewLookLayout {
 
 /** What a new install starts with: Today, as the default. */
 export function newLookLayouts(): NewLookLayout[] {
-  return [{ name: 'Today', view: 'today', widgets: TODAY_TEMPLATE.widgets, isDefault: true }];
+  return [{ name: 'Glance', view: 'today', widgets: TODAY_TEMPLATE.widgets, isDefault: true }];
 }
 
 /** The built-in dashboard: not deletable, editable, can be reset. */

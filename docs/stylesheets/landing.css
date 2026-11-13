@@ -98,18 +98,19 @@
 .pl-head p:not(.pl-eyebrow) { margin: 0.9rem 0 0; color: var(--pl-muted); font-size: 1.05rem; }
 
 /* Works together */
-.pl-flows { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 30rem), 1fr)); gap: 1.25rem; }
-.pl-flow {
-  background: var(--pl-card); border: 1px solid var(--pl-line); border-radius: 1.1rem;
-  padding: 1.4rem 1.4rem 0; overflow: hidden; display: flex; flex-direction: column;
+.pl-rows { display: flex; flex-direction: column; gap: 4.5rem; }
+.pl-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 3rem; align-items: center; }
+.pl-row:nth-child(even) .pl-row-text { order: 2; }
+.pl-row:nth-child(even) { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+.pl-row-text p { margin: 0.8rem 0 0; color: var(--pl-muted); font-size: 1.05rem; }
+.pl-row img { display: block; width: 100%; height: auto; border-radius: 1rem; border: 1px solid var(--pl-line); box-shadow: var(--pl-shadow); }
+@media (max-width: 48rem) {
+  .pl-rows { gap: 3rem; }
+  .pl-row, .pl-row:nth-child(even) { grid-template-columns: minmax(0, 1fr); gap: 1.25rem; }
+  .pl-row:nth-child(even) .pl-row-text { order: 0; }
 }
 .pl-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; font-weight: 700; font-size: 1.05rem; }
 .pl-steps li + li::before { content: "→"; margin: 0 0.45rem 0 0.1rem; color: var(--pl-accent); font-weight: 600; }
-.pl-flow p { margin: 0.6rem 0 1.2rem; color: var(--pl-muted); font-size: 0.95rem; }
-.pl-flow img {
-  display: block; width: 100%; height: 14rem; object-fit: cover; object-position: top left;
-  margin-top: auto; border: 1px solid var(--pl-line); border-bottom: 0; border-radius: 0.6rem 0.6rem 0 0;
-}
 
 /* A day at home: CSS-only tabs */
 .pl-day > input { position: absolute; opacity: 0; pointer-events: none; }
@@ -138,6 +139,9 @@
 .pl .md-typeset .pl-card h3, .pl-card h3 { margin: 0 0 0.4rem; font-size: 1.1rem; font-weight: 700; color: var(--pl-ink); }
 .pl-card p { margin: 0; color: var(--pl-muted); font-size: 0.95rem; }
 .pl-card pre { margin: 0.5rem 0 0; }
+.pl-keeps .pl-install { grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); }
+.pl-more { margin: 1.5rem 0 0; font-size: 1rem; }
+.pl-more a { color: var(--pl-accent); font-weight: 600; }
 .pl-card pre code { font-size: 0.72rem; white-space: pre-wrap; word-break: break-all; }
 
 /* FAQ */

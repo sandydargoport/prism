@@ -117,6 +117,7 @@ nav:
       - On your phone: features/MOBILE.md
       - Update check: features/TELEMETRY.md
   - Integrations:
+      - Services Prism works with: integrations.md
       - Apple iCloud: features/ICLOUD.md
       - Grocery cart: features/KROGER.md
       - Home Assistant: home-assistant.md

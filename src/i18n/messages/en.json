@@ -290,6 +290,7 @@
     "allDay": "All day: {titles}",
     "more": "+{count}",
     "laterToday": "Later today",
+    "earlierToday": "Earlier today",
     "choresLeft": "{count, plural, one {# chore left} other {# chores left}}",
     "tick": "Complete {title}",
     "listCount": "{name} {count}",
