@@ -46,6 +46,7 @@ export interface QuickPinMember {
   role: 'parent' | 'child' | 'guest';
   /** This member's own PIN length (4/5/6) — every pad requires exactly this many digits. */
   pinLength?: number;
+  pinKind?: 'digits' | 'passcode';
 }
 
 /**
@@ -92,6 +93,7 @@ export function QuickPinModal({
     avatarUrl: m.avatarUrl ?? undefined,
     role: m.role as 'parent' | 'child' | 'guest',
     pinLength: m.pinLength,
+    pinKind: m.pinKind,
   }));
 
   // Selected member
@@ -108,6 +110,8 @@ export function QuickPinModal({
   // Every pad requires exactly the SELECTED member's own PIN length, not a
   // family-wide constant — members can have different-length PINs.
   const pinLength = selectedMember?.pinLength ?? DEFAULT_PIN_LENGTH;
+  // A passcode takes letters too (#1197).
+  const passcode = selectedMember?.pinKind === 'passcode';
 
   // Reset state when modal closes
   useResetOn(open, () => {
@@ -144,9 +148,9 @@ export function QuickPinModal({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isVerifying) return;
-      if (e.key >= '0' && e.key <= '9') {
+      if ((e.key >= '0' && e.key <= '9') || (passcode && /^[a-z]$/i.test(e.key))) {
         e.preventDefault();
-        handleKeyPress(e.key);
+        handleKeyPress(e.key.toLowerCase());
       } else if (e.key === 'Backspace') {
         e.preventDefault();
         handleBackspace();
@@ -155,7 +159,7 @@ export function QuickPinModal({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [open, selectedMember, isVerifying, handleKeyPress, handleBackspace, onOpenChange]);
+  }, [open, selectedMember, isVerifying, handleKeyPress, handleBackspace, onOpenChange, passcode]);
 
   // Escape closes the box whichever step it is on (#834), not only on the PIN pad.
   useEffect(() => {
@@ -245,7 +249,7 @@ export function QuickPinModal({
       onClick={() => onOpenChange(false)}
     >
       <div
-        className="bg-card rounded-2xl p-3 max-w-[20rem] w-full mx-4 shadow-lg"
+        className="bg-card rounded-2xl p-3 max-w-[20rem] w-full mx-4 shadow-lg has-[[data-pin-letters]]:max-w-[34rem]"
         onClick={(e) => e.stopPropagation()}
         // A named dialog for screen readers (#834).
         role="dialog"
@@ -327,7 +331,7 @@ export function QuickPinModal({
             </div>
 
             {/* Number pad */}
-            <NumberPad onKeyPress={handleKeyPress} onBackspace={handleBackspace} disabled={isVerifying} size="compact" />
+            <NumberPad letters={passcode} onKeyPress={handleKeyPress} onBackspace={handleBackspace} disabled={isVerifying} size="compact" />
 
             {/* Loading */}
             <div className="h-4 mt-1.5 flex items-center justify-center">

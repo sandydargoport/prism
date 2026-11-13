@@ -32,7 +32,7 @@ jest.mock('@/lib/db/client', () => ({
 }));
 
 jest.mock('@/lib/db/schema', () => ({
-  users: { id: 'id', name: 'name', pin: 'pin', pinLength: 'pinLength' },
+  users: { id: 'id', name: 'name', pin: 'pin', pinLength: 'pinLength', pinKind: 'pinKind' },
   calendarGroups: { userId: 'userId', type: 'type' },
 }));
 
@@ -57,7 +57,7 @@ jest.mock('bcryptjs', () => ({
 
 import { PATCH } from '../[id]/route';
 
-const member = { id: 'child-1', name: 'Sam', role: 'child', color: '#3B82F6', email: null, avatarUrl: null, pin: '$2a$old-hash', pinLength: 4 };
+const member = { id: 'child-1', name: 'Sam', role: 'child', color: '#3B82F6', email: null, avatarUrl: null, pin: '$2a$old-hash', pinLength: 4, pinKind: 'digits' };
 
 function patch(body: Record<string, unknown>) {
   const req = new NextRequest('http://localhost:3000/api/family/child-1', {
@@ -162,5 +162,55 @@ describe('PATCH /api/family/[id] parent PIN reset', () => {
     const res = await patch({ pin: '5678' });
     expect(res.status).toBe(400);
     expect(mockSet).not.toHaveBeenCalled();
+  });
+});
+
+// #1197: a member can sign in with a passcode of letters and numbers.
+describe('PATCH /api/family/[id] passcodes', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const bcrypt = require('bcryptjs').default as { hash: jest.Mock };
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockRequireAuth.mockResolvedValue({ userId: 'parent-1', role: 'parent' });
+    mockWhere.mockResolvedValue([member]);
+    mockCompare.mockResolvedValue(true);
+  });
+
+  it('switches a member to an 8-character passcode with a new one, hashed in lowercase', async () => {
+    const res = await patch({ pinKind: 'passcode', pinLength: 8, pin: 'Maple22B' });
+    expect(res.status).toBe(200);
+    expect(bcrypt.hash).toHaveBeenCalledWith('maple22b', 12);
+    expect(mockSet).toHaveBeenCalledWith(expect.objectContaining({ pinKind: 'passcode', pinLength: 8, pin: '$2b$new-hash' }));
+    expect((await res.json()).pinKind).toBe('passcode');
+  });
+
+  it('refuses a passcode with anything but letters and numbers', async () => {
+    const res = await patch({ pinKind: 'passcode', pinLength: 8, pin: 'maple-22' });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe('Passcode must be exactly 8 letters or numbers');
+    expect(mockSet).not.toHaveBeenCalled();
+  });
+
+  it('refuses a passcode length outside 6 to 12, and a PIN longer than 6', async () => {
+    expect((await patch({ pinKind: 'passcode', pinLength: 5, pin: 'abcde' })).status).toBe(400);
+    expect((await patch({ pinKind: 'passcode', pinLength: 14, pin: 'abcdefghijklmn' })).status).toBe(400);
+    expect((await patch({ pinLength: 8, pin: '12345678' })).status).toBe(400);
+    expect(mockSet).not.toHaveBeenCalled();
+  });
+
+  it('refuses a new kind without a new credential when the member has one', async () => {
+    const res = await patch({ pinKind: 'passcode', pinLength: 6 });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/needs a new passcode/);
+    expect(mockSet).not.toHaveBeenCalled();
+  });
+
+  it('keeps a PIN to digits', async () => {
+    expect((await patch({ pin: 'ab12' })).status).toBe(400);
+    expect((await patch({ pin: '4321' })).status).toBe(200);
+  });
+
+  it('refuses a kind it does not know', async () => {
+    expect((await patch({ pinKind: 'password' })).status).toBe(400);
   });
 });

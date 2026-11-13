@@ -1,6 +1,7 @@
 'use client';
 
 import { resetPinFreeCache } from '@/components/dashboard/useEveryday';
+import { describePin } from '@/lib/auth/pinKind';
 import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -302,7 +303,7 @@ export function SecuritySection() {
                   <div className="text-sm text-muted-foreground">
                     {member.hasPin ? (
                       <span className="text-success">
-                        PIN set &middot; {member.pinLength ?? DEFAULT_PIN_LENGTH} digits
+                        {member.pinKind === 'passcode' ? 'Passcode' : 'PIN'} set &middot; {describePin(member.pinKind ?? 'digits', member.pinLength ?? DEFAULT_PIN_LENGTH)}
                       </span>
                     ) : (
                       <span className="text-warning">No PIN set</span>

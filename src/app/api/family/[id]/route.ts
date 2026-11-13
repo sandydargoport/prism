@@ -8,7 +8,7 @@ import bcrypt from 'bcryptjs';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
-import { MIN_PIN_LENGTH, MAX_PIN_LENGTH } from '@/lib/constants';
+import { describePin, isPinKind, lengthAllowed, lengthBounds, pinMatches, pinNoun, type PinKind } from '@/lib/auth/pinKind';
 import { isSetupComplete } from '@/lib/setup';
 import { parentCanResetPin } from '@/lib/auth/pinReset';
 import { isHexColor } from '@/lib/constants/memberColors';
@@ -33,6 +33,7 @@ export async function GET(
         avatarUrl: users.avatarUrl,
         pin: users.pin,
         pinLength: users.pinLength,
+        pinKind: users.pinKind,
         createdAt: users.createdAt,
       })
       .from(users)
@@ -54,6 +55,7 @@ export async function GET(
       avatarUrl: member.avatarUrl,
       hasPin: !!member.pin,
       pinLength: member.pinLength,
+      pinKind: member.pinKind,
       createdAt: member.createdAt.toISOString(),
     });
   } catch (error) {
@@ -171,31 +173,50 @@ export async function PATCH(
       updates.avatarUrl = body.avatarUrl || null;
     }
 
-    // Per-member PIN length (4/5/6). Validated up front so a PIN submitted in
-    // the same request is checked against the NEW length, not the stale one.
+    // What the member signs in with (#1197): a PIN or a passcode. Read first,
+    // so a length and a PIN in the same request are checked against it.
+    if (body.pinKind !== undefined) {
+      if (!isPinKind(body.pinKind)) {
+        return NextResponse.json({ error: "pinKind must be 'digits' or 'passcode'" }, { status: 400 });
+      }
+      updates.pinKind = body.pinKind;
+    }
+    const kind = (updates.pinKind ?? currentMember.pinKind ?? 'digits') as PinKind;
+
+    // Per-member length: 4 to 6 digits for a PIN, 6 to 12 for a passcode.
+    // Validated up front so a PIN submitted in the same request is checked
+    // against the NEW length, not the stale one.
     if (body.pinLength !== undefined) {
       const n = Math.round(Number(body.pinLength));
-      if (!Number.isFinite(n) || n < MIN_PIN_LENGTH || n > MAX_PIN_LENGTH) {
+      if (!lengthAllowed(kind, n)) {
+        const [lo, hi] = lengthBounds(kind);
         return NextResponse.json(
-          { error: `pinLength must be between ${MIN_PIN_LENGTH} and ${MAX_PIN_LENGTH}` },
+          { error: `pinLength must be between ${lo} and ${hi} for a ${pinNoun(kind)}` },
           { status: 400 }
         );
       }
       updates.pinLength = n;
+    } else if (updates.pinKind !== undefined && !lengthAllowed(kind, currentMember.pinLength)) {
+      return NextResponse.json(
+        { error: `A ${pinNoun(kind)} needs a length between ${lengthBounds(kind).join(' and ')}` },
+        { status: 400 }
+      );
     }
 
-    // A new length on its own strands an existing PIN: every pad then waits for
-    // the new number of digits, and the stored hash was made from the old one,
-    // so nothing typed can match. The length and the new PIN go together (or
-    // the PIN is removed in the same call).
-    if (
-      updates.pinLength !== undefined &&
-      updates.pinLength !== currentMember.pinLength &&
-      currentMember.pin &&
-      body.pin === undefined
-    ) {
+    // A new length or kind on its own strands an existing PIN: every pad then
+    // waits for the new shape, and the stored hash was made from the old one,
+    // so nothing typed can match. They go together with a new PIN (or the PIN
+    // is removed in the same call).
+    const reshaped =
+      (updates.pinLength !== undefined && updates.pinLength !== currentMember.pinLength) ||
+      (updates.pinKind !== undefined && updates.pinKind !== currentMember.pinKind);
+    if (reshaped && currentMember.pin && body.pin === undefined) {
+      const len = (updates.pinLength ?? currentMember.pinLength) as number;
+      const kindChanged = updates.pinKind !== undefined && updates.pinKind !== currentMember.pinKind;
       return NextResponse.json(
-        { error: `Changing the PIN length needs a new ${updates.pinLength}-digit PIN in the same change` },
+        { error: kindChanged
+          ? `Changing to ${describePin(kind, len)} needs a new ${pinNoun(kind)} of that length in the same change`
+          : `Changing the PIN length needs a new ${kind === 'passcode' ? `${len}-character passcode` : `${len}-digit PIN`} in the same change` },
         { status: 400 }
       );
     }
@@ -244,13 +265,14 @@ export async function PATCH(
         // Remove PIN
         updates.pin = null;
       } else {
-        const expectedLen = updates.pinLength ?? currentMember.pinLength;
-        if (new RegExp(`^\\d{${expectedLen}}$`).test(body.pin)) {
-          // Hash and set new PIN
-          updates.pin = await bcrypt.hash(body.pin, 12);
+        const expectedLen = (updates.pinLength ?? currentMember.pinLength) as number;
+        // A passcode is lowercase (#1197); a pad or keyboard sends it that way.
+        const pin = typeof body.pin === 'string' ? (kind === 'passcode' ? body.pin.toLowerCase() : body.pin) : '';
+        if (pinMatches(kind, expectedLen, pin)) {
+          updates.pin = await bcrypt.hash(pin, 12);
         } else {
           return NextResponse.json(
-            { error: `PIN must be exactly ${expectedLen} digits` },
+            { error: `${kind === 'passcode' ? 'Passcode' : 'PIN'} must be exactly ${describePin(kind, expectedLen)}` },
             { status: 400 }
           );
         }
@@ -313,6 +335,7 @@ export async function PATCH(
       avatarUrl: updatedMember.avatarUrl,
       hasPin: !!updatedMember.pin,
       pinLength: updatedMember.pinLength,
+      pinKind: updatedMember.pinKind,
       createdAt: updatedMember.createdAt.toISOString(),
     });
   } catch (error) {

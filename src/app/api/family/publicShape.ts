@@ -14,6 +14,9 @@ export const PUBLIC_MEMBER_FIELDS = [
   'color',
   'avatarUrl',
   'pinLength',
+  // Whether the pad offers letters (#1197). Says no more than pinLength does:
+  // the shape of the credential, never the credential.
+  'pinKind',
 ] as const;
 
 export type PublicMemberField = (typeof PUBLIC_MEMBER_FIELDS)[number];
