@@ -86,6 +86,7 @@ describe('GET /api/settings', () => {
   });
 
   it('returns settings as key-value map', async () => {
+    mockRequireRole.mockReturnValue(null);
     const res = await GET();
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -114,6 +115,24 @@ describe('GET /api/settings', () => {
       const body = await (await GET()).json();
       expect(Object.keys(body.settings).sort()).toEqual(['security', 'theme']);
       expect(body.settings.security).toEqual({ requirePinForEveryChange: false });
+    });
+
+    // #1224: an allowlist, so a key nobody listed stays private.
+    it('a caller who may not change settings gets only the keys the screens read', async () => {
+      const wallKeys = [
+        'theme', 'locale', 'timeFormat', 'timezone', 'weekStartsOn', 'hiddenPages', 'dockPages',
+        'calendarHiddenHours', 'shoppingCategories', 'wallpaperScenery', 'photoCaptionDate',
+        'photoCaptionPlace', 'photoOnThisDay', 'input.virtualKeyboardEnabled',
+        'scanner.soundEnabled', 'scanner.soundStyle',
+      ];
+      const privateKeys = [
+        'location', 'busDriverNames', 'someKeyAddedLater', 'scanner.defaultListId', 'weather',
+      ];
+      mockGetDisplayAuth.mockResolvedValue({ userId: 'display', role: 'guest' });
+      mockRequireRole.mockReturnValue(NextResponse.json({ error: 'Forbidden' }, { status: 403 }));
+      mockFrom.mockResolvedValue([...wallKeys, ...privateKeys].map((key) => ({ key, value: 'x' })));
+      const body = await (await GET()).json();
+      expect(Object.keys(body.settings).sort()).toEqual([...wallKeys].sort());
     });
 
     it('a parent still reads every setting', async () => {
