@@ -5,6 +5,7 @@ import { photos } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { deletePhoto } from '@/lib/services/photo-storage';
 import { logError } from '@/lib/utils/logError';
+import { invalidateEntity } from '@/lib/cache/cacheKeys';
 
 export async function GET(
   request: NextRequest,
@@ -61,6 +62,7 @@ export async function PATCH(
     if (!updated) {
       return NextResponse.json({ error: 'Photo not found' }, { status: 404 });
     }
+    await invalidateEntity('photos');
 
     return NextResponse.json(updated);
   } catch (error) {
@@ -88,6 +90,7 @@ export async function DELETE(
 
     await deletePhoto(photo.filename, photo.thumbnailPath);
     await db.delete(photos).where(eq(photos.id, id));
+    await invalidateEntity('photos');
 
     return NextResponse.json({ success: true });
   } catch (error) {
