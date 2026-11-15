@@ -68,6 +68,11 @@ jest.mock('@/lib/setup', () => ({
   isSetupComplete: jest.fn(),
 }));
 
+const mockEndAll = jest.fn();
+jest.mock('@/lib/auth/session', () => ({
+  invalidateAllUserSessions: (...a: unknown[]) => mockEndAll(...a),
+}));
+
 import { DELETE } from '../[id]/route';
 import { isSetupComplete } from '@/lib/setup';
 
@@ -105,6 +110,8 @@ describe('DELETE /api/family/[id]', () => {
 
     expect(res.status).toBe(200);
     expect(data.success).toBe(true);
+    // #1221: the removed member's devices are signed out.
+    expect(mockEndAll).toHaveBeenCalledWith('child-1');
   });
 
   it('deletes a parent when other parents remain', async () => {
@@ -156,6 +163,7 @@ describe('DELETE /api/family/[id]', () => {
 
     expect(res.status).toBe(400);
     expect(data.error).toContain('Cannot delete the last parent');
+    expect(mockEndAll).not.toHaveBeenCalled();
   });
 
   it('returns 404 when member does not exist', async () => {

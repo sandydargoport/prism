@@ -38,6 +38,15 @@ export const LOCKOUT_DURATION = 5 * 60; // kept for backward compat — use LOCK
 export const LOCKOUT_TIERS = [5 * 60, 15 * 60, 60 * 60, 4 * 60 * 60] as const;
 /** How long the lockout tier counter persists after the last failed attempt (24 hr). */
 export const LOCKOUT_TIER_TTL = 24 * 60 * 60;
+/**
+ * Wrong PINs one member may get in a day before sign-in locks for the rest of
+ * that day. The per-window count above resets every five minutes, so on its
+ * own four guesses per window never lock. A correct PIN does not clear this
+ * count; a member who only mistypes now and then stays far below it.
+ */
+export const MAX_DAILY_FAILED_LOGINS = 20;
+/** How long the daily failure count lives, from the first failure (24 hr). */
+export const DAILY_FAILED_LOGINS_TTL = 24 * 60 * 60;
 
 export const TARGET_RESOLUTION = {
   WIDTH: 1920,

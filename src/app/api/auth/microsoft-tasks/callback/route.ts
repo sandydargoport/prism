@@ -5,6 +5,7 @@ import { getRedisClient } from '@/lib/cache/getRedisClient';
 import { logError, oneLine } from '@/lib/utils/logError';
 import { resolveRedirectUri } from '@/lib/integrations/resolveRedirectUri';
 import { fetchMicrosoftAccountEmail } from '@/lib/integrations/oauth-userinfo';
+import { consumeOAuthState } from '@/lib/auth/oauthState';
 
 const MICROSOFT_TOKEN_URL = 'https://login.microsoftonline.com/consumers/oauth2/v2.0/token';
 const BASE_URL = process.env.APP_URL || process.env.BASE_URL || 'http://localhost:3000';
@@ -57,24 +58,21 @@ export async function GET(request: Request) {
   const forbidden = requireRole(auth, 'canManageIntegrations');
   if (forbidden) return forbidden;
 
-  // Parse state outside try block so it's available in catch
+  // Verify + consume the state nonce, bound to this session at /authorize
+  // (#1221). The list ids come from the stored payload, never the query
+  // string. Redis down proceeds with defaults (degraded); a bad or missing
+  // nonce with Redis up is refused.
   const { searchParams } = new URL(request.url);
-  const state = searchParams.get('state');
+  const consumed = await consumeOAuthState('microsoft-tasks', searchParams.get('state'), auth.userId);
+  const payload = consumed.status === 'ok' ? consumed.payload : {};
+  const str = (v: unknown): string | null => (typeof v === 'string' && v ? v : null);
+  const taskListId = str(payload.taskListId);
+  const shoppingListId = str(payload.shoppingListId);
+  const wishMemberId = str(payload.wishMemberId);
+  const returnSection = str(payload.returnSection) ?? 'tasks';
 
-  let taskListId: string | null = null;
-  let shoppingListId: string | null = null;
-  let wishMemberId: string | null = null;
-  let returnSection = 'tasks';
-  if (state) {
-    try {
-      const parsed = JSON.parse(state);
-      taskListId = parsed.taskListId || null;
-      shoppingListId = parsed.shoppingListId || null;
-      wishMemberId = parsed.wishMemberId || null;
-      returnSection = parsed.returnSection || 'tasks';
-    } catch {
-      // Ignore parse errors
-    }
+  if (consumed.status === 'invalid') {
+    return NextResponse.redirect(`${BASE_URL}/settings?section=${returnSection}&error=microsoft_state_mismatch`);
   }
 
   // Anchor for error redirects when caller asked for the integrations

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAuth, requireRole } from '@/lib/auth';
 import { encrypt } from '@/lib/utils/crypto';
 import { getRedisClient } from '@/lib/cache/getRedisClient';
+import { consumeOAuthState } from '@/lib/auth/oauthState';
 import { logError } from '@/lib/utils/logError';
 import { resolveRedirectUri } from '@/lib/integrations/resolveRedirectUri';
 import { fetchGoogleAccountEmail } from '@/lib/integrations/oauth-userinfo';
@@ -58,21 +59,22 @@ export async function GET(request: Request) {
   if (forbidden) return forbidden;
 
   const { searchParams } = new URL(request.url);
-  const state = searchParams.get('state');
+  // Verify + consume the state nonce, bound to this session at /authorize
+  // (#1221). Redis down proceeds with defaults (degraded); a bad or missing
+  // nonce with Redis up is refused.
+  const consumed = await consumeOAuthState('google-tasks', searchParams.get('state'), auth.userId);
+  const payload = consumed.status === 'ok' ? consumed.payload : {};
 
-  let taskListId: string | null = null;
   // Default returnSection is still 'tasks' — Google Tasks OAuth flows
   // ALWAYS end in a list-selection modal which currently only lives in
   // the legacy TaskIntegrationsSection. Until that modal is extracted into
   // the new Integrations cards (later phase), success redirects stay
   // pointed at 'tasks'. Error redirects can honor returnSection.
-  let returnSection = 'tasks';
-  if (state) {
-    try {
-      const parsed = JSON.parse(state);
-      taskListId = parsed.taskListId || null;
-      returnSection = parsed.returnSection || 'tasks';
-    } catch { /* ignore */ }
+  const taskListId = typeof payload.taskListId === 'string' && payload.taskListId ? payload.taskListId : null;
+  const returnSection = typeof payload.returnSection === 'string' && payload.returnSection ? payload.returnSection : 'tasks';
+
+  if (consumed.status === 'invalid') {
+    return NextResponse.redirect(`${BASE_URL}/settings?section=${returnSection}&error=google_tasks_state_mismatch`);
   }
 
   // Anchor for error redirects when returnSection === 'integrations'.

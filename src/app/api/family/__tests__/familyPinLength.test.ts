@@ -55,6 +55,22 @@ jest.mock('bcryptjs', () => ({
   },
 }));
 
+const mockReserve = jest.fn();
+const mockRecordFailed = jest.fn();
+const mockClearAttempts = jest.fn();
+const mockEndAll = jest.fn();
+const mockEndOthers = jest.fn();
+jest.mock('@/lib/auth/session', () => ({
+  reserveLoginAttempt: (...a: unknown[]) => mockReserve(...a),
+  recordFailedLogin: (...a: unknown[]) => mockRecordFailed(...a),
+  clearLoginAttempts: (...a: unknown[]) => mockClearAttempts(...a),
+  invalidateAllUserSessions: (...a: unknown[]) => mockEndAll(...a),
+  revokeOtherSessions: (...a: unknown[]) => mockEndOthers(...a),
+}));
+jest.mock('next/headers', () => ({
+  cookies: async () => ({ get: (k: string) => (k === 'prism_session' ? { value: 'token-this-device' } : undefined) }),
+}));
+
 import { PATCH } from '../[id]/route';
 
 const member = { id: 'child-1', name: 'Sam', role: 'child', color: '#3B82F6', email: null, avatarUrl: null, pin: '$2a$old-hash', pinLength: 4, pinKind: 'digits' };
@@ -66,6 +82,11 @@ function patch(body: Record<string, unknown>) {
   });
   return PATCH(req, { params: Promise.resolve({ id: 'child-1' }) });
 }
+
+beforeEach(() => {
+  mockReserve.mockResolvedValue({ allowed: true, count: 1 });
+  mockRecordFailed.mockResolvedValue({ remainingAttempts: 4 });
+});
 
 describe('PATCH /api/family/[id] PIN length', () => {
   beforeEach(() => {
@@ -212,5 +233,100 @@ describe('PATCH /api/family/[id] passcodes', () => {
 
   it('refuses a kind it does not know', async () => {
     expect((await patch({ pinKind: 'password' })).status).toBe(400);
+  });
+});
+
+// #1221: a wrong current PIN counts against the member's sign-in lockout.
+describe('PATCH /api/family/[id] current PIN attempts', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockRequireAuth.mockResolvedValue({ userId: 'parent-1', role: 'parent' });
+    // A co-parent: the case where another member's current PIN is checked.
+    mockWhere.mockResolvedValue([{ ...member, role: 'parent' }]);
+    mockReserve.mockResolvedValue({ allowed: true, count: 3 });
+    mockRecordFailed.mockResolvedValue({ remainingAttempts: 2 });
+  });
+
+  it('counts a wrong current PIN against that member', async () => {
+    mockCompare.mockResolvedValue(false);
+    const res = await patch({ pin: '5678', currentPin: '0000' });
+    expect(res.status).toBe(401);
+    expect(mockReserve).toHaveBeenCalledWith('child-1');
+    expect(mockRecordFailed).toHaveBeenCalledWith('child-1', 3);
+    expect((await res.json()).remainingAttempts).toBe(2);
+    expect(mockSet).not.toHaveBeenCalled();
+  });
+
+  it('refuses without checking while the member is locked out', async () => {
+    mockReserve.mockResolvedValue({ allowed: false, retryAfter: 240 });
+    mockCompare.mockResolvedValue(true);
+    const res = await patch({ pin: '5678', currentPin: '1234' });
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual(expect.objectContaining({ lockedOut: true, retryAfter: 240 }));
+    expect(mockCompare).not.toHaveBeenCalled();
+    expect(mockSet).not.toHaveBeenCalled();
+  });
+
+  it('clears the count on the right PIN, as signing in does', async () => {
+    mockCompare.mockResolvedValue(true);
+    const res = await patch({ pin: '5678', currentPin: '1234' });
+    expect(res.status).toBe(200);
+    expect(mockClearAttempts).toHaveBeenCalledWith('child-1');
+    expect(mockRecordFailed).not.toHaveBeenCalled();
+  });
+
+  it('compares a current passcode in lower case', async () => {
+    mockWhere.mockResolvedValue([{ ...member, role: 'parent', pinKind: 'passcode', pinLength: 8 }]);
+    mockCompare.mockResolvedValue(true);
+    const res = await patch({ pin: 'birch33c', currentPin: 'Maple22B' });
+    expect(res.status).toBe(200);
+    expect(mockCompare).toHaveBeenCalledWith('maple22b', '$2a$old-hash');
+  });
+});
+
+// #1221: a new PIN, a new role or removal signs the member's devices out.
+describe('PATCH /api/family/[id] ends sessions', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockRequireAuth.mockResolvedValue({ userId: 'parent-1', role: 'parent' });
+    mockWhere.mockResolvedValue([member]);
+    mockCompare.mockResolvedValue(true);
+  });
+
+  it("ends every session of a member whose PIN a parent changed", async () => {
+    expect((await patch({ pin: '5678' })).status).toBe(200);
+    expect(mockEndAll).toHaveBeenCalledWith('child-1');
+    expect(mockEndOthers).not.toHaveBeenCalled();
+  });
+
+  it('ends every session when the PIN is removed', async () => {
+    expect((await patch({ pin: null })).status).toBe(200);
+    expect(mockEndAll).toHaveBeenCalledWith('child-1');
+  });
+
+  it("ends every session of a member whose role changed", async () => {
+    expect((await patch({ role: 'guest' })).status).toBe(200);
+    expect(mockEndAll).toHaveBeenCalledWith('child-1');
+  });
+
+  it('keeps this device when a member changes their own PIN, and ends the others', async () => {
+    mockRequireAuth.mockResolvedValue({ userId: 'child-1', role: 'parent' });
+    mockWhere.mockResolvedValue([{ ...member, role: 'parent' }]);
+    expect((await patch({ pin: '5678', currentPin: '1234' })).status).toBe(200);
+    expect(mockEndOthers).toHaveBeenCalledWith('child-1', 'token-this-device');
+    expect(mockEndAll).not.toHaveBeenCalled();
+  });
+
+  it('an API token changing a PIN keeps no session', async () => {
+    mockRequireAuth.mockResolvedValue({ userId: 'child-1', role: 'parent', scopes: ['*'] });
+    mockWhere.mockResolvedValue([{ ...member, role: 'parent' }]);
+    expect((await patch({ pin: '5678', currentPin: '1234' })).status).toBe(200);
+    expect(mockEndAll).toHaveBeenCalledWith('child-1');
+  });
+
+  it('leaves sessions alone for a name, colour or unchanged role', async () => {
+    expect((await patch({ name: 'Sammy', color: '#10B981', role: 'child' })).status).toBe(200);
+    expect(mockEndAll).not.toHaveBeenCalled();
+    expect(mockEndOthers).not.toHaveBeenCalled();
   });
 });
