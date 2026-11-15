@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isBuiltInView } from '@/lib/newLook';
-import { requireAuth } from '@/lib/auth';
+import { requireAuth, requireRole } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { layouts } from '@/lib/db/schema';
 import { and, eq, desc, isNull } from 'drizzle-orm';
@@ -89,6 +89,11 @@ export async function PATCH(
       return NextResponse.json(row);
     }
 
+    // Changing a dashboard is for parents, as choosing what a screen shows is
+    // (#1223). The carry-over above only fills an empty slot, so any session may.
+    const denied = requireRole(auth, 'canModifySettings');
+    if (denied) return denied;
+
     const validation = validateRequest(updateLayoutSchema, body);
     if (!validation.success) {
       return NextResponse.json(
@@ -153,6 +158,8 @@ export async function DELETE(
 ) {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
+  const denied = requireRole(auth, 'canModifySettings');
+  if (denied) return denied;
 
   try {
     const { id } = await params;
