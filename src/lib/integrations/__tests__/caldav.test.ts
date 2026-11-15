@@ -101,10 +101,13 @@ describe('exported functions throw UnsafeUrlError on a private serverUrl', () =>
     fetchSpy.mockRestore();
   });
   it('deleteCalDAVEvent', async () => {
+    const fetchSpy = jest.spyOn(global, 'fetch');
     await expect(
       deleteCalDAVEvent('http://localhost', 'u', 'p', '/cal/o.ics'),
     ).rejects.toBeInstanceOf(UnsafeUrlError);
     expect(mockCreateDAVClient).not.toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
   });
 });
 
