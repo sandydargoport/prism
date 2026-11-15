@@ -67,3 +67,53 @@ describe('the Do list with pets (#856)', () => {
     expect(document.querySelector('[data-chores-section="pets-done"]')).toBeNull();
   });
 });
+
+/**
+ * #1227: Late, the tick times and the Today / Tomorrow sections follow the
+ * household's clock, not the device's. CI runs in UTC, so each case puts the
+ * household in a zone whose wall clock differs from UTC at that instant.
+ */
+describe('the Do list on the household clock (#1227)', () => {
+  // 19:30 UTC on 12 Nov 2026 is 1:30 PM in Chicago and 4:30 AM on the 13th in Tokyo.
+  const evening = new Date(Date.UTC(2026, 10, 12, 19, 30));
+  const tablet = chore({ id: 'tablet', title: 'Allergy tablet', kind: 'reminder', nextDue: '2026-11-12', nextDueTime: '19:00' });
+  afterEach(() => jest.useRealTimers());
+  const lateRows = (timeZone: string, now: Date, chores: Chore[]) => {
+    // The page passes today={new Date()}: the system clock and `now` agree.
+    jest.useFakeTimers({ now });
+    render(<ChoresDoList chores={chores} today={now} timeZone={timeZone} onTick={jest.fn()} onApprove={jest.fn()} canApprove />);
+    return [...document.querySelectorAll('[data-chore-late]')].map((el) => el.closest('[data-list-row]')!.textContent);
+  };
+
+  it('does not call a 7:00 PM reminder Late at 1:30 PM in a Chicago household', () => {
+    expect(lateRows('America/Chicago', evening, [tablet])).toEqual([]);
+    expect(screen.getByText('Allergy tablet').closest('[data-list-row]')!.textContent).toContain('7:00 PM');
+  });
+
+  it('calls it Late once 7:00 PM has passed there', () => {
+    // 7:05 PM in Chicago (CST) is 01:05 UTC on the 13th.
+    expect(lateRows('America/Chicago', new Date(Date.UTC(2026, 10, 13, 1, 5)), [tablet])).toHaveLength(1);
+  });
+
+  it('calls it Late at 7:30 PM in a Tokyo household, while UTC still reads 10:30 AM', () => {
+    expect(lateRows('Asia/Tokyo', new Date(Date.UTC(2026, 10, 12, 10, 30)), [tablet])).toHaveLength(1);
+  });
+
+  it('files chores under the household day', () => {
+    // 4:30 AM on the 13th in Tokyo: a chore due the 13th is today's, one due the 14th tomorrow's.
+    const g = choreGroups([
+      chore({ id: 'd13', nextDue: '2026-11-13' }),
+      chore({ id: 'd14', nextDue: '2026-11-14' }),
+    ], evening, 'Asia/Tokyo');
+    expect(g.today.map((c) => c.id)).toEqual(['d13']);
+    expect(g.tomorrow.map((c) => c.id)).toEqual(['d14']);
+  });
+
+  it('says when a pet was fed on the household clock', () => {
+    const tick = { at: new Date(Date.UTC(2026, 10, 12, 13, 40)).toISOString(), by: emma };
+    render(<ChoresDoList chores={[{ ...walkTwice, todayTicks: [tick] }]} today={evening} timeZone="America/Chicago"
+      onTick={jest.fn()} onApprove={jest.fn()} canApprove />);
+    expect(screen.getByText('Walk Biscuit').closest('[data-list-row]')!.textContent).toContain('Emma 7:40 AM');
+    expect(petTickLine([tick], 'Asia/Tokyo')).toBe('Emma 10:40 PM');
+  });
+});

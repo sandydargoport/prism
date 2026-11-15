@@ -28,7 +28,7 @@ import { StatusPill } from '@/components/ui/StatusPill';
 import * as React from 'react';
 import { Emoji } from '@/components/ui/Emoji';
 import { useState, useMemo, useCallback } from 'react';
-import { format, isToday, isTomorrow, isPast, parseISO } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ClipboardList, Plus, AlertCircle, Clock, Hourglass, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { WidgetContainer, WidgetEmpty } from './WidgetContainer';
@@ -40,8 +40,9 @@ import { Button, Badge, UserAvatar } from '@/components/ui';
  */
 // Chore type imported from shared types
 import type { Chore } from '@/types';
-import { isLate, formatReminderTime, petTickLine } from '@/lib/utils/reminders';
-import { useLocalDateKey } from '@/lib/hooks/useLocalDateKey';
+import { isLate, formatReminderTime, petTickLine, householdClock } from '@/lib/utils/reminders';
+import { addDaysToKey } from '@/lib/utils/zonedDate';
+import { useDisplayToday } from '@/components/providers';
 export type { Chore };
 
 /**
@@ -102,8 +103,9 @@ export const ChoresWidget = React.memo(function ChoresWidget({
   className,
 }: ChoresWidgetProps) {
   // Re-render at midnight so "Today" and "Tomorrow" move on with the date;
-  // the item labels below are computed from the clock on each render.
-  useLocalDateKey();
+  // the item labels below are computed from the clock on each render, in the
+  // household's zone, not the device's (#1227).
+  const { timeZone } = useDisplayToday();
   // Use provided chores (no demo data fallback in production)
   const allChores = externalChores || [];
 
@@ -188,6 +190,7 @@ export const ChoresWidget = React.memo(function ChoresWidget({
                 completing={completingChores.has(chore.id)}
                 onComplete={() => handleComplete(chore.id)}
                 onEdit={onChoreClick ? () => onChoreClick(chore) : undefined}
+                timeZone={timeZone}
               />
             ))}
           </div>
@@ -214,17 +217,22 @@ function ChoreItem({
   completing,
   onComplete,
   onEdit,
+  timeZone,
 }: {
   chore: Chore;
   completing: boolean;
   onComplete: () => void;
   onEdit?: () => void;
+  /** The household's zone: its date and clock decide Due today and Late. */
+  timeZone?: string;
 }) {
-  // Format next due date
-  const dueDateDisplay = chore.nextDue ? formatDueDate(chore.nextDue) : null;
+  const clock = householdClock(timeZone);
 
-  // Check if overdue
-  const isOverdue = chore.nextDue && isPast(parseISO(chore.nextDue));
+  // Format next due date
+  const dueDateDisplay = chore.nextDue ? formatDueDate(chore.nextDue, clock.today) : null;
+
+  // Due today or before
+  const isOverdue = chore.nextDue && chore.nextDue.slice(0, 10) <= clock.today;
 
   // Check if pending approval
   const isPendingApproval = !!chore.pendingApproval;
@@ -329,8 +337,8 @@ function ChoreItem({
             </span>
           )}
           {/* Who did it today and when (#856), so nobody feeds the dog twice. */}
-          {chore.pet && petTickLine(chore.todayTicks) && (
-            <span className="text-xs text-muted-foreground" data-chore-pet-ticks>{petTickLine(chore.todayTicks)}</span>
+          {chore.pet && petTickLine(chore.todayTicks, timeZone) && (
+            <span className="text-xs text-muted-foreground" data-chore-pet-ticks>{petTickLine(chore.todayTicks, timeZone)}</span>
           )}
 
           {/* Frequency */}
@@ -340,7 +348,7 @@ function ChoreItem({
 
           {/* Its time, and Late once that has passed (#1109). */}
           {!isPendingApproval && chore.nextDueTime && (
-            isLate(chore, format(new Date(), 'yyyy-MM-dd'), format(new Date(), 'HH:mm'))
+            isLate(chore, clock.today, clock.now)
               ? <span data-chore-late><StatusPill tone="danger">Late · {formatReminderTime(chore.nextDueTime)}</StatusPill></span>
               : <span className="text-xs text-muted-foreground">{formatReminderTime(chore.nextDueTime)}</span>
           )}
@@ -377,14 +385,15 @@ function ChoreItem({
 
 /**
  * FORMAT DUE DATE
- * Formats a due date in a human-friendly way.
+ * Formats a due date in a human-friendly way. `today` is the household's
+ * date key.
  */
-function formatDueDate(dateString: string): string {
-  const date = parseISO(dateString);
-  if (isToday(date)) return 'Due today';
-  if (isTomorrow(date)) return 'Due tomorrow';
-  if (isPast(date)) return 'Overdue';
-  return `Due ${format(date, 'MMM d')}`;
+function formatDueDate(dateString: string, today: string): string {
+  const due = dateString.slice(0, 10);
+  if (due === today) return 'Due today';
+  if (due === addDaysToKey(today, 1)) return 'Due tomorrow';
+  if (due < today) return 'Overdue';
+  return `Due ${format(parseISO(due), 'MMM d')}`;
 }
 
 /**
