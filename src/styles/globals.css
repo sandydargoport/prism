@@ -777,6 +777,17 @@ html.performance-mode[data-wallpaper] .widget-cell[data-fill="glass"]:not([data-
     scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
   }
 
+  /* The resting screen draws no scrollbars. A widget's list still scrolls by
+     touch, but over a photo the thin thumb read as a stray line that came and
+     went with every redraw (a new photo, a touch, a widget's burst). */
+  [data-screensaver] * {
+    scrollbar-width: none;
+  }
+
+  [data-screensaver] *::-webkit-scrollbar {
+    display: none;
+  }
+
   button,
   [role="button"],
   [role="tab"],

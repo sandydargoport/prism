@@ -276,6 +276,25 @@ test.describe('screensaver night sky', () => {
     await night.close();
   });
 
+  // A widget's list on the resting screen scrolls with no scrollbar drawn: over
+  // a photo the thin thumb read as a stray line that came and went.
+  test('a list on the resting screen draws no scrollbar', async ({ page }) => {
+    await openScreensaver(page, 'photos', NOON);
+    const gutter = await page.locator('[data-screensaver]').first().evaluate((root) => {
+      const list = document.createElement('div');
+      list.style.cssText = 'overflow:auto;height:60px;width:200px';
+      const tall = document.createElement('div');
+      tall.style.height = '600px';
+      list.append(tall);
+      root.append(list);
+      // Overlay scrollbars take no width, so the style is what tells.
+      const style = getComputedStyle(list).scrollbarWidth;
+      list.remove();
+      return style;
+    });
+    expect(gutter, 'no scrollbar drawn on the resting screen').toBe('none');
+  });
+
   test('Night sky fills the screen instead of the photos', async ({ page }) => {
     await openScreensaver(page, 'sky', NIGHT);
     const s = await sky(page);
