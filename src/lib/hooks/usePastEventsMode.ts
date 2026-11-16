@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect } from 'react';
-import { useHydrated, useStoredString, writeStored } from './useStoredValue';
+import { readStored, useHydrated, useStoredString, writeStored } from './useStoredValue';
+import { toast } from '@/components/ui/use-toast';
 import {
   DEFAULT_PAST_EVENTS_MODE,
   PAST_EVENTS_SETTING_KEY,
@@ -48,14 +49,25 @@ export function usePastEventsMode(): {
   }, []);
 
   const setMode = useCallback((next: PastEventsMode) => {
+    const stored = readStored(CACHE_KEY);
+    const before = isPastEventsMode(stored) ? stored : DEFAULT_PAST_EVENTS_MODE;
     writeStored(CACHE_KEY, next);
-    // Needs the settings permission; a display-only session keeps the local
-    // value if the PATCH is refused, as the other calendar preferences do.
+    // Needs the settings permission. A refused or failed save puts the
+    // previous choice back and says so, rather than showing a switch the
+    // household setting does not match (#1229).
+    const putBack = (refused: boolean) => {
+      writeStored(CACHE_KEY, before);
+      toast({
+        title: 'Not saved',
+        description: refused ? 'Only a parent can change this.' : 'Check the connection and try again.',
+        variant: 'destructive',
+      });
+    };
     fetch('/api/settings', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ key: PAST_EVENTS_SETTING_KEY, value: next }),
-    }).catch(() => {});
+    }).then((res) => { if (!res.ok) putBack(res.status === 401 || res.status === 403); }, () => putBack(false));
   }, []);
 
   return { mode, loaded, setMode };

@@ -7,10 +7,14 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { PastEventsCard } from '../PastEventsCard';
 import { resetPastEventsSync } from '@/lib/hooks/usePastEventsMode';
 
+const mockToast = jest.fn();
+jest.mock('@/components/ui/use-toast', () => ({ toast: (...a: unknown[]) => mockToast(...a) }));
+
 let settingsFromServer: Record<string, unknown> = {};
 let fetchMock: jest.Mock;
 
 beforeEach(() => {
+  mockToast.mockClear();
   window.localStorage.clear();
   resetPastEventsSync();
   settingsFromServer = {};
@@ -58,5 +62,36 @@ describe('PastEventsCard', () => {
     fireEvent.click(toggle);
     expect(toggle.getAttribute('aria-checked')).toBe('false');
     expect(patchedValues()).toEqual(['hide', 'dim']);
+  });
+
+  // #1229: a save the server refuses does not leave the switch showing a
+  // choice the household setting does not have.
+  it('puts the switch back and says so when the save is refused', async () => {
+    const toggle = await renderCard();
+    fetchMock.mockImplementation(async (_url: string, init?: RequestInit) => (init?.method === 'PATCH'
+      ? { ok: false, status: 403, json: async () => ({ error: 'Forbidden' }) }
+      : { ok: true, json: async () => ({ settings: settingsFromServer }) }));
+    await act(async () => {
+      fireEvent.click(toggle);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(toggle.getAttribute('aria-checked')).toBe('false');
+    expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Not saved', description: 'Only a parent can change this.' }));
+  });
+
+  it('puts the switch back when the save cannot reach the server', async () => {
+    const toggle = await renderCard();
+    fetchMock.mockImplementation(async (_url: string, init?: RequestInit) => {
+      if (init?.method === 'PATCH') throw new Error('offline');
+      return { ok: true, json: async () => ({ settings: settingsFromServer }) };
+    });
+    await act(async () => {
+      fireEvent.click(toggle);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(toggle.getAttribute('aria-checked')).toBe('false');
+    expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({ description: 'Check the connection and try again.' }));
   });
 });
