@@ -859,9 +859,11 @@ test.describe('idle background picker', () => {
       await sheet.locator('[data-day-stretch="resting"]').click();
       await expect(page.locator('[data-idle-toggle]').first()).toBeVisible();
 
+      // A lane tap opens that part's card, so tonight's times are read from
+      // the night card its end dot opens (#1233).
+      await sheet.locator('[data-day-milestone="night-end"]').click();
       await expect(sheet.locator('[data-night-start]')).toContainText(/\d/);
       await expect(sheet.locator('[data-night-end]')).toContainText(/\d/);
-      await sheet.locator('[data-day-milestone="night-end"]').click();
       await page.getByLabel('Ends: unit').selectOption('hr');
       await page.getByLabel('Ends: amount').fill('1');
       await expect(page.locator('[data-idle-crossed]')).toHaveCount(0);
