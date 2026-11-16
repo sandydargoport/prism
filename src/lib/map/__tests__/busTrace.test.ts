@@ -1,4 +1,4 @@
-import { traceCoordinates, traceStartTs, type TraceStop } from '../busTrace';
+import { traceCoordinates, traceEndTs, traceStartTs, type TraceStop } from '../busTrace';
 
 // The school at 0,0. A fix is "metres east of the school" at a clock time.
 const M_PER_DEG = 111_320;
@@ -72,8 +72,42 @@ describe('traceCoordinates', () => {
     expect(traceCoordinates(afternoon.slice(0, 6), [school, home], ms('15:29:05'))).toEqual([]);
   });
 
-  it('leaves a morning run as it was', () => {
+  it('ends a morning run where the bus reached the school', () => {
     const morning = [{ ...home, order: 0 }, { ...school, order: 1 }];
-    expect(traceCoordinates(afternoon, morning, ms('16:32:37'))).toHaveLength(afternoon.length);
+    const line = traceCoordinates(afternoon, morning, ms('16:32:37'));
+    // Every fix up to the arrival, none of the drive away afterwards.
+    expect(line).toHaveLength(7);
+    expect(line.at(-1)).toEqual([57 / M_PER_DEG, 0]);
+  });
+
+  it('draws the whole of a run that neither starts nor ends at the school', () => {
+    const route = [{ ...home, order: 0 }, { ...home, order: 1, lng: 2_000 / M_PER_DEG }];
+    expect(traceCoordinates(afternoon, route, ms('16:32:37'))).toHaveLength(afternoon.length);
+  });
+});
+
+describe('traceEndTs', () => {
+  const morning = [{ ...home, order: 0 }, { ...school, order: 1 }];
+
+  it('ends a morning run at the first fix that reached the school', () => {
+    expect(traceEndTs(afternoon, morning)).toBe(ms('15:31:40'));
+  });
+
+  it('goes by stop order, not array order', () => {
+    expect(traceEndTs(afternoon, [morning[1]!, morning[0]!])).toBe(ms('15:31:40'));
+  });
+
+  it('falls back to the provider arrival when no fix came within reach', () => {
+    const far = { ...school, order: 1, lng: 5_000 / M_PER_DEG, arrivedAt: '2030-03-04T15:32:10Z' };
+    expect(traceEndTs(afternoon, [morning[0]!, far])).toBe(ms('15:32:10'));
+    expect(traceCoordinates(afternoon, [morning[0]!, far], ms('16:32:37'))).toHaveLength(8);
+  });
+
+  it('has no end before the bus gets there', () => {
+    expect(traceEndTs(afternoon.slice(0, 6), morning)).toBe(Infinity);
+  });
+
+  it('has no end for an afternoon run, which ends at a stop', () => {
+    expect(traceEndTs(afternoon, [school, home])).toBe(Infinity);
   });
 });

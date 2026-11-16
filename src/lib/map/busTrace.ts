@@ -4,7 +4,10 @@
  * A trip that starts at the school (the afternoon run) has the bus driving to
  * the school first, which is not part of the trip. So its line starts where
  * the bus last stood waiting at the school, and before the bus gets there it
- * is drawn as a marker only. Any other trip draws every fix.
+ * is drawn as a marker only. A trip that ends at the school (the morning run)
+ * mirrors it: its line ends where the bus reached the school, since driving
+ * away afterwards is not part of the trip either. Any other trip draws every
+ * fix.
  */
 
 import { metresBetween } from './busTween';
@@ -60,10 +63,24 @@ function waitEnd(visit: TraceFix[]): TraceFix {
   return best?.to ?? visit[visit.length - 1]!;
 }
 
-/** The solid line as [lng, lat]: from where the trip starts (above) to `untilTs`. */
+/**
+ * The time the line ends at: Infinity for no end yet. For a trip whose last
+ * stop is the school, the first fix that reached it, or the provider's arrival
+ * when no fix came close.
+ */
+export function traceEndTs(fixes: TraceFix[], stops: TraceStop[]): number {
+  const last = stops.reduce<TraceStop | null>((a, s) => (!a || s.order > a.order ? s : a), null);
+  if (last?.kind !== 'school') return Infinity;
+  const reached = fixes.find((f) => metresBetween(f, last) <= AT_SCHOOL_M);
+  if (reached) return new Date(reached.ts).getTime();
+  return last.arrivedAt ? new Date(last.arrivedAt).getTime() : Infinity;
+}
+
+/** The solid line as [lng, lat]: from where the trip starts to where it ends (above), and no later than `untilTs`. */
 export function traceCoordinates(fixes: TraceFix[], stops: TraceStop[], untilTs: number): [number, number][] {
   const from = traceStartTs(fixes, stops);
+  const until = Math.min(untilTs, traceEndTs(fixes, stops));
   return fixes
-    .filter((f) => { const ts = new Date(f.ts).getTime(); return ts >= from && ts <= untilTs; })
+    .filter((f) => { const ts = new Date(f.ts).getTime(); return ts >= from && ts <= until; })
     .map((f) => [f.lng, f.lat]);
 }

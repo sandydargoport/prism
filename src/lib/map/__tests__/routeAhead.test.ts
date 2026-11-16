@@ -134,6 +134,33 @@ describe('combineTraces', () => {
     expect(Math.max(...pooled.map((p) => p[1] / M).filter((_, i) => pooled[i]![0] / M < 190))).toBeLessThan(5);
   });
 
+  // Pooled points wander up to 15 m either side of the road, as middle fixes do.
+  const wander = [0, 15, -11, 6, -15, 13, -4, 9, -14, 2];
+
+  it('straightens the wander out of a straight street', () => {
+    const trips = [0, 3, 6].map((o) => Array.from({ length: 41 }, (_, i) => xy(o + i * 10, i === 0 || i === 40 ? 0 : wander[i % 10]!)));
+    const pooled = combineTraces(trips);
+    expect(Math.max(...pooled.map((p) => Math.abs(p[1] / M)))).toBeLessThan(3);
+    expect(pooled[0]![0] / M).toBeLessThan(10);
+    expect(pooled.at(-1)![0] / M).toBeGreaterThan(395);
+    // Still a point every few metres, so a bus mid-street finds the road ahead on it.
+    expect(pathAhead(pooled, xy(200, 5), xy(390, 0))).not.toBeNull();
+  });
+
+  it('keeps the corner of an L while straightening its streets', () => {
+    const trips = [0, 3, 6].map((o) => Array.from({ length: 41 }, (_, i) => {
+      const s = o + i * 10;
+      const side = s === 200 || i === 0 ? 0 : wander[i % 10]!;
+      return s <= 200 ? xy(s, side) : xy(200 + side, s - 200);
+    }));
+    const pooled = combineTraces(trips);
+    expect(gap(pooled, corner)).toBeLessThan(4);
+    // Both streets straight: nothing on the east leg is more than 3 m off it.
+    const eastLeg = pooled.filter((p) => p[0] / M < 185);
+    expect(eastLeg.length).toBeGreaterThan(0);
+    for (const p of eastLeg) expect(Math.abs(p[1] / M)).toBeLessThan(3);
+  });
+
   it('is empty with nothing to go on', () => {
     expect(combineTraces([])).toEqual([]);
     expect(combineTraces([[xy(0, 0)]])).toEqual([]);
@@ -182,13 +209,40 @@ describe('alongUsualPath', () => {
   });
 
   it('keeps a detour where it was reported, then rejoins the road', () => {
-    const detour = [xy(10, 0), xy(50, 2), xy(80, 100), xy(120, 100), xy(150, -3), xy(190, 1)];
+    const detour = [xy(10, 0), xy(50, 2), xy(70, 100), xy(100, 100), xy(130, 100), xy(150, -3), xy(190, 1)];
     const line = alongUsualPath(detour, road);
-    expect(line).toContainEqual(xy(80, 100));
-    expect(line).toContainEqual(xy(120, 100));
+    expect(line).toContainEqual(xy(70, 100));
+    expect(line).toContainEqual(xy(100, 100));
+    expect(line).toContainEqual(xy(130, 100));
     // Not filled in along the road between where it left and where it came back.
     expect(line.some((p) => near(p, xy(100, 0)))).toBe(false);
     expect(offRoad(line[line.length - 2]!)).toBeLessThan(0.5);
+  });
+
+  it('keeps to the road through one or two stray fixes', () => {
+    // A fix 60 m off the road mid-trace, then two in a row: GPS noise in a bus loop.
+    const stray = [xy(10, 0), xy(40, 2), xy(60, 60), xy(80, -1), xy(110, 2), xy(130, -70), xy(150, 50), xy(170, 1), xy(195, 0)];
+    const line = alongUsualPath(stray, road);
+    for (const p of line) expect(offRoad(p)).toBeLessThan(2.5);
+    // The road between, not a gap: the line runs on past where the strays were.
+    expect(line.some((p) => near(p, xy(140, 0)))).toBe(true);
+  });
+
+  it('keeps to the road on the simplified path combineTraces now gives', () => {
+    // Pooled fixes wander either side of the L; the simplified path runs straight along it.
+    const pooled = combineTraces([0, 4, 8].map((o) => Array.from({ length: 40 }, (_, i) => {
+      const s = o + i * 10;
+      const side = [6, -9, 12, -4, 10, -12][i % 6]!;
+      return s <= 200 ? xy(s, side) : xy(200 + side, s - 200);
+    })));
+    for (const p of pooled) expect(offRoad(p)).toBeLessThan(6);
+    const line = alongUsualPath(wobbly, pooled);
+    expect(line.length).toBeGreaterThan(3);
+    for (const p of line.slice(0, -1)) expect(offRoad(p)).toBeLessThan(15);
+    // Forward only along the road: x then y never go back.
+    const along = (p: LngLat) => (p[1] / M > 15 ? 200 + p[1] / M : p[0] / M);
+    for (let i = 1; i < line.length - 1; i++) expect(along(line[i]!)).toBeGreaterThanOrEqual(along(line[i - 1]!) - 1);
+    expect(line.at(-1)).toEqual(wobbly.at(-1));
   });
 
   it('is the trace as reported without a usual path', () => {

@@ -225,8 +225,148 @@ export function combineTraces(traces: LngLat[][]): LngLat[] {
     if (next.length < 2) break;
     reference = next;
   }
-  // Already one point per piece; thinning further would cut the corners again.
-  return reference;
+  // One point per piece still carries each piece's GPS wander, so the path
+  // wobbles along a straight street. Thinning by spacing (thinPath) would cut
+  // the corners again; straighten keeps them (see there). Its long straight
+  // pieces get a point every PIECE_M again, since pathAhead looks for the
+  // path's nearest point, not its nearest segment.
+  return respace(straighten(reference, STRAIGHT_M), PIECE_M);
+}
+
+/** The same line with a point at least every `every` metres along it. */
+function respace(line: LngLat[], every: number): LngLat[] {
+  if (line.length < 2) return line;
+  const out: LngLat[] = [line[0]!];
+  for (let i = 1; i < line.length; i++) {
+    const a = line[i - 1]!, b = line[i]!;
+    const n = Math.ceil(metres(a, b) / every);
+    for (let s = 1; s <= n; s++) out.push([a[0] + ((b[0] - a[0]) * s) / n, a[1] + ((b[1] - a[1]) * s) / n]);
+  }
+  return out;
+}
+
+/**
+ * Wander smaller than this is straightened out of the usual path. Pooled
+ * points wander up to about 15 m either side of the road, and a stretch is
+ * straightened only when every point in it lies within this of one line, so it
+ * needs a few metres' margin over that. A turn into another street leaves the
+ * line by far more, so it survives. It is well inside OFF_REFERENCE_M, so
+ * today's fixes still find the path.
+ */
+const STRAIGHT_M = 18;
+/** Streets meeting at less than this are one street bending, not a corner. */
+const CORNER_DEG = 20;
+
+type XY = [number, number];
+type Fit = { cx: number; cy: number; dx: number; dy: number; worst: number };
+
+/** The line nearest `pts` (through their middle, along their spread) and the furthest any is from it. */
+function fitLine(pts: XY[]): Fit {
+  const n = pts.length;
+  const cx = pts.reduce((a, p) => a + p[0], 0) / n;
+  const cy = pts.reduce((a, p) => a + p[1], 0) / n;
+  let sxx = 0, syy = 0, sxy = 0;
+  for (const [x, y] of pts) { sxx += (x - cx) ** 2; syy += (y - cy) ** 2; sxy += (x - cx) * (y - cy); }
+  const angle = 0.5 * Math.atan2(2 * sxy, sxx - syy);
+  const dx = Math.cos(angle), dy = Math.sin(angle);
+  let worst = 0;
+  for (const [x, y] of pts) worst = Math.max(worst, Math.abs((x - cx) * dy - (y - cy) * dx));
+  return { cx, cy, dx, dy, worst };
+}
+
+function onLine(f: Fit, p: XY): XY {
+  const t = (p[0] - f.cx) * f.dx + (p[1] - f.cy) * f.dy;
+  return [f.cx + f.dx * t, f.cy + f.dy * t];
+}
+
+/**
+ * The path as straight streets meeting at corners. Douglas-Peucker first
+ * splits it at the points furthest off the line between its ends, which are
+ * the corners (and, where wander tilts that line, a few spurious ones).
+ * Neighbouring pieces that fit one line within `tolerance` and run the same
+ * way are then joined again, so a street driven out and back stays two passes.
+ * Each piece is drawn along the line that fits its points best, and each
+ * corner where the two lines meet, which can be nearer the real corner than
+ * any one fix was.
+ */
+export function straighten(points: LngLat[], tolerance: number): LngLat[] {
+  if (points.length <= 2) return points;
+  const k = 111_320 * Math.cos((points[0]![1] * Math.PI) / 180);
+  const o = points[0]!;
+  const xy: XY[] = points.map((p) => [(p[0] - o[0]) * k, (p[1] - o[1]) * 111_320]);
+  const back = (p: XY): LngLat => [o[0] + p[0] / k, o[1] + p[1] / 111_320];
+
+  // Douglas-Peucker: the points to split at.
+  const cut = new Array<boolean>(points.length).fill(false);
+  cut[0] = cut[points.length - 1] = true;
+  const spans: [number, number][] = [[0, points.length - 1]];
+  while (spans.length > 0) {
+    const [i, j] = spans.pop()!;
+    let far = -1;
+    let m = tolerance;
+    for (let c = i + 1; c < j; c++) {
+      const d = toSegment(points[c]!, points[i]!, points[j]!);
+      if (d > m) { m = d; far = c; }
+    }
+    if (far < 0) continue;
+    cut[far] = true;
+    spans.push([i, far], [far, j]);
+  }
+  const at = cut.flatMap((c, i) => (c ? [i] : []));
+
+  // Join neighbouring pieces back up where one line fits both, best fit first.
+  // A turn back is two pieces each longer than the wander, heading opposite ways;
+  // a short piece heading back is wander.
+  const sameWay = (a: number, b: number, c: number) => {
+    const [ux, uy] = [xy[b]![0] - xy[a]![0], xy[b]![1] - xy[a]![1]];
+    const [vx, vy] = [xy[c]![0] - xy[b]![0], xy[c]![1] - xy[b]![1]];
+    return ux * vx + uy * vy > 0 || Math.min(Math.hypot(ux, uy), Math.hypot(vx, vy)) < 2 * tolerance;
+  };
+  for (;;) {
+    let best = -1;
+    let bestWorst = tolerance;
+    for (let s = 1; s < at.length - 1; s++) {
+      if (!sameWay(at[s - 1]!, at[s]!, at[s + 1]!)) continue;
+      const worst = fitLine(xy.slice(at[s - 1]!, at[s + 1]! + 1)).worst;
+      if (worst <= bestWorst) { bestWorst = worst; best = s; }
+    }
+    if (best < 0) break;
+    at.splice(best, 1);
+  }
+
+  const fits = at.slice(1).map((end, s) => fitLine(xy.slice(at[s]!, end + 1)));
+  const out: XY[] = [onLine(fits[0]!, xy[0]!)];
+  const minSin = Math.sin((CORNER_DEG * Math.PI) / 180);
+  for (let s = 1; s < fits.length; s++) {
+    const a = fits[s - 1]!, b = fits[s]!;
+    const vertex = xy[at[s]!]!;
+    const cross = a.dx * b.dy - a.dy * b.dx;
+    let corner: XY | null = null;
+    if (Math.abs(cross) >= minSin) {
+      const t = ((b.cx - a.cx) * b.dy - (b.cy - a.cy) * b.dx) / cross;
+      corner = [a.cx + a.dx * t, a.cy + a.dy * t];
+      // Lines that only meet far off are not this corner.
+      if (Math.hypot(corner[0] - vertex[0], corner[1] - vertex[1]) > 2 * tolerance) corner = null;
+    }
+    if (!corner) {
+      // A bend, or a turn back: midway between the two lines at the split point.
+      const [p, q] = [onLine(a, vertex), onLine(b, vertex)];
+      corner = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+    }
+    out.push(corner);
+  }
+  out.push(onLine(fits[fits.length - 1]!, xy[xy.length - 1]!));
+  return out.map(back);
+}
+
+/** Metres from `p` to the segment a to b. */
+function toSegment(p: LngLat, a: LngLat, b: LngLat): number {
+  const k = 111_320 * Math.cos((a[1] * Math.PI) / 180);
+  const bx = (b[0] - a[0]) * k, by = (b[1] - a[1]) * 111_320;
+  const px = (p[0] - a[0]) * k, py = (p[1] - a[1]) * 111_320;
+  const len2 = bx * bx + by * by;
+  const t = len2 > 0 ? Math.max(0, Math.min(1, (px * bx + py * by) / len2)) : 0;
+  return Math.hypot(px - bx * t, py - by * t);
 }
 
 
@@ -237,14 +377,25 @@ export function combineTraces(traces: LngLat[][]): LngLat[] {
  * apart, so joined up as they come they zigzag across kerbs and cut every
  * corner through the gardens. The usual path is the road as earlier trips
  * pooled it (combineTraces), so each fix is placed on it instead, the path's
- * own corners filling in between one fix and the next. A fix off the path (a
- * detour) is drawn where it was reported. The line still ends at the newest
- * fix, which is where the marker and the dashed road ahead start.
+ * own corners filling in between one fix and the next. One or two fixes off
+ * the path in a row are GPS noise (a school's bus loop scatters a few across
+ * the campus): the line keeps to the path through them, to the next fix on
+ * it. DETOUR_FIXES or more in a row are a detour, drawn where they were
+ * reported. The line still ends at the newest fix, which is where the marker
+ * and the dashed road ahead start.
  *
  * Fixes are placed in order and only forward, as in combineTraces, so a
  * street driven twice keeps both passes, and GPS wander while the bus stands
  * still never draws it backing up.
  */
+/**
+ * This many fixes in a row off the usual path are a detour; fewer are GPS
+ * noise. Fixes come 10 to 30 s apart, so three in a row is 30 s to a minute and
+ * a half off the road, longer than a stray reading lasts and as short as a real
+ * turn down another street.
+ */
+export const DETOUR_FIXES = 3;
+
 export function alongUsualPath(trace: LngLat[], usual: LngLat[] | null): LngLat[] {
   if (!usual || usual.length < 2 || trace.length < 2) return trace;
   const cum = [0];
@@ -261,15 +412,22 @@ export function alongUsualPath(trace: LngLat[], usual: LngLat[] | null): LngLat[
   let last: Placed | null = null;
   // Where to search from, kept through a detour so the bus rejoins further on.
   let from: number | null = null;
+  // The fixes off the path since the last one on it.
+  let off: LngLat[] = [];
   for (const p of trace) {
     const placed: Placed | null = from === null
       ? place(usual, cum, p, 0, Infinity)
       : place(usual, cum, p, from, last ? SEARCH_AHEAD_M : Infinity);
     if (!placed || placed.m > OFF_REFERENCE_M) {
-      out.push(p);
-      last = null;
+      off.push(p);
+      // Held back until there are enough to be a detour, then drawn as reported.
+      if (off.length >= DETOUR_FIXES) {
+        out.push(...(off.length === DETOUR_FIXES ? off : [p]));
+        last = null;
+      }
       continue;
     }
+    off = [];
     if (last && placed.along <= last.along) continue;
     // Following the path from the last place: its corners, then this fix's place.
     if (last) for (let i = last.seg + 1; i <= placed.seg; i++) out.push(usual[i]!);
