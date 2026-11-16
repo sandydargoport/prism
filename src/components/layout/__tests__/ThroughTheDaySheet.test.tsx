@@ -1,11 +1,13 @@
 /**
  * @jest-environment jsdom
  *
- * The Through the day sheet (#1152): the strip of states shows the screen in
- * each, the slider plays the day, and the sheet sets what resting and night
- * are. A dashboard nobody gave a night is stored as before. The line (#1170)
- * has a dot where night starts and ends and a block per Interlude; tapping one
- * shows the screen then and opens its card.
+ * The Through the day sheet (#1152): two lanes on one time axis (#1233), In
+ * use and Nobody there, under one time marker. Tapping a lane at a time shows
+ * the screen in that lane then; the slider moves the marker and keeps the
+ * lane. The sheet sets what resting and night are. A dashboard nobody gave a
+ * night is stored as before. The Nobody there lane (#1170) has a dot where
+ * night starts and ends, and In use a block per Interlude; tapping one shows
+ * the screen then and opens its card.
  */
 import React, { useState } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
@@ -59,19 +61,88 @@ const milestone = (kind: 'night-start' | 'night-end') => document.querySelector<
 const SCHEDULE = 'prism-screen-schedule';
 
 describe('ThroughTheDaySheet', () => {
-  it('shows the screen in each state it is tapped to', () => {
-    render(<Harness initial={{ source: 'dashboard' }} />);
-    expect(radio('Show the screen', 'Active').getAttribute('aria-checked')).toBe('true');
-    fireEvent.click(radio('Show the screen', 'Night'));
-    expect(seen).toMatchObject({ tab: 'idle', half: 'night' });
-    fireEvent.click(radio('Show the screen', 'Resting'));
-    expect(seen).toMatchObject({ tab: 'idle', half: 'day' });
-    fireEvent.click(radio('Show the screen', 'Active'));
-    expect(seen.tab).toBe('dashboard');
+  describe('two lanes on one time axis (#1233)', () => {
+    // Both lanes are laid out 1440px wide from 0, so a tap at x is minute x.
+    let rect: jest.SpyInstance;
+    beforeEach(() => {
+      rect = jest.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(
+        { left: 0, right: 1440, width: 1440, top: 0, bottom: 44, height: 44, x: 0, y: 0, toJSON: () => ({}) } as DOMRect,
+      );
+    });
+    afterEach(() => rect.mockRestore());
+    const NIGHT_AT_9 = { day: 'photos', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } } as const;
+    const inUse = () => document.querySelector<HTMLElement>('[data-day-lane="in-use"]')!;
+    /** The Nobody there stretch under a minute. */
+    const nobodyAt = (minute: number) => Array.from(document.querySelectorAll<HTMLElement>('[data-day-stretch]'))
+      .filter((el) => Number(el.dataset.key!.split('-')[1]) <= minute).pop()!;
+    /** The minute the time marker is drawn at. */
+    const marker = () => Math.round((parseFloat(document.querySelector<HTMLElement>('[data-day-now]')!.style.left) / 100) * 1440);
+    const tap = (el: HTMLElement, minute: number) => fireEvent.click(el, { clientX: minute, detail: 1 });
+    const key = (el: HTMLElement) => fireEvent.click(el, { detail: 0 });
+
+    it('has no row of state buttons', () => {
+      render(<Harness initial={NIGHT_AT_9} />);
+      expect(document.querySelector('[data-day-state]')).toBeNull();
+      expect(screen.queryByRole('radiogroup', { name: 'Show the screen' })).toBeNull();
+      expect(screen.getByText('In use')).toBeTruthy();
+      expect(screen.getByText('Nobody there')).toBeTruthy();
+    });
+
+    it('tapping In use at 22:00 shows the dashboard, with the marker at 22:00', () => {
+      render(<Harness initial={NIGHT_AT_9} />);
+      tap(nobodyAt(10 * 60), 10 * 60);
+      tap(inUse(), 22 * 60);
+      expect(seen.tab).toBe('dashboard');
+      expect(marker()).toBe(22 * 60);
+      expect(screen.getByText(/^At 22:00: in use\./)).toBeTruthy();
+      expect(document.querySelector('[data-day-card]')).toBeNull();
+    });
+
+    it('tapping Nobody there at 22:00 shows night and its card, with the marker at 22:00', () => {
+      render(<Harness initial={NIGHT_AT_9} />);
+      tap(nobodyAt(22 * 60), 22 * 60);
+      expect(seen).toMatchObject({ tab: 'idle', half: 'night' });
+      expect(marker()).toBe(22 * 60);
+      expect(document.querySelector('[data-day-card="night"]')).toBeTruthy();
+      // At 10:00 the same lane is resting.
+      tap(nobodyAt(10 * 60), 10 * 60);
+      expect(seen).toMatchObject({ tab: 'idle', half: 'day' });
+      expect(marker()).toBe(10 * 60);
+      expect(document.querySelector('[data-day-card="resting"]')).toBeTruthy();
+    });
+
+    it('picking a lane does not move the marker', () => {
+      render(<Harness initial={NIGHT_AT_9} />);
+      fireEvent.change(screen.getByLabelText('Time of day'), { target: { value: String(22 * 60) } });
+      expect(marker()).toBe(22 * 60);
+      // Picked from the keyboard, with no point to tap: the marker stays.
+      key(nobodyAt(22 * 60));
+      expect(seen).toMatchObject({ tab: 'idle', half: 'night' });
+      expect(marker()).toBe(22 * 60);
+      key(inUse());
+      expect(seen.tab).toBe('dashboard');
+      expect(marker()).toBe(22 * 60);
+    });
+
+    it('the slider keeps the lane: In use stays the dashboard, Nobody there follows the time', () => {
+      render(<Harness initial={NIGHT_AT_9} />);
+      const slider = screen.getByLabelText('Time of day');
+      tap(inUse(), 10 * 60);
+      fireEvent.change(slider, { target: { value: String(22 * 60) } });
+      expect(seen.tab).toBe('dashboard');
+      expect(marker()).toBe(22 * 60);
+      tap(nobodyAt(22 * 60), 22 * 60);
+      fireEvent.change(slider, { target: { value: String(10 * 60) } });
+      expect(seen).toMatchObject({ tab: 'idle', half: 'day' });
+      fireEvent.change(slider, { target: { value: String(23 * 60) } });
+      expect(seen).toMatchObject({ tab: 'idle', half: 'night' });
+      expect(marker()).toBe(23 * 60);
+    });
   });
 
-  it('plays the day: the slider shows the state at that time', () => {
+  it('plays the day: on Nobody there, the slider shows the state at that time', () => {
     render(<Harness initial={{ day: 'dashboard', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } }} />);
+    fireEvent.click(document.querySelector<HTMLElement>('[data-day-stretch="resting"]')!);
     const slider = screen.getByLabelText('Time of day');
     fireEvent.change(slider, { target: { value: String(21 * 60 + 30) } });
     expect(seen).toMatchObject({ tab: 'idle', half: 'night' });
@@ -189,7 +260,9 @@ describe('ThroughTheDaySheet', () => {
     fireEvent.change(screen.getByLabelText('Day shown'), { target: { value: String(other) } });
     fireEvent.click(document.querySelector<HTMLElement>('[data-day-interlude="0"]')!);
     expect(document.querySelector('[data-day-card="interlude"]')).toBeTruthy();
-    expect(screen.getByText(/^At 09:00: (resting|night), Bus shows/)).toBeTruthy();
+    // An Interlude is on In use: the dashboard it shows, at its start.
+    expect(seen.tab).toBe('dashboard');
+    expect(screen.getByText(/^At 09:00: in use, Bus shows/)).toBeTruthy();
   });
 
   it('asks for a named screen before it offers Interludes', () => {

@@ -1,12 +1,14 @@
 'use client';
 
 /**
- * The editing bar's Through the day sheet (#1152): the three states a screen
- * is in, Active, Resting and Night, then the day as a line (#1170). The line
- * has a dot where night starts and ends, a stretch for resting and for night,
- * and a block for each Interlude. Tapping one shows the screen at that time
- * and opens a card under the line with only its settings. A slider plays the
- * day so 9:30 pm can be seen now. The rarer settings sit behind More.
+ * The editing bar's Through the day sheet (#1152): the day as two lanes on
+ * one time axis (#1233), with one time marker through both. In use runs the
+ * whole day and shows the dashboard; Interludes sit on it. Nobody there is
+ * resting by day and night after dark, with a dot where night starts and
+ * ends (#1170). Tapping a lane at a time shows the screen in that lane at that
+ * time and opens a card under the line with only its settings. The slider
+ * moves the marker and keeps the lane, so 9:30 pm can be seen now. The rarer
+ * settings sit behind More.
  *
  * The backdrop and the night rule are the dashboard's and are saved with
  * Done. How long until it rests, how dark, and the Interludes are this
@@ -27,7 +29,7 @@ import { useStoredString, writeStored } from '@/lib/hooks/useStoredValue';
 import { loadBase } from '@/lib/displays/displaySettingsSync';
 import { remoteEditHost } from '@/lib/displays/remoteEdit';
 import { MAX_SCHEDULE_RULES, parseSchedule, scheduledDashboard, serializeSchedule, SCREEN_SCHEDULE_KEY, type ScheduleRule } from '@/lib/displays/screenSchedule';
-import { DAY_MINUTES, dayLine, hhmm, interludeSpans, placeBlocks, type Placed } from '@/lib/dayLine';
+import { DAY_MINUTES, dayLine, hhmm, interludeSpans, placeBlocks, type Placed, type Stretch } from '@/lib/dayLine';
 import { sameIdleBackground, tonight, type IdleBackground, type IdleSource, type IdleSwitch } from '@/lib/idleBackground';
 import { asDayAndNight, DEFAULT_NIGHT, screenStateAt, type ScreenState } from '@/lib/throughTheDay';
 import type { IdleHalf, EditTab } from '@/components/dashboard/useDashboardLayout';
@@ -63,6 +65,9 @@ type Picked =
   | { kind: 'night'; edge?: 'start' | 'end' }
   | { kind: 'resting' }
   | { kind: 'interlude'; index: number };
+
+/** The two lanes of the day: the screen in use, and nobody there. */
+type Lane = 'in-use' | 'nobody';
 
 /** Height of a row of Interlude blocks, and the space between rows. */
 const LANE_PX = 44;
@@ -140,13 +145,18 @@ export function ThroughTheDaySheet({
   const line = dayLine(day, rule, lat, lon);
   const spans = interludeSpans(interludes, weekday);
 
-  // The slider: a time of day, and what the screen is at that time while
-  // nobody is using it.
+  // The time marker, shared by both lanes, and the lane the screen is shown
+  // in. In use shows the dashboard at any time; Nobody there is resting or
+  // night, whichever that time is. The marker moves only when the person
+  // moves it: a tap on a lane puts it where the tap was, the slider slides it.
   const [played, setPlayed] = useState<number | null>(null);
   const playedAt = (minute: number) => new Date(day.getFullYear(), day.getMonth(), day.getDate(), Math.floor(minute / 60), minute % 60);
-  const play = (minute: number) => {
+  const idleStateAt = (minute: number) => screenStateAt({ idle: true, now: playedAt(minute), rule, lat, lon });
+  const lane: Lane = state === 'active' ? 'in-use' : 'nobody';
+  /** Moves the marker and shows the screen then, in `inLane` (the chosen one by default). */
+  const play = (minute: number, inLane: Lane = lane) => {
     setPlayed(minute);
-    show(screenStateAt({ idle: true, now: playedAt(minute), rule, lat, lon }));
+    show(inLane === 'in-use' ? 'active' : idleStateAt(minute));
   };
   const playedInterlude = (() => {
     if (played === null) return null;
@@ -189,6 +199,7 @@ export function ThroughTheDaySheet({
   // and drops a row rather than touch another.
   const lineRef = useRef<HTMLDivElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
+  const inUseRef = useRef<HTMLButtonElement>(null);
   const [placed, setPlaced] = useState<Placed[]>([]);
   const [bare, setBare] = useState<string[]>([]);
   const fitKey = JSON.stringify([line.stretches, spans, storedSchedule, idleBackground, allDashboards.map((d) => d.name)]);
@@ -386,26 +397,31 @@ export function ThroughTheDaySheet({
 
   const playedMinute = played ?? (playedAt(0).toDateString() === today.toDateString() ? today.getHours() * 60 + today.getMinutes() : null);
 
-  return (
-    <div className="flex flex-col gap-6" data-day-sheet>
-      <section>
-        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Show the screen">
-          {(['active', 'resting', 'night'] as const).map((s) => (
-            <button
-              key={s}
-              type="button"
-              role="radio"
-              aria-checked={state === s}
-              onClick={() => { setPlayed(null); show(s); }}
-              className={chip(state === s)}
-              data-day-state={s}
-            >
-              {s === 'active' ? 'Active' : s === 'resting' ? 'Resting' : 'Night'}
-            </button>
-          ))}
-        </div>
-      </section>
+  /** The minute under a tap on a lane. A key press has no point, so it keeps the marker where it is. */
+  const minuteAt = (e: React.MouseEvent, laneEl: HTMLElement | null) => {
+    const kept = playedMinute ?? today.getHours() * 60;
+    if (e.detail === 0 || !laneEl) return kept;
+    const r = laneEl.getBoundingClientRect();
+    if (r.width <= 0) return kept;
+    return Math.min(DAY_MINUTES - 1, Math.max(0, Math.round(((e.clientX - r.left) / r.width) * DAY_MINUTES)));
+  };
+  const tapInUse = (e: React.MouseEvent) => {
+    setPicked(null);
+    play(minuteAt(e, inUseRef.current), 'in-use');
+  };
+  const tapNobody = (e: React.MouseEvent, st: Stretch) => {
+    let minute = minuteAt(e, lineRef.current);
+    // A key press on a stretch keeps the marker when it is in that stretch,
+    // or takes it to the stretch's nearest edge, so its card is the one shown.
+    if (e.detail === 0) minute = Math.min(st.to - 1, Math.max(st.from, minute));
+    setPicked({ kind: idleStateAt(minute) === 'night' ? 'night' : 'resting' });
+    play(minute, 'nobody');
+  };
+  const laneLabel = (on: boolean) => cn('whitespace-nowrap text-body', on ? 'font-semibold text-foreground' : 'text-muted-foreground');
+  const chosenRing = 'ring-2 ring-primary ring-offset-2 ring-offset-background';
 
+  return (
+    <div className="flex flex-col gap-6" data-day-sheet data-day-shows={state}>
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <select className={field} value={weekday} onChange={(e) => { setWeekday(Number(e.target.value)); setPlayed(null); }} aria-label="Day shown" data-day-weekday>
@@ -419,98 +435,138 @@ export function ThroughTheDaySheet({
           )}
         </div>
 
-        {spans.length > 0 && (
-          // Interludes sit in their own row above the line, so a short one is
-          // still a 44px target and never lands on a stretch's label.
-          <div ref={rowRef} className="relative" style={{ height: lanes * LANE_PX + (lanes - 1) * LANE_GAP_PX }} data-day-interludes>
-            {spans.map((sp, n) => {
-              const width = ((sp.to - sp.from) / DAY_MINUTES) * 100;
-              const place = placed[n];
+        {/* Two lanes on one day axis: the second column is the same for both,
+            so a time sits at the same place in each, under one marker. */}
+        <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2" data-day-lanes>
+          {spans.length > 0 && (
+            // Interludes change which dashboard shows, so they sit on In use,
+            // in their own row: a short one is still a 44px target.
+            <div ref={rowRef} className="relative" style={{ gridColumn: 2, gridRow: 1, height: lanes * LANE_PX + (lanes - 1) * LANE_GAP_PX }} data-day-interludes>
+              {spans.map((sp, n) => {
+                const width = ((sp.to - sp.from) / DAY_MINUTES) * 100;
+                const place = placed[n];
+                return (
+                  <button
+                    key={`i-${sp.index}-${sp.from}`}
+                    type="button"
+                    onClick={() => {
+                      setPicked({ kind: 'interlude', index: sp.index });
+                      // The marker stays when it is already in this Interlude.
+                      const inside = playedMinute !== null && playedMinute >= sp.from && playedMinute < sp.to;
+                      play(inside ? playedMinute : sp.from, 'in-use');
+                    }}
+                    aria-label={`Interlude: ${dashboardName(interludes[sp.index]!.dashboardId)}, ${timeOfMinute(sp.from)} to ${timeOfMinute(sp.to)}`}
+                    aria-pressed={isPicked({ kind: 'interlude', index: sp.index })}
+                    className={cn(
+                      'absolute h-[44px] w-max max-w-full whitespace-nowrap rounded-lg bg-primary px-2 text-caption text-primary-foreground',
+                      isPicked({ kind: 'interlude', index: sp.index }) && 'ring-2 ring-foreground ring-offset-1',
+                    )}
+                    style={{
+                      minWidth: `max(44px, ${width}%)`,
+                      left: place ? place.left : at(sp.from),
+                      top: place ? place.lane * (LANE_PX + LANE_GAP_PX) : 0,
+                    }}
+                    data-day-interlude={sp.index}
+                    data-from={sp.from}
+                    data-to={sp.to}
+                  >
+                    {dashboardName(interludes[sp.index]!.dashboardId)}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          <span className={laneLabel(lane === 'in-use')} style={{ gridColumn: 1, gridRow: 2 }} data-lane-label="in-use">In use</span>
+          <button
+            ref={inUseRef}
+            type="button"
+            onClick={tapInUse}
+            aria-label="In use: the dashboard shows. Tap a time to see it then."
+            aria-pressed={lane === 'in-use'}
+            className={cn('h-[44px] w-full rounded-full bg-primary/20 px-4 text-left text-caption text-foreground', lane === 'in-use' && chosenRing)}
+            style={{ gridColumn: 2, gridRow: 2 }}
+            data-day-lane="in-use"
+          >
+            Dashboard
+          </button>
+
+          <span className={laneLabel(lane === 'nobody')} style={{ gridColumn: 1, gridRow: 3 }} data-lane-label="nobody">Nobody there</span>
+          <div
+            ref={lineRef}
+            role="group"
+            aria-label="Nobody there"
+            className={cn('relative h-[44px] rounded-full', lane === 'nobody' && chosenRing)}
+            style={{ gridColumn: 2, gridRow: 3 }}
+            data-day-line
+            data-day-lane="nobody"
+          >
+            {line.stretches.map((st, n) => (
+              <button
+                key={`${st.kind}-${st.from}`}
+                type="button"
+                onClick={(e) => tapNobody(e, st)}
+                aria-label={`${st.kind === 'night' ? `Night: ${nightLabel}` : `Resting: ${restingLabel}`}, ${timeOfMinute(st.from)} to ${timeOfMinute(st.to)}`}
+                aria-pressed={isPicked({ kind: st.kind })}
+                className={cn(
+                  // Clear of the dot on each edge. A name that does not fit is hidden
+                  // whole (see the fitting above), so no ellipsis is drawn for it.
+                  'absolute inset-y-0 overflow-hidden whitespace-nowrap px-6 text-left text-caption',
+                  n === 0 && 'rounded-l-full',
+                  n === line.stretches.length - 1 && 'rounded-r-full',
+                  st.kind === 'night' ? 'bg-foreground/85 text-background' : 'bg-muted text-foreground',
+                  isPicked({ kind: st.kind }) && 'ring-2 ring-inset ring-primary',
+                )}
+                style={{ left: at(st.from), width: at(st.to - st.from) }}
+                data-day-stretch={st.kind}
+                data-key={`${st.kind}-${st.from}`}
+              >
+                <span className={cn(bare.includes(`${st.kind}-${st.from}`) && 'invisible')} data-stretch-label>
+                  {st.kind === 'night' ? nightLabel : restingLabel}
+                </span>
+              </button>
+            ))}
+            {line.milestones.map((m) => {
+              const edge = m.kind === 'night-start' ? 'start' : 'end';
               return (
                 <button
-                  key={`i-${sp.index}-${sp.from}`}
+                  key={m.kind}
                   type="button"
-                  onClick={() => { setPicked({ kind: 'interlude', index: sp.index }); play(sp.from); }}
-                  aria-label={`Interlude: ${dashboardName(interludes[sp.index]!.dashboardId)}, ${timeOfMinute(sp.from)} to ${timeOfMinute(sp.to)}`}
-                  aria-pressed={isPicked({ kind: 'interlude', index: sp.index })}
-                  className={cn(
-                    'absolute h-[44px] w-max max-w-full whitespace-nowrap rounded-lg bg-primary px-2 text-caption text-primary-foreground',
-                    isPicked({ kind: 'interlude', index: sp.index }) && 'ring-2 ring-foreground ring-offset-1',
-                  )}
-                  style={{
-                    minWidth: `max(44px, ${width}%)`,
-                    left: place ? place.left : at(sp.from),
-                    top: place ? place.lane * (LANE_PX + LANE_GAP_PX) : 0,
-                  }}
-                  data-day-interlude={sp.index}
-                  data-from={sp.from}
-                  data-to={sp.to}
+                  onClick={() => { setPicked({ kind: 'night', edge }); play(edge === 'start' ? m.minute : Math.max(0, m.minute - 1), 'nobody'); }}
+                  aria-label={`Night ${edge === 'start' ? 'starts' : 'ends'} ${timeOfMinute(m.minute)}`}
+                  aria-pressed={isPicked({ kind: 'night', edge })}
+                  className="absolute top-1/2 z-30 flex h-[44px] w-[44px] -translate-x-1/2 -translate-y-1/2 items-center justify-center"
+                  style={{ left: at(m.minute) }}
+                  data-day-milestone={m.kind}
                 >
-                  {dashboardName(interludes[sp.index]!.dashboardId)}
+                  <span className={cn('h-4 w-4 rounded-full border-2 border-background bg-primary shadow',
+                    isPicked({ kind: 'night', edge }) && 'h-5 w-5 ring-2 ring-primary')} />
                 </button>
               );
             })}
           </div>
-        )}
-        <div ref={lineRef} className="relative h-[44px]" data-day-line>
-          {line.stretches.map((st) => (
-            <button
-              key={`${st.kind}-${st.from}`}
-              type="button"
-              onClick={() => { setPicked({ kind: st.kind }); play(Math.floor((st.from + st.to) / 2)); }}
-              aria-label={`${st.kind === 'night' ? `Night: ${nightLabel}` : `Resting: ${restingLabel}`}, ${timeOfMinute(st.from)} to ${timeOfMinute(st.to)}`}
-              aria-pressed={isPicked({ kind: st.kind })}
-              className={cn(
-                // Clear of the dot on each edge. A name that does not fit is hidden
-                // whole (see the fitting above), so no ellipsis is drawn for it.
-                'absolute inset-y-0 overflow-hidden whitespace-nowrap px-6 text-left text-caption first:rounded-l-full last:rounded-r-full',
-                st.kind === 'night' ? 'bg-foreground/85 text-background' : 'bg-muted text-foreground',
-                isPicked({ kind: st.kind }) && 'ring-2 ring-inset ring-primary',
-              )}
-              style={{ left: at(st.from), width: at(st.to - st.from) }}
-              data-day-stretch={st.kind}
-              data-key={`${st.kind}-${st.from}`}
-            >
-              <span className={cn(bare.includes(`${st.kind}-${st.from}`) && 'invisible')} data-stretch-label>
-                {st.kind === 'night' ? nightLabel : restingLabel}
-              </span>
-            </button>
-          ))}
+
           {playedMinute !== null && (
-            <span aria-hidden className="pointer-events-none absolute -inset-y-1 z-20 w-0.5 -translate-x-1/2 rounded-full bg-primary" style={{ left: at(playedMinute) }} data-day-now />
+            // One marker through both lanes.
+            <div aria-hidden className="pointer-events-none relative z-20 self-stretch" style={{ gridColumn: 2, gridRow: '2 / 4' }}>
+              <span className="absolute -inset-y-1 w-0.5 -translate-x-1/2 rounded-full bg-primary" style={{ left: at(playedMinute) }} data-day-now data-minute={playedMinute} />
+            </div>
           )}
-          {line.milestones.map((m) => {
-            const edge = m.kind === 'night-start' ? 'start' : 'end';
-            return (
-              <button
-                key={m.kind}
-                type="button"
-                onClick={() => { setPicked({ kind: 'night', edge }); play(edge === 'start' ? m.minute : Math.max(0, m.minute - 1)); }}
-                aria-label={`Night ${edge === 'start' ? 'starts' : 'ends'} ${timeOfMinute(m.minute)}`}
-                aria-pressed={isPicked({ kind: 'night', edge })}
-                className="absolute top-1/2 z-30 flex h-[44px] w-[44px] -translate-x-1/2 -translate-y-1/2 items-center justify-center"
-                style={{ left: at(m.minute) }}
-                data-day-milestone={m.kind}
-              >
-                <span className={cn('h-4 w-4 rounded-full border-2 border-background bg-primary shadow',
-                  isPicked({ kind: 'night', edge }) && 'h-5 w-5 ring-2 ring-primary')} />
-              </button>
-            );
-          })}
-        </div>
-        <div className="relative h-5 text-caption text-muted-foreground" aria-hidden>
-          {line.milestones.map((m) => (
-            <span key={m.kind} className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: at(m.minute) }}>
-              {timeOfMinute(m.minute)}
-            </span>
-          ))}
+
+          <div className="relative h-5 text-caption text-muted-foreground" style={{ gridColumn: 2, gridRow: 4 }} aria-hidden>
+            {line.milestones.map((m) => (
+              <span key={m.kind} className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: at(m.minute) }}>
+                {timeOfMinute(m.minute)}
+              </span>
+            ))}
+          </div>
         </div>
 
         <label className="flex flex-col gap-2">
           <span className="text-body text-muted-foreground" aria-live="polite" data-day-played>
             {played === null
-              ? 'Tap the line to change that part of the day, or slide to see the screen at another time.'
-              : `At ${formatTimeOfDay(clockOf(playedAt(played)), timeFormat)}: ${state === 'night' ? 'night' : 'resting'}${playedInterlude ? `, ${dashboardName(playedInterlude.dashboardId)} shows (an Interlude)` : ''}.`}
+              ? 'Tap In use or Nobody there at a time to see the screen then, or slide to another time.'
+              : `At ${formatTimeOfDay(clockOf(playedAt(played)), timeFormat)}: ${state === 'active' ? 'in use' : state}${playedInterlude ? `, ${dashboardName(playedInterlude.dashboardId)} shows (an Interlude)` : ''}.`}
           </span>
           <input
             type="range"
@@ -559,7 +615,7 @@ export function ThroughTheDaySheet({
               </button>
             </div>
             <p className="m-0 text-body text-muted-foreground">
-              Photos and the night sky have their own arrangement: choose Resting or Night above, then Widgets.
+              Photos and the night sky have their own arrangement: tap Nobody there on the line, then Widgets.
             </p>
             <div className="flex flex-wrap gap-2">
               <button type="button" className={chip(false)} onClick={() => setMotionOpen(true)}>Screensaver motion</button>

@@ -670,7 +670,7 @@ test.describe('the Today view', () => {
   });
 
   // #1152: Through the day shows the screen in each state at once.
-  test('Through the day: tapping Night shows the night look on Today, and Active brings the day back', async ({ page }) => {
+  test('Through the day: tapping Nobody there at night shows the night look on Today, and In use brings the day back', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     const d = new Date();
     await page.clock.setFixedTime(new Date(d.getFullYear(), d.getMonth(), d.getDate(), 10));
@@ -689,8 +689,8 @@ test.describe('the Today view', () => {
       const sheet = page.locator('[data-editor-sheet="day"]');
       await expect(sheet).toBeVisible();
 
-      // Night: warm ink and the veil, at once.
-      await sheet.locator('[data-day-state="night"]').click();
+      // Nobody there, tapped where night is: warm ink and the veil, at once (#1233).
+      await sheet.locator('[data-day-stretch="night"]').last().click();
       await expect(scene).toHaveAttribute('data-today-night', 'true');
       await expect(page.locator('[data-today-veil]')).toHaveCount(1);
       // The veil stands in for the day's shade (#1186).
@@ -706,8 +706,8 @@ test.describe('the Today view', () => {
       expect(await off.evaluate((el) => getComputedStyle(el).opacity)).toBe('1');
       await expect(page.locator('[data-editor-bar] nav')).toBeVisible();
 
-      // Active: the day again.
-      await sheet.locator('[data-day-state="active"]').click();
+      // In use: the day again.
+      await sheet.locator('[data-day-lane="in-use"]').click();
       await expect(scene).not.toHaveAttribute('data-today-night', 'true');
       await expect(off).toHaveCount(0);
       await expect(page.locator('[data-today-shade]')).toHaveCount(1);
