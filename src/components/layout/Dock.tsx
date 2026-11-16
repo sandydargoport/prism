@@ -159,9 +159,10 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
     <>
       {/* The Menu as a soft tab on the bottom edge (#989): it shrinks to a
           nub after a few quiet seconds and grows back with a tap. The button
-          stays 44px tall either way; only the drawn tab changes. White glass
-          over a photo; the theme's card colours with none, or white on a
-          light page leaves it invisible. */}
+          stays 44px tall either way; only the drawn tab changes. Over the
+          wallpaper it is the dock's own dark glass, so white text reads on a
+          photo and on a pale page such as the bus map alike; the theme's card
+          colours with no wallpaper. */}
       {mode === 'wall' && !visible && !calm && (
         <button
           type="button"
@@ -173,7 +174,7 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
         >
           <span
             className={cn(
-              'flex items-center justify-center overflow-hidden rounded-t-[999px] border border-b-0 border-white/35 bg-white/15 text-body font-medium text-white backdrop-blur-sm [text-shadow:var(--ds-idle-text-shadow)] [html:not([data-wallpaper])_&]:border-border [html:not([data-wallpaper])_&]:bg-card/90 [html:not([data-wallpaper])_&]:text-foreground [html:not([data-wallpaper])_&]:[text-shadow:none] transition-all duration-500 motion-reduce:duration-0',
+              'flex items-center justify-center overflow-hidden rounded-t-[999px] border border-b-0 border-white/25 bg-[rgb(22_17_13/0.72)] text-body font-medium text-white backdrop-blur-md [html:not([data-wallpaper])_&]:border-border [html:not([data-wallpaper])_&]:bg-card/90 [html:not([data-wallpaper])_&]:text-foreground transition-all duration-500 motion-reduce:duration-0',
               nub ? 'h-[6px] w-[40px] opacity-50' : 'h-[40px] w-[140px] opacity-100',
             )}
             style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}
