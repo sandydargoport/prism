@@ -11,7 +11,7 @@ import {
 } from '@/lib/map/busTween';
 import type { LiveTrack } from '@/lib/hooks/useBusLive';
 import { alongUsualPath, pointAlong, routeAhead, type LngLat } from '@/lib/map/routeAhead';
-import { traceCoordinates } from '@/lib/map/busTrace';
+import { traceCoordinates, traceEndTs } from '@/lib/map/busTrace';
 
 interface BusLiveMapProps {
   track: LiveTrack;
@@ -256,7 +256,9 @@ export function BusLiveMap({
   const drawAhead = () => {
     const anchor = anchorRef.current;
     const t = trackRef.current;
-    const line = anchor
+    // A trip that ends at the school has no road ahead once the bus is there.
+    const done = anchor ? anchor.motion.ts >= traceEndTs(t.fixes, t.stops) : false;
+    const line = anchor && !done
       ? routeAhead(t.usualPath, t.stops, t.riderStopKey, [anchor.pose.lng, anchor.pose.lat], anchor.pose.heading)
       : null;
     aheadLineRef.current = line && line.length >= 2 ? line : null;
