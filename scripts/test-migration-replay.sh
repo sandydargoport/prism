@@ -539,6 +539,40 @@ fi
 log "Scenario K: PASS"
 
 # ----------------------------------------------------------------------------
+# Scenario L: 0040 turns CalDAV calendars on once (#1228).
+# A CalDAV calendar from before 0040 has Show in Add Event off and comes out
+# on. One a parent switches off afterwards stays off when migrations replay.
+# ----------------------------------------------------------------------------
+log "=== Scenario L: 0040 turns CalDAV calendars on once ==="
+
+psql_exec "
+COMMENT ON COLUMN calendar_sources.show_in_event_modal IS NULL;
+INSERT INTO calendar_sources (provider, source_calendar_id, dashboard_calendar_name, show_in_event_modal)
+  VALUES ('caldav', 'l-cal', 'L calendar', false);
+DELETE FROM public.__prism_migrations WHERE name <> '0000_upgrade';
+"
+run_migrate
+ON=$(docker exec "$CONTAINER_NAME" psql -U prism -d prism -t -A -c "SELECT show_in_event_modal FROM calendar_sources WHERE source_calendar_id = 'l-cal'")
+if [ "$ON" != "t" ]; then
+  echo "ERROR: 0040 did not turn on an existing CalDAV calendar (got '$ON')" >&2
+  exit 1
+fi
+
+log "Switch it off, then replay every migration..."
+psql_exec "
+UPDATE calendar_sources SET show_in_event_modal = false WHERE source_calendar_id = 'l-cal';
+DELETE FROM public.__prism_migrations WHERE name <> '0000_upgrade';
+"
+run_migrate
+ON=$(docker exec "$CONTAINER_NAME" psql -U prism -d prism -t -A -c "SELECT show_in_event_modal FROM calendar_sources WHERE source_calendar_id = 'l-cal'")
+if [ "$ON" != "f" ]; then
+  echo "ERROR: replaying 0040 turned back on a calendar that was switched off (got '$ON')" >&2
+  exit 1
+fi
+
+log "Scenario L: PASS"
+
+# ----------------------------------------------------------------------------
 echo
 echo "=========================================="
 echo "  All migration-replay scenarios passed"
