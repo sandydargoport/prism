@@ -8,7 +8,7 @@
  * back exactly as it was. New events are PUT as their own object.
  */
 import ICAL from 'ical.js';
-import { applyCalDAVEventChanges, createCalDAVEvent, icalTimeToDate, patchCalDAVEvent } from '../caldav';
+import { applyCalDAVEventChanges, createCalDAVEvent, deleteCalDAVEvent, icalTimeToDate, patchCalDAVEvent } from '../caldav';
 
 const TZ = 'America/Chicago';
 const NOW = new Date('2026-11-01T12:00:00Z');
@@ -509,5 +509,48 @@ describe('createCalDAVEvent', () => {
     fetchMock.mockResolvedValueOnce(new Response(null, { status: 403 }));
     const result = await createCalDAVEvent('https://dav.example.com', 'u', 'p', 'https://dav.example.com/cal/home/', EV);
     expect(result).toMatchObject({ ok: false, reason: 'forbidden' });
+  });
+});
+
+describe('deleteCalDAVEvent (#1225)', () => {
+  let fetchMock: jest.SpyInstance;
+  beforeEach(() => {
+    // Any call a test did not answer fails, so nothing reaches the network.
+    fetchMock = jest.spyOn(global, 'fetch').mockRejectedValue(new Error('no network in tests'));
+  });
+  afterEach(() => fetchMock.mockRestore());
+
+  const header = (i: number, name: string) => new Headers(fetchMock.mock.calls[i][1].headers).get(name);
+
+  it('sends one DELETE to the object with Basic auth and If-Match on its ETag', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    await deleteCalDAVEvent('https://dav.example.com', 'u', 'p', '/cal/o.ics', '"v3"');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe('https://dav.example.com/cal/o.ics');
+    expect(fetchMock.mock.calls[0][1].method).toBe('DELETE');
+    expect(fetchMock.mock.calls[0][1].redirect).toBe('manual');
+    expect(header(0, 'authorization')).toBe(`Basic ${Buffer.from('u:p').toString('base64')}`);
+    expect(header(0, 'if-match')).toBe('"v3"');
+  });
+
+  it('sends no If-Match without an ETag', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    await deleteCalDAVEvent('https://dav.example.com', 'u', 'p', 'https://dav.example.com/cal/o.ics');
+    expect(header(0, 'if-match')).toBeNull();
+  });
+
+  it('does not send the password to the host a redirect names', async () => {
+    fetchMock
+      .mockResolvedValueOnce(new Response(null, { status: 307, headers: { Location: 'https://elsewhere.example.net/cal/o.ics' } }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    await deleteCalDAVEvent('https://dav.example.com', 'u', 'p', '/cal/o.ics');
+    expect(fetchMock.mock.calls[1][0]).toBe('https://elsewhere.example.net/cal/o.ics');
+    expect(fetchMock.mock.calls[1][1].method).toBe('DELETE');
+    expect(header(1, 'authorization')).toBeNull();
+  });
+
+  it('throws when the server refuses, as before', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 412, statusText: 'Precondition Failed' }));
+    await expect(deleteCalDAVEvent('https://dav.example.com', 'u', 'p', '/cal/o.ics', '"old"')).rejects.toThrow(/CalDAV delete failed: 412/);
   });
 });

@@ -365,4 +365,65 @@ describe('safeFetch (redirect re-validation)', () => {
     expect(res.status).toBe(302);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  describe('credentials stay on their origin across a redirect (#1225)', () => {
+    const hopHeaders = (m: jest.Mock, i: number) => new Headers(m.mock.calls[i][1].headers);
+    const shapes: Array<[string, HeadersInit]> = [
+      ['a plain object', { Authorization: 'Bearer tok', Cookie: 'sid=1', Accept: 'application/json' }],
+      ['a Headers object', new Headers({ authorization: 'Bearer tok', cookie: 'sid=1', accept: 'application/json' })],
+      ['name/value pairs', [['Authorization', 'Bearer tok'], ['Cookie', 'sid=1'], ['Accept', 'application/json']]],
+    ];
+
+    it.each(shapes)('drops Authorization and Cookie on a hop to another origin, given %s', async (_label, headers) => {
+      const fetchMock = jest
+        .fn()
+        .mockResolvedValueOnce(redirect(302, 'https://elsewhere.example.net/x'))
+        .mockResolvedValueOnce(ok());
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      await safeFetch('https://example.com/x', { headers }, { isProduction: true });
+
+      expect(hopHeaders(fetchMock, 0).get('authorization')).toBe('Bearer tok');
+      const second = hopHeaders(fetchMock, 1);
+      expect(second.get('authorization')).toBeNull();
+      expect(second.get('cookie')).toBeNull();
+      expect(second.get('accept')).toBe('application/json');
+    });
+
+    it('treats a change of scheme or port as another origin', async () => {
+      const fetchMock = jest
+        .fn()
+        .mockResolvedValueOnce(redirect(301, 'http://example.com/x'))
+        .mockResolvedValueOnce(ok());
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      await safeFetch('https://example.com/x', { headers: { Authorization: 'Bearer tok' } }, { isProduction: true });
+      expect(hopHeaders(fetchMock, 1).get('authorization')).toBeNull();
+    });
+
+    it('keeps them on a hop within the same origin', async () => {
+      const fetchMock = jest
+        .fn()
+        .mockResolvedValueOnce(redirect(308, '/api/v2/x'))
+        .mockResolvedValueOnce(ok());
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      await safeFetch('https://example.com/api/x', { headers: { Authorization: 'Bearer tok', Cookie: 'sid=1' } }, { isProduction: true });
+      expect(hopHeaders(fetchMock, 1).get('authorization')).toBe('Bearer tok');
+      expect(hopHeaders(fetchMock, 1).get('cookie')).toBe('sid=1');
+    });
+
+    it('does not get them back when a later hop returns to the first origin', async () => {
+      const fetchMock = jest
+        .fn()
+        .mockResolvedValueOnce(redirect(302, 'https://elsewhere.example.net/a'))
+        .mockResolvedValueOnce(redirect(302, 'https://example.com/b'))
+        .mockResolvedValueOnce(ok());
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      await safeFetch('https://example.com/x', { headers: { Authorization: 'Bearer tok' } }, { isProduction: true });
+      expect(hopHeaders(fetchMock, 1).get('authorization')).toBeNull();
+      expect(hopHeaders(fetchMock, 2).get('authorization')).toBeNull();
+    });
+  });
 });

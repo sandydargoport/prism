@@ -11,15 +11,13 @@ import { previewSync } from '@/lib/sync/runner';
 import { getRecipeAdapter } from '@/lib/sync/adapters/registry';
 import { UnsafeUrlError } from '@/lib/integrations/tandoor';
 import { readSourceConfig } from '@/lib/sync/sourceConfig';
+import { DIFF_TTL_SECONDS, serializeStashedDiff, syncDiffKey } from '@/lib/sync/stashedDiff';
 import { describeRecipePush } from '@/lib/sync/adapters/ingredientLines';
 import { loadRecipeFieldsToPush, type NormalizedRecipe } from '@/lib/sync/adapters/recipeWriter';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
-
-/** How long a computed diff is held for the user to review + apply. */
-const DIFF_TTL_SECONDS = 900; // 15 minutes
 
 /**
  * POST /api/recipe-sources/[id]/sync/preview
@@ -73,7 +71,8 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
         { status: 503 },
       );
     }
-    await redis.setEx(`sync-diff:${diffId}`, DIFF_TTL_SECONDS, JSON.stringify(diff.changes));
+    // Tied to this source and kind, so it cannot be applied anywhere else (#1225).
+    await redis.setEx(syncDiffKey(diffId), DIFF_TTL_SECONDS, serializeStashedDiff(src.id, 'recipes', diff.changes));
 
     const changes = diff.changes.map((c) => ({
       kind: c.kind,

@@ -70,6 +70,9 @@ const ctx = { params: Promise.resolve({ id: 's1' }) };
 const EDIT = { kind: 'push-update', externalId: '2', localId: 'l2', label: 'Pasta', reason: 'Changed in Prism', defaultChecked: true };
 const DELETED = { kind: 'push-delete', externalId: '3', label: 'Old soup', reason: 'Removed in Prism', defaultChecked: false };
 
+/** A review as the preview stashes it: tied to its source and kind (#1225). */
+const stash = (changes: unknown[], sourceId = 's1', kind = 'recipes') => JSON.stringify({ sourceId, kind, changes });
+
 const apply = () => APPLY(
   new NextRequest('http://localhost/api/recipe-sources/s1/sync/apply', {
     method: 'POST',
@@ -98,6 +101,10 @@ it('asks for Prism edits only on a server that can write, and offers a deleted r
   expect(deleted.defaultChecked).toBe(false);
   expect(deleted.reason).toMatch(/stays in Tandoor unless ticked; ticking deletes it there too/);
   expect(body.pushCounts).toEqual({ add: 0, update: 1, delete: 1 });
+  // The stash names the source and kind it was made for (#1225).
+  const [key, , stored] = mockRedisSet.mock.calls[0];
+  expect(key).toBe(`sync-diff:${body.diffId}`);
+  expect(JSON.parse(stored)).toEqual({ sourceId: 's1', kind: 'recipes', changes: [EDIT, DELETED] });
 });
 
 it('does not ask for Prism edits on a server that only reads', async () => {
@@ -109,14 +116,14 @@ it('does not ask for Prism edits on a server that only reads', async () => {
 
 it('sends nothing to a server whose token only reads', async () => {
   mockSelectWhere.mockResolvedValue([{ id: 's1', provider: 'tandoor', providerConfig: { canWrite: false } }]);
-  mockRedisGet.mockResolvedValue(JSON.stringify([EDIT]));
+  mockRedisGet.mockResolvedValue(stash([EDIT]));
   expect((await apply()).status).toBe(403);
   expect(mockPushUpdate).not.toHaveBeenCalled();
 });
 
 it('sends a ticked edit and keeps the recipe ids Prism now holds', async () => {
   mockSelectWhere.mockResolvedValue([{ id: 's1', provider: 'tandoor', providerConfig: { canWrite: true } }]);
-  mockRedisGet.mockResolvedValue(JSON.stringify([EDIT]));
+  mockRedisGet.mockResolvedValue(stash([EDIT]));
   const res = await apply();
   expect((await res.json()).sent).toEqual({ add: 0, update: 1, delete: 0 });
   expect(mockRecipeIds).toHaveBeenCalledWith('s1');
@@ -137,4 +144,41 @@ it('says what sending an edit does to ingredients and steps (#1215)', async () =
   expect(body.changes[0].reason).toBe(
     'Changed in Prism · 1 ingredient line goes as plain notes · the steps stay as they are in Tandoor, which has 3',
   );
+});
+
+describe('a review applies only where it was made (#1225)', () => {
+  beforeEach(() => {
+    mockSelectWhere.mockResolvedValue([{ id: 's1', provider: 'tandoor', providerConfig: { canWrite: true } }]);
+  });
+
+  it('refuses a meal-plan review sent to the recipe route', async () => {
+    mockRedisGet.mockResolvedValue(stash([EDIT], 's1', 'meal-plan'));
+    const res = await apply();
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/prepared for meal plans/);
+    expect(mockPushUpdate).not.toHaveBeenCalled();
+    expect(mockUpdateSet).not.toHaveBeenCalled();
+  });
+
+  it('refuses a review made for another server', async () => {
+    mockRedisGet.mockResolvedValue(stash([EDIT], 's2'));
+    const res = await apply();
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/another server/);
+    expect(mockPushUpdate).not.toHaveBeenCalled();
+  });
+
+  it('treats a review stashed in the old shape as expired', async () => {
+    mockRedisGet.mockResolvedValue(JSON.stringify([EDIT]));
+    const res = await apply();
+    expect(res.status).toBe(409);
+    expect(mockPushUpdate).not.toHaveBeenCalled();
+  });
+
+  it('applies a review made for this server and for recipes', async () => {
+    mockRedisGet.mockResolvedValue(stash([EDIT]));
+    const res = await apply();
+    expect(res.status).toBe(200);
+    expect(mockPushUpdate).toHaveBeenCalledWith('s1', expect.objectContaining({ externalId: '2' }));
+  });
 });

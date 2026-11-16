@@ -659,8 +659,8 @@ function formatICalDate(date: Date): string {
 
 /**
  * Two-way write: create / update / delete events back to the CalDAV
- * server. Create is a plain PUT of a new object and delete wraps tsdav's
- * deleteCalendarObject. An update reads the stored object, changes only the
+ * server. Create is a plain PUT of a new object and delete a plain DELETE,
+ * both through safeFetch. An update reads the stored object, changes only the
  * edited fields with ical.js and writes it back (patchCalDAVEvent), so the
  * properties Prism does not model survive the edit.
  *
@@ -1031,19 +1031,14 @@ export async function deleteCalDAVEvent(
   etag?: string,
 ): Promise<void> {
   assertSafeCalDAVUrl(serverUrl);
-
-  const client = await createDAVClient({
-    serverUrl,
-    credentials: { username, password },
-    authMethod: 'Basic',
-    defaultAccountType: 'caldav',
-  });
-
-  const response = await client.deleteCalendarObject({
-    calendarObject: {
-      url: calendarObjectHref,
-      etag: etag ?? '',
-      data: '',
+  // A plain DELETE through safeFetch, like create and edit, so every redirect
+  // is validated and the password stays on the server's origin.
+  const url = new URL(calendarObjectHref, serverUrl).toString();
+  const response = await safeFetch(url, {
+    method: 'DELETE',
+    headers: {
+      Authorization: basicAuth(username, password),
+      ...(etag ? { 'If-Match': etag } : {}),
     },
   });
   if (!response.ok) {

@@ -98,6 +98,22 @@ export interface TandoorMealPlanEntry {
 function baseUrl(serverUrl: string): string {
   return serverUrl.trim().replace(/\/+$/, '');
 }
+/**
+ * The next page to fetch, always on the configured server. Tandoor hands back
+ * an absolute `next` URL built from the request it saw, which behind a proxy
+ * can name another host or scheme. Only its path and query are kept, placed on
+ * the configured server's origin, so the token never goes anywhere else.
+ */
+export function tandoorNextPage(base: string, next: string | null | undefined): string | null {
+  if (!next) return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(next, `${base}/`);
+  } catch {
+    return null;
+  }
+  return `${new URL(base).origin}${parsed.pathname}${parsed.search}`;
+}
 function authHeaders(token: string): Record<string, string> {
   return { Authorization: `Bearer ${token}`, Accept: 'application/json' };
 }
@@ -154,8 +170,8 @@ async function listRecipeIds(base: string, token: string): Promise<number[]> {
   let guard = 0;
   while (next && ids.length < MAX_RECIPES && guard < 200) {
     guard += 1;
-    // safeFetch re-validates the URL each hop — important because `next` is a
-    // server-supplied absolute URL, not something we constructed.
+    // `next` comes from the server; tandoorNextPage keeps it on the configured
+    // origin, and safeFetch still validates every hop.
     const res: Response = await safeFetch(next, { headers: authHeaders(token) });
     if (!res.ok) {
       throw new Error(`Failed to list Tandoor recipes: ${res.status} ${res.statusText}`);
@@ -164,7 +180,7 @@ async function listRecipeIds(base: string, token: string): Promise<number[]> {
     for (const r of data.results ?? []) {
       if (typeof r.id === 'number') ids.push(r.id);
     }
-    next = data.next;
+    next = tandoorNextPage(base, data.next);
   }
   return ids.slice(0, MAX_RECIPES);
 }
@@ -375,7 +391,8 @@ export async function fetchTandoorRecipes(
 /**
  * Fetch all meal-plan entries from Tandoor (bounded). The endpoint is paginated
  * ({count,next,results}) but older/newer builds may return a bare array — both
- * are handled. safeFetch re-validates each server-supplied `next` URL (SSRF).
+ * are handled. Each server-supplied `next` URL is kept on the configured
+ * server (tandoorNextPage), and safeFetch validates it.
  */
 export async function fetchTandoorMealPlan(
   serverUrl: string,
@@ -399,7 +416,7 @@ export async function fetchTandoorMealPlan(
     for (const e of results) {
       if (e && typeof e.id === 'number' && typeof e.from_date === 'string') out.push(e);
     }
-    next = Array.isArray(data) ? null : ((data as { next?: string | null }).next ?? null);
+    next = Array.isArray(data) ? null : tandoorNextPage(base, (data as { next?: string | null }).next);
   }
   return out.slice(0, MAX_MEAL_PLAN);
 }

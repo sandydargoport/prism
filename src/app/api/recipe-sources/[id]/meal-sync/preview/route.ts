@@ -11,6 +11,7 @@ import { previewSync } from '@/lib/sync/runner';
 import { getMealPlanAdapter } from '@/lib/sync/adapters/registry';
 import { UnsafeUrlError } from '@/lib/integrations/tandoor';
 import { readSourceConfig } from '@/lib/sync/sourceConfig';
+import { DIFF_TTL_SECONDS, serializeStashedDiff, syncDiffKey } from '@/lib/sync/stashedDiff';
 import { isPushKind } from '@/lib/sync/types';
 
 /** The meal-plan payload fields the review enrichment reads (both providers). */
@@ -22,9 +23,6 @@ interface MealPayload {
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
-
-/** How long a computed diff is held for the user to review + apply. */
-const DIFF_TTL_SECONDS = 900; // 15 minutes
 
 /**
  * POST /api/recipe-sources/[id]/meal-sync/preview
@@ -66,7 +64,8 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
         { status: 503 },
       );
     }
-    await redis.setEx(`sync-diff:${diffId}`, DIFF_TTL_SECONDS, JSON.stringify(diff.changes));
+    // Tied to this source and kind, so it cannot be applied anywhere else (#1225).
+    await redis.setEx(syncDiffKey(diffId), DIFF_TTL_SECONDS, serializeStashedDiff(src.id, 'meal-plan', diff.changes));
 
     // Recipes that applying the pre-checked (add/update) meals will also import.
     const recipesToImport = new Set<string>();

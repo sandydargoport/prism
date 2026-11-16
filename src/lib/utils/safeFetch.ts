@@ -301,6 +301,21 @@ export async function assertPublicUrl(rawUrl: string, options: SafeFetchOptions 
   await assertResolvesPublic(validatePublicUrl(rawUrl, options), options);
 }
 
+/** Headers that carry credentials and must not cross to another origin. */
+const CREDENTIAL_HEADERS = new Set(['authorization', 'cookie']);
+
+/**
+ * A copy of `headers` without Authorization and Cookie. Takes every shape
+ * RequestInit accepts: a Headers object, a plain object, or [name, value]
+ * pairs.
+ */
+function withoutCredentials(headers: HeadersInit | undefined): HeadersInit | undefined {
+  if (!headers) return headers;
+  const out = new Headers(headers);
+  for (const name of CREDENTIAL_HEADERS) out.delete(name);
+  return out;
+}
+
 // 3xx statuses that carry a Location we would otherwise auto-follow.
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
@@ -313,7 +328,10 @@ const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
  * slips past the guard and the internal target is fetched. safeFetch closes
  * that: it validates the initial URL, fetches with `redirect: 'manual'`, and
  * re-runs validatePublicUrl() on the Location of every hop before following
- * it. Cross-host or private redirect targets throw UnsafeUrlError.
+ * it. A redirect to a private address throws UnsafeUrlError. A redirect to
+ * another public origin is followed, but without the Authorization and
+ * Cookie headers, as the platform does, so a token or password never goes
+ * to a host it was not meant for.
  *
  * Per-hop method handling mirrors the fetch spec: 303 (and 301/302 on a
  * non-GET/HEAD request) downgrade to GET and drop the body; 307/308 preserve
@@ -330,10 +348,11 @@ export async function safeFetch(
   let currentUrl = validatePublicUrl(rawUrl, options).toString();
   let method = init.method ?? 'GET';
   let body = init.body;
+  let headers = init.headers;
 
   for (let hop = 0; hop <= maxRedirects; hop++) {
     await assertResolvesPublic(new URL(currentUrl), options);
-    const res = await fetch(currentUrl, { ...init, method, body, redirect: 'manual' });
+    const res = await fetch(currentUrl, { ...init, method, body, headers, redirect: 'manual' });
 
     if (!REDIRECT_STATUSES.has(res.status)) return res;
 
@@ -345,6 +364,8 @@ export async function safeFetch(
     // the absolute target before the next hop touches the network.
     const next = new URL(location, currentUrl);
     validatePublicUrl(next.toString(), options);
+    // Credentials stay with the origin they were given for.
+    if (next.origin !== new URL(currentUrl).origin) headers = withoutCredentials(headers);
     currentUrl = next.toString();
 
     const downgradeToGet =
