@@ -3,6 +3,7 @@ import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, lt } from 'driz
 import { getDisplayAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { busRoutes, busStopVisits, settings, vehicleFixes, vehicleTracks } from '@/lib/db/schema';
+import type { LiveTrackPublicVehicle, LiveTrackVehicle } from '@/lib/db/schema';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
 import { todayKey } from '@/lib/utils/zonedDate';
 import { combineTraces, type LngLat } from '@/lib/map/routeAhead';
@@ -120,6 +121,17 @@ async function hasProvider(today: string): Promise<boolean> {
   return row !== undefined;
 }
 
+/**
+ * Only the vehicle fields the bus card shows (#1224). The plate, the model and
+ * the driver's name as the provider reports it are left out; the driver goes
+ * out as `driverLabel`, which honours the names the family chose.
+ */
+function publicVehicle(v: LiveTrackVehicle | null): LiveTrackPublicVehicle | null {
+  if (!v) return null;
+  const { number, color, substitute, changedMidDay } = v;
+  return { number, color, substitute, changedMidDay };
+}
+
 async function driverNames(): Promise<DriverNames> {
   try {
     const [row] = await db.select().from(settings).where(eq(settings.key, BUS_DRIVER_NAMES_SETTING));
@@ -222,7 +234,7 @@ export async function GET(request: NextRequest) {
         direction: track.direction ?? route.direction,
         label: track.label,
         status: track.status,
-        vehicle: track.vehicle,
+        vehicle: publicVehicle(track.vehicle),
         driverLabel: driverLabel(track.vehicle?.driverName, names),
         progress: track.progress,
         plannedStart: track.plannedStart?.toISOString() ?? null,

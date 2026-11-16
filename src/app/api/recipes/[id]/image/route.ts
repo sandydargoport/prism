@@ -101,7 +101,7 @@ export async function GET(
     return new NextResponse(fileBuffer, {
       headers: {
         'Content-Type': 'image/jpeg',
-        'Cache-Control': 'public, max-age=3600, must-revalidate',
+        'Cache-Control': 'private, max-age=3600, must-revalidate',
       },
     });
   } catch {

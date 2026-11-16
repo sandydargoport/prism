@@ -5,7 +5,7 @@ import { useFetchOnMount } from './useFetchOnMount';
 import { useVisibilityPolling } from './useVisibilityPolling';
 import { useNow } from './useNow';
 import type { StopTiming } from '@/lib/services/bus-eta';
-import type { LiveTrackVehicle } from '@/lib/db/schema';
+import type { LiveTrackPublicVehicle } from '@/lib/db/schema';
 import { LOST_MS } from '@/lib/map/busTween';
 import { checkFixes } from '@/lib/map/busFixCheck';
 import {
@@ -31,7 +31,8 @@ export interface LiveTrack {
   direction: 'AM' | 'PM' | null;
   label: string | null;
   status: string | null;
-  vehicle: LiveTrackVehicle | null;
+  /** Only what the card shows; the driver comes as driverLabel (#1224). */
+  vehicle: LiveTrackPublicVehicle | null;
   /** The driver as the family chose to show them, else as reported. */
   driverLabel: string | null;
   progress: { lastVisitedStop: number; totalStops: number } | null;

@@ -1755,6 +1755,13 @@ export type LiveTrackVehicle = {
   changedMidDay?: boolean;
 };
 
+/**
+ * The part of a vehicle the live endpoint sends to the wall (#1224): what the
+ * bus card shows. The plate, model and the driver's name as reported stay on
+ * the server; the card shows the driver through `driverLabel` instead.
+ */
+export type LiveTrackPublicVehicle = Pick<LiveTrackVehicle, 'number' | 'color' | 'substitute' | 'changedMidDay'>;
+
 export type LiveTrackStop = {
   key: string;
   name?: string;
