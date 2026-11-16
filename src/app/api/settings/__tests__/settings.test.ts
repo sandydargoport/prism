@@ -44,6 +44,7 @@ const mockInvalidateEntity = jest.fn();
 
 jest.mock('@/lib/cache/cacheKeys', () => ({
   invalidateEntity: (...a: unknown[]) => mockInvalidateEntity(...a),
+  invalidateEntities: (...a: unknown[]) => a.forEach((e) => mockInvalidateEntity(e)),
 }));
 
 // --- Other mocks ---
@@ -212,6 +213,31 @@ describe('PATCH /api/settings', () => {
 
     await PATCH(makePatchRequest({ key: 'location', value: 'London' }));
     expect(mockInvalidateEntity).toHaveBeenCalledWith('weather');
+  });
+
+  // Weekly goal and point totals start on the week-start day, and event days
+  // and chore due dates are worked out in the household zone (#1226).
+  it('drops cached goals and points when the week start changes', async () => {
+    mockWhere.mockResolvedValue([]);
+    const res = await PATCH(makePatchRequest({ key: 'weekStartsOn', value: '1' }));
+    expect(res.status).toBe(200);
+    expect(mockInvalidateEntity).toHaveBeenCalledWith('goals');
+    expect(mockInvalidateEntity).toHaveBeenCalledWith('points');
+    expect(mockInvalidateEntity).not.toHaveBeenCalledWith('events');
+  });
+
+  it('drops cached events and chores when the household time zone changes', async () => {
+    mockWhere.mockResolvedValue([]);
+    const res = await PATCH(makePatchRequest({ key: 'timezone', value: 'Asia/Kolkata' }));
+    expect(res.status).toBe(200);
+    expect(mockInvalidateEntity).toHaveBeenCalledWith('events');
+    expect(mockInvalidateEntity).toHaveBeenCalledWith('chores');
+  });
+
+  it('drops none of them for an unrelated setting', async () => {
+    mockWhere.mockResolvedValue([]);
+    await PATCH(makePatchRequest({ key: 'theme', value: 'light' }));
+    expect(mockInvalidateEntity).not.toHaveBeenCalled();
   });
 
   describe('unauthenticated setup-bootstrap exception for pinLength', () => {

@@ -5,6 +5,7 @@ import { photoSources } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { syncOneDriveSource, syncImmichSource } from '@/lib/services/photo-sync';
 import { logError } from '@/lib/utils/logError';
+import { invalidateEntity } from '@/lib/cache/cacheKeys';
 
 export async function POST(
   request: NextRequest,
@@ -32,10 +33,14 @@ export async function POST(
         { status: 400 },
       );
     }
+    // The photo list is cached; new and removed photos show at once.
+    await invalidateEntity('photos');
 
     return NextResponse.json({ success: true });
   } catch (error) {
     logError('Error syncing photo source:', error);
+    // A sync that failed part way may still have written photos.
+    await invalidateEntity('photos').catch(() => {});
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Sync failed' },
       { status: 500 }

@@ -5,6 +5,7 @@ import { taskSources, shoppingListSources } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
+import { invalidateEntities } from '@/lib/cache/cacheKeys';
 
 export async function POST() {
   const auth = await requireAuth();
@@ -21,6 +22,10 @@ export async function POST() {
     await db
       .delete(shoppingListSources)
       .where(eq(shoppingListSources.provider, 'microsoft_todo'));
+
+    // The source lists, and the task and shopping lists that show which
+    // items are linked, are cached.
+    await invalidateEntities('task-sources', 'tasks', 'shopping-list-sources', 'shopping-lists');
 
     logActivity({
       userId: auth.userId,
