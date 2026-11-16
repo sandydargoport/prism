@@ -1,5 +1,6 @@
 'use client';
 
+import { sharedGet } from '@/lib/utils/sharedGet';
 import React, {
   createContext,
   useContext,
@@ -127,9 +128,10 @@ export function GlobalInputProvider({ children }: { children: React.ReactNode })
   // counts as the default (on), as it always has.
   const [householdEnabled, setHouseholdEnabled] = useState<boolean | null>(null);
   useEffect(() => {
-    fetch('/api/settings?key=input.virtualKeyboardEnabled')
+    // The settings route answers every key at once, as { settings } (#1243).
+    sharedGet('/api/settings')
       .then(r => r.ok ? r.json() : null)
-      .then(data => setHouseholdEnabled(data?.value !== false))
+      .then(data => setHouseholdEnabled(data?.settings?.['input.virtualKeyboardEnabled'] !== false))
       .catch(() => setHouseholdEnabled(true));
   }, []);
   // This device's choice overrides it (#525). Until both are known the
@@ -163,12 +165,10 @@ export function GlobalInputProvider({ children }: { children: React.ReactNode })
   // ---- audio feedback ----
   const playBeep = useCallback(async () => {
     try {
-      const settingsRes = await fetch('/api/settings?key=scanner.soundEnabled');
-      const s = settingsRes.ok ? await settingsRes.json() : null;
-      if (s?.value === false) return;
-      const styleRes = await fetch('/api/settings?key=scanner.soundStyle');
-      const styleData = styleRes.ok ? await styleRes.json() : null;
-      const style: string = styleData?.value ?? 'beep';
+      const res = await sharedGet('/api/settings');
+      const household = res.ok ? (await res.json())?.settings : null;
+      if (household?.['scanner.soundEnabled'] === false) return;
+      const style: string = household?.['scanner.soundStyle'] ?? 'beep';
 
       const ctx = new AudioContext();
       const osc = ctx.createOscillator();
