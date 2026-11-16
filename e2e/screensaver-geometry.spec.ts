@@ -848,14 +848,15 @@ test.describe('idle background picker', () => {
     try {
       const sheet = page.locator('[data-editor-sheet="day"]');
       // Resting is this dashboard: Stays / Fades. A night sky after dark has its own layout.
-      await sheet.locator('[data-day-state="resting"]').click();
+      const shows = sheet.locator('[data-day-sheet]');
+      await sheet.locator('[data-day-stretch="resting"]').click();
       await expect(page.locator('[data-idle-toggle]').first()).toBeVisible();
       // Night's settings are in the card under its dot on the line (#1170).
       await sheet.locator('[data-day-milestone="night-start"]').click();
       await sheet.locator('[data-night-look="sky"]').click();
-      await expect(sheet.locator('[data-day-state="night"]')).toHaveAttribute('aria-checked', 'true');
+      await expect(shows).toHaveAttribute('data-day-shows', 'night');
       await expect(page.locator('[data-idle-toggle]')).toHaveCount(0);
-      await sheet.locator('[data-day-state="resting"]').click();
+      await sheet.locator('[data-day-stretch="resting"]').click();
       await expect(page.locator('[data-idle-toggle]').first()).toBeVisible();
 
       await expect(sheet.locator('[data-night-start]')).toContainText(/\d/);
@@ -913,14 +914,95 @@ test.describe('idle background picker', () => {
       expect(labels.filter((l) => !l.hidden).length).toBeGreaterThan(0);
 
       await sheet.locator('[data-day-milestone="night-start"]').click();
-      await expect(sheet.locator('[data-day-state="night"]')).toHaveAttribute('aria-checked', 'true');
+      await expect(sheet.locator('[data-day-sheet]')).toHaveAttribute('data-day-shows', 'night');
       await expect(sheet.locator('[data-day-card="night"]')).toBeVisible();
       await sheet.getByLabel('Night starts', { exact: true }).fill('22:00');
       await expect.poll(() => offBy('night-start', 22 * 60)).toBeLessThanOrEqual(1);
 
       await sheet.locator('[data-day-stretch="resting"]').click();
-      await expect(sheet.locator('[data-day-state="resting"]')).toHaveAttribute('aria-checked', 'true');
+      await expect(sheet.locator('[data-day-sheet]')).toHaveAttribute('data-day-shows', 'resting');
       await expect(sheet.locator('[data-day-card="resting"]')).toBeVisible();
+    } finally {
+      await page.request.delete(`/api/layouts/${layout.id}`);
+    }
+  });
+
+  // #1233: In use and Nobody there are two lanes on one time axis, with one
+  // marker through both, and a tap on a lane shows that lane at that time.
+  test('the two lanes share one time axis: same left and width, night where night is, nothing overlapping', async ({ page }) => {
+    const layout = await editIdle(page, { lat: 45, lon: -100 }, { day: 'photos', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } });
+    try {
+      const sheet = page.locator('[data-editor-sheet="day"]');
+      const lanes = sheet.locator('[data-day-lanes]');
+      await expect(sheet.locator('[data-day-state]')).toHaveCount(0);
+      const measure = () => lanes.evaluate((root) => {
+        const box = (el: Element) => {
+          const b = el.getBoundingClientRect();
+          return { left: b.left, right: b.right, top: b.top, bottom: b.bottom, width: b.width, height: b.height };
+        };
+        const one = (sel: string) => box(root.querySelector(sel)!);
+        const marker = root.querySelector('[data-day-now]');
+        return {
+          inUse: one('[data-day-lane="in-use"]'),
+          nobody: one('[data-day-lane="nobody"]'),
+          inUseLabel: one('[data-lane-label="in-use"]'),
+          nobodyLabel: one('[data-lane-label="nobody"]'),
+          nights: [...root.querySelectorAll('[data-day-stretch="night"]')].map(box),
+          labels: [...root.querySelectorAll<HTMLElement>('[data-lane-label]')].map((el) => ({
+            whole: el.scrollWidth <= el.clientWidth + 0.5,
+            px: parseFloat(getComputedStyle(el).fontSize),
+          })),
+          marker: marker ? box(marker) : null,
+        };
+      });
+      const g = await measure();
+
+      // One axis: both lanes start at the same place and are as wide.
+      expect(Math.abs(g.inUse.left - g.nobody.left)).toBeLessThanOrEqual(0.5);
+      expect(Math.abs(g.inUse.width - g.nobody.width)).toBeLessThanOrEqual(0.5);
+      expect(g.inUse.width).toBeGreaterThan(200);
+      const x = (minute: number) => g.nobody.left + (g.nobody.width * minute) / 1440;
+
+      // Night sits where night is: midnight to 6:30 and 9 pm to midnight.
+      expect(g.nights).toHaveLength(2);
+      const [early, late] = [...g.nights].sort((a, b) => a.left - b.left);
+      expect(Math.abs(early!.left - x(0))).toBeLessThanOrEqual(1);
+      expect(Math.abs(early!.right - x(6 * 60 + 30))).toBeLessThanOrEqual(1);
+      expect(Math.abs(late!.left - x(21 * 60))).toBeLessThanOrEqual(1);
+      expect(Math.abs(late!.right - x(1440))).toBeLessThanOrEqual(1);
+
+      // Nothing overlaps: In use above Nobody there, each name left of its lane
+      // and level with it, whole and at least 14px.
+      expect(g.inUse.bottom).toBeLessThanOrEqual(g.nobody.top);
+      expect(g.inUseLabel.right).toBeLessThanOrEqual(g.inUse.left);
+      expect(g.nobodyLabel.right).toBeLessThanOrEqual(g.nobody.left);
+      expect(g.inUseLabel.top).toBeGreaterThanOrEqual(g.inUse.top);
+      expect(g.inUseLabel.bottom).toBeLessThanOrEqual(g.inUse.bottom);
+      expect(g.nobodyLabel.top).toBeGreaterThanOrEqual(g.nobody.top);
+      expect(g.nobodyLabel.bottom).toBeLessThanOrEqual(g.nobody.bottom);
+      for (const l of g.labels) {
+        expect(l.whole).toBe(true);
+        expect(l.px).toBeGreaterThanOrEqual(14);
+      }
+      // Each lane is a touch target.
+      expect(Math.min(g.inUse.height, g.nobody.height)).toBeGreaterThanOrEqual(44);
+
+      // In use at 11 pm shows the dashboard, the marker at 11 pm through both
+      // lanes. 11 pm, not 10, keeps the tap clear of the 9 pm dot's 44px target.
+      const at11 = x(23 * 60);
+      await page.mouse.click(at11, g.inUse.top + g.inUse.height / 2);
+      await expect(sheet.locator('[data-day-sheet]')).toHaveAttribute('data-day-shows', 'active');
+      const afterInUse = await measure();
+      expect(Math.abs(afterInUse.marker!.left + afterInUse.marker!.width / 2 - at11)).toBeLessThanOrEqual(1.5);
+      expect(afterInUse.marker!.top).toBeLessThanOrEqual(g.inUse.top);
+      expect(afterInUse.marker!.bottom).toBeGreaterThanOrEqual(g.nobody.bottom);
+
+      // Nobody there at the same time shows night, and the marker stays.
+      await page.mouse.click(at11, g.nobody.top + g.nobody.height / 2);
+      await expect(sheet.locator('[data-day-sheet]')).toHaveAttribute('data-day-shows', 'night');
+      await expect(sheet.locator('[data-day-card="night"]')).toBeVisible();
+      const afterNobody = await measure();
+      expect(Math.abs(afterNobody.marker!.left + afterNobody.marker!.width / 2 - at11)).toBeLessThanOrEqual(1.5);
     } finally {
       await page.request.delete(`/api/layouts/${layout.id}`);
     }
