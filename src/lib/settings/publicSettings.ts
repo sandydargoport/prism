@@ -21,6 +21,7 @@ const PUBLIC_KEYS = new Set<string>([
   'hiddenPages', // useHiddenPages: the Dock
   'dockPages', // useHiddenPages: the Dock
   'calendarHiddenHours', // useHiddenHours: day and week views
+  'calendarPastEvents', // usePastEventsMode: agenda and list hide ended events
   'shoppingCategories', // useShoppingCategories: the shopping list
   SCENERY_SETTING_KEY, // useSceneryOn: wallpaper and auto-hide
   PHOTO_DATE_SETTING, // usePhotoSettings: photo caption

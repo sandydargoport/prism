@@ -121,7 +121,7 @@ describe('GET /api/settings', () => {
     it('a caller who may not change settings gets only the keys the screens read', async () => {
       const wallKeys = [
         'theme', 'locale', 'timeFormat', 'timezone', 'weekStartsOn', 'hiddenPages', 'dockPages',
-        'calendarHiddenHours', 'shoppingCategories', 'wallpaperScenery', 'photoCaptionDate',
+        'calendarHiddenHours', 'calendarPastEvents', 'shoppingCategories', 'wallpaperScenery', 'photoCaptionDate',
         'photoCaptionPlace', 'photoOnThisDay', 'input.virtualKeyboardEnabled',
         'scanner.soundEnabled', 'scanner.soundStyle',
       ];
