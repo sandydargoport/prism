@@ -87,6 +87,24 @@ test.describe('the dock on the wall', () => {
           return (Math.max(text, page) + 0.05) / (Math.min(text, page) + 0.05);
         });
         expect(contrast, 'Menu readable on the page').toBeGreaterThanOrEqual(3);
+        // ...and over the wallpaper, even where a pale page (the bus map) sits
+        // behind it: the tab's own glass over white, against its text.
+        const overPale = await tab.evaluate((el) => {
+          document.documentElement.setAttribute('data-wallpaper', '');
+          const rgba = (c: string) => (c.match(/[\d.]+/g) ?? []).map(Number);
+          const lum = ([r, g, b]: number[]) => {
+            const f = (v: number) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+            return 0.2126 * f(r!) + 0.7152 * f(g!) + 0.0722 * f(b!);
+          };
+          const cs = getComputedStyle(el);
+          const [r = 255, g = 255, b = 255, a = 1] = rgba(cs.backgroundColor);
+          const glass = [r, g, b].map((v) => v * a + 255 * (1 - a));
+          const text = lum(rgba(cs.color));
+          const ground = lum(glass);
+          document.documentElement.removeAttribute('data-wallpaper');
+          return (Math.max(text, ground) + 0.05) / (Math.min(text, ground) + 0.05);
+        });
+        expect(overPale, 'Menu readable over the wallpaper on a pale page').toBeGreaterThanOrEqual(4.5);
         expect(Math.abs(rest.y + rest.height - viewport.height), 'on the bottom edge').toBeLessThanOrEqual(1);
         // ...that shrinks to a nub after a few quiet seconds...
         await page.clock.runFor(9_000);
