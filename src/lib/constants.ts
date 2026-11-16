@@ -42,9 +42,10 @@ export const LOCKOUT_TIER_TTL = 24 * 60 * 60;
  * Wrong PINs one member may get in a day before sign-in locks for the rest of
  * that day. The per-window count above resets every five minutes, so on its
  * own four guesses per window never lock. A correct PIN does not clear this
- * count; a member who only mistypes now and then stays far below it.
+ * count. At 50 a child mashing the pad still has room, and a guesser covers
+ * at most half a percent of four-digit PINs a day.
  */
-export const MAX_DAILY_FAILED_LOGINS = 20;
+export const MAX_DAILY_FAILED_LOGINS = 50;
 /** How long the daily failure count lives, from the first failure (24 hr). */
 export const DAILY_FAILED_LOGINS_TTL = 24 * 60 * 60;
 
