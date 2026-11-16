@@ -1,6 +1,14 @@
 import { createHash } from 'crypto';
 import { getRedisClient } from '@/lib/cache/getRedisClient';
-import { SESSION_DURATION, SESSION_ABSOLUTE_LIFETIME, MAX_LOGIN_ATTEMPTS, LOCKOUT_TIERS, LOCKOUT_TIER_TTL } from '@/lib/constants';
+import {
+  SESSION_DURATION,
+  SESSION_ABSOLUTE_LIFETIME,
+  MAX_LOGIN_ATTEMPTS,
+  LOCKOUT_TIERS,
+  LOCKOUT_TIER_TTL,
+  MAX_DAILY_FAILED_LOGINS,
+  DAILY_FAILED_LOGINS_TTL,
+} from '@/lib/constants';
 
 export interface SessionData {
   userId: string;
@@ -265,6 +273,22 @@ export async function invalidateAllUserSessions(userId: string): Promise<void> {
   }
 }
 
+/** Wrong PINs over the last day; outlives the five-minute window (#1221). */
+function dailyFailuresKey(userId: string): string {
+  return `login_failures_daily:${userId}`;
+}
+
+type RedisClient = NonNullable<Awaited<ReturnType<typeof getRedisClient>>>;
+
+/** Seconds left on the daily lock, or null when the member is under the cap. */
+async function dailyLockRetryAfter(client: RedisClient, userId: string): Promise<number | null> {
+  const key = dailyFailuresKey(userId);
+  const raw = await client.get(key);
+  if (!raw || parseInt(raw, 10) < MAX_DAILY_FAILED_LOGINS) return null;
+  const ttl = await client.ttl(key);
+  return ttl > 0 ? ttl : DAILY_FAILED_LOGINS_TTL;
+}
+
 export async function isLoginLockedOut(userId: string): Promise<{ lockedOut: boolean; retryAfter?: number }> {
   const client = await getRedisClient();
   if (!client) return { lockedOut: false };
@@ -272,13 +296,14 @@ export async function isLoginLockedOut(userId: string): Promise<{ lockedOut: boo
   try {
     const attemptsKey = `login_attempts:${userId}`;
     const attempts = await client.get(attemptsKey);
-    if (!attempts) return { lockedOut: false };
-
-    const count = parseInt(attempts, 10);
+    const count = attempts ? parseInt(attempts, 10) : 0;
     if (count >= MAX_LOGIN_ATTEMPTS) {
       const ttl = await client.ttl(attemptsKey);
       return { lockedOut: true, retryAfter: ttl > 0 ? ttl : LOCKOUT_TIERS[0] };
     }
+
+    const daily = await dailyLockRetryAfter(client, userId);
+    if (daily !== null) return { lockedOut: true, retryAfter: daily };
 
     return { lockedOut: false };
   } catch (error) {
@@ -293,6 +318,10 @@ export async function isLoginLockedOut(userId: string): Promise<{ lockedOut: boo
  * guesses sent at once all pass the check before any was counted. Counting
  * first is atomic: once the count passes the limit, every further attempt is
  * refused until the lockout ends. A correct PIN clears the count as before.
+ *
+ * Past the daily cap (#1221) every attempt is refused until the daily count
+ * expires. Guesses sent at once right at the cap can each pass this check, so
+ * the cap can be overshot by at most one window's worth (MAX_LOGIN_ATTEMPTS).
  */
 export async function reserveLoginAttempt(
   userId: string,
@@ -301,6 +330,9 @@ export async function reserveLoginAttempt(
   if (!client) return { allowed: true, count: 0 };
 
   try {
+    const daily = await dailyLockRetryAfter(client, userId);
+    if (daily !== null) return { allowed: false, retryAfter: daily };
+
     const attemptsKey = `login_attempts:${userId}`;
     const count = await client.incr(attemptsKey);
     if (count === 1) await client.expire(attemptsKey, LOCKOUT_TIERS[0]);
@@ -345,6 +377,12 @@ export async function recordFailedLogin(userId: string, reservedCount?: number):
       await client.expire(tierKey, LOCKOUT_TIER_TTL);
     }
 
+    // The daily count (#1221): set to expire a day after the first failure and
+    // never cleared by a correct PIN, so it keeps counting across windows.
+    const dailyKey = dailyFailuresKey(userId);
+    const dailyCount = await client.incr(dailyKey);
+    if (dailyCount === 1) await client.expire(dailyKey, DAILY_FAILED_LOGINS_TTL);
+
     return { remainingAttempts: Math.max(0, MAX_LOGIN_ATTEMPTS - newCount) };
   } catch (error) {
     console.error('Failed to record failed login:', error instanceof Error ? error.message : 'Unknown error');
@@ -357,7 +395,8 @@ export async function clearLoginAttempts(userId: string): Promise<void> {
   if (!client) return;
 
   try {
-    // Clear both the attempt counter and the tier — successful login resets the escalation ladder
+    // Clear both the attempt counter and the tier: a successful login resets
+    // the escalation ladder. The daily failure count is left alone (#1221).
     await client.del(`login_attempts:${userId}`);
     await client.del(`login_lockout_tier:${userId}`);
   } catch (error) {

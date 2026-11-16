@@ -39,6 +39,8 @@ const SHARED_ERROR_MESSAGES: Record<string, string> = {
   microsoft_auth_failed: 'Microsoft authentication failed. Please try again.',
   google_tasks_auth_denied: 'Google authorization was denied or cancelled.',
   google_tasks_auth_failed: 'Google authentication failed. Please try again.',
+  microsoft_state_mismatch: 'That sign-in link expired or was started elsewhere. Please try again.',
+  google_tasks_state_mismatch: 'That sign-in link expired or was started elsewhere. Please try again.',
   redis_unavailable: 'Cache service unavailable. Please try again.',
   missing_code: 'Authorization code was missing. Please try again.',
 };

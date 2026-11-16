@@ -9,6 +9,7 @@ import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
 import { resolveRedirectUri } from '@/lib/integrations/resolveRedirectUri';
 import { fetchGmailAccountEmail } from '@/lib/integrations/oauth-userinfo';
+import { consumeOAuthState } from '@/lib/auth/oauthState';
 
 const BASE_URL = process.env.APP_URL || process.env.BASE_URL || 'http://localhost:3000';
 
@@ -19,19 +20,20 @@ export async function GET(request: Request) {
   const forbidden = requireRole(auth, 'canModifySettings');
   if (forbidden) return forbidden;
 
-  // Parse state once at top so all redirects honor returnSection. Default
-  // 'bus' preserves legacy callers (BusTrackingSection's Connect Gmail
-  // button still uses /api/auth/google-bus with no returnSection).
+  // Verify + consume the state nonce, bound to this session at /authorize
+  // (#1221), so all redirects honor the stored returnSection. Default 'bus'
+  // preserves legacy callers (BusTrackingSection's Connect Gmail button).
+  // Redis down proceeds with defaults (degraded); a bad or missing nonce
+  // with Redis up is refused.
   const { searchParams } = new URL(request.url);
-  const state = searchParams.get('state');
-  let returnSection = 'bus';
-  if (state) {
-    try {
-      const parsed = JSON.parse(state);
-      returnSection = parsed.returnSection || 'bus';
-    } catch { /* ignore */ }
-  }
+  const consumed = await consumeOAuthState('google-bus', searchParams.get('state'), auth.userId);
+  const stored = consumed.status === 'ok' ? consumed.payload.returnSection : undefined;
+  const returnSection = typeof stored === 'string' && stored ? stored : 'bus';
   const anchor = returnSection === 'integrations' ? '#google-bus' : '';
+
+  if (consumed.status === 'invalid') {
+    return NextResponse.redirect(`${BASE_URL}/settings?section=${returnSection}&error=gmail_state_mismatch${anchor}`);
+  }
 
   try {
     const code = searchParams.get('code');
