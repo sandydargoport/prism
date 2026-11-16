@@ -137,7 +137,11 @@ export async function POST(request: NextRequest) {
       recurrenceInterval,
       addedBy,
       notes,
-    } = validation.data;
+    } = auth.wall
+      // The wall adds an item, nothing more: who added it, notes and repeats
+      // are for a signed-in person (#1222).
+      ? { ...validation.data, recurring: false, recurrenceInterval: undefined, addedBy: undefined, notes: undefined }
+      : validation.data;
 
     // Insert the item
     const [newItem] = await db

@@ -64,6 +64,7 @@ jest.mock('drizzle-orm', () => ({
   and: jest.fn(),
   isNull: jest.fn(),
   asc: jest.fn(),
+  desc: jest.fn(),
 }));
 
 // --- Auth mock ---
@@ -104,7 +105,7 @@ jest.mock('@/lib/householdTimezone', () => ({
 }));
 
 // Import routes after mocks
-import { POST as completeChore } from '../[id]/complete/route';
+import { POST as completeChore, DELETE as undoChore } from '../[id]/complete/route';
 import { POST as approveChore } from '../[id]/approve/route';
 import { calculateNextDue } from '@/lib/utils/calculateNextDue';
 import { todayKey } from '@/lib/utils/zonedDate';
@@ -453,5 +454,37 @@ describe('POST /api/chores/[id]/approve', () => {
     expect(res.status).toBe(200);
     expect(data.completion.completedBy.name).toBe('Unknown');
     expect(data.completion.completedBy.color).toBe('#888888');
+  });
+});
+
+// #1222: with the PIN off, the wall's Undo takes back only a tick the wall made.
+describe('Undo on the wall', () => {
+  const wallAuth = { userId: 'display-1', role: 'guest', wall: true };
+  const undo = () => undoChore(new NextRequest('http://localhost:3000/api/chores/chore-1/complete', { method: 'DELETE' }), routeParams);
+
+  beforeEach(() => {
+    queryIndex = 0;
+    mockTransaction.mockReset();
+    mockRequireAuth.mockResolvedValue(wallAuth);
+  });
+
+  it('takes back its own tick from a moment ago', async () => {
+    queryResults = [[{ id: 'c-1', completedAt: new Date(), approvedBy: 'display-1' }]];
+    const res = await undo();
+    expect(res.status).not.toBe(401);
+    expect(mockTransaction).toHaveBeenCalled();
+  });
+
+  it('cannot undo a tick a parent made, however recent', async () => {
+    queryResults = [[{ id: 'c-1', completedAt: new Date(), approvedBy: 'parent-1' }]];
+    const res = await undo();
+    expect(res.status).toBe(401);
+    expect(mockTransaction).not.toHaveBeenCalled();
+  });
+
+  it('cannot undo its own tick once the Undo window has passed', async () => {
+    queryResults = [[{ id: 'c-1', completedAt: new Date(Date.now() - 10 * 60_000), approvedBy: 'display-1' }]];
+    expect((await undo()).status).toBe(401);
+    expect(mockTransaction).not.toHaveBeenCalled();
   });
 });
