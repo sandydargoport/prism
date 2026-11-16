@@ -62,7 +62,7 @@ export interface AppShellProps {
    * their own navigation for now (#924).
    */
   dock?: 'wall';
-  /** This screen's jobs, for the dock's More panel. */
+  /** This screen's jobs, for the dock's More panel; left out, the jobs every page can do (#1257). */
   screenJobs?: React.ReactNode;
   /** The phone menu's Cards and Reorder; off when the page has no cards (Simple's Today). */
   cardTools?: boolean;
@@ -144,7 +144,7 @@ export function AppShell({
       {showWallpaper && <WallpaperBackground />}
 
       {/* THE DOCK ON EVERY OTHER PAGE (#923) */}
-      {pageDockShown && <Dock mode="page" user={user} onLogin={onLogin} onLogout={onLogout} />}
+      {pageDockShown && <Dock mode="page" user={user} onLogin={onLogin} onLogout={onLogout} screenJobs={screenJobs} />}
 
       {/* THE DOCK ON THE WALL (#922) */}
       {!hideNav && wallDock && !measureHideNav && (
