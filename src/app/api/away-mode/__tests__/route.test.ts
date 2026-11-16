@@ -17,6 +17,7 @@ jest.mock('@/lib/auth', () => ({
   requireRole: () => null,
   getDisplayAuth: async () => display,
 }));
+jest.mock('@/lib/auth/everydayAuth', () => ({ screenOrPerson: async () => display }));
 jest.mock('@/lib/db/client', () => ({
   db: {
     select: () => ({ from: () => ({ where: async () => [] }) }),

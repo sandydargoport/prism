@@ -6,7 +6,8 @@
  * existing install keeps asking for the PIN for everything until a parent turns
  * it off. Setup writes it off for a new install.
  *
- * When it is off, a signed-out wall may do the everyday jobs only: tick a
+ * When it is off, a signed-out wall (a screen named in Settings -> Screens,
+ * or a trusted device) may do the everyday jobs only: tick a
  * chore, a task or a shopping item, and add a shopping item. Each such change
  * is limited to 60 a minute across the household and written to the activity log.
  * Approving, points, editing, deleting and settings still need a signed-in
@@ -16,18 +17,18 @@
  * chore: an approval-required chore it ticks lands as pending.
  */
 import { NextResponse } from 'next/server';
-import { headers } from 'next/headers';
 import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import { settings } from '@/lib/db/schema';
-import { requireAuth, getDisplayAuth, type AuthResult } from './requireAuth';
+import { requireAuth, getDisplayAuth, optionalAuth, type AuthResult } from './requireAuth';
+import { currentDisplay } from './displayIdentity';
+import { isTrustedDevice } from './authWall';
 import { rateLimitGuard } from '@/lib/cache/rateLimit';
 import { logActivity } from '@/lib/services/auditLog';
 
 /**
  * Changes the signed-out walls may make in a minute, together. One bucket for
- * the household (#809): a per-screen key came from X-Forwarded-For, which any
- * caller sets, so a caller could start a fresh bucket with every request.
+ * the household (#809), so no caller can start a fresh one.
  */
 export const WALL_CHANGES_PER_MINUTE = 60;
 
@@ -45,11 +46,34 @@ export async function pinRequiredForEveryChange(): Promise<boolean> {
   }
 }
 
-/** Which screen made the change, for the rate limit and the log. */
+/**
+ * Which of this install's screens is asking: a screen named in Settings ->
+ * Screens (its signed cookie, and the row still there), or a device a parent
+ * trusted. Null for any other browser or script (#1222). Never taken from a
+ * request header, which the caller sets.
+ */
+export async function knownScreen(): Promise<string | null> {
+  const display = await currentDisplay().catch(() => null);
+  if (display) return `display:${display.id}`;
+  if (await isTrustedDevice()) return 'trusted-device';
+  return null;
+}
+
+/**
+ * The caller, when it is a signed-in person or one of this install's screens
+ * (#1222); null for any other browser or script, even with sign-in off. For
+ * what an unnamed browser should not get: the live bus, Away mode by itself.
+ */
+export async function screenOrPerson(): Promise<AuthResult | null> {
+  const person = await optionalAuth();
+  if (person) return person;
+  if (!(await knownScreen())) return null;
+  return getDisplayAuth();
+}
+
+/** Which screen made the change, for the log. */
 export async function screenKey(): Promise<string> {
-  const h = await headers();
-  const forwarded = h.get('x-forwarded-for')?.split(',')[0]?.trim();
-  return forwarded || h.get('x-real-ip') || 'unknown-screen';
+  return (await knownScreen()) ?? 'unknown-screen';
 }
 
 /**
@@ -62,6 +86,9 @@ export async function requireEverydayAuth(job: string): Promise<EverydayAuth | N
   if (auth.status !== 401) return auth;
   if (await pinRequiredForEveryChange()) return auth;
 
+  // Only one of this install's own screens acts as the wall (#1222). Any
+  // other caller answers as it would with the PIN on.
+  if (!(await knownScreen())) return auth;
   const display = await getDisplayAuth();
   if (!display) return auth;
 

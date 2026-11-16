@@ -268,7 +268,7 @@ export async function DELETE(
 
     // Find the most recent completion
     const [latest] = await db
-      .select({ id: choreCompletions.id, completedAt: choreCompletions.completedAt })
+      .select({ id: choreCompletions.id, completedAt: choreCompletions.completedAt, approvedBy: choreCompletions.approvedBy })
       .from(choreCompletions)
       .where(eq(choreCompletions.choreId, choreId))
       .orderBy(desc(choreCompletions.completedAt))
@@ -277,7 +277,11 @@ export async function DELETE(
     if (!latest) {
       return NextResponse.json({ error: 'No completion to undo' }, { status: 404 });
     }
-    if (auth.wall && Date.now() - new Date(latest.completedAt).getTime() > WALL_UNDO_MS) {
+    // The wall undoes only a tick the wall made (#1222): one still waiting for
+    // approval, or one it approved itself as the display identity. A parent's
+    // tick stays a parent's to undo.
+    const wallMadeIt = latest.approvedBy === null || latest.approvedBy === auth.userId;
+    if (auth.wall && (!wallMadeIt || Date.now() - new Date(latest.completedAt).getTime() > WALL_UNDO_MS)) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
     if (auth.wall) await logWallChange('chore-undo', 'chore', choreId, 'Undid a tick on the wall without a PIN');

@@ -28,6 +28,7 @@ function query(shape?: Record<string, unknown>) {
 
 jest.mock('@/lib/db/client', () => ({ db: { select: (shape?: Record<string, unknown>) => query(shape) } }));
 jest.mock('@/lib/auth', () => ({ getDisplayAuth: () => mockGetDisplayAuth() }));
+jest.mock('@/lib/auth/everydayAuth', () => ({ screenOrPerson: () => mockGetDisplayAuth() }));
 jest.mock('@/lib/householdTimezone', () => ({ getHouseholdTimezone: async () => 'UTC' }));
 jest.mock('@/lib/services/bus-history', () => ({
   firstMoves: async () => new Map(),

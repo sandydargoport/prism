@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, lt } from 'drizzle-orm';
-import { getDisplayAuth } from '@/lib/auth';
+import { screenOrPerson } from '@/lib/auth/everydayAuth';
 import { db } from '@/lib/db/client';
 import { busRoutes, busStopVisits, settings, vehicleFixes, vehicleTracks } from '@/lib/db/schema';
 import type { LiveTrackPublicVehicle, LiveTrackVehicle } from '@/lib/db/schema';
@@ -147,7 +147,9 @@ async function driverNames(): Promise<DriverNames> {
  * stop times, and the fixes received since `since` (all of today's without it).
  */
 export async function GET(request: NextRequest) {
-  const auth = await getDisplayAuth();
+  // The live bus shows where the rider is picked up and when, so it is for a
+  // signed-in person or one of this install's screens, not any browser (#1222).
+  const auth = await screenOrPerson();
   if (!auth) return NextResponse.json({ tracks: [], provider: false });
 
   const sinceParam = request.nextUrl.searchParams.get('since');
