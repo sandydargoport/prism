@@ -6,8 +6,8 @@ All notable changes to Prism are documented in this file.
 
 ### What moved where
 - **The side rail and the top bar** became the dock: one labelled row of pages along the bottom of every page, on landscape, portrait and phone screens. On a wall dashboard the dock is hidden behind a small **Menu** tab on the bottom edge; a tap anywhere brings it back.
-- **The top bar's screen controls** (Edit layout, Reload, Performance, Babysitter mode, Away mode, Screensaver) are in the dock's **More** panel, under **This screen**, each with its name.
-- **Settings and Help** are the first row of the **More** panel. Pages that are not on the dock are below them, under **Pages**. Which pages sit on the dock is chosen in *Settings → Features*.
+- **The top bar's screen controls** (Edit layout, Reload, Performance, Babysitter mode, Away mode, Screensaver) are in the dock's **More** panel, under **This screen**, each with its name, on every page. From a page other than the dashboard, **Edit layout** opens the dashboard with the editor open.
+- **The More panel** has three groups of the same tiles: **This screen**, **Pages** (the pages that are not on the dock) and **Prism** (Settings, Help, sign in). On a phone, This screen comes last. Which pages sit on the dock is chosen in *Settings → Features*.
 - **Sign in on a phone** is in **More**.
 - **The front page** is the built-in **Glance** dashboard on a new install; an existing install keeps its own. Glance leads with today as a list; the day as an arc is an option in its **Widgets** sheet (**Show the day as an arc**).
 - **Chores**: the filters, on and off switches, points and categories are under **Manage**. On a phone, History is in the page's menu.
