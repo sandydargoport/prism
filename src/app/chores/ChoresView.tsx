@@ -30,7 +30,7 @@ import { ChoreGroupGrid } from './ChoreGroupGrid';
 import { ChoreCompletionsList } from './ChoreCompletionsList';
 import { useChoresViewData } from './useChoresViewData';
 import { useChoreModals } from './useChoreModals';
-import { useAuth } from '@/components/providers';
+import { useAuth, useDisplayToday } from '@/components/providers';
 
 const CHORE_CATEGORIES = [
   { value: 'cleaning', label: 'Cleaning' },
@@ -44,6 +44,8 @@ const CHORE_CATEGORIES = [
 export function ChoresView() {
   const isMobile = useIsMobile();
   const { requireAuth, activeUser } = useAuth();
+  // The household's day and clock (#1227); also re-renders at its midnight.
+  const { timeZone: displayTimezone } = useDisplayToday();
   const {
     loading, error, refreshChores, familyMembers,
     filterPerson, setFilterPerson,
@@ -247,6 +249,7 @@ export function ChoresView() {
             <ChoresDoList
               chores={effectiveFilteredChores}
               today={new Date()}
+              timeZone={displayTimezone}
               onTick={(c) => tick(c, () => completeChore(c.id))}
               onApprove={(c) => void completeChore(c.id)}
               canApprove={activeUser?.role === 'parent'}
