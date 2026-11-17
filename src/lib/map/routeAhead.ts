@@ -18,6 +18,8 @@ export type LngLat = [number, number];
 
 /** Further than this from the usual path, the bus is not on it today. */
 export const OFF_PATH_M = 150;
+/** Two passes this close to the bus are both where it is. */
+const SAME_PLACE_M = 20;
 /** A path piece turned further than this from the bus's heading is another pass. */
 const SAME_WAY_DEG = 90;
 /** Points closer than this add nothing to a line at map zoom. */
@@ -97,11 +99,22 @@ export function pathAhead(
   usual: LngLat[], bus: LngLat, target: LngLat, heading: number | null = null,
 ): LngLat[] | null {
   if (usual.length < 2) return null;
-  const from = nearest(usual, bus, 0, heading);
-  if (from.m > OFF_PATH_M) return null;
-  const to = nearest(usual, target, from.index);
-  if (to.m > OFF_PATH_M || to.index <= from.index) return null;
-  return [bus, ...usual.slice(from.index + 1, to.index + 1), target];
+  const along = (from: { index: number; m: number }) => {
+    if (from.index < 0 || from.m > OFF_PATH_M) return null;
+    const to = nearest(usual, target, from.index);
+    if (to.m > OFF_PATH_M || to.index <= from.index) return null;
+    return [bus, ...usual.slice(from.index + 1, to.index + 1), target];
+  };
+  const first = nearest(usual, bus, 0, heading);
+  const line = along(first);
+  if (line) return line;
+  // A place the path passes twice (the depot, at both ends) can match the
+  // pass after the target. Try again on the path up to the target, but only
+  // when the bus is as near that earlier pass, not when it is past the target.
+  const end = nearest(usual, target).index;
+  if (end <= 0) return null;
+  const earlier = nearest(usual.slice(0, end), bus, 0, heading);
+  return earlier.m <= first.m + SAME_PLACE_M ? along(earlier) : null;
 }
 
 /** Straight lines from the bus through the stops still to come, up to `target`. */
@@ -187,6 +200,49 @@ function middleFix(fixes: LngLat[]): LngLat {
 }
 
 /**
+ * The trace the others agree with most: the most of their fixes lie within
+ * OFF_REFERENCE_M of it and the most of its fixes within that of them, the
+ * longer on a tie. combineTraces builds on it,
+ * and a fix too far from it is left out, so building on a day the bus went
+ * another way would keep that day's streets and drop the usual ones.
+ */
+function mostTypical(traces: LngLat[][]): LngLat[] {
+  const lines = traces.map((t) => {
+    const line = thinPath(t);
+    const cum = [0];
+    for (let i = 1; i < line.length; i++) cum.push(cum[i - 1]! + metres(line[i - 1]!, line[i]!));
+    return { line, cum };
+  });
+  /** How many of `trace`'s fixes lie on trace `j`. */
+  const onTrace = (trace: LngLat[], j: number): number => {
+    const { line, cum } = lines[j]!;
+    let on = 0;
+    for (const p of trace) {
+      const at = place(line, cum, p, 0, Infinity);
+      if (at && at.m <= OFF_REFERENCE_M) on++;
+    }
+    return on;
+  };
+  let best = 0;
+  let bestScore = -1;
+  for (let c = 0; c < traces.length; c++) {
+    // Fixes that agree, counted both ways round: a sparse trace's long straight
+    // lines between fixes take in others' fixes easily, but few of its own
+    // fixes lie on the others when it went its own way.
+    let score = 0;
+    for (let o = 0; o < traces.length; o++) {
+      if (o === c) continue;
+      score += onTrace(traces[o]!, c) + onTrace(traces[c]!, o);
+    }
+    if (score > bestScore || (score === bestScore && traces[c]!.length > traces[best]!.length)) {
+      best = c;
+      bestScore = score;
+    }
+  }
+  return traces[best]!;
+}
+
+/**
  * One path from several trips' traces of the same route. Fixes arrive every
  * 10 to 30 s, so a single trace cuts corners between them; on different days
  * they land in different places. Every fix is placed by its distance along a
@@ -199,7 +255,7 @@ function middleFix(fixes: LngLat[]): LngLat {
 export function combineTraces(traces: LngLat[][]): LngLat[] {
   const usable = traces.filter((t) => t.length >= 2);
   if (usable.length === 0) return [];
-  let reference = thinPath([...usable].sort((a, b) => b.length - a.length)[0]!);
+  let reference = thinPath(mostTypical(usable));
   for (let pass = 0; pass < 2 && reference.length >= 2; pass++) {
     const cum = [0];
     for (let i = 1; i < reference.length; i++) cum.push(cum[i - 1]! + metres(reference[i - 1]!, reference[i]!));

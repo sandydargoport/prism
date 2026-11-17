@@ -51,6 +51,19 @@ describe('pathAhead', () => {
     expect(eastbound.length).toBeGreaterThan(west.length);
   });
 
+  it('starts from the first pass when the path ends where it began', () => {
+    // Out of the depot east 300 m, north 300 m, then back the same way to the depot.
+    const M = 1 / 111_320;
+    const xy = (x: number, y: number): LngLat => [x * M, y * M];
+    const out = [...Array.from({ length: 31 }, (_, i) => xy(i * 10, 0)), ...Array.from({ length: 30 }, (_, i) => xy(300, (i + 1) * 10))];
+    const loop = [...out, ...[...out].reverse().slice(1, -1), xy(0, 3)];
+    // Parked at the depot with no heading yet, a little nearer where the route
+    // ends than where it starts; the stop is up the north leg.
+    const line = pathAhead(loop, xy(1, 4), xy(300, 250));
+    expect(line).not.toBeNull();
+    expect(line!.some((p) => metres(p, xy(300, 0)) < 1)).toBe(true);
+  });
+
   it('gives up when the bus is off the usual path or past the target', () => {
     expect(pathAhead(usual, [0.001, 0.005], [0.003, 0.002])).toBeNull();
     expect(pathAhead(usual, [0.003, 0.0025], [0.003, 0.002])).toBeNull();
@@ -154,6 +167,19 @@ describe('combineTraces', () => {
       for (let t = 0; t <= 1; t += 0.1) worst = Math.max(worst, offArc([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]));
     }
     expect(worst).toBeLessThan(4);
+  });
+
+  it('follows the way most trips went, not the trip with the most fixes', () => {
+    // Three trips drive the L. One more, with twice the fixes, went straight on
+    // east instead of turning north.
+    const usualTrips = [0, 7, 14].map((o) => sampled(o, 20));
+    const oneOff = Array.from({ length: 41 }, (_, i) => xy(i * 10, 0));
+    const pooled = combineTraces([...usualTrips, oneOff]);
+    // The north leg is there, end to end.
+    expect(gap(pooled, xy(200, 100))).toBeLessThan(15);
+    expect(gap(pooled, xy(200, 195))).toBeLessThan(15);
+    // And the one-off street east of the corner is not.
+    expect(gap(pooled, xy(350, 0))).toBeGreaterThan(100);
   });
 
   it('is empty with nothing to go on', () => {
