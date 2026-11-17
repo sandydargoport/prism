@@ -18,6 +18,8 @@ export type LngLat = [number, number];
 
 /** Further than this from the usual path, the bus is not on it today. */
 export const OFF_PATH_M = 150;
+/** Two passes this close to the bus are both where it is. */
+const SAME_PLACE_M = 20;
 /** A path piece turned further than this from the bus's heading is another pass. */
 const SAME_WAY_DEG = 90;
 /** Points closer than this add nothing to a line at map zoom. */
@@ -97,11 +99,22 @@ export function pathAhead(
   usual: LngLat[], bus: LngLat, target: LngLat, heading: number | null = null,
 ): LngLat[] | null {
   if (usual.length < 2) return null;
-  const from = nearest(usual, bus, 0, heading);
-  if (from.m > OFF_PATH_M) return null;
-  const to = nearest(usual, target, from.index);
-  if (to.m > OFF_PATH_M || to.index <= from.index) return null;
-  return [bus, ...usual.slice(from.index + 1, to.index + 1), target];
+  const along = (from: { index: number; m: number }) => {
+    if (from.index < 0 || from.m > OFF_PATH_M) return null;
+    const to = nearest(usual, target, from.index);
+    if (to.m > OFF_PATH_M || to.index <= from.index) return null;
+    return [bus, ...usual.slice(from.index + 1, to.index + 1), target];
+  };
+  const first = nearest(usual, bus, 0, heading);
+  const line = along(first);
+  if (line) return line;
+  // A place the path passes twice (the depot, at both ends) can match the
+  // pass after the target. Try again on the path up to the target, but only
+  // when the bus is as near that earlier pass, not when it is past the target.
+  const end = nearest(usual, target).index;
+  if (end <= 0) return null;
+  const earlier = nearest(usual.slice(0, end), bus, 0, heading);
+  return earlier.m <= first.m + SAME_PLACE_M ? along(earlier) : null;
 }
 
 /** Straight lines from the bus through the stops still to come, up to `target`. */
@@ -187,6 +200,49 @@ function middleFix(fixes: LngLat[]): LngLat {
 }
 
 /**
+ * The trace the others agree with most: the most of their fixes lie within
+ * OFF_REFERENCE_M of it and the most of its fixes within that of them, the
+ * longer on a tie. combineTraces builds on it,
+ * and a fix too far from it is left out, so building on a day the bus went
+ * another way would keep that day's streets and drop the usual ones.
+ */
+function mostTypical(traces: LngLat[][]): LngLat[] {
+  const lines = traces.map((t) => {
+    const line = thinPath(t);
+    const cum = [0];
+    for (let i = 1; i < line.length; i++) cum.push(cum[i - 1]! + metres(line[i - 1]!, line[i]!));
+    return { line, cum };
+  });
+  /** How many of `trace`'s fixes lie on trace `j`. */
+  const onTrace = (trace: LngLat[], j: number): number => {
+    const { line, cum } = lines[j]!;
+    let on = 0;
+    for (const p of trace) {
+      const at = place(line, cum, p, 0, Infinity);
+      if (at && at.m <= OFF_REFERENCE_M) on++;
+    }
+    return on;
+  };
+  let best = 0;
+  let bestScore = -1;
+  for (let c = 0; c < traces.length; c++) {
+    // Fixes that agree, counted both ways round: a sparse trace's long straight
+    // lines between fixes take in others' fixes easily, but few of its own
+    // fixes lie on the others when it went its own way.
+    let score = 0;
+    for (let o = 0; o < traces.length; o++) {
+      if (o === c) continue;
+      score += onTrace(traces[o]!, c) + onTrace(traces[c]!, o);
+    }
+    if (score > bestScore || (score === bestScore && traces[c]!.length > traces[best]!.length)) {
+      best = c;
+      bestScore = score;
+    }
+  }
+  return traces[best]!;
+}
+
+/**
  * One path from several trips' traces of the same route. Fixes arrive every
  * 10 to 30 s, so a single trace cuts corners between them; on different days
  * they land in different places. Every fix is placed by its distance along a
@@ -199,7 +255,7 @@ function middleFix(fixes: LngLat[]): LngLat {
 export function combineTraces(traces: LngLat[][]): LngLat[] {
   const usable = traces.filter((t) => t.length >= 2);
   if (usable.length === 0) return [];
-  let reference = thinPath([...usable].sort((a, b) => b.length - a.length)[0]!);
+  let reference = thinPath(mostTypical(usable));
   for (let pass = 0; pass < 2 && reference.length >= 2; pass++) {
     const cum = [0];
     for (let i = 1; i < reference.length; i++) cum.push(cum[i - 1]! + metres(reference[i - 1]!, reference[i]!));
@@ -225,150 +281,10 @@ export function combineTraces(traces: LngLat[][]): LngLat[] {
     if (next.length < 2) break;
     reference = next;
   }
-  // One point per piece still carries each piece's GPS wander, so the path
-  // wobbles along a straight street. Thinning by spacing (thinPath) would cut
-  // the corners again; straighten keeps them (see there). Its long straight
-  // pieces get a point every PIECE_M again, since pathAhead looks for the
-  // path's nearest point, not its nearest segment.
-  return respace(straighten(reference, STRAIGHT_M), PIECE_M);
+  // Already one point per piece. Thinning further, or fitting straight lines
+  // to the pieces, cuts the corners and turns curved streets into polygons.
+  return reference;
 }
-
-/** The same line with a point at least every `every` metres along it. */
-function respace(line: LngLat[], every: number): LngLat[] {
-  if (line.length < 2) return line;
-  const out: LngLat[] = [line[0]!];
-  for (let i = 1; i < line.length; i++) {
-    const a = line[i - 1]!, b = line[i]!;
-    const n = Math.ceil(metres(a, b) / every);
-    for (let s = 1; s <= n; s++) out.push([a[0] + ((b[0] - a[0]) * s) / n, a[1] + ((b[1] - a[1]) * s) / n]);
-  }
-  return out;
-}
-
-/**
- * Wander smaller than this is straightened out of the usual path. Pooled
- * points wander up to about 15 m either side of the road, and a stretch is
- * straightened only when every point in it lies within this of one line, so it
- * needs a few metres' margin over that. A turn into another street leaves the
- * line by far more, so it survives. It is well inside OFF_REFERENCE_M, so
- * today's fixes still find the path.
- */
-const STRAIGHT_M = 18;
-/** Streets meeting at less than this are one street bending, not a corner. */
-const CORNER_DEG = 20;
-
-type XY = [number, number];
-type Fit = { cx: number; cy: number; dx: number; dy: number; worst: number };
-
-/** The line nearest `pts` (through their middle, along their spread) and the furthest any is from it. */
-function fitLine(pts: XY[]): Fit {
-  const n = pts.length;
-  const cx = pts.reduce((a, p) => a + p[0], 0) / n;
-  const cy = pts.reduce((a, p) => a + p[1], 0) / n;
-  let sxx = 0, syy = 0, sxy = 0;
-  for (const [x, y] of pts) { sxx += (x - cx) ** 2; syy += (y - cy) ** 2; sxy += (x - cx) * (y - cy); }
-  const angle = 0.5 * Math.atan2(2 * sxy, sxx - syy);
-  const dx = Math.cos(angle), dy = Math.sin(angle);
-  let worst = 0;
-  for (const [x, y] of pts) worst = Math.max(worst, Math.abs((x - cx) * dy - (y - cy) * dx));
-  return { cx, cy, dx, dy, worst };
-}
-
-function onLine(f: Fit, p: XY): XY {
-  const t = (p[0] - f.cx) * f.dx + (p[1] - f.cy) * f.dy;
-  return [f.cx + f.dx * t, f.cy + f.dy * t];
-}
-
-/**
- * The path as straight streets meeting at corners. Douglas-Peucker first
- * splits it at the points furthest off the line between its ends, which are
- * the corners (and, where wander tilts that line, a few spurious ones).
- * Neighbouring pieces that fit one line within `tolerance` and run the same
- * way are then joined again, so a street driven out and back stays two passes.
- * Each piece is drawn along the line that fits its points best, and each
- * corner where the two lines meet, which can be nearer the real corner than
- * any one fix was.
- */
-export function straighten(points: LngLat[], tolerance: number): LngLat[] {
-  if (points.length <= 2) return points;
-  const k = 111_320 * Math.cos((points[0]![1] * Math.PI) / 180);
-  const o = points[0]!;
-  const xy: XY[] = points.map((p) => [(p[0] - o[0]) * k, (p[1] - o[1]) * 111_320]);
-  const back = (p: XY): LngLat => [o[0] + p[0] / k, o[1] + p[1] / 111_320];
-
-  // Douglas-Peucker: the points to split at.
-  const cut = new Array<boolean>(points.length).fill(false);
-  cut[0] = cut[points.length - 1] = true;
-  const spans: [number, number][] = [[0, points.length - 1]];
-  while (spans.length > 0) {
-    const [i, j] = spans.pop()!;
-    let far = -1;
-    let m = tolerance;
-    for (let c = i + 1; c < j; c++) {
-      const d = toSegment(points[c]!, points[i]!, points[j]!);
-      if (d > m) { m = d; far = c; }
-    }
-    if (far < 0) continue;
-    cut[far] = true;
-    spans.push([i, far], [far, j]);
-  }
-  const at = cut.flatMap((c, i) => (c ? [i] : []));
-
-  // Join neighbouring pieces back up where one line fits both, best fit first.
-  // A turn back is two pieces each longer than the wander, heading opposite ways;
-  // a short piece heading back is wander.
-  const sameWay = (a: number, b: number, c: number) => {
-    const [ux, uy] = [xy[b]![0] - xy[a]![0], xy[b]![1] - xy[a]![1]];
-    const [vx, vy] = [xy[c]![0] - xy[b]![0], xy[c]![1] - xy[b]![1]];
-    return ux * vx + uy * vy > 0 || Math.min(Math.hypot(ux, uy), Math.hypot(vx, vy)) < 2 * tolerance;
-  };
-  for (;;) {
-    let best = -1;
-    let bestWorst = tolerance;
-    for (let s = 1; s < at.length - 1; s++) {
-      if (!sameWay(at[s - 1]!, at[s]!, at[s + 1]!)) continue;
-      const worst = fitLine(xy.slice(at[s - 1]!, at[s + 1]! + 1)).worst;
-      if (worst <= bestWorst) { bestWorst = worst; best = s; }
-    }
-    if (best < 0) break;
-    at.splice(best, 1);
-  }
-
-  const fits = at.slice(1).map((end, s) => fitLine(xy.slice(at[s]!, end + 1)));
-  const out: XY[] = [onLine(fits[0]!, xy[0]!)];
-  const minSin = Math.sin((CORNER_DEG * Math.PI) / 180);
-  for (let s = 1; s < fits.length; s++) {
-    const a = fits[s - 1]!, b = fits[s]!;
-    const vertex = xy[at[s]!]!;
-    const cross = a.dx * b.dy - a.dy * b.dx;
-    let corner: XY | null = null;
-    if (Math.abs(cross) >= minSin) {
-      const t = ((b.cx - a.cx) * b.dy - (b.cy - a.cy) * b.dx) / cross;
-      corner = [a.cx + a.dx * t, a.cy + a.dy * t];
-      // Lines that only meet far off are not this corner.
-      if (Math.hypot(corner[0] - vertex[0], corner[1] - vertex[1]) > 2 * tolerance) corner = null;
-    }
-    if (!corner) {
-      // A bend, or a turn back: midway between the two lines at the split point.
-      const [p, q] = [onLine(a, vertex), onLine(b, vertex)];
-      corner = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
-    }
-    out.push(corner);
-  }
-  out.push(onLine(fits[fits.length - 1]!, xy[xy.length - 1]!));
-  return out.map(back);
-}
-
-/** Metres from `p` to the segment a to b. */
-function toSegment(p: LngLat, a: LngLat, b: LngLat): number {
-  const k = 111_320 * Math.cos((a[1] * Math.PI) / 180);
-  const bx = (b[0] - a[0]) * k, by = (b[1] - a[1]) * 111_320;
-  const px = (p[0] - a[0]) * k, py = (p[1] - a[1]) * 111_320;
-  const len2 = bx * bx + by * by;
-  const t = len2 > 0 ? Math.max(0, Math.min(1, (px * bx + py * by) / len2)) : 0;
-  return Math.hypot(px - bx * t, py - by * t);
-}
-
 
 /**
  * Today's solid line, drawn along the usual path wherever the bus is on it.
