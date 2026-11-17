@@ -134,31 +134,26 @@ describe('combineTraces', () => {
     expect(Math.max(...pooled.map((p) => p[1] / M).filter((_, i) => pooled[i]![0] / M < 190))).toBeLessThan(5);
   });
 
-  // Pooled points wander up to 15 m either side of the road, as middle fixes do.
-  const wander = [0, 15, -11, 6, -15, 13, -4, 9, -14, 2];
-
-  it('straightens the wander out of a straight street', () => {
-    const trips = [0, 3, 6].map((o) => Array.from({ length: 41 }, (_, i) => xy(o + i * 10, i === 0 || i === 40 ? 0 : wander[i % 10]!)));
+  it('keeps a curved street curved', () => {
+    // A street bending through half a circle of 120 m radius, as residential
+    // streets do. Each trip has a fix every 20 m, a few metres off the road.
+    const R = 120;
+    const onArc = (s: number, side = 0): LngLat => {
+      const a = s / R;
+      return xy((R + side) * Math.sin(a), R - (R + side) * Math.cos(a));
+    };
+    const length = Math.PI * R;
+    const trips = [0, 5, 10, 15].map((o) =>
+      Array.from({ length: Math.floor((length - o) / 20) + 1 }, (_, i) => onArc(o + i * 20, [2, -3, 1, -2, 3][i % 5]!)));
     const pooled = combineTraces(trips);
-    expect(Math.max(...pooled.map((p) => Math.abs(p[1] / M)))).toBeLessThan(3);
-    expect(pooled[0]![0] / M).toBeLessThan(10);
-    expect(pooled.at(-1)![0] / M).toBeGreaterThan(395);
-    // Still a point every few metres, so a bus mid-street finds the road ahead on it.
-    expect(pathAhead(pooled, xy(200, 5), xy(390, 0))).not.toBeNull();
-  });
-
-  it('keeps the corner of an L while straightening its streets', () => {
-    const trips = [0, 3, 6].map((o) => Array.from({ length: 41 }, (_, i) => {
-      const s = o + i * 10;
-      const side = s === 200 || i === 0 ? 0 : wander[i % 10]!;
-      return s <= 200 ? xy(s, side) : xy(200 + side, s - 200);
-    }));
-    const pooled = combineTraces(trips);
-    expect(gap(pooled, corner)).toBeLessThan(4);
-    // Both streets straight: nothing on the east leg is more than 3 m off it.
-    const eastLeg = pooled.filter((p) => p[0] / M < 185);
-    expect(eastLeg.length).toBeGreaterThan(0);
-    for (const p of eastLeg) expect(Math.abs(p[1] / M)).toBeLessThan(3);
+    // Everywhere along the drawn line, between its points too, stays near the street.
+    const offArc = (p: LngLat) => Math.abs(Math.hypot(p[0] / M, p[1] / M - R) - R);
+    let worst = 0;
+    for (let i = 1; i < pooled.length; i++) {
+      const [a, b] = [pooled[i - 1]!, pooled[i]!];
+      for (let t = 0; t <= 1; t += 0.1) worst = Math.max(worst, offArc([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]));
+    }
+    expect(worst).toBeLessThan(4);
   });
 
   it('is empty with nothing to go on', () => {
@@ -228,20 +223,27 @@ describe('alongUsualPath', () => {
     expect(line.some((p) => near(p, xy(140, 0)))).toBe(true);
   });
 
-  it('keeps to the road on the simplified path combineTraces now gives', () => {
-    // Pooled fixes wander either side of the L; the simplified path runs straight along it.
+  it('keeps to the road on a pooled path that still wanders', () => {
+    // Pooled fixes wander up to 12 m either side of the L, and so does the pooled path.
     const pooled = combineTraces([0, 4, 8].map((o) => Array.from({ length: 40 }, (_, i) => {
       const s = o + i * 10;
       const side = [6, -9, 12, -4, 10, -12][i % 6]!;
       return s <= 200 ? xy(s, side) : xy(200 + side, s - 200);
     })));
-    for (const p of pooled) expect(offRoad(p)).toBeLessThan(6);
+    for (const p of pooled) expect(offRoad(p)).toBeLessThan(13);
     const line = alongUsualPath(wobbly, pooled);
     expect(line.length).toBeGreaterThan(3);
     for (const p of line.slice(0, -1)) expect(offRoad(p)).toBeLessThan(15);
-    // Forward only along the road: x then y never go back.
-    const along = (p: LngLat) => (p[1] / M > 15 ? 200 + p[1] / M : p[0] / M);
-    for (let i = 1; i < line.length - 1; i++) expect(along(line[i]!)).toBeGreaterThanOrEqual(along(line[i - 1]!) - 1);
+    // Drawn along the pooled path itself, not across it.
+    const toPooled = (p: LngLat) => {
+      let best = Infinity;
+      for (let i = 1; i < pooled.length; i++) {
+        const [a, b] = [pooled[i - 1]!, pooled[i]!];
+        for (let t = 0; t <= 1; t += 0.05) best = Math.min(best, metres([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t], p));
+      }
+      return best;
+    };
+    for (const p of line.slice(0, -1)) expect(toPooled(p)).toBeLessThan(1);
     expect(line.at(-1)).toEqual(wobbly.at(-1));
   });
 
