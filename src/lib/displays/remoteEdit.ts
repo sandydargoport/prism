@@ -1,13 +1,14 @@
 'use client';
 
 /**
- * Editing one screen from another device (#1153).
+ * Editing on a canvas (#1153, #1265).
  *
- * The phone page (/screens/[id]) shows the screen's real dashboard in a frame
- * the screen's own size, scaled down to fit, so everything that depends on
- * the size of the window (the grid, breakpoints, `vh`) lays out as it does on
- * the wall. The dashboard in the frame opens in edit mode, and its editing
- * bar and dialogs are drawn on the phone page at the phone's own size.
+ * The editor page (/screens/[id] for a named screen, /edit/[id] for a
+ * dashboard) shows the real dashboard in a frame the screen's own size,
+ * scaled down to fit, so everything that depends on the size of the window
+ * (the grid, breakpoints, `vh`) lays out as it does on the wall. The
+ * dashboard in the frame opens in edit mode, and its editing panels and
+ * dialogs are drawn on the editor page at this device's own size.
  *
  * The two pages share an origin, so the frame reaches the phone page through
  * `window.parent`. The phone page puts a host object there; the frame finds it
@@ -30,7 +31,12 @@ export const REMOTE_EDIT_GLOBAL = '__prismRemoteEdit';
 const BASE_KEY = 'prism:display-sync-base';
 
 export type RemoteEditHost = {
-  displayId: string;
+  /**
+   * The named screen being edited, or null when editing a dashboard at a
+   * chosen size: then the frame keeps this device's own settings, as editing
+   * in place does.
+   */
+  displayId: string | null;
   /** The screen's dashboard when editing began; null is the household default. */
   dashboardId: string | null;
   /** The screen's settings, changed in place as the frame writes them. */
@@ -112,7 +118,7 @@ export function remoteStorage(real: Storage, host: RemoteEditHost): Storage {
  */
 export function installRemoteStorage(): void {
   const host = remoteEditHost();
-  if (!host) return;
+  if (!host?.displayId) return;
   try {
     const shim = remoteStorage(window.localStorage, host);
     Object.defineProperty(window, 'localStorage', { configurable: true, get: () => shim });

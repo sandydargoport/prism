@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { editHere } from './helpers/editHere';
 import { getFirstParent, getSeededParentId, verifySettingsPinViaAPI } from './helpers/auth';
 import {
   facingFor, localSiderealTime, moonPosition, project, toHorizontal,
@@ -27,6 +28,8 @@ import { FIRST_SCREEN_TEMPLATE } from '../src/lib/constants/layoutTemplates';
  * dock's Menu, then More, then Edit layout (#922).
  */
 async function openEditor(page: Page) {
+  // The editor in place, as on the screen itself (#1265).
+  await editHere(page);
   // Landscape walls have the dock; portrait keeps its bar until #924.
   const menu = page.locator('[data-dock-menu]');
   const bar = page.getByLabel('Edit layout');

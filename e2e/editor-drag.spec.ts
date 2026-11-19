@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { editHere } from './helpers/editHere';
 import { getSeededParentId } from './helpers/auth';
 
 /**
@@ -19,6 +20,7 @@ async function editLayout(page: Page) {
   ] } });
   expect(res.ok()).toBe(true);
   const layout = await res.json();
+  await editHere(page);
   await page.goto(`/d/${layout.slug}?edit=1`);
   await expect(page.locator('[data-editor-widget="clock"]')).toBeVisible({ timeout: 60_000 });
   return () => page.request.delete(`/api/layouts/${layout.id}`);

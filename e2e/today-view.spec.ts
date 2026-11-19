@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { editHere } from './helpers/editHere';
 import { getSeededParentId } from './helpers/auth';
 import { TODAY_TEMPLATE } from '../src/lib/constants/layoutTemplates';
 import { deleteLayout } from './helpers/cleanup';
@@ -684,6 +685,7 @@ test.describe('the Today view', () => {
       await expect(scene, '10 am is day').not.toHaveAttribute('data-today-night', 'true');
       await page.locator('[data-dock-menu]').click();
       await page.locator('[data-dock-more]').click();
+      await editHere(page);
       await page.locator('[data-dock-more-panel] [data-screen-job="edit"]').click();
       await page.locator('[data-editor-open="day"]').click();
       const sheet = page.locator('[data-editor-sheet="day"]');
@@ -734,6 +736,7 @@ test.describe('the Today view', () => {
       await expect(page.locator('[data-today-scene]')).toBeVisible({ timeout: 60_000 });
       await page.locator('[data-dock-menu]').click();
       await page.locator('[data-dock-more]').click();
+      await editHere(page);
       await page.locator('[data-dock-more-panel] [data-screen-job="edit"]').click();
 
       // The bar takes the dock's place at the foot, and no control is in the top half.
@@ -790,6 +793,7 @@ test.describe('the Today view', () => {
       await expect(page.locator('[data-today-scene]')).toBeVisible({ timeout: 60_000 });
       await page.locator('[data-dock-menu]').click();
       await page.locator('[data-dock-more]').click();
+      await editHere(page);
       await page.locator('[data-dock-more-panel] [data-screen-job="edit"]').click();
       await page.locator('[data-editor-open="dashboard"]').click({ timeout: 60_000 });
       await page.locator('[data-dashboard-new]').click();

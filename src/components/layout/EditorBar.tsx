@@ -9,6 +9,10 @@
  * Done | Dashboard | Widgets | Through the day | Look | More, the same on the
  * built-in Today and on a family's own dashboards; only what is inside the
  * Widgets sheet differs.
+ *
+ * On a canvas (#1265) the same controls are panels: the bar at the top of a
+ * column beside the canvas (below it on a phone) and the open sheet under it,
+ * so a panel never covers the dashboard being arranged. One is always open.
  */
 import * as React from 'react';
 import { Check, LayoutDashboard, MoreHorizontal, Palette, Shapes, SunMoon, X } from 'lucide-react';
@@ -39,16 +43,71 @@ export interface EditorBarProps {
   /** Showing the screen as it rests (the Idle screen), not as it is in use. */
   resting?: boolean;
   onLeaveResting?: () => void;
+  /** Drawn as panels beside a canvas rather than as the dock with sheets over the screen. */
+  panels?: boolean;
 }
 
 export const EditorBar = React.forwardRef<HTMLDivElement, EditorBarProps>(function EditorBar(
-  { open, onOpenChange, sheet, dirty = {}, doneLabel = 'Done', doneBlocked = null, onDone, onCancel, resting = false, onLeaveResting },
+  { open, onOpenChange, sheet, dirty = {}, doneLabel = 'Done', doneBlocked = null, onDone, onCancel, resting = false, onLeaveResting, panels = false },
   ref,
 ) {
   const title = SHEETS.find((s) => s.id === open)?.label;
   // On a phone (#1153) the five sheets share one row and their labels may
   // wrap; Cancel and Done sit on a row of their own.
   const item = 'flex min-h-[56px] min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 text-center text-caption font-medium leading-tight transition-colors sm:min-w-[64px] sm:px-3';
+  if (panels) {
+    return (
+      <div ref={ref} className="flex flex-col gap-3 lg:h-full lg:min-h-0" data-editor-bar data-editor-panels>
+        <nav aria-label="Edit" className="grid shrink-0 grid-cols-5 gap-1 rounded-[20px] bg-[rgb(22_17_13)] p-1.5">
+          {SHEETS.map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onOpenChange(id)}
+              aria-pressed={open === id}
+              className={cn(item, 'relative px-1 text-white/85 hover:bg-white/10 sm:px-1', open === id && 'bg-white/15 text-white')}
+              data-editor-open={id}
+            >
+              <Icon className="h-5 w-5" />
+              <span>{label}</span>
+              {dirty[id] && <span aria-label="unsaved changes" className="absolute right-2 top-2 h-2 w-2 rounded-full bg-white" />}
+            </button>
+          ))}
+          <button type="button" onClick={onCancel} className={cn(item, 'col-span-2 text-white/85 hover:bg-white/10')} data-editor-cancel>
+            <X className="h-5 w-5" />
+            <span>Cancel</span>
+          </button>
+          <button
+            type="button"
+            onClick={onDone}
+            disabled={!!doneBlocked}
+            title={doneBlocked ?? undefined}
+            className={cn(item, 'col-span-3 bg-white text-[rgb(22_17_13)] hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50')}
+            data-editor-done
+          >
+            <Check className="h-5 w-5" />
+            <span>{doneLabel}</span>
+          </button>
+        </nav>
+        {resting && open !== 'day' && (
+          <div className="flex shrink-0 items-center justify-between gap-3 rounded-2xl bg-muted py-1.5 pl-4 pr-1.5 text-body" data-editor-resting>
+            Showing the screen while it rests
+            <button type="button" onClick={onLeaveResting} className="min-h-[44px] rounded-full bg-background px-4 hover:bg-background/70">Back to in use</button>
+          </div>
+        )}
+        {open && sheet && (
+          <section
+            aria-label={title}
+            className="rounded-[1.4rem] bg-card p-5 text-card-foreground ring-1 ring-border lg:min-h-0 lg:flex-1 lg:overflow-auto"
+            data-editor-sheet={open}
+          >
+            <h2 className="m-0 mb-4 text-title font-medium" style={{ fontFamily: 'var(--font-display)' }}>{title}</h2>
+            {sheet}
+          </section>
+        )}
+      </div>
+    );
+  }
   return (
     <div
       ref={ref}

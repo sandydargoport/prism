@@ -196,10 +196,12 @@ export function WidgetsSheet({
 
 export { ThroughTheDaySheet as DaySheet } from './ThroughTheDaySheet';
 
-export function LookSheet({ orientation, onOrientationChange, onMeasure }: {
+export function LookSheet({ orientation, onOrientationChange, onMeasure, onCanvas }: {
   orientation: 'landscape' | 'portrait';
   onOrientationChange?: (o: 'landscape' | 'portrait') => void;
   onMeasure: () => void;
+  /** A device editing on itself by choice (#1265): go back to editing on a canvas. */
+  onCanvas?: () => void;
 }) {
   return (
     <div className="flex flex-col gap-5">
@@ -222,7 +224,10 @@ export function LookSheet({ orientation, onOrientationChange, onMeasure }: {
       </section>
       <section>
         <h3 className={section}>Check it</h3>
-        <button type="button" className={action} onClick={onMeasure}>See it at a screen size</button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className={action} onClick={onMeasure}>See it at a screen size</button>
+          {onCanvas && <button type="button" className={action} onClick={onCanvas} data-edit-on-canvas>Edit on a canvas</button>}
+        </div>
       </section>
       <section data-screen-options>
         <h3 className={section}>This screen</h3>
@@ -271,7 +276,7 @@ function NoticesSection() {
         name="This screen"
         stored={stored ?? undefined}
         online
-        savedText={remoteEditHost() ? 'Kept. The screen gets it when you press Done.' : 'Saved. This screen shows them from now on.'}
+        savedText={remoteEditHost()?.displayId ? 'Kept. The screen gets it when you press Done.' : 'Saved. This screen shows them from now on.'}
         save={async (raw) => { writeStored(SCREEN_ATTENTION_KEY, raw); return true; }}
       />
     </section>

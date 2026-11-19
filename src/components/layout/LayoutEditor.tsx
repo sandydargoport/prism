@@ -21,7 +21,9 @@ import { copyLayoutToOther } from './copyLayout';
 import { idleSaveProblem } from './IdleBackgroundBar';
 import { toast } from '@/components/ui/use-toast';
 import { createPortal } from 'react-dom';
-import { remotePortalRoot } from '@/lib/displays/remoteEdit';
+import { remoteEditHost, remotePortalRoot } from '@/lib/displays/remoteEdit';
+import { isNamedScreen } from '@/lib/displays/namedScreen';
+import { canvasEditLink, editsHereByChoice, setEditHere } from '@/lib/displays/editPlace';
 
 /**
  * Editing a screen from a phone (#1153), the bar and its dialogs are drawn on
@@ -88,17 +90,23 @@ export function LayoutEditor({
   const effectiveEnabledSizes = enabledSizes.length > 0 ? enabledSizes : allSizeNames;
 
   const [activePopover, setActivePopover] = useState<ActivePopover>(null);
+  // On a canvas (#1265) the sheets are panels beside it, and one is always
+  // open: there is room, and nothing is covered.
+  const [panels] = useState(() => remoteEditHost() !== null);
+  // A device that is no named screen, editing on itself because it chose to.
+  const [hereByChoice] = useState(() => !panels && !isNamedScreen() && editsHereByChoice());
   // The editing bar's open sheet (#1151). Through the day shows the screen as
   // it rests, so it is the Idle screen tab underneath.
-  const [sheet, setSheetState] = useState<EditorSheet | null>(null);
+  const [sheet, setSheetState] = useState<EditorSheet | null>(() => (panels ? 'widgets' : null));
   // Opening it moves to the resting screen, which stays after the sheet
   // closes so its layout can be arranged; Dashboard, or the label above the
   // bar, goes back.
   const setSheet = useCallback((next: EditorSheet | null) => {
+    if (next === null && panels) return;
     setSheetState(next);
     if (next === 'day') onEditTabChange?.('idle');
     else if (next === 'dashboard') onEditTabChange?.('dashboard');
-  }, [onEditTabChange]);
+  }, [onEditTabChange, panels]);
   const builtIn = view === 'today';
   // There is a screensaver layout to copy to or from only when something
   // other than the dashboard itself shows behind it.
@@ -203,6 +211,21 @@ export function LayoutEditor({
     );
   }
 
+  // Back to the canvas editor, leaving this edit: changes not yet saved go.
+  const editOnCanvas = async (dashboardId: string) => {
+    if (dashboardDirty || idleDirty) {
+      setSheet(null);
+      const ok = await confirmDelete(
+        'Edit on a canvas?',
+        'Changes not saved yet are left behind. Press Done first to keep them.',
+        { confirmLabel: 'Leave them', variant: 'default' },
+      );
+      if (!ok) return;
+    }
+    setEditHere(false);
+    window.location.assign(canvasEditLink(dashboardId));
+  };
+
   const setDefault = async () => {
     if (!currentDashboardId) return;
     try {
@@ -265,6 +288,7 @@ export function LayoutEditor({
             orientation={screenGuideOrientation}
             onOrientationChange={onScreenGuideOrientationChange}
             onMeasure={() => { setSheet(null); toggleMeasureMode(); }}
+            onCanvas={hereByChoice && currentDashboardId ? () => { void editOnCanvas(currentDashboardId); } : undefined}
           />
         );
       case 'more':
@@ -318,6 +342,7 @@ export function LayoutEditor({
         onCancel={onCancel}
         resting={editTab === 'idle'}
         onLeaveResting={() => onEditTabChange?.('dashboard')}
+        panels={panels}
       />
 
       <CreateDashboardDialog
