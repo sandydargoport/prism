@@ -35,4 +35,13 @@ describe('bundler per script', () => {
     const config = readFileSync(resolve(__dirname, '../../../playwright.config.ts'), 'utf8');
     expect(config).toMatch(/command:\s*'npm run dev:webpack'/);
   });
+
+  // npm runs `pre<name>` only for the script of that exact name, so each dev
+  // script needs its own copy of the asset step. Without it, a fresh checkout
+  // serves the pages with no emoji images and no map worker.
+  it('copies the emoji and map assets before either dev server starts', () => {
+    expect(scripts.predev).toContain('copy-emoji-assets');
+    expect(scripts.predev).toContain('copy-maplibre-worker');
+    expect(scripts['predev:webpack']).toBe(scripts.predev);
+  });
 });

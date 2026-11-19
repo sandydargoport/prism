@@ -60,7 +60,8 @@
     "docker:dev": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml up",
     "prepare": "husky",
     "prebuild": "node scripts/copy-emoji-assets.mjs && node scripts/copy-maplibre-worker.mjs",
-    "predev": "node scripts/copy-emoji-assets.mjs && node scripts/copy-maplibre-worker.mjs"
+    "predev": "node scripts/copy-emoji-assets.mjs && node scripts/copy-maplibre-worker.mjs",
+    "predev:webpack": "node scripts/copy-emoji-assets.mjs && node scripts/copy-maplibre-worker.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
