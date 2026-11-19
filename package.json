@@ -23,7 +23,8 @@
     "touchscreen"
   ],
   "scripts": {
-    "dev": "next dev --webpack",
+    "dev": "next dev --turbopack",
+    "dev:webpack": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
     "deploy": "bash scripts/deploy-local.sh",
