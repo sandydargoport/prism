@@ -76,6 +76,8 @@ describe('backup.sh off-site copy', () => {
   const run = (env: Record<string, string> = {}): string =>
     execFileSync('sh', [SCRIPT], {
       env: {
+        ...process.env,
+        HC_URL: '',
         PATH: `${bin}:${process.env.PATH}`,
         BACKUP_DIR: local,
         RCLONE_REMOTE: remote,
