@@ -432,6 +432,21 @@ html.performance-mode {
   --ds-water-filter: none;
 }
 
+/* While a widget is dragged or resized in the editor (#1265), on every
+   screen. A moving widget changes what is behind the other cards on every
+   frame, so each blurred card is blurred again every frame: measured on a
+   laptop-sized editor, that was three quarters of the drag's compositing
+   work. The cards are 85% opaque, so the blur barely shows for the second
+   or two the move lasts. Same narrow selector as performance mode above. */
+html.editor-moving [class*="backdrop-blur"] {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+html.editor-moving {
+  --ds-glass-filter: none;
+  --ds-water-filter: none;
+}
+
 /* Sheet (#908, docs/DESIGN.md "Sheet"). On the wall a sheet opens on the side
    that was touched, never in the middle over what the family was looking at:
    the left or right third opens it on that side, the middle from the bottom.
