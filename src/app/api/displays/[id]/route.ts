@@ -3,7 +3,7 @@
  *
  * PATCH  — change it. Body, any of:
  *            { name: string (1 to 60 characters),
- *              dashboardId: string | null (null: the household default),
+ *              timelineId: string | null (null: the household's first, #1266),
  *              settings: { [storageKey]: string | null } (see screenSettings.ts) }
  * DELETE — forget it. The screen goes back to being an unnamed browser; if it
  *          is this browser, its cookie is cleared too.
@@ -20,7 +20,7 @@ import {
   setDisplayCookies,
 } from '@/lib/auth/displayIdentity';
 import { db } from '@/lib/db/client';
-import { displays, layouts } from '@/lib/db/schema';
+import { displays, timelines } from '@/lib/db/schema';
 import { applySettingChanges } from '@/lib/displays/displaySettingsStore';
 import { cleanSettingChanges, type ScreenSettingChanges } from '@/lib/displays/screenSettings';
 import { logActivity } from '@/lib/services/auditLog';
@@ -48,7 +48,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   if (!isDisplayId(id)) return NextResponse.json({ error: 'Display not found' }, { status: 404 });
 
   const body = await request.json().catch(() => null);
-  const update: { name?: string; dashboardId?: string | null } = {};
+  const update: { name?: string; timelineId?: string | null } = {};
 
   if (body?.name !== undefined) {
     const name = cleanDisplayName(body.name);
@@ -61,11 +61,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     update.name = name;
   }
 
-  if (body?.dashboardId !== undefined) {
-    if (body.dashboardId !== null && (typeof body.dashboardId !== 'string' || !isDisplayId(body.dashboardId))) {
-      return NextResponse.json({ error: 'Not a dashboard' }, { status: 400 });
+  if (body?.timelineId !== undefined) {
+    if (body.timelineId !== null && (typeof body.timelineId !== 'string' || !isDisplayId(body.timelineId))) {
+      return NextResponse.json({ error: 'Not a timeline' }, { status: 400 });
     }
-    update.dashboardId = body.dashboardId;
+    update.timelineId = body.timelineId;
   }
 
   let changes: ScreenSettingChanges | null = null;
@@ -74,23 +74,23 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (!changes) return NextResponse.json({ error: 'Not a valid set of screen settings' }, { status: 400 });
   }
 
-  if (update.name === undefined && update.dashboardId === undefined && !changes) {
+  if (update.name === undefined && update.timelineId === undefined && !changes) {
     return NextResponse.json({ error: 'Nothing to change' }, { status: 400 });
   }
 
   try {
-    if (update.dashboardId) {
-      const [layout] = await db.select({ id: layouts.id }).from(layouts).where(eq(layouts.id, update.dashboardId));
-      if (!layout) return NextResponse.json({ error: 'That dashboard does not exist' }, { status: 400 });
+    if (update.timelineId) {
+      const [timeline] = await db.select({ id: timelines.id }).from(timelines).where(eq(timelines.id, update.timelineId));
+      if (!timeline) return NextResponse.json({ error: 'That timeline does not exist' }, { status: 400 });
     }
 
     const [row] = await db
       .update(displays)
       .set({
         ...update,
-        // A new dashboard is picked up the same way as a settings edit: the
-        // screen sees the timestamp move on its next heartbeat and reloads.
-        ...(update.dashboardId !== undefined ? { settingsUpdatedAt: new Date() } : {}),
+        // Another timeline is picked up the same way as a settings edit: the
+        // screen sees the timestamp move on its next heartbeat and goes home.
+        ...(update.timelineId !== undefined ? { settingsUpdatedAt: new Date() } : {}),
         updatedAt: new Date(),
       })
       .where(eq(displays.id, id))
@@ -105,7 +105,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     const what = [
       update.name !== undefined && `renamed it to "${update.name}"`,
-      update.dashboardId !== undefined && 'changed its dashboard',
+      update.timelineId !== undefined && 'changed its timeline',
       changes && 'changed its settings',
     ].filter(Boolean).join(', ');
     logActivity({
@@ -116,7 +116,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       summary: `Display "${row.name}": ${what}`,
     });
     return NextResponse.json({
-      display: { id: row.id, name: row.name, dashboardId: row.dashboardId, settings },
+      display: { id: row.id, name: row.name, timelineId: row.timelineId, settings },
     });
   } catch (error) {
     logError('Failed to update display:', error);

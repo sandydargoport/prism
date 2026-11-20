@@ -19,6 +19,8 @@ import { useLayoutEditorState } from './useLayoutEditorState';
 import type { LayoutEditorProps } from './LayoutEditorTypes';
 import { copyLayoutToOther } from './copyLayout';
 import { idleSaveProblem } from './IdleBackgroundBar';
+import { sameIdleBackground } from '@/lib/idleBackground';
+import { patchTimeline } from '@/lib/hooks/useTimelines';
 import { toast } from '@/components/ui/use-toast';
 import { createPortal } from 'react-dom';
 import { remoteEditHost, remotePortalRoot } from '@/lib/displays/remoteEdit';
@@ -64,6 +66,10 @@ export function LayoutEditor({
   idleHalf = 'day',
   onIdleHalfChange,
   idleCheck = {},
+  timelines = [],
+  timelineId,
+  onTimelineChange,
+  screenId = null,
   screenGuideOrientation = 'landscape',
   onScreenGuideOrientationChange,
   enabledSizes = [],
@@ -127,6 +133,20 @@ export function LayoutEditor({
 
   // A day and night pair whose offsets cross is not saved (#782).
   const saveBlocked = idleBackground ? idleSaveProblem(idleBackground, idleCheck) : null;
+  // How the screen rests and what it does at night belong to the timeline
+  // (#1266), which keeps a change as soon as it can be saved, as it keeps
+  // its placements. One that cannot (crossed offsets) waits here, shown.
+  const timeline = timelines.find((t) => t.id === timelineId);
+  const sentBackground = useRef<string | null>(null);
+  useEffect(() => {
+    if (!timeline || !idleBackground || saveBlocked) return;
+    if (sameIdleBackground(idleBackground, timeline.idleBackground)) return;
+    const key = `${timeline.id}|${JSON.stringify(idleBackground)}`;
+    // Sent once: a refusal reads the list again, which must not send it again.
+    if (sentBackground.current === key) return;
+    sentBackground.current = key;
+    void patchTimeline(timeline.id, { idleBackground });
+  }, [timeline, idleBackground, saveBlocked]);
   const guardedSave = useCallback(async (name?: string) => {
     if (saveBlocked) {
       onEditTabChange?.('idle');
@@ -277,6 +297,10 @@ export function LayoutEditor({
             editTab={editTab}
             onEditTabChange={onEditTabChange}
             idleCheck={idleCheck}
+            timelines={timelines}
+            timelineId={timelineId}
+            onTimelineChange={onTimelineChange}
+            screenId={screenId}
             allDashboards={allDashboards}
             currentDashboardId={currentDashboardId}
             onSwitchDashboard={onSwitchDashboard}

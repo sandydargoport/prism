@@ -32,7 +32,8 @@ const MIN_RELOAD_GAP_MS = 60 * 1000;
 
 export type SyncBase = {
   displayId: string;
-  dashboardId?: string | null;
+  /** The timeline it follows (#1266); null or missing is the household's first. */
+  timelineId?: string | null;
   settings: ScreenSettings;
   settingsUpdatedAt: string | null;
 };
@@ -66,6 +67,15 @@ function saveBase(base: SyncBase | null): void {
   }
 }
 
+/**
+ * This screen now follows another timeline, picked here: noted in the base, so
+ * the next sync does not take it for a change made elsewhere and reload.
+ */
+export function setBaseTimeline(timelineId: string | null): void {
+  const base = loadBase();
+  if (base) saveBase({ ...base, timelineId });
+}
+
 /** Forget the base, e.g. when this browser is named, renamed into another screen, or forgotten. */
 export function resetSyncBase(): void {
   saveBase(null);
@@ -80,7 +90,7 @@ export function hasLocalChanges(): boolean {
 
 type SyncResponse = {
   displayId: string;
-  dashboardId: string | null;
+  timelineId: string | null;
   settings: ScreenSettings;
   settingsUpdatedAt: string | null;
 };
@@ -88,8 +98,8 @@ type SyncResponse = {
 export type SyncResult = {
   /** Keys whose value came from the server. */
   applied: string[];
-  /** The screen's dashboard was changed elsewhere since the last sync. */
-  dashboardChanged: boolean;
+  /** The screen was given another timeline elsewhere since the last sync. */
+  timelineChanged: boolean;
 };
 
 async function post(changes: Record<string, string | null>, baseDisplayId: string | null): Promise<SyncResponse | null> {
@@ -121,7 +131,7 @@ export async function syncScreenSettings(): Promise<SyncResult> {
   const local = readLocalSettings();
 
   const result = await post(base ? diffSettings(base.settings, local) : local, base?.displayId ?? null);
-  if (!result) return { applied: [], dashboardChanged: false };
+  if (!result) return { applied: [], timelineChanged: false };
 
   const applied: string[] = [];
   for (const [key, value] of Object.entries(diffSettings(readLocalSettings(), result.settings))) {
@@ -129,14 +139,14 @@ export async function syncScreenSettings(): Promise<SyncResult> {
     applied.push(key);
   }
 
-  const dashboardChanged = base?.displayId === result.displayId && (base.dashboardId ?? null) !== result.dashboardId;
+  const timelineChanged = base?.displayId === result.displayId && (base.timelineId ?? null) !== (result.timelineId ?? null);
   saveBase({
     displayId: result.displayId,
-    dashboardId: result.dashboardId,
+    timelineId: result.timelineId ?? null,
     settings: result.settings,
     settingsUpdatedAt: result.settingsUpdatedAt,
   });
-  return { applied, dashboardChanged };
+  return { applied, timelineChanged };
 }
 
 /**

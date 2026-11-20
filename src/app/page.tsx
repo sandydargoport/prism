@@ -3,21 +3,24 @@ import { DashboardClient } from './DashboardClient';
 import { db } from '@/lib/db/client';
 import { currentDisplay } from '@/lib/auth/displayIdentity';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
-import { screenDashboardAt } from '@/lib/displays/screenSchedule';
+import { timelineDashboardAt } from '@/lib/timeline';
+import { timelineOf } from '@/lib/services/timelines';
 import { pageZoomVars } from '@/lib/utils/zoomVars';
 
 /**
- * A named screen with its own dashboard set (#690) opens on that one instead
- * of the household default, or on the one its schedule shows right now
- * (#692). Null when it has none, or it no longer exists.
+ * A named screen opens on the dashboard its timeline shows right now (#1266)
+ * instead of the household default. Null when that is the default, or the
+ * screen is not named: a device nobody named shows the page it is on.
  */
 async function screenDashboardSlug(): Promise<string | null> {
   try {
     const screen = await currentDisplay();
     if (!screen) return null;
+    const timeline = await timelineOf(screen);
+    if (!timeline) return null;
     const all = await db.query.layouts.findMany({ columns: { id: true, slug: true, isDefault: true } });
-    const id = screenDashboardAt(
-      screen, Date.now(), await getHouseholdTimezone(),
+    const id = timelineDashboardAt(
+      timeline, Date.now(), await getHouseholdTimezone(),
       (d) => all.some((l) => l.id === d),
     );
     const layout = all.find((l) => l.id === id);

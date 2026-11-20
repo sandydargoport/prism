@@ -2,10 +2,11 @@
  * @jest-environment jsdom
  */
 /**
- * A named screen following its time-of-day rules while it stays on (#692):
- * which dashboard it shows on opening, when someone picks another by hand, and
- * when the layout is being edited. The change waiting for an untouched screen,
- * and the morph, are measured in the browser (e2e/display-registry.spec.ts).
+ * A named screen following its timeline while it stays on (#692, #1266):
+ * which dashboard it shows on opening, when someone picks another by hand,
+ * when the layout is being edited, and when the timeline is changed from
+ * another device. The change waiting for an untouched screen, and the morph,
+ * are measured in the browser (e2e/display-registry.spec.ts).
  */
 import * as React from 'react';
 import { act, renderHook } from '@testing-library/react';
@@ -19,6 +20,12 @@ jest.mock('@/lib/hooks/usePerformanceMode', () => ({ usePerformanceLevel: () => 
 let check: () => void = () => {};
 jest.mock('@/lib/hooks/useVisibilityPolling', () => ({
   useVisibilityPolling: (callback: () => void) => { check = callback; },
+}));
+
+// The timeline this screen follows; a test may change it, as another device would.
+let mockTimeline: import('@/lib/timeline').Timeline;
+jest.mock('@/lib/hooks/useTimelines', () => ({
+  useDeviceTimeline: () => ({ timeline: mockTimeline, timelines: [mockTimeline], loaded: true }),
 }));
 
 const HOME = '11111111-1111-4111-8111-111111111111';
@@ -44,10 +51,11 @@ beforeEach(() => {
   });
   jest.useFakeTimers();
   localStorage.clear();
-  localStorage.setItem('prism:display-sync-base', JSON.stringify({ displayId: 'screen', dashboardId: null, settings: {}, settingsUpdatedAt: null }));
-  localStorage.setItem('prism-screen-schedule', JSON.stringify([
-    { days: [1, 2, 3, 4, 5], from: '07:00', to: '08:00', dashboardId: MORNING },
-  ]));
+  localStorage.setItem('prism:display-sync-base', JSON.stringify({ displayId: 'screen', timelineId: null, settings: {}, settingsUpdatedAt: null }));
+  mockTimeline = {
+    id: 'main', name: 'Main', position: 0, dashboardId: null, idleBackground: { source: 'dashboard' },
+    placements: [{ days: [1, 2, 3, 4, 5], from: '07:00', to: '08:00', dashboardId: MORNING }],
+  };
 });
 afterEach(() => jest.useRealTimers());
 
@@ -81,7 +89,7 @@ describe('useScreenSchedule', () => {
     expect(result.current.slug).toBeUndefined();
   });
 
-  it('an Interlude switches a screen on Today too, at its start (#1152)', () => {
+  it('a placement switches a screen on Today too, at its start (#1152)', () => {
     const today = [layout(HOME, null, { view: 'today' } as Partial<Layout>), ...LAYOUTS.slice(1)];
     jest.setSystemTime(at('06:59'));
     const { result } = renderHook(() => useScreenSchedule({ routeSlug: undefined, layouts: today, loading: false, editing: { current: false } }));
@@ -137,9 +145,32 @@ describe('useScreenSchedule', () => {
     expect(result.current.slug).toBe('morning');
   });
 
-  it('a browser that is not a named screen ignores a leftover schedule', () => {
+  it('a browser that is not a named screen shows its own page, whatever the timeline', () => {
     localStorage.removeItem('prism:display-sync-base');
     const { result } = open(undefined, '07:10');
     expect(result.current.slug).toBeUndefined();
+  });
+
+  it('follows its timeline\'s dashboard for the rest of the day', () => {
+    mockTimeline.dashboardId = EVENING;
+    const { result } = open(undefined, '12:00');
+    expect(result.current.slug).toBe('evening');
+    tick('07:00');
+    expect(result.current.slug).toBe('morning');
+  });
+
+  it('a change to its timeline made elsewhere shows without a reload', () => {
+    const { result, rerender } = open(undefined, '12:00');
+    expect(result.current.slug).toBeUndefined();
+    // Another device sets the rest of the day to Evening; the list comes in again.
+    mockTimeline = { ...mockTimeline, dashboardId: EVENING };
+    rerender({ slug: undefined });
+    tick('12:01');
+    expect(result.current.slug).toBe('evening');
+    // And places Morning over noon.
+    mockTimeline = { ...mockTimeline, placements: [{ days: [1], from: '12:00', to: '13:00', dashboardId: MORNING }] };
+    rerender({ slug: undefined });
+    tick('12:02');
+    expect(result.current.slug).toBe('morning');
   });
 });

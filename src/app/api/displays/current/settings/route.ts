@@ -31,10 +31,10 @@ function requestIsSecure(request: NextRequest): boolean {
   );
 }
 
-function shape(row: { id: string; dashboardId: string | null }, settings: unknown, updatedAt: Date | null) {
+function shape(row: { id: string; timelineId: string | null }, settings: unknown, updatedAt: Date | null) {
   return {
     displayId: row.id,
-    dashboardId: row.dashboardId,
+    timelineId: row.timelineId,
     settings: settings ?? {},
     settingsUpdatedAt: updatedAt?.toISOString() ?? null,
   };

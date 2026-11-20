@@ -15,6 +15,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as bcrypt from 'bcryptjs';
 import * as schema from './schema';
+import { asc, eq } from 'drizzle-orm';
 import { DB_SESSION_PARAMS } from './client';
 import { afternoonTripEvents } from './seedBusTrip';
 
@@ -1005,14 +1006,22 @@ async function seed() {
         { i: 'chores',   x: 24, y: 12, w: 24, h: 6  },
         { i: 'shopping', x: 24, y: 18, w: 24, h: 6  },
       ],
-      // Seeded as an install from before calm mode (#691), so the suites that
-      // drive the separate screensaver keep finding it.
-      idleBackground: { source: 'photos' },
       createdBy: alex.id,
     },
   ]);
 
   console.log(`  Created 1 layout`);
+
+  // The household's first timeline (#1266), which the migration made. It
+  // rests on photos, as an install from before calm mode (#691), so the
+  // suites that drive the separate screensaver keep finding it.
+  const [firstTimeline] = await db.select({ id: schema.timelines.id }).from(schema.timelines)
+    .orderBy(asc(schema.timelines.position), asc(schema.timelines.createdAt)).limit(1);
+  if (firstTimeline) {
+    await db.update(schema.timelines).set({ idleBackground: { source: 'photos' } }).where(eq(schema.timelines.id, firstTimeline.id));
+  } else {
+    await db.insert(schema.timelines).values({ name: 'Main', position: 0, idleBackground: { source: 'photos' } });
+  }
 
   // ─── DONE ─────────────────────────────────────────────────────────────────
   console.log('\nDatabase seeded successfully!');

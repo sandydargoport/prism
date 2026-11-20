@@ -2,7 +2,6 @@
 
 import { useState, useCallback } from 'react';
 import { useFetchOnMount } from './useFetchOnMount';
-import type { IdleBackground } from '@/lib/idleBackground';
 import { sharedGet } from '@/lib/utils/sharedGet';
 
 export interface WidgetConfig {
@@ -41,7 +40,6 @@ export interface Layout {
   isDefault: boolean;
   widgets: WidgetConfig[];
   screensaverWidgets: WidgetConfig[] | null;
-  idleBackground?: IdleBackground;
   orientation: string;
   fontScale: number | null;
   /** How it is drawn (#907): the widget grid, or Today, one scene over the photo. */

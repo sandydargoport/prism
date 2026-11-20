@@ -39,12 +39,12 @@ async function sync(): Promise<void> {
   if (syncing || !isNamed()) return;
   syncing = true;
   try {
-    const { applied, dashboardChanged } = await syncScreenSettings();
+    const { applied, timelineChanged } = await syncScreenSettings();
     // A screen showing a dashboard goes through the home page, where the
-    // server sends a named screen to its own one. Elsewhere (Settings, a list)
-    // it is left where someone is using it.
+    // server sends a named screen to the one its timeline shows. Elsewhere
+    // (Settings, a list) it is left where someone is using it.
     const path = window.location.pathname;
-    if (dashboardChanged && (path === '/' || path.startsWith('/d/'))) reloadForRemoteChange('/');
+    if (timelineChanged && (path === '/' || path.startsWith('/d/'))) reloadForRemoteChange('/');
     else if (applied.length > 0) reloadForRemoteChange();
   } catch {
     // Offline for a moment; the next round will do.

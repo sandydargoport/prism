@@ -1,10 +1,10 @@
 /**
  * The display registry (#690).
  *
- * GET  — every named screen, with whether it is online, its dashboard,
+ * GET:  every named screen, with whether it is online, its timeline,
  *        settings and size, whether it is being edited from another device,
  *        and which one (if any) this browser is
- * POST — name this browser's screen. Parent only. A browser already named is
+ * POST: name this browser's screen. Parent only. A browser already named is
  *        renamed rather than given a second row. With `id` instead of `name`,
  *        this browser becomes that existing screen: how a screen whose browser
  *        was reset gets its name and settings back.
@@ -53,7 +53,7 @@ export async function GET() {
         name: d.name,
         lastSeenAt: d.lastSeenAt?.toISOString() ?? null,
         online: isOnline(d.lastSeenAt, now),
-        dashboardId: d.dashboardId,
+        timelineId: d.timelineId,
         settings: d.settings,
         // Its size, for showing it at its own shape on a phone (#1153).
         width: d.screenWidth ?? null,

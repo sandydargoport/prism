@@ -6,24 +6,24 @@ import { isNight, type IdleBackground, type IdleSource, type IdleSwitch } from '
  *
  *  - active: someone is using it.
  *  - resting: nobody has touched it for a while, by day.
- *  - night: nobody has touched it, and it is night by the dashboard's rule.
+ *  - night: nobody has touched it, and it is night by the timeline's rule.
  *
  * Before this, night meant three things: Calendar Hours drove the dimming,
  * dusk and dawn drove the idle background, and sunset drove Today's veil.
  * Now Today's veil and warm ink, the dimming and the night backdrop all ask
- * `isNightAt` with the dashboard's own rule.
+ * `isNightAt` with the timeline's own rule.
  */
 
 export type ScreenState = 'active' | 'resting' | 'night';
 
 /**
- * Night when a dashboard has not set its own: half an hour after sunset to
+ * Night when a timeline has not set its own: half an hour after sunset to
  * half an hour before sunrise, the hours Today's veil always used (#926), so
  * nothing changes on a screen nobody has set up.
  */
 export const DEFAULT_NIGHT: IdleSwitch = { by: 'sun', duskOffset: 30, dawnOffset: -30 };
 
-/** The dashboard's night: its own switch when it has one, the default when not. */
+/** The timeline's night: its own switch when it has one, the default when not. */
 export function nightRule(bg: IdleBackground): IdleSwitch {
   return 'switch' in bg ? bg.switch : DEFAULT_NIGHT;
 }

@@ -573,6 +573,54 @@ fi
 log "Scenario L: PASS"
 
 # ----------------------------------------------------------------------------
+# Scenario M: 0054 gives the household its first timeline (#1266).
+# There is exactly one after the first run and still one after a replay. It
+# takes the default dashboard's idle background, so an upgraded install keeps
+# its screensaver. A screen loses the old schedule setting, and a screen on a
+# deleted timeline falls back to the first (its timeline_id goes null).
+# ----------------------------------------------------------------------------
+log "=== Scenario M: 0054 the first timeline ==="
+
+q() { docker exec "$CONTAINER_NAME" psql -U prism -d prism -t -A -c "$1"; }
+psql_exec "
+DELETE FROM timelines;
+UPDATE layouts SET is_default = false;
+INSERT INTO layouts (name, widgets, is_default, idle_background) VALUES ('M default', '[]'::jsonb, true, '{\"source\": \"photos\"}'::jsonb);
+INSERT INTO displays (name, settings) VALUES ('M wall', '{\"prism-screen-schedule\": \"[]\", \"prism-screensaver-timeout\": \"60\"}'::jsonb);
+DELETE FROM public.__prism_migrations WHERE name <> '0000_upgrade';
+"
+run_migrate
+GOT=$(q "SELECT count(*) || '|' || min(name) || '|' || min(idle_background->>'source') FROM timelines")
+if [ "$GOT" != "1|Main|photos" ]; then
+  echo "ERROR: 0054 made the first timeline as '$GOT' (want 1|Main|photos)" >&2
+  exit 1
+fi
+SETTINGS=$(q "SELECT settings::text FROM displays WHERE name = 'M wall'")
+if [ "$SETTINGS" != '{"prism-screensaver-timeout": "60"}' ]; then
+  echo "ERROR: 0054 left the screen's settings as $SETTINGS" >&2
+  exit 1
+fi
+
+log "A second timeline, a screen on it, then replay and delete it..."
+psql_exec "
+INSERT INTO timelines (id, name, position) VALUES ('00000000-0000-0000-0000-00000000b002', 'M other', 1);
+UPDATE displays SET timeline_id = '00000000-0000-0000-0000-00000000b002' WHERE name = 'M wall';
+DELETE FROM public.__prism_migrations WHERE name <> '0000_upgrade';
+"
+run_migrate
+if [ "$(q "SELECT count(*) FROM timelines")" != "2" ]; then
+  echo "ERROR: replaying 0054 added a timeline" >&2
+  exit 1
+fi
+psql_exec "DELETE FROM timelines WHERE id = '00000000-0000-0000-0000-00000000b002';"
+if [ "$(q "SELECT coalesce(timeline_id::text, 'first') FROM displays WHERE name = 'M wall'")" != "first" ]; then
+  echo "ERROR: a screen on a deleted timeline did not fall back to the first" >&2
+  exit 1
+fi
+
+log "Scenario M: PASS"
+
+# ----------------------------------------------------------------------------
 echo
 echo "=========================================="
 echo "  All migration-replay scenarios passed"
