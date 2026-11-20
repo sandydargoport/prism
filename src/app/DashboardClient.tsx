@@ -9,7 +9,8 @@ const Dashboard = dynamic(
   { loading: () => <div className="min-h-screen bg-background" /> }
 );
 
-export function DashboardClient() {
+/** startSlug: see useScreenSchedule. */
+export function DashboardClient({ startSlug }: { startSlug?: string }) {
   const router = useRouter();
   const [checked, setChecked] = useState(false);
 
@@ -36,5 +37,5 @@ export function DashboardClient() {
 
   if (!checked) return null;
 
-  return <Dashboard />;
+  return <Dashboard startSlug={startSlug} />;
 }

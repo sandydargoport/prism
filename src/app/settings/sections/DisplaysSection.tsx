@@ -193,7 +193,7 @@ export function DisplaysSection() {
         <p className="text-muted-foreground">
           Name each screen in the house to see which ones are on and change any of them from
           here. Edit opens a screen&apos;s editing bar over a live picture of it. A browser
-          nobody named works just as it always has.
+          nobody named follows the first timeline.
         </p>
       </div>
 

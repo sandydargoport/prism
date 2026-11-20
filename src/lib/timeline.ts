@@ -18,8 +18,9 @@ import { idleBackgroundSchema, parseIdleBackground, type IdleBackground } from '
  * start and end are equal lasts the whole day. When placements overlap, the
  * first in the stored order wins.
  *
- * Which dashboard shows is a named screen's: a device nobody named shows the
- * dashboard at its address and takes only its rest and night from here.
+ * A device nobody named follows the first timeline on the home page; opened at
+ * a dashboard's own address it shows that dashboard and takes only its rest
+ * and night from here (see useScreenSchedule).
  */
 
 /** The React transition type a scheduled change over runs under (see CssGridDisplay). */

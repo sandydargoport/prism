@@ -90,12 +90,15 @@ export interface DashboardProps {
   weatherLocation?: string;
   className?: string;
   slug?: string;
+  /** On the home page, the dashboard the timeline shows (see useScreenSchedule). */
+  startSlug?: string;
 }
 
 export function Dashboard({
   weatherLocation,
   className,
   slug,
+  startSlug,
 }: DashboardProps) {
   const router = useRouter();
 
@@ -141,10 +144,11 @@ export function Dashboard({
     deleteChore: () => {},
   });
 
-  // A named screen's time-of-day rules pick which dashboard this page shows (#692).
+  // The screen's timeline picks which dashboard this page shows (#692, #1266).
   const editingRef = useRef(false);
   const schedule = useScreenSchedule({
     routeSlug: slug,
+    startSlug,
     layouts: data.layouts.allLayouts,
     loading: data.layouts.loading,
     editing: editingRef,

@@ -9,7 +9,7 @@ import type { IdleSwitchCheck } from './useIdleSwitchCheck';
  * sheet (#1152): an edge's offset, and why Done is refused.
  */
 
-const field = 'min-h-[44px] rounded-lg border border-border bg-background px-2 text-body';
+const field = 'min-h-[44px] rounded-lg border border-border bg-background px-2 text-body pointer-fine:min-h-9';
 
 /**
  * One edge's offset: a number of minutes or hours, before or after dusk or

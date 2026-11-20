@@ -2,10 +2,10 @@
  * @jest-environment jsdom
  */
 /**
- * A named screen following its timeline while it stays on (#692, #1266):
- * which dashboard it shows on opening, when someone picks another by hand,
- * when the layout is being edited, and when the timeline is changed from
- * another device. The change waiting for an untouched screen, and the morph,
+ * A screen following its timeline while it stays on (#692, #1266): which
+ * dashboard it shows on opening, when someone picks another by hand, when the
+ * layout is being edited, when the timeline is changed from another device,
+ * and where a device nobody named follows it. The change waiting for an untouched screen, and the morph,
  * are measured in the browser (e2e/display-registry.spec.ts).
  */
 import * as React from 'react';
@@ -24,9 +24,13 @@ jest.mock('@/lib/hooks/useVisibilityPolling', () => ({
 
 // The timeline this screen follows; a test may change it, as another device would.
 let mockTimeline: import('@/lib/timeline').Timeline;
+let mockLoaded = true;
 jest.mock('@/lib/hooks/useTimelines', () => ({
-  useDeviceTimeline: () => ({ timeline: mockTimeline, timelines: [mockTimeline], loaded: true }),
+  useDeviceTimeline: () => ({ timeline: mockLoaded ? mockTimeline : null, timelines: mockLoaded ? [mockTimeline] : [], loaded: mockLoaded }),
 }));
+// The editor's frame, when a test puts the page in one.
+let mockHost: object | null = null;
+jest.mock('@/lib/displays/remoteEdit', () => ({ remoteEditHost: () => mockHost }));
 
 const HOME = '11111111-1111-4111-8111-111111111111';
 const MORNING = '22222222-2222-4222-8222-222222222222';
@@ -50,6 +54,9 @@ beforeEach(() => {
     ({ useScreenSchedule } = require('../useScreenSchedule'));
   });
   jest.useFakeTimers();
+  mockLoaded = true;
+  mockHost = null;
+  window.history.replaceState(null, '', '/');
   localStorage.clear();
   localStorage.setItem('prism:display-sync-base', JSON.stringify({ displayId: 'screen', timelineId: null, settings: {}, settingsUpdatedAt: null }));
   mockTimeline = {
@@ -145,10 +152,44 @@ describe('useScreenSchedule', () => {
     expect(result.current.slug).toBe('morning');
   });
 
-  it('a browser that is not a named screen shows its own page, whatever the timeline', () => {
-    localStorage.removeItem('prism:display-sync-base');
-    const { result } = open(undefined, '07:10');
-    expect(result.current.slug).toBeUndefined();
+  describe('a device nobody named', () => {
+    beforeEach(() => localStorage.removeItem('prism:display-sync-base'));
+
+    it('follows the first timeline on the home page, placements too', () => {
+      const { result } = open(undefined, '07:10');
+      expect(result.current.slug).toBe('morning');
+      tick('08:00');
+      expect(result.current.slug).toBeUndefined();
+      tick('07:00');
+      expect(result.current.slug).toBe('morning');
+    });
+
+    it('keeps a dashboard opened at its own address', () => {
+      const { result } = open('evening', '07:10');
+      expect(result.current.slug).toBe('evening');
+      tick('07:30');
+      expect(result.current.slug).toBe('evening');
+    });
+
+    it('opens on what the server found, and keeps it once the timeline is in', () => {
+      mockLoaded = false;
+      jest.setSystemTime(at('07:10'));
+      const { result, rerender } = renderHook(() => useScreenSchedule({
+        routeSlug: undefined, startSlug: 'morning', layouts: LAYOUTS, loading: false, editing: { current: false },
+      }));
+      expect(result.current.slug).toBe('morning');
+      mockLoaded = true;
+      rerender();
+      expect(result.current.slug).toBe('morning');
+    });
+
+    it('does not follow it in the editor, framed or opened to edit', () => {
+      window.history.replaceState(null, '', '/?edit=1');
+      expect(open(undefined, '07:10').result.current.slug).toBeUndefined();
+      window.history.replaceState(null, '', '/');
+      mockHost = { displayId: null };
+      expect(open(undefined, '07:10').result.current.slug).toBeUndefined();
+    });
   });
 
   it('follows its timeline\'s dashboard for the rest of the day', () => {

@@ -67,21 +67,24 @@ const DAY_SETS: { label: string; days: number[] }[] = [
   { label: 'Weekend', days: WEEKEND },
 ];
 
+// Each control is a 44px target for a finger on the wall, and about 32px with
+// a mouse (2.25rem at the desk's 14px), where editing is done (the laptop), so
+// the panel stays light beside the canvas.
 const chip = (on: boolean) => cn(
-  'flex min-h-[48px] items-center rounded-full border-[1.5px] px-4 text-body transition-colors',
+  'flex min-h-[48px] items-center rounded-full border-[1.5px] px-4 text-body transition-colors pointer-fine:min-h-9 pointer-fine:border pointer-fine:px-3',
   on ? 'border-foreground bg-foreground text-background' : 'border-foreground/30 hover:bg-muted',
 );
 const dayChip = (on: boolean) => cn(
-  'flex h-[44px] w-[44px] items-center justify-center rounded-full text-caption font-medium disabled:opacity-100',
+  'flex h-[44px] w-[44px] items-center justify-center rounded-full text-caption font-medium disabled:opacity-100 pointer-fine:h-8 pointer-fine:w-auto pointer-fine:min-w-8 pointer-fine:px-1',
   on ? 'bg-foreground text-background' : 'border border-foreground/30 text-muted-foreground',
 );
-/** A small chip for an action on the timeline: still a 44px target. */
+/** A smaller chip for an action on the timeline. */
 const action = (on: boolean) => cn(
-  'flex min-h-[44px] items-center rounded-full border px-3 text-body transition-colors',
+  'flex min-h-[44px] items-center rounded-full border px-3 text-body transition-colors pointer-fine:min-h-8 pointer-fine:px-2.5 pointer-fine:text-caption',
   on ? 'border-foreground bg-foreground text-background' : 'border-foreground/30 hover:bg-muted',
 );
-const field = 'min-h-[44px] rounded-lg border border-border bg-background px-2 text-body';
-const card = 'flex flex-col gap-3 rounded-xl border border-border bg-muted/30 p-4';
+const field = 'min-h-[44px] rounded-lg border border-border bg-background px-2 text-body pointer-fine:min-h-9';
+const card = 'flex flex-col gap-3 rounded-xl border border-border bg-muted/30 p-4 pointer-fine:gap-2 pointer-fine:p-3';
 
 /** What is open under the line. */
 type Picked =
@@ -93,8 +96,11 @@ type Picked =
 /** The two lanes of the day: the screen in use, and nobody there. */
 type Lane = 'in-use' | 'nobody';
 
-/** Height of a row of placement blocks, and the space between rows. */
-const LANE_PX = 44;
+/**
+ * Height of a lane and of a row of placement blocks, and the space between
+ * rows: 44px for a finger, 34px with a mouse (two lines of a block's caption).
+ */
+const LANES = '[--lane:44px] pointer-fine:[--lane:34px]';
 const LANE_GAP_PX = 4;
 
 /** Left edge, as a share of the line, of a minute of the day. */
@@ -506,7 +512,7 @@ export function ThroughTheDaySheet({
   const chosenRing = 'ring-2 ring-primary ring-offset-2 ring-offset-background';
 
   return (
-    <div className="flex flex-col gap-6" data-day-sheet data-day-shows={state}>
+    <div className="flex flex-col gap-6 pointer-fine:gap-5" data-day-sheet data-day-shows={state}>
       {timeline && (
         <section className="flex flex-col gap-3" aria-label="Which timeline" data-timeline-bar>
           <div className="flex flex-wrap items-center gap-2">
@@ -584,11 +590,11 @@ export function ThroughTheDaySheet({
 
         {/* Two lanes on one day axis: the second column is the same for both,
             so a time sits at the same place in each, under one marker. */}
-        <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2" data-day-lanes>
+        <div className={cn('grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2', LANES)} data-day-lanes>
           {spans.length > 0 && (
             // Placed dashboards change which dashboard shows, so they sit on
-            // In use, in their own row: a short one is still a 44px target.
-            <div ref={rowRef} className="relative" style={{ gridColumn: 2, gridRow: 1, height: lanes * LANE_PX + (lanes - 1) * LANE_GAP_PX }} data-day-placements>
+            // In use, in their own row: a short one is still a whole target.
+            <div ref={rowRef} className="relative" style={{ gridColumn: 2, gridRow: 1, height: `calc(${lanes} * var(--lane) + ${(lanes - 1) * LANE_GAP_PX}px)` }} data-day-placements>
               {spans.map((sp, n) => {
                 const width = ((sp.to - sp.from) / DAY_MINUTES) * 100;
                 const place = placed[n];
@@ -610,14 +616,14 @@ export function ThroughTheDaySheet({
                     aria-label={`${label}, ${timeOfMinute(sp.from)} to ${timeOfMinute(sp.to)}`}
                     aria-pressed={isPicked({ kind: 'placement', index: sp.index })}
                     className={cn(
-                      'absolute flex h-[44px] w-max max-w-full flex-col items-start justify-center whitespace-nowrap rounded-lg px-2 text-left text-caption leading-tight text-primary-foreground',
+                      'absolute flex h-(--lane) w-max max-w-full flex-col items-start justify-center whitespace-nowrap rounded-lg px-2 text-left text-caption leading-tight text-primary-foreground',
                       sp.partial ? 'bg-primary/60' : 'bg-primary',
                       isPicked({ kind: 'placement', index: sp.index }) && 'ring-2 ring-foreground ring-offset-1',
                     )}
                     style={{
-                      minWidth: `max(44px, ${width}%)`,
+                      minWidth: `max(var(--lane), ${width}%)`,
                       left: place ? place.left : at(sp.from),
-                      top: place ? place.lane * (LANE_PX + LANE_GAP_PX) : 0,
+                      top: place ? `calc(${place.lane} * (var(--lane) + ${LANE_GAP_PX}px))` : 0,
                     }}
                     data-day-placement={sp.index}
                     data-partial={sp.partial || undefined}
@@ -639,7 +645,7 @@ export function ThroughTheDaySheet({
             onClick={tapInUse}
             aria-label={`In use: ${timeline ? dashboardName(restOfDayId) : 'the dashboard'} shows. Tap a time to see it then.`}
             aria-pressed={lane === 'in-use'}
-            className={cn('h-[44px] w-full truncate rounded-full bg-primary/20 px-4 text-left text-caption text-foreground', lane === 'in-use' && chosenRing)}
+            className={cn('h-(--lane) w-full truncate rounded-full bg-primary/20 px-4 text-left text-caption text-foreground', lane === 'in-use' && chosenRing)}
             style={{ gridColumn: 2, gridRow: 2 }}
             data-day-lane="in-use"
           >
@@ -651,7 +657,7 @@ export function ThroughTheDaySheet({
             ref={lineRef}
             role="group"
             aria-label="Nobody there"
-            className={cn('relative h-[44px] rounded-full', lane === 'nobody' && chosenRing)}
+            className={cn('relative h-(--lane) rounded-full', lane === 'nobody' && chosenRing)}
             style={{ gridColumn: 2, gridRow: 3 }}
             data-day-line
             data-day-lane="nobody"
@@ -693,7 +699,7 @@ export function ThroughTheDaySheet({
                   onClick={() => { setPicked({ kind: 'night', edge }); play(edge === 'start' ? m.minute : Math.max(0, m.minute - 1), 'nobody'); }}
                   aria-label={`Night ${edge === 'start' ? 'starts' : 'ends'} ${timeOfMinute(m.minute)}`}
                   aria-pressed={isPicked({ kind: 'night', edge })}
-                  className="absolute top-1/2 z-30 flex h-[44px] w-[44px] -translate-x-1/2 -translate-y-1/2 items-center justify-center"
+                  className="absolute top-1/2 z-30 flex h-[44px] w-[44px] -translate-x-1/2 -translate-y-1/2 items-center justify-center pointer-fine:h-9 pointer-fine:w-9"
                   style={{ left: at(m.minute) }}
                   data-day-milestone={m.kind}
                 >
@@ -760,7 +766,7 @@ export function ThroughTheDaySheet({
           More
         </button>
         {moreOpen && (
-          <div className="mt-4 flex flex-col gap-4">
+          <div className="mt-4 flex flex-col gap-4 pointer-fine:mt-3 pointer-fine:gap-3">
             <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Night backdrop">
               <span className="self-center text-body">A different night backdrop:</span>
               <button type="button" role="radio" aria-checked={pair.night === 'photos'} onClick={() => { change({ night: 'photos' }); show('night'); }} className={chip(pair.night === 'photos')}>

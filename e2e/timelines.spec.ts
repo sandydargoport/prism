@@ -59,6 +59,9 @@ test.describe('timelines (#1266)', () => {
 
       await sheet.locator('[data-day-preset="Weekdays"]').click();
       await expect(sheet.locator('[data-day-preset="Weekdays"]')).toHaveAttribute('aria-pressed', 'true');
+      // A new placement starts at the time played; 7:00, so it does not run
+      // past midnight whenever the test runs.
+      await sheet.locator('[data-day-slider]').fill('420');
       await sheet.locator('[data-placement-add]').click();
       await sheet.locator('[data-day-card="placement"]').getByLabel('Placed dashboard').selectOption({ label: `Bus ${tag}` });
 
@@ -90,6 +93,58 @@ test.describe('timelines (#1266)', () => {
       await page.request.delete(`/api/layouts/${bus.id}`);
       await page.request.delete(`/api/layouts/${board.id}`);
     }
+  });
+
+  test('with a mouse the panel\'s controls are sized for a desk, and a finger still gets 44px', async ({ browser }) => {
+    const tag = Date.now().toString(36);
+    /** Heights (and widths) of the Through the day controls on the canvas editor. */
+    const measure = async (touch: boolean) => {
+      const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, hasTouch: touch });
+      const page = await context.newPage();
+      await signIn(page);
+      const board = await addDashboard(page, `Sizes ${touch ? 'touch' : 'mouse'} ${tag}`);
+      try {
+        await page.goto(`/edit/${board.id}`);
+        await page.locator('[data-editor-open="day"]').click({ timeout: 90_000 });
+        const sheet = page.locator('[data-editor-sheet="day"]');
+        await expect(sheet.locator('[data-day-lane="nobody"]')).toBeVisible();
+        const box = async (selector: string) => (await sheet.locator(selector).first().boundingBox())!;
+        return {
+          preset: await box('[data-day-preset="Weekdays"]'),
+          day: await box('[data-day-chip="1"]'),
+          add: await box('[data-placement-add]'),
+          select: await box('[data-timeline-select]'),
+          action: await box('[data-timeline-new]'),
+          inUse: await box('[data-day-lane="in-use"]'),
+          nobody: await box('[data-day-lane="nobody"]'),
+          dot: await box('[data-day-milestone]'),
+          tab: (await page.locator('[data-editor-open="day"]').boundingBox())!,
+        };
+      } finally {
+        await page.request.delete(`/api/layouts/${board.id}`);
+        await context.close();
+      }
+    };
+
+    // A mouse: controls 28 to 36px, so the panel does not outweigh the canvas,
+    // and the day chips and + Dashboard share one row.
+    const mouse = await measure(false);
+    for (const [name, b] of Object.entries(mouse)) {
+      if (name === 'tab') continue;
+      expect(b.height, `${name} with a mouse`).toBeGreaterThanOrEqual(28);
+      expect(b.height, `${name} with a mouse`).toBeLessThanOrEqual(36);
+    }
+    expect(mouse.day.width).toBeLessThanOrEqual(36);
+    expect(Math.abs(mouse.add.y + mouse.add.height / 2 - (mouse.day.y + mouse.day.height / 2))).toBeLessThanOrEqual(1);
+    expect(mouse.tab.height).toBeLessThanOrEqual(48);
+
+    // A finger: every one of them a 44px target.
+    const finger = await measure(true);
+    for (const [name, b] of Object.entries(finger)) {
+      expect(b.height, `${name} by touch`).toBeGreaterThanOrEqual(44);
+    }
+    expect(finger.day.width).toBeGreaterThanOrEqual(44);
+    expect(finger.dot.width).toBeGreaterThanOrEqual(44);
   });
 
   test('switching a screen\'s timeline from the dropdown changes what its line shows', async ({ browser }) => {

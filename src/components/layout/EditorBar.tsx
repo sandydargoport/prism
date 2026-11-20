@@ -56,6 +56,9 @@ export const EditorBar = React.forwardRef<HTMLDivElement, EditorBarProps>(functi
   // wrap; Cancel and Done sit on a row of their own.
   const item = 'flex min-h-[56px] min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 text-center text-caption font-medium leading-tight transition-colors sm:min-w-[64px] sm:px-3';
   if (panels) {
+    // With a mouse (the laptop) the bar and its sheet are sized like a desktop
+    // panel, so the canvas beside them leads; a finger keeps the dock's size.
+    const panelItem = 'pointer-fine:min-h-[44px] pointer-fine:gap-0.5 [&>svg]:pointer-fine:h-4 [&>svg]:pointer-fine:w-4';
     return (
       <div ref={ref} className="flex flex-col gap-3 lg:h-full lg:min-h-0" data-editor-bar data-editor-panels>
         <nav aria-label="Edit" className="grid shrink-0 grid-cols-5 gap-1 rounded-[20px] bg-[rgb(22_17_13)] p-1.5">
@@ -65,7 +68,7 @@ export const EditorBar = React.forwardRef<HTMLDivElement, EditorBarProps>(functi
               type="button"
               onClick={() => onOpenChange(id)}
               aria-pressed={open === id}
-              className={cn(item, 'relative px-1 text-white/85 hover:bg-white/10 sm:px-1', open === id && 'bg-white/15 text-white')}
+              className={cn(item, panelItem, 'relative px-1 text-white/85 hover:bg-white/10 sm:px-1', open === id && 'bg-white/15 text-white')}
               data-editor-open={id}
             >
               <Icon className="h-5 w-5" />
@@ -73,7 +76,7 @@ export const EditorBar = React.forwardRef<HTMLDivElement, EditorBarProps>(functi
               {dirty[id] && <span aria-label="unsaved changes" className="absolute right-2 top-2 h-2 w-2 rounded-full bg-white" />}
             </button>
           ))}
-          <button type="button" onClick={onCancel} className={cn(item, 'col-span-2 text-white/85 hover:bg-white/10')} data-editor-cancel>
+          <button type="button" onClick={onCancel} className={cn(item, panelItem, 'col-span-2 text-white/85 hover:bg-white/10')} data-editor-cancel>
             <X className="h-5 w-5" />
             <span>Cancel</span>
           </button>
@@ -82,7 +85,7 @@ export const EditorBar = React.forwardRef<HTMLDivElement, EditorBarProps>(functi
             onClick={onDone}
             disabled={!!doneBlocked}
             title={doneBlocked ?? undefined}
-            className={cn(item, 'col-span-3 bg-white text-[rgb(22_17_13)] hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50')}
+            className={cn(item, panelItem, 'col-span-3 bg-white text-[rgb(22_17_13)] hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50')}
             data-editor-done
           >
             <Check className="h-5 w-5" />
@@ -98,10 +101,10 @@ export const EditorBar = React.forwardRef<HTMLDivElement, EditorBarProps>(functi
         {open && sheet && (
           <section
             aria-label={title}
-            className="rounded-[1.4rem] bg-card p-5 text-card-foreground ring-1 ring-border lg:min-h-0 lg:flex-1 lg:overflow-auto"
+            className="rounded-[1.4rem] bg-card p-5 text-card-foreground ring-1 ring-border pointer-fine:rounded-2xl pointer-fine:p-4 lg:min-h-0 lg:flex-1 lg:overflow-auto"
             data-editor-sheet={open}
           >
-            <h2 className="m-0 mb-4 text-title font-medium" style={{ fontFamily: 'var(--font-display)' }}>{title}</h2>
+            <h2 className="m-0 mb-4 text-title font-medium pointer-fine:mb-3" style={{ fontFamily: 'var(--font-display)' }}>{title}</h2>
             {sheet}
           </section>
         )}
