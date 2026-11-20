@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { editHere } from './helpers/editHere';
 import { getSeededParentId } from './helpers/auth';
 import { TODAY_TEMPLATE } from '../src/lib/constants/layoutTemplates';
 import { deleteLayout } from './helpers/cleanup';
@@ -220,6 +221,7 @@ test.describe('the dock on the wall', () => {
       for (const j of ['edit', 'reload', 'away', 'babysitter', 'screensaver']) await expect(jobs.locator(`[data-screen-job="${j}"]`)).toBeVisible();
       const first = await panel.locator('[data-dock-more-group]').first().getAttribute('data-dock-more-group');
       expect(first, 'This screen leads on a wall').toBe('screen');
+      await editHere(page);
       await jobs.locator('[data-screen-job="edit"]').click();
       await page.waitForURL((u) => u.pathname === `/d/${layout.slug}`, { timeout: 60_000 });
       await expect(page.locator('[data-editor-bar]'), 'the editor is open').toBeVisible({ timeout: 60_000 });

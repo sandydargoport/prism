@@ -1,4 +1,5 @@
 import { test } from '@playwright/test';
+import { editHere } from '../../helpers/editHere';
 import { loginViaAPI } from '../helpers/auth';
 import { resetDemoData } from '../helpers/reset';
 
@@ -24,6 +25,7 @@ test('Dashboard overview — logged in with layout editor', async ({ page }) => 
   // Open the editor from the dock: Menu, More, Edit layout (#922)
   await page.click('[data-dock-menu]');
   await page.click('[data-dock-more]');
+  await editHere(page);
   await page.click('[data-dock-more-panel] [data-screen-job="edit"]');
   await page.waitForTimeout(2000);
 

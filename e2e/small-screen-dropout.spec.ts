@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { editHere } from './helpers/editHere';
 import path from 'path';
 import { getSeededParentId } from './helpers/auth';
 
@@ -141,6 +142,7 @@ test.describe('a widget with no surface (#803)', () => {
       await expect(menu).toBeVisible({ timeout: 60_000 });
       await menu.click();
       await page.locator('[data-dock-more]').click();
+      await editHere(page);
       await page.locator('[data-dock-more-panel] [data-screen-job="edit"]').click();
       await page.locator('[data-editor-widget="shopping"]').click();
       await page.getByRole('button', { name: /^Fill/ }).click();

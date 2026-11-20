@@ -1,0 +1,411 @@
+'use client';
+
+/**
+ * The canvas editor (#1153, #1265): a dashboard edited over a live picture of
+ * it, at the size of the screen it is for.
+ *
+ * The picture is the real dashboard, in a frame of the screen's own size
+ * scaled down to fit, so it lays out exactly as it does on the wall. It opens
+ * in edit mode, and its panels are drawn here at this device's own size (see
+ * remoteEdit.ts): beside the picture on a laptop, below it on a phone, so the
+ * picture is never covered and never moves when a panel opens.
+ *
+ * Two ways in:
+ *   - a named screen (/screens/[id]): its dashboard at its size. The screen
+ *     shows "Being edited from a phone" while this page is open, and on Done
+ *     its settings and dashboard are sent to it.
+ *   - a dashboard (/edit/[id]), from a device that is not a named screen: at
+ *     the size of a screen that shows it, or one picked here. This device's
+ *     own settings apply, as when editing in place.
+ */
+import * as React from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { ChevronLeft } from 'lucide-react';
+import { useAuth } from '@/components/providers';
+import { useLayouts, type Layout } from '@/lib/hooks/useLayouts';
+import type { ScreenSettings } from '@/lib/displays/screenSettings';
+import { changedSettings, REMOTE_EDIT_GLOBAL, type RemoteEditHost } from '@/lib/displays/remoteEdit';
+import { setEditHere } from '@/lib/displays/editPlace';
+import { editLink } from '@/components/dashboard/useDashboardLayout';
+
+type Entry = {
+  id: string;
+  name: string;
+  online: boolean;
+  dashboardId: string | null;
+  settings: ScreenSettings;
+  width: number | null;
+  height: number | null;
+};
+
+type Size = { width: number; height: number };
+
+/** What a screen that never reported its size is shown as. */
+const FALLBACK: Size = { width: 1920, height: 1080 };
+/** Common sizes, offered after the screens that show a dashboard. */
+const COMMON: Size[] = [
+  { width: 1920, height: 1080 },
+  { width: 1280, height: 800 },
+  { width: 1366, height: 768 },
+  { width: 2560, height: 1440 },
+  { width: 1080, height: 1920 },
+  { width: 800, height: 1280 },
+];
+/** The editing note is renewed this often while the page is open. */
+const RENEW_MS = 60 * 1000;
+/** On a phone the picture is above the panels and takes no more of the height than this. */
+const PICTURE_MAX_HEIGHT = 0.45;
+/** From this width the panels sit beside the picture (Tailwind's `lg`). */
+const SIDE_BY_SIDE = '(min-width: 1024px)';
+/** The choice that leaves the canvas and edits on this device itself. */
+const HERE = 'here';
+
+const LIST = '/settings?section=displays';
+
+function markEditing(id: string, editing: boolean, keepalive = false): Promise<unknown> {
+  return fetch(`/api/displays/${id}/editing`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ editing }),
+    keepalive,
+  }).catch(() => null);
+}
+
+const sizeText = (s: Size) => `${s.width} × ${s.height}`;
+
+/** Where a dashboard is shown on its own. */
+function dashboardPath(d: Pick<Layout, 'slug' | 'isDefault'> | undefined): string {
+  return d?.slug ? `/d/${d.slug}` : '/';
+}
+
+export type SizeChoice = { key: string; label: string; size: Size; group: 'shows' | 'other' | 'size' };
+
+/**
+ * The sizes a dashboard can be edited at: the named screens that show it,
+ * common sizes, then the other named screens. The first is the default.
+ */
+export function sizeChoices(dashboard: Pick<Layout, 'id' | 'isDefault'>, displays: Entry[]): SizeChoice[] {
+  const shows = (d: Entry) => d.dashboardId === dashboard.id || (d.dashboardId === null && dashboard.isDefault);
+  const sized = displays.filter((d) => d.width && d.height);
+  const screen = (d: Entry, group: 'shows' | 'other'): SizeChoice => {
+    const size = { width: d.width!, height: d.height! };
+    return { key: `screen:${d.id}`, label: `${d.name}, ${sizeText(size)}`, size, group };
+  };
+  return [
+    ...sized.filter(shows).map((d) => screen(d, 'shows')),
+    ...COMMON.map((size) => ({
+      key: `${size.width}x${size.height}`,
+      label: `${sizeText(size)}${size.height > size.width ? ', portrait' : ''}`,
+      size,
+      group: 'size' as const,
+    })),
+    ...sized.filter((d) => !shows(d)).map((d) => screen(d, 'other')),
+  ];
+}
+
+export function CanvasEditor(target: { screenId: string } | { dashboardId: string }) {
+  const screenId = 'screenId' in target ? target.screenId : null;
+  const dashboardId = 'dashboardId' in target ? target.dashboardId : null;
+  const router = useRouter();
+  const { activeUser, requireAuth } = useAuth();
+  const { layouts, loading: layoutsLoading } = useLayouts();
+  const [allowed, setAllowed] = useState<boolean | null>(null);
+  const [displays, setDisplays] = useState<Entry[] | null>(null);
+  const [host, setHost] = useState<RemoteEditHost | null>(null);
+  const [src, setSrc] = useState<string | null>(null);
+  const [choice, setChoice] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [room, setRoom] = useState({ width: 0, height: 0 });
+  const [wide, setWide] = useState(false);
+  // The dashboard the frame is on; undefined until it says.
+  const chosen = useRef<{ id: string; isDefault: boolean } | undefined>(undefined);
+  const original = useRef<ScreenSettings>({});
+  const finishing = useRef(false);
+
+  // A parent only, as on the screen itself.
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      const user = activeUser ?? await requireAuth('Sign in to edit', "Enter a parent's PIN to edit this screen.");
+      if (live) setAllowed(user?.role === 'parent');
+    })();
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!allowed) return;
+    void (async () => {
+      const res = await fetch('/api/displays').catch(() => null);
+      const data = res?.ok ? await res.json() : null;
+      setDisplays((data?.displays as Entry[] | undefined) ?? []);
+    })();
+  }, [allowed]);
+
+  const screen = screenId ? displays?.find((d) => d.id === screenId) ?? null : null;
+  const dashboard = dashboardId ? layouts.find((l) => l.id === dashboardId) : undefined;
+  const missing = screenId
+    ? displays !== null && !screen
+    : !layoutsLoading && !dashboard;
+
+  const choices = useMemo(
+    () => (dashboard && displays ? sizeChoices(dashboard, displays) : []),
+    [dashboard, displays],
+  );
+  const firstChoice = choices.find((c) => c.group === 'shows')?.key ?? `${FALLBACK.width}x${FALLBACK.height}`;
+  const picked = choices.find((c) => c.key === (choice ?? firstChoice));
+  const size: Size = screen
+    ? (screen.width && screen.height ? { width: screen.width, height: screen.height } : FALLBACK)
+    : picked?.size ?? FALLBACK;
+
+  const finish = useCallback(async (saved: boolean) => {
+    if (!host || finishing.current) return;
+    finishing.current = true;
+    setSaving(true);
+    setProblem(null);
+    try {
+      if (!screen) {
+        // A dashboard: it is saved already; back to whichever was on show.
+        const at = saved ? layouts.find((l) => l.id === chosen.current?.id) ?? dashboard : dashboard;
+        router.push(dashboardPath(at));
+        return;
+      }
+      if (saved) {
+        const body: { settings?: Record<string, string | null>; dashboardId?: string | null } = {};
+        const changes = changedSettings(original.current, host.settings);
+        if (Object.keys(changes).length > 0) body.settings = changes;
+        // Whichever dashboard was on show at Done is the screen's from now on.
+        const defaultId = layouts.find((l) => l.isDefault)?.id ?? null;
+        const before = screen.dashboardId ?? defaultId;
+        const pick = chosen.current;
+        if (pick && pick.id !== before) body.dashboardId = pick.isDefault ? null : pick.id;
+        if (Object.keys(body).length > 0) {
+          const res = await fetch(`/api/displays/${screen.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          }).catch(() => null);
+          if (!res?.ok) {
+            setProblem(`The dashboard is saved, but ${screen.name}'s own settings did not reach it. Try again.`);
+            finishing.current = false;
+            setSaving(false);
+            return;
+          }
+        }
+      }
+      await markEditing(screen.id, false);
+      router.push(saved ? `${LIST}&edited=${screen.id}` : LIST);
+    } catch {
+      finishing.current = false;
+      setSaving(false);
+    }
+  }, [screen, dashboard, host, layouts, router]);
+  const finishRef = useRef(finish);
+  useEffect(() => { finishRef.current = finish; }, [finish]);
+
+  // Once the screen (or dashboard) and the dashboards are known: the host the
+  // frame looks for, and which dashboard the frame opens on. Set once, so the
+  // frame is not reloaded under someone editing.
+  const ready = screenId ? screen !== null : dashboard !== undefined && displays !== null;
+  useEffect(() => {
+    if (!ready || layoutsLoading || host || !rootRef.current) return;
+    const settings = screen ? { ...screen.settings } : {};
+    original.current = { ...settings };
+    const next: RemoteEditHost = {
+      displayId: screen?.id ?? null,
+      dashboardId: screen ? screen.dashboardId : dashboard!.id,
+      settings,
+      settingsUpdatedAt: null,
+      root: rootRef.current,
+      onDashboard: (layoutId, isDefault) => { chosen.current = { id: layoutId, isDefault }; },
+      onFinish: (saved) => { void finishRef.current(saved); },
+    };
+    (window as unknown as Record<string, unknown>)[REMOTE_EDIT_GLOBAL] = next;
+    const home = screen ? layouts.find((l) => l.id === screen.dashboardId) : dashboard;
+    const query = screen ? `?edit=1&screen=${encodeURIComponent(screen.id)}` : '?edit=1';
+    setSrc(home && !(screen && home.isDefault) && home.slug ? `/d/${home.slug}${query}` : `/${query}`);
+    setHost(next);
+  }, [ready, screen, dashboard, layouts, layoutsLoading, host]);
+
+  useEffect(() => () => {
+    delete (window as unknown as Record<string, unknown>)[REMOTE_EDIT_GLOBAL];
+  }, []);
+
+  // A screen says it is being edited while this page is open.
+  useEffect(() => {
+    const id = host?.displayId;
+    if (!id) return;
+    void markEditing(id, true);
+    const timer = setInterval(() => void markEditing(id, true), RENEW_MS);
+    const leave = () => { if (!finishing.current) void markEditing(id, false, true); };
+    window.addEventListener('pagehide', leave);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('pagehide', leave);
+      leave();
+    };
+  }, [host]);
+
+  // The room the picture has: beside the panels, all of its box; above them,
+  // the page's width and part of its height.
+  useLayoutEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    const side = window.matchMedia(SIDE_BY_SIDE);
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      setWide(side.matches);
+      setRoom({ width: r.width, height: side.matches ? r.height : window.innerHeight * PICTURE_MAX_HEIGHT });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    window.addEventListener('resize', measure);
+    side.addEventListener('change', measure);
+    return () => { ro.disconnect(); window.removeEventListener('resize', measure); side.removeEventListener('change', measure); };
+  }, [ready]);
+
+  const scale = useMemo(() => {
+    if (!room.width || !room.height) return 0;
+    return Math.min(room.width / size.width, room.height / size.height);
+  }, [room, size.width, size.height]);
+  const shown = { width: Math.round(size.width * scale), height: Math.round(size.height * scale) };
+
+  const pick = (key: string) => {
+    if (key !== HERE) {
+      setChoice(key);
+      return;
+    }
+    // This device is the screen: edit on it, from now on.
+    setEditHere(true);
+    router.push(editLink(dashboardPath(dashboard)));
+  };
+
+  const back = screenId ? LIST : dashboardPath(dashboard);
+  const backLabel = screenId ? 'Screens' : 'Dashboard';
+  if (allowed === false) {
+    return (
+      <Page back={back} backLabel={backLabel}>
+        <p className="text-body text-muted-foreground">Only a parent can edit {screenId ? 'a screen' : 'a dashboard'}.</p>
+      </Page>
+    );
+  }
+  if (missing) {
+    return (
+      <Page back={back} backLabel={backLabel}>
+        <p className="text-body text-muted-foreground">
+          {screenId ? 'That screen is no longer named. It may have been removed.' : 'That dashboard is gone. It may have been deleted.'}
+        </p>
+      </Page>
+    );
+  }
+
+  const title = screen ? `Editing ${screen.name}` : dashboard ? `Editing ${dashboard.name}` : 'Editing';
+  const groups: Array<[SizeChoice['group'], string]> = [['shows', 'Screens that show it'], ['size', 'Sizes'], ['other', 'Other screens']];
+  return (
+    <main
+      className="min-h-dvh bg-background text-foreground lg:grid lg:h-dvh lg:grid-cols-[minmax(0,1fr)_min(30rem,36vw)] lg:grid-rows-[auto_minmax(0,1fr)] lg:overflow-hidden"
+      data-canvas-editor
+    >
+      <header className="px-4 pt-[max(1rem,env(safe-area-inset-top))] lg:col-start-1 lg:row-start-1 lg:px-6">
+        <BackLink href={back} label={backLabel} />
+        <h1 className="m-0 mb-1 text-title font-medium" style={{ fontFamily: 'var(--font-display)' }}>{title}</h1>
+        {screen && (
+          <p className="m-0 mb-3 text-caption text-muted-foreground" data-remote-status>
+            {screen.online ? 'On now' : `Off. ${screen.name} shows the changes when it is next switched on`}
+            {' · '}
+            {screen.width && screen.height
+              ? sizeText(size)
+              : `shown at ${sizeText(size)} until it reports its size`}
+          </p>
+        )}
+        {!screenId && choices.length > 0 && (
+          <label className="mb-3 flex flex-wrap items-center gap-2 text-caption text-muted-foreground">
+            Shown at
+            <select
+              className="min-h-[44px] rounded-lg border border-border bg-background px-2 text-body text-foreground"
+              value={picked?.key ?? firstChoice}
+              onChange={(e) => pick(e.target.value)}
+              data-canvas-size
+            >
+              {groups.map(([group, label]) => {
+                const inGroup = choices.filter((c) => c.group === group);
+                if (inGroup.length === 0) return null;
+                return (
+                  <optgroup key={group} label={label}>
+                    {inGroup.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+                  </optgroup>
+                );
+              })}
+              {wide && (
+                <optgroup label="This device">
+                  <option value={HERE}>Here, full size</option>
+                </optgroup>
+              )}
+            </select>
+          </label>
+        )}
+        {problem && (
+          <div role="alert" className="mb-3 flex flex-wrap items-center gap-3 text-body text-destructive">
+            {problem}
+            <button type="button" className="min-h-[44px] rounded-full border border-border px-4 text-foreground" onClick={() => void finish(true)}>
+              Try again
+            </button>
+          </div>
+        )}
+      </header>
+      <div className="px-4 lg:col-start-1 lg:row-start-2 lg:min-h-0 lg:overflow-hidden lg:px-6 lg:pb-6">
+        <div ref={boxRef} className="flex w-full justify-center lg:h-full lg:items-start" data-canvas-room>
+          {src && scale > 0 && (
+            <div
+              className="relative shrink-0 overflow-hidden rounded-xl bg-black shadow-xl ring-1 ring-border"
+              style={{ width: shown.width, height: shown.height }}
+              data-remote-picture
+            >
+              <iframe
+                title={`${screen?.name ?? dashboard?.name ?? 'Dashboard'}, live`}
+                src={src}
+                className="absolute left-0 top-0 origin-top-left border-0"
+                style={{ width: size.width, height: size.height, transform: `scale(${scale})` }}
+                data-remote-frame
+              />
+              {saving && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-body text-white">Saving…</div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+      {/* The frame draws its editing panels and dialogs here. */}
+      <div
+        ref={rootRef}
+        data-remote-edit-root
+        className="px-4 pb-10 pt-4 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:min-h-0 lg:border-l lg:border-border lg:p-4"
+      />
+    </main>
+  );
+}
+
+function BackLink({ href, label }: { href: string; label: string }) {
+  return (
+    <Link href={href} className="mb-1 inline-flex min-h-[44px] items-center gap-1 text-body text-muted-foreground hover:text-foreground">
+      <ChevronLeft className="h-4 w-4" aria-hidden />
+      {label}
+    </Link>
+  );
+}
+
+function Page({ back, backLabel, children }: { back: string; backLabel: string; children: React.ReactNode }) {
+  return (
+    <main className="min-h-dvh bg-background px-4 pb-40 pt-[max(1rem,env(safe-area-inset-top))] text-foreground">
+      <BackLink href={back} label={backLabel} />
+      <h1 className="m-0 mb-1 text-title font-medium" style={{ fontFamily: 'var(--font-display)' }}>Editing</h1>
+      {children}
+    </main>
+  );
+}

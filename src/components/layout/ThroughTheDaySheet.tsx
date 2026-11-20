@@ -388,7 +388,7 @@ export function ThroughTheDaySheet({
           </div>
         )}
         <p className="m-0 text-caption text-muted-foreground">
-          {remoteEditHost() ? 'Kept. The screen gets it when you press Done.' : 'Kept. A change waits until nobody has touched the screen for a minute.'}
+          {remoteEditHost()?.displayId ? 'Kept. The screen gets it when you press Done.' : 'Kept. A change waits until nobody has touched the screen for a minute.'}
           {' '}Times are in the household time zone.
         </p>
       </div>
@@ -509,9 +509,11 @@ export function ThroughTheDaySheet({
                 aria-label={`${st.kind === 'night' ? `Night: ${nightLabel}` : `Resting: ${restingLabel}`}, ${timeOfMinute(st.from)} to ${timeOfMinute(st.to)}`}
                 aria-pressed={isPicked({ kind: st.kind })}
                 className={cn(
-                  // Clear of the dot on each edge. A name that does not fit is hidden
-                  // whole (see the fitting above), so no ellipsis is drawn for it.
-                  'absolute inset-y-0 overflow-hidden whitespace-nowrap px-6 text-left text-caption',
+                  // A name that does not fit is hidden whole (see the fitting
+                  // above), so no ellipsis is drawn for it. No padding here: it
+                  // would keep a short stretch wider than its hours, past the
+                  // end of the line on a narrow panel (#1265).
+                  'absolute inset-y-0 overflow-hidden whitespace-nowrap text-left text-caption',
                   n === 0 && 'rounded-l-full',
                   n === line.stretches.length - 1 && 'rounded-r-full',
                   st.kind === 'night' ? 'bg-foreground/85 text-background' : 'bg-muted text-foreground',
@@ -521,7 +523,8 @@ export function ThroughTheDaySheet({
                 data-day-stretch={st.kind}
                 data-key={`${st.kind}-${st.from}`}
               >
-                <span className={cn(bare.includes(`${st.kind}-${st.from}`) && 'invisible')} data-stretch-label>
+                {/* Clear of the dot on each edge. */}
+                <span className={cn('px-6', bare.includes(`${st.kind}-${st.from}`) && 'invisible')} data-stretch-label>
                   {st.kind === 'night' ? nightLabel : restingLabel}
                 </span>
               </button>

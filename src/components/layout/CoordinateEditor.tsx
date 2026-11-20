@@ -261,7 +261,10 @@ function CoordInput({
       }}
       onFocus={onFocus}
       onBlur={onBlur}
-      className="w-full text-center text-xs px-1 py-0.5 rounded border transition-colors bg-muted border-border text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
+      // No spin arrows: they took most of a box this narrow and hid the number
+      // (#1265). The arrow keys still step it.
+      className="w-full text-center text-xs px-1 py-0.5 rounded border transition-colors bg-muted border-border text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+      data-coordinate-input
     />
   );
 }

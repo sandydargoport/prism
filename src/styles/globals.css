@@ -1605,8 +1605,3 @@ html.perf-minimal .widget-cell {
   height: 44px;
 }
 
-/* Editing a screen from a phone (#1153): an open sheet stops short of the
-   live picture above it, so the change can be seen as it is made. */
-[data-remote-edit-root] [data-editor-sheet] {
-  max-height: var(--remote-sheet-max-h);
-}

@@ -10,11 +10,13 @@ import { act, renderHook } from '@testing-library/react';
 import { useDashboardLayout } from '../useDashboardLayout';
 import { DEFAULT_SCREENSAVER_LAYOUT } from '@/components/screensaver/screensaverStorage';
 import type { Layout, WidgetConfig } from '@/lib/hooks/useLayouts';
+import { EDIT_HERE_KEY } from '@/lib/displays/editPlace';
 
 let activeUser: { id: string; role: string } | null = null;
 jest.mock('@/components/providers/AuthProvider', () => ({
   useAuth: () => ({ activeUser, requireAuth: jest.fn() }),
 }));
+jest.mock('next/navigation', () => ({ usePathname: () => window.location.pathname, useRouter: () => ({ push: jest.fn(), replace: jest.fn() }) }));
 
 const KEY = 'prism-screensaver-layout';
 const custom: WidgetConfig[] = [{ i: 'clock', x: 0, y: 0, w: 48, h: 48, visible: true }];
@@ -32,7 +34,8 @@ const data = (all: Layout[]) => ({
 
 const stored = () => JSON.parse(localStorage.getItem(KEY) ?? 'null');
 
-beforeEach(() => { localStorage.clear(); activeUser = null; });
+// The editor in place, as on a screen (#1265).
+beforeEach(() => { localStorage.clear(); localStorage.setItem(EDIT_HERE_KEY, '1'); activeUser = null; });
 
 describe('screensaver per dashboard', () => {
   it('gives a dashboard with no saved screensaver the default, not the last one shown', () => {

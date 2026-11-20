@@ -497,6 +497,9 @@ export function Dashboard({
         showWallpaper
         // The editor keeps its own controls and the rail (#922).
         dock={layout.isEditing ? undefined : 'wall'}
+        // On a canvas (#1265) the controls are beside the picture, which shows
+        // the screen as it is when in use: no dock.
+        hideNav={layout.isEditing && remote !== null}
         screenJobs={
           <ScreenJobs
             labelled
