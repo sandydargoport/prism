@@ -44,7 +44,7 @@ type Size = { width: number; height: number };
 
 /** What a screen that never reported its size is shown as. */
 const FALLBACK: Size = { width: 1920, height: 1080 };
-/** Sizes offered for a dashboard, after the household's own screens. */
+/** Common sizes, offered after the screens that show a dashboard. */
 const COMMON: Size[] = [
   { width: 1920, height: 1080 },
   { width: 1280, height: 800 },
@@ -84,7 +84,7 @@ export type SizeChoice = { key: string; label: string; size: Size; group: 'shows
 
 /**
  * The sizes a dashboard can be edited at: the named screens that show it,
- * the household's other screens, then common sizes. The first is the default.
+ * common sizes, then the other named screens. The first is the default.
  */
 export function sizeChoices(dashboard: Pick<Layout, 'id' | 'isDefault'>, displays: Entry[]): SizeChoice[] {
   const shows = (d: Entry) => d.dashboardId === dashboard.id || (d.dashboardId === null && dashboard.isDefault);
