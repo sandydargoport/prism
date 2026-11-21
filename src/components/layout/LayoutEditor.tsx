@@ -13,6 +13,7 @@ import { CreateDashboardDialog, SaveAsDialog } from './LayoutEditorDashboardMana
 import { RenameDashboardDialog } from './LayoutEditorRenameDashboard';
 import { LayoutEditorMeasureBar } from './LayoutEditorMeasureBar';
 import { EditorBar, type EditorSheet } from './EditorBar';
+import { forgetKeptPanel, panelKeptFor } from './canvasPanel';
 import { DashboardSheet, DaySheet, LookSheet, MoreSheet, WidgetsSheet, LayoutEditorPreviewPanel } from './EditorSheets';
 import { useMeasureMode } from './useMeasureMode';
 import { useLayoutEditorState } from './useLayoutEditorState';
@@ -102,8 +103,12 @@ export function LayoutEditor({
   // A device that is no named screen, editing on itself because it chose to.
   const [hereByChoice] = useState(() => !panels && !isNamedScreen() && editsHereByChoice());
   // The editing bar's open sheet (#1151). Through the day shows the screen as
-  // it rests, so it is the Idle screen tab underneath.
-  const [sheet, setSheetState] = useState<EditorSheet | null>(() => (panels ? 'widgets' : null));
+  // it rests, so it is the Idle screen tab underneath. A dashboard picked on
+  // Dashboard opens on Dashboard still.
+  const [sheet, setSheetState] = useState<EditorSheet | null>(
+    () => (panels ? panelKeptFor(currentDashboardId) ?? 'widgets' : null),
+  );
+  useEffect(() => { forgetKeptPanel(); }, []);
   // Opening it moves to the resting screen, which stays after the sheet
   // closes so its layout can be arranged; Dashboard, or the label above the
   // bar, goes back.
