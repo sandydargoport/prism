@@ -18,8 +18,8 @@
  * until the screen rests and how dark it goes are this screen's own.
  */
 import * as React from 'react';
-import { useLayoutEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { ArrowDown, ArrowUp, MoreHorizontal, Plus, X } from 'lucide-react';
 import Link from 'next/link';
 import { useTimeFormat } from '@/components/providers/TimeFormatProvider';
 import { formatTimeOfDay } from '@/components/calendar/cells/itemTime';
@@ -80,11 +80,8 @@ const dayChip = (on: boolean) => cn(
   'flex h-[44px] w-[44px] items-center justify-center rounded-full text-caption font-medium disabled:opacity-100 pointer-fine:h-8 pointer-fine:w-auto pointer-fine:min-w-0 pointer-fine:flex-1',
   on ? 'bg-foreground text-background' : 'border border-foreground/30 text-muted-foreground',
 );
-/** A timeline's own actions, rarer than anything on the line: words, no outline. */
-const quiet = (on: boolean) => cn(
-  'flex min-h-[44px] items-center rounded-full px-3 text-body transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent pointer-fine:min-h-8 pointer-fine:px-2 pointer-fine:text-caption pointer-fine:font-medium',
-  on ? 'bg-muted text-foreground' : 'text-muted-foreground',
-);
+/** One of a timeline's own actions, in the menu beside its dropdown. */
+const menuItem = 'flex min-h-[44px] w-full items-center rounded-lg px-3 text-left text-body transition-colors hover:bg-muted disabled:opacity-40 disabled:hover:bg-transparent pointer-fine:min-h-8 pointer-fine:px-2.5';
 const field = 'min-h-[44px] rounded-lg border border-border bg-background px-2 text-body pointer-fine:min-h-9';
 const card = 'flex flex-col gap-3 rounded-xl border border-border bg-muted/30 p-4 pointer-fine:gap-2 pointer-fine:p-3';
 
@@ -242,7 +239,25 @@ export function ThroughTheDaySheet({
     setPlayed(from);
   };
 
-  // Timelines themselves: new, duplicate, rename, delete.
+  // Timelines themselves: new, duplicate, rename, delete, from a menu beside
+  // the dropdown, as rarer than anything on the line. It closes on a choice,
+  // on Escape (back to its button) and on a press anywhere else.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const doc = menuRef.current?.ownerDocument ?? document;
+    const away = (e: Event) => { if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false); };
+    const key = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setMenuOpen(false);
+      menuRef.current?.querySelector<HTMLElement>('[data-timeline-menu]')?.focus();
+    };
+    doc.addEventListener('pointerdown', away);
+    doc.addEventListener('keydown', key);
+    return () => { doc.removeEventListener('pointerdown', away); doc.removeEventListener('keydown', key); };
+  }, [menuOpen]);
+  const choose = (then: () => void) => () => { setMenuOpen(false); then(); };
   const [naming, setNaming] = useState<Naming | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const finishNaming = async () => {
@@ -267,7 +282,7 @@ export function ThroughTheDaySheet({
     const ok = await confirm(
       `Delete ${timeline.name}?`,
       n > 0
-        ? `${n === 1 ? 'The screen' : `The ${n} screens`} on it follow ${goesTo?.name ?? 'the first timeline'} instead.`
+        ? `${n === 1 ? 'The screen on it follows' : `The ${n} screens on it follow`} ${goesTo?.name ?? 'the first timeline'} instead.`
         : 'No screen uses it.',
       { confirmLabel: 'Delete' },
     );
@@ -519,36 +534,56 @@ export function ThroughTheDaySheet({
   return (
     <div className="flex flex-col gap-6 pointer-fine:gap-5" data-day-sheet data-day-shows={state}>
       {timeline && (
-        // Which timeline, who follows it, and its own rarer actions, set off
-        // from the timeline itself by a rule.
+        // Which timeline, with its own actions in a menu beside it, and who
+        // follows it; set off from the timeline itself by a rule.
         <section className="flex flex-col gap-2 border-b border-border pb-4 pointer-fine:pb-3" aria-label="Which timeline" data-timeline-bar>
-          <label className="flex flex-wrap items-center gap-2 text-body">
-            {screenId ? 'This screen follows' : 'Timeline'}
-            <select className={field} value={timeline.id} aria-label="Timeline" data-timeline-select
-              onChange={(e) => { setPicked(null); setNaming(null); onTimelineChange?.(e.target.value); }}>
-              {timelines.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
-          </label>
-          <p className="m-0 text-caption text-muted-foreground" data-timeline-used>{usedByText(timeline, timeline.id === first?.id)}</p>
-          {/* Pulled left by their own padding, so the words line up with the text above. */}
-          <div className="-ml-3 flex flex-wrap pointer-fine:-ml-2">
-            <button type="button" className={quiet(naming?.mode === 'new')} aria-label="New timeline" data-timeline-new
-              onClick={() => setNaming({ mode: 'new', value: '' })}>
-              New
-            </button>
-            <button type="button" className={quiet(naming?.mode === 'duplicate')} aria-label="Duplicate this timeline" data-timeline-duplicate
-              onClick={() => setNaming({ mode: 'duplicate', value: copyName(timeline.name, timelines.map((t) => t.name)) })}>
-              Duplicate
-            </button>
-            <button type="button" className={quiet(naming?.mode === 'rename')} aria-label="Rename this timeline" data-timeline-rename
-              onClick={() => setNaming({ mode: 'rename', value: timeline.name })}>
-              Rename
-            </button>
-            <button type="button" className={quiet(false)} aria-label="Delete this timeline" data-timeline-delete
-              disabled={timelines.length < 2} onClick={() => void removeTimeline()}>
-              Delete
-            </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex flex-wrap items-center gap-2 text-body">
+              {screenId ? 'This screen follows' : 'Timeline'}
+              <select className={field} value={timeline.id} aria-label="Timeline" data-timeline-select
+                onChange={(e) => { setPicked(null); setNaming(null); onTimelineChange?.(e.target.value); }}>
+                {timelines.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+            </label>
+            <div ref={menuRef} className="relative">
+              <button
+                type="button"
+                aria-label="Timeline actions"
+                aria-expanded={menuOpen}
+                onClick={() => setMenuOpen((v) => !v)}
+                className={cn(
+                  'flex h-[44px] w-[44px] items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground pointer-fine:h-8 pointer-fine:w-8',
+                  (menuOpen || naming) && 'bg-muted text-foreground',
+                )}
+                data-timeline-menu
+              >
+                <MoreHorizontal className="h-5 w-5 pointer-fine:h-4 pointer-fine:w-4" aria-hidden />
+              </button>
+              {menuOpen && (
+                <div className="absolute left-0 top-full z-40 mt-1 flex min-w-[11rem] flex-col rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg" data-timeline-actions>
+                  <button type="button" className={menuItem} data-timeline-rename
+                    onClick={choose(() => setNaming({ mode: 'rename', value: timeline.name }))}>
+                    Rename
+                  </button>
+                  <button type="button" className={menuItem} data-timeline-duplicate
+                    onClick={choose(() => setNaming({ mode: 'duplicate', value: copyName(timeline.name, timelines.map((t) => t.name)) }))}>
+                    Duplicate
+                  </button>
+                  <button type="button" className={menuItem} data-timeline-new
+                    onClick={choose(() => setNaming({ mode: 'new', value: '' }))}>
+                    New timeline
+                  </button>
+                  <div className="my-1 h-px bg-border" aria-hidden />
+                  <button type="button" className={cn(menuItem, 'text-destructive')} data-timeline-delete
+                    disabled={timelines.length < 2} title={timelines.length < 2 ? 'The last timeline cannot be deleted' : undefined}
+                    onClick={choose(() => void removeTimeline())}>
+                    Delete
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
+          <p className="m-0 text-caption text-muted-foreground" data-timeline-used>{usedByText(timeline, timeline.id === first?.id)}</p>
           {naming && (
             <form className="flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); void finishNaming(); }} data-timeline-naming>
               <input className={cn(field, 'min-w-0 flex-1')} value={naming.value} maxLength={TIMELINE_NAME_MAX_LENGTH} autoFocus

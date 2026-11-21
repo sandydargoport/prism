@@ -139,9 +139,8 @@ test.describe('timelines (#1266)', () => {
         const sheet = page.locator('[data-editor-sheet="day"]');
         await expect(sheet.locator('[data-day-lane="nobody"]')).toBeVisible();
         const box = async (selector: string) => (await sheet.locator(selector).first().boundingBox())!;
-        // The words on each kind of control: presets, days, + Dashboard, a
-        // timeline action, More.
-        const fonts = await sheet.evaluate((el) => ['[data-day-preset="Weekdays"]', '[data-day-chip="1"]', '[data-placement-add]', '[data-timeline-new]', '[data-day-more]']
+        // The words on each kind of control: presets, days, + Dashboard, More.
+        const fonts = await sheet.evaluate((el) => ['[data-day-preset="Weekdays"]', '[data-day-chip="1"]', '[data-placement-add]', '[data-day-more]']
           .map((s) => `${s} ${getComputedStyle(el.querySelector(s)!).fontSize}`));
         // Each day bubble, and the tab bar: the Through the day tab's words,
         // and the ground the tabs are drawn on.
@@ -160,7 +159,7 @@ test.describe('timelines (#1266)', () => {
           day: await box('[data-day-chip="1"]'),
           add: await box('[data-placement-add]'),
           select: await box('[data-timeline-select]'),
-          action: await box('[data-timeline-new]'),
+          menu: await box('[data-timeline-menu]'),
           inUse: await box('[data-day-lane="in-use"]'),
           nobody: await box('[data-day-lane="nobody"]'),
           dot: await box('[data-day-milestone]'),
@@ -184,6 +183,9 @@ test.describe('timelines (#1266)', () => {
       expect(b.height, `${name} with a mouse`).toBeLessThanOrEqual(36);
     }
     expect(Math.abs(mouse.add.y + mouse.add.height / 2 - (mouse.preset.y + mouse.preset.height / 2))).toBeLessThanOrEqual(1);
+    // The timeline's own actions are one button on its dropdown's row.
+    expect(Math.abs(mouse.menu.y + mouse.menu.height / 2 - (mouse.select.y + mouse.select.height / 2)), 'menu beside the dropdown').toBeLessThanOrEqual(1);
+    expect(mouse.menu.x).toBeGreaterThan(mouse.select.x + mouse.select.width);
     // The seven days on one row, all one width, wide enough for Mon and Wed.
     expect(days).toHaveLength(7);
     expect(new Set(days.map((d) => Math.round(d.top))).size, 'one row').toBe(1);

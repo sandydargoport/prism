@@ -361,9 +361,27 @@ describe('ThroughTheDaySheet', () => {
       expect(screen.getByText('This screen follows')).toBeTruthy();
     });
 
+    /** Picks one of the timeline's own actions from the menu beside its dropdown. */
+    const fromMenu = (item: string) => { press('Timeline actions'); press(item); };
+
+    it('keeps its own actions in a menu beside the dropdown, closed until asked for', () => {
+      render(<Harness initial={{ source: 'dashboard' }} timelines={[MAIN, OTHER]} />);
+      const items = () => ['Rename', 'Duplicate', 'New timeline', 'Delete'].map((name) => screen.queryByRole('button', { name }));
+      expect(items().every((b) => b === null)).toBe(true);
+      press('Timeline actions');
+      expect(screen.getByRole('button', { name: 'Timeline actions' }).getAttribute('aria-expanded')).toBe('true');
+      expect(items().every((b) => b !== null)).toBe(true);
+      // Escape closes it, and so does a press anywhere else.
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(items().every((b) => b === null)).toBe(true);
+      press('Timeline actions');
+      fireEvent.pointerDown(document.body);
+      expect(items().every((b) => b === null)).toBe(true);
+    });
+
     it('duplicates the timeline and moves to the copy', async () => {
       render(<Harness initial={{ source: 'dashboard' }} timelines={[MAIN]} />);
-      press('Duplicate this timeline');
+      fromMenu('Duplicate');
       expect((screen.getByLabelText('Name for the new timeline') as HTMLInputElement).value).toBe('Main copy');
       await act(async () => { press('Duplicate'); });
       expect(mockStore.created).toEqual([{ copyOf: 'main', name: 'Main copy' }]);
@@ -372,7 +390,7 @@ describe('ThroughTheDaySheet', () => {
 
     it('renames it', async () => {
       render(<Harness initial={{ source: 'dashboard' }} timelines={[MAIN]} />);
-      press('Rename this timeline');
+      fromMenu('Rename');
       fireEvent.change(screen.getByLabelText('New name for this timeline'), { target: { value: 'School days' } });
       await act(async () => { press('Rename'); });
       expect(mockStore.patches.at(-1)).toEqual({ id: 'main', patch: { name: 'School days' } });
@@ -380,12 +398,13 @@ describe('ThroughTheDaySheet', () => {
 
     it('the last timeline cannot be deleted; another can, and its screens go to the first', async () => {
       const { unmount } = render(<Harness initial={{ source: 'dashboard' }} timelines={[MAIN]} />);
-      expect((screen.getByRole('button', { name: 'Delete this timeline' }) as HTMLButtonElement).disabled).toBe(true);
+      press('Timeline actions');
+      expect((screen.getByRole('button', { name: 'Delete' }) as HTMLButtonElement).disabled).toBe(true);
       unmount();
       render(<Harness initial={{ source: 'dashboard' }} timelines={[{ ...OTHER, screens: 1 }, MAIN].reverse()} />);
       fireEvent.change(screen.getByLabelText('Timeline'), { target: { value: 'other' } });
-      press('Delete this timeline');
-      expect(screen.getByText('The screen on it follow Main instead.')).toBeTruthy();
+      fromMenu('Delete');
+      expect(screen.getByText('The screen on it follows Main instead.')).toBeTruthy();
       await act(async () => { press('Delete'); });
       expect(mockStore.deleted).toEqual(['other']);
       expect(seen.timelineId).toBe('main');
