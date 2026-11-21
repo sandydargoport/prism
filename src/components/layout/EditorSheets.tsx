@@ -11,6 +11,7 @@ import { LAYOUT_TEMPLATES } from '@/lib/constants/layoutTemplates';
 import { SCREENSAVER_TEMPLATES } from '@/lib/constants/screensaverTemplates';
 import { TodayPartsPanel } from '@/components/today/TodayPartsPanel';
 import { editLink } from '@/components/dashboard/useDashboardLayout';
+import { keepPanelFor } from './canvasPanel';
 import { CommunityGallery } from './CommunityGallery';
 import { CoordinateEditor } from './CoordinateEditor';
 import { LayoutEditorPreviewPanel } from './LayoutEditorPreviewPanel';
@@ -59,6 +60,8 @@ export function DashboardSheet({
   const listed = [...allDashboards.filter(isBuiltIn), ...allDashboards.filter((d) => !isBuiltIn(d))];
   const open = (d: DashboardInfo) => {
     if (d.id === currentDashboardId) return;
+    // Its editor opens on this panel, not Widgets.
+    keepPanelFor(d.id, 'dashboard');
     if (d.slug) onSwitchDashboard?.(d.slug);
     else if (d.isDefault) window.location.assign(editLink('/'));
   };
