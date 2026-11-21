@@ -32,6 +32,7 @@ const mockStore = {
   patches: [] as Array<{ id: string; patch: Record<string, unknown> }>,
   created: [] as Array<Record<string, unknown>>,
   deleted: [] as string[],
+  picked: [] as Array<[string, string]>,
   apply: (_id: string, _patch: Record<string, unknown>) => {},
   add: (_t: Timeline) => {},
 };
@@ -44,6 +45,12 @@ jest.mock('@/lib/hooks/useTimelines', () => ({
     return t;
   },
   deleteTimeline: async (id: string) => { mockStore.deleted.push(id); return true; },
+  pickTimeline: async (displayId: string, timelineId: string) => { mockStore.picked.push([displayId, timelineId]); return true; },
+}));
+jest.mock('@/lib/displays/displaySettingsSync', () => ({
+  resetSyncBase: () => {},
+  syncScreenSettings: async () => ({ applied: [], timelineChanged: false }),
+  reloadForRemoteChange: () => {},
 }));
 
 const HOME = '11111111-1111-4111-8111-111111111111';
@@ -88,7 +95,7 @@ function Harness({ initial, dashboards, timelines, screenId = null }: {
 const radio = (group: string, name: string) =>
   Array.from(screen.getByRole('radiogroup', { name: group }).querySelectorAll<HTMLElement>('[role="radio"]')).find((b) => b.textContent === name)!;
 
-afterEach(() => { localStorage.clear(); mockStore.patches = []; mockStore.created = []; mockStore.deleted = []; });
+afterEach(() => { localStorage.clear(); mockStore.patches = []; mockStore.created = []; mockStore.deleted = []; mockStore.picked = []; });
 
 const milestone = (kind: 'night-start' | 'night-end') => document.querySelector<HTMLElement>(`[data-day-milestone="${kind}"]`)!;
 /** The placements the last change kept. */
@@ -408,6 +415,51 @@ describe('ThroughTheDaySheet', () => {
       await act(async () => { press('Delete'); });
       expect(mockStore.deleted).toEqual(['other']);
       expect(seen.timelineId).toBe('main');
+    });
+
+    describe('naming the device in use (#1267)', () => {
+      let posted: unknown[] = [];
+      beforeEach(() => {
+        posted = [];
+        global.fetch = jest.fn(async (url: string, init?: RequestInit) => {
+          if (init?.method === 'POST') {
+            posted.push(JSON.parse(String(init.body)));
+            return { ok: true, json: async () => ({ display: { id: 'den', name: 'Den' } }) };
+          }
+          if (url === '/api/displays') return { ok: true, json: async () => ({ displays: [{ id: 'hall', name: 'Hall' }] }) };
+          return { ok: true, json: async () => ({}) };
+        }) as never;
+      });
+
+      it('a device with no name is named here, and then follows the timeline shown', async () => {
+        render(<Harness initial={{ source: 'dashboard' }} timelines={[MAIN, OTHER]} />);
+        expect(screen.getByText('This device has no name, so it follows Main.')).toBeTruthy();
+        fireEvent.change(screen.getByLabelText('Timeline'), { target: { value: 'other' } });
+        await act(async () => { press('Name this device'); });
+        // A screen named before can be picked instead, after a browser reset.
+        expect(screen.getByRole('option', { name: 'Hall' })).toBeTruthy();
+        fireEvent.change(screen.getByLabelText('Name for this screen'), { target: { value: 'Den' } });
+        await act(async () => { press('Name it'); });
+        expect(posted).toEqual([{ name: 'Den' }]);
+        expect(mockStore.picked).toEqual([['den', 'other']]);
+        expect(screen.getByText('This screen follows')).toBeTruthy();
+        expect(document.querySelector('[data-name-device]')).toBeNull();
+      });
+
+      it('becomes a screen named before, taking its name', async () => {
+        render(<Harness initial={{ source: 'dashboard' }} timelines={[MAIN]} />);
+        await act(async () => { press('Name this device'); });
+        fireEvent.change(screen.getByLabelText('Existing screen'), { target: { value: 'hall' } });
+        await act(async () => { press('Use its name and settings'); });
+        expect(posted).toEqual([{ id: 'hall' }]);
+        // On the first timeline already: nothing to pick.
+        expect(mockStore.picked).toEqual([]);
+      });
+
+      it('a named screen is not offered a name', () => {
+        render(<Harness initial={{ source: 'dashboard' }} timelines={[MAIN]} screenId="kitchen" />);
+        expect(screen.queryByRole('button', { name: 'Name this device' })).toBeNull();
+      });
     });
 
     it('without a timeline there is nothing to place', () => {
