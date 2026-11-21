@@ -9,7 +9,6 @@ import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
 import { useLayouts } from '@/lib/hooks/useLayouts';
-import { reloadForRemoteChange, resetSyncBase, syncScreenSettings } from '@/lib/displays/displaySettingsSync';
 import type { ScreenSettings } from '@/lib/displays/screenSettings';
 import { screenSummary } from '@/lib/displays/screenSummary';
 import { useUrlParam } from '@/lib/hooks/useUrlParam';
@@ -20,10 +19,11 @@ import { pickTimeline, useTimelines } from '@/lib/hooks/useTimelines';
 import { timelineDashboardAt, timelineFor } from '@/lib/timeline';
 
 /**
- * Settings > Screens (#690, #1153): name this screen, and see every named
- * screen with whether it is on, the timeline it follows (#1266) and how it
- * rests. Edit opens a screen's editing bar: on the screen itself, or from any
- * other device over a live picture of it.
+ * Settings > Screens (#690, #1153, #1267): the list of screens, each with
+ * whether it is on, the timeline it follows (#1266) and Edit, which opens its
+ * editor: on the screen itself, or from any other device over a live picture
+ * of it. Everything about a screen is set in its editor, naming the device in
+ * use included (Through the day); here a screen is only renamed or removed.
  */
 
 type DisplayEntry = {
@@ -47,7 +47,7 @@ function statusText(d: DisplayEntry, now: number): string {
 
 async function errorFrom(res: Response): Promise<string> {
   const data = await res.json().catch(() => null);
-  if (res.status === 401 || res.status === 403) return 'Only a parent can name or change displays.';
+  if (res.status === 401 || res.status === 403) return 'Only a parent can change screens.';
   return data?.error ?? 'That did not work. Try again.';
 }
 
@@ -57,14 +57,9 @@ export function DisplaysSection() {
   const [loaded, setLoaded] = useState(false);
   // "Last seen 3 hours ago" is measured from when the list was fetched.
   const [fetchedAt, setFetchedAt] = useState(0);
-  const [authWall, setAuthWall] = useState(false);
-  const [trusted, setTrusted] = useState(false);
 
   const { layouts } = useLayouts();
   const { timelines } = useTimelines();
-  const [newName, setNewName] = useState('');
-  const [takeOverId, setTakeOverId] = useState('');
-  const [alsoTrust, setAlsoTrust] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const editedId = useUrlParam('edited');
   const { timeFormat, householdTimezone } = useTimeFormat();
@@ -74,19 +69,13 @@ export function DisplaysSection() {
 
   const load = useCallback(async () => {
     try {
-      const [list, settings] = await Promise.all([fetch('/api/displays'), fetch('/api/settings')]);
+      const list = await fetch('/api/displays');
       if (list.ok) {
         const data = await list.json();
         setDisplays(data.displays);
         setCurrentId(data.currentId);
         setFetchedAt(Date.now());
       }
-      if (settings.ok) {
-        const data = await settings.json();
-        const security = data?.security ?? data?.settings?.security;
-        setAuthWall(security?.authWall?.enabled === true);
-      }
-      setTrusted(document.cookie.split('; ').includes('prism_trusted_display=1'));
     } finally {
       setLoaded(true);
     }
@@ -108,43 +97,6 @@ export function DisplaysSection() {
     } finally {
       setBusy(false);
     }
-  };
-
-  const nameThisDisplay = async () => {
-    const ok = await run(() => fetch('/api/displays', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newName }),
-    }));
-    if (!ok) return;
-    setNewName('');
-    // A new screen: what this browser has becomes its settings, sent now
-    // rather than on the next round.
-    resetSyncBase();
-    void syncScreenSettings();
-    // Trusting stays its own decision on the server (naming a phone must not
-    // exempt it from sign-in); this only saves a second trip to Security.
-    if (authWall && !trusted && alsoTrust) {
-      const res = await fetch('/api/auth/trust-device', { method: 'POST' });
-      if (res.ok) {
-        // Same readable marker SecuritySection keeps for the httpOnly cookie.
-        document.cookie = 'prism_trusted_display=1; path=/; max-age=157680000';
-        setTrusted(true);
-      }
-    }
-  };
-
-  /** This browser becomes an existing screen, taking its stored settings. */
-  const takeOver = async () => {
-    const ok = await run(() => fetch('/api/displays', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: takeOverId }),
-    }));
-    if (!ok) return;
-    resetSyncBase();
-    const { applied } = await syncScreenSettings();
-    if (applied.length > 0) reloadForRemoteChange();
   };
 
   /** Where Edit goes: what this screen shows now, in place, or the canvas editor for another. */
@@ -191,10 +143,15 @@ export function DisplaysSection() {
       <div>
         <h2 className="text-2xl font-bold">Screens</h2>
         <p className="text-muted-foreground">
-          Name each screen in the house to see which ones are on and change any of them from
-          here. Edit opens a screen&apos;s editing bar over a live picture of it. A browser
-          nobody named follows the first timeline.
+          Every named screen in the house, whether it is on, and the timeline it follows. Edit
+          opens a screen&apos;s editor over a live picture of it. A device nobody named follows
+          the first timeline; to name one, open the editor on it and go to Through the day.
         </p>
+        {loaded && !current && (
+          <p className="mt-2 text-sm text-muted-foreground" data-unnamed-here>
+            The device you are using has no name.
+          </p>
+        )}
       </div>
 
       {error && (
@@ -207,63 +164,6 @@ export function DisplaysSection() {
             : `Saved. ${edited.name} shows the change when it is next switched on.`}
         </p>
       )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>This screen</CardTitle>
-          <CardDescription>
-            {current
-              ? <>This screen is named <strong>{current.name}</strong>.</>
-              : 'Name it from the screen itself, for example "Kitchen" or "Upstairs hall".'}
-          </CardDescription>
-        </CardHeader>
-        {loaded && !current && (
-          <CardContent className="space-y-3">
-            <form
-              className="flex gap-2"
-              onSubmit={(e) => { e.preventDefault(); void nameThisDisplay(); }}
-            >
-              <Input
-                aria-label="Name for this screen"
-                placeholder="Kitchen"
-                maxLength={NAME_MAX}
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-              />
-              <Button type="submit" disabled={busy || !newName.trim()}>
-                Name this display
-              </Button>
-            </form>
-            {displays.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="text-muted-foreground">Or this is an existing screen:</span>
-                <select
-                  aria-label="Existing screen"
-                  className="rounded-md border border-input bg-background px-2 py-1.5"
-                  value={takeOverId}
-                  onChange={(e) => setTakeOverId(e.target.value)}
-                >
-                  <option value="">Choose…</option>
-                  {displays.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                </select>
-                <Button size="sm" variant="outline" disabled={busy || !takeOverId} onClick={() => void takeOver()}>
-                  Use its name and settings
-                </Button>
-              </div>
-            )}
-            {authWall && !trusted && (
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={alsoTrust}
-                  onChange={(e) => setAlsoTrust(e.target.checked)}
-                />
-                Also trust it, so it stays readable without anyone signing in
-              </label>
-            )}
-          </CardContent>
-        )}
-      </Card>
 
       <Card>
         <CardHeader>

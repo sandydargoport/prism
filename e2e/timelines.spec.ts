@@ -241,8 +241,10 @@ test.describe('timelines (#1266)', () => {
         .toBe(school.id);
 
       // Its editor: the line is School's, Morning from 7 to 8.
+      // Edit on the row opens the canvas editor for that screen (#1267).
       await row.getByRole('link', { name: 'Edit' }).click();
-      await expect(laptop).toHaveURL(/\/screens\//, { timeout: 60_000 });
+      await expect(laptop).toHaveURL(new RegExp(`/screens/${screenId}$`), { timeout: 60_000 });
+      await expect(laptop.getByRole('heading', { level: 1 })).toContainText(NAME);
       await laptop.locator('[data-editor-open="day"]').click({ timeout: 90_000 });
       const sheet = laptop.locator('[data-editor-sheet="day"]');
       await expect(sheet.getByText('This screen follows')).toBeVisible();

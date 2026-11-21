@@ -9,6 +9,7 @@
 import { test, expect, type BrowserContext, type Page } from '@playwright/test';
 import { getFirstParent, getSeededParentId, verifySettingsPinViaAPI } from './helpers/auth';
 import { deleteLayout } from './helpers/cleanup';
+import { nameThisScreen } from './helpers/nameScreen';
 
 const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
 
@@ -38,12 +39,14 @@ test.describe('Display registry', () => {
     const wallContext = await browser.newContext();
     const phoneContext = await browser.newContext();
     try {
-      // On the wall: name it.
+      // On the wall: Settings > Screens only lists screens (#1267), and says
+      // this device has no name; it is named from its own editor.
       const wall = await openDisplays(wallContext, parent.name);
-      await expect(wall.getByLabel('Name for this screen')).toBeVisible({ timeout: 60_000 });
-      await wall.getByLabel('Name for this screen').fill(KITCHEN);
-      await wall.getByRole('button', { name: 'Name this display' }).click();
-      await expect(wall.getByText('This screen is named')).toContainText(KITCHEN);
+      await expect(wall.locator('[data-unnamed-here]')).toBeVisible({ timeout: 60_000 });
+      await expect(wall.getByLabel('Name for this screen')).toHaveCount(0);
+      await nameThisScreen(wall, KITCHEN);
+      await wall.goto('/settings?section=displays');
+      await expect(wall.locator('[data-unnamed-here]')).toHaveCount(0);
       const wallRow = wall.getByTestId('display-row').filter({ hasText: KITCHEN });
       await expect(wallRow).toContainText('This screen');
       await expect(wallRow).toContainText('Online');
@@ -53,7 +56,7 @@ test.describe('Display registry', () => {
       const phoneRow = phone.getByTestId('display-row').filter({ hasText: KITCHEN });
       await expect(phoneRow).toContainText('Online');
       await expect(phoneRow).not.toContainText('This screen');
-      await expect(phone.getByLabel('Name for this screen')).toBeVisible();
+      await expect(phone.locator('[data-unnamed-here]')).toBeVisible();
 
       // Rename from the phone; the wall shows it after a refresh.
       await phoneRow.getByRole('button', { name: 'Rename' }).click();
@@ -61,7 +64,7 @@ test.describe('Display registry', () => {
       await phone.getByRole('button', { name: 'Save' }).click();
       await expect(phone.getByTestId('display-row').filter({ hasText: RENAMED })).toBeVisible();
       await wall.reload();
-      await expect(wall.getByText('This screen is named')).toContainText(RENAMED);
+      await expect(wall.getByTestId('display-row').filter({ hasText: RENAMED })).toContainText('This screen');
 
       // Remove from the phone; the wall's next heartbeat forgets its name.
       phone.once('dialog', (d) => d.accept());
@@ -74,7 +77,7 @@ test.describe('Display registry', () => {
       const cookies = await wallContext.cookies();
       expect(cookies.find((c) => c.name === 'prism_display')).toBeUndefined();
       await wall.reload();
-      await expect(wall.getByLabel('Name for this screen')).toBeVisible();
+      await expect(wall.locator('[data-unnamed-here]')).toBeVisible();
     } finally {
       await wallContext.close();
       await phoneContext.close();
@@ -116,8 +119,7 @@ test.describe('Display settings follow the screen', () => {
       // The wall already has a setting of its own when it is named; naming copies it up.
       const wall = await openDisplays(wallContext, parent.name);
       await wall.evaluate((k) => localStorage.setItem(k, '300'), TIMEOUT);
-      await wall.getByLabel('Name for this screen').fill(HALL);
-      await wall.getByRole('button', { name: 'Name this display' }).click();
+      await nameThisScreen(wall, HALL);
       await expect.poll(async () => (await stored())?.settings?.[TIMEOUT], { timeout: 15_000 }).toBe('300');
 
       // Edited from the phone: the wall has it after a refresh.
@@ -148,10 +150,8 @@ test.describe('Display settings follow the screen', () => {
 
       // A reset browser on the same wall takes the screen back, settings and all.
       const fresh = await openDisplays(resetContext, parent.name);
-      await fresh.getByLabel('Existing screen').selectOption({ label: HALL });
-      await fresh.getByRole('button', { name: 'Use its name and settings' }).click();
+      await nameThisScreen(fresh, HALL, 'existing');
       await expect.poll(() => readStorage(fresh, TIMEOUT), { timeout: 30_000 }).toBe('600');
-      await expect(fresh.getByText('This screen is named')).toContainText(HALL, { timeout: 30_000 });
 
       await phone.request.delete(`/api/displays/${hall.id}`);
       await phone.request.delete(`/api/timelines/${timeline.id}`);
@@ -180,9 +180,7 @@ test.describe('Editing a screen from a phone', () => {
     const phoneContext = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
     try {
       const wall = await openDisplays(wallContext, parent.name);
-      await wall.getByLabel('Name for this screen').fill(DEN);
-      await wall.getByRole('button', { name: 'Name this display' }).click();
-      await expect(wall.getByText('This screen is named')).toContainText(DEN);
+      await nameThisScreen(wall, DEN);
       await wall.goto('/');
 
       const phone = await openDisplays(phoneContext, parent.name);
@@ -327,10 +325,8 @@ test.describe('Time-of-day layouts', () => {
       // starts and ends at the same time is all day.
       const steady = (t: number) => [t - 2 * 3600_000, t + 3600_000].every((u) => zoneOffset(u, zone) === zoneOffset(t, zone));
       while (!steady(start)) start += 3600_000;
+      await nameThisScreen(wall, PORCH);
       await wall.goto('/settings?section=displays');
-      await wall.getByLabel('Name for this screen').fill(PORCH);
-      await wall.getByRole('button', { name: 'Name this display' }).click();
-      await expect(wall.getByText('This screen is named')).toContainText(PORCH);
       // The timeline is picked on the screen's row.
       const row = wall.getByTestId('display-row').filter({ hasText: PORCH });
       await row.getByLabel(`Timeline for ${PORCH}`).selectOption({ label: timeline.name });
@@ -461,10 +457,7 @@ test.describe('Attention notices', () => {
       await verifySettingsPinViaAPI(wall, parent.name);
       // Signed in, the family list carries ids.
       const author = await getFirstParent(wall);
-      await wall.goto('/settings?section=displays');
-      await wall.getByLabel('Name for this screen').fill(HALL);
-      await wall.getByRole('button', { name: 'Name this display' }).click();
-      await expect(wall.getByText('This screen is named')).toContainText(HALL);
+      await nameThisScreen(wall, HALL);
       // Notices are on the screen's editing bar, under More.
       await wall.goto('/?edit=1');
       await wall.locator('[data-editor-open="more"]').click({ timeout: 60_000 });

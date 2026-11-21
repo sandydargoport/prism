@@ -20,7 +20,6 @@
 import * as React from 'react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, MoreHorizontal, Plus, X } from 'lucide-react';
-import Link from 'next/link';
 import { useTimeFormat } from '@/components/providers/TimeFormatProvider';
 import { formatTimeOfDay } from '@/components/calendar/cells/itemTime';
 import { ScreensaverSettingsPanel } from '@/components/screensaver/ScreensaverQuickSettings';
@@ -29,7 +28,7 @@ import { DIM_LEVELS, useIdleDimSetting } from '@/components/screensaver/idleDim'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { SCREENSAVER_TIMEOUT_OPTIONS, useScreensaverTimeout } from '@/lib/hooks/useScreensaverTimeout';
-import { createTimeline, deleteTimeline, patchTimeline } from '@/lib/hooks/useTimelines';
+import { createTimeline, deleteTimeline, patchTimeline, pickTimeline } from '@/lib/hooks/useTimelines';
 import { DAY_MINUTES, dayLine, hhmm, placementSpans, placeBlocks, type Placed, type Stretch } from '@/lib/dayLine';
 import { sameIdleBackground, tonight, type IdleBackground, type IdleSource, type IdleSwitch } from '@/lib/idleBackground';
 import { asDayAndNight, DEFAULT_NIGHT, screenStateAt, type ScreenState } from '@/lib/throughTheDay';
@@ -39,6 +38,7 @@ import {
 } from '@/lib/timeline';
 import type { IdleHalf, EditTab } from '@/components/dashboard/useDashboardLayout';
 import { OffsetInput } from './IdleBackgroundBar';
+import { NameThisDevice } from './NameThisDevice';
 import type { IdleSwitchCheck } from './useIdleSwitchCheck';
 import type { DashboardInfo } from './LayoutEditorTypes';
 import { cn } from '@/lib/utils';
@@ -152,7 +152,10 @@ export function ThroughTheDaySheet({
   timelines?: Timeline[];
   timelineId?: string;
   onTimelineChange?: (id: string) => void;
-  /** The named screen being edited, which follows the timeline picked here. */
+  /**
+   * The named screen being edited, which follows the timeline picked here.
+   * None: the device in use, which has no name and can be given one here.
+   */
   screenId?: string | null;
 }) {
   const { timeFormat } = useTimeFormat();
@@ -164,6 +167,13 @@ export function ThroughTheDaySheet({
 
   const timeline = timelines.find((t) => t.id === timelineId) ?? null;
   const first = firstTimeline(timelines);
+  // Named here (#1267): from then on a screen, following the timeline shown.
+  const [namedId, setNamedId] = useState<string | null>(null);
+  const thisScreen = screenId ?? namedId;
+  const named = (id: string) => {
+    setNamedId(id);
+    if (timeline && timeline.id !== first?.id) void pickTimeline(id, timeline.id);
+  };
   const placements = timeline?.placements ?? [];
 
   const pair = asDayAndNight(idleBackground ?? { source: 'photos' });
@@ -539,7 +549,7 @@ export function ThroughTheDaySheet({
         <section className="flex flex-col gap-2 border-b border-border pb-4 pointer-fine:pb-3" aria-label="Which timeline" data-timeline-bar>
           <div className="flex flex-wrap items-center gap-2">
             <label className="flex flex-wrap items-center gap-2 text-body">
-              {screenId ? 'This screen follows' : 'Timeline'}
+              {thisScreen ? 'This screen follows' : 'Timeline'}
               <select className={field} value={timeline.id} aria-label="Timeline" data-timeline-select
                 onChange={(e) => { setPicked(null); setNaming(null); onTimelineChange?.(e.target.value); }}>
                 {timelines.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -584,6 +594,7 @@ export function ThroughTheDaySheet({
             </div>
           </div>
           <p className="m-0 text-caption text-muted-foreground" data-timeline-used>{usedByText(timeline, timeline.id === first?.id)}</p>
+          {!thisScreen && <NameThisDevice follows={first?.name ?? timeline.name} onNamed={named} chip={chip} field={field} />}
           {naming && (
             <form className="flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); void finishNaming(); }} data-timeline-naming>
               <input className={cn(field, 'min-w-0 flex-1')} value={naming.value} maxLength={TIMELINE_NAME_MAX_LENGTH} autoFocus
@@ -824,7 +835,6 @@ export function ThroughTheDaySheet({
             </p>
             <div className="flex flex-wrap gap-2">
               <button type="button" className={chip(false)} onClick={() => setMotionOpen(true)}>Screensaver motion</button>
-              <Link href="/settings?section=display" className={chip(false)}>Screen fit and performance</Link>
             </div>
           </div>
         )}

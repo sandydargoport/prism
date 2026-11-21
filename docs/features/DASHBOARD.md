@@ -14,7 +14,7 @@ Open **More** on the dock at the foot of the screen and choose **Edit**. Only pa
 
 Where the editor opens depends on the device:
 
-- **On a named screen** (*Settings → Screens*) it opens on the screen itself, at full size. A dark bar takes the dock's place at the foot of the screen, and nothing is drawn at the top. The bar reads **Dashboard**, **Widgets**, **Through the day**, **Look** and **More**, then **Cancel** and **Done**. Each one opens a sheet that rises from the bar.
+- **On a named screen** (named in **Through the day**, listed in *Settings → Screens*) it opens on the screen itself, at full size. A dark bar takes the dock's place at the foot of the screen, and nothing is drawn at the top. The bar reads **Dashboard**, **Widgets**, **Through the day**, **Look** and **More**, then **Cancel** and **Done**. Each one opens a sheet that rises from the bar.
 - **On a laptop or any other device** it opens on a canvas: the dashboard laid out at the size of the screen that shows it, scaled to fit the window, so what you arrange is what the wall shows. The same controls sit in a column beside the canvas (below it on a phone), with one panel always open, and none of them covers the canvas. **Shown at** above the canvas picks another size: a named screen, a common screen size, or **Here, full size**, which edits on the device itself from then on. **Look → Edit on a canvas** goes back.
 - **For another named screen**, **Edit** on its row in *Settings → Screens* opens the same canvas at that screen's size, and changes reach the screen on **Done**.
 
