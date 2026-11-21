@@ -16,12 +16,14 @@ import { useUrlParam } from '@/lib/hooks/useUrlParam';
 import { useTimeFormat } from '@/components/providers/TimeFormatProvider';
 import { formatTimeOfDay } from '@/components/calendar/cells/itemTime';
 import { editLink } from '@/components/dashboard/useDashboardLayout';
+import { pickTimeline, useTimelines } from '@/lib/hooks/useTimelines';
+import { timelineDashboardAt, timelineFor } from '@/lib/timeline';
 
 /**
  * Settings > Screens (#690, #1153): name this screen, and see every named
- * screen with whether it is on, what it shows and how it rests. Edit opens a
- * screen's editing bar: on the screen itself, or from any other device over a
- * live picture of it.
+ * screen with whether it is on, the timeline it follows (#1266) and how it
+ * rests. Edit opens a screen's editing bar: on the screen itself, or from any
+ * other device over a live picture of it.
  */
 
 type DisplayEntry = {
@@ -29,7 +31,8 @@ type DisplayEntry = {
   name: string;
   lastSeenAt: string | null;
   online: boolean;
-  dashboardId: string | null;
+  /** The timeline it follows; null is the household's first. */
+  timelineId: string | null;
   settings: ScreenSettings;
   editing?: boolean;
 };
@@ -58,12 +61,13 @@ export function DisplaysSection() {
   const [trusted, setTrusted] = useState(false);
 
   const { layouts } = useLayouts();
+  const { timelines } = useTimelines();
   const [newName, setNewName] = useState('');
   const [takeOverId, setTakeOverId] = useState('');
   const [alsoTrust, setAlsoTrust] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const editedId = useUrlParam('edited');
-  const { timeFormat } = useTimeFormat();
+  const { timeFormat, householdTimezone } = useTimeFormat();
   const [editName, setEditName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -143,15 +147,27 @@ export function DisplaysSection() {
     if (applied.length > 0) reloadForRemoteChange();
   };
 
-  /** Where Edit goes: this screen's own dashboard, or the phone editor for another. */
+  /** Where Edit goes: what this screen shows now, in place, or the canvas editor for another. */
   const editHref = (d: DisplayEntry): string => {
     if (d.id !== currentId) return `/screens/${d.id}`;
-    const home = layouts.find((l) => l.id === d.dashboardId);
+    const timeline = timelineFor(timelines, d.timelineId);
+    // As of when the list was read, as "last seen" is.
+    const nowId = timeline ? timelineDashboardAt(timeline, fetchedAt, householdTimezone, (id) => layouts.some((l) => l.id === id)) : null;
+    const home = layouts.find((l) => l.id === nowId);
     return editLink(home && !home.isDefault && home.slug ? `/d/${home.slug}` : '/');
   };
 
-  const shows = (d: DisplayEntry) =>
-    layouts.find((l) => l.id === d.dashboardId) ?? layouts.find((l) => l.isDefault) ?? null;
+  /** A screen follows another timeline, from its row. */
+  const chooseTimeline = async (d: DisplayEntry, timelineId: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      if (!(await pickTimeline(d.id, timelineId))) setError('That did not work. Try again.');
+      await load();
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const rename = async (id: string) => {
     const ok = await run(() => fetch(`/api/displays/${id}`, {
@@ -177,7 +193,7 @@ export function DisplaysSection() {
         <p className="text-muted-foreground">
           Name each screen in the house to see which ones are on and change any of them from
           here. Edit opens a screen&apos;s editing bar over a live picture of it. A browser
-          nobody named works just as it always has.
+          nobody named follows the first timeline.
         </p>
       </div>
 
@@ -253,9 +269,10 @@ export function DisplaysSection() {
         <CardHeader>
           <CardTitle>All screens</CardTitle>
           <CardDescription>
-            A screen shows as online while it is switched on. Edit changes what it shows,
-            when it rests and its Interludes and notices; a screen that is on shows the change
-            in a few seconds.
+            A screen shows as online while it is switched on. Each follows a timeline: which
+            dashboard shows when, how it rests and its night. Screens that should behave alike
+            follow the same one. Edit changes it and the screen&apos;s notices; a screen that is
+            on shows the change in a few seconds.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -298,10 +315,21 @@ export function DisplaysSection() {
                         {d.editing && ' · being edited'}
                       </div>
                       <div className="text-sm text-muted-foreground" data-screen-summary>
-                        {shows(d) && <>Shows {shows(d)!.name}. </>}
-                        {screenSummary(d.settings ?? {}, shows(d)?.idleBackground ?? null, (t) => formatTimeOfDay(t, timeFormat))}.
+                        {screenSummary(d.settings ?? {}, timelineFor(timelines, d.timelineId), (t) => formatTimeOfDay(t, timeFormat))}.
                       </div>
                     </div>
+                    {timelines.length > 0 && (
+                      <select
+                        aria-label={`Timeline for ${d.name}`}
+                        className="min-h-9 rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+                        value={timelineFor(timelines, d.timelineId)?.id ?? ''}
+                        disabled={busy}
+                        onChange={(e) => void chooseTimeline(d, e.target.value)}
+                        data-screen-timeline
+                      >
+                        {timelines.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                      </select>
+                    )}
                     <Button size="sm" asChild data-screen-edit>
                       <Link href={editHref(d)}>Edit</Link>
                     </Button>

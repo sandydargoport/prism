@@ -11,9 +11,10 @@
  * picture is never covered and never moves when a panel opens.
  *
  * Two ways in:
- *   - a named screen (/screens/[id]): its dashboard at its size. The screen
- *     shows "Being edited from a phone" while this page is open, and on Done
- *     its settings and dashboard are sent to it.
+ *   - a named screen (/screens/[id]): the dashboard its timeline shows now,
+ *     at its size. The screen shows "Being edited from a phone" while this
+ *     page is open, and on Done its own settings are sent to it. Its timeline
+ *     keeps each change as it is made (#1266).
  *   - a dashboard (/edit/[id]), from a device that is not a named screen: at
  *     the size of a screen that shows it, or one picked here. This device's
  *     own settings apply, as when editing in place.
@@ -25,6 +26,9 @@ import { useRouter } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { useAuth } from '@/components/providers';
 import { useLayouts, type Layout } from '@/lib/hooks/useLayouts';
+import { useTimelines } from '@/lib/hooks/useTimelines';
+import { useTimeFormat } from '@/components/providers/TimeFormatProvider';
+import { timelineDashboardAt, timelineFor, timelineShows, type Timeline } from '@/lib/timeline';
 import type { ScreenSettings } from '@/lib/displays/screenSettings';
 import { changedSettings, REMOTE_EDIT_GLOBAL, type RemoteEditHost } from '@/lib/displays/remoteEdit';
 import { setEditHere } from '@/lib/displays/editPlace';
@@ -34,7 +38,8 @@ type Entry = {
   id: string;
   name: string;
   online: boolean;
-  dashboardId: string | null;
+  /** The timeline it follows; null is the household's first. */
+  timelineId: string | null;
   settings: ScreenSettings;
   width: number | null;
   height: number | null;
@@ -83,11 +88,15 @@ function dashboardPath(d: Pick<Layout, 'slug' | 'isDefault'> | undefined): strin
 export type SizeChoice = { key: string; label: string; size: Size; group: 'shows' | 'other' | 'size' };
 
 /**
- * The sizes a dashboard can be edited at: the named screens that show it,
- * common sizes, then the other named screens. The first is the default.
+ * The sizes a dashboard can be edited at: the named screens whose timeline
+ * shows it at some time, common sizes, then the other named screens. The
+ * first is the default.
  */
-export function sizeChoices(dashboard: Pick<Layout, 'id' | 'isDefault'>, displays: Entry[]): SizeChoice[] {
-  const shows = (d: Entry) => d.dashboardId === dashboard.id || (d.dashboardId === null && dashboard.isDefault);
+export function sizeChoices(dashboard: Pick<Layout, 'id' | 'isDefault'>, displays: Entry[], timelines: Timeline[]): SizeChoice[] {
+  const shows = (d: Entry) => {
+    const timeline = timelineFor(timelines, d.timelineId);
+    return timeline ? timelineShows(timeline, dashboard) : dashboard.isDefault;
+  };
   const sized = displays.filter((d) => d.width && d.height);
   const screen = (d: Entry, group: 'shows' | 'other'): SizeChoice => {
     const size = { width: d.width!, height: d.height! };
@@ -111,6 +120,8 @@ export function CanvasEditor(target: { screenId: string } | { dashboardId: strin
   const router = useRouter();
   const { activeUser, requireAuth } = useAuth();
   const { layouts, loading: layoutsLoading } = useLayouts();
+  const { timelines, loaded: timelinesLoaded } = useTimelines();
+  const { householdTimezone } = useTimeFormat();
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [displays, setDisplays] = useState<Entry[] | null>(null);
   const [host, setHost] = useState<RemoteEditHost | null>(null);
@@ -154,8 +165,8 @@ export function CanvasEditor(target: { screenId: string } | { dashboardId: strin
     : !layoutsLoading && !dashboard;
 
   const choices = useMemo(
-    () => (dashboard && displays ? sizeChoices(dashboard, displays) : []),
-    [dashboard, displays],
+    () => (dashboard && displays ? sizeChoices(dashboard, displays, timelines) : []),
+    [dashboard, displays, timelines],
   );
   const firstChoice = choices.find((c) => c.group === 'shows')?.key ?? `${FALLBACK.width}x${FALLBACK.height}`;
   const picked = choices.find((c) => c.key === (choice ?? firstChoice));
@@ -176,19 +187,14 @@ export function CanvasEditor(target: { screenId: string } | { dashboardId: strin
         return;
       }
       if (saved) {
-        const body: { settings?: Record<string, string | null>; dashboardId?: string | null } = {};
+        // Which dashboard it shows is its timeline's, kept as it changed; Done
+        // sends only the screen's own settings.
         const changes = changedSettings(original.current, host.settings);
-        if (Object.keys(changes).length > 0) body.settings = changes;
-        // Whichever dashboard was on show at Done is the screen's from now on.
-        const defaultId = layouts.find((l) => l.isDefault)?.id ?? null;
-        const before = screen.dashboardId ?? defaultId;
-        const pick = chosen.current;
-        if (pick && pick.id !== before) body.dashboardId = pick.isDefault ? null : pick.id;
-        if (Object.keys(body).length > 0) {
+        if (Object.keys(changes).length > 0) {
           const res = await fetch(`/api/displays/${screen.id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
+            body: JSON.stringify({ settings: changes }),
           }).catch(() => null);
           if (!res?.ok) {
             setProblem(`The dashboard is saved, but ${screen.name}'s own settings did not reach it. Try again.`);
@@ -211,14 +217,14 @@ export function CanvasEditor(target: { screenId: string } | { dashboardId: strin
   // Once the screen (or dashboard) and the dashboards are known: the host the
   // frame looks for, and which dashboard the frame opens on. Set once, so the
   // frame is not reloaded under someone editing.
-  const ready = screenId ? screen !== null : dashboard !== undefined && displays !== null;
+  const ready = timelinesLoaded && (screenId ? screen !== null : dashboard !== undefined && displays !== null);
   useEffect(() => {
     if (!ready || layoutsLoading || host || !rootRef.current) return;
     const settings = screen ? { ...screen.settings } : {};
     original.current = { ...settings };
     const next: RemoteEditHost = {
       displayId: screen?.id ?? null,
-      dashboardId: screen ? screen.dashboardId : dashboard!.id,
+      timelineId: screen?.timelineId ?? null,
       settings,
       settingsUpdatedAt: null,
       root: rootRef.current,
@@ -226,11 +232,15 @@ export function CanvasEditor(target: { screenId: string } | { dashboardId: strin
       onFinish: (saved) => { void finishRef.current(saved); },
     };
     (window as unknown as Record<string, unknown>)[REMOTE_EDIT_GLOBAL] = next;
-    const home = screen ? layouts.find((l) => l.id === screen.dashboardId) : dashboard;
+    // A screen opens on what its timeline shows now, as the screen does.
+    const exists = (id: string) => layouts.some((l) => l.id === id);
+    const timeline = screen ? timelineFor(timelines, screen.timelineId) : null;
+    const nowId = timeline ? timelineDashboardAt(timeline, Date.now(), householdTimezone, exists) : null;
+    const home = screen ? layouts.find((l) => l.id === nowId) ?? layouts.find((l) => l.isDefault) : dashboard;
     const query = screen ? `?edit=1&screen=${encodeURIComponent(screen.id)}` : '?edit=1';
     setSrc(home && !(screen && home.isDefault) && home.slug ? `/d/${home.slug}${query}` : `/${query}`);
     setHost(next);
-  }, [ready, screen, dashboard, layouts, layoutsLoading, host]);
+  }, [ready, screen, dashboard, layouts, layoutsLoading, host, timelines, householdTimezone]);
 
   useEffect(() => () => {
     delete (window as unknown as Record<string, unknown>)[REMOTE_EDIT_GLOBAL];

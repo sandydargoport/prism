@@ -21,7 +21,7 @@
  *   - draws its editing bar and dialogs into `host.root`;
  *   - tells the host which dashboard it is on, and when editing ends.
  *
- * The phone page sends the settings and the dashboard to the screen on Done.
+ * The phone page sends the settings to the screen on Done.
  */
 import { isScreenSettingKey, type ScreenSettings } from './screenSettings';
 
@@ -37,8 +37,11 @@ export type RemoteEditHost = {
    * in place does.
    */
   displayId: string | null;
-  /** The screen's dashboard when editing began; null is the household default. */
-  dashboardId: string | null;
+  /**
+   * The timeline the screen follows (#1266); null is the household's first.
+   * Changed in place when the editor picks another for it.
+   */
+  timelineId: string | null;
   /** The screen's settings, changed in place as the frame writes them. */
   settings: ScreenSettings;
   settingsUpdatedAt: string | null;
@@ -81,7 +84,7 @@ export function remoteStorage(real: Storage, host: RemoteEditHost): Storage {
   const memory = new Map<string, string | null>();
   const base = () => JSON.stringify({
     displayId: host.displayId,
-    dashboardId: host.dashboardId,
+    timelineId: host.timelineId,
     settings: host.settings,
     settingsUpdatedAt: host.settingsUpdatedAt,
   });

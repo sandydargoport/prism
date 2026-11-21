@@ -5,7 +5,6 @@
 
 import { z } from 'zod';
 import { DAYS_OF_WEEK } from '@/lib/constants/days';
-import { idleBackgroundSchema } from '@/lib/idleBackground';
 
 // COMMON SCHEMAS
 
@@ -442,8 +441,6 @@ export const createLayoutSchema = z.object({
   isDefault: z.boolean().optional().default(false),
   widgets: z.array(widgetConfigSchema).min(1, 'At least one widget is required').max(200),
   screensaverWidgets: z.array(widgetConfigSchema).max(200).nullable().optional(),
-  // No default here: a new dashboard gets the column's, an update leaves it.
-  idleBackground: idleBackgroundSchema.optional(),
   orientation: z.enum(['landscape', 'portrait']).optional().default('landscape'),
   fontScale: z.number().int().min(50).max(200).nullable().optional(),
   // No default here either: a new dashboard gets the column's, an update leaves it (#907).

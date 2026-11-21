@@ -10,6 +10,7 @@ import { act, renderHook } from '@testing-library/react';
 import { useDashboardLayout } from '../useDashboardLayout';
 import { DEFAULT_SCREENSAVER_LAYOUT } from '@/components/screensaver/screensaverStorage';
 import type { Layout, WidgetConfig } from '@/lib/hooks/useLayouts';
+import type { IdleBackground } from '@/lib/idleBackground';
 import { EDIT_HERE_KEY } from '@/lib/displays/editPlace';
 
 let activeUser: { id: string; role: string } | null = null;
@@ -99,8 +100,8 @@ describe('the upgrade from v1.30.1 (#1154)', () => {
 
   it('carries nothing to a dashboard that rests as itself', () => {
     localStorage.setItem(KEY, JSON.stringify(custom));
-    const calm = { ...dashboard('b', null), idleBackground: { source: 'dashboard' } } as Layout;
-    renderHook(() => useDashboardLayout(data([dashboard('a', custom), calm]), 'b'));
+    // Resting as the dashboard itself is the timeline's (#1266).
+    renderHook(() => useDashboardLayout(data([dashboard('a', custom), dashboard('b', null)]), 'b', { source: 'dashboard' }));
     expect(fetchMock).not.toHaveBeenCalled();
     expect(localStorage.getItem('prism-screensaver-carried')).toBe('1');
   });
@@ -110,14 +111,16 @@ describe('one editor, two tabs, one Save (#782)', () => {
   const edited: WidgetConfig[] = [{ i: 'tasks', x: 0, y: 0, w: 12, h: 12, visible: true }];
   const idleEdited: WidgetConfig[] = [{ i: 'weather', x: 4, y: 4, w: 16, h: 16, visible: true }];
 
-  async function editing(layout: Layout = dashboard('a', custom)) {
+  // How the screen rests is its timeline's (#1266), handed in.
+  async function editing(layout: Layout = dashboard('a', custom), background: IdleBackground = { source: 'photos' }) {
     activeUser = { id: 'p1', role: 'parent' };
     const layouts = data([layout]);
-    const hook = renderHook(() => useDashboardLayout(layouts, 'a'));
+    const hook = renderHook(() => useDashboardLayout(layouts, 'a', background));
     await act(async () => { await hook.result.current.handleEditStart(); });
     return { layouts, result: hook.result };
   }
-  const photos = () => ({ ...dashboard('a', custom), idleBackground: { source: 'photos' } }) as Layout;
+  const photos = () => dashboard('a', custom);
+  const CALM: IdleBackground = { source: 'dashboard' };
 
   it('keeps unsaved edits in both tabs when switching between them, and Save stores both', async () => {
     const { layouts, result } = await editing(photos());
@@ -134,8 +137,10 @@ describe('one editor, two tabs, one Save (#782)', () => {
     await act(async () => { await result.current.handleSave(); });
     expect(layouts.saveLayout).toHaveBeenCalledTimes(1);
     expect(layouts.saveLayout).toHaveBeenCalledWith(expect.objectContaining({
-      id: 'a', widgets: edited, screensaverWidgets: idleEdited, idleBackground: { source: 'sky' },
+      id: 'a', widgets: edited, screensaverWidgets: idleEdited,
     }));
+    // The background is the timeline's, kept as it changes, not the dashboard's.
+    expect(layouts.saveLayout.mock.calls[0]![0]).not.toHaveProperty('idleBackground');
     expect(result.current.isEditing).toBe(false);
     // The running screensaver gets the new layout once saved.
     expect(stored()).toEqual(idleEdited);
@@ -170,26 +175,27 @@ describe('one editor, two tabs, one Save (#782)', () => {
     act(() => { result.current.setEditingWidgets([{ i: 'clock', x: 4, y: 0, w: 8, h: 8 }]); });
     expect([result.current.dashboardDirty, result.current.idleDirty]).toEqual([true, false]);
 
+    // A background change is kept on the timeline as it is made (#1266), so
+    // it leaves nothing for Done.
     act(() => { result.current.setEditingWidgets([{ i: 'clock', x: 0, y: 0, w: 8, h: 8 }]); });
     act(() => { result.current.setEditingBackground({ source: 'sky' }); });
-    expect([result.current.dashboardDirty, result.current.idleDirty]).toEqual([false, true]);
+    expect([result.current.dashboardDirty, result.current.idleDirty]).toEqual([false, false]);
   });
 
-  it('takes the background of a dashboard that finishes loading after editing starts', async () => {
+  it('takes the timeline\'s background when it arrives after editing starts', async () => {
     activeUser = { id: 'p1', role: 'parent' };
-    const empty = data([]);
-    const loaded = data([{ ...dashboard('a', custom), idleBackground: { source: 'dashboard' } } as Layout]);
-    const { result, rerender } = renderHook(({ layouts }) => useDashboardLayout(layouts, 'a'), {
-      initialProps: { layouts: empty },
+    const loaded = data([dashboard('a', custom)]);
+    const { result, rerender } = renderHook(({ bg }) => useDashboardLayout(loaded, 'a', bg), {
+      initialProps: { bg: null as IdleBackground | null },
     });
     await act(async () => { await result.current.handleEditStart(); });
-    rerender({ layouts: loaded });
-    expect(result.current.editingBackground).toEqual({ source: 'dashboard' });
+    rerender({ bg: CALM });
+    expect(result.current.editingBackground).toEqual(CALM);
     expect(result.current.idleDirty).toBe(false);
   });
 
   it('arranges the previewed half of a day and night pair', async () => {
-    const { result } = await editing({ ...dashboard('a', custom), idleBackground: { source: 'dashboard' } } as Layout);
+    const { result } = await editing(dashboard('a', custom), CALM);
     act(() => { result.current.setEditTab('idle'); });
     act(() => {
       result.current.setEditingBackground({ day: 'dashboard', night: 'sky', switch: { by: 'sun', duskOffset: 0, dawnOffset: 0 } });
@@ -201,7 +207,7 @@ describe('one editor, two tabs, one Save (#782)', () => {
   });
 
   it('arranges a screensaver layout on the Idle screen tab only behind photos or the sky', async () => {
-    const { result } = await editing({ ...dashboard('a', custom), idleBackground: { source: 'dashboard' } } as Layout);
+    const { result } = await editing(dashboard('a', custom), CALM);
     act(() => { result.current.setEditTab('idle'); });
     expect(result.current.editingScreensaver).toBe(false);
     act(() => { result.current.setEditingBackground({ source: 'photos' }); });

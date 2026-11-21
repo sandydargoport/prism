@@ -37,7 +37,8 @@ import { WIDGET_REGISTRY } from '@/components/widgets/widgetRegistry';
 import { renderScreensaverPreview } from '@/components/screensaver/ScreensaverWidgetPreview';
 import { SCREENSAVER_WIDGET_CLASS } from '@/components/screensaver/Screensaver';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
-import { parseIdleBackground, withoutDashboard, PHOTOS, type IdleBackground } from '@/lib/idleBackground';
+import { withoutDashboard, PHOTOS, type IdleBackground } from '@/lib/idleBackground';
+import { deviceScreenId, pickTimeline, useDeviceTimeline } from '@/lib/hooks/useTimelines';
 import { TodayScene } from '@/components/today/TodayScene';
 import { PhoneToday } from '@/components/today/PhoneToday';
 import { isBuiltInView } from '@/lib/newLook';
@@ -57,6 +58,7 @@ import { buildWidgetProps } from './useWidgetProps';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { useLocalCopy } from '@/lib/hooks/useLocalCopy';
+import { useResetOn } from '@/lib/hooks/useResetOn';
 import { setActiveIdleBackground, shownWhenIdle, useCalmIdle } from '@/components/screensaver/calmMode';
 import { useNightNow } from '@/components/screensaver/useIdleBackground';
 import { dimLevel, useIdleDimSetting } from '@/components/screensaver/idleDim';
@@ -88,12 +90,15 @@ export interface DashboardProps {
   weatherLocation?: string;
   className?: string;
   slug?: string;
+  /** On the home page, the dashboard the timeline shows (see useScreenSchedule). */
+  startSlug?: string;
 }
 
 export function Dashboard({
   weatherLocation,
   className,
   slug,
+  startSlug,
 }: DashboardProps) {
   const router = useRouter();
 
@@ -139,15 +144,34 @@ export function Dashboard({
     deleteChore: () => {},
   });
 
-  // A named screen's time-of-day rules pick which dashboard this page shows (#692).
+  // The screen's timeline picks which dashboard this page shows (#692, #1266).
   const editingRef = useRef(false);
   const schedule = useScreenSchedule({
     routeSlug: slug,
+    startSlug,
     layouts: data.layouts.allLayouts,
     loading: data.layouts.loading,
     editing: editingRef,
   });
-  const layout = useDashboardLayout(data.layouts, schedule.slug);
+  // The timeline this page follows (#1266): how it rests and what it does at
+  // night. While editing, the one the editor is looking at, which starts as
+  // this page's own.
+  const { timeline: deviceTimeline, timelines, loaded: timelinesLoaded } = useDeviceTimeline({ poll: true });
+  const [editedTimelineId, setEditedTimelineId] = useState<string | null>(null);
+  const editedTimeline = (editedTimelineId ? timelines.find((t) => t.id === editedTimelineId) : undefined) ?? deviceTimeline;
+  const layout = useDashboardLayout(
+    data.layouts, schedule.slug,
+    timelinesLoaded ? editedTimeline?.idleBackground ?? PHOTOS : null,
+  );
+  useResetOn(layout.isEditing, () => setEditedTimelineId(null));
+  const { setEditingBackground } = layout;
+  const screenId = deviceScreenId();
+  /** The editor looks at another timeline; for a named screen, the screen follows it. */
+  const chooseTimeline = useCallback((id: string) => {
+    setEditedTimelineId(id);
+    setEditingBackground(null);
+    if (screenId) void pickTimeline(screenId, id);
+  }, [screenId, setEditingBackground]);
   useEffect(() => { editingRef.current = layout.isEditing; }, [layout.isEditing]);
   // In the frame of a phone editing this screen (#1153): say which dashboard
   // is on show, and when editing ends.
@@ -202,12 +226,12 @@ export function Dashboard({
   // Grid control state shared between LayoutEditor toolbar and LayoutGridEditor
   const { allSizeNames } = useScreenSafeZones();
 
-  // Tell the Screensaver what this dashboard shows behind it when idle (#782),
-  // which may be the dashboard itself (calm mode, #691). When the dashboard
-  // goes, other pages keep its photos or sky but have no dashboard to show.
-  // The phone layout has no calm idle state. Keyed by its JSON so a fresh copy
-  // of the same value is not a change.
-  const idleBackground = layout.activeLayout ? parseIdleBackground(layout.activeLayout.idleBackground) : PHOTOS;
+  // Tell the Screensaver what shows behind it when idle (#782), from this
+  // page's timeline (#1266), which may be the dashboard itself (calm mode,
+  // #691). When the dashboard goes, other pages keep its photos or sky but
+  // have no dashboard to show. The phone layout has no calm idle state. Keyed
+  // by its JSON so a fresh copy of the same value is not a change.
+  const idleBackground = deviceTimeline?.idleBackground ?? PHOTOS;
   const idleKey = JSON.stringify(isMobile ? withoutDashboard(idleBackground) : idleBackground);
   useEffect(() => {
     const bg = JSON.parse(idleKey) as IdleBackground;
@@ -230,7 +254,7 @@ export function Dashboard({
     : layout.editTab !== 'idle' ? 'active'
       : layout.idleHalf === 'night' ? 'night' : 'resting';
   const shownBackground = layout.isEditing ? layout.editingBackground : idleBackground;
-  // One night for the veil, the dim and the backdrop: the dashboard's rule.
+  // One night for the veil, the dim and the backdrop: the timeline's rule.
   const nightNow = useNightNow(nightRule(shownBackground));
   const sceneNight = previewState === 'night' || (previewState !== 'resting' && nightNow);
   const previewBackdrop = previewState ? backdropFor(shownBackground, previewState) : null;
@@ -547,6 +571,10 @@ export function Dashboard({
               idleHalf={layout.idleHalf}
               onIdleHalfChange={layout.setIdleHalf}
               idleCheck={idleCheck}
+              timelines={timelines}
+              timelineId={editedTimeline?.id}
+              onTimelineChange={chooseTimeline}
+              screenId={screenId}
               screenGuideOrientation={screenGuideOrientation}
               onScreenGuideOrientationChange={setScreenGuideOrientation}
               enabledSizes={enabledSizes}

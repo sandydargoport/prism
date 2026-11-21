@@ -6,6 +6,7 @@ import {
 } from '../src/components/screensaver/nightSky/sky';
 import { FIGURES } from '../src/components/screensaver/nightSky/catalog';
 import type { IdleBackground } from '../src/lib/idleBackground';
+import { ownTimeline } from './helpers/timeline';
 import { FIRST_SCREEN_TEMPLATE } from '../src/lib/constants/layoutTemplates';
 
 /**
@@ -205,12 +206,17 @@ const BACKGROUNDS = {
   dayNight: { day: 'photos', night: 'sky', switch: { by: 'sun', duskOffset: 0, dawnOffset: 0 } },
 } satisfies Record<string, IdleBackground>;
 
-function idleLayout(idleBackground: IdleBackground) {
+function idleLayout() {
   return {
     id: '00000000-0000-4000-8000-000000000782', name: 'Idle e2e', slug: 'idle-e2e', isDefault: true,
-    widgets: [{ i: 'clock', x: 0, y: 0, w: 16, h: 12 }], screensaverWidgets: null, idleBackground,
+    widgets: [{ i: 'clock', x: 0, y: 0, w: 16, h: 12 }], screensaverWidgets: null,
     orientation: 'landscape', fontScale: null, createdAt: NOON, updatedAt: NOON,
   };
+}
+
+/** The timeline this browser follows, resting on `idleBackground` (#1266). */
+function idleTimeline(idleBackground: IdleBackground) {
+  return { id: '00000000-0000-4000-8000-000000001266', name: 'Idle e2e', position: 0, dashboardId: null, placements: [], idleBackground, screens: 0 };
 }
 
 test.describe('screensaver night sky', () => {
@@ -218,8 +224,9 @@ test.describe('screensaver night sky', () => {
   test.setTimeout(90_000);
 
   /**
-   * The background is stored with the dashboard (#782), so the page is handed
-   * one dashboard with it set. Nothing is written to the database.
+   * The background is stored on the timeline the browser follows (#1266), so
+   * the page is handed one dashboard and one timeline with it set. Nothing is
+   * written to the database.
    */
   async function openDashboard(page: Page, background: IdleBackground, at: string, weather: Record<string, unknown> = {}) {
     await page.clock.setFixedTime(new Date(at));
@@ -229,7 +236,10 @@ test.describe('screensaver night sky', () => {
       return route.fulfill({ response, json: { ...(await response.json()), lat: 45, lon: -100, ...weather } });
     });
     await page.route('**/api/layouts', (route) => route.request().method() === 'GET'
-      ? route.fulfill({ json: { layouts: [idleLayout(background)] } })
+      ? route.fulfill({ json: { layouts: [idleLayout()] } })
+      : route.fallback());
+    await page.route('**/api/timelines', (route) => route.request().method() === 'GET'
+      ? route.fulfill({ json: { timelines: [idleTimeline(background)] } })
       : route.fallback());
     await page.addInitScript(() => {
       // Auto performance can step down on a slow CI runner, and a lighter
@@ -619,8 +629,10 @@ test.describe('calm mode idle screen', () => {
     });
     expect(created.status()).toBe(201);
     const layout = await created.json();
-    // A dashboard created now is calm without being asked.
-    expect(layout.idleBackground).toEqual({ source: 'dashboard' });
+    // It rests as itself: a timeline of its own, which starts calm (#1266).
+    const own = await ownTimeline(page);
+    // A timeline added now is calm without being asked.
+    expect((await own.saved()).idleBackground).toEqual({ source: 'dashboard' });
 
     // Drift takes its phase from the wall clock (every widget in step), so fix
     // the clock a quarter of the way into the 96 s cycle: the far right of the
@@ -683,6 +695,7 @@ test.describe('calm mode idle screen', () => {
         expect(off(i, before, awake), `${i} is back in its place`).toBeLessThanOrEqual(1);
       }
     } finally {
+      await own.cleanup();
       await page.request.delete(`/api/layouts/${layout.id}`);
     }
   });
@@ -697,6 +710,8 @@ test.describe('calm mode idle screen', () => {
     });
     expect(created.status()).toBe(201);
     const layout = await created.json();
+    // It rests as itself: a timeline of its own, which starts calm (#1266).
+    const own = await ownTimeline(page);
     try {
       // Chosen the way a person would: on the screen's editing bar, Look (#1159).
       await page.goto(`/d/${layout.slug}`);
@@ -716,6 +731,7 @@ test.describe('calm mode idle screen', () => {
       const idle = await cells(page);
       for (const i of FADED) expect(idle[i]!.opacity, `${i} is already gone`).toBe(0);
     } finally {
+      await own.cleanup();
       await page.request.delete(`/api/layouts/${layout.id}`);
     }
   });
@@ -730,6 +746,8 @@ test.describe('calm mode idle screen', () => {
     });
     expect(created.status()).toBe(201);
     const layout = await created.json();
+    // It rests as itself: a timeline of its own, which starts calm (#1266).
+    const own = await ownTimeline(page);
     expect(layout.screensaverWidgets, 'premise: no screensaver layout of its own').toBeNull();
     await page.addInitScript(() => localStorage.setItem('prism-screensaver-drift', 'off'));
     try {
@@ -742,7 +760,7 @@ test.describe('calm mode idle screen', () => {
 
       const saved = await (await page.request.get(`/api/layouts/${layout.id}`)).json();
       expect(saved.screensaverWidgets, 'Done saved no screensaver layout of its own').toBeNull();
-      expect(saved.idleBackground).toEqual(layout.idleBackground);
+      expect((await own.saved()).idleBackground).toEqual({ source: 'dashboard' });
       expect(saved.widgets).toEqual(layout.widgets);
 
       await page.reload();
@@ -754,6 +772,7 @@ test.describe('calm mode idle screen', () => {
       expect(idle.weather!.opacity, 'weather still fades').toBe(0);
       expect(idle.shopping!.opacity, 'shopping still stays').toBe(1);
     } finally {
+      await own.cleanup();
       await page.request.delete(`/api/layouts/${layout.id}`);
     }
   });
@@ -769,6 +788,8 @@ test.describe('calm mode idle screen', () => {
     });
     expect(created.status()).toBe(201);
     const layout = await created.json();
+    // It rests as itself: a timeline of its own, which starts calm (#1266).
+    const own = await ownTimeline(page);
     // Keep the widgets still, so a drifted clock cannot read as moved.
     await page.addInitScript(() => localStorage.setItem('prism-screensaver-drift', 'off'));
     try {
@@ -822,7 +843,8 @@ test.describe('calm mode idle screen', () => {
       const saved = await (await page.request.get(`/api/layouts/${layout.id}`)).json();
       const tick = Object.fromEntries(saved.widgets.map((w: { i: string; showWhenIdle?: boolean }) => [w.i, w.showWhenIdle]));
       expect(tick).toEqual({ clock: false, tasks: true });
-      expect(saved.idleBackground).toEqual({ source: 'dashboard' });
+      // Resting as this dashboard, on its timeline.
+      expect((await own.saved()).idleBackground).toEqual({ source: 'dashboard' });
 
       await page.locator('.widget-cell[data-widget="clock"]').waitFor();
       await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
@@ -831,6 +853,7 @@ test.describe('calm mode idle screen', () => {
       expect(idle.tasks!.opacity, 'tasks now stays').toBe(1);
       expect(idle.clock!.opacity, 'the clock now fades').toBe(0);
     } finally {
+      await own.cleanup();
       await page.request.delete(`/api/layouts/${layout.id}`);
     }
   });
@@ -846,14 +869,16 @@ test.describe('idle background picker', () => {
   test.use({ viewport: { width: 1600, height: 900 } });
   test.setTimeout(90_000);
 
-  async function editIdle(page: Page, place: { lat: number; lon: number }, idleBackground?: unknown) {
+  /** A dashboard to edit, on a timeline of its own resting on `idleBackground` (calm when not given). */
+  async function editIdle(page: Page, place: { lat: number; lon: number }, idleBackground?: IdleBackground) {
     const login = await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } });
     expect(login.ok(), 'precondition: login must succeed').toBe(true);
     const created = await page.request.post('/api/layouts', {
-      data: { name: `Behind it e2e ${Date.now()}`, widgets: [{ i: 'clock', x: 0, y: 0, w: 16, h: 12 }, { i: 'tasks', x: 16, y: 0, w: 16, h: 12 }], ...(idleBackground ? { idleBackground } : {}) },
+      data: { name: `Behind it e2e ${Date.now()}`, widgets: [{ i: 'clock', x: 0, y: 0, w: 16, h: 12 }, { i: 'tasks', x: 16, y: 0, w: 16, h: 12 }] },
     });
     expect(created.status()).toBe(201);
     const layout = await created.json();
+    const own = await ownTimeline(page, idleBackground);
     await page.route('**/api/weather*', async (route) => {
       const response = await route.fetch();
       if (!response.ok()) return route.fulfill({ response });
@@ -862,7 +887,7 @@ test.describe('idle background picker', () => {
     await page.goto(`/d/${layout.slug}`);
     await openEditor(page);
     await openSheet(page, 'day');
-    return layout as { id: string };
+    return { id: layout.id as string, own };
   }
 
   test('resting and night each show on the canvas, an edge moves, and Done saves', async ({ page }) => {
@@ -892,12 +917,14 @@ test.describe('idle background picker', () => {
 
       await done(page).click();
       await expect(page.locator('[data-editor-bar]')).toHaveCount(0);
-      const saved = await (await page.request.get(`/api/layouts/${layout.id}`)).json();
+      // Kept on the timeline (#1266).
+      const saved = await layout.own.saved();
       expect(saved.idleBackground).toEqual({
         day: 'dashboard', night: 'sky', switch: { by: 'sun', duskOffset: 30, dawnOffset: -60 },
       });
     } finally {
       await page.request.delete(`/api/layouts/${layout.id}`);
+      await layout.own.cleanup();
     }
   });
 
@@ -915,9 +942,10 @@ test.describe('idle background picker', () => {
       expect(await offBy('night-end', 6 * 60 + 30)).toBeLessThanOrEqual(1);
       expect(await offBy('night-start', 21 * 60)).toBeLessThanOrEqual(1);
 
-      // Each dot is a touch target, and the stretches fill the line end to end.
+      // Each dot is a target (44px by touch, see timelines.spec), and the
+      // stretches fill the line end to end.
       const dot = (await sheet.locator('[data-day-milestone="night-start"]').boundingBox())!;
-      expect(Math.min(dot.width, dot.height)).toBeGreaterThanOrEqual(44);
+      expect(Math.min(dot.width, dot.height)).toBeGreaterThanOrEqual(30);
       const fill = await sheet.locator('[data-day-line]').evaluate((line) => {
         const l = line.getBoundingClientRect();
         const parts = [...line.querySelectorAll('[data-day-stretch]')].map((e) => e.getBoundingClientRect());
@@ -948,10 +976,11 @@ test.describe('idle background picker', () => {
       await expect(sheet.locator('[data-day-card="resting"]')).toBeVisible();
     } finally {
       await page.request.delete(`/api/layouts/${layout.id}`);
+      await layout.own.cleanup();
     }
   });
 
-  // #1233: In use and Nobody there are two lanes on one time axis, with one
+  // #1233: In use and Idle are two lanes on one time axis, with one
   // marker through both, and a tap on a lane shows that lane at that time.
   test('the two lanes share one time axis: same left and width, night where night is, nothing overlapping', async ({ page }) => {
     const layout = await editIdle(page, { lat: 45, lon: -100 }, { day: 'photos', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } });
@@ -995,7 +1024,7 @@ test.describe('idle background picker', () => {
       expect(Math.abs(late!.left - x(21 * 60))).toBeLessThanOrEqual(1);
       expect(Math.abs(late!.right - x(1440))).toBeLessThanOrEqual(1);
 
-      // Nothing overlaps: In use above Nobody there, each name left of its lane
+      // Nothing overlaps: In use above Idle, each name left of its lane
       // and level with it, whole and at least 14px.
       expect(g.inUse.bottom).toBeLessThanOrEqual(g.nobody.top);
       expect(g.inUseLabel.right).toBeLessThanOrEqual(g.inUse.left);
@@ -1008,27 +1037,31 @@ test.describe('idle background picker', () => {
         expect(l.whole).toBe(true);
         expect(l.px).toBeGreaterThanOrEqual(14);
       }
-      // Each lane is a touch target.
-      expect(Math.min(g.inUse.height, g.nobody.height)).toBeGreaterThanOrEqual(44);
+      // Each lane is a whole target (44px by touch, see timelines.spec).
+      expect(Math.min(g.inUse.height, g.nobody.height)).toBeGreaterThanOrEqual(30);
 
       // In use at 11 pm shows the dashboard, the marker at 11 pm through both
-      // lanes. 11 pm, not 10, keeps the tap clear of the 9 pm dot's 44px target.
+      // lanes. 11 pm, not 10, keeps the tap clear of the 9 pm dot's target.
       const at11 = x(23 * 60);
       await page.mouse.click(at11, g.inUse.top + g.inUse.height / 2);
       await expect(sheet.locator('[data-day-sheet]')).toHaveAttribute('data-day-shows', 'active');
+      // In use opens its card, the dashboard for the rest of the day (#1266);
+      // the sheet grows to hold it, so the lanes are measured again.
+      await expect(sheet.locator('[data-day-card="rest-of-day"]')).toBeVisible();
       const afterInUse = await measure();
       expect(Math.abs(afterInUse.marker!.left + afterInUse.marker!.width / 2 - at11)).toBeLessThanOrEqual(1.5);
-      expect(afterInUse.marker!.top).toBeLessThanOrEqual(g.inUse.top);
-      expect(afterInUse.marker!.bottom).toBeGreaterThanOrEqual(g.nobody.bottom);
+      expect(afterInUse.marker!.top).toBeLessThanOrEqual(afterInUse.inUse.top);
+      expect(afterInUse.marker!.bottom).toBeGreaterThanOrEqual(afterInUse.nobody.bottom);
 
-      // Nobody there at the same time shows night, and the marker stays.
-      await page.mouse.click(at11, g.nobody.top + g.nobody.height / 2);
+      // Idle at the same time shows night, and the marker stays.
+      await page.mouse.click(at11, afterInUse.nobody.top + afterInUse.nobody.height / 2);
       await expect(sheet.locator('[data-day-sheet]')).toHaveAttribute('data-day-shows', 'night');
       await expect(sheet.locator('[data-day-card="night"]')).toBeVisible();
       const afterNobody = await measure();
       expect(Math.abs(afterNobody.marker!.left + afterNobody.marker!.width / 2 - at11)).toBeLessThanOrEqual(1.5);
     } finally {
       await page.request.delete(`/api/layouts/${layout.id}`);
+      await layout.own.cleanup();
     }
   });
 
@@ -1044,18 +1077,22 @@ test.describe('idle background picker', () => {
       await page.getByLabel('Ends: amount').fill('6');
       await expect(page.locator('[data-idle-crossed]')).toContainText('night would end before it starts');
       await expect(done(page)).toBeDisabled();
-      const stored = await (await page.request.get(`/api/layouts/${layout.id}`)).json();
-      expect(stored.idleBackground).toEqual({ source: 'dashboard' });
+      // The timeline keeps a change only once it can be saved (#1266).
+      const stored = await layout.own.saved();
+      expect(stored.idleBackground, 'the crossed night is not kept').not.toEqual({
+        day: 'dashboard', night: 'dashboard', switch: { by: 'sun', duskOffset: 360, dawnOffset: -360 },
+      });
     } finally {
       await page.request.delete(`/api/layouts/${layout.id}`);
+      await layout.own.cleanup();
     }
   });
 });
 
 /**
  * Dim when idle (#691): at night the idle screen darkens behind a black layer
- * that never takes a tap, and a touch lifts it. Night is the dashboard's own
- * rule (#1152), read on the screen's own clock, so the browser is put in a
+ * that never takes a tap, and a touch lifts it. Night is the timeline's own
+ * rule (#1152, #1266), read on the screen's own clock, so the browser is put in a
  * zone west of UTC.
  */
 test.describe('dim when idle', () => {
@@ -1072,26 +1109,25 @@ test.describe('dim when idle', () => {
     });
   }
 
-  /** A dashboard whose night runs 11 pm to 7 am, removed after the test. */
+  /** A dashboard on a timeline whose night runs 11 pm to 7 am, removed after the test. */
   async function withNightDashboard(page: Page, run: (slug: string) => Promise<void>) {
     await verifySettingsPinViaAPI(page, (await getFirstParent(page)).name, PIN);
     const created = await page.request.post('/api/layouts', {
-      data: {
-        name: `Dim e2e ${Date.now()}`,
-        widgets: [{ i: 'clock', x: 0, y: 0, w: 16, h: 12 }],
-        idleBackground: { day: 'photos', night: 'photos', switch: { by: 'clock', from: '23:00', to: '07:00' } },
-      },
+      data: { name: `Dim e2e ${Date.now()}`, widgets: [{ i: 'clock', x: 0, y: 0, w: 16, h: 12 }] },
     });
     expect(created.status()).toBe(201);
     const layout = await created.json();
+    // Night is the timeline's (#1266).
+    const own = await ownTimeline(page, { day: 'photos', night: 'photos', switch: { by: 'clock', from: '23:00', to: '07:00' } });
     try {
       await run(layout.slug);
     } finally {
       await page.request.delete(`/api/layouts/${layout.id}`);
+      await own.cleanup();
     }
   }
 
-  test('darkens the idle screen at night by the dashboard\'s rule, and a touch lifts it', async ({ page }) => {
+  test('darkens the idle screen at night by the timeline\'s rule, and a touch lifts it', async ({ page }) => {
     // 11:30 pm in Chicago, 04:30 UTC: inside 11 pm to 7 am only on the screen's clock.
     await page.clock.setFixedTime(new Date('2026-10-28T04:30:00Z'));
     await withNightDashboard(page, async (slug) => {
@@ -1652,13 +1688,15 @@ test.describe('the upgrade from v1.30.1', () => {
     const login = await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } });
     expect(login.ok(), 'precondition: login must succeed').toBe(true);
     const stamp = Date.now();
-    // Both as the upgrade leaves a v1.30.1 dashboard: over photos, one with
-    // an arrangement saved in the editor, one never saved.
+    // Both as the upgrade leaves a v1.30.1 dashboard: over photos (0054 gives
+    // the first timeline the default dashboard's rest), one with an
+    // arrangement saved in the editor, one never saved.
+    const own = await ownTimeline(page, { source: 'photos' });
     const saved = await (await page.request.post('/api/layouts', {
-      data: { name: `Upgrade saved ${stamp}`, widgets: FIRST_SCREEN_TEMPLATE.widgets, screensaverWidgets: OTHER, idleBackground: { source: 'photos' } },
+      data: { name: `Upgrade saved ${stamp}`, widgets: FIRST_SCREEN_TEMPLATE.widgets, screensaverWidgets: OTHER },
     })).json();
     const plain = await (await page.request.post('/api/layouts', {
-      data: { name: `Upgrade plain ${stamp}`, widgets: FIRST_SCREEN_TEMPLATE.widgets, idleBackground: { source: 'photos' } },
+      data: { name: `Upgrade plain ${stamp}`, widgets: FIRST_SCREEN_TEMPLATE.widgets },
     })).json();
     expect(plain.screensaverWidgets, 'precondition: no arrangement of its own').toBeNull();
 
@@ -1701,6 +1739,7 @@ test.describe('the upgrade from v1.30.1', () => {
       expect(again.ok()).toBe(true);
       expect((await again.json()).screensaverWidgets).toEqual(OTHER);
     } finally {
+      await own.cleanup();
       await page.request.delete(`/api/layouts/${saved.id}`);
       await page.request.delete(`/api/layouts/${plain.id}`);
     }

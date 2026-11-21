@@ -2,7 +2,7 @@
 
 import { tileAlign, type AlignSetting } from '@/lib/layout/tileAlign';
 import { startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState, ViewTransition } from 'react';
-import { SCHEDULE_TRANSITION } from '@/lib/displays/screenSchedule';
+import { SCHEDULE_TRANSITION } from '@/lib/timeline';
 import { WidgetBgOverrideProvider, WidgetEmptyReportContext } from '@/components/widgets/WidgetContainer';
 import { getWidgetStyle, getWidgetContentStyle, getTextColorClass, getWidgetOutlineClass } from './gridWidgetStyles';
 import { useSquareCells } from './useSquareCells';

@@ -3,27 +3,31 @@ import { DashboardClient } from './DashboardClient';
 import { db } from '@/lib/db/client';
 import { currentDisplay } from '@/lib/auth/displayIdentity';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
-import { screenDashboardAt } from '@/lib/displays/screenSchedule';
+import { timelineDashboardAt } from '@/lib/timeline';
+import { timelineOf } from '@/lib/services/timelines';
 import { pageZoomVars } from '@/lib/utils/zoomVars';
 
 /**
- * A named screen with its own dashboard set (#690) opens on that one instead
- * of the household default, or on the one its schedule shows right now
- * (#692). Null when it has none, or it no longer exists.
+ * The dashboard the home page opens on (#1266): what this screen's timeline
+ * shows right now, or the first timeline's on a device nobody named. Its slug,
+ * or null when that is the default.
  */
-async function screenDashboardSlug(): Promise<string | null> {
+async function timelineDashboardSlug(): Promise<{ named: boolean; slug: string | null }> {
+  let named = false;
   try {
     const screen = await currentDisplay();
-    if (!screen) return null;
+    named = screen !== null;
+    const timeline = await timelineOf(screen);
+    if (!timeline) return { named, slug: null };
     const all = await db.query.layouts.findMany({ columns: { id: true, slug: true, isDefault: true } });
-    const id = screenDashboardAt(
-      screen, Date.now(), await getHouseholdTimezone(),
+    const id = timelineDashboardAt(
+      timeline, Date.now(), await getHouseholdTimezone(),
       (d) => all.some((l) => l.id === d),
     );
     const layout = all.find((l) => l.id === id);
-    return layout && !layout.isDefault ? layout.slug : null;
+    return { named, slug: layout && !layout.isDefault ? layout.slug : null };
   } catch {
-    return null;
+    return { named, slug: null };
   }
 }
 
@@ -44,9 +48,14 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   // A phone editing another screen opens that screen's dashboard here with
   // ?screen= (#1153); it chose the dashboard already, so this browser's own
   // screen must not redirect it.
-  const { screen } = await searchParams;
-  const slug = screen ? null : await screenDashboardSlug();
-  if (slug) redirect(`/d/${slug}`);
+  const { screen, edit } = await searchParams;
+  // Opened to edit a dashboard, the page shows that one.
+  const now = screen || edit ? { named: false, slug: null } : await timelineDashboardSlug();
+  // A named screen follows its timeline at any address, so it can go to the
+  // dashboard's own. A device nobody named follows it only here, so it stays
+  // at this address and opens on that dashboard in place.
+  if (now.named && now.slug) redirect(`/d/${now.slug}`);
+  const startSlug = now.named ? undefined : now.slug ?? undefined;
 
   let fontScale = 100;
   try {
@@ -77,7 +86,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
             : undefined
         }
       >
-        <DashboardClient />
+        <DashboardClient startSlug={startSlug} />
       </div>
     </main>
   );

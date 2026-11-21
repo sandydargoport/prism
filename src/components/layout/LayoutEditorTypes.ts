@@ -1,5 +1,6 @@
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import type { IdleBackground } from '@/lib/idleBackground';
+import type { Timeline } from '@/lib/timeline';
 import type { EditTab, IdleHalf } from '@/components/dashboard/useDashboardLayout';
 import type { IdleSwitchCheck } from './useIdleSwitchCheck';
 
@@ -54,6 +55,13 @@ export interface LayoutEditorProps {
   onIdleHalfChange?: (half: IdleHalf) => void;
   /** Tonight's times and whether the offsets cross, for a day and night pair. */
   idleCheck?: IdleSwitchCheck;
+  /** The household's timelines (#1266), and the one Through the day shows and edits. */
+  timelines?: Timeline[];
+  timelineId?: string;
+  /** Look at another timeline; for a named screen, it then follows that one. */
+  onTimelineChange?: (id: string) => void;
+  /** The named screen being edited, or null for a dashboard on its own. */
+  screenId?: string | null;
   screenGuideOrientation?: 'landscape' | 'portrait';
   onScreenGuideOrientationChange?: (o: 'landscape' | 'portrait') => void;
   enabledSizes?: string[];

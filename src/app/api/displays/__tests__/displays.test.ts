@@ -73,7 +73,7 @@ jest.mock('@/lib/db/client', () => ({
 }));
 jest.mock('@/lib/db/schema', () => ({
   displays: { id: 'id', name: 'name', lastSeenAt: 'last_seen_at', screenWidth: 'screen_width', screenHeight: 'screen_height' },
-  layouts: { id: 'id' },
+  timelines: { id: 'id' },
 }));
 jest.mock('@/lib/displays/displaySettingsStore', () => ({
   applySettingChanges: (...a: unknown[]) => mockApply(...a),
@@ -218,7 +218,7 @@ describe('PATCH and DELETE /api/displays/:id', () => {
   });
 
   it('changes another screen\'s settings from this device', async () => {
-    mockUpdateReturning.mockReturnValue([{ id: HALL, name: 'Hall', dashboardId: null, settings: {} }]);
+    mockUpdateReturning.mockReturnValue([{ id: HALL, name: 'Hall', timelineId: null, settings: {} }]);
     mockApply.mockResolvedValue({ settings: { 'prism-perf-mode': 'true' }, settingsUpdatedAt: new Date() });
     const res = await PATCH(
       json(`/api/displays/${HALL}`, 'PATCH', { settings: { 'prism-perf-mode': 'true' } }),
@@ -235,23 +235,24 @@ describe('PATCH and DELETE /api/displays/:id', () => {
     expect(mockApply).not.toHaveBeenCalled();
   });
 
-  it('sets the screen\'s dashboard and moves its settings timestamp so it notices', async () => {
-    const DASH = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-    mockSelectWhere.mockReturnValue([{ id: DASH }]);
-    mockUpdateReturning.mockReturnValue([{ id: HALL, name: 'Hall', dashboardId: DASH, settings: {} }]);
-    const res = await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { dashboardId: DASH }), params(HALL));
+  it('sets the screen\'s timeline and moves its settings timestamp so it notices (#1266)', async () => {
+    const LINE = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    mockSelectWhere.mockReturnValue([{ id: LINE }]);
+    mockUpdateReturning.mockReturnValue([{ id: HALL, name: 'Hall', timelineId: LINE, settings: {} }]);
+    const res = await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { timelineId: LINE }), params(HALL));
     expect(res.status).toBe(200);
+    expect((await res.json()).display.timelineId).toBe(LINE);
     expect(mockUpdateSet).toHaveBeenCalledWith(expect.objectContaining({
-      dashboardId: DASH,
+      timelineId: LINE,
       settingsUpdatedAt: expect.any(Date),
     }));
   });
 
-  it('refuses a dashboard that does not exist, and an empty change', async () => {
+  it('refuses a timeline that does not exist, and an empty change', async () => {
     mockSelectWhere.mockReturnValue([]);
-    const DASH = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-    expect((await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { dashboardId: DASH }), params(HALL))).status).toBe(400);
-    expect((await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { dashboardId: 'x' }), params(HALL))).status).toBe(400);
+    const LINE = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    expect((await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { timelineId: LINE }), params(HALL))).status).toBe(400);
+    expect((await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { timelineId: 'x' }), params(HALL))).status).toBe(400);
     expect((await PATCH(json(`/api/displays/${HALL}`, 'PATCH', {}), params(HALL))).status).toBe(400);
     expect(mockUpdateSet).not.toHaveBeenCalled();
   });

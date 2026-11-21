@@ -1,8 +1,8 @@
 /**
  * The Through the day line (#1170): night and resting across one day on the
- * wall clock, where night starts and ends, and the Interludes that day.
+ * wall clock, where night starts and ends, and the dashboards placed on it.
  */
-import { dayLine, hhmm, interludeSpans, placeBlocks } from '../dayLine';
+import { dayLine, hhmm, placementSpans, placeBlocks } from '../dayLine';
 
 const day = new Date(2026, 10, 12); // a Thursday
 
@@ -37,17 +37,28 @@ describe('dayLine', () => {
   });
 });
 
-describe('interludeSpans', () => {
-  const rules = [
+describe('placementSpans', () => {
+  const placements = [
     { days: [1, 2, 3, 4, 5], from: '07:15', to: '08:00', dashboardId: 'bus' },
     { days: [3], from: '22:00', to: '01:00', dashboardId: 'late' },
     { days: [6], from: '10:00', to: '10:00', dashboardId: 'all' },
   ];
+  const at = (index: number, from: number, to: number, partial: boolean) => ({ index, from, to, partial });
 
-  it('places each Interlude on its days, with the morning of one from the night before', () => {
-    expect(interludeSpans(rules, 4)).toEqual([{ index: 0, from: 435, to: 480 }, { index: 1, from: 0, to: 60 }]);
-    expect(interludeSpans(rules, 3)).toEqual([{ index: 0, from: 435, to: 480 }, { index: 1, from: 1320, to: 1440 }]);
-    expect(interludeSpans(rules, 6)).toEqual([{ index: 2, from: 0, to: 1440 }]);
+  it('on one day: each placement on its days, with the morning of one from the night before', () => {
+    expect(placementSpans(placements, [4])).toEqual([at(0, 435, 480, false), at(1, 0, 60, false)]);
+    expect(placementSpans(placements, [3])).toEqual([at(0, 435, 480, false), at(1, 1320, 1440, false)]);
+    expect(placementSpans(placements, [6])).toEqual([at(2, 0, 1440, false)]);
+  });
+
+  it('on a set of days, a placement on all of them is one block, and one on some is marked', () => {
+    // Weekdays: the bus placement is one block, not five; the late one is on
+    // Wednesday only (and Thursday morning).
+    expect(placementSpans(placements, [1, 2, 3, 4, 5])).toEqual([
+      at(0, 435, 480, false), at(1, 0, 60, true), at(1, 1320, 1440, true),
+    ]);
+    // Saturday and Sunday: no bus.
+    expect(placementSpans(placements, [0, 6])).toEqual([at(2, 0, 1440, true)]);
   });
 
   it('writes a minute as a clock time, wrapping past midnight', () => {

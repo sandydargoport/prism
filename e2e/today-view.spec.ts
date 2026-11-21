@@ -3,6 +3,7 @@ import { editHere } from './helpers/editHere';
 import { getSeededParentId } from './helpers/auth';
 import { TODAY_TEMPLATE } from '../src/lib/constants/layoutTemplates';
 import { deleteLayout } from './helpers/cleanup';
+import { ownTimeline } from './helpers/timeline';
 
 /** The Today parts with the arc switched on (#1030: it is an option, off by default). */
 const ARC_WIDGETS = TODAY_TEMPLATE.widgets.map((w) => (w.i === 'calendar' ? { ...w, settings: { ...(w.settings ?? {}), arc: true } } : w));
@@ -374,6 +375,8 @@ test.describe('the Today view', () => {
       made.push((await r.json()).id);
     }
     const layout = await (await page.request.post('/api/layouts', { data: { name: `Idle e2e ${Date.now()}`, widgets: ARC_WIDGETS, view: 'today' } })).json();
+    // Resting as itself, on a timeline of its own (#1266).
+    const own = await ownTimeline(page);
     try {
       await page.route('**/api/weather*', (route) => route.fulfill({ json: WEATHER }));
       await page.goto(`/d/${layout.slug}`);
@@ -393,6 +396,7 @@ test.describe('the Today view', () => {
       await page.waitForTimeout(800);
       await expect(page.locator('[data-event-sheet]')).toHaveCount(0);
     } finally {
+      await own.cleanup();
       await deleteLayout(page, layout.id);
       for (const id of made) await page.request.delete(`/api/events/${id}`);
     }
@@ -402,6 +406,8 @@ test.describe('the Today view', () => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await login(page);
     const layout = await (await page.request.post('/api/layouts', { data: { name: `Drift e2e ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
+    // Resting as itself, on a timeline of its own (#1266).
+    const own = await ownTimeline(page);
     try {
       await page.route('**/api/weather*', (route) => route.fulfill({ json: WEATHER }));
       await page.goto(`/d/${layout.slug}`);
@@ -420,6 +426,7 @@ test.describe('the Today view', () => {
       expect(Math.abs(b - a), 'moved in 3 s').toBeGreaterThan(0.05);
       expect(Math.abs(b), 'at most 4px').toBeLessThanOrEqual(4.01);
     } finally {
+      await own.cleanup();
       await deleteLayout(page, layout.id);
     }
   });
@@ -430,10 +437,10 @@ test.describe('the Today view', () => {
     const at = (h: number, m = 0) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m);
     await page.clock.setFixedTime(at(19, 0));
     await login(page);
-    // Night by this dashboard's own rule (#1152), so the test does not hang on
-    // where the sun sets at the season it runs in.
-    const idleBackground = { day: 'dashboard', night: 'dashboard', switch: { by: 'clock', from: '18:00', to: '06:00' } };
-    const layout = await (await page.request.post('/api/layouts', { data: { name: `Night e2e ${Date.now()}`, widgets: ARC_WIDGETS, view: 'today', idleBackground } })).json();
+    // Night by the timeline's own rule (#1152, #1266), so the test does not
+    // hang on where the sun sets at the season it runs in.
+    const own = await ownTimeline(page, { day: 'dashboard', night: 'dashboard', switch: { by: 'clock', from: '18:00', to: '06:00' } });
+    const layout = await (await page.request.post('/api/layouts', { data: { name: `Night e2e ${Date.now()}`, widgets: ARC_WIDGETS, view: 'today' } })).json();
     try {
       const tomorrow = (h: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, h);
       await page.route('**/api/weather*', (route) => route.fulfill({ json: { ...WEATHER, sunrise: at(6, 30).toISOString(), sunset: at(16, 40).toISOString(), moonrise: at(17, 30).toISOString(), moonset: tomorrow(9).toISOString(), moonPhase: 0.3 } }));
@@ -477,6 +484,7 @@ test.describe('the Today view', () => {
         expect(overlap, '"Nothing else today" clear of the moon').toBe(false);
       }
     } finally {
+      await own.cleanup();
       await deleteLayout(page, layout.id);
     }
   });
@@ -671,12 +679,14 @@ test.describe('the Today view', () => {
   });
 
   // #1152: Through the day shows the screen in each state at once.
-  test('Through the day: tapping Nobody there at night shows the night look on Today, and In use brings the day back', async ({ page }) => {
+  test('Through the day: tapping Idle at night shows the night look on Today, and In use brings the day back', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     const d = new Date();
     await page.clock.setFixedTime(new Date(d.getFullYear(), d.getMonth(), d.getDate(), 10));
     await login(page);
     const layout = await (await page.request.post('/api/layouts', { data: { name: `Day e2e ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
+    // Resting as itself, on a timeline of its own (#1266).
+    const own = await ownTimeline(page);
     try {
       await page.route('**/api/weather*', (route) => route.fulfill({ json: WEATHER }));
       await page.goto(`/d/${layout.slug}`);
@@ -691,7 +701,7 @@ test.describe('the Today view', () => {
       const sheet = page.locator('[data-editor-sheet="day"]');
       await expect(sheet).toBeVisible();
 
-      // Nobody there, tapped where night is: warm ink and the veil, at once (#1233).
+      // Idle, tapped where night is: warm ink and the veil, at once (#1233).
       await sheet.locator('[data-day-stretch="night"]').last().click();
       await expect(scene).toHaveAttribute('data-today-night', 'true');
       await expect(page.locator('[data-today-veil]')).toHaveCount(1);
@@ -714,12 +724,12 @@ test.describe('the Today view', () => {
       await expect(off).toHaveCount(0);
       await expect(page.locator('[data-today-shade]')).toHaveCount(1);
 
-      // Done keeps the night look with the dashboard.
+      // The night look is kept on the timeline (#1266).
       await page.locator('[data-editor-done]').click();
       await expect(page.locator('[data-editor-bar]')).toHaveCount(0);
-      const saved = await (await page.request.get(`/api/layouts/${layout.id}`)).json();
-      expect(saved.idleBackground).toEqual({ day: 'dashboard', night: 'off', switch: { by: 'sun', duskOffset: 30, dawnOffset: -30 } });
+      expect((await own.saved()).idleBackground).toEqual({ day: 'dashboard', night: 'off', switch: { by: 'sun', duskOffset: 30, dawnOffset: -30 } });
     } finally {
+      await own.cleanup();
       await deleteLayout(page, layout.id);
     }
   });

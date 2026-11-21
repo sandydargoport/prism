@@ -17,6 +17,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 import type { IdleBackground } from '../idleBackground';
+import type { Placement } from '../timeline';
 
 
 export const users = pgTable('users', {
@@ -967,13 +968,9 @@ export const layouts = pgTable('layouts', {
   // Per-dashboard screensaver layout (null = use default template)
   screensaverWidgets: jsonb('screensaver_widgets'),
 
-  // What the display shows behind it when idle (#782): this dashboard itself
-  // with only some widgets left showing, or the screensaver layout above over
-  // photos or the night sky, or one by day and another after dark. See
-  // src/lib/idleBackground.ts. It replaced `screensaver_mode` (calm or
-  // separate), which 0039 converted and which the database still holds,
-  // unread, so a rollback finds it.
-  idleBackground: jsonb('idle_background').$type<IdleBackground>().default({ source: 'dashboard' }).notNull(),
+  // How the screen rests and what it does at night left the dashboard for the
+  // timeline (#1266). The database still holds `idle_background` (and
+  // `screensaver_mode` before it), unread, so a rollback finds them.
 
   // Per-dashboard screen orientation
   orientation: varchar('orientation', { length: 20 }).default('landscape'),
@@ -1016,6 +1013,25 @@ export const apiTokens = pgTable('api_tokens', {
 }));
 
 /**
+ * A named plan for a screen's day (#1266): which dashboard shows when, and how
+ * the screen rests and what it does at night. See src/lib/timeline.ts. There
+ * is always at least one; the first (lowest position) is the one every screen
+ * that picked no other follows, devices nobody named included.
+ */
+export const timelines = pgTable('timelines', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: varchar('name', { length: 60 }).notNull(),
+  position: integer('position').default(0).notNull(),
+  // The dashboard for the rest of the day; null is the household default.
+  dashboardId: uuid('dashboard_id').references(() => layouts.id, { onDelete: 'set null' }),
+  // Dashboards placed on some days at some hours, in the order that wins an overlap.
+  placements: jsonb('placements').$type<Placement[]>().default([]).notNull(),
+  idleBackground: jsonb('idle_background').$type<IdleBackground>().default({ source: 'dashboard' }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+/**
  * A screen a parent has named (#690). The browser holds a signed cookie with
  * the row's id; a browser nobody named has no row and behaves as before.
  */
@@ -1029,8 +1045,10 @@ export const displays = pgTable('displays', {
   settings: jsonb('settings').$type<Record<string, string>>().default({}).notNull(),
   // When `settings` last changed, so the screen knows to pick up a remote edit.
   settingsUpdatedAt: timestamp('settings_updated_at'),
-  // The dashboard this screen opens on; null is the household default.
-  dashboardId: uuid('dashboard_id').references(() => layouts.id, { onDelete: 'set null' }),
+  // The timeline it follows (#1266); null, or a deleted one, is the
+  // household's first. Which dashboard it shows comes from there; the
+  // database still holds the old `dashboard_id`, unread.
+  timelineId: uuid('timeline_id').references(() => timelines.id, { onDelete: 'set null' }),
   // The size the screen last reported, in CSS pixels, so a phone editing it
   // shows its dashboard at the same size and shape (#1153).
   screenWidth: integer('screen_width'),

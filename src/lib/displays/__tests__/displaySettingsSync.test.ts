@@ -6,20 +6,20 @@
  * screen, takes what was changed elsewhere, and says so, against a stand-in
  * server that merges the way the real route does.
  */
-import { loadBase, hasLocalChanges, syncScreenSettings, resetSyncBase } from '../displaySettingsSync';
+import { loadBase, hasLocalChanges, syncScreenSettings, resetSyncBase, setBaseTimeline } from '../displaySettingsSync';
 import { mergeSettings, type ScreenSettings } from '../screenSettings';
 
 const KITCHEN = '22222222-2222-4222-8222-222222222222';
 const HALL = '33333333-3333-4333-8333-333333333333';
 
 // The stand-in server: one screen's row.
-let row: { id: string; dashboardId: string | null; settings: ScreenSettings; updatedAt: string | null };
+let row: { id: string; timelineId: string | null; settings: ScreenSettings; updatedAt: string | null };
 let requests: Array<{ changes: Record<string, string | null>; baseDisplayId: string | null }>;
 let status = 200;
 
 beforeEach(() => {
   localStorage.clear();
-  row = { id: KITCHEN, dashboardId: null, settings: {}, updatedAt: null };
+  row = { id: KITCHEN, timelineId: null, settings: {}, updatedAt: null };
   requests = [];
   status = 200;
   global.fetch = jest.fn(async (_url: string, init?: RequestInit) => {
@@ -35,7 +35,7 @@ beforeEach(() => {
     return {
       ok: true,
       status: 200,
-      json: async () => ({ displayId: row.id, dashboardId: row.dashboardId, settings: row.settings, settingsUpdatedAt: row.updatedAt }),
+      json: async () => ({ displayId: row.id, timelineId: row.timelineId, settings: row.settings, settingsUpdatedAt: row.updatedAt }),
     } as Response;
   }) as jest.Mock;
 });
@@ -52,7 +52,7 @@ describe('syncScreenSettings', () => {
       baseDisplayId: null,
     });
     expect(row.settings).toEqual({ 'prism-screensaver-timeout': '300', 'prism-perf-mode': 'true' });
-    expect(result).toEqual({ applied: [], dashboardChanged: false });
+    expect(result).toEqual({ applied: [], timelineChanged: false });
     expect(loadBase()?.displayId).toBe(KITCHEN);
     expect(hasLocalChanges()).toBe(false);
   });
@@ -115,19 +115,27 @@ describe('syncScreenSettings', () => {
     expect(localStorage.getItem('prism-screensaver-timeout')).toBe('600');
   });
 
-  it('notices a dashboard changed elsewhere, but not on the first sync', async () => {
-    row.dashboardId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-    expect((await syncScreenSettings()).dashboardChanged).toBe(false);
-    row.dashboardId = null;
-    expect((await syncScreenSettings()).dashboardChanged).toBe(true);
-    expect((await syncScreenSettings()).dashboardChanged).toBe(false);
+  it('notices another timeline picked elsewhere, but not on the first sync (#1266)', async () => {
+    row.timelineId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    expect((await syncScreenSettings()).timelineChanged).toBe(false);
+    row.timelineId = null;
+    expect((await syncScreenSettings()).timelineChanged).toBe(true);
+    expect((await syncScreenSettings()).timelineChanged).toBe(false);
+  });
+
+  it('a timeline picked here is no change to reload for', async () => {
+    await syncScreenSettings();
+    row.timelineId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    setBaseTimeline(row.timelineId);
+    expect((await syncScreenSettings()).timelineChanged).toBe(false);
+    expect(loadBase()?.timelineId).toBe(row.timelineId);
   });
 
   it('forgets its base when the screen no longer exists', async () => {
     await syncScreenSettings();
     expect(loadBase()).not.toBeNull();
     status = 404;
-    expect(await syncScreenSettings()).toEqual({ applied: [], dashboardChanged: false });
+    expect(await syncScreenSettings()).toEqual({ applied: [], timelineChanged: false });
     expect(loadBase()).toBeNull();
   });
 

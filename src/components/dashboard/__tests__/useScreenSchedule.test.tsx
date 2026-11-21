@@ -2,10 +2,11 @@
  * @jest-environment jsdom
  */
 /**
- * A named screen following its time-of-day rules while it stays on (#692):
- * which dashboard it shows on opening, when someone picks another by hand, and
- * when the layout is being edited. The change waiting for an untouched screen,
- * and the morph, are measured in the browser (e2e/display-registry.spec.ts).
+ * A screen following its timeline while it stays on (#692, #1266): which
+ * dashboard it shows on opening, when someone picks another by hand, when the
+ * layout is being edited, when the timeline is changed from another device,
+ * and where a device nobody named follows it. The change waiting for an untouched screen, and the morph,
+ * are measured in the browser (e2e/display-registry.spec.ts).
  */
 import * as React from 'react';
 import { act, renderHook } from '@testing-library/react';
@@ -20,6 +21,16 @@ let check: () => void = () => {};
 jest.mock('@/lib/hooks/useVisibilityPolling', () => ({
   useVisibilityPolling: (callback: () => void) => { check = callback; },
 }));
+
+// The timeline this screen follows; a test may change it, as another device would.
+let mockTimeline: import('@/lib/timeline').Timeline;
+let mockLoaded = true;
+jest.mock('@/lib/hooks/useTimelines', () => ({
+  useDeviceTimeline: () => ({ timeline: mockLoaded ? mockTimeline : null, timelines: mockLoaded ? [mockTimeline] : [], loaded: mockLoaded }),
+}));
+// The editor's frame, when a test puts the page in one.
+let mockHost: object | null = null;
+jest.mock('@/lib/displays/remoteEdit', () => ({ remoteEditHost: () => mockHost }));
 
 const HOME = '11111111-1111-4111-8111-111111111111';
 const MORNING = '22222222-2222-4222-8222-222222222222';
@@ -43,11 +54,15 @@ beforeEach(() => {
     ({ useScreenSchedule } = require('../useScreenSchedule'));
   });
   jest.useFakeTimers();
+  mockLoaded = true;
+  mockHost = null;
+  window.history.replaceState(null, '', '/');
   localStorage.clear();
-  localStorage.setItem('prism:display-sync-base', JSON.stringify({ displayId: 'screen', dashboardId: null, settings: {}, settingsUpdatedAt: null }));
-  localStorage.setItem('prism-screen-schedule', JSON.stringify([
-    { days: [1, 2, 3, 4, 5], from: '07:00', to: '08:00', dashboardId: MORNING },
-  ]));
+  localStorage.setItem('prism:display-sync-base', JSON.stringify({ displayId: 'screen', timelineId: null, settings: {}, settingsUpdatedAt: null }));
+  mockTimeline = {
+    id: 'main', name: 'Main', position: 0, dashboardId: null, idleBackground: { source: 'dashboard' },
+    placements: [{ days: [1, 2, 3, 4, 5], from: '07:00', to: '08:00', dashboardId: MORNING }],
+  };
 });
 afterEach(() => jest.useRealTimers());
 
@@ -81,7 +96,7 @@ describe('useScreenSchedule', () => {
     expect(result.current.slug).toBeUndefined();
   });
 
-  it('an Interlude switches a screen on Today too, at its start (#1152)', () => {
+  it('a placement switches a screen on Today too, at its start (#1152)', () => {
     const today = [layout(HOME, null, { view: 'today' } as Partial<Layout>), ...LAYOUTS.slice(1)];
     jest.setSystemTime(at('06:59'));
     const { result } = renderHook(() => useScreenSchedule({ routeSlug: undefined, layouts: today, loading: false, editing: { current: false } }));
@@ -137,9 +152,66 @@ describe('useScreenSchedule', () => {
     expect(result.current.slug).toBe('morning');
   });
 
-  it('a browser that is not a named screen ignores a leftover schedule', () => {
-    localStorage.removeItem('prism:display-sync-base');
-    const { result } = open(undefined, '07:10');
+  describe('a device nobody named', () => {
+    beforeEach(() => localStorage.removeItem('prism:display-sync-base'));
+
+    it('follows the first timeline on the home page, placements too', () => {
+      const { result } = open(undefined, '07:10');
+      expect(result.current.slug).toBe('morning');
+      tick('08:00');
+      expect(result.current.slug).toBeUndefined();
+      tick('07:00');
+      expect(result.current.slug).toBe('morning');
+    });
+
+    it('keeps a dashboard opened at its own address', () => {
+      const { result } = open('evening', '07:10');
+      expect(result.current.slug).toBe('evening');
+      tick('07:30');
+      expect(result.current.slug).toBe('evening');
+    });
+
+    it('opens on what the server found, and keeps it once the timeline is in', () => {
+      mockLoaded = false;
+      jest.setSystemTime(at('07:10'));
+      const { result, rerender } = renderHook(() => useScreenSchedule({
+        routeSlug: undefined, startSlug: 'morning', layouts: LAYOUTS, loading: false, editing: { current: false },
+      }));
+      expect(result.current.slug).toBe('morning');
+      mockLoaded = true;
+      rerender();
+      expect(result.current.slug).toBe('morning');
+    });
+
+    it('does not follow it in the editor, framed or opened to edit', () => {
+      window.history.replaceState(null, '', '/?edit=1');
+      expect(open(undefined, '07:10').result.current.slug).toBeUndefined();
+      window.history.replaceState(null, '', '/');
+      mockHost = { displayId: null };
+      expect(open(undefined, '07:10').result.current.slug).toBeUndefined();
+    });
+  });
+
+  it('follows its timeline\'s dashboard for the rest of the day', () => {
+    mockTimeline.dashboardId = EVENING;
+    const { result } = open(undefined, '12:00');
+    expect(result.current.slug).toBe('evening');
+    tick('07:00');
+    expect(result.current.slug).toBe('morning');
+  });
+
+  it('a change to its timeline made elsewhere shows without a reload', () => {
+    const { result, rerender } = open(undefined, '12:00');
     expect(result.current.slug).toBeUndefined();
+    // Another device sets the rest of the day to Evening; the list comes in again.
+    mockTimeline = { ...mockTimeline, dashboardId: EVENING };
+    rerender({ slug: undefined });
+    tick('12:01');
+    expect(result.current.slug).toBe('evening');
+    // And places Morning over noon.
+    mockTimeline = { ...mockTimeline, placements: [{ days: [1], from: '12:00', to: '13:00', dashboardId: MORNING }] };
+    rerender({ slug: undefined });
+    tick('12:02');
+    expect(result.current.slug).toBe('morning');
   });
 });
