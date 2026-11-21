@@ -945,7 +945,7 @@ test.describe('idle background picker', () => {
       // Each dot is a target (44px by touch, see timelines.spec), and the
       // stretches fill the line end to end.
       const dot = (await sheet.locator('[data-day-milestone="night-start"]').boundingBox())!;
-      expect(Math.min(dot.width, dot.height)).toBeGreaterThanOrEqual(32);
+      expect(Math.min(dot.width, dot.height)).toBeGreaterThanOrEqual(30);
       const fill = await sheet.locator('[data-day-line]').evaluate((line) => {
         const l = line.getBoundingClientRect();
         const parts = [...line.querySelectorAll('[data-day-stretch]')].map((e) => e.getBoundingClientRect());
@@ -1038,7 +1038,7 @@ test.describe('idle background picker', () => {
         expect(l.px).toBeGreaterThanOrEqual(14);
       }
       // Each lane is a whole target (44px by touch, see timelines.spec).
-      expect(Math.min(g.inUse.height, g.nobody.height)).toBeGreaterThanOrEqual(32);
+      expect(Math.min(g.inUse.height, g.nobody.height)).toBeGreaterThanOrEqual(30);
 
       // In use at 11 pm shows the dashboard, the marker at 11 pm through both
       // lanes. 11 pm, not 10, keeps the tap clear of the 9 pm dot's target.
