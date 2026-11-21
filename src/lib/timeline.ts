@@ -222,3 +222,25 @@ export function daysInWords(days: number[]): string {
   if (set === WEEKEND.join(',')) return 'Weekend';
   return [...new Set(days)].sort().map((d) => DAY_NAMES[d]).join(', ');
 }
+
+/** Monday first, as a week is read. */
+const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+/**
+ * A set of days as days, short and Monday first: "Mon–Fri", "Sat, Sun",
+ * "Mon, Wed, Fri". Three or more days in a row are a range. Never a word like
+ * "Weekend", which reads as a name under a dashboard that is called that too.
+ */
+export function daysShort(days: number[]): string {
+  const on = WEEK_ORDER.filter((d) => days.includes(d));
+  if (on.length === 7) return 'Every day';
+  const runs: number[][] = [];
+  for (const d of on) {
+    const run = runs[runs.length - 1];
+    if (run && WEEK_ORDER.indexOf(d) === WEEK_ORDER.indexOf(run[run.length - 1]!) + 1) run.push(d);
+    else runs.push([d]);
+  }
+  return runs
+    .map((r) => (r.length >= 3 ? `${DAY_NAMES[r[0]!]}–${DAY_NAMES[r[r.length - 1]!]}` : r.map((d) => DAY_NAMES[d]).join(', ')))
+    .join(', ');
+}

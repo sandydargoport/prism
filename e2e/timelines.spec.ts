@@ -88,6 +88,36 @@ test.describe('timelines (#1266)', () => {
         await expect(dayChip(page, day)).toHaveAttribute('aria-pressed', 'true');
         await expect(blocks(page), `on ${day}`).toHaveCount(1);
       }
+
+      // Every day: the block is on some of the days shown, so it says which,
+      // as days, in dark words that can be read on its light fill.
+      await sheet.locator('[data-day-preset="Every day"]').click();
+      await expect(blocks(page).first()).toHaveAttribute('data-partial', 'true');
+      await expect(blocks(page).first().locator('[data-placement-days]')).toHaveText('Mon–Fri');
+      const contrast = await blocks(page).first().evaluate((block) => {
+        // Colours read through a 1px canvas, which takes any CSS colour, with
+        // each background under the block painted from the page up.
+        const ctx = document.createElement('canvas').getContext('2d', { willReadFrequently: true })!;
+        ctx.canvas.width = 1; ctx.canvas.height = 1;
+        const under: string[] = [];
+        for (let e: Element | null = block; e; e = e.parentElement) under.unshift(getComputedStyle(e).backgroundColor);
+        const paint = (top?: string) => {
+          ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, 1, 1);
+          for (const c of under) { ctx.fillStyle = c; ctx.fillRect(0, 0, 1, 1); }
+          if (top) { ctx.fillStyle = top; ctx.fillRect(0, 0, 1, 1); }
+          const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+          const f = (v: number) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+          return 0.2126 * f(r!) + 0.7152 * f(g!) + 0.0722 * f(b!);
+        };
+        const ratio = (el: Element) => {
+          const bg = paint();
+          const text = paint(getComputedStyle(el).color);
+          return (Math.max(bg, text) + 0.05) / (Math.min(bg, text) + 0.05);
+        };
+        return { name: ratio(block.querySelector('[data-placement-name]')!), days: ratio(block.querySelector('[data-placement-days]')!) };
+      });
+      expect(contrast.name, 'the name on a some-days block').toBeGreaterThanOrEqual(4.5);
+      expect(contrast.days, 'the days on a some-days block').toBeGreaterThanOrEqual(4.5);
     } finally {
       await page.request.delete(`/api/timelines/${own.id}`);
       await page.request.delete(`/api/layouts/${bus.id}`);
@@ -109,7 +139,11 @@ test.describe('timelines (#1266)', () => {
         const sheet = page.locator('[data-editor-sheet="day"]');
         await expect(sheet.locator('[data-day-lane="nobody"]')).toBeVisible();
         const box = async (selector: string) => (await sheet.locator(selector).first().boundingBox())!;
-        return {
+        // The words on each kind of control: presets, days, + Dashboard, a
+        // timeline action, More.
+        const fonts = await sheet.evaluate((el) => ['[data-day-preset="Weekdays"]', '[data-day-chip="1"]', '[data-placement-add]', '[data-timeline-new]', '[data-day-more]']
+          .map((s) => `${s} ${getComputedStyle(el.querySelector(s)!).fontSize}`));
+        return { fonts, box: {
           preset: await box('[data-day-preset="Weekdays"]'),
           day: await box('[data-day-chip="1"]'),
           add: await box('[data-placement-add]'),
@@ -119,7 +153,7 @@ test.describe('timelines (#1266)', () => {
           nobody: await box('[data-day-lane="nobody"]'),
           dot: await box('[data-day-milestone]'),
           tab: (await page.locator('[data-editor-open="day"]').boundingBox())!,
-        };
+        } };
       } finally {
         await page.request.delete(`/api/layouts/${board.id}`);
         await context.close();
@@ -127,8 +161,10 @@ test.describe('timelines (#1266)', () => {
     };
 
     // A mouse: controls 28 to 36px, so the panel does not outweigh the canvas,
-    // and the day chips and + Dashboard share one row.
-    const mouse = await measure(false);
+    // the day chips and + Dashboard share one row, and every control's words
+    // are one size (the day presets were larger than the rest).
+    const { box: mouse, fonts } = await measure(false);
+    expect(new Set(fonts.map((f) => f.split(' ').pop())).size, fonts.join('; ')).toBe(1);
     for (const [name, b] of Object.entries(mouse)) {
       if (name === 'tab') continue;
       expect(b.height, `${name} with a mouse`).toBeGreaterThanOrEqual(28);
@@ -139,7 +175,7 @@ test.describe('timelines (#1266)', () => {
     expect(mouse.tab.height).toBeLessThanOrEqual(48);
 
     // A finger: every one of them a 44px target.
-    const finger = await measure(true);
+    const { box: finger } = await measure(true);
     for (const [name, b] of Object.entries(finger)) {
       expect(b.height, `${name} by touch`).toBeGreaterThanOrEqual(44);
     }

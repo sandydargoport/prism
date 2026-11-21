@@ -31,8 +31,9 @@ export function isBuiltIn(d: { view?: string | null } | undefined): boolean {
 }
 
 // A finger on the wall gets 44px or more; a mouse on the laptop, where editing
-// is done, gets controls sized like the rest of a desktop page.
-const action = 'flex min-h-[48px] items-center justify-center rounded-full border-[1.5px] border-foreground/30 px-5 text-body hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 pointer-fine:min-h-9 pointer-fine:border pointer-fine:px-3';
+// is done, gets controls sized like the rest of a desktop page, their words
+// 12px as on every sheet of the panel (see ThroughTheDaySheet).
+const action = 'flex min-h-[48px] items-center justify-center rounded-full border-[1.5px] border-foreground/30 px-5 text-body hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 pointer-fine:min-h-8 pointer-fine:border pointer-fine:px-3 pointer-fine:text-caption pointer-fine:font-medium';
 const row = 'flex min-h-[52px] w-full items-center gap-3 rounded-xl px-3 text-left text-body hover:bg-muted pointer-fine:min-h-10 pointer-fine:px-2';
 const section = 'm-0 mb-2 text-caption font-medium uppercase tracking-[0.1em] text-muted-foreground';
 

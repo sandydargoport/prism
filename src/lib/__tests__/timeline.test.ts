@@ -8,6 +8,7 @@
 import {
   copyName,
   daysInWords,
+  daysShort,
   duplicateOf,
   firstTimeline,
   MAX_PLACEMENTS,
@@ -238,5 +239,15 @@ describe('daysInWords', () => {
     expect(daysInWords([6, 0])).toBe('Weekend');
     expect(daysInWords([0, 1, 2, 3, 4, 5, 6])).toBe('Every day');
     expect(daysInWords([4, 2])).toBe('Tue, Thu');
+  });
+});
+
+describe('daysShort', () => {
+  it('reads as days, never as a name a dashboard could have', () => {
+    expect(daysShort([1, 2, 3, 4, 5])).toBe('Mon–Fri');
+    expect(daysShort([6, 0])).toBe('Sat, Sun');
+    expect(daysShort([5, 1, 3])).toBe('Mon, Wed, Fri');
+    expect(daysShort([1, 2, 3, 5, 6, 0])).toBe('Mon–Wed, Fri–Sun');
+    expect(daysShort([0, 1, 2, 3, 4, 5, 6])).toBe('Every day');
   });
 });

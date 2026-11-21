@@ -349,7 +349,7 @@ test.describe('Time-of-day layouts', () => {
       await card.getByLabel('Placement starts').fill(wallTime(start, zone));
       await card.getByLabel('Placement ends').fill(wallTime(start + 3600_000, zone));
       await expect(card.getByRole('group', { name: 'Placement days' }).locator('[aria-pressed="true"]')).toHaveCount(7);
-      await expect(card).toContainText('Kept on the timeline.');
+      await expect(card).toContainText('Saved as you go.');
       const kept = async () => {
         const { timelines } = await (await wall.request.get('/api/timelines')).json() as { timelines: Array<{ id: string; placements: Array<{ dashboardId: string; from: string; to: string }> }> };
         return timelines.find((t) => t.id === timeline.id)!.placements;

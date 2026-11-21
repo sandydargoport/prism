@@ -679,7 +679,7 @@ test.describe('the Today view', () => {
   });
 
   // #1152: Through the day shows the screen in each state at once.
-  test('Through the day: tapping Nobody there at night shows the night look on Today, and In use brings the day back', async ({ page }) => {
+  test('Through the day: tapping Idle at night shows the night look on Today, and In use brings the day back', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     const d = new Date();
     await page.clock.setFixedTime(new Date(d.getFullYear(), d.getMonth(), d.getDate(), 10));
@@ -701,7 +701,7 @@ test.describe('the Today view', () => {
       const sheet = page.locator('[data-editor-sheet="day"]');
       await expect(sheet).toBeVisible();
 
-      // Nobody there, tapped where night is: warm ink and the veil, at once (#1233).
+      // Idle, tapped where night is: warm ink and the veil, at once (#1233).
       await sheet.locator('[data-day-stretch="night"]').last().click();
       await expect(scene).toHaveAttribute('data-today-night', 'true');
       await expect(page.locator('[data-today-veil]')).toHaveCount(1);

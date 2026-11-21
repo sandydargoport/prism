@@ -980,7 +980,7 @@ test.describe('idle background picker', () => {
     }
   });
 
-  // #1233: In use and Nobody there are two lanes on one time axis, with one
+  // #1233: In use and Idle are two lanes on one time axis, with one
   // marker through both, and a tap on a lane shows that lane at that time.
   test('the two lanes share one time axis: same left and width, night where night is, nothing overlapping', async ({ page }) => {
     const layout = await editIdle(page, { lat: 45, lon: -100 }, { day: 'photos', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } });
@@ -1024,7 +1024,7 @@ test.describe('idle background picker', () => {
       expect(Math.abs(late!.left - x(21 * 60))).toBeLessThanOrEqual(1);
       expect(Math.abs(late!.right - x(1440))).toBeLessThanOrEqual(1);
 
-      // Nothing overlaps: In use above Nobody there, each name left of its lane
+      // Nothing overlaps: In use above Idle, each name left of its lane
       // and level with it, whole and at least 14px.
       expect(g.inUse.bottom).toBeLessThanOrEqual(g.nobody.top);
       expect(g.inUseLabel.right).toBeLessThanOrEqual(g.inUse.left);
@@ -1053,7 +1053,7 @@ test.describe('idle background picker', () => {
       expect(afterInUse.marker!.top).toBeLessThanOrEqual(afterInUse.inUse.top);
       expect(afterInUse.marker!.bottom).toBeGreaterThanOrEqual(afterInUse.nobody.bottom);
 
-      // Nobody there at the same time shows night, and the marker stays.
+      // Idle at the same time shows night, and the marker stays.
       await page.mouse.click(at11, afterInUse.nobody.top + afterInUse.nobody.height / 2);
       await expect(sheet.locator('[data-day-sheet]')).toHaveAttribute('data-day-shows', 'night');
       await expect(sheet.locator('[data-day-card="night"]')).toBeVisible();

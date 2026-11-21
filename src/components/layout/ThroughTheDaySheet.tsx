@@ -4,8 +4,8 @@
  * The editing bar's Through the day sheet (#1152): the day as two lanes on
  * one time axis (#1233), with one time marker through both. In use runs the
  * whole day and shows the dashboard for the rest of the day, with the
- * dashboards placed on it above; Nobody there is resting by day and night
- * after dark, with a dot where night starts and ends (#1170). Tapping a lane
+ * dashboards placed on it above; Idle (nobody touching the screen) is resting
+ * by day and night after dark, with a dot where night starts and ends (#1170). Tapping a lane
  * at a time shows the screen in that lane at that time and opens a card under
  * the line with only its settings. The slider moves the marker and keeps the
  * lane, so 9:30 pm can be seen now. The rarer settings sit behind More.
@@ -34,7 +34,7 @@ import { DAY_MINUTES, dayLine, hhmm, placementSpans, placeBlocks, type Placed, t
 import { sameIdleBackground, tonight, type IdleBackground, type IdleSource, type IdleSwitch } from '@/lib/idleBackground';
 import { asDayAndNight, DEFAULT_NIGHT, screenStateAt, type ScreenState } from '@/lib/throughTheDay';
 import {
-  copyName, daysInWords, EVERY_DAY, firstTimeline, MAX_PLACEMENTS, placementCovers, TIMELINE_NAME_MAX_LENGTH, WEEKDAYS, WEEKEND,
+  copyName, daysInWords, daysShort, EVERY_DAY, firstTimeline, MAX_PLACEMENTS, placementCovers, TIMELINE_NAME_MAX_LENGTH, WEEKDAYS, WEEKEND,
   type Placement, type Timeline,
 } from '@/lib/timeline';
 import type { IdleHalf, EditTab } from '@/components/dashboard/useDashboardLayout';
@@ -67,21 +67,22 @@ const DAY_SETS: { label: string; days: number[] }[] = [
   { label: 'Weekend', days: WEEKEND },
 ];
 
-// Each control is a 44px target for a finger on the wall, and about 32px with
-// a mouse (2.25rem at the desk's 14px), where editing is done (the laptop), so
-// the panel stays light beside the canvas.
+// Each control is a 44px target for a finger on the wall, and 28px with a
+// mouse (2rem at the desk's 14px), where editing is done (the laptop), so the
+// panel stays light beside the canvas. With a mouse every control's words are
+// one size, 12px, and sentences and fields 14px.
 const chip = (on: boolean) => cn(
-  'flex min-h-[48px] items-center rounded-full border-[1.5px] px-4 text-body transition-colors pointer-fine:min-h-9 pointer-fine:border pointer-fine:px-3',
+  'flex min-h-[48px] items-center rounded-full border-[1.5px] px-4 text-body transition-colors pointer-fine:min-h-8 pointer-fine:border pointer-fine:px-3 pointer-fine:text-caption pointer-fine:font-medium',
   on ? 'border-foreground bg-foreground text-background' : 'border-foreground/30 hover:bg-muted',
 );
 const dayChip = (on: boolean) => cn(
   'flex h-[44px] w-[44px] items-center justify-center rounded-full text-caption font-medium disabled:opacity-100 pointer-fine:h-8 pointer-fine:w-auto pointer-fine:min-w-8 pointer-fine:px-1',
   on ? 'bg-foreground text-background' : 'border border-foreground/30 text-muted-foreground',
 );
-/** A smaller chip for an action on the timeline. */
-const action = (on: boolean) => cn(
-  'flex min-h-[44px] items-center rounded-full border px-3 text-body transition-colors pointer-fine:min-h-8 pointer-fine:px-2.5 pointer-fine:text-caption',
-  on ? 'border-foreground bg-foreground text-background' : 'border-foreground/30 hover:bg-muted',
+/** A timeline's own actions, rarer than anything on the line: words, no outline. */
+const quiet = (on: boolean) => cn(
+  'flex min-h-[44px] items-center rounded-full px-3 text-body transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent pointer-fine:min-h-8 pointer-fine:px-2 pointer-fine:text-caption pointer-fine:font-medium',
+  on ? 'bg-muted text-foreground' : 'text-muted-foreground',
 );
 const field = 'min-h-[44px] rounded-lg border border-border bg-background px-2 text-body pointer-fine:min-h-9';
 const card = 'flex flex-col gap-3 rounded-xl border border-border bg-muted/30 p-4 pointer-fine:gap-2 pointer-fine:p-3';
@@ -93,7 +94,7 @@ type Picked =
   | { kind: 'rest-of-day' }
   | { kind: 'placement'; index: number };
 
-/** The two lanes of the day: the screen in use, and nobody there. */
+/** The two lanes of the day: the screen in use, and idle (nobody touching it). */
 type Lane = 'in-use' | 'nobody';
 
 /**
@@ -193,7 +194,7 @@ export function ThroughTheDaySheet({
   const toggleDay = (d: number) => setDays((was) => (was.includes(d) ? was.filter((x) => x !== d) : [...was, d].sort()));
 
   // The time marker, shared by both lanes, and the lane the screen is shown
-  // in. In use shows the dashboard at any time; Nobody there is resting or
+  // in. In use shows the dashboard at any time; Idle is resting or
   // night, whichever that time is. The marker moves only when the person
   // moves it: a tap on a lane puts it where the tap was, the slider slides it.
   const [played, setPlayed] = useState<number | null>(null);
@@ -313,7 +314,7 @@ export function ThroughTheDaySheet({
 
   const nightLabel = NIGHT_LOOKS.find((o) => o.value === pair.night)?.label ?? (pair.night === 'photos' ? 'Photos' : '');
   const restingLabel = RESTING.find((o) => o.value === pair.day)?.label ?? '';
-  const keptNote = 'Kept on the timeline. Screens that follow it change over within a minute; times are in the household time zone.';
+  const keptNote = 'Saved as you go. Screens on this timeline change within a minute. Times are in the household time zone.';
 
   const nightCard = (edge?: 'start' | 'end') => (
     <div className={card} data-day-card="night">
@@ -430,12 +431,15 @@ export function ThroughTheDaySheet({
     const target = allDashboards.find((d) => d.id === p.dashboardId);
     return (
       <div className={card} data-day-card="placement">
-        <span className="flex flex-wrap items-center gap-2 text-body">
+        {/* What, then when, then which days: one thing to a row. */}
+        <span className="flex items-center gap-2 text-body">
           Show
-          <select className={field} value={p.dashboardId} aria-label="Placed dashboard" onChange={(e) => editPlacement(i, { dashboardId: e.target.value })}>
+          <select className={cn(field, 'min-w-0 flex-1')} value={p.dashboardId} aria-label="Placed dashboard" onChange={(e) => editPlacement(i, { dashboardId: e.target.value })}>
             {allDashboards.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
-          from
+        </span>
+        <span className="flex flex-wrap items-center gap-2 text-body">
+          From
           <input type="time" className={field} value={p.from} aria-label="Placement starts"
             onChange={(e) => e.target.value && editPlacement(i, { from: e.target.value })} />
           to
@@ -472,7 +476,7 @@ export function ThroughTheDaySheet({
         </div>
         {placements.length > 1 && (
           <div className="flex flex-wrap items-center gap-2 text-body" data-placement-order>
-            <span>When two overlap, the higher one wins. This one is {i + 1} of {placements.length}.</span>
+            <span>If two overlap, the higher wins. This is {i + 1} of {placements.length}.</span>
             <button type="button" className={cn(chip(false), 'disabled:opacity-40')} disabled={i === 0} onClick={() => movePlacement(i, -1)} aria-label="Move this one up">
               <ArrowUp className="mr-1 h-4 w-4" />Higher
             </button>
@@ -514,35 +518,36 @@ export function ThroughTheDaySheet({
   return (
     <div className="flex flex-col gap-6 pointer-fine:gap-5" data-day-sheet data-day-shows={state}>
       {timeline && (
-        <section className="flex flex-col gap-3" aria-label="Which timeline" data-timeline-bar>
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="flex flex-wrap items-center gap-2 text-body">
-              {screenId ? 'This screen follows' : 'Timeline'}
-              <select className={field} value={timeline.id} aria-label="Timeline" data-timeline-select
-                onChange={(e) => { setPicked(null); setNaming(null); onTimelineChange?.(e.target.value); }}>
-                {timelines.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
-            </label>
-          </div>
-          <div className="flex flex-wrap gap-1">
-            <button type="button" className={action(naming?.mode === 'new')} aria-label="New timeline" data-timeline-new
+        // Which timeline, who follows it, and its own rarer actions, set off
+        // from the timeline itself by a rule.
+        <section className="flex flex-col gap-2 border-b border-border pb-4 pointer-fine:pb-3" aria-label="Which timeline" data-timeline-bar>
+          <label className="flex flex-wrap items-center gap-2 text-body">
+            {screenId ? 'This screen follows' : 'Timeline'}
+            <select className={field} value={timeline.id} aria-label="Timeline" data-timeline-select
+              onChange={(e) => { setPicked(null); setNaming(null); onTimelineChange?.(e.target.value); }}>
+              {timelines.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </label>
+          <p className="m-0 text-caption text-muted-foreground" data-timeline-used>{usedByText(timeline, timeline.id === first?.id)}</p>
+          {/* Pulled left by their own padding, so the words line up with the text above. */}
+          <div className="-ml-3 flex flex-wrap pointer-fine:-ml-2">
+            <button type="button" className={quiet(naming?.mode === 'new')} aria-label="New timeline" data-timeline-new
               onClick={() => setNaming({ mode: 'new', value: '' })}>
               New
             </button>
-            <button type="button" className={action(naming?.mode === 'duplicate')} aria-label="Duplicate this timeline" data-timeline-duplicate
+            <button type="button" className={quiet(naming?.mode === 'duplicate')} aria-label="Duplicate this timeline" data-timeline-duplicate
               onClick={() => setNaming({ mode: 'duplicate', value: copyName(timeline.name, timelines.map((t) => t.name)) })}>
               Duplicate
             </button>
-            <button type="button" className={action(naming?.mode === 'rename')} aria-label="Rename this timeline" data-timeline-rename
+            <button type="button" className={quiet(naming?.mode === 'rename')} aria-label="Rename this timeline" data-timeline-rename
               onClick={() => setNaming({ mode: 'rename', value: timeline.name })}>
               Rename
             </button>
-            <button type="button" className={cn(action(false), 'disabled:opacity-40')} aria-label="Delete this timeline" data-timeline-delete
+            <button type="button" className={quiet(false)} aria-label="Delete this timeline" data-timeline-delete
               disabled={timelines.length < 2} onClick={() => void removeTimeline()}>
               Delete
             </button>
           </div>
-          <p className="m-0 text-caption text-muted-foreground" data-timeline-used>{usedByText(timeline, timeline.id === first?.id)}</p>
           {naming && (
             <form className="flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); void finishNaming(); }} data-timeline-naming>
               <input className={cn(field, 'min-w-0 flex-1')} value={naming.value} maxLength={TIMELINE_NAME_MAX_LENGTH} autoFocus
@@ -600,9 +605,10 @@ export function ThroughTheDaySheet({
                 const place = placed[n];
                 const p = placements[sp.index]!;
                 // On only some of the days shown: its own days, under its name,
-                // so the block is no wider for them.
-                const some = sp.partial ? daysInWords(p.days) : null;
-                const label = some ? `${dashboardName(p.dashboardId)}, ${some}` : dashboardName(p.dashboardId);
+                // so the block is no wider for them. Written as days ("Mon–Fri"),
+                // so they cannot be read as a second name.
+                const some = sp.partial ? daysShort(p.days) : null;
+                const label = sp.partial ? `${dashboardName(p.dashboardId)}, ${daysInWords(p.days)}` : dashboardName(p.dashboardId);
                 return (
                   <button
                     key={`p-${sp.index}-${sp.from}`}
@@ -616,8 +622,10 @@ export function ThroughTheDaySheet({
                     aria-label={`${label}, ${timeOfMinute(sp.from)} to ${timeOfMinute(sp.to)}`}
                     aria-pressed={isPicked({ kind: 'placement', index: sp.index })}
                     className={cn(
-                      'absolute flex h-(--lane) w-max max-w-full flex-col items-start justify-center whitespace-nowrap rounded-lg px-2 text-left text-caption leading-tight text-primary-foreground',
-                      sp.partial ? 'bg-primary/60' : 'bg-primary',
+                      'absolute flex h-(--lane) w-max max-w-full flex-col items-start justify-center whitespace-nowrap rounded-lg px-2 text-left text-caption leading-tight',
+                      // On some of the days only: a light fill with a dashed
+                      // edge and dark words, not white on a pale fill.
+                      sp.partial ? 'border border-dashed border-primary/70 bg-primary/10 text-foreground' : 'bg-primary text-primary-foreground',
                       isPicked({ kind: 'placement', index: sp.index }) && 'ring-2 ring-foreground ring-offset-1',
                     )}
                     style={{
@@ -630,8 +638,9 @@ export function ThroughTheDaySheet({
                     data-from={sp.from}
                     data-to={sp.to}
                   >
-                    <span data-placement-name>{dashboardName(p.dashboardId)}</span>
-                    {some && <span className="opacity-80" data-placement-days>{some}</span>}
+                    {/* The name set apart by weight: grey days on the light fill would be too faint to read. */}
+                    <span className="font-medium" data-placement-name>{dashboardName(p.dashboardId)}</span>
+                    {some && <span data-placement-days>{some}</span>}
                   </button>
                 );
               })}
@@ -652,11 +661,11 @@ export function ThroughTheDaySheet({
             {timeline ? dashboardName(restOfDayId) : 'Dashboard'}
           </button>
 
-          <span className={laneLabel(lane === 'nobody')} style={{ gridColumn: 1, gridRow: 3 }} data-lane-label="nobody">Nobody there</span>
+          <span className={laneLabel(lane === 'nobody')} style={{ gridColumn: 1, gridRow: 3 }} data-lane-label="nobody">Idle</span>
           <div
             ref={lineRef}
             role="group"
-            aria-label="Nobody there"
+            aria-label="Idle"
             className={cn('relative h-(--lane) rounded-full', lane === 'nobody' && chosenRing)}
             style={{ gridColumn: 2, gridRow: 3 }}
             data-day-line
@@ -729,7 +738,7 @@ export function ThroughTheDaySheet({
         <label className="flex flex-col gap-2">
           <span className="text-body text-muted-foreground" aria-live="polite" data-day-played>
             {played === null
-              ? 'Tap In use or Nobody there at a time to see the screen then, or slide to another time.'
+              ? 'Tap In use or Idle at a time to see the screen then, or slide to another time.'
               : `At ${formatTimeOfDay(clockOf(playedAt(played)), timeFormat)}: ${state === 'active' ? 'in use' : state}${playedPlacement ? `, ${dashboardName(playedPlacement.dashboardId)} shows` : ''}.`}
           </span>
           <input
@@ -774,7 +783,7 @@ export function ThroughTheDaySheet({
               </button>
             </div>
             <p className="m-0 text-body text-muted-foreground">
-              Photos and the night sky have their own arrangement: tap Nobody there on the line, then Widgets.
+              Photos and the night sky have their own arrangement: tap Idle on the line, then Widgets.
             </p>
             <div className="flex flex-wrap gap-2">
               <button type="button" className={chip(false)} onClick={() => setMotionOpen(true)}>Screensaver motion</button>

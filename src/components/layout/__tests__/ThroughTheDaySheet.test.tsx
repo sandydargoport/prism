@@ -2,10 +2,10 @@
  * @jest-environment jsdom
  *
  * The Through the day sheet (#1152): two lanes on one time axis (#1233), In
- * use and Nobody there, under one time marker. Tapping a lane at a time shows
+ * use and Idle, under one time marker. Tapping a lane at a time shows
  * the screen in that lane then; the slider moves the marker and keeps the
  * lane. The sheet sets what resting and night are. A timeline nobody gave a
- * night is stored as before. The Nobody there lane (#1170) has a dot where
+ * night is stored as before. The Idle lane (#1170) has a dot where
  * night starts and ends, and In use a block per dashboard placed on the
  * timeline (#1266); tapping one shows the screen then and opens its card.
  * Days come first: a placement made on a set of days is one block on them.
@@ -110,7 +110,7 @@ describe('ThroughTheDaySheet', () => {
     afterEach(() => rect.mockRestore());
     const NIGHT_AT_9 = { day: 'photos', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } } as const;
     const inUse = () => document.querySelector<HTMLElement>('[data-day-lane="in-use"]')!;
-    /** The Nobody there stretch under a minute. */
+    /** The Idle stretch under a minute. */
     const nobodyAt = (minute: number) => Array.from(document.querySelectorAll<HTMLElement>('[data-day-stretch]'))
       .filter((el) => Number(el.dataset.key!.split('-')[1]) <= minute).pop()!;
     /** The minute the time marker is drawn at. */
@@ -123,7 +123,8 @@ describe('ThroughTheDaySheet', () => {
       expect(document.querySelector('[data-day-state]')).toBeNull();
       expect(screen.queryByRole('radiogroup', { name: 'Show the screen' })).toBeNull();
       expect(screen.getByText('In use')).toBeTruthy();
-      expect(screen.getByText('Nobody there')).toBeTruthy();
+      expect(screen.getByText('Idle')).toBeTruthy();
+      expect(screen.queryByText('Nobody there')).toBeNull();
     });
 
     it('tapping In use at 22:00 shows the dashboard, with the marker at 22:00', () => {
@@ -136,7 +137,7 @@ describe('ThroughTheDaySheet', () => {
       expect(document.querySelector('[data-day-card]')).toBeNull();
     });
 
-    it('tapping Nobody there at 22:00 shows night and its card, with the marker at 22:00', () => {
+    it('tapping Idle at 22:00 shows night and its card, with the marker at 22:00', () => {
       render(<Harness initial={NIGHT_AT_9} />);
       tap(nobodyAt(22 * 60), 22 * 60);
       expect(seen).toMatchObject({ tab: 'idle', half: 'night' });
@@ -162,7 +163,7 @@ describe('ThroughTheDaySheet', () => {
       expect(marker()).toBe(22 * 60);
     });
 
-    it('the slider keeps the lane: In use stays the dashboard, Nobody there follows the time', () => {
+    it('the slider keeps the lane: In use stays the dashboard, Idle follows the time', () => {
       render(<Harness initial={NIGHT_AT_9} />);
       const slider = screen.getByLabelText('Time of day');
       tap(inUse(), 10 * 60);
@@ -178,7 +179,7 @@ describe('ThroughTheDaySheet', () => {
     });
   });
 
-  it('plays the day: on Nobody there, the slider shows the state at that time', () => {
+  it('plays the day: on Idle, the slider shows the state at that time', () => {
     render(<Harness initial={{ day: 'dashboard', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } }} />);
     fireEvent.click(document.querySelector<HTMLElement>('[data-day-stretch="resting"]')!);
     const slider = screen.getByLabelText('Time of day');
@@ -289,6 +290,17 @@ describe('ThroughTheDaySheet', () => {
       expect(blocks()[0]!.getAttribute('aria-label')).toMatch(/^Bus, Mon, /);
     });
 
+    it('writes a block\'s days as days, so a dashboard called Weekend does not show the word twice', () => {
+      render(<Harness initial={{ source: 'dashboard' }} timelines={[{ ...MAIN, placements: [
+        { days: [1, 2, 3, 4, 5], from: '07:00', to: '08:00', dashboardId: BUS },
+        { days: [6, 0], from: '10:00', to: '12:00', dashboardId: BUS },
+      ] }]} />);
+      const days = blocks().map((b) => b.querySelector('[data-placement-days]')!.textContent);
+      expect(days).toEqual(['Mon–Fri', 'Sat, Sun']);
+      // Read aloud in words.
+      expect(blocks()[0]!.getAttribute('aria-label')).toMatch(/^Bus, Weekdays, /);
+    });
+
     it('edits a placement in its card and removes it', () => {
       render(<Harness initial={{ source: 'dashboard' }} timelines={[MAIN]} />);
       press('Weekdays');
@@ -317,7 +329,7 @@ describe('ThroughTheDaySheet', () => {
       fireEvent.click(document.querySelector<HTMLElement>('[data-day-placement="1"]')!);
       press('Move this one up');
       expect(keptPlacements().map((p) => p.dashboardId)).toEqual([BUS, HOME]);
-      expect(screen.getByText(/This one is 1 of 2/)).toBeTruthy();
+      expect(screen.getByText(/This is 1 of 2/)).toBeTruthy();
       // A placement is on In use: the dashboard it shows, at its time.
       expect(seen.tab).toBe('dashboard');
     });
