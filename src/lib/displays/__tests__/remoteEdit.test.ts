@@ -58,19 +58,17 @@ describe('changedSettings', () => {
 });
 
 describe('screenSummary', () => {
-  const clock = (t: string) => t;
-  it('says its timeline, when it rests, when night is and how many dashboards are placed (#1266)', () => {
-    const main = { name: 'Main', idleBackground: { source: 'photos' as const }, placements: [] };
-    expect(screenSummary({}, main, clock)).toBe('Main: rests after 2 min, night from dusk');
+  it('says its timeline, when it rests and how many dashboards are placed (#1266)', () => {
+    const main = { name: 'Main', placements: [] };
+    expect(screenSummary({}, main)).toBe('Main: rests after 2 min');
     expect(screenSummary(
       { 'prism-screensaver-timeout': '0' },
-      {
-        name: 'School days',
-        idleBackground: { day: 'dashboard', night: 'off', switch: { by: 'clock', from: '21:00', to: '06:30' } },
-        placements: [{ dashboardId: 'x', days: [1], from: '07:00', to: '08:00' }],
-      },
-      clock,
-    )).toBe('School days: never rests, night 21:00 to 06:30, 1 dashboard placed');
-    expect(screenSummary({ 'prism-screensaver-timeout': '3600' }, null, clock)).toBe('Rests after 1 hour');
+      { name: 'School days', placements: [{ dashboardId: 'x', days: [1], from: '07:00', to: '08:00' }] },
+    )).toBe('School days: never rests, 1 dashboard placed');
+    expect(screenSummary({ 'prism-screensaver-timeout': '3600' }, null)).toBe('Rests after 1 hour');
+  });
+
+  it('leaves night out: each dashboard has its own (#1281)', () => {
+    expect(screenSummary({}, { name: 'Main', placements: [] })).not.toMatch(/night/);
   });
 });

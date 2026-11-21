@@ -18,7 +18,7 @@ import {
   deleteScreensaverPreset,
 } from '@/components/screensaver/screensaverStorage';
 import type { WidgetConfig, Layout } from '@/lib/hooks/useLayouts';
-import { idleSources, PHOTOS, type IdleBackground, type IdleSource } from '@/lib/idleBackground';
+import { idleSources, parseIdleBackground, sameIdleBackground, PHOTOS, type IdleBackground, type IdleSource } from '@/lib/idleBackground';
 import { findNextFreeSlot } from '@/lib/utils/widgetPlacement';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useUrlParam } from '@/lib/hooks/useUrlParam';
@@ -82,13 +82,7 @@ export function editLink(path: string): string {
   return `${path}?${EDIT_PARAM}=1`;
 }
 
-/**
- * `timelineBackground` is how the screen rests and what it does at night, from
- * the timeline it follows (#1266) or the one the editor is looking at; null
- * until the timelines have arrived.
- */
-export function useDashboardLayout(layouts: LayoutsData, slug?: string, timelineBackground: IdleBackground | null = PHOTOS) {
-  const savedBackground = timelineBackground ?? PHOTOS;
+export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
   const { activeUser, requireAuth } = useAuth();
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
@@ -107,12 +101,12 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string, timeline
     if (activeLayout) return screensaverForDashboard(activeLayout, layouts.allLayouts);
     return loadScreensaverLayout();
   });
-  // What shows behind it when idle, as being edited. It belongs to the
-  // timeline, which keeps a change as soon as it is valid (see LayoutEditor);
-  // this holds it meanwhile, so one that cannot be kept yet still shows.
+  // What shows behind it when idle, as saved and as being edited. Nothing is
+  // stored until Save, so Cancel only has to put these back.
+  const savedBackground = activeLayout ? parseIdleBackground(activeLayout.idleBackground) : PHOTOS;
   // Null from the start of editing until it is changed, so it follows the
-  // saved value: the timeline can arrive after editing starts. (Seeded with
-  // the saved value only because the React compiler's memoization check
+  // saved value: the dashboard can finish loading after editing starts. (Seeded
+  // with the saved value only because the React compiler's memoization check
   // rejects a null start here; editing always begins by resetting it.)
   const [editedBackground, setEditedBackground] = useState<IdleBackground | null>(savedBackground);
   const [ssPresets, setSsPresets] = useState(() =>
@@ -123,10 +117,8 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string, timeline
   // Bridge: write active dashboard's screensaver to localStorage on layout change
   // so the global Screensaver component (which reads from localStorage) uses the right one
   const bridgedLayoutId = useRef<string | null>(null);
-  // Whether the screen rests on a screensaver layout at all, once known.
-  const restsOnLayout = timelineBackground === null ? null : editsIdleLayout(timelineBackground);
   useEffect(() => {
-    if (!activeLayout || restsOnLayout === null) return;
+    if (!activeLayout) return;
     if (bridgedLayoutId.current === activeLayout.id) return;
     bridgedLayoutId.current = activeLayout.id;
 
@@ -136,7 +128,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string, timeline
     // it only while the dashboard still has none. Until that works (a wall
     // nobody signed in to cannot save) it keeps showing here, as before.
     const legacy = remoteEditHost() ? null : legacyScreensaver();
-    const owed = owesLegacyScreensaver(activeLayout, restsOnLayout, legacy);
+    const owed = owesLegacyScreensaver(activeLayout, editsIdleLayout(parseIdleBackground(activeLayout.idleBackground)), legacy);
     const widgets = owed ? legacy : screensaverForDashboard(activeLayout, layouts.allLayouts);
     if (owed) {
       void carryScreensaver(activeLayout.id, legacy).then((ok) => { if (ok) markScreensaverCarried(); });
@@ -148,7 +140,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string, timeline
     // that finishes loading after editing starts.
     setPreEditSs(widgets);
     saveScreensaverLayout(widgets);
-  }, [activeLayout, layouts.allLayouts, restsOnLayout]);
+  }, [activeLayout, layouts.allLayouts]);
 
   // Switching dashboards from the editor opens the next one with ?edit=1, and
   // it opens in edit mode once its layout has loaded. Only for a parent, so a
@@ -218,6 +210,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string, timeline
   const dashboardDirty = isEditing && withoutIdleTicks(editingWidgets) !== withoutIdleTicks(preEditWidgets);
   const idleDirty = isEditing && (
     JSON.stringify(ssLayout) !== JSON.stringify(preEditSs)
+    || !sameIdleBackground(editingBackground, savedBackground)
     || idleTicks(editingWidgets) !== idleTicks(preEditWidgets)
   );
 
@@ -239,10 +232,13 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string, timeline
         orientation: activeLayout?.orientation || 'landscape',
       };
       // Done saves only what changed (#1162). A dashboard with no screensaver
-      // layout of its own keeps none until someone sets one; saving the
-      // default it was showing would pin it there for good.
+      // layout or background of its own keeps none until someone sets one;
+      // saving the default it was showing would pin it there for good.
       if (activeLayout?.screensaverWidgets || JSON.stringify(ssLayout) !== JSON.stringify(preEditSs)) {
         saveData.screensaverWidgets = ssLayout;
+      }
+      if (activeLayout?.idleBackground || !sameIdleBackground(editingBackground, savedBackground)) {
+        saveData.idleBackground = editingBackground;
       }
       await layouts.saveLayout(saveData);
     } catch (err) {
@@ -250,7 +246,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string, timeline
     } finally {
       finishEditing();
     }
-  }, [activeLayout, editingWidgets, ssLayout, preEditSs, layouts, finishEditing]);
+  }, [activeLayout, editingWidgets, ssLayout, preEditSs, editingBackground, savedBackground, layouts, finishEditing]);
 
   // Save-As supports two modes:
   //   - { id }: overwrite an existing dashboard. Preserves the target's
@@ -275,6 +271,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string, timeline
         widgets: editingWidgets,
         isDefault: target.isDefault,
         screensaverWidgets: ssLayout,
+        idleBackground: editingBackground,
         orientation: target.orientation || 'landscape',
       });
     } else {
@@ -285,11 +282,12 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string, timeline
         widgets: editingWidgets,
         isDefault: false,
         screensaverWidgets: ssLayout,
+        idleBackground: editingBackground,
         orientation: activeLayout?.orientation || 'landscape',
       });
     }
     finishEditing();
-  }, [editingWidgets, ssLayout, activeLayout, layouts, finishEditing]);
+  }, [editingWidgets, ssLayout, editingBackground, activeLayout, layouts, finishEditing]);
 
   const handleReset = useCallback(() => {
     setEditingWidgets(DEFAULT_TEMPLATE.widgets);

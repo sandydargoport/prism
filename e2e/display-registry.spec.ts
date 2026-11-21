@@ -247,8 +247,7 @@ test.describe('Editing a screen from a phone', () => {
       const sheet = await phone.locator('[data-editor-sheet]').evaluate((el) => el.getBoundingClientRect().toJSON());
       const shown = await picture.evaluate((el) => el.getBoundingClientRect().toJSON());
       expect(sheet.top).toBeGreaterThanOrEqual(shown.bottom);
-      // Rest after is in the resting stretch's card on the line (#1170).
-      await phone.locator('[data-day-stretch="resting"]').first().click();
+      // Rest after is the screen's own, on the resting row (#1281).
       await phone.getByLabel('Rest after').selectOption({ label: '1 hour' });
       await phone.locator('[data-editor-open="look"]').click();
       await phone.locator('[data-screen-options]').getByLabel('On-screen keyboard').selectOption({ label: 'Never' });
@@ -335,21 +334,20 @@ test.describe('Time-of-day layouts', () => {
       const row = wall.getByTestId('display-row').filter({ hasText: PORCH });
       await row.getByLabel(`Timeline for ${PORCH}`).selectOption({ label: timeline.name });
       await expect(row.locator('[data-screen-summary]')).toContainText(timeline.name);
-      // Dashboards are placed on the screen's editing bar, on the Through the
-      // day line: + Dashboard places one and opens its card (#1170).
+      // Dashboards are placed in the screen's editor, as a row of Through
+      // the day: + Switch at set times adds one on every day (#1281).
       await wall.goto('/?edit=1');
       await wall.locator('[data-editor-open="day"]').click({ timeout: 60_000 });
       const sheet = wall.locator('[data-editor-sheet="day"]');
       await expect(sheet.getByLabel('Timeline', { exact: true })).toHaveValue(timeline.id);
-      // Every day, so the window half a day away is covered whichever day it falls on.
-      await expect(sheet.locator('[data-day-preset="Every day"]')).toHaveAttribute('aria-pressed', 'true');
       await sheet.locator('[data-placement-add]').click();
-      const card = sheet.locator('[data-day-card="placement"]');
-      await card.getByLabel('Placed dashboard').selectOption({ label: MORNING });
-      await card.getByLabel('Placement starts').fill(wallTime(start, zone));
-      await card.getByLabel('Placement ends').fill(wallTime(start + 3600_000, zone));
-      await expect(card.getByRole('group', { name: 'Placement days' }).locator('[aria-pressed="true"]')).toHaveCount(7);
-      await expect(card).toContainText('Saved as you go.');
+      const card = sheet.locator('[data-placement-row="0"]');
+      await card.getByLabel('Switches to').selectOption({ label: MORNING });
+      await card.getByLabel('Switch starts').fill(wallTime(start, zone));
+      await card.getByLabel('Switch ends').fill(wallTime(start + 3600_000, zone));
+      // Every day, so the window half a day away is covered whichever day it falls on.
+      await expect(card.getByRole('group', { name: 'Switch days' }).locator('[aria-pressed="true"]')).toHaveCount(7);
+      await expect(sheet).toContainText('Saved as you go.');
       const kept = async () => {
         const { timelines } = await (await wall.request.get('/api/timelines')).json() as { timelines: Array<{ id: string; placements: Array<{ dashboardId: string; from: string; to: string }> }> };
         return timelines.find((t) => t.id === timeline.id)!.placements;

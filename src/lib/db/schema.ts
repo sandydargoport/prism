@@ -968,9 +968,15 @@ export const layouts = pgTable('layouts', {
   // Per-dashboard screensaver layout (null = use default template)
   screensaverWidgets: jsonb('screensaver_widgets'),
 
-  // How the screen rests and what it does at night left the dashboard for the
-  // timeline (#1266). The database still holds `idle_background` (and
-  // `screensaver_mode` before it), unread, so a rollback finds them.
+  // What the display shows when idle (#782): this dashboard itself with only
+  // some widgets left showing, or the screensaver layout above over photos or
+  // the night sky, or one by day and another at night. See
+  // src/lib/idleBackground.ts. Every screen showing the dashboard rests and
+  // sleeps this way (#1281); for a release it lived on the timeline instead
+  // (#1266), and 0055 brought it back. It replaced `screensaver_mode` (calm or
+  // separate), which 0039 converted and which the database still holds,
+  // unread, so a rollback finds it.
+  idleBackground: jsonb('idle_background').$type<IdleBackground>().default({ source: 'dashboard' }).notNull(),
 
   // Per-dashboard screen orientation
   orientation: varchar('orientation', { length: 20 }).default('landscape'),
@@ -1013,8 +1019,9 @@ export const apiTokens = pgTable('api_tokens', {
 }));
 
 /**
- * A named plan for a screen's day (#1266): which dashboard shows when, and how
- * the screen rests and what it does at night. See src/lib/timeline.ts. There
+ * A named plan for a screen's day (#1266): which dashboard shows when. See
+ * src/lib/timeline.ts. How the screen rests and what it does at night went
+ * back to the dashboard (#1281); `idle_background` here is unread. There
  * is always at least one; the first (lowest position) is the one every screen
  * that picked no other follows, devices nobody named included.
  */

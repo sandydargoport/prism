@@ -621,6 +621,56 @@ fi
 log "Scenario M: PASS"
 
 # ----------------------------------------------------------------------------
+# Scenario N: 0055 each dashboard's own resting and night look (#1281). A
+# first timeline never changed since 0054 made it leaves each dashboard its
+# own look; one that was changed gives every dashboard its look, once. A
+# replay leaves a look changed since alone.
+# ----------------------------------------------------------------------------
+log "=== Scenario N: 0055 each dashboard's own day ==="
+
+FIRST="(SELECT id FROM timelines ORDER BY position, created_at LIMIT 1)"
+psql_exec "
+COMMENT ON COLUMN timelines.idle_background IS NULL;
+UPDATE timelines SET idle_background = '{\"day\": \"photos\", \"night\": \"sky\", \"switch\": {\"by\": \"sun\", \"duskOffset\": 30, \"dawnOffset\": -30}}'::jsonb,
+  updated_at = created_at WHERE id = $FIRST;
+INSERT INTO layouts (name, widgets, idle_background) VALUES ('N one', '[]'::jsonb, '{\"source\": \"dashboard\"}'::jsonb);
+INSERT INTO layouts (name, widgets, idle_background) VALUES ('N two', '[]'::jsonb, '{\"source\": \"off\"}'::jsonb);
+DELETE FROM public.__prism_migrations WHERE name = '0055_dashboard_own_day';
+"
+run_migrate
+GOT=$(q "SELECT string_agg(idle_background::text, ',' ORDER BY name) FROM layouts WHERE name IN ('N one', 'N two')")
+if [ "$GOT" != '{"source": "dashboard"},{"source": "off"}' ]; then
+  echo "ERROR: 0055 changed dashboards' own looks for a timeline nobody changed (got '$GOT')" >&2
+  exit 1
+fi
+
+log "The first timeline changed since it was made: every dashboard takes its look..."
+psql_exec "
+COMMENT ON COLUMN timelines.idle_background IS NULL;
+UPDATE timelines SET updated_at = created_at + interval '1 day' WHERE id = $FIRST;
+DELETE FROM public.__prism_migrations WHERE name = '0055_dashboard_own_day';
+"
+run_migrate
+GOT=$(q "SELECT string_agg(idle_background->>'night', ',' ORDER BY name) FROM layouts WHERE name IN ('N one', 'N two')")
+if [ "$GOT" != "sky,sky" ]; then
+  echo "ERROR: 0055 gave the dashboards the night looks '$GOT' (want sky,sky)" >&2
+  exit 1
+fi
+
+log "Change one dashboard's look, then replay 0055..."
+psql_exec "
+UPDATE layouts SET idle_background = '{\"source\": \"off\"}'::jsonb WHERE name = 'N two';
+DELETE FROM public.__prism_migrations WHERE name = '0055_dashboard_own_day';
+"
+run_migrate
+if [ "$(q "SELECT idle_background->>'source' FROM layouts WHERE name = 'N two'")" != "off" ]; then
+  echo "ERROR: replaying 0055 wrote over a dashboard's look changed since" >&2
+  exit 1
+fi
+
+log "Scenario N: PASS"
+
+# ----------------------------------------------------------------------------
 echo
 echo "=========================================="
 echo "  All migration-replay scenarios passed"

@@ -2,10 +2,9 @@ import * as SunCalc from 'suncalc';
 import { z } from 'zod';
 
 /**
- * What shows when nobody is using the display (#782).
+ * What a dashboard shows behind it when nobody is using the display (#782).
  *
- * Stored on the timeline the screen follows (#1266); it was the dashboard's
- * before. Either one background all the time, or one by day
+ * Stored with the dashboard. Either one background all the time, or one by day
  * and one after dark, switching at dusk and dawn (each moved by an offset) or
  * at set times on the clock.
  *

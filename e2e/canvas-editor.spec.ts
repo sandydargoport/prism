@@ -82,12 +82,14 @@ test.describe('canvas editor (#1265)', () => {
         expect(s.left, `${id} is beside the canvas`).toBeGreaterThanOrEqual(picture.right);
         expect(s.bottom, `${id} ends inside the window`).toBeLessThanOrEqual(900 + 0.5);
         if (id === 'day') {
-          // Every stretch of the day stays on its line, however short.
-          const line = await rect(page, '[data-day-lane="nobody"]');
-          for (const st of await page.locator('[data-day-stretch]').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().toJSON() as Rect))) {
-            expect(st.right).toBeLessThanOrEqual(line.right + 0.5);
-            expect(st.left).toBeGreaterThanOrEqual(line.left - 0.5);
-          }
+          // Its rows stay inside the panel (#1281), and a dashboard edited
+          // on its own has no screen to rest or dim, so only its own look shows.
+          expect(await sheet.evaluate((el) => el.scrollWidth - el.clientWidth), 'nothing runs past the panel').toBeLessThanOrEqual(0);
+          await expect(sheet.getByLabel('While resting')).toBeVisible();
+          await expect(sheet.getByLabel('Night look')).toBeVisible();
+          await expect(sheet.getByLabel('Rest after')).toHaveCount(0);
+          await expect(sheet.getByLabel('How dark at night')).toHaveCount(0);
+          await expect(sheet.locator('[data-timeline-bar]')).toHaveCount(0);
         }
       }
 
