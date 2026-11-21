@@ -25,8 +25,6 @@ import { patchTimeline } from '@/lib/hooks/useTimelines';
 import { toast } from '@/components/ui/use-toast';
 import { createPortal } from 'react-dom';
 import { remoteEditHost, remotePortalRoot } from '@/lib/displays/remoteEdit';
-import { isNamedScreen } from '@/lib/displays/namedScreen';
-import { canvasEditLink, editsHereByChoice, setEditHere } from '@/lib/displays/editPlace';
 
 /**
  * Editing a screen from a phone (#1153), the bar and its dialogs are drawn on
@@ -100,8 +98,6 @@ export function LayoutEditor({
   // On a canvas (#1265) the sheets are panels beside it, and one is always
   // open: there is room, and nothing is covered.
   const [panels] = useState(() => remoteEditHost() !== null);
-  // A device that is no named screen, editing on itself because it chose to.
-  const [hereByChoice] = useState(() => !panels && !isNamedScreen() && editsHereByChoice());
   // The editing bar's open sheet (#1151). Through the day shows the screen as
   // it rests, so it is the Idle screen tab underneath. A dashboard picked on
   // Dashboard opens on Dashboard still.
@@ -236,21 +232,6 @@ export function LayoutEditor({
     );
   }
 
-  // Back to the canvas editor, leaving this edit: changes not yet saved go.
-  const editOnCanvas = async (dashboardId: string) => {
-    if (dashboardDirty || idleDirty) {
-      setSheet(null);
-      const ok = await confirmDelete(
-        'Edit on a canvas?',
-        'Changes not saved yet are left behind. Press Done first to keep them.',
-        { confirmLabel: 'Leave them', variant: 'default' },
-      );
-      if (!ok) return;
-    }
-    setEditHere(false);
-    window.location.assign(canvasEditLink(dashboardId));
-  };
-
   const setDefault = async () => {
     if (!currentDashboardId) return;
     try {
@@ -317,7 +298,6 @@ export function LayoutEditor({
             orientation={screenGuideOrientation}
             onOrientationChange={onScreenGuideOrientationChange}
             onMeasure={() => { setSheet(null); toggleMeasureMode(); }}
-            onCanvas={hereByChoice && currentDashboardId ? () => { void editOnCanvas(currentDashboardId); } : undefined}
           />
         );
       case 'more':

@@ -11,7 +11,7 @@ import { useDashboardLayout } from '../useDashboardLayout';
 import { DEFAULT_SCREENSAVER_LAYOUT } from '@/components/screensaver/screensaverStorage';
 import type { Layout, WidgetConfig } from '@/lib/hooks/useLayouts';
 import type { IdleBackground } from '@/lib/idleBackground';
-import { EDIT_HERE_KEY } from '@/lib/displays/editPlace';
+import { EDIT_IN_PLACE_KEY } from '@/lib/displays/editPlace';
 
 let activeUser: { id: string; role: string } | null = null;
 jest.mock('@/components/providers/AuthProvider', () => ({
@@ -36,7 +36,7 @@ const data = (all: Layout[]) => ({
 const stored = () => JSON.parse(localStorage.getItem(KEY) ?? 'null');
 
 // The editor in place, as on a screen (#1265).
-beforeEach(() => { localStorage.clear(); localStorage.setItem(EDIT_HERE_KEY, '1'); activeUser = null; });
+beforeEach(() => { localStorage.clear(); localStorage.setItem(EDIT_IN_PLACE_KEY, '1'); activeUser = null; });
 
 describe('screensaver per dashboard', () => {
   it('gives a dashboard with no saved screensaver the default, not the last one shown', () => {

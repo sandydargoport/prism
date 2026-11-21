@@ -12,12 +12,15 @@
  *
  * Two ways in:
  *   - a named screen (/screens/[id]): the dashboard its timeline shows now,
- *     at its size. The screen shows "Being edited from a phone" while this
- *     page is open, and on Done its own settings are sent to it. Its timeline
- *     keeps each change as it is made (#1266).
+ *     or the one Edit was pressed on, at its size. Another device editing it
+ *     makes the screen show "Being edited from a phone" while this page is
+ *     open, and on Done its own settings are sent to it. The screen itself
+ *     opens its own editor here too (#1280), and on Done takes its settings
+ *     at once and goes back to its dashboard. Its timeline keeps each change
+ *     as it is made (#1266).
  *   - a dashboard (/edit/[id]), from a device that is not a named screen: at
  *     the size of a screen that shows it, or one picked here. This device's
- *     own settings apply, as when editing in place.
+ *     own settings apply.
  */
 import * as React from 'react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -31,8 +34,10 @@ import { useTimeFormat } from '@/components/providers/TimeFormatProvider';
 import { timelineDashboardAt, timelineFor, timelineShows, type Timeline } from '@/lib/timeline';
 import type { ScreenSettings } from '@/lib/displays/screenSettings';
 import { changedSettings, REMOTE_EDIT_GLOBAL, type RemoteEditHost } from '@/lib/displays/remoteEdit';
-import { setEditHere } from '@/lib/displays/editPlace';
-import { editLink } from '@/components/dashboard/useDashboardLayout';
+import { ownScreenId } from '@/lib/displays/editPlace';
+import { useHydrated } from '@/lib/hooks/useStoredValue';
+import { MOBILE_BREAKPOINT } from '@/lib/hooks/useIsMobile';
+import { syncScreenSettings } from '@/lib/displays/displaySettingsSync';
 
 type Entry = {
   id: string;
@@ -64,8 +69,6 @@ const RENEW_MS = 60 * 1000;
 const PICTURE_MAX_HEIGHT = 0.45;
 /** From this width the panels sit beside the picture (Tailwind's `lg`). */
 const SIDE_BY_SIDE = '(min-width: 1024px)';
-/** The choice that leaves the canvas and edits on this device itself. */
-const HERE = 'here';
 
 const LIST = '/settings?section=displays';
 
@@ -90,15 +93,16 @@ export type SizeChoice = { key: string; label: string; size: Size; group: 'shows
 /**
  * The sizes a dashboard can be edited at: the named screens whose timeline
  * shows it at some time, common sizes, then the other named screens. The
- * first is the default.
+ * first is the default. A screen as narrow as a phone shows the phone layout
+ * of cards, not the dashboard's grid, so it is not offered (#1280).
  */
-export function sizeChoices(dashboard: Pick<Layout, 'id' | 'isDefault'>, displays: Entry[], timelines: Timeline[]): SizeChoice[] {
-  const shows = (d: Entry) => {
+export function sizeChoices(dashboard: Pick<Layout, 'id' | 'isDefault'>, displays: Pick<Entry, 'id' | 'name' | 'timelineId' | 'width' | 'height'>[], timelines: Timeline[]): SizeChoice[] {
+  const shows = (d: Pick<Entry, 'timelineId'>) => {
     const timeline = timelineFor(timelines, d.timelineId);
     return timeline ? timelineShows(timeline, dashboard) : dashboard.isDefault;
   };
-  const sized = displays.filter((d) => d.width && d.height);
-  const screen = (d: Entry, group: 'shows' | 'other'): SizeChoice => {
+  const sized = displays.filter((d) => d.width && d.height && d.width >= MOBILE_BREAKPOINT);
+  const screen = (d: Pick<Entry, 'id' | 'name' | 'width' | 'height'>, group: 'shows' | 'other'): SizeChoice => {
     const size = { width: d.width!, height: d.height! };
     return { key: `screen:${d.id}`, label: `${d.name}, ${sizeText(size)}`, size, group };
   };
@@ -114,9 +118,10 @@ export function sizeChoices(dashboard: Pick<Layout, 'id' | 'isDefault'>, display
   ];
 }
 
-export function CanvasEditor(target: { screenId: string } | { dashboardId: string }) {
+export function CanvasEditor(target: { screenId: string; startDashboardId?: string } | { dashboardId: string }) {
   const screenId = 'screenId' in target ? target.screenId : null;
   const dashboardId = 'dashboardId' in target ? target.dashboardId : null;
+  const startDashboardId = 'screenId' in target ? target.startDashboardId : undefined;
   const router = useRouter();
   const { activeUser, requireAuth } = useAuth();
   const { layouts, loading: layoutsLoading } = useLayouts();
@@ -132,7 +137,12 @@ export function CanvasEditor(target: { screenId: string } | { dashboardId: strin
   const rootRef = useRef<HTMLDivElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   const [room, setRoom] = useState({ width: 0, height: 0 });
-  const [wide, setWide] = useState(false);
+  // The screen being edited is this browser (#1280): known once hydrated, as
+  // it lives in this browser's storage.
+  const hydrated = useHydrated();
+  const self = hydrated && screenId !== null && ownScreenId() === screenId;
+  // The dashboard the frame opened on.
+  const startedOn = useRef<Layout | undefined>(undefined);
   // The dashboard the frame is on; undefined until it says.
   const chosen = useRef<{ id: string; isDefault: boolean } | undefined>(undefined);
   const original = useRef<ScreenSettings>({});
@@ -204,6 +214,14 @@ export function CanvasEditor(target: { screenId: string } | { dashboardId: strin
           }
         }
       }
+      if (ownScreenId() === screen.id) {
+        // This browser is the screen: its settings now, then its dashboard,
+        // loaded afresh so they all apply.
+        if (saved) await syncScreenSettings().catch(() => null);
+        const at = saved ? layouts.find((l) => l.id === chosen.current?.id) ?? startedOn.current : startedOn.current;
+        window.location.assign(dashboardPath(at));
+        return;
+      }
       await markEditing(screen.id, false);
       router.push(saved ? `${LIST}&edited=${screen.id}` : LIST);
     } catch {
@@ -232,24 +250,28 @@ export function CanvasEditor(target: { screenId: string } | { dashboardId: strin
       onFinish: (saved) => { void finishRef.current(saved); },
     };
     (window as unknown as Record<string, unknown>)[REMOTE_EDIT_GLOBAL] = next;
-    // A screen opens on what its timeline shows now, as the screen does.
+    // A screen opens on the dashboard Edit was pressed on, or else on what
+    // its timeline shows now, as the screen does.
     const exists = (id: string) => layouts.some((l) => l.id === id);
     const timeline = screen ? timelineFor(timelines, screen.timelineId) : null;
-    const nowId = timeline ? timelineDashboardAt(timeline, Date.now(), householdTimezone, exists) : null;
+    const nowId = startDashboardId && exists(startDashboardId)
+      ? startDashboardId
+      : timeline ? timelineDashboardAt(timeline, Date.now(), householdTimezone, exists) : null;
     const home = screen ? layouts.find((l) => l.id === nowId) ?? layouts.find((l) => l.isDefault) : dashboard;
+    startedOn.current = home;
     const query = screen ? `?edit=1&screen=${encodeURIComponent(screen.id)}` : '?edit=1';
     setSrc(home && !(screen && home.isDefault) && home.slug ? `/d/${home.slug}${query}` : `/${query}`);
     setHost(next);
-  }, [ready, screen, dashboard, layouts, layoutsLoading, host, timelines, householdTimezone]);
+  }, [ready, screen, dashboard, layouts, layoutsLoading, host, timelines, householdTimezone, startDashboardId]);
 
   useEffect(() => () => {
     delete (window as unknown as Record<string, unknown>)[REMOTE_EDIT_GLOBAL];
   }, []);
 
-  // A screen says it is being edited while this page is open.
+  // A screen says it is being edited while this page is open; not to itself.
   useEffect(() => {
     const id = host?.displayId;
-    if (!id) return;
+    if (!id || ownScreenId() === id) return;
     void markEditing(id, true);
     const timer = setInterval(() => void markEditing(id, true), RENEW_MS);
     const leave = () => { if (!finishing.current) void markEditing(id, false, true); };
@@ -269,7 +291,6 @@ export function CanvasEditor(target: { screenId: string } | { dashboardId: strin
     const side = window.matchMedia(SIDE_BY_SIDE);
     const measure = () => {
       const r = el.getBoundingClientRect();
-      setWide(side.matches);
       setRoom({ width: r.width, height: side.matches ? r.height : window.innerHeight * PICTURE_MAX_HEIGHT });
     };
     measure();
@@ -286,18 +307,9 @@ export function CanvasEditor(target: { screenId: string } | { dashboardId: strin
   }, [room, size.width, size.height]);
   const shown = { width: Math.round(size.width * scale), height: Math.round(size.height * scale) };
 
-  const pick = (key: string) => {
-    if (key !== HERE) {
-      setChoice(key);
-      return;
-    }
-    // This device is the screen: edit on it, from now on.
-    setEditHere(true);
-    router.push(editLink(dashboardPath(dashboard)));
-  };
-
-  const back = screenId ? LIST : dashboardPath(dashboard);
-  const backLabel = screenId ? 'Screens' : 'Dashboard';
+  // The screen itself goes back to what it shows; another device to the list.
+  const back = self ? '/' : screenId ? LIST : dashboardPath(dashboard);
+  const backLabel = screenId && !self ? 'Screens' : 'Dashboard';
   if (allowed === false) {
     return (
       <Page back={back} backLabel={backLabel}>
@@ -340,7 +352,7 @@ export function CanvasEditor(target: { screenId: string } | { dashboardId: strin
             <select
               className="min-h-[44px] rounded-lg border border-border bg-background px-2 text-body text-foreground"
               value={picked?.key ?? firstChoice}
-              onChange={(e) => pick(e.target.value)}
+              onChange={(e) => setChoice(e.target.value)}
               data-canvas-size
             >
               {groups.map(([group, label]) => {
@@ -352,11 +364,6 @@ export function CanvasEditor(target: { screenId: string } | { dashboardId: strin
                   </optgroup>
                 );
               })}
-              {wide && (
-                <optgroup label="This device">
-                  <option value={HERE}>Here, full size</option>
-                </optgroup>
-              )}
             </select>
           </label>
         )}

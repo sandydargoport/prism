@@ -42,8 +42,11 @@ async function sync(): Promise<void> {
     const { applied, timelineChanged } = await syncScreenSettings();
     // A screen showing a dashboard goes through the home page, where the
     // server sends a named screen to the one its timeline shows. Elsewhere
-    // (Settings, a list) it is left where someone is using it.
+    // (Settings, a list) it is left where someone is using it, and its own
+    // editor is never reloaded under the person editing (#1280): Done loads
+    // its dashboard afresh.
     const path = window.location.pathname;
+    if (path.startsWith('/screens/') || path.startsWith('/edit/')) return;
     if (timelineChanged && (path === '/' || path.startsWith('/d/'))) reloadForRemoteChange('/');
     else if (applied.length > 0) reloadForRemoteChange();
   } catch {

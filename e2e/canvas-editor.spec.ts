@@ -2,10 +2,10 @@ import { test, expect, type Page } from '@playwright/test';
 import { getSeededParentId } from './helpers/auth';
 
 /**
- * #1265: one editor everywhere. A device that is not a named screen edits a
- * dashboard on a canvas: the dashboard laid out at a screen's size, scaled to
- * fit, with the panels beside it on a laptop and below it on a phone. These
- * measure the canvas.
+ * #1265, #1280: one editor everywhere. Every device edits a dashboard on a
+ * canvas: the dashboard laid out at a screen's size, scaled to fit, with the
+ * panels beside it on a laptop and below it on a phone. A named screen opens
+ * its own editor. These measure the canvas.
  */
 const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
 const PIN = process.env.E2E_PIN || '1234';
@@ -150,22 +150,58 @@ test.describe('canvas editor (#1265)', () => {
     } finally { await first.cleanup(); await second.cleanup(); }
   });
 
-  test('"Here, full size" edits on this device from then on, and "Edit on a canvas" takes it back', async ({ page }) => {
+  test('a named screen edits itself on its own canvas, and Done brings its settings home (#1280)', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     const { layout, cleanup } = await dashboard(page);
+    // This browser is a named screen.
+    const named = await page.request.post('/api/displays', { data: { name: `Hall ${Date.now()}` } });
+    expect(named.ok()).toBe(true);
+    const { display } = await named.json() as { display: { id: string; name: string } };
     try {
-      await openCanvas(page, layout.slug, layout.id);
-      await page.locator('[data-canvas-size]').selectOption('here');
-      // In place: the dock-style bar over the dashboard, no frame.
-      await page.waitForURL((u) => u.pathname === `/d/${layout.slug}`, { timeout: 60_000 });
-      await expect(page.locator('[data-editor-bar]')).toBeVisible({ timeout: 60_000 });
-      await expect(page.locator('[data-editor-panels]')).toHaveCount(0);
-      await expect(page.locator('[data-remote-frame]')).toHaveCount(0);
+      await page.goto(`/d/${layout.slug}`);
+      await expect.poll(
+        () => page.evaluate(() => JSON.parse(localStorage.getItem('prism:display-sync-base') ?? 'null')?.displayId ?? null),
+        { timeout: 60_000 },
+      ).toBe(display.id);
+      const before = await page.evaluate(() => localStorage.getItem('prism-perf-mode'));
 
+      // Edit opens its own editor on the canvas, on the dashboard it was showing.
+      await page.goto(`/d/${layout.slug}?edit=1`);
+      await page.waitForURL((u) => u.pathname === `/screens/${display.id}`, { timeout: 60_000 });
+      await expect(page.locator('h1')).toHaveText(`Editing ${display.name}`);
+      const frame = page.frameLocator('[data-remote-frame]');
+      await expect(frame.locator('[data-editor-widget="clock"]')).toBeVisible({ timeout: 90_000 });
+      await expect(page.locator('[data-remote-edit-root] [data-editor-panels]')).toBeVisible({ timeout: 60_000 });
+      await expect(page.locator('[data-editor-bar]:not([data-editor-panels])')).toHaveCount(0);
+
+      // It is not told it is being edited from elsewhere, and is not reloaded
+      // under the editing: still the same page after a beat.
+      await page.evaluate(() => { (window as unknown as { stillHere: boolean }).stillHere = true; });
+      await page.waitForTimeout(7_000);
+      await expect(page.locator('[data-remote-editing-note]')).toHaveCount(0);
+      expect(await page.evaluate(() => (window as unknown as { stillHere?: boolean }).stillHere)).toBe(true);
+
+      // One of its own settings, then Done: back on its dashboard, with it.
+      const choice = before === 'minimal' ? 'reduced' : 'minimal';
       await page.locator('[data-editor-open="look"]').click();
-      await page.locator('[data-edit-on-canvas]').click();
-      await page.waitForURL((u) => u.pathname === `/edit/${layout.id}`, { timeout: 60_000 });
-      await expect(page.locator('[data-remote-picture]')).toBeVisible({ timeout: 60_000 });
-    } finally { await cleanup(); }
+      await page.locator('[data-editor-sheet="look"]').getByLabel('Performance').selectOption(choice);
+      await page.locator('[data-editor-done]').click();
+      // Back showing dashboards (its timeline may move it on from this one).
+      await page.waitForURL((u) => u.pathname === '/' || u.pathname.startsWith('/d/'), { timeout: 60_000 });
+      await expect(page.locator('[data-remote-frame]')).toHaveCount(0);
+      await expect.poll(() => page.evaluate(() => localStorage.getItem('prism-perf-mode')), { timeout: 30_000 }).toBe(choice);
+      expect((await (await page.request.get('/api/displays')).json()).displays
+        .find((d: { id: string }) => d.id === display.id)?.settings?.['prism-perf-mode']).toBe(choice);
+
+      // Its row in Settings > Screens opens the same editor.
+      await page.request.post('/api/auth/verify-pin', { data: { userId: getSeededParentId(), pin: PIN } });
+      await page.goto('/settings?section=displays');
+      const row = page.getByTestId('display-row').filter({ hasText: display.name });
+      await row.getByRole('link', { name: 'Edit' }).click();
+      await page.waitForURL((u) => u.pathname === `/screens/${display.id}`, { timeout: 60_000 });
+    } finally {
+      await page.request.delete(`/api/displays/${display.id}`);
+      await cleanup();
+    }
   });
 });

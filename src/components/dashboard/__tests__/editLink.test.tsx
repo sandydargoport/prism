@@ -9,7 +9,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { useDashboardLayout, editLink } from '../useDashboardLayout';
 import type { Layout, WidgetConfig } from '@/lib/hooks/useLayouts';
-import { EDIT_HERE_KEY } from '@/lib/displays/editPlace';
+import { EDIT_IN_PLACE_KEY } from '@/lib/displays/editPlace';
 
 let activeUser: { role: string } | null = null;
 jest.mock('@/components/providers/AuthProvider', () => ({
@@ -31,8 +31,8 @@ const layouts = {
 
 beforeEach(() => {
   localStorage.clear();
-  // These open the editor in place, as a screen does (#1265).
-  localStorage.setItem(EDIT_HERE_KEY, '1');
+  // These open the editor in place, as the specs that measure it there do.
+  localStorage.setItem(EDIT_IN_PLACE_KEY, '1');
   activeUser = null;
   push.mockReset();
   replace.mockReset();
@@ -82,7 +82,7 @@ describe('where Edit opens (#1265)', () => {
   afterEach(() => { document.cookie = `${NAMED}; expires=Thu, 01 Jan 1970 00:00:00 GMT`; });
 
   it('a device that is not a named screen goes to the canvas editor in place of the link', () => {
-    localStorage.removeItem(EDIT_HERE_KEY);
+    localStorage.removeItem(EDIT_IN_PLACE_KEY);
     activeUser = { role: 'parent' };
     window.history.replaceState(null, '', editLink('/d/kitchen'));
     const { result } = renderHook(() => useDashboardLayout(layouts, 'kitchen'));
@@ -91,7 +91,7 @@ describe('where Edit opens (#1265)', () => {
   });
 
   it('and its Edit button opens the canvas editor', async () => {
-    localStorage.removeItem(EDIT_HERE_KEY);
+    localStorage.removeItem(EDIT_IN_PLACE_KEY);
     activeUser = { role: 'parent' };
     window.history.replaceState(null, '', '/d/kitchen');
     const { result } = renderHook(() => useDashboardLayout(layouts, 'kitchen'));
@@ -100,18 +100,58 @@ describe('where Edit opens (#1265)', () => {
     expect(push).toHaveBeenCalledWith('/edit/k');
   });
 
-  it('a named screen edits on itself', async () => {
-    localStorage.removeItem(EDIT_HERE_KEY);
+  it('a named screen opens its own editor, on the dashboard it is showing (#1280)', async () => {
+    localStorage.removeItem(EDIT_IN_PLACE_KEY);
     document.cookie = NAMED;
+    localStorage.setItem('prism:display-sync-base', JSON.stringify({ displayId: 'hall', settings: {}, settingsUpdatedAt: null }));
     activeUser = { role: 'parent' };
     window.history.replaceState(null, '', '/d/kitchen');
     const { result } = renderHook(() => useDashboardLayout(layouts, 'kitchen'));
     await act(async () => { await result.current.handleEditStart(); });
-    expect(result.current.isEditing).toBe(true);
-    expect(push).not.toHaveBeenCalled();
+    expect(result.current.isEditing).toBe(false);
+    expect(push).toHaveBeenCalledWith('/screens/hall?dashboard=k');
   });
 
-  it('so does a device that chose to edit here', async () => {
+  it('and so does its edit link', () => {
+    localStorage.removeItem(EDIT_IN_PLACE_KEY);
+    document.cookie = NAMED;
+    localStorage.setItem('prism:display-sync-base', JSON.stringify({ displayId: 'hall', settings: {}, settingsUpdatedAt: null }));
+    activeUser = { role: 'parent' };
+    window.history.replaceState(null, '', editLink('/d/kitchen'));
+    const { result } = renderHook(() => useDashboardLayout(layouts, 'kitchen'));
+    expect(result.current.isEditing).toBe(false);
+    expect(replace).toHaveBeenCalledWith('/screens/hall?dashboard=k');
+  });
+
+  it('a named screen as narrow as a phone shows cards, not a grid, so it edits the dashboard as a phone does', async () => {
+    localStorage.removeItem(EDIT_IN_PLACE_KEY);
+    document.cookie = NAMED;
+    localStorage.setItem('prism:display-sync-base', JSON.stringify({ displayId: 'pocket', settings: {}, settingsUpdatedAt: null }));
+    const wide = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 393 });
+    try {
+      activeUser = { role: 'parent' };
+      window.history.replaceState(null, '', '/d/kitchen');
+      const { result } = renderHook(() => useDashboardLayout(layouts, 'kitchen'));
+      await act(async () => { await result.current.handleEditStart(); });
+      expect(push).toHaveBeenCalledWith('/edit/k');
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: wide });
+    }
+  });
+
+  it('a device that once chose "Here, full size" gets the canvas too', async () => {
+    localStorage.removeItem(EDIT_IN_PLACE_KEY);
+    localStorage.setItem('prism:edit-here', '1');
+    activeUser = { role: 'parent' };
+    window.history.replaceState(null, '', '/d/kitchen');
+    const { result } = renderHook(() => useDashboardLayout(layouts, 'kitchen'));
+    await act(async () => { await result.current.handleEditStart(); });
+    expect(result.current.isEditing).toBe(false);
+    expect(push).toHaveBeenCalledWith('/edit/k');
+  });
+
+  it('only the specs that measure the editor in place still edit there', async () => {
     activeUser = { role: 'parent' };
     window.history.replaceState(null, '', '/d/kitchen');
     const { result } = renderHook(() => useDashboardLayout(layouts, 'kitchen'));
