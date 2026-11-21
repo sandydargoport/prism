@@ -72,11 +72,12 @@ const DAY_SETS: { label: string; days: number[] }[] = [
 // panel stays light beside the canvas. With a mouse every control's words are
 // one size, 12px, and sentences and fields 14px.
 const chip = (on: boolean) => cn(
-  'flex min-h-[48px] items-center rounded-full border-[1.5px] px-4 text-body transition-colors pointer-fine:min-h-8 pointer-fine:border pointer-fine:px-3 pointer-fine:text-caption pointer-fine:font-medium',
+  'flex min-h-[48px] items-center rounded-full border-[1.5px] px-4 text-body transition-colors pointer-fine:min-h-8 pointer-fine:border pointer-fine:px-2.5 pointer-fine:text-caption pointer-fine:font-medium',
   on ? 'border-foreground bg-foreground text-background' : 'border-foreground/30 hover:bg-muted',
 );
+/** A day: a 44px circle by touch; with a mouse the seven share their row in equal widths, so Mon and Wed fit like the rest. */
 const dayChip = (on: boolean) => cn(
-  'flex h-[44px] w-[44px] items-center justify-center rounded-full text-caption font-medium disabled:opacity-100 pointer-fine:h-8 pointer-fine:w-auto pointer-fine:min-w-8 pointer-fine:px-1',
+  'flex h-[44px] w-[44px] items-center justify-center rounded-full text-caption font-medium disabled:opacity-100 pointer-fine:h-8 pointer-fine:w-auto pointer-fine:min-w-0 pointer-fine:flex-1',
   on ? 'bg-foreground text-background' : 'border border-foreground/30 text-muted-foreground',
 );
 /** A timeline's own actions, rarer than anything on the line: words, no outline. */
@@ -565,13 +566,20 @@ export function ThroughTheDaySheet({
       )}
 
       <section className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Days shown" data-day-set={days.join(',')}>
+        {/* The presets and + Dashboard share a row with a mouse (1280px and wider). */}
+        <div className="flex flex-wrap items-center gap-2 pointer-fine:gap-1.5" role="group" aria-label="Days shown" data-day-set={days.join(',')}>
           {DAY_SETS.map((set) => (
             <button key={set.label} type="button" aria-pressed={sameDays(days, set.days)} className={chip(sameDays(days, set.days))}
               onClick={() => { setDays(set.days); setPlayed(null); }} data-day-preset={set.label}>
               {set.label}
             </button>
           ))}
+          {timeline && (
+            <button type="button" className={cn(chip(false), 'ml-auto')} onClick={addPlacement}
+              disabled={placements.length >= MAX_PLACEMENTS || allDashboards.length === 0} data-placement-add>
+              <Plus className="mr-1 h-4 w-4" />Dashboard
+            </button>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Each day">
           {WEEK_ORDER.map((d) => {
@@ -585,12 +593,6 @@ export function ThroughTheDaySheet({
               </button>
             );
           })}
-          {timeline && (
-            <button type="button" className={cn(chip(false), 'ml-auto')} onClick={addPlacement}
-              disabled={placements.length >= MAX_PLACEMENTS || allDashboards.length === 0} data-placement-add>
-              <Plus className="mr-1 h-4 w-4" />Dashboard
-            </button>
-          )}
         </div>
 
         {/* Two lanes on one day axis: the second column is the same for both,

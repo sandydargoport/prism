@@ -10,9 +10,10 @@
  * built-in Today and on a family's own dashboards; only what is inside the
  * Widgets sheet differs.
  *
- * On a canvas (#1265) the same controls are panels: the bar at the top of a
- * column beside the canvas (below it on a phone) and the open sheet under it,
- * so a panel never covers the dashboard being arranged. One is always open.
+ * On a canvas (#1265) the same controls are a panel in a column beside the
+ * canvas (below it on a phone): Cancel and Done at its top right, then the
+ * sheets as tabs over the open one, so a panel never covers the dashboard
+ * being arranged. One is always open.
  */
 import * as React from 'react';
 import { Check, LayoutDashboard, MoreHorizontal, Palette, Shapes, SunMoon, X } from 'lucide-react';
@@ -56,58 +57,67 @@ export const EditorBar = React.forwardRef<HTMLDivElement, EditorBarProps>(functi
   // wrap; Cancel and Done sit on a row of their own.
   const item = 'flex min-h-[56px] min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 text-center text-caption font-medium leading-tight transition-colors sm:min-w-[64px] sm:px-3';
   if (panels) {
-    // With a mouse (the laptop) the bar and its sheet are sized like a desktop
-    // panel, so the canvas beside them leads; a finger keeps the dock's size.
-    const panelItem = 'pointer-fine:min-h-[44px] pointer-fine:gap-0.5 [&>svg]:pointer-fine:h-4 [&>svg]:pointer-fine:w-4';
+    // On a canvas the controls are a panel on a light page, as a desktop app
+    // has them: Cancel and Done at the top right, and the five sheets as tabs
+    // along the top of the panel they open, so nothing dark sits beside the
+    // picture. With a mouse a tab is one line of words; a finger keeps 44px
+    // or more and the icons.
     return (
       <div ref={ref} className="flex flex-col gap-3 lg:h-full lg:min-h-0" data-editor-bar data-editor-panels>
-        <nav aria-label="Edit" className="grid shrink-0 grid-cols-5 gap-1 rounded-[20px] bg-[rgb(22_17_13)] p-1.5">
-          {SHEETS.map(({ id, label, Icon }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => onOpenChange(id)}
-              aria-pressed={open === id}
-              className={cn(item, panelItem, 'relative px-1 text-white/85 hover:bg-white/10 sm:px-1', open === id && 'bg-white/15 text-white')}
-              data-editor-open={id}
-            >
-              <Icon className="h-5 w-5" />
-              <span>{label}</span>
-              {dirty[id] && <span aria-label="unsaved changes" className="absolute right-2 top-2 h-2 w-2 rounded-full bg-white" />}
-            </button>
-          ))}
-          <button type="button" onClick={onCancel} className={cn(item, panelItem, 'col-span-2 text-white/85 hover:bg-white/10')} data-editor-cancel>
-            <X className="h-5 w-5" />
-            <span>Cancel</span>
+        <div className="flex min-h-[44px] shrink-0 items-center justify-end gap-2" data-editor-actions>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="min-h-[44px] rounded-full px-4 text-body text-muted-foreground transition-colors hover:bg-muted hover:text-foreground pointer-fine:min-h-8 pointer-fine:px-3 pointer-fine:text-caption pointer-fine:font-medium"
+            data-editor-cancel
+          >
+            Cancel
           </button>
           <button
             type="button"
             onClick={onDone}
             disabled={!!doneBlocked}
             title={doneBlocked ?? undefined}
-            className={cn(item, panelItem, 'col-span-3 bg-white text-[rgb(22_17_13)] hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50')}
+            className="min-h-[44px] rounded-full bg-foreground px-6 text-body font-medium text-background transition-colors hover:bg-foreground/85 disabled:cursor-not-allowed disabled:opacity-50 pointer-fine:min-h-8 pointer-fine:px-4 pointer-fine:text-caption"
             data-editor-done
           >
-            <Check className="h-5 w-5" />
-            <span>{doneLabel}</span>
+            {doneLabel}
           </button>
-        </nav>
+        </div>
         {resting && open !== 'day' && (
           <div className="flex shrink-0 items-center justify-between gap-3 rounded-2xl bg-muted py-1.5 pl-4 pr-1.5 text-body" data-editor-resting>
             Showing the screen while it rests
-            <button type="button" onClick={onLeaveResting} className="min-h-[44px] rounded-full bg-background px-4 hover:bg-background/70">Back to in use</button>
+            <button type="button" onClick={onLeaveResting} className="min-h-[44px] rounded-full bg-background px-4 hover:bg-background/70 pointer-fine:min-h-8 pointer-fine:px-3 pointer-fine:text-caption pointer-fine:font-medium">Back to in use</button>
           </div>
         )}
-        {open && sheet && (
-          <section
-            aria-label={title}
-            className="rounded-[1.4rem] bg-card p-5 text-card-foreground ring-1 ring-border pointer-fine:rounded-2xl pointer-fine:p-4 lg:min-h-0 lg:flex-1 lg:overflow-auto"
-            data-editor-sheet={open}
-          >
-            <h2 className="m-0 mb-4 text-title font-medium pointer-fine:mb-3" style={{ fontFamily: 'var(--font-display)' }}>{title}</h2>
-            {sheet}
-          </section>
-        )}
+        <div className="flex flex-col rounded-[1.4rem] bg-card text-card-foreground ring-1 ring-border pointer-fine:rounded-2xl lg:min-h-0 lg:flex-1">
+          <nav aria-label="Edit" className="flex shrink-0 border-b border-border px-2 pointer-fine:px-1.5">
+            {SHEETS.map(({ id, label, Icon }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => onOpenChange(id)}
+                aria-pressed={open === id}
+                className={cn(
+                  'relative -mb-px flex min-h-[56px] min-w-0 flex-1 flex-col items-center justify-center gap-1 border-b-2 px-1 text-center text-caption font-medium leading-tight transition-colors',
+                  'pointer-fine:min-h-10 pointer-fine:flex-auto pointer-fine:whitespace-nowrap pointer-fine:px-2',
+                  open === id ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
+                )}
+                data-editor-open={id}
+              >
+                <Icon className="h-5 w-5 pointer-fine:hidden" aria-hidden />
+                <span>{label}</span>
+                {dirty[id] && <span aria-label="unsaved changes" className="absolute right-1 top-2 h-1.5 w-1.5 rounded-full bg-primary" />}
+              </button>
+            ))}
+          </nav>
+          {open && sheet && (
+            // The tab above names the sheet, so it has no heading of its own.
+            <section aria-label={title} className="p-5 pointer-fine:p-4 lg:min-h-0 lg:flex-1 lg:overflow-auto" data-editor-sheet={open}>
+              {sheet}
+            </section>
+          )}
+        </div>
       </div>
     );
   }

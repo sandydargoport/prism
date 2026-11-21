@@ -143,7 +143,19 @@ test.describe('timelines (#1266)', () => {
         // timeline action, More.
         const fonts = await sheet.evaluate((el) => ['[data-day-preset="Weekdays"]', '[data-day-chip="1"]', '[data-placement-add]', '[data-timeline-new]', '[data-day-more]']
           .map((s) => `${s} ${getComputedStyle(el.querySelector(s)!).fontSize}`));
-        return { fonts, box: {
+        // Each day bubble, and the tab bar: the Through the day tab's words,
+        // and the ground the tabs are drawn on.
+        const days = await sheet.locator('[data-day-chip]').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().toJSON() as DOMRect));
+        const tabWords = (await page.locator('[data-editor-open="day"] span').last().boundingBox())!;
+        const tabGround = await page.locator('[data-editor-panels] nav').evaluate((nav) => {
+          const rgba = (c: string) => (c.match(/[\d.]+/g) ?? []).map(Number);
+          for (let e: Element | null = nav; e; e = e.parentElement) {
+            const [r = 0, g = 0, b = 0, a = 1] = rgba(getComputedStyle(e).backgroundColor);
+            if (a > 0.5) return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+          }
+          return 1;
+        });
+        return { fonts, days, tabWords, tabGround, box: {
           preset: await box('[data-day-preset="Weekdays"]'),
           day: await box('[data-day-chip="1"]'),
           add: await box('[data-placement-add]'),
@@ -153,6 +165,7 @@ test.describe('timelines (#1266)', () => {
           nobody: await box('[data-day-lane="nobody"]'),
           dot: await box('[data-day-milestone]'),
           tab: (await page.locator('[data-editor-open="day"]').boundingBox())!,
+          done: (await page.locator('[data-editor-done]').boundingBox())!,
         } };
       } finally {
         await page.request.delete(`/api/layouts/${board.id}`);
@@ -161,18 +174,27 @@ test.describe('timelines (#1266)', () => {
     };
 
     // A mouse: controls 28 to 36px, so the panel does not outweigh the canvas,
-    // the day chips and + Dashboard share one row, and every control's words
-    // are one size (the day presets were larger than the rest).
-    const { box: mouse, fonts } = await measure(false);
+    // + Dashboard shares the presets' row, and every control's words are one
+    // size (the day presets were larger than the rest).
+    const { box: mouse, fonts, days, tabWords, tabGround } = await measure(false);
     expect(new Set(fonts.map((f) => f.split(' ').pop())).size, fonts.join('; ')).toBe(1);
     for (const [name, b] of Object.entries(mouse)) {
       if (name === 'tab') continue;
       expect(b.height, `${name} with a mouse`).toBeGreaterThanOrEqual(28);
       expect(b.height, `${name} with a mouse`).toBeLessThanOrEqual(36);
     }
-    expect(mouse.day.width).toBeLessThanOrEqual(36);
-    expect(Math.abs(mouse.add.y + mouse.add.height / 2 - (mouse.day.y + mouse.day.height / 2))).toBeLessThanOrEqual(1);
+    expect(Math.abs(mouse.add.y + mouse.add.height / 2 - (mouse.preset.y + mouse.preset.height / 2))).toBeLessThanOrEqual(1);
+    // The seven days on one row, all one width, wide enough for Mon and Wed.
+    expect(days).toHaveLength(7);
+    expect(new Set(days.map((d) => Math.round(d.top))).size, 'one row').toBe(1);
+    expect(Math.max(...days.map((d) => d.width)) - Math.min(...days.map((d) => d.width)), 'one width').toBeLessThanOrEqual(0.5);
+    expect(days[0]!.width).toBeGreaterThanOrEqual(40);
+    // The menu as a desktop page has it: Done above the tabs, the tabs on the
+    // light panel rather than a dark slab, each label one line.
     expect(mouse.tab.height).toBeLessThanOrEqual(48);
+    expect(mouse.done.y + mouse.done.height).toBeLessThanOrEqual(mouse.tab.y);
+    expect(tabGround, 'the tabs\' ground is light').toBeGreaterThan(0.5);
+    expect(tabWords.height, 'Through the day on one line').toBeLessThanOrEqual(20);
 
     // A finger: every one of them a 44px target.
     const { box: finger } = await measure(true);
