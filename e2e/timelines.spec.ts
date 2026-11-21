@@ -1,12 +1,13 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Browser, type Page } from '@playwright/test';
 import { getFirstParent, getSeededParentId, verifySettingsPinViaAPI } from './helpers/auth';
 
 /**
  * Timelines (#1266): a screen picks a timeline from a dropdown, and the
- * timeline says which dashboard shows when. Days come first in Through the
- * day: a dashboard placed on Weekdays is one block, on Monday to Friday. The
- * last test reads the database through the API: a duplicate goes its own way,
- * and the screens on a deleted timeline follow the household's first.
+ * timeline says which dashboard shows when. In a screen's editor, Through the
+ * day shows them as rows (#1281): the dashboard it shows, and each switch at
+ * set times with its days and hours. The last test reads the database
+ * through the API: a duplicate goes its own way, and the screens on a
+ * deleted timeline follow the household's first.
  *
  * Each test makes its own timelines and leaves the household's first alone.
  */
@@ -34,113 +35,104 @@ async function addDashboard(page: Page, name: string): Promise<{ id: string; slu
   return res.json();
 }
 
-const blocks = (page: Page) => page.locator('[data-editor-sheet="day"] [data-day-placement]');
-const dayChip = (page: Page, name: string) => page.locator('[data-editor-sheet="day"]').getByRole('group', { name: 'Each day' }).getByRole('button', { name, exact: true });
+/** A switch's row in Through the day (#1281). */
+const rows = (page: Page) => page.locator('[data-editor-sheet="day"] [data-placement-row]');
+
+/**
+ * A screen named from a browser of its own, following `timelineId`, and a
+ * laptop signed in to edit it. Through the day shows a timeline only in a
+ * screen's editor (#1281).
+ */
+async function namedScreen(browser: Browser, name: string, timelineId: string) {
+  const probe = await browser.newPage();
+  const parent = await getFirstParent(probe);
+  await probe.close();
+  const wallContext = await browser.newContext();
+  const wall = await wallContext.newPage();
+  await verifySettingsPinViaAPI(wall, parent.name);
+  const named = await wall.request.post('/api/displays', { data: { name } });
+  expect(named.ok()).toBe(true);
+  const id: string = (await named.json()).display?.id ?? (await (await wall.request.get('/api/displays')).json()).currentId;
+  expect((await wall.request.patch(`/api/displays/${id}`, { data: { timelineId } })).ok()).toBe(true);
+  return {
+    id,
+    /** A laptop of the given kind, signed in, on the screen's editor with Through the day open. */
+    edit: async (options: { hasTouch?: boolean } = {}) => {
+      const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, ...options });
+      const page = await context.newPage();
+      await signIn(page);
+      await verifySettingsPinViaAPI(page, parent.name);
+      await page.goto(`/screens/${id}`);
+      await page.locator('[data-editor-open="day"]').click({ timeout: 90_000 });
+      return { page, close: () => context.close() };
+    },
+    remove: async () => { await wall.request.delete(`/api/displays/${id}`); await wallContext.close(); },
+  };
+}
 
 test.describe('timelines (#1266)', () => {
   test.skip(!HAS_TEST_DB, 'needs the seeded test database');
   test.setTimeout(240_000);
 
-  test('Weekdays, then + Dashboard: one block that shows on Monday to Friday and not on Saturday', async ({ page }) => {
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await signIn(page);
+  test('a switch at set times is a row: on weekdays it is kept as one placement on the five days', async ({ browser }) => {
     const tag = Date.now().toString(36);
-    const board = await addDashboard(page, `Line board ${tag}`);
-    const bus = await addDashboard(page, `Bus ${tag}`);
-    const own = await addTimeline(page, `School days ${tag}`, { dashboardId: board.id });
+    const setup = await browser.newPage();
+    await signIn(setup);
+    const board = await addDashboard(setup, `Line board ${tag}`);
+    const bus = await addDashboard(setup, `Bus ${tag}`);
+    const own = await addTimeline(setup, `School days ${tag}`, { dashboardId: board.id });
+    const screen = await namedScreen(browser, `Hall ${tag}`, own.id);
+    const laptop = await screen.edit();
     try {
-      // A laptop edits on the canvas (#1265); Through the day edits whichever
-      // timeline is picked at its top.
-      await page.goto(`/edit/${board.id}`);
-      await page.locator('[data-editor-open="day"]').click({ timeout: 90_000 });
+      const page = laptop.page;
       const sheet = page.locator('[data-editor-sheet="day"]');
-      await sheet.getByLabel('Timeline', { exact: true }).selectOption(own.id);
-      await expect(sheet.locator('[data-day-lane="in-use"]')).toHaveText(`Line board ${tag}`);
+      await expect(sheet.getByLabel('Timeline', { exact: true })).toHaveValue(own.id);
+      await expect(sheet.getByLabel('Dashboard this screen shows')).toHaveValue(board.id);
+      await expect(rows(page)).toHaveCount(0);
 
-      await sheet.locator('[data-day-preset="Weekdays"]').click();
-      await expect(sheet.locator('[data-day-preset="Weekdays"]')).toHaveAttribute('aria-pressed', 'true');
-      // A new placement starts at the time played; 7:00, so it does not run
-      // past midnight whenever the test runs.
-      await sheet.locator('[data-day-slider]').fill('420');
       await sheet.locator('[data-placement-add]').click();
-      await sheet.locator('[data-day-card="placement"]').getByLabel('Placed dashboard').selectOption({ label: `Bus ${tag}` });
+      await expect(rows(page)).toHaveCount(1);
+      const row = rows(page).first();
+      await row.getByLabel('Switches to').selectOption({ label: `Bus ${tag}` });
+      await row.getByLabel('Switch starts').fill('07:00');
+      await row.getByLabel('Switch ends').fill('07:45');
+      const days = row.getByRole('group', { name: 'Switch days' });
+      await days.getByRole('button', { name: 'Saturday' }).click();
+      await days.getByRole('button', { name: 'Sunday' }).click();
 
       // Kept on the timeline as one placement on the five days.
-      await expect.poll(async () => (await list(page)).find((t) => t.id === own.id)!.placements.map((p) => [p.days, p.dashboardId]))
-        .toEqual([[[1, 2, 3, 4, 5], bus.id]]);
-      await expect(blocks(page)).toHaveCount(1);
-      await expect(blocks(page).first()).toHaveText(`Bus ${tag}`);
-      // On a whole-width line: one block, not one per day.
-      const lane = await sheet.locator('[data-day-lane="in-use"]').evaluate((el) => el.getBoundingClientRect().toJSON());
-      const block = await blocks(page).first().evaluate((el) => el.getBoundingClientRect().toJSON());
-      expect(block.left).toBeGreaterThanOrEqual(lane.left - 0.5);
-      expect(block.right).toBeLessThanOrEqual(lane.right + 0.5);
-
-      // Saturday alone: not on it.
-      await sheet.locator('[data-day-preset="Weekend"]').click();
-      await dayChip(page, 'Sunday').click();
-      await expect(sheet.locator('[data-day-set]')).toHaveAttribute('data-day-set', '6');
-      await expect(blocks(page)).toHaveCount(0);
-      // Each weekday alone: on it.
-      for (const [day, others] of [['Monday', ['Tuesday', 'Wednesday', 'Thursday', 'Friday']], ['Friday', ['Monday', 'Tuesday', 'Wednesday', 'Thursday']]] as const) {
-        await sheet.locator('[data-day-preset="Weekdays"]').click();
-        for (const d of others) await dayChip(page, d).click();
-        await expect(dayChip(page, day)).toHaveAttribute('aria-pressed', 'true');
-        await expect(blocks(page), `on ${day}`).toHaveCount(1);
-      }
-
-      // Every day: the block is on some of the days shown, so it says which,
-      // as days, in dark words that can be read on its light fill.
-      await sheet.locator('[data-day-preset="Every day"]').click();
-      await expect(blocks(page).first()).toHaveAttribute('data-partial', 'true');
-      await expect(blocks(page).first().locator('[data-placement-days]')).toHaveText('Mon–Fri');
-      const contrast = await blocks(page).first().evaluate((block) => {
-        // Colours read through a 1px canvas, which takes any CSS colour, with
-        // each background under the block painted from the page up.
-        const ctx = document.createElement('canvas').getContext('2d', { willReadFrequently: true })!;
-        ctx.canvas.width = 1; ctx.canvas.height = 1;
-        const under: string[] = [];
-        for (let e: Element | null = block; e; e = e.parentElement) under.unshift(getComputedStyle(e).backgroundColor);
-        const paint = (top?: string) => {
-          ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, 1, 1);
-          for (const c of under) { ctx.fillStyle = c; ctx.fillRect(0, 0, 1, 1); }
-          if (top) { ctx.fillStyle = top; ctx.fillRect(0, 0, 1, 1); }
-          const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
-          const f = (v: number) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
-          return 0.2126 * f(r!) + 0.7152 * f(g!) + 0.0722 * f(b!);
-        };
-        const ratio = (el: Element) => {
-          const bg = paint();
-          const text = paint(getComputedStyle(el).color);
-          return (Math.max(bg, text) + 0.05) / (Math.min(bg, text) + 0.05);
-        };
-        return { name: ratio(block.querySelector('[data-placement-name]')!), days: ratio(block.querySelector('[data-placement-days]')!) };
-      });
-      expect(contrast.name, 'the name on a some-days block').toBeGreaterThanOrEqual(4.5);
-      expect(contrast.days, 'the days on a some-days block').toBeGreaterThanOrEqual(4.5);
+      await expect.poll(async () => (await list(setup)).find((t) => t.id === own.id)!.placements.map((p) => [p.days, p.from, p.to, p.dashboardId]))
+        .toEqual([[[1, 2, 3, 4, 5], '07:00', '07:45', bus.id]]);
+      await expect(rows(page)).toHaveCount(1);
+      await expect(days.locator('[aria-pressed="true"]')).toHaveCount(5);
+      // The row stays inside the panel.
+      expect(await sheet.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0);
     } finally {
-      await page.request.delete(`/api/timelines/${own.id}`);
-      await page.request.delete(`/api/layouts/${bus.id}`);
-      await page.request.delete(`/api/layouts/${board.id}`);
+      await laptop.close();
+      await screen.remove();
+      await setup.request.delete(`/api/timelines/${own.id}`);
+      await setup.request.delete(`/api/layouts/${bus.id}`);
+      await setup.request.delete(`/api/layouts/${board.id}`);
+      await setup.close();
     }
   });
 
   test('with a mouse the panel\'s controls are sized for a desk, and a finger still gets 44px', async ({ browser }) => {
     const tag = Date.now().toString(36);
-    /** Heights (and widths) of the Through the day controls on the canvas editor. */
+    const setup = await browser.newPage();
+    await signIn(setup);
+    const bus = await addDashboard(setup, `Sizes ${tag}`);
+    const own = await addTimeline(setup, `Sizes ${tag}`, { placements: [{ days: [1, 2, 3, 4, 5], from: '07:00', to: '07:45', dashboardId: bus.id }] });
+    const screen = await namedScreen(browser, `Sizes ${tag}`, own.id);
+    /** Heights (and widths) of the Through the day controls in the screen's editor. */
     const measure = async (touch: boolean) => {
-      const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, hasTouch: touch });
-      const page = await context.newPage();
-      await signIn(page);
-      const board = await addDashboard(page, `Sizes ${touch ? 'touch' : 'mouse'} ${tag}`);
+      const { page, close } = await screen.edit({ hasTouch: touch });
       try {
-        await page.goto(`/edit/${board.id}`);
-        await page.locator('[data-editor-open="day"]').click({ timeout: 90_000 });
         const sheet = page.locator('[data-editor-sheet="day"]');
-        await expect(sheet.locator('[data-day-lane="nobody"]')).toBeVisible();
+        await expect(rows(page)).toHaveCount(1);
         const box = async (selector: string) => (await sheet.locator(selector).first().boundingBox())!;
-        // The words on each kind of control: presets, days, + Dashboard, More.
-        const fonts = await sheet.evaluate((el) => ['[data-day-preset="Weekdays"]', '[data-day-chip="1"]', '[data-placement-add]', '[data-day-more]']
+        // The words on each kind of control: a day, + Switch, See it, More.
+        const fonts = await sheet.evaluate((el) => ['[data-day-chip="1"]', '[data-placement-add]', '[data-see="night"]', '[data-day-more]']
           .map((s) => `${s} ${getComputedStyle(el.querySelector(s)!).fontSize}`));
         // Each day bubble, and the tab bar: the Through the day tab's words,
         // and the ground the tabs are drawn on.
@@ -155,59 +147,62 @@ test.describe('timelines (#1266)', () => {
           return 1;
         });
         return { fonts, days, tabWords, tabGround, box: {
-          preset: await box('[data-day-preset="Weekdays"]'),
           day: await box('[data-day-chip="1"]'),
           add: await box('[data-placement-add]'),
           select: await box('[data-timeline-select]'),
           menu: await box('[data-timeline-menu]'),
-          inUse: await box('[data-day-lane="in-use"]'),
-          nobody: await box('[data-day-lane="nobody"]'),
-          dot: await box('[data-day-milestone]'),
+          shows: await box('[data-rest-of-day]'),
+          resting: await box('[data-resting-look]'),
+          night: await box('[data-night-look]'),
+          see: await box('[data-see="night"]'),
           tab: (await page.locator('[data-editor-open="day"]').boundingBox())!,
           done: (await page.locator('[data-editor-done]').boundingBox())!,
         } };
       } finally {
-        await page.request.delete(`/api/layouts/${board.id}`);
-        await context.close();
+        await close();
       }
     };
 
-    // A mouse: controls 28 to 36px, so the panel does not outweigh the canvas,
-    // + Dashboard shares the presets' row, and every control's words are one
-    // size (the day presets were larger than the rest).
-    const { box: mouse, fonts, days, tabWords, tabGround } = await measure(false);
-    expect(new Set(fonts.map((f) => f.split(' ').pop())).size, fonts.join('; ')).toBe(1);
-    for (const [name, b] of Object.entries(mouse)) {
-      if (name === 'tab') continue;
-      expect(b.height, `${name} with a mouse`).toBeGreaterThanOrEqual(28);
-      expect(b.height, `${name} with a mouse`).toBeLessThanOrEqual(36);
-    }
-    expect(Math.abs(mouse.add.y + mouse.add.height / 2 - (mouse.preset.y + mouse.preset.height / 2))).toBeLessThanOrEqual(1);
-    // The timeline's own actions are one button on its dropdown's row.
-    expect(Math.abs(mouse.menu.y + mouse.menu.height / 2 - (mouse.select.y + mouse.select.height / 2)), 'menu beside the dropdown').toBeLessThanOrEqual(1);
-    expect(mouse.menu.x).toBeGreaterThan(mouse.select.x + mouse.select.width);
-    // The seven days on one row, all one width, wide enough for Mon and Wed.
-    expect(days).toHaveLength(7);
-    expect(new Set(days.map((d) => Math.round(d.top))).size, 'one row').toBe(1);
-    expect(Math.max(...days.map((d) => d.width)) - Math.min(...days.map((d) => d.width)), 'one width').toBeLessThanOrEqual(0.5);
-    expect(days[0]!.width).toBeGreaterThanOrEqual(40);
-    // The menu as a desktop page has it: Done above the tabs, the tabs on the
-    // light panel rather than a dark slab, each label one line.
-    expect(mouse.tab.height).toBeLessThanOrEqual(48);
-    expect(mouse.done.y + mouse.done.height).toBeLessThanOrEqual(mouse.tab.y);
-    expect(tabGround, 'the tabs\' ground is light').toBeGreaterThan(0.5);
-    expect(tabWords.height, 'Through the day on one line').toBeLessThanOrEqual(20);
+    try {
+      // A mouse: controls 28 to 36px, so the panel does not outweigh the
+      // canvas, and every control's words are one size.
+      const { box: mouse, fonts, days, tabWords, tabGround } = await measure(false);
+      expect(new Set(fonts.map((f) => f.split(' ').pop())).size, fonts.join('; ')).toBe(1);
+      for (const [name, b] of Object.entries(mouse)) {
+        if (name === 'tab') continue;
+        expect(b.height, `${name} with a mouse`).toBeGreaterThanOrEqual(28);
+        expect(b.height, `${name} with a mouse`).toBeLessThanOrEqual(36);
+      }
+      // The timeline's own actions are one button on its dropdown's row.
+      expect(Math.abs(mouse.menu.y + mouse.menu.height / 2 - (mouse.select.y + mouse.select.height / 2)), 'menu beside the dropdown').toBeLessThanOrEqual(1);
+      expect(mouse.menu.x).toBeGreaterThan(mouse.select.x + mouse.select.width);
+      // A switch's seven days on one row, all one width, wide enough for Mon and Wed.
+      expect(days).toHaveLength(7);
+      expect(new Set(days.map((d) => Math.round(d.top))).size, 'one row').toBe(1);
+      expect(Math.max(...days.map((d) => d.width)) - Math.min(...days.map((d) => d.width)), 'one width').toBeLessThanOrEqual(0.5);
+      expect(days[0]!.width).toBeGreaterThanOrEqual(40);
+      // The menu as a desktop page has it: Done above the tabs, the tabs on the
+      // light panel rather than a dark slab, each label one line.
+      expect(mouse.tab.height).toBeLessThanOrEqual(48);
+      expect(mouse.done.y + mouse.done.height).toBeLessThanOrEqual(mouse.tab.y);
+      expect(tabGround, 'the tabs\' ground is light').toBeGreaterThan(0.5);
+      expect(tabWords.height, 'Through the day on one line').toBeLessThanOrEqual(20);
 
-    // A finger: every one of them a 44px target.
-    const { box: finger } = await measure(true);
-    for (const [name, b] of Object.entries(finger)) {
-      expect(b.height, `${name} by touch`).toBeGreaterThanOrEqual(44);
+      // A finger: every one of them a 44px target.
+      const { box: finger } = await measure(true);
+      for (const [name, b] of Object.entries(finger)) {
+        expect(b.height, `${name} by touch`).toBeGreaterThanOrEqual(44);
+      }
+      expect(finger.day.width).toBeGreaterThanOrEqual(44);
+    } finally {
+      await screen.remove();
+      await setup.request.delete(`/api/timelines/${own.id}`);
+      await setup.request.delete(`/api/layouts/${bus.id}`);
+      await setup.close();
     }
-    expect(finger.day.width).toBeGreaterThanOrEqual(44);
-    expect(finger.dot.width).toBeGreaterThanOrEqual(44);
   });
 
-  test('switching a screen\'s timeline from the dropdown changes what its line shows', async ({ browser }) => {
+  test('switching a screen\'s timeline from the dropdown changes its rows', async ({ browser }) => {
     const tag = Date.now().toString(36);
     const NAME = `Hall ${tag}`;
     const probe = await browser.newPage();
@@ -240,22 +235,22 @@ test.describe('timelines (#1266)', () => {
       await expect.poll(async () => (await (await laptop.request.get('/api/displays')).json()).displays.find((d: { id: string }) => d.id === screenId)?.timelineId)
         .toBe(school.id);
 
-      // Its editor: the line is School's, Morning from 7 to 8.
+      // Its editor: School's switch, Morning from 7 to 8.
       await row.getByRole('link', { name: 'Edit' }).click();
       await expect(laptop).toHaveURL(/\/screens\//, { timeout: 60_000 });
       await laptop.locator('[data-editor-open="day"]').click({ timeout: 90_000 });
       const sheet = laptop.locator('[data-editor-sheet="day"]');
       await expect(sheet.getByText('This screen follows')).toBeVisible();
       await expect(sheet.getByLabel('Timeline', { exact: true })).toHaveValue(school.id);
-      await expect(blocks(laptop)).toHaveCount(1);
-      await expect(blocks(laptop).first()).toHaveText(`Morning ${tag}`);
-      await expect(blocks(laptop).first()).toHaveAttribute('data-from', String(7 * 60));
+      await expect(rows(laptop)).toHaveCount(1);
+      await expect(rows(laptop).first().getByLabel('Switches to')).toHaveValue(morning.id);
+      await expect(rows(laptop).first().getByLabel('Switch starts')).toHaveValue('07:00');
 
-      // The editor's dropdown: Holiday instead. Its line, and the screen follows it.
+      // The editor's dropdown: Holiday instead. Its rows, and the screen follows it.
       await sheet.getByLabel('Timeline', { exact: true }).selectOption(holiday.id);
-      await expect(blocks(laptop).first()).toHaveText(`Evening ${tag}`);
-      await expect(blocks(laptop).first()).toHaveAttribute('data-from', String(18 * 60));
-      await expect(blocks(laptop)).toHaveCount(1);
+      await expect(rows(laptop).first().getByLabel('Switches to')).toHaveValue(evening.id);
+      await expect(rows(laptop).first().getByLabel('Switch starts')).toHaveValue('18:00');
+      await expect(rows(laptop)).toHaveCount(1);
       await expect.poll(async () => (await (await laptop.request.get('/api/displays')).json()).displays.find((d: { id: string }) => d.id === screenId)?.timelineId)
         .toBe(holiday.id);
       await expect(sheet.locator('[data-timeline-used]')).toHaveText('Used by 1 screen.');

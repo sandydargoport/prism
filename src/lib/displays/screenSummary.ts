@@ -1,14 +1,13 @@
 /**
  * The one line under each screen in Settings > Screens (#1153): which
- * timeline it follows, when it rests, when its night is, and how many
- * dashboards are placed on its day, such as "Main: rests after 2 min, night
- * from dusk, 1 dashboard placed".
+ * timeline it follows, when it rests, and how many dashboards are placed on
+ * its day, such as "Main: rests after 2 min, 1 dashboard placed".
  *
- * Resting is the screen's own setting; night and the placements are its
- * timeline's (#1266).
+ * Resting is the screen's own setting; the placements are its timeline's
+ * (#1266). Night is each dashboard's own (#1281), so it is not one thing for
+ * a screen whose dashboard changes through the day, and is left out.
  */
 import type { Timeline } from '@/lib/timeline';
-import { nightRule } from '@/lib/throughTheDay';
 import type { ScreenSettings } from './screenSettings';
 
 /** The screensaver timeout a screen uses when it never chose one, in seconds. */
@@ -24,17 +23,13 @@ function restsAfter(seconds: number): string {
 
 export function screenSummary(
   settings: ScreenSettings,
-  timeline: Pick<Timeline, 'name' | 'idleBackground' | 'placements'> | null,
-  /** "21:00" as the household reads a time, e.g. "9:00 pm". */
-  clock: (hhmm: string) => string,
+  timeline: Pick<Timeline, 'name' | 'placements'> | null,
 ): string {
   const raw = settings['prism-screensaver-timeout'];
   const timeout = raw !== undefined && Number.isFinite(Number(raw)) ? Number(raw) : DEFAULT_TIMEOUT_S;
   const parts = [restsAfter(timeout)];
 
   if (timeline) {
-    const rule = nightRule(timeline.idleBackground);
-    parts.push(rule.by === 'sun' ? 'night from dusk' : `night ${clock(rule.from)} to ${clock(rule.to)}`);
     const placed = timeline.placements.length;
     if (placed > 0) parts.push(`${placed} dashboard${placed === 1 ? '' : 's'} placed`);
   }

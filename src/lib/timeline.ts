@@ -6,8 +6,9 @@ import { idleBackgroundSchema, parseIdleBackground, type IdleBackground } from '
  * Timelines (#1266): a named plan for a screen's day, kept on its own.
  *
  * A timeline says which dashboard shows when ("weekdays 7:00 to 7:45, Bus;
- * the rest of the day, Kitchen") and how the screen rests and what it does at
- * night. A screen picks one; two screens that should behave alike pick the
+ * the rest of the day, Kitchen"). How the screen rests and what it does at
+ * night are the dashboard's own (#1281); a timeline's `idleBackground` is
+ * left unread. A screen picks one; two screens that should behave alike pick the
  * same one, so nothing is copied or kept in step. The household's first
  * timeline is the one every screen that has not picked another follows,
  * devices nobody named included.
@@ -19,8 +20,7 @@ import { idleBackgroundSchema, parseIdleBackground, type IdleBackground } from '
  * first in the stored order wins.
  *
  * A device nobody named follows the first timeline on the home page; opened at
- * a dashboard's own address it shows that dashboard and takes only its rest
- * and night from here (see useScreenSchedule).
+ * a dashboard's own address it shows that dashboard (see useScreenSchedule).
  */
 
 /** The React transition type a scheduled change over runs under (see CssGridDisplay). */

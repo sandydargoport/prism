@@ -37,7 +37,7 @@ import { WIDGET_REGISTRY } from '@/components/widgets/widgetRegistry';
 import { renderScreensaverPreview } from '@/components/screensaver/ScreensaverWidgetPreview';
 import { SCREENSAVER_WIDGET_CLASS } from '@/components/screensaver/Screensaver';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
-import { withoutDashboard, PHOTOS, type IdleBackground } from '@/lib/idleBackground';
+import { parseIdleBackground, withoutDashboard, PHOTOS, type IdleBackground } from '@/lib/idleBackground';
 import { deviceScreenId, pickTimeline, useDeviceTimeline } from '@/lib/hooks/useTimelines';
 import { TodayScene } from '@/components/today/TodayScene';
 import { PhoneToday } from '@/components/today/PhoneToday';
@@ -153,25 +153,20 @@ export function Dashboard({
     loading: data.layouts.loading,
     editing: editingRef,
   });
-  // The timeline this page follows (#1266): how it rests and what it does at
-  // night. While editing, the one the editor is looking at, which starts as
-  // this page's own.
-  const { timeline: deviceTimeline, timelines, loaded: timelinesLoaded } = useDeviceTimeline({ poll: true });
+  const layout = useDashboardLayout(data.layouts, schedule.slug);
+  // The timeline the screen being edited follows (#1266), which says which
+  // dashboard shows when. While editing, the one the editor is looking at,
+  // which starts as this page's own.
+  const { timeline: deviceTimeline, timelines } = useDeviceTimeline({ poll: true });
   const [editedTimelineId, setEditedTimelineId] = useState<string | null>(null);
   const editedTimeline = (editedTimelineId ? timelines.find((t) => t.id === editedTimelineId) : undefined) ?? deviceTimeline;
-  const layout = useDashboardLayout(
-    data.layouts, schedule.slug,
-    timelinesLoaded ? editedTimeline?.idleBackground ?? PHOTOS : null,
-  );
   useResetOn(layout.isEditing, () => setEditedTimelineId(null));
-  const { setEditingBackground } = layout;
   const screenId = deviceScreenId();
   /** The editor looks at another timeline; for a named screen, the screen follows it. */
   const chooseTimeline = useCallback((id: string) => {
     setEditedTimelineId(id);
-    setEditingBackground(null);
     if (screenId) void pickTimeline(screenId, id);
-  }, [screenId, setEditingBackground]);
+  }, [screenId]);
   useEffect(() => { editingRef.current = layout.isEditing; }, [layout.isEditing]);
   // In the frame of a phone editing this screen (#1153): say which dashboard
   // is on show, and when editing ends.
@@ -226,12 +221,12 @@ export function Dashboard({
   // Grid control state shared between LayoutEditor toolbar and LayoutGridEditor
   const { allSizeNames } = useScreenSafeZones();
 
-  // Tell the Screensaver what shows behind it when idle (#782), from this
-  // page's timeline (#1266), which may be the dashboard itself (calm mode,
-  // #691). When the dashboard goes, other pages keep its photos or sky but
-  // have no dashboard to show. The phone layout has no calm idle state. Keyed
-  // by its JSON so a fresh copy of the same value is not a change.
-  const idleBackground = deviceTimeline?.idleBackground ?? PHOTOS;
+  // Tell the Screensaver what this dashboard shows behind it when idle (#782,
+  // #1281), which may be the dashboard itself (calm mode, #691). When the
+  // dashboard goes, other pages keep its photos or sky but have no dashboard
+  // to show. The phone layout has no calm idle state. Keyed by its JSON so a
+  // fresh copy of the same value is not a change.
+  const idleBackground = layout.activeLayout ? parseIdleBackground(layout.activeLayout.idleBackground) : PHOTOS;
   const idleKey = JSON.stringify(isMobile ? withoutDashboard(idleBackground) : idleBackground);
   useEffect(() => {
     const bg = JSON.parse(idleKey) as IdleBackground;
@@ -254,7 +249,7 @@ export function Dashboard({
     : layout.editTab !== 'idle' ? 'active'
       : layout.idleHalf === 'night' ? 'night' : 'resting';
   const shownBackground = layout.isEditing ? layout.editingBackground : idleBackground;
-  // One night for the veil, the dim and the backdrop: the timeline's rule.
+  // One night for the veil, the dim and the backdrop: the dashboard's rule.
   const nightNow = useNightNow(nightRule(shownBackground));
   const sceneNight = previewState === 'night' || (previewState !== 'resting' && nightNow);
   const previewBackdrop = previewState ? backdropFor(shownBackground, previewState) : null;

@@ -1,14 +1,13 @@
 /**
  * @jest-environment jsdom
  *
- * The Through the day sheet (#1152): two lanes on one time axis (#1233), In
- * use and Idle, under one time marker. Tapping a lane at a time shows
- * the screen in that lane then; the slider moves the marker and keeps the
- * lane. The sheet sets what resting and night are. A timeline nobody gave a
- * night is stored as before. The Idle lane (#1170) has a dot where
- * night starts and ends, and In use a block per dashboard placed on the
- * timeline (#1266); tapping one shows the screen then and opens its card.
- * Days come first: a placement made on a set of days is one block on them.
+ * The Through the day sheet (#1152) as plain rows (#1281). For a screen: the
+ * timeline it follows (#1266), the dashboard it shows and the dashboards it
+ * switches to at set times, a row each. Then the dashboard's own resting and
+ * night: plain choices in a row, Photos and the night sky among them, saved
+ * with the dashboard. Rest after and How dark are the screen's own, shown
+ * only when the editor is for a screen. See it shows the canvas in use,
+ * resting or at night. A dashboard nobody gave a night is stored as before.
  */
 import React, { useState } from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
@@ -56,8 +55,8 @@ const MAIN: Timeline = { id: 'main', name: 'Main', position: 0, dashboardId: nul
 
 const seen: { value?: IdleBackground; half?: IdleHalf; tab?: EditTab; timelineId?: string } = {};
 
-function Harness({ initial, dashboards, timelines, screenId = null }: {
-  initial: IdleBackground; dashboards?: typeof DASHBOARDS; timelines?: Timeline[]; screenId?: string | null;
+function Harness({ initial, dashboards, timelines, screenId = 'kitchen', forScreen = true, current = HOME }: {
+  initial: IdleBackground; dashboards?: typeof DASHBOARDS; timelines?: Timeline[]; screenId?: string | null; forScreen?: boolean; current?: string;
 }) {
   const [value, setValue] = useState(initial);
   const [half, setHalf] = useState<IdleHalf>('day');
@@ -76,272 +75,188 @@ function Harness({ initial, dashboards, timelines, screenId = null }: {
       editTab={tab} onEditTabChange={setTab}
       idleCheck={{}}
       allDashboards={(dashboards ?? DASHBOARDS) as never}
-      currentDashboardId={HOME}
+      currentDashboardId={current}
+      onSwitchDashboard={switched}
       timelines={timelines ? lines : undefined}
       timelineId={timelines ? lineId : undefined}
       onTimelineChange={setLineId}
       screenId={screenId}
+      forScreen={forScreen}
     />
   );
 }
+const switched = jest.fn();
 
-const radio = (group: string, name: string) =>
-  Array.from(screen.getByRole('radiogroup', { name: group }).querySelectorAll<HTMLElement>('[role="radio"]')).find((b) => b.textContent === name)!;
+afterEach(() => { localStorage.clear(); mockStore.patches = []; mockStore.created = []; mockStore.deleted = []; switched.mockReset(); });
 
-afterEach(() => { localStorage.clear(); mockStore.patches = []; mockStore.created = []; mockStore.deleted = []; });
-
-const milestone = (kind: 'night-start' | 'night-end') => document.querySelector<HTMLElement>(`[data-day-milestone="${kind}"]`)!;
 /** The placements the last change kept. */
 const keptPlacements = () => [...mockStore.patches].reverse().find((p) => 'placements' in p.patch)?.patch.placements as Timeline['placements'];
-const blocks = () => Array.from(document.querySelectorAll<HTMLElement>('[data-day-placement]'));
+const rows = () => Array.from(document.querySelectorAll<HTMLElement>('[data-placement-row]'));
 const press = (name: string) => fireEvent.click(screen.getByRole('button', { name }));
-/** A day chip above the line. */
-const day = (name: string) => fireEvent.click(screen.getByRole('group', { name: 'Each day' }).querySelector<HTMLElement>(`[aria-label="${name}"]`)!);
+const pick = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } });
+const seeIt = (name: string) => fireEvent.click(screen.getByRole('radiogroup', { name: 'See it' }).querySelector<HTMLElement>(`[data-see="${name}"]`)!);
 
 describe('ThroughTheDaySheet', () => {
-  describe('two lanes on one time axis (#1233)', () => {
-    // Both lanes are laid out 1440px wide from 0, so a tap at x is minute x.
-    let rect: jest.SpyInstance;
+  describe('plain rows (#1281)', () => {
+    it('has no lanes, line or slider: a row for resting, one for night, and See it', () => {
+      render(<Harness initial={{ day: 'photos', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } }} />);
+      for (const gone of ['[data-day-lanes]', '[data-day-lane]', '[data-day-line]', '[data-day-milestone]', '[data-day-card]', '[data-day-slider]']) {
+        expect(document.querySelector(gone)).toBeNull();
+      }
+      expect((screen.getByLabelText('While resting') as HTMLSelectElement).value).toBe('photos');
+      expect((screen.getByLabelText('When night is') as HTMLSelectElement).value).toBe('clock');
+      expect((screen.getByLabelText('Night look') as HTMLSelectElement).value).toBe('sky');
+      expect(Array.from(screen.getByRole('radiogroup', { name: 'See it' }).querySelectorAll('[role="radio"]')).map((b) => b.textContent))
+        .toEqual(['In use', 'Resting', 'Night']);
+      // See it first, in reach without scrolling past the rows.
+      expect(document.querySelector('[data-day-sheet]')!.firstElementChild!.hasAttribute('data-see-it')).toBe(true);
+      // The dashboard's rows, then the screen's own.
+      expect(Array.from(document.querySelectorAll('[data-row-name]')).map((n) => n.textContent))
+        .toEqual(['Resting', 'At night', 'Night is', 'Rest after', 'How dark']);
+    });
+
+    it('See it shows the canvas in use, resting or at night', () => {
+      render(<Harness initial={{ source: 'photos' }} />);
+      expect(document.querySelector('[data-day-sheet]')!.getAttribute('data-day-shows')).toBe('active');
+      seeIt('night');
+      expect(seen).toMatchObject({ tab: 'idle', half: 'night' });
+      expect(document.querySelector('[data-see="night"]')!.getAttribute('aria-checked')).toBe('true');
+      seeIt('resting');
+      expect(seen).toMatchObject({ tab: 'idle', half: 'day' });
+      seeIt('active');
+      expect(seen.tab).toBe('dashboard');
+      expect(document.querySelector('[data-day-sheet]')!.getAttribute('data-day-shows')).toBe('active');
+    });
+
+    it('picks what it shows resting, and shows it', () => {
+      render(<Harness initial={{ day: 'photos', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } }} />);
+      pick('While resting', 'sky');
+      expect(seen.value).toMatchObject({ day: 'sky' });
+      expect(seen).toMatchObject({ tab: 'idle', half: 'day' });
+    });
+
+    it('Photos at night is one of the night choices, beside the night sky', () => {
+      render(<Harness initial={{ source: 'sky' }} />);
+      const looks = Array.from((screen.getByLabelText('Night look') as HTMLSelectElement).options).map((o) => o.textContent);
+      expect(looks).toEqual(['Dim this dashboard', 'Night sky', 'Photos', 'Screen off']);
+      pick('Night look', 'photos');
+      expect(seen.value).toEqual({ day: 'sky', night: 'photos', switch: DEFAULT_NIGHT });
+      expect(seen.half).toBe('night');
+    });
+
+    it('sets a night look that turns the screen off, on the default night', () => {
+      render(<Harness initial={{ source: 'photos' }} />);
+      pick('Night look', 'off');
+      expect(seen.value).toEqual({ day: 'photos', night: 'off', switch: DEFAULT_NIGHT });
+      expect(seen.half).toBe('night');
+      // Nothing to dim on a screen that is off.
+      expect(screen.queryByLabelText('How dark at night')).toBeNull();
+    });
+
+    it('turns dimming on when Dim this dashboard is chosen on a screen that does not dim', () => {
+      render(<Harness initial={{ day: 'dashboard', night: 'sky', switch: DEFAULT_NIGHT }} />);
+      pick('Night look', 'dashboard');
+      expect(seen.value).toEqual({ source: 'dashboard' });
+      expect(localStorage.getItem('prism-screensaver-dim')).toBe('0.5');
+    });
+
+    it('sets night by the clock instead of the sun', () => {
+      render(<Harness initial={{ source: 'dashboard' }} />);
+      pick('When night is', 'clock');
+      expect(seen.half).toBe('night');
+      fireEvent.change(screen.getByLabelText('Night starts'), { target: { value: '22:15' } });
+      expect(seen.value).toEqual({ day: 'dashboard', night: 'dashboard', switch: { by: 'clock', from: '22:15', to: '06:30' } });
+    });
+
+    it('by the sun, says tonight\'s times and moves an end', () => {
+      render(<Harness initial={{ source: 'dashboard' }} />);
+      expect(document.querySelector('[data-night-times]')!.textContent).toMatch(/^Tonight \d\d:\d\d to \d\d:\d\d\.$/);
+      fireEvent.change(screen.getByLabelText('Ends: unit'), { target: { value: 'hr' } });
+      fireEvent.change(screen.getByLabelText('Ends: amount'), { target: { value: '1' } });
+      expect(seen.value).toEqual({ day: 'dashboard', night: 'dashboard', switch: { by: 'sun', duskOffset: 30, dawnOffset: -60 } });
+    });
+
+    it('says the look is the dashboard\'s, for every screen showing it', () => {
+      render(<Harness initial={{ source: 'photos' }} current={BUS} />);
+      expect(document.querySelector('[data-day-shared]')!.textContent).toMatch(/^Every screen showing Bus rests and sleeps this way\./);
+    });
+
+    it('for a screen, Rest after and How dark are its own', () => {
+      render(<Harness initial={{ source: 'photos' }} />);
+      fireEvent.change(screen.getByLabelText('Rest after'), { target: { value: '3600' } });
+      expect(localStorage.getItem('prism-screensaver-timeout')).toBe('3600');
+      fireEvent.change(screen.getByLabelText('How dark at night'), { target: { value: '0.75' } });
+      expect(localStorage.getItem('prism-screensaver-dim')).toBe('0.75');
+    });
+
+    it('for a dashboard alone, there is no screen to rest or dim, and nothing changes one', () => {
+      render(<Harness initial={{ day: 'dashboard', night: 'sky', switch: DEFAULT_NIGHT }} forScreen={false} screenId={null} />);
+      expect(screen.queryByLabelText('Rest after')).toBeNull();
+      expect(screen.queryByLabelText('How dark at night')).toBeNull();
+      pick('Night look', 'dashboard');
+      expect(seen.value).toEqual({ source: 'dashboard' });
+      expect(localStorage.getItem('prism-screensaver-dim')).toBeNull();
+    });
+  });
+
+  describe('switches at set times (#1266, #1281)', () => {
     beforeEach(() => {
-      rect = jest.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(
-        { left: 0, right: 1440, width: 1440, top: 0, bottom: 44, height: 44, x: 0, y: 0, toJSON: () => ({}) } as DOMRect,
-      );
+      // Only the date is faked: a new switch starts at this quarter hour.
+      jest.useFakeTimers({ now: new Date(2026, 10, 23, 7, 5), doNotFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'setImmediate', 'clearImmediate', 'queueMicrotask', 'nextTick'] });
     });
-    afterEach(() => rect.mockRestore());
-    const NIGHT_AT_9 = { day: 'photos', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } } as const;
-    const inUse = () => document.querySelector<HTMLElement>('[data-day-lane="in-use"]')!;
-    /** The Idle stretch under a minute. */
-    const nobodyAt = (minute: number) => Array.from(document.querySelectorAll<HTMLElement>('[data-day-stretch]'))
-      .filter((el) => Number(el.dataset.key!.split('-')[1]) <= minute).pop()!;
-    /** The minute the time marker is drawn at. */
-    const marker = () => Math.round((parseFloat(document.querySelector<HTMLElement>('[data-day-now]')!.style.left) / 100) * 1440);
-    const tap = (el: HTMLElement, minute: number) => fireEvent.click(el, { clientX: minute, detail: 1 });
-    const key = (el: HTMLElement) => fireEvent.click(el, { detail: 0 });
+    afterEach(() => jest.useRealTimers());
 
-    it('has no row of state buttons', () => {
-      render(<Harness initial={NIGHT_AT_9} />);
-      expect(document.querySelector('[data-day-state]')).toBeNull();
-      expect(screen.queryByRole('radiogroup', { name: 'Show the screen' })).toBeNull();
-      expect(screen.getByText('In use')).toBeTruthy();
-      expect(screen.getByText('Idle')).toBeTruthy();
-      expect(screen.queryByText('Nobody there')).toBeNull();
-    });
-
-    it('tapping In use at 22:00 shows the dashboard, with the marker at 22:00', () => {
-      render(<Harness initial={NIGHT_AT_9} />);
-      tap(nobodyAt(10 * 60), 10 * 60);
-      tap(inUse(), 22 * 60);
-      expect(seen.tab).toBe('dashboard');
-      expect(marker()).toBe(22 * 60);
-      expect(screen.getByText(/^At 22:00: in use\./)).toBeTruthy();
-      expect(document.querySelector('[data-day-card]')).toBeNull();
-    });
-
-    it('tapping Idle at 22:00 shows night and its card, with the marker at 22:00', () => {
-      render(<Harness initial={NIGHT_AT_9} />);
-      tap(nobodyAt(22 * 60), 22 * 60);
-      expect(seen).toMatchObject({ tab: 'idle', half: 'night' });
-      expect(marker()).toBe(22 * 60);
-      expect(document.querySelector('[data-day-card="night"]')).toBeTruthy();
-      // At 10:00 the same lane is resting.
-      tap(nobodyAt(10 * 60), 10 * 60);
-      expect(seen).toMatchObject({ tab: 'idle', half: 'day' });
-      expect(marker()).toBe(10 * 60);
-      expect(document.querySelector('[data-day-card="resting"]')).toBeTruthy();
-    });
-
-    it('picking a lane does not move the marker', () => {
-      render(<Harness initial={NIGHT_AT_9} />);
-      fireEvent.change(screen.getByLabelText('Time of day'), { target: { value: String(22 * 60) } });
-      expect(marker()).toBe(22 * 60);
-      // Picked from the keyboard, with no point to tap: the marker stays.
-      key(nobodyAt(22 * 60));
-      expect(seen).toMatchObject({ tab: 'idle', half: 'night' });
-      expect(marker()).toBe(22 * 60);
-      key(inUse());
-      expect(seen.tab).toBe('dashboard');
-      expect(marker()).toBe(22 * 60);
-    });
-
-    it('the slider keeps the lane: In use stays the dashboard, Idle follows the time', () => {
-      render(<Harness initial={NIGHT_AT_9} />);
-      const slider = screen.getByLabelText('Time of day');
-      tap(inUse(), 10 * 60);
-      fireEvent.change(slider, { target: { value: String(22 * 60) } });
-      expect(seen.tab).toBe('dashboard');
-      expect(marker()).toBe(22 * 60);
-      tap(nobodyAt(22 * 60), 22 * 60);
-      fireEvent.change(slider, { target: { value: String(10 * 60) } });
-      expect(seen).toMatchObject({ tab: 'idle', half: 'day' });
-      fireEvent.change(slider, { target: { value: String(23 * 60) } });
-      expect(seen).toMatchObject({ tab: 'idle', half: 'night' });
-      expect(marker()).toBe(23 * 60);
-    });
-  });
-
-  it('plays the day: on Idle, the slider shows the state at that time', () => {
-    render(<Harness initial={{ day: 'dashboard', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } }} />);
-    fireEvent.click(document.querySelector<HTMLElement>('[data-day-stretch="resting"]')!);
-    const slider = screen.getByLabelText('Time of day');
-    fireEvent.change(slider, { target: { value: String(21 * 60 + 30) } });
-    expect(seen).toMatchObject({ tab: 'idle', half: 'night' });
-    expect(screen.getByText(/^At 21:30: night/)).toBeTruthy();
-    fireEvent.change(slider, { target: { value: String(10 * 60) } });
-    expect(seen).toMatchObject({ tab: 'idle', half: 'day' });
-  });
-
-  it('sets a night look that turns the screen off, on the default night', () => {
-    render(<Harness initial={{ source: 'photos' }} />);
-    fireEvent.click(milestone('night-start'));
-    fireEvent.click(radio('Night look', 'Screen off'));
-    expect(seen.value).toEqual({ day: 'photos', night: 'off', switch: DEFAULT_NIGHT });
-    expect(seen.half).toBe('night');
-  });
-
-  it('turns dimming on when Dim this dashboard is chosen on a screen that does not dim', () => {
-    render(<Harness initial={{ day: 'dashboard', night: 'sky', switch: DEFAULT_NIGHT }} />);
-    fireEvent.click(milestone('night-start'));
-    fireEvent.click(radio('Night look', 'Dim this dashboard'));
-    expect(seen.value).toEqual({ source: 'dashboard' });
-    expect(localStorage.getItem('prism-screensaver-dim')).toBe('0.5');
-  });
-
-  it('sets night by the clock instead of the sun', () => {
-    render(<Harness initial={{ source: 'dashboard' }} />);
-    fireEvent.click(milestone('night-start'));
-    fireEvent.click(radio('When night is', 'Set times'));
-    fireEvent.change(screen.getByLabelText('Night starts'), { target: { value: '22:15' } });
-    expect(seen.value).toEqual({ day: 'dashboard', night: 'dashboard', switch: { by: 'clock', from: '22:15', to: '06:30' } });
-  });
-
-  it('moves the end of night from its dot', () => {
-    render(<Harness initial={{ source: 'dashboard' }} />);
-    fireEvent.click(milestone('night-end'));
-    // The end's card has only the end.
-    expect(screen.queryByLabelText('Starts: unit')).toBeNull();
-    fireEvent.change(screen.getByLabelText('Ends: unit'), { target: { value: 'hr' } });
-    fireEvent.change(screen.getByLabelText('Ends: amount'), { target: { value: '1' } });
-    expect(seen.value).toEqual({ day: 'dashboard', night: 'dashboard', switch: { by: 'sun', duskOffset: 30, dawnOffset: -60 } });
-  });
-
-  it('puts a dot where night starts and ends, and tapping one shows the screen at night with its card', () => {
-    render(<Harness initial={{ day: 'photos', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } }} />);
-    expect(milestone('night-end').style.left).toBe(`${(390 / 1440) * 100}%`);
-    expect(milestone('night-start').style.left).toBe(`${(1260 / 1440) * 100}%`);
-    // No card until something is tapped.
-    expect(document.querySelector('[data-day-card]')).toBeNull();
-    fireEvent.click(milestone('night-start'));
-    expect(seen).toMatchObject({ tab: 'idle', half: 'night' });
-    expect(document.querySelector('[data-day-card="night"]')).toBeTruthy();
-    fireEvent.change(screen.getByLabelText('Night starts'), { target: { value: '22:00' } });
-    // The dot follows its setting.
-    expect(milestone('night-start').style.left).toBe(`${(1320 / 1440) * 100}%`);
-  });
-
-  it('tapping the resting stretch shows the screen resting and opens what resting is', () => {
-    render(<Harness initial={{ day: 'photos', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } }} />);
-    fireEvent.click(document.querySelector<HTMLElement>('[data-day-stretch="resting"]')!);
-    expect(seen).toMatchObject({ tab: 'idle', half: 'day' });
-    fireEvent.click(radio('While resting', 'Night sky'));
-    expect(seen.value).toMatchObject({ day: 'sky' });
-    expect(screen.getByLabelText('Rest after')).toBeTruthy();
-  });
-
-  describe('placements on a set of days (#1266)', () => {
-    const playSeven = () => {
-      // The slider starts on the clock's hour, and a change to the value it
-      // already shows fires nothing: going through another time first always
-      // plays 7:00.
-      fireEvent.change(screen.getByLabelText('Time of day'), { target: { value: String(10 * 60) } });
-      fireEvent.change(screen.getByLabelText('Time of day'), { target: { value: String(7 * 60) } });
-    };
-
-    it('Weekdays, then + Dashboard: one block, on Monday to Friday and not on Saturday', () => {
+    it('+ Switch at set times adds a row on every day from this quarter hour, and its days and hours change in it', () => {
       render(<Harness initial={{ source: 'dashboard' }} timelines={[MAIN]} />);
-      press('Weekdays');
-      playSeven();
-      fireEvent.click(document.querySelector<HTMLElement>('[data-placement-add]')!);
-      expect(keptPlacements()).toEqual([{ days: [1, 2, 3, 4, 5], from: '07:00', to: '08:00', dashboardId: BUS }]);
-      // One block for the five days, not one a day.
-      expect(blocks()).toHaveLength(1);
-      expect(blocks()[0]!.textContent).toBe('Bus');
-      expect([blocks()[0]!.dataset.from, blocks()[0]!.dataset.to]).toEqual(['420', '480']);
-
-      // Saturday alone: nothing placed.
-      press('Weekend');
-      day('Sunday');
-      expect(document.querySelector('[data-day-set]')!.getAttribute('data-day-set')).toBe('6');
-      expect(blocks()).toHaveLength(0);
-      // Monday alone: the same block.
-      press('Weekdays');
-      for (const d of ['Tuesday', 'Wednesday', 'Thursday', 'Friday']) day(d);
-      expect(blocks()).toHaveLength(1);
-      expect(blocks()[0]!.dataset.partial).toBeUndefined();
-    });
-
-    it('a placement on only some of the days shown says which', () => {
-      render(<Harness initial={{ source: 'dashboard' }} timelines={[{ ...MAIN, placements: [{ days: [1], from: '07:00', to: '08:00', dashboardId: BUS }] }]} />);
-      // Every day is shown at first.
-      expect(blocks()).toHaveLength(1);
-      expect(blocks()[0]!.dataset.partial).toBe('true');
-      // Its days under its name, so they add no width.
-      expect(blocks()[0]!.querySelector('[data-placement-name]')!.textContent).toBe('Bus');
-      expect(blocks()[0]!.querySelector('[data-placement-days]')!.textContent).toBe('Mon');
-      expect(blocks()[0]!.getAttribute('aria-label')).toMatch(/^Bus, Mon, /);
-    });
-
-    it('writes a block\'s days as days, so a dashboard called Weekend does not show the word twice', () => {
-      render(<Harness initial={{ source: 'dashboard' }} timelines={[{ ...MAIN, placements: [
-        { days: [1, 2, 3, 4, 5], from: '07:00', to: '08:00', dashboardId: BUS },
-        { days: [6, 0], from: '10:00', to: '12:00', dashboardId: BUS },
-      ] }]} />);
-      const days = blocks().map((b) => b.querySelector('[data-placement-days]')!.textContent);
-      expect(days).toEqual(['Mon–Fri', 'Sat, Sun']);
-      // Read aloud in words.
-      expect(blocks()[0]!.getAttribute('aria-label')).toMatch(/^Bus, Weekdays, /);
-    });
-
-    it('edits a placement in its card and removes it', () => {
-      render(<Harness initial={{ source: 'dashboard' }} timelines={[MAIN]} />);
-      press('Weekdays');
-      playSeven();
-      fireEvent.click(document.querySelector<HTMLElement>('[data-placement-add]')!);
-      fireEvent.change(screen.getByLabelText('Placement ends'), { target: { value: '08:30' } });
+      press('Switch at set times');
+      expect(keptPlacements()).toEqual([{ days: [0, 1, 2, 3, 4, 5, 6], from: '07:00', to: '08:00', dashboardId: BUS }]);
+      expect(rows()).toHaveLength(1);
+      // Weekdays: Saturday and Sunday off.
+      const days = rows()[0]!.querySelector<HTMLElement>('[aria-label="Switch days"]')!;
+      fireEvent.click(days.querySelector<HTMLElement>('[aria-label="Saturday"]')!);
+      fireEvent.click(days.querySelector<HTMLElement>('[aria-label="Sunday"]')!);
+      expect(keptPlacements()[0]!.days).toEqual([1, 2, 3, 4, 5]);
+      fireEvent.change(screen.getByLabelText('Switch ends'), { target: { value: '08:30' } });
       expect(keptPlacements()[0]!.to).toBe('08:30');
-      expect(blocks()[0]!.dataset.to).toBe('510');
-      // Its days, in the card: one more.
-      fireEvent.click(screen.getByRole('group', { name: 'Placement days' }).querySelector<HTMLElement>('[aria-label="Saturday"]')!);
-      expect(keptPlacements()[0]!.days).toContain(6);
+      fireEvent.change(screen.getByLabelText('Switches to'), { target: { value: HOME } });
+      expect(keptPlacements()[0]!.dashboardId).toBe(HOME);
 
       fireEvent.click(document.querySelector<HTMLElement>('[data-placement-remove]')!);
       expect(keptPlacements()).toEqual([]);
-      expect(blocks()).toHaveLength(0);
+      expect(rows()).toHaveLength(0);
     });
 
-    it('moves a placement up the order that decides an overlap', () => {
+    it('a switch keeps at least one day', () => {
+      render(<Harness initial={{ source: 'dashboard' }} timelines={[{ ...MAIN, placements: [{ days: [1], from: '07:00', to: '08:00', dashboardId: BUS }] }]} />);
+      expect((rows()[0]!.querySelector<HTMLButtonElement>('[aria-label="Monday"]')!).disabled).toBe(true);
+    });
+
+    it('moves a switch up the order that decides an overlap', () => {
       render(<Harness initial={{ source: 'dashboard' }} timelines={[{ ...MAIN, placements: [
         { days: [0, 1, 2, 3, 4, 5, 6], from: '07:00', to: '09:00', dashboardId: HOME },
         { days: [0, 1, 2, 3, 4, 5, 6], from: '08:00', to: '10:00', dashboardId: BUS },
       ] }]} />);
-      // Bus is second, so Home wins 8:00 to 9:00.
-      fireEvent.change(screen.getByLabelText('Time of day'), { target: { value: String(8 * 60 + 30) } });
-      expect(screen.getByText(/, Home shows/)).toBeTruthy();
-      fireEvent.click(document.querySelector<HTMLElement>('[data-day-placement="1"]')!);
-      press('Move this one up');
+      expect(screen.getByText('If two overlap, the higher one wins.')).toBeTruthy();
+      // The first has nothing above it.
+      expect(rows()[0]!.querySelector('[data-placement-up]')).toBeNull();
+      fireEvent.click(rows()[1]!.querySelector<HTMLElement>('[data-placement-up]')!);
       expect(keptPlacements().map((p) => p.dashboardId)).toEqual([BUS, HOME]);
-      expect(screen.getByText(/This is 1 of 2/)).toBeTruthy();
-      // A placement is on In use: the dashboard it shows, at its time.
-      expect(seen.tab).toBe('dashboard');
     });
 
-    it('In use shows the dashboard for the rest of the day, and its card changes it', () => {
-      render(<Harness initial={{ source: 'dashboard' }} timelines={[MAIN]} />);
-      const inUse = document.querySelector<HTMLElement>('[data-day-lane="in-use"]')!;
-      expect(inUse.textContent).toBe('Home');
-      fireEvent.click(inUse);
-      fireEvent.change(screen.getByLabelText('Dashboard for the rest of the day'), { target: { value: BUS } });
+    it('Shows is the dashboard the screen shows, and a switch\'s Open opens its dashboard', () => {
+      render(<Harness initial={{ source: 'dashboard' }} timelines={[{ ...MAIN, placements: [{ days: [1], from: '07:00', to: '08:00', dashboardId: BUS }] }]} />);
+      expect((screen.getByLabelText('Dashboard this screen shows') as HTMLSelectElement).value).toBe(HOME);
+      fireEvent.click(rows()[0]!.querySelector<HTMLElement>(`[data-dashboard-open="${BUS}"]`)!);
+      expect(switched).toHaveBeenCalledWith('bus');
+      pick('Dashboard this screen shows', BUS);
       expect(mockStore.patches.at(-1)).toEqual({ id: 'main', patch: { dashboardId: BUS } });
-      expect(inUse.textContent).toBe('Bus');
+    });
+
+    it('a dashboard edited on its own has no screen, so nothing to follow or switch', () => {
+      render(<Harness initial={{ source: 'dashboard' }} timelines={[MAIN]} screenId={null} forScreen={false} />);
+      expect(document.querySelector('[data-timeline-bar]')).toBeNull();
+      expect(document.querySelector('[data-placement-add]')).toBeNull();
+      expect(screen.queryByLabelText('Dashboard this screen shows')).toBeNull();
     });
   });
 
@@ -350,15 +265,11 @@ describe('ThroughTheDaySheet', () => {
 
     it('says who uses it before a change that reaches several screens', () => {
       render(<Harness initial={{ source: 'dashboard' }} timelines={[MAIN, OTHER]} />);
+      expect(screen.getByText('This screen follows')).toBeTruthy();
       expect(document.querySelector('[data-timeline-used]')!.textContent).toBe('Used by 2 screens, and every device not given another.');
       fireEvent.change(screen.getByLabelText('Timeline'), { target: { value: 'other' } });
       expect(seen.timelineId).toBe('other');
       expect(document.querySelector('[data-timeline-used]')!.textContent).toBe('No screen uses it yet.');
-    });
-
-    it('a screen being edited follows the timeline picked', () => {
-      render(<Harness initial={{ source: 'dashboard' }} timelines={[MAIN, OTHER]} screenId="kitchen" />);
-      expect(screen.getByText('This screen follows')).toBeTruthy();
     });
 
     /** Picks one of the timeline's own actions from the menu beside its dropdown. */
@@ -408,12 +319,6 @@ describe('ThroughTheDaySheet', () => {
       await act(async () => { press('Delete'); });
       expect(mockStore.deleted).toEqual(['other']);
       expect(seen.timelineId).toBe('main');
-    });
-
-    it('without a timeline there is nothing to place', () => {
-      render(<Harness initial={{ source: 'dashboard' }} />);
-      expect(document.querySelector('[data-placement-add]')).toBeNull();
-      expect(document.querySelector('[data-timeline-bar]')).toBeNull();
     });
   });
 });

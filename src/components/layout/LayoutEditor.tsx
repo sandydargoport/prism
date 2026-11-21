@@ -20,8 +20,6 @@ import { useLayoutEditorState } from './useLayoutEditorState';
 import type { LayoutEditorProps } from './LayoutEditorTypes';
 import { copyLayoutToOther } from './copyLayout';
 import { idleSaveProblem } from './IdleBackgroundBar';
-import { sameIdleBackground } from '@/lib/idleBackground';
-import { patchTimeline } from '@/lib/hooks/useTimelines';
 import { toast } from '@/components/ui/use-toast';
 import { createPortal } from 'react-dom';
 import { remoteEditHost, remotePortalRoot } from '@/lib/displays/remoteEdit';
@@ -98,6 +96,10 @@ export function LayoutEditor({
   // On a canvas (#1265) the sheets are panels beside it, and one is always
   // open: there is room, and nothing is covered.
   const [panels] = useState(() => remoteEditHost() !== null);
+  // A screen's own settings (rest after, how dark) show when the editor is
+  // for a screen: in place it is this one; on a canvas, the one edited, if
+  // any (#1281). A dashboard edited at a chosen size has none.
+  const [forScreen] = useState(() => remoteEditHost()?.displayId !== null);
   // The editing bar's open sheet (#1151). Through the day shows the screen as
   // it rests, so it is the Idle screen tab underneath. A dashboard picked on
   // Dashboard opens on Dashboard still.
@@ -134,20 +136,6 @@ export function LayoutEditor({
 
   // A day and night pair whose offsets cross is not saved (#782).
   const saveBlocked = idleBackground ? idleSaveProblem(idleBackground, idleCheck) : null;
-  // How the screen rests and what it does at night belong to the timeline
-  // (#1266), which keeps a change as soon as it can be saved, as it keeps
-  // its placements. One that cannot (crossed offsets) waits here, shown.
-  const timeline = timelines.find((t) => t.id === timelineId);
-  const sentBackground = useRef<string | null>(null);
-  useEffect(() => {
-    if (!timeline || !idleBackground || saveBlocked) return;
-    if (sameIdleBackground(idleBackground, timeline.idleBackground)) return;
-    const key = `${timeline.id}|${JSON.stringify(idleBackground)}`;
-    // Sent once: a refusal reads the list again, which must not send it again.
-    if (sentBackground.current === key) return;
-    sentBackground.current = key;
-    void patchTimeline(timeline.id, { idleBackground });
-  }, [timeline, idleBackground, saveBlocked]);
   const guardedSave = useCallback(async (name?: string) => {
     if (saveBlocked) {
       onEditTabChange?.('idle');
@@ -287,6 +275,7 @@ export function LayoutEditor({
             timelineId={timelineId}
             onTimelineChange={onTimelineChange}
             screenId={screenId}
+            forScreen={forScreen}
             allDashboards={allDashboards}
             currentDashboardId={currentDashboardId}
             onSwitchDashboard={onSwitchDashboard}

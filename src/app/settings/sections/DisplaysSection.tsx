@@ -12,8 +12,6 @@ import { reloadForRemoteChange, resetSyncBase, syncScreenSettings } from '@/lib/
 import type { ScreenSettings } from '@/lib/displays/screenSettings';
 import { screenSummary } from '@/lib/displays/screenSummary';
 import { useUrlParam } from '@/lib/hooks/useUrlParam';
-import { useTimeFormat } from '@/components/providers/TimeFormatProvider';
-import { formatTimeOfDay } from '@/components/calendar/cells/itemTime';
 import { screenEditLink } from '@/lib/displays/editPlace';
 import { pickTimeline, useTimelines } from '@/lib/hooks/useTimelines';
 import { timelineFor } from '@/lib/timeline';
@@ -65,7 +63,6 @@ export function DisplaysSection() {
   const [alsoTrust, setAlsoTrust] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const editedId = useUrlParam('edited');
-  const { timeFormat } = useTimeFormat();
   const [editName, setEditName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -306,7 +303,7 @@ export function DisplaysSection() {
                         {d.editing && ' · being edited'}
                       </div>
                       <div className="text-sm text-muted-foreground" data-screen-summary>
-                        {screenSummary(d.settings ?? {}, timelineFor(timelines, d.timelineId), (t) => formatTimeOfDay(t, timeFormat))}.
+                        {screenSummary(d.settings ?? {}, timelineFor(timelines, d.timelineId))}.
                       </div>
                     </div>
                     {timelines.length > 0 && (
