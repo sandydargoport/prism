@@ -282,7 +282,7 @@ If you need to give a babysitter or short-term guest the information they need, 
 - Check *Settings → Appearance → Timers & Auto-Activation → Screensaver Timeout* to see if it is set to "Never".
 - Check whether the dashboard is in edit mode, which stops the screensaver.
 - Check whether a modal is open, which also stops it.
-- In an installed app, the screensaver starts by itself only on a screen named in *Settings → Screens*. On a phone it stays off, on purpose. Name the wall screen if it runs as an installed app.
+- In an installed app, the screensaver starts by itself only on a screen named in its editor (*Through the day* → **Name this device**). On a phone it stays off, on purpose. Name the wall screen if it runs as an installed app.
 
 #### Away mode won't exit
 

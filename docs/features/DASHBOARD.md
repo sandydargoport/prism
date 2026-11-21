@@ -14,7 +14,7 @@ Open **More** on the dock at the foot of the screen and choose **Edit**. Only pa
 
 The editor looks the same on every device. It opens on a canvas: the dashboard laid out at the size of the screen that shows it, scaled to fit the window, so what you arrange is what the wall shows. The controls sit in a column beside the canvas (below it on a phone), with one panel always open, and none of them covers the canvas: **Dashboard**, **Widgets**, **Through the day**, **Look** and **More**, with **Cancel** and **Done** above them.
 
-- **On a named screen** (*Settings → Screens*) **Edit** opens that screen's own editor, at its own size, on the dashboard it was showing. Its own settings (in **Look** and **More**) reach it when you press **Done**, and it goes back to its dashboard.
+- **On a named screen** (named in **Through the day**, listed in *Settings → Screens*) **Edit** opens that screen's own editor, at its own size, on the dashboard it was showing. Its own settings (in **Look** and **More**) reach it when you press **Done**, and it goes back to its dashboard.
 - **On a laptop or any other device** it opens at the size of a screen that shows the dashboard. **Shown at** above the canvas picks another: a named screen or a common screen size.
 - **For another named screen**, **Edit** on its row in *Settings → Screens* opens the same canvas at that screen's size, and changes reach the screen on **Done**.
 
