@@ -202,12 +202,10 @@ export function WidgetsSheet({
 
 export { ThroughTheDaySheet as DaySheet } from './ThroughTheDaySheet';
 
-export function LookSheet({ orientation, onOrientationChange, onMeasure, onCanvas }: {
+export function LookSheet({ orientation, onOrientationChange, onMeasure }: {
   orientation: 'landscape' | 'portrait';
   onOrientationChange?: (o: 'landscape' | 'portrait') => void;
   onMeasure: () => void;
-  /** A device editing on itself by choice (#1265): go back to editing on a canvas. */
-  onCanvas?: () => void;
 }) {
   return (
     <div className="flex flex-col gap-5">
@@ -232,7 +230,6 @@ export function LookSheet({ orientation, onOrientationChange, onMeasure, onCanva
         <h3 className={section}>Check it</h3>
         <div className="flex flex-wrap gap-2">
           <button type="button" className={action} onClick={onMeasure}>See it at a screen size</button>
-          {onCanvas && <button type="button" className={action} onClick={onCanvas} data-edit-on-canvas>Edit on a canvas</button>}
         </div>
       </section>
       <section data-screen-options>

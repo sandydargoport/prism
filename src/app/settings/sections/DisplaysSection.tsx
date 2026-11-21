@@ -8,22 +8,21 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
-import { useLayouts } from '@/lib/hooks/useLayouts';
 import { reloadForRemoteChange, resetSyncBase, syncScreenSettings } from '@/lib/displays/displaySettingsSync';
 import type { ScreenSettings } from '@/lib/displays/screenSettings';
 import { screenSummary } from '@/lib/displays/screenSummary';
 import { useUrlParam } from '@/lib/hooks/useUrlParam';
 import { useTimeFormat } from '@/components/providers/TimeFormatProvider';
 import { formatTimeOfDay } from '@/components/calendar/cells/itemTime';
-import { editLink } from '@/components/dashboard/useDashboardLayout';
+import { screenEditLink } from '@/lib/displays/editPlace';
 import { pickTimeline, useTimelines } from '@/lib/hooks/useTimelines';
-import { timelineDashboardAt, timelineFor } from '@/lib/timeline';
+import { timelineFor } from '@/lib/timeline';
 
 /**
  * Settings > Screens (#690, #1153): name this screen, and see every named
  * screen with whether it is on, the timeline it follows (#1266) and how it
- * rests. Edit opens a screen's editing bar: on the screen itself, or from any
- * other device over a live picture of it.
+ * rests. Edit opens a screen's editor over a live picture of it, on the
+ * screen itself as on any other device (#1280).
  */
 
 type DisplayEntry = {
@@ -60,14 +59,13 @@ export function DisplaysSection() {
   const [authWall, setAuthWall] = useState(false);
   const [trusted, setTrusted] = useState(false);
 
-  const { layouts } = useLayouts();
   const { timelines } = useTimelines();
   const [newName, setNewName] = useState('');
   const [takeOverId, setTakeOverId] = useState('');
   const [alsoTrust, setAlsoTrust] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const editedId = useUrlParam('edited');
-  const { timeFormat, householdTimezone } = useTimeFormat();
+  const { timeFormat } = useTimeFormat();
   const [editName, setEditName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -147,15 +145,8 @@ export function DisplaysSection() {
     if (applied.length > 0) reloadForRemoteChange();
   };
 
-  /** Where Edit goes: what this screen shows now, in place, or the canvas editor for another. */
-  const editHref = (d: DisplayEntry): string => {
-    if (d.id !== currentId) return `/screens/${d.id}`;
-    const timeline = timelineFor(timelines, d.timelineId);
-    // As of when the list was read, as "last seen" is.
-    const nowId = timeline ? timelineDashboardAt(timeline, fetchedAt, householdTimezone, (id) => layouts.some((l) => l.id === id)) : null;
-    const home = layouts.find((l) => l.id === nowId);
-    return editLink(home && !home.isDefault && home.slug ? `/d/${home.slug}` : '/');
-  };
+  /** Where Edit goes: the screen's own editor, this screen's included (#1280). */
+  const editHref = (d: DisplayEntry): string => screenEditLink(d.id);
 
   /** A screen follows another timeline, from its row. */
   const chooseTimeline = async (d: DisplayEntry, timelineId: string) => {
@@ -192,7 +183,7 @@ export function DisplaysSection() {
         <h2 className="text-2xl font-bold">Screens</h2>
         <p className="text-muted-foreground">
           Name each screen in the house to see which ones are on and change any of them from
-          here. Edit opens a screen&apos;s editing bar over a live picture of it. A browser
+          here. Edit opens a screen&apos;s editor over a live picture of it. A browser
           nobody named follows the first timeline.
         </p>
       </div>

@@ -1,10 +1,13 @@
 import type { Page } from '@playwright/test';
 
 /**
- * This browser edits on itself, as a named screen does, rather than opening
- * the canvas editor (#1265). For specs about the editor in place.
+ * This browser edits in place, on the bar over the full screen, rather than
+ * opening the canvas editor, which every device does now (#1280). Only for the
+ * specs that still measure the editor in place; they move onto the canvas in
+ * #1283, and this goes with them. The key is editPlace.ts's
+ * EDIT_IN_PLACE_KEY.
  */
-export const EDIT_HERE_KEY = 'prism:edit-here';
+export const EDIT_HERE_KEY = 'prism:test-edit-in-place';
 
 export async function editHere(page: Page): Promise<void> {
   await page.addInitScript((key) => {

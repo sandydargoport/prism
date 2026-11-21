@@ -1,7 +1,7 @@
 'use client';
 
 import { remoteEditHost } from '@/lib/displays/remoteEdit';
-import { canvasEditLink, editsOnCanvas } from '@/lib/displays/editPlace';
+import { editorLink, editsOnCanvas } from '@/lib/displays/editPlace';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { DEFAULT_TEMPLATE } from '@/lib/constants/layoutTemplates';
@@ -180,7 +180,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string, timeline
   useEffect(() => {
     if (!resumeKey) return;
     if (resumeOnCanvas) {
-      router.replace(canvasEditLink(resumeKey));
+      router.replace(editorLink(resumeKey));
       return;
     }
     const url = new URL(window.location.href);
@@ -208,7 +208,7 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string, timeline
     const user = activeUser ?? await requireAuth('Sign in to edit', "Enter a parent's PIN to edit the dashboard layout.");
     if (!user || user.role !== 'parent') return;
     if (activeLayout && editsOnCanvas()) {
-      router.push(canvasEditLink(activeLayout.id));
+      router.push(editorLink(activeLayout.id));
       return;
     }
     beginEditing();

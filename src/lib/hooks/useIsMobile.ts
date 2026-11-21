@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 
-const MOBILE_BREAKPOINT = 768; // md breakpoint
+/** Narrower than this, the dashboard is the phone layout of cards, with no grid (md breakpoint). */
+export const MOBILE_BREAKPOINT = 768;
 
 export function useIsMobile(): boolean {
   const [isMobile, setIsMobile] = useState(false);

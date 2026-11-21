@@ -471,9 +471,11 @@ test.describe('Attention notices', () => {
       const panel = wall.getByTestId('screen-attention');
       await panel.getByLabel('A message was posted in the last', { exact: true }).check();
       await panel.getByRole('button', { name: 'Save notices' }).click();
-      await expect(panel).toContainText('Saved. This screen shows them from now on.');
+      // On its own canvas (#1280) they are kept until Done, which brings them home.
+      await expect(panel).toContainText('Kept. The screen gets it when you press Done.');
+      await wall.locator('[data-editor-done]').click();
+      await wall.waitForURL((u) => u.pathname === '/' || u.pathname.startsWith('/d/'), { timeout: 60_000 });
       await expect.poll(() => readStorage(wall, 'prism-screen-attention')).toBe('{"message":120}');
-      await wall.locator('[data-editor-cancel]').click();
       await wall.goto('/settings?section=displays');
       // Off the dashboard, nothing shows.
       await expect(wall.getByTestId('attention-panel')).toHaveCount(0);
