@@ -50,14 +50,15 @@ function screenPlan(): ScreenPlan | null {
   return base ? planOf(base) : null;
 }
 
-/** The bus routes' times at the stop, from the status every display can read; null when unreadable. */
+/** The bus routes' ids and times at the stop, from the status every display can read; null when unreadable. */
 async function readBusTimes(): Promise<BusTime[] | null> {
   try {
     const res = await fetch('/api/bus-tracking/status');
     if (!res.ok) return null;
-    const data = await res.json() as { routes?: Array<{ scheduledTime?: string; activeDays?: number[] }> };
+    const data = await res.json() as { routes?: Array<{ id?: string; scheduledTime?: string; activeDays?: number[] }> };
+    // The id too: a bus switch may follow only some routes (#1291).
     return (data.routes ?? []).flatMap((r) => (typeof r.scheduledTime === 'string' && Array.isArray(r.activeDays)
-      ? [{ scheduledTime: r.scheduledTime, activeDays: r.activeDays }] : []));
+      ? [{ id: r.id, scheduledTime: r.scheduledTime, activeDays: r.activeDays }] : []));
   } catch {
     // Offline for a moment: the times read last stand.
     return null;

@@ -4,7 +4,8 @@
  * The editing panel's Through the day sheet (#1152), as plain rows (#1281).
  *
  * In a screen's editor: the dashboard the screen shows, and the dashboards it
- * switches to for a while (#1282), at bus time or at set times, each a row.
+ * switches to for a while (#1282), at bus time or at set times, each a row. A
+ * bus switch picks its routes and how long before and after (#1291).
  * They belong to the screen, and Done sends them to it with its settings. On
  * a device nobody named, the sheet offers to name it instead (#1267).
  *
@@ -32,8 +33,8 @@ import { SCREENSAVER_TIMEOUT_OPTIONS, useScreensaverTimeout } from '@/lib/hooks/
 import { sameIdleBackground, tonight, type IdleBackground, type IdleSource, type IdleSwitch } from '@/lib/idleBackground';
 import { asDayAndNight, DEFAULT_NIGHT, type ScreenState } from '@/lib/throughTheDay';
 import {
-  BUS_AFTER_MINUTES, BUS_BEFORE_MINUTES, daysShort, EVERY_DAY, MAX_SWITCHES,
-  type ScreenPlan, type ScreenSwitch,
+  BUS_MINUTE_CHOICES, busWindowOf, daysShort, EVERY_DAY, MAX_SWITCHES, routesOf,
+  type BusSwitch, type BusWindow, type ScreenPlan, type ScreenSwitch,
 } from '@/lib/screenSwitches';
 import type { IdleHalf, EditTab } from '@/components/dashboard/useDashboardLayout';
 import { OffsetInput } from './IdleBackgroundBar';
@@ -106,6 +107,11 @@ export function simplest(pair: { day: IdleSource; night: IdleSource; switch: Idl
   return pair;
 }
 
+/** A switch without the keys an edit cleared, so it is stored as plainly as it reads. */
+function withoutUnset(sw: ScreenSwitch): ScreenSwitch {
+  return Object.fromEntries(Object.entries(sw).filter(([, v]) => v !== undefined)) as ScreenSwitch;
+}
+
 /**
  * A row: its name in a column of its own, so the choices of every row start at
  * one edge, and wrap within their own column, never under the name.
@@ -119,9 +125,12 @@ function Row({ name, children, ...rest }: { name: string; children: React.ReactN
   );
 }
 
-/** The bus routes' windows in words, "Mon–Fri 7:15 am to 8:00 am", once read; null before. */
-function useBusWindows(wanted: boolean, clock: (hhmm: string) => string): string | null {
-  const [routes, setRoutes] = useState<Array<{ scheduledTime: string; activeDays: number[] }> | null>(null);
+/** A bus route as a bus switch's row shows it. */
+type BusRoute = { id: string; label: string; scheduledTime: string; activeDays: number[] };
+
+/** The bus routes, once read, for a screen with a bus switch; null before. */
+function useBusRoutes(wanted: boolean): BusRoute[] | null {
+  const [routes, setRoutes] = useState<BusRoute[] | null>(null);
   useEffect(() => {
     if (!wanted || routes) return;
     let live = true;
@@ -129,21 +138,25 @@ function useBusWindows(wanted: boolean, clock: (hhmm: string) => string): string
       const res = await fetch('/api/bus-tracking/status').catch(() => null);
       const data = res?.ok ? await res.json().catch(() => null) : null;
       if (!live) return;
-      setRoutes(((data?.routes ?? []) as Array<{ scheduledTime?: string; activeDays?: number[] }>)
-        .flatMap((r) => (typeof r.scheduledTime === 'string' && Array.isArray(r.activeDays) ? [{ scheduledTime: r.scheduledTime, activeDays: r.activeDays }] : [])));
+      setRoutes(((data?.routes ?? []) as Array<Partial<BusRoute>>)
+        .flatMap((r) => (typeof r.id === 'string' && typeof r.scheduledTime === 'string' && Array.isArray(r.activeDays)
+          ? [{ id: r.id, label: r.label || 'Bus', scheduledTime: r.scheduledTime, activeDays: r.activeDays }] : [])));
     })();
     return () => { live = false; };
   }, [wanted, routes]);
-  if (!routes) return null;
-  if (routes.length === 0) return 'No bus route is set up yet, so this never switches. Add one in Settings > Bus.';
-  return busWindowsInWords(routes, clock);
+  return routes;
 }
 
 /**
  * The windows bus routes switch a screen for, grouped by their days and in
- * time order: "Mon–Fri 7:15 am to 8:00 am, 3:00 pm to 3:45 pm".
+ * time order: "Mon–Fri 7:15 am to 8:00 am, 3:00 pm to 3:45 pm". From 30
+ * minutes before each route's time to 15 after, unless `window` says otherwise.
  */
-export function busWindowsInWords(routes: Array<{ scheduledTime: string; activeDays: number[] }>, clock: (hhmm: string) => string): string {
+export function busWindowsInWords(
+  routes: Array<{ scheduledTime: string; activeDays: number[] }>,
+  clock: (hhmm: string) => string,
+  window: BusWindow = busWindowOf({}),
+): string {
   const minute = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
   const byDays = new Map<string, number[]>();
   for (const r of routes) {
@@ -155,7 +168,7 @@ export function busWindowsInWords(routes: Array<{ scheduledTime: string; activeD
   }
   return [...byDays.entries()]
     .map(([days, dues]) => `${days} ${dues.sort((a, b) => a - b)
-      .map((due) => `${clock(hhmm(due - BUS_BEFORE_MINUTES))} to ${clock(hhmm(due + BUS_AFTER_MINUTES))}`).join(', ')}`)
+      .map((due) => `${clock(hhmm(due - window.before))} to ${clock(hhmm(due + window.after))}`).join(', ')}`)
     .join('; ');
 }
 
@@ -228,7 +241,7 @@ export function ThroughTheDaySheet({
   // The screen's switches, kept on the editor page until Done.
   const saveSwitches = (next: ScreenSwitch[]) => { if (plan) onScreenPlanChange?.({ ...plan, switches: next }); };
   const editSwitch = (i: number, patch: Partial<ScreenSwitch>) =>
-    saveSwitches(switches.map((sw, j) => (j === i ? { ...sw, ...patch } as ScreenSwitch : sw)));
+    saveSwitches(switches.map((sw, j) => (j === i ? withoutUnset({ ...sw, ...patch } as ScreenSwitch) : sw)));
   /** Moves a switch up the order that decides which wins an overlap. */
   const moveUp = (i: number) => {
     const next = [...switches];
@@ -240,13 +253,63 @@ export function ThroughTheDaySheet({
   const another = allDashboards.find((d) => d.id !== shownId) ?? allDashboards[0];
   const full = switches.length >= MAX_SWITCHES || !another;
   const hasBus = switches.some((sw) => sw.when === 'bus');
+  const clock = (t: string) => formatTimeOfDay(t, timeFormat);
   const addTimes = () => {
     const now = new Date();
     const from = Math.floor((now.getHours() * 60 + now.getMinutes()) / 15) * 15;
     if (another) saveSwitches([...switches, { when: 'times', days: [...EVERY_DAY], from: hhmm(from), to: hhmm(from + 60), dashboardId: another.id }]);
   };
   const addBus = () => { if (another) saveSwitches([...switches, { when: 'bus', dashboardId: another.id }]); };
-  const busWindows = useBusWindows(hasBus, (t) => formatTimeOfDay(t, timeFormat));
+  const busRoutes = useBusRoutes(hasBus);
+  /** Turns a route on or off for a bus switch; with every route on, it follows every route, ones added later too. */
+  const toggleRoute = (i: number, sw: BusSwitch, id: string) => {
+    const all = (busRoutes ?? []).map((r) => r.id);
+    const on = routesOf(sw, busRoutes ?? []).map((r) => r.id);
+    const next = on.includes(id) ? on.filter((x) => x !== id) : all.filter((x) => x === id || on.includes(x));
+    editSwitch(i, { routeIds: next.length === all.length ? undefined : next });
+  };
+  /** A bus switch's routes and minutes, and the windows they make. */
+  const busDetails = (sw: BusSwitch, i: number) => {
+    const window = busWindowOf(sw);
+    const followed = routesOf(sw, busRoutes ?? []);
+    const minutes = (edge: 'before' | 'after', label: string) => (
+      <select className={field} value={window[edge]} aria-label={label} data-bus-minutes={edge}
+        onChange={(e) => editSwitch(i, { [edge]: Number(e.target.value) })}>
+        {/* A window stored by hand with other minutes keeps them as a choice. */}
+        {[...new Set([...BUS_MINUTE_CHOICES, window[edge]])].sort((a, b) => a - b)
+          .map((m) => <option key={m} value={m}>{m} min</option>)}
+      </select>
+    );
+    return (
+      <>
+        {/* With one route there is nothing to choose, unless the switch follows none of those there are. */}
+        {busRoutes && busRoutes.length > 0 && (busRoutes.length > 1 || followed.length === 0) && (
+          <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Bus routes" data-bus-routes>
+            {busRoutes.map((r) => {
+              const on = followed.some((f) => f.id === r.id);
+              return (
+                // One always stays on; Remove takes the switch away.
+                <button key={r.id} type="button" aria-pressed={on} disabled={on && followed.length === 1}
+                  className={cn(chip(on), 'disabled:opacity-100')} onClick={() => toggleRoute(i, sw, r.id)} data-bus-route={r.id}>
+                  {r.label} {clock(r.scheduledTime)}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {/* The card's whole width, so before and after stay on one line in a narrow panel. */}
+        <span className="flex flex-wrap items-center gap-2 text-body" data-bus-window>
+          From {minutes('before', 'Minutes before the bus')} before to {minutes('after', 'Minutes after the bus')} after
+        </span>
+        <p className={note} data-bus-windows>
+          {!busRoutes ? `From ${window.before} minutes before each bus route's time at the stop to ${window.after} minutes after, on its days.`
+            : busRoutes.length === 0 ? 'No bus route is set up yet, so this never switches. Add one in Settings > Bus.'
+              : followed.length === 0 ? 'None of its routes is set up any more, so this never switches. Pick one above.'
+                : busWindowsInWords(followed, clock, window)}
+        </p>
+      </>
+    );
+  };
 
   const switchRow = (sw: ScreenSwitch, i: number) => (
     <div key={i} className="flex flex-col gap-2 rounded-xl border border-border bg-muted/30 p-3 pointer-fine:gap-1.5 pointer-fine:p-2" data-switch-row={i} data-switch={sw.when}>
@@ -255,11 +318,7 @@ export function ThroughTheDaySheet({
           {allDashboards.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
         </select>
       </Row>
-      {sw.when === 'bus' ? (
-        <p className={note} data-bus-windows>
-          {busWindows ?? `From ${BUS_BEFORE_MINUTES} minutes before each bus route's time at the stop to ${BUS_AFTER_MINUTES} minutes after, on its days.`}
-        </p>
-      ) : (
+      {sw.when === 'bus' ? busDetails(sw, i) : (
         <>
           {/* The card's whole width, so from and to stay on one line in a narrow panel. */}
           <span className="flex flex-wrap items-center gap-2 text-body">
@@ -335,7 +394,7 @@ export function ThroughTheDaySheet({
           {switches.map(switchRow)}
           {switches.length > 1 && <p className={note}>If two overlap, the higher one wins.</p>}
           <div className="flex flex-wrap items-center gap-2">
-            <button type="button" className={chip(false)} onClick={addBus} disabled={full || hasBus} data-switch-add="bus">
+            <button type="button" className={chip(false)} onClick={addBus} disabled={full} data-switch-add="bus">
               <Plus className="mr-1 h-4 w-4" aria-hidden />Switch at bus time
             </button>
             <button type="button" className={chip(false)} onClick={addTimes} disabled={full} data-switch-add="times">

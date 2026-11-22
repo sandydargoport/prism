@@ -21,7 +21,7 @@ async function screenDashboardSlug(): Promise<string | null> {
     const [all, routes] = await Promise.all([
       db.query.layouts.findMany({ columns: { id: true, slug: true, isDefault: true } }),
       switches.some((s) => s.when === 'bus')
-        ? db.select({ scheduledTime: busRoutes.scheduledTime, activeDays: busRoutes.activeDays }).from(busRoutes).where(eq(busRoutes.enabled, true))
+        ? db.select({ id: busRoutes.id, scheduledTime: busRoutes.scheduledTime, activeDays: busRoutes.activeDays }).from(busRoutes).where(eq(busRoutes.enabled, true))
         : Promise.resolve([]),
     ]);
     const id = screenDashboardAt(

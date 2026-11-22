@@ -39,6 +39,13 @@ const DASHBOARDS = [
   { id: BUS, name: 'Bus', slug: 'bus', isDefault: false },
 ];
 const PLAIN: ScreenPlan = { dashboardId: null, switches: [] };
+const AM_ROUTE = '33333333-3333-4333-8333-333333333333';
+const PM_ROUTE = '44444444-4444-4444-8444-444444444444';
+/** A morning run due at the stop at 7:45 and an afternoon one at 3:30, on weekdays. */
+const ROUTES = [
+  { id: AM_ROUTE, label: 'Morning', scheduledTime: '07:45', activeDays: [1, 2, 3, 4, 5] },
+  { id: PM_ROUTE, label: 'Afternoon', scheduledTime: '15:30', activeDays: [1, 2, 3, 4, 5] },
+];
 
 const seen: { value?: IdleBackground; half?: IdleHalf; tab?: EditTab; plan?: ScreenPlan | null } = {};
 
@@ -187,10 +194,7 @@ describe('ThroughTheDaySheet', () => {
     beforeEach(() => {
       // Only the date is faked: a new switch starts at this quarter hour.
       jest.useFakeTimers({ now: new Date(2026, 10, 23, 7, 5), doNotFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'setImmediate', 'clearImmediate', 'queueMicrotask', 'nextTick'] });
-      global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ routes: [
-        { scheduledTime: '07:45', activeDays: [1, 2, 3, 4, 5] },
-        { scheduledTime: '15:30', activeDays: [1, 2, 3, 4, 5] },
-      ] }) })) as never;
+      global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ routes: ROUTES }) })) as never;
     });
     afterEach(() => jest.useRealTimers());
 
@@ -214,13 +218,54 @@ describe('ThroughTheDaySheet', () => {
       expect(rows()).toHaveLength(0);
     });
 
-    it('+ Switch at bus time adds one, says when from the bus routes, and is offered once', async () => {
+    it('+ Switch at bus time adds one on every route, says when from the bus routes, and can add another', async () => {
       render(<Harness initial={{ source: 'dashboard' }} />);
       await act(async () => { press('Switch at bus time'); });
       expect(kept()).toEqual([{ when: 'bus', dashboardId: BUS }]);
       expect(rows()[0]!.querySelector('[data-row-name]')!.textContent).toBe('At bus time');
       expect(document.querySelector('[data-bus-windows]')!.textContent).toBe('Mon–Fri 07:15 to 08:00, 15:00 to 15:45');
-      expect((screen.getByRole('button', { name: 'Switch at bus time' }) as HTMLButtonElement).disabled).toBe(true);
+      // Another, say for the afternoon run to a dashboard of its own (#1291).
+      press('Switch at bus time');
+      expect(kept()).toHaveLength(2);
+    });
+
+    const busRow = () => rows()[0]!;
+    const route = (id: string) => busRow().querySelector<HTMLButtonElement>(`[data-bus-route="${id}"]`)!;
+    const windows = () => busRow().querySelector('[data-bus-windows]')!.textContent;
+
+    it('a bus switch follows the routes picked on its row, and every route again with all of them on (#1291)', async () => {
+      render(<Harness initial={{ source: 'dashboard' }} plan={{ dashboardId: null, switches: [{ when: 'bus', dashboardId: BUS }] }} />);
+      await act(async () => {});
+      expect(route(AM_ROUTE).textContent).toBe('Morning 07:45');
+      expect(route(AM_ROUTE).getAttribute('aria-pressed')).toBe('true');
+      expect(route(PM_ROUTE).getAttribute('aria-pressed')).toBe('true');
+      fireEvent.click(route(PM_ROUTE));
+      expect(kept()).toEqual([{ when: 'bus', dashboardId: BUS, routeIds: [AM_ROUTE] }]);
+      expect(windows()).toBe('Mon–Fri 07:15 to 08:00');
+      // The last route on stays on; Remove takes the switch away.
+      expect(route(AM_ROUTE).disabled).toBe(true);
+      // Both on again: it follows every route, ones added later too.
+      fireEvent.click(route(PM_ROUTE));
+      expect(kept()).toEqual([{ when: 'bus', dashboardId: BUS }]);
+    });
+
+    it('a bus switch\'s minutes before and after move its windows (#1291)', async () => {
+      render(<Harness initial={{ source: 'dashboard' }} plan={{ dashboardId: null, switches: [{ when: 'bus', dashboardId: BUS }] }} />);
+      await act(async () => {});
+      expect((screen.getByLabelText('Minutes before the bus') as HTMLSelectElement).value).toBe('30');
+      expect((screen.getByLabelText('Minutes after the bus') as HTMLSelectElement).value).toBe('15');
+      pick('Minutes before the bus', '10');
+      pick('Minutes after the bus', '5');
+      expect(kept()).toEqual([{ when: 'bus', dashboardId: BUS, before: 10, after: 5 }]);
+      expect(windows()).toBe('Mon–Fri 07:35 to 07:50, 15:20 to 15:35');
+    });
+
+    it('with one bus route there is no route to pick (#1291)', async () => {
+      global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ routes: ROUTES.slice(0, 1) }) })) as never;
+      render(<Harness initial={{ source: 'dashboard' }} plan={{ dashboardId: null, switches: [{ when: 'bus', dashboardId: BUS }] }} />);
+      await act(async () => {});
+      expect(busRow().querySelector('[data-bus-routes]')).toBeNull();
+      expect(windows()).toBe('Mon–Fri 07:15 to 08:00');
     });
 
     it('at bus time with no route set up, it says it never switches', async () => {
