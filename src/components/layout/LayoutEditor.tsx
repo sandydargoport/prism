@@ -25,10 +25,10 @@ import { createPortal } from 'react-dom';
 import { remoteEditHost, remotePortalRoot } from '@/lib/displays/remoteEdit';
 
 /**
- * Editing a screen from a phone (#1153), the bar and its dialogs are drawn on
- * the phone's page at the phone's size, not shrunk with the picture.
+ * The panels and dialogs are drawn on the canvas editor's page (#1153,
+ * #1265), at this device's own size, not shrunk with the picture.
  */
-function onPhone(node: React.ReactElement): React.ReactElement {
+function onEditorPage(node: React.ReactElement): React.ReactElement {
   const root = remotePortalRoot();
   return root ? createPortal(node, root) : node;
 }
@@ -94,29 +94,24 @@ export function LayoutEditor({
   const effectiveEnabledSizes = enabledSizes.length > 0 ? enabledSizes : allSizeNames;
 
   const [activePopover, setActivePopover] = useState<ActivePopover>(null);
-  // On a canvas (#1265) the sheets are panels beside it, and one is always
-  // open: there is room, and nothing is covered.
-  const [panels] = useState(() => remoteEditHost() !== null);
   // A screen's own settings (rest after, how dark) show when the editor is
-  // for a screen: in place it is this one; on a canvas, the one edited, if
-  // any (#1281). A dashboard edited at a chosen size has none.
+  // for a screen: the one edited on the canvas, if any (#1281). A dashboard
+  // edited at a chosen size has none.
   const [forScreen] = useState(() => remoteEditHost()?.displayId !== null);
-  // The editing bar's open sheet (#1151). Through the day shows the screen as
+  // The open panel (#1151), beside the canvas (#1265); one is always open, as
+  // there is room and nothing is covered. Through the day shows the screen as
   // it rests, so it is the Idle screen tab underneath. A dashboard picked on
   // Dashboard opens on Dashboard still.
-  const [sheet, setSheetState] = useState<EditorSheet | null>(
-    () => (panels ? panelKeptFor(currentDashboardId) ?? 'widgets' : null),
-  );
+  const [sheet, setSheetState] = useState<EditorSheet>(() => panelKeptFor(currentDashboardId) ?? 'widgets');
   useEffect(() => { forgetKeptPanel(); }, []);
-  // Opening it moves to the resting screen, which stays after the sheet
-  // closes so its layout can be arranged; Dashboard, or the label above the
-  // bar, goes back.
-  const setSheet = useCallback((next: EditorSheet | null) => {
-    if (next === null && panels) return;
+  // Opening Through the day moves to the resting screen, which stays with
+  // another panel open so its layout can be arranged; Dashboard, or Back to
+  // in use, goes back.
+  const setSheet = useCallback((next: EditorSheet) => {
     setSheetState(next);
     if (next === 'day') onEditTabChange?.('idle');
     else if (next === 'dashboard') onEditTabChange?.('dashboard');
-  }, [onEditTabChange, panels]);
+  }, [onEditTabChange]);
   const builtIn = view === 'today';
   // There is a screensaver layout to copy to or from only when something
   // other than the dashboard itself shows behind it.
@@ -212,7 +207,7 @@ export function LayoutEditor({
   };
 
   if (measureMode) {
-    return onPhone(
+    return onEditorPage(
       <LayoutEditorMeasureBar
         measureHideNav={measureHideNav}
         onToggleNav={toggleMeasureNav}
@@ -241,11 +236,11 @@ export function LayoutEditor({
             shownHereId={screenId && screenPlan ? screenPlan.dashboardId ?? allDashboards.find((d) => d.isDefault)?.id ?? null : null}
             onSwitchDashboard={onSwitchDashboard}
             onAddToday={onCreateDashboard ? () => onCreateDashboard('Glance', 'today') : undefined}
-            onCreateOpen={() => { setSheet(null); state.setShowCreateDialog(true); }}
-            onRenameOpen={() => { setSheet(null); state.handleRenameOpen(); }}
-            onSaveAsOpen={() => { setSheet(null); state.setShowSaveAsDialog(true); }}
+            onCreateOpen={() => state.setShowCreateDialog(true)}
+            onRenameOpen={() => state.handleRenameOpen()}
+            onSaveAsOpen={() => state.setShowSaveAsDialog(true)}
             onSetDefault={setDefault}
-            onDelete={() => { setSheet(null); state.handleDelete(); }}
+            onDelete={() => state.handleDelete()}
             onResetBuiltIn={onResetBuiltIn}
           />
         );
@@ -289,7 +284,7 @@ export function LayoutEditor({
           <LookSheet
             orientation={screenGuideOrientation}
             onOrientationChange={onScreenGuideOrientationChange}
-            onMeasure={() => { setSheet(null); toggleMeasureMode(); }}
+            onMeasure={() => toggleMeasureMode()}
           />
         );
       case 'more':
@@ -301,10 +296,10 @@ export function LayoutEditor({
             idleTab={editTab === 'idle'}
             exportFeedback={state.exportFeedback}
             onExport={state.handleExport}
-            onImportOpen={() => { setSheet(null); state.setShowImportDialog(true); }}
-            onShareOpen={() => { setSheet(null); state.setShowShareDialog(true); }}
+            onImportOpen={() => state.setShowImportDialog(true)}
+            onShareOpen={() => state.setShowShareDialog(true)}
             onReset={() => (editingScreensaver ? onScreensaverReset?.() : onReset())}
-            onCopyToOther={() => { setSheet(null); void handleCopyToOther(); }}
+            onCopyToOther={() => { void handleCopyToOther(); }}
             preview={(
               <LayoutEditorPreviewPanel
                 visibleWidgets={visibleWidgets}
@@ -329,7 +324,7 @@ export function LayoutEditor({
     }
   })();
 
-  return onPhone(
+  return onEditorPage(
     <>
       <EditorBar
         ref={toolbarRef}
@@ -343,7 +338,6 @@ export function LayoutEditor({
         onCancel={onCancel}
         resting={editTab === 'idle'}
         onLeaveResting={() => onEditTabChange?.('dashboard')}
-        panels={panels}
       />
 
       <CreateDashboardDialog

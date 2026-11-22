@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { editHere } from './helpers/editHere';
+import { onCanvas } from './helpers/canvasEditor';
 import { getSeededParentId } from './helpers/auth';
 import { TODAY_TEMPLATE } from '../src/lib/constants/layoutTemplates';
 import { deleteLayout } from './helpers/cleanup';
@@ -685,33 +685,35 @@ test.describe('the Today view', () => {
       await expect(scene, '10 am is day').not.toHaveAttribute('data-today-night', 'true');
       await page.locator('[data-dock-menu]').click();
       await page.locator('[data-dock-more]').click();
-      await editHere(page);
       await page.locator('[data-dock-more-panel] [data-screen-job="edit"]').click();
+      // Edit opens the canvas (#1283): Today in the frame, the panels beside it.
+      const frame = await onCanvas(page);
+      const shown = frame.locator('[data-today-scene]');
       await page.locator('[data-editor-open="day"]').click();
       const sheet = page.locator('[data-editor-sheet="day"]');
       await expect(sheet).toBeVisible();
 
       // See it at night: warm ink and the veil, at once (#1233, #1281).
       await sheet.locator('[data-see="night"]').click();
-      await expect(scene).toHaveAttribute('data-today-night', 'true');
-      await expect(page.locator('[data-today-veil]')).toHaveCount(1);
+      await expect(shown).toHaveAttribute('data-today-night', 'true');
+      await expect(frame.locator('[data-today-veil]')).toHaveCount(1);
       // The veil stands in for the day's shade (#1186).
-      await expect(page.locator('[data-today-shade]')).toHaveCount(0);
+      await expect(frame.locator('[data-today-shade]')).toHaveCount(0);
       // The ink eases to warm.
-      await expect.poll(() => page.locator('[data-today-clock]').evaluate((el) => getComputedStyle(el).color)).toBe('rgb(255, 226, 190)');
+      await expect.poll(() => frame.locator('[data-today-clock]').evaluate((el) => getComputedStyle(el).color)).toBe('rgb(255, 226, 190)');
 
-      // Screen off: the preview goes black over the scene, under the bar.
+      // Screen off: the preview goes black over the scene, and the panels stay.
       await sheet.getByLabel('Night look').selectOption({ label: 'Screen off' });
-      const off = page.locator('[data-preview-night="off"]');
+      const off = frame.locator('[data-preview-night="off"]');
       await expect(off).toHaveCount(1);
       expect(await off.evaluate((el) => getComputedStyle(el).opacity)).toBe('1');
       await expect(page.locator('[data-editor-bar] nav')).toBeVisible();
 
       // In use: the day again.
       await sheet.locator('[data-see="active"]').click();
-      await expect(scene).not.toHaveAttribute('data-today-night', 'true');
+      await expect(shown).not.toHaveAttribute('data-today-night', 'true');
       await expect(off).toHaveCount(0);
-      await expect(page.locator('[data-today-shade]')).toHaveCount(1);
+      await expect(frame.locator('[data-today-shade]')).toHaveCount(1);
 
       // Done keeps the night look with the dashboard.
       await page.locator('[data-editor-done]').click();
@@ -723,9 +725,9 @@ test.describe('the Today view', () => {
     }
   });
 
-  // #1151: Today, the built-in dashboard, is edited from the bar at the foot
-  // of the screen, where editing starts; nothing is drawn at the top.
-  test('Today is edited from the bottom bar: widgets show and hide live, and it cannot be deleted', async ({ page }) => {
+  // #1151: Today, the built-in dashboard, is edited as any other, on the
+  // canvas (#1283): it stays the scene while its widgets show and hide.
+  test('Today is edited on the canvas: widgets show and hide live, and it cannot be deleted', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await login(page);
     const layout = await (await page.request.post('/api/layouts', { data: { name: `Built in e2e ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json();
@@ -735,31 +737,15 @@ test.describe('the Today view', () => {
       await expect(page.locator('[data-today-scene]')).toBeVisible({ timeout: 60_000 });
       await page.locator('[data-dock-menu]').click();
       await page.locator('[data-dock-more]').click();
-      await editHere(page);
       await page.locator('[data-dock-more-panel] [data-screen-job="edit"]').click();
-
-      // The bar takes the dock's place at the foot, and no control is in the top half.
-      const bar = page.locator('[data-editor-bar] nav');
-      await expect(bar).toBeVisible({ timeout: 60_000 });
-      const geometry = await page.evaluate(() => {
-        const vh = window.innerHeight;
-        const nav = document.querySelector('[data-editor-bar] nav')!.getBoundingClientRect();
-        const topControls = [...document.querySelectorAll('button, [role="tab"]')]
-          .filter((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.bottom < vh / 2; })
-          .filter((el) => !el.closest('[data-today-scene]'))
-          .map((el) => el.textContent?.trim() || el.getAttribute('aria-label'));
-        return { navTop: nav.top, navBottom: nav.bottom, vh, topControls };
-      });
-      expect(geometry.navTop, 'the bar sits at the foot').toBeGreaterThan(geometry.vh * 0.85);
-      expect(geometry.navBottom).toBeLessThanOrEqual(geometry.vh);
-      expect(geometry.topControls, 'no editing control at the top').toEqual([]);
-      await expect(page.locator('[data-today-scene]'), 'Today stays the scene while editing').toBeVisible();
+      const frame = await onCanvas(page);
+      await expect(frame.locator('[data-today-scene]'), 'Today stays the scene while editing').toBeVisible();
 
       // Widgets: hiding the weather takes it off the scene at once.
-      await expect(page.locator('[data-today-corner="right"]')).toBeVisible();
+      await expect(frame.locator('[data-today-corner="right"]')).toBeVisible();
       await page.locator('[data-editor-open="widgets"]').click();
       await page.locator('[data-part-show="weather"]').click();
-      await expect(page.locator('[data-today-corner="right"]')).toHaveCount(0);
+      await expect(frame.locator('[data-today-corner="right"]')).toHaveCount(0);
 
       // Dashboard: Today is marked built in, and Delete is off, in the bar and on the server.
       await page.locator('[data-editor-open="dashboard"]').click();
@@ -792,8 +778,8 @@ test.describe('the Today view', () => {
       await expect(page.locator('[data-today-scene]')).toBeVisible({ timeout: 60_000 });
       await page.locator('[data-dock-menu]').click();
       await page.locator('[data-dock-more]').click();
-      await editHere(page);
       await page.locator('[data-dock-more-panel] [data-screen-job="edit"]').click();
+      await onCanvas(page);
       await page.locator('[data-editor-open="dashboard"]').click({ timeout: 60_000 });
       await page.locator('[data-dashboard-new]').click();
       await page.getByPlaceholder('e.g. Kitchen Display').fill(name);

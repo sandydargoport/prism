@@ -96,7 +96,7 @@ Make a dashboard to switch to with **Make a copy** in the Dashboard sheet and re
 
 #### Notices
 
-A named screen can show small notice cards down the top right of its dashboard. In the editing bar's **More** sheet, **Notices** turns each kind on and sets how many minutes ahead it looks:
+A named screen can show small notice cards down the top right of its dashboard. In the editor's **More** panel, **Notices** turns each kind on and sets how many minutes ahead it looks:
 
 - **Bus**: the bus is due at your stop within the set minutes, using the live position where there is one and the emailed estimate otherwise. The card goes once the bus has passed the stop.
 - **Event**: a timed event starts within the set minutes. The card goes when the event starts. All-day events never show.

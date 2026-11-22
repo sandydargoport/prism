@@ -15,13 +15,6 @@ import { loadBase } from './displaySettingsSync';
 import { isNamedScreen } from './namedScreen';
 import { remoteEditHost } from './remoteEdit';
 
-/**
- * Set only by the browser specs that still measure the editor in place, on
- * the bar over the full screen; nothing a person can press sets it. Those
- * specs move onto the canvas in #1283, and this goes with them.
- */
-export const EDIT_IN_PLACE_KEY = 'prism:test-edit-in-place';
-
 /** The canvas editor for a dashboard. */
 export function canvasEditLink(dashboardId: string): string {
   return `/edit/${encodeURIComponent(dashboardId)}`;
@@ -50,17 +43,11 @@ export function editorLink(dashboardId: string): string {
   return own && window.innerWidth >= MOBILE_BREAKPOINT ? screenEditLink(own, dashboardId) : canvasEditLink(dashboardId);
 }
 
-function editsInPlace(): boolean {
-  try {
-    return window.localStorage.getItem(EDIT_IN_PLACE_KEY) === '1';
-  } catch {
-    return false;
-  }
-}
-
-/** Edit opens a canvas editor rather than editing in place. */
+/**
+ * Edit opens a canvas editor rather than editing in place: everywhere but in
+ * the canvas's own frame (#1283).
+ */
 export function editsOnCanvas(): boolean {
   if (typeof window === 'undefined') return false;
-  if (remoteEditHost()) return false;
-  return !editsInPlace();
+  return !remoteEditHost();
 }

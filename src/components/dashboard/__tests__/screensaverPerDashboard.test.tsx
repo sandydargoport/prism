@@ -10,13 +10,19 @@ import { act, renderHook } from '@testing-library/react';
 import { useDashboardLayout } from '../useDashboardLayout';
 import { DEFAULT_SCREENSAVER_LAYOUT } from '@/components/screensaver/screensaverStorage';
 import type { Layout, WidgetConfig } from '@/lib/hooks/useLayouts';
-import { EDIT_IN_PLACE_KEY } from '@/lib/displays/editPlace';
 
 let activeUser: { id: string; role: string } | null = null;
 jest.mock('@/components/providers/AuthProvider', () => ({
   useAuth: () => ({ activeUser, requireAuth: jest.fn() }),
 }));
 jest.mock('next/navigation', () => ({ usePathname: () => window.location.pathname, useRouter: () => ({ push: jest.fn(), replace: jest.fn() }) }));
+// Editing happens in the canvas's frame (#1283); these say when the hook is in one.
+let mockInFrame = false;
+const mockHost = { displayId: null, dashboardId: null, switches: [], settings: {}, settingsUpdatedAt: null };
+jest.mock('@/lib/displays/remoteEdit', () => ({
+  ...jest.requireActual('@/lib/displays/remoteEdit'),
+  remoteEditHost: () => (mockInFrame ? mockHost : null),
+}));
 
 const KEY = 'prism-screensaver-layout';
 const custom: WidgetConfig[] = [{ i: 'clock', x: 0, y: 0, w: 48, h: 48, visible: true }];
@@ -34,8 +40,7 @@ const data = (all: Layout[]) => ({
 
 const stored = () => JSON.parse(localStorage.getItem(KEY) ?? 'null');
 
-// The editor in place, as on a screen (#1265).
-beforeEach(() => { localStorage.clear(); localStorage.setItem(EDIT_IN_PLACE_KEY, '1'); activeUser = null; });
+beforeEach(() => { localStorage.clear(); activeUser = null; mockInFrame = false; });
 
 describe('screensaver per dashboard', () => {
   it('gives a dashboard with no saved screensaver the default, not the last one shown', () => {
@@ -107,6 +112,8 @@ describe('the upgrade from v1.30.1 (#1154)', () => {
 });
 
 describe('one editor, two tabs, one Save (#782)', () => {
+  // The dashboard is edited in the canvas's frame (#1283).
+  beforeEach(() => { mockInFrame = true; });
   const edited: WidgetConfig[] = [{ i: 'tasks', x: 0, y: 0, w: 12, h: 12, visible: true }];
   const idleEdited: WidgetConfig[] = [{ i: 'weather', x: 4, y: 4, w: 16, h: 16, visible: true }];
 
