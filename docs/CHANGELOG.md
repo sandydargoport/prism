@@ -107,6 +107,7 @@ All notable changes to Prism are documented in this file.
 - **Bus card compares today with the usual.** Beside how late the bus is against the timetable, the live bus card says how that compares with its typical lateness at your stop over the last 10 trips ("8 min late · about usual", "12 min late · 4 min later than usual"). Before anything on the trip is measured, it says what is typical ("usually 9 min late").
 
 ### Fixed
+- **A recipe image needs what the Recipes page needs:** a signed-in member, or the display's own access. Avatars still show to anyone, as the sign-in page shows them before anyone signs in. ([#1244](https://github.com/sandydargoport/prism/issues/1244))
 - **Editing a screen from another device no longer asks for a PIN when already signed in.** A page that asked for sign-in as it opened did so before the session had been checked. ([#1265](https://github.com/sandydargoport/prism/issues/1265))
 - **A short stretch at the end of the Through the day line stays on the line** in a narrow panel, instead of running past its end. ([#1265](https://github.com/sandydargoport/prism/issues/1265))
 - **The X, Y, W and H boxes in the Widgets panel show two-digit numbers in full**; the spin arrows that covered them are gone, and the arrow keys still step the value. ([#1265](https://github.com/sandydargoport/prism/issues/1265))

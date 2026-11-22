@@ -72,6 +72,11 @@ export async function POST(
   }
 }
 
+/**
+ * No check, on purpose (#1244): the sign-in page shows each member's avatar
+ * before anyone has signed in, from the family list the sign-in wall lets
+ * through (WALL_ALLOWLIST in src/proxy.ts). An avatar needs what that page needs.
+ */
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
