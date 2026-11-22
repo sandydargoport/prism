@@ -1,37 +1,37 @@
 'use client';
 
 import type React from 'react';
-import { addTransitionType, startTransition, useCallback, useEffect, useId, useRef, useState } from 'react';
+import { addTransitionType, startTransition, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { Layout } from '@/lib/hooks/useLayouts';
 import { useVisibilityPolling } from '@/lib/hooks/useVisibilityPolling';
 import { usePerformanceLevel } from '@/lib/hooks/usePerformanceMode';
 import { useResetOn } from '@/lib/hooks/useResetOn';
+import { useHydrated } from '@/lib/hooks/useStoredValue';
 import { useTimeFormat } from '@/components/providers/TimeFormatProvider';
-import { loadBase } from '@/lib/displays/displaySettingsSync';
-import { remoteEditHost } from '@/lib/displays/remoteEdit';
-import { useDeviceTimeline } from '@/lib/hooks/useTimelines';
-import { placementAt, SCHEDULE_TRANSITION } from '@/lib/timeline';
+import { loadBase, planOf } from '@/lib/displays/displaySettingsSync';
+import { SCHEDULE_TRANSITION, switchAt, type BusTime, type ScreenPlan } from '@/lib/screenSwitches';
 import { pageZoomVars } from '@/lib/utils/zoomVars';
 
 /**
- * A screen follows its timeline (#692, #1266).
+ * A named screen shows its dashboard, and switches to another for a while at
+ * bus time or at set times (#692, #1282).
  *
- * The home page already opens on the dashboard the timeline shows at load
- * time. This keeps it right while the screen stays on: when a placement starts
- * or ends, or the timeline is changed from another device, the dashboard
- * changes over in place, without a reload, so widget data stays loaded and
- * widgets both dashboards share can slide to their new place (the
- * `screen-schedule` transition, see CssGridDisplay).
+ * The home page already opens on the dashboard the screen shows at load time
+ * (see app/page). This keeps it right while the screen stays on: when a
+ * switch starts or ends, the dashboard changes over in place, without a
+ * reload, so widget data stays loaded and widgets both dashboards share can
+ * slide to their new place (the `screen-schedule` transition, see
+ * CssGridDisplay). A change made from another device reaches it through the
+ * heartbeat, which reloads it (DisplayHeartbeat).
  *
- *  - Someone opening another dashboard by hand keeps it until the next
- *    placement starts or ends; then the timeline takes over again.
+ *  - Someone opening another dashboard by hand keeps it until the next switch
+ *    starts or ends; then the screen's own plan takes over again.
  *  - A change waits while the screen is in use: until nobody has touched it
  *    for a minute, and never while the layout is being edited.
  *
- * A named screen follows its own timeline at any address. A device nobody
- * named follows the first timeline on the home page, so a tablet that only
- * ever opened Prism still changes over; opened at a dashboard's own address,
- * it shows that dashboard. Never in the editor.
+ * A named screen follows its plan at any address. A device nobody named shows
+ * the dashboard at its address, the default on the home page, and switches
+ * nothing.
  */
 
 /** How long the screen must be left alone before a scheduled change. */
@@ -41,14 +41,45 @@ const CHECK_MS = 15 * 1000;
 
 const INPUT_EVENTS = ['pointerdown', 'keydown', 'wheel', 'touchstart'] as const;
 
-/** The address flag for a page opened to edit it (EDIT_PARAM in useDashboardLayout). */
-const EDITING_PARAM = 'edit';
+/** Bus routes change rarely; their times are read again this often. */
+const BUS_TIMES_MS = 15 * 60 * 1000;
 
-/** Whether this page shows what its timeline says, as above. */
-function followsTimeline(routeSlug: string | undefined): boolean {
-  if (typeof window === 'undefined') return false;
-  if (loadBase()) return true;
-  return routeSlug === undefined && !remoteEditHost() && !new URLSearchParams(window.location.search).has(EDITING_PARAM);
+/** The plan this page follows: a named screen's own, or none on a device nobody named. */
+function screenPlan(): ScreenPlan | null {
+  const base = loadBase();
+  return base ? planOf(base) : null;
+}
+
+/** The bus routes' times at the stop, from the status every display can read; null when unreadable. */
+async function readBusTimes(): Promise<BusTime[] | null> {
+  try {
+    const res = await fetch('/api/bus-tracking/status');
+    if (!res.ok) return null;
+    const data = await res.json() as { routes?: Array<{ scheduledTime?: string; activeDays?: number[] }> };
+    return (data.routes ?? []).flatMap((r) => (typeof r.scheduledTime === 'string' && Array.isArray(r.activeDays)
+      ? [{ scheduledTime: r.scheduledTime, activeDays: r.activeDays }] : []));
+  } catch {
+    // Offline for a moment: the times read last stand.
+    return null;
+  }
+}
+
+/** The bus routes' times at the stop, read when a switch needs them and every so often after. */
+function useBusTimes(wanted: boolean): BusTime[] {
+  const [times, setTimes] = useState<BusTime[]>([]);
+  useEffect(() => {
+    if (!wanted) return;
+    let live = true;
+    void (async () => {
+      const read = await readBusTimes();
+      if (live && read) setTimes(read);
+    })();
+    return () => { live = false; };
+  }, [wanted]);
+  useVisibilityPolling(() => {
+    if (wanted) void readBusTimes().then((read) => { if (read) setTimes(read); });
+  }, BUS_TIMES_MS, { pollWhileIdle: true });
+  return times;
 }
 
 /** When someone last touched the screen. Module-wide, so a remount does not forget it. */
@@ -67,19 +98,13 @@ function listenForInput(): void {
 type Input = {
   /** The dashboard the page is for: its slug, or undefined for the home page. */
   routeSlug: string | undefined;
-  /**
-   * What the server found the timeline shows, for a device nobody named on the
-   * home page (see app/page), so it opens on that dashboard and not on the
-   * default first.
-   */
-  startSlug?: string;
   layouts: Layout[];
   loading: boolean;
   /** Whether the layout is being edited; a ref, since the layout hook that knows comes after. */
   editing: { readonly current: boolean };
 };
 
-export function useScreenSchedule({ routeSlug, startSlug, layouts, loading, editing }: Input): {
+export function useScreenSchedule({ routeSlug, layouts, loading, editing }: Input): {
   /** The slug to show, for useDashboardLayout. */
   slug: string | undefined;
   /**
@@ -88,28 +113,30 @@ export function useScreenSchedule({ routeSlug, startSlug, layouts, loading, edit
    * undefined when it is the same.
    */
   zoomStyle: React.CSSProperties | undefined;
-  /** Someone chose this dashboard (by slug); it stays until the next placement starts or ends. */
+  /** Someone chose this dashboard (by slug); it stays until the next switch starts or ends. */
   pick: (slug: string) => void;
 } {
-  const { timeline, loaded: timelineLoaded } = useDeviceTimeline();
+  // Read once the page is in the browser: a change to it reloads the page.
+  const hydrated = useHydrated();
+  const plan = useMemo<ScreenPlan | null>(() => (hydrated ? screenPlan() : null), [hydrated]);
+  const busTimes = useBusTimes(hydrated && !!plan?.switches.some((s) => s.when === 'bus'));
   const { householdTimezone } = useTimeFormat();
   const perfLevel = usePerformanceLevel();
 
   const defaultLayout = layouts.find((l) => l.isDefault) ?? null;
   const routeLayout = routeSlug ? layouts.find((l) => l.slug === routeSlug) ?? null : defaultLayout;
 
-  // Which dashboard the timeline wants now: the placed one, or the one for
-  // the rest of the day. On a page that does not follow it, or before the
-  // layouts and the timeline arrive, that is simply the page's own.
+  // Which dashboard the screen wants now: a switch's, or its own. On a device
+  // nobody named, or before the layouts arrive, that is simply the page's own.
   const wanted = useCallback((now: number): { rule: number; id: string | null } => {
-    if (!followsTimeline(routeSlug) || !timeline || !routeLayout) return { rule: -1, id: routeLayout?.id ?? null };
+    if (!plan || !routeLayout) return { rule: -1, id: routeLayout?.id ?? null };
     const exists = (id: string) => layouts.some((l) => l.id === id);
-    const homeId = timeline.dashboardId && exists(timeline.dashboardId) ? timeline.dashboardId : defaultLayout?.id ?? null;
-    const { index, dashboardId } = placementAt(timeline.placements, now, householdTimezone, exists);
+    const homeId = plan.dashboardId && exists(plan.dashboardId) ? plan.dashboardId : defaultLayout?.id ?? null;
+    const { index, dashboardId } = switchAt(plan.switches, now, householdTimezone, busTimes, exists);
     return { rule: index, id: dashboardId ?? homeId };
-  }, [routeSlug, timeline, routeLayout, layouts, defaultLayout, householdTimezone]);
+  }, [plan, routeLayout, layouts, defaultLayout, householdTimezone, busTimes]);
 
-  // While someone's own choice stands: the placement in force when they made
+  // While someone's own choice stands: the switch in force when they made
   // it (-1 for none). It holds until that changes.
   const holdRule = useRef<number | null>(null);
   const [shownId, setShownId] = useState<string | null>(null);
@@ -120,13 +147,12 @@ export function useScreenSchedule({ routeSlug, startSlug, layouts, loading, edit
     setShownId(id);
   }, [wanted]);
 
-  // The first dashboard a page load opens follows the timeline, whatever the
-  // address says: it is the screen starting up, or reloading at an address an
-  // earlier change over left behind. Any later one was opened from inside the
-  // app, so someone chose it.
+  // The first dashboard a page load opens follows the screen's plan, whatever
+  // the address says: it is the screen starting up, or reloading at an
+  // address an earlier change over left behind. Any later one was opened from
+  // inside the app, so someone chose it.
   const instance = useId();
-  // Once the timeline is in too, so the first open is not decided without it.
-  const openKey = loading || !timelineLoaded ? null : `${routeSlug ?? ''}|${routeLayout?.id ?? ''}`;
+  const openKey = loading || !hydrated ? null : `${routeSlug ?? ''}|${routeLayout?.id ?? ''}`;
   useResetOn(openKey, () => {
     if (openKey === null) return;
     // Keyed, not a flag, so rendering twice (React's development checks) still counts as one open.
@@ -163,9 +189,7 @@ export function useScreenSchedule({ routeSlug, startSlug, layouts, loading, edit
 
   useVisibilityPolling(check, CHECK_MS, { pollWhileIdle: true });
 
-  // Until the first open, what the server found the timeline shows.
-  const startLayout = startSlug ? layouts.find((l) => l.slug === startSlug) : undefined;
-  const shown = layouts.find((l) => l.id === shownId) ?? startLayout ?? routeLayout;
+  const shown = layouts.find((l) => l.id === shownId) ?? routeLayout;
   const shownScale = shown?.fontScale ?? 100;
   const zoom = shownScale / (routeLayout?.fontScale ?? 100);
   // `--app-vh` as the page sets it, for the scale now in force overall.

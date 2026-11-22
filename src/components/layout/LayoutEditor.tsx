@@ -63,10 +63,11 @@ export function LayoutEditor({
   idleHalf = 'day',
   onIdleHalfChange,
   idleCheck = {},
-  timelines = [],
-  timelineId,
-  onTimelineChange,
+  screenPlan = null,
+  onScreenPlanChange,
   screenId = null,
+  deviceNamed = false,
+  onDeviceNamed,
   screenGuideOrientation = 'landscape',
   onScreenGuideOrientationChange,
   enabledSizes = [],
@@ -237,6 +238,7 @@ export function LayoutEditor({
           <DashboardSheet
             allDashboards={allDashboards}
             currentDashboardId={currentDashboardId}
+            shownHereId={screenId && screenPlan ? screenPlan.dashboardId ?? allDashboards.find((d) => d.isDefault)?.id ?? null : null}
             onSwitchDashboard={onSwitchDashboard}
             onAddToday={onCreateDashboard ? () => onCreateDashboard('Glance', 'today') : undefined}
             onCreateOpen={() => { setSheet(null); state.setShowCreateDialog(true); }}
@@ -271,10 +273,11 @@ export function LayoutEditor({
             editTab={editTab}
             onEditTabChange={onEditTabChange}
             idleCheck={idleCheck}
-            timelines={timelines}
-            timelineId={timelineId}
-            onTimelineChange={onTimelineChange}
+            screenPlan={screenPlan}
+            onScreenPlanChange={onScreenPlanChange}
             screenId={screenId}
+            deviceNamed={deviceNamed}
+            onDeviceNamed={onDeviceNamed}
             forScreen={forScreen}
             allDashboards={allDashboards}
             currentDashboardId={currentDashboardId}

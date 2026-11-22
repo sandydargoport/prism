@@ -39,10 +39,15 @@ const row = 'flex min-h-[52px] w-full items-center gap-3 rounded-xl px-3 text-le
 const section = 'm-0 mb-2 text-caption font-medium uppercase tracking-[0.1em] text-muted-foreground';
 
 export function DashboardSheet({
-  allDashboards, currentDashboardId, onSwitchDashboard, onAddToday, onCreateOpen, onRenameOpen, onSaveAsOpen, onSetDefault, onDelete, onResetBuiltIn,
+  allDashboards, currentDashboardId, shownHereId, onSwitchDashboard, onAddToday, onCreateOpen, onRenameOpen, onSaveAsOpen, onSetDefault, onDelete, onResetBuiltIn,
 }: {
   allDashboards: DashboardInfo[];
   currentDashboardId?: string;
+  /**
+   * In a screen's editor, the dashboard the screen shows (#1282), marked so
+   * that editing another one is never taken for changing what it shows.
+   */
+  shownHereId?: string | null;
   onSwitchDashboard?: (slug: string) => void;
   /** An install with no Today yet: add it. */
   onAddToday?: () => void;
@@ -93,6 +98,7 @@ export function DashboardSheet({
               </span>
               {isBuiltIn(d) && <BuiltInMark />}
               {d.isDefault && <span className="text-caption text-muted-foreground">Default</span>}
+              {d.id === shownHereId && <span className="text-caption text-muted-foreground" data-shown-here>Shown here</span>}
               {d.id === currentDashboardId && <span className="text-caption font-medium">Editing</span>}
             </button>
           </li>

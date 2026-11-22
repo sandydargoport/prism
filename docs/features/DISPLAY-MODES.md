@@ -20,7 +20,7 @@ Every dashboard has its own screensaver layout. The kitchen dashboard (`/d/kitch
 
 A screen is in one of three states through the day: **Active** while someone is using it, **Resting** once nobody has touched it for a while, and **Night** when it rests after dark. In the editor's **Through the day** sheet, **See it** has a button for each: **In use**, **Resting** and **Night**. Tap one and the canvas shows that state at once.
 
-The sheet is a few rows. In a screen's editor it starts with which dashboard the screen shows and the dashboards it switches to at set times (see [Timelines](DASHBOARD.md#timelines-which-dashboard-shows-when)). Then come the dashboard's own rows: **Resting** (after how long, and what it shows) and **At night** (dusk to dawn or set times, and what it shows), with tonight's times and the offsets under it, and **How dark**. What shows while resting and at night belongs to the dashboard and is saved with it on **Done**, so every screen showing that dashboard rests and sleeps the same way. How soon the screen rests and how dark it goes are the screen's own, so they show only when the editor is for a screen.
+The sheet is a few rows. In a screen's editor it starts with which dashboard the screen shows and the dashboards it switches to at bus time or at set times (see [Which dashboard a screen shows](DASHBOARD.md#which-dashboard-a-screen-shows-and-when-it-switches)). Then come the dashboard's own rows: **Resting** (after how long, and what it shows) and **At night** (dusk to dawn or set times, and what it shows), with tonight's times and the offsets under it, and **How dark**. What shows while resting and at night belongs to the dashboard and is saved with it on **Done**, so every screen showing that dashboard rests and sleeps the same way. How soon the screen rests and how dark it goes are the screen's own, so they show only when the editor is for a screen.
 
 #### A calm dashboard is its own idle screen
 
@@ -282,7 +282,7 @@ If you need to give a babysitter or short-term guest the information they need, 
 - Check *Settings → Appearance → Timers & Auto-Activation → Screensaver Timeout* to see if it is set to "Never".
 - Check whether the dashboard is in edit mode, which stops the screensaver.
 - Check whether a modal is open, which also stops it.
-- In an installed app, the screensaver starts by itself only on a screen named in *Settings → Screens*. On a phone it stays off, on purpose. Name the wall screen if it runs as an installed app.
+- In an installed app, the screensaver starts by itself only on a screen named in its editor (*Through the day* → **Name this device**). On a phone it stays off, on purpose. Name the wall screen if it runs as an installed app.
 
 #### Away mode won't exit
 

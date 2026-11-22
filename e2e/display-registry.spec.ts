@@ -9,6 +9,7 @@
 import { test, expect, type BrowserContext, type Page } from '@playwright/test';
 import { getFirstParent, getSeededParentId, verifySettingsPinViaAPI } from './helpers/auth';
 import { deleteLayout } from './helpers/cleanup';
+import { nameThisScreen } from './helpers/nameScreen';
 
 const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
 
@@ -38,12 +39,14 @@ test.describe('Display registry', () => {
     const wallContext = await browser.newContext();
     const phoneContext = await browser.newContext();
     try {
-      // On the wall: name it.
+      // On the wall: Settings > Screens only lists screens (#1267), and says
+      // this device has no name; it is named from its own editor.
       const wall = await openDisplays(wallContext, parent.name);
-      await expect(wall.getByLabel('Name for this screen')).toBeVisible({ timeout: 60_000 });
-      await wall.getByLabel('Name for this screen').fill(KITCHEN);
-      await wall.getByRole('button', { name: 'Name this display' }).click();
-      await expect(wall.getByText('This screen is named')).toContainText(KITCHEN);
+      await expect(wall.locator('[data-unnamed-here]')).toBeVisible({ timeout: 60_000 });
+      await expect(wall.getByLabel('Name for this screen')).toHaveCount(0);
+      await nameThisScreen(wall, KITCHEN);
+      await wall.goto('/settings?section=displays');
+      await expect(wall.locator('[data-unnamed-here]')).toHaveCount(0);
       const wallRow = wall.getByTestId('display-row').filter({ hasText: KITCHEN });
       await expect(wallRow).toContainText('This screen');
       await expect(wallRow).toContainText('Online');
@@ -53,7 +56,7 @@ test.describe('Display registry', () => {
       const phoneRow = phone.getByTestId('display-row').filter({ hasText: KITCHEN });
       await expect(phoneRow).toContainText('Online');
       await expect(phoneRow).not.toContainText('This screen');
-      await expect(phone.getByLabel('Name for this screen')).toBeVisible();
+      await expect(phone.locator('[data-unnamed-here]')).toBeVisible();
 
       // Rename from the phone; the wall shows it after a refresh.
       await phoneRow.getByRole('button', { name: 'Rename' }).click();
@@ -61,7 +64,7 @@ test.describe('Display registry', () => {
       await phone.getByRole('button', { name: 'Save' }).click();
       await expect(phone.getByTestId('display-row').filter({ hasText: RENAMED })).toBeVisible();
       await wall.reload();
-      await expect(wall.getByText('This screen is named')).toContainText(RENAMED);
+      await expect(wall.getByTestId('display-row').filter({ hasText: RENAMED })).toContainText('This screen');
 
       // Remove from the phone; the wall's next heartbeat forgets its name.
       phone.once('dialog', (d) => d.accept());
@@ -74,7 +77,7 @@ test.describe('Display registry', () => {
       const cookies = await wallContext.cookies();
       expect(cookies.find((c) => c.name === 'prism_display')).toBeUndefined();
       await wall.reload();
-      await expect(wall.getByLabel('Name for this screen')).toBeVisible();
+      await expect(wall.locator('[data-unnamed-here]')).toBeVisible();
     } finally {
       await wallContext.close();
       await phoneContext.close();
@@ -116,8 +119,7 @@ test.describe('Display settings follow the screen', () => {
       // The wall already has a setting of its own when it is named; naming copies it up.
       const wall = await openDisplays(wallContext, parent.name);
       await wall.evaluate((k) => localStorage.setItem(k, '300'), TIMEOUT);
-      await wall.getByLabel('Name for this screen').fill(HALL);
-      await wall.getByRole('button', { name: 'Name this display' }).click();
+      await nameThisScreen(wall, HALL);
       await expect.poll(async () => (await stored())?.settings?.[TIMEOUT], { timeout: 15_000 }).toBe('300');
 
       // Edited from the phone: the wall has it after a refresh.
@@ -132,29 +134,24 @@ test.describe('Display settings follow the screen', () => {
       await wall.evaluate(() => localStorage.setItem('prism-screensaver-drift', 'off'));
       await expect.poll(async () => (await stored())?.settings?.['prism-screensaver-drift'], { timeout: 30_000 }).toBe('off');
 
-      // The phone gives the wall a timeline whose day is a dashboard of its
-      // own (#1266); the wall's home page opens on it.
+      // The phone gives the wall a dashboard of its own (#1282); the wall's
+      // home page opens on it.
       const created = await phone.request.post('/api/layouts', {
         data: { name: `Hall board ${tag}`, widgets: [{ i: 'clock', x: 0, y: 0, w: 16, h: 12 }] },
       });
       const board = await created.json();
-      const { timeline } = await (await phone.request.post('/api/timelines', { data: { name: `Hall day ${tag}` } })).json();
-      expect((await phone.request.patch(`/api/timelines/${timeline.id}`, { data: { dashboardId: board.id } })).ok()).toBe(true);
-      const picked = await phone.request.patch(`/api/displays/${hall.id}`, { data: { timelineId: timeline.id } });
+      const picked = await phone.request.patch(`/api/displays/${hall.id}`, { data: { dashboardId: board.id } });
       expect(picked.ok()).toBe(true);
-      await expect.poll(async () => (await stored())?.timelineId).toBe(timeline.id);
+      await expect.poll(async () => (await stored())?.dashboardId).toBe(board.id);
       await wall.goto('/');
       await expect(wall).toHaveURL(new RegExp(`/d/${board.slug}$`));
 
       // A reset browser on the same wall takes the screen back, settings and all.
       const fresh = await openDisplays(resetContext, parent.name);
-      await fresh.getByLabel('Existing screen').selectOption({ label: HALL });
-      await fresh.getByRole('button', { name: 'Use its name and settings' }).click();
+      await nameThisScreen(fresh, HALL, 'existing');
       await expect.poll(() => readStorage(fresh, TIMEOUT), { timeout: 30_000 }).toBe('600');
-      await expect(fresh.getByText('This screen is named')).toContainText(HALL, { timeout: 30_000 });
 
       await phone.request.delete(`/api/displays/${hall.id}`);
-      await phone.request.delete(`/api/timelines/${timeline.id}`);
       await phone.request.delete(`/api/layouts/${board.id}`);
     } finally {
       await wallContext.close();
@@ -180,9 +177,7 @@ test.describe('Editing a screen from a phone', () => {
     const phoneContext = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
     try {
       const wall = await openDisplays(wallContext, parent.name);
-      await wall.getByLabel('Name for this screen').fill(DEN);
-      await wall.getByRole('button', { name: 'Name this display' }).click();
-      await expect(wall.getByText('This screen is named')).toContainText(DEN);
+      await nameThisScreen(wall, DEN);
       await wall.goto('/');
 
       const phone = await openDisplays(phoneContext, parent.name);
@@ -195,27 +190,24 @@ test.describe('Editing a screen from a phone', () => {
         .toEqual([WALL.width, WALL.height]);
 
       // Its own dashboard, so Done saves that one and not the household's
-      // default, which the screensaver specs that follow rely on: the day of
-      // a timeline of its own (#1266).
+      // default, which the screensaver specs that follow rely on (#1282).
       const created = await phone.request.post('/api/layouts', {
         data: { name: `Den board ${tag}`, widgets: [{ i: 'clock', x: 0, y: 0, w: 16, h: 12 }] },
       });
       const board = await created.json();
-      const { timeline } = await (await phone.request.post('/api/timelines', { data: { name: `Den day ${tag}` } })).json();
-      expect((await phone.request.patch(`/api/timelines/${timeline.id}`, { data: { dashboardId: board.id } })).ok()).toBe(true);
-      expect((await phone.request.patch(`/api/displays/${(await den()).id}`, { data: { timelineId: timeline.id } })).ok()).toBe(true);
-      // The wall syncs, sees its new timeline and goes home once; let it settle there.
+      expect((await phone.request.patch(`/api/displays/${(await den()).id}`, { data: { dashboardId: board.id } })).ok()).toBe(true);
+      // The wall syncs, sees its new dashboard and goes home once; let it settle there.
       await wall.goto('/');
-      await expect.poll(async () => (await readStorage(wall, 'prism:display-sync-base')) ?? '', { timeout: 30_000 }).toContain(timeline.id);
+      await expect.poll(async () => (await readStorage(wall, 'prism:display-sync-base')) ?? '', { timeout: 30_000 }).toContain(board.id);
       await expect.poll(() => wall.url(), { timeout: 30_000 }).toContain(`/d/${board.slug}`);
       await wall.waitForTimeout(3_000);
       await wall.waitForLoadState('load');
 
-      // The row: its timeline and how it rests, and one Edit.
+      // The row: what it shows and how it rests, and one Edit.
       await phone.reload();
       const row = phone.getByTestId('display-row').filter({ hasText: DEN });
-      await expect(row.locator('[data-screen-summary]')).toContainText(`Den day ${tag}: rests after 2 min`);
-      await expect(row.getByLabel(`Timeline for ${DEN}`)).toHaveValue(timeline.id);
+      await expect(row.locator('[data-screen-summary]')).toContainText(`Shows Den board ${tag}, rests after 2 min`);
+      await expect(row.getByLabel(`Dashboard for ${DEN}`)).toHaveValue(board.id);
       await expect(row.getByRole('button', { name: 'Settings' })).toHaveCount(0);
       await row.getByRole('link', { name: 'Edit' }).click();
       await expect(phone).toHaveURL(/\/screens\//, { timeout: 60_000 });
@@ -264,7 +256,6 @@ test.describe('Editing a screen from a phone', () => {
       expect(await readStorage(phone, 'prism:keyboard-on-this-device')).toBeNull();
 
       await phone.request.delete(`/api/displays/${(await den()).id}`);
-      await phone.request.delete(`/api/timelines/${timeline.id}`);
       await phone.request.delete(`/api/layouts/${board.id}`);
     } finally {
       await wallContext.close();
@@ -316,45 +307,37 @@ test.describe('Time-of-day layouts', () => {
           : w.i === 'weather' ? { ...w, x: clock.x, y: clock.y, w: clock.w, h: clock.h } : w);
       const morning = await (await wall.request.post('/api/layouts', { data: { name: MORNING, widgets: morningWidgets } })).json();
 
-      // Name the wall, give it a timeline of its own (#1266), and place
-      // Morning on it from a moment half a day away, so the server's real
-      // clock never falls in it.
-      const { timeline } = await (await wall.request.post('/api/timelines', { data: { name: `Porch day ${tag}` } })).json() as { timeline: { id: string; name: string } };
+      // Name the wall, and switch it to Morning (#1282) from a moment half a
+      // day away, so the server's real clock never falls in it.
       let start = Math.ceil((Date.now() + 12 * 3600_000) / 60_000) * 60_000;
       // Not near a clock change: in the hour that repeats when the clocks go
       // back, an hour later reads the same on the wall, and a window that
       // starts and ends at the same time is all day.
       const steady = (t: number) => [t - 2 * 3600_000, t + 3600_000].every((u) => zoneOffset(u, zone) === zoneOffset(t, zone));
       while (!steady(start)) start += 3600_000;
-      await wall.goto('/settings?section=displays');
-      await wall.getByLabel('Name for this screen').fill(PORCH);
-      await wall.getByRole('button', { name: 'Name this display' }).click();
-      await expect(wall.getByText('This screen is named')).toContainText(PORCH);
-      // The timeline is picked on the screen's row.
-      const row = wall.getByTestId('display-row').filter({ hasText: PORCH });
-      await row.getByLabel(`Timeline for ${PORCH}`).selectOption({ label: timeline.name });
-      await expect(row.locator('[data-screen-summary]')).toContainText(timeline.name);
-      // Dashboards are placed in the screen's editor, as a row of Through
-      // the day: + Switch at set times adds one on every day (#1281).
+      await nameThisScreen(wall, PORCH);
+      // Switches are set in the screen's own editor, as rows of Through the
+      // day: + Switch at set times adds one on every day, and Done sends it.
       await wall.goto('/?edit=1');
       await wall.locator('[data-editor-open="day"]').click({ timeout: 60_000 });
       const sheet = wall.locator('[data-editor-sheet="day"]');
-      await expect(sheet.getByLabel('Timeline', { exact: true })).toHaveValue(timeline.id);
-      await sheet.locator('[data-placement-add]').click();
-      const card = sheet.locator('[data-placement-row="0"]');
+      await sheet.locator('[data-switch-add="times"]').click();
+      const card = sheet.locator('[data-switch-row="0"]');
       await card.getByLabel('Switches to').selectOption({ label: MORNING });
       await card.getByLabel('Switch starts').fill(wallTime(start, zone));
       await card.getByLabel('Switch ends').fill(wallTime(start + 3600_000, zone));
       // Every day, so the window half a day away is covered whichever day it falls on.
       await expect(card.getByRole('group', { name: 'Switch days' }).locator('[aria-pressed="true"]')).toHaveCount(7);
-      await expect(sheet).toContainText('Saved as you go.');
       const kept = async () => {
-        const { timelines } = await (await wall.request.get('/api/timelines')).json() as { timelines: Array<{ id: string; placements: Array<{ dashboardId: string; from: string; to: string }> }> };
-        return timelines.find((t) => t.id === timeline.id)!.placements;
+        const { displays } = await (await wall.request.get('/api/displays')).json() as { displays: Array<{ name: string; switches: Array<{ dashboardId: string; from: string; to: string }> }> };
+        return displays.find((d) => d.name === PORCH)?.switches ?? [];
       };
+      // Nothing is sent before Done.
+      expect(await kept()).toEqual([]);
+      await wall.locator('[data-editor-done]').click();
       await expect.poll(async () => (await kept()).map((p) => `${p.dashboardId} ${p.from}-${p.to}`))
         .toEqual([`${morning.id} ${wallTime(start, zone)}-${wallTime(start + 3600_000, zone)}`]);
-      await wall.locator('[data-editor-cancel]').click();
+      await wall.waitForURL((u) => !u.pathname.startsWith('/screens/'), { timeout: 60_000 });
 
       // The wall's clock, ninety seconds before the window. Drift off, so an
       // idle screen's widgets stand still to be measured.
@@ -410,30 +393,29 @@ test.describe('Time-of-day layouts', () => {
       const { displays } = await (await wall.request.get('/api/displays')).json();
       const porch = displays.find((d: { name: string }) => d.name === PORCH);
 
-      // Loaded inside a placement, the home page opens the placed dashboard
-      // straight away. The server's clock is real, so the placement is now.
+      // Loaded inside a switch, the home page opens its dashboard straight
+      // away. The server's clock is real, so the switch is now.
       const now = Date.now();
-      const placement = { days: [0, 1, 2, 3, 4, 5, 6], from: wallTime(now - 120_000, zone), to: wallTime(now + 3600_000, zone), dashboardId: morning.id };
-      expect((await wall.request.patch(`/api/timelines/${timeline.id}`, { data: { placements: [placement] } })).ok()).toBe(true);
+      const placement = { when: 'times', days: [0, 1, 2, 3, 4, 5, 6], from: wallTime(now - 120_000, zone), to: wallTime(now + 3600_000, zone), dashboardId: morning.id };
+      expect((await wall.request.patch(`/api/displays/${porch.id}`, { data: { switches: [placement] } })).ok()).toBe(true);
       const opened = await wall.request.get('/', { maxRedirects: 0 });
       expect(opened.status()).toBe(307);
       expect(opened.headers().location).toBe(`/d/${morning.slug}`);
 
-      // On Today too (#1152): a timeline whose rest of the day is Today still
-      // opens the placement in force.
+      // On Today too (#1152): a screen that shows Today still opens the
+      // switch in force.
       const today = await (await wall.request.post('/api/layouts', { data: { name: `Today ${tag}`, widgets: home.widgets, view: 'today' } })).json();
       try {
-        await wall.request.patch(`/api/timelines/${timeline.id}`, { data: { dashboardId: today.id } });
+        await wall.request.patch(`/api/displays/${porch.id}`, { data: { dashboardId: today.id } });
         const onToday = await wall.request.get('/', { maxRedirects: 0 });
         expect(onToday.status()).toBe(307);
         expect(onToday.headers().location).toBe(`/d/${morning.slug}`);
       } finally {
-        await wall.request.patch(`/api/timelines/${timeline.id}`, { data: { dashboardId: null } });
+        await wall.request.patch(`/api/displays/${porch.id}`, { data: { dashboardId: null } });
         await deleteLayout(wall, today.id);
       }
 
       await wall.request.delete(`/api/displays/${porch.id}`);
-      await wall.request.delete(`/api/timelines/${timeline.id}`);
       await wall.request.delete(`/api/layouts/${morning.id}`);
     } finally {
       await wallContext.close();
@@ -459,10 +441,7 @@ test.describe('Attention notices', () => {
       await verifySettingsPinViaAPI(wall, parent.name);
       // Signed in, the family list carries ids.
       const author = await getFirstParent(wall);
-      await wall.goto('/settings?section=displays');
-      await wall.getByLabel('Name for this screen').fill(HALL);
-      await wall.getByRole('button', { name: 'Name this display' }).click();
-      await expect(wall.getByText('This screen is named')).toContainText(HALL);
+      await nameThisScreen(wall, HALL);
       // Notices are on the screen's editing bar, under More.
       await wall.goto('/?edit=1');
       await wall.locator('[data-editor-open="more"]').click({ timeout: 60_000 });

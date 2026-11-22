@@ -1,6 +1,6 @@
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import type { IdleBackground } from '@/lib/idleBackground';
-import type { Timeline } from '@/lib/timeline';
+import type { ScreenPlan } from '@/lib/screenSwitches';
 import type { EditTab, IdleHalf } from '@/components/dashboard/useDashboardLayout';
 import type { IdleSwitchCheck } from './useIdleSwitchCheck';
 
@@ -55,13 +55,18 @@ export interface LayoutEditorProps {
   onIdleHalfChange?: (half: IdleHalf) => void;
   /** Tonight's times and whether the offsets cross, for a day and night pair. */
   idleCheck?: IdleSwitchCheck;
-  /** The household's timelines (#1266), and the one Through the day shows and edits. */
-  timelines?: Timeline[];
-  timelineId?: string;
-  /** Look at another timeline; for a named screen, it then follows that one. */
-  onTimelineChange?: (id: string) => void;
+  /**
+   * In a screen's editor, the dashboard the screen shows and its switches
+   * (#1282), and how to change them; sent to the screen on Done.
+   */
+  screenPlan?: ScreenPlan | null;
+  onScreenPlanChange?: (plan: ScreenPlan) => void;
   /** The named screen being edited, or null for a dashboard on its own. */
   screenId?: string | null;
+  /** The device in use has a name: nothing to offer naming it. */
+  deviceNamed?: boolean;
+  /** The device in use was named here: open its screen's editor. */
+  onDeviceNamed?: (displayId: string) => void;
   screenGuideOrientation?: 'landscape' | 'portrait';
   onScreenGuideOrientationChange?: (o: 'landscape' | 'portrait') => void;
   enabledSizes?: string[];

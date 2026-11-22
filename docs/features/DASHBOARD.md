@@ -14,7 +14,7 @@ Open **More** on the dock at the foot of the screen and choose **Edit**. Only pa
 
 The editor looks the same on every device. It opens on a canvas: the dashboard laid out at the size of the screen that shows it, scaled to fit the window, so what you arrange is what the wall shows. The controls sit in a column beside the canvas (below it on a phone), with one panel always open, and none of them covers the canvas: **Dashboard**, **Widgets**, **Through the day**, **Look** and **More**, with **Cancel** and **Done** above them.
 
-- **On a named screen** (*Settings → Screens*) **Edit** opens that screen's own editor, at its own size, on the dashboard it was showing. Its own settings (in **Look** and **More**) reach it when you press **Done**, and it goes back to its dashboard.
+- **On a named screen** (named in **Through the day**, listed in *Settings → Screens*) **Edit** opens that screen's own editor, at its own size, on the dashboard it was showing. Its own settings (in **Look** and **More**) reach it when you press **Done**, and it goes back to its dashboard.
 - **On a laptop or any other device** it opens at the size of a screen that shows the dashboard. **Shown at** above the canvas picks another: a named screen or a common screen size.
 - **For another named screen**, **Edit** on its row in *Settings → Screens* opens the same canvas at that screen's size, and changes reach the screen on **Done**.
 
@@ -78,15 +78,18 @@ You can make a separate dashboard for each room or display. The dashboard-name d
 - Each dashboard has its own widget layout, screensaver layout and orientation.
 - Bookmark a dashboard URL on a device that only shows that dashboard, so it opens straight to it.
 
-#### Timelines: which dashboard shows when
+#### Which dashboard a screen shows, and when it switches
 
-A **timeline** is a plan for a screen's day, kept on its own: which dashboard shows when ("weekdays 7:00 to 7:45, Bus; the rest of the day, Kitchen"). How the screen rests and what it does at night belong to the dashboard showing (see [Resting, night and what shows](DISPLAY-MODES.md#resting-night-and-what-shows)). Each named screen follows one, picked from a dropdown on its row in *Settings → Screens* or at the top of its editor's **Through the day** sheet. Screens that should behave alike follow the same timeline, so a change made once reaches all of them. The household starts with one timeline, **Main**, which every screen follows until it is given another, devices nobody named included. On the home page such a device shows what Main shows, placed dashboards included; opened at a dashboard's own address (`/d/kitchen`), it stays on that dashboard.
+A named screen shows one dashboard, and can switch to another for a while. Both are set in the screen's own editor, in **Through the day**: **Shows** is its dashboard, and each switch is a row of its own.
 
-In a screen's editor, Through the day edits the timeline at its top. Next to it, **+**, **Duplicate**, **Rename** and **Delete** add, copy, rename and remove timelines; Duplicate is the way to start a screen that should differ a little. Under the name, a line says how many screens use it, so you know before a change that reaches more than one. Deleting a timeline moves its screens to the first one, and the last one can't be deleted.
+- **At bus time** follows your bus routes: from 30 minutes before each route's time at the stop to 15 minutes after, on the route's days. A route due at 7:45 on weekdays switches the screen from 7:15 to 8:00. Change the route's time and the switch moves with it. The row lists the windows it will use. It still switches on a school holiday, because routes have no holiday calendar.
+- **At set times** has a from and a to, and its days (Monday to Sunday, any set). Times use the household time zone. One that ends before it starts runs past midnight, and one that starts and ends at the same time lasts all day.
 
-Under it, **Shows** is the dashboard for the rest of the day, and each dashboard switched to at set times is a row of its own: which dashboard, from and to, its days (Monday to Sunday, any set), **Open** to edit that dashboard, and **Remove**. **+ Switch at set times** adds one on every day, from now for an hour. When two overlap the higher one wins, and the arrow on a row moves it up. Times use the household time zone. One that ends before it starts runs past midnight, and one that starts and ends at the same time lasts all day. A timeline keeps each change as you make it; screens that follow it pick it up within a minute.
+**+ Switch at bus time** and **+ Switch at set times** add one; a screen can have up to 12. When two overlap the higher one wins, and the arrow on a row moves it up. **Open** edits that dashboard. Nothing reaches the screen until **Done**, and **Cancel** puts it all back. In the **Dashboard** panel, the dashboard the screen shows is marked **Shown here**, so editing another one never changes what the screen shows. *Settings → Screens* also picks a screen's dashboard from its row.
 
-Make a dashboard to place with **Make a copy** in the Dashboard sheet and rearrange it there. When a placed dashboard starts or ends, the screen changes over in place: widgets that are on both dashboards slide to their new spots and the others fade. The change waits until nobody has touched the screen for a minute, and it never happens while someone is editing the layout. If you open another dashboard by hand, the screen keeps it until the next one starts or ends. With reduced motion turned on the dashboards crossfade, and at the **Minimal** performance level they swap instantly.
+A device nobody named shows the default dashboard and never switches. To give it switches, name it: open the editor on it, then **Through the day** → **Name this device**.
+
+Make a dashboard to switch to with **Make a copy** in the Dashboard sheet and rearrange it there. When a switch starts or ends, the screen changes over in place: widgets that are on both dashboards slide to their new spots and the others fade. The change waits until nobody has touched the screen for a minute, and it never happens while someone is editing the layout. If you open another dashboard by hand, the screen keeps it until the next switch starts or ends. With reduced motion turned on the dashboards crossfade, and at the **Minimal** performance level they swap instantly.
 
 #### Notices
 
