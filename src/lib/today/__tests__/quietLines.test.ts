@@ -1,7 +1,7 @@
 /**
  * The quiet lines on Today (#911).
  */
-import { birthdayNudge, choresLeft, NUDGE, type BirthdayLike } from '../quietLines';
+import { birthdayNudge, choresLeft, encodePutOff, NUDGE, occasionOf, type BirthdayLike } from '../quietLines';
 
 const chore = (id: string, nextDue: string | null, extra: object = {}) => ({ id, title: id, enabled: true, nextDue, ...extra });
 
@@ -45,5 +45,16 @@ describe('birthdayNudge', () => {
   });
   it('leaves anniversaries and milestones alone', () => {
     expect(birthdayNudge([bday('wedding', 4, { eventType: 'anniversary' })], { hour: 9, putOff: never })).toBeNull();
+  });
+});
+
+describe('encodePutOff', () => {
+  it('is the same for one occasion, differs between birthdays and years, and shows neither', () => {
+    const now = occasionOf({ id: 'grandpa', nextBirthday: '2026-11-27' });
+    const digest = encodePutOff(now);
+    expect(encodePutOff(now)).toBe(digest);
+    expect(digest).toMatch(/^[0-9a-f]{8}$/);
+    expect(encodePutOff(occasionOf({ id: 'grandpa', nextBirthday: '2027-11-27' }))).not.toBe(digest);
+    expect(encodePutOff(occasionOf({ id: 'grandma', nextBirthday: '2026-11-27' }))).not.toBe(digest);
   });
 });
