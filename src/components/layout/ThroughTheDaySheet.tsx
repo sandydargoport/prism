@@ -50,7 +50,7 @@ import { todayKey, weekdayOfKey } from '@/lib/utils/zonedDate';
 import type { IdleHalf, EditTab } from '@/components/dashboard/useDashboardLayout';
 import { OffsetInput } from './IdleBackgroundBar';
 import { NameThisDevice } from './NameThisDevice';
-import { DaySlider, NIGHT_COLOR, Swatch, switchColor } from './DaySlider';
+import { DaySlider, Swatch } from './DaySlider';
 import type { IdleSwitchCheck } from './useIdleSwitchCheck';
 import type { DashboardInfo } from './LayoutEditorTypes';
 import { cn } from '@/lib/utils';
@@ -139,11 +139,11 @@ function Row({ name, children, className, ...rest }: { name: string; children: R
  * A row that folds to one line saying what it does, and opens on a tap to
  * the choices that make it.
  */
-function Fold({ name, summary, color, open, onToggle, children, ...rest }: {
+function Fold({ name, summary, colorIndex, open, onToggle, children, ...rest }: {
   name: string;
   summary: string;
-  /** Its colour on the day's line, as a dot in front of the summary. */
-  color: string;
+  /** Its colour on the day's line, as a dot in front of the summary: a switch's place, or -1 for night. */
+  colorIndex: number;
   open: boolean;
   onToggle: () => void;
   children: React.ReactNode;
@@ -157,7 +157,7 @@ function Fold({ name, summary, color, open, onToggle, children, ...rest }: {
           {name}
         </span>
         <span className="flex min-w-0 items-center gap-1.5">
-          <Swatch color={color} />
+          <Swatch index={colorIndex} />
           <span className="truncate text-muted-foreground" data-fold-summary>{summary}</span>
         </span>
       </button>
@@ -445,7 +445,7 @@ export function ThroughTheDaySheet({
   };
 
   const switchRow = (sw: ScreenSwitch, i: number) => (
-    <Fold key={i} name={sw.when === 'bus' ? 'At bus time' : 'At set times'} summary={switchInShort(sw)} color={switchColor(i)}
+    <Fold key={i} name={sw.when === 'bus' ? 'At bus time' : 'At set times'} summary={switchInShort(sw)} colorIndex={i}
       open={openRow === i} onToggle={() => toggle(i)} data-switch-row={i} data-switch={sw.when}>
       <span className="flex flex-wrap items-center gap-2 text-body">
         Shows
@@ -565,7 +565,7 @@ export function ThroughTheDaySheet({
             See it
           </button>
         </Row>
-        <Fold name="At night" summary={nightInShort()} color={NIGHT_COLOR} open={openRow === 'night'} onToggle={() => toggle('night')} data-night-row>
+        <Fold name="At night" summary={nightInShort()} colorIndex={-1} open={openRow === 'night'} onToggle={() => toggle('night')} data-night-row>
           <span className="flex flex-wrap items-center gap-2">
             <select className={field} value={pair.night} aria-label="Night look" data-night-look
               onChange={(e) => {

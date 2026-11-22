@@ -367,6 +367,30 @@ test.describe('a screen\'s dashboard and switches (#1282)', () => {
         if (i > 0) expect(d.hitLeft, `minute ${d.minute}'s tap area is clear of the one before`).toBeGreaterThanOrEqual(g.dots[i - 1]!.hitRight - 0.5);
       });
 
+      // Each switch's colour is the same on its folded row as on its stretch of
+      // the line, differs from the next, and the first takes the theme's own hue.
+      const colours = await sheet.evaluate((root) => {
+        const bg = (el: Element | null) => (el ? getComputedStyle(el).backgroundColor : null);
+        const hue = (rgb: string) => {
+          const [r, g, b] = (rgb.match(/[\d.]+/g) ?? []).map((n) => Number(n) / 255);
+          const max = Math.max(r!, g!, b!); const min = Math.min(r!, g!, b!); const d = max - min;
+          if (d === 0) return 0;
+          const h = max === r ? ((g! - b!) / d) % 6 : max === g ? (b! - r!) / d + 2 : (r! - g!) / d + 4;
+          return (h * 60 + 360) % 360;
+        };
+        const row = (i: number) => bg(root.querySelector(`[data-switch-row="${i}"] [data-swatch]`));
+        return {
+          rows: [0, 1, 2].map(row),
+          spans: [0, 1, 2].map((i) => bg(root.querySelector(`[data-day-span="${i}"]`))),
+          firstHue: hue(row(0)!),
+          primaryHue: Number(getComputedStyle(document.documentElement).getPropertyValue('--primary').trim().split(/\s+/)[0]),
+        };
+      });
+      expect(colours.rows).toEqual(colours.spans);
+      expect(new Set(colours.rows).size, colours.rows.join(' ')).toBe(3);
+      for (const c of colours.rows) expect(c).not.toBe('rgba(0, 0, 0, 0)');
+      expect(Math.abs(colours.firstHue - colours.primaryHue), `${colours.firstHue} vs the theme's ${colours.primaryHue}`).toBeLessThanOrEqual(3);
+
       // Tapping 7 am: School run on the canvas, as it is saved, and its row open.
       await sheet.locator('[data-waypoint][data-minute="420"]').click();
       await expect(frame.locator(`[data-canvas-preview="${school.id}"]`)).toBeVisible({ timeout: 30_000 });

@@ -18,26 +18,39 @@ const kindOf = (s: Stop) => s.marks.find((m) => m.kind !== 'now')?.kind ?? 'now'
 
 /**
  * Each switch's colour, by its place in the list, so its stretch and dots on
- * the line match the dot on its row. Mid tones, read on a light panel and a
- * dark one; twelve, one for each switch a screen can have.
+ * the line match the dot on its row. They follow the theme: the first is the
+ * theme's own hue, and each next one turns the golden angle further round the
+ * wheel, so neighbours stay far apart. Saturation and lightness come from
+ * globals.css, deeper in light mode and lighter in dark, as a theme's primary
+ * can be near black or near white.
  */
-export const SWITCH_COLORS = [
-  '#3b82f6', '#f59e0b', '#10b981', '#ec4899', '#8b5cf6', '#06b6d4',
-  '#f97316', '#84cc16', '#ef4444', '#14b8a6', '#a855f7', '#eab308',
-] as const;
-/** Night's colour, on the line and on the At night row. */
-export const NIGHT_COLOR = '#64748b';
-export const switchColor = (index: number) => SWITCH_COLORS[index % SWITCH_COLORS.length]!;
-/** A stop's colour: its switch's, night's, or none for now. */
-const colorOf = (s: Stop) => {
+const GOLDEN_ANGLE = 137.5;
+export const switchColor = (index: number) =>
+  `hsl(from hsl(var(--primary)) calc(h + ${(index * GOLDEN_ANGLE) % 360}) var(--day-switch-s, 65%) var(--day-switch-l, 50%))`;
+/** The same, fixed, for a browser that cannot work a colour out from another. */
+const FALLBACK = ['#3b82f6', '#f59e0b', '#10b981', '#ec4899', '#8b5cf6', '#06b6d4'];
+const fallbackOf = (index: number) => FALLBACK[index % FALLBACK.length]!;
+/** Night's colour, on the line and on the At night row: the theme's quiet ink. */
+export const NIGHT_COLOR = 'hsl(var(--muted-foreground))';
+
+/** A switch's colour, or night's for -1, as a background with its fallback underneath. */
+function paint(index: number): { className: string; style: React.CSSProperties; color: string } {
+  if (index < 0) return { className: '', style: { backgroundColor: NIGHT_COLOR }, color: NIGHT_COLOR };
+  const color = switchColor(index);
+  // Inline beats the class, unless the browser drops it as a colour it cannot read.
+  return { className: 'bg-[var(--fallback)]', style: { ['--fallback' as string]: fallbackOf(index), backgroundColor: color }, color };
+}
+/** A stop's switch, -1 for night, or null for now. */
+const paintIndex = (s: Stop): number | null => {
   const mark = s.marks.find((m) => m.kind !== 'now');
-  if (!mark) return undefined;
-  return mark.switchIndex === undefined ? NIGHT_COLOR : switchColor(mark.switchIndex);
+  if (!mark) return null;
+  return mark.switchIndex ?? -1;
 };
 
-/** A small round swatch in a switch's or night's colour, as its dots on the line are. */
-export function Swatch({ color, ...rest }: { color: string } & React.HTMLAttributes<HTMLSpanElement>) {
-  return <span aria-hidden className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} data-swatch={color} {...rest} />;
+/** A small round swatch in a switch's colour (or night's, for -1), as its dots on the line are. */
+export function Swatch({ index, ...rest }: { index: number } & React.HTMLAttributes<HTMLSpanElement>) {
+  const p = paint(index);
+  return <span aria-hidden className={cn('inline-block h-2.5 w-2.5 shrink-0 rounded-full', p.className)} style={p.style} data-swatch={p.color} {...rest} />;
 }
 /** How far a press moves before it is a drag rather than a tap. */
 const DRAG_PX = 4;
@@ -107,11 +120,11 @@ export function DaySlider({ stops, nights, spans, at, nowIndex, onGo, labelOf, t
         <span aria-hidden className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-muted-foreground/20" />
         {nights.map((n) => (
           <span key={`n${n.from}`} aria-hidden className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full opacity-60"
-            style={{ left: pct(n.from), width: pct(n.to - n.from), backgroundColor: NIGHT_COLOR }} data-day-night data-color={NIGHT_COLOR} />
+            style={{ left: pct(n.from), width: pct(n.to - n.from), ...paint(-1).style }} data-day-night data-color={NIGHT_COLOR} />
         ))}
         {spans.map((s) => (
-          <span key={`s${s.index}-${s.from}`} aria-hidden className="absolute top-1/2 h-2 -translate-y-1/2 rounded-full"
-            style={{ left: pct(s.from), width: pct(s.to - s.from), backgroundColor: switchColor(s.index) }} data-day-span={s.index} data-color={switchColor(s.index)} />
+          <span key={`s${s.index}-${s.from}`} aria-hidden className={cn('absolute top-1/2 h-2 -translate-y-1/2 rounded-full', paint(s.index).className)}
+            style={{ left: pct(s.from), width: pct(s.to - s.from), ...paint(s.index).style }} data-day-span={s.index} data-color={switchColor(s.index)} />
         ))}
         {stops.map((s, i) => {
           const kind = kindOf(s);
@@ -137,7 +150,8 @@ export function DaySlider({ stops, nights, spans, at, nowIndex, onGo, labelOf, t
           );
         })}
         {stops.map((s, i) => {
-          const color = colorOf(s);
+          const index = paintIndex(s);
+          const p = index === null ? null : paint(index);
           const on = i === at;
           return (
             <span
@@ -147,11 +161,11 @@ export function DaySlider({ stops, nights, spans, at, nowIndex, onGo, labelOf, t
                 'pointer-events-none absolute top-1/2 block -translate-x-1/2 -translate-y-1/2 rounded-full transition-transform',
                 // The one picked is bigger, ringed in the ink colour, and keeps its own colour.
                 on ? 'h-4 w-4 ring-2 ring-foreground ring-offset-1 ring-offset-background' : 'h-3 w-3 ring-1 ring-background pointer-fine:h-2.5 pointer-fine:w-2.5',
-                !color && 'border-2 border-foreground bg-background',
+                p ? p.className : 'border-2 border-foreground bg-background',
               )}
-              style={{ left: pct(s.minute), backgroundColor: color }}
+              style={{ left: pct(s.minute), ...p?.style }}
               data-waypoint-dot={s.minute}
-              data-color={color}
+              data-color={p?.color}
             />
           );
         })}
