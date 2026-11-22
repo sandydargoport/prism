@@ -627,6 +627,12 @@ html.performance-mode[data-wallpaper] .widget-cell[data-fill="glass"]:not([data-
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
 
+    /* The Through the day switches' colours (#1294) take their hue from the
+       theme's primary and these for the rest: deeper on a light panel,
+       lighter on a dark one, so each reads against its ground. */
+    --day-switch-s: 65%;
+    --day-switch-l: 47%;
+
     --seasonal-accent: 222 47% 31%;
     --seasonal-accent-foreground: 210 40% 98%;
     --seasonal-highlight: 210 40% 96%;
@@ -636,6 +642,8 @@ html.performance-mode[data-wallpaper] .widget-cell[data-fill="glass"]:not([data-
   .dark {
     --ds-event-tint: 26%;
     --ds-glass-alpha: 0.4;
+    --day-switch-s: 60%;
+    --day-switch-l: 63%;
 
     --background: 222 47% 11%;
     --foreground: 210 40% 98%;

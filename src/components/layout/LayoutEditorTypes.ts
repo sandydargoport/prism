@@ -61,6 +61,12 @@ export interface LayoutEditorProps {
    */
   screenPlan?: ScreenPlan | null;
   onScreenPlanChange?: (plan: ScreenPlan) => void;
+  /**
+   * Another dashboard the canvas shows as it is saved, while the Through the
+   * day slider stands in its switch (#1294); null shows the one being edited.
+   */
+  previewDashboardId?: string | null;
+  onPreviewDashboardChange?: (id: string | null) => void;
   /** The named screen being edited, or null for a dashboard on its own. */
   screenId?: string | null;
   /** The device in use has a name: nothing to offer naming it. */
