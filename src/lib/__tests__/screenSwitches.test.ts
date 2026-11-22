@@ -2,8 +2,9 @@
  * A screen's dashboard and its switches (#1282): which dashboard a screen
  * shows at a moment, read on the household's wall clock. At bus time is from
  * 30 minutes before a route's time at the stop to 15 after, on the route's
- * days; set times cover their days and hours, past midnight included. The
- * first switch that matches wins, and one whose dashboard is gone is skipped.
+ * days, unless the switch has routes and minutes of its own (#1291); set
+ * times cover their days and hours, past midnight included. The first switch
+ * that matches wins, and one whose dashboard is gone is skipped.
  */
 import {
   busTimeAt,
@@ -33,10 +34,12 @@ const chicago = (date: string, hhmm: string) => new Date(`${date}T${hhmm}:00-06:
 const morning: TimesSwitch = { when: 'times', days: WEEKDAYS, from: '07:00', to: '07:45', dashboardId: SCHOOL };
 const night: TimesSwitch = { when: 'times', days: [5, 6], from: '22:00', to: '06:00', dashboardId: NIGHT };
 const bus: ScreenSwitch = { when: 'bus', dashboardId: SCHOOL };
+const AM = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+const PM = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 /** A morning run due at the stop at 7:45 and an afternoon one at 3:30, on weekdays. */
 const ROUTES = [
-  { scheduledTime: '07:45', activeDays: WEEKDAYS },
-  { scheduledTime: '15:30', activeDays: WEEKDAYS },
+  { id: AM, scheduledTime: '07:45', activeDays: WEEKDAYS },
+  { id: PM, scheduledTime: '15:30', activeDays: WEEKDAYS },
 ];
 
 describe('at bus time', () => {
@@ -72,6 +75,38 @@ describe('at bus time', () => {
   it('with no routes it is never bus time', () => {
     expect(busTimeAt([], chicago('2026-11-02', '07:30'), CHICAGO)).toBe(false);
     expect(switchAt([bus], chicago('2026-11-02', '07:30'), CHICAGO)).toEqual({ index: -1, dashboardId: null });
+  });
+});
+
+describe('a bus switch with routes and minutes of its own (#1291)', () => {
+  const at = (sw: ScreenSwitch, hhmm: string) => switchAt([sw], chicago('2026-11-02', hhmm), CHICAGO, ROUTES).dashboardId;
+
+  it('from 10 minutes before to 5 after, both ends included', () => {
+    const close: ScreenSwitch = { ...bus, before: 10, after: 5 };
+    expect(at(close, '07:34')).toBeNull();
+    expect(at(close, '07:35')).toBe(SCHOOL);
+    expect(at(close, '07:50')).toBe(SCHOOL);
+    expect(at(close, '07:51')).toBeNull();
+    // One with no minutes of its own: 30 and 15.
+    expect(at(bus, '07:15')).toBe(SCHOOL);
+    expect(at(bus, '08:00')).toBe(SCHOOL);
+  });
+
+  it('follows only the routes it names, and every route when it names none', () => {
+    const morningOnly: ScreenSwitch = { ...bus, routeIds: [AM] };
+    expect(at(morningOnly, '07:30')).toBe(SCHOOL);
+    expect(at(morningOnly, '15:15')).toBeNull();
+    expect(at(bus, '15:15')).toBe(SCHOOL);
+  });
+
+  it('two bus switches: the morning run to one dashboard, the afternoon to another', () => {
+    const both: ScreenSwitch[] = [{ ...bus, routeIds: [AM] }, { when: 'bus', dashboardId: NIGHT, routeIds: [PM] }];
+    expect(switchAt(both, chicago('2026-11-02', '07:30'), CHICAGO, ROUTES)).toEqual({ index: 0, dashboardId: SCHOOL });
+    expect(switchAt(both, chicago('2026-11-02', '15:15'), CHICAGO, ROUTES)).toEqual({ index: 1, dashboardId: NIGHT });
+  });
+
+  it('one whose routes are all gone never switches', () => {
+    expect(at({ ...bus, routeIds: ['ffffffff-ffff-4fff-8fff-ffffffffffff'] }, '07:30')).toBeNull();
   });
 });
 
@@ -165,6 +200,14 @@ describe('stored and sent', () => {
       'nonsense',
     ])).toEqual([bus, { when: 'times', days: [1], from: '07:00', to: '08:00', dashboardId: SCHOOL }]);
     expect(parseSwitches(null)).toEqual([]);
+    // A bus switch's routes and minutes (#1291): repeats and non-ids out, minutes past two hours out, none named is every route.
+    expect(parseSwitches([
+      { when: 'bus', dashboardId: SCHOOL, routeIds: [AM, AM, 3], before: 10, after: 500 },
+      { when: 'bus', dashboardId: SCHOOL, routeIds: [], before: -5, after: 0 },
+    ])).toEqual([
+      { when: 'bus', dashboardId: SCHOOL, routeIds: [AM], before: 10 },
+      { when: 'bus', dashboardId: SCHOOL, after: 0 },
+    ]);
     expect(parseSwitches(Array.from({ length: 20 }, () => bus))).toHaveLength(MAX_SWITCHES);
   });
 
@@ -173,6 +216,11 @@ describe('stored and sent', () => {
     expect(switchesSchema.safeParse([{ ...morning, from: '25:00' }]).success).toBe(false);
     expect(switchesSchema.safeParse([{ when: 'bus', dashboardId: 'not-an-id' }]).success).toBe(false);
     expect(switchesSchema.safeParse([{ ...bus, extra: 1 }]).success).toBe(false);
+    expect(switchesSchema.safeParse([{ ...bus, routeIds: [AM], before: 0, after: 120 }]).success).toBe(true);
+    expect(switchesSchema.safeParse([{ ...bus, before: 121 }]).success).toBe(false);
+    expect(switchesSchema.safeParse([{ ...bus, after: 2.5 }]).success).toBe(false);
+    expect(switchesSchema.safeParse([{ ...bus, routeIds: ['morning'] }]).success).toBe(false);
+    expect(switchesSchema.safeParse([{ ...bus, routeIds: [] }]).success).toBe(false);
     expect(switchesSchema.safeParse(Array.from({ length: MAX_SWITCHES + 1 }, () => bus)).success).toBe(false);
   });
 });

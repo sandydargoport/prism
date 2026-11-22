@@ -239,6 +239,8 @@ describe('PATCH and DELETE /api/displays/:id', () => {
     const BUS = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
     const switches = [
       { when: 'bus', dashboardId: BUS },
+      // One that follows the morning route only, from 10 minutes before to 5 after (#1291).
+      { when: 'bus', dashboardId: KITCHEN, routeIds: ['dddddddd-dddd-4ddd-8ddd-dddddddddddd'], before: 10, after: 5 },
       { when: 'times', days: [1, 2, 3, 4, 5], from: '07:00', to: '07:45', dashboardId: KITCHEN },
     ];
     mockSelectWhere.mockReturnValue([{ id: KITCHEN }, { id: BUS }]);
@@ -261,6 +263,10 @@ describe('PATCH and DELETE /api/displays/:id', () => {
     expect((await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { dashboardId: 'x' }), params(HALL))).status).toBe(400);
     expect((await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { switches: [{ when: 'times', days: [], from: '07:00', to: '08:00', dashboardId: BUS }] }), params(HALL))).status).toBe(400);
     const thirteen = Array.from({ length: 13 }, () => ({ when: 'bus', dashboardId: BUS }));
+    mockSelectWhere.mockReturnValue([{ id: BUS }]);
+    // A bus window past two hours, or a route that is not an id (#1291).
+    expect((await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { switches: [{ when: 'bus', dashboardId: BUS, before: 121 }] }), params(HALL))).status).toBe(400);
+    expect((await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { switches: [{ when: 'bus', dashboardId: BUS, routeIds: ['morning'] }] }), params(HALL))).status).toBe(400);
     expect((await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { switches: thirteen }), params(HALL))).status).toBe(400);
     expect((await PATCH(json(`/api/displays/${HALL}`, 'PATCH', {}), params(HALL))).status).toBe(400);
     expect(mockUpdateSet).not.toHaveBeenCalled();

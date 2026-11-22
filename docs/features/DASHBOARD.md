@@ -83,6 +83,9 @@ You can make a separate dashboard for each room or display. The dashboard-name d
 A named screen shows one dashboard, and can switch to another for a while. Both are set in the screen's own editor, in **Through the day**: **Shows** is its dashboard, and each switch is a row of its own.
 
 - **At bus time** follows your bus routes: from 30 minutes before each route's time at the stop to 15 minutes after, on the route's days. A route due at 7:45 on weekdays switches the screen from 7:15 to 8:00. Change the route's time and the switch moves with it. The row lists the windows it will use. It still switches on a school holiday, because routes have no holiday calendar.
+  - **Routes**: with two or more bus routes, the row has a chip for each, all on to begin with. Turn one off to leave that route out. With every route on, the switch also follows routes added later. One always stays on.
+  - **From** so many minutes **before to** so many **after**: how long before the route's time the switch starts and how long after it ends, from 0 to 120 minutes.
+  - A screen can have more than one bus switch, for example the morning route to one dashboard and the afternoon route to another.
 - **At set times** has a from and a to, and its days (Monday to Sunday, any set). Times use the household time zone. One that ends before it starts runs past midnight, and one that starts and ends at the same time lasts all day.
 
 **+ Switch at bus time** and **+ Switch at set times** add one; a screen can have up to 12. When two overlap the higher one wins, and the arrow on a row moves it up. **Open** edits that dashboard. Nothing reaches the screen until **Done**, and **Cancel** puts it all back. In the **Dashboard** panel, the dashboard the screen shows is marked **Shown here**, so editing another one never changes what the screen shows. *Settings → Screens* also picks a screen's dashboard from its row.

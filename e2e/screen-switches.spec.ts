@@ -4,7 +4,8 @@ import { getFirstParent, getSeededParentId, verifySettingsPinViaAPI } from './he
 /**
  * A screen shows one dashboard and switches to another for a while (#1282):
  * at bus time, from 30 minutes before a bus route's time at the stop to 15
- * after, or at set times. Through the day shows them as rows in the screen's
+ * after unless the switch has routes and minutes of its own (#1291), or at
+ * set times. Through the day shows them as rows in the screen's
  * editor, kept there until Done; Settings > Screens picks the dashboard on the
  * screen's row. The home page opens a named screen on the dashboard it shows
  * now, a switch's included.
@@ -12,7 +13,8 @@ import { getFirstParent, getSeededParentId, verifySettingsPinViaAPI } from './he
 const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
 const PIN = process.env.E2E_PIN || '1234';
 
-type Switch = { when: 'bus'; dashboardId: string } | { when: 'times'; days: number[]; from: string; to: string; dashboardId: string };
+type Switch = { when: 'bus'; dashboardId: string; routeIds?: string[]; before?: number; after?: number }
+  | { when: 'times'; days: number[]; from: string; to: string; dashboardId: string };
 type Screen = { id: string; name: string; dashboardId: string | null; switches: Switch[] };
 
 async function signIn(page: Page) {
@@ -90,10 +92,26 @@ test.describe('a screen\'s dashboard and switches (#1282)', () => {
     const routeId: string = route.route?.id ?? route.id;
     const screen = await namedScreen(browser, `Kitchen ${tag}`, { dashboardId: kitchen.id, switches: [{ when: 'bus', dashboardId: school.id }] });
     try {
+      const opensOn = async () => {
+        const res = await screen.wall.request.get('/', { maxRedirects: 0 });
+        expect(res.status()).toBe(307);
+        return res.headers().location;
+      };
+      const switchTo = async (bus: Partial<Extract<Switch, { when: 'bus' }>>) => expect((await screen.wall.request.patch(
+        `/api/displays/${screen.id}`, { data: { switches: [{ when: 'bus', dashboardId: school.id, ...bus }] } },
+      )).ok()).toBe(true);
+
       // Within 30 minutes of the route: the bus dashboard.
-      const atBusTime = await screen.wall.request.get('/', { maxRedirects: 0 });
-      expect(atBusTime.status()).toBe(307);
-      expect(atBusTime.headers().location).toBe(`/d/${school.slug}`);
+      expect(await opensOn()).toBe(`/d/${school.slug}`);
+      // A switch that starts 5 minutes before the bus: not yet (#1291).
+      await switchTo({ before: 5 });
+      expect(await opensOn()).toBe(`/d/${kitchen.slug}`);
+      // One that follows only another route: not this one's time either.
+      await switchTo({ routeIds: ['00000000-0000-4000-8000-000000000000'] });
+      expect(await opensOn()).toBe(`/d/${kitchen.slug}`);
+      // One that follows this route, 30 minutes before: the bus dashboard.
+      await switchTo({ routeIds: [routeId], before: 30 });
+      expect(await opensOn()).toBe(`/d/${school.slug}`);
 
       // The route moves to three hours away: its own dashboard again.
       expect((await setup.request.patch(`/api/bus-tracking/routes/${routeId}`, { data: { scheduledTime: wallTime(Date.now() + 3 * 3600_000, zone) } })).ok()).toBe(true);
@@ -129,7 +147,8 @@ test.describe('a screen\'s dashboard and switches (#1282)', () => {
       await rows(page).first().getByLabel('Switches to').selectOption({ label: `School run ${tag}` });
       await sheet.locator('[data-switch-add="times"]').click();
       await expect(rows(page)).toHaveCount(2);
-      await expect(sheet.locator('[data-switch-add="bus"]')).toBeDisabled();
+      // Another bus switch can be added, for another route (#1291).
+      await expect(sheet.locator('[data-switch-add="bus"]')).toBeEnabled();
       expect(await sheet.evaluate((el) => el.scrollWidth - el.clientWidth), 'nothing runs past the panel').toBeLessThanOrEqual(0);
       await page.locator('[data-editor-cancel]').click();
       await page.waitForURL(/\/settings/, { timeout: 60_000 });
@@ -142,6 +161,8 @@ test.describe('a screen\'s dashboard and switches (#1282)', () => {
       sheet = page.locator('[data-editor-sheet="day"]');
       await sheet.locator('[data-switch-add="bus"]').click();
       await rows(page).first().getByLabel('Switches to').selectOption({ label: `School run ${tag}` });
+      // From 10 minutes before the bus (#1291).
+      await rows(page).first().getByLabel('Minutes before the bus').selectOption('10');
       await sheet.locator('[data-switch-add="times"]').click();
       const times = rows(page).nth(1);
       await times.getByLabel('Switch starts').fill('21:00');
@@ -154,7 +175,7 @@ test.describe('a screen\'s dashboard and switches (#1282)', () => {
       await expect(page.locator(`[data-dashboard-row="${kitchen.id}"] [data-shown-here]`)).toHaveText('Shown here');
       await page.locator('[data-editor-done]').click();
       await expect.poll(async () => (await stored()).switches, { timeout: 30_000 }).toEqual([
-        { when: 'bus', dashboardId: school.id },
+        { when: 'bus', dashboardId: school.id, before: 10 },
         // A new switch starts on a dashboard other than the one it shows.
         { when: 'times', days: [1, 2, 3, 4, 5], from: '21:00', to: '06:30', dashboardId: expect.any(String) },
       ]);

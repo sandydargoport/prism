@@ -7,10 +7,11 @@ import { todayKey, wallTimeAt, wallTimeToday, weekdayOfKey } from '@/lib/utils/z
  * A named screen shows one dashboard (null is the household default), and can
  * switch to another for a while:
  *
- *  - at bus time: from 30 minutes before each bus route's time at the home
- *    stop to 15 minutes after, on the route's days, so a route due at 7:45 on
- *    weekdays switches the screen from 7:15 to 8:00. A change to a route's time
- *    moves the switch with it.
+ *  - at bus time: from some minutes before a bus route's time at the home
+ *    stop to some after, 30 and 15 unless the switch says otherwise, on the
+ *    route's days, so a route due at 7:45 on weekdays switches the screen from
+ *    7:15 to 8:00. It follows every route, or the ones it names (#1291). A
+ *    change to a route's time moves the switch with it.
  *  - at set times: on chosen days, from one time to another, on the
  *    household's wall clock. One whose end is not after its start runs past
  *    midnight and belongs to the day it starts on; one that starts and ends at
@@ -29,10 +30,14 @@ export const SCHEDULE_TRANSITION = 'screen-schedule';
 /** Plenty for a day, and few enough to read as rows. */
 export const MAX_SWITCHES = 12;
 
-/** The bus window: this long before a route's time at the stop. */
+/** The bus window, unless a switch says otherwise: this long before a route's time at the stop. */
 export const BUS_BEFORE_MINUTES = 30;
 /** And this long after. */
 export const BUS_AFTER_MINUTES = 15;
+/** The most a bus window reaches either side of a route's time. */
+export const MAX_BUS_MINUTES = 120;
+/** The minutes a bus window offers either side, as a list to pick from. */
+export const BUS_MINUTE_CHOICES = [0, 5, 10, 15, 20, 30, 45, 60, 90, 120];
 
 export const EVERY_DAY = [0, 1, 2, 3, 4, 5, 6];
 export const WEEKDAYS = [1, 2, 3, 4, 5];
@@ -49,15 +54,27 @@ export type TimesSwitch = {
   dashboardId: string;
 };
 
-export type BusSwitch = { when: 'bus'; dashboardId: string };
+export type BusSwitch = {
+  when: 'bus';
+  dashboardId: string;
+  /** The routes it follows; absent follows every route, ones added later included. */
+  routeIds?: string[];
+  /** Minutes before a route's time at the stop; absent is BUS_BEFORE_MINUTES. */
+  before?: number;
+  /** Minutes after; absent is BUS_AFTER_MINUTES. */
+  after?: number;
+};
 
 export type ScreenSwitch = TimesSwitch | BusSwitch;
 
 /** What a screen shows: its dashboard (null is the default) and its switches. */
 export type ScreenPlan = { dashboardId: string | null; switches: ScreenSwitch[] };
 
-/** A bus route's time at the home stop and its days, all a bus switch needs. */
-export type BusTime = { scheduledTime: string; activeDays: number[] };
+/** A bus route's time at the home stop and its days, all a bus switch needs, and its id to pick it by. */
+export type BusTime = { id?: string; scheduledTime: string; activeDays: number[] };
+
+/** How far either side of a route's time a bus window reaches, in minutes. */
+export type BusWindow = { before: number; after: number };
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -65,11 +82,21 @@ function minutesOf(hhmm: string): number {
   return Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
 }
 
+const isMinutes = (m: unknown): m is number => Number.isInteger(m) && (m as number) >= 0 && (m as number) <= MAX_BUS_MINUTES;
+
 function cleanSwitch(raw: unknown): ScreenSwitch | null {
   if (!raw || typeof raw !== 'object') return null;
   const r = raw as Record<string, unknown>;
   if (typeof r.dashboardId !== 'string' || !r.dashboardId) return null;
-  if (r.when === 'bus') return { when: 'bus', dashboardId: r.dashboardId };
+  if (r.when === 'bus') {
+    const bus: BusSwitch = { when: 'bus', dashboardId: r.dashboardId };
+    const ids = Array.isArray(r.routeIds) ? [...new Set(r.routeIds.filter((x): x is string => typeof x === 'string' && x.length > 0))] : [];
+    // None named follows every route.
+    if (ids.length > 0) bus.routeIds = ids;
+    if (isMinutes(r.before)) bus.before = r.before;
+    if (isMinutes(r.after)) bus.after = r.after;
+    return bus;
+  }
   if (r.when !== 'times') return null;
   if (typeof r.from !== 'string' || !HHMM.test(r.from)) return null;
   if (typeof r.to !== 'string' || !HHMM.test(r.to)) return null;
@@ -87,7 +114,13 @@ export function parseSwitches(raw: unknown): ScreenSwitch[] {
 
 /** A screen's switches, as a request may send them. */
 export const switchesSchema = z.array(z.discriminatedUnion('when', [
-  z.object({ when: z.literal('bus'), dashboardId: z.guid() }).strict(),
+  z.object({
+    when: z.literal('bus'),
+    dashboardId: z.guid(),
+    routeIds: z.array(z.guid()).min(1).max(50).optional(),
+    before: z.number().int().min(0).max(MAX_BUS_MINUTES).optional(),
+    after: z.number().int().min(0).max(MAX_BUS_MINUTES).optional(),
+  }).strict(),
   z.object({
     when: z.literal('times'),
     days: z.array(z.number().int().min(0).max(6)).min(1).max(7),
@@ -108,12 +141,27 @@ export function timesCover(s: Pick<TimesSwitch, 'days' | 'from' | 'to'>, weekday
   return (s.days.includes(weekday) && minute >= from) || (s.days.includes(yesterday) && minute < to);
 }
 
+/** A bus switch's window, its own minutes or the usual 30 before and 15 after. */
+export function busWindowOf(s: Pick<BusSwitch, 'before' | 'after'>): BusWindow {
+  return { before: s.before ?? BUS_BEFORE_MINUTES, after: s.after ?? BUS_AFTER_MINUTES };
+}
+
+/** The routes a bus switch follows: the ones it names, or every route when it names none. */
+export function routesOf<T extends BusTime>(s: Pick<BusSwitch, 'routeIds'>, routes: readonly T[]): T[] {
+  return s.routeIds ? routes.filter((r) => r.id !== undefined && s.routeIds!.includes(r.id)) : [...routes];
+}
+
 /**
  * Whether it is bus time: some route runs today, on the household's calendar,
- * and `now` is from 30 minutes before its time at the stop to 15 after, both
- * ends included.
+ * and `now` is from `before` minutes before its time at the stop to `after`
+ * after (30 and 15 unless given), both ends included.
  */
-export function busTimeAt(routes: readonly BusTime[], now: Date | number, timeZone: string): boolean {
+export function busTimeAt(
+  routes: readonly BusTime[],
+  now: Date | number,
+  timeZone: string,
+  { before, after }: BusWindow = { before: BUS_BEFORE_MINUTES, after: BUS_AFTER_MINUTES },
+): boolean {
   const at = new Date(now).getTime();
   let weekday: number;
   try {
@@ -129,7 +177,7 @@ export function busTimeAt(routes: readonly BusTime[], now: Date | number, timeZo
     } catch {
       return false;
     }
-    return at >= due - BUS_BEFORE_MINUTES * 60_000 && at <= due + BUS_AFTER_MINUTES * 60_000;
+    return at >= due - before * 60_000 && at <= due + after * 60_000;
   });
 }
 
@@ -153,9 +201,8 @@ export function switchAt(
 ): SwitchedTo {
   const weekday = weekdayOfKey(todayKey(timeZone, now));
   const minute = minutesOf(wallTimeAt(timeZone, now));
-  const bus = switches.some((s) => s.when === 'bus') && busTimeAt(routes, now, timeZone);
   const index = switches.findIndex((s) => exists(s.dashboardId)
-    && (s.when === 'bus' ? bus : timesCover(s, weekday, minute)));
+    && (s.when === 'bus' ? busTimeAt(routesOf(s, routes), now, timeZone, busWindowOf(s)) : timesCover(s, weekday, minute)));
   return index === -1 ? { index: -1, dashboardId: null } : { index, dashboardId: switches[index]!.dashboardId };
 }
 
