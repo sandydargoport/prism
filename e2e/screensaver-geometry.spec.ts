@@ -24,23 +24,13 @@ import { FIRST_SCREEN_TEMPLATE } from '../src/lib/constants/layoutTemplates';
  */
 
 /**
- * Open the layout editor the way a person does: on the wall that is the
- * dock's Menu, then More, then Edit layout (#922). It opens the canvas
- * (#1283): the dashboard in a frame at a screen's size, the panels beside
- * it, one of them always open. Returns the frame.
+ * Open the layout editor on the dashboard this page shows, by its edit link
+ * (`?edit=1`), as Edit does: on the canvas (#1283), the dashboard in a frame
+ * at a screen's size, the panels beside it, one of them always open. The
+ * dock's way there (Menu, More, Edit layout) is dock.spec.ts's. Returns the frame.
  */
 async function openEditor(page: Page, widget?: string): Promise<FrameLocator> {
-  // Landscape walls have the dock; portrait keeps its bar until #924.
-  const menu = page.locator('[data-dock-menu]');
-  const bar = page.getByLabel('Edit layout');
-  await expect(menu.or(bar).first()).toBeVisible({ timeout: 60000 });
-  if (await menu.isVisible()) {
-    await menu.click();
-    await page.locator('[data-dock-more]').click();
-    await page.locator('[data-dock-more-panel] [data-screen-job="edit"]').click();
-  } else {
-    await bar.click();
-  }
+  await page.goto(`${new URL(page.url()).pathname}?edit=1`);
   return onCanvas(page, widget);
 }
 
@@ -50,6 +40,30 @@ async function openSheet(page: Page, id: 'dashboard' | 'widgets' | 'day' | 'look
   await expect(page.locator(`[data-editor-sheet="${id}"]`)).toBeVisible();
 }
 const done = (page: Page) => page.locator('[data-editor-done]');
+/** A plain weather answer, for when the weather service refuses (a daily limit, say). */
+const STAND_IN_WEATHER = {
+  location: 'Springfield',
+  current: { temperature: 60, feelsLike: 59, condition: 'clear', humidity: 50, windSpeed: 5, description: 'Clear' },
+  forecast: [],
+  hourly: [],
+  units: { temperature: 'F', windSpeed: 'mph', precipitation: 'in' },
+  lastUpdated: '2026-06-21T12:00:00Z',
+};
+
+/**
+ * Weather at a made-up place, so the sky is drawn where these tests look for
+ * it. The real answer is kept when the weather service gives one; when it
+ * refuses, a plain one stands in, or the sky would fall back to a place
+ * guessed from the time zone.
+ */
+async function weatherAt(page: Page, place: Record<string, unknown>) {
+  await page.route('**/api/weather*', async (route) => {
+    const response = await route.fetch().catch(() => null);
+    const real = response?.ok() ? await response.json() as Record<string, unknown> : STAND_IN_WEATHER;
+    return route.fulfill({ json: { ...real, ...place } });
+  });
+}
+
 /** Done on the canvas goes back to the dashboard. */
 const backOn = (page: Page, slug: string) => page.waitForURL((u) => u.pathname === `/d/${slug}`, { timeout: 60_000 });
 
@@ -147,7 +161,7 @@ for (const [orientation, viewport] of [
     // The first test in the CI step waits for the dev server to compile the
     // dashboard and the editor's chunks from cold, which alone ran past the
     // 30 s default. A warm run takes about 7 s.
-    test.setTimeout(90_000);
+    test.setTimeout(180_000);
 
     test('a widget renders where and as big as it was sized in the editor', async ({ page }) => {
       // All three are measured in the canvas's frame, which is the screen (#1283).
@@ -244,11 +258,7 @@ test.describe('screensaver night sky', () => {
    */
   async function openDashboard(page: Page, background: IdleBackground, at: string, weather: Record<string, unknown> = {}) {
     await page.clock.setFixedTime(new Date(at));
-    await page.route('**/api/weather*', async (route) => {
-      const response = await route.fetch();
-      if (!response.ok()) return route.fulfill({ response });
-      return route.fulfill({ response, json: { ...(await response.json()), lat: 45, lon: -100, ...weather } });
-    });
+    await weatherAt(page, { lat: 45, lon: -100, ...weather });
     await page.route('**/api/layouts', (route) => route.request().method() === 'GET'
       ? route.fulfill({ json: { layouts: [idleLayout(background)] } })
       : route.fallback());
@@ -614,7 +624,8 @@ test.describe('screensaver night sky', () => {
 test.describe('calm mode idle screen', () => {
   test.skip(!HAS_TEST_DB, 'needs the seeded test database to log in and create a dashboard');
   test.use({ viewport: { width: 1280, height: 720 } });
-  test.setTimeout(90_000);
+  // The editor loads the dashboard twice (the page and its frame), slow on a cold CI server.
+  test.setTimeout(180_000);
 
   // Clock and Tasks rely on the default ticks; Shopping and Weather override them.
   // The clock is glass, which goes clear on the idle screen.
@@ -891,7 +902,8 @@ test.describe('calm mode idle screen', () => {
 test.describe('idle background picker', () => {
   test.skip(!HAS_TEST_DB, 'needs the seeded test database to log in and create a dashboard');
   test.use({ viewport: { width: 1600, height: 900 } });
-  test.setTimeout(90_000);
+  // The editor loads the dashboard twice (the page and its frame), slow on a cold CI server.
+  test.setTimeout(180_000);
 
   /**
    * A dashboard with the clock and tasks, open in the editor on Through the
@@ -906,11 +918,7 @@ test.describe('idle background picker', () => {
     });
     expect(created.status()).toBe(201);
     const layout = await created.json();
-    await page.route('**/api/weather*', async (route) => {
-      const response = await route.fetch();
-      if (!response.ok()) return route.fulfill({ response });
-      return route.fulfill({ response, json: { ...(await response.json()), ...place } });
-    });
+    await weatherAt(page, place);
     let frame: FrameLocator;
     let removeScreen = async (): Promise<unknown> => undefined;
     if (asScreen) ({ frame, removeScreen } = await editAsScreen(page, layout.id));
@@ -1035,7 +1043,8 @@ test.describe('idle background picker', () => {
 test.describe('dim when idle', () => {
   test.skip(!HAS_TEST_DB, 'needs the seeded test database to create a dashboard');
   test.use({ viewport: { width: 1280, height: 720 }, timezoneId: 'America/Chicago' });
-  test.setTimeout(90_000);
+  // The editor loads the dashboard twice (the page and its frame), slow on a cold CI server.
+  test.setTimeout(180_000);
 
   async function dim(page: Page) {
     return page.evaluate(() => {
@@ -1535,7 +1544,8 @@ test.describe('corner clock and weather', () => {
 test.describe('editor keys (#987)', () => {
   test.skip(!HAS_TEST_DB, 'needs the seeded test database to log in and edit');
   test.use({ viewport: { width: 1280, height: 720 } });
-  test.setTimeout(90_000);
+  // The editor loads the dashboard twice (the page and its frame), slow on a cold CI server.
+  test.setTimeout(180_000);
 
   test('Delete removes the selected widget with Undo; arrows move it, and resize it in resize mode', async ({ page }) => {
     // On the canvas (#1283): a click puts the keys in the frame, where the editor runs.
@@ -1642,11 +1652,7 @@ test.describe('the upgrade from v1.30.1', () => {
     })).json();
     expect(plain.screensaverWidgets, 'precondition: no arrangement of its own').toBeNull();
 
-    await page.route('**/api/weather*', async (route) => {
-      const response = await route.fetch();
-      if (!response.ok()) return route.fulfill({ response });
-      return route.fulfill({ response, json: { ...(await response.json()), lat: 45, lon: -100 } });
-    });
+    await weatherAt(page, { lat: 45, lon: -100 });
     await page.addInitScript((kept) => {
       // Once per test: what a v1.30.1 browser holds. Drift is stilled only to measure.
       if (sessionStorage.getItem('upgrade-seeded')) return;
