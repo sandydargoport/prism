@@ -11,9 +11,12 @@ const mockPhoto = jest.fn();
 const mockSource = jest.fn();
 const mockReadCache = jest.fn();
 
-jest.mock('fs', () => ({ promises: { readFile: jest.fn(async () => Buffer.from('img')) } }));
+const mockReadFile = jest.fn(async () => Buffer.from('img'));
+jest.mock('fs', () => ({ promises: { readFile: () => mockReadFile() } }));
+/** Who the caller is: a session, the display's identity, or (null) nobody. */
+const mockAuth = jest.fn();
 jest.mock('@/lib/auth', () => ({
-  getDisplayAuth: async () => ({ userId: 'display', role: 'guest' }),
+  getDisplayAuth: () => mockAuth(),
   requireAuth: jest.fn(),
   requireRole: jest.fn(),
 }));
@@ -56,7 +59,10 @@ import { GET as getAvatar } from '../family/[id]/avatar/route';
 const params = { params: Promise.resolve({ id: 'x1' }) };
 const req = (path: string) => new NextRequest(`http://localhost${path}`);
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockAuth.mockResolvedValue({ userId: 'display', role: 'guest' });
+});
 
 describe('image responses are private to the browser (#1224)', () => {
   it('a local photo file', async () => {
@@ -85,5 +91,25 @@ describe('image responses are private to the browser (#1224)', () => {
     const res = await getAvatar(req('/api/family/x1/avatar'), params);
     expect(res.status).toBe(200);
     expect(res.headers.get('Cache-Control')).toBe('private, max-age=3600, must-revalidate');
+  });
+});
+
+// #1244: an image needs what the page that shows it needs.
+describe('who may fetch an image', () => {
+  beforeEach(() => mockAuth.mockResolvedValue(null));
+
+  it('a recipe image needs a session or the display, as the Recipes page does', async () => {
+    const res = await getRecipeImage(req('/api/recipes/x1/image'), params);
+    expect(res.status).toBe(401);
+    expect(mockReadFile).not.toHaveBeenCalled();
+  });
+
+  it('a photo file needs the same', async () => {
+    expect((await getPhoto(req('/api/photos/x1/file'), params)).status).toBe(401);
+  });
+
+  it('an avatar answers anyone, as the sign-in page shows it before anyone signs in', async () => {
+    const res = await getAvatar(req('/api/family/x1/avatar'), params);
+    expect(res.status).toBe(200);
   });
 });
