@@ -14,7 +14,6 @@ import {
   deleteTandoorMealPlanEntry,
   updateTandoorRecipe,
   deleteTandoorRecipe,
-  fetchTandoorImage,
   fetchTandoorRecipes,
   fetchTandoorMealPlan,
   UnsafeUrlError,
@@ -119,31 +118,6 @@ describe('testTandoorConnection', () => {
 
     await expect(testTandoorConnection('http://10.0.0.5', 'tok')).rejects.toBeInstanceOf(UnsafeUrlError);
     expect(fetchMock).not.toHaveBeenCalled();
-  });
-});
-
-describe('fetchTandoorImage', () => {
-  it('returns a Buffer for a successful download', async () => {
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: new Headers(),
-      arrayBuffer: () => Promise.resolve(new Uint8Array([0xff, 0xd8]).buffer),
-    }) as unknown as typeof fetch;
-
-    const buf = await fetchTandoorImage('https://tandoor.example.com/media/x.jpg', 'tok');
-    expect(buf).toBeInstanceOf(Buffer);
-    expect(buf?.length).toBe(2);
-  });
-
-  it('returns null on a failed download (never throws)', async () => {
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: false,
-      status: 404,
-      headers: new Headers(),
-    }) as unknown as typeof fetch;
-
-    expect(await fetchTandoorImage('https://tandoor.example.com/media/missing.jpg', 'tok')).toBeNull();
   });
 });
 

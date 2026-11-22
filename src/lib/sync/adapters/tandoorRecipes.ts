@@ -36,7 +36,7 @@ export async function ensureRecipeImported(
   externalId: string,
 ): Promise<{ recipeId: string; imported: boolean } | null> {
   const source = await loadTandoorSource(sourceId);
-  return ensureImported(sourceId, externalId, source.token, (id) =>
+  return ensureImported(sourceId, externalId, source, (id) =>
     fetchTandoorRecipeById(source.serverUrl, source.token, Number(id)),
   );
 }
@@ -62,13 +62,13 @@ export const tandoorRecipeAdapter: EntitySyncAdapter<Payload> = {
   async applyAdd(sourceId, change) {
     if (!change.payload) return;
     const source = await loadTandoorSource(sourceId);
-    await writeRecipeRow(sourceId, change.payload as NormalizedRecipe, source.token, null);
+    await writeRecipeRow(sourceId, change.payload as NormalizedRecipe, source, null);
   },
 
   async applyUpdate(sourceId, change) {
     if (!change.payload || !change.localId) return;
     const source = await loadTandoorSource(sourceId);
-    await writeRecipeRow(sourceId, change.payload as NormalizedRecipe, source.token, change.localId);
+    await writeRecipeRow(sourceId, change.payload as NormalizedRecipe, source, change.localId);
   },
 
   async applyDelete(_sourceId, change) {
