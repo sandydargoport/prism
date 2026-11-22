@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'crypto';
 import { db } from '@/lib/db/client';
-import { apiTokens } from '@/lib/db/schema';
+import { apiTokens, users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import type { AuthResult } from './requireAuth';
 
@@ -25,18 +25,21 @@ export function hashToken(rawToken: string): string {
 /**
  * Validate a raw bearer token against the DB.
  * Returns an AuthResult (parent role) on success, null on failure.
+ * A token acts as a parent only while the member who made it is still one
+ * (#1246), whatever changed their role.
  * Updates lastUsedAt on successful validation.
  */
 export async function validateApiToken(rawToken: string): Promise<ApiTokenAuthResult | null> {
   const hash = hashToken(rawToken);
 
   const [token] = await db
-    .select()
+    .select({ id: apiTokens.id, createdBy: apiTokens.createdBy, scopes: apiTokens.scopes, creatorRole: users.role })
     .from(apiTokens)
+    .innerJoin(users, eq(users.id, apiTokens.createdBy))
     .where(eq(apiTokens.tokenHash, hash))
     .limit(1);
 
-  if (!token) return null;
+  if (!token || token.creatorRole !== 'parent') return null;
 
   // Fire-and-forget lastUsedAt update (don't block the request)
   db.update(apiTokens)
@@ -81,6 +84,19 @@ export async function revokeApiToken(tokenId: string): Promise<boolean> {
     .returning({ id: apiTokens.id });
 
   return result.length > 0;
+}
+
+/**
+ * Delete every API token a member made (#1246), as a new role ends their
+ * sessions. Returns how many went.
+ */
+export async function revokeApiTokensOf(userId: string): Promise<number> {
+  const result = await db
+    .delete(apiTokens)
+    .where(eq(apiTokens.createdBy, userId))
+    .returning({ id: apiTokens.id });
+
+  return result.length;
 }
 
 /**

@@ -107,6 +107,7 @@ All notable changes to Prism are documented in this file.
 - **Bus card compares today with the usual.** Beside how late the bus is against the timetable, the live bus card says how that compares with its typical lateness at your stop over the last 10 trips ("8 min late · about usual", "12 min late · 4 min later than usual"). Before anything on the trip is measured, it says what is typical ("usually 9 min late").
 
 ### Fixed
+- **A parent's API tokens end when they are no longer a parent.** A new role revokes the member's tokens, as it ends their sessions, and a token works only while the member who made it is a parent. A new PIN or passcode keeps them. ([#1246](https://github.com/sandydargoport/prism/issues/1246))
 - **Editing a screen from another device no longer asks for a PIN when already signed in.** A page that asked for sign-in as it opened did so before the session had been checked. ([#1265](https://github.com/sandydargoport/prism/issues/1265))
 - **A short stretch at the end of the Through the day line stays on the line** in a narrow panel, instead of running past its end. ([#1265](https://github.com/sandydargoport/prism/issues/1265))
 - **The X, Y, W and H boxes in the Widgets panel show two-digit numbers in full**; the spin arrows that covered them are gone, and the arrow keys still step the value. ([#1265](https://github.com/sandydargoport/prism/issues/1265))

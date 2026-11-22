@@ -67,6 +67,8 @@ jest.mock('@/lib/auth/session', () => ({
   invalidateAllUserSessions: (...a: unknown[]) => mockEndAll(...a),
   revokeOtherSessions: (...a: unknown[]) => mockEndOthers(...a),
 }));
+const mockRevokeTokens = jest.fn();
+jest.mock('@/lib/auth/apiTokens', () => ({ revokeApiTokensOf: (...a: unknown[]) => mockRevokeTokens(...a) }));
 jest.mock('next/headers', () => ({
   cookies: async () => ({ get: (k: string) => (k === 'prism_session' ? { value: 'token-this-device' } : undefined) }),
 }));
@@ -309,6 +311,20 @@ describe('PATCH /api/family/[id] ends sessions', () => {
     expect(mockEndAll).toHaveBeenCalledWith('child-1');
   });
 
+  // #1246: a token acts with its maker's role, so a new role ends them too.
+  it("revokes the API tokens of a parent who is now a child", async () => {
+    mockWhere.mockResolvedValue([{ ...member, role: 'parent' }]);
+    expect((await patch({ role: 'child' })).status).toBe(200);
+    expect(mockRevokeTokens).toHaveBeenCalledWith('child-1');
+  });
+
+  it('keeps API tokens for a new PIN: they are not signed in with it', async () => {
+    mockRequireAuth.mockResolvedValue({ userId: 'child-1', role: 'parent' });
+    mockWhere.mockResolvedValue([{ ...member, role: 'parent' }]);
+    expect((await patch({ pin: '5678', currentPin: '1234' })).status).toBe(200);
+    expect(mockRevokeTokens).not.toHaveBeenCalled();
+  });
+
   it('keeps this device when a member changes their own PIN, and ends the others', async () => {
     mockRequireAuth.mockResolvedValue({ userId: 'child-1', role: 'parent' });
     mockWhere.mockResolvedValue([{ ...member, role: 'parent' }]);
@@ -328,5 +344,6 @@ describe('PATCH /api/family/[id] ends sessions', () => {
     expect((await patch({ name: 'Sammy', color: '#10B981', role: 'child' })).status).toBe(200);
     expect(mockEndAll).not.toHaveBeenCalled();
     expect(mockEndOthers).not.toHaveBeenCalled();
+    expect(mockRevokeTokens).not.toHaveBeenCalled();
   });
 });
