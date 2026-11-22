@@ -23,6 +23,8 @@ export interface ExternalTask {
   priority?: 'high' | 'medium' | 'low' | null;
   updatedAt: Date;
   createdAt?: Date;
+  /** The provider's id of the task this is a subtask of (#1201). */
+  parentId?: string | null;
 }
 
 export interface CreateTaskInput {

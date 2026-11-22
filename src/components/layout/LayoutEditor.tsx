@@ -13,6 +13,7 @@ import { CreateDashboardDialog, SaveAsDialog } from './LayoutEditorDashboardMana
 import { RenameDashboardDialog } from './LayoutEditorRenameDashboard';
 import { LayoutEditorMeasureBar } from './LayoutEditorMeasureBar';
 import { EditorBar, type EditorSheet } from './EditorBar';
+import { forgetKeptPanel, panelKeptFor } from './canvasPanel';
 import { DashboardSheet, DaySheet, LookSheet, MoreSheet, WidgetsSheet, LayoutEditorPreviewPanel } from './EditorSheets';
 import { useMeasureMode } from './useMeasureMode';
 import { useLayoutEditorState } from './useLayoutEditorState';
@@ -21,13 +22,13 @@ import { copyLayoutToOther } from './copyLayout';
 import { idleSaveProblem } from './IdleBackgroundBar';
 import { toast } from '@/components/ui/use-toast';
 import { createPortal } from 'react-dom';
-import { remotePortalRoot } from '@/lib/displays/remoteEdit';
+import { remoteEditHost, remotePortalRoot } from '@/lib/displays/remoteEdit';
 
 /**
- * Editing a screen from a phone (#1153), the bar and its dialogs are drawn on
- * the phone's page at the phone's size, not shrunk with the picture.
+ * The panels and dialogs are drawn on the canvas editor's page (#1153,
+ * #1265), at this device's own size, not shrunk with the picture.
  */
-function onPhone(node: React.ReactElement): React.ReactElement {
+function onEditorPage(node: React.ReactElement): React.ReactElement {
   const root = remotePortalRoot();
   return root ? createPortal(node, root) : node;
 }
@@ -62,6 +63,13 @@ export function LayoutEditor({
   idleHalf = 'day',
   onIdleHalfChange,
   idleCheck = {},
+  screenPlan = null,
+  onScreenPlanChange,
+  previewDashboardId = null,
+  onPreviewDashboardChange,
+  screenId = null,
+  deviceNamed = false,
+  onDeviceNamed,
   screenGuideOrientation = 'landscape',
   onScreenGuideOrientationChange,
   enabledSizes = [],
@@ -88,17 +96,29 @@ export function LayoutEditor({
   const effectiveEnabledSizes = enabledSizes.length > 0 ? enabledSizes : allSizeNames;
 
   const [activePopover, setActivePopover] = useState<ActivePopover>(null);
-  // The editing bar's open sheet (#1151). Through the day shows the screen as
-  // it rests, so it is the Idle screen tab underneath.
-  const [sheet, setSheetState] = useState<EditorSheet | null>(null);
-  // Opening it moves to the resting screen, which stays after the sheet
-  // closes so its layout can be arranged; Dashboard, or the label above the
-  // bar, goes back.
-  const setSheet = useCallback((next: EditorSheet | null) => {
+  // A screen's own settings (rest after, how dark) show when the editor is
+  // for a screen: the one edited on the canvas, if any (#1281). A dashboard
+  // edited at a chosen size has none.
+  const [forScreen] = useState(() => remoteEditHost()?.displayId !== null);
+  // The open panel (#1151), beside the canvas (#1265); one is always open, as
+  // there is room and nothing is covered. A dashboard picked on Dashboard
+  // opens on Dashboard still.
+  const [sheet, setSheetState] = useState<EditorSheet>(() => panelKeptFor(currentDashboardId) ?? 'widgets');
+  useEffect(() => { forgetKeptPanel(); }, []);
+  // Through the day's slider and Resting's See it show the screen resting or
+  // at night, which stays with another panel open so its layout can be
+  // arranged; Dashboard, or Back to in use, goes back. Another dashboard shown
+  // as it is saved (#1294) is only for the slider: any other panel edits this one.
+  const setSheet = useCallback((next: EditorSheet) => {
     setSheetState(next);
-    if (next === 'day') onEditTabChange?.('idle');
-    else if (next === 'dashboard') onEditTabChange?.('dashboard');
-  }, [onEditTabChange]);
+    if (next !== 'day') onPreviewDashboardChange?.(null);
+    if (next === 'dashboard') onEditTabChange?.('dashboard');
+  }, [onEditTabChange, onPreviewDashboardChange]);
+  const backToInUse = useCallback(() => {
+    onPreviewDashboardChange?.(null);
+    onEditTabChange?.('dashboard');
+  }, [onEditTabChange, onPreviewDashboardChange]);
+  const previewName = previewDashboardId ? allDashboards.find((d) => d.id === previewDashboardId)?.name ?? null : null;
   const builtIn = view === 'today';
   // There is a screensaver layout to copy to or from only when something
   // other than the dashboard itself shows behind it.
@@ -194,7 +214,7 @@ export function LayoutEditor({
   };
 
   if (measureMode) {
-    return onPhone(
+    return onEditorPage(
       <LayoutEditorMeasureBar
         measureHideNav={measureHideNav}
         onToggleNav={toggleMeasureNav}
@@ -220,13 +240,14 @@ export function LayoutEditor({
           <DashboardSheet
             allDashboards={allDashboards}
             currentDashboardId={currentDashboardId}
+            shownHereId={screenId && screenPlan ? screenPlan.dashboardId ?? allDashboards.find((d) => d.isDefault)?.id ?? null : null}
             onSwitchDashboard={onSwitchDashboard}
             onAddToday={onCreateDashboard ? () => onCreateDashboard('Glance', 'today') : undefined}
-            onCreateOpen={() => { setSheet(null); state.setShowCreateDialog(true); }}
-            onRenameOpen={() => { setSheet(null); state.handleRenameOpen(); }}
-            onSaveAsOpen={() => { setSheet(null); state.setShowSaveAsDialog(true); }}
+            onCreateOpen={() => state.setShowCreateDialog(true)}
+            onRenameOpen={() => state.handleRenameOpen()}
+            onSaveAsOpen={() => state.setShowSaveAsDialog(true)}
             onSetDefault={setDefault}
-            onDelete={() => { setSheet(null); state.handleDelete(); }}
+            onDelete={() => state.handleDelete()}
             onResetBuiltIn={onResetBuiltIn}
           />
         );
@@ -254,6 +275,14 @@ export function LayoutEditor({
             editTab={editTab}
             onEditTabChange={onEditTabChange}
             idleCheck={idleCheck}
+            screenPlan={screenPlan}
+            onScreenPlanChange={onScreenPlanChange}
+            previewDashboardId={previewDashboardId}
+            onPreviewDashboardChange={onPreviewDashboardChange}
+            screenId={screenId}
+            deviceNamed={deviceNamed}
+            onDeviceNamed={onDeviceNamed}
+            forScreen={forScreen}
             allDashboards={allDashboards}
             currentDashboardId={currentDashboardId}
             onSwitchDashboard={onSwitchDashboard}
@@ -264,7 +293,7 @@ export function LayoutEditor({
           <LookSheet
             orientation={screenGuideOrientation}
             onOrientationChange={onScreenGuideOrientationChange}
-            onMeasure={() => { setSheet(null); toggleMeasureMode(); }}
+            onMeasure={() => toggleMeasureMode()}
           />
         );
       case 'more':
@@ -276,10 +305,10 @@ export function LayoutEditor({
             idleTab={editTab === 'idle'}
             exportFeedback={state.exportFeedback}
             onExport={state.handleExport}
-            onImportOpen={() => { setSheet(null); state.setShowImportDialog(true); }}
-            onShareOpen={() => { setSheet(null); state.setShowShareDialog(true); }}
+            onImportOpen={() => state.setShowImportDialog(true)}
+            onShareOpen={() => state.setShowShareDialog(true)}
             onReset={() => (editingScreensaver ? onScreensaverReset?.() : onReset())}
-            onCopyToOther={() => { setSheet(null); void handleCopyToOther(); }}
+            onCopyToOther={() => { void handleCopyToOther(); }}
             preview={(
               <LayoutEditorPreviewPanel
                 visibleWidgets={visibleWidgets}
@@ -304,7 +333,7 @@ export function LayoutEditor({
     }
   })();
 
-  return onPhone(
+  return onEditorPage(
     <>
       <EditorBar
         ref={toolbarRef}
@@ -316,8 +345,9 @@ export function LayoutEditor({
         doneBlocked={saveBlocked}
         onDone={state.handleSave}
         onCancel={onCancel}
-        resting={editTab === 'idle'}
-        onLeaveResting={() => onEditTabChange?.('dashboard')}
+        resting={editTab === 'idle' ? (idleHalf === 'night' ? 'night' : 'resting') : null}
+        previewName={editTab === 'idle' ? null : previewName}
+        onLeaveResting={backToInUse}
       />
 
       <CreateDashboardDialog

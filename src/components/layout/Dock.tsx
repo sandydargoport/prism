@@ -16,13 +16,16 @@ import { useTranslations } from 'next-intl';
 import { HelpCircle, LogIn, LogOut, MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ALL_NAV_ITEMS, type NavItem } from '@/lib/constants/navItems';
-import { dockLayout, DOCK_SIZE_NARROW } from '@/lib/constants/dock';
+import { dockLayout, DOCK_SIZE_NARROW, MORE_TILE } from '@/lib/constants/dock';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import { useCalmIdle } from '@/components/screensaver/calmMode';
 import { useHiddenPages } from '@/lib/hooks/useHiddenPages';
 import { scopedHref, isNavActive, RETURN_PARAM } from '@/lib/utils/dashboardScope';
 import { useReturnSlug } from '@/lib/hooks/useReturnSlug';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { ScreenJobs } from './DashboardGrid';
+import { editLink } from '@/components/dashboard/useDashboardLayout';
 
 /** How long the wall's dock stays after the last touch. */
 export const DOCK_WALL_MS = 10_000;
@@ -32,6 +35,9 @@ export const MENU_NUB_MS = 8_000;
 const EDGE_PX = 24;
 const SWIPE_PX = 60;
 const SWIPE_MS = 700;
+/** The More panel's groups, in order (#1257): this screen first on a wall, last on a phone. */
+const GROUPS_WALL = ['screen', 'pages', 'prism'] as const;
+const GROUPS_NARROW = ['pages', 'prism', 'screen'] as const;
 
 export interface DockProps {
   /** 'wall': hidden at rest behind a Menu word; 'page': always on screen. */
@@ -39,8 +45,41 @@ export interface DockProps {
   user?: { id: string; name: string; color?: string } | null;
   onLogin?: () => void;
   onLogout?: () => void;
-  /** This screen's jobs (Edit layout, Reload, Screensaver...), shown in More. */
+  /**
+   * This screen's jobs (Edit layout, Reload, Screensaver...), shown in More.
+   * Left out, More has the jobs every page can do (#1257).
+   */
   screenJobs?: React.ReactNode;
+}
+
+/** Where Edit layout goes from a page: this screen's dashboard, with the editor open (#1257). */
+export function screenEditHref(pathname: string | null | undefined, search?: { get(k: string): string | null } | null): string {
+  return editLink(scopedHref('/', pathname, search));
+}
+
+/**
+ * This screen's jobs on a page that brings none of its own (#1257). Edit
+ * layout goes to the screen's dashboard with the editor open; the screensaver
+ * starts here, since it lives over every page; Reload, Away and Babysitter act
+ * in place. A phone has neither Edit layout nor a screensaver (#1036), and a
+ * signed-in child no Edit layout.
+ */
+function PageScreenJobs({ narrow, editHref, close }: { narrow: boolean; editHref: string; close: () => void }) {
+  const { activeUser, requireAuth } = useAuth();
+  const router = useRouter();
+  const edit = async () => {
+    close();
+    const user = activeUser ?? await requireAuth('Sign in to edit', "Enter a parent's PIN to edit the dashboard layout.");
+    if (!user || user.role !== 'parent') return;
+    router.push(editHref);
+  };
+  return (
+    <ScreenJobs
+      labelled
+      onEditClick={narrow || (activeUser && activeUser.role !== 'parent') ? undefined : () => { void edit(); }}
+      onScreensaverClick={narrow ? undefined : () => { close(); window.dispatchEvent(new Event('prism:screensaver')); }}
+    />
+  );
 }
 
 export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
@@ -53,10 +92,9 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
   const narrow = useIsMobile();
   const { dock, more } = dockLayout(filterNavItems(ALL_NAV_ITEMS), dockPages, narrow ? DOCK_SIZE_NARROW : undefined);
   const [moreOpen, setMoreOpen] = React.useState(false);
-  // In More, Settings has its own place at the top (#1014); the rest are pages.
+  // In More, Settings sits with Help and Sign in under Prism (#1257); the rest are pages.
   const settingsItem = more.find((i) => i.href === '/settings');
   const pages = more.filter((i) => i.href !== '/settings');
-  const topPill = 'flex min-h-[52px] items-center gap-2 rounded-full border-[1.5px] border-foreground/30 px-5 text-body font-medium hover:bg-muted';
 
   // The wall: any touch shows the dock; it goes after ten quiet seconds.
   const [shown, setShown] = React.useState(mode === 'page');
@@ -140,13 +178,13 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
         href={scopedHref(item.href, pathname, search)}
         onClick={() => setMoreOpen(false)}
         aria-current={active ? 'page' : undefined}
-        className={cn(
+        className={
           // Rounded corners, not a pill: round, the highlight behind a long
           // word ("Shopping") became an oval crowding its label (#1068).
-          cn('flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-2xl text-caption font-medium transition-colors', inMore ? 'min-w-[64px] px-3' : narrow ? 'min-w-[44px] flex-1 px-0.5' : 'min-w-[64px] px-3'),
-          inMore ? 'min-h-[64px] rounded-2xl text-foreground hover:bg-muted' : 'text-white/85 hover:bg-white/10',
-          active && (inMore ? 'bg-muted' : 'bg-white/15 text-white'),
-        )}
+          inMore
+            ? cn(MORE_TILE, 'transition-colors', active && 'bg-muted')
+            : cn('flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-2xl text-caption font-medium text-white/85 transition-colors hover:bg-white/10', narrow ? 'min-w-[44px] flex-1 px-0.5' : 'min-w-[64px] px-3', active && 'bg-white/15 text-white')
+        }
         data-dock-item={item.href}
       >
         <Icon className="h-5 w-5" />
@@ -159,9 +197,10 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
     <>
       {/* The Menu as a soft tab on the bottom edge (#989): it shrinks to a
           nub after a few quiet seconds and grows back with a tap. The button
-          stays 44px tall either way; only the drawn tab changes. White glass
-          over a photo; the theme's card colours with none, or white on a
-          light page leaves it invisible. */}
+          stays 44px tall either way; only the drawn tab changes. Over the
+          wallpaper it is the dock's own dark glass, so white text reads on a
+          photo and on a pale page such as the bus map alike; the theme's card
+          colours with no wallpaper. */}
       {mode === 'wall' && !visible && !calm && (
         <button
           type="button"
@@ -173,7 +212,7 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
         >
           <span
             className={cn(
-              'flex items-center justify-center overflow-hidden rounded-t-[999px] border border-b-0 border-white/35 bg-white/15 text-body font-medium text-white backdrop-blur-sm [text-shadow:var(--ds-idle-text-shadow)] [html:not([data-wallpaper])_&]:border-border [html:not([data-wallpaper])_&]:bg-card/90 [html:not([data-wallpaper])_&]:text-foreground [html:not([data-wallpaper])_&]:[text-shadow:none] transition-all duration-500 motion-reduce:duration-0',
+              'flex items-center justify-center overflow-hidden rounded-t-[999px] border border-b-0 border-white/25 bg-[rgb(22_17_13/0.72)] text-body font-medium text-white backdrop-blur-md [html:not([data-wallpaper])_&]:border-border [html:not([data-wallpaper])_&]:bg-card/90 [html:not([data-wallpaper])_&]:text-foreground transition-all duration-500 motion-reduce:duration-0',
               nub ? 'h-[6px] w-[40px] opacity-50' : 'h-[40px] w-[140px] opacity-100',
             )}
             style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}
@@ -220,50 +259,56 @@ export function Dock({ mode, user, onLogin, onLogout, screenJobs }: DockProps) {
       <Dialog open={moreOpen} onOpenChange={setMoreOpen}>
         <DialogContent className="max-w-2xl" data-dock-more-panel>
           <DialogTitle>{t('nav.more', { defaultValue: 'More' })}</DialogTitle>
-          {/* Settings and Help first, set apart from the pages, so they are easy to find (#1014). */}
-          <div className="flex flex-wrap gap-2" data-dock-more-top>
-            {settingsItem && (
-              <Link
-                href={scopedHref(settingsItem.href, pathname, search)}
-                onClick={() => setMoreOpen(false)}
-                className={topPill}
-                data-dock-item="/settings"
+          {/* One tile for everything, in three groups (#1257). On a wall this
+              screen's jobs lead; on a phone, the pages. */}
+          {(narrow ? GROUPS_NARROW : GROUPS_WALL).map((group) => {
+            if (group === 'pages' && pages.length === 0) return null;
+            const title = group === 'screen'
+              ? t('nav.thisScreen', { defaultValue: 'This screen' })
+              : group === 'pages' ? t('nav.pages', { defaultValue: 'Pages' }) : t('nav.prism', { defaultValue: 'Prism' });
+            return (
+              <section
+                key={group}
+                className="flex flex-col gap-2"
+                data-dock-more-group={group}
+                data-dock-screen-jobs={group === 'screen' || undefined}
+                data-dock-pages={group === 'pages' || undefined}
+                data-dock-prism={group === 'prism' || undefined}
               >
-                <settingsItem.icon className="h-5 w-5" />
-                <span>{label(settingsItem)}</span>
-              </Link>
-            )}
-            <Link href="/help" onClick={() => setMoreOpen(false)} className={topPill} data-dock-item="/help">
-              <HelpCircle className="h-5 w-5" />
-              <span>{t('nav.help', { defaultValue: 'Help' })}</span>
-            </Link>
-          </div>
-          {pages.length > 0 && (
-            <div className="flex flex-col gap-2" data-dock-pages>
-              <p className="m-0 text-caption font-medium text-muted-foreground">{t('nav.pages', { defaultValue: 'Pages' })}</p>
-              {/* Five a row on a wall (#1006). */}
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5" data-dock-more-grid>
-                {pages.map((item) => link(item, true))}
-              </div>
-            </div>
-          )}
-          {narrow && (
-            <button
-              type="button"
-              onClick={() => { setMoreOpen(false); (user ? onLogout : onLogin)?.(); }}
-              className="flex min-h-[52px] items-center justify-center gap-2 rounded-full border-[1.5px] border-foreground/30 px-5 text-body"
-              data-dock-sign
-            >
-              {user ? <LogOut className="h-5 w-5" /> : <LogIn className="h-5 w-5" />}
-              {user ? user.name : t('nav.signIn', { defaultValue: 'Sign in' })}
-            </button>
-          )}
-          {screenJobs && (
-            <div className="flex flex-col gap-2 border-t border-border pt-4" data-dock-screen-jobs>
-              <p className="m-0 text-caption font-medium text-muted-foreground">{t('nav.thisScreen', { defaultValue: 'This screen' })}</p>
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5" data-dock-jobs-grid>{screenJobs}</div>
-            </div>
-          )}
+                <p className="m-0 text-caption font-medium text-muted-foreground">{title}</p>
+                {/* Five a row on a wall (#1006). */}
+                <div
+                  className="grid grid-cols-3 gap-2 sm:grid-cols-5"
+                  data-dock-more-tiles
+                  data-dock-jobs-grid={group === 'screen' || undefined}
+                  data-dock-more-grid={group === 'pages' || undefined}
+                  data-dock-prism-grid={group === 'prism' || undefined}
+                >
+                  {group === 'screen' && (screenJobs ?? <PageScreenJobs narrow={narrow} editHref={screenEditHref(pathname, search)} close={() => setMoreOpen(false)} />)}
+                  {group === 'pages' && pages.map((item) => link(item, true))}
+                  {group === 'prism' && (
+                    <>
+                      {settingsItem && link(settingsItem, true)}
+                      <Link href="/help" onClick={() => setMoreOpen(false)} className={cn(MORE_TILE, pathname === '/help' && 'bg-muted')} data-dock-item="/help">
+                        <HelpCircle className="h-5 w-5" />
+                        <span className="whitespace-nowrap">{t('nav.help', { defaultValue: 'Help' })}</span>
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => { setMoreOpen(false); (user ? onLogout : onLogin)?.(); }}
+                        className={MORE_TILE}
+                        aria-label={user ? `Sign out ${user.name}` : undefined}
+                        data-dock-sign
+                      >
+                        {user ? <LogOut className="h-5 w-5" /> : <LogIn className="h-5 w-5" />}
+                        <span className="max-w-[6rem] truncate">{user ? user.name : t('nav.signIn', { defaultValue: 'Sign in' })}</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+              </section>
+            );
+          })}
         </DialogContent>
       </Dialog>
     </>

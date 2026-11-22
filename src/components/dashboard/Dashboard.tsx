@@ -38,6 +38,9 @@ import { renderScreensaverPreview } from '@/components/screensaver/ScreensaverWi
 import { SCREENSAVER_WIDGET_CLASS } from '@/components/screensaver/Screensaver';
 import type { WidgetConfig } from '@/lib/hooks/useLayouts';
 import { parseIdleBackground, withoutDashboard, PHOTOS, type IdleBackground } from '@/lib/idleBackground';
+import type { ScreenPlan } from '@/lib/screenSwitches';
+import { loadBase } from '@/lib/displays/displaySettingsSync';
+import { screenEditLink } from '@/lib/displays/editPlace';
 import { TodayScene } from '@/components/today/TodayScene';
 import { PhoneToday } from '@/components/today/PhoneToday';
 import { isBuiltInView } from '@/lib/newLook';
@@ -49,7 +52,7 @@ import { WidgetErrorBoundary } from '@/components/dashboard/WidgetErrorBoundary'
 import { WidgetExpandProvider, useWidgetExpand } from '@/components/dashboard/WidgetExpandProvider';
 import { useDashboardData } from './useDashboardData';
 import { useDashboardLayout, editLink } from './useDashboardLayout';
-import { remoteEditHost } from '@/lib/displays/remoteEdit';
+import { remoteEditHost, setHostPlan } from '@/lib/displays/remoteEdit';
 import { useScreenSchedule } from './useScreenSchedule';
 import { useRemoveBirthday } from './useRemoveBirthday';
 import { useIdleSwitchCheck } from '@/components/layout/useIdleSwitchCheck';
@@ -57,6 +60,7 @@ import { buildWidgetProps } from './useWidgetProps';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { useLocalCopy } from '@/lib/hooks/useLocalCopy';
+import { useResetOn } from '@/lib/hooks/useResetOn';
 import { setActiveIdleBackground, shownWhenIdle, useCalmIdle } from '@/components/screensaver/calmMode';
 import { useNightNow } from '@/components/screensaver/useIdleBackground';
 import { dimLevel, useIdleDimSetting } from '@/components/screensaver/idleDim';
@@ -139,7 +143,7 @@ export function Dashboard({
     deleteChore: () => {},
   });
 
-  // A named screen's time-of-day rules pick which dashboard this page shows (#692).
+  // A named screen's dashboard and switches pick which dashboard this page shows (#692, #1282).
   const editingRef = useRef(false);
   const schedule = useScreenSchedule({
     routeSlug: slug,
@@ -148,10 +152,32 @@ export function Dashboard({
     editing: editingRef,
   });
   const layout = useDashboardLayout(data.layouts, schedule.slug);
+  // In a screen's editor (#1282): the dashboard it shows and its switches,
+  // held on the editor page, which sends them to the screen on Done.
+  const editHost = remoteEditHost();
+  const screenId = editHost?.displayId ?? null;
+  const [screenPlan, setScreenPlan] = useState<ScreenPlan | null>(
+    () => (editHost?.displayId ? { dashboardId: editHost.dashboardId, switches: editHost.switches } : null),
+  );
+  const changeScreenPlan = useCallback((plan: ScreenPlan) => {
+    setScreenPlan(plan);
+    setHostPlan(plan);
+  }, []);
+  // Another dashboard the canvas shows as it is saved, while Through the
+  // day's slider stands in its switch (#1294). Only while editing.
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  // Whether the device in use has a name; one that has none can be named in
+  // Through the day, and then opens its own screen's editor.
+  const [deviceNamed] = useState(() => !!loadBase()?.displayId);
+  const activeLayoutId = layout.activeLayout?.id;
+  const openNamedScreen = useCallback((displayId: string) => {
+    (window.top ?? window).location.assign(screenEditLink(displayId, activeLayoutId));
+  }, [activeLayoutId]);
   useEffect(() => { editingRef.current = layout.isEditing; }, [layout.isEditing]);
+  useResetOn(layout.isEditing, () => setPreviewId(null));
   // In the frame of a phone editing this screen (#1153): say which dashboard
   // is on show, and when editing ends.
-  const remote = remoteEditHost();
+  const remote = editHost;
   const activeId = layout.activeLayout?.id;
   const activeIsDefault = layout.activeLayout?.isDefault ?? false;
   useEffect(() => {
@@ -202,11 +228,11 @@ export function Dashboard({
   // Grid control state shared between LayoutEditor toolbar and LayoutGridEditor
   const { allSizeNames } = useScreenSafeZones();
 
-  // Tell the Screensaver what this dashboard shows behind it when idle (#782),
-  // which may be the dashboard itself (calm mode, #691). When the dashboard
-  // goes, other pages keep its photos or sky but have no dashboard to show.
-  // The phone layout has no calm idle state. Keyed by its JSON so a fresh copy
-  // of the same value is not a change.
+  // Tell the Screensaver what this dashboard shows behind it when idle (#782,
+  // #1281), which may be the dashboard itself (calm mode, #691). When the
+  // dashboard goes, other pages keep its photos or sky but have no dashboard
+  // to show. The phone layout has no calm idle state. Keyed by its JSON so a
+  // fresh copy of the same value is not a change.
   const idleBackground = layout.activeLayout ? parseIdleBackground(layout.activeLayout.idleBackground) : PHOTOS;
   const idleKey = JSON.stringify(isMobile ? withoutDashboard(idleBackground) : idleBackground);
   useEffect(() => {
@@ -444,6 +470,31 @@ export function Dashboard({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
+  /** Today's scene with `parts`: this dashboard's, or another's shown as it is saved. */
+  const todayScene = (parts: WidgetConfig[], look: { idle: boolean; night: boolean; drift: boolean }) => (
+    <TodayScene
+      parts={parts}
+      weather={data.weather.data ?? null}
+      events={data.calendar.events}
+      onOpenEvent={eventSheet.open}
+      idle={look.idle}
+      night={look.night}
+      drift={look.drift}
+      household={{
+        chores: data.chores.chores as unknown as ChoreLike[],
+        lists: data.shopping.lists as unknown as Array<{ id: string; name: string; items: Array<{ checked: boolean }> }>,
+        birthdays: data.birthdays.birthdays,
+        onTickChore: widgetProps.chores?.onChoreComplete as ((id: string) => void) | undefined,
+        onAddShopping: widgetProps.shopping?.onAddClick as (() => void) | undefined,
+      }}
+      topOffset={uiHidden || wallDock || layout.isEditing ? 0 : 56}
+    />
+  );
+  // The dashboard the canvas shows instead of this one, if any (#1294).
+  const previewLayout = layout.isEditing && previewId && previewId !== layout.activeLayout?.id
+    ? data.layouts.allLayouts.find((l) => l.id === previewId) ?? null
+    : null;
+
   // Always this wrapper, styled or not, so a change of text size does not
   // remount the dashboard under it.
   if (isMobile) {
@@ -497,11 +548,14 @@ export function Dashboard({
         showWallpaper
         // The editor keeps its own controls and the rail (#922).
         dock={layout.isEditing ? undefined : 'wall'}
+        // On a canvas (#1265) the controls are beside the picture, which shows
+        // the screen as it is when in use: no dock.
+        hideNav={layout.isEditing && remote !== null}
         screenJobs={
           <ScreenJobs
             labelled
             onScreensaverClick={() => window.dispatchEvent(new Event('prism:screensaver'))}
-            onEditClick={activeUser && activeUser.role !== 'parent' ? undefined : layout.handleEditStart}
+            onEditClick={layout.isEditing || (activeUser && activeUser.role !== 'parent') ? undefined : layout.handleEditStart}
           />
         }
       >
@@ -544,6 +598,13 @@ export function Dashboard({
               idleHalf={layout.idleHalf}
               onIdleHalfChange={layout.setIdleHalf}
               idleCheck={idleCheck}
+              screenPlan={screenPlan}
+              onScreenPlanChange={changeScreenPlan}
+              previewDashboardId={previewId}
+              onPreviewDashboardChange={setPreviewId}
+              screenId={screenId}
+              deviceNamed={deviceNamed}
+              onDeviceNamed={openNamedScreen}
               screenGuideOrientation={screenGuideOrientation}
               onScreenGuideOrientationChange={setScreenGuideOrientation}
               enabledSizes={enabledSizes}
@@ -586,28 +647,38 @@ export function Dashboard({
               onScrollInfo={handleScrollInfo}
               scrollToRef={scrollToGridRef}
             />
+          ) : previewLayout ? (
+            // Another dashboard as it is saved, for a moment in its switch
+            // (#1294): seen on the canvas, not edited. Open on its row edits it.
+            <div className="contents" data-canvas-preview={previewLayout.id}>
+              <WidgetErrorBoundary>
+                {isBuiltInView(previewLayout.view) ? todayScene(previewLayout.widgets, { idle: false, night: false, drift: false }) : (
+                  <LayoutGridEditor
+                    key={`preview-${previewLayout.id}`}
+                    layout={previewLayout.widgets}
+                    onLayoutChange={() => {}}
+                    isEditable={false}
+                    renderWidget={renderDashboardWidget}
+                    widgetConstraints={dashboardConstraints}
+                    margin={8}
+                    headerOffset={16}
+                    bottomOffset={bottomOffset + editorBarRoom}
+                    screenGuideOrientation={screenGuideOrientation}
+                    enabledSizes={enabledSizes}
+                  />
+                )}
+              </WidgetErrorBoundary>
+            </div>
           ) : todayPage ? (
             // Today (#907): one scene over the photo instead of the grid. While
             // editing it stays the scene, so the Widgets sheet's changes show
             // on it as they are made (#1151).
             <WidgetErrorBoundary>
-              <TodayScene
-                parts={layout.activeWidgets}
-                weather={data.weather.data ?? null}
-                events={data.calendar.events}
-                onOpenEvent={eventSheet.open}
-                idle={calmIdle || previewState === 'resting' || previewState === 'night'}
-                night={sceneNight}
-                drift={idleDrift}
-                household={{
-                  chores: data.chores.chores as unknown as ChoreLike[],
-                  lists: data.shopping.lists as unknown as Array<{ id: string; name: string; items: Array<{ checked: boolean }> }>,
-                  birthdays: data.birthdays.birthdays,
-                  onTickChore: widgetProps.chores?.onChoreComplete as ((id: string) => void) | undefined,
-                  onAddShopping: widgetProps.shopping?.onAddClick as (() => void) | undefined,
-                }}
-                topOffset={uiHidden || wallDock || layout.isEditing ? 0 : 56}
-              />
+              {todayScene(layout.activeWidgets, {
+                idle: calmIdle || previewState === 'resting' || previewState === 'night',
+                night: sceneNight,
+                drift: idleDrift,
+              })}
             </WidgetErrorBoundary>
           ) : (
             <WidgetErrorBoundary>

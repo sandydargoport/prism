@@ -8,7 +8,14 @@
 import {
   normalizeTandoorRecipe,
   testTandoorConnection,
-  fetchTandoorImage,
+  checkTandoorWriteAccess,
+  createTandoorMealPlanEntry,
+  updateTandoorMealPlanEntry,
+  deleteTandoorMealPlanEntry,
+  updateTandoorRecipe,
+  deleteTandoorRecipe,
+  fetchTandoorRecipes,
+  fetchTandoorMealPlan,
   UnsafeUrlError,
   type TandoorRecipeDetail,
 } from '../tandoor';
@@ -114,27 +121,179 @@ describe('testTandoorConnection', () => {
   });
 });
 
-describe('fetchTandoorImage', () => {
-  it('returns a Buffer for a successful download', async () => {
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: new Headers(),
-      arrayBuffer: () => Promise.resolve(new Uint8Array([0xff, 0xd8]).buffer),
-    }) as unknown as typeof fetch;
-
-    const buf = await fetchTandoorImage('https://tandoor.example.com/media/x.jpg', 'tok');
-    expect(buf).toBeInstanceOf(Buffer);
-    expect(buf?.length).toBe(2);
+describe('checkTandoorWriteAccess (#1205)', () => {
+  // OPTIONS /api/meal-plan/ as a Tandoor v1 server answered it: a `read` token
+  // gets the view's description only, a `read write` token also gets a POST
+  // action, and a token with neither scope is refused.
+  const READ_ONLY = { name: 'Meal Plan List', description: '', renders: ['application/json'], parses: ['application/json'] };
+  const READ_WRITE = { ...READ_ONLY, actions: { POST: { title: { type: 'string' } } } };
+  const answer = (status: number, body: unknown) => jest.fn().mockResolvedValue({
+    ok: status >= 200 && status < 300,
+    status,
+    headers: new Headers(),
+    json: () => Promise.resolve(body),
   });
 
-  it('returns null on a failed download (never throws)', async () => {
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: false,
-      status: 404,
-      headers: new Headers(),
-    }) as unknown as typeof fetch;
+  it('reports a read token as reading only', async () => {
+    global.fetch = answer(200, READ_ONLY) as unknown as typeof fetch;
+    expect(await checkTandoorWriteAccess('https://tandoor.example.com', 'tok')).toBe(false);
+  });
 
-    expect(await fetchTandoorImage('https://tandoor.example.com/media/missing.jpg', 'tok')).toBeNull();
+  it('reports a read write token as writing, asking with OPTIONS so nothing is written', async () => {
+    const fetchMock = answer(200, READ_WRITE);
+    global.fetch = fetchMock as unknown as typeof fetch;
+    expect(await checkTandoorWriteAccess('https://tandoor.example.com/', 'tok')).toBe(true);
+    expect(fetchMock.mock.calls[0][0]).toBe('https://tandoor.example.com/api/meal-plan/');
+    expect(fetchMock.mock.calls[0][1].method).toBe('OPTIONS');
+  });
+
+  it('reports false, never throws, when the check fails', async () => {
+    global.fetch = answer(403, { detail: 'denied' }) as unknown as typeof fetch;
+    expect(await checkTandoorWriteAccess('https://tandoor.example.com', 'tok')).toBe(false);
+    global.fetch = jest.fn().mockRejectedValue(new Error('ECONNRESET')) as unknown as typeof fetch;
+    expect(await checkTandoorWriteAccess('https://tandoor.example.com', 'tok')).toBe(false);
+  });
+});
+
+describe('Tandoor meal-plan writes (#1206)', () => {
+  // A meal-plan entry as Tandoor's MealPlanSerializer returns it after a write.
+  const STORED = {
+    id: 41,
+    title: 'Tacos',
+    recipe: null,
+    servings: '4.0000000000000000',
+    note: '',
+    from_date: '2026-11-20T18:30:00-06:00',
+    to_date: '2026-11-20T18:30:00-06:00',
+    meal_type: { id: 1, name: 'Dinner', order: 0, time: '18:00:00', color: null, created_by: 1 },
+    meal_type_name: 'Dinner',
+    recipe_name: null,
+  };
+  const WRITE = {
+    title: 'Tacos',
+    recipeId: null,
+    servings: 4,
+    note: '',
+    fromDate: '2026-11-21T00:30:00.000Z',
+    mealType: { id: 1 },
+  };
+  const answer = (status: number, body: unknown = STORED) => jest.fn().mockResolvedValue({
+    ok: status >= 200 && status < 300, status, statusText: '', headers: new Headers(), json: () => Promise.resolve(body),
+  });
+
+  it('adds an entry with a POST, the meal type and recipe as plain ids, and returns what Tandoor stored', async () => {
+    const fetchMock = answer(201);
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const stored = await createTandoorMealPlanEntry('https://tandoor.example.com', 'tok', { ...WRITE, recipeId: 7 });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('https://tandoor.example.com/api/meal-plan/');
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(init.body)).toEqual({
+      title: 'Tacos', recipe: 7, servings: 4, note: '',
+      from_date: '2026-11-21T00:30:00.000Z', to_date: '2026-11-21T00:30:00.000Z', meal_type: 1,
+    });
+    expect(stored.id).toBe(41);
+  });
+
+  it('sends a meal type Tandoor does not have by name, so Tandoor adds it', async () => {
+    const fetchMock = answer(201);
+    global.fetch = fetchMock as unknown as typeof fetch;
+    await createTandoorMealPlanEntry('https://tandoor.example.com', 'tok', { ...WRITE, mealType: { name: 'Breakfast' } });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).meal_type).toEqual({ name: 'Breakfast' });
+  });
+
+  it('moves an entry with a PATCH to its own address', async () => {
+    const fetchMock = answer(200);
+    global.fetch = fetchMock as unknown as typeof fetch;
+    await updateTandoorMealPlanEntry('https://tandoor.example.com', 'tok', '41', WRITE);
+    expect(fetchMock.mock.calls[0][0]).toBe('https://tandoor.example.com/api/meal-plan/41/');
+    expect(fetchMock.mock.calls[0][1].method).toBe('PATCH');
+  });
+
+  it('removes an entry with a DELETE, and one already gone counts as removed', async () => {
+    const fetchMock = answer(204, null);
+    global.fetch = fetchMock as unknown as typeof fetch;
+    await deleteTandoorMealPlanEntry('https://tandoor.example.com', 'tok', '41');
+    expect(fetchMock.mock.calls[0][1].method).toBe('DELETE');
+    global.fetch = answer(404, null) as unknown as typeof fetch;
+    await expect(deleteTandoorMealPlanEntry('https://tandoor.example.com', 'tok', '41')).resolves.toBeUndefined();
+  });
+
+  it('says the token needs the write scope when Tandoor refuses', async () => {
+    global.fetch = answer(403, { detail: 'You do not have permission' }) as unknown as typeof fetch;
+    await expect(createTandoorMealPlanEntry('https://tandoor.example.com', 'tok', WRITE)).rejects.toThrow(/write scope/);
+  });
+});
+
+describe('Tandoor recipe writes (#1207)', () => {
+  const answer = (status: number, body: unknown) => jest.fn().mockResolvedValue({
+    ok: status >= 200 && status < 300, status, statusText: '', headers: new Headers(), json: () => Promise.resolve(body),
+  });
+
+  it('sends name, description, servings and times with a PATCH, and returns Tandoor\'s new time', async () => {
+    const fetchMock = answer(200, { id: 2, name: 'Pasta e Fagioli', updated_at: '2026-11-13T05:00:00.000000-06:00' });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const seen = await updateTandoorRecipe('https://tandoor.example.com', 'tok', '2', {
+      name: 'Pasta e Fagioli', description: null, servings: 6, prepTime: 15, cookTime: null,
+    });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('https://tandoor.example.com/api/recipe/2/');
+    expect(init.method).toBe('PATCH');
+    // Only these fields: ingredients and steps are left as Tandoor has them.
+    expect(JSON.parse(init.body)).toEqual({ name: 'Pasta e Fagioli', description: '', servings: 6, working_time: 15, waiting_time: 0 });
+    expect(seen).toEqual(new Date('2026-11-13T11:00:00.000Z'));
+  });
+
+  it('leaves servings alone when Prism has none', async () => {
+    const fetchMock = answer(200, { id: 2 });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    await updateTandoorRecipe('https://tandoor.example.com', 'tok', '2', { name: 'X', description: 'd', servings: null, prepTime: null, cookTime: 30 });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).not.toHaveProperty('servings');
+  });
+
+  it('deletes a recipe, and one already gone counts as deleted', async () => {
+    const fetchMock = answer(204, null);
+    global.fetch = fetchMock as unknown as typeof fetch;
+    await deleteTandoorRecipe('https://tandoor.example.com', 'tok', '2');
+    expect(fetchMock.mock.calls[0][1].method).toBe('DELETE');
+    global.fetch = answer(404, null) as unknown as typeof fetch;
+    await expect(deleteTandoorRecipe('https://tandoor.example.com', 'tok', '2')).resolves.toBeUndefined();
+  });
+});
+
+describe('Tandoor paging stays on the configured server (#1225)', () => {
+  // A `next` link naming another host, as a server behind a misconfigured
+  // proxy (or a hostile one) can hand back.
+  const page = (results: unknown[], next: string | null) => ({
+    ok: true, status: 200, statusText: '', headers: new Headers(),
+    json: () => Promise.resolve({ count: 2, next, results }),
+  });
+  const urls = (m: jest.Mock) => m.mock.calls.map((c) => String(c[0]));
+
+  it('follows a meal-plan `next` on another host only as a path on the configured server', async () => {
+    const fetchMock = jest.fn()
+      .mockResolvedValueOnce(page([{ id: 1, from_date: '2026-11-20' }], 'https://elsewhere.example.net/api/meal-plan/?page=2&page_size=100'))
+      .mockResolvedValueOnce(page([{ id: 2, from_date: '2026-11-21' }], null));
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const entries = await fetchTandoorMealPlan('https://tandoor.example.com', 'tok');
+    expect(entries.map((e) => e.id)).toEqual([1, 2]);
+    expect(urls(fetchMock)[1]).toBe('https://tandoor.example.com/api/meal-plan/?page=2&page_size=100');
+    expect(urls(fetchMock).every((u) => u.startsWith('https://tandoor.example.com/'))).toBe(true);
+  });
+
+  it('never sends the token to the host a recipe-list `next` names', async () => {
+    const fetchMock = jest.fn((url: string) => {
+      if (url.includes('/api/recipe/?')) {
+        return Promise.resolve(url.includes('page=2')
+          ? page([{ id: 2 }], null)
+          : page([{ id: 1 }], 'http://elsewhere.example.net/api/recipe/?page=2&page_size=100'));
+      }
+      return Promise.resolve({ ...page([], null), json: () => Promise.resolve({ ...DETAIL, id: Number(url.match(/recipe\/(\d+)/)?.[1]) }) });
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const { total } = await fetchTandoorRecipes('https://tandoor.example.com', 'tok');
+    expect(total).toBe(2);
+    expect(urls(fetchMock)).toContain('https://tandoor.example.com/api/recipe/?page=2&page_size=100');
+    expect(urls(fetchMock).some((u) => u.includes('elsewhere'))).toBe(false);
   });
 });

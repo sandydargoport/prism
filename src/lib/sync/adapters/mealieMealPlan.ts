@@ -13,7 +13,16 @@ import { eq, inArray } from 'drizzle-orm';
 import { startOfWeek, format } from 'date-fns';
 import { db } from '@/lib/db/client';
 import { settings } from '@/lib/db/schema';
-import { fetchMealieMealPlan, type MealieMealPlanEntry } from '@/lib/integrations/mealie';
+import {
+  fetchMealieMealPlan,
+  createMealieMealPlanEntry,
+  updateMealieMealPlanEntry,
+  deleteMealieMealPlanEntry,
+  type MealieMealPlanEntry,
+  type MealieMealPlanWrite,
+} from '@/lib/integrations/mealie';
+import { getHouseholdTimezone } from '@/lib/householdTimezone';
+import { todayKey } from '@/lib/utils/zonedDate';
 import { DAYS_OF_WEEK, type DayOfWeek } from '@/lib/constants/days';
 import { loadSourceConnection } from './tandoorSource';
 import { ensureMealieRecipeImported } from './mealieRecipes';
@@ -23,12 +32,19 @@ import {
   loadLocalMeals,
   writeMealRow,
   deleteMealRow,
+  loadPushCandidates,
+  loadMealToPush,
+  recordPushedMeal,
+  type MealFieldOptions,
+  type MealToPush,
   type NormalizedMeal,
   type MealType,
 } from './mealWriter';
 import type { EntitySyncAdapter, RemoteItem } from '../types';
 
 const MEAL_SOURCE = 'mealie';
+/** Mealie plans carry no servings: leave them out of the comparison, keep Prism's on push. */
+const FIELDS: MealFieldOptions = { servings: false };
 
 interface Payload extends NormalizedMeal {
   recipeExternalId: string | null;
@@ -93,6 +109,27 @@ async function writeMeal(sourceId: string, p: Payload, localId: string | null): 
   await writeMealRow(MEAL_SOURCE, p, recipeId, localId);
 }
 
+/** A Prism meal as a Mealie entry (date-only: Mealie plans have no time). */
+export function toMealieEntry(meal: MealToPush): MealieMealPlanWrite {
+  return {
+    date: meal.date,
+    entryType: meal.mealType,
+    title: meal.name,
+    text: meal.description ?? '',
+    recipeId: meal.recipeExternalId,
+  };
+}
+
+async function pushEntry(sourceId: string, localId: string, existingId: string | null): Promise<void> {
+  const source = await loadSourceConnection(sourceId);
+  const [meal, weekStartsOn] = await Promise.all([loadMealToPush(localId, sourceId), loadWeekStartsOn()]);
+  const body = toMealieEntry(meal);
+  const stored = existingId
+    ? await updateMealieMealPlanEntry(source.serverUrl, source.token, existingId, body)
+    : await createMealieMealPlanEntry(source.serverUrl, source.token, body);
+  await recordPushedMeal(localId, MEAL_SOURCE, normalizeEntry(stored, weekStartsOn, new Set()), FIELDS);
+}
+
 export const mealieMealPlanAdapter: EntitySyncAdapter<Payload> = {
   entityType: 'meal',
 
@@ -113,14 +150,14 @@ export const mealieMealPlanAdapter: EntitySyncAdapter<Payload> = {
       return {
         externalId: p.entryId,
         updatedAt: null,
-        fingerprint: mealFingerprint(p),
+        fingerprint: mealFingerprint(p, FIELDS),
         label: `${p.name} — ${p.dayOfWeek} ${p.mealType}`,
         payload: p,
       };
     });
   },
 
-  loadLocal: () => loadLocalMeals(MEAL_SOURCE),
+  loadLocal: () => loadLocalMeals(MEAL_SOURCE, FIELDS),
 
   async applyAdd(sourceId, change) {
     if (change.payload) await writeMeal(sourceId, change.payload, null);
@@ -130,5 +167,21 @@ export const mealieMealPlanAdapter: EntitySyncAdapter<Payload> = {
   },
   async applyDelete(_sourceId, change) {
     if (change.localId) await deleteMealRow(change.localId);
+  },
+
+  push: {
+    async loadCandidates() {
+      return loadPushCandidates(todayKey(await getHouseholdTimezone()));
+    },
+    async pushAdd(sourceId, change) {
+      if (change.localId) await pushEntry(sourceId, change.localId, null);
+    },
+    async pushUpdate(sourceId, change) {
+      if (change.localId) await pushEntry(sourceId, change.localId, change.externalId);
+    },
+    async pushDelete(sourceId, change) {
+      const source = await loadSourceConnection(sourceId);
+      await deleteMealieMealPlanEntry(source.serverUrl, source.token, change.externalId);
+    },
   },
 };

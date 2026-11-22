@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, requireRole, getDisplayAuth } from '@/lib/auth';
+import { requireAuth, requireRole } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { settings } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
 import { AWAY_AUTO_AFTER_KEY, isAwayAutoHours } from '@/lib/awayMode/autoAfter';
+import { screenOrPerson } from '@/lib/auth/everydayAuth';
 
 const AWAY_MODE_KEY = 'awayMode';
 
@@ -103,7 +104,8 @@ export async function POST(request: NextRequest) {
         } catch {
           return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
-        const display = await getDisplayAuth();
+        // A named screen, a trusted device or a person, never just any browser (#1222).
+        const display = await screenOrPerson();
         if (!display) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         const { rateLimitGuard } = await import('@/lib/cache/rateLimit');
         const limited = await rateLimitGuard('household', 'away-mode-auto', 6, 60);
@@ -183,7 +185,7 @@ export async function PATCH(request: NextRequest) {
       } catch {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
-      const display = await getDisplayAuth();
+      const display = await screenOrPerson();
       if (!display) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       const current = await readAutoAfter();
       if (current !== null) return NextResponse.json({ autoAfterHours: current });

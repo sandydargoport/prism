@@ -1,22 +1,23 @@
 'use client';
 
 /**
- * The editing bar (#1151). Editing starts from the dock at the foot of the
- * screen, so the controls stay there: the dock's place, its dark material and
- * its size, with sheets that rise from it. Nothing is drawn at the top, so a
- * parent never has to look for where the controls went.
+ * The editor's controls (#1151): Dashboard | Widgets | Through the day | Look
+ * | More, the same on the built-in Today and on a family's own dashboards;
+ * only what is inside Widgets differs.
  *
- * Done | Dashboard | Widgets | Through the day | Look | More, the same on the
- * built-in Today and on a family's own dashboards; only what is inside the
- * Widgets sheet differs.
+ * Every device edits on a canvas (#1265, #1280), so they are a panel in a
+ * column beside it (below it on a phone): Cancel and Done at its top right,
+ * then the sheets as tabs over the open one, so a panel never covers the
+ * dashboard being arranged. One is always open. The bar over the full screen,
+ * with sheets rising from it, went with editing in place (#1283).
  */
 import * as React from 'react';
-import { Check, LayoutDashboard, MoreHorizontal, Palette, Shapes, SunMoon, X } from 'lucide-react';
+import { LayoutDashboard, MoreHorizontal, Palette, Shapes, SunMoon, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type EditorSheet = 'dashboard' | 'widgets' | 'day' | 'look' | 'more';
 
-const SHEETS: Array<{ id: EditorSheet; label: string; Icon: typeof Check }> = [
+const SHEETS: Array<{ id: EditorSheet; label: string; Icon: LucideIcon }> = [
   { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard },
   { id: 'widgets', label: 'Widgets', Icon: Shapes },
   { id: 'day', label: 'Through the day', Icon: SunMoon },
@@ -26,7 +27,7 @@ const SHEETS: Array<{ id: EditorSheet; label: string; Icon: typeof Check }> = [
 
 export interface EditorBarProps {
   open: EditorSheet | null;
-  onOpenChange: (sheet: EditorSheet | null) => void;
+  onOpenChange: (sheet: EditorSheet) => void;
   /** The open sheet's contents. */
   sheet?: React.ReactNode;
   /** Sheets with changes not yet saved get a dot. */
@@ -36,84 +37,79 @@ export interface EditorBarProps {
   doneBlocked?: string | null;
   onDone: () => void;
   onCancel: () => void;
-  /** Showing the screen as it rests (the Idle screen), not as it is in use. */
-  resting?: boolean;
+  /** Showing the screen as it rests or at night (the Idle screen), not as it is in use; null in use. */
+  resting?: 'resting' | 'night' | null;
+  /** Showing another dashboard as it is saved, by its name (#1294). */
+  previewName?: string | null;
   onLeaveResting?: () => void;
 }
 
 export const EditorBar = React.forwardRef<HTMLDivElement, EditorBarProps>(function EditorBar(
-  { open, onOpenChange, sheet, dirty = {}, doneLabel = 'Done', doneBlocked = null, onDone, onCancel, resting = false, onLeaveResting },
+  { open, onOpenChange, sheet, dirty = {}, doneLabel = 'Done', doneBlocked = null, onDone, onCancel, resting = null, previewName = null, onLeaveResting },
   ref,
 ) {
   const title = SHEETS.find((s) => s.id === open)?.label;
-  // On a phone (#1153) the five sheets share one row and their labels may
-  // wrap; Cancel and Done sit on a row of their own.
-  const item = 'flex min-h-[56px] min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 text-center text-caption font-medium leading-tight transition-colors sm:min-w-[64px] sm:px-3';
+  // A panel on a light page, as a desktop app has it: Cancel and Done at the
+  // top right, and the five sheets as tabs along the top of the panel they
+  // open, so nothing dark sits beside the picture. With a mouse a tab is one
+  // line of words; a finger keeps 44px or more and the icons.
   return (
-    <div
-      ref={ref}
-      className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-200 w-[calc(100vw-1rem)] -translate-x-1/2 sm:w-auto"
-      data-editor-bar
-    >
-      {open && sheet && (
-        <div
-          role="dialog"
-          aria-label={title}
-          className="absolute bottom-full left-1/2 mb-3 max-h-[min(70vh,44rem)] w-[min(94vw,44rem)] -translate-x-1/2 overflow-auto rounded-[1.4rem] bg-card p-5 text-card-foreground shadow-2xl"
-          data-editor-sheet={open}
+    <div ref={ref} className="flex flex-col gap-3 lg:h-full lg:min-h-0" data-editor-bar data-editor-panels>
+      <div className="flex min-h-[44px] shrink-0 items-center justify-end gap-2" data-editor-actions>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="min-h-[44px] rounded-full px-4 text-body text-muted-foreground transition-colors hover:bg-muted hover:text-foreground pointer-fine:min-h-8 pointer-fine:px-3 pointer-fine:text-caption pointer-fine:font-medium"
+          data-editor-cancel
         >
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="m-0 text-title font-medium" style={{ fontFamily: 'var(--font-display)' }}>{title}</h2>
-            <button
-              type="button"
-              onClick={() => onOpenChange(null)}
-              className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-muted"
-              aria-label="Close"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-          {sheet}
-        </div>
-      )}
-      {resting && !open && (
-        <div className="absolute bottom-full left-1/2 mb-3 flex -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-full bg-card py-1.5 pl-5 pr-1.5 text-body text-card-foreground shadow-xl" data-editor-resting>
-          Showing the screen while it rests
-          <button type="button" onClick={onLeaveResting} className="min-h-[44px] rounded-full bg-muted px-4 hover:bg-muted/70">Back to in use</button>
-        </div>
-      )}
-      <nav aria-label="Edit" className="grid grid-cols-5 gap-1 rounded-[20px] bg-[rgb(22_17_13)] p-1.5 shadow-2xl sm:flex sm:items-center">
-        {SHEETS.map(({ id, label, Icon }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => onOpenChange(open === id ? null : id)}
-            aria-expanded={open === id}
-            className={cn(item, 'relative text-white/85 hover:bg-white/10', open === id && 'bg-white/15 text-white')}
-            data-editor-open={id}
-          >
-            <Icon className="h-5 w-5" />
-            <span className="sm:whitespace-nowrap">{label}</span>
-            {dirty[id] && <span aria-label="unsaved changes" className="absolute right-2 top-2 h-2 w-2 rounded-full bg-white" />}
-          </button>
-        ))}
-        <span className="mx-1 hidden h-8 w-px bg-white/20 sm:block" aria-hidden />
-        <button type="button" onClick={onCancel} className={cn(item, 'col-span-2 text-white/85 hover:bg-white/10')} data-editor-cancel>
-          <X className="h-5 w-5" />
-          <span>Cancel</span>
+          Cancel
         </button>
         <button
           type="button"
           onClick={onDone}
           disabled={!!doneBlocked}
           title={doneBlocked ?? undefined}
-          className={cn(item, 'col-span-3 bg-white text-[rgb(22_17_13)] hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50')}
+          className="min-h-[44px] rounded-full bg-foreground px-6 text-body font-medium text-background transition-colors hover:bg-foreground/85 disabled:cursor-not-allowed disabled:opacity-50 pointer-fine:min-h-8 pointer-fine:px-4 pointer-fine:text-caption"
           data-editor-done
         >
-          <Check className="h-5 w-5" />
-          <span>{doneLabel}</span>
+          {doneLabel}
         </button>
-      </nav>
+      </div>
+      {/* Through the day has its own, beside its slider (#1294). */}
+      {(resting || previewName) && open !== 'day' && (
+        <div className="flex shrink-0 items-center justify-between gap-3 rounded-2xl bg-muted py-1.5 pl-4 pr-1.5 text-body" data-editor-resting={resting ?? 'preview'}>
+          {resting === 'night' ? 'Showing the screen at night' : resting ? 'Showing the screen while it rests' : `Showing ${previewName} as it is saved`}
+          <button type="button" onClick={onLeaveResting} className="min-h-[44px] rounded-full bg-background px-4 hover:bg-background/70 pointer-fine:min-h-8 pointer-fine:px-3 pointer-fine:text-caption pointer-fine:font-medium">Back to in use</button>
+        </div>
+      )}
+      <div className="flex flex-col rounded-[1.4rem] bg-card text-card-foreground ring-1 ring-border pointer-fine:rounded-2xl lg:min-h-0 lg:flex-1">
+        <nav aria-label="Edit" className="flex shrink-0 border-b border-border px-2 pointer-fine:px-1.5">
+          {SHEETS.map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onOpenChange(id)}
+              aria-pressed={open === id}
+              className={cn(
+                'relative -mb-px flex min-h-[56px] min-w-0 flex-1 flex-col items-center justify-center gap-1 border-b-2 px-1 text-center text-caption font-medium leading-tight transition-colors',
+                'pointer-fine:min-h-10 pointer-fine:flex-auto pointer-fine:whitespace-nowrap pointer-fine:px-2',
+                open === id ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
+              )}
+              data-editor-open={id}
+            >
+              <Icon className="h-5 w-5 pointer-fine:hidden" aria-hidden />
+              <span>{label}</span>
+              {dirty[id] && <span aria-label="unsaved changes" className="absolute right-1 top-2 h-1.5 w-1.5 rounded-full bg-primary" />}
+            </button>
+          ))}
+        </nav>
+        {open && sheet && (
+          // The tab above names the sheet, so it has no heading of its own.
+          <section aria-label={title} className="p-5 pointer-fine:p-4 lg:min-h-0 lg:flex-1 lg:overflow-auto" data-editor-sheet={open}>
+            {sheet}
+          </section>
+        )}
+      </div>
     </div>
   );
 });

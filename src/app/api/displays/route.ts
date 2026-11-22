@@ -1,10 +1,10 @@
 /**
  * The display registry (#690).
  *
- * GET  — every named screen, with whether it is online, its dashboard,
- *        settings and size, whether it is being edited from another device,
+ * GET:  every named screen, with whether it is online, its dashboard and
+ *        switches (#1282), settings and size, whether it is being edited from another device,
  *        and which one (if any) this browser is
- * POST — name this browser's screen. Parent only. A browser already named is
+ * POST: name this browser's screen. Parent only. A browser already named is
  *        renamed rather than given a second row. With `id` instead of `name`,
  *        this browser becomes that existing screen: how a screen whose browser
  *        was reset gets its name and settings back.
@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { asc, eq } from 'drizzle-orm';
 import { getDisplayAuth, requireAuth, requireRole } from '@/lib/auth';
+import { parseSwitches } from '@/lib/screenSwitches';
 import {
   cleanDisplayName,
   currentDisplay,
@@ -54,6 +55,7 @@ export async function GET() {
         lastSeenAt: d.lastSeenAt?.toISOString() ?? null,
         online: isOnline(d.lastSeenAt, now),
         dashboardId: d.dashboardId,
+        switches: parseSwitches(d.switches),
         settings: d.settings,
         // Its size, for showing it at its own shape on a phone (#1153).
         width: d.screenWidth ?? null,

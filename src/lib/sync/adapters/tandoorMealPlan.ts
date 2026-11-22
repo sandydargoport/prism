@@ -11,7 +11,17 @@ import { and, eq, isNotNull } from 'drizzle-orm';
 import { startOfWeek, format } from 'date-fns';
 import { db } from '@/lib/db/client';
 import { recipes, settings } from '@/lib/db/schema';
-import { fetchTandoorMealPlan, type TandoorMealPlanEntry } from '@/lib/integrations/tandoor';
+import {
+  fetchTandoorMealPlan,
+  fetchTandoorMealTypes,
+  createTandoorMealPlanEntry,
+  updateTandoorMealPlanEntry,
+  deleteTandoorMealPlanEntry,
+  type TandoorMealPlanEntry,
+  type TandoorMealPlanWrite,
+  type TandoorMealType,
+} from '@/lib/integrations/tandoor';
+import { todayKey, zonedWallTimeToUtc } from '@/lib/utils/zonedDate';
 import { DAYS_OF_WEEK, type DayOfWeek } from '@/lib/constants/days';
 import { zonedParts } from '@/lib/utils/timezone';
 import { loadTandoorSource } from './tandoorSource';
@@ -21,6 +31,11 @@ import {
   loadLocalMeals,
   writeMealRow,
   deleteMealRow,
+  loadPushCandidates,
+  loadMealToPush,
+  recordPushedMeal,
+  DEFAULT_MEAL_TIME,
+  type MealToPush,
   type NormalizedMeal,
   type MealType,
 } from './mealWriter';
@@ -96,6 +111,57 @@ async function writeMeal(sourceId: string, p: Payload, localId: string | null): 
   await writeMealRow(MEAL_SOURCE, p, recipeId, localId);
 }
 
+/**
+ * Which Tandoor meal type a Prism meal goes under: the first of the server's
+ * types that reads as the same kind (as a pull maps them). With none, the name
+ * is sent and Tandoor adds that type.
+ */
+export function pickTandoorMealType(
+  types: TandoorMealType[],
+  mealType: MealType,
+): { ref: TandoorMealPlanWrite['mealType']; time: string | null } {
+  const sameKind = types.filter((t) => mapMealType(t.name) === mealType);
+  // A pull reads any unrecognised type as dinner, so prefer one that says so.
+  const match = mealType === 'dinner'
+    ? sameKind.find((t) => /dinner|supper/i.test(t.name)) ?? sameKind[0]
+    : sameKind[0];
+  if (match) return { ref: { id: match.id }, time: match.time?.match(/^(\d{2}:\d{2})/)?.[1] ?? null };
+  return { ref: { name: mealType[0]!.toUpperCase() + mealType.slice(1) }, time: null };
+}
+
+/** A Prism meal as a Tandoor entry: the meal's own time, else the type's, else Prism's default. */
+export function toTandoorEntry(meal: MealToPush, types: TandoorMealType[], timezone: string): TandoorMealPlanWrite {
+  const { ref, time } = pickTandoorMealType(types, meal.mealType);
+  const hhmm = meal.mealTime ?? time ?? DEFAULT_MEAL_TIME[meal.mealType];
+  const recipeId = meal.recipeExternalId !== null ? Number(meal.recipeExternalId) : NaN;
+  return {
+    title: meal.name,
+    recipeId: Number.isInteger(recipeId) ? recipeId : null,
+    servings: meal.servings ?? 1,
+    note: meal.description ?? '',
+    fromDate: zonedWallTimeToUtc(meal.date, hhmm, timezone).toISOString(),
+    mealType: ref,
+  };
+}
+
+async function pushEntry(sourceId: string, localId: string, existingId: string | null): Promise<void> {
+  const source = await loadTandoorSource(sourceId);
+  const [meal, types, timeSettings] = await Promise.all([
+    loadMealToPush(localId, sourceId),
+    fetchTandoorMealTypes(source.serverUrl, source.token),
+    loadTimeSettings(),
+  ]);
+  const body = toTandoorEntry(meal, types, timeSettings.timezone);
+  const stored = existingId
+    ? await updateTandoorMealPlanEntry(source.serverUrl, source.token, existingId, body)
+    : await createTandoorMealPlanEntry(source.serverUrl, source.token, body);
+  await recordPushedMeal(
+    localId,
+    MEAL_SOURCE,
+    normalizeEntry(stored, timeSettings.weekStartsOn, timeSettings.timezone, new Set()),
+  );
+}
+
 export const tandoorMealPlanAdapter: EntitySyncAdapter<Payload> = {
   entityType: 'meal',
 
@@ -135,5 +201,22 @@ export const tandoorMealPlanAdapter: EntitySyncAdapter<Payload> = {
   },
   async applyDelete(_sourceId, change) {
     if (change.localId) await deleteMealRow(change.localId);
+  },
+
+  push: {
+    async loadCandidates() {
+      const { timezone } = await loadTimeSettings();
+      return loadPushCandidates(todayKey(timezone));
+    },
+    async pushAdd(sourceId, change) {
+      if (change.localId) await pushEntry(sourceId, change.localId, null);
+    },
+    async pushUpdate(sourceId, change) {
+      if (change.localId) await pushEntry(sourceId, change.localId, change.externalId);
+    },
+    async pushDelete(sourceId, change) {
+      const source = await loadTandoorSource(sourceId);
+      await deleteTandoorMealPlanEntry(source.serverUrl, source.token, change.externalId);
+    },
   },
 };

@@ -8,6 +8,13 @@ import type { NavItem } from './navItems';
 export const DEFAULT_DOCK_HREFS = ['/', '/calendar', '/chores', '/shopping', '/meals', '/photos'] as const;
 
 export const DOCK_SIZE = 6;
+
+/**
+ * One tile in the More panel (#1257): the same for a page, a screen job and
+ * Settings, Help or Sign in. The icon above its name; h-auto undoes a
+ * Button's fixed height.
+ */
+export const MORE_TILE = 'flex h-auto min-h-[64px] min-w-[64px] flex-col items-center justify-center gap-1 rounded-2xl px-3 py-2 text-caption font-medium text-foreground hover:bg-muted [&_svg]:size-5';
 /** On a phone: five pages and More (#924). */
 export const DOCK_SIZE_NARROW = 5;
 

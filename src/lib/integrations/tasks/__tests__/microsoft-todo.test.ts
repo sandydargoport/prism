@@ -370,3 +370,50 @@ describe('microsoftTodoProvider', () => {
     });
   });
 });
+
+// #1202: To Do steps come into Prism as subtasks, and ticks go back to the step.
+describe('microsoftTodoProvider steps', () => {
+  const task = {
+    id: 'task-1', title: 'Pack for the trip', status: 'notStarted', importance: 'normal',
+    createdDateTime: '2026-11-10T09:00:00Z', lastModifiedDateTime: '2026-11-12T09:00:00Z',
+    checklistItems: [
+      { id: 'step-a', displayName: 'Passports', isChecked: true, createdDateTime: '2026-11-10T09:01:00Z', checkedDateTime: '2026-11-12T10:00:00Z' },
+      { id: 'step-b', displayName: 'Chargers', isChecked: false, createdDateTime: '2026-11-10T09:02:00Z' },
+    ],
+  };
+
+  it('fetches each task with its steps, which follow it as subtasks', async () => {
+    mockFetch.mockReturnValueOnce(jsonResponse({ value: [task] }));
+    const tasks = await microsoftTodoProvider.fetchTasks(TOKENS, 'list-1');
+    expect(mockFetch.mock.calls[0]![0]).toContain('/me/todo/lists/list-1/tasks?$expand=checklistItems');
+    expect(tasks.map((t) => [t.title, t.completed, t.parentId ?? null])).toEqual([
+      ['Pack for the trip', false, null],
+      ['Passports', true, 'task-1'],
+      ['Chargers', false, 'task-1'],
+    ]);
+    expect(tasks[1]!.id).toBe('task-1|step|step-a');
+    // Its newest time: the check, after the task's last edit.
+    expect(tasks[1]!.updatedAt.toISOString()).toBe('2026-11-12T10:00:00.000Z');
+  });
+
+  it('sends a tick on a step to the step, not the task', async () => {
+    mockFetch
+      .mockReturnValueOnce(jsonResponse(task))
+      .mockReturnValueOnce(jsonResponse({ ...task.checklistItems[1], isChecked: true, checkedDateTime: '2026-11-13T08:00:00Z' }));
+    const saved = await microsoftTodoProvider.updateTask(TOKENS, 'list-1:task-1|step|step-b', { title: 'Chargers', completed: true });
+    const [url, init] = mockFetch.mock.calls[1]!;
+    expect(url).toContain('/me/todo/lists/list-1/tasks/task-1/checklistItems/step-b');
+    expect(init.method).toBe('PATCH');
+    expect(JSON.parse(init.body)).toEqual({ displayName: 'Chargers', isChecked: true });
+    expect(saved.completed).toBe(true);
+    expect(saved.parentId).toBe('task-1');
+  });
+
+  it('deletes a step, not its task', async () => {
+    mockFetch.mockReturnValueOnce(jsonResponse({}, 204));
+    await microsoftTodoProvider.deleteTask!(TOKENS, 'list-1:task-1|step|step-a');
+    const [url, init] = mockFetch.mock.calls[0]!;
+    expect(url).toContain('/me/todo/lists/list-1/tasks/task-1/checklistItems/step-a');
+    expect(init.method).toBe('DELETE');
+  });
+});

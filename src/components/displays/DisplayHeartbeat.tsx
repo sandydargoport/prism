@@ -39,12 +39,15 @@ async function sync(): Promise<void> {
   if (syncing || !isNamed()) return;
   syncing = true;
   try {
-    const { applied, dashboardChanged } = await syncScreenSettings();
+    const { applied, planChanged } = await syncScreenSettings();
     // A screen showing a dashboard goes through the home page, where the
-    // server sends a named screen to its own one. Elsewhere (Settings, a list)
-    // it is left where someone is using it.
+    // server sends a named screen to the one it shows now (#1282). Elsewhere
+    // (Settings, a list) it is left where someone is using it, and its own
+    // editor is never reloaded under the person editing (#1280): Done loads
+    // its dashboard afresh.
     const path = window.location.pathname;
-    if (dashboardChanged && (path === '/' || path.startsWith('/d/'))) reloadForRemoteChange('/');
+    if (path.startsWith('/screens/') || path.startsWith('/edit/')) return;
+    if (planChanged && (path === '/' || path.startsWith('/d/'))) reloadForRemoteChange('/');
     else if (applied.length > 0) reloadForRemoteChange();
   } catch {
     // Offline for a moment; the next round will do.

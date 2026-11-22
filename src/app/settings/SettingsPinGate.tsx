@@ -12,6 +12,7 @@ import { DEFAULT_PIN_LENGTH } from '@/lib/constants';
 import { pinErrorMessage } from '@/lib/utils/pinErrorMessage';
 import { useHydrated } from '@/lib/hooks/useStoredValue';
 import { SettingsView } from './SettingsView';
+import { NumberPad, PinDisplay } from '@/components/auth';
 
 type GateState = 'checking' | 'prompt' | 'verified';
 
@@ -98,6 +99,7 @@ function SettingsPinPrompt({
       color: m.color,
       avatarUrl: m.avatarUrl ?? undefined,
       pinLength: m.pinLength,
+      pinKind: m.pinKind,
     })), [members]);
 
   const [chosenParent, setChosenParent] = useState<(typeof parents)[0] | null>(null);
@@ -113,6 +115,8 @@ function SettingsPinPrompt({
   // Every pad requires exactly the SELECTED parent's own PIN length, not a
   // family-wide constant — members can have different-length PINs.
   const pinLength = selectedParent?.pinLength ?? DEFAULT_PIN_LENGTH;
+  // A passcode takes letters too (#1197).
+  const passcode = selectedParent?.pinKind === 'passcode';
 
   // pinLength must be a dependency — it changes per selected parent (their
   // own configured length), not just once per session.
@@ -137,9 +141,9 @@ function SettingsPinPrompt({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isVerifying) return;
-      if (e.key >= '0' && e.key <= '9') {
+      if ((e.key >= '0' && e.key <= '9') || (passcode && /^[a-z]$/i.test(e.key))) {
         e.preventDefault();
-        handleKeyPress(e.key);
+        handleKeyPress(e.key.toLowerCase());
       } else if (e.key === 'Backspace') {
         e.preventDefault();
         handleBackspace();
@@ -151,7 +155,7 @@ function SettingsPinPrompt({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [selectedParent, isVerifying, handleKeyPress, handleBackspace, onDismiss]);
+  }, [selectedParent, isVerifying, handleKeyPress, handleBackspace, onDismiss, passcode]);
 
   // Auto-submit when PIN is complete
   useEffect(() => {
@@ -209,7 +213,7 @@ function SettingsPinPrompt({
       onClick={onDismiss}
     >
       <div
-        className="bg-card rounded-2xl p-3 max-w-[20rem] w-full mx-4 shadow-lg"
+        className="bg-card rounded-2xl p-3 max-w-[20rem] w-full mx-4 shadow-lg has-[[data-pin-letters]]:max-w-[34rem]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -272,19 +276,7 @@ function SettingsPinPrompt({
               )}
 
               {/* PIN dots */}
-              <div className={cn('flex gap-1.5 justify-center mb-1', isShaking && 'animate-shake')}>
-                {Array.from({ length: pinLength }, (_, i) => (
-                  <div
-                    key={i}
-                    className={cn(
-                      'w-2.5 h-2.5 rounded-full transition-all duration-150',
-                      i < pin.length
-                        ? error ? 'bg-destructive scale-110' : 'bg-primary scale-110'
-                        : 'bg-muted border-2 border-border'
-                    )}
-                  />
-                ))}
-              </div>
+              <PinDisplay length={pinLength} filled={pin.length} error={!!error} isShaking={isShaking} size="compact" />
 
               {/* Error message. min-h reserves the line so the pad doesn't jump
                   when there's no error, but the box still has to be allowed to
@@ -296,44 +288,7 @@ function SettingsPinPrompt({
               </div>
 
               {/* Number pad */}
-              <div className="grid grid-cols-3 gap-1.5 max-w-[200px] mx-auto">
-                {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del'].map((key, idx) => {
-                  if (key === '') return <div key={idx} />;
-                  if (key === 'del') {
-                    return (
-                      <button
-                        key={idx}
-                        onClick={handleBackspace}
-                        disabled={isVerifying}
-                        className={cn(
-                          'w-12 h-12 rounded-full mx-auto flex items-center justify-center',
-                          'bg-muted hover:bg-muted/80 active:bg-accent active:scale-95',
-                          'transition-all duration-100 text-muted-foreground text-xs',
-                          isVerifying && 'opacity-50'
-                        )}
-                      >
-                        Del
-                      </button>
-                    );
-                  }
-                  return (
-                    <button
-                      key={idx}
-                      onClick={() => handleKeyPress(key)}
-                      disabled={isVerifying}
-                      className={cn(
-                        'w-12 h-12 rounded-full mx-auto flex items-center justify-center',
-                        'bg-secondary hover:bg-secondary/80',
-                        'active:bg-primary active:text-primary-foreground active:scale-95',
-                        'transition-all duration-100 text-base font-semibold',
-                        isVerifying && 'opacity-50'
-                      )}
-                    >
-                      {key}
-                    </button>
-                  );
-                })}
-              </div>
+              <NumberPad letters={passcode} onKeyPress={handleKeyPress} onBackspace={handleBackspace} disabled={isVerifying} size="compact" />
 
               {/* Loading */}
               <div className="h-4 mt-1.5 flex items-center justify-center">

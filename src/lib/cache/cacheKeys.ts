@@ -63,7 +63,10 @@ const CROSS_INVALIDATIONS: Partial<Record<CacheEntity, CacheEntity[]>> = {
   'wish-items': ['wish-item-sources'],
   'task-lists': ['tasks', 'task-sources'],
   'shopping-lists': ['shopping-list-sources'],
-  family: ['chores', 'tasks'],
+  // Events carry their calendar group's and member's colour and name;
+  // messages carry the author's (#1226).
+  'calendar-groups': ['events'],
+  family: ['chores', 'tasks', 'events', 'messages'],
 };
 
 /**

@@ -11,6 +11,7 @@ import { CarouselArrows } from '@/components/ui/CarouselArrows';
 import { TaskRow } from '@/app/tasks/TaskRow';
 import type { Task } from '@/types';
 import type { NestedGroupDef } from '@/app/tasks/taskGroupTypes';
+import { withSubtasks } from '@/lib/tasks/subtasks';
 
 export function NestedGroupedTaskGrid({
   primaryGroups,
@@ -144,10 +145,11 @@ export function NestedGroupedTaskGrid({
                     </Badge>
                   </div>
                   <div className="space-y-1 pl-2 border-l-2" style={{ borderColor: sub.color + '60' }}>
-                    {sub.tasks.map((task) => (
+                    {withSubtasks(sub.tasks).map(({ task, nested }) => (
                       <TaskRow
                         key={task.id}
                         task={task}
+                        nested={nested}
                         onToggle={async () => {
                           const success = await toggleTask(task.id);
                           if (success && group.celebrationTarget && !task.completed) {

@@ -371,6 +371,30 @@ async function performSync(
       }
     }
 
+    // Subtasks under their parent (#1201): once every remote task has a local
+    // row, point each subtask at its parent's row, and let one that moved to
+    // the top level at the provider go back to the top level here. A provider
+    // that sends no parents (To Do until #1202) leaves this a no-op.
+    if (remoteTasks.some((r) => r.parentId)) {
+      const rows = await db
+        .select({ id: tasks.id, externalId: tasks.externalId, parentId: tasks.parentId })
+        .from(tasks)
+        .where(eq(tasks.taskSourceId, sourceId));
+      const idOf = new Map(rows.filter((r) => r.externalId).map((r) => [r.externalId!, r.id]));
+      for (const remoteTask of remoteTasks) {
+        const row = rows.find((r) => r.externalId === remoteTask.id);
+        if (!row) continue;
+        const parent = remoteTask.parentId ? idOf.get(remoteTask.parentId) ?? null : null;
+        if ((row.parentId ?? null) !== parent) {
+          try {
+            await db.update(tasks).set({ parentId: parent }).where(eq(tasks.id, row.id));
+          } catch {
+            result.errors.push(`Failed to place subtask: ${remoteTask.title}`);
+          }
+        }
+      }
+    }
+
     // Find local tasks that don't exist remotely (created locally or deleted remotely)
     const missingLocally: typeof localTasks = [];
     for (const localTask of localTasks) {
@@ -426,9 +450,14 @@ async function performSync(
       return now.getTime() - t.lastSynced.getTime() > MISSING_GRACE_MS;
     });
 
+    // A subtask that went with its parent is not one more task to review
+    // (#1200): confirming the parent deletes its subtasks with it.
+    const goneIds = new Set(flaggable.map((t) => t.id));
+    const toReview = flaggable.filter((t) => !(t.parentId && goneIds.has(t.parentId)));
+
     const review = decideDeletionReview({
-      syncedCount: localTasks.filter((t) => t.externalId && t.taskSourceId === sourceId).length,
-      missingCount: flaggable.length,
+      syncedCount: localTasks.filter((t) => t.externalId && t.taskSourceId === sourceId && !t.parentId).length,
+      missingCount: toReview.length,
     });
 
     if (review.guardTripped) {
@@ -440,7 +469,7 @@ async function performSync(
         `change, so none were touched. Check the connection, then sync again.`,
       );
     } else if (review.flag) {
-      for (const localTask of flaggable) {
+      for (const localTask of toReview) {
         // Only when not already flagged, so the original time survives and the
         // count does not climb every five minutes.
         if (localTask.pendingDeletion) continue;

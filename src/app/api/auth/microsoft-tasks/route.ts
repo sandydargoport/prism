@@ -3,6 +3,7 @@ import { requireAuth, requireRole } from '@/lib/auth';
 import { logError } from '@/lib/utils/logError';
 import { oauthSetupRedirect } from '@/lib/integrations/oauthSetupRedirect';
 import { resolveRedirectUri } from '@/lib/integrations/resolveRedirectUri';
+import { createOAuthState } from '@/lib/auth/oauthState';
 
 const MICROSOFT_AUTH_URL = 'https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize';
 // `User.Read` lets us identify which Microsoft account authorized, for the
@@ -30,7 +31,9 @@ export async function GET(request: Request) {
     const wishMemberId = searchParams.get('wishMemberId'); // For wish list integrations
     const returnSection = searchParams.get('returnSection') || 'tasks'; // 'tasks', 'shopping', or 'wish'
 
-    const state = JSON.stringify({
+    // A single-use nonce bound to this session (#1221); the callback reads
+    // the list ids back from Redis, never from the query string.
+    const state = await createOAuthState('microsoft-tasks', auth.userId, {
       taskListId: taskListId || null,
       shoppingListId: shoppingListId || null,
       wishMemberId: wishMemberId || null,

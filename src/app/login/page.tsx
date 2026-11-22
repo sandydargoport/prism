@@ -15,6 +15,7 @@
 import { Suspense, useCallback, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { QuickPinModal, type QuickPinMember } from '@/components/auth';
+import { safeNextPath } from '@/lib/auth/safeNextPath';
 
 function LoginPageInner() {
   const router = useRouter();
@@ -22,12 +23,9 @@ function LoginPageInner() {
   const [open, setOpen] = useState(true);
 
   const onAuthenticated = useCallback((_user: QuickPinMember) => {
-    // Only ever return to a path on this instance. `next` arrives from the
-    // query string, so treating it as a URL would let a crafted link bounce
-    // someone off to another origin straight after they signed in.
-    const next = params.get('next');
-    const safe = next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
-    router.replace(safe);
+    // Only ever return to a path on this instance, so a crafted link cannot
+    // bounce someone off to another origin straight after they sign in.
+    router.replace(safeNextPath(params.get('next'), window.location.origin));
     router.refresh();
   }, [params, router]);
 

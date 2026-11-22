@@ -10,3 +10,7 @@
 // Quick PIN Modal — the app's login + action-authentication surface.
 export { QuickPinModal } from './QuickPinModal';
 export type { QuickPinModalProps, QuickPinMember } from './QuickPinModal';
+
+// The PIN pad and its dots, shared by every PIN screen (#1196).
+export { NumberPad, type PadSize } from './NumberPad';
+export { PinDisplay } from './PinDisplay';

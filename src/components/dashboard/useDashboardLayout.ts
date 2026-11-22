@@ -1,7 +1,9 @@
 'use client';
 
 import { remoteEditHost } from '@/lib/displays/remoteEdit';
+import { editorLink, editsOnCanvas } from '@/lib/displays/editPlace';
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { DEFAULT_TEMPLATE } from '@/lib/constants/layoutTemplates';
 import {
   loadScreensaverLayout,
@@ -82,6 +84,7 @@ export function editLink(path: string): string {
 
 export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
   const { activeUser, requireAuth } = useAuth();
+  const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [editingWidgets, setEditingWidgets] = useState<WidgetConfig[]>([]);
   const [preEditWidgets, setPreEditWidgets] = useState<WidgetConfig[]>([]);
@@ -158,17 +161,24 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     setIdleHalf('day');
     setIsEditing(true);
   }, [activeLayout, ssLayout]);
+  // A device that edits on a canvas (#1265) is sent there instead, in place
+  // of this address, so Back does not land on the link again.
+  const resumeOnCanvas = resumeKey !== null && editsOnCanvas();
   useResetOn(resumeKey, () => {
-    if (!resumeKey || !activeLayout) return;
+    if (!resumeKey || !activeLayout || editsOnCanvas()) return;
     beginEditing();
   });
   // Then drop it from the address, so a reload opens the dashboard normally.
   useEffect(() => {
     if (!resumeKey) return;
+    if (resumeOnCanvas) {
+      router.replace(editorLink(resumeKey));
+      return;
+    }
     const url = new URL(window.location.href);
     url.searchParams.delete(EDIT_PARAM);
     window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
-  }, [resumeKey]);
+  }, [resumeKey, resumeOnCanvas, router]);
 
   // While layouts are still fetching, render NOTHING rather than falling
   // back to DEFAULT_TEMPLATE — for any established user whose saved layout
@@ -189,8 +199,12 @@ export function useDashboardLayout(layouts: LayoutsData, slug?: string) {
     // blocked (their edit button is already hidden, so this is a safety net).
     const user = activeUser ?? await requireAuth('Sign in to edit', "Enter a parent's PIN to edit the dashboard layout.");
     if (!user || user.role !== 'parent') return;
+    if (activeLayout && editsOnCanvas()) {
+      router.push(editorLink(activeLayout.id));
+      return;
+    }
     beginEditing();
-  }, [activeUser, requireAuth, beginEditing]);
+  }, [activeUser, requireAuth, beginEditing, activeLayout, router]);
 
   // Which tabs hold changes not yet saved, for the dot on each.
   const dashboardDirty = isEditing && withoutIdleTicks(editingWidgets) !== withoutIdleTicks(preEditWidgets);

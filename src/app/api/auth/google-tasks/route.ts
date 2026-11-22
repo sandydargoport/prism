@@ -4,6 +4,7 @@ import { logError } from '@/lib/utils/logError';
 import { oauthSetupRedirect } from '@/lib/integrations/oauthSetupRedirect';
 import { resolveRedirectUri } from '@/lib/integrations/resolveRedirectUri';
 import { getGoogleCredentials } from '@/lib/integrations/credentialStore';
+import { createOAuthState } from '@/lib/auth/oauthState';
 
 const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 // `openid email` lets us identify which Google account authorized, for the
@@ -37,7 +38,8 @@ export async function GET(request: Request) {
     const taskListId = searchParams.get('taskListId');
     const returnSection = searchParams.get('returnSection') || 'tasks';
 
-    const state = JSON.stringify({
+    // A single-use nonce bound to this session (#1221).
+    const state = await createOAuthState('google-tasks', auth.userId, {
       taskListId: taskListId || null,
       returnSection,
     });

@@ -40,6 +40,48 @@ interface MsGraphTask {
   completedDateTime?: { dateTime: string; timeZone: string };
   createdDateTime: string;
   lastModifiedDateTime: string;
+  checklistItems?: MsGraphStep[];
+}
+
+/** A To Do step (a checklistItem): a title and whether it is checked. */
+interface MsGraphStep {
+  id: string;
+  displayName: string;
+  isChecked: boolean;
+  createdDateTime: string;
+  checkedDateTime?: string;
+}
+
+/**
+ * Steps come into Prism as subtasks (#1202). A step's id is its task's id and
+ * its own, joined, so an update or a delete reaches the step, not the task.
+ * Graph ids never contain '|'.
+ */
+const STEP = '|step|';
+export function stepExternalId(taskId: string, stepId: string): string {
+  return `${taskId}${STEP}${stepId}`;
+}
+export function splitStepId(id: string): { taskId: string; stepId: string } | null {
+  const i = id.indexOf(STEP);
+  return i < 0 ? null : { taskId: id.slice(0, i), stepId: id.slice(i + STEP.length) };
+}
+
+function parseGraphStep(step: MsGraphStep, task: MsGraphTask, listId: string): ExternalTask {
+  // A step has no edit time of its own; its task's moves when a step changes.
+  const times = [task.lastModifiedDateTime, step.createdDateTime, step.checkedDateTime].filter(Boolean).map((s) => new Date(s!).getTime());
+  return {
+    id: stepExternalId(task.id, step.id),
+    listId,
+    title: step.displayName,
+    description: null,
+    dueDate: null,
+    completed: step.isChecked,
+    completedAt: step.checkedDateTime ? new Date(step.checkedDateTime) : null,
+    priority: null,
+    updatedAt: new Date(Math.max(...times)),
+    createdAt: new Date(step.createdDateTime),
+    parentId: task.id,
+  };
 }
 
 async function graphFetch<T>(
@@ -150,13 +192,17 @@ export const microsoftTodoProvider: TaskProvider = {
 
   async fetchTasks(tokens: TaskProviderTokens, listId: string): Promise<ExternalTask[]> {
     // Fetch all tasks including completed ones
+    // With each task's steps, which come in as its subtasks (#1202).
     const response = await graphFetch<{ value: MsGraphTask[] }>(
-      `/me/todo/lists/${listId}/tasks`,
+      `/me/todo/lists/${listId}/tasks?$expand=checklistItems`,
       tokens
     );
 
     const timeZone = await getHouseholdTimezone();
-    return response.value.map((task) => parseGraphTask(task, listId, timeZone));
+    return response.value.flatMap((task) => [
+      parseGraphTask(task, listId, timeZone),
+      ...(task.checklistItems ?? []).map((step) => parseGraphStep(step, task, listId)),
+    ]);
   },
 
   async createTask(tokens: TaskProviderTokens, task: CreateTaskInput): Promise<ExternalTask> {
@@ -209,6 +255,21 @@ export const microsoftTodoProvider: TaskProvider = {
       throw new Error('Task ID must include list ID (format: listId:taskId)');
     }
 
+    // A step takes only its title and whether it is checked (#1202).
+    const step = splitStepId(actualTaskId!);
+    if (step) {
+      const stepBody: Record<string, unknown> = {};
+      if (updates.title !== undefined) stepBody.displayName = updates.title;
+      if (updates.completed !== undefined) stepBody.isChecked = updates.completed;
+      const parent = await graphFetch<MsGraphTask>(`/me/todo/lists/${listId}/tasks/${step.taskId}`, tokens);
+      const saved = await graphFetch<MsGraphStep>(
+        `/me/todo/lists/${listId}/tasks/${step.taskId}/checklistItems/${step.stepId}`,
+        tokens,
+        { method: 'PATCH', body: JSON.stringify(stepBody) },
+      );
+      return parseGraphStep(saved, parent, listId);
+    }
+
     const timeZone = await getHouseholdTimezone();
     const body: Record<string, unknown> = {};
 
@@ -257,8 +318,11 @@ export const microsoftTodoProvider: TaskProvider = {
       throw new Error('Task ID must include list ID (format: listId:taskId)');
     }
 
+    const step = splitStepId(actualTaskId!);
     await graphFetch(
-      `/me/todo/lists/${listId}/tasks/${actualTaskId}`,
+      step
+        ? `/me/todo/lists/${listId}/tasks/${step.taskId}/checklistItems/${step.stepId}`
+        : `/me/todo/lists/${listId}/tasks/${actualTaskId}`,
       tokens,
       { method: 'DELETE' }
     );

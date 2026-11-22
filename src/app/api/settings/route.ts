@@ -6,7 +6,7 @@ import { db } from '@/lib/db/client';
 import { settings } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { logActivity } from '@/lib/services/auditLog';
-import { invalidateEntity } from '@/lib/cache/cacheKeys';
+import { invalidateEntity, invalidateEntities } from '@/lib/cache/cacheKeys';
 import type { AuthResult } from '@/lib/auth';
 import { logError } from '@/lib/utils/logError';
 import { PIN_LENGTH_SETTING_KEY } from '@/lib/constants';
@@ -238,6 +238,12 @@ export async function PATCH(request: NextRequest) {
     }
     if (body.key === 'timezone') {
       invalidateHouseholdTimezoneCache();
+      // Event days and chore due dates are worked out in the household zone.
+      await invalidateEntities('events', 'chores');
+    }
+    if (body.key === 'weekStartsOn') {
+      // Weekly goal and point totals start on this day.
+      await invalidateEntities('goals', 'points');
     }
 
     return NextResponse.json({ key: body.key, value: body.value });

@@ -388,7 +388,7 @@ describe('recordFailedLogin', () => {
 
     await recordFailedLogin('user-1');
 
-    expect(mockRedisClient.expire).not.toHaveBeenCalled();
+    expect(mockRedisClient.expire).not.toHaveBeenCalledWith('login_attempts:user-1', expect.anything());
   });
 
   it('returns remaining attempts', async () => {
@@ -462,6 +462,65 @@ describe('reserveLoginAttempt (#809)', () => {
     const results = await Promise.all(Array.from({ length: 12 }, () => reserveLoginAttempt('parent-1')));
     expect(results.filter((r) => r.allowed)).toHaveLength(MAX_LOGIN_ATTEMPTS);
     expect(results.filter((r) => !r.allowed).every((r) => !r.allowed && r.retryAfter === 120)).toBe(true);
+  });
+});
+
+describe('daily failure cap (#1221)', () => {
+  // A Redis that keeps counters and expiries the way the real one does.
+  const store = new Map<string, number>();
+  const ttls = new Map<string, number>();
+  const fake = {
+    ...mockRedisClient,
+    get: jest.fn(async (k: string) => (store.has(k) ? String(store.get(k)) : null)),
+    incr: jest.fn(async (k: string) => { const n = (store.get(k) ?? 0) + 1; store.set(k, n); return n; }),
+    expire: jest.fn(async (k: string, s: number) => { ttls.set(k, s); return true; }),
+    ttl: jest.fn(async (k: string) => (ttls.has(k) ? ttls.get(k)! : -2)),
+    del: jest.fn(async (k: string) => { store.delete(k); ttls.delete(k); return 1; }),
+  };
+  /** The five-minute window running out: Redis drops the per-window count. */
+  const windowEnds = (id: string) => { store.delete(`login_attempts:${id}`); ttls.delete(`login_attempts:${id}`); };
+
+  beforeEach(() => {
+    store.clear();
+    ttls.clear();
+    mockGetRedisClient.mockResolvedValue(fake);
+  });
+
+  async function wrongGuess(id: string) {
+    const { reserveLoginAttempt } = await import('../session');
+    const r = await reserveLoginAttempt(id);
+    if (r.allowed) await recordFailedLogin(id, r.count);
+    return r;
+  }
+
+  it('locks a member who stays under the window limit, once the day passes the cap', async () => {
+    const { MAX_LOGIN_ATTEMPTS, MAX_DAILY_FAILED_LOGINS, DAILY_FAILED_LOGINS_TTL } = await import('@/lib/constants');
+    let guesses = 0;
+    while (guesses < MAX_DAILY_FAILED_LOGINS) {
+      for (let i = 0; i < MAX_LOGIN_ATTEMPTS - 1 && guesses < MAX_DAILY_FAILED_LOGINS; i++, guesses++) {
+        expect((await wrongGuess('child-a')).allowed).toBe(true);
+      }
+      windowEnds('child-a');
+    }
+    const next = await wrongGuess('child-a');
+    expect(next).toEqual({ allowed: false, retryAfter: DAILY_FAILED_LOGINS_TTL });
+    expect(await isLoginLockedOut('child-a')).toEqual({ lockedOut: true, retryAfter: DAILY_FAILED_LOGINS_TTL });
+  });
+
+  it('a correct PIN clears the window but not the daily count', async () => {
+    const { MAX_DAILY_FAILED_LOGINS } = await import('@/lib/constants');
+    for (let i = 0; i < MAX_DAILY_FAILED_LOGINS; i++) {
+      await wrongGuess('child-a');
+      if (i % 4 === 3) await clearLoginAttempts('child-a');
+    }
+    expect((await wrongGuess('child-a')).allowed).toBe(false);
+  });
+
+  it('leaves the window tiers as they were under the cap', async () => {
+    const { MAX_LOGIN_ATTEMPTS, LOCKOUT_TIERS } = await import('@/lib/constants');
+    for (let i = 0; i < MAX_LOGIN_ATTEMPTS; i++) await wrongGuess('child-b');
+    expect(ttls.get('login_attempts:child-b')).toBe(LOCKOUT_TIERS[0]);
+    expect((await wrongGuess('child-b')).allowed).toBe(false);
   });
 });
 

@@ -28,17 +28,20 @@ jest.mock('simple-keyboard/build/css/index.css', () => ({}), { virtual: true });
 import { GlobalInputProvider, useGlobalInput } from '../useGlobalInput';
 import { VirtualKeyboard } from '@/components/input/VirtualKeyboard';
 import { writeKeyboardDevicePref } from '@/lib/input/keyboardDevicePref';
+import { resetSharedGet } from '@/lib/utils/sharedGet';
 
 let settingValue: unknown = null;
 
 beforeEach(() => {
+  resetSharedGet();
   mockIsMobile = false;
   mockReveal.mockClear();
   settingValue = null;
   window.localStorage.clear();
   global.fetch = jest.fn(async () => ({
     ok: true,
-    json: async () => ({ value: settingValue }),
+    // The settings route's real shape: every key, under settings (#1243).
+    json: async () => ({ settings: { 'input.virtualKeyboardEnabled': settingValue } }),
   })) as unknown as typeof fetch;
   window.scrollBy = jest.fn();
   window.scrollTo = jest.fn();

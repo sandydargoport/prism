@@ -218,7 +218,7 @@ describe('PATCH and DELETE /api/displays/:id', () => {
   });
 
   it('changes another screen\'s settings from this device', async () => {
-    mockUpdateReturning.mockReturnValue([{ id: HALL, name: 'Hall', dashboardId: null, settings: {} }]);
+    mockUpdateReturning.mockReturnValue([{ id: HALL, name: 'Hall', dashboardId: null, switches: [], settings: {} }]);
     mockApply.mockResolvedValue({ settings: { 'prism-perf-mode': 'true' }, settingsUpdatedAt: new Date() });
     const res = await PATCH(
       json(`/api/displays/${HALL}`, 'PATCH', { settings: { 'prism-perf-mode': 'true' } }),
@@ -235,25 +235,48 @@ describe('PATCH and DELETE /api/displays/:id', () => {
     expect(mockApply).not.toHaveBeenCalled();
   });
 
-  it('sets the screen\'s dashboard and moves its settings timestamp so it notices', async () => {
-    const DASH = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-    mockSelectWhere.mockReturnValue([{ id: DASH }]);
-    mockUpdateReturning.mockReturnValue([{ id: HALL, name: 'Hall', dashboardId: DASH, settings: {} }]);
-    const res = await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { dashboardId: DASH }), params(HALL));
+  it('sets the screen\'s dashboard and switches, and moves its settings timestamp so it notices (#1282)', async () => {
+    const BUS = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const switches = [
+      { when: 'bus', dashboardId: BUS },
+      // One that follows the morning route only, from 10 minutes before to 5 after (#1291).
+      { when: 'bus', dashboardId: KITCHEN, routeIds: ['dddddddd-dddd-4ddd-8ddd-dddddddddddd'], before: 10, after: 5 },
+      { when: 'times', days: [1, 2, 3, 4, 5], from: '07:00', to: '07:45', dashboardId: KITCHEN },
+    ];
+    mockSelectWhere.mockReturnValue([{ id: KITCHEN }, { id: BUS }]);
+    mockUpdateReturning.mockReturnValue([{ id: HALL, name: 'Hall', dashboardId: KITCHEN, switches, settings: {} }]);
+    const res = await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { dashboardId: KITCHEN, switches }), params(HALL));
     expect(res.status).toBe(200);
+    expect((await res.json()).display).toMatchObject({ dashboardId: KITCHEN, switches });
     expect(mockUpdateSet).toHaveBeenCalledWith(expect.objectContaining({
-      dashboardId: DASH,
+      dashboardId: KITCHEN,
+      switches,
       settingsUpdatedAt: expect.any(Date),
     }));
   });
 
-  it('refuses a dashboard that does not exist, and an empty change', async () => {
+  it('refuses a dashboard that does not exist, bad or too many switches, and an empty change', async () => {
+    const BUS = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
     mockSelectWhere.mockReturnValue([]);
-    const DASH = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-    expect((await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { dashboardId: DASH }), params(HALL))).status).toBe(400);
+    expect((await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { dashboardId: BUS }), params(HALL))).status).toBe(400);
+    expect((await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { switches: [{ when: 'bus', dashboardId: BUS }] }), params(HALL))).status).toBe(400);
     expect((await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { dashboardId: 'x' }), params(HALL))).status).toBe(400);
+    expect((await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { switches: [{ when: 'times', days: [], from: '07:00', to: '08:00', dashboardId: BUS }] }), params(HALL))).status).toBe(400);
+    const thirteen = Array.from({ length: 13 }, () => ({ when: 'bus', dashboardId: BUS }));
+    mockSelectWhere.mockReturnValue([{ id: BUS }]);
+    // A bus window past two hours, or a route that is not an id (#1291).
+    expect((await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { switches: [{ when: 'bus', dashboardId: BUS, before: 121 }] }), params(HALL))).status).toBe(400);
+    expect((await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { switches: [{ when: 'bus', dashboardId: BUS, routeIds: ['morning'] }] }), params(HALL))).status).toBe(400);
+    expect((await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { switches: thirteen }), params(HALL))).status).toBe(400);
     expect((await PATCH(json(`/api/displays/${HALL}`, 'PATCH', {}), params(HALL))).status).toBe(400);
     expect(mockUpdateSet).not.toHaveBeenCalled();
+  });
+
+  it('back to the default dashboard is null, and needs no lookup', async () => {
+    mockUpdateReturning.mockReturnValue([{ id: HALL, name: 'Hall', dashboardId: null, switches: [], settings: {} }]);
+    const res = await PATCH(json(`/api/displays/${HALL}`, 'PATCH', { dashboardId: null }), params(HALL));
+    expect(res.status).toBe(200);
+    expect(mockUpdateSet).toHaveBeenCalledWith(expect.objectContaining({ dashboardId: null }));
   });
 
   it('answers 404 for a screen that does not exist, and for an id that is not one', async () => {

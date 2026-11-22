@@ -44,6 +44,7 @@ const mockInvalidateEntity = jest.fn();
 
 jest.mock('@/lib/cache/cacheKeys', () => ({
   invalidateEntity: (...a: unknown[]) => mockInvalidateEntity(...a),
+  invalidateEntities: (...a: unknown[]) => a.forEach((e) => mockInvalidateEntity(e)),
 }));
 
 // --- Other mocks ---
@@ -86,6 +87,7 @@ describe('GET /api/settings', () => {
   });
 
   it('returns settings as key-value map', async () => {
+    mockRequireRole.mockReturnValue(null);
     const res = await GET();
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -114,6 +116,24 @@ describe('GET /api/settings', () => {
       const body = await (await GET()).json();
       expect(Object.keys(body.settings).sort()).toEqual(['security', 'theme']);
       expect(body.settings.security).toEqual({ requirePinForEveryChange: false });
+    });
+
+    // #1224: an allowlist, so a key nobody listed stays private.
+    it('a caller who may not change settings gets only the keys the screens read', async () => {
+      const wallKeys = [
+        'theme', 'locale', 'timeFormat', 'timezone', 'weekStartsOn', 'hiddenPages', 'dockPages',
+        'calendarHiddenHours', 'calendarPastEvents', 'shoppingCategories', 'wallpaperScenery', 'photoCaptionDate',
+        'photoCaptionPlace', 'photoOnThisDay', 'input.virtualKeyboardEnabled',
+        'scanner.soundEnabled', 'scanner.soundStyle',
+      ];
+      const privateKeys = [
+        'location', 'busDriverNames', 'someKeyAddedLater', 'scanner.defaultListId', 'weather',
+      ];
+      mockGetDisplayAuth.mockResolvedValue({ userId: 'display', role: 'guest' });
+      mockRequireRole.mockReturnValue(NextResponse.json({ error: 'Forbidden' }, { status: 403 }));
+      mockFrom.mockResolvedValue([...wallKeys, ...privateKeys].map((key) => ({ key, value: 'x' })));
+      const body = await (await GET()).json();
+      expect(Object.keys(body.settings).sort()).toEqual([...wallKeys].sort());
     });
 
     it('a parent still reads every setting', async () => {
@@ -193,6 +213,31 @@ describe('PATCH /api/settings', () => {
 
     await PATCH(makePatchRequest({ key: 'location', value: 'London' }));
     expect(mockInvalidateEntity).toHaveBeenCalledWith('weather');
+  });
+
+  // Weekly goal and point totals start on the week-start day, and event days
+  // and chore due dates are worked out in the household zone (#1226).
+  it('drops cached goals and points when the week start changes', async () => {
+    mockWhere.mockResolvedValue([]);
+    const res = await PATCH(makePatchRequest({ key: 'weekStartsOn', value: '1' }));
+    expect(res.status).toBe(200);
+    expect(mockInvalidateEntity).toHaveBeenCalledWith('goals');
+    expect(mockInvalidateEntity).toHaveBeenCalledWith('points');
+    expect(mockInvalidateEntity).not.toHaveBeenCalledWith('events');
+  });
+
+  it('drops cached events and chores when the household time zone changes', async () => {
+    mockWhere.mockResolvedValue([]);
+    const res = await PATCH(makePatchRequest({ key: 'timezone', value: 'Asia/Kolkata' }));
+    expect(res.status).toBe(200);
+    expect(mockInvalidateEntity).toHaveBeenCalledWith('events');
+    expect(mockInvalidateEntity).toHaveBeenCalledWith('chores');
+  });
+
+  it('drops none of them for an unrelated setting', async () => {
+    mockWhere.mockResolvedValue([]);
+    await PATCH(makePatchRequest({ key: 'theme', value: 'light' }));
+    expect(mockInvalidateEntity).not.toHaveBeenCalled();
   });
 
   describe('unauthenticated setup-bootstrap exception for pinLength', () => {

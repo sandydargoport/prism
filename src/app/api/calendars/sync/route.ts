@@ -13,7 +13,7 @@ import { logError } from '@/lib/utils/logError';
 import { db } from '@/lib/db/client';
 import { calendarSources } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
-import { invalidateEntity } from '@/lib/cache/cacheKeys';
+import { invalidateEntities } from '@/lib/cache/cacheKeys';
 import {
   syncAllGoogleCalendars,
   syncGoogleCalendarSource,
@@ -111,6 +111,11 @@ export async function POST(request: NextRequest) {
       };
     }
 
+    // A manual sync writes straight to the DB, events and (CalDAV to-dos)
+    // tasks alike, even when some sources report errors. Drop both cached
+    // lists so the wall shows the result at once, as the cron path does.
+    await invalidateEntities('events', 'tasks');
+
     // Return appropriate response based on results
     if (result.errors.length > 0 && (result.synced === 0 || result.total === 0)) {
       return NextResponse.json(
@@ -122,11 +127,6 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-
-    // A manual sync writes straight to the DB; invalidate the cached event
-    // lists so the calendar reflects new/removed events immediately (the cron
-    // path does this itself, but this route didn't).
-    await invalidateEntity('events');
 
     // Report NET changes (added / updated / removed), not total re-pulled.
     // Removals aren't applied silently anymore — they're flagged for review.

@@ -12,6 +12,8 @@ export interface FamilyMember {
   hasPin?: boolean;
   /** Number of digits this member's PIN pad requires (4/5/6). Not sensitive — exposed even unauthenticated. */
   pinLength?: number;
+  /** A PIN or a passcode of lowercase letters and numbers (#1197). */
+  pinKind?: 'digits' | 'passcode';
 }
 
 export interface Task {
@@ -28,6 +30,8 @@ export interface Task {
   completedAt?: string | null;
   source?: string;
   listId?: string | null;
+  /** The task this one is a subtask of (#1200). */
+  parentId?: string | null;
   taskSourceId?: string | null;
   assignedTo?: {
     id: string;

@@ -107,10 +107,13 @@ export function PhotosView() {
 
   const handleDelete = useCallback(async (photoId: string) => {
     try {
-      await fetch(`/api/photos/${photoId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/photos/${photoId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Request failed');
       refresh();
     } catch (err) {
+      // The photo stays in the list: it was not deleted.
       console.error('Error deleting photo:', err);
+      toast({ title: 'Failed to delete photo', variant: 'destructive' });
     }
   }, [refresh]);
 

@@ -63,3 +63,47 @@ describe('applySync', () => {
     expect(res.errors[0]).toMatch(/Broken.*boom/);
   });
 });
+
+describe('sending changes back (#1206)', () => {
+  function pushAdapter() {
+    const { adapter } = makeAdapter([], []);
+    const sent: string[] = [];
+    adapter.push = {
+      loadCandidates: jest.fn().mockResolvedValue([{ localId: 'n1', externalId: null, updatedAt: new Date('2026-07-20'), label: 'Pasta' }]),
+      pushAdd: jest.fn(async (_s, c: SyncChange<P>) => { sent.push(`add:${c.externalId}`); }),
+      pushUpdate: jest.fn(async (_s, c: SyncChange<P>) => { sent.push(`update:${c.externalId}`); }),
+      pushDelete: jest.fn(async (_s, c: SyncChange<P>) => { sent.push(`delete:${c.externalId}`); }),
+    };
+    return { adapter, sent };
+  }
+
+  it('asks for meals to send only when pushing is on', async () => {
+    const { adapter } = pushAdapter();
+    const off = await previewSync(adapter, { id: 'src', lastSynced: new Date('2026-07-10') });
+    expect(adapter.push!.loadCandidates).not.toHaveBeenCalled();
+    expect(off.pushCounts.add).toBe(0);
+    const on = await previewSync(adapter, { id: 'src', lastSynced: new Date('2026-07-10') }, { push: { knownExternalIds: new Set() } });
+    expect(on.pushCounts.add).toBe(1);
+  });
+
+  it('sends each kind to the source and counts it apart from what came in', async () => {
+    const { adapter, sent } = pushAdapter();
+    const res = await applySync(adapter, 'src', [
+      { kind: 'push-add', externalId: 'local:n1', localId: 'n1', label: 'Pasta', reason: '', defaultChecked: true },
+      { kind: 'push-update', externalId: 'r2', localId: 'l2', label: 'Tacos', reason: '', defaultChecked: true },
+      { kind: 'push-delete', externalId: 'r3', label: 'Soup', reason: '', defaultChecked: false },
+    ]);
+    expect(sent).toEqual(['add:local:n1', 'update:r2', 'delete:r3']);
+    expect(res.sent).toEqual({ add: 1, update: 1, delete: 1 });
+    expect(res.applied).toEqual({ add: 0, update: 0, delete: 0 });
+  });
+
+  it('reports a change to send as an error when the entity cannot send', async () => {
+    const { adapter } = makeAdapter([], []);
+    const res = await applySync(adapter, 'src', [
+      { kind: 'push-delete', externalId: 'r3', label: 'Soup', reason: '', defaultChecked: false },
+    ]);
+    expect(res.errors[0]).toMatch(/Soup/);
+    expect(res.sent.delete).toBe(0);
+  });
+});

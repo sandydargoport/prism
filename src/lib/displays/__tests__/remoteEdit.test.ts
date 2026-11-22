@@ -9,7 +9,7 @@ import { screenSummary } from '../screenSummary';
 
 function host(settings: Record<string, string>): RemoteEditHost {
   return {
-    displayId: 'kitchen', dashboardId: null, settings: { ...settings }, settingsUpdatedAt: null,
+    displayId: 'kitchen', dashboardId: null, switches: [], settings: { ...settings }, settingsUpdatedAt: null,
     root: {} as HTMLElement, onDashboard: jest.fn(), onFinish: jest.fn(),
   };
 }
@@ -58,14 +58,13 @@ describe('changedSettings', () => {
 });
 
 describe('screenSummary', () => {
-  const clock = (t: string) => t;
-  it('says when it rests, when night is and how many Interludes', () => {
-    expect(screenSummary({}, { source: 'photos' }, clock)).toBe('Rests after 2 min, night from dusk');
-    expect(screenSummary(
-      { 'prism-screensaver-timeout': '0', 'prism-screen-schedule': JSON.stringify([{ dashboardId: 'x', days: [1], from: '07:00', to: '08:00' }]) },
-      { day: 'dashboard', night: 'off', switch: { by: 'clock', from: '21:00', to: '06:30' } },
-      clock,
-    )).toBe('Never rests, night 21:00 to 06:30, 1 Interlude');
-    expect(screenSummary({ 'prism-screensaver-timeout': '3600' }, null, clock)).toBe('Rests after 1 hour');
+  it('says what it shows and when it switches, then when it rests (#1282)', () => {
+    expect(screenSummary({}, 'Shows Kitchen, School run at bus time')).toBe('Shows Kitchen, School run at bus time, rests after 2 min');
+    expect(screenSummary({ 'prism-screensaver-timeout': '0' }, 'Shows Kitchen')).toBe('Shows Kitchen, never rests');
+    expect(screenSummary({ 'prism-screensaver-timeout': '3600' }, null)).toBe('Rests after 1 hour');
+  });
+
+  it('leaves night out: each dashboard has its own (#1281)', () => {
+    expect(screenSummary({}, 'Shows Kitchen')).not.toMatch(/night/);
   });
 });

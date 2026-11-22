@@ -26,14 +26,27 @@ export interface NormalizedRecipe {
   cookTime: number | null;
   servings: number | null;
   tags: string[];
-  /** Absolute remote image URL to download with the source token, or null. */
+  /** Absolute remote image URL to download (with the source token only on its own server), or null. */
   remoteImageUrl: string | null;
+  /** How many steps the source splits the recipe into (#1215: steps go back only with one). */
+  stepCount?: number;
 }
 
-/** Best-effort download of a remote image via safeFetch (Bearer). Null on any failure. */
-export async function fetchRemoteImage(url: string, token: string): Promise<Buffer | null> {
+/** The server a recipe source is connected to, and its token. */
+export type RecipeSourceAccess = {
+  serverUrl: string;
+  token: string;
+};
+
+/**
+ * Best-effort download of a remote image via safeFetch. Null on any failure.
+ * The source's token goes only to its own server (#1245): an image on any
+ * other origin (a CDN, an object store) is fetched without it.
+ */
+export async function fetchRemoteImage(url: string, source: RecipeSourceAccess): Promise<Buffer | null> {
   try {
-    const res = await safeFetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    const own = new URL(url).origin === new URL(source.serverUrl).origin;
+    const res = await safeFetch(url, own ? { headers: { Authorization: `Bearer ${source.token}` } } : {});
     if (!res.ok) return null;
     const buf = Buffer.from(await res.arrayBuffer());
     return buf.length ? buf : null;
@@ -46,7 +59,7 @@ export async function fetchRemoteImage(url: string, token: string): Promise<Buff
 export async function writeRecipeRow(
   sourceId: string,
   p: NormalizedRecipe,
-  token: string,
+  source: RecipeSourceAccess,
   localId: string | null,
 ): Promise<string> {
   const values = {
@@ -78,7 +91,7 @@ export async function writeRecipeRow(
   }
 
   if (p.remoteImageUrl) {
-    const buffer = await fetchRemoteImage(p.remoteImageUrl, token);
+    const buffer = await fetchRemoteImage(p.remoteImageUrl, source);
     if (buffer) {
       try {
         await saveRecipeImage(buffer, recipeId);
@@ -101,6 +114,7 @@ export async function loadLocalRecipes(sourceId: string): Promise<LocalItem[]> {
       id: recipes.id,
       externalId: recipes.externalId,
       updatedAt: recipes.updatedAt,
+      externalUpdatedAt: recipes.externalUpdatedAt,
       name: recipes.name,
     })
     .from(recipes)
@@ -110,9 +124,48 @@ export async function loadLocalRecipes(sourceId: string): Promise<LocalItem[]> {
       localId: row.id,
       externalId: row.externalId,
       updatedAt: row.updatedAt,
+      // What Prism last saw from the source, so its own push does not echo back.
+      remoteSeenAt: row.externalUpdatedAt,
       label: row.name,
     }),
   );
+}
+
+// --- Write-back (#1207) ---
+
+/** The fields of a local recipe that are sent back. */
+export async function loadRecipeFieldsToPush(localId: string) {
+  const [row] = await db
+    .select({
+      name: recipes.name,
+      description: recipes.description,
+      servings: recipes.servings,
+      prepTime: recipes.prepTime,
+      cookTime: recipes.cookTime,
+      ingredients: recipes.ingredients,
+      instructions: recipes.instructions,
+    })
+    .from(recipes)
+    .where(eq(recipes.id, localId));
+  if (!row) throw new Error('The recipe is no longer in Prism.');
+  return { ...row, ingredients: (row.ingredients ?? []) as Array<{ text?: string; heading?: string }> };
+}
+
+/** After a recipe is sent: keep the source's new time, so it is not read as a change made there. */
+export async function recordPushedRecipe(localId: string, remoteUpdatedAt: Date | null): Promise<void> {
+  await db
+    .update(recipes)
+    .set({ externalUpdatedAt: remoteUpdatedAt, updatedAt: new Date() })
+    .where(eq(recipes.id, localId));
+}
+
+/** The source ids Prism holds a recipe for, kept after each sync to spot deletions. */
+export async function syncedRecipeIds(sourceId: string): Promise<string[]> {
+  const rows = await db
+    .select({ externalId: recipes.externalId })
+    .from(recipes)
+    .where(and(eq(recipes.sourceId, sourceId), isNotNull(recipes.externalId)));
+  return rows.map((r) => r.externalId).filter((v): v is string => v !== null);
 }
 
 /**
@@ -124,7 +177,7 @@ export async function loadLocalRecipes(sourceId: string): Promise<LocalItem[]> {
 export async function ensureRecipeImported(
   sourceId: string,
   externalId: string,
-  token: string,
+  source: RecipeSourceAccess,
   fetchOne: (externalId: string) => Promise<NormalizedRecipe | null>,
 ): Promise<{ recipeId: string; imported: boolean } | null> {
   const [existing] = await db
@@ -135,7 +188,7 @@ export async function ensureRecipeImported(
 
   const norm = await fetchOne(externalId);
   if (!norm) return null;
-  const recipeId = await writeRecipeRow(sourceId, norm, token, null);
+  const recipeId = await writeRecipeRow(sourceId, norm, source, null);
   return { recipeId, imported: true };
 }
 

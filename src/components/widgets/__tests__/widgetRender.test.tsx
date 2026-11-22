@@ -45,6 +45,18 @@ jest.mock('@/components/widgets/WidgetContainer', () => ({
     <div data-testid="widget-empty">{message}</div>,
   useWidgetBgOverride: () => null,
 }));
+// The household zone (#1227); undefined is the device's, as outside a provider.
+let mockHouseholdZone: string | undefined;
+jest.mock('@/components/providers', () => {
+  const actual = jest.requireActual('@/components/providers');
+  const { todayKey } = jest.requireActual('@/lib/utils/zonedDate');
+  return {
+    ...actual,
+    useDisplayToday: () => mockHouseholdZone
+      ? { today: todayKey(mockHouseholdZone), timeZone: mockHouseholdZone }
+      : actual.useDisplayToday(),
+  };
+});
 
 import { ChoresWidget } from '../ChoresWidget';
 import { TasksWidget } from '../TasksWidget';
@@ -99,6 +111,36 @@ describe('ChoresWidget', () => {
     expect(late).toHaveLength(1);
     expect(late[0]!.textContent).toBe('Late · 7:00 PM');
     expect(screen.getByText('7:30 AM')).toBeTruthy();
+  });
+
+  // #1227: on the household's clock, whatever zone the device is in. CI runs
+  // in UTC, where 19:30 is past 7:00 PM; in Chicago it is 1:30 PM.
+  describe('on the household clock (#1227)', () => {
+    beforeEach(() => {
+      jest.useFakeTimers({ now: new Date(Date.UTC(2026, 10, 12, 19, 30)) });
+      mockHouseholdZone = 'America/Chicago';
+    });
+    afterEach(() => {
+      jest.useRealTimers();
+      mockHouseholdZone = undefined;
+    });
+
+    it('does not call a 7:00 PM reminder Late at 1:30 PM in a Chicago household', () => {
+      const { container } = render(<ChoresWidget chores={[
+        { ...mockChore, id: 'r1', title: 'Allergy tablet', kind: 'reminder', nextDue: '2026-11-12', nextDueTime: '19:00' },
+      ]} />);
+      expect(container.querySelector('[data-chore-late]')).toBeNull();
+      expect(screen.getByText('7:00 PM')).toBeTruthy();
+      expect(screen.getByText('Due today')).toBeTruthy();
+    });
+
+    it('says when a pet was fed on the household clock', () => {
+      const { container } = render(<ChoresWidget chores={[{
+        ...mockChore, pet: { id: 'p1', name: 'Biscuit', color: '#F59E0B' },
+        todayTicks: [{ at: new Date(Date.UTC(2026, 10, 12, 13, 40)).toISOString(), by: { name: 'Emma' } }],
+      } as Chore]} />);
+      expect(container.querySelector('[data-chore-pet-ticks]')?.textContent).toBe('Emma 7:40 AM');
+    });
   });
 
   it('shows loading state', () => {

@@ -13,7 +13,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { PIN_LENGTH_OPTIONS, DEFAULT_PIN_LENGTH, MAX_PIN_LENGTH } from '@/lib/constants';
+import { DEFAULT_PIN_LENGTH } from '@/lib/constants';
+import { describePin, lengthOptions, normalizePin, pinMatches, pinNoun, type PinKind } from '@/lib/auth/pinKind';
 import { MemberColorPicker, type TakenMemberColor } from '@/components/ui/MemberColorPicker';
 import { nextFreeMemberColor } from '@/lib/constants/memberColors';
 import type { FamilyMember } from './PinEditModal';
@@ -30,6 +31,8 @@ export interface MemberModalSaveData {
   avatarUrl?: string | null;
   avatarFile?: File | null;
   pinLength: number;
+  /** A PIN or a passcode of lowercase letters and numbers (#1197). */
+  pinKind: PinKind;
   /** Sent with a length change on a member who has a PIN: the new PIN, and
    *  the current one the server needs to allow it. */
   pin?: string;
@@ -62,10 +65,21 @@ export function MemberModal({
   // them. Each member's own choice is the source of truth; there is no
   // family-wide default any more.
   const [pinLength, setPinLength] = useState(member?.pinLength ?? DEFAULT_PIN_LENGTH);
-  // A new length strands the PIN this member already has, so it is only
-  // saved together with a new PIN of that length (the server refuses it
+  // A PIN or a passcode (#1197): switching picks that kind's first length
+  // unless the current one is allowed for it too.
+  const savedKind: PinKind = member?.pinKind ?? 'digits';
+  const [pinKind, setPinKindState] = useState<PinKind>(savedKind);
+  const setPinKind = (k: PinKind) => {
+    setPinKindState(k);
+    if (!lengthOptions(k).includes(pinLength)) setPinLength(lengthOptions(k)[0]!);
+    setNewPin('');
+    setConfirmPin('');
+  };
+  // A new length or kind strands the PIN this member already has, so it is
+  // only saved together with a new one of that shape (the server refuses it
   // otherwise).
-  const lengthChanged = !!member?.hasPin && pinLength !== (member.pinLength ?? DEFAULT_PIN_LENGTH);
+  const lengthChanged = !!member?.hasPin && (pinLength !== (member.pinLength ?? DEFAULT_PIN_LENGTH) || pinKind !== savedKind);
+  const noun = pinNoun(pinKind);
   const [currentPin, setCurrentPin] = useState('');
   const [newPin, setNewPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
@@ -123,15 +137,15 @@ export function MemberModal({
 
     if (lengthChanged) {
       if (!canResetPin && !currentPin) {
-        setPinError('Enter the current PIN');
+        setPinError(`Enter the current ${pinNoun(savedKind)}`);
         return;
       }
-      if (!new RegExp(`^\\d{${pinLength}}$`).test(newPin)) {
-        setPinError(`The new PIN must be exactly ${pinLength} digits`);
+      if (!pinMatches(pinKind, pinLength, newPin)) {
+        setPinError(`The new ${noun} must be exactly ${describePin(pinKind, pinLength)}`);
         return;
       }
       if (newPin !== confirmPin) {
-        setPinError('The new PINs do not match');
+        setPinError(`The new ${noun}s do not match`);
         return;
       }
     }
@@ -144,6 +158,7 @@ export function MemberModal({
       avatarUrl: avatarFile ? null : avatarUrl,
       avatarFile,
       pinLength,
+      pinKind,
       ...(lengthChanged ? { pin: newPin, ...(canResetPin ? {} : { currentPin }) } : {}),
     });
   };
@@ -265,9 +280,34 @@ export function MemberModal({
           </div>
 
           <div>
-            <label className="text-sm font-medium">PIN length</label>
+            <label className="text-sm font-medium" id="member-sign-in-with">Signs in with</label>
+            <div className="flex gap-2 mt-1" role="group" aria-labelledby="member-sign-in-with">
+              {(['digits', 'passcode'] as const).map((k) => (
+                <Button
+                  key={k}
+                  type="button"
+                  variant={k === pinKind ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setPinKind(k)}
+                  className="flex-1"
+                  aria-pressed={k === pinKind}
+                  data-pin-kind={k}
+                >
+                  {k === 'passcode' ? 'Passcode' : 'PIN'}
+                </Button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {pinKind === 'passcode'
+                ? 'Letters and numbers, typed on the pad with ABC. Best for adults; a child who cannot spell yet is better on a PIN.'
+                : 'Numbers on the pad.'}
+            </p>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">{pinKind === 'passcode' ? 'Passcode length' : 'PIN length'}</label>
             <div className="flex gap-2 mt-1">
-              {PIN_LENGTH_OPTIONS.map((len) => (
+              {lengthOptions(pinKind).map((len) => (
                 <Button
                   key={len}
                   type="button"
@@ -277,56 +317,56 @@ export function MemberModal({
                   className="flex-1"
                   aria-pressed={len === pinLength}
                 >
-                  {len} digits
+                  {pinKind === 'passcode' ? len : `${len} digits`}
                 </Button>
               ))}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              How many digits {member ? `${name || 'this member'}'s` : "this member's"} PIN pad will require.
+              How many {pinKind === 'passcode' ? 'letters and numbers' : 'digits'} {member ? `${name || 'this member'}'s` : "this member's"} pad will require.
             </p>
           </div>
 
           {lengthChanged && (
             <div className="space-y-3 rounded-md border border-border p-3">
               <p className="text-sm text-muted-foreground">
-                A {pinLength}-digit length needs a new {pinLength}-digit PIN.
+                {describePin(pinKind, pinLength)[0]!.toUpperCase() + describePin(pinKind, pinLength).slice(1)} needs a new {noun} of that length.
               </p>
               {!canResetPin && (
               <div>
-                <label className="text-sm font-medium">Current PIN</label>
+                <label className="text-sm font-medium">Current {pinNoun(savedKind)}</label>
                 <Input
                   type="password"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={MAX_PIN_LENGTH}
+                  inputMode={savedKind === 'passcode' ? 'text' : 'numeric'}
+                  autoCapitalize="none"
+                  maxLength={member?.pinLength ?? DEFAULT_PIN_LENGTH}
                   value={currentPin}
-                  onChange={(e) => setCurrentPin(e.target.value.replace(/\D/g, ''))}
-                  placeholder="Enter current PIN"
+                  onChange={(e) => setCurrentPin(normalizePin(savedKind, e.target.value))}
+                  placeholder={`Enter current ${pinNoun(savedKind)}`}
                 />
               </div>
               )}
               <div>
-                <label className="text-sm font-medium">New PIN</label>
+                <label className="text-sm font-medium">New {noun}</label>
                 <Input
                   type="password"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
+                  inputMode={pinKind === 'passcode' ? 'text' : 'numeric'}
+                  autoCapitalize="none"
                   maxLength={pinLength}
                   value={newPin}
-                  onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ''))}
-                  placeholder={`${pinLength} digits`}
+                  onChange={(e) => setNewPin(normalizePin(pinKind, e.target.value))}
+                  placeholder={describePin(pinKind, pinLength)}
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Confirm New PIN</label>
+                <label className="text-sm font-medium">Confirm new {noun}</label>
                 <Input
                   type="password"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
+                  inputMode={pinKind === 'passcode' ? 'text' : 'numeric'}
+                  autoCapitalize="none"
                   maxLength={pinLength}
                   value={confirmPin}
-                  onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))}
-                  placeholder="Re-enter new PIN"
+                  onChange={(e) => setConfirmPin(normalizePin(pinKind, e.target.value))}
+                  placeholder={`Re-enter new ${noun}`}
                 />
               </div>
               {pinError && (

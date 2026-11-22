@@ -134,13 +134,13 @@ The usual gestures:
 
 ### Screensaver + Away mode behavior on PWA
 
-An installed PWA does not start the screensaver or Away mode by itself, unless it is a screen named in *Settings → Screens*. Without a name it skips both, for these reasons:
+An installed PWA does not start the screensaver or Away mode by itself, unless it is a screen named in its editor (*Through the day* → **Name this device**). Without a name it skips both, for these reasons:
 
 - A phone has no idle time the way a kiosk does. It is either in your pocket or in your hand.
 - If Away mode turned on by itself on a phone, it would lock the family member out of their own device.
 - A photo slideshow on a phone screen only uses up the battery.
 
-A wall tablet often runs Prism as an installed app so it fills the screen. Name it in *Settings → Screens* and its screensaver and Away mode start on their timers as they do in a browser.
+A wall tablet often runs Prism as an installed app so it fills the screen. Name it in its editor (*Through the day* → **Name this device**) and its screensaver and Away mode start on their timers as they do in a browser.
 
 ### Common workflows
 

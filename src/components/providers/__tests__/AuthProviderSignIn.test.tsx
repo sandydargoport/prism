@@ -66,6 +66,29 @@ describe('AuthProvider sign-in prompts', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
+  it('requireAuth on mount answers from a live session without the PIN box', async () => {
+    const server = jest.fn((input: RequestInfo | URL) =>
+      String(input).includes('/api/auth/me')
+        ? respond(200, { authenticated: true, user: { id: 'p1', name: 'Pat', color: '#000', role: 'parent' } })
+        : respond(200),
+    );
+    global.fetch = server as typeof fetch;
+    let answered: { name: string } | null | undefined;
+    // A page that asks as it mounts, as the screen editor does: its effect
+    // runs before the provider's own session check has started.
+    function AsksOnMount() {
+      const { requireAuth } = useAuth();
+      React.useEffect(() => { void requireAuth('Sign in to edit', 'Parents only').then((u) => { answered = u; }); }, [requireAuth]);
+      return null;
+    }
+    render(<AuthProvider><AsksOnMount /></AuthProvider>);
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+    expect(answered?.name).toBe('Pat');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    // One session check, not one per caller.
+    expect(server.mock.calls.filter(([u]) => String(u).includes('/api/auth/me'))).toHaveLength(1);
+  });
+
   it('requireAuth opens the PIN box with no toast alongside it', async () => {
     await mount();
     fireEvent.click(screen.getByRole('button', { name: 'edit' }));

@@ -10,21 +10,26 @@
  * person, side by side as the width allows, each with its own due days.
  */
 import { useState } from 'react';
-import { addDays, format } from 'date-fns';
 import { ListRow } from '@/components/ui/ListRow';
 import { PersonMark } from '@/components/ui/PersonMark';
 import { Button } from '@/components/ui/button';
 import type { Chore } from '@/types';
-import { isLate, formatReminderTime, petTickLine } from '@/lib/utils/reminders';
+import { isLate, formatReminderTime, petTickLine, householdClock } from '@/lib/utils/reminders';
+import { getDisplayDateKey } from '@/lib/utils/timeFormat';
+import { addDaysToKey } from '@/lib/utils/zonedDate';
 
 /** Ticks a chore needs each day (#1107): more than one only for a daily chore. */
 export function timesADay(c: Chore): number {
   return c.frequency === 'daily' ? Math.max(1, c.timesPerDay ?? 1) : 1;
 }
 
-export function choreGroups(chores: Chore[], today: Date) {
-  const key = (d: Date) => format(d, 'yyyy-MM-dd');
-  const t = key(today), tomorrow = key(addDays(today, 1)), week = key(addDays(today, 7));
+/**
+ * The Do list's sections. `today` is now; the days are the household's
+ * (`timeZone`, the display zone), not the device's (#1227).
+ */
+export function choreGroups(chores: Chore[], today: Date, timeZone?: string) {
+  const key = (d: Date) => getDisplayDateKey(d, timeZone);
+  const t = key(today), tomorrow = addDaysToKey(t, 1), week = addDaysToKey(t, 7);
   const live = chores.filter((c) => c.enabled && c.nextDue);
   const due = (c: Chore) => c.nextDue!.slice(0, 10);
   // Done today (#984): not the next round waiting under Tomorrow or Later;
@@ -58,9 +63,12 @@ export function choresByPerson(chores: Chore[], people: Person[]): Array<{ perso
   return blocks;
 }
 
-export function ChoresDoList({ chores, today, onTick, onApprove, canApprove, groupBy = 'none', people = [] }: {
+export function ChoresDoList({ chores, today, timeZone, onTick, onApprove, canApprove, groupBy = 'none', people = [] }: {
   chores: Chore[];
+  /** Now. */
   today: Date;
+  /** The household's zone (useTimeFormat's display zone) for today, Late and tick times (#1227). */
+  timeZone?: string;
   /** Manage's Group by (#985): a block per person, or one list. */
   groupBy?: 'none' | 'person';
   /** Household order for the person blocks. */
@@ -70,7 +78,7 @@ export function ChoresDoList({ chores, today, onTick, onApprove, canApprove, gro
   onApprove: (chore: Chore) => void;
   canApprove: boolean;
 }) {
-  const g = choreGroups(chores, today);
+  const g = choreGroups(chores, today, timeZone);
   // Struck through while its tick saves; the refreshed list then leaves it out.
   const [striking, setStriking] = useState<ReadonlySet<string>>(new Set());
   const strike = async (c: Chore) => {
@@ -83,14 +91,14 @@ export function ChoresDoList({ chores, today, onTick, onApprove, canApprove, gro
     }
   };
   // Late (#1109): its time has passed today, or its day has gone. The
-  // household's clock is the wall's.
-  const nowKey = format(today, 'yyyy-MM-dd'), nowTime = format(new Date(), 'HH:mm');
+  // household's clock is the wall's, whatever zone the device is in (#1227).
+  const { today: nowKey, now: nowTime } = householdClock(timeZone, today);
   const row = (c: Chore, done = false) => {
     const struck = !done && striking.has(c.id);
     const late = isLate(c, nowKey, nowTime);
     const meta = [
       // Who did it today and when, for a pet (#856).
-      c.pet ? petTickLine(c.todayTicks) || null : null,
+      c.pet ? petTickLine(c.todayTicks, timeZone) || null : null,
       // Under a person's heading the name would only repeat it.
       done || groupBy === 'person' ? null : c.assignedTo?.name,
       // A reminder's time (#1109), or any chore's that has one.
@@ -150,7 +158,7 @@ export function ChoresDoList({ chores, today, onTick, onApprove, canApprove, gro
       {groupBy === 'person'
         // Side by side as the width allows (#1051), one column on a phone.
         ? <div className="grid grid-cols-1 items-start gap-x-8 gap-y-6 md:grid-cols-2 xl:grid-cols-3" data-chores-people>{choresByPerson(chores.filter((c) => !c.pendingApproval), people).map(({ person, chores: mine }) => {
-          const d = choreGroups(mine, today);
+          const d = choreGroups(mine, today, timeZone);
           if (d.today.length + d.tomorrow.length + d.later.length + d.petsDone.length === 0) return null;
           return (
             <div key={person?.id ?? 'anyone'} className="flex flex-col gap-3" data-chores-person={person?.id ?? 'anyone'}>

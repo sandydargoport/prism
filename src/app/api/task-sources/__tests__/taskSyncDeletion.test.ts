@@ -204,3 +204,51 @@ describe('a task the provider is listing again', () => {
     );
   });
 });
+
+// #1200: a subtask that went with its parent is not one more task to review;
+// confirming the parent deletes it with the parent.
+describe('a parent that vanished with its subtasks', () => {
+  it('is the only one flagged', async () => {
+    localRows = [
+      syncedRow({ id: 'local-keep', externalId: 'keep' }),
+      syncedRow({ id: 'local-other', externalId: 'other' }),
+      syncedRow({ id: 'local-parent', externalId: 'parent' }),
+      syncedRow({ id: 'local-sub1', externalId: 'sub1', parentId: 'local-parent' }),
+      syncedRow({ id: 'local-sub2', externalId: 'sub2', parentId: 'local-parent' }),
+    ];
+    mockFetchTasks.mockResolvedValue([
+      { id: 'keep', title: 'A task', completed: false, updatedAt: LONG_AGO, dueDate: null, description: null, priority: null, completedAt: null },
+      { id: 'other', title: 'A task', completed: false, updatedAt: LONG_AGO, dueDate: null, description: null, priority: null, completedAt: null },
+    ]);
+
+    const res = await run();
+    const body = await res.json();
+
+    expect(deletedTasks()).toBe(false);
+    const flags = writes.filter((w) => w.op === 'update' && (w.payload as { pendingDeletion?: unknown }).pendingDeletion instanceof Date);
+    expect(flags).toHaveLength(1);
+    expect(body.flagged ?? body.result?.flagged).toBe(1);
+  });
+});
+
+// #1201: Google subtasks are placed under their parent's local row, and one
+// moved to the top level at Google goes back to the top level here.
+describe('subtasks from the provider', () => {
+  const remote = (id: string, parentId: string | null) =>
+    ({ id, title: id, completed: false, updatedAt: LONG_AGO, dueDate: null, description: null, priority: null, completedAt: null, parentId });
+
+  it('point at their parent, and leave it when they move to the top level', async () => {
+    localRows = [
+      syncedRow({ id: 'local-parent', externalId: 'parent', updatedAt: LONG_AGO }),
+      syncedRow({ id: 'local-sub1', externalId: 'sub1', updatedAt: LONG_AGO }),
+      syncedRow({ id: 'local-sub2', externalId: 'sub2', updatedAt: LONG_AGO, parentId: 'local-parent' }),
+    ];
+    mockFetchTasks.mockResolvedValue([remote('parent', null), remote('sub1', 'parent'), remote('sub2', null)]);
+
+    await run();
+
+    const placed = writes.filter((w) => w.op === 'update' && w.payload && 'parentId' in (w.payload as object)).map((w) => w.payload);
+    expect(placed).toEqual([{ parentId: 'local-parent' }, { parentId: null }]);
+    expect(deletedTasks()).toBe(false);
+  });
+});

@@ -1,23 +1,31 @@
 import { redirect } from 'next/navigation';
+import { eq } from 'drizzle-orm';
 import { DashboardClient } from './DashboardClient';
 import { db } from '@/lib/db/client';
+import { busRoutes } from '@/lib/db/schema';
 import { currentDisplay } from '@/lib/auth/displayIdentity';
 import { getHouseholdTimezone } from '@/lib/householdTimezone';
-import { screenDashboardAt } from '@/lib/displays/screenSchedule';
+import { parseSwitches, screenDashboardAt } from '@/lib/screenSwitches';
 import { pageZoomVars } from '@/lib/utils/zoomVars';
 
 /**
- * A named screen with its own dashboard set (#690) opens on that one instead
- * of the household default, or on the one its schedule shows right now
- * (#692). Null when it has none, or it no longer exists.
+ * The dashboard a named screen shows right now (#1282): a switch's while one
+ * is in force, at bus time or at set times, otherwise its own. Its slug, or
+ * null when that is the default. A device nobody named shows the default.
  */
 async function screenDashboardSlug(): Promise<string | null> {
   try {
     const screen = await currentDisplay();
     if (!screen) return null;
-    const all = await db.query.layouts.findMany({ columns: { id: true, slug: true, isDefault: true } });
+    const switches = parseSwitches(screen.switches);
+    const [all, routes] = await Promise.all([
+      db.query.layouts.findMany({ columns: { id: true, slug: true, isDefault: true } }),
+      switches.some((s) => s.when === 'bus')
+        ? db.select({ id: busRoutes.id, scheduledTime: busRoutes.scheduledTime, activeDays: busRoutes.activeDays }).from(busRoutes).where(eq(busRoutes.enabled, true))
+        : Promise.resolve([]),
+    ]);
     const id = screenDashboardAt(
-      screen, Date.now(), await getHouseholdTimezone(),
+      { dashboardId: screen.dashboardId, switches }, Date.now(), await getHouseholdTimezone(), routes,
       (d) => all.some((l) => l.id === d),
     );
     const layout = all.find((l) => l.id === id);
@@ -44,8 +52,11 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   // A phone editing another screen opens that screen's dashboard here with
   // ?screen= (#1153); it chose the dashboard already, so this browser's own
   // screen must not redirect it.
-  const { screen } = await searchParams;
-  const slug = screen ? null : await screenDashboardSlug();
+  const { screen, edit } = await searchParams;
+  // Opened to edit a dashboard, the page shows that one.
+  const slug = screen || edit ? null : await screenDashboardSlug();
+  // A named screen follows its plan at any address, so it goes to the
+  // dashboard's own.
   if (slug) redirect(`/d/${slug}`);
 
   let fontScale = 100;

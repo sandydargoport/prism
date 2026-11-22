@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
-import { requireAuth, requireRole } from '@/lib/auth';
+import { getDisplayAuth, requireAuth, requireRole } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { recipes } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
@@ -92,6 +92,13 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // What the Recipes page needs (#1244): a session, or the display's identity,
+  // which the sign-in wall withdraws from a device a parent has not trusted.
+  const auth = await getDisplayAuth();
+  if (!auth) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
+
   try {
     const { id } = await params;
     const filePath = getRecipeImagePath(id);
@@ -101,7 +108,7 @@ export async function GET(
     return new NextResponse(fileBuffer, {
       headers: {
         'Content-Type': 'image/jpeg',
-        'Cache-Control': 'public, max-age=3600, must-revalidate',
+        'Cache-Control': 'private, max-age=3600, must-revalidate',
       },
     });
   } catch {

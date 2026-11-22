@@ -10,10 +10,18 @@ const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
 const PIN = process.env.E2E_PIN || '1234';
 
 /**
- * Each test stands in for its own screen. The wall limit no longer goes by
- * the screen's address (#809), so this only labels the activity log.
+ * Make `request` one of this install's named screens (#1222): a parent signs
+ * in on it, names it, and signs out again, leaving only the screen's cookie.
+ * Returns the screen's id, to remove it afterwards.
  */
-const screen = () => ({ 'x-forwarded-for': `10.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}` });
+async function nameThisScreen(request: APIRequestContext, parentId: string, name: string): Promise<string> {
+  expect((await request.post('/api/auth/login', { data: { userId: parentId, pin: PIN } })).ok()).toBe(true);
+  const res = await request.post('/api/displays', { data: { name } });
+  expect(res.ok(), 'naming the screen').toBe(true);
+  const { display } = await res.json();
+  expect((await request.post('/api/auth/logout')).ok()).toBe(true);
+  return display.id as string;
+}
 
 test.describe('everyday jobs without a PIN', () => {
   test.skip(!HAS_TEST_DB, 'needs the seeded test database');
@@ -27,7 +35,8 @@ test.describe('everyday jobs without a PIN', () => {
     const settingsRes = await (await parent.get('/api/settings')).json();
     const original = settingsRes?.security ?? settingsRes?.settings?.security ?? {};
     const layout = await (await parent.post('/api/layouts', { data: { name: `Wall tick e2e ${Date.now()}`, widgets: [{ i: 'chores', x: 0, y: 0, w: 48, h: 27 }] } })).json();
-    const wallContext = await browser.newContext({ viewport: { width: 1920, height: 1080 }, extraHTTPHeaders: screen() });
+    const wallContext = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+    const screenId = await nameThisScreen(wallContext.request, parentId, `Wall tick e2e ${Date.now()}`);
     const completions = async (choreId: string) => {
       const res = await (await parent.get('/api/chores/completions?days=2&limit=100')).json();
       return ((res.completions ?? res) as Array<{ choreId: string }>).filter((c) => c.choreId === choreId).length;
@@ -58,6 +67,7 @@ test.describe('everyday jobs without a PIN', () => {
     } finally {
       await parent.patch('/api/settings', { data: { key: 'security', value: original } });
       await parent.delete(`/api/layouts/${layout.id}`);
+      await parent.delete(`/api/displays/${screenId}`);
       await wallContext.close();
     }
   });
@@ -68,7 +78,9 @@ test.describe('everyday jobs without a PIN', () => {
     const login = await page.request.post('/api/auth/login', { data: { userId: parentId, pin: PIN } });
     expect(login.ok(), 'precondition: login must succeed').toBe(true);
     const parent = page.request;
-    const wall: APIRequestContext = await playwright.request.newContext({ baseURL: info.project.use.baseURL, extraHTTPHeaders: screen() });
+    const wall: APIRequestContext = await playwright.request.newContext({ baseURL: info.project.use.baseURL });
+    const stranger: APIRequestContext = await playwright.request.newContext({ baseURL: info.project.use.baseURL });
+    const screenId = await nameThisScreen(wall, parentId, `Wall API e2e ${Date.now()}`);
 
     const settingsRes = await (await parent.get('/api/settings')).json();
     const original = settingsRes?.security ?? settingsRes?.settings?.security ?? {};
@@ -89,8 +101,11 @@ test.describe('everyday jobs without a PIN', () => {
       expect((await wall.patch(`/api/tasks/${task.id}`, { data: { completed: true } })).status()).toBe(401);
       expect((await wall.post(`/api/chores/${chore.id}/complete`, { data: { completedBy: parentId } })).status()).toBe(401);
 
-      // Off: the everyday jobs work.
+      // Off: the everyday jobs work, on this install's named screen only (#1222).
       expect((await setPin(false)).ok()).toBe(true);
+      expect((await stranger.patch(`/api/tasks/${task.id}`, { data: { completed: true } })).status()).toBe(401);
+      expect((await stranger.post('/api/shopping-items', { data: { listId: list.id, name: 'Stranger eggs' } })).status()).toBe(401);
+      expect((await stranger.post(`/api/chores/${chore.id}/complete`, { data: { completedByIndex: 0 } })).status()).toBe(401);
       expect((await wall.patch(`/api/tasks/${task.id}`, { data: { completed: true } })).status()).toBe(200);
       expect((await wall.patch(`/api/shopping-items/${item.id}`, { data: { checked: true } })).status()).toBe(200);
       const add = await wall.post('/api/shopping-items', { data: { listId: list.id, name: `Wall eggs ${Date.now()}` } });
@@ -121,7 +136,9 @@ test.describe('everyday jobs without a PIN', () => {
       await parent.delete(`/api/chores/${chore.id}`);
       await parent.delete(`/api/shopping-items/${item.id}`);
       for (const id of added) await parent.delete(`/api/shopping-items/${id}`);
+      await parent.delete(`/api/displays/${screenId}`);
       await wall.dispose();
+      await stranger.dispose();
     }
   });
 });

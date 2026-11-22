@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, getDisplayAuth } from '@/lib/auth';
+import { requireAuth, requireRole, getDisplayAuth } from '@/lib/auth';
 import { db } from '@/lib/db/client';
 import { layouts } from '@/lib/db/schema';
 import { eq, desc, isNull } from 'drizzle-orm';
@@ -83,6 +83,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const auth = await requireAuth();
   if (auth instanceof NextResponse) return auth;
+  // Making a dashboard is for parents (#1223).
+  const denied = requireRole(auth, 'canModifySettings');
+  if (denied) return denied;
 
   try {
     const body = await request.json();

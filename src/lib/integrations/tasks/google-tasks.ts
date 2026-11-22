@@ -116,9 +116,10 @@ export const googleTasksProvider: TaskProvider = {
       );
 
       if (response.items) {
-        // Only sync top-level tasks (skip subtasks for now)
-        const topLevel = response.items.filter(t => !t.parent);
-        allTasks.push(...topLevel.map(t => parseGoogleTask(t, listId)));
+        // Subtasks too (#1201), each with its parent's id. Google's position
+        // orders tasks within their parent, so subtasks keep their order.
+        const ordered = [...response.items].sort((x, y) => (x.position ?? '').localeCompare(y.position ?? ''));
+        allTasks.push(...ordered.map(t => ({ ...parseGoogleTask(t, listId), parentId: t.parent ?? null })));
       }
 
       pageToken = response.nextPageToken;

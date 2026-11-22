@@ -72,6 +72,11 @@ export async function POST(
   }
 }
 
+/**
+ * No check, on purpose (#1244): the sign-in page shows each member's avatar
+ * before anyone has signed in, from the family list the sign-in wall lets
+ * through (WALL_ALLOWLIST in src/proxy.ts). An avatar needs what that page needs.
+ */
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -85,7 +90,7 @@ export async function GET(
     return new NextResponse(fileBuffer, {
       headers: {
         'Content-Type': 'image/jpeg',
-        'Cache-Control': 'public, max-age=3600, must-revalidate',
+        'Cache-Control': 'private, max-age=3600, must-revalidate',
       },
     });
   } catch {

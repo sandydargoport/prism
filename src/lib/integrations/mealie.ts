@@ -13,6 +13,8 @@
 
 import { validatePublicUrl, safeFetch, UnsafeUrlError } from '@/lib/utils/safeFetch';
 import type { NormalizedRecipe } from '@/lib/sync/adapters/recipeWriter';
+import { matchLines, sameInstructions, sameLines } from '@/lib/sync/adapters/ingredientLines';
+import { randomUUID } from 'crypto';
 
 const PAGE_SIZE = 50;
 const MAX_RECIPES = 1000;
@@ -41,7 +43,7 @@ interface MealieIngredient {
   title?: string | null;
   originalText?: string | null;
 }
-interface MealieStep { title?: string | null; text?: string | null }
+interface MealieStep { id?: string | null; title?: string | null; text?: string | null }
 export interface MealieRecipeDetail {
   id: string;
   slug: string;
@@ -85,6 +87,22 @@ export async function testMealieConnection(
   return { ok: true };
 }
 
+/**
+ * Whether the token can write (#1205). Mealie has no read-only tokens: a token
+ * carries its user's rights, and any member of a household may add, move and
+ * remove that household's meal-plan entries. So a token that authenticates can
+ * write. (A recipe someone else locked stays theirs; that is checked per
+ * recipe when one is sent back.) Never throws: a failed check reports false.
+ */
+export async function checkMealieWriteAccess(serverUrl: string, token: string): Promise<boolean> {
+  try {
+    await testMealieConnection(serverUrl, token);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Parse a Mealie duration ("30 minutes", "1 hour 15 min", "PT30M") to minutes. */
 function parseDurationMinutes(s: string | null | undefined): number | null {
   if (!s) return null;
@@ -110,6 +128,76 @@ function normalizeIngredients(list: MealieIngredient[]): Array<{ text?: string; 
     if (text) out.push({ text });
   }
   return out;
+}
+
+/**
+ * Prism's ingredient lines and instructions merged into a Mealie recipe
+ * (#1215). An ingredient whose line did not change keeps its object (food,
+ * unit, quantity); a new or edited line goes in as a note; a removed one is
+ * dropped. A heading is Mealie's `title` on the ingredient after it. The steps
+ * are set only on a recipe with one step (or none). Null fields: unchanged.
+ */
+export function mergeMealieRecipe(
+  detail: MealieRecipeDetail,
+  local: { ingredients: Array<{ text?: string; heading?: string }>; instructions: string | null },
+): { recipeIngredient: Array<Record<string, unknown>> | null; recipeInstructions: Array<Record<string, unknown>> | null } {
+  const objects = (detail.recipeIngredient ?? []) as Array<MealieIngredient & Record<string, unknown>>;
+  // The text line each object shows (its heading is separate, see below).
+  const textOf = (ing: MealieIngredient) => (ing.display || ing.originalText || '').trim();
+  const remoteLines = normalizeIngredients(objects);
+  let recipeIngredient: Array<Record<string, unknown>> | null = null;
+  if (!sameLines(local.ingredients, remoteLines)) {
+    const shown = objects.filter((o) => textOf(o));
+    const textLocal = local.ingredients.filter((l) => !l.heading);
+    const match = matchLines(textLocal, shown.map((o) => ({ text: textOf(o) })));
+    const out: Array<Record<string, unknown>> = [];
+    let heading = '';
+    let t = 0;
+    for (const line of local.ingredients) {
+      if (line.heading) {
+        if (heading) out.push(plainMealieIngredient('', heading)); // a heading with nothing under it
+        heading = line.heading.trim();
+        continue;
+      }
+      const m = match[t++];
+      out.push(m !== null && m !== undefined
+        ? { ...shown[m]!, title: heading }
+        : plainMealieIngredient(line.text ?? '', heading));
+      heading = '';
+    }
+    if (heading) out.push(plainMealieIngredient('', heading));
+    recipeIngredient = out;
+  }
+  const steps = detail.recipeInstructions ?? [];
+  let recipeInstructions: Array<Record<string, unknown>> | null = null;
+  if (steps.length <= 1 && !sameInstructions(local.instructions, normalizeInstructions(steps))) {
+    const text = (local.instructions ?? '').trim();
+    recipeInstructions = text
+      ? [{ id: steps[0]?.id ?? randomUUID(), title: steps[0]?.title ?? '', text: stripTitle(text, steps[0]?.title) }]
+      : [];
+  }
+  return { recipeIngredient, recipeInstructions };
+}
+
+/** A pull put a one-step recipe's step title on the first line; take it off again. */
+function stripTitle(text: string, title: string | null | undefined): string {
+  const name = (title ?? '').trim();
+  const prefix = name + '\n';
+  return name && text.startsWith(prefix) ? text.slice(prefix.length).trim() : text;
+}
+
+/** A Prism line as a Mealie ingredient with no food or unit: Mealie shows the note. */
+function plainMealieIngredient(text: string, heading: string): Record<string, unknown> {
+  return {
+    referenceId: randomUUID(),
+    title: heading,
+    note: text,
+    originalText: text || null,
+    quantity: 0,
+    unit: null,
+    food: null,
+    display: text,
+  };
 }
 
 function normalizeInstructions(steps: MealieStep[]): string | null {
@@ -145,6 +233,7 @@ export function normalizeMealieRecipe(detail: MealieRecipeDetail, base: string):
     servings,
     tags: (detail.tags ?? []).map((t) => (t.name || '').trim()).filter(Boolean),
     remoteImageUrl: detail.image ? `${base}/api/media/recipes/${detail.id}/images/original.webp` : null,
+    stepCount: (detail.recipeInstructions ?? []).length,
   };
 }
 
@@ -236,6 +325,152 @@ export async function fetchMealieMealPlan(
     page += 1;
   }
   return out.slice(0, MAX_MEAL_PLAN);
+}
+
+// --- Write-back (#1206): meal-plan entries. ---
+
+/** What Prism sends for one Mealie meal-plan entry (date-only, no time). */
+export interface MealieMealPlanWrite {
+  date: string; // YYYY-MM-DD
+  entryType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  title: string;
+  text: string;
+  /** Mealie recipe id (uuid), when the meal's recipe came from this server. */
+  recipeId: string | null;
+}
+
+async function writeOrThrow(res: Response, what: string): Promise<void> {
+  if (res.ok) return;
+  if (res.status === 401 || res.status === 403) {
+    throw new Error(`Mealie refused to ${what}: check the token in Mealie → Profile → API Tokens.`);
+  }
+  let detail = '';
+  try { detail = JSON.stringify(await res.json()).slice(0, 200); } catch { /* no body */ }
+  throw new Error(`Mealie could not ${what}: ${res.status} ${res.statusText}${detail ? ` ${detail}` : ''}`);
+}
+
+/** Create a meal-plan entry in the token's household; returns it as stored. */
+export async function createMealieMealPlanEntry(
+  serverUrl: string,
+  token: string,
+  entry: MealieMealPlanWrite,
+): Promise<MealieMealPlanEntry> {
+  validatePublicUrl(serverUrl);
+  const res = await safeFetch(`${baseUrl(serverUrl)}/api/households/mealplans`, {
+    method: 'POST',
+    headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify(entry),
+  });
+  await writeOrThrow(res, 'add the meal');
+  return storedMealieEntry(await res.json(), 'added');
+}
+
+function storedMealieEntry(data: unknown, verb: string): MealieMealPlanEntry {
+  const e = data as MealieMealPlanEntry | null;
+  if (!e || typeof e.id !== 'number' || typeof e.date !== 'string') {
+    throw new Error(`Mealie ${verb} the meal but did not return it.`);
+  }
+  return e;
+}
+
+/**
+ * Change an entry. Mealie's update replaces the whole entry and needs its
+ * group and user, so the entry is read first and sent back with Prism's fields.
+ */
+export async function updateMealieMealPlanEntry(
+  serverUrl: string,
+  token: string,
+  id: string,
+  entry: MealieMealPlanWrite,
+): Promise<MealieMealPlanEntry> {
+  validatePublicUrl(serverUrl);
+  const url = `${baseUrl(serverUrl)}/api/households/mealplans/${encodeURIComponent(id)}`;
+  const current = await safeFetch(url, { headers: authHeaders(token) });
+  await writeOrThrow(current, 'find the meal to change');
+  const existing = (await current.json()) as Record<string, unknown>;
+  const res = await safeFetch(url, {
+    method: 'PUT',
+    headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      id: existing.id,
+      groupId: existing.groupId,
+      userId: existing.userId,
+      ...entry,
+    }),
+  });
+  await writeOrThrow(res, 'change the meal');
+  return storedMealieEntry(await res.json(), 'changed');
+}
+
+/** Remove an entry. One that is already gone counts as removed. */
+export async function deleteMealieMealPlanEntry(serverUrl: string, token: string, id: string): Promise<void> {
+  validatePublicUrl(serverUrl);
+  const res = await safeFetch(`${baseUrl(serverUrl)}/api/households/mealplans/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  if (res.status === 404) return;
+  await writeOrThrow(res, 'remove the meal');
+}
+
+/** The recipe fields Prism sends back (#1207). */
+export interface MealieRecipeFieldsWrite {
+  name: string;
+  description: string | null;
+  servings: number | null;
+  prepTime: number | null;
+  cookTime: number | null;
+}
+
+const minutes = (n: number | null) => (n ? `${n} minutes` : null);
+
+/**
+ * Send a recipe's name, description, servings and times (a partial update, by
+ * id). Returns Mealie's new last-modified time. A recipe another person locked
+ * is refused by Mealie, and the refusal is reported for that recipe.
+ */
+export async function updateMealieRecipe(
+  serverUrl: string,
+  token: string,
+  id: string,
+  fields: MealieRecipeFieldsWrite,
+  /** From mergeMealieRecipe (#1215); a null part is left as Mealie has it. */
+  merged?: ReturnType<typeof mergeMealieRecipe>,
+): Promise<Date | null> {
+  validatePublicUrl(serverUrl);
+  const res = await safeFetch(`${baseUrl(serverUrl)}/api/recipes/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: fields.name,
+      description: fields.description ?? '',
+      recipeServings: fields.servings ?? 0,
+      prepTime: minutes(fields.prepTime),
+      performTime: minutes(fields.cookTime),
+      ...(merged?.recipeIngredient ? { recipeIngredient: merged.recipeIngredient } : {}),
+      ...(merged?.recipeInstructions ? { recipeInstructions: merged.recipeInstructions } : {}),
+    }),
+  });
+  await writeOrThrow(res, 'change the recipe');
+  const data = (await res.json()) as { updatedAt?: string | null };
+  return data.updatedAt ? new Date(data.updatedAt) : null;
+}
+
+/** A recipe as Mealie stores it (by id or slug), for merging Prism's lines. */
+export async function fetchMealieRecipeDetail(serverUrl: string, token: string, idOrSlug: string): Promise<MealieRecipeDetail> {
+  validatePublicUrl(serverUrl);
+  return fetchRecipeDetail(baseUrl(serverUrl), token, idOrSlug);
+}
+
+/** Delete a recipe. One that is already gone counts as deleted. */
+export async function deleteMealieRecipe(serverUrl: string, token: string, id: string): Promise<void> {
+  validatePublicUrl(serverUrl);
+  const res = await safeFetch(`${baseUrl(serverUrl)}/api/recipes/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  if (res.status === 404) return;
+  await writeOrThrow(res, 'delete the recipe');
 }
 
 export { UnsafeUrlError };

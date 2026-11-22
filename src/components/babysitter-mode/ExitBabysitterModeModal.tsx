@@ -9,6 +9,7 @@ import { useFamily } from '@/components/providers';
 import { DEFAULT_PIN_LENGTH } from '@/lib/constants';
 import { pinErrorMessage } from '@/lib/utils/pinErrorMessage';
 import { useResetOn } from '@/lib/hooks/useResetOn';
+import { NumberPad, PinDisplay } from '@/components/auth';
 
 interface ExitBabysitterModeModalProps {
   open: boolean;
@@ -33,6 +34,7 @@ export function ExitBabysitterModeModal({
       color: m.color,
       avatarUrl: m.avatarUrl ?? undefined,
       pinLength: m.pinLength,
+      pinKind: m.pinKind,
     }));
 
   const [selectedParent, setSelectedParent] = useState<typeof parents[0] | null>(null);
@@ -44,6 +46,8 @@ export function ExitBabysitterModeModal({
   // Every pad requires exactly the SELECTED parent's own PIN length, not a
   // family-wide constant — members can have different-length PINs.
   const pinLength = selectedParent?.pinLength ?? DEFAULT_PIN_LENGTH;
+  // A passcode takes letters too (#1197).
+  const passcode = selectedParent?.pinKind === 'passcode';
 
   // Reset state when modal closes
   useResetOn(open, () => {
@@ -76,9 +80,9 @@ export function ExitBabysitterModeModal({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isVerifying) return;
-      if (e.key >= '0' && e.key <= '9') {
+      if ((e.key >= '0' && e.key <= '9') || (passcode && /^[a-z]$/i.test(e.key))) {
         e.preventDefault();
-        handleKeyPress(e.key);
+        handleKeyPress(e.key.toLowerCase());
       } else if (e.key === 'Backspace') {
         e.preventDefault();
         handleBackspace();
@@ -90,7 +94,7 @@ export function ExitBabysitterModeModal({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [open, selectedParent, isVerifying, handleKeyPress, handleBackspace, onOpenChange]);
+  }, [open, selectedParent, isVerifying, handleKeyPress, handleBackspace, onOpenChange, passcode]);
 
   // Auto-submit when PIN is complete
   useEffect(() => {
@@ -146,7 +150,7 @@ export function ExitBabysitterModeModal({
       }}
     >
       <div
-        className="bg-card rounded-2xl p-6 max-w-sm w-full mx-4 shadow-xl"
+        className="bg-card rounded-2xl p-6 max-w-sm w-full mx-4 shadow-xl has-[[data-pin-letters]]:max-w-[34rem]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -233,26 +237,7 @@ export function ExitBabysitterModeModal({
             </button>
 
             {/* PIN dots */}
-            <div
-              className={cn(
-                'flex gap-3 justify-center mb-4',
-                isShaking && 'animate-shake'
-              )}
-            >
-              {Array.from({ length: pinLength }, (_, i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    'w-3 h-3 rounded-full transition-all duration-150',
-                    i < pin.length
-                      ? error
-                        ? 'bg-destructive scale-110'
-                        : 'bg-primary scale-110'
-                      : 'bg-muted border-2 border-border'
-                  )}
-                />
-              ))}
-            </div>
+            <PinDisplay length={pinLength} filled={pin.length} error={!!error} isShaking={isShaking} size="large" />
 
             {/* Error/Status message */}
             <div className="h-6 mb-3 flex items-center justify-center">
@@ -260,51 +245,7 @@ export function ExitBabysitterModeModal({
             </div>
 
             {/* Number pad */}
-            <div className="grid grid-cols-3 gap-3 max-w-[280px] mx-auto">
-              {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del'].map(
-                (key, idx) => {
-                  if (key === '') return <div key={idx} />;
-                  if (key === 'del') {
-                    return (
-                      <button
-                        key={idx}
-                        onClick={handleBackspace}
-                        disabled={isVerifying}
-                        className={cn(
-                          'w-16 h-16 rounded-full mx-auto',
-                          'flex items-center justify-center',
-                          'bg-muted hover:bg-muted/80',
-                          'active:bg-accent active:scale-95',
-                          'transition-all duration-100',
-                          'text-muted-foreground text-sm',
-                          isVerifying && 'opacity-50'
-                        )}
-                      >
-                        Del
-                      </button>
-                    );
-                  }
-                  return (
-                    <button
-                      key={idx}
-                      onClick={() => handleKeyPress(key)}
-                      disabled={isVerifying}
-                      className={cn(
-                        'w-16 h-16 rounded-full mx-auto',
-                        'flex items-center justify-center',
-                        'bg-secondary hover:bg-secondary/80',
-                        'active:bg-primary active:text-primary-foreground active:scale-95',
-                        'transition-all duration-100',
-                        'text-lg font-semibold',
-                        isVerifying && 'opacity-50'
-                      )}
-                    >
-                      {key}
-                    </button>
-                  );
-                }
-              )}
-            </div>
+            <NumberPad letters={passcode} onKeyPress={handleKeyPress} onBackspace={handleBackspace} disabled={isVerifying} size="large" />
 
             {/* Loading indicator */}
             <div className="h-6 mt-3 flex items-center justify-center">

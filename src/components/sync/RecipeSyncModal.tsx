@@ -56,14 +56,19 @@ interface RecipeSource {
   name: string | null;
   serverUrl: string;
   lastSynced: string | null;
+  /** Whether the token can write back to the server (#1205). */
+  canWrite: boolean;
 }
 
 interface PreviewResult {
   diffId: string;
   changes: SyncReviewChange[];
   counts: { add: number; update: number; delete: number };
+  pushCounts?: { add: number; update: number; delete: number };
   massDeleteGuardTripped: boolean;
   withheldDeletes: number;
+  pushDeleteGuardTripped?: boolean;
+  withheldPushDeletes?: number;
   notes?: string[];
 }
 
@@ -92,6 +97,7 @@ export function RecipeSyncModal({ entity, onClose, onSynced }: RecipeSyncModalPr
   // sync
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [activeSourceId, setActiveSourceId] = useState<string | null>(null);
+  const activeSource = sources.find((s) => s.id === activeSourceId);
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [applying, setApplying] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -178,7 +184,15 @@ export function RecipeSyncModal({ entity, onClose, onSynced }: RecipeSyncModalPr
         return;
       }
       const a = data.applied;
-      setResult(`Applied ${a.add} added, ${a.update} updated, ${a.delete} removed.`);
+      const sent = data.sent as { add: number; update: number; delete: number } | undefined;
+      const sentTotal = sent ? sent.add + sent.update + sent.delete : 0;
+      const remote = activeSource ? providerLabel(activeSource.provider) : 'the server';
+      const errors = Array.isArray(data.errors) && data.errors.length ? ` ${data.errors.length} could not be done: ${data.errors.join('; ')}` : '';
+      setResult(
+        `Applied ${a.add} added, ${a.update} updated, ${a.delete} removed.`
+        + (sentTotal ? ` Sent to ${remote}: ${sent!.add} added, ${sent!.update} changed, ${sent!.delete} removed.` : '')
+        + errors,
+      );
       setPreview(null);
       onSynced();
     } catch (err) {
@@ -195,8 +209,12 @@ export function RecipeSyncModal({ entity, onClose, onSynced }: RecipeSyncModalPr
         entityLabel={cfg.entityLabel}
         changes={preview.changes}
         counts={preview.counts}
+        pushCounts={preview.pushCounts}
+        remoteName={activeSource ? providerLabel(activeSource.provider) : undefined}
         massDeleteGuardTripped={preview.massDeleteGuardTripped}
         withheldDeletes={preview.withheldDeletes}
+        pushDeleteGuardTripped={preview.pushDeleteGuardTripped}
+        withheldPushDeletes={preview.withheldPushDeletes}
         notes={preview.notes}
         applying={applying}
         onApply={handleApply}
@@ -229,7 +247,9 @@ export function RecipeSyncModal({ entity, onClose, onSynced }: RecipeSyncModalPr
   const connectForm = (
     <div className="space-y-3 rounded-md border border-border p-3">
       <p className="text-sm text-muted-foreground">
-        Connect a recipe server. Create a read API token in the app and paste it below.
+        Connect a recipe server. Create an API token in the app and paste it below. In Tandoor, a
+        token with the <span className="font-medium">read write</span> scope lets Prism send changes
+        back; a <span className="font-medium">read</span> token only brings things in.
       </p>
       <div className="space-y-2">
         <Label htmlFor="sync-provider">Provider</Label>
@@ -310,6 +330,15 @@ export function RecipeSyncModal({ entity, onClose, onSynced }: RecipeSyncModalPr
                       {s.serverUrl}
                       {s.lastSynced && <> · last synced {new Date(s.lastSynced).toLocaleString()}</>}
                     </div>
+                    <div className="text-xs text-muted-foreground" data-source-access={s.canWrite ? 'write' : 'read'}>
+                      {s.canWrite ? 'Reads and writes' : 'Reads only'}
+                    </div>
+                    {!s.canWrite && s.provider === 'tandoor' && (
+                      <div className="text-xs text-muted-foreground">
+                        To send changes back, make a token with the read write scope in Tandoor
+                        (Settings, API) and connect it here.
+                      </div>
+                    )}
                   </div>
                   <Button size="sm" onClick={() => handleSyncNow(s)} disabled={syncingId === s.id}>
                     {syncingId === s.id ? 'Checking…' : 'Sync now'}

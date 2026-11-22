@@ -9,19 +9,20 @@ import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { useFetchOnMount } from '@/lib/hooks/useFetchOnMount';
 import { useLayouts } from '@/lib/hooks/useLayouts';
-import { reloadForRemoteChange, resetSyncBase, syncScreenSettings } from '@/lib/displays/displaySettingsSync';
 import type { ScreenSettings } from '@/lib/displays/screenSettings';
 import { screenSummary } from '@/lib/displays/screenSummary';
 import { useUrlParam } from '@/lib/hooks/useUrlParam';
 import { useTimeFormat } from '@/components/providers/TimeFormatProvider';
 import { formatTimeOfDay } from '@/components/calendar/cells/itemTime';
-import { editLink } from '@/components/dashboard/useDashboardLayout';
+import { screenEditLink } from '@/lib/displays/editPlace';
+import { switchInWords, type ScreenSwitch } from '@/lib/screenSwitches';
 
 /**
- * Settings > Screens (#690, #1153): name this screen, and see every named
- * screen with whether it is on, what it shows and how it rests. Edit opens a
- * screen's editing bar: on the screen itself, or from any other device over a
- * live picture of it.
+ * Settings > Screens (#690, #1153, #1267): the list of screens, each with
+ * whether it is on, the dashboard it shows (#1282) and Edit, which opens its
+ * editor: on the screen itself, or from any other device over a live picture
+ * of it. Everything about a screen is set in its editor, naming the device in
+ * use included (Through the day); here a screen is only renamed or removed.
  */
 
 type DisplayEntry = {
@@ -29,7 +30,9 @@ type DisplayEntry = {
   name: string;
   lastSeenAt: string | null;
   online: boolean;
+  /** The dashboard it shows, null is the default, and its switches (#1282). */
   dashboardId: string | null;
+  switches: ScreenSwitch[];
   settings: ScreenSettings;
   editing?: boolean;
 };
@@ -44,7 +47,7 @@ function statusText(d: DisplayEntry, now: number): string {
 
 async function errorFrom(res: Response): Promise<string> {
   const data = await res.json().catch(() => null);
-  if (res.status === 401 || res.status === 403) return 'Only a parent can name or change displays.';
+  if (res.status === 401 || res.status === 403) return 'Only a parent can change screens.';
   return data?.error ?? 'That did not work. Try again.';
 }
 
@@ -54,13 +57,8 @@ export function DisplaysSection() {
   const [loaded, setLoaded] = useState(false);
   // "Last seen 3 hours ago" is measured from when the list was fetched.
   const [fetchedAt, setFetchedAt] = useState(0);
-  const [authWall, setAuthWall] = useState(false);
-  const [trusted, setTrusted] = useState(false);
 
   const { layouts } = useLayouts();
-  const [newName, setNewName] = useState('');
-  const [takeOverId, setTakeOverId] = useState('');
-  const [alsoTrust, setAlsoTrust] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const editedId = useUrlParam('edited');
   const { timeFormat } = useTimeFormat();
@@ -70,19 +68,13 @@ export function DisplaysSection() {
 
   const load = useCallback(async () => {
     try {
-      const [list, settings] = await Promise.all([fetch('/api/displays'), fetch('/api/settings')]);
+      const list = await fetch('/api/displays');
       if (list.ok) {
         const data = await list.json();
         setDisplays(data.displays);
         setCurrentId(data.currentId);
         setFetchedAt(Date.now());
       }
-      if (settings.ok) {
-        const data = await settings.json();
-        const security = data?.security ?? data?.settings?.security;
-        setAuthWall(security?.authWall?.enabled === true);
-      }
-      setTrusted(document.cookie.split('; ').includes('prism_trusted_display=1'));
     } finally {
       setLoaded(true);
     }
@@ -106,52 +98,23 @@ export function DisplaysSection() {
     }
   };
 
-  const nameThisDisplay = async () => {
-    const ok = await run(() => fetch('/api/displays', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newName }),
-    }));
-    if (!ok) return;
-    setNewName('');
-    // A new screen: what this browser has becomes its settings, sent now
-    // rather than on the next round.
-    resetSyncBase();
-    void syncScreenSettings();
-    // Trusting stays its own decision on the server (naming a phone must not
-    // exempt it from sign-in); this only saves a second trip to Security.
-    if (authWall && !trusted && alsoTrust) {
-      const res = await fetch('/api/auth/trust-device', { method: 'POST' });
-      if (res.ok) {
-        // Same readable marker SecuritySection keeps for the httpOnly cookie.
-        document.cookie = 'prism_trusted_display=1; path=/; max-age=157680000';
-        setTrusted(true);
-      }
-    }
-  };
+  /** Where Edit goes: the screen's own editor, this screen's included (#1280). */
+  const editHref = (d: DisplayEntry): string => screenEditLink(d.id);
 
-  /** This browser becomes an existing screen, taking its stored settings. */
-  const takeOver = async () => {
-    const ok = await run(() => fetch('/api/displays', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: takeOverId }),
-    }));
-    if (!ok) return;
-    resetSyncBase();
-    const { applied } = await syncScreenSettings();
-    if (applied.length > 0) reloadForRemoteChange();
-  };
+  const defaultId = layouts.find((l) => l.isDefault)?.id ?? '';
+  const nameOf = (id: string | null) => layouts.find((l) => l.id === (id ?? defaultId))?.name ?? 'the default';
+  /** What a screen shows and when it switches, for its line: "Kitchen, School run at bus time". */
+  const shows = (d: DisplayEntry): string => [
+    `Shows ${nameOf(d.dashboardId)}`,
+    ...(d.switches ?? []).map((s) => switchInWords(s, nameOf(s.dashboardId), (t) => formatTimeOfDay(t, timeFormat))),
+  ].join(', ');
 
-  /** Where Edit goes: this screen's own dashboard, or the phone editor for another. */
-  const editHref = (d: DisplayEntry): string => {
-    if (d.id !== currentId) return `/screens/${d.id}`;
-    const home = layouts.find((l) => l.id === d.dashboardId);
-    return editLink(home && !home.isDefault && home.slug ? `/d/${home.slug}` : '/');
-  };
-
-  const shows = (d: DisplayEntry) =>
-    layouts.find((l) => l.id === d.dashboardId) ?? layouts.find((l) => l.isDefault) ?? null;
+  /** A screen shows another dashboard, from its row (#1282). */
+  const chooseDashboard = (d: DisplayEntry, dashboardId: string) => run(() => fetch(`/api/displays/${d.id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dashboardId }),
+  }));
 
   const rename = async (id: string) => {
     const ok = await run(() => fetch(`/api/displays/${id}`, {
@@ -175,10 +138,15 @@ export function DisplaysSection() {
       <div>
         <h2 className="text-2xl font-bold">Screens</h2>
         <p className="text-muted-foreground">
-          Name each screen in the house to see which ones are on and change any of them from
-          here. Edit opens a screen&apos;s editing bar over a live picture of it. A browser
-          nobody named works just as it always has.
+          Every named screen in the house, whether it is on, and the dashboard it shows. Edit
+          opens a screen&apos;s editor over a live picture of it. A device nobody named shows
+          the default dashboard; to name one, open the editor on it and go to Through the day.
         </p>
+        {loaded && !current && (
+          <p className="mt-2 text-sm text-muted-foreground" data-unnamed-here>
+            The device you are using has no name.
+          </p>
+        )}
       </div>
 
       {error && (
@@ -194,68 +162,11 @@ export function DisplaysSection() {
 
       <Card>
         <CardHeader>
-          <CardTitle>This screen</CardTitle>
-          <CardDescription>
-            {current
-              ? <>This screen is named <strong>{current.name}</strong>.</>
-              : 'Name it from the screen itself, for example "Kitchen" or "Upstairs hall".'}
-          </CardDescription>
-        </CardHeader>
-        {loaded && !current && (
-          <CardContent className="space-y-3">
-            <form
-              className="flex gap-2"
-              onSubmit={(e) => { e.preventDefault(); void nameThisDisplay(); }}
-            >
-              <Input
-                aria-label="Name for this screen"
-                placeholder="Kitchen"
-                maxLength={NAME_MAX}
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-              />
-              <Button type="submit" disabled={busy || !newName.trim()}>
-                Name this display
-              </Button>
-            </form>
-            {displays.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="text-muted-foreground">Or this is an existing screen:</span>
-                <select
-                  aria-label="Existing screen"
-                  className="rounded-md border border-input bg-background px-2 py-1.5"
-                  value={takeOverId}
-                  onChange={(e) => setTakeOverId(e.target.value)}
-                >
-                  <option value="">Choose…</option>
-                  {displays.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                </select>
-                <Button size="sm" variant="outline" disabled={busy || !takeOverId} onClick={() => void takeOver()}>
-                  Use its name and settings
-                </Button>
-              </div>
-            )}
-            {authWall && !trusted && (
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={alsoTrust}
-                  onChange={(e) => setAlsoTrust(e.target.checked)}
-                />
-                Also trust it, so it stays readable without anyone signing in
-              </label>
-            )}
-          </CardContent>
-        )}
-      </Card>
-
-      <Card>
-        <CardHeader>
           <CardTitle>All screens</CardTitle>
           <CardDescription>
-            A screen shows as online while it is switched on. Edit changes what it shows,
-            when it rests and its Interludes and notices; a screen that is on shows the change
-            in a few seconds.
+            A screen shows as online while it is switched on. Each shows a dashboard, and can
+            switch to another at bus time or at set times. Edit changes them and everything else
+            about the screen; a screen that is on shows the change in a few seconds.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -298,10 +209,21 @@ export function DisplaysSection() {
                         {d.editing && ' · being edited'}
                       </div>
                       <div className="text-sm text-muted-foreground" data-screen-summary>
-                        {shows(d) && <>Shows {shows(d)!.name}. </>}
-                        {screenSummary(d.settings ?? {}, shows(d)?.idleBackground ?? null, (t) => formatTimeOfDay(t, timeFormat))}.
+                        {screenSummary(d.settings ?? {}, shows(d))}.
                       </div>
                     </div>
+                    {layouts.length > 0 && (
+                      <select
+                        aria-label={`Dashboard for ${d.name}`}
+                        className="min-h-9 rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+                        value={d.dashboardId && layouts.some((l) => l.id === d.dashboardId) ? d.dashboardId : defaultId}
+                        disabled={busy}
+                        onChange={(e) => void chooseDashboard(d, e.target.value)}
+                        data-screen-dashboard
+                      >
+                        {layouts.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                      </select>
+                    )}
                     <Button size="sm" asChild data-screen-edit>
                       <Link href={editHref(d)}>Edit</Link>
                     </Button>

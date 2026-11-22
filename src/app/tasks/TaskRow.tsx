@@ -20,6 +20,7 @@ export function TaskRow({
   showAvatar = false,
   showList = false,
   taskLists = [],
+  nested = false,
 }: {
   task: Task;
   onToggle: () => void;
@@ -29,6 +30,8 @@ export function TaskRow({
   showAvatar?: boolean;
   showList?: boolean;
   taskLists?: Array<{ id: string; name: string; color?: string | null }>;
+  /** A subtask, drawn indented under its parent (#1200). */
+  nested?: boolean;
 }) {
   const { today, timeZone } = useDisplayToday();
   const dueDate = task.dueDate ? dueLocalDate(task.dueDate, task.dueTime) : null;
@@ -41,10 +44,12 @@ export function TaskRow({
     <div
       className={cn(
         'p-2 rounded-md border cursor-pointer hover:bg-muted/50 transition-colors',
+        nested && 'ml-6',
         task.completed ? 'opacity-60 bg-success/10 border-success/30' : '',
         isOverdue ? 'border-destructive/50 bg-destructive/10' : !task.completed ? 'border-border' : ''
       )}
       onClick={onToggle}
+      data-subtask={nested || undefined}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-start gap-2 flex-1 min-w-0">

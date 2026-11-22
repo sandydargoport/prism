@@ -3,6 +3,7 @@ import { waitForQuiet } from './helpers/network';
 import { getSeededParentId } from './helpers/auth';
 import { TODAY_TEMPLATE } from '../src/lib/constants/layoutTemplates';
 import { deleteLayout } from './helpers/cleanup';
+import { onCanvas } from './helpers/canvasEditor';
 
 /**
  * The dock on the wall (#922): a Menu word at rest, a labelled one-row dock on
@@ -88,6 +89,24 @@ test.describe('the dock on the wall', () => {
           return (Math.max(text, page) + 0.05) / (Math.min(text, page) + 0.05);
         });
         expect(contrast, 'Menu readable on the page').toBeGreaterThanOrEqual(3);
+        // ...and over the wallpaper, even where a pale page (the bus map) sits
+        // behind it: the tab's own glass over white, against its text.
+        const overPale = await tab.evaluate((el) => {
+          document.documentElement.setAttribute('data-wallpaper', '');
+          const rgba = (c: string) => (c.match(/[\d.]+/g) ?? []).map(Number);
+          const lum = ([r, g, b]: number[]) => {
+            const f = (v: number) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+            return 0.2126 * f(r!) + 0.7152 * f(g!) + 0.0722 * f(b!);
+          };
+          const cs = getComputedStyle(el);
+          const [r = 255, g = 255, b = 255, a = 1] = rgba(cs.backgroundColor);
+          const glass = [r, g, b].map((v) => v * a + 255 * (1 - a));
+          const text = lum(rgba(cs.color));
+          const ground = lum(glass);
+          document.documentElement.removeAttribute('data-wallpaper');
+          return (Math.max(text, ground) + 0.05) / (Math.min(text, ground) + 0.05);
+        });
+        expect(overPale, 'Menu readable over the wallpaper on a pale page').toBeGreaterThanOrEqual(4.5);
         expect(Math.abs(rest.y + rest.height - viewport.height), 'on the bottom edge').toBeLessThanOrEqual(1);
         // ...that shrinks to a nub after a few quiet seconds...
         await page.clock.runFor(9_000);
@@ -126,14 +145,37 @@ test.describe('the dock on the wall', () => {
       // #1006: every job is named, the same way, in the same pill.
       await expect(panel.locator('[data-screen-job="away"]')).toBeVisible();
       await expect(panel.locator('[data-screen-job="babysitter"]')).toBeVisible();
-      // #1014: Settings and Help first, set apart; one Babysitter, the page.
-      await expect(panel.locator('[data-dock-more-top] [data-dock-item="/settings"]')).toBeVisible();
-      await expect(panel.locator('[data-dock-more-top] [data-dock-item="/help"]')).toBeVisible();
+      // #1257: Settings, Help and Sign in are tiles under Prism, not a pill row.
+      await expect(panel.locator('[data-dock-more-top]')).toHaveCount(0);
+      await expect(panel.locator('[data-dock-prism] [data-dock-item="/settings"]')).toBeVisible();
+      await expect(panel.locator('[data-dock-prism] [data-dock-item="/help"]')).toBeVisible();
+      await expect(panel.locator('[data-dock-prism] [data-dock-sign]')).toBeVisible();
       await expect(panel.locator('[data-dock-more-grid] [data-dock-item="/settings"]'), 'Settings is not a page tile').toHaveCount(0);
-      const top = await panel.locator('[data-dock-more-top]').evaluate((e) => e.getBoundingClientRect().bottom);
-      const firstPage = await panel.locator('[data-dock-more-grid]').evaluate((e) => e.getBoundingClientRect().top);
-      expect(top, 'Settings and Help above the pages').toBeLessThanOrEqual(firstPage);
+      // #1257: on a wall, This screen, then Pages, then Prism, top to bottom.
+      const order = await panel.locator('[data-dock-more-group]').evaluateAll((els) => els
+        .map((e) => ({ group: e.getAttribute('data-dock-more-group'), top: e.getBoundingClientRect().top }))
+        .sort((a, b) => a.top - b.top).map((g) => g.group));
+      expect(order, 'group order on a wall').toEqual(['screen', 'pages', 'prism']);
       await expect(panel.getByText('Pages', { exact: true })).toBeVisible();
+      await expect(panel.getByText('Prism', { exact: true })).toBeVisible();
+      // #1257: one tile style across the three groups: one height, one border,
+      // one corner, the icon above the name.
+      const tiles = await panel.locator('[data-dock-more-tiles] > *').evaluateAll((els) => els.map((e) => {
+        const r = e.getBoundingClientRect();
+        const cs = getComputedStyle(e);
+        const icon = e.querySelector('svg')!.getBoundingClientRect();
+        const name = [...e.querySelectorAll('span')].find((x) => (x.textContent ?? '').trim())!.getBoundingClientRect();
+        return {
+          tile: e.getAttribute('data-dock-item') ?? e.getAttribute('data-screen-job') ?? (e.hasAttribute('data-dock-sign') ? 'sign' : '?'),
+          h: Math.round(r.height), border: cs.borderTopWidth, radius: cs.borderTopLeftRadius, above: icon.bottom <= name.top + 1, icon: Math.round(icon.width),
+        };
+      }));
+      expect(tiles.map((x) => x.tile)).toEqual(expect.arrayContaining(['edit', '/help', '/settings', 'sign']));
+      expect(new Set(tiles.map((x) => x.h)).size, `one height for every tile: ${JSON.stringify(tiles)}`).toBe(1);
+      expect(new Set(tiles.map((x) => x.border)).size, `one border: ${JSON.stringify(tiles)}`).toBe(1);
+      expect(new Set(tiles.map((x) => x.radius)).size, `one corner: ${JSON.stringify(tiles)}`).toBe(1);
+      expect(new Set(tiles.map((x) => x.icon)).size, `one icon size: ${JSON.stringify(tiles)}`).toBe(1);
+      for (const x of tiles) expect(x.above, `${x.tile}: icon above its name`).toBe(true);
       // The modes stay one tap away, under This screen, apart from the pages.
       await expect(panel.locator('[data-dock-screen-jobs] [data-screen-job="babysitter"]')).toHaveText('Babysitter mode');
       await expect(panel.locator('[data-dock-pages] [data-screen-job]'), 'no mode among the pages').toHaveCount(0);
@@ -146,7 +188,7 @@ test.describe('the dock on the wall', () => {
       expect(jobs.find((j) => j.job === 'away')!.text).toBe('Away mode');
       expect(new Set(jobs.map((j) => j.h)).size, `one height for every job: ${JSON.stringify(jobs)}`).toBe(1);
       // Tiles like the pages (#1006): five a row, each job's icon above its name.
-      for (const grid of ['[data-dock-more-grid]', '[data-dock-jobs-grid]']) {
+      for (const grid of ['[data-dock-more-grid]', '[data-dock-jobs-grid]', '[data-dock-prism-grid]']) {
         const cols = await panel.locator(grid).evaluate((g) => getComputedStyle(g).gridTemplateColumns.split(' ').length);
         expect(cols, `${grid}: five a row`).toBe(5);
       }
@@ -158,6 +200,31 @@ test.describe('the dock on the wall', () => {
       for (const j of stacked) expect(j.above, `${j.job}: icon above its name`).toBe(true);
       expect(new Set(stacked.map((j) => j.size)).size, `one icon size: ${JSON.stringify(stacked)}`).toBe(1);
       expect(new Set(stacked.map((j) => j.top)).size, `icons on one line: ${JSON.stringify(stacked)}`).toBe(1);
+    } finally {
+      await deleteLayout(page, layout.id);
+    }
+  });
+
+  // #1257: This screen is in More on every page, and Edit layout from a page
+  // opens the editor on the screen's dashboard: its canvas (#1283).
+  test('on /chores More has This screen, and Edit layout opens the editor on the dashboard', async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    const login = await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } });
+    expect(login.ok(), 'precondition: login must succeed').toBe(true);
+    const layout = await (await page.request.post('/api/layouts', { data: { name: `Dock e2e ${Date.now()}`, widgets: TODAY_TEMPLATE.widgets, view: 'today' } })).json() as { id: string; slug: string };
+    try {
+      await page.goto(`/d/${layout.slug}/chores`);
+      await expect(page.locator('[data-dock]')).toBeVisible({ timeout: 60_000 });
+      await page.locator('[data-dock-more]').click();
+      const panel = page.locator('[data-dock-more-panel]');
+      const jobs = panel.locator('[data-dock-screen-jobs]');
+      await expect(jobs).toBeVisible();
+      for (const j of ['edit', 'reload', 'away', 'babysitter', 'screensaver']) await expect(jobs.locator(`[data-screen-job="${j}"]`)).toBeVisible();
+      const first = await panel.locator('[data-dock-more-group]').first().getAttribute('data-dock-more-group');
+      expect(first, 'This screen leads on a wall').toBe('screen');
+      await jobs.locator('[data-screen-job="edit"]').click();
+      await onCanvas(page);
+      expect(new URL(page.url()).pathname, 'the editor is open on the dashboard').toBe(`/edit/${layout.id}`);
     } finally {
       await deleteLayout(page, layout.id);
     }

@@ -108,8 +108,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return null;
   }, []);
 
-  // Check for existing session on mount
+  // Check for existing session on mount. Once only: requireAuth can start it
+  // first, since a child's mount effect runs before this provider's.
   const checkInitialSession = useCallback(() => {
+    if (sessionCheckPromiseRef.current) return sessionCheckPromiseRef.current;
     const check = checkSession().finally(() => {
       setSessionChecked(true);
     });
@@ -199,9 +201,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return activeUser;
       }
 
-      // Wait for session check to complete if still loading
-      if (!sessionChecked && sessionCheckPromiseRef.current) {
-        const sessionUser = await sessionCheckPromiseRef.current;
+      // A session not yet checked is checked first, even when this runs
+      // before the provider's own check has started.
+      if (!sessionChecked) {
+        const sessionUser = await checkInitialSession();
         if (sessionUser) {
           return sessionUser;
         }
@@ -214,7 +217,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setShowModal(true);
       });
     },
-    [activeUser, sessionChecked]
+    [activeUser, sessionChecked, checkInitialSession]
   );
 
   /**

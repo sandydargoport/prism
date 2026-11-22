@@ -61,10 +61,43 @@ When nothing else fits, use *Recipes → Add → Create manually*, which gives y
 
 *Recipes → Add → Sync recipes (Tandoor / Mealie)…*
 
-If you already keep your recipes in [Tandoor](https://tandoor.dev/) or [Mealie](https://mealie.io/), connect that server with its base URL and a **read-only API token** and Prism pulls the recipes in.
+If you already keep your recipes in [Tandoor](https://tandoor.dev/) or [Mealie](https://mealie.io/), connect that server with its base URL and an API token and Prism pulls the recipes in.
+
+- The server's card says whether the token **Reads only** or **Reads and writes**. In Tandoor that is the token's scope: `read` reads only, `read write` reads and writes (*Settings → API* makes one). A Mealie token always reads and writes, because Mealie has no read-only tokens. A token that reads only works as before.
 
 - Each sync shows you a list of changes to approve first. New and changed recipes are ticked already. Removals are only made if you tick them, and a guard stops a wrongly set up source from deleting your whole library in one go.
 - Running the sync again is **idempotent**, meaning it gives the same result however often you run it: recipes you already imported are matched and updated in place, so you never get a second copy.
+
+#### Send recipe edits back
+
+*Recipes → Add → Sync recipes…*, on a server whose card says **Reads and writes**.
+
+- A synced recipe edited in Prism since the last sync is listed under **Change in …**, ticked. Its name, description, servings, prep time and cook time go back, and so do its ingredients and steps, without losing what the other app knows about them:
+  - An ingredient line you did not change keeps the other app's ingredient (its food, unit and amount, and the shopping-list and nutrition links that come with them).
+  - A new or edited line goes in as a plain note, and a line you removed is removed.
+  - The steps' text goes back only to a recipe with one step there. A recipe split into several steps keeps its steps as they are.
+  - The review says what will happen, for example "2 ingredient lines go as plain notes · the steps stay as they are in Tandoor, which has 3".
+- A recipe changed in both places since the last sync: the newer one wins, and the review says which ("Changed in both places; Prism's is newer").
+- A recipe deleted in Prism is listed under **Remove from …**, unticked. It stays in the other app unless you tick it.
+- New recipes made in Prism are not sent.
+- In Mealie, a recipe someone else locked is refused by Mealie, and the sync says so for that recipe.
+
+#### Send meal-plan changes back
+
+*Meals → Add → Sync meal plan…*, on a server whose card says **Reads and writes**.
+
+The meal-plan sync also lists what changed in Prism since the last sync, to send to Tandoor or Mealie. Nothing is sent unless it is ticked.
+
+- **Add to …**: a meal planned in Prism from today on that the other app does not have. It is ticked when it was planned since the last sync; older ones, and everything on the first sync, start unticked. Once sent, it is linked, so it is offered only once.
+- **Change in …**: a synced meal moved to another day or meal, or renamed, in Prism since the last sync. Prism's version is sent instead of the other app's being pulled over it.
+- **Remove from …**: a synced meal deleted in Prism. Unticked to start with; removing many at once is held back, so a slip in Prism cannot empty the other app's plan.
+
+Details:
+
+- In Tandoor a meal goes under the meal type of the same kind (Breakfast, Lunch, Dinner, a snack or dessert type). If there is none, Tandoor adds that type. The time is the meal's own, or else the meal type's.
+- Mealie plans have no time of day or servings, so Prism keeps its own for those.
+- A meal linked to a recipe that came from the same server is sent with that recipe; otherwise it goes as a titled entry.
+- A meal's time of day is not compared between the two apps, so changing only the time in either one does not show as a change.
 
 ### Per-recipe photo upload
 

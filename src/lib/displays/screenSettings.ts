@@ -12,7 +12,8 @@
  *
  * Chosen 2026-10-27: screensaver and drift, performance mode, the on-screen
  * keyboard and the screen layout settings. Theme stays per browser for now.
- * The time-of-day schedule and the attention panel joined 2026-10-30 (#692).
+ * The time-of-day schedule and the attention panel joined 2026-10-30 (#692);
+ * the schedule left 2026-11-20 for the timeline the screen follows (#1266).
  * The screensaver background left 2026-10-31 for the dashboard (#782).
  * The sign-out timer joined 2026-11-11 (#1159), when it left Settings for the
  * editing bar.
@@ -45,8 +46,6 @@ export const SCREEN_SETTING_KEYS = [
   'prism:auto-hide-ui',
   // How long until the screen stops being signed in as whoever used it.
   'prism-idle-logout-minutes',
-  // Which dashboard it shows at which time of day (#692).
-  'prism-screen-schedule',
   // Which notices it shows in the attention panel (#692).
   'prism-screen-attention',
 ] as const;

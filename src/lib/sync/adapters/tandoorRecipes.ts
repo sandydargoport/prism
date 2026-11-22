@@ -7,6 +7,10 @@
 import {
   fetchTandoorRecipes,
   fetchTandoorRecipeById,
+  updateTandoorRecipe,
+  deleteTandoorRecipe,
+  fetchTandoorRecipeDetail,
+  mergeTandoorSteps,
   type NormalizedTandoorRecipe,
 } from '@/lib/integrations/tandoor';
 import { loadTandoorSource } from './tandoorSource';
@@ -15,6 +19,8 @@ import {
   loadLocalRecipes,
   deleteRecipeRow,
   ensureRecipeImported as ensureImported,
+  loadRecipeFieldsToPush,
+  recordPushedRecipe,
   type NormalizedRecipe,
 } from './recipeWriter';
 import type { EntitySyncAdapter, RemoteItem } from '../types';
@@ -30,7 +36,7 @@ export async function ensureRecipeImported(
   externalId: string,
 ): Promise<{ recipeId: string; imported: boolean } | null> {
   const source = await loadTandoorSource(sourceId);
-  return ensureImported(sourceId, externalId, source.token, (id) =>
+  return ensureImported(sourceId, externalId, source, (id) =>
     fetchTandoorRecipeById(source.serverUrl, source.token, Number(id)),
   );
 }
@@ -56,16 +62,38 @@ export const tandoorRecipeAdapter: EntitySyncAdapter<Payload> = {
   async applyAdd(sourceId, change) {
     if (!change.payload) return;
     const source = await loadTandoorSource(sourceId);
-    await writeRecipeRow(sourceId, change.payload as NormalizedRecipe, source.token, null);
+    await writeRecipeRow(sourceId, change.payload as NormalizedRecipe, source, null);
   },
 
   async applyUpdate(sourceId, change) {
     if (!change.payload || !change.localId) return;
     const source = await loadTandoorSource(sourceId);
-    await writeRecipeRow(sourceId, change.payload as NormalizedRecipe, source.token, change.localId);
+    await writeRecipeRow(sourceId, change.payload as NormalizedRecipe, source, change.localId);
   },
 
   async applyDelete(_sourceId, change) {
     if (change.localId) await deleteRecipeRow(change.localId);
+  },
+
+  // #1207, #1215: edits and deletions go back; recipes made in Prism are not offered.
+  push: {
+    loadCandidates: async () => [],
+    async pushAdd() {
+      throw new Error('New recipes are not sent to Tandoor.');
+    },
+    async pushUpdate(sourceId, change) {
+      if (!change.localId) return;
+      const source = await loadTandoorSource(sourceId);
+      const fields = await loadRecipeFieldsToPush(change.localId);
+      // Lines that did not change keep their Tandoor ingredient objects (#1215).
+      const detail = await fetchTandoorRecipeDetail(source.serverUrl, source.token, change.externalId);
+      const steps = mergeTandoorSteps(detail, fields);
+      const seen = await updateTandoorRecipe(source.serverUrl, source.token, change.externalId, fields, steps);
+      await recordPushedRecipe(change.localId, seen);
+    },
+    async pushDelete(sourceId, change) {
+      const source = await loadTandoorSource(sourceId);
+      await deleteTandoorRecipe(source.serverUrl, source.token, change.externalId);
+    },
   },
 };

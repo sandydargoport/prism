@@ -3,6 +3,9 @@
  * approval. These rules are shared by the API and the pages.
  */
 
+import { getDisplayDateKey } from './timeFormat';
+import { wallTimeAt } from './zonedDate';
+
 export type ChoreKind = 'chore' | 'reminder';
 
 interface RuleInput {
@@ -44,6 +47,27 @@ export function isLate(
   return due < today || (due === today && now >= c.nextDueTime);
 }
 
+/**
+ * The household's date (YYYY-MM-DD) and time (HH:mm) at `now`, for isLate.
+ * `timeZone` is the display zone from useTimeFormat; without one, or with one
+ * that is not valid, the device's clock.
+ */
+export function householdClock(timeZone?: string, now: Date = new Date()): { today: string; now: string } {
+  return { today: getDisplayDateKey(now, timeZone), now: wallTime(now, timeZone) };
+}
+
+/** HH:mm of `instant` in `timeZone`, or on the device clock. */
+function wallTime(instant: Date, timeZone?: string): string {
+  if (timeZone) {
+    try {
+      return wallTimeAt(timeZone, instant);
+    } catch {
+      // An unknown zone name: fall through to the device's clock.
+    }
+  }
+  return `${String(instant.getHours()).padStart(2, '0')}:${String(instant.getMinutes()).padStart(2, '0')}`;
+}
+
 /** "7:00 PM" from "19:00". */
 export function formatReminderTime(hhmm: string): string {
   const [h = 0, m = 0] = hhmm.split(':').map(Number);
@@ -53,12 +77,11 @@ export function formatReminderTime(hhmm: string): string {
 
 /**
  * A pet chore's ticks today as one line (#856): "Emma 7:40 AM, Jordan 5:15 PM",
- * on the household's wall clock. Empty when nobody has done it yet today.
+ * on the household's wall clock (`timeZone`, the display zone). Empty when nobody has done it yet today.
  */
-export function petTickLine(ticks: Array<{ at: string; by: { name: string } }> | undefined): string {
-  return (ticks ?? []).map((k) => {
-    const d = new Date(k.at);
-    const hhmm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-    return `${k.by.name} ${formatReminderTime(hhmm)}`;
-  }).join(', ');
+export function petTickLine(
+  ticks: Array<{ at: string; by: { name: string } }> | undefined,
+  timeZone?: string,
+): string {
+  return (ticks ?? []).map((k) => `${k.by.name} ${formatReminderTime(wallTime(new Date(k.at), timeZone))}`).join(', ');
 }

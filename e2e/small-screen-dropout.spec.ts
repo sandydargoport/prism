@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import path from 'path';
 import { getSeededParentId } from './helpers/auth';
+import { onCanvas } from './helpers/canvasEditor';
 
 /**
  * #803: on a small wall screen (under about 75% of 1920x1080) a widget set to
@@ -142,13 +143,15 @@ test.describe('a widget with no surface (#803)', () => {
       await menu.click();
       await page.locator('[data-dock-more]').click();
       await page.locator('[data-dock-more-panel] [data-screen-job="edit"]').click();
-      await page.locator('[data-editor-widget="shopping"]').click();
-      await page.getByRole('button', { name: /^Fill/ }).click();
-      await expect(page.locator('[data-fill-name]')).toHaveText(/^Default/);
-      await page.getByLabel('Transparent fill').click();
-      await expect(page.locator('[data-fill-name]')).toHaveText(/^None: the words sit straight on the photo/);
-      await page.getByLabel('Glass fill').click();
-      await expect(page.locator('[data-fill-name]')).toHaveText(/^Glass/);
+      // Edit opens the canvas (#1283): the widget and its picker are in the frame.
+      const frame = await onCanvas(page, 'shopping');
+      await frame.locator('[data-editor-widget="shopping"]').click();
+      await frame.getByRole('button', { name: /^Fill/ }).click();
+      await expect(frame.locator('[data-fill-name]')).toHaveText(/^Default/);
+      await frame.getByLabel('Transparent fill').click();
+      await expect(frame.locator('[data-fill-name]')).toHaveText(/^None: the words sit straight on the photo/);
+      await frame.getByLabel('Glass fill').click();
+      await expect(frame.locator('[data-fill-name]')).toHaveText(/^Glass/);
     } finally { await cleanup(); }
   });
 });

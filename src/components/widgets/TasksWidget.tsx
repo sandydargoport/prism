@@ -44,6 +44,7 @@ import { compareTaskDue, dueLocalDate, isTaskOverdue } from '@/lib/utils/taskDue
 import type { Task } from '@/types';
 import { addDaysToKey } from '@/lib/utils/zonedDate';
 import { useDisplayToday } from '@/components/providers';
+import { withSubtasks } from '@/lib/tasks/subtasks';
 export type { Task };
 
 
@@ -170,10 +171,11 @@ export const TasksWidget = React.memo(function TasksWidget({
       ) : (
         <div className="overflow-auto h-full -mr-2 pr-2">
           <div className="space-y-2">
-            {displayTasks.map((task) => (
+            {withSubtasks(displayTasks).map(({ task, nested }) => (
               <TaskItem
                 key={task.id}
                 task={task}
+                nested={nested}
                 completed={task.completed || false}
                 onToggle={() => handleToggle(task.id, task.completed || false)}
                 onEdit={onTaskClick ? () => onTaskClick(task) : undefined}
@@ -203,11 +205,14 @@ function TaskItem({
   completed,
   onToggle,
   onEdit,
+  nested = false,
 }: {
   task: Task;
   completed: boolean;
   onToggle: () => void;
   onEdit?: () => void;
+  /** A subtask, drawn indented under its parent (#1200). */
+  nested?: boolean;
 }) {
   // Format due date
   // Re-renders at the display zone's midnight, so "Today" and "Tomorrow" move
@@ -227,8 +232,10 @@ function TaskItem({
       aria-pressed={completed}
       onClick={onToggle}
       onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onToggle(); } }}
+      data-subtask={nested || undefined}
       className={cn(
         'flex items-start gap-3 p-2 rounded-lg cursor-pointer select-none',
+        nested && 'ml-5',
         'hover:bg-accent/50 transition-colors',
         'touch-action-manipulation',
         completed && 'opacity-60'

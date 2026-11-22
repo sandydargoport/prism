@@ -3,14 +3,15 @@
  *
  * PATCH  — change it. Body, any of:
  *            { name: string (1 to 60 characters),
- *              dashboardId: string | null (null: the household default),
+ *              dashboardId: string | null (null: the household default, #1282),
+ *              switches: ScreenSwitch[] (at most 12; see screenSwitches.ts),
  *              settings: { [storageKey]: string | null } (see screenSettings.ts) }
  * DELETE — forget it. The screen goes back to being an unnamed browser; if it
  *          is this browser, its cookie is cleared too.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { requireAuth, requireRole } from '@/lib/auth';
 import {
   cleanDisplayName,
@@ -21,6 +22,7 @@ import {
 } from '@/lib/auth/displayIdentity';
 import { db } from '@/lib/db/client';
 import { displays, layouts } from '@/lib/db/schema';
+import { parseSwitches, switchesSchema, type ScreenSwitch } from '@/lib/screenSwitches';
 import { applySettingChanges } from '@/lib/displays/displaySettingsStore';
 import { cleanSettingChanges, type ScreenSettingChanges } from '@/lib/displays/screenSettings';
 import { logActivity } from '@/lib/services/auditLog';
@@ -48,7 +50,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   if (!isDisplayId(id)) return NextResponse.json({ error: 'Display not found' }, { status: 404 });
 
   const body = await request.json().catch(() => null);
-  const update: { name?: string; dashboardId?: string | null } = {};
+  const update: { name?: string; dashboardId?: string | null; switches?: ScreenSwitch[] } = {};
 
   if (body?.name !== undefined) {
     const name = cleanDisplayName(body.name);
@@ -68,29 +70,43 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     update.dashboardId = body.dashboardId;
   }
 
+  if (body?.switches !== undefined) {
+    const parsed = switchesSchema.safeParse(body.switches);
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Not a valid set of switches (at most 12)' }, { status: 400 });
+    }
+    update.switches = parsed.data;
+  }
+
   let changes: ScreenSettingChanges | null = null;
   if (body?.settings !== undefined) {
     changes = cleanSettingChanges(body.settings);
     if (!changes) return NextResponse.json({ error: 'Not a valid set of screen settings' }, { status: 400 });
   }
 
-  if (update.name === undefined && update.dashboardId === undefined && !changes) {
+  const planChanged = update.dashboardId !== undefined || update.switches !== undefined;
+  if (update.name === undefined && !planChanged && !changes) {
     return NextResponse.json({ error: 'Nothing to change' }, { status: 400 });
   }
 
   try {
-    if (update.dashboardId) {
-      const [layout] = await db.select({ id: layouts.id }).from(layouts).where(eq(layouts.id, update.dashboardId));
-      if (!layout) return NextResponse.json({ error: 'That dashboard does not exist' }, { status: 400 });
+    // Every dashboard it names must exist.
+    const named = [...new Set([
+      ...(update.dashboardId ? [update.dashboardId] : []),
+      ...(update.switches ?? []).map((s) => s.dashboardId),
+    ])];
+    if (named.length > 0) {
+      const found = await db.select({ id: layouts.id }).from(layouts).where(inArray(layouts.id, named));
+      if (found.length !== named.length) return NextResponse.json({ error: 'That dashboard does not exist' }, { status: 400 });
     }
 
     const [row] = await db
       .update(displays)
       .set({
         ...update,
-        // A new dashboard is picked up the same way as a settings edit: the
-        // screen sees the timestamp move on its next heartbeat and reloads.
-        ...(update.dashboardId !== undefined ? { settingsUpdatedAt: new Date() } : {}),
+        // Another dashboard or switch is picked up the same way as a settings
+        // edit: the screen sees the timestamp move on its next heartbeat.
+        ...(planChanged ? { settingsUpdatedAt: new Date() } : {}),
         updatedAt: new Date(),
       })
       .where(eq(displays.id, id))
@@ -106,6 +122,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const what = [
       update.name !== undefined && `renamed it to "${update.name}"`,
       update.dashboardId !== undefined && 'changed its dashboard',
+      update.switches !== undefined && 'changed its switches',
       changes && 'changed its settings',
     ].filter(Boolean).join(', ');
     logActivity({
@@ -116,7 +133,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       summary: `Display "${row.name}": ${what}`,
     });
     return NextResponse.json({
-      display: { id: row.id, name: row.name, dashboardId: row.dashboardId, settings },
+      display: { id: row.id, name: row.name, dashboardId: row.dashboardId, switches: parseSwitches(row.switches), settings },
     });
   } catch (error) {
     logError('Failed to update display:', error);

@@ -10,7 +10,8 @@ import { getCached } from '@/lib/cache/redis';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
-import { MIN_PIN_LENGTH, MAX_PIN_LENGTH, DEFAULT_PIN_LENGTH } from '@/lib/constants';
+import { DEFAULT_PIN_LENGTH } from '@/lib/constants';
+import { PASSCODE_LENGTH_OPTIONS, describePin, isPinKind, lengthAllowed, lengthBounds, pinMatches, pinNoun, type PinKind } from '@/lib/auth/pinKind';
 import { isSetupComplete } from '@/lib/setup';
 import { isHexColor } from '@/lib/constants/memberColors';
 import type { PublicMemberField } from './publicShape';
@@ -25,6 +26,7 @@ interface FamilyMemberResponse {
   hasPin: boolean;
   /** Per-member PIN length (4/5/6). Not sensitive — every PIN pad needs it. */
   pinLength: number;
+  pinKind: string;
   createdAt: string;
 }
 
@@ -51,6 +53,7 @@ type PublicFamilyMemberResponse = {
    * Removing it means changing three hand-rolled pads, not this endpoint.
    */
   pinLength: number;
+  pinKind: string;
 };
 
 // Every key above must appear in PUBLIC_MEMBER_FIELDS and vice versa. Adding a
@@ -98,6 +101,7 @@ export async function GET(request: NextRequest) {
             avatarUrl: users.avatarUrl,
             pin: users.pin,
             pinLength: users.pinLength,
+            pinKind: users.pinKind,
           })
           .from(users)
           .orderBy(...memberOrder);
@@ -109,6 +113,7 @@ export async function GET(request: NextRequest) {
           avatarUrl: user.avatarUrl,
           hasPin: !!user.pin,
           pinLength: user.pinLength,
+          pinKind: user.pinKind,
         }));
         return NextResponse.json({ members, total: members.length });
       }
@@ -122,6 +127,7 @@ export async function GET(request: NextRequest) {
             avatarUrl: users.avatarUrl,
             pin: users.pin,
             pinLength: users.pinLength,
+            pinKind: users.pinKind,
           })
           .from(users)
           .orderBy(...memberOrder);
@@ -138,6 +144,7 @@ export async function GET(request: NextRequest) {
             color: user.color,
             avatarUrl: user.avatarUrl,
             pinLength: user.pinLength,
+            pinKind: user.pinKind,
           };
         });
 
@@ -165,6 +172,7 @@ export async function GET(request: NextRequest) {
           avatarUrl: users.avatarUrl,
           pin: users.pin,
           pinLength: users.pinLength,
+            pinKind: users.pinKind,
           createdAt: users.createdAt,
         })
         .from(users)
@@ -184,6 +192,7 @@ export async function GET(request: NextRequest) {
         avatarUrl: user.avatarUrl,
         hasPin: !!user.pin,
         pinLength: user.pinLength,
+        pinKind: user.pinKind,
         createdAt: user.createdAt.toISOString(),
       }));
 
@@ -263,12 +272,18 @@ export async function POST(request: NextRequest) {
     // wins; otherwise fall back to the plain built-in default (there is no
     // family-wide default setting any more — every member's length is their
     // own choice, made at creation time).
-    let memberPinLength = DEFAULT_PIN_LENGTH;
+    // A PIN or a passcode (#1197); a new member has a PIN unless asked.
+    if (body.pinKind !== undefined && !isPinKind(body.pinKind)) {
+      return NextResponse.json({ error: "pinKind must be 'digits' or 'passcode'" }, { status: 400 });
+    }
+    const memberPinKind: PinKind = isPinKind(body.pinKind) ? body.pinKind : 'digits';
+    let memberPinLength = memberPinKind === 'passcode' ? PASSCODE_LENGTH_OPTIONS[0] : DEFAULT_PIN_LENGTH;
     if (body.pinLength !== undefined) {
       const n = Math.round(Number(body.pinLength));
-      if (!Number.isFinite(n) || n < MIN_PIN_LENGTH || n > MAX_PIN_LENGTH) {
+      if (!lengthAllowed(memberPinKind, n)) {
+        const [lo, hi] = lengthBounds(memberPinKind);
         return NextResponse.json(
-          { error: `pinLength must be between ${MIN_PIN_LENGTH} and ${MAX_PIN_LENGTH}` },
+          { error: `pinLength must be between ${lo} and ${hi} for a ${pinNoun(memberPinKind)}` },
           { status: 400 }
         );
       }
@@ -277,13 +292,14 @@ export async function POST(request: NextRequest) {
 
     let hashedPin: string | null = null;
     if (body.pin) {
-      if (!new RegExp(`^\\d{${memberPinLength}}$`).test(body.pin)) {
+      const pin = typeof body.pin === 'string' && memberPinKind === 'passcode' ? body.pin.toLowerCase() : String(body.pin);
+      if (!pinMatches(memberPinKind, memberPinLength, pin)) {
         return NextResponse.json(
-          { error: `PIN must be exactly ${memberPinLength} digits` },
+          { error: `${memberPinKind === 'passcode' ? 'Passcode' : 'PIN'} must be exactly ${describePin(memberPinKind, memberPinLength)}` },
           { status: 400 }
         );
       }
-      hashedPin = await bcrypt.hash(body.pin, 12);
+      hashedPin = await bcrypt.hash(pin, 12);
     }
 
     if (body.email && typeof body.email === 'string') {
@@ -303,6 +319,7 @@ export async function POST(request: NextRequest) {
         color: body.color,
         pin: hashedPin,
         pinLength: memberPinLength,
+        pinKind: memberPinKind,
         email: body.email?.trim() || null,
         avatarUrl: body.avatarUrl || null,
         preferences: body.preferences || {},
@@ -325,6 +342,7 @@ export async function POST(request: NextRequest) {
       avatarUrl: newMember.avatarUrl,
       hasPin: !!hashedPin,
       pinLength: newMember.pinLength,
+      pinKind: newMember.pinKind,
       createdAt: newMember.createdAt.toISOString(),
     };
 

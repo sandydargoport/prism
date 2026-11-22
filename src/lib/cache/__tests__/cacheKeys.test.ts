@@ -7,7 +7,8 @@
  *   wish-items    → wish-item-sources
  *   task-lists    → tasks, task-sources
  *   shopping-lists → shopping-list-sources
- *   family        → chores, tasks
+ *   calendar-groups → events
+ *   family        → chores, tasks, events, messages
  *                    (chores → points, goals)
  *                    (tasks  → points)
  */
@@ -100,6 +101,28 @@ describe('invalidateEntity', () => {
     expect(patterns).toContain('goals:*');
   });
 
+  // Events carry the member's colour and name, messages the author's (#1226).
+  it('family: also invalidates events and messages', async () => {
+    await invalidateEntity('family');
+
+    const patterns = calledPatterns();
+    expect(patterns).toContain('events:*');
+    expect(patterns).toContain('messages:*');
+  });
+
+  // Events carry their calendar group's colour and name (#1226).
+  it('calendar-groups: invalidates calendar-groups and events', async () => {
+    await invalidateEntity('calendar-groups');
+
+    expect(calledPatterns().sort()).toEqual(['calendar-groups:*', 'events:*']);
+  });
+
+  it('events: does not invalidate back up to calendar-groups or family', async () => {
+    await invalidateEntity('events');
+
+    expect(calledPatterns()).toEqual(['events:*']);
+  });
+
   it('family: visited set prevents double-invalidation of chores and tasks', async () => {
     // family → chores → points, goals
     // family → tasks  → points
@@ -179,10 +202,12 @@ describe('visited set prevents redundant invalidation', () => {
     expect(callCount('tasks:*')).toBe(1);
     expect(callCount('points:*')).toBe(1);
     expect(callCount('goals:*')).toBe(1);
+    expect(callCount('events:*')).toBe(1);
+    expect(callCount('messages:*')).toBe(1);
 
-    // Total unique patterns called should be exactly 5.
+    // Total unique patterns called should be exactly 7.
     const patterns = calledPatterns();
-    expect(new Set(patterns).size).toBe(5);
+    expect(new Set(patterns).size).toBe(7);
   });
 
   it('task-lists → tasks → points: no duplicate points invalidation', async () => {

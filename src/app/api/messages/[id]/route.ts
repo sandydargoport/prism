@@ -18,6 +18,7 @@ import { formatMessageRow } from '@/lib/utils/formatters';
 import { messageWithAuthorColumns } from '@/lib/messages/messageColumns';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
+import { invalidateEntity } from '@/lib/cache/cacheKeys';
 
 
 interface RouteParams {
@@ -157,6 +158,8 @@ export async function PATCH(
       .update(familyMessages)
       .set(updateData)
       .where(eq(familyMessages.id, id));
+    // The list is cached; drop it so the next load shows the edit (#1219).
+    await invalidateEntity('messages');
 
     // Fetch and return updated message
     const [updatedMessage] = await db
@@ -244,6 +247,7 @@ export async function DELETE(
     await db
       .delete(familyMessages)
       .where(eq(familyMessages.id, id));
+    await invalidateEntity('messages');
 
     logActivity({
       userId: auth.userId,

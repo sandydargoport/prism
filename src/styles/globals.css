@@ -432,6 +432,21 @@ html.performance-mode {
   --ds-water-filter: none;
 }
 
+/* While a widget is dragged or resized in the editor (#1265), on every
+   screen. A moving widget changes what is behind the other cards on every
+   frame, so each blurred card is blurred again every frame: measured on a
+   laptop-sized editor, that was three quarters of the drag's compositing
+   work. The cards are 85% opaque, so the blur barely shows for the second
+   or two the move lasts. Same narrow selector as performance mode above. */
+html.editor-moving [class*="backdrop-blur"] {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+html.editor-moving {
+  --ds-glass-filter: none;
+  --ds-water-filter: none;
+}
+
 /* Sheet (#908, docs/DESIGN.md "Sheet"). On the wall a sheet opens on the side
    that was touched, never in the middle over what the family was looking at:
    the left or right third opens it on that side, the middle from the bottom.
@@ -612,6 +627,12 @@ html.performance-mode[data-wallpaper] .widget-cell[data-fill="glass"]:not([data-
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
 
+    /* The Through the day switches' colours (#1294) take their hue from the
+       theme's primary and these for the rest: deeper on a light panel,
+       lighter on a dark one, so each reads against its ground. */
+    --day-switch-s: 65%;
+    --day-switch-l: 47%;
+
     --seasonal-accent: 222 47% 31%;
     --seasonal-accent-foreground: 210 40% 98%;
     --seasonal-highlight: 210 40% 96%;
@@ -621,6 +642,8 @@ html.performance-mode[data-wallpaper] .widget-cell[data-fill="glass"]:not([data-
   .dark {
     --ds-event-tint: 26%;
     --ds-glass-alpha: 0.4;
+    --day-switch-s: 60%;
+    --day-switch-l: 63%;
 
     --background: 222 47% 11%;
     --foreground: 210 40% 98%;
@@ -775,6 +798,17 @@ html.performance-mode[data-wallpaper] .widget-cell[data-fill="glass"]:not([data-
   * {
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+  }
+
+  /* The resting screen draws no scrollbars. A widget's list still scrolls by
+     touch, but over a photo the thin thumb read as a stray line that came and
+     went with every redraw (a new photo, a touch, a widget's burst). */
+  [data-screensaver] * {
+    scrollbar-width: none;
+  }
+
+  [data-screensaver] *::-webkit-scrollbar {
+    display: none;
   }
 
   button,
@@ -1579,8 +1613,3 @@ html.perf-minimal .widget-cell {
   height: 44px;
 }
 
-/* Editing a screen from a phone (#1153): an open sheet stops short of the
-   live picture above it, so the change can be seen as it is made. */
-[data-remote-edit-root] [data-editor-sheet] {
-  max-height: var(--remote-sheet-max-h);
-}

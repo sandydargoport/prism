@@ -10,6 +10,9 @@ import { logError } from '@/lib/utils/logError';
 import { previewSync } from '@/lib/sync/runner';
 import { getMealPlanAdapter } from '@/lib/sync/adapters/registry';
 import { UnsafeUrlError } from '@/lib/integrations/tandoor';
+import { readSourceConfig } from '@/lib/sync/sourceConfig';
+import { DIFF_TTL_SECONDS, serializeStashedDiff, syncDiffKey } from '@/lib/sync/stashedDiff';
+import { isPushKind } from '@/lib/sync/types';
 
 /** The meal-plan payload fields the review enrichment reads (both providers). */
 interface MealPayload {
@@ -21,9 +24,6 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-/** How long a computed diff is held for the user to review + apply. */
-const DIFF_TTL_SECONDS = 900; // 15 minutes
-
 /**
  * POST /api/recipe-sources/[id]/meal-sync/preview
  *
@@ -31,6 +31,10 @@ const DIFF_TTL_SECONDS = 900; // 15 minutes
  * a diffId, and returns a light view for the review modal. Enriches each change
  * with whether applying it will also import a not-yet-imported Tandoor recipe,
  * and a summary note of how many recipes that is.
+ *
+ * For a source whose token can write, the diff also holds the changes made in
+ * Prism to send back (#1206): new meals from today on, meals moved or changed
+ * since the last sync, and meals removed since then.
  */
 export async function POST(_request: NextRequest, { params }: RouteParams) {
   const auth = await requireAuth();
@@ -47,7 +51,10 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
     if (!src) {
       return NextResponse.json({ error: 'Recipe source not found.' }, { status: 404 });
     }
-    const diff = await previewSync(getMealPlanAdapter(src.provider), { id: src.id, lastSynced: src.lastSynced });
+    const cfg = readSourceConfig(src.providerConfig);
+    const diff = await previewSync(getMealPlanAdapter(src.provider), { id: src.id, lastSynced: src.lastSynced }, {
+      push: cfg.canWrite ? { knownExternalIds: new Set(cfg.mealEntryIds ?? []) } : undefined,
+    });
 
     const diffId = randomUUID();
     const redis = await getRedisClient();
@@ -57,19 +64,20 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
         { status: 503 },
       );
     }
-    await redis.setEx(`sync-diff:${diffId}`, DIFF_TTL_SECONDS, JSON.stringify(diff.changes));
+    // Tied to this source and kind, so it cannot be applied anywhere else (#1225).
+    await redis.setEx(syncDiffKey(diffId), DIFF_TTL_SECONDS, serializeStashedDiff(src.id, 'meal-plan', diff.changes));
 
     // Recipes that applying the pre-checked (add/update) meals will also import.
     const recipesToImport = new Set<string>();
     for (const c of diff.changes) {
-      if (c.kind === 'delete') continue;
+      if (c.kind === 'delete' || isPushKind(c.kind)) continue;
       const p = c.payload as MealPayload | undefined;
       if (p?.recipeExternalId && !p.recipeAlreadyImported) recipesToImport.add(p.recipeExternalId);
     }
 
     const changes = diff.changes.map((c) => {
       const p = c.payload as MealPayload | undefined;
-      const alsoImports = c.kind !== 'delete' && p?.recipeExternalId && !p.recipeAlreadyImported;
+      const alsoImports = c.kind !== 'delete' && !isPushKind(c.kind) && p?.recipeExternalId && !p.recipeAlreadyImported;
       return {
         kind: c.kind,
         externalId: c.externalId,
@@ -92,8 +100,11 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       diffId,
       changes,
       counts: diff.counts,
+      pushCounts: diff.pushCounts,
       massDeleteGuardTripped: diff.massDeleteGuardTripped,
       withheldDeletes: diff.withheldDeletes,
+      pushDeleteGuardTripped: diff.pushDeleteGuardTripped,
+      withheldPushDeletes: diff.withheldPushDeletes,
       notes,
     });
   } catch (error) {

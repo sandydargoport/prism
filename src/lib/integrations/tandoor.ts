@@ -9,6 +9,7 @@
  */
 
 import { validatePublicUrl, safeFetch, UnsafeUrlError } from '@/lib/utils/safeFetch';
+import { matchLines, sameInstructions, sameLines } from '@/lib/sync/adapters/ingredientLines';
 
 /** A recipe normalized into Prism's insert shape (minus createdBy/sourceType). */
 export interface NormalizedTandoorRecipe {
@@ -28,6 +29,8 @@ export interface NormalizedTandoorRecipe {
   tags: string[];
   /** Absolute remote image URL to download, or null. */
   remoteImageUrl: string | null;
+  /** How many steps Tandoor splits the recipe into (#1215). */
+  stepCount?: number;
 }
 
 // --- Partial shapes of the Tandoor API responses we read ---
@@ -38,6 +41,8 @@ interface TandoorListResponse {
 }
 interface TandoorNamed { name?: string | null }
 interface TandoorIngredient {
+  id?: number;
+  order?: number;
   food?: TandoorNamed | null;
   unit?: TandoorNamed | null;
   amount?: number | string | null;
@@ -47,9 +52,14 @@ interface TandoorIngredient {
   original_text?: string | null;
 }
 interface TandoorStep {
+  id?: number;
   name?: string | null;
   instruction?: string | null;
   ingredients?: TandoorIngredient[];
+  time?: number | null;
+  order?: number | null;
+  show_as_header?: boolean | null;
+  show_ingredients_table?: boolean | null;
 }
 export interface TandoorRecipeDetail {
   id: number;
@@ -88,6 +98,22 @@ export interface TandoorMealPlanEntry {
 function baseUrl(serverUrl: string): string {
   return serverUrl.trim().replace(/\/+$/, '');
 }
+/**
+ * The next page to fetch, always on the configured server. Tandoor hands back
+ * an absolute `next` URL built from the request it saw, which behind a proxy
+ * can name another host or scheme. Only its path and query are kept, placed on
+ * the configured server's origin, so the token never goes anywhere else.
+ */
+export function tandoorNextPage(base: string, next: string | null | undefined): string | null {
+  if (!next) return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(next, `${base}/`);
+  } catch {
+    return null;
+  }
+  return `${new URL(base).origin}${parsed.pathname}${parsed.search}`;
+}
 function authHeaders(token: string): Record<string, string> {
   return { Authorization: `Bearer ${token}`, Accept: 'application/json' };
 }
@@ -115,6 +141,28 @@ export async function testTandoorConnection(
   return { count: data.count ?? 0 };
 }
 
+/**
+ * Whether the token can write, without writing anything (#1205). Tandoor is
+ * Django REST Framework: an OPTIONS request lists a POST action only when the
+ * token may create, which a token needs the `write` scope for. Never throws: a
+ * failed check reports false, and reading carries on as before.
+ */
+export async function checkTandoorWriteAccess(serverUrl: string, token: string): Promise<boolean> {
+  try {
+    validatePublicUrl(serverUrl);
+    const res = await safeFetch(`${baseUrl(serverUrl)}/api/meal-plan/`, {
+      method: 'OPTIONS',
+      headers: authHeaders(token),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return false;
+    const data = (await res.json()) as { actions?: Record<string, unknown> } | null;
+    return Boolean(data?.actions && 'POST' in data.actions);
+  } catch {
+    return false;
+  }
+}
+
 /** Page through /api/recipe/ collecting recipe ids (bounded). */
 async function listRecipeIds(base: string, token: string): Promise<number[]> {
   const ids: number[] = [];
@@ -122,8 +170,8 @@ async function listRecipeIds(base: string, token: string): Promise<number[]> {
   let guard = 0;
   while (next && ids.length < MAX_RECIPES && guard < 200) {
     guard += 1;
-    // safeFetch re-validates the URL each hop — important because `next` is a
-    // server-supplied absolute URL, not something we constructed.
+    // `next` comes from the server; tandoorNextPage keeps it on the configured
+    // origin, and safeFetch still validates every hop.
     const res: Response = await safeFetch(next, { headers: authHeaders(token) });
     if (!res.ok) {
       throw new Error(`Failed to list Tandoor recipes: ${res.status} ${res.statusText}`);
@@ -132,7 +180,7 @@ async function listRecipeIds(base: string, token: string): Promise<number[]> {
     for (const r of data.results ?? []) {
       if (typeof r.id === 'number') ids.push(r.id);
     }
-    next = data.next;
+    next = tandoorNextPage(base, data.next);
   }
   return ids.slice(0, MAX_RECIPES);
 }
@@ -162,26 +210,106 @@ function normalizeIngredients(steps: TandoorStep[]): Array<{ text?: string; head
   const out: Array<{ text?: string; heading?: string }> = [];
   for (const step of steps) {
     for (const ing of step.ingredients ?? []) {
-      if (ing.is_header) {
-        const heading = (ing.note || ing.food?.name || '').trim();
-        if (heading) out.push({ heading });
-        continue;
-      }
-      // Prefer the user's original typed line when Tandoor kept it.
-      if (ing.original_text && ing.original_text.trim()) {
-        out.push({ text: ing.original_text.trim() });
-        continue;
-      }
-      const amount = ing.no_amount ? '' : formatAmount(ing.amount);
-      const unit = (ing.unit?.name || '').trim();
-      const food = (ing.food?.name || '').trim();
-      const note = (ing.note || '').trim();
-      const main = [amount, unit, food].filter(Boolean).join(' ').trim();
-      const text = note ? (main ? `${main} (${note})` : note) : main;
-      if (text) out.push({ text });
+      const line = tandoorIngredientLine(ing);
+      if (line) out.push(line);
     }
   }
   return out;
+}
+
+/** One Tandoor ingredient as the Prism line a pull shows, or null if it shows none. */
+function tandoorIngredientLine(ing: TandoorIngredient): { text?: string; heading?: string } | null {
+  if (ing.is_header) {
+    const heading = (ing.note || ing.food?.name || '').trim();
+    return heading ? { heading } : null;
+  }
+  // Prefer the user's original typed line when Tandoor kept it.
+  if (ing.original_text && ing.original_text.trim()) return { text: ing.original_text.trim() };
+  const amount = ing.no_amount ? '' : formatAmount(ing.amount);
+  const unit = (ing.unit?.name || '').trim();
+  const food = (ing.food?.name || '').trim();
+  const note = (ing.note || '').trim();
+  const main = [amount, unit, food].filter(Boolean).join(' ').trim();
+  const text = note ? (main ? `${main} (${note})` : note) : main;
+  return text ? { text } : null;
+}
+
+/**
+ * Prism's ingredient lines and instructions merged into a Tandoor recipe's
+ * steps (#1215). A line that did not change keeps its ingredient object (food,
+ * unit, amount and their links) in its own step; a new or edited line goes in
+ * as a plain note, in the step of the line before it; a removed line is
+ * dropped. Instructions are set only on a recipe with one step (or none); with
+ * more, the steps' text stays as it is. Returns null when nothing changed.
+ */
+export function mergeTandoorSteps(
+  detail: TandoorRecipeDetail,
+  local: { ingredients: Array<{ text?: string; heading?: string }>; instructions: string | null },
+): Array<Record<string, unknown>> | null {
+  const steps = (detail.steps ?? []) as Array<TandoorStep & Record<string, unknown>>;
+  // Every remote ingredient, in pull order, with the line it shows (if any).
+  const entries: Array<{ step: number; ing: TandoorIngredient; line: { text?: string; heading?: string } | null }> = [];
+  steps.forEach((step, i) => (step.ingredients ?? []).forEach((ing) => entries.push({ step: i, ing, line: tandoorIngredientLine(ing) })));
+  const shown = entries.filter((e) => e.line !== null);
+  const remoteLines = shown.map((e) => e.line!);
+  const ingredientsChanged = !sameLines(local.ingredients, remoteLines);
+  const instructionsChanged = !sameInstructions(local.instructions, normalizeInstructions(steps))
+    && steps.length <= 1;
+  if (!ingredientsChanged && !instructionsChanged) return null;
+
+  const perStep: TandoorIngredient[][] = steps.length ? steps.map(() => []) : [[]];
+  if (ingredientsChanged) {
+    const match = matchLines(local.ingredients, remoteLines);
+    let current = 0;
+    local.ingredients.forEach((line, i) => {
+      const m = match[i];
+      if (m !== null && m !== undefined) {
+        current = shown[m]!.step;
+        perStep[current]!.push(shown[m]!.ing);
+      } else {
+        perStep[current]!.push(plainTandoorIngredient(line));
+      }
+    });
+    // Ingredients a pull never showed (blank lines) stay where they were.
+    for (const e of entries) if (e.line === null) perStep[e.step]!.push(e.ing);
+  } else {
+    steps.forEach((step, i) => { perStep[i] = [...(step.ingredients ?? [])]; });
+  }
+
+  const instruction = (step: TandoorStep | undefined) => {
+    if (!instructionsChanged) return step?.instruction ?? '';
+    const text = (local.instructions ?? '').trim();
+    // A pull put a one-step recipe's step name on the first line.
+    const name = (step?.name ?? '').trim();
+    return name && text.startsWith(`${name}\n`) ? text.slice(name.length + 1).trim() : text;
+  };
+  const withOrder = (list: TandoorIngredient[]) => list.map((ing, order) => ({ ...ing, order }));
+
+  if (!steps.length) return [{ instruction: instruction(undefined), ingredients: withOrder(perStep[0]!), order: 0 }];
+  return steps.map((step, i) => ({
+    id: step.id,
+    name: step.name ?? '',
+    instruction: i === 0 ? instruction(step) : (step.instruction ?? ''),
+    ingredients: withOrder(perStep[i]!),
+    time: step.time ?? 0,
+    order: step.order ?? i,
+    show_as_header: step.show_as_header ?? false,
+    show_ingredients_table: step.show_ingredients_table ?? true,
+  }));
+}
+
+/** A Prism line as a Tandoor ingredient with no food or unit: Tandoor shows the note. */
+function plainTandoorIngredient(line: { text?: string; heading?: string }): TandoorIngredient {
+  const note = (line.heading ?? line.text ?? '').trim();
+  return {
+    food: null,
+    unit: null,
+    amount: 0,
+    note,
+    is_header: Boolean(line.heading),
+    no_amount: true,
+    original_text: line.heading ? null : note,
+  };
 }
 
 /** Join Tandoor steps into one plain-text instructions block. */
@@ -233,6 +361,7 @@ export function normalizeTandoorRecipe(
     servings: positive(detail.servings),
     tags: (detail.keywords ?? []).map((k) => (k.name || '').trim()).filter(Boolean),
     remoteImageUrl,
+    stepCount: steps.length,
   };
 }
 
@@ -262,7 +391,8 @@ export async function fetchTandoorRecipes(
 /**
  * Fetch all meal-plan entries from Tandoor (bounded). The endpoint is paginated
  * ({count,next,results}) but older/newer builds may return a bare array — both
- * are handled. safeFetch re-validates each server-supplied `next` URL (SSRF).
+ * are handled. Each server-supplied `next` URL is kept on the configured
+ * server (tandoorNextPage), and safeFetch validates it.
  */
 export async function fetchTandoorMealPlan(
   serverUrl: string,
@@ -286,9 +416,174 @@ export async function fetchTandoorMealPlan(
     for (const e of results) {
       if (e && typeof e.id === 'number' && typeof e.from_date === 'string') out.push(e);
     }
-    next = Array.isArray(data) ? null : ((data as { next?: string | null }).next ?? null);
+    next = Array.isArray(data) ? null : tandoorNextPage(base, (data as { next?: string | null }).next);
   }
   return out.slice(0, MAX_MEAL_PLAN);
+}
+
+// --- Write-back (#1206): meal-plan entries. Needs a token with `write`. ---
+
+/** A Tandoor meal type (Breakfast, Dinner, ...) as /api/meal-type/ lists it. */
+export interface TandoorMealType {
+  id: number;
+  name: string;
+  /** Naive default time, "18:00:00", or null. */
+  time?: string | null;
+}
+
+/** What Prism sends for one meal-plan entry. */
+export interface TandoorMealPlanWrite {
+  /** The meal's name (Tandoor needs a title or a recipe). */
+  title: string;
+  /** Tandoor recipe id, when the meal's recipe came from this server. */
+  recipeId: number | null;
+  servings: number;
+  note: string;
+  /** When it is, as an instant (ISO with offset or Z). */
+  fromDate: string;
+  /** An existing meal type's id, or a name Tandoor will add as a new type. */
+  mealType: { id: number } | { name: string };
+}
+
+async function writeOrThrow(res: Response, what: string): Promise<void> {
+  if (res.ok) return;
+  if (res.status === 401 || res.status === 403) {
+    throw new Error(`Tandoor refused to ${what}: the token needs the write scope.`);
+  }
+  let detail = '';
+  try { detail = JSON.stringify(await res.json()).slice(0, 200); } catch { /* no body */ }
+  throw new Error(`Tandoor could not ${what}: ${res.status} ${res.statusText}${detail ? ` ${detail}` : ''}`);
+}
+
+function mealPlanBody(entry: TandoorMealPlanWrite): Record<string, unknown> {
+  return {
+    title: entry.title,
+    recipe: entry.recipeId, // a plain id is accepted for a nested object
+    servings: entry.servings,
+    note: entry.note,
+    from_date: entry.fromDate,
+    to_date: entry.fromDate,
+    meal_type: 'id' in entry.mealType ? entry.mealType.id : entry.mealType,
+  };
+}
+
+/** The recipe fields Prism sends back (#1207); ingredients and steps go via mergeTandoorSteps (#1215). */
+export interface RecipeFieldsWrite {
+  name: string;
+  description: string | null;
+  servings: number | null;
+  prepTime: number | null;
+  cookTime: number | null;
+}
+
+/**
+ * Send a recipe's name, description, servings and times. Returns Tandoor's new
+ * last-modified time, which Prism keeps so its own change does not read as
+ * one made in Tandoor next time.
+ */
+export async function updateTandoorRecipe(
+  serverUrl: string,
+  token: string,
+  id: string,
+  fields: RecipeFieldsWrite,
+  /** From mergeTandoorSteps (#1215); omitted, ingredients and steps are left alone. */
+  steps?: Array<Record<string, unknown>> | null,
+): Promise<Date | null> {
+  validatePublicUrl(serverUrl);
+  const res = await safeFetch(`${baseUrl(serverUrl)}/api/recipe/${encodeURIComponent(id)}/`, {
+    method: 'PATCH',
+    headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: fields.name,
+      description: fields.description ?? '',
+      ...(fields.servings ? { servings: fields.servings } : {}),
+      working_time: fields.prepTime ?? 0,
+      waiting_time: fields.cookTime ?? 0,
+      ...(steps ? { steps } : {}),
+    }),
+  });
+  await writeOrThrow(res, 'change the recipe');
+  const data = (await res.json()) as { updated_at?: string | null };
+  return data.updated_at ? new Date(data.updated_at) : null;
+}
+
+/** A recipe as Tandoor stores it, for merging Prism's lines into its steps. */
+export async function fetchTandoorRecipeDetail(serverUrl: string, token: string, id: string): Promise<TandoorRecipeDetail> {
+  validatePublicUrl(serverUrl);
+  return fetchRecipeDetail(baseUrl(serverUrl), token, Number(id));
+}
+
+/** Delete a recipe. One that is already gone counts as deleted. */
+export async function deleteTandoorRecipe(serverUrl: string, token: string, id: string): Promise<void> {
+  validatePublicUrl(serverUrl);
+  const res = await safeFetch(`${baseUrl(serverUrl)}/api/recipe/${encodeURIComponent(id)}/`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  if (res.status === 404) return;
+  await writeOrThrow(res, 'delete the recipe');
+}
+
+/** The server's meal types, for matching Prism's breakfast/lunch/dinner/snack. */
+export async function fetchTandoorMealTypes(serverUrl: string, token: string): Promise<TandoorMealType[]> {
+  validatePublicUrl(serverUrl);
+  const res = await safeFetch(`${baseUrl(serverUrl)}/api/meal-type/?page_size=100`, { headers: authHeaders(token) });
+  if (!res.ok) throw new Error(`Failed to list Tandoor meal types: ${res.status} ${res.statusText}`);
+  const data = (await res.json()) as unknown;
+  const list = Array.isArray(data) ? data : ((data as { results?: unknown[] }).results ?? []);
+  return (list as TandoorMealType[]).filter((t) => t && typeof t.id === 'number' && typeof t.name === 'string');
+}
+
+/** Create a meal-plan entry; returns it as Tandoor stored it. */
+export async function createTandoorMealPlanEntry(
+  serverUrl: string,
+  token: string,
+  entry: TandoorMealPlanWrite,
+): Promise<TandoorMealPlanEntry> {
+  validatePublicUrl(serverUrl);
+  const res = await safeFetch(`${baseUrl(serverUrl)}/api/meal-plan/`, {
+    method: 'POST',
+    headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify(mealPlanBody(entry)),
+  });
+  await writeOrThrow(res, 'add the meal');
+  return storedEntry(await res.json(), 'added');
+}
+
+function storedEntry(data: unknown, verb: string): TandoorMealPlanEntry {
+  const e = data as TandoorMealPlanEntry | null;
+  if (!e || typeof e.id !== 'number' || typeof e.from_date !== 'string') {
+    throw new Error(`Tandoor ${verb} the meal but did not return it.`);
+  }
+  return e;
+}
+
+/** Replace an entry's fields with Prism's (a move, a new recipe, servings). */
+export async function updateTandoorMealPlanEntry(
+  serverUrl: string,
+  token: string,
+  id: string,
+  entry: TandoorMealPlanWrite,
+): Promise<TandoorMealPlanEntry> {
+  validatePublicUrl(serverUrl);
+  const res = await safeFetch(`${baseUrl(serverUrl)}/api/meal-plan/${encodeURIComponent(id)}/`, {
+    method: 'PATCH',
+    headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify(mealPlanBody(entry)),
+  });
+  await writeOrThrow(res, 'change the meal');
+  return storedEntry(await res.json(), 'changed');
+}
+
+/** Remove an entry. One that is already gone counts as removed. */
+export async function deleteTandoorMealPlanEntry(serverUrl: string, token: string, id: string): Promise<void> {
+  validatePublicUrl(serverUrl);
+  const res = await safeFetch(`${baseUrl(serverUrl)}/api/meal-plan/${encodeURIComponent(id)}/`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  if (res.status === 404) return;
+  await writeOrThrow(res, 'remove the meal');
 }
 
 /**
@@ -310,23 +605,6 @@ export async function fetchTandoorRecipeById(
     console.error(`[tandoor] failed to fetch recipe ${id}:`, err instanceof Error ? err.message : err);
   }
   return null;
-}
-
-/**
- * Best-effort download of a Tandoor recipe image (Tandoor media may sit behind
- * auth or on an internal host, so we fetch server-side with the token rather
- * than storing a remote URL the browser couldn't load). Returns null on any
- * failure — a missing image never fails an import.
- */
-export async function fetchTandoorImage(imageUrl: string, token: string): Promise<Buffer | null> {
-  try {
-    const res = await safeFetch(imageUrl, { headers: { Authorization: `Bearer ${token}` } });
-    if (!res.ok) return null;
-    const buf = Buffer.from(await res.arrayBuffer());
-    return buf.length ? buf : null;
-  } catch {
-    return null;
-  }
 }
 
 export { UnsafeUrlError };

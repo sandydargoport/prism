@@ -23,6 +23,7 @@
  */
 import { readStored, writeStored } from '@/lib/hooks/useStoredValue';
 import { diffSettings, SCREEN_SETTING_KEYS, type ScreenSettings } from './screenSettings';
+import { samePlan, type ScreenPlan, type ScreenSwitch } from '@/lib/screenSwitches';
 
 /** The settings this browser last agreed with the server on, and for which screen. */
 const BASE_KEY = 'prism:display-sync-base';
@@ -32,7 +33,10 @@ const MIN_RELOAD_GAP_MS = 60 * 1000;
 
 export type SyncBase = {
   displayId: string;
+  /** The dashboard it shows (#1282); null or missing is the household default. */
   dashboardId?: string | null;
+  /** Dashboards it switches to for a while; missing is none. */
+  switches?: ScreenSwitch[];
   settings: ScreenSettings;
   settingsUpdatedAt: string | null;
 };
@@ -66,6 +70,11 @@ function saveBase(base: SyncBase | null): void {
   }
 }
 
+/** The dashboard and switches in a base, as a plan; missing parts are the defaults. */
+export function planOf(base: Pick<SyncBase, 'dashboardId' | 'switches'> | null): ScreenPlan {
+  return { dashboardId: base?.dashboardId ?? null, switches: base?.switches ?? [] };
+}
+
 /** Forget the base, e.g. when this browser is named, renamed into another screen, or forgotten. */
 export function resetSyncBase(): void {
   saveBase(null);
@@ -80,7 +89,8 @@ export function hasLocalChanges(): boolean {
 
 type SyncResponse = {
   displayId: string;
-  dashboardId: string | null;
+  dashboardId?: string | null;
+  switches?: ScreenSwitch[];
   settings: ScreenSettings;
   settingsUpdatedAt: string | null;
 };
@@ -88,8 +98,8 @@ type SyncResponse = {
 export type SyncResult = {
   /** Keys whose value came from the server. */
   applied: string[];
-  /** The screen's dashboard was changed elsewhere since the last sync. */
-  dashboardChanged: boolean;
+  /** The screen was given another dashboard or other switches elsewhere since the last sync. */
+  planChanged: boolean;
 };
 
 async function post(changes: Record<string, string | null>, baseDisplayId: string | null): Promise<SyncResponse | null> {
@@ -121,7 +131,7 @@ export async function syncScreenSettings(): Promise<SyncResult> {
   const local = readLocalSettings();
 
   const result = await post(base ? diffSettings(base.settings, local) : local, base?.displayId ?? null);
-  if (!result) return { applied: [], dashboardChanged: false };
+  if (!result) return { applied: [], planChanged: false };
 
   const applied: string[] = [];
   for (const [key, value] of Object.entries(diffSettings(readLocalSettings(), result.settings))) {
@@ -129,14 +139,15 @@ export async function syncScreenSettings(): Promise<SyncResult> {
     applied.push(key);
   }
 
-  const dashboardChanged = base?.displayId === result.displayId && (base.dashboardId ?? null) !== result.dashboardId;
+  const plan = planOf(result);
+  const planChanged = base?.displayId === result.displayId && !samePlan(planOf(base), plan);
   saveBase({
     displayId: result.displayId,
-    dashboardId: result.dashboardId,
+    ...plan,
     settings: result.settings,
     settingsUpdatedAt: result.settingsUpdatedAt,
   });
-  return { applied, dashboardChanged };
+  return { applied, planChanged };
 }
 
 /**

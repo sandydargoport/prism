@@ -23,6 +23,18 @@
  * Deletes are never applied automatically regardless — the review UI leaves
  * them unchecked. The guard is a second belt to keep them out of the diff
  * entirely when they look catastrophic.
+ *
+ * PUSH (#1206), only when `opts.push` is given (the source's token can write):
+ *  - PUSH-UPDATE — a matched pair that differs, where the local row was edited
+ *             since the last sync and the source is not newer: Prism's edit
+ *             goes to the source instead of being overwritten by it.
+ *  - PUSH-DELETE — a source entry that was in Prism at the last sync and has
+ *             no local row now: it was removed in Prism. Opt-in, like every
+ *             delete, and behind the same mass guard. Without push it is
+ *             pulled back in as an add, as before.
+ *  - PUSH-ADD — a row made in Prism that the source has never had (the
+ *             adapter says which rows qualify). Pre-checked only when made or
+ *             changed since the last sync.
  */
 
 import type { RemoteItem, LocalItem, SyncChange, SyncDiff } from './types';
@@ -37,31 +49,71 @@ export interface ComputeDiffOptions {
     /** Max fraction of the synced set before withholding. Default 0.25. */
     maxFraction?: number;
   };
+  /** Send Prism's changes back too. Omitted: pull only. */
+  push?: {
+    /** Local rows the source has never had, offered as new entries. */
+    candidates: LocalItem[];
+    /** Source ids that had a local row at the last sync. */
+    knownExternalIds: ReadonlySet<string>;
+  };
 }
 
-type UpdateSignal = 'timestamp' | 'fingerprint' | 'refresh';
+type UpdateSignal = 'fingerprint' | 'refresh';
 
 /**
- * Decide whether a matched remote item should be proposed as an update, and by
- * which signal:
- *  - timestamp   — remote exposes updatedAt and it's newer than local.
- *  - fingerprint — remote has no updatedAt but both sides carry a content
- *                  fingerprint; propose only when they differ.
- *  - refresh     — no timestamp and no fingerprints → always refresh (the old
- *                  behavior; the remote is the source of truth).
+ * For a source without timestamps: whether a matched item differs.
+ *  - fingerprint — both sides carry a content fingerprint; differ → update.
+ *  - refresh     — no fingerprints → always refresh (the remote is the
+ *                  source of truth).
  * Returns null when nothing should change.
  */
 function updateSignal<TPayload>(
   remote: RemoteItem<TPayload>,
   local: LocalItem,
 ): UpdateSignal | null {
-  if (remote.updatedAt !== null) {
-    return remote.updatedAt.getTime() > local.updatedAt.getTime() ? 'timestamp' : null;
-  }
   if (remote.fingerprint !== undefined && local.fingerprint !== undefined) {
     return remote.fingerprint !== local.fingerprint ? 'fingerprint' : null;
   }
   return 'refresh';
+}
+
+/**
+ * For a remote item matched to a local row: pull the source's version, send
+ * Prism's, or leave both.
+ *
+ * With timestamps (#1207), "the source changed" means its time is past the
+ * one Prism last saw from it (remoteSeenAt), so Prism's own push does not come
+ * back as a change made there. "Prism changed" means edited since the last
+ * sync. When both changed, the newer one wins and the reason says which.
+ * Without remoteSeenAt the source's time is compared with the local row's, as
+ * before.
+ *
+ * Without timestamps (meal plans, #1206): the two differ by fingerprint; a
+ * Prism edit since the last sync is sent, anything else is pulled.
+ */
+function decideMatched<TPayload>(
+  r: RemoteItem<TPayload>,
+  local: LocalItem,
+  localChanged: boolean,
+  push: boolean,
+): { kind: 'update' | 'push-update'; reason: string } | null {
+  if (r.updatedAt !== null) {
+    const seen = local.remoteSeenAt ?? local.updatedAt;
+    const remoteChanged = r.updatedAt.getTime() > seen.getTime();
+    if (remoteChanged && localChanged) {
+      if (r.updatedAt.getTime() > local.updatedAt.getTime()) {
+        return { kind: 'update', reason: 'Changed in both places; the other app’s is newer' };
+      }
+      return push ? { kind: 'push-update', reason: 'Changed in both places; Prism’s is newer' } : null;
+    }
+    if (remoteChanged) return { kind: 'update', reason: 'Changed in source (newer than local)' };
+    if (localChanged && push) return { kind: 'push-update', reason: 'Changed in Prism' };
+    return null;
+  }
+  const signal = updateSignal(r, local);
+  if (!signal) return null;
+  if (push && localChanged) return { kind: 'push-update', reason: 'Changed in Prism' };
+  return { kind: 'update', reason: signal === 'fingerprint' ? 'Changed in source' : 'Refreshed from source' };
 }
 
 export function computeSyncDiff<TPayload>(
@@ -74,10 +126,25 @@ export function computeSyncDiff<TPayload>(
   const localByExternal = new Map(localSynced.map((l) => [l.externalId as string, l]));
 
   const changes: SyncChange<TPayload>[] = [];
+  const pushDeleteCandidates: SyncChange<TPayload>[] = [];
+  const editedSinceSync = (l: LocalItem) =>
+    opts.lastSynced ? l.updatedAt.getTime() > opts.lastSynced.getTime() : false;
 
   // Adds + updates.
   for (const r of remote) {
     const existing = localByExternal.get(r.externalId);
+    if (!existing && opts.push?.knownExternalIds.has(r.externalId)) {
+      // In Prism at the last sync, gone now: removed in Prism.
+      pushDeleteCandidates.push({
+        kind: 'push-delete',
+        externalId: r.externalId,
+        label: r.label,
+        reason: 'Removed in Prism',
+        remoteUpdatedAt: r.updatedAt,
+        defaultChecked: false,
+      });
+      continue;
+    }
     if (!existing) {
       changes.push({
         kind: 'add',
@@ -90,36 +157,42 @@ export function computeSyncDiff<TPayload>(
       });
       continue;
     }
-    const signal = updateSignal(r, existing);
-    if (signal) {
-      const reason =
-        signal === 'timestamp'
-          ? 'Changed in source (newer than local)'
-          : signal === 'fingerprint'
-            ? 'Changed in source'
-            : 'Refreshed from source';
+    const decision = decideMatched(r, existing, editedSinceSync(existing), Boolean(opts.push));
+    if (decision?.kind === 'push-update') {
+      changes.push({
+        kind: 'push-update',
+        externalId: r.externalId,
+        localId: existing.localId,
+        label: existing.label,
+        // The source's version, so the review can say what sending will change.
+        payload: r.payload,
+        reason: decision.reason,
+        remoteUpdatedAt: r.updatedAt,
+        localUpdatedAt: existing.updatedAt,
+        defaultChecked: true,
+      });
+    } else if (decision?.kind === 'update') {
       changes.push({
         kind: 'update',
         externalId: r.externalId,
         localId: existing.localId,
         label: r.label,
         payload: r.payload,
-        reason,
+        reason: decision.reason,
         remoteUpdatedAt: r.updatedAt,
         localUpdatedAt: existing.updatedAt,
         defaultChecked: true,
       });
     }
-    // else: local is newer / unchanged → keep local (nothing proposed);
-    // write-back handles pushing a newer local edit upstream later.
+    // else: unchanged, or only Prism changed and the source only reads →
+    // keep the local row as it is.
   }
 
   // Delete candidates: previously synced, now absent from the remote.
   const deleteCandidates: SyncChange<TPayload>[] = [];
   for (const l of localSynced) {
     if (remoteIds.has(l.externalId as string)) continue;
-    const editedSinceSync = opts.lastSynced ? l.updatedAt.getTime() > opts.lastSynced.getTime() : false;
-    if (editedSinceSync) continue; // local edit newer than the delete → keep it
+    if (editedSinceSync(l)) continue; // local edit newer than the delete → keep it
     deleteCandidates.push({
       kind: 'delete',
       externalId: l.externalId as string,
@@ -136,11 +209,7 @@ export function computeSyncDiff<TPayload>(
   // where a fraction is meaningless.
   const maxItems = opts.massDelete?.maxItems ?? 10;
   const maxFraction = opts.massDelete?.maxFraction ?? 0.5;
-  const syncedCount = localSynced.length;
-  const wouldDelete = deleteCandidates.length;
-  const tripsCount = wouldDelete > maxItems;
-  const tripsFraction = syncedCount >= 4 && wouldDelete / syncedCount >= maxFraction;
-  const massDeleteGuardTripped = wouldDelete >= 2 && (tripsCount || tripsFraction);
+  const massDeleteGuardTripped = tripsGuard(deleteCandidates.length, localSynced.length, maxItems, maxFraction);
 
   let withheldDeletes = 0;
   if (massDeleteGuardTripped) {
@@ -149,14 +218,51 @@ export function computeSyncDiff<TPayload>(
     changes.push(...deleteCandidates);
   }
 
+  // The same guard for removals made in Prism, measured against what the
+  // source and Prism shared at the last sync.
+  const pushDeleteGuardTripped = tripsGuard(
+    pushDeleteCandidates.length,
+    opts.push?.knownExternalIds.size ?? 0,
+    maxItems,
+    maxFraction,
+  );
+  let withheldPushDeletes = 0;
+  if (pushDeleteGuardTripped) {
+    withheldPushDeletes = pushDeleteCandidates.length;
+  } else {
+    changes.push(...pushDeleteCandidates);
+  }
+
+  // Pre-ticked only when made or changed since the last sync. Older rows (and
+  // every row on a first sync) start unticked, so connecting a token that can
+  // write never sends a whole plan with one tap.
+  for (const c of opts.push?.candidates ?? []) {
+    changes.push({
+      kind: 'push-add',
+      externalId: `local:${c.localId}`,
+      localId: c.localId,
+      label: c.label,
+      reason: 'New in Prism',
+      localUpdatedAt: c.updatedAt,
+      defaultChecked: editedSinceSync(c),
+    });
+  }
+
+  const count = (kind: SyncChange<TPayload>['kind']) => changes.filter((c) => c.kind === kind).length;
   return {
     changes,
-    counts: {
-      add: changes.filter((c) => c.kind === 'add').length,
-      update: changes.filter((c) => c.kind === 'update').length,
-      delete: changes.filter((c) => c.kind === 'delete').length,
-    },
+    counts: { add: count('add'), update: count('update'), delete: count('delete') },
+    pushCounts: { add: count('push-add'), update: count('push-update'), delete: count('push-delete') },
     massDeleteGuardTripped,
     withheldDeletes,
+    pushDeleteGuardTripped,
+    withheldPushDeletes,
   };
+}
+
+/** Bulk loss only: one or two deletes always pass; tiny sets skip the fraction. */
+function tripsGuard(wouldDelete: number, setSize: number, maxItems: number, maxFraction: number): boolean {
+  const tripsCount = wouldDelete > maxItems;
+  const tripsFraction = setSize >= 4 && wouldDelete / setSize >= maxFraction;
+  return wouldDelete >= 2 && (tripsCount || tripsFraction);
 }

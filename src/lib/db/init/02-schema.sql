@@ -722,6 +722,7 @@ CREATE TABLE IF NOT EXISTS public.tasks (
     title character varying(255) NOT NULL,
     description text,
     list_id uuid,
+    parent_id uuid,
     assigned_to uuid,
     due_date date,
     due_time character varying(5),
@@ -829,7 +830,8 @@ CREATE TABLE IF NOT EXISTS public.users (
     created_at timestamp without time zone DEFAULT now() NOT NULL,
     updated_at timestamp without time zone DEFAULT now() NOT NULL,
     sort_order integer DEFAULT 0 NOT NULL,
-    pin_length integer DEFAULT 4 NOT NULL
+    pin_length integer DEFAULT 4 NOT NULL,
+    pin_kind character varying(16) DEFAULT 'digits'::character varying NOT NULL
 );
 
 

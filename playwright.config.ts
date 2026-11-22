@@ -31,7 +31,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev',
+    // The browser tests run on webpack, the bundler production builds use;
+    // `npm run dev` is Turbopack for day-to-day work (see devBundler.test.ts).
+    command: 'npm run dev:webpack',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
   },

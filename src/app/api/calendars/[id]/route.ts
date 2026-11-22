@@ -9,7 +9,7 @@
  *
  */
 
-import { invalidateEntity } from '@/lib/cache/cacheKeys';
+import { invalidateEntities } from '@/lib/cache/cacheKeys';
 import { parseDisplayRules } from '@/lib/calendar/displayRules';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireRole } from '@/lib/auth';
@@ -205,8 +205,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         { status: 500 }
       );
     }
-    // Events are served from a cache; new display rules apply at once (#877).
-    if ('displayRules' in body) await invalidateEntity('events');
+    // Events and calendar groups are served from a cache and carry this
+    // calendar's colour, name, enabled flag and display rules (#877, #1226).
+    await invalidateEntities('events', 'calendar-groups');
 
     return NextResponse.json({
       id: updated.id,
@@ -257,6 +258,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     // Delete the calendar (events will be cascade deleted)
     await db.delete(calendarSources).where(eq(calendarSources.id, id));
+    await invalidateEntities('events', 'calendar-groups');
 
     // If it's a Google calendar, tombstone it (with its name) so discovery won't
     // recreate it on the next connect/re-auth. Reversible via Manage Calendars →

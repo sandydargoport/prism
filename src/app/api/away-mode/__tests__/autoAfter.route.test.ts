@@ -18,6 +18,7 @@ jest.mock('@/lib/auth', () => ({
   requireRole: (auth: { role: string }) => (auth.role === 'parent' ? null : NextResponse.json({ error: 'Forbidden' }, { status: 403 })),
   getDisplayAuth: async () => display,
 }));
+jest.mock('@/lib/auth/everydayAuth', () => ({ screenOrPerson: async () => person ?? display }));
 jest.mock('drizzle-orm', () => ({ eq: (_col: unknown, key: string) => { currentKey = key; return key; } }));
 jest.mock('@/lib/db/client', () => ({
   db: {

@@ -1,13 +1,14 @@
 'use client';
 
 /**
- * Editing one screen from another device (#1153).
+ * Editing on a canvas (#1153, #1265).
  *
- * The phone page (/screens/[id]) shows the screen's real dashboard in a frame
- * the screen's own size, scaled down to fit, so everything that depends on
- * the size of the window (the grid, breakpoints, `vh`) lays out as it does on
- * the wall. The dashboard in the frame opens in edit mode, and its editing
- * bar and dialogs are drawn on the phone page at the phone's own size.
+ * The editor page (/screens/[id] for a named screen, /edit/[id] for a
+ * dashboard) shows the real dashboard in a frame the screen's own size,
+ * scaled down to fit, so everything that depends on the size of the window
+ * (the grid, breakpoints, `vh`) lays out as it does on the wall. The
+ * dashboard in the frame opens in edit mode, and its editing panels and
+ * dialogs are drawn on the editor page at this device's own size.
  *
  * The two pages share an origin, so the frame reaches the phone page through
  * `window.parent`. The phone page puts a host object there; the frame finds it
@@ -20,9 +21,10 @@
  *   - draws its editing bar and dialogs into `host.root`;
  *   - tells the host which dashboard it is on, and when editing ends.
  *
- * The phone page sends the settings and the dashboard to the screen on Done.
+ * The phone page sends the settings to the screen on Done.
  */
 import { isScreenSettingKey, type ScreenSettings } from './screenSettings';
+import type { ScreenSwitch } from '@/lib/screenSwitches';
 
 export const REMOTE_EDIT_GLOBAL = '__prismRemoteEdit';
 
@@ -30,9 +32,18 @@ export const REMOTE_EDIT_GLOBAL = '__prismRemoteEdit';
 const BASE_KEY = 'prism:display-sync-base';
 
 export type RemoteEditHost = {
-  displayId: string;
-  /** The screen's dashboard when editing began; null is the household default. */
+  /**
+   * The named screen being edited, or null when editing a dashboard at a
+   * chosen size: then the frame keeps this device's own settings, as editing
+   * in place does.
+   */
+  displayId: string | null;
+  /**
+   * The dashboard the screen shows and its switches (#1282), changed in place
+   * as the editor changes them, and sent to the screen on Done.
+   */
   dashboardId: string | null;
+  switches: ScreenSwitch[];
   /** The screen's settings, changed in place as the frame writes them. */
   settings: ScreenSettings;
   settingsUpdatedAt: string | null;
@@ -62,6 +73,14 @@ export function remoteEditHost(): RemoteEditHost | null {
   return cached;
 }
 
+/** In the frame: the screen now shows this and switches so (#1282); the editor page sends it on Done. */
+export function setHostPlan(plan: { dashboardId: string | null; switches: ScreenSwitch[] }): void {
+  const host = remoteEditHost();
+  if (!host) return;
+  host.dashboardId = plan.dashboardId;
+  host.switches = plan.switches;
+}
+
 /** For tests: forget what was found. */
 export function resetRemoteEditHost(): void {
   cached = undefined;
@@ -76,6 +95,7 @@ export function remoteStorage(real: Storage, host: RemoteEditHost): Storage {
   const base = () => JSON.stringify({
     displayId: host.displayId,
     dashboardId: host.dashboardId,
+    switches: host.switches,
     settings: host.settings,
     settingsUpdatedAt: host.settingsUpdatedAt,
   });
@@ -112,7 +132,7 @@ export function remoteStorage(real: Storage, host: RemoteEditHost): Storage {
  */
 export function installRemoteStorage(): void {
   const host = remoteEditHost();
-  if (!host) return;
+  if (!host?.displayId) return;
   try {
     const shim = remoteStorage(window.localStorage, host);
     Object.defineProperty(window, 'localStorage', { configurable: true, get: () => shim });

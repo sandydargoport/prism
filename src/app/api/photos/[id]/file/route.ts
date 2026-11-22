@@ -73,7 +73,7 @@ export async function GET(
           return new NextResponse(cached.buffer, {
             headers: {
               'Content-Type': cached.contentType,
-              'Cache-Control': 'public, max-age=3600',
+              'Cache-Control': 'private, max-age=3600',
               'Content-Length': cached.buffer.length.toString(),
             },
           });
@@ -106,7 +106,7 @@ export async function GET(
         return new NextResponse(buffer, {
           headers: {
             'Content-Type': contentType,
-            'Cache-Control': 'public, max-age=3600',
+            'Cache-Control': 'private, max-age=3600',
             'Content-Length': buffer.length.toString(),
           },
         });
@@ -138,7 +138,7 @@ export async function GET(
       return new NextResponse(buffer, {
         headers: {
           'Content-Type': contentType,
-          'Cache-Control': 'public, max-age=3600',
+          'Cache-Control': 'private, max-age=3600',
           'Content-Length': buffer.length.toString(),
         },
       });
@@ -155,7 +155,7 @@ export async function GET(
     return new NextResponse(fileBuffer, {
       headers: {
         'Content-Type': photo.mimeType,
-        'Cache-Control': 'public, max-age=86400, immutable',
+        'Cache-Control': 'private, max-age=86400, immutable',
         'Content-Length': fileBuffer.length.toString(),
       },
     });

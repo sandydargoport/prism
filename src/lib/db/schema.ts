@@ -13,9 +13,11 @@ import {
   date,
   index,
   uniqueIndex,
+  type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 import type { IdleBackground } from '../idleBackground';
+import type { ScreenSwitch } from '../screenSwitches';
 
 
 export const users = pgTable('users', {
@@ -36,6 +38,8 @@ export const users = pgTable('users', {
   // this many digits. Defaults to 4; new installs' family-wide "PIN length"
   // setting seeds this value when a member is created.
   pinLength: integer('pin_length').default(4).notNull(),
+  /** 'digits' (a PIN) or 'passcode' (lowercase letters and numbers), #1197. */
+  pinKind: varchar('pin_kind', { length: 16 }).default('digits').notNull(),
 
   email: varchar('email', { length: 255 }),
 
@@ -312,6 +316,10 @@ export const tasks = pgTable('tasks', {
 
   // Which list this task belongs to (null = default/inbox)
   listId: uuid('list_id').references(() => taskLists.id, { onDelete: 'cascade' }),
+
+  // The task this one is a subtask of (#1200): a Google Tasks subtask or a
+  // To Do step. Deleting the parent deletes its subtasks, as Google does.
+  parentId: uuid('parent_id').references((): AnyPgColumn => tasks.id, { onDelete: 'cascade' }),
 
   assignedTo: uuid('assigned_to').references(() => users.id, { onDelete: 'set null' }),
 
@@ -960,10 +968,12 @@ export const layouts = pgTable('layouts', {
   // Per-dashboard screensaver layout (null = use default template)
   screensaverWidgets: jsonb('screensaver_widgets'),
 
-  // What the display shows behind it when idle (#782): this dashboard itself
-  // with only some widgets left showing, or the screensaver layout above over
-  // photos or the night sky, or one by day and another after dark. See
-  // src/lib/idleBackground.ts. It replaced `screensaver_mode` (calm or
+  // What the display shows when idle (#782): this dashboard itself with only
+  // some widgets left showing, or the screensaver layout above over photos or
+  // the night sky, or one by day and another at night. See
+  // src/lib/idleBackground.ts. Every screen showing the dashboard rests and
+  // sleeps this way (#1281); for a release it lived on the timeline instead
+  // (#1266), and 0055 brought it back. It replaced `screensaver_mode` (calm or
   // separate), which 0039 converted and which the database still holds,
   // unread, so a rollback finds it.
   idleBackground: jsonb('idle_background').$type<IdleBackground>().default({ source: 'dashboard' }).notNull(),
@@ -1008,6 +1018,10 @@ export const apiTokens = pgTable('api_tokens', {
   createdByIdx: index('api_tokens_created_by_idx').on(table.createdBy),
 }));
 
+// The `timelines` table (#1266) is left in the database, unread, for one
+// release so a rollback finds it: a screen's dashboard and switches replaced
+// it (#1282, migration 0056).
+
 /**
  * A screen a parent has named (#690). The browser holds a signed cookie with
  * the row's id; a browser nobody named has no row and behaves as before.
@@ -1022,8 +1036,13 @@ export const displays = pgTable('displays', {
   settings: jsonb('settings').$type<Record<string, string>>().default({}).notNull(),
   // When `settings` last changed, so the screen knows to pick up a remote edit.
   settingsUpdatedAt: timestamp('settings_updated_at'),
-  // The dashboard this screen opens on; null is the household default.
+  // The dashboard it shows (#1282); null is the household default. Every
+  // screen showing a dashboard rests and sleeps the way it says (#1281).
   dashboardId: uuid('dashboard_id').references(() => layouts.id, { onDelete: 'set null' }),
+  // Dashboards it switches to for a while: at bus time, or at set times. See
+  // src/lib/screenSwitches.ts. The first that matches wins. The database
+  // still holds `timeline_id` (#1266), unread, so a rollback finds it.
+  switches: jsonb('switches').$type<ScreenSwitch[]>().default([]).notNull(),
   // The size the screen last reported, in CSS pixels, so a phone editing it
   // shows its dashboard at the same size and shape (#1153).
   screenWidth: integer('screen_width'),
@@ -1747,6 +1766,13 @@ export type LiveTrackVehicle = {
   substitute?: boolean;
   changedMidDay?: boolean;
 };
+
+/**
+ * The part of a vehicle the live endpoint sends to the wall (#1224): what the
+ * bus card shows. The plate, model and the driver's name as reported stay on
+ * the server; the card shows the driver through `driverLabel` instead.
+ */
+export type LiveTrackPublicVehicle = Pick<LiveTrackVehicle, 'number' | 'color' | 'substitute' | 'changedMidDay'>;
 
 export type LiveTrackStop = {
   key: string;

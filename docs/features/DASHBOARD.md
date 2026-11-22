@@ -12,7 +12,13 @@ A parent edits layouts in **edit mode** on a large screen. Phones don't show the
 
 Open **More** on the dock at the foot of the screen and choose **Edit**. Only parents can see it.
 
-Editing keeps the controls where editing starts: a dark bar takes the dock's place at the foot of the screen, and nothing is drawn at the top. The bar reads **Dashboard**, **Widgets**, **Through the day**, **Look** and **More**, then **Cancel** and **Done**. Each one opens a sheet that rises from the bar. A dot on a button means that sheet has changes you haven't saved. **Done** saves everything and **Cancel** puts it all back.
+The editor looks the same on every device. It opens on a canvas: the dashboard laid out at the size of the screen that shows it, scaled to fit the window, so what you arrange is what the wall shows. The controls sit in a column beside the canvas (below it on a phone), with one panel always open, and none of them covers the canvas: **Dashboard**, **Widgets**, **Through the day**, **Look** and **More**, with **Cancel** and **Done** above them.
+
+- **On a named screen** (named in **Through the day**, listed in *Settings → Screens*) **Edit** opens that screen's own editor, at its own size, on the dashboard it was showing. Its own settings (in **Look** and **More**) reach it when you press **Done**, and it goes back to its dashboard.
+- **On a laptop or any other device** it opens at the size of a screen that shows the dashboard. **Shown at** above the canvas picks another: a named screen or a common screen size.
+- **For another named screen**, **Edit** on its row in *Settings → Screens* opens the same canvas at that screen's size, and changes reach the screen on **Done**.
+
+A dot on a button means that panel has changes you haven't saved. **Done** saves everything and **Cancel** puts it all back.
 
 Glance, the built-in dashboard, is edited the same way. Its Widgets sheet lists the parts of the scene to show or hide, and it can be reset but not deleted.
 
@@ -72,15 +78,25 @@ You can make a separate dashboard for each room or display. The dashboard-name d
 - Each dashboard has its own widget layout, screensaver layout and orientation.
 - Bookmark a dashboard URL on a device that only shows that dashboard, so it opens straight to it.
 
-#### Interludes: other dashboards at set times
+#### Which dashboard a screen shows, and when it switches
 
-A named screen (*Settings → Screens*) can show another dashboard for a while, for example the bus on school mornings. Each of these is an **Interlude**: one dashboard from a start to an end time on the days you tick. Add one with **+ Interlude** on the editor's **Through the day** line, on the screen or from a phone with **Edit** on its row in *Settings → Screens*; it starts where the slider is. Each shows as a block on the line, and tapping it opens its dashboard, days, times, order and Remove. Outside all of them the screen shows its own dashboard, Glance included. Times use the household time zone. One that ends before it starts runs past midnight, and one that starts and ends at the same time lasts all day. When two overlap, the one higher in the list wins.
+A named screen shows one dashboard, and can switch to another for a while. Both are set in the screen's own editor, in **Through the day**: **Shows** is its dashboard, and each switch is a row of its own.
 
-Make the dashboard for an Interlude with **Make a copy** in the Dashboard sheet and rearrange it there. When an Interlude starts or ends, the screen changes over in place: widgets that are on both dashboards slide to their new spots and the others fade. The change waits until nobody has touched the screen for a minute, and it never happens while someone is editing the layout. If you open another dashboard by hand, the screen keeps it until the next Interlude starts or ends. With reduced motion turned on the dashboards crossfade, and at the **Minimal** performance level they swap instantly.
+- **At bus time** follows your bus routes: from 30 minutes before each route's time at the stop to 15 minutes after, on the route's days. A route due at 7:45 on weekdays switches the screen from 7:15 to 8:00. Change the route's time and the switch moves with it. The row lists the windows it will use. It still switches on a school holiday, because routes have no holiday calendar.
+  - **Routes**: with two or more bus routes, the row has a chip for each, all on to begin with. Turn one off to leave that route out. With every route on, the switch also follows routes added later. One always stays on.
+  - **From** so many minutes **before to** so many **after**: how long before the route's time the switch starts and how long after it ends, from 0 to 120 minutes.
+  - A screen can have more than one bus switch, for example the morning route to one dashboard and the afternoon route to another.
+- **At set times** has a from and a to, and its days (Monday to Sunday, any set). Times use the household time zone. One that ends before it starts runs past midnight, and one that starts and ends at the same time lasts all day.
+
+**+ Switch at bus time** and **+ Switch at set times** add one; a screen can have up to 12. When two overlap the higher one wins, and the arrow on a row moves it up. **Open** edits that dashboard. Nothing reaches the screen until **Done**, and **Cancel** puts it all back. In the **Dashboard** panel, the dashboard the screen shows is marked **Shown here**, so editing another one never changes what the screen shows. *Settings → Screens* also picks a screen's dashboard from its row.
+
+A device nobody named shows the default dashboard and never switches. To give it switches, name it: open the editor on it, then **Through the day** → **Name this device**.
+
+Make a dashboard to switch to with **Make a copy** in the Dashboard sheet and rearrange it there. When a switch starts or ends, the screen changes over in place: widgets that are on both dashboards slide to their new spots and the others fade. The change waits until nobody has touched the screen for a minute, and it never happens while someone is editing the layout. If you open another dashboard by hand, the screen keeps it until the next switch starts or ends. With reduced motion turned on the dashboards crossfade, and at the **Minimal** performance level they swap instantly.
 
 #### Notices
 
-A named screen can show small notice cards down the top right of its dashboard. In the editing bar's **More** sheet, **Notices** turns each kind on and sets how many minutes ahead it looks:
+A named screen can show small notice cards down the top right of its dashboard. In the editor's **More** panel, **Notices** turns each kind on and sets how many minutes ahead it looks:
 
 - **Bus**: the bus is due at your stop within the set minutes, using the live position where there is one and the emailed estimate otherwise. The card goes once the bus has passed the stop.
 - **Event**: a timed event starts within the set minutes. The card goes when the event starts. All-day events never show.
@@ -142,7 +158,7 @@ To keep the screen clean all the time, turn on **Auto-Hide Navigation** in *Sett
 
 ### Screensaver layout
 
-Each dashboard has its own screensaver layout, used when photos or the night sky show while the screen rests. In edit mode, open **Through the day**, tap **Resting** or **Night**, then open **Widgets** to arrange it. The templates and the community gallery switch to their screensaver sets as well.
+Each dashboard has its own screensaver layout, used when photos or the night sky show while the screen rests. In edit mode, open **Through the day**, tap **See it** on the **Resting** row (or step to night on the day's line), then open **Widgets** to arrange it. The templates and the community gallery switch to their screensaver sets as well.
 
 The screen rests after the time set as **Rest after** in the Through the day sheet: 30 seconds, 1 minute, 2 minutes, 10 minutes, 1 hour or never, 2 minutes by default. The screensaver templates keep the calendar, or tonight's meals, as the hero, with small clock, weather and message accents over one clear area of the photo so the wallpaper stays the main thing.
 

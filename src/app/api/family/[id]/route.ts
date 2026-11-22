@@ -8,10 +8,19 @@ import bcrypt from 'bcryptjs';
 import { invalidateEntity } from '@/lib/cache/cacheKeys';
 import { logActivity } from '@/lib/services/auditLog';
 import { logError } from '@/lib/utils/logError';
-import { MIN_PIN_LENGTH, MAX_PIN_LENGTH } from '@/lib/constants';
+import { describePin, isPinKind, lengthAllowed, lengthBounds, pinMatches, pinNoun, type PinKind } from '@/lib/auth/pinKind';
 import { isSetupComplete } from '@/lib/setup';
 import { parentCanResetPin } from '@/lib/auth/pinReset';
+import { revokeApiTokensOf } from '@/lib/auth/apiTokens';
 import { isHexColor } from '@/lib/constants/memberColors';
+import { cookies } from 'next/headers';
+import {
+  invalidateAllUserSessions,
+  revokeOtherSessions,
+  reserveLoginAttempt,
+  recordFailedLogin,
+  clearLoginAttempts,
+} from '@/lib/auth/session';
 
 export async function GET(
   request: NextRequest,
@@ -33,6 +42,7 @@ export async function GET(
         avatarUrl: users.avatarUrl,
         pin: users.pin,
         pinLength: users.pinLength,
+        pinKind: users.pinKind,
         createdAt: users.createdAt,
       })
       .from(users)
@@ -54,6 +64,7 @@ export async function GET(
       avatarUrl: member.avatarUrl,
       hasPin: !!member.pin,
       pinLength: member.pinLength,
+      pinKind: member.pinKind,
       createdAt: member.createdAt.toISOString(),
     });
   } catch (error) {
@@ -171,31 +182,50 @@ export async function PATCH(
       updates.avatarUrl = body.avatarUrl || null;
     }
 
-    // Per-member PIN length (4/5/6). Validated up front so a PIN submitted in
-    // the same request is checked against the NEW length, not the stale one.
+    // What the member signs in with (#1197): a PIN or a passcode. Read first,
+    // so a length and a PIN in the same request are checked against it.
+    if (body.pinKind !== undefined) {
+      if (!isPinKind(body.pinKind)) {
+        return NextResponse.json({ error: "pinKind must be 'digits' or 'passcode'" }, { status: 400 });
+      }
+      updates.pinKind = body.pinKind;
+    }
+    const kind = (updates.pinKind ?? currentMember.pinKind ?? 'digits') as PinKind;
+
+    // Per-member length: 4 to 6 digits for a PIN, 6 to 12 for a passcode.
+    // Validated up front so a PIN submitted in the same request is checked
+    // against the NEW length, not the stale one.
     if (body.pinLength !== undefined) {
       const n = Math.round(Number(body.pinLength));
-      if (!Number.isFinite(n) || n < MIN_PIN_LENGTH || n > MAX_PIN_LENGTH) {
+      if (!lengthAllowed(kind, n)) {
+        const [lo, hi] = lengthBounds(kind);
         return NextResponse.json(
-          { error: `pinLength must be between ${MIN_PIN_LENGTH} and ${MAX_PIN_LENGTH}` },
+          { error: `pinLength must be between ${lo} and ${hi} for a ${pinNoun(kind)}` },
           { status: 400 }
         );
       }
       updates.pinLength = n;
+    } else if (updates.pinKind !== undefined && !lengthAllowed(kind, currentMember.pinLength)) {
+      return NextResponse.json(
+        { error: `A ${pinNoun(kind)} needs a length between ${lengthBounds(kind).join(' and ')}` },
+        { status: 400 }
+      );
     }
 
-    // A new length on its own strands an existing PIN: every pad then waits for
-    // the new number of digits, and the stored hash was made from the old one,
-    // so nothing typed can match. The length and the new PIN go together (or
-    // the PIN is removed in the same call).
-    if (
-      updates.pinLength !== undefined &&
-      updates.pinLength !== currentMember.pinLength &&
-      currentMember.pin &&
-      body.pin === undefined
-    ) {
+    // A new length or kind on its own strands an existing PIN: every pad then
+    // waits for the new shape, and the stored hash was made from the old one,
+    // so nothing typed can match. They go together with a new PIN (or the PIN
+    // is removed in the same call).
+    const reshaped =
+      (updates.pinLength !== undefined && updates.pinLength !== currentMember.pinLength) ||
+      (updates.pinKind !== undefined && updates.pinKind !== currentMember.pinKind);
+    if (reshaped && currentMember.pin && body.pin === undefined) {
+      const len = (updates.pinLength ?? currentMember.pinLength) as number;
+      const kindChanged = updates.pinKind !== undefined && updates.pinKind !== currentMember.pinKind;
       return NextResponse.json(
-        { error: `Changing the PIN length needs a new ${updates.pinLength}-digit PIN in the same change` },
+        { error: kindChanged
+          ? `Changing to ${describePin(kind, len)} needs a new ${pinNoun(kind)} of that length in the same change`
+          : `Changing the PIN length needs a new ${kind === 'passcode' ? `${len}-character passcode` : `${len}-digit PIN`} in the same change` },
         { status: 400 }
       );
     }
@@ -227,14 +257,29 @@ export async function PATCH(
           );
         }
 
-        // Verify current PIN
-        const isPinValid = await bcrypt.compare(body.currentPin, currentMember.pin);
-        if (!isPinValid) {
+        // Verify current PIN. A wrong guess counts against the member's
+        // sign-in lockout, the same as at the login pad (#1221), so this is
+        // not a way around the attempt limit.
+        const reservation = await reserveLoginAttempt(currentMember.id);
+        if (!reservation.allowed) {
           return NextResponse.json(
-            { error: 'Current PIN is incorrect' },
+            { error: 'Too many failed attempts. Please try again later.', lockedOut: true, retryAfter: reservation.retryAfter },
+            { status: 403 }
+          );
+        }
+        // A passcode is stored lowercase (#1197), as the login pad sends it.
+        const currentPin = typeof body.currentPin === 'string'
+          ? (currentMember.pinKind === 'passcode' ? body.currentPin.toLowerCase() : body.currentPin)
+          : '';
+        const isPinValid = await bcrypt.compare(currentPin, currentMember.pin);
+        if (!isPinValid) {
+          const { remainingAttempts } = await recordFailedLogin(currentMember.id, reservation.count);
+          return NextResponse.json(
+            { error: 'Current PIN is incorrect', remainingAttempts },
             { status: 401 }
           );
         }
+        await clearLoginAttempts(currentMember.id);
       }
 
       // Validate and hash new PIN — must match this member's own configured
@@ -244,13 +289,14 @@ export async function PATCH(
         // Remove PIN
         updates.pin = null;
       } else {
-        const expectedLen = updates.pinLength ?? currentMember.pinLength;
-        if (new RegExp(`^\\d{${expectedLen}}$`).test(body.pin)) {
-          // Hash and set new PIN
-          updates.pin = await bcrypt.hash(body.pin, 12);
+        const expectedLen = (updates.pinLength ?? currentMember.pinLength) as number;
+        // A passcode is lowercase (#1197); a pad or keyboard sends it that way.
+        const pin = typeof body.pin === 'string' ? (kind === 'passcode' ? body.pin.toLowerCase() : body.pin) : '';
+        if (pinMatches(kind, expectedLen, pin)) {
+          updates.pin = await bcrypt.hash(pin, 12);
         } else {
           return NextResponse.json(
-            { error: `PIN must be exactly ${expectedLen} digits` },
+            { error: `${kind === 'passcode' ? 'Passcode' : 'PIN'} must be exactly ${describePin(kind, expectedLen)}` },
             { status: 400 }
           );
         }
@@ -291,6 +337,25 @@ export async function PATCH(
         ));
     }
 
+    // A new PIN or passcode, or a new role, ends the member's sessions (#1221):
+    // a session carries the role it signed in with, and a device signed in on
+    // the old PIN should not stay in. A member changing their own PIN keeps
+    // the session making the change, so they are not signed out mid-edit.
+    // A new role also revokes the member's API tokens (#1246); a new PIN keeps
+    // them, as a token is not signed in with the PIN.
+    const credentialChanged = updates.pin !== undefined;
+    const roleChanged = updates.role !== undefined && updates.role !== currentMember.role;
+    if (credentialChanged || roleChanged) {
+      const ownSession = auth !== null && auth.userId === id && auth.scopes === undefined;
+      if (ownSession && !roleChanged) {
+        const current = (await cookies()).get('prism_session')?.value;
+        await revokeOtherSessions(id, current);
+      } else {
+        await invalidateAllUserSessions(id);
+      }
+    }
+    if (roleChanged) await revokeApiTokensOf(id);
+
     await invalidateEntity('family');
     await invalidateEntity('calendar-groups');
 
@@ -313,6 +378,7 @@ export async function PATCH(
       avatarUrl: updatedMember.avatarUrl,
       hasPin: !!updatedMember.pin,
       pinLength: updatedMember.pinLength,
+      pinKind: updatedMember.pinKind,
       createdAt: updatedMember.createdAt.toISOString(),
     });
   } catch (error) {
@@ -374,6 +440,9 @@ export async function DELETE(
 
       await tx.delete(users).where(eq(users.id, id));
     });
+
+    // A removed member's devices are signed out at once (#1221).
+    await invalidateAllUserSessions(id);
 
     await invalidateEntity('family');
 

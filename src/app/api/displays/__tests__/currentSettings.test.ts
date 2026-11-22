@@ -39,7 +39,7 @@ beforeEach(() => {
 });
 
 const screen = (settings: Record<string, string>) => ({
-  id: KITCHEN, name: 'Kitchen', dashboardId: null, settings, settingsUpdatedAt: null,
+  id: KITCHEN, name: 'Kitchen', dashboardId: null, switches: [], settings, settingsUpdatedAt: null,
 });
 
 describe('POST /api/displays/current/settings', () => {
@@ -66,6 +66,7 @@ describe('POST /api/displays/current/settings', () => {
     expect(body).toEqual({
       displayId: KITCHEN,
       dashboardId: null,
+      switches: [],
       settings: { 'prism-screensaver-drift': 'off' },
       settingsUpdatedAt: UPDATED.toISOString(),
     });
