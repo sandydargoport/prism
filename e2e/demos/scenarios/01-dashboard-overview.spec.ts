@@ -1,5 +1,5 @@
 import { test } from '@playwright/test';
-import { editHere } from '../../helpers/editHere';
+import { onCanvas, openPanel } from '../../helpers/canvasEditor';
 import { loginViaAPI } from '../helpers/auth';
 import { resetDemoData } from '../helpers/reset';
 
@@ -22,47 +22,30 @@ test('Dashboard overview — logged in with layout editor', async ({ page }) => 
   await page.mouse.move(640, 360);
   await page.waitForTimeout(1000);
 
-  // Open the editor from the dock: Menu, More, Edit layout (#922)
+  // Open the editor from the dock: Menu, More, Edit layout (#922). It opens
+  // the canvas, the dashboard at a screen's size beside the panels (#1283).
   await page.click('[data-dock-menu]');
   await page.click('[data-dock-more]');
-  await editHere(page);
   await page.click('[data-dock-more-panel] [data-screen-job="edit"]');
+  await onCanvas(page);
   await page.waitForTimeout(2000);
 
-  // Toggle screen safe zone sizes to show the dashed lines
-  const btn1080 = page.locator('button').filter({ hasText: '16:9 (1080p)' });
-  if (await btn1080.count() > 0) {
-    await btn1080.first().click();
+  // Show it at another screen size, then back.
+  const size = page.locator('[data-canvas-size]');
+  await size.selectOption('1280x800');
+  await page.waitForTimeout(2000);
+  await size.selectOption('1080x1920');
+  await page.waitForTimeout(2000);
+  await size.selectOption('1920x1080');
+  await page.waitForTimeout(1500);
+
+  // Each panel in turn.
+  for (const panel of ['dashboard', 'day', 'look', 'widgets'] as const) {
+    await openPanel(page, panel);
     await page.waitForTimeout(1500);
   }
 
-  const btnSurface = page.locator('button').filter({ hasText: '3:2 (Surface)' });
-  if (await btnSurface.count() > 0) {
-    await btnSurface.first().click();
-    await page.waitForTimeout(1500);
-  }
-
-  const btniPad = page.locator('button').filter({ hasText: '4:3 (iPad)' });
-  if (await btniPad.count() > 0) {
-    await btniPad.first().click();
-    await page.waitForTimeout(1500);
-  }
-
-  // Toggle orientation to Portrait
-  const orientationBtn = page.locator('button').filter({ hasText: /Landscape|Portrait/ });
-  if (await orientationBtn.count() > 0) {
-    await orientationBtn.first().click();
-    await page.waitForTimeout(2000);
-  }
-
-  // Toggle back to Landscape
-  const landscapeBtn = page.locator('button').filter({ hasText: /Landscape|Portrait/ });
-  if (await landscapeBtn.count() > 0) {
-    await landscapeBtn.first().click();
-    await page.waitForTimeout(1500);
-  }
-
-  // Close the editor by pressing Escape
-  await page.keyboard.press('Escape');
+  // Leave without changing anything.
+  await page.click('[data-editor-cancel]');
   await page.waitForTimeout(1000);
 });

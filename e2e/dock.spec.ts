@@ -1,8 +1,8 @@
 import { test, expect, type Page } from '@playwright/test';
-import { editHere } from './helpers/editHere';
 import { getSeededParentId } from './helpers/auth';
 import { TODAY_TEMPLATE } from '../src/lib/constants/layoutTemplates';
 import { deleteLayout } from './helpers/cleanup';
+import { onCanvas } from './helpers/canvasEditor';
 
 /**
  * The dock on the wall (#922): a Menu word at rest, a labelled one-row dock on
@@ -205,7 +205,7 @@ test.describe('the dock on the wall', () => {
   });
 
   // #1257: This screen is in More on every page, and Edit layout from a page
-  // goes to the screen's dashboard with the editor open.
+  // opens the editor on the screen's dashboard: its canvas (#1283).
   test('on /chores More has This screen, and Edit layout opens the editor on the dashboard', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     const login = await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } });
@@ -221,11 +221,9 @@ test.describe('the dock on the wall', () => {
       for (const j of ['edit', 'reload', 'away', 'babysitter', 'screensaver']) await expect(jobs.locator(`[data-screen-job="${j}"]`)).toBeVisible();
       const first = await panel.locator('[data-dock-more-group]').first().getAttribute('data-dock-more-group');
       expect(first, 'This screen leads on a wall').toBe('screen');
-      await editHere(page);
       await jobs.locator('[data-screen-job="edit"]').click();
-      await page.waitForURL((u) => u.pathname === `/d/${layout.slug}`, { timeout: 60_000 });
-      await expect(page.locator('[data-editor-bar]'), 'the editor is open').toBeVisible({ timeout: 60_000 });
-      await expect.poll(() => new URL(page.url()).searchParams.get('edit'), { message: 'the address drops ?edit' }).toBeNull();
+      await onCanvas(page);
+      expect(new URL(page.url()).pathname, 'the editor is open on the dashboard').toBe(`/edit/${layout.id}`);
     } finally {
       await deleteLayout(page, layout.id);
     }

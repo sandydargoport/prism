@@ -1,5 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
-import { editHere } from './helpers/editHere';
+import { test, expect, type FrameLocator, type Page } from '@playwright/test';
+import { onCanvas } from './helpers/canvasEditor';
 import { getFirstParent, getSeededParentId, verifySettingsPinViaAPI } from './helpers/auth';
 import {
   facingFor, localSiderealTime, moonPosition, project, toHorizontal,
@@ -24,35 +24,64 @@ import { FIRST_SCREEN_TEMPLATE } from '../src/lib/constants/layoutTemplates';
  */
 
 /**
- * Open the layout editor the way a person does: on the wall that is the
- * dock's Menu, then More, then Edit layout (#922).
+ * Open the layout editor on the dashboard this page shows, by its edit link
+ * (`?edit=1`), as Edit does: on the canvas (#1283), the dashboard in a frame
+ * at a screen's size, the panels beside it, one of them always open. The
+ * dock's way there (Menu, More, Edit layout) is dock.spec.ts's. Returns the frame.
  */
-async function openEditor(page: Page) {
-  // The editor in place, as on the screen itself (#1265).
-  await editHere(page);
-  // Landscape walls have the dock; portrait keeps its bar until #924.
-  const menu = page.locator('[data-dock-menu]');
-  const bar = page.getByLabel('Edit layout');
-  await expect(menu.or(bar).first()).toBeVisible({ timeout: 60000 });
-  if (await menu.isVisible()) {
-    await menu.click();
-    await page.locator('[data-dock-more]').click();
-    await page.locator('[data-dock-more-panel] [data-screen-job="edit"]').click();
-  } else {
-    await bar.click();
-  }
+async function openEditor(page: Page, widget?: string): Promise<FrameLocator> {
+  await page.goto(`${new URL(page.url()).pathname}?edit=1`);
+  return onCanvas(page, widget);
 }
 
-/** The editing bar's sheets (#1151). */
+/** The editor's panels (#1151), by their tabs. */
 async function openSheet(page: Page, id: 'dashboard' | 'widgets' | 'day' | 'look' | 'more') {
   await page.locator(`[data-editor-open="${id}"]`).click();
   await expect(page.locator(`[data-editor-sheet="${id}"]`)).toBeVisible();
 }
-async function closeSheet(page: Page) {
-  await page.locator('[data-editor-sheet] button[aria-label="Close"]').click();
-  await expect(page.locator('[data-editor-sheet]')).toHaveCount(0);
-}
 const done = (page: Page) => page.locator('[data-editor-done]');
+/** A plain weather answer, for when the weather service refuses (a daily limit, say). */
+const STAND_IN_WEATHER = {
+  location: 'Springfield',
+  current: { temperature: 60, feelsLike: 59, condition: 'clear', humidity: 50, windSpeed: 5, description: 'Clear' },
+  forecast: [],
+  hourly: [],
+  units: { temperature: 'F', windSpeed: 'mph', precipitation: 'in' },
+  lastUpdated: '2026-06-21T12:00:00Z',
+};
+
+/**
+ * Weather at a made-up place, so the sky is drawn where these tests look for
+ * it. The real answer is kept when the weather service gives one; when it
+ * refuses, a plain one stands in, or the sky would fall back to a place
+ * guessed from the time zone.
+ */
+async function weatherAt(page: Page, place: Record<string, unknown>) {
+  await page.route('**/api/weather*', async (route) => {
+    const response = await route.fetch().catch(() => null);
+    const real = response?.ok() ? await response.json() as Record<string, unknown> : STAND_IN_WEATHER;
+    return route.fulfill({ json: { ...real, ...place } });
+  });
+}
+
+/** Done on the canvas goes back to the dashboard. */
+const backOn = (page: Page, slug: string) => page.waitForURL((u) => u.pathname === `/d/${slug}`, { timeout: 60_000 });
+
+/**
+ * Names this browser as a screen showing `dashboardId`, for the settings that
+ * are a screen's own (Rest after, How dark), and opens that screen's editor
+ * on the dashboard (#1283). Returns the frame and a remover for the screen.
+ */
+async function editAsScreen(page: Page, dashboardId: string): Promise<{ frame: FrameLocator; removeScreen: () => Promise<unknown> }> {
+  await verifySettingsPinViaAPI(page, (await getFirstParent(page)).name, PIN);
+  const named = await page.request.post('/api/displays', { data: { name: `Screensaver e2e ${Date.now()}` } });
+  expect(named.ok(), 'precondition: this browser is named').toBe(true);
+  const id: string = (await named.json()).display?.id ?? (await (await page.request.get('/api/displays')).json()).currentId;
+  expect((await page.request.patch(`/api/displays/${id}`, { data: { dashboardId } })).ok()).toBe(true);
+  await page.goto(`/screens/${id}?dashboard=${dashboardId}`);
+  const frame = await onCanvas(page);
+  return { frame, removeScreen: () => page.request.delete(`/api/displays/${id}`) };
+}
 
 const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
 
@@ -75,8 +104,9 @@ const LAYOUT = [
 
 type Box = { x: number; y: number; w: number; h: number };
 
-async function boxes(page: Page, selector: string): Promise<Record<string, Box>> {
-  return page.evaluate((sel) => {
+/** Each widget's box, in the page's or a frame's own coordinates. */
+async function boxes(where: Page | FrameLocator, selector: string): Promise<Record<string, Box>> {
+  return where.locator('body').evaluate((_, sel) => {
     const out: Record<string, { x: number; y: number; w: number; h: number }> = {};
     document.querySelectorAll(sel).forEach((el) => {
       const id = el.getAttribute('data-editor-widget') || el.getAttribute('data-widget');
@@ -101,21 +131,24 @@ async function openScreensaverEditor(page: Page, orientation: 'landscape' | 'por
     sessionStorage.setItem('ss-geometry-seeded', '1');
   }, LAYOUT);
   await page.goto('/');
-  await openEditor(page);
+  const frame = await openEditor(page, 'clock');
+  // The canvas is the screen: its size and shape for this orientation, the
+  // portrait one near the size this measured at before (#1283).
+  await page.locator('[data-canvas-size]').selectOption(orientation === 'landscape' ? '1920x1080' : '800x1280');
+  await frame.locator('[data-editor-widget="clock"]').waitFor({ timeout: 90_000 });
   // The seeded dashboard shows the screensaver over photos, so the resting
-  // screen (Through the day) arranges its layout; it stays after the sheet closes.
+  // screen (Through the day) arranges its layout; it stays with another panel open.
   await openSheet(page, 'day');
-  await closeSheet(page);
-  await expect(page.locator('[data-editor-resting]')).toBeVisible();
   // The guide orientation is saved on the dashboard, so another test may have
   // left it either way.
   await openSheet(page, 'look');
+  await expect(page.locator('[data-editor-resting]')).toBeVisible();
   const shape = page.getByRole('radio', { name: orientation === 'landscape' ? 'Landscape' : 'Portrait' });
   await shape.click();
   await expect(shape).toHaveAttribute('aria-checked', 'true');
-  await closeSheet(page);
-  await page.locator('[data-editor-widget="clock"]').waitFor();
+  await frame.locator('[data-editor-widget="clock"]').waitFor();
   await page.waitForTimeout(800);
+  return frame;
 }
 
 for (const [orientation, viewport] of [
@@ -128,13 +161,14 @@ for (const [orientation, viewport] of [
     // The first test in the CI step waits for the dev server to compile the
     // dashboard and the editor's chunks from cold, which alone ran past the
     // 30 s default. A warm run takes about 7 s.
-    test.setTimeout(90_000);
+    test.setTimeout(180_000);
 
     test('a widget renders where and as big as it was sized in the editor', async ({ page }) => {
-      await openScreensaverEditor(page, orientation);
+      // All three are measured in the canvas's frame, which is the screen (#1283).
+      const canvas = await openScreensaverEditor(page, orientation);
 
-      const edited = await boxes(page, '[data-editor-widget]');
-      const frame = await page.evaluate(() => {
+      const edited = await boxes(canvas, '[data-editor-widget]');
+      const frame = await canvas.locator('body').evaluate(() => {
         const label = [...document.querySelectorAll('span')].find((s) => s.textContent === 'Screen');
         const b = label?.parentElement?.getBoundingClientRect();
         return b ? { x: b.x, y: b.y, w: b.width, h: b.height } : null;
@@ -142,18 +176,19 @@ for (const [orientation, viewport] of [
       expect(frame, 'the editor draws a Screen frame').not.toBeNull();
 
       // Preview claims to show the screen as the screensaver will draw it.
-      // Check it at a screen size, from the editing bar's Look sheet (#1151).
+      // Check it at a screen size, from the Look panel (#1151).
       await openSheet(page, 'look');
       await page.getByRole('button', { name: 'See it at a screen size' }).click();
       await page.waitForTimeout(800);
-      const previewed = await boxes(page, '.widget-cell[data-widget]');
-      await page.keyboard.press('Control+Shift+M');
+      const previewed = await boxes(canvas, '.widget-cell[data-widget]');
+      // Its shortcut, Control+Shift+M, is heard where the editor runs: the frame.
+      await canvas.locator('body').evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'M', ctrlKey: true, shiftKey: true })));
 
-      await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
-      const liveCell = page.locator('.fixed.inset-0 .widget-cell[data-widget="clock"]');
+      await canvas.locator('body').evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
+      const liveCell = canvas.locator('.fixed.inset-0 .widget-cell[data-widget="clock"]');
       await liveCell.waitFor();
       await page.waitForTimeout(1500);
-      const live = await boxes(page, '.fixed.inset-0 .widget-cell[data-widget]');
+      const live = await boxes(canvas, '.fixed.inset-0 .widget-cell[data-widget]');
       // The live frame is the grid's content box: the canvas inside its padding.
       const liveFrame = await liveCell.evaluate((el) => {
         const grid = el.parentElement!;
@@ -223,11 +258,7 @@ test.describe('screensaver night sky', () => {
    */
   async function openDashboard(page: Page, background: IdleBackground, at: string, weather: Record<string, unknown> = {}) {
     await page.clock.setFixedTime(new Date(at));
-    await page.route('**/api/weather*', async (route) => {
-      const response = await route.fetch();
-      if (!response.ok()) return route.fulfill({ response });
-      return route.fulfill({ response, json: { ...(await response.json()), lat: 45, lon: -100, ...weather } });
-    });
+    await weatherAt(page, { lat: 45, lon: -100, ...weather });
     await page.route('**/api/layouts', (route) => route.request().method() === 'GET'
       ? route.fulfill({ json: { layouts: [idleLayout(background)] } })
       : route.fallback());
@@ -593,7 +624,8 @@ test.describe('screensaver night sky', () => {
 test.describe('calm mode idle screen', () => {
   test.skip(!HAS_TEST_DB, 'needs the seeded test database to log in and create a dashboard');
   test.use({ viewport: { width: 1280, height: 720 } });
-  test.setTimeout(90_000);
+  // The editor loads the dashboard twice (the page and its frame), slow on a cold CI server.
+  test.setTimeout(180_000);
 
   // Clock and Tasks rely on the default ticks; Shopping and Weather override them.
   // The clock is glass, which goes clear on the idle screen.
@@ -724,13 +756,12 @@ test.describe('calm mode idle screen', () => {
     expect(created.status()).toBe(201);
     const layout = await created.json();
     try {
-      // Chosen the way a person would: on the screen's editing bar, Look (#1159).
+      // Chosen the way a person would: in the editor's Look panel (#1159).
       await page.goto(`/d/${layout.slug}`);
       await openEditor(page);
       await openSheet(page, 'look');
       await page.locator('[data-screen-options]').getByLabel('Performance').selectOption({ label: 'Minimal' });
       await expect(page.locator('html')).toHaveClass(/perf-minimal/);
-      await closeSheet(page);
 
       await page.goto(`/d/${layout.slug}`);
       await page.locator('.widget-cell[data-widget="tasks"]').waitFor({ timeout: 60000 });
@@ -764,6 +795,7 @@ test.describe('calm mode idle screen', () => {
       const save = page.waitForResponse((r) => r.url().endsWith(`/api/layouts/${layout.id}`) && r.request().method() === 'PATCH');
       await done(page).click();
       expect((await save).ok()).toBe(true);
+      await backOn(page, layout.slug);
       await expect(page.locator('[data-editor-resting]')).toHaveCount(0);
 
       const saved = await (await page.request.get(`/api/layouts/${layout.id}`)).json();
@@ -799,15 +831,15 @@ test.describe('calm mode idle screen', () => {
     await page.addInitScript(() => localStorage.setItem('prism-screensaver-drift', 'off'));
     try {
       await page.goto(`/d/${layout.slug}`);
-      await openEditor(page);
-      const toggle = (i: string) => page.locator(`[data-editor-widget="${i}"] [data-idle-toggle]`);
+      const frame = await openEditor(page);
+      const toggle = (i: string) => frame.locator(`[data-editor-widget="${i}"] [data-idle-toggle]`);
       const resting = page.locator('[data-editor-resting]');
+      const see = (state: 'active' | 'resting') => page.locator(`[data-editor-sheet="day"] [data-see="${state}"]`).click();
       const dot = (id: string) => page.locator(`[data-editor-open="${id}"] [aria-label="unsaved changes"]`);
       // In use, the dashboard is arranged; what stays while resting is Through the day's.
       await expect(resting).toHaveCount(0);
-      await expect(page.locator('[data-idle-toggle]')).toHaveCount(0);
+      await expect(frame.locator('[data-idle-toggle]')).toHaveCount(0);
       await openSheet(page, 'day');
-      await closeSheet(page);
       await expect(toggle('clock')).toHaveAttribute('aria-pressed', 'true');
       await expect(toggle('clock')).toContainText('Stays');
       await expect(toggle('tasks')).toHaveAttribute('aria-pressed', 'false');
@@ -818,31 +850,31 @@ test.describe('calm mode idle screen', () => {
       await expect(toggle('tasks')).toHaveAttribute('aria-pressed', 'true');
       await expect(toggle('clock')).toHaveAttribute('aria-pressed', 'false');
       // The button changes only this; it does not select the widget to move it.
-      await expect(page.getByText(/^Tap to (resize|deselect)$/)).toHaveCount(0);
+      await expect(frame.getByText(/^Tap to (resize|deselect)$/)).toHaveCount(0);
       // Only Through the day is marked as changed.
       await expect(dot('day')).toBeVisible();
       await expect(dot('widgets')).toHaveCount(0);
 
       // Back to in use and to resting again: the unsaved ticks are still there.
-      await resting.getByRole('button', { name: 'Back to in use' }).click();
-      await expect(page.locator('[data-idle-toggle]')).toHaveCount(0);
-      await openSheet(page, 'day');
+      await see('active');
+      await expect(frame.locator('[data-idle-toggle]')).toHaveCount(0);
+      await see('resting');
 
       // Photos behind it: the canvas becomes the screensaver layout. Then back
       // to this dashboard, which is what gets saved. What shows while resting
       // is a row of Through the day (#1281).
       const behind = (label: string) => page.locator('[data-editor-sheet="day"]').getByLabel('While resting').selectOption({ label });
       await behind('Photos');
-      await expect(page.locator('[data-idle-toggle]')).toHaveCount(0);
-      await expect(page.locator('[data-editor-widget]').first()).toBeVisible();
+      await expect(frame.locator('[data-idle-toggle]')).toHaveCount(0);
+      await expect(frame.locator('[data-editor-widget]').first()).toBeVisible();
       await behind('This dashboard');
-      await closeSheet(page);
       await expect(toggle('tasks')).toHaveAttribute('aria-pressed', 'true');
       // Nothing is stored before Save.
       const before = await (await page.request.get(`/api/layouts/${layout.id}`)).json();
       expect(before.widgets.map((w: { showWhenIdle?: boolean }) => w.showWhenIdle)).toEqual([undefined, undefined]);
 
       await done(page).click();
+      await backOn(page, layout.slug);
       await expect(page.locator('[data-idle-toggle]')).toHaveCount(0);
       const saved = await (await page.request.get(`/api/layouts/${layout.id}`)).json();
       const tick = Object.fromEntries(saved.widgets.map((w: { i: string; showWhenIdle?: boolean }) => [w.i, w.showWhenIdle]));
@@ -870,9 +902,15 @@ test.describe('calm mode idle screen', () => {
 test.describe('idle background picker', () => {
   test.skip(!HAS_TEST_DB, 'needs the seeded test database to log in and create a dashboard');
   test.use({ viewport: { width: 1600, height: 900 } });
-  test.setTimeout(90_000);
+  // The editor loads the dashboard twice (the page and its frame), slow on a cold CI server.
+  test.setTimeout(180_000);
 
-  async function editIdle(page: Page, place: { lat: number; lon: number }, idleBackground?: unknown) {
+  /**
+   * A dashboard with the clock and tasks, open in the editor on Through the
+   * day: its own canvas, or with `asScreen` this browser's screen's editor,
+   * which adds the screen's own rows.
+   */
+  async function editIdle(page: Page, place: { lat: number; lon: number }, idleBackground?: unknown, asScreen = false) {
     const login = await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } });
     expect(login.ok(), 'precondition: login must succeed').toBe(true);
     const created = await page.request.post('/api/layouts', {
@@ -880,19 +918,21 @@ test.describe('idle background picker', () => {
     });
     expect(created.status()).toBe(201);
     const layout = await created.json();
-    await page.route('**/api/weather*', async (route) => {
-      const response = await route.fetch();
-      if (!response.ok()) return route.fulfill({ response });
-      return route.fulfill({ response, json: { ...(await response.json()), ...place } });
-    });
-    await page.goto(`/d/${layout.slug}`);
-    await openEditor(page);
+    await weatherAt(page, place);
+    let frame: FrameLocator;
+    let removeScreen = async (): Promise<unknown> => undefined;
+    if (asScreen) ({ frame, removeScreen } = await editAsScreen(page, layout.id));
+    else {
+      await page.goto(`/d/${layout.slug}`);
+      frame = await openEditor(page);
+    }
     await openSheet(page, 'day');
-    return layout as { id: string };
+    return { id: layout.id as string, frame, removeScreen };
   }
 
   test('resting and night each show on the canvas, an edge moves, and Done saves it with the dashboard', async ({ page }) => {
     const layout = await editIdle(page, { lat: 45, lon: -100 });
+    const { frame } = layout;
     try {
       const sheet = page.locator('[data-editor-sheet="day"]');
       const shows = sheet.locator('[data-day-sheet]');
@@ -900,12 +940,12 @@ test.describe('idle background picker', () => {
       // Resting is this dashboard: Stays / Fades. A night sky at night has its own layout.
       await see('resting');
       await expect(shows).toHaveAttribute('data-day-shows', 'resting');
-      await expect(page.locator('[data-idle-toggle]').first()).toBeVisible();
+      await expect(frame.locator('[data-idle-toggle]').first()).toBeVisible();
       await sheet.getByLabel('Night look').selectOption({ label: 'Night sky' });
       await expect(shows).toHaveAttribute('data-day-shows', 'night');
-      await expect(page.locator('[data-idle-toggle]')).toHaveCount(0);
+      await expect(frame.locator('[data-idle-toggle]')).toHaveCount(0);
       await see('resting');
-      await expect(page.locator('[data-idle-toggle]').first()).toBeVisible();
+      await expect(frame.locator('[data-idle-toggle]').first()).toBeVisible();
       await see('active');
       await expect(shows).toHaveAttribute('data-day-shows', 'active');
 
@@ -932,7 +972,8 @@ test.describe('idle background picker', () => {
   // #1281: the lanes, with Photos at night behind More and every setting
   // behind a tap on them, were hard to find a way around. Each is a row now.
   test('every choice is in plain sight, in rows that line up and stay inside the panel', async ({ page }) => {
-    const layout = await editIdle(page, { lat: 45, lon: -100 }, { day: 'photos', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } });
+    // As a screen's editor, so its own rows come after the dashboard's.
+    const layout = await editIdle(page, { lat: 45, lon: -100 }, { day: 'photos', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } }, true);
     try {
       const sheet = page.locator('[data-editor-sheet="day"]');
       await expect(sheet.locator('[data-day-lane], [data-day-line], [data-day-slider]')).toHaveCount(0);
@@ -959,8 +1000,9 @@ test.describe('idle background picker', () => {
         };
       });
       expect(g.overflow, 'nothing runs past the panel').toBeLessThanOrEqual(0);
-      // This browser is the screen edited, so its own rows show after the dashboard's.
-      expect(g.rows.map((r) => r.name)).toEqual(['Resting', 'At night', 'Night is', 'Rest after', 'How dark']);
+      // A screen's editor: the dashboard it shows first, then the dashboard's
+      // rows, then the screen's own.
+      expect(g.rows.map((r) => r.name)).toEqual(['Shows', 'Resting', 'At night', 'Night is', 'Rest after', 'How dark']);
       // One column of names and one of choices: every row's choices start at
       // one edge, clear of the names, and each row is below the one before.
       g.rows.forEach((r, i) => {
@@ -970,6 +1012,7 @@ test.describe('idle background picker', () => {
         if (i > 0) expect(r.choices.top, `${r.name} below the row before`).toBeGreaterThanOrEqual(g.rows[i - 1]!.choices.bottom - 0.5);
       });
     } finally {
+      await layout.removeScreen();
       await page.request.delete(`/api/layouts/${layout.id}`);
     }
   });
@@ -1000,7 +1043,8 @@ test.describe('idle background picker', () => {
 test.describe('dim when idle', () => {
   test.skip(!HAS_TEST_DB, 'needs the seeded test database to create a dashboard');
   test.use({ viewport: { width: 1280, height: 720 }, timezoneId: 'America/Chicago' });
-  test.setTimeout(90_000);
+  // The editor loads the dashboard twice (the page and its frame), slow on a cold CI server.
+  test.setTimeout(180_000);
 
   async function dim(page: Page) {
     return page.evaluate(() => {
@@ -1012,7 +1056,7 @@ test.describe('dim when idle', () => {
   }
 
   /** A dashboard whose night runs 11 pm to 7 am, removed after the test. */
-  async function withNightDashboard(page: Page, run: (slug: string) => Promise<void>) {
+  async function withNightDashboard(page: Page, run: (slug: string, id: string) => Promise<void>) {
     await verifySettingsPinViaAPI(page, (await getFirstParent(page)).name, PIN);
     const created = await page.request.post('/api/layouts', {
       data: {
@@ -1024,7 +1068,7 @@ test.describe('dim when idle', () => {
     expect(created.status()).toBe(201);
     const layout = await created.json();
     try {
-      await run(layout.slug);
+      await run(layout.slug, layout.id);
     } finally {
       await page.request.delete(`/api/layouts/${layout.id}`);
     }
@@ -1033,30 +1077,35 @@ test.describe('dim when idle', () => {
   test('darkens the idle screen at night by the dashboard\'s rule, and a touch lifts it', async ({ page }) => {
     // 11:30 pm in Chicago, 04:30 UTC: inside 11 pm to 7 am only on the screen's clock.
     await page.clock.setFixedTime(new Date('2026-10-28T04:30:00Z'));
-    await withNightDashboard(page, async (slug) => {
-      // How dark is the screen's own, on its editing bar: Through the day (#1159).
-      await page.goto(`/d/${slug}`);
-      await openEditor(page);
-      await openSheet(page, 'day');
-      await page.locator('[data-editor-sheet="day"] [data-see="night"]').click();
-      await page.getByLabel('How dark at night').selectOption({ label: '50% darker' });
-      await closeSheet(page);
-      await done(page).click();
-      await expect(done(page)).toHaveCount(0);
+    await withNightDashboard(page, async (slug, id) => {
+      // How dark is the screen's own, in its editor's Through the day (#1159),
+      // so this browser is a screen showing the dashboard (#1283).
+      const { removeScreen } = await editAsScreen(page, id);
+      try {
+        await openSheet(page, 'day');
+        await page.locator('[data-editor-sheet="day"] [data-see="night"]').click();
+        await page.getByLabel('How dark at night').selectOption({ label: '50% darker' });
+        await done(page).click();
+        // Done sends the screen its settings and leaves the editor; let it land first.
+        await page.waitForURL((u) => !u.pathname.startsWith('/screens/'), { timeout: 60_000 });
+        await page.waitForLoadState('load');
 
-      await page.goto(`/d/${slug}`);
-      await page.waitForLoadState('networkidle');
-      expect(await dim(page), 'awake, nothing is dimmed').toEqual({ opacity: 0, takesTaps: false });
+        await page.goto(`/d/${slug}`);
+        await page.waitForLoadState('networkidle');
+        expect(await dim(page), 'awake, nothing is dimmed').toEqual({ opacity: 0, takesTaps: false });
 
-      await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
-      // It eases in over 4 s.
-      await page.waitForTimeout(5000);
-      expect(await dim(page), 'idle at night: half dark, taps pass through').toEqual({ opacity: 0.5, takesTaps: false });
+        await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
+        // It eases in over 4 s.
+        await page.waitForTimeout(5000);
+        expect(await dim(page), 'idle at night: half dark, taps pass through').toEqual({ opacity: 0.5, takesTaps: false });
 
-      // The first touch after the toolbar's forced start is absorbed; the second wakes.
-      for (let n = 0; n < 2; n++) await page.mouse.click(640, 360);
-      await page.waitForTimeout(1000);
-      expect((await dim(page))!.opacity, 'awake again, full brightness').toBe(0);
+        // The first touch after the toolbar's forced start is absorbed; the second wakes.
+        for (let n = 0; n < 2; n++) await page.mouse.click(640, 360);
+        await page.waitForTimeout(1000);
+        expect((await dim(page))!.opacity, 'awake again, full brightness').toBe(0);
+      } finally {
+        await removeScreen();
+      }
     });
   });
 
@@ -1495,12 +1544,14 @@ test.describe('corner clock and weather', () => {
 test.describe('editor keys (#987)', () => {
   test.skip(!HAS_TEST_DB, 'needs the seeded test database to log in and edit');
   test.use({ viewport: { width: 1280, height: 720 } });
-  test.setTimeout(90_000);
+  // The editor loads the dashboard twice (the page and its frame), slow on a cold CI server.
+  test.setTimeout(180_000);
 
   test('Delete removes the selected widget with Undo; arrows move it, and resize it in resize mode', async ({ page }) => {
-    await openScreensaverEditor(page, 'landscape');
-    const clock = page.locator('[data-editor-widget="clock"]');
-    const box = async () => (await boxes(page, '[data-editor-widget]')).clock!;
+    // On the canvas (#1283): a click puts the keys in the frame, where the editor runs.
+    const canvas = await openScreensaverEditor(page, 'landscape');
+    const clock = canvas.locator('[data-editor-widget="clock"]');
+    const box = async () => (await boxes(canvas, '[data-editor-widget]')).clock!;
     const near = (a: number, b: number) => Math.abs(a - b) <= 2;
 
     // Select (move mode): an arrow moves it one cell, keeping its size.
@@ -1526,18 +1577,18 @@ test.describe('editor keys (#987)', () => {
     expect(Math.abs((before.w - resized.w) - cell) <= 2, 'one cell narrower').toBe(true);
 
     // Typing in a field does nothing to the layout.
-    await page.evaluate(() => { const i = document.createElement('input'); i.id = 'typing-probe'; document.body.appendChild(i); });
-    await page.locator('#typing-probe').focus();
+    await canvas.locator('body').evaluate(() => { const i = document.createElement('input'); i.id = 'typing-probe'; document.body.appendChild(i); });
+    await canvas.locator('#typing-probe').focus();
     await page.keyboard.press('Backspace');
     await page.keyboard.press('ArrowRight');
     await expect(clock).toBeVisible();
     expect(near((await box()).x, resized.x), 'arrows in a field leave the widget').toBe(true);
-    await page.evaluate(() => document.getElementById('typing-probe')?.remove());
+    await canvas.locator('body').evaluate(() => document.getElementById('typing-probe')?.remove());
 
     // Still selected: Delete removes it; Undo brings it back.
     await page.keyboard.press('Delete');
     await expect(clock).toHaveCount(0);
-    await page.getByRole('listitem').filter({ hasText: 'Widget removed.' }).getByRole('button', { name: 'Undo' }).click();
+    await canvas.getByRole('listitem').filter({ hasText: 'Widget removed.' }).getByRole('button', { name: 'Undo' }).click();
     await expect(clock).toBeVisible();
   });
 });
@@ -1601,11 +1652,7 @@ test.describe('the upgrade from v1.30.1', () => {
     })).json();
     expect(plain.screensaverWidgets, 'precondition: no arrangement of its own').toBeNull();
 
-    await page.route('**/api/weather*', async (route) => {
-      const response = await route.fetch();
-      if (!response.ok()) return route.fulfill({ response });
-      return route.fulfill({ response, json: { ...(await response.json()), lat: 45, lon: -100 } });
-    });
+    await weatherAt(page, { lat: 45, lon: -100 });
     await page.addInitScript((kept) => {
       // Once per test: what a v1.30.1 browser holds. Drift is stilled only to measure.
       if (sessionStorage.getItem('upgrade-seeded')) return;

@@ -1,17 +1,18 @@
-import { test, expect, type Page } from '@playwright/test';
-import { editHere } from './helpers/editHere';
+import { test, expect, type FrameLocator, type Page } from '@playwright/test';
 import { getSeededParentId } from './helpers/auth';
+import { editOnCanvas } from './helpers/canvasEditor';
 
 /**
  * #1265: dragging in the editor. Every card's blur is drawn again on every
  * frame while a widget moves behind or over it, which was most of a drag's
  * compositing work, so the editor drops the blur while something moves and
- * puts it back on the drop.
+ * puts it back on the drop. Measured on the canvas, where every device
+ * edits (#1283).
  */
 const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
 const PIN = process.env.E2E_PIN || '1234';
 
-async function editLayout(page: Page) {
+async function editLayout(page: Page): Promise<{ frame: FrameLocator; cleanup: () => Promise<unknown> }> {
   await page.setViewportSize({ width: 1440, height: 900 });
   expect((await page.request.post('/api/auth/login', { data: { userId: getSeededParentId(), pin: PIN } })).ok()).toBe(true);
   const res = await page.request.post('/api/layouts', { data: { name: `Drag ${Date.now()}`, view: 'grid', widgets: [
@@ -20,14 +21,12 @@ async function editLayout(page: Page) {
   ] } });
   expect(res.ok()).toBe(true);
   const layout = await res.json();
-  await editHere(page);
-  await page.goto(`/d/${layout.slug}?edit=1`);
-  await expect(page.locator('[data-editor-widget="clock"]')).toBeVisible({ timeout: 60_000 });
-  return () => page.request.delete(`/api/layouts/${layout.id}`);
+  const frame = await editOnCanvas(page, layout.slug, 'clock');
+  return { frame, cleanup: () => page.request.delete(`/api/layouts/${layout.id}`) };
 }
 
 /** The backdrop-filter on the card of a widget (the element that carries the blur class). */
-const blurOf = (page: Page, id: string) => page.locator(`[data-editor-widget="${id}"] [class*="backdrop-blur"]`).first()
+const blurOf = (frame: FrameLocator, id: string) => frame.locator(`[data-editor-widget="${id}"] [class*="backdrop-blur"]`).first()
   .evaluate((e) => getComputedStyle(e).backdropFilter);
 
 test.describe('editor drag (#1265)', () => {
@@ -35,12 +34,12 @@ test.describe('editor drag (#1265)', () => {
   test.setTimeout(150_000);
 
   test('the cards drop their blur while a widget is dragged, and get it back on the drop', async ({ page }) => {
-    const cleanup = await editLayout(page);
+    const { frame, cleanup } = await editLayout(page);
     try {
-      expect(await blurOf(page, 'tasks')).toMatch(/blur/);
+      expect(await blurOf(frame, 'tasks')).toMatch(/blur/);
 
       // One click selects the widget in move mode; only then does it drag.
-      const clock = page.locator('[data-editor-widget="clock"]');
+      const clock = frame.locator('[data-editor-widget="clock"]');
       await clock.click();
       await expect(clock).toHaveClass(/ring-blue-500/);
       const box = (await clock.boundingBox())!;
@@ -51,11 +50,11 @@ test.describe('editor drag (#1265)', () => {
       await page.mouse.move(x + 60, y + 30, { steps: 10 });
 
       // Mid-drag: the other card, under the moving one, has no blur.
-      await expect.poll(() => blurOf(page, 'tasks')).toBe('none');
+      await expect.poll(() => blurOf(frame, 'tasks')).toBe('none');
 
       await page.mouse.move(x, y, { steps: 10 });
       await page.mouse.up();
-      await expect.poll(() => blurOf(page, 'tasks')).toMatch(/blur/);
+      await expect.poll(() => blurOf(frame, 'tasks')).toMatch(/blur/);
     } finally { await cleanup(); }
   });
 });
