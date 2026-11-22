@@ -607,21 +607,4 @@ export async function fetchTandoorRecipeById(
   return null;
 }
 
-/**
- * Best-effort download of a Tandoor recipe image (Tandoor media may sit behind
- * auth or on an internal host, so we fetch server-side with the token rather
- * than storing a remote URL the browser couldn't load). Returns null on any
- * failure — a missing image never fails an import.
- */
-export async function fetchTandoorImage(imageUrl: string, token: string): Promise<Buffer | null> {
-  try {
-    const res = await safeFetch(imageUrl, { headers: { Authorization: `Bearer ${token}` } });
-    if (!res.ok) return null;
-    const buf = Buffer.from(await res.arrayBuffer());
-    return buf.length ? buf : null;
-  } catch {
-    return null;
-  }
-}
-
 export { UnsafeUrlError };
