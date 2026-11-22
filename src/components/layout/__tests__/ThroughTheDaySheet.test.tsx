@@ -473,6 +473,26 @@ describe('ThroughTheDaySheet', () => {
       expect(document.querySelector('[data-day-slider] select, [data-day-slider] input')).toBeNull();
     });
 
+    it('each switch has a colour of its own, the same on its row as on its stretches and dots of the line', async () => {
+      render(<Harness initial={NIGHT} plan={PLAN} dashboards={THREE as never} />);
+      await act(async () => {});
+      const rowColor = (row: Element) => row.querySelector('[data-swatch]')!.getAttribute('data-swatch');
+      const [bus, times] = rows().map(rowColor);
+      expect(bus).not.toBe(times);
+      // The bus switch's two windows, and Ambient's one, in their row's colour.
+      expect(Array.from(document.querySelectorAll('[data-day-span="0"]')).map((el) => el.getAttribute('data-color'))).toEqual([bus, bus]);
+      expect(Array.from(document.querySelectorAll('[data-day-span="1"]')).map((el) => el.getAttribute('data-color'))).toEqual([times]);
+      const dotColor = (hhmm: string) => document.querySelector(`[data-waypoint-dot="${Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3))}"]`)!.getAttribute('data-color');
+      expect([dotColor('07:15'), dotColor('08:00'), dotColor('15:00')]).toEqual([bus, bus, bus]);
+      expect([dotColor('01:45'), dotColor('02:45')]).toEqual([times, times]);
+      // Night too, and now has none.
+      const night = rowColor(nightRow());
+      expect(night).not.toBe(bus);
+      expect([dotColor('06:30'), dotColor('21:00')]).toEqual([night, night]);
+      expect(Array.from(document.querySelectorAll('[data-day-night]')).every((el) => el.getAttribute('data-color') === night)).toBe(true);
+      expect(dotColor('10:00')).toBeNull();
+    });
+
     it('the stop picked shows only while the canvas shows its moment', async () => {
       render(<Harness initial={NIGHT} plan={PLAN} dashboards={THREE as never} />);
       await act(async () => {});
