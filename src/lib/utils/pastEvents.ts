@@ -1,0 +1,38 @@
+import { isCalendarEventPast } from './timeFormat';
+
+/**
+ * How the agenda and list views treat events that have already ended.
+ *
+ * - `dim`: the default. Every view fades ended events, the agenda included.
+ * - `hide`: removed from the agenda and list views, which read as "what is
+ *   next" on a wall display, so a short agenda shows what is still to come.
+ *   Grid views (day, week, multi-week, month) keep dimming instead: an empty
+ *   past day in a grid looks like a sync failure.
+ */
+export type PastEventsMode = 'dim' | 'hide';
+
+/** Database settings key (household-wide, shared across displays). */
+export const PAST_EVENTS_SETTING_KEY = 'calendarPastEvents';
+
+export const DEFAULT_PAST_EVENTS_MODE: PastEventsMode = 'dim';
+
+export function isPastEventsMode(value: unknown): value is PastEventsMode {
+  return value === 'dim' || value === 'hide';
+}
+
+type EventTimes = { startTime: Date; endTime: Date; allDay: boolean };
+
+/**
+ * The events that have not ended yet. An event still in progress stays, and an
+ * all-day event stays until its last day is over in the display timezone (see
+ * isCalendarEventPast for how all-day ends are read).
+ */
+export function withoutEndedEvents<T extends EventTimes>(
+  events: T[],
+  now: Date,
+  timeZone?: string,
+): T[] {
+  return events.filter(
+    (event) => !isCalendarEventPast(event.startTime, event.endTime, event.allDay, now, timeZone),
+  );
+}

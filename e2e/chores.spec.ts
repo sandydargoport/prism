@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { loginViaAPI, logout, getFirstParent, FamilyMember } from './helpers/auth';
 import { resetChoreCompletions } from './helpers/reset';
+import { waitForQuiet } from './helpers/network';
 
 test.describe('Chores', () => {
   let parent: FamilyMember;
@@ -22,14 +23,14 @@ test.describe('Chores', () => {
 
   test('chores page loads with header', async ({ page }) => {
     await page.goto('/chores');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     await expect(page.locator('h1')).toContainText('Chores');
   });
 
   test('chores are displayed from database', async ({ page }) => {
     await page.goto('/chores');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
     await expect(page.locator('h1')).toContainText('Chores', { timeout: 10000 });
 
     // Verify via API that chores exist
@@ -45,7 +46,7 @@ test.describe('Chores', () => {
 
   test('history button toggles completion history view', async ({ page }) => {
     await page.goto('/chores');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     const historyBtn = page.getByRole('button', { name: /History/i });
     await expect(historyBtn).toBeVisible({ timeout: 10000 });
@@ -59,7 +60,7 @@ test.describe('Chores', () => {
 
   test('group by person view shows user columns', async ({ page }) => {
     await page.goto('/chores');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
     await expect(page.locator('h1')).toContainText('Chores', { timeout: 10000 });
 
     const groupBtn = page.getByRole('button', { name: /Group by Person/i });
@@ -71,7 +72,7 @@ test.describe('Chores', () => {
 
   test('add chore button is visible for parents', async ({ page }) => {
     await page.goto('/chores');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     const addBtn = page.getByRole('button', { name: /Add Chore/i });
     await expect(addBtn).toBeVisible({ timeout: 10000 });

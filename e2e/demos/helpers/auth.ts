@@ -1,4 +1,5 @@
 import { Page } from '@playwright/test';
+import { waitForQuiet } from '../../helpers/network';
 
 interface FamilyMember {
   id: string;
@@ -33,7 +34,7 @@ async function findMember(page: Page, name: string): Promise<FamilyMember> {
  */
 export async function loginViaUI(page: Page, name: string, pin = '1234') {
   await page.goto('/');
-  await page.waitForLoadState('networkidle');
+  await waitForQuiet(page);
   await page.waitForTimeout(1500);
 
   // Click the "Log in" button in the SideNav (bottom of aside)

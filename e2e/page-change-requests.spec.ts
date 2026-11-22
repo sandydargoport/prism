@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { waitForQuiet } from './helpers/network';
 import { getSeededParentId } from './helpers/auth';
 
 /**
@@ -20,14 +21,14 @@ test.describe('requests per page change', () => {
     let log: string[] = [];
     page.on('request', (r) => { const u = new URL(r.url()); if (u.pathname.startsWith('/api/')) log.push(u.pathname); });
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
     for (const path of ['/calendar', '/', '/shopping']) {
       log = [];
       const link = page.getByRole('navigation', { name: 'Pages' }).locator(`a[href="${path}"]`).first();
       if (!(await link.isVisible().catch(() => false))) await page.locator('[data-dock-menu]').click();
       await link.click();
       await page.waitForURL((u) => u.pathname === path);
-      await page.waitForLoadState('networkidle');
+      await waitForQuiet(page);
       await page.waitForTimeout(1500);
       const count = (p: string) => log.filter((l) => l === p).length;
       // At most two: a read after an earlier one has finished is asked again

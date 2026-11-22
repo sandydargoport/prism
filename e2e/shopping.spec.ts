@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { loginViaAPI, logout, getFirstParent, FamilyMember } from './helpers/auth';
 import { resetShoppingItems } from './helpers/reset';
+import { waitForQuiet } from './helpers/network';
 
 test.describe('Shopping', () => {
   let parent: FamilyMember;
@@ -22,14 +23,14 @@ test.describe('Shopping', () => {
 
   test('shopping page loads with header', async ({ page }) => {
     await page.goto('/shopping');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     await expect(page.locator('h1')).toContainText('Shopping');
   });
 
   test('shopping items display in categories or columns', async ({ page }) => {
     await page.goto('/shopping');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
     await expect(page.locator('h1')).toContainText('Shopping', { timeout: 10000 });
 
     // Category columns have data-category or data-column attributes
@@ -45,7 +46,7 @@ test.describe('Shopping', () => {
 
   test('checking an item updates progress', async ({ page }) => {
     await page.goto('/shopping');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
     await expect(page.locator('h1')).toContainText('Shopping', { timeout: 10000 });
 
     // Find progress text showing "X/Y" format
@@ -75,7 +76,7 @@ test.describe('Shopping', () => {
 
   test('shopping mode can be entered and exited', async ({ page }) => {
     await page.goto('/shopping');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
     await expect(page.locator('h1')).toContainText('Shopping', { timeout: 10000 });
 
     // Look for the enter shopping mode button (maximize icon)
@@ -98,7 +99,7 @@ test.describe('Shopping', () => {
 
   test('progress bar reflects checked items', async ({ page }) => {
     await page.goto('/shopping');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     // Progress text or bar should be visible showing "X/Y" format
     const progressText = page.getByText(/\d+\/\d+/);
@@ -107,7 +108,7 @@ test.describe('Shopping', () => {
 
   test('add list button is visible', async ({ page }) => {
     await page.goto('/shopping');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     // Either "Add List" in header or "New List" dashed button may be present
     const addListBtn = page.getByRole('button', { name: 'Add List' });

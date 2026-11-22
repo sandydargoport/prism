@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { loginViaAPI, logout, getFirstParent, getFirstChild, getFamilyMembers, FamilyMember } from './helpers/auth';
+import { waitForQuiet } from './helpers/network';
 
 test.describe('Gift Ideas', () => {
   let parent: FamilyMember;
@@ -30,7 +31,7 @@ test.describe('Gift Ideas', () => {
 
   test('wishes page loads and shows Gift Ideas tab', async ({ page }) => {
     await page.goto('/wishes');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     // The tab switcher should show "Gift Ideas" button
     const giftIdeasTab = page.getByRole('button', { name: /Gift Ideas/i });
@@ -39,7 +40,7 @@ test.describe('Gift Ideas', () => {
 
   test('switch to Gift Ideas tab renders content', async ({ page }) => {
     await page.goto('/wishes');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     // Click the Gift Ideas tab
     const giftIdeasTab = page.getByRole('button', { name: /Gift Ideas/i });
@@ -56,7 +57,7 @@ test.describe('Gift Ideas', () => {
     test.skip(!otherMember, 'No other family members to show gift columns for');
 
     await page.goto('/wishes');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     // Switch to Gift Ideas tab
     await page.getByRole('button', { name: /Gift Ideas/i }).click();

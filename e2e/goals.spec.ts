@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { loginViaAPI, logout, getFirstParent, FamilyMember } from './helpers/auth';
+import { waitForQuiet } from './helpers/network';
 
 test.describe('Goals', () => {
   let parent: FamilyMember;
@@ -20,7 +21,7 @@ test.describe('Goals', () => {
 
   test('goals page loads with header', async ({ page }) => {
     await page.goto('/goals');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     // Page header should be visible
     await expect(page.locator('h1').first()).toBeVisible({ timeout: 10000 });
@@ -28,7 +29,7 @@ test.describe('Goals', () => {
 
   test('goals list renders when data exists', async ({ page }) => {
     await page.goto('/goals');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     // Wait for loading to finish — either goals appear or an empty state
     await page.waitForTimeout(2000);
@@ -47,7 +48,7 @@ test.describe('Goals', () => {
 
   test('point counters display for children', async ({ page }) => {
     await page.goto('/goals');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     // Fetch goals data to check if children exist
     const apiRes = await page.request.get('/api/goals');
@@ -63,7 +64,7 @@ test.describe('Goals', () => {
 
   test('add goal button visible for parent', async ({ page }) => {
     await page.goto('/goals');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     const addBtn = page.getByRole('button', { name: /Add Goal/i });
     await expect(addBtn).toBeVisible({ timeout: 10000 });
@@ -71,7 +72,7 @@ test.describe('Goals', () => {
 
   test('add goal modal opens and closes', async ({ page }) => {
     await page.goto('/goals');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     const addBtn = page.getByRole('button', { name: /Add Goal/i });
     await expect(addBtn).toBeVisible({ timeout: 10000 });

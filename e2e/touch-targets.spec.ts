@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { waitForQuiet } from './helpers/network';
 import { getSeededParentId } from './helpers/auth';
 import { TODAY_TEMPLATE } from '../src/lib/constants/layoutTemplates';
 import { deleteLayout } from './helpers/cleanup';
@@ -33,7 +34,7 @@ test('every control on the wall is a 44px target on a touch screen', async ({ pl
     for (const url of ['/', `/d/${layout.slug}`]) {
       await page.goto(url);
       await expect(page.locator('.widget-cell, [data-today-scene]').first()).toBeVisible({ timeout: 60_000 });
-      await page.waitForLoadState('networkidle').catch(() => {});
+      await waitForQuiet(page).catch(() => {});
       await page.mouse.click(960, 540); // wake the dock, so its buttons are measured too
       await page.waitForTimeout(600);
       expect(await undersized(page), `on ${url}`).toEqual([]);

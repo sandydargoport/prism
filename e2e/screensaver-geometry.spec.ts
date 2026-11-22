@@ -6,6 +6,7 @@ import {
 } from '../src/components/screensaver/nightSky/sky';
 import { FIGURES } from '../src/components/screensaver/nightSky/catalog';
 import type { IdleBackground } from '../src/lib/idleBackground';
+import { waitForQuiet } from './helpers/network';
 import { FIRST_SCREEN_TEMPLATE } from '../src/lib/constants/layoutTemplates';
 
 /**
@@ -271,7 +272,7 @@ test.describe('screensaver night sky', () => {
     });
     await page.goto('/');
     await page.locator('.widget-cell[data-widget="clock"]').waitFor({ timeout: 60000 });
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
     await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
   }
 
@@ -494,7 +495,7 @@ test.describe('screensaver night sky', () => {
 
     await page.clock.setFixedTime(new Date('2026-12-26T07:00:00Z'));
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
     await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
     await page.locator('[data-testid="night-sky"]').waitFor();
     await page.waitForTimeout(1500);
@@ -570,7 +571,7 @@ test.describe('screensaver night sky', () => {
 
     await page.clock.setFixedTime(new Date(NIGHT));
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
     await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
     await page.locator('[data-testid="night-sky"]').waitFor();
     expect((await sky(page))!.alpha).toBe(255);
@@ -591,7 +592,7 @@ test.describe('screensaver night sky', () => {
     const restOn = async (slug: string) => {
       await page.goto(`/d/${slug}`);
       await page.locator('.widget-cell[data-widget="clock"]').waitFor({ timeout: 60000 });
-      await page.waitForLoadState('networkidle');
+      await waitForQuiet(page);
       await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
       await page.locator('.fixed.inset-0.z-9999').waitFor();
       await page.waitForTimeout(1500);
@@ -1110,7 +1111,7 @@ test.describe('dim when idle', () => {
         await page.waitForLoadState('load');
 
         await page.goto(`/d/${slug}`);
-        await page.waitForLoadState('networkidle');
+        await waitForQuiet(page);
         expect(await dim(page), 'awake, nothing is dimmed').toEqual({ opacity: 0, takesTaps: false });
 
         await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
@@ -1134,7 +1135,7 @@ test.describe('dim when idle', () => {
     await page.clock.setFixedTime(new Date('2026-10-28T23:00:00Z'));
     await withNightDashboard(page, async (slug) => {
       await page.goto(`/d/${slug}`);
-      await page.waitForLoadState('networkidle');
+      await waitForQuiet(page);
       await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
       await page.waitForTimeout(5000);
       expect((await dim(page))!.opacity).toBe(0);
@@ -1168,7 +1169,7 @@ test.describe('screensaver widget outlines', () => {
     // and vanished all at once at the burst.
     await page.addInitScript(() => localStorage.setItem('prism-screensaver-outlines', 'on'));
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
     await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
     await page.locator('.fixed.inset-0.z-9999 .prism-screensaver-flat').first().waitFor();
     await page.waitForTimeout(1000);
@@ -1203,7 +1204,7 @@ test.describe('screensaver widget outlines', () => {
       ]));
     });
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
     await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
     await page.locator('.fixed.inset-0.z-9999 .widget-cell[data-widget="clock"]').waitFor();
     await page.waitForTimeout(1000);
@@ -1241,7 +1242,7 @@ test.describe('screensaver widget outlines', () => {
         ]));
       }, messages);
       await page.goto('/');
-      await page.waitForLoadState('networkidle');
+      await waitForQuiet(page);
       await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
       await page.locator('.fixed.inset-0.z-9999 .widget-cell[data-widget="messages"]').waitFor();
       await page.waitForTimeout(1500);
@@ -1271,7 +1272,7 @@ test.describe('screensaver widget outlines', () => {
     // keeping whatever phases the page gave them.
     await page.addInitScript(() => localStorage.setItem('prism-perf-mode', 'false'));
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
     await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
     await page.locator('.fixed.inset-0.z-9999 .widget-cell').first().waitFor();
     await page.waitForTimeout(1500);
@@ -1318,7 +1319,7 @@ test.describe('screensaver widget outlines', () => {
     // A lighter performance level stops animations; pin Full.
     await page.addInitScript(() => localStorage.setItem('prism-perf-mode', 'false'));
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
     await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
     await page.locator('.fixed.inset-0.z-9999 .widget-cell').first().waitFor();
 
@@ -1638,7 +1639,7 @@ test.describe('the upgrade from v1.30.1', () => {
     await page.clock.setFixedTime(new Date(at));
     await page.goto(`/d/${slug}`);
     await page.locator('.widget-cell[data-widget]').first().waitFor({ timeout: 60000 });
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
     await page.evaluate(() => window.dispatchEvent(new Event('prism:screensaver')));
     await page.locator('.fixed.inset-0.z-9999 .widget-cell[data-widget]').first().waitFor();
     await page.waitForTimeout(1500);

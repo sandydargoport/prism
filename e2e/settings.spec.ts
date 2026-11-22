@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { loginViaAPI, logout, getFirstParent, getFamilyMembers, FamilyMember } from './helpers/auth';
+import { waitForQuiet } from './helpers/network';
 
 test.describe('Settings', () => {
   let parent: FamilyMember;
@@ -22,7 +23,7 @@ test.describe('Settings', () => {
 
   test('settings page loads with section navigation', async ({ page }) => {
     await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     await expect(page.locator('h1')).toContainText('Settings');
 
@@ -33,7 +34,7 @@ test.describe('Settings', () => {
 
   test('clicking section buttons navigates between settings sections', async ({ page }) => {
     await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     // Click "Display" section
     const displayBtn = page.getByRole('button', { name: /Display/i });
@@ -47,7 +48,7 @@ test.describe('Settings', () => {
 
   test('family members section shows member list', async ({ page }) => {
     await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     const familyBtn = page.getByRole('button', { name: /Family Members/i });
     await familyBtn.click();
@@ -61,7 +62,7 @@ test.describe('Settings', () => {
 
   test('about section shows app version', async ({ page }) => {
     await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     const aboutBtn = page.getByRole('button', { name: /About/i });
     await expect(aboutBtn).toBeVisible({ timeout: 10000 });

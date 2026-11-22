@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { loginViaAPI, logout, getFirstParent, FamilyMember } from './helpers/auth';
 import { resetAll } from './helpers/reset';
+import { waitForQuiet } from './helpers/network';
 
 test.describe('Dashboard', () => {
   let parent: FamilyMember;
@@ -22,7 +23,7 @@ test.describe('Dashboard', () => {
 
   test('dashboard renders widgets after login', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     // The main content area should be present
     await expect(page.locator('main').first()).toBeVisible();
@@ -35,7 +36,7 @@ test.describe('Dashboard', () => {
 
   test('sidebar nav links navigate to correct pages', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     // Click Calendar nav link
     await page.click('a[href="/calendar"]');
@@ -52,7 +53,7 @@ test.describe('Dashboard', () => {
 
   test('direct URL routing works for feature pages', async ({ page }) => {
     await page.goto('/chores');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     await expect(page).toHaveURL(/\/chores/);
     await expect(page.locator('main').first()).toBeVisible();
@@ -60,7 +61,7 @@ test.describe('Dashboard', () => {
 
   test('dashboard home link returns to dashboard', async ({ page }) => {
     await page.goto('/tasks');
-    await page.waitForLoadState('networkidle');
+    await waitForQuiet(page);
 
     // Click the logo/home link
     await page.click('a[href="/"]');

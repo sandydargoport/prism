@@ -1,13 +1,14 @@
 import { test } from '@playwright/test';
 import { loginViaAPI } from '../helpers/auth';
 import { resetDemoData } from '../helpers/reset';
+import { waitForQuiet } from '../../helpers/network';
 
 test('Chore completion with plane celebration', async ({ page }) => {
   resetDemoData();
 
   await loginViaAPI(page, 'Emma');
   await page.goto('/chores');
-  await page.waitForLoadState('networkidle');
+  await waitForQuiet(page);
   await page.waitForTimeout(2000);
 
   // Emma has "Empty dishwasher" in the grouped-by-person view.
