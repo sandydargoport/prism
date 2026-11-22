@@ -1,14 +1,16 @@
 /**
  * @jest-environment jsdom
  *
- * The Through the day sheet (#1152) as plain rows (#1281). For a screen: the
- * dashboard it shows and the dashboards it switches to at bus time or at set
- * times (#1282), a row each, kept on the editor page until Done. A device
- * nobody named is offered a name (#1267). Then the dashboard's own resting and
- * night: plain choices in a row, Photos and the night sky among them, saved
- * with the dashboard. Rest after and How dark are the screen's own, shown
- * only when the editor is for a screen. See it shows the canvas in use,
- * resting or at night. A dashboard nobody gave a night is stored as before.
+ * The Through the day sheet (#1152) as rows (#1281) that fold (#1294). First
+ * a day slider that steps through the day's waypoints and shows the screen
+ * then. For a screen: the dashboard it shows and the dashboards it switches to
+ * at bus time or at set times (#1282), a row each, kept on the editor page
+ * until Done. A device nobody named is offered a name (#1267). Then the
+ * dashboard's own resting and night, saved with the dashboard: Resting with
+ * See it, and At night as a row shaped like a switch. Each switch and At night
+ * fold to one line, one open at a time. Rest after and How dark are the
+ * screen's own, shown only when the editor is for a screen. A dashboard nobody
+ * gave a night is stored as before.
  */
 import React, { useState } from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
@@ -47,7 +49,7 @@ const ROUTES = [
   { id: PM_ROUTE, label: 'Afternoon', scheduledTime: '15:30', activeDays: [1, 2, 3, 4, 5] },
 ];
 
-const seen: { value?: IdleBackground; half?: IdleHalf; tab?: EditTab; plan?: ScreenPlan | null } = {};
+const seen: { value?: IdleBackground; half?: IdleHalf; tab?: EditTab; plan?: ScreenPlan | null; preview?: string | null } = {};
 
 function Harness({ initial, dashboards, plan = PLAIN, screenId = 'kitchen', forScreen = true, current = HOME, deviceNamed = true }: {
   initial: IdleBackground; dashboards?: typeof DASHBOARDS; plan?: ScreenPlan | null; screenId?: string | null; forScreen?: boolean; current?: string; deviceNamed?: boolean;
@@ -56,7 +58,8 @@ function Harness({ initial, dashboards, plan = PLAIN, screenId = 'kitchen', forS
   const [half, setHalf] = useState<IdleHalf>('day');
   const [tab, setTab] = useState<EditTab>('dashboard');
   const [screenPlan, setScreenPlan] = useState<ScreenPlan | null>(plan);
-  React.useEffect(() => { seen.value = value; seen.half = half; seen.tab = tab; seen.plan = screenPlan; });
+  const [preview, setPreview] = useState<string | null>(null);
+  React.useEffect(() => { seen.value = value; seen.half = half; seen.tab = tab; seen.plan = screenPlan; seen.preview = preview; });
   return (
     <ThroughTheDaySheet
       idleBackground={value} onIdleBackgroundChange={setValue}
@@ -72,6 +75,8 @@ function Harness({ initial, dashboards, plan = PLAIN, screenId = 'kitchen', forS
       forScreen={forScreen}
       deviceNamed={deviceNamed}
       onDeviceNamed={named}
+      previewDashboardId={preview}
+      onPreviewDashboardChange={setPreview}
     />
   );
 }
@@ -85,36 +90,42 @@ const kept = () => seen.plan!.switches;
 const rows = () => Array.from(document.querySelectorAll<HTMLElement>('[data-switch-row]'));
 const press = (name: string) => fireEvent.click(screen.getByRole('button', { name }));
 const pick = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } });
-const seeIt = (name: string) => fireEvent.click(screen.getByRole('radiogroup', { name: 'See it' }).querySelector<HTMLElement>(`[data-see="${name}"]`)!);
+const seeResting = () => fireEvent.click(document.querySelector<HTMLElement>('[data-see="resting"]')!);
+/** Opens a folded row by its toggle. */
+const unfold = (row: Element) => fireEvent.click(row.querySelector<HTMLElement>('[data-fold-toggle]')!);
+const nightRow = () => document.querySelector<HTMLElement>('[data-night-row]')!;
+const openNight = () => { if (nightRow().getAttribute('data-open') !== 'true') unfold(nightRow()); };
+const openRows = () => Array.from(document.querySelectorAll('[data-open="true"]'));
+const summary = (row: Element) => row.querySelector('[data-fold-summary]')!.textContent;
 
 describe('ThroughTheDaySheet', () => {
   describe('plain rows (#1281)', () => {
-    it('has no lanes, line or slider: a row for resting, one for night, and See it', () => {
+    it('the slider first, then a row for resting with See it and a folded one for night', () => {
       render(<Harness initial={{ day: 'photos', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } }} />);
-      for (const gone of ['[data-day-lanes]', '[data-day-lane]', '[data-day-line]', '[data-day-milestone]', '[data-day-card]', '[data-day-slider]']) {
-        expect(document.querySelector(gone)).toBeNull();
-      }
+      // The See it strip went: the slider shows in use and night (#1294).
+      expect(document.querySelector('[data-see-it]')).toBeNull();
+      expect(document.querySelector('[data-day-sheet]')!.firstElementChild!.querySelector('[data-day-slider]')).toBeTruthy();
       expect((screen.getByLabelText('While resting') as HTMLSelectElement).value).toBe('photos');
-      expect((screen.getByLabelText('When night is') as HTMLSelectElement).value).toBe('clock');
-      expect((screen.getByLabelText('Night look') as HTMLSelectElement).value).toBe('sky');
-      expect(Array.from(screen.getByRole('radiogroup', { name: 'See it' }).querySelectorAll('[role="radio"]')).map((b) => b.textContent))
-        .toEqual(['In use', 'Resting', 'Night']);
-      // See it first, in reach without scrolling past the rows.
-      expect(document.querySelector('[data-day-sheet]')!.firstElementChild!.hasAttribute('data-see-it')).toBe(true);
       // What the screen shows, the dashboard's rows, then the screen's own.
       expect(Array.from(document.querySelectorAll('[data-row-name]')).map((n) => n.textContent))
-        .toEqual(['Shows', 'Resting', 'At night', 'Night is', 'Rest after', 'How dark']);
+        .toEqual(['Shows', 'Resting', 'At night', 'Rest after', 'How dark']);
+      // Night folds to one line that says what it does.
+      expect(openRows()).toHaveLength(0);
+      expect(screen.queryByLabelText('Night look')).toBeNull();
+      expect(summary(nightRow())).toBe('Night sky · 21:00–06:30');
+      openNight();
+      expect((screen.getByLabelText('When night is') as HTMLSelectElement).value).toBe('clock');
+      expect((screen.getByLabelText('Night look') as HTMLSelectElement).value).toBe('sky');
     });
 
-    it('See it shows the canvas in use, resting or at night', () => {
+    it('Resting\'s See it shows the canvas resting, and Back to in use brings it back', () => {
       render(<Harness initial={{ source: 'photos' }} />);
       expect(document.querySelector('[data-day-sheet]')!.getAttribute('data-day-shows')).toBe('active');
-      seeIt('night');
-      expect(seen).toMatchObject({ tab: 'idle', half: 'night' });
-      expect(document.querySelector('[data-see="night"]')!.getAttribute('aria-checked')).toBe('true');
-      seeIt('resting');
+      expect(document.querySelector('[data-day-back]')).toBeNull();
+      seeResting();
       expect(seen).toMatchObject({ tab: 'idle', half: 'day' });
-      seeIt('active');
+      expect(document.querySelector('[data-see="resting"]')!.getAttribute('aria-pressed')).toBe('true');
+      fireEvent.click(document.querySelector<HTMLElement>('[data-day-back]')!);
       expect(seen.tab).toBe('dashboard');
       expect(document.querySelector('[data-day-sheet]')!.getAttribute('data-day-shows')).toBe('active');
     });
@@ -128,6 +139,7 @@ describe('ThroughTheDaySheet', () => {
 
     it('Photos at night is one of the night choices, beside the night sky', () => {
       render(<Harness initial={{ source: 'sky' }} />);
+      openNight();
       const looks = Array.from((screen.getByLabelText('Night look') as HTMLSelectElement).options).map((o) => o.textContent);
       expect(looks).toEqual(['Dim this dashboard', 'Night sky', 'Photos', 'Screen off']);
       pick('Night look', 'photos');
@@ -137,6 +149,7 @@ describe('ThroughTheDaySheet', () => {
 
     it('sets a night look that turns the screen off, on the default night', () => {
       render(<Harness initial={{ source: 'photos' }} />);
+      openNight();
       pick('Night look', 'off');
       expect(seen.value).toEqual({ day: 'photos', night: 'off', switch: DEFAULT_NIGHT });
       expect(seen.half).toBe('night');
@@ -146,6 +159,7 @@ describe('ThroughTheDaySheet', () => {
 
     it('turns dimming on when Dim this dashboard is chosen on a screen that does not dim', () => {
       render(<Harness initial={{ day: 'dashboard', night: 'sky', switch: DEFAULT_NIGHT }} />);
+      openNight();
       pick('Night look', 'dashboard');
       expect(seen.value).toEqual({ source: 'dashboard' });
       expect(localStorage.getItem('prism-screensaver-dim')).toBe('0.5');
@@ -153,6 +167,7 @@ describe('ThroughTheDaySheet', () => {
 
     it('sets night by the clock instead of the sun', () => {
       render(<Harness initial={{ source: 'dashboard' }} />);
+      openNight();
       pick('When night is', 'clock');
       expect(seen.half).toBe('night');
       fireEvent.change(screen.getByLabelText('Night starts'), { target: { value: '22:15' } });
@@ -161,6 +176,8 @@ describe('ThroughTheDaySheet', () => {
 
     it('by the sun, says tonight\'s times and moves an end', () => {
       render(<Harness initial={{ source: 'dashboard' }} />);
+      expect(summary(nightRow())).toMatch(/^Dim this dashboard · dusk to dawn, tonight \d\d:\d\d–\d\d:\d\d$/);
+      openNight();
       expect(document.querySelector('[data-night-times]')!.textContent).toMatch(/^Tonight \d\d:\d\d to \d\d:\d\d\.$/);
       fireEvent.change(screen.getByLabelText('Ends: unit'), { target: { value: 'hr' } });
       fireEvent.change(screen.getByLabelText('Ends: amount'), { target: { value: '1' } });
@@ -184,6 +201,7 @@ describe('ThroughTheDaySheet', () => {
       render(<Harness initial={{ day: 'dashboard', night: 'sky', switch: DEFAULT_NIGHT }} forScreen={false} screenId={null} />);
       expect(screen.queryByLabelText('Rest after')).toBeNull();
       expect(screen.queryByLabelText('How dark at night')).toBeNull();
+      openNight();
       pick('Night look', 'dashboard');
       expect(seen.value).toEqual({ source: 'dashboard' });
       expect(localStorage.getItem('prism-screensaver-dim')).toBeNull();
@@ -236,6 +254,7 @@ describe('ThroughTheDaySheet', () => {
     it('a bus switch follows the routes picked on its row, and every route again with all of them on (#1291)', async () => {
       render(<Harness initial={{ source: 'dashboard' }} plan={{ dashboardId: null, switches: [{ when: 'bus', dashboardId: BUS }] }} />);
       await act(async () => {});
+      unfold(busRow());
       expect(route(AM_ROUTE).textContent).toBe('Morning 07:45');
       expect(route(AM_ROUTE).getAttribute('aria-pressed')).toBe('true');
       expect(route(PM_ROUTE).getAttribute('aria-pressed')).toBe('true');
@@ -252,6 +271,7 @@ describe('ThroughTheDaySheet', () => {
     it('a bus switch\'s minutes before and after move its windows (#1291)', async () => {
       render(<Harness initial={{ source: 'dashboard' }} plan={{ dashboardId: null, switches: [{ when: 'bus', dashboardId: BUS }] }} />);
       await act(async () => {});
+      unfold(busRow());
       expect((screen.getByLabelText('Minutes before the bus') as HTMLSelectElement).value).toBe('30');
       expect((screen.getByLabelText('Minutes after the bus') as HTMLSelectElement).value).toBe('15');
       pick('Minutes before the bus', '10');
@@ -264,6 +284,7 @@ describe('ThroughTheDaySheet', () => {
       global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ routes: ROUTES.slice(0, 1) }) })) as never;
       render(<Harness initial={{ source: 'dashboard' }} plan={{ dashboardId: null, switches: [{ when: 'bus', dashboardId: BUS }] }} />);
       await act(async () => {});
+      unfold(busRow());
       expect(busRow().querySelector('[data-bus-routes]')).toBeNull();
       expect(windows()).toBe('Mon–Fri 07:15 to 08:00');
     });
@@ -272,11 +293,14 @@ describe('ThroughTheDaySheet', () => {
       global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ routes: [] }) })) as never;
       render(<Harness initial={{ source: 'dashboard' }} plan={{ dashboardId: null, switches: [{ when: 'bus', dashboardId: BUS }] }} />);
       await act(async () => {});
+      expect(summary(busRow())).toBe('No bus route set up yet · Bus');
+      unfold(busRow());
       expect(document.querySelector('[data-bus-windows]')!.textContent).toMatch(/^No bus route is set up yet/);
     });
 
     it('a set-times switch keeps at least one day', () => {
       render(<Harness initial={{ source: 'dashboard' }} plan={{ dashboardId: null, switches: [{ when: 'times', days: [1], from: '07:00', to: '08:00', dashboardId: BUS }] }} />);
+      unfold(rows()[0]!);
       expect((rows()[0]!.querySelector<HTMLButtonElement>('[aria-label="Monday"]')!).disabled).toBe(true);
     });
 
@@ -286,19 +310,57 @@ describe('ThroughTheDaySheet', () => {
         { when: 'bus', dashboardId: BUS },
       ] }} />);
       expect(screen.getByText('If two overlap, the higher one wins.')).toBeTruthy();
+      unfold(rows()[0]!);
       expect(rows()[0]!.querySelector('[data-switch-up]')).toBeNull();
+      unfold(rows()[1]!);
       fireEvent.click(rows()[1]!.querySelector<HTMLElement>('[data-switch-up]')!);
       expect(kept().map((sw) => sw.when)).toEqual(['bus', 'times']);
+      // The one moved stays open, now first.
+      expect(rows()[0]!.getAttribute('data-open')).toBe('true');
+      expect(rows()[1]!.getAttribute('data-open')).toBe('false');
     });
 
     it('Shows is the dashboard the screen shows, and a switch\'s Open opens its dashboard', () => {
       render(<Harness initial={{ source: 'dashboard' }} plan={{ dashboardId: null, switches: [{ when: 'bus', dashboardId: BUS }] }} />);
       // None set: the default.
       expect((screen.getByLabelText('Dashboard this screen shows') as HTMLSelectElement).value).toBe(HOME);
+      unfold(rows()[0]!);
       fireEvent.click(rows()[0]!.querySelector<HTMLElement>(`[data-dashboard-open="${BUS}"]`)!);
       expect(switched).toHaveBeenCalledWith('bus');
       pick('Dashboard this screen shows', BUS);
       expect(seen.plan!.dashboardId).toBe(BUS);
+    });
+
+    it('each switch folds to one line that says what it does, and one row opens at a time (#1294)', async () => {
+      render(<Harness initial={{ day: 'photos', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } }} plan={{ dashboardId: null, switches: [
+        { when: 'bus', dashboardId: BUS, routeIds: [AM_ROUTE] },
+        { when: 'times', days: [1, 2, 3, 4, 5], from: '01:45', to: '02:45', dashboardId: HOME },
+      ] }} />);
+      await act(async () => {});
+      // All folded when the editor opens, Open, up and Remove inside.
+      expect(openRows()).toHaveLength(0);
+      expect(document.querySelector('[data-switch-remove], [data-switch-up], [data-dashboard-open]')).toBeNull();
+      expect(rows().map(summary)).toEqual(['Morning 07:15–08:00 · Bus', 'Mon–Fri 01:45–02:45 · Home']);
+      unfold(rows()[0]!);
+      expect(openRows()).toEqual([rows()[0]]);
+      expect(rows()[0]!.querySelector('[data-switch-remove]')).toBeTruthy();
+      // Opening another folds the one that was open.
+      unfold(rows()[1]!);
+      expect(openRows()).toEqual([rows()[1]]);
+      openNight();
+      expect(openRows()).toEqual([nightRow()]);
+      // A tap on the open one folds it.
+      unfold(nightRow());
+      expect(openRows()).toHaveLength(0);
+    });
+
+    it('a switch just added opens, and the one that was open folds (#1294)', () => {
+      render(<Harness initial={{ source: 'dashboard' }} plan={{ dashboardId: null, switches: [{ when: 'times', days: [1], from: '07:00', to: '08:00', dashboardId: BUS }] }} />);
+      unfold(rows()[0]!);
+      press('Switch at set times');
+      expect(rows()).toHaveLength(2);
+      expect(openRows()).toEqual([rows()[1]]);
+      expect(rows()[1]!.querySelector('[aria-label="Switch starts"]')).toBeTruthy();
     });
 
     it('nothing is sent until Done: every change stays on the editor page', () => {
@@ -318,6 +380,123 @@ describe('ThroughTheDaySheet', () => {
       expect(screen.queryByLabelText('Dashboard this screen shows')).toBeNull();
       // No timeline either: those are gone (#1282).
       expect(document.querySelector('[data-timeline-bar]')).toBeNull();
+    });
+  });
+
+  describe('the day slider (#1294)', () => {
+    const AMBIENT = '55555555-5555-4555-8555-555555555555';
+    const THREE = [...DASHBOARDS, { id: AMBIENT, name: 'Ambient', slug: 'ambient', isDefault: false }];
+    /** Home's night from 9 pm to 6:30 am; Bus at bus time, Ambient from 1:45 to 2:45 every day. */
+    const NIGHT: IdleBackground = { day: 'photos', night: 'sky', switch: { by: 'clock', from: '21:00', to: '06:30' } };
+    const PLAN: ScreenPlan = { dashboardId: null, switches: [
+      { when: 'bus', dashboardId: BUS },
+      { when: 'times', days: [0, 1, 2, 3, 4, 5, 6], from: '01:45', to: '02:45', dashboardId: AMBIENT },
+    ] };
+    beforeEach(() => {
+      // A Monday at 10 am, on the household's clock (the screen's here).
+      jest.useFakeTimers({ now: new Date(2026, 10, 23, 10, 0), doNotFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'setImmediate', 'clearImmediate', 'queueMicrotask', 'nextTick'] });
+      global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ routes: ROUTES }) })) as never;
+    });
+    afterEach(() => jest.useRealTimers());
+
+    const dots = () => Array.from(document.querySelectorAll<HTMLElement>('[data-waypoint]'));
+    const dotAt = (hhmm: string) => document.querySelector<HTMLElement>(`[data-waypoint][data-minute="${Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3))}"]`)!;
+    const label = () => document.querySelector('[data-day-label]')!.textContent;
+    const caption = () => document.querySelector('[data-day-caption]')?.textContent ?? null;
+    const later = () => fireEvent.click(screen.getByRole('button', { name: 'Later' }));
+    const earlier = () => fireEvent.click(screen.getByRole('button', { name: 'Earlier' }));
+
+    it('a dot wherever the screen changes today: night, each switch\'s start and end, and now', async () => {
+      render(<Harness initial={NIGHT} plan={PLAN} dashboards={THREE as never} />);
+      await act(async () => {});
+      expect(dots().map((d) => `${d.getAttribute('data-minute')} ${d.getAttribute('data-waypoint-marks')}`)).toEqual([
+        '105 switch-start1', '165 switch-end1', '390 night-end', '435 switch-start0', '480 switch-end0',
+        '600 now', '900 switch-start0', '945 switch-end0', '1260 night-start',
+      ]);
+      expect(dotAt('21:00').getAttribute('aria-label')).toBe('21:00, night starts');
+      expect(dotAt('07:15').getAttribute('aria-label')).toBe('07:15, Bus starts');
+      // Nothing picked yet: the canvas is as it was.
+      expect(label()).toBe('Step through the day to see the screen then.');
+      expect(seen).toMatchObject({ tab: 'dashboard', preview: null });
+    });
+
+    it('◀ ▶ step from now, and the canvas shows the screen at each stop', async () => {
+      render(<Harness initial={NIGHT} plan={PLAN} dashboards={THREE as never} />);
+      await act(async () => {});
+      later();
+      expect(label()).toBe('15:00, Bus starts');
+      // A switch's dashboard, as it is saved.
+      expect(caption()).toBe('Shows Bus as it is saved');
+      expect(seen).toMatchObject({ tab: 'dashboard', preview: BUS });
+      later();
+      expect(label()).toBe('15:45, Bus ends');
+      expect(caption()).toBe('Shows Home in use');
+      expect(seen).toMatchObject({ tab: 'dashboard', preview: null });
+      later();
+      // Night: the night look.
+      expect(label()).toBe('21:00, night starts');
+      expect(caption()).toBe('Shows Home at night');
+      expect(seen).toMatchObject({ tab: 'idle', half: 'night', preview: null });
+      expect(document.querySelector('[data-day-sheet]')!.getAttribute('data-day-at')).toBe('1260');
+      expect((screen.getByRole('button', { name: 'Later' }) as HTMLButtonElement).disabled).toBe(true);
+      for (let n = 0; n < 4; n++) earlier();
+      expect(label()).toBe('08:00, Bus ends');
+      earlier();
+      expect(label()).toBe('07:15, Bus starts');
+      earlier();
+      // Night ends: Home in use again, not the night look.
+      expect(label()).toBe('06:30, night ends');
+      expect(seen).toMatchObject({ tab: 'dashboard', preview: null });
+      earlier();
+      // A switch at night shows its dashboard.
+      expect(label()).toBe('02:45, Ambient ends');
+      expect(seen).toMatchObject({ tab: 'idle', half: 'night' });
+      earlier();
+      expect(label()).toBe('01:45, Ambient starts');
+      expect(seen).toMatchObject({ tab: 'dashboard', preview: AMBIENT });
+      expect((screen.getByRole('button', { name: 'Earlier' }) as HTMLButtonElement).disabled).toBe(true);
+    });
+
+    it('tapping a dot goes there and opens the row that makes it; the line itself sets nothing', async () => {
+      render(<Harness initial={NIGHT} plan={PLAN} dashboards={THREE as never} />);
+      await act(async () => {});
+      fireEvent.click(dotAt('01:45'));
+      expect(seen.preview).toBe(AMBIENT);
+      expect(openRows()).toEqual([rows()[1]]);
+      fireEvent.click(dotAt('06:30'));
+      expect(openRows()).toEqual([nightRow()]);
+      fireEvent.click(dotAt('10:00'));
+      expect(label()).toBe('Now, 10:00');
+      // Nothing on the line is a setting.
+      expect(seen.plan).toEqual(PLAN);
+      expect(seen.value).toEqual(NIGHT);
+      expect(document.querySelector('[data-day-slider] select, [data-day-slider] input')).toBeNull();
+    });
+
+    it('the stop picked shows only while the canvas shows its moment', async () => {
+      render(<Harness initial={NIGHT} plan={PLAN} dashboards={THREE as never} />);
+      await act(async () => {});
+      later();
+      expect(caption()).toBe('Shows Bus as it is saved');
+      seeResting();
+      expect(seen).toMatchObject({ tab: 'idle', half: 'day', preview: null });
+      expect(label()).toBe('Step through the day to see the screen then.');
+      expect(document.querySelector('[data-day-sheet]')!.hasAttribute('data-day-at')).toBe(false);
+      fireEvent.click(document.querySelector<HTMLElement>('[data-day-back]')!);
+      expect(seen).toMatchObject({ tab: 'dashboard', preview: null });
+    });
+
+    it('a dashboard edited on its own shows only night\'s start and end, and its own night', async () => {
+      // Bus, not the household's default, is being edited.
+      render(<Harness initial={NIGHT} plan={null} screenId={null} forScreen={false} current={BUS} />);
+      await act(async () => {});
+      expect(dots().map((d) => d.getAttribute('data-waypoint-marks'))).toEqual(['night-end', 'now', 'night-start']);
+      later();
+      expect(label()).toBe('21:00, night starts');
+      expect(caption()).toBe('Shows Bus at night');
+      expect(seen).toMatchObject({ tab: 'idle', half: 'night', preview: null });
+      earlier();
+      expect(seen).toMatchObject({ tab: 'dashboard', preview: null });
     });
   });
 

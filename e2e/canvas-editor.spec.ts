@@ -86,6 +86,8 @@ test.describe('canvas editor (#1265)', () => {
           // on its own has no screen to rest or dim, so only its own look shows.
           expect(await sheet.evaluate((el) => el.scrollWidth - el.clientWidth), 'nothing runs past the panel').toBeLessThanOrEqual(0);
           await expect(sheet.getByLabel('While resting')).toBeVisible();
+          // Night folds to one line (#1294), and opens to its look.
+          await sheet.locator('[data-night-row] [data-fold-toggle]').click();
           await expect(sheet.getByLabel('Night look')).toBeVisible();
           await expect(sheet.getByLabel('Rest after')).toHaveCount(0);
           await expect(sheet.getByLabel('How dark at night')).toHaveCount(0);

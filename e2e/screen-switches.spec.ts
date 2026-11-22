@@ -5,10 +5,11 @@ import { getFirstParent, getSeededParentId, verifySettingsPinViaAPI } from './he
  * A screen shows one dashboard and switches to another for a while (#1282):
  * at bus time, from 30 minutes before a bus route's time at the stop to 15
  * after unless the switch has routes and minutes of its own (#1291), or at
- * set times. Through the day shows them as rows in the screen's
- * editor, kept there until Done; Settings > Screens picks the dashboard on the
- * screen's row. The home page opens a named screen on the dashboard it shows
- * now, a switch's included.
+ * set times. Through the day shows them as rows in the screen's editor that
+ * fold to a line each (#1294), kept there until Done, under a slider that
+ * steps through the day and shows the screen then; Settings > Screens picks
+ * the dashboard on the screen's row. The home page opens a named screen on
+ * the dashboard it shows now, a switch's included.
  */
 const HAS_TEST_DB = process.env.E2E_HAS_TEST_DB === '1';
 const PIN = process.env.E2E_PIN || '1234';
@@ -232,8 +233,12 @@ test.describe('a screen\'s dashboard and switches (#1282)', () => {
         const sheet = page.locator('[data-editor-sheet="day"]');
         await expect(rows(page)).toHaveCount(1);
         const box = async (selector: string) => (await sheet.locator(selector).first().boundingBox())!;
+        // Folded, a row is one button; opening the switch shows its days (#1294).
+        const fold = await box('[data-switch-row="0"] [data-fold-toggle]');
+        const nightFold = await box('[data-night-row] [data-fold-toggle]');
+        await rows(page).first().locator('[data-fold-toggle]').click();
         // The words on each kind of control: a day, + Switch, See it, More.
-        const fonts = await sheet.evaluate((el) => ['[data-day-chip="1"]', '[data-switch-add="times"]', '[data-see="night"]', '[data-day-more]']
+        const fonts = await sheet.evaluate((el) => ['[data-day-chip="1"]', '[data-switch-add="times"]', '[data-see="resting"]', '[data-day-more]']
           .map((s) => `${s} ${getComputedStyle(el.querySelector(s)!).fontSize}`));
         // Each day bubble, and the tab bar: the Through the day tab's words,
         // and the ground the tabs are drawn on.
@@ -247,13 +252,21 @@ test.describe('a screen\'s dashboard and switches (#1282)', () => {
           }
           return 1;
         });
-        return { fonts, days, tabWords, tabGround, box: {
+        const measured = {
           day: await box('[data-day-chip="1"]'),
           add: await box('[data-switch-add="bus"]'),
           shows: await box('[data-screen-dashboard]'),
           resting: await box('[data-resting-look]'),
+          see: await box('[data-see="resting"]'),
+          step: await box('[data-day-step="next"]'),
+          fold,
+          nightFold,
+        };
+        // Night opens on its own row, and the switch folds.
+        await sheet.locator('[data-night-row] [data-fold-toggle]').click();
+        return { fonts, days, tabWords, tabGround, box: {
+          ...measured,
           night: await box('[data-night-look]'),
-          see: await box('[data-see="night"]'),
           tab: (await page.locator('[data-editor-open="day"]').boundingBox())!,
           done: (await page.locator('[data-editor-done]').boundingBox())!,
         } };
@@ -293,6 +306,102 @@ test.describe('a screen\'s dashboard and switches (#1282)', () => {
     } finally {
       await screen.remove();
       await setup.request.delete(`/api/layouts/${bus.id}`);
+      await setup.close();
+    }
+  });
+
+  // #1294: Through the day's slider steps through the moments the screen
+  // changes, and the canvas shows the screen then; the rows fold.
+  test('the day slider: each dot at its time, a switch\'s dashboard and the night look on the canvas, and three folded switches fit a laptop', async ({ browser }) => {
+    const tag = Date.now().toString(36);
+    const setup = await browser.newPage();
+    await signIn(setup);
+    // Kitchen goes dark from 9 pm to 6:30 am; School run has tasks where Kitchen has a clock.
+    const kitchenRes = await setup.request.post('/api/layouts', { data: {
+      name: `Kitchen ${tag}`, widgets: [{ i: 'clock', x: 0, y: 0, w: 16, h: 12 }],
+      idleBackground: { day: 'dashboard', night: 'off', switch: { by: 'clock', from: '21:00', to: '06:30' } },
+    } });
+    expect(kitchenRes.ok()).toBe(true);
+    const kitchen: { id: string; slug: string } = await kitchenRes.json();
+    const schoolRes = await setup.request.post('/api/layouts', { data: { name: `School run ${tag}`, widgets: [{ i: 'tasks', x: 0, y: 0, w: 16, h: 12 }] } });
+    expect(schoolRes.ok()).toBe(true);
+    const school: { id: string; slug: string } = await schoolRes.json();
+    const every = [0, 1, 2, 3, 4, 5, 6];
+    const screen = await namedScreen(browser, `Hall ${tag}`, { dashboardId: kitchen.id, switches: [
+      { when: 'times', days: every, from: '07:00', to: '08:00', dashboardId: school.id },
+      { when: 'times', days: every, from: '15:00', to: '15:45', dashboardId: school.id },
+      { when: 'times', days: every, from: '01:45', to: '02:45', dashboardId: school.id },
+    ] });
+    const laptop = await screen.edit();
+    try {
+      const { page } = laptop;
+      const sheet = page.locator('[data-editor-sheet="day"]');
+      const frame = page.frameLocator('[data-remote-frame]');
+      await expect(rows(page)).toHaveCount(3);
+
+      // All folded on open, and the panel fits the laptop's height without scrolling.
+      await expect(sheet.locator('[data-open="true"]')).toHaveCount(0);
+      const fit = await sheet.evaluate((el) => ({ scroll: el.scrollHeight, client: el.clientHeight, bottom: el.getBoundingClientRect().bottom }));
+      expect(fit.scroll, 'the folded panel needs no scrolling').toBeLessThanOrEqual(fit.client + 1);
+      expect(fit.bottom).toBeLessThanOrEqual(900 + 0.5);
+
+      // A dot for each switch's start and end, and night's, each at its time on
+      // the line, and a tap on each reaches only its own (3 pm and 3:45 pm are
+      // a few pixels apart).
+      const g = await sheet.evaluate((root) => {
+        const line = root.querySelector('[data-day-line]')!.getBoundingClientRect();
+        return {
+          line: line.toJSON() as DOMRect,
+          dots: [...root.querySelectorAll<HTMLElement>('[data-waypoint]')].map((d) => {
+            const b = root.querySelector(`[data-waypoint-dot="${d.dataset.minute}"]`)!.getBoundingClientRect();
+            const hit = d.getBoundingClientRect();
+            return { minute: Number(d.dataset.minute), x: b.left + b.width / 2, hitLeft: hit.left, hitRight: hit.right };
+          }),
+        };
+      });
+      expect(g.dots.map((d) => d.minute)).toEqual(expect.arrayContaining([105, 165, 390, 420, 480, 900, 945, 1260]));
+      g.dots.forEach((d, i) => {
+        expect(Math.abs(d.x - (g.line.left + (d.minute / 1440) * g.line.width)), `the dot at minute ${d.minute}`).toBeLessThanOrEqual(1);
+        expect(d.hitLeft, `a tap at minute ${d.minute}'s dot is its own`).toBeLessThanOrEqual(d.x);
+        expect(d.hitRight).toBeGreaterThanOrEqual(d.x);
+        if (i > 0) expect(d.hitLeft, `minute ${d.minute}'s tap area is clear of the one before`).toBeGreaterThanOrEqual(g.dots[i - 1]!.hitRight - 0.5);
+      });
+
+      // Tapping 7 am: School run on the canvas, as it is saved, and its row open.
+      await sheet.locator('[data-waypoint][data-minute="420"]').click();
+      await expect(frame.locator(`[data-canvas-preview="${school.id}"]`)).toBeVisible({ timeout: 30_000 });
+      await expect(frame.locator('.widget-cell[data-widget="tasks"]')).toBeVisible();
+      await expect(frame.locator('[data-editor-widget]')).toHaveCount(0);
+      await expect(sheet.locator('[data-day-caption]')).toHaveText(`Shows School run ${tag} as it is saved`);
+      await expect(rows(page).first()).toHaveAttribute('data-open', 'true');
+      // ▶ steps to the next dot: 8 am, Kitchen again, being edited.
+      await sheet.locator('[data-day-step="next"]').click();
+      await expect(sheet.locator('[data-day-sheet]')).toHaveAttribute('data-day-at', String(g.dots.find((d) => d.minute > 420)!.minute));
+      if (g.dots.find((d) => d.minute > 420)!.minute === 480) {
+        await expect(frame.locator('[data-canvas-preview]')).toHaveCount(0);
+        await expect(frame.locator('[data-editor-widget="clock"]')).toBeVisible();
+      }
+      // 9 pm: Kitchen's night look, the screen off.
+      await sheet.locator('[data-waypoint][data-minute="1260"]').click();
+      await expect(sheet.locator('[data-day-sheet]')).toHaveAttribute('data-day-shows', 'night');
+      await expect(frame.locator('[data-preview-night="off"]')).toHaveCount(1);
+      await expect(sheet.locator('[data-night-row]')).toHaveAttribute('data-open', 'true');
+      // Back to in use.
+      await sheet.locator('[data-day-back]').click();
+      await expect(frame.locator('[data-preview-night]')).toHaveCount(0);
+      await expect(sheet.locator('[data-day-sheet]')).toHaveAttribute('data-day-shows', 'active');
+
+      // Another panel edits Kitchen: the canvas leaves School run.
+      await sheet.locator('[data-waypoint][data-minute="900"]').click();
+      await expect(frame.locator(`[data-canvas-preview="${school.id}"]`)).toBeVisible();
+      await page.locator('[data-editor-open="widgets"]').click();
+      await expect(frame.locator('[data-canvas-preview]')).toHaveCount(0);
+      await expect(frame.locator('[data-editor-widget="clock"]')).toBeVisible();
+    } finally {
+      await laptop.close();
+      await screen.remove();
+      await setup.request.delete(`/api/layouts/${school.id}`);
+      await setup.request.delete(`/api/layouts/${kitchen.id}`);
       await setup.close();
     }
   });

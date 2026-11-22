@@ -60,6 +60,7 @@ import { buildWidgetProps } from './useWidgetProps';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useConfirmDialog } from '@/lib/hooks/useConfirmDialog';
 import { useLocalCopy } from '@/lib/hooks/useLocalCopy';
+import { useResetOn } from '@/lib/hooks/useResetOn';
 import { setActiveIdleBackground, shownWhenIdle, useCalmIdle } from '@/components/screensaver/calmMode';
 import { useNightNow } from '@/components/screensaver/useIdleBackground';
 import { dimLevel, useIdleDimSetting } from '@/components/screensaver/idleDim';
@@ -162,6 +163,9 @@ export function Dashboard({
     setScreenPlan(plan);
     setHostPlan(plan);
   }, []);
+  // Another dashboard the canvas shows as it is saved, while Through the
+  // day's slider stands in its switch (#1294). Only while editing.
+  const [previewId, setPreviewId] = useState<string | null>(null);
   // Whether the device in use has a name; one that has none can be named in
   // Through the day, and then opens its own screen's editor.
   const [deviceNamed] = useState(() => !!loadBase()?.displayId);
@@ -170,6 +174,7 @@ export function Dashboard({
     (window.top ?? window).location.assign(screenEditLink(displayId, activeLayoutId));
   }, [activeLayoutId]);
   useEffect(() => { editingRef.current = layout.isEditing; }, [layout.isEditing]);
+  useResetOn(layout.isEditing, () => setPreviewId(null));
   // In the frame of a phone editing this screen (#1153): say which dashboard
   // is on show, and when editing ends.
   const remote = editHost;
@@ -465,6 +470,31 @@ export function Dashboard({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
+  /** Today's scene with `parts`: this dashboard's, or another's shown as it is saved. */
+  const todayScene = (parts: WidgetConfig[], look: { idle: boolean; night: boolean; drift: boolean }) => (
+    <TodayScene
+      parts={parts}
+      weather={data.weather.data ?? null}
+      events={data.calendar.events}
+      onOpenEvent={eventSheet.open}
+      idle={look.idle}
+      night={look.night}
+      drift={look.drift}
+      household={{
+        chores: data.chores.chores as unknown as ChoreLike[],
+        lists: data.shopping.lists as unknown as Array<{ id: string; name: string; items: Array<{ checked: boolean }> }>,
+        birthdays: data.birthdays.birthdays,
+        onTickChore: widgetProps.chores?.onChoreComplete as ((id: string) => void) | undefined,
+        onAddShopping: widgetProps.shopping?.onAddClick as (() => void) | undefined,
+      }}
+      topOffset={uiHidden || wallDock || layout.isEditing ? 0 : 56}
+    />
+  );
+  // The dashboard the canvas shows instead of this one, if any (#1294).
+  const previewLayout = layout.isEditing && previewId && previewId !== layout.activeLayout?.id
+    ? data.layouts.allLayouts.find((l) => l.id === previewId) ?? null
+    : null;
+
   // Always this wrapper, styled or not, so a change of text size does not
   // remount the dashboard under it.
   if (isMobile) {
@@ -570,6 +600,8 @@ export function Dashboard({
               idleCheck={idleCheck}
               screenPlan={screenPlan}
               onScreenPlanChange={changeScreenPlan}
+              previewDashboardId={previewId}
+              onPreviewDashboardChange={setPreviewId}
               screenId={screenId}
               deviceNamed={deviceNamed}
               onDeviceNamed={openNamedScreen}
@@ -615,28 +647,38 @@ export function Dashboard({
               onScrollInfo={handleScrollInfo}
               scrollToRef={scrollToGridRef}
             />
+          ) : previewLayout ? (
+            // Another dashboard as it is saved, for a moment in its switch
+            // (#1294): seen on the canvas, not edited. Open on its row edits it.
+            <div className="contents" data-canvas-preview={previewLayout.id}>
+              <WidgetErrorBoundary>
+                {isBuiltInView(previewLayout.view) ? todayScene(previewLayout.widgets, { idle: false, night: false, drift: false }) : (
+                  <LayoutGridEditor
+                    key={`preview-${previewLayout.id}`}
+                    layout={previewLayout.widgets}
+                    onLayoutChange={() => {}}
+                    isEditable={false}
+                    renderWidget={renderDashboardWidget}
+                    widgetConstraints={dashboardConstraints}
+                    margin={8}
+                    headerOffset={16}
+                    bottomOffset={bottomOffset + editorBarRoom}
+                    screenGuideOrientation={screenGuideOrientation}
+                    enabledSizes={enabledSizes}
+                  />
+                )}
+              </WidgetErrorBoundary>
+            </div>
           ) : todayPage ? (
             // Today (#907): one scene over the photo instead of the grid. While
             // editing it stays the scene, so the Widgets sheet's changes show
             // on it as they are made (#1151).
             <WidgetErrorBoundary>
-              <TodayScene
-                parts={layout.activeWidgets}
-                weather={data.weather.data ?? null}
-                events={data.calendar.events}
-                onOpenEvent={eventSheet.open}
-                idle={calmIdle || previewState === 'resting' || previewState === 'night'}
-                night={sceneNight}
-                drift={idleDrift}
-                household={{
-                  chores: data.chores.chores as unknown as ChoreLike[],
-                  lists: data.shopping.lists as unknown as Array<{ id: string; name: string; items: Array<{ checked: boolean }> }>,
-                  birthdays: data.birthdays.birthdays,
-                  onTickChore: widgetProps.chores?.onChoreComplete as ((id: string) => void) | undefined,
-                  onAddShopping: widgetProps.shopping?.onAddClick as (() => void) | undefined,
-                }}
-                topOffset={uiHidden || wallDock || layout.isEditing ? 0 : 56}
-              />
+              {todayScene(layout.activeWidgets, {
+                idle: calmIdle || previewState === 'resting' || previewState === 'night',
+                night: sceneNight,
+                drift: idleDrift,
+              })}
             </WidgetErrorBoundary>
           ) : (
             <WidgetErrorBoundary>

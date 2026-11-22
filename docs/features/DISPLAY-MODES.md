@@ -18,7 +18,7 @@ The screensaver starts after the screen has been idle for a time you set. It sho
 
 Every dashboard has its own screensaver layout. The kitchen dashboard (`/d/kitchen`) can have a big clock, the weather and a slow photo cycle, while the bedroom dashboard (`/d/bedroom`) has a smaller clock and tomorrow's calendar.
 
-A screen is in one of three states through the day: **Active** while someone is using it, **Resting** once nobody has touched it for a while, and **Night** when it rests after dark. In the editor's **Through the day** sheet, **See it** has a button for each: **In use**, **Resting** and **Night**. Tap one and the canvas shows that state at once.
+A screen is in one of three states through the day: **Active** while someone is using it, **Resting** once nobody has touched it for a while, and **Night** when it rests after dark. In the editor's **Through the day** sheet, a line across the day has a dot wherever what the screen shows changes: night's start and end, and each switch's start and end. **◀** and **▶** step from one to the next and the canvas shows the screen then, in use or at night; **See it** on the **Resting** row shows it resting, and **Back to in use** brings it back.
 
 The sheet is a few rows. In a screen's editor it starts with which dashboard the screen shows and the dashboards it switches to at bus time or at set times (see [Which dashboard a screen shows](DASHBOARD.md#which-dashboard-a-screen-shows-and-when-it-switches)). Then come the dashboard's own rows: **Resting** (after how long, and what it shows) and **At night** (dusk to dawn or set times, and what it shows), with tonight's times and the offsets under it, and **How dark**. What shows while resting and at night belongs to the dashboard and is saved with it on **Done**, so every screen showing that dashboard rests and sleeps the same way. How soon the screen rests and how dark it goes are the screen's own, so they show only when the editor is for a screen.
 
@@ -26,7 +26,7 @@ The sheet is a few rows. In a screen's editor it starts with which dashboard the
 
 A dashboard set to rest as **This dashboard** (in the Through the day sheet) has no separate screensaver. When the display goes idle, some widgets fade out where they are and the others stay. A tap brings everything back, and nothing moves.
 
-Tap **Resting** under **See it** in the Through the day sheet and each widget on a calm dashboard gets a **Stays** or **Fades** button in its top-right corner. Tap it to choose, then **Done**. Until you set a widget, the clock, weather and calendar stay and everything else fades.
+Tap **See it** on the **Resting** row of the Through the day sheet and each widget on a calm dashboard gets a **Stays** or **Fades** button in its top-right corner. Tap it to choose, then **Done**. Until you set a widget, the clock, weather and calendar stay and everything else fades.
 
 #### Resting, night and what shows
 

@@ -65,6 +65,8 @@ export function LayoutEditor({
   idleCheck = {},
   screenPlan = null,
   onScreenPlanChange,
+  previewDashboardId = null,
+  onPreviewDashboardChange,
   screenId = null,
   deviceNamed = false,
   onDeviceNamed,
@@ -99,19 +101,24 @@ export function LayoutEditor({
   // edited at a chosen size has none.
   const [forScreen] = useState(() => remoteEditHost()?.displayId !== null);
   // The open panel (#1151), beside the canvas (#1265); one is always open, as
-  // there is room and nothing is covered. Through the day shows the screen as
-  // it rests, so it is the Idle screen tab underneath. A dashboard picked on
-  // Dashboard opens on Dashboard still.
+  // there is room and nothing is covered. A dashboard picked on Dashboard
+  // opens on Dashboard still.
   const [sheet, setSheetState] = useState<EditorSheet>(() => panelKeptFor(currentDashboardId) ?? 'widgets');
   useEffect(() => { forgetKeptPanel(); }, []);
-  // Opening Through the day moves to the resting screen, which stays with
-  // another panel open so its layout can be arranged; Dashboard, or Back to
-  // in use, goes back.
+  // Through the day's slider and Resting's See it show the screen resting or
+  // at night, which stays with another panel open so its layout can be
+  // arranged; Dashboard, or Back to in use, goes back. Another dashboard shown
+  // as it is saved (#1294) is only for the slider: any other panel edits this one.
   const setSheet = useCallback((next: EditorSheet) => {
     setSheetState(next);
-    if (next === 'day') onEditTabChange?.('idle');
-    else if (next === 'dashboard') onEditTabChange?.('dashboard');
-  }, [onEditTabChange]);
+    if (next !== 'day') onPreviewDashboardChange?.(null);
+    if (next === 'dashboard') onEditTabChange?.('dashboard');
+  }, [onEditTabChange, onPreviewDashboardChange]);
+  const backToInUse = useCallback(() => {
+    onPreviewDashboardChange?.(null);
+    onEditTabChange?.('dashboard');
+  }, [onEditTabChange, onPreviewDashboardChange]);
+  const previewName = previewDashboardId ? allDashboards.find((d) => d.id === previewDashboardId)?.name ?? null : null;
   const builtIn = view === 'today';
   // There is a screensaver layout to copy to or from only when something
   // other than the dashboard itself shows behind it.
@@ -270,6 +277,8 @@ export function LayoutEditor({
             idleCheck={idleCheck}
             screenPlan={screenPlan}
             onScreenPlanChange={onScreenPlanChange}
+            previewDashboardId={previewDashboardId}
+            onPreviewDashboardChange={onPreviewDashboardChange}
             screenId={screenId}
             deviceNamed={deviceNamed}
             onDeviceNamed={onDeviceNamed}
@@ -336,8 +345,9 @@ export function LayoutEditor({
         doneBlocked={saveBlocked}
         onDone={state.handleSave}
         onCancel={onCancel}
-        resting={editTab === 'idle'}
-        onLeaveResting={() => onEditTabChange?.('dashboard')}
+        resting={editTab === 'idle' ? (idleHalf === 'night' ? 'night' : 'resting') : null}
+        previewName={editTab === 'idle' ? null : previewName}
+        onLeaveResting={backToInUse}
       />
 
       <CreateDashboardDialog
