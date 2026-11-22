@@ -11,6 +11,7 @@ import { logError } from '@/lib/utils/logError';
 import { describePin, isPinKind, lengthAllowed, lengthBounds, pinMatches, pinNoun, type PinKind } from '@/lib/auth/pinKind';
 import { isSetupComplete } from '@/lib/setup';
 import { parentCanResetPin } from '@/lib/auth/pinReset';
+import { revokeApiTokensOf } from '@/lib/auth/apiTokens';
 import { isHexColor } from '@/lib/constants/memberColors';
 import { cookies } from 'next/headers';
 import {
@@ -340,6 +341,8 @@ export async function PATCH(
     // a session carries the role it signed in with, and a device signed in on
     // the old PIN should not stay in. A member changing their own PIN keeps
     // the session making the change, so they are not signed out mid-edit.
+    // A new role also revokes the member's API tokens (#1246); a new PIN keeps
+    // them, as a token is not signed in with the PIN.
     const credentialChanged = updates.pin !== undefined;
     const roleChanged = updates.role !== undefined && updates.role !== currentMember.role;
     if (credentialChanged || roleChanged) {
@@ -351,6 +354,7 @@ export async function PATCH(
         await invalidateAllUserSessions(id);
       }
     }
+    if (roleChanged) await revokeApiTokensOf(id);
 
     await invalidateEntity('family');
     await invalidateEntity('calendar-groups');
