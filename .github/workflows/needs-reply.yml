@@ -12,6 +12,10 @@ name: needs-reply triage
 # The label powers a Project board view filter: `label:needs-reply` surfaces
 # anything an external user is waiting on a reply for.
 
+# pull_request_target for a pull request's opening, because only it can label
+# a pull request from a fork; it never checks out or runs the pull request's
+# code (src/lib/__tests__/prTargetWorkflows.test.ts). The Actions event policy
+# allows this file only the events below (Settings > Actions > Policies).
 on:
   issues:
     types: [opened]
@@ -32,23 +36,21 @@ jobs:
   triage:
     runs-on: ubuntu-latest
     steps:
-      # No `env:` block here, on purpose. This step used to set an env var to
-      # the whole event serialised as JSON, and never read it: the script
-      # below uses expression syntax directly. The runner prints every
-      # step-level env value into the log, and Actions logs on a public
-      # repository are world-readable, so the whole triggering payload,
-      # including the issue or pull request body, was published verbatim on
-      # every run for four months. Do not reintroduce it.
+      # The runner prints every step-level env value into the log, and Actions
+      # logs on a public repository are world-readable. So env holds only the
+      # actor's login and the number, which the issue page shows anyway: never
+      # the event as JSON, nor any title, body or comment. The scripts read
+      # them from env rather than having them pasted in.
       - name: Compute actor and target
         id: ctx
-        run: |
+        env:
           # Actor: who triggered the event (commenter / opener / reviewer)
-          ACTOR="${{ github.event.comment.user.login || github.event.review.user.login || github.event.sender.login }}"
-          echo "actor=$ACTOR" >> "$GITHUB_OUTPUT"
-
-          # Issue/PR number — works across issues, issue_comment (on issues OR PRs),
+          ACTOR: ${{ github.event.comment.user.login || github.event.review.user.login || github.event.sender.login }}
+          # Issue/PR number: works across issues, issue_comment (on issues OR PRs),
           # PR review, PR review_comment, pull_request_target.
-          NUMBER="${{ github.event.issue.number || github.event.pull_request.number }}"
+          NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
+        run: |
+          echo "actor=$ACTOR" >> "$GITHUB_OUTPUT"
           echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
 
           # Is this the bot / owner?
@@ -71,16 +73,16 @@ jobs:
         if: steps.ctx.outputs.is_owner != 'true' && steps.ctx.outputs.is_bot != 'true' && steps.ctx.outputs.number != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NUMBER: ${{ steps.ctx.outputs.number }}
+          REPO: ${{ github.repository }}
         run: |
-          gh issue edit "${{ steps.ctx.outputs.number }}" \
-            --repo "${{ github.repository }}" \
-            --add-label needs-reply || true
+          gh issue edit "$NUMBER" --repo "$REPO" --add-label needs-reply || true
 
       - name: Remove needs-reply (owner replied)
         if: steps.ctx.outputs.is_owner == 'true' && steps.ctx.outputs.number != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NUMBER: ${{ steps.ctx.outputs.number }}
+          REPO: ${{ github.repository }}
         run: |
-          gh issue edit "${{ steps.ctx.outputs.number }}" \
-            --repo "${{ github.repository }}" \
-            --remove-label needs-reply || true
+          gh issue edit "$NUMBER" --repo "$REPO" --remove-label needs-reply || true

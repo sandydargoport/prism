@@ -14,8 +14,13 @@ name: Dependabot auto-merge
 # minor deserves a person: they set the shape of the app rather than sitting
 # underneath it.
 
+# pull_request, not pull_request_target (#1260): a pull request Dependabot
+# opens gets the write token the permissions below ask for, and one from a
+# fork gets a read-only token and no secrets, so nothing here can be turned
+# against this repository. The Actions event policy lists pull_request for
+# this file (Settings > Actions > Policies).
 on:
-  pull_request_target:
+  pull_request:
 
 permissions:
   contents: write
@@ -23,7 +28,10 @@ permissions:
 
 jobs:
   auto-merge:
-    if: github.actor == 'dependabot[bot]'
+    # Who opened the pull request, not github.actor: that is whoever set off
+    # this run, and Dependabot can set one off on someone else's pull request.
+    # Never in a fork.
+    if: github.event.pull_request.user.login == 'dependabot[bot]' && !github.event.repository.fork
     runs-on: ubuntu-latest
     steps:
       # Reads the PR's metadata from the Dependabot API. Deliberately does NOT
@@ -40,13 +48,18 @@ jobs:
         if: |
           steps.meta.outputs.update-type != 'version-update:semver-major' &&
           !contains(fromJSON('["next","react","react-dom","drizzle-orm"]'), steps.meta.outputs.dependency-names)
-        run: gh pr merge --auto --merge "${{ github.event.pull_request.html_url }}"
+        run: gh pr merge --auto --merge "$PR_URL"
         env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Say why it was left alone
         if: |
           steps.meta.outputs.update-type == 'version-update:semver-major' ||
           contains(fromJSON('["next","react","react-dom","drizzle-orm"]'), steps.meta.outputs.dependency-names)
+        # Through env: the names come from the pull request's commit message.
+        env:
+          NAMES: ${{ steps.meta.outputs.dependency-names }}
+          UPDATE: ${{ steps.meta.outputs.update-type }}
         run: |
-          echo "Left for a person: ${{ steps.meta.outputs.dependency-names }} (${{ steps.meta.outputs.update-type }})"
+          echo "Left for a person: $NAMES ($UPDATE)"
